@@ -491,9 +491,9 @@
         [_badgeIconView.widthAnchor constraintEqualToConstant:13.0],
         [_badgeIconView.heightAnchor constraintEqualToConstant:13.0],
 
-        [_titleLabel.topAnchor constraintEqualToAnchor:_badgePillView.bottomAnchor constant:16.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_textContainerView.leadingAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_textContainerView.trailingAnchor],
+        [_titleLabel.topAnchor constraintEqualToAnchor:_badgePillView.bottomAnchor constant:8.0],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_badgeStackView.leadingAnchor constant:0.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_textContainerView.trailingAnchor ],
 
         [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_textContainerView.leadingAnchor],

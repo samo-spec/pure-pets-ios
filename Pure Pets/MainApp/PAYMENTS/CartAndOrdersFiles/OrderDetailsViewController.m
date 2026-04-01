@@ -1675,7 +1675,8 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.dateLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.dateLabel.font = [GM MidFontWithSize:13];
     self.dateLabel.textColor = UIColor.secondaryLabelColor;
-    self.dateLabel.numberOfLines = 2;
+    self.dateLabel.numberOfLines = 0;
+    self.dateLabel.lineBreakMode = NSLineBreakByWordWrapping;
     [self.summaryPanel addSubview:self.dateLabel];
     
     self.totalPriceLabel = [[UILabel alloc] initWithFrame:CGRectZero];
@@ -1690,6 +1691,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.paymentProviderLabel.font = [GM MidFontWithSize:13];
     self.paymentProviderLabel.textColor = UIColor.secondaryLabelColor;
     self.paymentProviderLabel.numberOfLines = 0;
+    self.paymentProviderLabel.lineBreakMode = NSLineBreakByWordWrapping;
     [self.summaryPanel addSubview:self.paymentProviderLabel];
     
     self.deliveryAddressLabel = [[UILabel alloc] initWithFrame:CGRectZero];
@@ -1957,24 +1959,42 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.headerSeparatorTop.frame = CGRectMake(padding, CGRectGetMaxY(self.statusStepperView.frame) + 16.0, separatorWidth, 1.0);
 
     CGFloat summaryY = CGRectGetMaxY(self.headerSeparatorTop.frame) + 16.0;
-    CGFloat summaryPanelHeight = (separatorWidth < 305.0) ? 178.0 : 136.0;
-    self.summaryPanel.frame = CGRectMake(padding, summaryY, separatorWidth, summaryPanelHeight);
-
     CGFloat summaryPadding = 16.0;
-    CGFloat summaryContentWidth = MAX(0.0, CGRectGetWidth(self.summaryPanel.bounds) - (summaryPadding * 2.0));
-    BOOL useStackedSummary = (summaryContentWidth < 272.0);
+    CGFloat summaryContentWidth = MAX(0.0, separatorWidth - (summaryPadding * 2.0));
+    BOOL useStackedSummary = (summaryContentWidth < 248.0);
+
     if (useStackedSummary) {
-        self.totalPriceLabel.frame = CGRectMake(summaryPadding, 14.0, summaryContentWidth, 54.0);
-        self.dateLabel.frame = CGRectMake(summaryPadding, CGRectGetMaxY(self.totalPriceLabel.frame) + 10.0, summaryContentWidth, 56.0);
-        self.paymentProviderLabel.frame = CGRectMake(summaryPadding, CGRectGetMaxY(self.dateLabel.frame) + 8.0, summaryContentWidth, 42.0);
+        CGFloat totalHeight = MAX(64.0, ceil([self.totalPriceLabel sizeThatFits:CGSizeMake(summaryContentWidth, CGFLOAT_MAX)].height));
+        CGFloat dateHeight = MAX(44.0, ceil([self.dateLabel sizeThatFits:CGSizeMake(summaryContentWidth, CGFLOAT_MAX)].height));
+        CGFloat paymentHeight = MAX(48.0, ceil([self.paymentProviderLabel sizeThatFits:CGSizeMake(summaryContentWidth, CGFLOAT_MAX)].height));
+        CGFloat summaryPanelHeight = 16.0 + totalHeight + 12.0 + dateHeight + 10.0 + paymentHeight + 16.0;
+        self.summaryPanel.frame = CGRectMake(padding, summaryY, separatorWidth, summaryPanelHeight);
+        self.totalPriceLabel.frame = CGRectMake(summaryPadding, 16.0, summaryContentWidth, totalHeight);
+        self.dateLabel.frame = CGRectMake(summaryPadding, CGRectGetMaxY(self.totalPriceLabel.frame) + 12.0, summaryContentWidth, dateHeight);
+        self.paymentProviderLabel.frame = CGRectMake(summaryPadding, CGRectGetMaxY(self.dateLabel.frame) + 10.0, summaryContentWidth, paymentHeight);
     } else {
-        CGFloat totalWidth = floor(summaryContentWidth * 0.56);
-        CGFloat metaWidth = MAX(0.0, summaryContentWidth - totalWidth - 12.0);
-        CGFloat totalX = isRTL ? (CGRectGetWidth(self.summaryPanel.bounds) - summaryPadding - totalWidth) : summaryPadding;
-        CGFloat metaX = isRTL ? summaryPadding : (CGRectGetMaxX(CGRectMake(totalX, 0, totalWidth, 0)) + 12.0);
-        self.totalPriceLabel.frame = CGRectMake(totalX, 18.0, totalWidth, 78.0);
-        self.dateLabel.frame = CGRectMake(metaX, 18.0, metaWidth, 54.0);
-        self.paymentProviderLabel.frame = CGRectMake(metaX, CGRectGetMaxY(self.dateLabel.frame) + 10.0, metaWidth, 42.0);
+        CGFloat totalHeight = MAX(64.0, ceil([self.totalPriceLabel sizeThatFits:CGSizeMake(summaryContentWidth, CGFLOAT_MAX)].height));
+        CGFloat metaTop = 16.0 + totalHeight + 12.0;
+        CGFloat metaGap = 12.0;
+        CGFloat metaColumnWidth = floor((summaryContentWidth - metaGap) * 0.5);
+        CGFloat leadingColumnX = summaryPadding;
+        CGFloat trailingColumnX = CGRectGetWidth(self.summaryPanel.bounds) - summaryPadding - metaColumnWidth;
+        CGFloat dateHeight = MAX(52.0, ceil([self.dateLabel sizeThatFits:CGSizeMake(metaColumnWidth, CGFLOAT_MAX)].height));
+        CGFloat paymentHeight = MAX(52.0, ceil([self.paymentProviderLabel sizeThatFits:CGSizeMake(metaColumnWidth, CGFLOAT_MAX)].height));
+        CGFloat metaHeight = MAX(dateHeight, paymentHeight);
+        CGFloat summaryPanelHeight = 16.0 + totalHeight + 12.0 + metaHeight + 16.0;
+        self.summaryPanel.frame = CGRectMake(padding, summaryY, separatorWidth, summaryPanelHeight);
+        trailingColumnX = CGRectGetWidth(self.summaryPanel.bounds) - summaryPadding - metaColumnWidth;
+
+        self.totalPriceLabel.frame = CGRectMake(summaryPadding, 16.0, summaryContentWidth, totalHeight);
+        self.paymentProviderLabel.frame = CGRectMake(isRTL ? trailingColumnX : leadingColumnX,
+                                                     metaTop,
+                                                     metaColumnWidth,
+                                                     metaHeight);
+        self.dateLabel.frame = CGRectMake(isRTL ? leadingColumnX : trailingColumnX,
+                                          metaTop,
+                                          metaColumnWidth,
+                                          metaHeight);
     }
     
     self.headerSeparatorBottom.frame = CGRectZero;
@@ -2168,7 +2188,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
     NSMutableParagraphStyle *style = [NSMutableParagraphStyle new];
     style.alignment = alignment;
-    style.lineBreakMode = NSLineBreakByTruncatingTail;
+    style.lineBreakMode = NSLineBreakByWordWrapping;
     style.lineSpacing = emphasis ? 1.0 : 0.5;
 
     NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:resolvedTitle

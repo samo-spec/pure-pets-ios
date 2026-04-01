@@ -1173,6 +1173,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                                                                  orderedIDs:(NSArray<NSString *> *)orderedIDs
                                                                       limit:(NSInteger)limit;
 - (void)pp_refreshBuyAgainSection;
+- (void)pp_centerNearbySectionIfPossible;
 - (void)pp_openOrderDetailsForOrder:(PPOrder *)order;
 
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count;
@@ -1228,6 +1229,32 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [self.collectionView scrollToItemAtIndexPath:indexPath
                                     atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
                                             animated:YES];
+    });
+}
+
+- (void)pp_centerNearbySectionIfPossible
+{
+    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionAdsNearBy];
+    if (sectionIndex == NSNotFound || !self.collectionView) {
+        return;
+    }
+
+    NSInteger itemCount = [self.collectionView numberOfItemsInSection:sectionIndex];
+    if (itemCount <= 1) {
+        return;
+    }
+
+    NSInteger targetItem = MIN(1, itemCount - 1);
+    NSIndexPath *centerIndexPath = [NSIndexPath indexPathForItem:targetItem inSection:sectionIndex];
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.collectionView layoutIfNeeded];
+        if ([self.collectionView numberOfItemsInSection:sectionIndex] <= targetItem) {
+            return;
+        }
+        [self.collectionView scrollToItemAtIndexPath:centerIndexPath
+                                    atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                            animated:NO];
     });
 }
 
@@ -1727,19 +1754,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     // 🎯 Center last section starting from index 1 (if available)
     if (section == PPHomeSectionAdsNearBy) {
-        NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionAdsNearBy];
-        if (sectionIndex != NSNotFound &&
-            [self.collectionView numberOfItemsInSection:sectionIndex] > 1) {
-
-            NSIndexPath *centerIndexPath =
-                [NSIndexPath indexPathForItem:1 inSection:sectionIndex];
-
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [self.collectionView scrollToItemAtIndexPath:centerIndexPath
-                                            atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
-                                                    animated:NO];
-            });
-        }
+        [self pp_centerNearbySectionIfPossible];
     }
 }
 
@@ -3096,6 +3111,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 {
     [super viewDidAppear:animated];
     self.isHomeScreenVisible = YES;
+    [self pp_centerNearbySectionIfPossible];
     //[PPHUD showLoading];
     if(!self.warmUpCache)
     {
