@@ -1,0 +1,34 @@
+//
+//  PAAImageView.h
+//  ImageDL
+//
+//  Created by Pierre Abi-aad on 21/03/2014.
+//  Copyright (c) 2014 Pierre Abi-aad. All rights reserved.
+//
+
+
+
+@protocol PAAImageViewDelegate <NSObject>
+@optional
+- (void)paaImageViewDidTapped:(id)view;
+@end
+
+@interface PAAImageView : UIView
+
+@property (nonatomic, weak) id<PAAImageViewDelegate> delegate;
+
+@property (nonatomic, assign, getter = isCacheEnabled) BOOL cacheEnabled;
+@property (nonatomic, strong) UIImage *placeHolderImage;
+@property (nonatomic, strong, readonly) UIImageView *containerImageView;
+@property (nonatomic, strong) UIImage *avaImage;
+@property (nonatomic, strong) UIColor *backgroundProgresscolor;
+@property (nonatomic, strong) UIColor *progressColor;
+
+- (id)initWithFrame:(CGRect)frame backgroundProgressColor:(UIColor *)backgroundProgresscolor progressColor:(UIColor *)progressColor;
+- (void)setImageURL:(NSURL *)URL;
+- (void)setImageURL:(NSURL *)URL completion:(void (^)(NSError *error))completionBlock;
+- (void)setImage:(UIImage *)image;
+- (void)updateWithImage:(UIImage *)image animated:(BOOL)animated;
+- (void)setBackgroundWidth:(CGFloat)width;
+
+@end

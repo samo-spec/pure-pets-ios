@@ -1,0 +1,91 @@
+### Pure Pets iOS User App Screens Information
+
+1. Home
+   - General Name: Main Home
+   - Path: Pure Pets IOS/Pure Pets/MainApp/ModrenAppVC/PPHomeViewController.m
+   - Real Name: PPHomeViewController
+   - Functionality: The landing screen for users featuring banners, latest ads, categories, and quick links.
+
+2. Ads Browse
+   - General Name: Ads Browser
+   - Path: Pure Pets IOS/Pure Pets/MainApp/PetsAdsFiles/AdsBrowser/PPAdsBrowser.m
+   - Real Name: PPAdsBrowser
+   - Functionality: Grid/List view for browsing all pet advertisements posted by users.
+
+3. Accessories View
+   - General Name: Accessory Details
+   - Path: Pure Pets IOS/Pure Pets/MainApp/Accessories/AccessFiles/AccessViewerVC.m
+   - Real Name: AccessViewerVC
+   - Functionality: Detailed viewer for products and accessories with purchase options.
+
+4. Services Viewer
+   - General Name: Service Details
+   - Path: Pure Pets IOS/Pure Pets/MainApp/PetsServices/ServiceViewerViewController.m
+   - Real Name: ServiceViewerViewController
+   - Functionality: Displays details about veterinarians, training, and other services.
+
+5. Chats
+   - General Name: User Chats
+   - Path: Pure Pets IOS/Pure Pets/MainApp/NewChats/UserChatsViewController.m
+   - Real Name: UserChatsViewController
+   - Functionality: Inbox for all user-to-user and support conversations.
+
+6. Orders
+   - General Name: Order History
+   - Path: Pure Pets IOS/Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderHistoryViewController.m
+   - Real Name: OrderHistoryViewController
+   - Functionality: Lists all orders placed by the user with their current status.
+
+7. Orders Details
+   - General Name: Order Viewer
+   - Path: Pure Pets IOS/Pure Pets/MainApp/PAYMENTS/CartAndOrdersFiles/OrderDetailsViewController.m
+   - Real Name: OrderDetailsViewController
+   - Functionality: Detailed summary of a specific order including tracking and items.
+
+8. Search
+   - General Name: Global Search
+   - Path: Pure Pets IOS/Pure Pets/MainApp/Search Controllers/AppSearchResultsVC.m
+   - Real Name: AppSearchResultsVC
+   - Functionality: Dedicated screen for searching ads, services, and products.
+
+9. Profile
+   - General Name: My Profile
+   - Path: Pure Pets IOS/Pure Pets/MainApp/UserFiles/ProfileVC.m
+   - Real Name: ProfileVC
+   - Functionality: Manages user personal info, saved items, and account settings.
+
+10. Sign In Follow Screens
+    - General Name: User Auth
+    - Path: Pure Pets IOS/Pure Pets/MainApp/UserFiles/SignIn Files/PPUserSigningController.m
+    - Real Name: PPUserSigningController / PPVerificationCodeViewController
+    - Functionality: Multi-screen flow for phone/email login, verification codes, and profile completion.
+
+11. Adopt List
+    - General Name: Adoption Gallery
+    - Path: Pure Pets IOS/Pure Pets/MainApp/AdoptPet/AdoptPetsViewController.m
+    - Real Name: AdoptPetsViewController
+    - Functionality: Browsable gallery of pets available for adoption.
+
+12. Adopt Pet Viewer
+    - General Name: Adoption Record
+    - Path: Pure Pets IOS/Pure Pets/MainApp/AdoptPet/AdoptPetDetailsViewController.m
+    - Real Name: AdoptPetDetailsViewController
+    - Functionality: Detailed view of a pet for adoption with contact and sharing actions.
+
+13. Add New Ad
+    - General Name: Post Ad
+    - Path: Pure Pets IOS/Pure Pets/MainApp/PetsAdsFiles/New Ad/AddNewAd.m
+    - Real Name: AddNewAd
+    - Functionality: Multi-step wizard for users to post their own pet advertisements.
+
+14. Add Used Accessory
+    - General Name: Sell Accessory
+    - Path: Pure Pets IOS/Pure Pets/MainApp/Accessories/AccessFiles/AddNewAccessory.m
+    - Real Name: AddNewAccessory
+    - Functionality: Wizard for users to list their used pet accessories for sale.
+
+15. Setting
+    - General Name: App Settings
+    - Path: Pure Pets IOS/Pure Pets/MainApp/UserFiles/SettingVC.m
+    - Real Name: SettingVC
+    - Functionality: User-facing settings for notifications, language, and theme preferences.

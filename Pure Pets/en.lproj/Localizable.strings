@@ -1,0 +1,2005 @@
+"AI" = "AI";
+"AccessPostPhotosSection" = "Add pictures of the accessory";
+"Accessories" = "Accessories";
+"AdDescPlace" = "Enter bird description";
+"Add Accessory" = "Add Accessory";
+"AddDnaScan" = "Add an image from the bird's DNA analysis ";
+"AddNoteLabel" = "Add notes";
+"AddRingIDFirst" = "The bird number must be added first";
+"AddService" = "Add Service";
+"AddVet" = "Veterinary add";
+"Added" = "Added";
+"AddedAlertSubtitleDone" = "The process of creating and adding the bird card was completed successfully";
+"Address" = "title";
+"AddressType" = "Select Address Type";
+"Address_placeholder" = "Write the title here";
+"Address_word" = "Address";
+"Adopt a Pet" = "Adopt a Pet";
+"HomeAdoptCTA" = "Browse pets";
+"Ads" = "Ads";
+"AdultHoodCount" = "Puberty";
+"AlldatatwillRemoved" = "The data you entered will be deleted";
+"App language changed. Please restart the app." = "App language changed. Please restart the app.";
+"AppSetting" = "App Settings";
+"Approved" = "Approved";
+"Arabic" = "Arabic";
+"Archive" = "archives";
+"ArchiveCardsCount" = "Cards";
+"ArchiveDeleteTitle" = "Delete archive data";
+"ArchiveDeleted" = "All archive data has been successfully deleted";
+"ArchiveName" = "Archive Number";
+"ArchiveNameOrNumber" = "Archive name or number";
+"ArchiveNotEmpty" = "The archive is not empty, confirm deletion of all data?";
+"ArchiveTitle" = "Archive: ";
+"ArchivewikkDeleteSure?" = "All archive data and all related cards will be deleted. Confirm?";
+"Are you sure you want to delete this item?" = "Are you sure you want to delete this item?";
+"Askanythingaboutpets" = "Ask any thing about pets";
+"Attribute" = "Color Category";
+"AudioFile" = "Audio clip";
+"Bahrain" = "Bahrain";
+"BirdArchiveSucsess" = "Bird card archived successfully";
+"Birds" = "Birds";
+"BirthDate" = "BirthDate";
+"BirthDatePlace" = "Select production date";
+"Box" = "Box";
+"Boxes" = "Boxes";
+"Button.cancel.photoFromCamera" = "Retake";
+"Button.cancel.photoFromPicker" = "Cancel";
+"Button.choose.photoFromCamera" = "Use Photo";
+"Button.choose.photoFromPicker" = "Choose";
+"CageName" = "Cage";
+"Camel" = "Camels";
+"Cancel" = "Cancel";
+"preview" = "Preview";
+"CancelOrder" = "Cancel Order";
+"CardArchivedSucsses" = "The bird card has been archived";
+"Cards" = "Cards";
+"Cart" = "Cart";
+"CartDone" = "Your request has been successfully received!";
+"Cats" = "Cats";
+"Chat" = "Chat";
+"chatsTitle" = "Chats";
+"Checkout" = "Checkout";
+"ChildsCount" = "Number of chicks";
+"Chooseimage" = "Choose";
+"ChoseLocation" = "Choose the location";
+"Classification" = "Color Mutation";
+"ClassificationLoaded" = "portable color boom";
+"ClassificationPlace" = "Select color mutation";
+"CodeBTN" = "Send code";
+"Color" = "Color";
+"Confirm Deletion" = "Confirm Deletion";
+"ConfirmLocation" = "Confirm Location";
+"CreateDate" = "Creation: ";
+"DarkSetPalce" = "Dark Mode";
+"Deer" = "Gazella";
+"Delete" = "Delete";
+"DeleteCardAlert" = "Delete Bird Card";
+"DeleteCardAlertDesc" = "All card data and everything related to it will be deleted, confirm?";
+"DeleteCardReason" = "Note or reason for deletion";
+"DeletedSuccess" = "Data was deleted successfully";
+"Delivered" = "Delivered";
+"DeliveryLabel" = "Delivery";
+"DeliveryLocation" = "Delivery Location";
+"DeliveryLocationSub" = "Order Should Deliver Here";
+"Dogs" = "Dogs";
+"Edit Accessory" = "Edit Accessory";
+"Edit.title" = "Move and Scale";
+"EditAdTitle" = "Edit Ad";
+"DeleteAdTitle" = "Delete Ad";
+"EditAlertSubtitleDone" = "The bird card was successfully edited";
+"EditArchive" = "Edit archive name";
+"EditCard" = "Edit Card";
+"EditLocation" = "Change the delivery site";
+"EditSuccess" = "The archive data was successfully modified";
+"Egypt" = "Egypt";
+"English" = "English";
+"EnterNewArchiveName" = "Enter the name or number of the new archive";
+"Error" = "Error";
+"Falcon" = "hawk";
+"FatherRingID" = "Father ID";
+"FatherRowCount" = "";
+"Fatherrowcount" = "No fathers of the same type";
+"Female" = "Female";
+"Find your new best friend" = "Find your new best friend";
+"FirstEggDate" = "Date of first egg production";
+"Fish" = "Fish";
+"Food" = "Food";
+"FoodPostPhotosSection" = "Add pictures of the food";
+"FristEggDate" = "The first egg ever hatched";
+"Good afternoon" = "afternoon";
+"Good evening" = "Evening";
+"Good morning" = "Morning";
+"Green" = "Green";
+"Grooming" = "Grooming";
+"HeadLabel" = "Welcome, to start the registration process";
+"Horses" = "Horses";
+"Hot_Accessories" = "Accessories";
+"Hot_Birds" = "Birds";
+"Hot_Rabbits" = "Rabbits";
+
+"Hot_Cats" = "Cats";
+"Hot_Dogs" = "Dogs";
+"Hot_Food" = "Food";
+"Hot_Parrot" = "Parrot";
+"Hot_Vet" = "Veterinarian";
+"Iraq" = "Iraq";
+"ItemsQuantityLabel" = "";
+"ItemsTotalLabel" = "";
+"Itemsquantrylabel" = "Number of cows";
+"ItemstotallLALBEL" = "Total Classs";
+"JoinUs" = "Join us, log in!";
+"Jordan" = "Jordan";
+"Kuwait" = "Kuwait";
+"Language" = "Lang";
+"Language Setup" = "Language Setup";
+"LastName" = "LastName";
+"LastName_Palce" = "Last Name";
+"LastSeen" = "Last seen";
+"Lebanon" = "Lebanon";
+"LoanCard" = "Loan Card";
+"LocationPicker" = "Site";
+"Male" = "Male";
+"Message" = "Message";
+"MessageRecord" = "Audio clip";
+"MobileNo" = "Mobile Number";
+"MobileNo_Palce" = "Mobile Number";
+"MotherRingID" = "Mother's number";
+"Mother" = "Mother";
+"MotherRowCount" = "";
+"Motherrowcount" = "No mothers of the same type";
+"My_Addresses" = "Anawini";
+"NewMessage" = "New message";
+"New_address" = "New Title";
+"NoAds" = "There is no ads yet";
+"Not Registered" = "Not Registered";
+"NoteAskLabel" = "You have any additional delivery notes";
+"NoteLabel" = "Write here";
+"OK" = "OK";
+"OR" = "Or";
+"Offline" = "Offline";
+"Oman" = "Oman";
+"OneAds" = "ad";
+"Online" = " Online ";
+"OrderDate" = "Date";
+"OrderHistory" = "Orders History";
+"OrderStatus" = "Status";
+"OrderSumLabel" = "";
+"OrderTotal" = "Total";
+"Orders" = "Orders";
+"OrdersTitle" = "Order Status";
+"Ordersumlabel" = "Summary";
+"Palestine" = "Palestine";
+"Pending" = "Pending";
+"Processing" = "Processing";
+"PickCageTitle" = "Select a cage to transfer the chick to";
+"PickTypeTitle" = "Select the type";
+"PleaseAddNewArchive" = "Please add a new archive";
+"PostAdTitle" = "Post New Ad";
+"PrivacySetting" = "Privacy Settings";
+"QATAR" = "Qatar";
+"Qatar" = "Qatar";
+"QuantityLabel" = "Quantity";
+"Read" = "Read";
+"RegisBTN" = "New Account";
+"Register" = "Register";
+"RegistrationTitleLabel" = "New account";
+"Rejected" = "Rejected";
+"Reminder" = "Reminder";
+"ResendOTP" = "Resend OTP";
+"Code expired" = "Code expired";
+"Retutn_Compelete" = "The bird was successfully retrieved";
+"Rials" = "QAR";
+"RingID" = "Bird Number";
+"RingIDPlace" = "Enter bird number";
+"SaleDone" = "The sales process has been successfully saved";
+"SaudiArabia" = "Saudi Arabia";
+"Save Changes" = "Save Changes";
+"Saved" = "Saved";
+"SearchNoResultsCTA" = "Clear search";
+"SearchNoResultsGeneric" = "No results found.";
+"SearchNoResultsHint" = "Check spelling or try different keywords.";
+"SearchNoResultsMessage_fmt" = "We couldn't find results for \"%@\".";
+"SearchNoResultsTitle" = "No results";
+"SearchHere" = "Search here";
+"SearchPlaceholder" = "Search pets, accessories, services, vets";
+"SelectCountryTitle" = "Select your country";
+"Select_address" = "Choose the Title";
+"Send" = "Send";
+"Sent" = "Sent";
+"Setting" = "Settings";
+"Sexual" = "Sexual";
+"SexualPlace" = "Select gender";
+"Sheeps" = "Sheeps";
+"Shipped" = "Shipped";
+"ShowAllCards" = "Show all cards";
+"Something went wrong" = "Something went wrong";
+"SubKind" = "Bird type";
+"SubKindPlace" = "Select the type of bird";
+"Support" = "Support";
+"SureCancel" = "Confirm cancellation?";
+"Switch to Arabic" = "Switch to Arabic";
+"Switch to English" = "Switch to English";
+"Syria" = "Syria";
+"Taphold" = "Tap and hold to record audio.";
+"The current language is %@. Do you want to change it?" = "The current language is %@. Do you want to change it?";
+"Today" = "Today";
+"TotalSumLabel" = "";
+"Totalsumlabel" = "Total amount";
+"Training" = "Training";
+"Trash" = "Deleted";
+"Typing" = "Typing...";
+"UnitedArabEmirates" = "United Arab Emirates";
+"Unknown" = "Unknown";
+"UserAbout" = "Biography";
+"UserAbout_Palce" = "Biography";
+"UserEmail" = "Email";
+"UserEmail_Palce" = "Email";
+"UserName" = "Alias";
+"UserName_Palce" = "The Nickname";
+"UserProfile" = "User Profile";
+"Vet" = "Vet";
+"Veterinary" = "Veterinary";
+"VideoFile" = "Video";
+"Walking" = "Walking";
+"We detected this is your first time using the app, so we set your app language to" = "We detected this is your first time using the app, so we set your app language to";
+"WriteSomething" = "Write something...";
+"Yemen" = "Yemen";
+"Yesterday" = "Yesterday";
+"You need to register to continue." = "You need to register to continue.";
+"YouWannaDeleteIT" = "Do you want to add this bird with the same number?";
+"Your changes have been saved." = "Your changes have been saved.";
+"_archiveTitle" = "Archive";
+"_no_DescForCard" = "No notes added to card";
+"accessCat" = "Select the right pet category for the accessory";
+"accessData" = "Accessory data";
+"accessDesc" = "Description of the accessory";
+"accessDoneDesc" = "Your advertisement has been successfully published";
+"accessDoneTitle" = "Posted";
+"accessName" = "The name of the accessory";
+"accountNotExixtTitle" = "Sorry, the account is not present";
+"accountNotExixtsub" = "Do you want to register a new account?";
+"adDoneDesc" = "Your ad was posted successfully.";
+"adDoneTitle" = "Submitted";
+"adUpdatedDesc" = "Your ad was updated successfully.";
+"adUpdatedTitle" = "Updated";
+"addArchiveTitle" = "Add archive";
+"addBox" = "Add Box";
+"addFirstEgg" = "Click here to select the date of the first egg";
+"addNewBill" = "New bill";
+"addNewBuyer" = "Add buyer data";
+"addNewCard" = "Add New Card";
+"addPetForAdoption" = "Add Pet for Adoption";
+"addPhotos" = "Bird Photos";
+"addPhotosDesc" = "Sorry, you must add at least one photo of the bird";
+"addSheetSubtitle" = "Create a new ad, sell a used item, or list a pet for adoption.";
+"addSheetTitle" = "What would you like to post?";
+"addToCart" = "Add to Cart";
+"addUsedButton" = "Add Used";
+"address" = "";
+"address_placeholder" = "";
+"age" = "Age (months)";
+"ageShort" = "Age";
+"ageBird" = "age of bird";
+"all" = "all";
+"allDeleted" = "All Deleted";
+"appleBTN" = "Registration using Apple";
+"archive" = "Archive";
+"archiveCard" = "Archive Card";
+"archiveCardSucsses" = "Card has been archived successfully";
+"archiveCardTitle" = "The card will be archived, confirm?";
+"archiveEmptyDesc" = "Sorry, no data was added to the archive";
+"archiveEmptyTitle" = "Archive";
+"archiveName" = "Archive Name";
+"ask" = "You can ask Pure Pets about anything about pets.";
+"attribute" = "attribute";
+"attributeNote" = "other color category";
+"attributeNotePlace" = "Type other color category";
+"attributePlace" = "Select color category";
+"attributeValue_Green" = "mate";
+"attributeValue_Trkqaz" = "turquoise";
+"attributeValue_blue" = "blue";
+"attributeValue_other" = "other";
+"autoPlaySetPalce" = "Auto Play Video";
+"bBird_Ring_id" = "Fair Number";
+"bell_date" = "History of Selling";
+"birdKind" = "Kind";
+"birdRingId" = "Fair Number";
+"bird_age" = "";
+"bird_ge" = "age";
+"bird_ring_id" = "";
+"bird_title" = "Bird Details";
+"blue" = "blue";
+"boxEmptyDesc" = "No boxes added";
+"boxEmptyTitle" = "Boxes";
+"boxExist" = "Sorry, there is no box with this name";
+"buyerMobile" = "phone number";
+"buyerName" = "The name of the buyer";
+"buyer_mobile" = "Mobile Number";
+"buyer_name" = "The name of the buyer";
+"buyer_note" = "notes on the seller";
+"buyer_price" = "Selling price";
+"cam" = "Photo Shoot";
+"cancel" = "Cancel";
+"cardDesc" = "Bird Description";
+"cardRetundToCards" = "Card retrieved successfully";
+"cardsEmptyDesc" = "No cards added";
+"cardsEmptyTitle" = "Cards";
+"cartTitle" = "Shopping cart";
+"category" = "Category";
+"chicks" = "chicks";
+"chicksAddedSucssesfuly" = "The chick was added to the box successfully";
+"chicksRingID" = "chick number";
+"childRetundToBox" = "The chick was successfully retrieved to the box";
+"childsTitle" = "Output in cage";
+"childs_AddBTN" = "Add";
+"childs_descLabel" = "Enter the number or name of the child, then click (Add to box)";
+"childs_ringIdPlaceholder" = "Enter the number or name of the chick";
+"chooseArchive" = "Bird Number";
+"code_Palce" = "Place of Residence";
+"colorTXTPlace" = "Type color";
+"companyAddress" = "Title: Al -Wakra - Souq Waqif";
+"companyLocate" = "The company's headquarters";
+"confirm" = "Confirm";
+"craeteQrCode" = "Create QR code";
+"custom" = "custom";
+"customTitle" = "Custom title";
+"customTitlePlaceholder" = "e.g., Family house, Farm, Apt 2B";
+"delete" = "Delete";
+"deleteBoxAlertDesc" = "All data for the box and all children belonging to the box will be deleted, confirm?";
+"deleteBoxAlertTitle" = "Delete box data";
+"deleteCard" = "Delete Card";
+"deleteCardSucsses" = "The card was deleted successfully";
+"deleteCardTitle" = "The card will be deleted, confirm?";
+"deleteStore" = "Delete Story";
+"deletedFrom_cards" = "Deleted From Cards";
+"deletedFrom_childs" = "Deleted From Childs";
+"deletedFrom_archive" =  "Deleted From Archive";
+"desc" = "Description";
+"done" = "Done";
+"doneTitle" = "Success";
+"edit" = "Edit";
+"editBox" = "Edit Box";
+"editCard" = "Edit Card";
+"editSucsses" = "The data was modified successfully";
+"eggAlarmTime" = "Egg Alarm Time";
+"emptyAppSubtitle" = "No data added";
+"emptyAppTitle" = "Empry";
+"emptyBtnTitle" = "Start the purchase";
+"emptyCartTitle" = "Purchase cart is empty";
+"emptySubtitle" = "No cards have been added, click the new button to add a new bird card";
+"emptySubtitleCard" = "No cards added";
+"emptyTitle" = "Cards";
+"emptyTitleCard" = "Cards";
+"enterArchiveName" = "Choose bird archive";
+"enterBoxName" = "Please enter the box number or name";
+"enterCustomTitle" = "Enter a custom title";
+"enterNumberToLogIN" = "Enter the mobile number to log in";
+"enterRingID" = "Enter bird number";
+"enter_pet_age_in_months" = "Enter pet age in months";
+"enterotpcode" = " Please enter the code sent to the number ";
+"fatherRingIDPlace" = "Select father number";
+"firstName" = "First Name";
+"firstName_Palce" = "First Name";
+"food" = "Food";
+"foodCat" = "Select the animal category appropriate for the type of food";
+"foodData" = "Food data";
+"foodDesc" = "Description of the food";
+"foodName" = "The name of the food";
+"geralley" = "Photo Album ";
+"go_to_login" = "Go to Login";
+"googleBTN" = "Registration using Google";
+"gotToOrders" = "Go to follow up requests";
+"headerTitle" = "Chats";
+"home" = "home";
+"imageFile" = "Image";
+"inArchive" = "in archive";
+"items" = "items";
+"kmessagesSetPalce" = "Receive conversations from";
+"kmsagesSetPalce" = "Receive conversations from";
+"languageSetPalce" = "Application language";
+"learn" = "learn";
+"location" = "Location";
+"logInBTN" = "Send the activation code";
+"logOut" = "Log Out";
+"loginLabel" = "have an account? Enter mobile number to login";
+"login_required_message" = "You need to be logged in to continue";
+"login_required_title" = "Login Required";
+"login_subtitle" = "Login to continue";
+"login_title" = "Welcome Back";
+"login_with_apple" = "Continue with Apple";
+"login_with_google" = "Continue with Google";
+"login_with_phone" = "Login with Mobile Number";
+"logout" = "Log Out";
+"logoutSure" = "Are you sure to log out";
+"mayLike" = "You may like";
+"mobileNoField" = "Enter the mobile number";
+"month" = "month";
+"motherRingIDPlace" = "Select mother number";
+"my_addresses" = "";
+"myadsTitle" = "Ads Ads";
+"myfavTitle" = "Favorite List";
+"new" = "New";
+"newAccessory" = "New Accessory";
+"newAd" = "New Ad";
+"newFood" = "Add Food";
+"newServices" = "New Service";
+"newVet" = "Veterinary add";
+"new_address" = "";
+"no" = "No";
+"noChats" = "There is no chats";
+"noChicksAdded" = "No chicks have been added to the cage";
+"no_data_barcode" = "Sorry, there is no result of the search";
+"no_value" = "undefined";
+"nodata" = "No data";
+"notFound" = "None";
+"not_logged_in" = "Not logged in";
+"note" = "Notes";
+"notificationsSetPalce" = "Notifications";
+"ok" = "OK";
+"okSanan" = "OK";
+"other" = "other";
+"pleaseAddArchive" = "Please add a new archive";
+"postAd" = "Post Ad";
+"postDescSection" = "Details";
+"postPhotosSection" = "Photos";
+"post_story_sucsses" = "Posted successfully";
+"postedDate" = "Posted Date";
+"prees_select_photo" = "Click here to change the profile image";
+"price" = "Price";
+"readyToMarrage" = "(Ready to produce)";
+"reason_not_useful" = "Not useful";
+"reason_other" = "Other (type below)";
+"reason_temp_break" = "Temporary break";
+"reason_toomany_notifications" = "Too many notifications";
+"remainStringOne" = "remain";
+"remainStringTwo" = "Days for the first egg to hatch";
+"returnCard" = "ReturnCard";
+"returnSelledCard" = "The process of selling and retrieving the bird will be canceled, are you sure?";
+"sale" = "Sale";
+"save" = "Save";
+"saveChanges" = "Save changes";
+"saveDone" = "*Added successfully";
+"saveSaleData" = "Save Sale Data";
+"searchField" = "Search…";
+"searchHere" = "Type here to search";
+"seconds" = "Seconds";
+"selectAddressType" = "Choose the type of address";
+"selectAddressTypedesc" = "Please specify the type of title for this site";
+"selectFather" = "Select father";
+"Father" = "Father";
+"selectMother" = "Select mother";
+"select_address" = "";
+"sellDate" = "date of sale";
+"sell_date" = "";
+"services" = "Services";
+"servicesManager" = "Services Manager";
+"setFirstEggDate" = "Please specify the time the first egg was laid";
+"seteggAlarmTime" = "Please set a hatching alarm time";
+"share" = "Share";
+"shareAd" = "Share Ad";
+"shareForLoan" = "Bird for Loan";
+"shareForReview" = "Fly to review";
+"shareForSell" = "Bird for sale";
+"share_loan" = "loan";
+"share_other" = "other";
+"share_review" = "preview";
+"share_sell" = "sell";
+"share_story" = "Publish a story";
+"showCard" = "Show Card";
+"showChildBTN" = "show chicks";
+"showMyAds" = "My ads";
+"showProdection" = "Production";
+"showProfile" = "Profile";
+"showfav" = "Favorite";
+"split" = "Split";
+"startNewChat" = "Start new chat";
+"subKind" = "Bird type";
+"subSubKind" = "Breed";
+"subSubKindPlaceholder" = "Select Breed";
+"subcategory" = "Subcategory";
+ 
+"sucsses" = "successfully";
+"supprot" = "technical support";
+"timeToCheck" = "It's time to check your cage:";
+"titleStringChildDataNotSaved" = "You have not saved chick data";
+"titleStringEditDidntSave" = "You did not save edits to the card";
+ "topTitleCompleteChild" = "Child Data Complete";
+"topTitleEditCard" = "Edit Bird Card";
+"topViewLabel" = "Log in";
+"transferToBox" = "Transfer of the chick";
+"transferToBoxDesc" = "The chick will be transferred to the box";
+"trashEmptyDesc" = "No trash";
+"trashEmptyTitle" = "Trash";
+"trkwaz" = "turquoise";
+"tryanotherfilter" = "Try another filter";
+"typeyourreason" = "Type your reason here...";
+"unDefind" = "Undefined";
+"used" = "used";
+"usedNote" = "🔍 Inspect the product carefully, sterilize it before use, and ensure it’s suitable for your pet’s species and size.";
+"user_data" = "User Data";
+"vetAdded" = "Your request has been sent to join the veterinarians, waiting for the inspection.";
+"welcome" = "Welcome";
+"welcomelogin" = " Welcome ";
+"whyleavingus" = "Can you tell us why you're leaving us?";
+"withRingId" = "By number";
+"work" = "work";
+"familyhome" = "familyhome";
+"year" = "year";
+"yes" = "Yes";
+"youHaveBird" = "You have a bird";
+"youWantToReturnCard" = "Do you want to recover the bird card from the trash?";
+"youwillgetotp" = "Contact Details";
+"newAd_desc" = "Create a brand-new listing to sell or rehome your pet.";
+"addUsedButton_desc" = "List pre-owned pet accessories for sale or giveaway.";
+"addPetForAdoption_desc" = "Share details of a pet looking for a loving new home.";
+"UserAboutEmpty" = "No information has been added";
+// En
+"addPetForAdoption" = "Add Pet for Adoption";
+"name" = "Name";
+"species" = "Species";
+"selectSpecies" = "Select Species";
+"breed" = "Breed";
+"selectCreed" = "Select Breed";
+"ageMonths" = "Age (months)";
+"gender" = "Gender";
+"male" = "Male";
+"female" = "Female";
+"city" = "City";
+"details" = "Details";
+"describePet" = "Describe the pet…";
+"photos" = "Photos";
+"save" = "Save";
+"cancel" = "Cancel";
+"error" = "Error";
+"ok" = "OK";
+/* EN */
+"adoptPetAddedTitle" = "Pet Added";
+"adoptPetAddedDesc"  = "Your pet has been posted for adoption successfully.";
+"AdoptPet" = "An animal for adoption";
+"For Adoption" = "For Adoption";
+"editAdoptPet"  = "Edit Adopt Pet";
+/* Adopt Pet Details */
+"Name"      = "Name";
+"Species"   = "Species";
+"Breed"     = "Breed";
+"Age"       = "Age";
+"months"    = "months";
+"Gender"    = "Gender";
+"Male"      = "Male";
+"Female"    = "Female";
+"City"      = "City";
+"Details"   = "Details";
+/* HXPhotos */
+"Trash_DragToDelete" = "Drag here to delete";
+"Trash_ReleaseToDelete" = "Release to delete";
+/// En
+"City Undefined" = "City Undefined";
+// En
+"No Number" = "No Number";
+"This user has no phone number" = "This user has no phone number";
+/// English
+"Contact Advertiser" = "Contact Advertiser";
+"AdOwnerInfoGuestTitle" = "Register to view owner info";
+"AdOwnerInfoGuestSubtitle" = "See the advertiser's name, chat, and call options after sign in.";
+"AdOwnerInfoGuestCTA" = "Register";
+"Nearest Vet" = "Nearest Vet";
+"Find care nearby" = "Find care nearby";
+"Accessories" = "Accessories";
+"Shop supplies" = "Shop supplies";
+"Profile" = "Profile";
+"Your account" = "Your account";
+// en.json
+"menu_action_profile"= "Profile";
+"menu_action_favorites"= "Favorites";
+"menu_action_services"= "My Services";
+"menu_action_orders"= "Order History";
+"menu_action_settings"= "Settings";
+"menu_action_support"= "Support";
+"NearbyVets" = "Nearby Vets";
+"Directions" = "Directions";
+"Call" = "Call";
+/* PPVetLocator English */
+"KLang_Title" = "Nearby Vets";
+"KLang_Call" = "Call";
+"KLang_Directions" = "Directions";
+"KLang_LocationDisabled" = "Location services are disabled. Please enable them in Settings.";
+"KLang_LocationDenied" = "Location permission denied. Open Settings to allow access.";
+"KLang_LocationWaiting" = "Waiting for location permission...";
+"KLang_LocationFailed" = "Unable to determine location.";
+"KLang_Searching" = "Searching nearby vets...";
+"KLang_NoResults" = "No nearby vets found.";
+"KLang_VeterinarianQuery" = "veterinarian";
+"KLang_Section_Near" = "Within 1 km";
+"KLang_Section_Mid" = "1 - 5 km";
+"KLang_Section_Far" = "> 5 km";
+"KLang_Unknown" = "Unknown";
+"KLang_NoPhoneTitle" = "No phone";
+"KLang_NoPhoneMsg" = "Phone number not available.";
+"KLang_CannotCallTitle" = "Cannot Call";
+"KLang_CannotCallMsg" = "Unable to initiate call on this device.";
+"KLang_OK" = "OK";
+"KLang_Retry" = "Retry";
+"KLang_UseSampleLocation" = "Use Sample Location";
+"KLang_Cancel" = "Cancel";
+"KLang_LocationTimeout" = "Taking too long to get location. Try again or use sample location.";
+"KLang_LocationWhenInUse" = "We need your location to show nearby veterinary clinics.";
+"KLang_LocationWhenInUse" = "We need your location to show nearby veterinary clinics.";
+"KLang_Close" = "Close";
+"KLang_CatsAndDogs" = "Cats and Dogs";
+"KLang_HorsesAndCamels" = "Horses & Camels";
+"KLang_FishAndMarine" = "Fish & Marine Creatures";
+"KLang_SelectPetCategory" = "Select Pet Category";
+"Add Photo" = "Add Photo";
+"Add profile photo" = "Add profile photo";
+/* Generic/status */
+"Saving" = "Saving";
+"Please wait..." = "Please wait…";
+"Preparing…" = "Preparing…";
+"Uploading…" = "Uploading…";
+"Downloading from iCloud…" = "Downloading from iCloud…";
+"Done" = "Done";
+"Failed" = "Failed";
+"Saved" = "Saved";
+"Upload failed" = "Upload failed";
+"Image load failed" = "Image load failed";
+"Please login first" = "Please login first";
+/* Alerts common */
+"Confirm" = "Confirm";
+"Cancel" = "Cancel";
+"Error_Title" = "Error";
+"Success_Title" = "Success";
+"Success" = "Success";
+"StatusSaveFailed" = "Saving failed";
+"Success" = "Success";
+"StatusSaveFailed" = "Saving failed";
+"PleaseFillFields" = "Please fill in all required fields";
+"Add Item" = "Add Item";
+"Tap to set" = "Tap to set";
+"unsaved_changes_title" = "Unsaved changes" ;
+"leave_button" = "Leave" ;
+"stay_button" = "Stay" ;
+"unsaved_changes_message" = "You have unsaved changes. Do you want to leave without saving?" ;
+"form_draft_prompt_title" = "Save your progress?" ;
+"form_draft_prompt_message" = "You can save your current progress and come back later, or leave now without keeping these changes." ;
+"form_draft_save_and_close" = "Save and close" ;
+"form_draft_discard" = "Exit without saving" ;
+"form_draft_keep_editing" = "Keep editing" ;
+"form_draft_saved" = "Progress saved. You can continue later." ;
+"form_draft_restored" = "Your saved progress is ready." ;
+"Verify" = "Verify";
+"otp_title"                  = "Verify Account";
+"otp_subtitle"               = "Enter the 6-digit code sent to your phone";
+"otp_placeholder"            = "Enter Code";
+"otp_invalid"                = "Invalid OTP code";
+"otp_failed_fmt"             = "Verification failed: %@";
+"otp_expired"                = "Code expired";
+"otp_seconds"                = "%ld seconds remaining";
+"otp_resend"                 = "Resend Code";
+"otp_resending"              = "Resending...";
+"otp_success"                = "Phone verified successfully!";
+"otp_verify_button"          = "Verify";
+"otp_welcome"                = "Welcome back, %@";
+"otp_enter_code_instruction" = "Enter the OTP code";
+"Days" = "Days";
+"REMAINING TIME" = "REMAINING TIME";
+"takeTheOffer" = "Get the offer";
+"changelanguage" = "تغيير اللغة للعربية";
+"NoDnaImage" = "The examination has not been accompanied";
+"more" = "more";
+"barcode" = "Generate barcode";
+
+"adLocation" = "Ad site";
+"filterPPAction" = "Filter";
+"PPCellLayoutFullWidth" = "Full Width";
+"PPCellLayoutSquare" = "Square";
+"PPCellLayoutVertical" = "Vertical";
+"PPCellLayout" = "Cell Layout";
+"searchOnly" = "Search";
+"SearchHeroEyebrow" = "Pure Pets Search";
+"SearchHeroTitle" = "Search the market";
+"SearchHeroIdleSubtitle" = "Find pets, accessories, services, and specialists from one focused workspace.";
+"SearchHeroTypingHint" = "Type 2+ letters";
+"SearchHeroSearching" = "Looking through nearby pets, accessories, and services.";
+"SearchHeroSearchingBadge" = "Searching";
+"SearchHeroReady" = "Ready";
+"SearchHeroLive" = "Live";
+"SearchHeroResultsCountFormat" = "%ld matches";
+"SearchHeroResultsSubtitleFormat" = "%ld curated matches for \"%@\".";
+
+
+"EditAdTitle"             = "Edit Advertisement";
+"basicInfoSection"        = "Basic Information";
+"descriptionSection"      = "Description";
+"additionalSection"       = "Additional Details";
+
+"Species"                 = "Category";
+"Breed"                   = "Subcategory";
+"isFemale"                = "Female";
+
+"enter_pet_age_in_months" = "Enter pet age in months";
+"price"                   = "Price";
+
+
+"Discount" = "Discount";
+"discountPercent"         = "Discount %";
+"enter_discount"          = "Enter discount percentage";
+"hasOffer"                = "Has Offer";
+"isNew"                   = "New / Fresh";
+"adLocation"              = "Location";
+"select_location"          = "Select ad location";
+"postPhotosSection"       = "Photos";
+
+
+"barcodeReader" = "Barcode Reader";
+"adTitle"                 = "Ad Title";
+"enter_title"             = "Enter title...";
+"PostAdTitle"             = "Post a New Ad";
+"age_months"              = "Age (months)";
+"enter_price"            = "Enter price...";
+"desc"                    = "Description";
+"enter_description"       = "Describe your pet or product...";
+"sales"= "Sales";
+
+"AddedToCart" = "✔︎ Added";
+"ItemAddedToYourCart" = "Item added to your cart.";
+
+
+"tempDesc" = "Keep your parrot happy, active, and mentally stimulated with this fun and colorful toy set. Designed to satisfy your bird’s natural curiosity and chewing instincts, it helps prevent boredom and encourages healthy behavior. Made from safe, non-toxic materials suitable for all parrot breeds — perfect for hanging in cages or play stands.";
+
+
+
+
+"AddAddress" = "Add Address";
+"EditAddress" = "Edit Address";
+"FullName" = "Full Name";
+"FullNameRequired" = "Full Name is required";
+"AddressLine1" = "Address Line 1";
+"AddressLine1Required" = "Address Line 1 is required";
+"AddressLine2Optional" = "Address Line 2 (Optional)";
+"Country" = "Country";
+"CountryRequired" = "Country is required";
+"City" = "City";
+"CityRequired" = "City is required";
+"State" = "State";
+"StateRequired" = "State is required";
+"PostalCode" = "Postal Code";
+"PostalCodeRequired" = "Postal Code is required";
+"DefaultShippingAddress" = "Default Shipping Address";
+"MapLocation" = "Map Location";
+"TapToSelect" = "Tap to select";
+"DeleteAddress" = "Delete Address";
+"DeleteConfirmTitle" = "Delete Address";
+"DeleteConfirmMessage" = "Are you sure you want to delete this address?";
+"Cancel" = "Cancel";
+"Delete" = "Delete";
+"Save" = "Save";
+"AddressFormAddSubtitle" = "Add a delivery address with country, city, area, and map pin.";
+"AddressFormEditSubtitle" = "Update your delivery details and location.";
+"Shipping Addresses"="Shipping Addresses";
+"Add New Address"="Add New Address";
+// English
+"CellSectionAds" = "Ads";
+"CellSectionAccessories" = "Accessories";
+"CellSectionVet" = "Veterinarian";
+"CellSectionServices" = "Services";
+"CellSectionFood" = "Food";
+"NoSavedAddresses" = "No saved addresses yet";
+"AddressesDeleted" = "All address data has been successfully deleted";
+"Select Delivery Location" = "Select Delivery Location";
+"PleaseSelectDeliveryLocation" = "Please select delivery location";
+"DeliverTo"="deliver to";
+"DeliverToAddress"="address";
+"GiveOrderTo"="Deliver to";
+"Select Payment Method" = "Select Payment Method";
+"Continue Payment" = "Continue Payment";
+"Qatar National Bank" = "Qatar National Bank";
+
+
+"AddPaymentTitle" = "Add Payment";
+
+"PaymentMethodTitle" = "Payment Method";
+"PaymentMethodFooter" = "You will not be charged until you make a purchase.";
+
+"SelectPaymentMethod" = "Select Method";
+"PaymentOptionCard" = "Credit / Debit Card";
+"PaymentOptionOoredoo" = "Ooredoo Money";
+"PaymentOptionPayPal" = "PayPal";
+"PaymentOptionCash" = "Cash on Delivery";
+
+"CardInformationTitle" = "Card Information";
+"CardNumberLabel" = "Number";
+"FieldRequiredPlaceholder" = "Required";
+"CardExpiryLabel" = "Expires";
+"CardExpiryPlaceholder" = "MM / YYYY";
+"CardCVVLabel" = "CVV";
+"CardCVVPlaceholder" = "Security code";
+
+"BillingNameTitle" = "Billing Name";
+"FirstNameLabel" = "First Name";
+"LastNameLabel" = "Last Name";
+
+"BillingAddressTitle" = "Billing Address";
+"StreetLabel" = "Street";
+"StreetPlaceholder" = "The 9";
+"CityLabel" = "City";
+"StateLabel" = "Governorate";
+"PostcodeLabel" = "Postcode";
+
+"DoneButtonTitle" = "Done";
+
+/* -------------------- PAYMENT FLOW -------------------- */
+"SelectPaymentMethod" = "Select Payment Method";
+"ContinuePayment" = "Continue Payment";
+"Pay through" = "Pay through";
+
+/* -------------------- TITLES -------------------- */
+"PaymentMethodTitle" = "Payment Method";
+"AddPaymentTitle" = "Add Payment Method";
+"EditPaymentTitle" = "Edit Payment Method";
+"PaymentFormTitle" = "Add a New Payment Method";
+"BillingAddressTitle" = "Billing Address";
+"CardInformationTitle" = "Card Information";
+"PaymentMethodFooter" = "No amount will be charged until you make a purchase.";
+
+/* -------------------- PAYMENT OPTIONS -------------------- */
+"PaymentOptionCard" = "Credit / Debit Card";
+"PaymentOptionCardSubtitle" = "Visa, MasterCard, American Express";
+
+"PaymentOptionOoredoo" = "Ooredoo Money";
+"PaymentOptionOoredooSubtitle" = "Pay directly from your Ooredoo wallet";
+
+"PaymentOptionPayPal" = "PayPal";
+"PaymentOptionPayPalSubtitle" = "Secure payments worldwide";
+
+"PaymentOptionCash" = "Cash on Delivery";
+"PaymentOptionCashSubtitle" = "Pay in cash when you receive your order";
+
+"PaymentOptionFawry" = "Fawry Qatar";
+"PaymentOptionFawrySubtitle" = "Pay easily through the Fawry service.";
+
+/* -------------------- CARD DETAILS -------------------- */
+"CardNumberLabel" = "Card Number";
+"CardNumberPlaceholder" = "0000 0000 0000 0000";
+"CardExpiryLabel" = "Expiry Date";
+"CardExpiryPlaceholder" = "MM / YY";
+"CardCVVLabel" = "Security Code";
+"CardCVVPlaceholder" = "Code on the back of the card";
+
+/* -------------------- BILLING ADDRESS -------------------- */
+"StreetLabel" = "Street";
+"CityLabel" = "City";
+"StateLabel" = "State / Province";
+"PostcodeLabel" = "Postal Code";
+
+/* -------------------- SPECIFIC METHODS -------------------- */
+"PaymentMethodQNBTitle" = "Qatar National Bank (QNB)";
+"QNB" = "Qatar National Bank (QNB)";
+"PaymentMethodQNBFooter" = "Link your QNB account.";
+"QNBAccountTitle" = "Account Number";
+"QNBAccountPlaceholder" = "Required";
+"QNBOTPTitle" = "OTP Verification Code";
+"QNBOTPPlaceholder" = "Enter verification code";
+
+"PaymentMethodOoredooTitle" = "Ooredoo Money";
+"Ooredoo Money" = "Ooredoo Money";
+"PaymentMethodOoredooFooter" = "Pay directly using your Ooredoo wallet.";
+"OoredooWalletNumberTitle" = "Wallet Number";
+"OoredooWalletNumberPlaceholder" = "+974 5555 1234";
+
+"PaymentMethodPayPalTitle" = "PayPal";
+"PaymentMethodPayPalFooter" = "Secure global payments via your PayPal account.";
+"PayPalEmailTitle" = "PayPal Email";
+"PayPalEmailPlaceholder" = "you@example.com";
+
+"PaymentMethodCashTitle" = "Cash on Delivery";
+"PaymentMethodCashFooter" = "You can pay in cash upon receiving your order.";
+"DeliveryNoteTitle" = "Delivery Notes";
+"DeliveryNotePlaceholder" = "Add any special instructions";
+
+"PaymentMethodFawryTitle" = "Fawry Payment Details";
+"PaymentMethodFawryFooter" = "Enter your Fawry payment details below.";
+"FawryCustomerNameTitle" = "Customer Name";
+"FawryCustomerNamePlaceholder" = "Enter your full name";
+"FawryMobileTitle" = "Mobile Number";
+"FawryMobilePlaceholder" = "e.g., 01012345678";
+"FawryEmailTitle" = "Email (Optional)";
+"FawryEmailPlaceholder" = "Enter your email address";
+"FawryReferenceTitle" = "Reference Code";
+"FawryReferencePlaceholder" = "Tap to generate reference code";
+"GenerateFawryReferenceButton" = "Generate Reference Code";
+"FawryReferenceError" = "Failed to generate reference code. Please try again.";
+"FawryLoadingTitle" = "Generating reference code...";
+"FawryReferenceGenerated" = "Reference code generated successfully!";
+
+/* -------------------- ACTIONS -------------------- */
+"Save" = "Save";
+"Update" = "Update";
+"DoneButtonTitle" = "Done";
+"ConfirmDeleteButton" = "Delete";
+"CancelButton" = "Cancel";
+"SetDefault" = "Set as Default";
+
+/* -------------------- STATUS & CONFIRMATION -------------------- */
+"PaymentMethodSaved" = "Payment Method Saved";
+"PaymentMethodUpdated" = "Payment Method Updated";
+"PaymentMethodDeletedSuccess" = "Payment method deleted successfully.";
+"PaymentMethodDeletedFailed" = "Failed to delete payment method. Please try again.";
+"DefaultPaymentMethodUpdated" = "Default Payment Method Set";
+"DefaultPaymentMethodUpdated_sub" = "This method will be used for your next purchase.";
+
+/* -------------------- ERRORS & VALIDATION -------------------- */
+"Error" = "Error";
+"PleaseSelectPaymentMethod" = "Please select a payment method first.";
+"PleaseCompleteFields" = "Please complete the required fields.";
+"FailedToSavePaymentMethod" = "Failed to save payment method.";
+"FailedToUpdatePaymentMethod" = "Failed to update payment method.";
+"PleaseFillCardDetails" = "Please enter card details.";
+"PleaseEnterQNBAccount" = "Please enter your QNB account number.";
+"PleaseEnterOoredooNumber" = "Please enter your Ooredoo wallet number.";
+"PleaseCompleteFawryDetails" = "Please complete your Fawry details.";
+
+/* -------------------- UI LABELS -------------------- */
+"Default" = "Default";
+"DefaultMethodLabel" = "Default Payment Method";
+"Unknown" = "Unknown";
+"EditingModeActive" = "Editing Mode Active";
+"YouCanEditFieldsBelow" = "You can edit payment method details below.";
+
+/* -------------------- HINTS -------------------- */
+"PaymentHintAddNew" = "To add a new payment method, tap the + card.";
+"PaymentHintMoreOptions" = "For more options, long press on a payment method.";
+
+/* -------------------- CARD FORM -------------------- */
+"PaymentMethodCardTitle" = "Credit / Debit Card";
+"Credit / Debit Card" = "Credit / Debit Card";
+"PaymentMethodCardFooter" = "Your card will be processed securely.";
+"CardNumberTitle" = "Card Number";
+"CardNumberPlaceholder" = "0000 0000 0000 0000";
+"ExpiryDateTitle" = "Expiry Date";
+"ExpiryDatePlaceholder" = "MM / YY";
+"CVVTitle" = "CVV";
+"CVVPlaceholder" = "Code on the back of the card";
+
+/* -------------------- EXTRA -------------------- */
+"Fawry Qatar" = "Fawry Qatar";
+"Cash on Delivery" = "Cash on Delivery";
+
+
+"Unsupported iOS Version" = "Unsupported iOS Version";
+"This version of the app is available on iOS 26 and above." = "This version of the app is available on iOS 26 and above.";
+"OK" = "OK";
+"ShowAllCards_En" = "Show all cards";
+
+
+
+
+"Out of stock" = "Out of stock";
+"Only" = "Only";
+"left in stock" = "left in stock";
+"in stock" = "in stock";
+"leftInStock" = "left in stock"; // for consistency if you reference this key
+"inStock" = "in stock";
+
+"Rials" = "QAR"; // adjust currency symbol as needed
+"Discount" = "Discount";
+"accessDoneTitle" = "Accessory Uploaded!";
+"accessDoneDesc" = "Your pet accessory has been successfully added.";
+"done" = "Done";
+"tempDesc" = "Temporary description for testing";
+
+
+
+"Complete_Profile" = "Complete Your Profile";
+"Add_Photo" = "Add Photo";
+"Display_Name" = "Display Name";
+"First_Name" = "First Name";
+"Last_Name" = "Last Name";
+"Enter_First_Name" = "Enter first name";
+"Enter_Last_Name" = "Enter last name";
+"Save" = "Save";
+"Skip" = "Skip";
+"Phone_Login" = "Login with Mobile Number";
+"Enter_OTP" = "Enter the 6-digit code";
+"Continue" = "Continue";
+
+"Use_Photo" = "Use Photo";
+"Tap_To_Change_Photo" = "Tap to Change Photo";
+"Camera" = "Camera";
+"Photo_Library" = "Photo Library";
+"Cancel" = "Cancel";
+"Profile_Photo" = "Profile Photo";
+"Drag_To_Adjust" = "Drag to adjust";
+"Pinch_To_Zoom" = "Pinch to zoom";
+"Swipe_Down_To_Close" = "Swipe down to close";
+"Capture" = "Capture";
+"Skip" = "Skip";
+"Move & Zoom" = "Move & Zoom";
+"Done" = "Done";
+"Cancel" = "Cancel";
+"Reset" = "Reset";
+"Original" = "Original";
+"Square" = "Square";
+"Delete Changes" = "Delete Changes";
+"Yes" = "Yes";
+"No" = "No";
+
+
+"Welcome to Pure Pets" = "Welcome to Pure Pets";
+"Maybe Later" = "Maybe Later";
+"Sign in with Google" = "Sign in with Google";
+"Mobile Number" = "Mobile Number";
+"Continue with Mobile" = "Continue with Mobile";
+"Sign in to continue your pet journey" = "Sign in to continue your pet journey";
+"+Code" = "+Code";
+
+"verification_title" = "Enter Verification Code";
+"verification_sent_to" = "A code was sent to %@";
+"continue_button" = "Continue";
+
+"resend_code" = "Resend Code";
+"resend_timer_format" = "Resend Code (%ld)";
+"resend_timer_60" = "Resend Code (60)";
+"resend_timer_45" = "Resend Code (45)";
+"invalid_code_title" = "Invalid Code";
+"invalid_code_message" = "The verification code you entered is incorrect. Please try again.";
+"ok_button" = "OK";
+
+
+
+
+/* ---------------------------- */
+/* Phone Number Entry */
+/* ---------------------------- */
+"auth_enter_phone_title" = "Enter Your Phone Number";
+"auth_enter_phone_message" = "Please enter your mobile number to continue.";
+"auth_phone_required_title" = "Missing Number";
+"auth_phone_required_message" = "Please enter your mobile number.";
+
+/* ---------------------------- */
+/* Sending Verification Code */
+/* ---------------------------- */
+"auth_sending_code_title" = "Sending Code…";
+"auth_sending_code_failed_title" = "Unable to Send Code";
+"auth_sending_code_failed_message" = "Please check your number and try again.";
+
+/* ---------------------------- */
+/* Verification Code Screen */
+/* ---------------------------- */
+"auth_verification_title" = "Enter Verification Code";
+"auth_verification_message" = "A code was sent to %@";
+
+"auth_verifying_code_title" = "Checking Your Code…";
+"auth_invalid_code_title" = "Invalid Code";
+"auth_invalid_code_message" = "The code you entered is not correct. Please try again.";
+
+"auth_session_expired_title" = "Session Expired";
+"auth_session_expired_message" = "The code is no longer valid. Please request a new one.";
+
+/* ---------------------------- */
+/* Google Auth */
+/* ---------------------------- */
+"auth_google_connecting_title" = "Connecting to Google…";
+"auth_google_failed_title" = "Google Sign-In Failed";
+"auth_google_failed_message" = "We couldn’t verify your Google account. Please try again.";
+
+/* ---------------------------- */
+/* Generic Auth Errors */
+/* ---------------------------- */
+"auth_error_title" = "Something Went Wrong";
+"auth_error_message" = "Please try again.";
+
+"auth_network_error_title" = "No Internet Connection";
+"auth_network_error_message" = "Please check your connection and try again.";
+
+"auth_firebase_error_title" = "Authentication Error";
+
+/* ---------------------------- */
+/* Login Success */
+/* ---------------------------- */
+"auth_signin_success_title" = "Welcome!";
+"auth_signin_success_message" = "You are now signed in.";
+
+/* ---------------------------- */
+/* Logout */
+/* ---------------------------- */
+"auth_signout_title" = "Signed Out";
+"auth_signout_message" = "You have been signed out.";
+
+/* ---------------------------- */
+/* Blocked Account */
+/* ---------------------------- */
+"auth_account_blocked_title" = "Account Restricted";
+"auth_account_blocked_message" = "Your account cannot be used at the moment.";
+
+
+/* Headers */
+"auth_title_welcome" = "Welcome to Pure Pets";
+"auth_subtitle_continue" = "Sign in to continue your pet journey";
+
+/* Apple Token Errors */
+"auth_apple_no_token" = "We couldn’t verify your Apple account. Please try again.";
+"auth_apple_failed_title" = "Apple Sign-In Failed";
+"auth_apple_signing_in" = "Signing in…";
+
+/* Account setup */
+"auth_setting_up_account" = "Setting up your account…";
+
+/* User document not found */
+"auth_user_not_found" = "User record not found.";
+
+
+
+"albums.title" = "Photos";
+
+"assets.footer.photo" = "%ld Photo";
+"assets.footer.photos" = "%ld Photos";
+"assets.footer.video" = "%ld Video";
+"assets.footer.videos" = "%ld Videos";
+"assets.footer.photo-and-video" = "%ld Photo, %ld Video";
+"assets.footer.photos-and-video" = "%ld Photos, %ld Video";
+"assets.footer.photo-and-videos" = "%ld Photo, %ld Videos";
+"assets.footer.photos-and-videos" = "%ld Photos, %ld Videos";
+
+"assets.toolbar.item-selected" = "%ld Item Selected";
+"assets.toolbar.items-selected" = "%ld Items Selected";
+"assets.toolbar.item-zero" = "No images selected";
+"add.images.here" = "Add images here";
+
+
+"home" = "Home";
+"Notifications" = "Notifications";
+
+"Food Posted!" = "Food Posted!";
+"Accessory Posted!" = "Accessory Posted!";
+"Your food item has been listed successfully." = "Your food item has been listed successfully.";
+"Your accessory has been listed successfully." = "Your accessory has been listed successfully.";
+ 
+"This will be listed as a used item." = "This will be listed as a used item.";
+
+/// MARK: - Accessory / Food Form - General
+"accessory_form_used_note_title"          = "This will be listed as a used item.";
+
+"accessory_form_category_section_title"   = "Accessories category";
+"food_form_category_section_title"        = "Food category";
+
+"accessory_form_details_section_title"    = "Accessory details";
+"food_form_details_section_title"         = "Food details";
+
+/// MARK: - Species / Breed (categories)
+"form_species_title"                      = "Species";
+"form_species_selector_title"             = "Select species";
+"form_species_placeholder"                = "Select species";
+
+"form_breed_title"                        = "Breed";
+"form_breed_selector_title"               = "Select breed";
+"form_breed_placeholder"                  = "Select breed";
+
+/// MARK: - Name
+"accessory_form_name_title"               = "Accessory name";
+"accessory_form_name_placeholder"         = "Enter accessory name";
+
+"food_form_name_title"                    = "Food name";
+"food_form_name_placeholder"              = "Enter food name";
+
+/// MARK: - Price
+"form_price_title"                        = "Price";
+"form_price_placeholder"                  = "Enter price";
+
+/// MARK: - Description
+"accessory_form_desc_title"               = "Accessory description";
+"food_form_desc_title"                    = "Food description";
+"form_desc_placeholder"                   = "Enter description";
+
+
+
+
+
+"No delivery addresses available" = "No delivery addresses available";
+"Add Address" = "Add address";
+
+
+
+
+
+
+// Localizable.strings (English)
+"Check out this pet ad!" = "Check out this pet ad!";
+"Check out this pet accessory!" = "Check out this pet accessory!";
+"Copied to clipboard!" = "Copied to clipboard!";
+"Shared successfully!" = "Shared successfully!";
+"No images to share" = "No images to share";
+
+// Pet details
+"Title" = "Title";
+"Description" = "Description";
+"Category" = "Category";
+"Breed" = "Breed";
+"Subcategory" = "Subcategory";
+"Price" = "Price";
+"Age" = "Age";
+"Gender" = "Gender";
+"Location" = "Location";
+"Status" = "Status";
+"Condition" = "Condition";
+"Availability" = "Availability";
+"Type" = "Type";
+"Name" = "Name";
+"Original Price" = "Original Price";
+"Final Price" = "Final Price";
+"Discount" = "Discount";
+"Quantity" = "Quantity";
+"Stock Status" = "Stock Status";
+
+// Units and values
+"month" = "month";
+"months" = "months";
+"year" = "year";
+"years" = "years";
+"Less than 1 month" = "Less than 1 month";
+"Female" = "Female";
+"Male" = "Male";
+"Sold" = "Sold";
+"Available" = "Available";
+"New" = "New";
+"Used" = "Used";
+"Not specified" = "Not specified";
+"Accessory" = "Accessory";
+"Food" = "Food";
+"Unknown" = "Unknown";
+"On Sale!" = "On Sale!";
+"In Stock" = "In Stock";
+"Out of Stock" = "Out of Stock";
+"Limited Stock" = "Limited Stock";
+
+// Sharing options
+"Share Options" = "Share Options";
+"Share with Photo" = "Share with Photo";
+"Copy Details" = "Copy Details";
+"Save as Text File" = "Save as Text File";
+"Cancel" = "Cancel";
+"Share anyway?" = "Share anyway?";
+
+// Actions
+"Save to Photos" = "Save to Photos";
+"Share" = "Share";
+"Save to Camera Roll" = "Save to Camera Roll";
+"Set as Wallpaper" = "Set as Wallpaper";
+
+// Errors and messages
+"Error saving image" = "Error saving image";
+"Image saved to Photos" = "Image saved to Photos";
+"Error" = "Error";
+"Success" = "Success";
+"Info" = "Info";
+"Failed to save image" = "Failed to save image";
+"To set as wallpaper, save the image and set it from Photos app" = "To set as wallpaper, save the image and set it from Photos app";
+
+// Viewer/Image controls
+"Close" = "Close";
+"Next" = "Next";
+"Previous" = "Previous";
+"Zoom In" = "Zoom In";
+"Zoom Out" = "Zoom Out";
+"Loading..." = "Loading...";
+
+// Pet attributes
+"Pet Age" = "Pet Age";
+"Pet Category" = "Pet Category";
+"Pet Breed" = "Pet Breed";
+"Pet Gender" = "Pet Gender";
+"Pet Price" = "Pet Price";
+"Pet Location" = "Pet Location";
+"Pet Status" = "Pet Status";
+
+// Accessory attributes
+"Accessory Name" = "Accessory Name";
+"Accessory Description" = "Accessory Description";
+"Accessory Price" = "Accessory Price";
+"Accessory Category" = "Accessory Category";
+"Accessory Type" = "Accessory Type";
+"Accessory Condition" = "Accessory Condition";
+"Accessory Quantity" = "Accessory Quantity";
+
+// Common
+"OK" = "OK";
+"Yes" = "Yes";
+"No" = "No";
+"Confirm" = "Confirm";
+"Delete" = "Delete";
+"Edit" = "Edit";
+"Save" = "Save";
+"Cancel" = "Cancel";
+"Done" = "Done";
+"Loading" = "Loading";
+"loading_images" = "Loading images...";
+"camera_not_available" = "Camera is not available on this device.";
+"camera_permission_needed" = "Please allow camera access in Settings.";
+"Please wait" = "Please wait";
+"Retry" = "Retry";
+"Continue" = "Continue";
+"Back" = "Back";
+
+
+// Localizable.strings (English)
+"FullName" = "Full Name";
+"FullNamePlaceholder" = "Enter your full name";
+"AddressLine1Placeholder" = "Street address, building, apartment";
+"AddressLine2Placeholder" = "Apartment, suite, unit, floor (optional)";
+"PostalCodePlaceholder" = "Postal/ZIP code";
+"TapToSelect" = "Tap to select";
+"TapToSelectPlaceholder" = "Tap to select";
+
+"MainPage" = "Home";
+"Add New Parrot Card" = "Add New Parrot Card";
+"Add New Archive" = "Add New Archive";
+"boxNote" = "The offspring of this pair will be added later through the Box Management section.";
+"editarchive" = "Modify archive name";
+"deletearchive" = "Delete archive";
+"pill" = "Sales invoice";
+
+"salesEmptyTitle"     = "No items yet";
+"salesEmptyDesc"      = "You don’t have any sales or posts yet.";
+
+"RestoreItem" = "Restore item?";
+"RestoreItemDesc" = "This item will be returned to its original location.";
+"RestoreSuccess" = "Item restored successfully";
+"Restore" = "Restore";
+"DeleteForever" = "Delete permanently";
+"DeleteForeverDesc" = "This item will be permanently deleted and cannot be recovered.";
+"DeletedPermanently" = "Item deleted permanently";
+"Cancel" = "Cancel";
+"addBird"      = "Add bird to invoice";
+
+"WhatsApp" = "WhatsApp";
+"Return" = "Return";
+"production" = "production";
+"Please add the output to the box" = "Please add the output to the box";
+"CageAddedSuccessTitle" = "Cage added";
+"CageAddedSuccessSubtitle" = "The cage has been added successfully.";
+"CardDeletedTitle" = "This card has been deleted";  
+"pickBirthDateOrToday" =  "Pick birth date or keep today";
+
+"Undo" = "Undo";
+"ChildMovedToTrash" = "Moved to trash";
+"RestoredSuccessfully" = "Restored successfully";
+
+
+"menu_showCard"    = "View card";
+"menu_deleteChick" = "Delete chick";
+"menu_archiveChick" = "Archive chick";
+"menu_transferChick" = "Transfer chick";
+"menu_sellChick"   = "Sell chick";
+
+"child_no_card_title" = "Card not created";
+"child_no_card_message_fmt" = "No card was created for chick %@. Create it now?";
+
+"delete_child_title" = "Delete chick";
+"delete_child_message_fmt" = "Are you sure you want to delete chick %@?";
+"delete" = "Delete";
+"cancel" = "Cancel";
+"create_card_failed_title" = "Unable to create card";
+"show_childs" = "Show chicks";
+
+
+"FilterByBreedTitle" = "Filter by breed";
+"FilterAllBirds" = "All birds";
+
+ 
+"count_childs" = "number of chicks";
+
+
+"card_in_archive_title" = "Card is archived";
+"card_in_archive_subtitle_fmt" = "This card (%@) is currently in archive. Do you want to move it to this box?";
+"move_to_box" = "Move to box";
+"cancel" = "Cancel";
+
+"Bird Actions" = "Bird Actions";
+"SearchBirdsPlaceholder" = "Search by ring ID, breed, or name";
+
+"SearchBirdsPlaceholder" = "Search by ring ID, breed, or name";
+
+"SortTitle" = "Sort";
+
+"SortByRing" = "Ring ID";
+"SortByDate" = "Date";
+"SortByBreed" = "Breed";
+
+"SortRingAsc" = "Ring ID (A–Z)";
+"SortRingDesc" = "Ring ID (Z–A)";
+
+"SortNewest" = "Newest first";
+"SortOldest" = "Oldest first";
+
+"SortBreedAsc" = "Breed (A–Z)";
+"SortBreedDesc" = "Breed (Z–A)";
+
+"ClearFilters" = "Clear Filters";
+"BirdActionsTitle" = "Bird Actions";
+
+
+"addArchiveTitle" = "Add Archive";
+"enterArchiveName" = "Enter archive name";
+"save" = "Save";
+"cancel" = "Cancel";
+
+"untitledArchive" = "Untitled Archive";
+
+"title_ArchiveAlert" = "Archive Bird";
+"subtitle1_ArchiveAlert" = "Do you want to archive";
+"subtitle3_ArchiveAlert" = "to archive";
+"subtitle4_ArchiveAlert" = "?";
+
+"yes" = "Yes";
+"no" = "No";
+
+"_archiveTitle" = "Archive";
+"RingID" = "Ring ID";
+"cards"        = "Cards";
+"cages"        = "Cages";
+"childs"       = "Chicks";
+"archive"      = "Archive";
+"UnknownItem"  = "Unknown Item";
+"printBill"= "Print sales invoice";
+
+
+"AppName" = "Pure Pets";
+
+"SalesBillTitle" = "Pure Pets – Sales Bill";
+"SalesBillFileFallback" = "Bill";
+
+"BillDate" = "Bill Date";
+"BuyerName" = "Buyer Name";
+"Mobile" = "Mobile";
+
+"BirdTitle" = "Bird Title";
+"RingID" = "Ring ID";
+
+"Price" = "Price";
+
+"SalesBillTitle" = "Pure Pets – Sales Bill";
+"SalesBillFileFallback" = "Bill";
+"SalesBillFooter" = "Generated by Pure Pets";
+
+"EmptyValue" = "—";
+"currency" = "QAR";
+"InvoiceDetails" = "Invoice Details";
+"TotalAmount"    = "Total Amount";
+"ViewBirdCard" = "View Bird Card";
+"ReturnBill"   = "Return Bill";
+
+
+/* Cage Header */
+"cage_title" = "Cage";
+"cage_edit" = "Edit";
+"cage_barcode" = "Barcode";
+
+/* Parent Cards */
+"father_title" = "Father";
+"mother_title" = "Mother";
+"ring_id" = "Ring ID";
+"unknown_ring" = "Unknown Ring";
+"parent_menu" = "Options";
+"parent_move_archive" = "Move to Archive";
+"parent_sell" = "Sell";
+
+/* Parent Status Overlay */
+"parent_sold" = "Parrot Is Sold";
+"parent_deleted" = "Card Was Deleted";
+"parent_moved_archive" = "Card Was Moved to Archive";
+"parent_moved_archive_named" = "Moved to Archive: %@";
+
+/* Chicks Section */
+"chicks_count" = "Chicks";
+"add_chick" = "Add Chick";
+"add_more_chicks" = "Add More Chicks";
+
+/* First Egg Section */
+"first_egg_date_title" = "First Egg Date";
+"first_egg_not_set" = "Not Set";
+"set_first_egg" = "Set";
+
+/* Empty / Missing Data */
+"no_father" = "No Father Assigned";
+"no_mother" = "No Mother Assigned";
+"no_image" = "No Image";
+
+/* Accessibility */
+"father_card_accessibility" = "Father Parrot Card";
+"mother_card_accessibility" = "Mother Parrot Card";
+"add_chick_accessibility" = "Add a chick to this cage";
+"barcode_accessibility" = "Show cage barcode";
+"edit_cage_accessibility" = "Edit cage";
+"child_ring_id" = "Ring ID:";
+"child_birth_date" = "Birth date:";
+"child_birth_date_unknown" = "Birth date: Unknown";
+"child_options" = "Options";
+"parrot_is_sold"           = "Sold";
+"card_was_deleted"         = "Deleted";
+"card_moved_to_archive"    = "Moved to Archive";
+"moved_to_archive"         = "Moved to Archive";
+"Enter chick ring ID" = "Enter chick ring ID";  
+"MainCategories" = "Main Categories";
+"ShowAll"        = "Show All";
+
+
+/* =========================
+   Home – Search Bar
+   ========================= */
+
+"home_search_placeholder"        = "Search pets, accessories, food, services";
+"home_search_placeholder_short"  = "Search in Pure Pets";
+
+"home_search_hint"               = "What are you looking for?";
+"home_search_recent"             = "Recent searches";
+"home_search_clear"              = "Clear search";
+"home_search_cancel"             = "Cancel";
+
+"home_search_no_results"         = "No results found";
+"home_search_try_again"          = "Try different keywords";
+
+"home_search_filter"             = "Filter";
+"home_search_sort"               = "Sort";
+
+"home_search_loading"            = "Searching…";
+"ShowAll"  = "Show all";
+"ShowLess" = "Show less";
+"search" = "Search";
+"Home_NearbyAds"        = "Nearby";
+"Home_NearbyAds_Sub"    = "Ads close to you";
+"Home_NearbyAds_Action"    = "";
+
+"AllCategories" = "All Categories";
+
+
+"empty_retry_button" = "Refresh";
+"empty_no_results_title" = "Nothing here yet";
+"empty_no_results_subtitle" = "Check another section or come back later.";
+"AllKinds" = "All Kinds";
+"SomethingWentWrong" = "Something Went Wrong";
+
+
+"SuggestedForYou" = "Suggested for you";
+"BecauseYouViewedFormat" = "Because you viewed %1$@ %2$@";
+
+"BrowseType_Ads" = "ads";
+"BrowseType_Accessories" = "accessories";
+"BrowseType_Services" = "services";
+"RecommendedForYouHint" = "You might like this";
+"Home_CurrentOrdersTitle" = "Current Orders";
+"Home_CurrentOrdersSubtitle" = "Follow payment, preparation, and delivery in one place.";
+"Home_LastOrderTitle" = "Last Order";
+"Home_LastOrderSubtitle" = "Track the latest update and open your full order history.";
+"Home_BuyAgainTitle" = "Buy Again";
+"Home_BuyAgainSubtitle" = "Quick picks from items you ordered before.";
+"Home_CurrentOrdersPendingHint" = "Waiting for store confirmation.";
+"Home_CurrentOrdersPaidHint" = "Payment confirmed and queued for fulfillment.";
+"Home_CurrentOrdersProcessingHint" = "Your items are being prepared now.";
+"Home_CurrentOrdersShippedHint" = "Your courier is already on the way.";
+"Home_CurrentOrdersItemsFormat" = "%ld items";
+"Home_CurrentOrdersExpectedPrefix" = "Expected";
+"Home_CurrentOrdersUpdatedPrefix" = "Updated";
+
+"empty_cart_title" = "Your cart is empty";
+"empty_cart_subtitle" = "Looks like you haven’t added anything yet. Start exploring and add items you love.";
+"continue_shopping" = "Continue Shopping";
+"NoResultsFound" = "No matches for your search";
+"Required" = "Required";
+"Similar Ads" = "Similar Ads";
+
+"Message…" = "Message…";
+"SimilarAaccess" = "You May Also Need"; //Accessories for This Pet";
+"New Message" = "New Message";
+"empty_chats_title" = "No conversations yet";
+"empty_chats_subtitle" = "Start chatting with pet owners and sellers.";
+"empty_chats_button" = "Start a chat";
+
+
+"Recording…" = "Recording…";
+"Recording locked…" = "Recording locked…";
+"Slide to cancel" = "Slide to cancel";
+"Press and hold to record" ="Press and hold to record";
+/* Chat Menu */
+"chat.pin" = "Pin to Top";
+"chat.mute" = "Mute";
+"chat.unmute" = "Unmute";
+"chat.muted" = "Chat muted";
+"chat.unmuted" = "Chat unmuted";
+"chat.bin" = "Move to Bin";
+"chat.unbin" = "Restore from Bin";
+"chat.binned" = "Chat moved to bin";
+"chat.unbinned" = "Chat restored";
+"chat.background" = "Chat Background";
+"chat.report" = "Report";
+"chat.reported" = "Reported";
+
+/* Report Sheet */
+"chat.report.title" = "Report Chat";
+"chat.report.message" = "Are you sure you want to report this conversation? This action cannot be undone.";
+"chat.report.reason.placeholder" = "Tell us what happened (optional)";
+"chat.report.confirm" = "Report";
+"chat.report.success" = "Report submitted";
+"chat.report.already" = "Already reported";
+"chat.cancel" = "Cancel";
+/* Bin confirmation */
+"chat.bin.confirm.title" = "Move to Bin";
+"chat.bin.confirm.message" = "You can restore this conversation later. It won’t delete messages.";
+"chat.bin.confirm.action" = "Move to Bin";
+"chat.unbin.confirm.title" = "Restore Conversation";
+"chat.unbin.confirm.message" = "This will return the conversation to your chat list.";
+/* Last seen */
+"chat.last_seen" = "Last seen";
+"chat.today_at" = "today at %@";
+"chat.yesterday_at" = "yesterday at %@";                     /* Last seen */
+"chat.online" = "Online";
+"chat.offline" = "Offline";   
+
+
+/* Checkout Summary */
+"Selected Items" = "Selected Items";
+"Shipping Fee" = "Shipping Fee";
+"Subtotal" = "Subtotal";
+"Checkout" = "Checkout";
+
+/* Cart / Payment */
+"ContinuePayment" = "Continue to Payment";
+"ItemsTotalLabel" = "Items";
+"DeliveryLabel" = "Delivery";
+"TotalSumLabel" = "Total";
+
+/* Empty / Defaults */
+"NoItems" = "No items selected";
+"Free" = "Free";
+"Securecheckout" ="🔒 Secure checkout — your data is protected";
+"Pay Now" = "Pay Now";
+"Checkout" = "Continue to Checkout";
+
+
+"addr_empty_title" = "No address added";
+"addr_empty_subtitle" = "You don’t have any saved addresses yet. Would you like to add one now?";
+"addr_empty_btn_add" = "Add Address";
+"addr_empty_btn_notnow" = "Not Now";
+"Select your location" = "Select your location";
+"No nearby ads available" = "No nearby ads available";
+"Open Settings" = "Open Settings";
+"Location permission denied" = "Location permission denied";
+"Please choose a valid location from the map." = "Please choose a valid location from the map.";
+"Select Delivery Location"="Select Delivery Location";
+"cart_swipe_remove" = "Remove";
+"cart_undo_message" = "Item removed from cart";
+"cart_support_menu_title" = "Support";
+"cart_support_chat" = "Start Chat";
+"Pay securely via our QIB gateway"="Pay securely via Pure Pets QIB gateway";
+
+
+/* Hero greetings */
+"Hero_Hello" = "Hello";
+"Hero_SweetDreams" = "Sweet dreams";
+"Hero_HowAreYou" = "How are you";
+"Hero_Brand" = "Pure Pets";
+"Hero_TrendingNow" = "Trending now";
+"Hero_FindingNearby" = "Finding nearby";
+"Hero_LocationNeeded" = "Location needed";
+"Hero_SetYourArea" = "Set your area";
+"Hero_LocationCTA" = "Choose area";
+"Hero_ChangeArea" = "Change area";
+"UseCurrentLocation" = "Use current location";
+"Hero_LoadingDescription" = "We are preparing nearby pets, accessories, and services.";
+"Hero_DeniedDescription" = "Enable location to unlock nearby pets, accessories, and services.";
+"Hero_UnsetDescription" = "Set your area to see what is trending around you.";
+"Hero_ReadyDescriptionFormat" = "Fresh pets, accessories, and services around %@.";
+"Hero_ReadyDescriptionFallback" = "Fresh pets, accessories, and services are ready for your area.";
+"Hero_LocationMetaLoading" = "Checking nearby area";
+"Hero_LocationMetaDenied" = "Location access is off";
+"Hero_LocationMetaReady" = "Tap to update area";
+"Hero_LocationMetaUnset" = "Choose your area";
+
+/* Name formatting */
+"Hero_NameCommaLTR" = "%@, %@";
+
+/* Guest greeting */
+"Hero_GuestFormatLTR" = "🐾 %@, join our pets lover community";
+
+"Good night" = "Good night";
+"Sweet dreams" =  "Sweet dreams";   
+"Hello" = "Hello";
+"How are you" = "How are you";
+"join our pets lover community" = "join our pets lover community";
+
+
+"checkout_invalid_address" = "Please select a valid delivery address.";
+"checkout_cart_empty" = "Cart is empty";
+"checkout_paid_inventory_warning" = "Payment succeeded, but stock sync needs review by support.";
+"checkout_payment_failed_default" = "Payment failed";
+"checkout_items_unavailable_default" = "Some items are no longer available in stock.";
+"checkout_item_fallback" = "Item";
+"checkout_item_out_of_stock_format" = "%@ is out of stock.";
+"checkout_item_limited_stock_format" = "%@: only %ld left (requested %ld).";
+"checkout_more_items_format" = "...and %ld more item(s).";
+"checkout_items_unavailable_fallback" = "Items are unavailable.";
+"Paid" = "Paid";
+"All" = "All";
+"Canceled" = "Cancelled";
+
+/* Orders Module - Refactor 2026 */
+"Total" = "Total";
+"PaymentMethod" = "Payment Method";
+"DeliveryAddress" = "Delivery Address";
+"Copy" = "Copy";
+"order_copy_id_subtitle" = "Copy this order number to the clipboard?";
+"order_id_copied" = "Order number copied.";
+"orders_empty_filtered" = "No matching orders found.";
+"order_support_request_call" = "Request Call";
+"order_support_button" = "Contact Support";
+"order_change_delivery_address" = "Change Delivery Address";
+"order_cancel_button" = "Cancel Order";
+"order_edit_location_pending_only" = "Delivery location can only be edited while the order is pending.";
+"order_cancel_title" = "Cancel Order";
+"order_cancel_confirm" = "Are you sure you want to cancel this order?";
+"order_missing_id" = "Order ID is missing.";
+"order_status" = "Status";
+"order_details_no_items" = "No items available.";
+"order_item" = "Item";
+"order_payment_provider_default" = "Online Payment";
+"order_details_title" = "Order Details";
+"order_items_section_title" = "Order Items";
+"order_total_label" = "Total";
+"OrderItems" = "Order Items";
+"Phone number is required to complete payment." = "Phone number is required to complete payment.";
+"QIB checkout requires a real iPhone device." = "QIB checkout requires a real iPhone device.";
+"Unable to open payment screen." = "Unable to open payment screen.";
+"Invalid gateway credentials." = "Invalid gateway credentials.";
+"Failed to create payment session." = "Failed to create payment session.";
+
+/* Commerce Stable Keys */
+"payment_pay_now" = "Pay Now";
+"select_delivery_location_title" = "Select Delivery Location";
+"saved_addresses_title" = "Saved addresses";
+"deliver_addresses_subtitle" = "Deliver addresses";
+"deliver_to_another_location" = "Deliver to another location";
+"deliver_to_current_location" = "Deliver to current location";
+"locating_current_location" = "Locating current location...";
+"location_access_disabled" = "Location access disabled";
+"unable_detect_current_location" = "Unable to detect current location.";
+"unable_detect_current_location_now" = "Unable to detect current location right now.";
+"story_loading" = "Loading stories...";
+"story_no_items" = "No stories available.";
+"story_load_failed" = "Unable to load stories.";
+"story_unavailable" = "Story is unavailable.";
+"story_uploading" = "Uploading story...";
+"story_upload_failed" = "Failed to upload story.";
+"your_story" = "Your story";
+"chat_stories_title" = "Stories";
+"auth_register_required_title" = "Please Register";
+"payment_qib_gateway_desc" = "Pay securely via QIB gateway";
+"payment_cash_delivery_desc" = "Pay when you receive your order";
+"payment_header_pay_through" = "Pay through";
+"payment_builtin_remove_blocked" = "This payment method is built in and cannot be removed.";
+"payment_builtin_edit_blocked" = "This payment method is provided by default and does not require editing.";
+"payment_confirm_title" = "Confirm Payment";
+"payment_confirm_message_format" = "Do you want to pay using %@?";
+"payment_pay_using_format" = "Pay using %@";
+"payment_confirm_action" = "Confirm";
+"payment_cancel_action" = "Cancel";
+"payment_success_title" = "Payment Successful";
+"payment_success_message_format" = "You have paid successfully using %@";
+"payment_method_name_card" = "Card";
+"payment_method_name_ooredoo" = "Ooredoo Money";
+"payment_method_name_paypal" = "PayPal";
+"payment_method_name_fawry" = "Fawry Qatar";
+"payment_method_name_qnb" = "QNB";
+"payment_method_name_cash" = "Cash on Delivery";
+"payment_method_name_unknown" = "Unknown Method";
+"payment_method_tap_to_choose" = "Tap to choose";
+"payment_backend_unavailable" = "QIB backend is unavailable. Deploy createQibSession and verifyQibPayment in the selected Firebase region.";
+"payment_backend_permission_denied" = "You are not allowed to pay for this order.";
+"payment_backend_unreachable" = "Could not reach payment backend. Please check internet and try again.";
+"payment_backend_setup_incomplete" = "Payment setup is incomplete on backend.";
+"payment_insecure_session_blocked" = "Blocked insecure payment session. Backend must return secure tokenized/hosted QIB payload.";
+"payment_secure_session_unavailable" = "Secure QIB session payload is missing from backend response.";
+"payment_secure_flow_required" = "QIB secure payment flow is not enabled in this app build yet.";
+"payment_request_in_progress" = "Payment request already in progress.";
+"payment_requires_real_device" = "QIB checkout requires a real iPhone device.";
+"payment_phone_required" = "Phone number is required to complete payment.";
+"payment_invalid_gateway_credentials" = "Invalid gateway credentials.";
+"payment_unable_to_open_screen" = "Unable to open payment screen.";
+"payment_qib_sdk_missing" = "QIB SDK is missing from this build. Please reinstall/update the app.";
+"payment_qib_sdk_init_failed" = "Unable to initialize QIB SDK session.";
+"payment_create_session_failed" = "Failed to create payment session.";
+"payment_load_methods_failed" = "Failed to load payment methods.";
+"auth_register_required_subtitle" = "You need to register to continue.";
+"checkout_failed_title" = "Checkout failed";
+"checkout_payment_verification_pending" = "Your payment is being verified. Please check order status in a moment.";
+"order_placed_title" = "Order placed";
+"order_paid_success_subtitle" = "Payment completed successfully.";
+"DeletePaymentMethodTitle" = "Delete Payment Method";
+"DeletePaymentMethodSubtitle" = "Are you sure you want to delete this payment method?";
+"UnableToSetDefaultMethod" = "Unable to set default payment method.";
+"FailedToUpdateDefault" = "Failed to update default payment method.";
+"cart_undo_action" = "Undo";
+"adopt_form_required_fields_error" = "Please complete required fields.";
+"Kind" = "Kind";
+"Created" = "Created";
+"editAdoptPet" = "Edit Adopt Pet";
+"pleaseSelectAtLeastOnePhoto" = "Please select at least one photo.";
+"unknownError" = "Unknown error.";
+"adoptPetAddedDesc" = "Your pet post has been added successfully.";
+"adoptPetUpdatedTitle" = "Adoption post updated";
+"adoptPetUpdatedDesc" = "Your pet post has been updated successfully.";
+"max_images_reached" = "Maximum images reached";
+"max_images_hint" = "Maximum allowed images:";
+
+"accessory_view_no_description" = "No description available.";
+"accessory_view_details_title" = "Accessory details";
+"accessory_view_seller_title" = "Seller";
+"accessory_view_seller_pending" = "Loading seller";
+"accessory_view_suggestions_subtitle" = "More picks from related accessories.";
+"accessory_view_empty_suggestions" = "More accessory suggestions will appear here soon.";
+"service_view_contact_loading" = "Contact data is still loading. Please try again.";
+"service_view_description_title" = "Description";
+"service_view_details_title" = "Service Details";
+"service_view_default_title" = "Service";
+"service_view_no_description" = "No service description provided.";
+"service_view_owner_pending" = "Loading owner";
+"service_view_category" = "Category";
+"service_view_available_date" = "Available date";
+"service_view_owner" = "Provider";
+"service_view_location_unavailable" = "Location is not available for this service yet.";
+"service_view_share_title" = "Service";
+"Shop Now" = "Shop Now";
+"New Chat"= "New Chat" ;
+"profile_email_managed_by_provider" = "Email is managed by your login provider.";
+"profile_email_reauth_required" = "Please reauthenticate before changing email.";
+
+"order_action_track" = "Track order";
+"order_action_cancel" = "Cancel order";
+"order_action_return" = "Request return";
+"order_action_refund" = "Request refund";
+"order_action_replacement" = "Request replacement";
+"order_action_report_issue" = "Report an issue";
+"order_action_support_case" = "Open support case";
+"order_action_unavailable_generic" = "This action isn't available right now.";
+"order_action_existing_request_message" = "You already have an open %@ request for this order.";
+"order_action_track_hint" = "Follow payment, fulfillment, and delivery updates here.";
+"order_action_cancel_unavailable_closed" = "This order is already closed, so cancellation is no longer available.";
+"order_action_cancel_unavailable_fulfillment" = "Cancellation is available only before packing or shipping starts.";
+"order_action_cancel_hint" = "You can still cancel before packing begins.";
+"order_action_return_unavailable_not_delivered" = "Returns open after the order is delivered.";
+"order_action_return_unavailable_window" = "Returns are available for %ld days after delivery.";
+"order_action_return_hint" = "Eligible for return for %ld days after delivery.";
+"order_action_refund_unavailable_unpaid" = "Refund requests are available only after payment is captured.";
+"order_action_refund_unavailable_after_shipment" = "Refund requests are no longer available after shipment starts.";
+"order_action_refund_unavailable_window" = "Refund requests are available for %ld days after payment.";
+"order_action_refund_hint" = "Eligible for refund review for %ld days after payment.";
+"order_action_replacement_unavailable_not_delivered" = "Replacement requests open after delivery.";
+"order_action_replacement_unavailable_window" = "Replacement requests are available for %ld days after delivery.";
+"order_action_replacement_hint" = "Eligible for replacement for %ld days after delivery.";
+"order_action_complaint_unavailable_not_started" = "Issue reporting becomes available after the order is placed.";
+"order_action_complaint_unavailable_window" = "Issue reporting is available for %ld days after payment.";
+"order_action_complaint_hint" = "You can report delivery or payment issues for %ld days after payment.";
+"order_action_support_hint" = "Create a support case for questions, billing, or delivery help.";
+"order_support_unavailable_no_order" = "Order data is unavailable right now.";
+"order_requests_history_title" = "Post-purchase requests";
+"order_existing_request_opened" = "We opened your existing request instead of creating a duplicate.";
+"order_request_status_title" = "Request status";
+"order_request_reason_title" = "Reason";
+"order_request_notes_title" = "Your notes";
+"order_request_items_title" = "Affected items";
+"order_request_attachments_title" = "Evidence";
+"order_request_timeline_title" = "Request timeline";
+"order_request_timeline_submitted" = "Request submitted";
+"order_request_timeline_updated" = "Status updated";
+"order_request_select_reason" = "Select a reason";
+"order_request_add_photos" = "Add photos";
+"order_request_photos_optional" = "Photos are optional, but they help us review faster.";
+"order_request_photos_count" = "%ld photo(s) attached.";
+"order_request_submit" = "Submit request";
+"order_request_submitting" = "Submitting...";
+"order_request_select_items_error" = "Please choose the affected item(s) first.";
+"order_request_photos_unavailable" = "Photo picking isn't available on this device.";
+"order_request_status_pending_review" = "Pending review";
+"order_request_status_approved" = "Approved";
+"order_request_status_rejected" = "Rejected";
+"order_request_status_completed" = "Completed";
+"order_request_status_refunded" = "Refunded";
+"order_request_status_partially_refunded" = "Partially refunded";
+"order_request_status_cancelled" = "Cancelled";
+"order_request_status_closed" = "Closed";
+"order_requests_empty_title" = "No requests yet";
+"order_requests_empty_subtitle" = "Any return, refund, replacement, or complaint you submit will appear here.";
+"order_tracking_title" = "Order timeline";
+"order_tracking_empty" = "No tracking updates yet";
+"order_tracking_empty_subtitle" = "Your next payment, fulfillment, or delivery update will appear here.";
+"order_timeline_created_title" = "Order placed";
+"order_timeline_paid_title" = "Payment confirmed";
+"order_timeline_processing_title" = "Order processing";
+"order_timeline_pending_title" = "Payment verification pending";
+"order_timeline_shipped_title" = "Order shipped";
+"order_timeline_delivered_title" = "Order delivered";
+"order_timeline_cancelled_title" = "Order cancelled";
+"order_timeline_created_summary" = "We created your order and started preparing the payment flow.";
+"order_timeline_paid_summary" = "Your payment was verified successfully.";
+"order_timeline_processing_summary" = "Your order is now being prepared for shipment.";
+"order_timeline_shipped_summary" = "Your order is on the way.";
+"order_timeline_delivered_summary" = "Your delivery was marked as completed.";
+"order_timeline_cancelled_summary" = "This order was cancelled.";
+"order_reason_cancel_mistake_title" = "Ordered by mistake";
+"order_reason_cancel_mistake_subtitle" = "I added this order unintentionally.";
+"order_reason_changed_mind_title" = "Changed my mind";
+"order_reason_changed_mind_subtitle" = "I no longer want this item.";
+"order_reason_wrong_address_title" = "Wrong delivery address";
+"order_reason_wrong_address_subtitle" = "I need to update where this order goes.";
+"order_reason_found_alternative_title" = "Found another option";
+"order_reason_found_alternative_subtitle" = "I decided to buy something else instead.";
+"order_reason_not_as_described_title" = "Not as described";
+"order_reason_not_as_described_subtitle" = "The item details don't match what I received.";
+"order_reason_quality_issue_title" = "Quality issue";
+"order_reason_quality_issue_subtitle" = "The item quality isn't acceptable.";
+"order_reason_arrived_damaged_title" = "Arrived damaged";
+"order_reason_arrived_damaged_subtitle" = "The item was damaged during delivery.";
+"order_reason_duplicate_payment_title" = "Duplicate payment";
+"order_reason_duplicate_payment_subtitle" = "I was charged more than once for this order.";
+"order_reason_payment_issue_title" = "Payment issue";
+"order_reason_payment_issue_subtitle" = "There is a billing or charge problem.";
+"order_reason_cancelled_but_charged_title" = "Cancelled but charged";
+"order_reason_cancelled_but_charged_subtitle" = "The order was cancelled, but the payment still went through.";
+"order_reason_missing_item_title" = "Missing item";
+"order_reason_missing_item_subtitle" = "Something from the order didn't arrive.";
+"order_reason_damaged_item_title" = "Damaged item";
+"order_reason_damaged_item_subtitle" = "The received item is damaged.";
+"order_reason_wrong_item_title" = "Wrong item";
+"order_reason_wrong_item_subtitle" = "I received a different item than ordered.";
+"order_reason_defective_item_title" = "Defective item";
+"order_reason_defective_item_subtitle" = "The item is faulty or unusable.";
+"order_reason_late_delivery_title" = "Late delivery";
+"order_reason_late_delivery_subtitle" = "The order arrived later than expected.";
+"order_reason_order_question_title" = "Order question";
+"order_reason_order_question_subtitle" = "I need help understanding something about this order.";
+"order_reason_delivery_update_title" = "Delivery update";
+"order_reason_delivery_update_subtitle" = "I need help with a delivery status or address issue.";
+"order_reason_billing_question_title" = "Billing question";
+"order_reason_billing_question_subtitle" = "I need help with the payment or invoice.";
+"order_reason_other_title" = "Other";
+"order_reason_other_subtitle" = "Something else happened and I need support.";
+"order_support_too_many_photos" = "You can attach up to 4 photos per request.";
+"order_support_upload_failed" = "We couldn't upload one of the photos. Please try again.";
+"order_debug_payment_bypass_title" = "Debug payment bypass";
+"order_debug_payment_bypass_enabled" = "Debug mode will simulate QIB success for this test account flow.";
+"order_debug_payment_bypass_disabled" = "Real payment verification is active again.";
+"checkout_cod_success_subtitle" = "Your order was placed successfully. Pay in cash when it arrives.";
+"order_payment_status_pending_collection" = "Pending collection";
+"order_timeline_payment_collected_title" = "Payment collected";
+"enter_pet_name" = "Enter pet name";
+"selectGender" = "Select gender";
+"selectCity" = "Select city";
+"report_alert_title" = "Report";
+"report_alert_message" = "Why are you reporting this item?";
+"report_reason_spam" = "Spam";
+"report_reason_inappropriate" = "Inappropriate Content";
+"report_reason_fraud" = "Scam or Fraud";
+"report_reason_wrong_category" = "Wrong Category";
+"report_reason_other" = "Other";
+"report_login_required_message" = "Please log in to report this item.";
+"report_submit_title" = "Report submitted";
+"report_submit_message" = "Thank you. Our team will review this report.";
+"report_submit_failed_message" = "Failed to submit the report. Please try again.";
+
+// MARK: - Permission Helper (Apple 5.1.1 compliance)
+"pp_perm_camera_feature" = "Camera Access";
+"pp_perm_photos_feature" = "Photo Library Access";
+"pp_perm_camera_pre_explanation" = "We need camera access to take photos for your ads or profile picture.";
+"pp_perm_photos_pre_explanation" = "We need photo library access to choose images for your ads or profile picture.";
+"pp_perm_denied_message" = "This permission was previously denied. This feature will not work without access. You can enable it in Settings if you choose, or continue without it.";
+"pp_perm_restricted_message" = "This permission is currently unavailable. This feature will not work without access. You can review it in Settings if you choose, or continue without it.";
+"pp_perm_open_settings" = "Settings";
+"pp_perm_continue" = "Continue";
+"pp_perm_not_now" = "Not Now";
+
+// MARK: - Archive Sheet UI
+"archive_sheet_heading" = "Archive details";
+"archive_sheet_subtitle" = "Review archived cards, preview items, or move a card to another archive.";
+"archive_empty_subtitle" = "Archived cards will appear here once you start organizing them.";
+"archive_move_title" = "Move to another archive";
+"archive_move_subtitle" = "Choose where this card should live next.";
+"archive_move_picker_hint" = "Available archives";
+"archive_move_empty_subtitle" = "Create another archive to move this card.";

@@ -1,0 +1,4 @@
+framework module QIBPayment {
+  header "QIBPayment-Swift.h"
+  requires objc
+}

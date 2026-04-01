@@ -1,0 +1,673 @@
+[{
+  "id": 2,
+  "iso": "SD",
+  "countryCode": "+249",
+  "en": "Sudan",
+  "ar": "السودان",
+  "default": false,
+  "defualtCityID": 2001,
+  "cities": [
+    {
+      "id": 2001,
+      "en": "Khartoum",
+      "ar": "الخرطوم",
+      "lat": 15.5007,
+      "lng": 32.5599,
+      "states": [
+        {"id": 200101, "en": "Al Amarat", "ar": "العمارات"},
+        {"id": 200102, "en": "Bahri", "ar": "بحري"},
+        {"id": 200103, "en": "Omdurman", "ar": "أم درمان"}
+      ]
+    },
+    {
+      "id": 2002,
+      "en": "Port Sudan",
+      "ar": "بورتسودان",
+      "lat": 19.6167,
+      "lng": 37.2167,
+      "states": [
+        {"id": 200201, "en": "Downtown", "ar": "وسط المدينة"},
+        {"id": 200202, "en": "Al Sawakin", "ar": "سواكن"},
+        {"id": 200203, "en": "Al Diem", "ar": "الديوم"}
+      ]
+    },
+    {
+      "id": 2003,
+      "en": "Kassala",
+      "ar": "كسلا",
+      "lat": 15.4500,
+      "lng": 36.4000,
+      "states": [
+        {"id": 200301, "en": "Al Gash", "ar": "القاش"},
+        {"id": 200302, "en": "Al Halfa", "ar": "حلفا"},
+        {"id": 200303, "en": "Khatmiya", "ar": "الختمية"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 3,
+  "iso": "BH",
+  "countryCode": "+973",
+  "en": "Bahrain",
+  "ar": "البحرين",
+  "default": false,
+  "defualtCityID": 3001,
+  "cities": [
+    {
+      "id": 3001,
+      "en": "Manama",
+      "ar": "المنامة",
+      "lat": 26.2235,
+      "lng": 50.5876,
+      "states": [
+        {"id": 300101, "en": "Adliya", "ar": "عدلية"},
+        {"id": 300102, "en": "Hoora", "ar": "الحورة"},
+        {"id": 300103, "en": "Juffair", "ar": "الجفير"}
+      ]
+    },
+    {
+      "id": 3002,
+      "en": "Muharraq",
+      "ar": "المحرق",
+      "lat": 26.2573,
+      "lng": 50.6119,
+      "states": [
+        {"id": 300201, "en": "Arad", "ar": "عراد"},
+        {"id": 300202, "en": "Busaiteen", "ar": "بسيتين"},
+        {"id": 300203, "en": "Hidd", "ar": "الحد"}
+      ]
+    },
+    {
+      "id": 3003,
+      "en": "Riffa",
+      "ar": "الرفاع",
+      "lat": 26.1290,
+      "lng": 50.5550,
+      "states": [
+        {"id": 300301, "en": "West Riffa", "ar": "الرفاع الغربي"},
+        {"id": 300302, "en": "East Riffa", "ar": "الرفاع الشرقي"},
+        {"id": 300303, "en": "Bukuwarah", "ar": "بكورة"}
+      ]
+    }
+  ]
+}
+
+,
+{
+  "id": 4,
+  "iso": "SY",
+  "countryCode": "+963",
+  "en": "Syria",
+  "ar": "سوريا",
+  "default": false,
+  "defualtCityID": 4001,
+  "cities": [
+    {
+      "id": 4001,
+      "en": "Damascus",
+      "ar": "دمشق",
+      "lat": 33.5138,
+      "lng": 36.2765,
+      "states": [
+        {"id": 400101, "en": "Old City", "ar": "المدينة القديمة"},
+        {"id": 400102, "en": "Malki", "ar": "المالكي"},
+        {"id": 400103, "en": "Mezzeh", "ar": "المزة"}
+      ]
+    },
+    {
+      "id": 4002,
+      "en": "Aleppo",
+      "ar": "حلب",
+      "lat": 36.2021,
+      "lng": 37.1343,
+      "states": [
+        {"id": 400201, "en": "Al Jamiliyah", "ar": "الجميلية"},
+        {"id": 400202, "en": "Aziziyeh", "ar": "العزيزية"},
+        {"id": 400203, "en": "New Aleppo", "ar": "حلب الجديدة"}
+      ]
+    },
+    {
+      "id": 4003,
+      "en": "Homs",
+      "ar": "حمص",
+      "lat": 34.7324,
+      "lng": 36.7138,
+      "states": [
+        {"id": 400301, "en": "Al Hamidiyah", "ar": "الحميدية"},
+        {"id": 400302, "en": "Inshaat", "ar": "الإنشاءات"},
+        {"id": 400303, "en": "Al Waer", "ar": "الوعر"}
+      ]
+    }
+  ]
+}
+
+,
+{
+  "id": 5,
+  "iso": "LB",
+  "countryCode": "+961",
+  "en": "Lebanon",
+  "ar": "لبنان",
+  "default": false,
+  "defualtCityID": 5001,
+  "cities": [
+    {
+      "id": 5001,
+      "en": "Beirut",
+      "ar": "بيروت",
+      "lat": 33.8938,
+      "lng": 35.5018,
+      "states": [
+        {"id": 500101, "en": "Hamra", "ar": "الحمرا"},
+        {"id": 500102, "en": "Achrafieh", "ar": "الأشرفية"},
+        {"id": 500103, "en": "Gemmayzeh", "ar": "الجميزة"}
+      ]
+    },
+    {
+      "id": 5002,
+      "en": "Tripoli",
+      "ar": "طرابلس",
+      "lat": 34.4381,
+      "lng": 35.8308,
+      "states": [
+        {"id": 500201, "en": "El Mina", "ar": "الميناء"},
+        {"id": 500202, "en": "Abou Samra", "ar": "أبو سمرا"},
+        {"id": 500203, "en": "Zahriyeh", "ar": "الزهرية"}
+      ]
+    },
+    {
+      "id": 5003,
+      "en": "Sidon",
+      "ar": "صيدا",
+      "lat": 33.5571,
+      "lng": 35.3729,
+      "states": [
+        {"id": 500301, "en": "Old Saida", "ar": "صيدا القديمة"},
+        {"id": 500302, "en": "Aabra", "ar": "عبرا"},
+        {"id": 500303, "en": "Rmeileh", "ar": "رميلة"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 7,
+  "iso": "YE",
+  "countryCode": "+967",
+  "en": "Yemen",
+  "ar": "اليمن",
+  "default": false,
+  "defualtCityID": 7001,
+  "cities": [
+    {
+      "id": 7001,
+      "en": "Sana'a",
+      "ar": "صنعاء",
+      "lat": 15.3694,
+      "lng": 44.1910,
+      "states": [
+        {"id": 700101, "en": "Old City", "ar": "المدينة القديمة"},
+        {"id": 700102, "en": "Al Tahrir", "ar": "التحرير"},
+        {"id": 700103, "en": "Hadda", "ar": "حدة"}
+      ]
+    },
+    {
+      "id": 7002,
+      "en": "Aden",
+      "ar": "عدن",
+      "lat": 12.7855,
+      "lng": 45.0187,
+      "states": [
+        {"id": 700201, "en": "Crater", "ar": "كريتر"},
+        {"id": 700202, "en": "Khormaksar", "ar": "خور مكسر"},
+        {"id": 700203, "en": "Mansoura", "ar": "المنصورة"}
+      ]
+    },
+    {
+      "id": 7003,
+      "en": "Taiz",
+      "ar": "تعز",
+      "lat": 13.5795,
+      "lng": 44.0209,
+      "states": [
+        {"id": 700301, "en": "Al Mudhaffar", "ar": "المظفر"},
+        {"id": 700302, "en": "Al Qahirah", "ar": "القاهرة"},
+        {"id": 700303, "en": "Salah", "ar": "صالة"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 8,
+  "iso": "OM",
+  "countryCode": "+968",
+  "en": "Oman",
+  "ar": "عُمان",
+  "default": false,
+  "defualtCityID": 8001,
+  "cities": [
+    {
+      "id": 8001,
+      "en": "Muscat",
+      "ar": "مسقط",
+      "lat": 23.5880,
+      "lng": 58.3829,
+      "states": [
+        {"id": 800101, "en": "Muttrah", "ar": "مطرح"},
+        {"id": 800102, "en": "Ruwi", "ar": "روي"},
+        {"id": 800103, "en": "Al Qurum", "ar": "القرم"}
+      ]
+    },
+    {
+      "id": 8002,
+      "en": "Salalah",
+      "ar": "صلالة",
+      "lat": 17.0151,
+      "lng": 54.0924,
+      "states": [
+        {"id": 800201, "en": "Al Haffa", "ar": "الحافة"},
+        {"id": 800202, "en": "Auqad", "ar": "عوقد"},
+        {"id": 800203, "en": "Ayn", "ar": "عين"}
+      ]
+    },
+    {
+      "id": 8003,
+      "en": "Sohar",
+      "ar": "صحار",
+      "lat": 24.3400,
+      "lng": 56.7290,
+      "states": [
+        {"id": 800301, "en": "Al Humbar", "ar": "الهمبار"},
+        {"id": 800302, "en": "Falaj Al Qabail", "ar": "فلج القبائل"},
+        {"id": 800303, "en": "Liwa", "ar": "لوى"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 9,
+  "iso": "KW",
+  "countryCode": "+965",
+  "en": "Kuwait",
+  "ar": "الكويت",
+  "default": false,
+  "defualtCityID": 9001,
+  "cities": [
+    {
+      "id": 9001,
+      "en": "Kuwait City",
+      "ar": "مدينة الكويت",
+      "lat": 29.3759,
+      "lng": 47.9774,
+      "states": [
+        {"id": 900101, "en": "Sharq", "ar": "شرق"},
+        {"id": 900102, "en": "Salmiya", "ar": "السالمية"},
+        {"id": 900103, "en": "Jabriya", "ar": "الجابرية"}
+      ]
+    },
+    {
+      "id": 9002,
+      "en": "Hawalli",
+      "ar": "حولّي",
+      "lat": 29.3330,
+      "lng": 48.0287,
+      "states": [
+        {"id": 900201, "en": "Bayan", "ar": "بيان"},
+        {"id": 900202, "en": "Rumaithiya", "ar": "الرميثية"},
+        {"id": 900203, "en": "Salwa", "ar": "سلوى"}
+      ]
+    },
+    {
+      "id": 9003,
+      "en": "Fahaheel",
+      "ar": "الفحيحيل",
+      "lat": 29.0825,
+      "lng": 48.1303,
+      "states": [
+        {"id": 900301, "en": "Mangaf", "ar": "المنقف"},
+        {"id": 900302, "en": "Abu Halifa", "ar": "أبو حليفة"},
+        {"id": 900303, "en": "Egaila", "ar": "العقيلة"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 10,
+  "iso": "LY",
+  "countryCode": "+218",
+  "en": "Libya",
+  "ar": "ليبيا",
+  "default": false,
+  "defualtCityID": 10001,
+  "cities": [
+    {
+      "id": 10001,
+      "en": "Tripoli",
+      "ar": "طرابلس",
+      "lat": 32.8872,
+      "lng": 13.1913,
+      "states": [
+        {"id": 1000101, "en": "Ben Ashour", "ar": "بن عاشور"},
+        {"id": 1000102, "en": "Gargaresh", "ar": "قرقارش"},
+        {"id": 1000103, "en": "Hay Al Andalus", "ar": "حي الأندلس"}
+      ]
+    },
+    {
+      "id": 10002,
+      "en": "Benghazi",
+      "ar": "بنغازي",
+      "lat": 32.1167,
+      "lng": 20.0667,
+      "states": [
+        {"id": 1000201, "en": "Al Sabri", "ar": "الصابري"},
+        {"id": 1000202, "en": "Bu Atni", "ar": "بوعطني"},
+        {"id": 1000203, "en": "Garyounis", "ar": "قاريونس"}
+      ]
+    },
+    {
+      "id": 10003,
+      "en": "Misrata",
+      "ar": "مصراتة",
+      "lat": 32.3776,
+      "lng": 15.0920,
+      "states": [
+        {"id": 1000301, "en": "Zawiyat Al Mahjoub", "ar": "زاوية المحجوب"},
+        {"id": 1000302, "en": "Ghiran", "ar": "غيران"},
+        {"id": 1000303, "en": "Tawergha", "ar": "تاورغاء"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 11,
+  "iso": "MA",
+  "countryCode": "+212",
+  "en": "Morocco",
+  "ar": "المغرب",
+  "default": false,
+  "defualtCityID": 11002,
+  "cities": [
+    {
+      "id": 11001,
+      "en": "Casablanca",
+      "ar": "الدار البيضاء",
+      "lat": 33.5731,
+      "lng": -7.5898,
+      "states": [
+        {"id": 1100101, "en": "Maarif", "ar": "المعاريف"},
+        {"id": 1100102, "en": "Ain Diab", "ar": "عين الذياب"},
+        {"id": 1100103, "en": "Sidi Belyout", "ar": "سيدي بليوط"}
+      ]
+    },
+    {
+      "id": 11002,
+      "en": "Rabat",
+      "ar": "الرباط",
+      "lat": 34.0209,
+      "lng": -6.8416,
+      "states": [
+        {"id": 1100201, "en": "Agdal", "ar": "أكدال"},
+        {"id": 1100202, "en": "Souissi", "ar": "السويسي"},
+        {"id": 1100203, "en": "Medina", "ar": "المدينة القديمة"}
+      ]
+    },
+    {
+      "id": 11003,
+      "en": "Marrakesh",
+      "ar": "مراكش",
+      "lat": 31.6295,
+      "lng": -7.9811,
+      "states": [
+        {"id": 1100301, "en": "Gueliz", "ar": "كيليز"},
+        {"id": 1100302, "en": "Medina", "ar": "المدينة"},
+        {"id": 1100303, "en": "Hivernage", "ar": "إيفيرناج"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 12,
+  "iso": "DZ",
+  "countryCode": "+213",
+  "en": "Algeria",
+  "ar": "الجزائر",
+  "default": false,
+  "defualtCityID": 12001,
+  "cities": [
+    {
+      "id": 12001,
+      "en": "Algiers",
+      "ar": "الجزائر العاصمة",
+      "lat": 36.7538,
+      "lng": 3.0588,
+      "states": [
+        {"id": 1200101, "en": "Bab El Oued", "ar": "باب الواد"},
+        {"id": 1200102, "en": "El Madania", "ar": "المدنية"},
+        {"id": 1200103, "en": "Hydra", "ar": "حيدرة"}
+      ]
+    },
+    {
+      "id": 12002,
+      "en": "Oran",
+      "ar": "وهران",
+      "lat": 35.6969,
+      "lng": -0.6331,
+      "states": [
+        {"id": 1200201, "en": "Eckmuhl", "ar": "إكمول"},
+        {"id": 1200202, "en": "El Hamri", "ar": "الحمري"},
+        {"id": 1200203, "en": "Sidi El Houari", "ar": "سيدي الهواري"}
+      ]
+    },
+    {
+      "id": 12003,
+      "en": "Constantine",
+      "ar": "قسنطينة",
+      "lat": 36.3650,
+      "lng": 6.6147,
+      "states": [
+        {"id": 1200301, "en": "El Kantara", "ar": "القنطرة"},
+        {"id": 1200302, "en": "Ziadia", "ar": "زيادية"},
+        {"id": 1200303, "en": "Coudiat", "ar": "قودية"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 13,
+  "iso": "TN",
+  "countryCode": "+216",
+  "en": "Tunisia",
+  "ar": "تونس",
+  "default": false,
+  "defualtCityID": 13001,
+  "cities": [
+    {
+      "id": 13001,
+      "en": "Tunis",
+      "ar": "تونس العاصمة",
+      "lat": 36.8065,
+      "lng": 10.1815,
+      "states": [
+        {"id": 1300101, "en": "La Marsa", "ar": "المرسى"},
+        {"id": 1300102, "en": "Carthage", "ar": "قرطاج"},
+        {"id": 1300103, "en": "Le Kram", "ar": "الكرم"}
+      ]
+    },
+    {
+      "id": 13002,
+      "en": "Sfax",
+      "ar": "صفاقس",
+      "lat": 34.7406,
+      "lng": 10.7603,
+      "states": [
+        {"id": 1300201, "en": "Sakiet Ezzit", "ar": "ساقية الزيت"},
+        {"id": 1300202, "en": "Sakiet Eddaier", "ar": "ساقية الدائر"},
+        {"id": 1300203, "en": "Thyna", "ar": "طينة"}
+      ]
+    },
+    {
+      "id": 13003,
+      "en": "Sousse",
+      "ar": "سوسة",
+      "lat": 35.8256,
+      "lng": 10.6369,
+      "states": [
+        {"id": 1300301, "en": "Hammam Sousse", "ar": "حمام سوسة"},
+        {"id": 1300302, "en": "Bouhsina", "ar": "بوهسينة"},
+        {"id": 1300303, "en": "Medina", "ar": "المدينة القديمة"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 14,
+  "iso": "EG",
+  "countryCode": "+20",
+  "en": "Egypt",
+  "ar": "مصر",
+  "default": false,
+  "defualtCityID": 14001,
+  "cities": [
+    {
+      "id": 14001,
+      "en": "Cairo",
+      "ar": "القاهرة",
+      "lat": 30.0444,
+      "lng": 31.2357,
+      "states": [
+        {"id": 1400101, "en": "Nasr City", "ar": "مدينة نصر"},
+        {"id": 1400102, "en": "Heliopolis", "ar": "مصر الجديدة"},
+        {"id": 1400103, "en": "Zamalek", "ar": "الزمالك"}
+      ]
+    },
+    {
+      "id": 14002,
+      "en": "Alexandria",
+      "ar": "الإسكندرية",
+      "lat": 31.2001,
+      "lng": 29.9187,
+      "states": [
+        {"id": 1400201, "en": "Sidi Gaber", "ar": "سيدي جابر"},
+        {"id": 1400202, "en": "Montaza", "ar": "المنتزه"},
+        {"id": 1400203, "en": "Smouha", "ar": "سموحة"}
+      ]
+    },
+    {
+      "id": 14003,
+      "en": "Giza",
+      "ar": "الجيزة",
+      "lat": 30.0131,
+      "lng": 31.2089,
+      "states": [
+        {"id": 1400301, "en": "Dokki", "ar": "الدقي"},
+        {"id": 1400302, "en": "Mohandessin", "ar": "المهندسين"},
+        {"id": 1400303, "en": "Haram", "ar": "الهرم"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 15,
+  "iso": "QA",
+  "countryCode": "+974",
+  "en": "Qatar",
+  "ar": "قطر",
+  "default": false,
+  "defualtCityID": 15001,
+  "cities": [
+    {
+      "id": 15001,
+      "en": "Doha",
+      "ar": "الدوحة",
+      "lat": 25.276987,
+      "lng": 51.520008,
+      "states": [
+        {"id": 1500101, "en": "West Bay", "ar": "الخليج الغربي"},
+        {"id": 1500102, "en": "Al Sadd", "ar": "السد"},
+        {"id": 1500103, "en": "The Pearl", "ar": "اللؤلؤة"}
+      ]
+    },
+    {
+      "id": 15002,
+      "en": "Al Wakrah",
+      "ar": "الوكرة",
+      "lat": 25.1715,
+      "lng": 51.6034,
+      "states": [
+        {"id": 1500201, "en": "Al Wukair", "ar": "الوكير"},
+        {"id": 1500202, "en": "Barwa Village", "ar": "قرية بروة"},
+        {"id": 1500203, "en": "Old Wakrah", "ar": "الوكرة القديمة"}
+      ]
+    },
+    {
+      "id": 15003,
+      "en": "Al Khor",
+      "ar": "الخور",
+      "lat": 25.6804,
+      "lng": 51.5058,
+      "states": [
+        {"id": 1500301, "en": "Al Thakhira", "ar": "الذخيرة"},
+        {"id": 1500302, "en": "Al Khor City Center", "ar": "وسط مدينة الخور"},
+        {"id": 1500303, "en": "Simaisma", "ar": "سميسمة"}
+      ]
+    }
+  ]
+}
+,
+{
+  "id": 17,
+  "iso": "IQ",
+  "countryCode": "+964",
+  "en": "Iraq",
+  "ar": "العراق",
+  "default": false,
+  "defualtCityID": 17001,
+  "cities": [
+    {
+      "id": 17001,
+      "en": "Baghdad",
+      "ar": "بغداد",
+      "lat": 33.3152,
+      "lng": 44.3661,
+      "states": [
+        {"id": 1700101, "en": "Karrada", "ar": "الكرادة"},
+        {"id": 1700102, "en": "Mansour", "ar": "المنصور"},
+        {"id": 1700103, "en": "Adhamiyah", "ar": "الأعظمية"}
+      ]
+    },
+    {
+      "id": 17002,
+      "en": "Basra",
+      "ar": "البصرة",
+      "lat": 30.5085,
+      "lng": 47.7804,
+      "states": [
+        {"id": 1700201, "en": "Ashar", "ar": "العشار"},
+        {"id": 1700202, "en": "Al Qibla", "ar": "القبلة"},
+        {"id": 1700203, "en": "Hayaniya", "ar": "الحيانية"}
+      ]
+    },
+    {
+      "id": 17003,
+      "en": "Erbil",
+      "ar": "أربيل",
+      "lat": 36.1911,
+      "lng": 44.0092,
+      "states": [
+        {"id": 1700301, "en": "Ainkawa", "ar": "عينكاوا"},
+        {"id": 1700302, "en": "Italian Village", "ar": "القرية الإيطالية"},
+        {"id": 1700303, "en": "Koya Road", "ar": "طريق كوية"}
+      ]
+    }
+  ]
+}]

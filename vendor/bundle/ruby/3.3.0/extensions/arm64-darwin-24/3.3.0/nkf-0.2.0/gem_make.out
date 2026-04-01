@@ -1,0 +1,18 @@
+current directory: /Users/mohammedahmed/Desktop/PureData/Pure Pets Firebase/vendor/bundle/ruby/3.3.0/gems/nkf-0.2.0/ext/nkf
+/Users/mohammedahmed/.rvm/rubies/ruby-3.3.6/bin/ruby extconf.rb
+creating Makefile
+
+current directory: /Users/mohammedahmed/Desktop/PureData/Pure Pets Firebase/vendor/bundle/ruby/3.3.0/gems/nkf-0.2.0/ext/nkf
+make DESTDIR\= sitearchdir\=./.gem.20250706-81613-mcpccj sitelibdir\=./.gem.20250706-81613-mcpccj clean
+
+current directory: /Users/mohammedahmed/Desktop/PureData/Pure Pets Firebase/vendor/bundle/ruby/3.3.0/gems/nkf-0.2.0/ext/nkf
+make DESTDIR\= sitearchdir\=./.gem.20250706-81613-mcpccj sitelibdir\=./.gem.20250706-81613-mcpccj
+compiling nkf.c
+linking shared-object nkf.bundle
+
+current directory: /Users/mohammedahmed/Desktop/PureData/Pure Pets Firebase/vendor/bundle/ruby/3.3.0/gems/nkf-0.2.0/ext/nkf
+make DESTDIR\= sitearchdir\=./.gem.20250706-81613-mcpccj sitelibdir\=./.gem.20250706-81613-mcpccj install
+/opt/homebrew/opt/coreutils/bin/ginstall -c -m 0755 nkf.bundle ./.gem.20250706-81613-mcpccj
+
+current directory: /Users/mohammedahmed/Desktop/PureData/Pure Pets Firebase/vendor/bundle/ruby/3.3.0/gems/nkf-0.2.0/ext/nkf
+make DESTDIR\= sitearchdir\=./.gem.20250706-81613-mcpccj sitelibdir\=./.gem.20250706-81613-mcpccj clean

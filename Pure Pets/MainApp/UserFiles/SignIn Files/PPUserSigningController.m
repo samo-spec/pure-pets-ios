@@ -1,0 +1,1734 @@
+//
+//  PPUserSigningController.m
+//  Pure Pets
+//
+//  Created by Mohammed Ahmed on 17/11/2025.
+//
+
+
+#import "PPUserSigningController.h"
+#import "CitiesManager.h"
+#import "CountryModel.h"
+
+static NSString * const kPPUsersCollection = @"UsersCol";
+static NSString * const kPPDefaultsAuthVerificationIDKey = @"authVerificationID";
+static NSString * const kPPDefaultsUserTokenKey = @"PPUserTokenID";
+static NSString * const kPPFirestoreUserNameField = @"UserName";
+static NSString * const kPPSheetCustomMediumDetentIdentifier = @"pp_auth_custom_medium";
+static NSUInteger const kPPMinimumPhoneDigits = 6;
+static NSTimeInterval const kPPSMSCooldownSeconds = 30.0;
+static NSInteger const kPPAppleSignInMaxRetryCount = 1;
+
+#if DEBUG
+#define PPAuthDebugLog(...) NSLog(__VA_ARGS__)
+#else
+#define PPAuthDebugLog(...)
+#endif
+
+static inline void PPDispatchMain(void (^block)(void)) {
+    if (!block) {
+        return;
+    }
+    if ([NSThread isMainThread]) {
+        block();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), block);
+    }
+}
+
+@interface PPUserSigningController () <ASAuthorizationControllerDelegate, ASAuthorizationControllerPresentationContextProviding>
+
+#pragma mark - UI Components
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIStackView *containerStack;
+@property (nonatomic, strong) UIView *backgroundView;
+
+// Header
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+
+// Phone Auth
+@property (nonatomic, strong) UIStackView *phoneStack;
+@property (nonatomic, strong) UIButton *countryCodePickerBtn;
+@property (nonatomic, strong) UITextField *phoneNumberField;
+@property (nonatomic, strong) UIButton *continuePhoneButton;
+
+// Social Auth
+@property (nonatomic, strong) UIView *separatorView;
+@property (nonatomic, strong) UIButton *appleSignInButton;
+@property (nonatomic, strong) UIButton *googleSignInButton;
+@property (nonatomic, strong) UIButton *closeButton;
+
+#pragma mark - State
+@property (nonatomic, strong) NSString *verificationID;
+@property (nonatomic, strong) NSString *currentNonce;
+@property (nonatomic, strong) NSString *currentPhoneCode;
+@property (nonatomic, strong, nullable) CountryCodeModel *autoDetectedCountry;
+@property (nonatomic, strong) NSString *normalizedPhoneDigits;
+@property (nonatomic, assign) BOOL isKeyboardVisible;
+@property (nonatomic, assign) BOOL keyboardObserversRegistered;
+@property (nonatomic, assign) BOOL shouldFocusPhoneFieldOnAppear;
+@property (nonatomic, assign) BOOL isAuthenticating;
+@property (nonatomic, assign) NSInteger appleSignInRetryCount;
+@property (nonatomic, assign) NSInteger phoneCooldownRemaining;
+@property (nonatomic, strong, nullable) NSTimer *phoneCooldownTimer;
+@property (nonatomic, strong, nullable) NSArray *savedSheetDetents;
+@property (nonatomic, strong) CAGradientLayer *layer;
+@end
+
+@implementation PPUserSigningController
+
+#pragma mark - Initialization
+
+- (instancetype)initWithPresentationStyle:(PPUserSigningPresentationStyle)style {
+    self = [super init];
+    if (self) {
+        _presentationStyle = style;
+        _defaultCountryCode = @"+974";
+        _shouldAutoDismissOnSuccess = YES;
+        _shouldCreateUserDocument = YES;
+    }
+    return self;
+}
+
+- (instancetype)init {
+    return [self initWithPresentationStyle:PPUserSigningPresentationStyleSheet];
+}
+
+#pragma mark - Lifecycle
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    [self setupView];
+    [self setupConstraints];
+    self.shouldFocusPhoneFieldOnAppear = YES;
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self.view layoutSubviews];
+    if (self.shouldFocusPhoneFieldOnAppear) {
+        self.shouldFocusPhoneFieldOnAppear = NO;
+        [self.phoneNumberField becomeFirstResponder];
+    }
+}
+
+- (void)dealloc {
+    [self.phoneCooldownTimer invalidate];
+    self.phoneCooldownTimer = nil;
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - Setup
+
+- (void)setupView {
+    // Configure main view
+    self.view.backgroundColor = PPBackgroundColorForIOS26([AppBackgroundClr colorWithAlphaComponent:0.95]);
+    
+    // Setup background with blur effect
+    [self setupBackground];
+    
+    // Configure modal presentation
+    [self configureModalPresentation];
+    
+    // Create UI hierarchy
+    [self createUI];
+}
+
+- (void)setupBackground {
+    if (@available(iOS 26.0, *))
+    {
+        self.view.backgroundColor = PPBackgroundColorForIOS26(AppClearClr);
+    }
+    else if (@available(iOS 15.0, *)) {
+        UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+        blurView.frame = self.view.bounds;
+        blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [self.view addSubview:blurView];
+        self.backgroundView = blurView;
+    } else {
+        self.view.backgroundColor = PPBackgroundColorForIOS26([UIColor systemBackgroundColor]);
+    }
+}
+
+- (void)configureModalPresentation {
+    CGFloat height = UIScreen.mainScreen.bounds.size.height;
+    
+    UISheetPresentationControllerDetent *customMedium = [UISheetPresentationControllerDetent mediumDetent];
+    if (@available(iOS 16.0, *)) {
+        customMedium = [UISheetPresentationControllerDetent customDetentWithIdentifier:kPPSheetCustomMediumDetentIdentifier
+                                                                              resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+            return height * 0.6; // your custom medium height
+        }];
+    } else {
+        // Fallback on earlier versions
+    }
+    switch (self.presentationStyle) {
+        case PPUserSigningPresentationStyleSheet:
+            if (@available(iOS 15.0, *)) {
+                self.modalPresentationStyle = UIModalPresentationPageSheet;
+                UISheetPresentationController *sheet = self.sheetPresentationController;
+                sheet.detents = @[customMedium];
+                sheet.prefersGrabberVisible = YES;
+                sheet.preferredCornerRadius = 42.0;
+                sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
+                if (@available(iOS 16.0, *)) {
+                    sheet.selectedDetentIdentifier = kPPSheetCustomMediumDetentIdentifier;
+                }
+                
+            } else {
+                self.modalPresentationStyle = UIModalPresentationFormSheet;
+                self.modalInPresentation  = NO;
+            }
+            break;
+            
+        case PPUserSigningPresentationStyleFullScreen:
+            self.modalPresentationStyle = UIModalPresentationFullScreen;
+            break;
+    }
+    self.modalInPresentation  = NO;
+}
+
+- (void)createUI {
+    // Scroll View
+    self.scrollView = [[UIScrollView alloc] init];
+    self.scrollView.showsVerticalScrollIndicator = NO;
+    self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.scrollEnabled = NO;
+    [self.view addSubview:self.scrollView];
+    
+    // Container Stack
+    self.containerStack = [[UIStackView alloc] init];
+    self.containerStack.axis = UILayoutConstraintAxisVertical;
+    self.containerStack.spacing = 32;
+    self.containerStack.alignment = UIStackViewAlignmentFill;
+    self.containerStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.scrollView addSubview:self.containerStack];
+    
+    // Header
+    [self setupHeader];
+    
+    // Phone Auth Section
+    [self setupPhoneAuthSection];
+    
+    // Separator
+    [self setupSeparator];
+    
+    // Social Auth Section
+    [self setupSocialAuthSection];
+    
+    // Close Button
+    [self setupCloseButton];
+}
+
+
+
+- (void)setupHeader {
+    UIStackView *headerStack = [[UIStackView alloc] init];
+    headerStack.axis = UILayoutConstraintAxisVertical;
+    headerStack.spacing = 8;
+    headerStack.alignment = UIStackViewAlignmentCenter;
+    
+    // Title Label
+    self.titleLabel = [[UILabel alloc] init];
+    self.titleLabel.text = kLang(@"auth_title_welcome");
+    self.titleLabel.font = [GM boldFontWithSize:26];
+    self.titleLabel.textColor = [UIColor labelColor];
+    self.titleLabel.textAlignment = NSTextAlignmentCenter;
+    self.titleLabel.numberOfLines = 0;
+    
+    // Subtitle Label
+    self.subtitleLabel = [[UILabel alloc] init];
+    self.subtitleLabel.text = kLang(@"auth_subtitle_continue");
+    self.subtitleLabel.font = [GM MidFontWithSize:16];
+    self.subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    self.subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.subtitleLabel.numberOfLines = 0;
+    
+    [headerStack addArrangedSubview:self.titleLabel];
+    [headerStack addArrangedSubview:self.subtitleLabel];
+    [self.containerStack addArrangedSubview:headerStack];
+}
+
+
+
+-(void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    
+    
+    UIButtonConfiguration *config = self.countryCodePickerBtn.configuration;
+    UIButtonConfiguration *continuePhoneButtonConfig = self.continuePhoneButton.configuration;
+    if (@available(iOS 26.0, *)) {
+        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        config.background.cornerRadius = 18;
+        config.background.backgroundColor =  AppBackgroundClrLigter;
+        
+        self.countryCodePickerBtn.layer.cornerRadius = 18;
+        self.countryCodePickerBtn.clipsToBounds = YES;
+        
+        
+        [self.countryCodePickerBtn setConfiguration:config];
+        [self.countryCodePickerBtn updateConfiguration];
+        
+        continuePhoneButtonConfig.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        continuePhoneButtonConfig.background.cornerRadius = 18;
+        
+        
+        continuePhoneButtonConfig.background
+            .backgroundColor =  [AppPrimaryClr colorWithAlphaComponent:1.0];
+        
+        [self.continuePhoneButton setConfiguration:continuePhoneButtonConfig];
+        [self.continuePhoneButton updateConfiguration];
+        
+    } else {
+        self.countryCodePickerBtn.layer.cornerRadius = 18;
+        self.countryCodePickerBtn.clipsToBounds = YES;
+    }
+    
+    //[Styling addLiquidGlassBorderToView:self.continuePhoneButton cornerRadius:20];
+    
+    [self.countryCodePickerBtn setNeedsLayout];
+    [self.countryCodePickerBtn layoutIfNeeded];
+    [self pp_applyCountryCodeToButton:self.currentPhoneCode];
+    if (!self.keyboardObserversRegistered) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(keyboardWillShow:)
+                                                     name:UIKeyboardWillShowNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(keyboardWillHide:)
+                                                     name:UIKeyboardWillHideNotification
+                                                   object:nil];
+        self.keyboardObserversRegistered = YES;
+    }
+    [self updateContinuePhoneButtonState];
+    
+}
+
+
+
+-(void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    [PPHUD dismiss];
+    if (self.keyboardObserversRegistered) {
+        [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
+        [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
+        self.keyboardObserversRegistered = NO;
+    }
+    [self unlockSheetDetentAfterKeyboard];
+}
+
+-(void)viewWillLayoutSubviews
+{
+    [super viewWillLayoutSubviews];
+}
+
+- (void)showPickerSheetWithData:(NSMutableArray *)data {
+    
+    __weak typeof(self) w = self;
+    PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc] initWithOptions:data title:@"" row:nil presentationStyle:PPSelectOptionPresentationSheet completion:^(id  _Nullable selectedObject) {
+        PPDispatchMain(^{
+            if (![selectedObject isKindOfClass:[CountryCodeModel class]]) {
+                return;
+            }
+            CountryCodeModel *selectedCountry = (CountryCodeModel *)selectedObject;
+            NSString *safePhoneCode = selectedCountry.phoneCode.length
+            ? selectedCountry.phoneCode
+            : (w.currentPhoneCode.length ? w.currentPhoneCode : w.defaultCountryCode);
+            if (safePhoneCode.length == 0) {
+                return;
+            }
+            w.autoDetectedCountry = selectedCountry;
+            if(PPIOS26())
+            {
+                self.currentPhoneCode = safePhoneCode;
+                UIButtonConfiguration *config = w.countryCodePickerBtn.configuration;
+                NSMutableAttributedString *title =
+                [[NSMutableAttributedString alloc] initWithString:safePhoneCode attributes:@{
+                        NSFontAttributeName: [GM boldFontWithSize:18],
+                        NSForegroundColorAttributeName: AppPrimaryClr }];
+
+                config.attributedTitle = title;
+                w.countryCodePickerBtn.configuration = config;
+            }
+            else
+            {
+                self.currentPhoneCode = safePhoneCode;
+                [w.countryCodePickerBtn setTitle:safePhoneCode forState:UIControlStateNormal];
+            }
+            [w.countryCodePickerBtn setNeedsLayout];
+            [w.countryCodePickerBtn layoutIfNeeded];
+        });
+        
+    }];
+    [self presentViewController:vc animated:YES completion:nil];
+    
+}
+
+
+
+- (void)showCountries
+{
+    NSMutableArray<CountryCodeModel *> *countries =
+        [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
+    if (countries.count == 0) {
+        return;
+    }
+    [self showPickerSheetWithData:countries];
+}
+
+- (void)setupPhoneAuthSection {
+    // Country Code Field
+    
+    UIButtonConfiguration *glassConfig;
+    if (@available(iOS 26.0, *)) {
+        glassConfig = [UIButtonConfiguration clearGlassButtonConfiguration];
+    } else {
+        glassConfig = [UIButtonConfiguration filledButtonConfiguration];
+    }
+    NSArray<CountryCodeModel *> *countries = [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
+    self.autoDetectedCountry = [self pp_resolveAutomaticCountryFromCountries:countries];
+    NSString *resolvedPhoneCode = self.autoDetectedCountry.phoneCode.length
+    ? self.autoDetectedCountry.phoneCode
+    : [self normalizedCountryCode:self.defaultCountryCode];
+    self.currentPhoneCode = [self normalizedCountryCode:resolvedPhoneCode];
+
+    self.countryCodePickerBtn = [PPButtonHelper pp_buttonWithTitle:self.currentPhoneCode font:[GM boldFontWithSize:18] textColor:AppPrimaryClr corners:18 imageName:@"" target:self config:glassConfig btnSize:56 action:@selector(showCountries)];
+    
+    [self.countryCodePickerBtn.widthAnchor constraintEqualToConstant:70].active = YES;
+    
+    
+    // Phone Number Field
+    self.phoneNumberField = [self createGlassTextField];
+    self.phoneNumberField.placeholder = kLang(@"Mobile Number");
+    self.phoneNumberField.keyboardType = UIKeyboardTypeASCIICapableNumberPad;
+    self.phoneNumberField.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.05];
+   // [Styling addLiquidGlassBorderToView:self.phoneNumberField cornerRadius:14];
+    // Phone Stack
+    self.phoneStack = [[UIStackView alloc] initWithArrangedSubviews:Language.isRTL ?@[ self.phoneNumberField,self.countryCodePickerBtn] : @[self.countryCodePickerBtn, self.phoneNumberField]];
+    self.phoneStack.axis = UILayoutConstraintAxisHorizontal;
+    self.phoneStack.spacing = 8;
+    self.phoneStack.distribution = UIStackViewDistributionFill;
+    
+    // Continue Button
+    self.continuePhoneButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"Continue with Mobile") font:[GM boldFontWithSize:17] textColor:[AppForgroundColr colorWithAlphaComponent:1.0] corners:18 imageName:@"" target:self config:glassConfig btnSize:56 action:@selector(handlePhoneSignIn)];
+    
+    
+ 
+    UIStackView *phoneSectionStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.phoneStack, self.continuePhoneButton]];
+    phoneSectionStack.axis = UILayoutConstraintAxisVertical;
+    phoneSectionStack.spacing = 12;
+    [self.containerStack addArrangedSubview:phoneSectionStack];
+    
+    phoneSectionStack.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    
+}
+
+
+- (void)setupSeparator {
+    self.separatorView = [[UIView alloc] init];
+    self.separatorView.backgroundColor = [UIColor separatorColor];
+    [self.separatorView.heightAnchor constraintEqualToConstant:1].active = YES;
+    
+    [self.containerStack addArrangedSubview:self.separatorView];
+}
+
+- (void)setupSocialAuthSection {
+    UIStackView *socialStack = [[UIStackView alloc] init];
+    socialStack.axis = UILayoutConstraintAxisVertical;
+    socialStack.spacing = 12;
+    
+    // Apple Sign In
+    if (@available(iOS 13.0, *)) {
+        self.appleSignInButton = [self createSocialButtonWithTitle:kLang(@"Sign in with Apple")
+                                                          iconName:@"applelogo"
+                                                         isPrimary:YES];
+        [self.appleSignInButton addTarget:self action:@selector(handleAppleSignIn) forControlEvents:UIControlEventTouchUpInside];
+        [socialStack addArrangedSubview:self.appleSignInButton];
+    }
+    
+    // Google Sign In
+    self.googleSignInButton = [self createSocialButtonWithTitle:kLang(@"Sign in with Google")
+                                                       iconName:@"g.circle"
+                                                      isPrimary:NO];
+    [self.googleSignInButton addTarget:self action:@selector(handleGoogleSignIn) forControlEvents:UIControlEventTouchUpInside];
+    [socialStack addArrangedSubview:self.googleSignInButton];
+    
+    [self.containerStack addArrangedSubview:socialStack];
+}
+
+
+- (void)setupCloseButton {
+    if (self.presentationStyle == PPUserSigningPresentationStyleSheet) {
+        UIButtonConfiguration *glassConfig;
+        if (@available(iOS 26.0, *)) {
+            glassConfig = [UIButtonConfiguration clearGlassButtonConfiguration];
+        } else {
+            glassConfig = [UIButtonConfiguration filledButtonConfiguration];
+        }
+        glassConfig.background.backgroundColor = [AppBackgroundClrLigter colorWithAlphaComponent:0.2];
+        
+        self.closeButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"Maybe Later") font:[GM MidFontWithSize:16] textColor:[UIColor secondaryLabelColor] corners:18 imageName:@"" target:self config:glassConfig btnSize:56 action:@selector(handleClose)];
+        [self.containerStack addArrangedSubview:self.closeButton];
+    }
+}
+
+#pragma mark - UI Factory Methods
+
+- (UITextField *)createGlassTextField {
+    UITextField *textField = [[UITextField alloc] init];
+    textField.translatesAutoresizingMaskIntoConstraints = NO;
+    textField.font = [GM boldFontWithSize:18];
+    textField.textColor = [UIColor labelColor];
+    textField.backgroundColor = [UIColor whiteColor];
+    textField.layer.cornerRadius = 18;
+    textField.clipsToBounds = YES;
+    textField.keyboardType =  UIKeyboardTypeASCIICapable;
+    [Styling addLiquidGlassBorderToView:textField cornerRadius:14];
+    // Add padding
+    UIView *paddingView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 16, 20)];
+    textField.leftView = paddingView;
+    textField.leftViewMode = UITextFieldViewModeAlways;
+    [textField.heightAnchor constraintEqualToConstant:52].active = YES;
+    
+    return textField;
+}
+
+
+- (UIButton *)createSocialButtonWithTitle:(NSString *)title iconName:(NSString *)iconName isPrimary:(BOOL)isPrimary {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    // Configuration
+    UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+    config.image = [UIImage systemImageNamed:iconName];
+    config.imagePadding = 8;
+    config.title = title;
+    config.baseForegroundColor = isPrimary ? [UIColor whiteColor] : [UIColor labelColor];
+    config.background.backgroundColor = isPrimary ? [UIColor blackColor] : [AppBackgroundClrLigter colorWithAlphaComponent:0.9];
+    config.background.cornerRadius = 18;
+    
+   
+    button.configuration = config;
+    [button.heightAnchor constraintEqualToConstant:54].active = YES;
+    
+    return button;
+}
+
+#pragma mark - Constraints
+
+- (void)setupConstraints {
+    [NSLayoutConstraint activateConstraints:@[
+        // Scroll View
+        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+        
+        // Container Stack
+        [self.containerStack.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor constant:30],
+        [self.containerStack.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor constant:32],
+        [self.containerStack.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor constant:-32],
+        [self.containerStack.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor constant:-20],
+        [self.containerStack.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor constant:-64]
+    ]];
+}
+
+#pragma mark - Keyboard Handling
+
+- (void)keyboardWillShow:(NSNotification *)notification {
+    if (self.isKeyboardVisible) return;
+    
+    NSDictionary *userInfo = notification.userInfo;
+    CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    NSTimeInterval duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    
+    [UIView animateWithDuration:duration animations:^{
+        UIEdgeInsets contentInset = self.scrollView.contentInset;
+        contentInset.bottom = keyboardFrame.size.height - self.view.safeAreaInsets.bottom;
+        self.scrollView.contentInset = contentInset;
+        self.scrollView.scrollIndicatorInsets = contentInset;
+    }];
+    
+    self.isKeyboardVisible = YES;
+    
+    self.view.backgroundColor = PPBackgroundColorForIOS26([AppBackgroundClr  colorWithAlphaComponent:1.0]);
+    [self lockSheetDetentForKeyboard];
+}
+
+- (void)keyboardWillHide:(NSNotification *)notification {
+    if (!self.isKeyboardVisible) return;
+    
+    NSDictionary *userInfo = notification.userInfo;
+    NSTimeInterval duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    
+    [UIView animateWithDuration:duration animations:^{
+        self.scrollView.contentInset = UIEdgeInsetsZero;
+        self.scrollView.scrollIndicatorInsets = UIEdgeInsetsZero;
+    }];
+    
+    self.isKeyboardVisible = NO;
+    self.view.backgroundColor = PPBackgroundColorForIOS26([AppForgroundColr colorWithAlphaComponent:0.0]);
+    [self unlockSheetDetentAfterKeyboard];
+}
+
+- (void)lockSheetDetentForKeyboard {
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet = self.sheetPresentationController;
+        if (!sheet) {
+            return;
+        }
+        self.savedSheetDetents = sheet.detents;
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
+        if (@available(iOS 16.0, *)) {
+            [sheet animateChanges:^{
+                sheet.selectedDetentIdentifier = kPPSheetCustomMediumDetentIdentifier;
+            }];
+        } else {
+            sheet.largestUndimmedDetentIdentifier = UISheetPresentationControllerDetentIdentifierMedium;
+        }
+    }
+}
+
+- (void)unlockSheetDetentAfterKeyboard {
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet = self.sheetPresentationController;
+        if (!sheet) {
+            return;
+        }
+        if (self.savedSheetDetents.count > 0) {
+            sheet.detents = self.savedSheetDetents;
+            self.savedSheetDetents = nil;
+        }
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = YES;
+        if (@available(iOS 16.0, *)) {
+            [sheet animateChanges:^{
+                sheet.selectedDetentIdentifier = kPPSheetCustomMediumDetentIdentifier;
+            }];
+        } else {
+            sheet.largestUndimmedDetentIdentifier = nil;
+        }
+    }
+}
+  
+
+#pragma mark - Auth Handlers
+
+- (NSString *)normalizedCountryCode:(NSString *)countryCode {
+    NSString *trimmed = [[countryCode ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] stringByReplacingOccurrencesOfString:@" " withString:@""];
+    if (trimmed.length == 0) {
+        return self.defaultCountryCode ?: @"+974";
+    }
+    if (![trimmed hasPrefix:@"+"]) {
+        trimmed = [@"+" stringByAppendingString:trimmed];
+    }
+    return trimmed;
+}
+
+- (CountryCodeModel *)pp_countryWithID:(NSInteger)countryID
+                           inCountries:(NSArray<CountryCodeModel *> *)countries {
+    if (countryID <= 0 || countries.count == 0) {
+        return nil;
+    }
+    for (CountryCodeModel *country in countries) {
+        if (country.ID == countryID) {
+            return country;
+        }
+    }
+    return nil;
+}
+
+- (CountryCodeModel *)pp_countryWithISOCode:(NSString *)isoCode
+                                 inCountries:(NSArray<CountryCodeModel *> *)countries {
+    if (isoCode.length == 0 || countries.count == 0) {
+        return nil;
+    }
+    NSString *normalizedISO = isoCode.uppercaseString;
+    for (CountryCodeModel *country in countries) {
+        if ([country.isoCountryCode.uppercaseString isEqualToString:normalizedISO]) {
+            return country;
+        }
+    }
+    return nil;
+}
+
+- (CountryCodeModel *)pp_countryWithPhoneCode:(NSString *)phoneCode
+                                   inCountries:(NSArray<CountryCodeModel *> *)countries {
+    NSString *normalizedCode = [self normalizedCountryCode:phoneCode];
+    if (normalizedCode.length == 0 || countries.count == 0) {
+        return nil;
+    }
+    for (CountryCodeModel *country in countries) {
+        if ([[self normalizedCountryCode:country.phoneCode] isEqualToString:normalizedCode]) {
+            return country;
+        }
+    }
+    return nil;
+}
+
+- (CountryCodeModel *)pp_resolveAutomaticCountryFromCountries:(NSArray<CountryCodeModel *> *)countries {
+    if (countries.count == 0) {
+        return nil;
+    }
+
+    NSInteger explicitCountryID = UserManager.sharedManager.currentUser.CountryID;
+    if (explicitCountryID <= 0) {
+        explicitCountryID = [[NSUserDefaults standardUserDefaults] integerForKey:@"CountryID"];
+    }
+
+    CountryModel *currentCountry = CitiesManager.shared.CurrentCountry;
+    NSString *carrierISO = [GM getCurrentCountryFromCarrier];
+    NSString *localeISO = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
+
+    CountryCodeModel *resolved =
+    [self pp_countryWithID:explicitCountryID inCountries:countries];
+    if (!resolved) {
+        resolved = [self pp_countryWithISOCode:PPSafeString(carrierISO) inCountries:countries];
+    }
+    if (!resolved) {
+        resolved = [self pp_countryWithISOCode:PPSafeString(currentCountry.iso) inCountries:countries];
+    }
+    if (!resolved) {
+        resolved = [self pp_countryWithISOCode:PPSafeString(localeISO) inCountries:countries];
+    }
+    if (!resolved) {
+        resolved = [self pp_countryWithPhoneCode:PPSafeString(currentCountry.countryCode)
+                                     inCountries:countries];
+    }
+    if (!resolved) {
+        resolved = [self pp_countryWithPhoneCode:self.defaultCountryCode
+                                     inCountries:countries];
+    }
+    if (!resolved) {
+        resolved = [self pp_countryWithISOCode:@"QA" inCountries:countries];
+    }
+    return resolved ?: countries.firstObject;
+}
+
+- (void)pp_applyCountryCodeToButton:(NSString *)countryCode {
+    NSString *safePhoneCode = [self normalizedCountryCode:countryCode];
+    if (safePhoneCode.length == 0) {
+        return;
+    }
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *config = self.countryCodePickerBtn.configuration;
+        NSMutableAttributedString *title =
+        [[NSMutableAttributedString alloc] initWithString:safePhoneCode
+                                                attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:18],
+            NSForegroundColorAttributeName: AppPrimaryClr
+        }];
+        config.attributedTitle = title;
+        self.countryCodePickerBtn.configuration = config;
+    } else {
+        [self.countryCodePickerBtn setTitle:safePhoneCode forState:UIControlStateNormal];
+    }
+}
+
+- (void)pp_lockCountryCodePicker {
+    self.countryCodePickerBtn.enabled = NO;
+    self.countryCodePickerBtn.userInteractionEnabled = NO;
+    self.countryCodePickerBtn.accessibilityHint = kLang(@"Auto-selected from current country") ?: @"Auto-selected from current country";
+}
+
+- (NSString *)normalizedPhoneDigitsFromRawInput:(NSString *)rawInput hasInvalidCharacters:(BOOL *)hasInvalidCharacters {
+    NSString *trimmed = [[rawInput ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] stringByReplacingOccurrencesOfString:@" " withString:@""];
+    NSCharacterSet *digitsSet = [NSCharacterSet decimalDigitCharacterSet];
+    NSMutableString *digits = [NSMutableString string];
+    BOOL invalidCharacterFound = NO;
+    
+    for (NSUInteger i = 0; i < trimmed.length; i++) {
+        unichar ch = [trimmed characterAtIndex:i];
+        if ([digitsSet characterIsMember:ch]) {
+            NSString *rawDigit = [NSString stringWithFormat:@"%C", ch];
+            NSString *latinDigit = [rawDigit stringByApplyingTransform:NSStringTransformToLatin reverse:NO] ?: rawDigit;
+            NSCharacterSet *asciiDigits = [NSCharacterSet characterSetWithCharactersInString:@"0123456789"];
+            unichar normalized = latinDigit.length > 0 ? [latinDigit characterAtIndex:0] : 0;
+            if ([asciiDigits characterIsMember:normalized]) {
+                [digits appendFormat:@"%C", normalized];
+            } else {
+                invalidCharacterFound = YES;
+            }
+        } else {
+            invalidCharacterFound = YES;
+        }
+    }
+    
+    if (hasInvalidCharacters) {
+        *hasInvalidCharacters = invalidCharacterFound;
+    }
+    return digits;
+}
+
+- (void)setContinuePhoneButtonTitle:(NSString *)title {
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.continuePhoneButton.configuration;
+        config.title = title;
+        self.continuePhoneButton.configuration = config;
+    } else {
+        [self.continuePhoneButton setTitle:title forState:UIControlStateNormal];
+    }
+}
+
+- (void)updateContinuePhoneButtonState {
+    BOOL onCooldown = self.phoneCooldownRemaining > 0;
+    BOOL isAuthLocked = self.isAuthenticating;
+    BOOL enabled = !onCooldown && !isAuthLocked;
+    self.continuePhoneButton.enabled = enabled;
+    self.continuePhoneButton.alpha = enabled ? 1.0 : 0.6;
+    
+    if (onCooldown) {
+        [self setContinuePhoneButtonTitle:[NSString stringWithFormat:@"%@ (%lds)", kLang(@"Continue with Mobile"), (long)self.phoneCooldownRemaining]];
+    } else {
+        [self setContinuePhoneButtonTitle:kLang(@"Continue with Mobile")];
+    }
+}
+
+- (void)startPhoneSMSCooldown {
+    [self.phoneCooldownTimer invalidate];
+    self.phoneCooldownTimer = nil;
+    self.phoneCooldownRemaining = (NSInteger)kPPSMSCooldownSeconds;
+    [self updateContinuePhoneButtonState];
+    
+    __weak typeof(self) weakSelf = self;
+    self.phoneCooldownTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(NSTimer * _Nonnull timer) {
+        PPDispatchMain(^{
+            if (!weakSelf) {
+                [timer invalidate];
+                return;
+            }
+            weakSelf.phoneCooldownRemaining -= 1;
+            if (weakSelf.phoneCooldownRemaining <= 0) {
+                weakSelf.phoneCooldownRemaining = 0;
+                [weakSelf.phoneCooldownTimer invalidate];
+                weakSelf.phoneCooldownTimer = nil;
+            }
+            [weakSelf updateContinuePhoneButtonState];
+        });
+    }];
+}
+
+- (void)handlePhoneSignIn {
+    NSString *countryCode = [self normalizedCountryCode:self.currentPhoneCode];
+    BOOL hasInvalidCharacters = NO;
+    NSString *phoneDigits = [self normalizedPhoneDigitsFromRawInput:self.phoneNumberField.text hasInvalidCharacters:&hasInvalidCharacters];
+    
+    if (phoneDigits.length == 0) {
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"auth_phone_required_title")
+                            subtitle:kLang(@"auth_phone_required_message")];
+        return;
+    }
+    
+    if (hasInvalidCharacters) {
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"auth_error_title")
+                            subtitle:kLang(@"Please enter digits only.")];
+        return;
+    }
+    
+    if (phoneDigits.length < kPPMinimumPhoneDigits) {
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"auth_error_title")
+                            subtitle:kLang(@"Please enter a valid mobile number.")];
+        return;
+    }
+    
+    NSString *fullNumber = [NSString stringWithFormat:@"%@%@", countryCode, phoneDigits];
+    self.normalizedPhoneDigits = phoneDigits;
+    self.currentPhoneCode = countryCode;
+    self.phoneNumberField.text = phoneDigits;
+    self.isAuthenticating = YES;
+    [self updateContinuePhoneButtonState];
+    
+    [PPHUD showIndeterminateIn:self.view
+                          title:kLang(@"auth_sending_code_title")
+                       subtitle:nil];
+    [self setInteractionEnabled:NO];
+    
+    [[FIRPhoneAuthProvider provider] verifyPhoneNumber:fullNumber
+                                            UIDelegate:nil
+                                            completion:^(NSString * _Nullable verificationID, NSError * _Nullable error) {
+        PPDispatchMain(^{
+            [PPHUD dismiss];
+            self.isAuthenticating = NO;
+            [self setInteractionEnabled:YES];
+            [self updateContinuePhoneButtonState];
+            
+            if (error) {
+                [self notifySignInFailure:error];
+                [PPAlertHelper showErrorIn:self
+                                     title:kLang(@"auth_sending_code_failed_title")
+                                  subtitle:error.localizedDescription];
+                return;
+            }
+            if (verificationID.length == 0) {
+                NSError *verificationError = [NSError errorWithDomain:@"PPAuth"
+                                                                 code:1001
+                                                             userInfo:@{NSLocalizedDescriptionKey: kLang(@"Unable to start verification. Please try again.")}];
+                [self notifySignInFailure:verificationError];
+                [PPAlertHelper showErrorIn:self
+                                     title:kLang(@"auth_sending_code_failed_title")
+                                  subtitle:kLang(@"Unable to start verification. Please try again.")];
+                return;
+            }
+            
+            self.verificationID = verificationID;
+            [[NSUserDefaults standardUserDefaults] setObject:verificationID forKey:kPPDefaultsAuthVerificationIDKey];
+            [self startPhoneSMSCooldown];
+            
+            [self promptForVerificationCode];
+        });
+    }];
+}
+
+
+- (void)startAppleSignInFlowResetRetry:(BOOL)resetRetry {
+    if (self.isAuthenticating) {
+        return;
+    }
+    if (resetRetry) {
+        self.appleSignInRetryCount = 0;
+    }
+    self.isAuthenticating = YES;
+    [self setInteractionEnabled:NO];
+    [self updateContinuePhoneButtonState];
+    
+    if (@available(iOS 13.0, *)) {
+        NSString *nonce = [self randomNonce:32];
+        self.currentNonce = nonce;
+        
+        ASAuthorizationAppleIDProvider *appleProvider = [[ASAuthorizationAppleIDProvider alloc] init];
+        ASAuthorizationAppleIDRequest *request = [appleProvider createRequest];
+        request.requestedScopes = @[ASAuthorizationScopeFullName, ASAuthorizationScopeEmail];
+        request.nonce = [self stringBySha256HashingString:nonce];
+        
+        ASAuthorizationController *controller = [[ASAuthorizationController alloc] initWithAuthorizationRequests:@[request]];
+        controller.delegate = self;
+        controller.presentationContextProvider = self;
+        [controller performRequests];
+    } else {
+        self.isAuthenticating = NO;
+        [self setInteractionEnabled:YES];
+        [self updateContinuePhoneButtonState];
+        NSError *iosVersionError = [NSError errorWithDomain:@"PPAuth"
+                                                       code:1005
+                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"Apple Sign-In requires iOS 13 or later.")}];
+        [self notifySignInFailure:iosVersionError];
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"auth_error_title")
+                            subtitle:kLang(@"Apple Sign-In requires iOS 13 or later.")];
+    }
+}
+
+- (void)handleAppleSignIn {
+    [self startAppleSignInFlowResetRetry:YES];
+}
+
+- (nullable NSString *)pp_googleClientIDFromReversedScheme:(NSString *)scheme
+{
+    NSString *prefix = @"com.googleusercontent.apps.";
+    if (![scheme isKindOfClass:[NSString class]] || ![scheme hasPrefix:prefix]) {
+        return nil;
+    }
+    NSString *suffix = [scheme substringFromIndex:prefix.length];
+    if (suffix.length == 0) {
+        return nil;
+    }
+    return [NSString stringWithFormat:@"%@.apps.googleusercontent.com", suffix];
+}
+
+- (NSArray<NSString *> *)pp_googleClientIDCandidates
+{
+    NSDictionary *info = NSBundle.mainBundle.infoDictionary ?: @{};
+    NSMutableOrderedSet<NSString *> *candidates = [NSMutableOrderedSet orderedSet];
+
+    NSString *gidClientID = [info[@"GIDClientID"] isKindOfClass:[NSString class]] ? info[@"GIDClientID"] : nil;
+    if (gidClientID.length > 0) {
+        [candidates addObject:[gidClientID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+    }
+    NSString *firebaseClientID = [FIRApp defaultApp].options.clientID;
+    if (firebaseClientID.length > 0) {
+        [candidates addObject:[firebaseClientID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+    }
+
+    NSMutableSet<NSString *> *urlTypeSchemes = [NSMutableSet set];
+    id urlTypes = info[@"CFBundleURLTypes"];
+    if ([urlTypes isKindOfClass:[NSArray class]]) {
+        for (id urlType in (NSArray *)urlTypes) {
+            if (![urlType isKindOfClass:[NSDictionary class]]) {
+                continue;
+            }
+            NSDictionary *urlTypeDict = (NSDictionary *)urlType;
+            NSArray *schemes = [urlTypeDict[@"CFBundleURLSchemes"] isKindOfClass:[NSArray class]] ? urlTypeDict[@"CFBundleURLSchemes"] : @[];
+            for (id schemeObj in schemes) {
+                if (![schemeObj isKindOfClass:[NSString class]]) {
+                    continue;
+                }
+                NSString *scheme = (NSString *)schemeObj;
+                if ([scheme hasPrefix:@"com.googleusercontent.apps."]) {
+                    [urlTypeSchemes addObject:scheme];
+                    NSString *candidate = [self pp_googleClientIDFromReversedScheme:scheme];
+                    if (candidate.length > 0) {
+                        [candidates addObject:[candidate stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+                    }
+                }
+            }
+        }
+    }
+
+    NSMutableArray<NSString *> *result = [NSMutableArray array];
+    for (NSString *candidate in candidates) {
+        NSString *trimmed = [candidate stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (trimmed.length == 0) {
+            continue;
+        }
+        NSString *prefix = [trimmed stringByReplacingOccurrencesOfString:@".apps.googleusercontent.com" withString:@""];
+        NSString *reversedScheme = [NSString stringWithFormat:@"com.googleusercontent.apps.%@", prefix];
+        if (![urlTypeSchemes containsObject:reversedScheme]) {
+            continue;
+        }
+        if (trimmed.length > 0) {
+            [result addObject:trimmed];
+        }
+    }
+    return result.copy;
+}
+
+- (BOOL)pp_googleErrorIndicatesWrongClientType:(NSError *)error
+{
+    if (!error) {
+        return NO;
+    }
+    NSString *msg = [error.localizedDescription lowercaseString];
+    if ([msg containsString:@"invalid_request"] &&
+        ([msg containsString:@"web client"] ||
+         [msg containsString:@"custom scheme"] ||
+         [msg containsString:@"authorization error"])) {
+        return YES;
+    }
+    NSDictionary *userInfo = error.userInfo ?: @{};
+    for (id value in userInfo.allValues) {
+        if (![value isKindOfClass:NSString.class]) continue;
+        NSString *lower = [(NSString *)value lowercaseString];
+        if ([lower containsString:@"web client"] || [lower containsString:@"custom scheme"]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (void)pp_finishGoogleSignInWithError:(NSError *)error
+{
+    [PPHUD dismiss];
+    self.isAuthenticating = NO;
+    [self setInteractionEnabled:YES];
+    [self updateContinuePhoneButtonState];
+    [self notifySignInFailure:error];
+    [PPAlertHelper showErrorIn:self
+                         title:kLang(@"auth_google_failed_title")
+                      subtitle:error.localizedDescription ?: kLang(@"auth_google_failed_subtitle")];
+}
+
+- (void)pp_startGoogleSignInWithCandidates:(NSArray<NSString *> *)candidates
+                                     index:(NSUInteger)index
+{
+    if (index >= candidates.count) {
+        NSError *missingConfigError = [NSError errorWithDomain:@"PPAuth"
+                                                          code:1010
+                                                      userInfo:@{NSLocalizedDescriptionKey: @"Google Sign-In client configuration is missing."}];
+        [self pp_finishGoogleSignInWithError:missingConfigError];
+        return;
+    }
+
+    NSString *clientID = [candidates[index] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (clientID.length == 0) {
+        [self pp_startGoogleSignInWithCandidates:candidates index:index + 1];
+        return;
+    }
+
+    PPAuthDebugLog(@"[GoogleSignIn] Attempt %lu using client ID: %@", (unsigned long)(index + 1), clientID);
+    GIDSignIn.sharedInstance.configuration = [[GIDConfiguration alloc] initWithClientID:clientID];
+
+    __weak typeof(self) weakSelf = self;
+    [GIDSignIn.sharedInstance signInWithPresentingViewController:self
+                                                            hint:nil
+                                                      completion:^(GIDSignInResult *_Nullable signInResult,
+                                                                   NSError *_Nullable error) {
+        PPDispatchMain(^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            if (error) {
+                if ([self pp_googleErrorIndicatesWrongClientType:error] && (index + 1) < candidates.count) {
+                    [self pp_startGoogleSignInWithCandidates:candidates index:index + 1];
+                    return;
+                }
+                [self pp_finishGoogleSignInWithError:error];
+                return;
+            }
+            if (!signInResult.user) {
+                NSError *googleUserError = [NSError errorWithDomain:@"PPAuth"
+                                                               code:1006
+                                                           userInfo:@{NSLocalizedDescriptionKey: kLang(@"Google account data was unavailable. Please try again.")}];
+                [self pp_finishGoogleSignInWithError:googleUserError];
+                return;
+            }
+            [self handleGoogleAuthResult:signInResult.user];
+        });
+    }];
+}
+
+- (void)handleGoogleSignIn {
+    if (self.isAuthenticating) {
+        return;
+    }
+    NSArray<NSString *> *candidates = [self pp_googleClientIDCandidates];
+    if (candidates.count == 0) {
+        NSError *missingConfigError = [NSError errorWithDomain:@"PPAuth"
+                                                          code:1010
+                                                      userInfo:@{NSLocalizedDescriptionKey: @"Google Sign-In client configuration is missing."}];
+        [self notifySignInFailure:missingConfigError];
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"auth_google_failed_title")
+                          subtitle:missingConfigError.localizedDescription];
+        return;
+    }
+
+    self.isAuthenticating = YES;
+    [self setInteractionEnabled:NO];
+    [self updateContinuePhoneButtonState];
+    
+    [PPHUD showIndeterminateIn:self.view
+                          title:kLang(@"auth_google_connecting_title")
+                       subtitle:nil];
+
+    [self pp_startGoogleSignInWithCandidates:candidates index:0];
+}
+
+
+- (void)handleClose {
+    if (self.signInCancelled) {
+        self.signInCancelled();
+    }
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark - Verification Flow
+
+- (void)promptForVerificationCode {
+    NSString *fullPhone = [NSString stringWithFormat:@"%@%@",
+                           self.currentPhoneCode ?: @"",
+                           self.normalizedPhoneDigits ?: @""];
+    PPVerificationCodeViewController *vc =
+    [[PPVerificationCodeViewController alloc] initWithPhone:fullPhone];
+    __weak typeof(self) weakSelf = self;
+    vc.onAuthResultSuccess = ^(FIRAuthDataResult *authResult) {
+        PPDispatchMain(^{
+            if (!weakSelf) {
+                return;
+            }
+            [PPHUD dismiss];
+            [weakSelf handleSuccessfulAuth:authResult method:PPSignInMethodPhone];
+        });
+    };
+    vc.onResendRequested = ^(PPVerificationResendCompletion completion) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+            if (completion) {
+                NSError *deallocatedError = [NSError errorWithDomain:@"PPAuth"
+                                                                code:1002
+                                                            userInfo:@{NSLocalizedDescriptionKey: kLang(@"Session expired. Please try again.")}];
+                completion(NO, deallocatedError);
+            }
+            return;
+        }
+        NSString *safeFullPhone = [NSString stringWithFormat:@"%@%@",
+                                   strongSelf.currentPhoneCode ?: @"",
+                                   strongSelf.normalizedPhoneDigits ?: @""];
+        [strongSelf resendVerificationCodeForPhone:safeFullPhone completion:completion];
+    };
+
+    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyleMediumOnly];
+}
+
+- (void)resendVerificationCodeForPhone:(NSString *)fullPhone
+                            completion:(PPVerificationResendCompletion)completion {
+    if (fullPhone.length == 0) {
+        if (completion) {
+            NSError *invalidPhoneError = [NSError errorWithDomain:@"PPAuth"
+                                                             code:1003
+                                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"Please enter a valid mobile number.")}];
+            completion(NO, invalidPhoneError);
+        }
+        return;
+    }
+    
+    [[FIRPhoneAuthProvider provider] verifyPhoneNumber:fullPhone
+                                            UIDelegate:nil
+                                            completion:^(NSString * _Nullable verificationID, NSError * _Nullable error) {
+        PPDispatchMain(^{
+            if (error) {
+                if (completion) {
+                    completion(NO, error);
+                }
+                return;
+            }
+            if (verificationID.length == 0) {
+                if (completion) {
+                    NSError *verificationError = [NSError errorWithDomain:@"PPAuth"
+                                                                     code:1004
+                                                                 userInfo:@{NSLocalizedDescriptionKey: kLang(@"Unable to resend verification code. Please try again.")}];
+                    completion(NO, verificationError);
+                }
+                return;
+            }
+            
+            self.verificationID = verificationID;
+            [[NSUserDefaults standardUserDefaults] setObject:verificationID forKey:kPPDefaultsAuthVerificationIDKey];
+            [self startPhoneSMSCooldown];
+            
+            if (completion) {
+                completion(YES, nil);
+            }
+        });
+    }];
+}
+
+
+
+#pragma mark - Social Auth Handlers
+
+- (void)handleGoogleAuthResult:(GIDGoogleUser *)user {
+    NSString *idToken = user.idToken.tokenString;
+    NSString *accessToken = user.accessToken.tokenString;
+    
+    if (!idToken || !accessToken) {
+        [PPHUD dismiss];
+        self.isAuthenticating = NO;
+        [self setInteractionEnabled:YES];
+        [self updateContinuePhoneButtonState];
+        NSError *googleTokenError = [NSError errorWithDomain:@"PPAuth"
+                                                        code:1007
+                                                    userInfo:@{NSLocalizedDescriptionKey: kLang(@"google_no_token_message")}];
+        [self notifySignInFailure:googleTokenError];
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"google_no_token_title")
+                          subtitle:kLang(@"google_no_token_message")];
+        return;
+    }
+    
+    FIRAuthCredential *credential =
+        [FIRGoogleAuthProvider credentialWithIDToken:idToken
+                                         accessToken:accessToken];
+    
+    [[FIRAuth auth] signInWithCredential:credential
+                              completion:^(FIRAuthDataResult * _Nullable authResult,
+                                           NSError * _Nullable error) {
+        PPDispatchMain(^{
+            [PPHUD dismiss];
+            self.isAuthenticating = NO;
+            [self setInteractionEnabled:YES];
+            [self updateContinuePhoneButtonState];
+            
+            if (error) {
+                [self notifySignInFailure:error];
+                [PPAlertHelper showErrorIn:self
+                                     title:kLang(@"auth_firebase_error_title")
+                                  subtitle:error.localizedDescription];
+                return;
+            }
+            
+            [self handleSuccessfulAuth:authResult method:PPSignInMethodGoogle];
+        });
+    }];
+}
+
+
+#pragma mark - Apple Sign-In Delegate
+
+- (void)retryAppleSignInAfterMissingToken {
+    self.appleSignInRetryCount += 1;
+    if (self.appleSignInRetryCount > kPPAppleSignInMaxRetryCount) {
+        self.isAuthenticating = NO;
+        [self setInteractionEnabled:YES];
+        [self updateContinuePhoneButtonState];
+        NSError *appleTokenError = [NSError errorWithDomain:@"PPAuth"
+                                                       code:1008
+                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_apple_no_token")}];
+        [self notifySignInFailure:appleTokenError];
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"auth_apple_failed_title")
+                          subtitle:kLang(@"auth_apple_no_token")];
+        return;
+    }
+    
+    PPDispatchMain(^{
+        [PPHUD dismiss];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            self.isAuthenticating = NO;
+            [self setInteractionEnabled:YES];
+            [self updateContinuePhoneButtonState];
+            [self startAppleSignInFlowResetRetry:NO];
+        });
+    });
+}
+
+- (void)authorizationController:(ASAuthorizationController *)controller didCompleteWithAuthorization:(ASAuthorization *)authorization API_AVAILABLE(ios(13.0)) {
+    if ([authorization.credential isKindOfClass:[ASAuthorizationAppleIDCredential class]]) {
+        ASAuthorizationAppleIDCredential *appleIDCredential = (ASAuthorizationAppleIDCredential *)authorization.credential;
+        NSData *identityToken = appleIDCredential.identityToken;
+        if (identityToken.length == 0) {
+            [self retryAppleSignInAfterMissingToken];
+            return;
+        }
+        NSString *idToken = [[NSString alloc] initWithData:identityToken encoding:NSUTF8StringEncoding];
+        
+        if (!idToken || self.currentNonce.length == 0) {
+            [self retryAppleSignInAfterMissingToken];
+            return;
+        }
+        
+        FIROAuthCredential *credential = [FIROAuthProvider appleCredentialWithIDToken:idToken
+                                                                             rawNonce:self.currentNonce
+                                                                             fullName:appleIDCredential.fullName];
+        
+        [PPHUD showIndeterminateIn:self.view
+                              title:kLang(@"auth_apple_signing_in")
+                           subtitle:nil];
+
+        [[FIRAuth auth] signInWithCredential:credential completion:^(FIRAuthDataResult * _Nullable authResult, NSError * _Nullable error) {
+            PPDispatchMain(^{
+                [PPHUD dismiss];
+                self.isAuthenticating = NO;
+                [self setInteractionEnabled:YES];
+                [self updateContinuePhoneButtonState];
+                
+                if (error) {
+                    [self notifySignInFailure:error];
+                    [PPAlertHelper showErrorIn:self
+                                         title:kLang(@"auth_apple_failed_title")
+                                      subtitle:error.localizedDescription];
+                    return;
+                }
+                
+                self.appleSignInRetryCount = 0;
+                [self handleSuccessfulAuth:authResult method:PPSignInMethodApple];
+            });
+        }];
+    }
+}
+
+- (void)authorizationController:(ASAuthorizationController *)controller didCompleteWithError:(NSError *)error API_AVAILABLE(ios(13.0)) {
+    PPDispatchMain(^{
+        self.isAuthenticating = NO;
+        [self setInteractionEnabled:YES];
+        [self updateContinuePhoneButtonState];
+        [PPHUD dismiss];
+        [self notifySignInFailure:error];
+        [PPAlertHelper showWarningIn:self
+                             title:kLang(@"auth_apple_failed_title")
+                          subtitle:error.localizedDescription.length ? error.localizedDescription : kLang(@"auth_apple_no_token")];
+    });
+}
+
+- (ASPresentationAnchor)presentationAnchorForAuthorizationController:(ASAuthorizationController *)controller API_AVAILABLE(ios(13.0)) {
+    return self.view.window;
+}
+
+#pragma mark - Post-Auth Handling
+
+- (void)handleSuccessfulAuth:(FIRAuthDataResult *)authResult method:(PPSignInMethod)method {
+    PPAuthDebugLog(@"[Auth] Successful %@ sign-in.", [self stringFromSignInMethod:method]);
+    [self.view endEditing:YES];
+    
+    [PPHUD showLoading:kLang(@"auth_setting_up_account")];
+
+    [self fetchOrCreateUserModelWithAuthResult:authResult completion:^(UserModel *userModel, NSError *error) {
+        [PPHUD dismiss];
+        
+        if (error) {
+            [self notifySignInFailure:error];
+            [PPAlertHelper showErrorIn:self title:@"Error" subtitle:error.localizedDescription];
+            return;
+        }
+        
+        [PPHUD showSuccess:kLang(@"auth_signin_success_title")];
+
+        // ----------------------------------------------------
+        // STEP 1 — Check if user needs to complete profile
+        // ----------------------------------------------------
+
+        BOOL needsProfile =
+        (
+            userModel.UserName.length == 0 ||
+            userModel.UserName.length < 3 ||
+            [userModel.UserName hasPrefix:@"user"] ||     // auto-generated → ask user to customize
+            userModel.MobileNo.length == 0 ||
+            userModel.UserEmail.length == 0
+        );
+
+        // ----------------------------------------------------
+        // STEP 2 — If incomplete → show PPCompleteProfileVC
+        // ----------------------------------------------------
+
+        if (needsProfile) {
+            PPCompleteProfileVC *vc = [[PPCompleteProfileVC alloc] initWithUser:userModel];
+
+            vc.onProfileCompleted = ^(UserModel *userModel) {
+                PPDispatchMain(^{
+                    if (self.signInSuccess) {
+                        self.signInSuccess(userModel);
+                    }
+
+                    if (self.shouldAutoDismissOnSuccess) {
+                        [self dismissViewControllerAnimated:YES completion:nil];
+                    }
+                });
+            };
+
+            [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle70];
+            return; // stop flow here
+        }
+
+        // ----------------------------------------------------
+        // STEP 3 — Profile is complete, continue as normal
+        // ----------------------------------------------------
+
+        if (self.signInSuccess) {
+            self.signInSuccess(userModel);
+        }
+
+        if (self.shouldAutoDismissOnSuccess) {
+            [self dismissViewControllerAnimated:YES completion:nil];
+        }
+    }];
+}
+
+- (void)completeUserFetchWithUser:(UserModel *)user
+                            error:(NSError *)error
+                       completion:(void(^)(UserModel *user, NSError *error))completion {
+    if (!completion) {
+        return;
+    }
+    PPDispatchMain(^{
+        completion(user, error);
+    });
+}
+
+- (void)fetchOrCreateUserModelWithAuthResult:(FIRAuthDataResult *)authResult
+                                  completion:(void(^)(UserModel *user, NSError *error))completion {
+    FIRUser *authUser = authResult.user;
+    if (!authUser.uid.length) {
+        NSError *missingAuthError = [NSError errorWithDomain:@"PPAuth"
+                                                         code:401
+                                                     userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user."}];
+        [self completeUserFetchWithUser:nil error:missingAuthError completion:completion];
+        return;
+    }
+
+    BOOL isNewUser = authResult.additionalUserInfo.isNewUser;
+    if (isNewUser && !self.shouldCreateUserDocument) {
+        NSError *createDisabledError = [NSError errorWithDomain:@"PPAuth"
+                                                           code:403
+                                                       userInfo:@{NSLocalizedDescriptionKey: @"User creation is disabled for this flow."}];
+        [self completeUserFetchWithUser:nil error:createDisabledError completion:completion];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [UsrMgr handlePostSignInForAuthResult:authResult
+                                isNewUser:isNewUser
+                                completion:^(UserModel * _Nullable syncedUser, NSError * _Nullable syncError) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        if (syncError && !syncedUser) {
+            [self completeUserFetchWithUser:nil error:syncError completion:completion];
+            return;
+        }
+
+        BOOL isBlockedAccountError =
+            syncError &&
+            [syncError.domain isEqualToString:FUErrorDomain] &&
+            syncError.code == FUErrorCodePermissionDenied;
+        if (isBlockedAccountError) {
+            [self completeUserFetchWithUser:nil error:syncError completion:completion];
+            return;
+        }
+
+        UserModel *resolvedUser = syncedUser ?: UsrMgr.currentUser;
+        if (!resolvedUser) {
+            [UsrMgr reloadCurrentUserWithCompletion:^(UserModel * _Nullable user, NSError * _Nullable reloadError) {
+                [self completeUserFetchWithUser:user error:reloadError completion:completion];
+            }];
+            return;
+        }
+
+        NSString *pushToken = PPSafeString([[NSUserDefaults standardUserDefaults] valueForKey:kPPDefaultsUserTokenKey]) ?: @"";
+        if (pushToken.length > 0) {
+            resolvedUser.PPUserTokenID = pushToken;
+            [UsrMgr updateCurrentUserWithPPUserTokenID:pushToken];
+        }
+
+        // Bootstrap country/mobile metadata once for fresh accounts when we can infer safe values.
+        NSMutableDictionary<NSString *, id> *bootstrapUpdates = [NSMutableDictionary dictionary];
+        CountryCodeModel *bootstrapCountry = self.autoDetectedCountry;
+        if (bootstrapCountry.ID <= 0) {
+            NSString *currentCountryISO = PPSafeString(CitiesManager.shared.CurrentCountry.iso);
+            if (currentCountryISO.length > 0) {
+                NSArray<CountryCodeModel *> *countries =
+                    [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
+                bootstrapCountry = [self pp_countryWithISOCode:currentCountryISO inCountries:countries];
+            }
+        }
+
+        NSString *existingMobile = [PPSafeString(resolvedUser.MobileNo)
+            stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+        if (isNewUser && bootstrapCountry.ID > 0) {
+            bootstrapUpdates[@"CountryID"] = @(bootstrapCountry.ID);
+        }
+        NSString *countryName = [PPSafeString(bootstrapCountry.country)
+            stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (isNewUser && countryName.length > 0) {
+            bootstrapUpdates[@"CountryName"] = countryName;
+        }
+
+        NSString *normalizedDialCode = [self normalizedCountryCode:bootstrapCountry.phoneCode];
+        if (isNewUser && normalizedDialCode.length > 0) {
+            bootstrapUpdates[@"CountryDialCode"] = normalizedDialCode;
+        }
+
+        NSString *isoCode = [[PPSafeString(bootstrapCountry.isoCountryCode)
+            stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] uppercaseString];
+        if (isNewUser && isoCode.length == 2) {
+            bootstrapUpdates[@"CountryIsoCode"] = isoCode;
+        }
+
+        NSString *phoneDialCode = [self normalizedCountryCode:self.currentPhoneCode];
+        if (phoneDialCode.length == 0) {
+            phoneDialCode = normalizedDialCode;
+        }
+        NSString *candidateMobile = @"";
+        if (self.normalizedPhoneDigits.length > 0 && phoneDialCode.length > 0) {
+            candidateMobile = [NSString stringWithFormat:@"%@%@",
+                               phoneDialCode,
+                               self.normalizedPhoneDigits];
+        }
+        if (existingMobile.length == 0 && candidateMobile.length > 0) {
+            bootstrapUpdates[@"MobileNo"] = candidateMobile;
+        }
+
+        if (bootstrapUpdates.count > 0) {
+            [UsrMgr updateCurrentUserProfileWithValues:bootstrapUpdates completion:^(NSError * _Nullable updateError) {
+                if (updateError) {
+                    NSLog(@"[Auth] Bootstrap user metadata update failed: %@", updateError.localizedDescription);
+                }
+                [UsrMgr reloadCurrentUserWithCompletion:^(UserModel * _Nullable refreshedUser, NSError * _Nullable reloadError) {
+                    UserModel *finalUser = refreshedUser ?: resolvedUser;
+                    NSError *finalError = finalUser ? nil : (syncError ?: updateError ?: reloadError);
+                    [self completeUserFetchWithUser:finalUser error:finalError completion:completion];
+                }];
+            }];
+            return;
+        }
+
+        [self completeUserFetchWithUser:resolvedUser error:nil completion:completion];
+    }];
+}
+
+#pragma mark - Username Generator (Enhanced)
+
+- (void)generateSmartUsernameForUser:(UserModel *)userModel
+                           authUser:(FIRUser *)user
+                          completion:(void(^)(NSString *username))completion {
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        
+        NSString *base = @"";
+        
+        // 1. Phone login → use last 3–4 digits
+        if (user.phoneNumber.length >= 4) {
+            NSString *last = [user.phoneNumber substringFromIndex:user.phoneNumber.length - 4];
+            base = [NSString stringWithFormat:@"user%@", last];
+        }
+        // 2. Email login → use prefix
+        else if (user.email.length > 0) {
+            NSString *rawPrefix = [[user.email componentsSeparatedByString:@"@"] firstObject] ?: @"";
+            NSRange fullRange = NSMakeRange(0, rawPrefix.length);
+
+            NSString *emailPrefix = [rawPrefix stringByReplacingOccurrencesOfString:@"[^a-zA-Z0-9]"
+                                                                         withString:@""
+                                                                            options:NSRegularExpressionSearch
+                                                                              range:fullRange];
+
+            base = [NSString stringWithFormat:@"user%@", emailPrefix.lowercaseString];
+        }
+        // 3. Random pet word + number
+        else {
+            NSArray *petWords = @[ @"paws", @"whisker", @"furball", @"puppy", @"kitty", @"pawprint" ];
+            NSString *word = petWords[arc4random_uniform((uint32_t)petWords.count)];
+            base = [NSString stringWithFormat:@"%@%d", word, arc4random_uniform(999)];
+        }
+
+        // 4. Remove profanity / special chars / spaces
+        base = [self sanitizeUsername:base];
+
+        completion(base);
+    });
+}
+
+- (NSString *)sanitizeUsername:(NSString *)input {
+
+    // Remove special chars
+    NSCharacterSet *allowed = [NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"];
+    NSMutableString *filtered = [NSMutableString string];
+
+    for (int i = 0; i < input.length; i++) {
+        unichar c = [input characterAtIndex:i];
+        if ([allowed characterIsMember:c]) {
+            [filtered appendFormat:@"%c", c];
+        }
+    }
+
+    NSString *clean = filtered.lowercaseString;
+
+    // Profanity filter
+    NSArray *badWords = @[ @"fuck", @"shit", @"bitch", @"ass", @"sex", @"dick" ];
+    for (NSString *bad in badWords) {
+        if ([clean containsString:bad]) {
+            clean = [clean stringByReplacingOccurrencesOfString:bad withString:@"user"];
+        }
+    }
+
+    // Trim long usernames
+    if (clean.length > 20) {
+        clean = [clean substringToIndex:20];
+    }
+
+    return clean;
+}
+
+- (void)ensureUniqueUsername:(NSString *)base completion:(void(^)(NSString *unique))completion {
+    NSString *normalizedBase = [self sanitizeUsername:base ?: @""];
+    if (normalizedBase.length == 0) {
+        normalizedBase = [NSString stringWithFormat:@"user%u", arc4random_uniform(10000)];
+    }
+    
+    FIRCollectionReference *users = [[FIRFirestore firestore] collectionWithPath:kPPUsersCollection];
+    [self checkUsernameCandidateWithBase:normalizedBase
+                                  suffix:0
+                                   users:users
+                              completion:completion];
+}
+
+- (void)checkUsernameCandidateWithBase:(NSString *)normalizedBase
+                                suffix:(NSInteger)suffix
+                                 users:(FIRCollectionReference *)users
+                            completion:(void(^)(NSString *unique))completion {
+    NSString *candidate = suffix == 0
+    ? normalizedBase
+    : [NSString stringWithFormat:@"%@%ld", normalizedBase, (long)suffix];
+    
+    [[users queryWhereField:kPPFirestoreUserNameField isEqualTo:candidate]
+     getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error) {
+            NSString *fallback = [NSString stringWithFormat:@"%@%u", normalizedBase, arc4random_uniform(10000)];
+            completion(fallback);
+            return;
+        }
+        
+        if (snapshot.documents.count == 0) {
+            completion(candidate);
+            return;
+        }
+        
+        [self checkUsernameCandidateWithBase:normalizedBase
+                                      suffix:suffix + 1
+                                       users:users
+                                  completion:completion];
+    }];
+}
+
+#pragma mark - Utility Methods
+
+- (void)notifySignInFailure:(NSError *)error {
+    if (!error || !self.signInFailure) {
+        return;
+    }
+    self.signInFailure(error);
+}
+
+- (void)setInteractionEnabled:(BOOL)enabled {
+    self.appleSignInButton.enabled = enabled;
+    self.googleSignInButton.enabled = enabled;
+    self.phoneNumberField.enabled = enabled;
+    self.countryCodePickerBtn.enabled = enabled;
+    self.countryCodePickerBtn.userInteractionEnabled = enabled;
+    self.closeButton.enabled = enabled;
+    
+    CGFloat alpha = enabled ? 1.0 : 0.6;
+    self.appleSignInButton.alpha = alpha;
+    self.googleSignInButton.alpha = alpha;
+    self.closeButton.alpha = alpha;
+    
+    if (!enabled) {
+        self.continuePhoneButton.enabled = NO;
+        self.continuePhoneButton.alpha = 0.6;
+    } else {
+        [self updateContinuePhoneButtonState];
+    }
+}
+
+- (NSString *)stringFromSignInMethod:(PPSignInMethod)method {
+    switch (method) {
+        case PPSignInMethodPhone: return @"Phone";
+        case PPSignInMethodApple: return @"Apple";
+        case PPSignInMethodGoogle: return @"Google";
+        default: return @"Unknown";
+    }
+}
+
+#pragma mark - Security Utilities
+
+- (NSString *)randomNonce:(NSInteger)length {
+    if (length <= 0) {
+        return @"";
+    }
+    NSString *characterSet = @"0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._";
+    NSMutableString *result = [NSMutableString stringWithCapacity:length];
+    
+    while (result.length < length) {
+        uint8_t random = 0;
+        int status = SecRandomCopyBytes(kSecRandomDefault, 1, &random);
+        if (status != errSecSuccess) {
+            random = (uint8_t)arc4random_uniform((uint32_t)characterSet.length);
+        }
+        if (random < characterSet.length) {
+            unichar character = [characterSet characterAtIndex:random];
+            [result appendFormat:@"%C", character];
+        }
+    }
+    
+    return result;
+}
+
+- (NSString *)stringBySha256HashingString:(NSString *)input {
+    const char *string = [input UTF8String];
+    unsigned char result[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(string, (CC_LONG)strlen(string), result);
+    
+    NSMutableString *hashed = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
+    for (NSInteger i = 0; i < CC_SHA256_DIGEST_LENGTH; i++) {
+        [hashed appendFormat:@"%02x", result[i]];
+    }
+    return hashed;
+}
+
+@end

@@ -1,0 +1,680 @@
+//
+//  PrefixHeader.pch
+//  Pure Pets
+//
+//  Created by Mohammed Ahmed on 25/01/2025.
+//
+
+#ifndef PrefixHeader_pch
+#define PrefixHeader_pch
+
+// =====================================================
+// Logging
+// =====================================================
+#ifdef DEBUG
+    #define DLog(fmt, ...) NSLog((@"[DEBUG] %s [Line %d] " fmt), __PRETTY_FUNCTION__, __LINE__, ##__VA_ARGS__)
+#else
+    #define DLog(...)
+#endif
+
+// =====================================================
+// System Frameworks
+// =====================================================
+#import <UIKit/UIKit.h>
+#import <Foundation/Foundation.h>
+#import <CoreGraphics/CoreGraphics.h>
+#import <QuartzCore/QuartzCore.h>
+#import <CoreMotion/CoreMotion.h>
+#import <Accelerate/Accelerate.h>
+#import <CoreFoundation/CoreFoundation.h>
+#import <ImageIO/ImageIO.h>
+#import <MobileCoreServices/MobileCoreServices.h>
+#import <AssetsLibrary/AssetsLibrary.h>
+#import <AVFoundation/AVFoundation.h>
+#import <AVKit/AVKit.h>
+#import <objc/runtime.h>
+#import <objc/message.h>
+#import <pthread.h>
+#import <zlib.h>
+#import <AudioToolbox/AudioToolbox.h>
+#import <os/log.h>
+#import "UIViewController+PPNavBar.h"
+
+
+// =====================================================
+// Apple / System Services
+// =====================================================
+#import <AuthenticationServices/AuthenticationServices.h>
+#import <CoreTelephony/CTCarrier.h>
+#import <CoreTelephony/CTTelephonyNetworkInfo.h>
+#import <CommonCrypto/CommonDigest.h>
+
+
+#import "Styling.h"
+#import "PPDesignTokens.h"
+#import "Language.h"
+ 
+#import "PaymentMethod.h"
+#import "PPDefaultLocationView.h"
+#import "UserPaymentInstrumentManager.h"
+#import "UserPaymentInstrument.h"
+#import "PPSelectPaymentVC.h"
+ 
+ 
+
+// =====================================================
+// Firebase / Google
+// =====================================================
+@import FirebaseCore;
+@import FirebaseFirestore;
+#import <FirebaseAnalytics/FIRAnalytics.h>
+@import GoogleSignIn;
+@import AppAuth;
+@import GTMSessionFetcherCore;
+#import <GoogleMaps/GoogleMaps.h>
+#import "EnumValues.h"
+// =====================================================
+// Third-Party Libraries
+// =====================================================
+#import <TZImagePickerController/TZImagePickerController.h>
+#import <Masonry/Masonry.h>
+#import <IQKeyboardManager/IQKeyboardManager.h>
+#import <SSZipArchive/SSZipArchive.h>
+#import <TOCropViewController/TOCropViewController.h>
+#if __has_include(<Lottie/Lottie.h>)
+#import <Lottie/Lottie.h>
+#elif __has_include("Lottie.h")
+#import "Lottie.h"
+#elif __has_include(<lottie-ios_Oc/Lottie.h>)
+#import <lottie-ios_Oc/Lottie.h>
+#elif __has_include(<lottie_ios_Oc/Lottie.h>)
+#import <lottie_ios_Oc/Lottie.h>
+#else
+@class LOTAnimationView;
+#endif
+#import "AKPickerView.h"
+#import "HXPhotoPicker.h"
+#import "FCAlertView.h"
+#import "FTPopOverMenu.h"
+#import "ZMJTipView.h"
+#import "RNFrostedSidebar.h"
+#import "PPPermissionHelper.h"
+#import "JGProgressHUD.h"
+#import "UIViewController+PVCMotal.h"
+// =====================================================
+// Categories & Extensions
+// =====================================================
+#import "UITabBarItem+PPAdditions.h"
+#import "UITabBarItem+PPFactory.h"
+#import "UIButton+PressAnimation.h"
+#import "NSString+Ex.h"
+#import "UIView+Badge.h"
+ #import "ScaledCenterCarousel.h"
+#import "PPCenteredSelectorView.h"
+
+
+// =====================================================
+// Core App Helpers / Utilities
+// =====================================================
+#import "GM.h"
+#import "AppManager.h"
+#import "AppDelegate.h"
+#import "Utils.h"
+#import "PPFunc.h"
+#import "PPFunc+Haptics.h"
+#import "PPAlertHelper.h"
+#import "PPEmptyStateHelper.h"
+#import "PPMenuHelper.h"
+#import "PPColorUtils.h"
+#import "PPGradientView.h"
+#import "PPBottomBar.h"
+#import "PPBottomBarManager.h"
+#import "PPOverlayCoordinator.h"
+#import "PPImageManager.h"
+#import "FileUploadManager.h"
+
+#import "DeepLinkRouter.h"
+#import "PPInsetLabel.h"
+#import "Banners.h"
+#import "CollectionViewAnimation.h"
+#import "ArchiveManagerVC.h"
+#import "Pure Pets-Bridging-Header.h"
+#import "MainKindsModel.h"
+#import "ZMJTipView.h"
+
+#import "ArabicNormalizer.h"
+
+// =====================================================
+// Models
+// =====================================================
+#import "MainKindsModel.h"
+#import "CardModel.h"
+#import "CageModel.h"
+#import "ChildModel.h"
+#import "UserModel.h"
+#import "BuyerModel.h"
+#import "ArchiveModel.h"
+#import "CountryModel.h"
+#import "CityModel.h"
+#import "PPAddressModel.h"
+#import "ServiceModel.h"
+#import "CategoryModel.h"
+#import "VetManager.h"
+#import "PetAccessory.h"
+#import "CartItem.h"
+#import "ItemModel.h"
+#import "TrashModel.h"
+#import "MainKindsModel.h"
+#import "PPUniversalCellViewModel.h"
+
+
+ 
+#import "PetAd.h"
+#import "VetModel.h"
+ 
+
+// =====================================================
+// Managers
+// =====================================================
+#import "MainKindsArrayManager.h"
+#import "ChildsDataManager.h"
+#import "ArchivesManager.h"
+#import "PetAdManager.h"
+#import "PetAccessoryManager.h"
+#import "ServicesManager.h"
+#import "UserManager.h"
+
+
+#import "ChManager.h"
+#import "CitiesManager.h"
+#import "AppClasses.h"
+// =====================================================
+// Cells / Views
+// =====================================================
+#import "PPHomeCell.h"
+#import "PPHomeActionCell.h"
+#import "PPHomeServicesCell.h"
+#import "PPUniversalCell.h"
+#import "PPBannerCollectionCell.h"
+#import "CustomButtonCell.h"
+#import "PetAdoptView.h"
+#import "PPAddressesManager.h"
+#import "PPInsetLabel.h"
+#import "EmptyStateView.h"
+#import "PPHomeItem.h"
+
+
+
+
+// =====================================================
+// View Controllers
+// =====================================================
+#import "PPHomeViewController.h"
+#import "PPRootTabBarController.h"
+#import "NewAppVC.h"
+#import "ProfileVC.h"
+#import "SettingVC.h"
+#import "SalesVCViewController.h"
+#import "ViewerVC.h"
+#import "MyItemsViewController.h"
+#import "MyServicesViewController.h"
+#import "ServiceViewerViewController.h"
+#import "VetViewerViewController.h"
+
+#import "PPDataViewInput.h"
+#import "PPAdsBrowser.h"
+#import "PPDataViewVC.h"
+#import "PPMenuHelper.h"
+#import "TrashModel.h"
+#import "PPDataViewVM.h"
+#import "AppDataListenerManager.h"
+
+
+
+
+#import "Styling.h"
+// =====================================================
+// Constants & Macros
+// =====================================================
+
+#define AppShadowClr                [UIColor blackColor]
+#define AppClearClr                 [UIColor clearColor]
+
+#define NewBgColor               [[UIColor colorNamed:@"NewBg"] colorWithAlphaComponent:0.02]
+
+#define AppPrimaryClr               [[UIColor colorNamed:@"AppPrimaryColor"] colorWithAlphaComponent:1.0]
+#define AppPrimaryClrDarker         [UIColor colorNamed:@"AppPrimaryColorDarker"]
+#define AppPrimaryClrShiner         [UIColor colorNamed:@"AppPrimaryColorShainer"]
+#define AppBackgroundClr            [UIColor colorNamed:@"AppBackgroundColor"]
+#define AppBackgroundClrLigter      [UIColor colorNamed:@"AppBackgroundColorLigter"]
+#define AppPrimaryTextClr           [UIColor colorNamed:@"PrimaryTextColor"]
+#define AppSecondaryTextClr         [UIColor colorNamed:@"SecondaryTextColor"]
+#define AppForgroundColr            [UIColor colorNamed:@"AppForegroundColor"]
+#define AppButtonMixColorClr         [UIColor colorNamed:@"AppButtonMixColor"]
+#define AppBackgroundClrDarker         [UIColor colorNamed:@"AppBackgroundColorDarker"]
+#define AppCardColor                [[UIColor colorNamed:@"AppCardColor"] colorWithAlphaComponent:1.0]
+
+#pragma mark - Chat Base
+
+/// Main chat background (table view)
+
+/// Slightly raised surface (bubbles, cards)
+#define PPChatSurface             [UIColor colorNamed:@"AppBackgroundColorLigter"]
+
+/// Elevated surface (input bar, header)
+#define PPChatSurfaceElevated     [UIColor colorNamed:@"AppBackgroundColor"]
+
+#pragma mark - Bubbles
+
+/// Outgoing bubble (me)
+#define PPChatBubbleOutgoing      [AppPrimaryClr colorWithAlphaComponent:1.0]
+
+/// Incoming bubble (other)
+#define PPChatBubbleIncoming      PPChatSurface
+
+#pragma mark - Text
+
+/// Primary text (message text)
+#define PPChatTextPrimary         AppPrimaryTextClr
+
+/// Secondary text (time, hints)
+#define PPChatTextSecondary       [[UIColor colorNamed:@"AppForegroundColor"] colorWithAlphaComponent:0.55]
+
+/// Muted text (system, placeholders)
+#define PPChatTextMuted           [[UIColor colorNamed:@"AppForegroundColor"] colorWithAlphaComponent:0.35]
+
+#pragma mark - Time Labels
+
+#define PPChatTimeOutgoing        [[UIColor whiteColor] colorWithAlphaComponent:0.75]
+#define PPChatTimeIncoming        PPChatTextSecondary
+
+#pragma mark - Status (✔︎ ✔︎✔︎)
+
+/// Sent / Delivered
+#define PPChatStatusNeutral       [[UIColor whiteColor] colorWithAlphaComponent:0.65]
+
+/// Read
+#define PPChatStatusActive        [UIColor colorNamed:@"AppPrimaryColor"]
+
+#pragma mark - Waveform
+
+/// Played waveform bars
+#define PPChatWaveActiveOutgoing  [UIColor whiteColor]
+#define PPChatWaveActiveIncoming  PPChatPrimaryAccent
+
+/// Unplayed waveform bars
+#define PPChatWaveInactiveOutgoing [[UIColor whiteColor] colorWithAlphaComponent:0.35]
+#define PPChatWaveInactiveIncoming [[PPChatPrimaryAccent colorWithAlphaComponent:0.35]]
+
+#pragma mark - Input Bar
+
+/// Input bar background
+#define PPChatInputBackground     PPChatSurfaceElevated
+
+/// TextView background
+#define PPChatInputFieldBG        PPChatSurface
+
+/// Icons (send, mic, attach)
+#define PPChatInputIcon           PPChatPrimaryAccent
+#define PPChatInputIconMuted      PPChatTextMuted
+
+
+
+#define PPChatPrimaryAccent    AppForgroundColr // soft blue
+#define PPChatSecondaryAccent  [UIColor colorWithRed:0.55 green:0.65 blue:0.80 alpha:0.55]
+
+
+
+#pragma mark - Header
+
+#define PPChatHeaderBackground    PPChatSurfaceElevated
+#define PPChatHeaderTitle         PPChatTextPrimary
+#define PPChatHeaderSubtitle      PPChatTextSecondary
+
+#define PPChatTimePrimary      [UIColor.secondaryLabelColor colorWithAlphaComponent:1.0]//[UIColor colorWithWhite:0.75 alpha:1.0]
+#define PPChatTimeSecondary    [UIColor colorWithWhite:0.55 alpha:1.0]
+
+#define PPNewCorner                  24.0
+#define PPNewCornerMin                   24.0
+
+#define PPCorners                   22.0
+#define PPCornersHome               22.0
+#define PPCornersMainCell           22.0
+#define PPAdsCellCorners            22.0
+
+
+#define MKM [MainKindsArrayManager shared]
+#define PPMainKindsArray MainKindsArrayManager.shared.MainKindsArray
+#define PPMainKindsManager MainKindsArrayManager.shared
+#define PPCurrentUser [UserManager sharedManager].currentUser
+
+
+
+#define PPIsUserLoggedIn UserManager.sharedManager.isUserLoggedIn
+#define PPShowLoginPrompt [UserManager showPromptOnTopController]
+ 
+
+#define UsrMgr [UserManager sharedManager]
+#define PPADDRESS PPAddressesManager.sharedManager
+#define UsrMgrCls [UserManager class]
+#define PPCurrentFIRAuthUser [FIRAuth auth].currentUser
+#define PPSemanticAuto Language.semanticAttributeForCurrentLanguage
+#define PPSemanticRightToLeft UISemanticContentAttributeForceRightToLeft
+#define PPSemanticLeftToRight UISemanticContentAttributeForceLeftToRight
+#define AppMgr AppManager.sharedInstance
+#define PPUsersArr AppManager.sharedInstance.usersArray
+#define MAX_BUBBLE_WIDTH(view) ((view.frame.size.width))
+
+#define PPCorners42 42.0
+#define PPMaxScreen (UIScreen.mainScreen.bounds.size.height >= 812.0)
+#define PPNavBarHeight UINavigationController.navigationBar.height + HXStatusBarHeight
+
+static inline CGFloat PPDeviceScreenHeight(void) {
+    return UIScreen.mainScreen.bounds.size.height;
+}
+
+static inline BOOL PPIsProMaxScreen(void) {
+    return PPDeviceScreenHeight() >= 926.0;
+}
+
+static inline BOOL PPIsSmallScreen(void) {
+    return PPDeviceScreenHeight() <= 667.0;
+}
+
+#define PPIsRL Language.isRTL
+#define PPBar PPBottomBarManager.shared.bar
+#define PPBarMgr PPBottomBarManager.shared
+#define PPIsLight ([[UITraitCollection currentTraitCollection] userInterfaceStyle] == UIUserInterfaceStyleLight)
+#define PPIs26 @available(iOS 26.0, *)
+#define PPNavbarHeight self.navigationController.navigationBar.hx_h
+#define PPStatusBarHeight (UIApplication.sharedApplication.keyWindow.safeAreaInsets.top)
+#define PPNavBarHeightFull self.navigationController.navigationBar.hx_h + PPStatusBarHeight
+#define PPChevronName (Language.isRTL ? @"arrow.right" : @"arrow.left")
+
+#define AppLightGrayColor         [UIColor colorNamed:@"AppLightGrayColor"]
+#define PPPhotoBrowser  [[PPPhotoBrowserBridge alloc] init]
+// =====================================================
+// Helpers
+// =====================================================
+NS_ASSUME_NONNULL_BEGIN
+
+static inline BOOL PPIOS26(void) {
+    if (@available(iOS 26.0, *)) return YES;
+    return NO;
+}
+
+static inline UIColor *PPBackgroundColorForIOS26(UIColor *fallbackColor) {
+    UIColor *ios26Color = [AppBackgroundClr colorWithAlphaComponent:1.0];
+    return PPIOS26() ? ios26Color : (fallbackColor ?: ios26Color);
+}
+
+static inline NSString *PPSafeString(id v) {
+    return [v isKindOfClass:NSString.class] ? v : @"";
+}
+
+static inline NSArray *PPSafeArray(id v) {
+    return [v isKindOfClass:NSArray.class] ? v : @[];
+}
+
+
+static inline UIImage *PPSYSImage(id _Nonnull v) { return [UIImage systemImageNamed:v]; }
+static inline UIImage *PPImage(id _Nonnull v) { return [UIImage imageNamed:v]; }
+static inline NSString *PPStringOrNil(id v) { return [v isKindOfClass:NSString.class] ? v : nil; }
+static inline NSURL *PPURLOrNil(id v) {
+    NSString *s = PPStringOrNil(v);
+    return s.length ? [NSURL URLWithString:s] : nil;
+}
+
+
+// *******************************
+
+typedef void (^PPImageLoader)(UIImageView *imageView,
+                              NSString * _Nullable urlString,
+                              UIImage  * _Nullable placeholder,
+                              UIView  * _Nullable card);
+ 
+typedef void (^PPVoidHandler)( PPUniversalCellViewModel * _Nullable vmModel);
+
+
+
+typedef void (^PPImageLoaderManagerComplation)(UIImage * _Nullable image,
+                                     NSString * _Nullable urlString);
+
+
+
+// Define logging levels
+typedef NS_ENUM(NSInteger, LogLevel) {
+    LogLevelNone = 0,
+    LogLevelError = 1,
+    LogLevelWarning = 2,
+    LogLevelInfo = 3,
+    LogLevelDebug = 4,
+    LogLevelVerbose = 5
+};
+
+// Global log level (set this based on build configuration)
+#ifdef DEBUG
+    static LogLevel currentLogLevel = LogLevelDebug;
+#else
+    static LogLevel currentLogLevel = LogLevelWarning;
+#endif
+
+// Logging macros
+#define LOG_ERROR(format, ...) if (currentLogLevel >= LogLevelError) NSLog(@"[ERROR] " format, ##__VA_ARGS__)
+#define LOG_WARN(format, ...) if (currentLogLevel >= LogLevelWarning) NSLog(@"[WARN] " format, ##__VA_ARGS__)
+#define LOG_INFO(format, ...) if (currentLogLevel >= LogLevelInfo) NSLog(@"[INFO] " format, ##__VA_ARGS__)
+#define LOG_DEBUG(format, ...) if (currentLogLevel >= LogLevelDebug) NSLog(@"[DEBUG] " format, ##__VA_ARGS__)
+#define LOG_VERBOSE(format, ...) if (currentLogLevel >= LogLevelVerbose) NSLog(@"[VERBOSE] " format, ##__VA_ARGS__)
+
+// Emoji versions (more visual)
+#define LOG_EMOJI_ERROR(format, ...) LOG_ERROR(@"❌ " format, ##__VA_ARGS__)
+#define LOG_EMOJI_WARN(format, ...) LOG_WARN(@"⚠️ " format, ##__VA_ARGS__)
+#define LOG_EMOJI_INFO(format, ...) LOG_INFO(@"ℹ️ " format, ##__VA_ARGS__)
+#define LOG_EMOJI_DEBUG(format, ...) LOG_DEBUG(@"🐛 " format, ##__VA_ARGS__)
+#define LOG_EMOJI_VERBOSE(format, ...) LOG_VERBOSE(@"🔍 " format, ##__VA_ARGS__)
+
+// In Helpers.h
+static inline NSString *PPFillValueFor(id primary, id fallback) {
+    // Ensure strings only, strip NSNull
+    NSString *p = ([primary isKindOfClass:NSString.class] ? primary : nil);
+    NSString *f = ([fallback isKindOfClass:NSString.class] ? fallback : nil);
+    if (p.length) return p;   // ✅ prefer primary if non-empty
+    else return f;   // ✅ else fallback
+   // return nil;               // ❌ nothing valid
+}
+
+// Small helpers
+static inline NSString *PPJoinNames(NSString *first, NSString *last) {
+    if (first.length && last.length) return [NSString stringWithFormat:@"%@ %@", first, last];
+    return first.length ? first : (last.length ? last : @"");
+}
+
+
+// Safe number
+static inline NSNumber *PPSafeNumber(id v) {
+    return [v isKindOfClass:[NSNumber class]] ? v : nil;
+}
+
+// Safe integer
+static inline NSInteger PPSafeInteger(id v) {
+    return [v isKindOfClass:[NSNumber class]] ? [v integerValue] : 0;
+}
+
+// New helper for XLForm numeric fields
+static inline NSInteger PPSafeFormInteger(id v) {
+    if ([v isKindOfClass:[XLFormOptionsObject class]]) {
+        return [((XLFormOptionsObject *)v).formValue integerValue];
+    } else if ([v isKindOfClass:[NSNumber class]]) {
+        return [(NSNumber *)v integerValue];
+    } else if ([v isKindOfClass:[NSString class]]) {
+        return [(NSString *)v integerValue];
+    }
+    
+    return 0; // default
+}
+
+typedef NS_ENUM(NSInteger, PPMainSectionInset) {
+    PPMainSectionInsetForCardLayout,
+    PPMainSectionInsetForOneUILayout,
+ };
+
+
+// MARK: Padding and Inset PP IOS26.0
+#define PP_Padding     16
+// Returns 0.0 on iOS 26.0+, otherwise 12.0
+#define PP_IOS26_Padding  \
+({ \
+    CGFloat _val = 12.0; \
+    if (@available(iOS 26.0, *)) { \
+        _val = 0.0; \
+    } \
+    _val; \
+})
+
+// Returns 12.0 on iOS 26.0+, otherwise 16.0
+#define PP_IOS26_Inset  \
+({ \
+    CGFloat _val = 12.0; \
+    if (@available(iOS 26.0, *)) { \
+        _val = 12.0; \
+    } \
+    _val; \
+})
+
+// Safe double
+static inline double PPSafeDouble(id v) {
+    return [v isKindOfClass:[NSNumber class]] ? [v doubleValue] : 0.0;
+}
+
+// Safe date
+static inline NSDate *PPSafeDate(id v) {
+    return [v isKindOfClass:[NSDate class]] ? v : nil;
+}
+ 
+// Safe dictionary
+static inline NSDictionary *PPSafeDict(id v) {
+    return [v isKindOfClass:[NSDictionary class]] ? v : @{};
+}
+
+// Safe UUID joiner
+static inline NSString *UUIDJoin(NSString *string) {
+    return [NSString stringWithFormat:@"%@-%@",
+            string ?: @"",
+            [[NSUUID UUID] UUIDString]];
+}
+
+/// Universal safe integer extractor
+static inline NSInteger PPSafeIntegerUniversal(id v) {
+    if (!v || v == [NSNull null]) return 0;
+    
+    // XLFormOptionsObject case
+    if ([v isKindOfClass:NSClassFromString(@"XLFormOptionsObject")]) {
+        id formValue = [v valueForKey:@"formValue"];
+        if ([formValue respondsToSelector:@selector(integerValue)]) {
+            return [formValue integerValue];
+        }
+    }
+    
+    // NSNumber / NSString fallback
+    if ([v respondsToSelector:@selector(integerValue)]) {
+        return [v integerValue];
+    }
+    
+    return 0;
+}
+
+#define PPTotalBarHeight \
+({ \
+    CGFloat _statusH = 0; \
+    if (@available(iOS 13.0, *)) { \
+        UIWindow *win = UIApplication.sharedApplication.windows.firstObject; \
+        UIStatusBarManager *mgr = win.windowScene.statusBarManager; \
+        _statusH = mgr.statusBarFrame.size.height; \
+    } else { \
+        _statusH = UIApplication.sharedApplication.statusBarFrame.size.height; \
+    } \
+    CGFloat _navH = 44.0; \
+    UIViewController *_rootVC = UIApplication.sharedApplication.keyWindow.rootViewController; \
+    UINavigationController *_nav = (_rootVC && [_rootVC isKindOfClass:UINavigationController.class]) ? \
+                                   (UINavigationController *)_rootVC : \
+                                   _rootVC.navigationController; \
+    if (_nav && !_nav.navigationBar.hidden) { \
+        _navH = _nav.navigationBar.frame.size.height; \
+    } \
+    (_statusH + _navH); \
+})
+
+
+static inline UIViewController * _Nullable PPGetTopMostViewController(void) {
+    UIViewController *root = UIApplication.sharedApplication.keyWindow.rootViewController;
+    return root;
+}
+ 
+
+// Convert anything into NSURL safely
+static inline NSURL * _Nullable PPSafeURL(id value) {
+    if (!value || value == (id)[NSNull null]) return nil;
+
+    // If it's already NSURL, return directly
+    if ([value isKindOfClass:[NSURL class]]) {
+        return (NSURL *)value;
+    }
+
+    // If it's NSString, try to build NSURL
+    if ([value isKindOfClass:[NSString class]]) {
+        NSString *s = [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (s.length == 0) return nil;
+        NSURL *u = [NSURL URLWithString:s];
+        return u;
+    }
+
+    // If it's NSNumber, convert to string
+    if ([value isKindOfClass:[NSNumber class]]) {
+        NSString *s = [(NSNumber *)value stringValue];
+        NSURL *u = [NSURL URLWithString:s];
+        return u;
+    }
+
+    // Fallback: try description
+    if ([value respondsToSelector:@selector(description)]) {
+        NSString *s = [[value description] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (s.length > 0) {
+            NSURL *u = [NSURL URLWithString:s];
+            return u;
+        }
+    }
+
+    return nil;
+}
+
+
+// دالة لإرجاع نصف قطر الزوايا في الشاشة تقريبًا
+static inline CGFloat PPScreenCornerRadius(void) {
+    UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
+    UIEdgeInsets safeAreaInsets = window.safeAreaInsets;
+
+    // إذا كان هناك مساحة آمنة من الأعلى أو من الجانب الأيسر، فهذا يعني أن الشاشة بها زوايا مستديرة
+    CGFloat cornerRadius = MIN(safeAreaInsets.top, safeAreaInsets.left);
+    
+    return cornerRadius;
+}
+
+
+static NSString * const kCategoryCellId = @"PPCategoryCell";
+
+ 
+
+#define PPChatBubblePad                   2.0
+
+
+#define PPChatBubbleMineColor AppPrimaryClr
+#define PPChatBubbleSomeoneColor [AppForgroundColr colorWithAlphaComponent:1]
+
+#define PPChatTimeMineColor [AppForgroundColr colorWithAlphaComponent:0.7]
+#define PPChatTimeSomeoneColor [UIColor colorWithWhite:0.55 alpha:1.0]
+
+#define PPChatBackground          [UIColor colorNamed:@"AppBackgroundColor"]
+
+NS_ASSUME_NONNULL_END
+
+#endif /* PrefixHeader_pch */

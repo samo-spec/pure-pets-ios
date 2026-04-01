@@ -1,0 +1,34 @@
+// swift-interface-format-version: 1.0
+// swift-compiler-version: Apple Swift version 5.7 (swiftlang-5.7.0.127.4 clang-1400.0.29.50)
+// swift-module-flags: -target arm64-apple-ios10.0 -enable-objc-interop -enable-library-evolution -swift-version 5 -enforce-exclusivity=checked -Onone -module-name QIBPayment
+// swift-module-flags-ignorable: -enable-bare-slash-regex
+import CommonCrypto
+import Foundation
+import Swift
+import UIKit
+import WebKit
+import _Concurrency
+import _StringProcessing
+@objc public protocol QPRequestProtocol {
+  @objc func qpResponse(_ response: Foundation.NSDictionary)
+}
+@objc public class QPRequestParameters : ObjectiveC.NSObject {
+  @objc public var gatewayId: Swift.String!
+  @objc public var name: Swift.String!
+  @objc public var address: Swift.String!
+  @objc public var city: Swift.String!
+  @objc public var state: Swift.String!
+  @objc public var country: Swift.String!
+  @objc public var email: Swift.String!
+  @objc public var currency: Swift.String!
+  @objc public var referenceId: Swift.String!
+  @objc public var phone: Swift.String!
+  @objc public var amount: Swift.Double
+  @objc public var mode: Swift.String!
+  @objc public var productDescription: Swift.String!
+  @objc public var secretKey: Swift.String!
+  @objc public var delegate: QIBPayment.QPRequestProtocol?
+  @objc public init(viewController: UIKit.UIViewController!)
+  @objc public func sendRequest()
+  @objc deinit
+}

@@ -1,0 +1,1555 @@
+//
+//  PPOrderManager.m
+//  Pure Pets
+//
+//  Created by Mohammed Ahmed on 02/02/2026.
+//
+
+
+#import "PPOrderManager.h"
+#import <FirebaseFirestore/FirebaseFirestore.h>
+#import <FirebaseAuth/FirebaseAuth.h>
+@import FirebaseFunctions;
+@import FirebaseStorage;
+#import <math.h>
+#import "PPAddressModel.h"
+#import "CountryModel.h"
+#import "CitiesManager.h"
+
+static NSString *const PPOrderInventoryErrorDomain = @"PPOrderInventory";
+static NSString *const PPOrderSupportErrorDomain = @"PPOrderSupport";
+
+static NSString *const PPOrderRequestStatusPendingReview = @"pending_review";
+static NSString *const PPOrderRequestStatusApproved = @"approved";
+static NSString *const PPOrderRequestStatusRejected = @"rejected";
+static NSString *const PPOrderRequestStatusCompleted = @"completed";
+static NSString *const PPOrderRequestStatusRefunded = @"refunded";
+static NSString *const PPOrderRequestStatusPartiallyRefunded = @"partially_refunded";
+static NSString *const PPOrderRequestStatusCancelled = @"cancelled";
+static NSString *const PPOrderRequestStatusClosed = @"closed";
+
+static NSInteger const PPOrderReturnWindowDays = 7;
+static NSInteger const PPOrderReplacementWindowDays = 7;
+static NSInteger const PPOrderRefundWindowDays = 14;
+static NSInteger const PPOrderComplaintWindowDays = 30;
+static NSInteger const PPOrderSupportMaxAttachmentCount = 4;
+static NSInteger const PPOrderSupportAttachmentMaxKB = 900;
+
+static NSString *PPOrderNormalizedPaymentMethodKey(NSString *paymentMethodID, NSString *paymentProvider);
+
+static NSString *PPOrderItemsSignature(NSArray<NSDictionary *> *items) {
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    for (NSDictionary *item in items ?: @[]) {
+        NSString *itemId = item[@"id"] ?: item[@"itemID"] ?: @"";
+        NSInteger qty = [item[@"qty"] ?: item[@"quantity"] integerValue];
+        double price = [item[@"price"] doubleValue];
+        [parts addObject:[NSString stringWithFormat:@"%@|%ld|%.2f",
+                          itemId,
+                          (long)qty,
+                          price]];
+    }
+    [parts sortUsingSelector:@selector(compare:)];
+    return [parts componentsJoinedByString:@"#"];
+}
+
+static BOOL PPOrderMatchesCart(PPOrder *order, NSArray<NSDictionary *> *items, double amount, NSString *addressID) {
+    if (!order) return NO;
+    if (fabs(order.amount - amount) > 0.01) return NO;
+    if (addressID.length > 0 && ![order.shippingAddressId isEqualToString:addressID]) return NO;
+    NSString *candidateSignature = PPOrderItemsSignature(order.items);
+    NSString *targetSignature = PPOrderItemsSignature(items);
+    return [candidateSignature isEqualToString:targetSignature];
+}
+
+static BOOL PPOrderMatchesCartForPaymentMethod(PPOrder *order, NSArray<NSDictionary *> *items, double amount, NSString *addressID, NSString *paymentMethodID) {
+    if (!PPOrderMatchesCart(order, items, amount, addressID)) {
+        return NO;
+    }
+    NSString *expectedMethod = PPOrderNormalizedPaymentMethodKey(paymentMethodID, nil);
+    NSString *actualMethod = PPOrderNormalizedPaymentMethodKey(order.paymentMethodId, order.paymentProvider);
+    return [expectedMethod isEqualToString:actualMethod];
+}
+
+static BOOL PPOrderIsRecent(PPOrder *order, NSTimeInterval now, NSTimeInterval maxAge) {
+    NSTimeInterval createdTime = order.createdAt.timeIntervalSince1970;
+    if (createdTime <= 0) return NO;
+    return ((now - createdTime) <= maxAge);
+}
+
+static NSString *PPOrderItemIDFromDict(NSDictionary *item) {
+    if (![item isKindOfClass:NSDictionary.class]) return @"";
+    NSString *itemID = item[@"id"];
+    if (![itemID isKindOfClass:NSString.class] || itemID.length == 0) {
+        itemID = item[@"itemID"];
+    }
+    return [itemID isKindOfClass:NSString.class] ? itemID : @"";
+}
+
+static NSInteger PPOrderItemQtyFromDict(NSDictionary *item) {
+    if (![item isKindOfClass:NSDictionary.class]) return 0;
+    id rawQty = item[@"qty"] ?: item[@"quantity"];
+    if (![rawQty respondsToSelector:@selector(integerValue)]) return 0;
+    return MAX(0, [rawQty integerValue]);
+}
+
+static NSString *PPOrderItemNameFromDict(NSDictionary *item) {
+    if (![item isKindOfClass:NSDictionary.class]) return @"";
+    NSString *name = item[@"name"];
+    return [name isKindOfClass:NSString.class] ? name : @"";
+}
+
+static NSString *PPOrderTrimmedString(NSString *value) {
+    if (![value isKindOfClass:NSString.class]) return @"";
+    return [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSString *PPOrderNormalizedStatusString(id value) {
+    NSString *normalized = [[PPOrderTrimmedString(value) lowercaseString] copy];
+    if (normalized.length == 0) return @"";
+    normalized = [normalized stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+    normalized = [normalized stringByReplacingOccurrencesOfString:@"-" withString:@"_"];
+    while ([normalized containsString:@"__"]) {
+        normalized = [normalized stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
+    }
+    return normalized;
+}
+
+static BOOL PPOrderStatusContainsToken(NSString *status, NSString *token) {
+    if (status.length == 0 || token.length == 0) return NO;
+    NSString *wrappedStatus = [NSString stringWithFormat:@"_%@_", status];
+    NSString *wrappedToken = [NSString stringWithFormat:@"_%@_", token];
+    return [wrappedStatus containsString:wrappedToken];
+}
+
+static BOOL PPOrderIsPaidLikeStatus(NSString *status) {
+    return PPOrderStatusContainsToken(status, @"paid") ||
+           PPOrderStatusContainsToken(status, @"success") ||
+           PPOrderStatusContainsToken(status, @"succeeded") ||
+           PPOrderStatusContainsToken(status, @"captured") ||
+           PPOrderStatusContainsToken(status, @"authorized") ||
+           PPOrderStatusContainsToken(status, @"completed");
+}
+
+static NSString *PPOrderNormalizedPaymentMethodKey(NSString *paymentMethodID, NSString *paymentProvider) {
+    return [PPOrder normalizedPaymentMethodFromRawValue:paymentMethodID provider:paymentProvider];
+}
+
+static BOOL PPOrderHasCapturedPayment(PPOrder *order) {
+    return [order hasCapturedPayment];
+}
+
+static NSString *PPOrderResolvedPaymentProviderForMethod(NSString *paymentMethodID) {
+    return [PPOrderNormalizedPaymentMethodKey(paymentMethodID, nil) isEqualToString:@"cash"] ? @"CASH" : @"QIB";
+}
+
+static FIRFunctions *PPOrderFunctionsClient(void) {
+    NSString *customDomain = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
+    if (customDomain.length > 0) {
+        return [FIRFunctions functionsForCustomDomain:customDomain];
+    }
+    NSString *region = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
+    if (region.length == 0) {
+        region = @"us-central1";
+    }
+    return [FIRFunctions functionsForRegion:region];
+}
+
+static NSString *PPOrderFriendlyFunctionsErrorMessage(NSError *error) {
+    if (!error) return @"";
+
+    NSString *domain = [PPOrderTrimmedString(error.domain).lowercaseString copy];
+    BOOL isFunctionsError = [domain containsString:@"functions"];
+    NSString *serverMessage = PPOrderTrimmedString(error.localizedDescription);
+    if (!isFunctionsError) {
+        return serverMessage;
+    }
+
+    switch ((FIRFunctionsErrorCode)error.code) {
+        case FIRFunctionsErrorCodeUnimplemented:
+        case FIRFunctionsErrorCodeNotFound:
+            return kLang(@"payment_backend_unavailable");
+        case FIRFunctionsErrorCodeUnauthenticated:
+            return kLang(@"auth_register_required_title");
+        case FIRFunctionsErrorCodePermissionDenied:
+            return kLang(@"payment_backend_permission_denied");
+        case FIRFunctionsErrorCodeDeadlineExceeded:
+        case FIRFunctionsErrorCodeUnavailable:
+            return kLang(@"payment_backend_unreachable");
+        case FIRFunctionsErrorCodeFailedPrecondition:
+            return serverMessage.length > 0 ? serverMessage : kLang(@"payment_backend_setup_incomplete");
+        default:
+            return serverMessage;
+    }
+}
+
+static NSError *PPOrderWrappedCallableError(NSError *error) {
+    if (!error) return nil;
+    NSString *friendlyMessage = PPOrderFriendlyFunctionsErrorMessage(error);
+    if (friendlyMessage.length == 0 || [friendlyMessage isEqualToString:error.localizedDescription]) {
+        return error;
+    }
+
+    NSMutableDictionary *userInfo = [error.userInfo mutableCopy] ?: [NSMutableDictionary dictionary];
+    userInfo[NSLocalizedDescriptionKey] = friendlyMessage;
+    return [NSError errorWithDomain:error.domain code:error.code userInfo:userInfo];
+}
+
+static NSString *PPOrderResolvedCurrencyCode(void) {
+    NSString *currencyCode = [CountryModel safeCurrentCurrencyCode];
+    if (currencyCode.length == 3) {
+        return currencyCode;
+    }
+    return @"QAR";
+}
+
+static NSString *PPOrderAddressEffectiveID(PPAddressModel *address) {
+    if (!address) return @"";
+    NSString *effectiveID = address.documentID.length > 0 ? address.documentID : address.addressID;
+    if (effectiveID.length == 0) return @"";
+    if (address.documentID.length == 0) {
+        address.documentID = effectiveID;
+    }
+    if (address.addressID.length == 0) {
+        address.addressID = effectiveID;
+    }
+    return effectiveID;
+}
+
+static BOOL PPOrderAddressHasMinimumData(PPAddressModel *address) {
+    if (!address) return NO;
+    if (PPOrderAddressEffectiveID(address).length == 0) return NO;
+
+    NSString *line1 = PPOrderTrimmedString(address.addressLine1);
+    NSString *fullName = PPOrderTrimmedString(address.fullName);
+    NSString *locationName = PPOrderTrimmedString(address.locatioName);
+    NSString *displayName = PPOrderTrimmedString(address.displayName);
+    return (line1.length > 0 ||
+            fullName.length > 0 ||
+            locationName.length > 0 ||
+            displayName.length > 0);
+}
+
+static NSDictionary *PPOrderShippingSnapshotFromAddress(PPAddressModel *address, NSString *expectedUserID) {
+    NSString *effectiveID = PPOrderAddressEffectiveID(address);
+    if (!address || !PPOrderAddressHasMinimumData(address) || effectiveID.length == 0) {
+        return nil;
+    }
+    NSString *ownerUID = expectedUserID ?: @"";
+    if (ownerUID.length == 0) {
+        ownerUID = address.userID ?: @"";
+    }
+    if (ownerUID.length == 0) {
+        ownerUID = [FIRAuth auth].currentUser.uid ?: @"";
+    }
+    if (ownerUID.length == 0) {
+        return nil;
+    }
+    NSMutableDictionary *snapshot = [[address toDictionary] mutableCopy];
+    snapshot[@"addressID"] = effectiveID;
+    snapshot[@"userID"] = ownerUID ?: @"";
+    snapshot[@"displayName"] = address.displayName ?: @"";
+    NSString *addressPhone = PPOrderTrimmedString(address.phoneNumber);
+    snapshot[@"phoneNumber"] = addressPhone ?: @"";
+    snapshot[@"phone"] = addressPhone ?: @"";
+    return snapshot.copy;
+}
+
+static NSMutableDictionary<NSString *, NSMutableDictionary *> *PPAggregateRequestedItems(NSArray<NSDictionary *> *items) {
+    NSMutableDictionary<NSString *, NSMutableDictionary *> *aggregated = [NSMutableDictionary dictionary];
+    for (NSDictionary *item in items ?: @[]) {
+        NSString *itemID = PPOrderItemIDFromDict(item);
+        NSInteger qty = PPOrderItemQtyFromDict(item);
+        if (itemID.length == 0 || qty <= 0) continue;
+
+        NSMutableDictionary *entry = aggregated[itemID];
+        if (!entry) {
+            entry = [@{
+                @"itemID": itemID,
+                @"name": PPOrderItemNameFromDict(item) ?: @"",
+                @"requestedQty": @(0)
+            } mutableCopy];
+            aggregated[itemID] = entry;
+        }
+
+        NSInteger currentQty = [entry[@"requestedQty"] integerValue];
+        entry[@"requestedQty"] = @(currentQty + qty);
+
+        NSString *existingName = entry[@"name"];
+        if (existingName.length == 0) {
+            entry[@"name"] = PPOrderItemNameFromDict(item) ?: @"";
+        }
+    }
+    return aggregated;
+}
+
+static NSString *PPOrderSupportSafeString(id value) {
+    if (![value isKindOfClass:NSString.class]) return @"";
+    return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSDate *PPOrderSupportDateFromValue(id value) {
+    if ([value isKindOfClass:FIRTimestamp.class]) {
+        return ((FIRTimestamp *)value).dateValue;
+    }
+    if ([value isKindOfClass:NSDate.class]) {
+        return (NSDate *)value;
+    }
+    return nil;
+}
+
+static NSArray<NSString *> *PPOrderSupportStringArray(id value) {
+    if (![value isKindOfClass:NSArray.class]) return @[];
+    NSMutableArray<NSString *> *result = [NSMutableArray array];
+    for (id entry in (NSArray *)value) {
+        NSString *string = PPOrderSupportSafeString(entry);
+        if (string.length > 0) [result addObject:string];
+    }
+    return result.copy;
+}
+
+static BOOL PPOrderStatusMatchesAnyKeyword(NSString *statusKey, NSArray<NSString *> *keywords) {
+    if (statusKey.length == 0) return NO;
+    NSString *wrappedStatus = [NSString stringWithFormat:@"_%@_", statusKey];
+    for (NSString *keyword in keywords ?: @[]) {
+        NSString *normalizedKeyword = PPOrderNormalizedStatusString(keyword);
+        if (normalizedKeyword.length == 0) continue;
+        if ([statusKey isEqualToString:normalizedKeyword]) return YES;
+        if ([wrappedStatus containsString:[NSString stringWithFormat:@"_%@_", normalizedKeyword]]) return YES;
+        if ([statusKey containsString:normalizedKeyword]) return YES;
+    }
+    return NO;
+}
+
+static BOOL PPOrderStatusIsCancelledLike(NSString *statusKey) {
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"cancelled", @"canceled"]);
+}
+
+static BOOL PPOrderStatusIsDeliveredLike(NSString *statusKey) {
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"delivered", @"completed", @"fulfilled"]);
+}
+
+static BOOL PPOrderStatusIsShippedLike(NSString *statusKey) {
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"shipped", @"shipping", @"in_transit", @"out_for_delivery"]);
+}
+
+static BOOL PPOrderStatusIsPackingLike(NSString *statusKey) {
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"processing", @"preparing", @"packed", @"confirmed"]);
+}
+
+static BOOL PPOrderStatusIsPaidLike(NSString *statusKey) {
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"paid", @"success", @"approved", @"verified", @"captured", @"authorized", @"processing", @"preparing", @"packed", @"shipped", @"delivered", @"fulfilled"]);
+}
+
+static BOOL PPOrderStatusIsFailureLike(NSString *statusKey) {
+    return PPOrderStatusMatchesAnyKeyword(statusKey, @[@"failed", @"rejected", @"cancelled", @"canceled", @"expired", @"error", @"voided"]);
+}
+
+static BOOL PPOrderRequestStatusIsOpen(NSString *statusKey) {
+    NSString *normalized = PPOrderNormalizedStatusString(statusKey);
+    if (normalized.length == 0) return YES;
+    return ![@[
+        PPOrderRequestStatusRejected,
+        PPOrderRequestStatusCompleted,
+        PPOrderRequestStatusRefunded,
+        PPOrderRequestStatusPartiallyRefunded,
+        PPOrderRequestStatusCancelled,
+        PPOrderRequestStatusClosed
+    ] containsObject:normalized];
+}
+
+static NSString *PPOrderRequestTypeForAction(PPOrderCustomerActionType actionType) {
+    switch (actionType) {
+        case PPOrderCustomerActionTypeCancel: return @"cancel";
+        case PPOrderCustomerActionTypeReturn: return @"return";
+        case PPOrderCustomerActionTypeRefund: return @"refund";
+        case PPOrderCustomerActionTypeReplacement: return @"replacement";
+        case PPOrderCustomerActionTypeComplaint: return @"complaint";
+        case PPOrderCustomerActionTypeSupport: return @"support";
+        case PPOrderCustomerActionTypeTrack: return @"track";
+    }
+    return @"support";
+}
+
+static NSDate *PPOrderSupportBestDate(NSArray<NSDate *> *candidates) {
+    for (NSDate *candidate in candidates ?: @[]) {
+        if ([candidate isKindOfClass:NSDate.class]) return candidate;
+    }
+    return nil;
+}
+
+static NSInteger PPOrderSupportElapsedDaysSince(NSDate *anchor, NSDate *referenceDate) {
+    if (![anchor isKindOfClass:NSDate.class] || ![referenceDate isKindOfClass:NSDate.class]) {
+        return NSIntegerMax;
+    }
+    NSTimeInterval seconds = [referenceDate timeIntervalSinceDate:anchor];
+    if (seconds <= 0) return 0;
+    return (NSInteger)floor(seconds / (60.0 * 60.0 * 24.0));
+}
+
+static BOOL PPOrderSupportHasOpenRequestForType(NSArray<PPOrderSupportRequest *> *requests, NSString *requestType) {
+    NSString *normalizedType = PPOrderNormalizedStatusString(requestType);
+    for (PPOrderSupportRequest *request in requests ?: @[]) {
+        if ([[PPOrderNormalizedStatusString(request.type) copy] isEqualToString:normalizedType] &&
+            PPOrderRequestStatusIsOpen(request.status)) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static NSDictionary *PPOrderReasonOption(NSString *code, NSString *title, NSString *subtitle, BOOL requiresItemSelection) {
+    return @{
+        @"code": code ?: @"",
+        @"title": title ?: @"",
+        @"subtitle": subtitle ?: @"",
+        @"requiresItemSelection": @(requiresItemSelection)
+    };
+}
+
+static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
+    if (![image isKindOfClass:UIImage.class]) return nil;
+    CGFloat compression = 0.82;
+    NSData *data = UIImageJPEGRepresentation(image, compression);
+    NSInteger maxBytes = MAX(100, maxSizeKB) * 1024;
+    while (data.length > maxBytes && compression > 0.3) {
+        compression -= 0.08;
+        data = UIImageJPEGRepresentation(image, compression);
+    }
+    return data;
+}
+
+@implementation PPOrderSupportAttachment
+
++ (instancetype)attachmentFromDictionary:(NSDictionary *)dictionary
+{
+    PPOrderSupportAttachment *attachment = [PPOrderSupportAttachment new];
+    attachment.attachmentURL = PPOrderSupportSafeString(dictionary[@"url"] ?: dictionary[@"attachmentURL"]);
+    attachment.storagePath = PPOrderSupportSafeString(dictionary[@"storagePath"]);
+    attachment.mimeType = PPOrderSupportSafeString(dictionary[@"mimeType"]);
+    attachment.fileName = PPOrderSupportSafeString(dictionary[@"fileName"]);
+    attachment.sizeBytes = [dictionary[@"sizeBytes"] respondsToSelector:@selector(integerValue)] ? [dictionary[@"sizeBytes"] integerValue] : 0;
+    return attachment;
+}
+
+- (NSDictionary *)dictionaryValue
+{
+    return @{
+        @"url": self.attachmentURL ?: @"",
+        @"storagePath": self.storagePath ?: @"",
+        @"mimeType": self.mimeType ?: @"image/jpeg",
+        @"fileName": self.fileName ?: @"evidence.jpg",
+        @"sizeBytes": @(MAX(0, self.sizeBytes))
+    };
+}
+
+@end
+
+@implementation PPOrderSupportRequest
+
++ (instancetype)requestFromSnapshot:(FIRDocumentSnapshot *)snapshot
+{
+    return [self requestFromDictionary:snapshot.data ?: @{} documentID:snapshot.documentID];
+}
+
++ (instancetype)requestFromDictionary:(NSDictionary *)dictionary documentID:(NSString *)documentID
+{
+    PPOrderSupportRequest *request = [PPOrderSupportRequest new];
+    request.requestId = PPOrderSupportSafeString(dictionary[@"requestId"]);
+    if (request.requestId.length == 0) request.requestId = PPOrderSupportSafeString(documentID);
+    request.orderId = PPOrderSupportSafeString(dictionary[@"orderId"]);
+    request.userId = PPOrderSupportSafeString(dictionary[@"userId"]);
+    request.type = PPOrderNormalizedStatusString(dictionary[@"type"]);
+    request.reasonCode = PPOrderNormalizedStatusString(dictionary[@"reasonCode"]);
+    request.reasonTitle = PPOrderSupportSafeString(dictionary[@"reasonTitle"]);
+    request.issueCategory = PPOrderNormalizedStatusString(dictionary[@"issueCategory"]);
+    request.subject = PPOrderSupportSafeString(dictionary[@"subject"]);
+    request.notes = PPOrderSupportSafeString(dictionary[@"notes"]);
+    request.status = PPOrderNormalizedStatusString(dictionary[@"status"]);
+    request.finalResolution = PPOrderNormalizedStatusString(dictionary[@"finalResolution"]);
+    request.dedupeKey = PPOrderSupportSafeString(dictionary[@"dedupeKey"]);
+    request.itemIDs = PPOrderSupportStringArray(dictionary[@"itemIDs"]);
+    request.itemSnapshots = [dictionary[@"itemSnapshots"] isKindOfClass:NSArray.class] ? dictionary[@"itemSnapshots"] : @[];
+
+    NSMutableArray<PPOrderSupportAttachment *> *attachments = [NSMutableArray array];
+    for (NSDictionary *rawAttachment in ([dictionary[@"attachments"] isKindOfClass:NSArray.class] ? dictionary[@"attachments"] : @[])) {
+        if (![rawAttachment isKindOfClass:NSDictionary.class]) continue;
+        [attachments addObject:[PPOrderSupportAttachment attachmentFromDictionary:rawAttachment]];
+    }
+    request.attachments = attachments.copy;
+
+    request.resolutionMetadata = [dictionary[@"resolution"] isKindOfClass:NSDictionary.class] ? dictionary[@"resolution"] : nil;
+    request.adminReview = [dictionary[@"adminReview"] isKindOfClass:NSDictionary.class] ? dictionary[@"adminReview"] : nil;
+    request.submittedAt = PPOrderSupportDateFromValue(dictionary[@"submittedAt"]);
+    request.resolvedAt = PPOrderSupportDateFromValue(dictionary[@"resolvedAt"]);
+    request.createdAt = PPOrderSupportDateFromValue(dictionary[@"createdAt"]) ?: [NSDate date];
+    request.updatedAt = PPOrderSupportDateFromValue(dictionary[@"updatedAt"]) ?: request.createdAt;
+    return request;
+}
+
+@end
+
+@implementation PPOrderTimelineEvent
+
++ (instancetype)eventFromSnapshot:(FIRDocumentSnapshot *)snapshot
+{
+    return [self eventFromDictionary:snapshot.data ?: @{} documentID:snapshot.documentID];
+}
+
++ (instancetype)eventFromDictionary:(NSDictionary *)dictionary documentID:(NSString *)documentID
+{
+    PPOrderTimelineEvent *event = [PPOrderTimelineEvent new];
+    event.eventId = PPOrderSupportSafeString(dictionary[@"eventId"]);
+    if (event.eventId.length == 0) event.eventId = PPOrderSupportSafeString(documentID);
+    event.type = PPOrderNormalizedStatusString(dictionary[@"type"]);
+    event.status = PPOrderNormalizedStatusString(dictionary[@"status"]);
+    event.actorType = PPOrderNormalizedStatusString(dictionary[@"actorType"]);
+    event.summary = PPOrderSupportSafeString(dictionary[@"summary"]);
+    event.metadata = [dictionary[@"metadata"] isKindOfClass:NSDictionary.class] ? dictionary[@"metadata"] : nil;
+    event.createdAt = PPOrderSupportDateFromValue(dictionary[@"createdAt"]) ?: [NSDate date];
+    return event;
+}
+
+@end
+
+@implementation PPOrderEligibilityDecision
+@end
+
+@implementation PPOrderSupportDraft
+@end
+
+@implementation PPOrderManager
+
++ (instancetype)shared
+{
+    static PPOrderManager *mgr;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        mgr = [PPOrderManager new];
+    });
+    return mgr;
+}
+
++ (NSString *)displayTitleForActionType:(PPOrderCustomerActionType)actionType
+{
+    switch (actionType) {
+        case PPOrderCustomerActionTypeTrack: return kLang(@"order_action_track");
+        case PPOrderCustomerActionTypeCancel: return kLang(@"order_action_cancel");
+        case PPOrderCustomerActionTypeReturn: return kLang(@"order_action_return");
+        case PPOrderCustomerActionTypeRefund: return kLang(@"order_action_refund");
+        case PPOrderCustomerActionTypeReplacement: return kLang(@"order_action_replacement");
+        case PPOrderCustomerActionTypeComplaint: return kLang(@"order_action_report_issue");
+        case PPOrderCustomerActionTypeSupport: return kLang(@"order_action_support_case");
+    }
+    return kLang(@"order_action_support_case");
+}
+
++ (NSString *)displayTitleForRequestType:(NSString *)requestType
+{
+    NSString *normalized = PPOrderNormalizedStatusString(requestType);
+    if ([normalized isEqualToString:@"cancel"]) return kLang(@"order_action_cancel");
+    if ([normalized isEqualToString:@"return"]) return kLang(@"order_action_return");
+    if ([normalized isEqualToString:@"refund"]) return kLang(@"order_action_refund");
+    if ([normalized isEqualToString:@"replacement"]) return kLang(@"order_action_replacement");
+    if ([normalized isEqualToString:@"complaint"]) return kLang(@"order_action_report_issue");
+    return kLang(@"order_action_support_case");
+}
+
++ (NSString *)displayTitleForRequestStatus:(NSString *)status
+{
+    NSString *normalized = PPOrderNormalizedStatusString(status);
+    if ([normalized isEqualToString:PPOrderRequestStatusPendingReview]) return kLang(@"order_request_status_pending_review");
+    if ([normalized isEqualToString:PPOrderRequestStatusApproved]) return kLang(@"order_request_status_approved");
+    if ([normalized isEqualToString:PPOrderRequestStatusRejected]) return kLang(@"order_request_status_rejected");
+    if ([normalized isEqualToString:PPOrderRequestStatusCompleted]) return kLang(@"order_request_status_completed");
+    if ([normalized isEqualToString:PPOrderRequestStatusRefunded]) return kLang(@"order_request_status_refunded");
+    if ([normalized isEqualToString:PPOrderRequestStatusPartiallyRefunded]) return kLang(@"order_request_status_partially_refunded");
+    if ([normalized isEqualToString:PPOrderRequestStatusCancelled]) return kLang(@"order_request_status_cancelled");
+    if ([normalized isEqualToString:PPOrderRequestStatusClosed]) return kLang(@"order_request_status_closed");
+    return kLang(@"order_request_status_pending_review");
+}
+
+- (void)createPendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                              amount:(double)amount
+                            address:(PPAddressModel * _Nullable)address
+                           completion:(void (^)(PPOrder *, NSError *))completion
+{
+    [self createPendingOrderWithItems:items
+                               amount:amount
+                             address:address
+                     paymentMethodId:nil
+                           completion:completion];
+}
+
+- (void)createPendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                              amount:(double)amount
+                            address:(PPAddressModel * _Nullable)address
+                    paymentMethodId:(NSString *)paymentMethodId
+                          completion:(void (^)(PPOrder *, NSError *))completion
+{
+    NSString *userId = [FIRAuth auth].currentUser.uid ?: @"";
+    if (userId.length == 0) {
+        NSError *error = [NSError errorWithDomain:@"PPOrder"
+                                             code:401
+                                         userInfo:@{NSLocalizedDescriptionKey: @"User not logged in."}];
+        if (completion) completion(nil, error);
+        return;
+    }
+    if (address.userID.length > 0 && ![address.userID isEqualToString:userId]) {
+        NSError *ownershipError = [NSError errorWithDomain:@"PPOrder"
+                                                      code:403
+                                                  userInfo:@{NSLocalizedDescriptionKey: @"Selected address does not belong to current user."}];
+        if (completion) completion(nil, ownershipError);
+        return;
+    }
+    NSMutableDictionary *shippingSnapshot = [PPOrderShippingSnapshotFromAddress(address, userId) mutableCopy];
+    if (!shippingSnapshot) {
+        NSError *addressError = [NSError errorWithDomain:@"PPOrder"
+                                                    code:422
+                                                userInfo:@{NSLocalizedDescriptionKey: @"A valid shipping address is required."}];
+        if (completion) completion(nil, addressError);
+        return;
+    }
+    NSString *shippingAddressID = PPOrderAddressEffectiveID(address);
+    NSString *resolvedPaymentMethodID = PPOrderNormalizedPaymentMethodKey(paymentMethodId, nil);
+    NSString *resolvedPaymentProvider = PPOrderResolvedPaymentProviderForMethod(resolvedPaymentMethodID);
+
+    FIRFunctions *functions = PPOrderFunctionsClient();
+    NSDictionary *payload = @{
+        @"items": items ?: @[],
+        @"shippingAddressId": shippingAddressID ?: @"",
+        @"currency": PPOrderResolvedCurrencyCode(),
+        @"paymentProvider": resolvedPaymentProvider,
+        @"paymentMethodId": resolvedPaymentMethodID
+    };
+
+    NSLog(@"[PPOrderManager] 📤 createPendingOrder | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@ | provider=%@",
+          (unsigned long)items.count,
+          amount,
+          shippingAddressID ?: @"",
+          resolvedPaymentMethodID ?: @"",
+          resolvedPaymentProvider ?: @"");
+
+    [[functions HTTPSCallableWithName:@"createPendingOrder"]
+     callWithObject:payload
+     completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        if (error || ![result.data isKindOfClass:NSDictionary.class]) {
+            NSError *resolvedError = PPOrderWrappedCallableError(error);
+            NSError *finalError = resolvedError ?: [NSError errorWithDomain:@"PPOrder"
+                                                                       code:500
+                                                                   userInfo:@{NSLocalizedDescriptionKey: @"Failed to create pending order."}];
+            NSLog(@"[PPOrderManager] ❌ createPendingOrder failed | paymentMethod=%@ | error=%@",
+                  resolvedPaymentMethodID ?: @"",
+                  finalError.localizedDescription ?: @"Unknown error");
+            if (completion) completion(nil, finalError);
+            return;
+        }
+
+        NSDictionary *root = (NSDictionary *)result.data;
+        NSDictionary *orderDict = [root[@"order"] isKindOfClass:NSDictionary.class] ? root[@"order"] : root;
+        NSString *orderId = PPOrderTrimmedString(root[@"orderId"]);
+        if (orderId.length == 0) {
+            orderId = PPOrderTrimmedString(orderDict[@"orderId"]);
+        }
+
+        PPOrder *order = [PPOrder new];
+        order.orderId = orderId ?: @"";
+        NSString *orderNumber = PPOrderTrimmedString(root[@"orderNumber"]);
+        if (orderNumber.length == 0) {
+            orderNumber = PPOrderTrimmedString(orderDict[@"orderNumber"]);
+        }
+        if (orderNumber.length == 0) {
+            orderNumber = PPOrderTrimmedString(root[@"displayOrderNumber"]);
+        }
+        if (orderNumber.length == 0) {
+            orderNumber = PPOrderTrimmedString(orderDict[@"displayOrderNumber"]);
+        }
+        order.orderNumber = orderNumber.length > 0 ? orderNumber.uppercaseString : nil;
+        order.userId = userId;
+        order.status = PPOrderStatusPending;
+        order.rawStatus = @"pending";
+        order.amount = [orderDict[@"amount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"amount"] doubleValue] : amount;
+        order.shippingFee = [orderDict[@"shippingFee"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"shippingFee"] doubleValue] : 0.0;
+        double totalAmount = [orderDict[@"totalAmount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"totalAmount"] doubleValue] : order.amount;
+        order.totalAmount = totalAmount > 0 ? totalAmount : order.amount;
+        NSString *currency = PPOrderTrimmedString(orderDict[@"currency"]);
+        order.currency = currency.length > 0 ? currency : PPOrderResolvedCurrencyCode();
+        order.paymentMethodId = [PPOrder normalizedPaymentMethodFromRawValue:orderDict[@"paymentMethodId"]
+                                                                    provider:orderDict[@"paymentProvider"]];
+        order.paymentStatus = [PPOrder normalizedPaymentStatusFromRawValue:orderDict[@"paymentStatus"]
+                                                             paymentMethod:order.paymentMethodId
+                                                                    status:order.rawStatus
+                                                               transaction:nil
+                                                                    paidAt:nil
+                                                         paymentCollectedAt:nil];
+        NSString *provider = PPOrderTrimmedString(orderDict[@"paymentProvider"]);
+        order.paymentProvider = provider.length > 0 ? provider : resolvedPaymentProvider;
+        NSString *verificationStatus = PPOrderTrimmedString(orderDict[@"verificationStatus"]);
+        order.verificationStatus = verificationStatus.length > 0
+        ? PPOrderNormalizedStatusString(verificationStatus)
+        : ([order isCashOnDelivery] ? @"not_applicable" : @"pending");
+        order.items = [orderDict[@"items"] isKindOfClass:NSArray.class] ? orderDict[@"items"] : (items ?: @[]);
+        NSString *resolvedShippingID = PPOrderTrimmedString(orderDict[@"shippingAddressId"]);
+        order.shippingAddressId = resolvedShippingID.length > 0 ? resolvedShippingID : (shippingAddressID ?: @"");
+        order.shippingAddressSnapshot = [orderDict[@"shippingAddressSnapshot"] isKindOfClass:NSDictionary.class] ? orderDict[@"shippingAddressSnapshot"] : shippingSnapshot.copy;
+
+        NSNumber *createdAtMillis = [orderDict[@"createdAtMillis"] respondsToSelector:@selector(doubleValue)] ? orderDict[@"createdAtMillis"] : nil;
+        NSDate *createdAt = createdAtMillis ? [NSDate dateWithTimeIntervalSince1970:(createdAtMillis.doubleValue / 1000.0)] : NSDate.date;
+        NSNumber *updatedAtMillis = [orderDict[@"updatedAtMillis"] respondsToSelector:@selector(doubleValue)] ? orderDict[@"updatedAtMillis"] : nil;
+        NSDate *updatedAt = updatedAtMillis ? [NSDate dateWithTimeIntervalSince1970:(updatedAtMillis.doubleValue / 1000.0)] : createdAt;
+        order.createdAt = createdAt;
+        order.updatedAt = updatedAt;
+
+        NSLog(@"[PPOrderManager] ✅ createPendingOrder resolved | orderId=%@ | orderNumber=%@ | paymentMethod=%@ | paymentStatus=%@",
+              order.orderId ?: @"",
+              order.orderNumber ?: @"",
+              order.paymentMethodId ?: @"",
+              order.paymentStatus ?: @"");
+
+        if (completion) completion(order, nil);
+    }];
+}
+
+- (void)fetchOrCreatePendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                                     amount:(double)amount
+                                    address:(PPAddressModel * _Nullable)address
+                                  completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion
+{
+    [self fetchOrCreatePendingOrderWithItems:items
+                                      amount:amount
+                                     address:address
+                             paymentMethodId:nil
+                                   completion:completion];
+}
+
+- (void)fetchOrCreatePendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                                     amount:(double)amount
+                                    address:(PPAddressModel * _Nullable)address
+                            paymentMethodId:(NSString *)paymentMethodId
+                                  completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion
+{
+    NSString *userId = [FIRAuth auth].currentUser.uid ?: @"";
+    if (userId.length == 0) {
+        NSError *error = [NSError errorWithDomain:@"PPOrder"
+                                             code:401
+                                         userInfo:@{NSLocalizedDescriptionKey: @"User not logged in."}];
+        if (completion) completion(nil, error);
+        return;
+    }
+    if (address.userID.length > 0 && ![address.userID isEqualToString:userId]) {
+        NSError *ownershipError = [NSError errorWithDomain:@"PPOrder"
+                                                      code:403
+                                                  userInfo:@{NSLocalizedDescriptionKey: @"Selected address does not belong to current user."}];
+        if (completion) completion(nil, ownershipError);
+        return;
+    }
+    NSMutableDictionary *shippingSnapshot = [PPOrderShippingSnapshotFromAddress(address, userId) mutableCopy];
+    if (!shippingSnapshot) {
+        NSError *addressError = [NSError errorWithDomain:@"PPOrder"
+                                                    code:422
+                                                userInfo:@{NSLocalizedDescriptionKey: @"A valid shipping address is required."}];
+        if (completion) completion(nil, addressError);
+        return;
+    }
+    NSString *shippingAddressID = PPOrderAddressEffectiveID(address);
+    NSString *resolvedPaymentMethodID = PPOrderNormalizedPaymentMethodKey(paymentMethodId, nil);
+
+    NSLog(@"[PPOrderManager] 🔎 fetchOrCreatePendingOrder | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@",
+          (unsigned long)items.count,
+          amount,
+          shippingAddressID ?: @"",
+          resolvedPaymentMethodID ?: @"");
+
+    FIRFirestore *db = FIRFirestore.firestore;
+    FIRCollectionReference *ordersRef = [db collectionWithPath:@"Orders"];
+    FIRQuery *pendingQuery = [[ordersRef queryWhereField:@"userId" isEqualTo:userId]
+                              queryWhereField:@"status" isEqualTo:@"pending"];
+
+    [pendingQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error || !snapshot) {
+            if (completion) completion(nil, error ?: [NSError errorWithDomain:@"PPOrder"
+                                                                         code:500
+                                                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to load pending orders."}]);
+            return;
+        }
+
+        PPOrder *bestMatch = nil;
+        NSTimeInterval newestTime = 0;
+        NSTimeInterval now = NSDate.date.timeIntervalSince1970;
+        NSTimeInterval maxAge = 24 * 60 * 60; // Reuse pending orders for 24h
+
+        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+            PPOrder *candidate = [PPOrder orderFromSnapshot:doc];
+            if (!candidate) continue;
+            if (!PPOrderMatchesCartForPaymentMethod(candidate, items, amount, shippingAddressID ?: @"", resolvedPaymentMethodID)) continue;
+            if (!PPOrderIsRecent(candidate, now, maxAge)) continue;
+
+            NSTimeInterval createdTime = candidate.createdAt.timeIntervalSince1970;
+            if (createdTime > newestTime) {
+                newestTime = createdTime;
+                bestMatch = candidate;
+            }
+        }
+
+        if (bestMatch) {
+            NSLog(@"[PPOrderManager] ♻️ Reusing pending order | orderId=%@ | paymentMethod=%@",
+                  bestMatch.orderId ?: @"",
+                  bestMatch.paymentMethodId ?: @"");
+            if (completion) completion(bestMatch, nil);
+            return;
+        }
+
+        // Fallback: allow retry on recently cancelled orders by resetting to pending.
+        FIRQuery *failedQuery = [[ordersRef queryWhereField:@"userId" isEqualTo:userId]
+                                 queryWhereField:@"status" isEqualTo:@"failed"];
+
+        [failedQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable failedSnapshot, NSError * _Nullable failedError) {
+            if (failedError || !failedSnapshot) {
+                if (completion) completion(nil, failedError ?: [NSError errorWithDomain:@"PPOrder"
+                                                                                   code:500
+                                                                               userInfo:@{NSLocalizedDescriptionKey: @"Failed to load failed orders."}]);
+                return;
+            }
+
+            PPOrder *retryMatch = nil;
+            NSString *retryDocId = nil;
+            NSTimeInterval retryNewest = 0;
+
+            for (FIRDocumentSnapshot *doc in failedSnapshot.documents) {
+                PPOrder *candidate = [PPOrder orderFromSnapshot:doc];
+                if (!candidate) continue;
+                if (!PPOrderMatchesCartForPaymentMethod(candidate, items, amount, shippingAddressID ?: @"", resolvedPaymentMethodID)) continue;
+                if (!PPOrderIsRecent(candidate, now, maxAge)) continue;
+
+                NSTimeInterval createdTime = candidate.createdAt.timeIntervalSince1970;
+                if (createdTime > retryNewest) {
+                    retryNewest = createdTime;
+                    retryMatch = candidate;
+                    retryDocId = doc.documentID;
+                }
+            }
+
+            if (!retryMatch || retryDocId.length == 0) {
+                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID completion:completion];
+                return;
+            }
+
+            if ([resolvedPaymentMethodID isEqualToString:@"cash"]) {
+                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID completion:completion];
+                return;
+            }
+
+            FIRFunctions *functions = PPOrderFunctionsClient();
+            NSDictionary *payload = @{
+                @"orderId": retryDocId,
+                @"shippingAddressId": shippingAddressID ?: @"",
+                @"shippingAddressSnapshot": shippingSnapshot.copy ?: @{}
+            };
+
+            NSLog(@"[PPOrderManager] 🔁 Preparing failed order for retry | orderId=%@ | paymentMethod=%@",
+                  retryDocId ?: @"",
+                  resolvedPaymentMethodID ?: @"");
+
+            [[functions HTTPSCallableWithName:@"prepareOrderForRetry"]
+             callWithObject:payload
+             completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable callableError) {
+                if (callableError || ![result.data isKindOfClass:NSDictionary.class]) {
+                    // Fallback path: if callable is unavailable, create a new pending order.
+                    NSLog(@"[PPOrderManager] ⚠️ prepareOrderForRetry unavailable, creating new pending order | orderId=%@ | error=%@",
+                          retryDocId ?: @"",
+                          callableError.localizedDescription ?: @"Invalid response");
+                    [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID completion:completion];
+                    return;
+                }
+
+                retryMatch.status = PPOrderStatusPending;
+                retryMatch.rawStatus = @"pending";
+                retryMatch.paymentMethodId = @"qib";
+                retryMatch.paymentStatus = @"pending";
+                retryMatch.paymentProvider = @"QIB";
+                retryMatch.verificationStatus = @"pending";
+                retryMatch.failureReason = nil;
+                retryMatch.transactionId = nil;
+                retryMatch.paymentResponse = nil;
+                retryMatch.shippingAddressId = shippingAddressID ?: @"";
+                retryMatch.shippingAddressSnapshot = shippingSnapshot.copy;
+                retryMatch.updatedAt = NSDate.date;
+                NSLog(@"[PPOrderManager] ✅ Retry order prepared | orderId=%@ | paymentMethod=%@",
+                      retryMatch.orderId ?: retryDocId ?: @"",
+                      retryMatch.paymentMethodId ?: @"");
+                if (completion) completion(retryMatch, nil);
+            }];
+        }];
+    }];
+}
+
+- (void)validateInventoryForItems:(NSArray<NSDictionary *> *)items
+                       completion:(void (^)(BOOL inStock,
+                                            NSArray<NSDictionary *> *issues,
+                                            NSError * _Nullable error))completion
+{
+    NSMutableDictionary<NSString *, NSMutableDictionary *> *aggregated = PPAggregateRequestedItems(items);
+    if (aggregated.count == 0) {
+        NSError *error = [NSError errorWithDomain:PPOrderInventoryErrorDomain
+                                             code:100
+                                         userInfo:@{NSLocalizedDescriptionKey: @"Cart items are invalid."}];
+        if (completion) completion(NO, @[], error);
+        return;
+    }
+
+    FIRFirestore *db = FIRFirestore.firestore;
+    dispatch_group_t group = dispatch_group_create();
+    dispatch_queue_t syncQueue = dispatch_queue_create("com.purepets.order.inventory.validation", DISPATCH_QUEUE_SERIAL);
+
+    NSMutableArray<NSDictionary *> *issues = [NSMutableArray array];
+    __block NSError *firstError = nil;
+
+    for (NSString *itemID in aggregated.allKeys) {
+        NSMutableDictionary *entry = aggregated[itemID];
+        NSInteger requestedQty = [entry[@"requestedQty"] integerValue];
+        NSString *name = entry[@"name"] ?: @"";
+        if (requestedQty <= 0) continue;
+
+        dispatch_group_enter(group);
+        FIRDocumentReference *ref = [[db collectionWithPath:@"petAccessories"] documentWithPath:itemID];
+        [ref getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            dispatch_async(syncQueue, ^{
+                if (error) {
+                    if (!firstError) firstError = error;
+                    dispatch_group_leave(group);
+                    return;
+                }
+
+                NSInteger availableQty = 0;
+                if (snapshot.exists) {
+                    id rawQty = snapshot.data[@"quantity"];
+                    if ([rawQty respondsToSelector:@selector(integerValue)]) {
+                        availableQty = MAX(0, [rawQty integerValue]);
+                    }
+                }
+
+                if (!snapshot.exists || availableQty < requestedQty) {
+                    [issues addObject:@{
+                        @"itemID": itemID ?: @"",
+                        @"name": name ?: @"",
+                        @"requestedQty": @(requestedQty),
+                        @"availableQty": @(availableQty)
+                    }];
+                }
+                dispatch_group_leave(group);
+            });
+        }];
+    }
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (issues.count > 0) {
+            if (completion) completion(NO, issues.copy, nil);
+            return;
+        }
+
+        if (firstError) {
+            NSError *wrapped = [NSError errorWithDomain:PPOrderInventoryErrorDomain
+                                                   code:101
+                                               userInfo:@{
+                NSLocalizedDescriptionKey: @"Failed to verify live inventory.",
+                NSUnderlyingErrorKey: firstError
+            }];
+            if (completion) completion(NO, @[], wrapped);
+            return;
+        }
+
+        if (completion) completion(YES, @[], nil);
+    });
+}
+
+- (PPOrderEligibilityDecision *)eligibilityForAction:(PPOrderCustomerActionType)actionType
+                                               order:(PPOrder *)order
+                                            requests:(NSArray<PPOrderSupportRequest *> *)requests
+                                       referenceDate:(NSDate *)referenceDate
+{
+    PPOrderEligibilityDecision *decision = [PPOrderEligibilityDecision new];
+    decision.actionType = actionType;
+    decision.actionTitle = [PPOrderManager displayTitleForActionType:actionType];
+
+    if (!order) {
+        decision.eligible = NO;
+        decision.message = kLang(@"order_support_unavailable_no_order");
+        return decision;
+    }
+
+    NSString *statusKey = PPOrderNormalizedStatusString(order.rawStatus.length > 0 ? order.rawStatus : @"pending");
+    BOOL hasCapturedPayment = PPOrderHasCapturedPayment(order);
+    decision.statusKey = statusKey;
+    NSDate *now = referenceDate ?: [NSDate date];
+    NSMutableArray<NSDate *> *paymentCandidates = [NSMutableArray array];
+    if (order.paymentCollectedAt) [paymentCandidates addObject:order.paymentCollectedAt];
+    if (order.paidAt) [paymentCandidates addObject:order.paidAt];
+    if (order.statusUpdatedAt) [paymentCandidates addObject:order.statusUpdatedAt];
+    if (order.updatedAt) [paymentCandidates addObject:order.updatedAt];
+    if (order.createdAt) [paymentCandidates addObject:order.createdAt];
+
+    NSMutableArray<NSDate *> *deliveryCandidates = [NSMutableArray array];
+    if (order.deliveredAt) [deliveryCandidates addObject:order.deliveredAt];
+    if (order.statusUpdatedAt) [deliveryCandidates addObject:order.statusUpdatedAt];
+    if (order.updatedAt) [deliveryCandidates addObject:order.updatedAt];
+    if (order.createdAt) [deliveryCandidates addObject:order.createdAt];
+
+    NSDate *paymentDate = PPOrderSupportBestDate(paymentCandidates.copy);
+    NSDate *deliveryDate = PPOrderSupportBestDate(deliveryCandidates.copy);
+    NSInteger daysSincePayment = PPOrderSupportElapsedDaysSince(paymentDate, now);
+    NSInteger daysSinceDelivery = PPOrderSupportElapsedDaysSince(deliveryDate, now);
+    NSString *requestType = PPOrderRequestTypeForAction(actionType);
+
+    if (PPOrderSupportHasOpenRequestForType(requests, requestType)) {
+        decision.eligible = NO;
+        decision.message = [NSString stringWithFormat:kLang(@"order_action_existing_request_message"), decision.actionTitle];
+        return decision;
+    }
+
+    switch (actionType) {
+        case PPOrderCustomerActionTypeTrack:
+            decision.eligible = YES;
+            decision.message = kLang(@"order_action_track_hint");
+            break;
+
+        case PPOrderCustomerActionTypeCancel:
+            if (PPOrderStatusIsCancelledLike(statusKey) || PPOrderStatusIsFailureLike(statusKey)) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_cancel_unavailable_closed");
+            } else if (PPOrderStatusIsShippedLike(statusKey) || PPOrderStatusIsDeliveredLike(statusKey)) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_cancel_unavailable_fulfillment");
+            } else {
+                decision.eligible = YES;
+                decision.message = kLang(@"order_action_cancel_hint");
+            }
+            break;
+
+        case PPOrderCustomerActionTypeReturn:
+            if (!PPOrderStatusIsDeliveredLike(statusKey)) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_return_unavailable_not_delivered");
+            } else if (daysSinceDelivery > PPOrderReturnWindowDays) {
+                decision.eligible = NO;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_return_unavailable_window"), (long)PPOrderReturnWindowDays];
+            } else {
+                decision.eligible = YES;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_return_hint"), (long)PPOrderReturnWindowDays];
+            }
+            break;
+
+        case PPOrderCustomerActionTypeRefund:
+            if (!(hasCapturedPayment || PPOrderStatusIsCancelledLike(statusKey))) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_refund_unavailable_unpaid");
+            } else if (PPOrderStatusIsShippedLike(statusKey)) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_refund_unavailable_after_shipment");
+            } else if (daysSincePayment > PPOrderRefundWindowDays) {
+                decision.eligible = NO;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_refund_unavailable_window"), (long)PPOrderRefundWindowDays];
+            } else {
+                decision.eligible = YES;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_refund_hint"), (long)PPOrderRefundWindowDays];
+            }
+            break;
+
+        case PPOrderCustomerActionTypeReplacement:
+            if (!PPOrderStatusIsDeliveredLike(statusKey)) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_replacement_unavailable_not_delivered");
+            } else if (daysSinceDelivery > PPOrderReplacementWindowDays) {
+                decision.eligible = NO;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_replacement_unavailable_window"), (long)PPOrderReplacementWindowDays];
+            } else {
+                decision.eligible = YES;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_replacement_hint"), (long)PPOrderReplacementWindowDays];
+            }
+            break;
+
+        case PPOrderCustomerActionTypeComplaint:
+            if (!(order.createdAt || PPOrderStatusIsFailureLike(statusKey) || PPOrderStatusIsCancelledLike(statusKey) || hasCapturedPayment || [order.paymentStatus isEqualToString:@"pending_collection"])) {
+                decision.eligible = NO;
+                decision.message = kLang(@"order_action_complaint_unavailable_not_started");
+            } else if (daysSincePayment > PPOrderComplaintWindowDays) {
+                decision.eligible = NO;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_complaint_unavailable_window"), (long)PPOrderComplaintWindowDays];
+            } else {
+                decision.eligible = YES;
+                decision.message = [NSString stringWithFormat:kLang(@"order_action_complaint_hint"), (long)PPOrderComplaintWindowDays];
+            }
+            break;
+
+        case PPOrderCustomerActionTypeSupport:
+            decision.eligible = YES;
+            decision.message = kLang(@"order_action_support_hint");
+            break;
+    }
+
+    return decision;
+}
+
+- (NSArray<PPOrderEligibilityDecision *> *)eligibilityDecisionsForOrder:(PPOrder *)order
+                                                               requests:(NSArray<PPOrderSupportRequest *> *)requests
+                                                          referenceDate:(NSDate *)referenceDate
+{
+    NSMutableArray<PPOrderEligibilityDecision *> *decisions = [NSMutableArray array];
+    NSArray<NSNumber *> *actions = @[
+        @(PPOrderCustomerActionTypeTrack),
+        @(PPOrderCustomerActionTypeCancel),
+        @(PPOrderCustomerActionTypeReturn),
+        @(PPOrderCustomerActionTypeRefund),
+        @(PPOrderCustomerActionTypeReplacement),
+        @(PPOrderCustomerActionTypeComplaint),
+        @(PPOrderCustomerActionTypeSupport)
+    ];
+    for (NSNumber *actionNumber in actions) {
+        [decisions addObject:[self eligibilityForAction:actionNumber.integerValue
+                                                  order:order
+                                               requests:requests
+                                          referenceDate:referenceDate ?: [NSDate date]]];
+    }
+    return decisions.copy;
+}
+
+- (NSArray<NSDictionary *> *)reasonOptionsForAction:(PPOrderCustomerActionType)actionType
+{
+    switch (actionType) {
+        case PPOrderCustomerActionTypeCancel:
+            return @[
+                PPOrderReasonOption(@"ordered_by_mistake", kLang(@"order_reason_cancel_mistake_title"), kLang(@"order_reason_cancel_mistake_subtitle"), NO),
+                PPOrderReasonOption(@"changed_mind", kLang(@"order_reason_changed_mind_title"), kLang(@"order_reason_changed_mind_subtitle"), NO),
+                PPOrderReasonOption(@"wrong_address", kLang(@"order_reason_wrong_address_title"), kLang(@"order_reason_wrong_address_subtitle"), NO),
+                PPOrderReasonOption(@"found_alternative", kLang(@"order_reason_found_alternative_title"), kLang(@"order_reason_found_alternative_subtitle"), NO)
+            ];
+        case PPOrderCustomerActionTypeReturn:
+            return @[
+                PPOrderReasonOption(@"item_not_as_described", kLang(@"order_reason_not_as_described_title"), kLang(@"order_reason_not_as_described_subtitle"), YES),
+                PPOrderReasonOption(@"changed_mind", kLang(@"order_reason_changed_mind_title"), kLang(@"order_reason_changed_mind_subtitle"), YES),
+                PPOrderReasonOption(@"quality_issue", kLang(@"order_reason_quality_issue_title"), kLang(@"order_reason_quality_issue_subtitle"), YES),
+                PPOrderReasonOption(@"arrived_damaged", kLang(@"order_reason_arrived_damaged_title"), kLang(@"order_reason_arrived_damaged_subtitle"), YES)
+            ];
+        case PPOrderCustomerActionTypeRefund:
+            return @[
+                PPOrderReasonOption(@"duplicate_payment", kLang(@"order_reason_duplicate_payment_title"), kLang(@"order_reason_duplicate_payment_subtitle"), NO),
+                PPOrderReasonOption(@"payment_issue", kLang(@"order_reason_payment_issue_title"), kLang(@"order_reason_payment_issue_subtitle"), NO),
+                PPOrderReasonOption(@"cancelled_but_charged", kLang(@"order_reason_cancelled_but_charged_title"), kLang(@"order_reason_cancelled_but_charged_subtitle"), NO),
+                PPOrderReasonOption(@"missing_item", kLang(@"order_reason_missing_item_title"), kLang(@"order_reason_missing_item_subtitle"), YES)
+            ];
+        case PPOrderCustomerActionTypeReplacement:
+            return @[
+                PPOrderReasonOption(@"damaged_item", kLang(@"order_reason_damaged_item_title"), kLang(@"order_reason_damaged_item_subtitle"), YES),
+                PPOrderReasonOption(@"wrong_item", kLang(@"order_reason_wrong_item_title"), kLang(@"order_reason_wrong_item_subtitle"), YES),
+                PPOrderReasonOption(@"defective_item", kLang(@"order_reason_defective_item_title"), kLang(@"order_reason_defective_item_subtitle"), YES)
+            ];
+        case PPOrderCustomerActionTypeComplaint:
+            return @[
+                PPOrderReasonOption(@"damaged_item", kLang(@"order_reason_damaged_item_title"), kLang(@"order_reason_damaged_item_subtitle"), YES),
+                PPOrderReasonOption(@"wrong_item", kLang(@"order_reason_wrong_item_title"), kLang(@"order_reason_wrong_item_subtitle"), YES),
+                PPOrderReasonOption(@"missing_item", kLang(@"order_reason_missing_item_title"), kLang(@"order_reason_missing_item_subtitle"), YES),
+                PPOrderReasonOption(@"late_delivery", kLang(@"order_reason_late_delivery_title"), kLang(@"order_reason_late_delivery_subtitle"), NO),
+                PPOrderReasonOption(@"duplicate_payment", kLang(@"order_reason_duplicate_payment_title"), kLang(@"order_reason_duplicate_payment_subtitle"), NO),
+                PPOrderReasonOption(@"payment_issue", kLang(@"order_reason_payment_issue_title"), kLang(@"order_reason_payment_issue_subtitle"), NO)
+            ];
+        case PPOrderCustomerActionTypeSupport:
+            return @[
+                PPOrderReasonOption(@"order_question", kLang(@"order_reason_order_question_title"), kLang(@"order_reason_order_question_subtitle"), NO),
+                PPOrderReasonOption(@"delivery_update", kLang(@"order_reason_delivery_update_title"), kLang(@"order_reason_delivery_update_subtitle"), NO),
+                PPOrderReasonOption(@"billing_question", kLang(@"order_reason_billing_question_title"), kLang(@"order_reason_billing_question_subtitle"), NO),
+                PPOrderReasonOption(@"other", kLang(@"order_reason_other_title"), kLang(@"order_reason_other_subtitle"), NO)
+            ];
+        case PPOrderCustomerActionTypeTrack:
+            return @[];
+    }
+    return @[];
+}
+
+- (FIRCollectionReference *)pp_requestsCollectionForOrderID:(NSString *)orderID
+{
+    return [[[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:orderID] collectionWithPath:@"requests"];
+}
+
+- (FIRCollectionReference *)pp_eventsCollectionForOrderID:(NSString *)orderID
+{
+    return [[[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:orderID] collectionWithPath:@"events"];
+}
+
+- (NSArray<PPOrderTimelineEvent *> *)pp_fallbackTimelineForOrder:(PPOrder *)order
+{
+    NSMutableArray<PPOrderTimelineEvent *> *events = [NSMutableArray array];
+
+    if (order.createdAt) {
+        PPOrderTimelineEvent *created = [PPOrderTimelineEvent new];
+        created.eventId = @"local_created";
+        created.type = @"order_created";
+        created.status = @"pending";
+        created.actorType = @"system";
+        created.summary = kLang(@"order_timeline_created_summary");
+        created.createdAt = order.createdAt;
+        [events addObject:created];
+    }
+
+    if (order.paidAt || order.paymentCollectedAt || [order.paymentStatus isEqualToString:@"paid"] || (!order.isCashOnDelivery && PPOrderStatusIsPaidLike(PPOrderNormalizedStatusString(order.rawStatus)))) {
+        PPOrderTimelineEvent *paid = [PPOrderTimelineEvent new];
+        paid.eventId = [order isCashOnDelivery] ? @"local_payment_collected" : @"local_paid";
+        paid.type = [order isCashOnDelivery] ? @"payment_collected" : @"payment_verified";
+        paid.status = @"paid";
+        paid.actorType = @"system";
+        paid.summary = [order isCashOnDelivery] ? kLang(@"order_timeline_payment_collected_title") : kLang(@"order_timeline_paid_summary");
+        paid.createdAt = order.paymentCollectedAt ?: order.paidAt ?: order.statusUpdatedAt ?: order.updatedAt ?: order.createdAt ?: [NSDate date];
+        [events addObject:paid];
+    }
+
+    if (order.processedAt || PPOrderStatusIsPackingLike(PPOrderNormalizedStatusString(order.rawStatus))) {
+        PPOrderTimelineEvent *processing = [PPOrderTimelineEvent new];
+        processing.eventId = @"local_processing";
+        processing.type = @"fulfillment_processing";
+        processing.status = @"processing";
+        processing.actorType = @"system";
+        processing.summary = kLang(@"order_timeline_processing_summary");
+        processing.createdAt = order.processedAt ?: order.statusUpdatedAt ?: order.updatedAt ?: [NSDate date];
+        [events addObject:processing];
+    }
+
+    if (order.shippedAt || PPOrderStatusIsShippedLike(PPOrderNormalizedStatusString(order.rawStatus))) {
+        PPOrderTimelineEvent *shipped = [PPOrderTimelineEvent new];
+        shipped.eventId = @"local_shipped";
+        shipped.type = @"fulfillment_shipped";
+        shipped.status = @"shipped";
+        shipped.actorType = @"system";
+        shipped.summary = kLang(@"order_timeline_shipped_summary");
+        shipped.createdAt = order.shippedAt ?: order.statusUpdatedAt ?: order.updatedAt ?: [NSDate date];
+        [events addObject:shipped];
+    }
+
+    if (order.deliveredAt || PPOrderStatusIsDeliveredLike(PPOrderNormalizedStatusString(order.rawStatus))) {
+        PPOrderTimelineEvent *delivered = [PPOrderTimelineEvent new];
+        delivered.eventId = @"local_delivered";
+        delivered.type = @"fulfillment_delivered";
+        delivered.status = @"delivered";
+        delivered.actorType = @"system";
+        delivered.summary = kLang(@"order_timeline_delivered_summary");
+        delivered.createdAt = order.deliveredAt ?: order.statusUpdatedAt ?: order.updatedAt ?: [NSDate date];
+        [events addObject:delivered];
+    }
+
+    if (order.cancelledAt || PPOrderStatusIsCancelledLike(PPOrderNormalizedStatusString(order.rawStatus))) {
+        PPOrderTimelineEvent *cancelled = [PPOrderTimelineEvent new];
+        cancelled.eventId = @"local_cancelled";
+        cancelled.type = @"order_cancelled";
+        cancelled.status = @"cancelled";
+        cancelled.actorType = @"customer";
+        cancelled.summary = kLang(@"order_timeline_cancelled_summary");
+        cancelled.createdAt = order.cancelledAt ?: order.statusUpdatedAt ?: order.updatedAt ?: [NSDate date];
+        [events addObject:cancelled];
+    }
+
+    return [events sortedArrayUsingComparator:^NSComparisonResult(PPOrderTimelineEvent * _Nonnull left, PPOrderTimelineEvent * _Nonnull right) {
+        return [left.createdAt compare:right.createdAt];
+    }];
+}
+
+- (NSArray<PPOrderTimelineEvent *> *)pp_fallbackRequestEventsForRequest:(PPOrderSupportRequest *)request
+{
+    NSMutableArray<PPOrderTimelineEvent *> *events = [NSMutableArray array];
+
+    PPOrderTimelineEvent *submitted = [PPOrderTimelineEvent new];
+    submitted.eventId = @"local_request_submitted";
+    submitted.type = @"request_submitted";
+    submitted.status = PPOrderRequestStatusPendingReview;
+    submitted.actorType = @"customer";
+    submitted.summary = kLang(@"order_request_timeline_submitted");
+    submitted.createdAt = request.submittedAt ?: request.createdAt ?: [NSDate date];
+    [events addObject:submitted];
+
+    if (request.status.length > 0 &&
+        ![PPOrderNormalizedStatusString(request.status) isEqualToString:PPOrderRequestStatusPendingReview]) {
+        PPOrderTimelineEvent *state = [PPOrderTimelineEvent new];
+        state.eventId = @"local_request_state";
+        state.type = @"request_status_updated";
+        state.status = request.status;
+        state.actorType = @"system";
+        state.summary = [PPOrderManager displayTitleForRequestStatus:request.status];
+        state.createdAt = request.updatedAt ?: request.createdAt ?: [NSDate date];
+        [events addObject:state];
+    }
+
+    return [events sortedArrayUsingComparator:^NSComparisonResult(PPOrderTimelineEvent * _Nonnull left, PPOrderTimelineEvent * _Nonnull right) {
+        return [left.createdAt compare:right.createdAt];
+    }];
+}
+
+- (id<FIRListenerRegistration>)listenToSupportRequestsForOrderID:(NSString *)orderID
+                                                          update:(void (^)(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable error))update
+{
+    if (orderID.length == 0) return nil;
+    FIRQuery *query = [[self pp_requestsCollectionForOrderID:orderID] queryOrderedByField:@"createdAt" descending:YES];
+    return [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error) {
+            if (update) update(@[], error);
+            return;
+        }
+        NSMutableArray<PPOrderSupportRequest *> *requests = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+            [requests addObject:[PPOrderSupportRequest requestFromSnapshot:doc]];
+        }
+        if (update) update(requests.copy, nil);
+    }];
+}
+
+- (void)fetchSupportRequestsForOrderID:(NSString *)orderID
+                            completion:(void (^)(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable error))completion
+{
+    if (orderID.length == 0) {
+        if (completion) completion(@[], nil);
+        return;
+    }
+    FIRQuery *query = [[self pp_requestsCollectionForOrderID:orderID] queryOrderedByField:@"createdAt" descending:YES];
+    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSMutableArray<PPOrderSupportRequest *> *requests = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+            [requests addObject:[PPOrderSupportRequest requestFromSnapshot:doc]];
+        }
+        if (completion) completion(requests.copy, error);
+    }];
+}
+
+- (id<FIRListenerRegistration>)listenToTimelineEventsForOrder:(PPOrder *)order
+                                                       update:(void (^)(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable error))update
+{
+    if (!order.orderId.length) return nil;
+    FIRQuery *query = [[self pp_eventsCollectionForOrderID:order.orderId] queryOrderedByField:@"createdAt" descending:NO];
+    return [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error) {
+            if (update) update([self pp_fallbackTimelineForOrder:order], error);
+            return;
+        }
+        NSMutableArray<PPOrderTimelineEvent *> *events = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+            [events addObject:[PPOrderTimelineEvent eventFromSnapshot:doc]];
+        }
+        if (events.count == 0) {
+            events = [[self pp_fallbackTimelineForOrder:order] mutableCopy];
+        }
+        if (update) update(events.copy, nil);
+    }];
+}
+
+- (void)fetchTimelineEventsForOrder:(PPOrder *)order
+                         completion:(void (^)(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable error))completion
+{
+    if (!order.orderId.length) {
+        if (completion) completion([self pp_fallbackTimelineForOrder:order], nil);
+        return;
+    }
+    FIRQuery *query = [[self pp_eventsCollectionForOrderID:order.orderId] queryOrderedByField:@"createdAt" descending:NO];
+    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSMutableArray<PPOrderTimelineEvent *> *events = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+            [events addObject:[PPOrderTimelineEvent eventFromSnapshot:doc]];
+        }
+        if (events.count == 0) {
+            events = [[self pp_fallbackTimelineForOrder:order] mutableCopy];
+        }
+        if (completion) completion(events.copy, error);
+    }];
+}
+
+- (id<FIRListenerRegistration>)listenToRequestEventsForOrderID:(NSString *)orderID
+                                                      requestID:(NSString *)requestID
+                                                         update:(void (^)(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable error))update
+{
+    if (orderID.length == 0 || requestID.length == 0) return nil;
+    FIRQuery *query = [[[[self pp_requestsCollectionForOrderID:orderID] documentWithPath:requestID] collectionWithPath:@"events"] queryOrderedByField:@"createdAt" descending:NO];
+    return [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error) {
+            if (update) update(@[], error);
+            return;
+        }
+        NSMutableArray<PPOrderTimelineEvent *> *events = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+            [events addObject:[PPOrderTimelineEvent eventFromSnapshot:doc]];
+        }
+        if (update) update(events.copy, nil);
+    }];
+}
+
+- (void)fetchRequestEventsForOrderID:(NSString *)orderID
+                            requestID:(NSString *)requestID
+                           completion:(void (^)(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable error))completion
+{
+    if (orderID.length == 0 || requestID.length == 0) {
+        if (completion) completion(@[], nil);
+        return;
+    }
+    FIRQuery *query = [[[[self pp_requestsCollectionForOrderID:orderID] documentWithPath:requestID] collectionWithPath:@"events"] queryOrderedByField:@"createdAt" descending:NO];
+    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSMutableArray<PPOrderTimelineEvent *> *events = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents ?: @[]) {
+            [events addObject:[PPOrderTimelineEvent eventFromSnapshot:doc]];
+        }
+        if (completion) completion(events.copy, error);
+    }];
+}
+
+- (void)submitSupportDraft:(PPOrderSupportDraft *)draft
+                  forOrder:(PPOrder *)order
+                completion:(void (^)(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error))completion
+{
+    if (!order.orderId.length) {
+        NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                             code:400
+                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_missing_id")}];
+        if (completion) completion(nil, NO, error);
+        return;
+    }
+
+    NSString *requestType = PPOrderRequestTypeForAction(draft.actionType);
+    NSDictionary *payload = @{
+        @"orderId": order.orderId ?: @"",
+        @"requestType": requestType ?: @"support",
+        @"reasonCode": draft.reasonCode ?: @"other",
+        @"reasonTitle": draft.reasonTitle ?: @"",
+        @"issueCategory": draft.issueCategory ?: @"",
+        @"subject": draft.subject ?: @"",
+        @"notes": draft.notes ?: @"",
+        @"itemIDs": draft.selectedItemIDs ?: @[],
+        @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[]
+    };
+
+    [[PPOrderFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
+     callWithObject:payload
+     completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            if (completion) completion(nil, NO, error);
+            return;
+        }
+
+        NSDictionary *data = [result.data isKindOfClass:NSDictionary.class] ? (NSDictionary *)result.data : @{};
+        NSString *requestID = PPOrderSupportSafeString(data[@"requestId"]);
+        BOOL deduplicated = [data[@"deduplicated"] boolValue];
+
+        PPOrderSupportRequest *request = nil;
+        if (requestID.length > 0) {
+            request = [PPOrderSupportRequest requestFromDictionary:@{
+                @"requestId": requestID,
+                @"orderId": order.orderId ?: @"",
+                @"userId": [FIRAuth auth].currentUser.uid ?: @"",
+                @"type": requestType ?: @"support",
+                @"reasonCode": draft.reasonCode ?: @"other",
+                @"reasonTitle": draft.reasonTitle ?: @"",
+                @"issueCategory": draft.issueCategory ?: @"",
+                @"subject": draft.subject ?: @"",
+                @"notes": draft.notes ?: @"",
+                @"itemIDs": draft.selectedItemIDs ?: @[],
+                @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[],
+                @"status": data[@"status"] ?: PPOrderRequestStatusPendingReview,
+                @"finalResolution": data[@"finalResolution"] ?: PPOrderRequestStatusPendingReview,
+                @"createdAt": [NSDate date],
+                @"updatedAt": [NSDate date]
+            } documentID:requestID];
+        }
+
+        if (completion) completion(request, deduplicated, nil);
+    }];
+}
+
+- (void)uploadEvidenceImages:(NSArray<UIImage *> *)images
+                    forOrder:(PPOrder *)order
+             draftIdentifier:(NSString *)draftIdentifier
+                    progress:(void (^)(double progress))progress
+                  completion:(void (^)(NSArray<PPOrderSupportAttachment *> *attachments, NSError * _Nullable error))completion
+{
+    if (images.count == 0) {
+        if (completion) completion(@[], nil);
+        return;
+    }
+    if (images.count > PPOrderSupportMaxAttachmentCount) {
+        NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                             code:401
+                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_support_too_many_photos")}];
+        if (completion) completion(@[], error);
+        return;
+    }
+
+    NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
+    if (uid.length == 0) {
+        NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                             code:402
+                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_register_required_subtitle")}];
+        if (completion) completion(@[], error);
+        return;
+    }
+
+    NSString *folderID = draftIdentifier.length > 0 ? draftIdentifier : NSUUID.UUID.UUIDString;
+    FIRStorageReference *rootRef = [FIRStorage storage].reference;
+    NSMutableArray<PPOrderSupportAttachment *> *attachments = [NSMutableArray array];
+
+    __block NSInteger currentIndex = 0;
+    __weak typeof(self) weakSelf = self;
+    __block void (^uploadNext)(void) = ^{
+        if (currentIndex >= (NSInteger)images.count) {
+            if (completion) completion(attachments.copy, nil);
+            return;
+        }
+
+        UIImage *image = images[currentIndex];
+        NSData *jpeg = PPOrderCompressedJPEGData(image, PPOrderSupportAttachmentMaxKB);
+        if (!jpeg) {
+            NSError *error = [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                                 code:403
+                                             userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_support_upload_failed")}];
+            if (completion) completion(@[], error);
+            return;
+        }
+
+        NSString *fileName = [NSString stringWithFormat:@"%@.jpg", NSUUID.UUID.UUIDString.lowercaseString];
+        NSString *storagePath = [NSString stringWithFormat:@"orderSupport/%@/%@/%@/%@", uid, order.orderId ?: @"unknown_order", folderID, fileName];
+        FIRStorageReference *ref = [rootRef child:storagePath];
+        FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+        metadata.contentType = @"image/jpeg";
+
+        FIRStorageUploadTask *task = [ref putData:jpeg metadata:metadata completion:^(FIRStorageMetadata * _Nullable __unused meta, NSError * _Nullable error) {
+            if (error) {
+                if (completion) completion(@[], error);
+                return;
+            }
+
+            [ref downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable urlError) {
+                if (urlError || !URL) {
+                    NSError *wrapped = urlError ?: [NSError errorWithDomain:PPOrderSupportErrorDomain
+                                                                       code:404
+                                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"order_support_upload_failed")}];
+                    if (completion) completion(@[], wrapped);
+                    return;
+                }
+
+                PPOrderSupportAttachment *attachment = [PPOrderSupportAttachment new];
+                attachment.attachmentURL = URL.absoluteString ?: @"";
+                attachment.storagePath = storagePath ?: @"";
+                attachment.mimeType = @"image/jpeg";
+                attachment.fileName = fileName ?: @"evidence.jpg";
+                attachment.sizeBytes = jpeg.length;
+                [attachments addObject:attachment];
+
+                currentIndex += 1;
+                if (progress) {
+                    progress((double)currentIndex / (double)MAX(1, images.count));
+                }
+                uploadNext();
+            }];
+        }];
+
+        [task observeStatus:FIRStorageTaskStatusProgress handler:^(__unused FIRStorageTaskSnapshot *snapshot) {
+            if (!progress) return;
+            double base = (double)currentIndex / (double)MAX(1, images.count);
+            double partial = snapshot.progress.totalUnitCount > 0
+                ? ((double)snapshot.progress.completedUnitCount / (double)snapshot.progress.totalUnitCount) / (double)MAX(1, images.count)
+                : 0.0;
+            progress(MIN(0.99, base + partial));
+        }];
+        (void)weakSelf;
+    };
+    uploadNext();
+}
+
+@end

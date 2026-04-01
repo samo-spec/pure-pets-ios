@@ -1,0 +1,24 @@
+{
+  "name": "pure-pets-functions",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log",
+    "test:rules": "node scripts/firestore.rules.test.js",
+    "migrate:permissions": "node scripts/migrate_permissions.js",
+    "migrate:chat-identities": "node scripts/migrate_chat_identities.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^5.1.1"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.1.0"
+  }
+}

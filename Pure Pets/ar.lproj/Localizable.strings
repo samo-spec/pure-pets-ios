@@ -1,0 +1,1958 @@
+"AI" = "AI";
+"AccessPostPhotosSection" = "اضف صور للاكسسوار";
+"Accessories" = "إكسسوارات";
+"AdDescPlace" = "ادخل وصف الطير";
+"Add Accessory" = "إضافة إكسسوار";
+"AddDnaScan" = "اضف صوره من تحليل الحمض النووي للطير ";
+"AddNoteLabel" = "إضافة ملاحظات";
+"AddRingIDFirst" = "يجب إضافة رقم الطير اولا";
+"AddService" = "إضافة خدمة";
+"AddVet" = "إضافة بيطري";
+"Added" = "تمت الإضافة بنجاح";
+"AddedAlertSubtitleDone" = "تمت عملية إنشاء و إضافة بطاقة الطير بنجاح";
+
+"AddressType" = "حدد نوع العنوان";
+"Address_placeholder" = "";
+"Address_word" = "عنوان";
+"Adopt a Pet" = "تبنَّ حيواناً أليفاً";
+"HomeAdoptCTA" = "تصفّح الحيوانات";
+"Ads" = "إعلانات";
+"AdultHoodCount" = "سن البلوغ";
+"AlldatatwillRemoved" = "سيتم الغاء البيانات التي قمت بادخالها";
+"App language changed. Please restart the app." = "تم تغيير لغة التطبيق. يرجى إعادة تشغيل التطبيق.";
+"AppSetting" = "إعدادت التطبيق";
+"Approved" = "موافقة";
+"Arabic" = "العربية";
+"Archive" = "الارشيف";
+"ArchiveCardsCount" = " البطاقات";
+"ArchiveDeleteTitle" = "حذف بيانات الارشيف";
+"ArchiveDeleted" = "تم حذف جميع بيانات الارشيف بنجاح";
+"ArchiveName" = "رقم الارشيف ";
+"ArchiveNameOrNumber" = "اسم او رقم الارشيف";
+"ArchiveNotEmpty" = "الارشيف ليس فارغ ،تاكيد حذف جميع البيانات ؟";
+"ArchiveTitle" = "الارشيف: ";
+"ArchivewikkDeleteSure?" = "سيتم حذف جميع بيانات الارشيف وكل البطاقات التابعة لة ، تأكيد ؟";
+"Are you sure you want to delete this item?" = "هل أنت متأكد أنك تريد حذف هذا العنصر؟";
+"Askanythingaboutpets" = "اسأل أي شيء عن الحيوانات الأليفة";
+"Attribute" = "الفئه اللونية";
+"AudioFile" = "مقطع صوتي";
+"Bahrain" = "البحرين";
+"BirdArchiveSucsess" = "تمت ارشفة  بطاقة الطير بنجاح";
+"Birds" = "الطيور";
+"BirthDate" = "تاريخ الانتاج";
+"BirthDatePlace" = "حدد تاريخ الانتاج";
+"Box" = "الصندوق";
+"Boxes" = "الصناديق";
+"Button.cancel.photoFromCamera" = "إعادة الالتقاط";
+"Button.cancel.photoFromPicker" = "إلغاء";
+"Button.choose.photoFromCamera" = "استخدام الصور";
+"Button.choose.photoFromPicker" = "إختيار";
+"CageName" = "القفص";
+"Camel" = "إبل";
+"Cancel" = "إلغاء";
+"preview" = "معاينة";
+"CancelOrder" = "إلغاء الطلب";
+"CardArchivedSucsses" = "تمت ارشفة بطاقة الطير";
+"Cards" = "البطاقات";
+"Cart" = "السلة";
+"CartDone" = "تم إستلام طلبك بنجاح!";
+"Cats" = "القطط";
+"Chat" = "الدردشة";
+"Checkout" = "الدفع";
+"ChildsCount" = "عدد الفروخ";
+"Chooseimage" = "اختر";
+"ChoseLocation" = "اختر الموقع";
+"Classification" = "الطفرة اللونية";
+"ClassificationLoaded" = "الطفرة اللونية المحمولة";
+"ClassificationPlace" = "حدد الطفرة اللونية";
+"CodeBTN" = "ارسال كود التفعيل";
+"Color" = "اللون";
+"Confirm Deletion" = "تأكيد الحذف";
+"ConfirmLocation" = "تأكيد الموقع";
+"CreateDate" = "الإنشاء";
+"DarkSetPalce" = "الوضع الداكن";
+"Deer" = "غزلان";
+"Delete" = "حذف";
+"DeleteCardAlert" = "حذف بطاقة الطير";
+"DeleteCardAlertDesc" = "سيتم حذف جميع بيانات البطاقة وكل ما يتعلق بها ، تأكيد ؟";
+"DeleteCardReason" = "ملاحظة او اسبب الحذف";
+"DeletedSuccess" = "تم حذف  البيانات بنجاح";
+"Delivered" = "تم التسليم";
+"DeliveryLabel" = "التوصيل";
+"DeliveryLocation" = "موقع التسليم";
+"DeliveryLocationSub" = "يجب أن يسلم الطلب هنا";
+"Dogs" = "الكلاب";
+"Edit Accessory" = "تعديل الإكسسوار";
+"Edit.title" = "نقل وتحجيم";
+"EditAdTitle" = "تعديل الإعلان";
+"EditAlertSubtitleDone" = "تمت عملية تعديل بطاقة الطير بنجاح";
+"EditArchive" = "تعديل اسم الارشيف";
+"EditCard" = "تعديل البطاقة";
+"EditLocation" = "تغيير موقع التسليم";
+"EditSuccess" = "تم تعديل بيانات الارشيف بنجاح";
+"Egypt" = "مصر";
+"English" = "الإنجليزية";
+"EnterNewArchiveName" = "ادخل إسم او رقم الارشيف الجديد ";
+"Error" = "خطأ";
+"Falcon" = "صقور";
+"Father" = "الاب";
+"FatherRingID" = "رقم الاب";
+"FatherRowCount" = "لايوجد اب من نفس النوع";
+"Fatherrowcount" = "";
+"Female" = "انثي";
+"Find your new best friend" = "اعثر على صديقك الجديد";
+"FirstEggDate" = "تاريخ انتاج اول بيضة";
+"Fish" = "كائنات بحرية واسماك";
+"Food" = "طعام";
+"FoodPostPhotosSection" = "أضف صورًا للطعام";
+"FristEggDate" = "اول بيضة فقست في تاريخ";
+"Good afternoon" = "مساء الخير";
+"Good evening" = "مساء الخير";
+"Good morning" = "صباح الخير";
+"Green" = "قرين";
+"Grooming" = "عناية";
+"HeadLabel" = "مرحبا بك ، لنبدأ عملية التسجيل";
+"Horses" = "خيول";
+"Hot_Accessories" = "إكسسوار";
+"Hot_Birds" = "طيور";
+"Hot_Cage" = "قفص";
+"Hot_Cats" = "قطط";
+"Hot_Rabbits" = "أرانب";
+"Hot_Dogs" = "كلاب";
+"Hot_Food" = "طعام";
+"Hot_Parrot" = "ببغاء";
+"Hot_Vet" = "طبيب بيطري";
+"Iraq" = "العراق";
+"ItemsQuantityLabel" = "عدد صناف";
+"ItemsTotalLabel" = "مجموع الاضناف";
+"Itemsquantrylabel" = "";
+"ItemstotallLALBEL" = "";
+"JoinUs" = "انضم إلينا، سجل الدخول!";
+"Jordan" = "الأردن";
+"Kuwait" = "الكويت";
+"Language" = "اللغة";
+"Language Setup" = "إعداد اللغة";
+"LastName" = "الاسم الخير";
+"LastName_Palce" = "الاسم الخير";
+"LastSeen" = "آخر ظهور";
+"Lebanon" = "لبنان";
+"LoanCard" = "بطاقة مستعارة";
+"LocationPicker" = "منتقي الموقع";
+"Male" = "ذكر";
+"Message" = "رسالة";
+"MessageRecord" = "مقطع صوتي";
+"MobileNo" = "رقم الجوال";
+"MobileNo_Palce" = "رقم الجوال";
+"Mother" = "ألام";
+"MotherRingID" = "رقم الام";
+"MotherRowCount" = "لاتوجد ام من نفس النوع";
+"Motherrowcount" = "";
+"My_Addresses" = "";
+"NewMessage" = "رسالة جديدة";
+"New_address" = "";
+"NoAds" = "لا توجد إعلانات ";
+"Not Registered" = "غير مسجل";
+"NoteAskLabel" = "لديك اي ملاحظات إضافية للتوصيل";
+"NoteLabel" = "اكتب هنا";
+"OK" = "حسنًا";
+"OR" = "او";
+"Offline" = "غير متصل";
+"Oman" = "عمان";
+"OneAds" = "إعلان";
+"Online" = " متصل الآن ";
+"OrderDate" = "تاريخ الطلب";
+"OrderHistory" = "سجل الطلبات";
+"OrderStatus" = "حالة الطلب";
+"OrderSumLabel" = "الملخص";
+"OrderTotal" = "المجموع";
+"Orders" = "الطلبات";
+"OrdersTitle" = "حالة الطلب";
+"Ordersumlabel" = "";
+"Palestine" = "فلسطين";
+"Pending" = "قيد الانتظار";
+"Processing" = "قيد المعالجة";
+"PickCageTitle" = "قم باختيار صندوق لنقل الفرخ اليه";
+"PickTypeTitle" = "قم باختيار النوع";
+"PleaseAddNewArchive" = "الرجاء إضافة ارشيف جديد";
+"PostAdTitle" = "نشر إعلان جديد";
+"PrivacySetting" = "إعدادات الخصوصية";
+"Qatar" = "قطر";
+"QATAR" = "قطر";
+"QuantityLabel" = "الكمية";
+"Read" = "تمت القراءة";
+"RegisBTN" = "حساب جديد";
+"Register" = "تسجيل";
+"RegistrationTitleLabel" = "حساب جديد";
+"Rejected" = "مرفوض";
+"Reminder" = "تذكير";
+"ResendOTP" = "إعادة ارسال رمز التحقق";
+"Code expired" = "انتهت صلاحية الرمز";
+"Retutn_Compelete" = "تم استرجاع الطير بنجاح";
+"Rials" = "ر.ق";
+"RingID" = "رقم الطير";
+"RingIDPlace" = "ادخل رقم الطير";
+"SaleDone" = "تمت عملية إنشاء فاتورة البيع بنجاح";
+"SaudiArabia" = "المملكة العربية السعودية";
+"Save Changes" = "حفظ";
+"Saved" = "تم الحفظ";
+"SearchNoResultsCTA" = "مسح البحث";
+"SearchNoResultsGeneric" = "لم يتم العثور على نتائج.";
+"SearchNoResultsHint" = "تحقّق من الإملاء أو جرّب كلمات مختلفة.";
+"SearchNoResultsMessage_fmt" = "لم نعثر على نتائج لـ \"%@\".";
+"SearchNoResultsTitle" = "لا توجد نتائج";
+"SearchHere" = "ابحث هنا";
+"SearchPlaceholder" = "ابحث عن حيوانات، اكسسوارات، خدمات، أطباء";
+"SelectCountryTitle" = "اختر دولتك";
+"Select_address" = "اختر عنوان";
+"Send" = "إرسال";
+"Sent" = "تم الإرسال";
+"Setting" = "الاعدادات";
+"Sexual" = "الجنس";
+"SexualPlace" = "حدد الجنس";
+"Sheeps" = "أغنام";
+"Shipped" = "تم الشحن";
+"ShowAllCards" = "عرض كل البطاقات";
+"Something went wrong" = "حدث خطأ ما";
+"SubKind" = "النوع";
+"SubKindPlace" = "حدد النوع ";
+"Support" = "الدعم";
+"SureCancel" = "تاكيد الإلغاء ؟";
+"Switch to Arabic" = "تغيير إلى العربية";
+"Switch to English" = "تغيير إلى الإنجليزية";
+"Syria" = "سوريا";
+"Taphold" = "اضغط مع الاستمرار لتسجيل الصوت.";
+"The current language is %@. Do you want to change it?" = "اللغة الحالية هي %@. هل ترغب في تغييرها؟";
+"Today" = "اليوم";
+"TotalSumLabel" = "الإجمالي الفرعي";
+"Totalsumlabel" = "";
+"Training" = "تمرين";
+"Trash" = "المحذوفات";
+"Typing" = "يكتب ...";
+"UnitedArabEmirates" = "الإمارات العربية المتحدة";
+"Unknown" = "غير معروف";
+"UserAbout" = "السيرة";
+"UserAbout_Palce" = "السيرة";
+"UserEmail" = "البريد الالكتروني";
+"UserEmail_Palce" = "البريد الالكتروني";
+"UserName" = "الإسم المستعار";
+"UserName_Palce" = "الإسم المستعار";
+"UserProfile" = "ملف تعريف المستخدم";
+"Vet" = "طبيب بيطري";
+"Veterinary" = "بيطري";
+"VideoFile" = "فيديو";
+"Walking" = "المشي";
+"We detected this is your first time using the app, so we set your app language to" = "لاحظنا أن هذه هي المرة الأولى التي تستخدم فيها التطبيق، لذا قمنا بتعيين اللغة إلى";
+"WriteSomething" = "اكتب شيئاً...";
+"Yemen" = "اليمن";
+"Yesterday" = "أمس";
+"You need to register to continue." = "يجب التسجيل للمتابعة.";
+"YouWannaDeleteIT" = "هل تريد اضافة هذا الطير بنفس الرقم ؟";
+"Your changes have been saved." = "تم حفظ التغييرات.";
+"_archiveTitle" = "الارشيف";
+"_no_DescForCard" = "لم تتم إضافة ملاحظات";
+"accessCat" = "حدد فئة الحيوانات المناسبة للاكسسوار";
+"accessData" = "بيانات  الاكسسوار";
+"accessDesc" = "وصف الإكسسوار";
+"accessDoneDesc" = "تم نشر إعلان الإكسسوار بنجاح";
+"accessDoneTitle" = "تم النشر";
+"accessName" = "إسم الإكسسوار";
+"accountNotExixtTitle" = "عفوا الحساب غير موجود";
+"accountNotExixtsub" = " هل تريد تسجيل حساب جديد ؟";
+"adDoneDesc" = "تم نشر إعلانك بنجاح.";
+"adDoneTitle" = "تم الإرسال";
+"adUpdatedDesc" = "تم تحديث إعلانك بنجاح.";
+"adUpdatedTitle" = "تم التحديث";
+"addArchiveTitle" = "اضافة ارشيف";
+"addBox" = "إضافة صندوق جديد";
+"addFirstEgg" = "اضغط هنا لتحديد تاريخ اول بيضة";
+"addNewBill" = "فاتورة جديدة";
+"addNewBuyer" = "إضافة بيانات المشتري ";
+"addNewCard" = "إضافة بطاقة جديدة";
+"addPetForAdoption" = "أضِف حيوانا للتبنّي";
+"addPhotos" = "صور الطير";
+"addPhotosDesc" = "عفوا يجب إضافة صورة واحده علي الاقل للطير";
+"addSheetSubtitle" = "أنشئ إعلانًا جديدًا، بع منتجًا مستعملًا، أو أضف حيوانًا للتبني.";
+"addSheetTitle" = "ما الذي تريد نشره ؟";
+"addToCart" = "أضف إلى السلة";
+"addUsedButton" = "أضف إكسسوار مستعمل";
+"address" = "عنوان";
+"address_placeholder" = "اكتب العنوان هنا";
+"age" = "العمر (بالأشهر)";
+"ageShort" = "العمر";
+"ageBird" = "عمر الطير";
+"all" = "الكل";
+"allDeleted" = "جميع المحذوفات";
+"appleBTN" = "التسجيل باستخدام ابل";
+"archive" = "أرشفة";
+"archiveCard" = "أرشفة البطاقة";
+"archiveCardSucsses" = "تمت ارشفة البطاقة بنجاح";
+"archiveCardTitle" = "سيتم نقل البطاقة للارشيف ، تأكيد ؟";
+"archiveEmptyDesc" = "عفوا لم إضافة بيانات للارشيف  ";
+"archiveEmptyTitle" = "الارشيف";
+"archiveName" = "اسم الارشيف";
+"ask" = "يمكنك سؤال Pure Pets عن أي شيء يخص الحيوانات الأليفة";
+"attribute" = "الصفة";
+"attributeNote" = "الفئه اللونية الاخري";
+"attributeNotePlace" = "اكتب الفئه اللونية الاخري";
+"attributePlace" = "حدد الفئة اللونية";
+"attributeValue_Green" = "قرين";
+"attributeValue_Trkqaz" = "تركوازي";
+"attributeValue_blue" = "بلو";
+"attributeValue_other" = "اخري";
+"autoPlaySetPalce" = "تشغيل تلقائي للفيديو";
+"bBird_Ring_id" = "";
+"bell_date" = "";
+"birdKind" = "النوع";
+"birdRingId" = "رقم الطير";
+"bird_age" = "عمر الطير";
+"bird_ge" = "";
+"bird_ring_id" = "رقم الطير";
+"bird_title" = "تفاصيل الطير";
+"blue" = "بلو";
+"boxEmptyDesc" = "لم تتم إضافة اي صناديق";
+"boxEmptyTitle" = "الصناديق";
+"boxExist" = "عفوا يوجد صندوق بهذا الاسم";
+"buyerMobile" = "رقم الهاتف";
+"buyerName" = "إسم المشتري";
+"buyer_mobile" = "رقم الجوال";
+"buyer_name" = "إسم المشتري";
+"buyer_note" = "ملاحظات عن البائع";
+"buyer_price" = "سعر البيع";
+"cam" = "التقاط صورة";
+"cancel" = "إلغاء";
+"cardDesc" = "وصف الطير";
+"cardRetundToCards" = "تم استرجاع البطاقة بنجاح";
+"cardsEmptyDesc" = "لم تتم إضافة اي بطاقات إضغط علي + لاضافة بطاقة طير جديدة";
+"cardsEmptyTitle" = "لا يوجد بطاقات";
+"cartTitle" = "سلة التسوق";
+"category" = "القسم";
+"chicks" = "الفروخ";
+"chicksAddedSucssesfuly" = "تمت إضافة الفرخ للصندوق بنجاح";
+"chicksRingID" = "رقم الفرخ";
+"childRetundToBox" = "تم استرجاع الفرخ للصندوق بنجاح";
+"childsTitle" = "الانتاج في القفص";
+"childs_AddBTN" = "إضافة";
+"childs_descLabel" = "ادخل رقم او اسم الفرخ ثم إضغط علي   (إضافة للصندوق)";
+"childs_ringIdPlaceholder" = "ادخل رقم او إسم الفرخ";
+"chooseArchive" = "رقم الطير";
+"code_Palce" = "مكان الإقامة";
+"colorTXTPlace" = "اكتب اللون";
+"companyAddress" = "العنوان: الوكرة - سوق واقف";
+"companyLocate" = " مقر الشركة";
+"confirm" = "تأكيد";
+"craeteQrCode" = "إنشاء رمز QR";
+"custom" = "مخصص";
+"customTitle" = "عنوان مخصص";
+"customTitlePlaceholder" = "مثلاً: بيت العائلة، مزرعة، شقة 2B";
+"delete" = "حذف";
+"deleteBoxAlertDesc" = "سيتم حذف جميع بيانات الصندوق وكل الفروخ التابعة للصندوق ، تأكيد ؟";
+"deleteBoxAlertTitle" = "حذف بيانات الصندوق";
+"deleteCard" = "حذف";
+"deleteCardSucsses" = "تم حذف البطاقة بنجاح";
+"deleteCardTitle" = "سيتم حذف البطاقة ، تأكيد ؟";
+"deleteStore" = "حذف القصة";
+"deletedFrom_cards" = "محذوفه من البطاقات";
+"deletedFrom_childs" = "محذوفه صناديق الانتاج";
+"deletedFrom_archive" = "محذوفه من الأرشيف";
+"desc" = "الوصف";
+"done" = "تم";
+"doneTitle" = "نجاح";
+"edit" = "تعديل";
+"editBox" = "تعديل صندوق";
+"editCard" = "تعديل";  //dd"تعديل البطاقة";
+"editSucsses" = "تم تعديل البيانات بنجاح";
+"eggAlarmTime" = "وقت التنبيه لفقس البيضة";
+"emptyAppSubtitle" = "لا توجد بيانات";
+"emptyAppTitle" = "عفوا";
+"emptyBtnTitle" = "إبدأ عملية شراء";
+"emptyCartTitle" = "سلة المشتريات فارغة";
+"emptySubtitle" = "لم تتم إضافة بطاقات ، إضغط علي زر جديد لاضافة بطاقة طير جديدة";
+"emptySubtitleCard" = "لم تتم إضافة اي بطاقات";
+"emptyTitle" = "البطاقات";
+"emptyTitleCard" = "البطاقات";
+"enterArchiveName" = "اختر ارشيف للطير";
+"enterBoxName" = "الرجاء ادخال رقم او اسم الصندوق";
+"enterCustomTitle" = "أدخل اسم العنوان المخصص";
+"enterNumberToLogIN" = "ادخل رقم الجوال لتسجيل الدخول";
+"enterRingID" = "ادخل رقم الطير";
+"enter_pet_age_in_months" = "أدخل عمر الحيوان بالأشهر";
+"enterotpcode" = "الرجاء ادخال الكود المرسل للرقم";
+"fatherRingIDPlace" = "حدد رقم الاب";
+"firstName" = "الاسم الاول";
+"firstName_Palce" = "الاسم الاول";
+"food" = "طعام";
+"foodCat" = "حدد فئة الحيوانات المناسبة لنوع الطعام";
+"foodData" = "بيانات الغذاء";
+"foodDesc" = "وصف الطعام او الغذاء";
+"foodName" = "إسم الطعام";
+"geralley" = "اختيار من الالبوم";
+"go_to_login" = "اذهب لتسجيل الدخول";
+"googleBTN" = "التسجيل باستخدام  غوغل";
+"gotToOrders" = "انتقل الي متابعة الطلبات";
+"headerTitle" = "المحادثات";
+"home" = "المنزل";
+"imageFile" = "صورة";
+"inArchive" = "في الارشيف";
+"items" = "أصناف";
+"kmessagesSetPalce" = "إستلام المحادثات من";
+"kmsagesSetPalce" = "إستلام المحادثات من";
+"languageSetPalce" = "لغة التطبيق";
+"learn" = "تعلم";
+"location" = "الموقع";
+"logInBTN" = "طلب كود التفعيل";
+"logOut" = "تسجيل الخروج";
+"loginLabel" = "الديك حساب ؟ ادخل رقم الجوال ليصلك كود التفعيل";
+"login_required_message" = "يجب تسجيل الدخول للمتابعة";
+"login_required_title" = "مطلوب تسجيل الدخول";
+"login_subtitle" = "سجّل الدخول للمتابعة";
+"login_title" = "مرحباً بعودتك";
+"login_with_apple" = "متابعة باستخدام Apple";
+"login_with_google" = "متابعة باستخدام Google";
+"login_with_phone" = "تسجيل الدخول برقم الجوال";
+"logout" = "تسجيل الخروج";
+"logoutSure" = "هل انت متاكد من تسجيل الخروج";
+"mayLike" = "إيضا قد يعجبك";
+"mobileNoField" = "ادخل رقم الجوال";
+"month" = "شهر";
+"motherRingIDPlace" = "حدد رقم الام";
+"my_addresses" = "عناويني";
+"myadsTitle" = "إدارة إعلاناتي";
+"myfavTitle" = "قائمة المفضلة";
+"new" = "جديد";
+"newAccessory" = "اكسسوار جديد";
+"newAd" = "إعلان جديد";
+"newFood" = "إضافة طعام";
+"newServices" = "خدمة جديدة";
+"newVet" = "إضافة بيطري";
+"new_address" = "عنوان جديد";
+"no" = "لا";
+"noChats" = "لا توجد محادثات";
+"chatsTitle" = "المحادثات";
+"noChicksAdded" = "لم تتم إضافة فروخ للقفص ";
+"no_data_barcode" = "عفوا ، لاتوجد نتيجة للبحث";
+"no_value" = "غير محدد";
+"nodata" = "لا توجد بيانات";
+"notFound" = "لا يوجد";
+"not_logged_in" = "لم يتم تسجيل الدخول";
+"note" = "ملاحظات";
+"notificationsSetPalce" = "الإشعارات";
+"ok" = "حسنًا";
+"okSanan" = "حسناً";
+"other" = "اخري";
+"pleaseAddArchive" = "الرجاء إضافة ارشيف جديد";
+"postAd" = "نشر الإعلان";
+"postDescSection" = "التفاصيل";
+"postPhotosSection" = "الصور";
+"post_story_sucsses" = "تم نشر القصة بنجاح";
+"postedDate" = "تاريخ النشر";
+"prees_select_photo" = "اضغط هنا لتغيير صورة الملف الشخصي";
+"price" = "السعر";
+"readyToMarrage" = "(جاهز للانتاج)";
+"reason_not_useful" = "غير مفيد";
+"reason_other" = "أخرى (اكتب السبب أدناه)";
+"reason_temp_break" = "استراحة مؤقتة";
+"reason_toomany_notifications" = "عدد كبير من الإشعارات";
+"remainStringOne" = "تبقي ";
+"remainStringTwo" = "ايام لفقس اول بيضة";
+"returnCard" = "استرجاع البطاقة";
+"returnSelledCard" = "سيتم إلغاء عملية البيع و استرجاع الطير ، هل انت متاكد ؟";
+"sale" = "بيع";
+"save" = "حفظ";
+"saveChanges" = "حفظ التغييرات";
+"saveDone" = "* تمت الإضافة بنجاح ";
+"saveSaleData" = "حفظ بيانات البيع";
+"searchField" = "إبحث هنا";
+"searchHere" = "اكتب هنا للبحث";
+"seconds" = "ثانية";
+"selectAddressType" = "اختر نوع العنوان";
+"selectAddressTypedesc" = "يرجى تحديد نوع العنوان لهذا الموقع";
+"selectFather" = "اختر الاب";
+"selectMother" = "اختر الام";
+"select_address" = "اختر العنوان";
+"sellDate" = "تاريخ البيع";
+"sell_date" = "تاريخ البيع";
+"services" = "خدمات";
+"servicesManager" = "مدير الخدمات";
+"setFirstEggDate" = "الرجاء تحديد وقت وضع اول بيضة";
+"seteggAlarmTime" = "الرجاء تحديد وقت التنبيه للفقس ";
+"shareAd" = "مشاركة الإعلان";
+"share" = "مشاركة";
+"shareForLoan" = "طير للإعارة";
+"shareForReview" = "طير للمعاينة";
+"shareForSell" = "طير للبيع";
+"share_loan" = "إعارة";
+"share_other" = "اخري";
+"share_review" = "معاينة";
+"share_sell" = "بيع";
+"share_story" = "نشر قصة";
+"showCard" = "عرض البطاقة";
+"showChildBTN" = "الانتاج";
+"showMyAds" = "إعلاناتي";
+"showProdection" = "إدارة الانتاج";
+"showProfile" = "الملف الشخصي";
+"showfav" = "المفضلة";
+"split" = "اسبلت";
+"startNewChat" = "ابدأ محادثة جديدة";
+"subKind" = "النوع";
+"subSubKind" = "السلالة";
+"subSubKindPlaceholder" = "السلالة";
+"subcategory" = "السلالة";
+ 
+"sucsses" = "بنجاح";
+"supprot" = "الدعم الفني";
+"timeToCheck" = "حان الوقت للتحقق من قفصك:";
+"titleStringChildDataNotSaved" = "لم تقم بحفظ بيانات الفرخ";
+"titleStringEditDidntSave" = "لم تقم بحفظ التعديلات علي البطاقة ";
+ "topTitleCompleteChild" = "إكمال بيانات فرخ";
+"topTitleEditCard" = "تعديل بطاقة طير";
+"topViewLabel" = "تسجيل الدخول";
+"transferToBox" = "نقل الفرخ";
+"transferToBoxDesc" = "سيتم نقل الفرخ للصندوق";
+"trashEmptyDesc" = "لاتوجد محزوفات";
+"trashEmptyTitle" = "سلة المهملات";
+"trkwaz" = "تركوازي";
+"tryanotherfilter" = "جرب اختيار آخر";
+"typeyourreason" = "اكتب سبب مغادرتك...";
+"unDefind" = "غير محدد";
+"used" = "مستعمل";
+"usedNote" = "🔍 افحص المنتج بعناية، وعقّمه قبل الاستخدام، وتأكد من ملاءمته لنوع وحجم حيوانك الأليف.";
+"user_data" = "بيانات المستخدم";
+"vetAdded" = "تم ارسال طلبك للانضمام للبيطريين ، في انتظار المعاينه";
+"welcome" = "مرحباً";
+"welcomelogin" = "مرحبا بك";
+"whyleavingus" = "هل يمكن أن تخبرنا لماذا تغادرنا؟";
+"withRingId" = "بالرقم";
+"work" = "العمل";
+"familyhome" = "منزل العائلة";
+"year" = "سنه";
+"yes" = "نعم";
+"youHaveBird" = "يوجد لديك طير ";
+"youWantToReturnCard" = "هل تريد استرجاع بطاقة الطير من المحذوفات ؟";
+"youwillgetotp" = "ستصلك رسالة لتفعيل الحساب علي رقم الجوال";
+"newAd_desc" = "أنشئ إعلانًا جديدًا لبيع حيوانك الأليف";
+"addUsedButton_desc" = "اعرض إكسسوارات الحيوانات الأليفة المستعملة للبيع أو الإهداء.";
+"addPetForAdoption_desc" = "شارك تفاصيل حيوان أليف يبحث عن منزل محب.";
+"UserAboutEmpty" = "لم تتم إضافة معلومات اخري";
+// Ar
+"addPetForAdoption" = "إضافة حيوان للتبني";
+"name" = "الاسم";
+"species" = "النوع";
+"selectSpecies" = "اختر النوع";
+"breed" = "السلالة";
+"ageMonths" = "العمر (بالأشهر)";
+"gender" = "الجنس";
+"male" = "ذكر";
+"female" = "أنثى";
+"city" = "المدينة";
+"details" = "التفاصيل";
+"describePet" = "صف الحيوان";
+"photos" = "الصور";
+"save" = "حفظ";
+"cancel" = "إلغاء";
+"error" = "خطأ";
+"ok" = "موافق";
+/* AR */
+"adoptPetAddedTitle" = "تمت إضافة الحيوان";
+"adoptPetAddedDesc"  = "تم نشر الحيوان للتبني بنجاح.";
+"AdoptPet" = "حيوان للتبني";
+"For Adoption" = "للتبني";
+"editAdoptPet"  = "تعديل تبني الحيوان الأليف";
+/* تفاصيل تبني الحيوانات */
+"Name"      = "الاسم";
+"Species"   = "النوع";
+"Breed"     = "السلالة";
+"selectCreed" = "حدد السلالة";
+"Age"       = "العمر";
+"months"    = "شهور";
+"Gender"    = "الجنس";
+"Male"      = "ذكر";
+"Female"    = "أنثى";
+"City"      = "المدينة";
+"Details"   = "التفاصيل";
+/* HXPhotos */
+"Trash_DragToDelete" = "اسحب إلى هنا للحذف";
+"Trash_ReleaseToDelete" = "اترك للحذف";
+/// Ar
+"City Undefined" = "المدينة غير محددة";
+"ForAdoptPet" = " للتبني";
+/// Arabic
+"Contact Advertiser" = "اتصل بالمعلن";
+"AdOwnerInfoGuestTitle" = "سجّل لعرض بيانات المعلن";
+"AdOwnerInfoGuestSubtitle" = "شاهد اسم المعلن وخيارات الدردشة والاتصال بعد تسجيل الدخول.";
+"AdOwnerInfoGuestCTA" = "تسجيل";
+"Banner_Title_Parrot" = "تبنَّ أجمل ببغاء اليوم!";
+"Banner_Desc_Parrot" = "سليم، لعوب، ومطعّم. رسوم التبني لفترة محدودة.";
+"Banner_PostDate_Sample" = "تم النشر • ٧ سبتمبر ٢٠٢٥";
+// Ar
+"No Number" = "لا يوجد رقم";
+"This user has no phone number" = "هذا المستخدم ليس لديه رقم هاتف";
+"Nearest Vet" = "بيطري";
+"Find care nearby" = "اعثر على رعاية قريبة";
+"Accessories" = "إكسسوارات";
+"Shop supplies" = "تسوق المستلزمات";
+"Profile" = "الملف الشخصي";
+"Your account" = "حسابك";
+// ar.json
+"menu_action_profile"= "الملف الشخصي";
+"menu_action_favorites"= "المفضلة";
+"menu_action_services"= "خدماتي";
+"menu_action_orders"= "سجل الطلبات";
+"menu_action_settings"= "الإعدادات";
+"menu_action_support"= "الدعم";
+"NearbyVets" = "الأطباء البيطريون القريبون";
+"Call" = "اتصال";
+"Directions" = "الاتجاهات";
+/* PPVetLocator Arabic */
+"KLang_Title" = "العيادات البيطرية القريبة";
+"KLang_Call" = "اتصال";
+"KLang_Directions" = "الاتجاهات";
+"KLang_LocationDisabled" = "خدمات الموقع معطلة. قم بتمكينها من الإعدادات.";
+"KLang_LocationDenied" = "تم رفض أذن الموقع. افتح الإعدادات للسماح بالوصول.";
+"KLang_LocationWaiting" = "بانتظار إذن الموقع...";
+"KLang_LocationFailed" = "تعذر تحديد الموقع.";
+"KLang_Searching" = "جاري البحث عن عيادات بيطرية قريبة...";
+"KLang_NoResults" = "لم يتم العثور على عيادات قريبة.";
+"KLang_VeterinarianQuery" = "طبيب بيطري";
+"KLang_Section_Near" = "ضمن 1 كم";
+"KLang_Section_Mid" = "1 - 5 كم";
+"KLang_Section_Far" = "اكثر 5 كم";
+"KLang_Unknown" = "غير معروف";
+"KLang_NoPhoneTitle" = "لا يوجد رقم هاتف";
+"KLang_NoPhoneMsg" = "رقم الهاتف غير متوفر.";
+"KLang_CannotCallTitle" = "لا يمكن الاتصال";
+"KLang_CannotCallMsg" = "تعذر بدء الاتصال على هذا الجهاز.";
+"KLang_OK" = "حسناً";
+"KLang_Retry" = "إعادة المحاولة";
+"KLang_UseSampleLocation" = "استخدام موقع نموذجي";
+"KLang_Cancel" = "إلغاء";
+"KLang_LocationTimeout" = "استغرق الحصول على الموقع وقتًا طويلاً. حاول مرة أخرى أو استخدم موقعًا نموذجيًا.";
+"KLang_LocationWhenInUse" = "نحتاج إلى موقعك لعرض العيادات البيطرية القريبة.";
+"KLang_Close" = "إنهاء";
+"KLang_CatsAndDogs" = "القطط والكلاب";
+"KLang_FishAndMarine" = "الأسماك والكائنات البحرية";
+"KLang_HorsesAndCamels" = "الخيل والإبل";
+"KLang_SelectPetCategory" = "اختر فئة الحيوانات";
+/* Header avatar + picker */
+"Add Photo" = "إضافة صورة";
+"Add profile photo" = "إضافة صورة للملف";
+/* Generic/status */
+"Saving" = "جارٍ الحفظ";
+"saving" = "جارٍ الحفظ";
+"Please wait..." = "يرجى الانتظار";
+"Preparing…" = "جارٍ التحضير…";
+"Uploading…" = "جارٍ الرفع…";
+"Downloading from iCloud…" = "جارٍ التنزيل من iCloud…";
+"Done" = "تم";
+"Failed" = "فشل";
+"Saved" = "تم الحفظ";
+"Upload failed" = "فشل الرفع";
+"Image load failed" = "فشل تحميل الصورة";
+"Please login first" = "يرجى تسجيل الدخول أولاً";
+/* Alerts common */
+"Confirm" = "تأكيد";
+"Cancel" = "إلغاء";
+"Error_Title" = "خطأ";
+"Success_Title" = "نجاح";
+"Success" = "تم بنجاح";
+"StatusSaveFailed" = "فشل الحفظ";
+"Success" = "تم بنجاح";
+"StatusSaveFailed" = "فشل الحفظ";
+"PleaseFillFields" = "يرجى ملء جميع الحقول المطلوبة";
+"Days" = "يوم";
+"Add Item" = "أضف";
+"Tap to set" = "تعيين علي الخريطة";
+"unsaved_changes_title" = "تغييرات غير محفوظة" ;
+"leave_button" = "مغادرة" ;
+"stay_button" = "البقاء" ;
+"unsaved_changes_message" = "لديك تغييرات غير محفوظة. هل تريد الخروج دون الحفظ؟";
+"form_draft_prompt_title" = "هل تريد حفظ التقدم الحالي؟" ;
+"form_draft_prompt_message" = "يمكنك حفظ ما وصلت إليه الآن والعودة لاحقاً، أو الخروج الآن بدون الاحتفاظ بهذه التغييرات." ;
+"form_draft_save_and_close" = "حفظ وإغلاق" ;
+"form_draft_discard" = "خروج بدون حفظ" ;
+"form_draft_keep_editing" = "متابعة التعديل" ;
+"form_draft_saved" = "تم حفظ التقدم الحالي. يمكنك المتابعة لاحقاً." ;
+"form_draft_restored" = "تمت استعادة التقدم المحفوظ." ;
+"Verify" = "تحقق";
+"otp_title"                  = "تفعيل الحساب";
+"otp_subtitle"               = "أدخل رمز التحقق المكون من ٦ أرقام المرسل لهاتفك";
+"otp_placeholder"            = "أدخل الرمز";
+"otp_invalid"                = "رمز التحقق غير صالح";
+"otp_failed_fmt"             = "فشل التحقق: %@";
+"otp_expired"                = "انتهت صلاحية الرمز";
+"otp_seconds"                = "متبقي %ld ثانية";
+"otp_resend"                 = "إعادة إرسال الرمز";
+"otp_resending"              = "جارٍ إعادة الإرسال...";
+"otp_success"                = "تم التحقق من رقم الهاتف بنجاح!";
+"otp_verify_button"          = "تأكيد";
+"otp_welcome"                = "مرحبًا بعودتك %@";
+"otp_enter_code_instruction" = "أدخل رمز التحقق";
+"REMAINING TIME" = "الوقت المتبقي";
+"takeTheOffer" = "ألقِ نظرة";
+"changelanguage" = "Change Language to English";
+"NoDnaImage" = "لم يتم ارفاق مستندالفحص";
+"Hot_Accessories" = "إكسسوار";
+"more" = "المزيد";
+"barcode" = "إنشاء الباركود";
+"barcodeReader" = "قارئ الباركود";
+"adLocation" = "موقع الاعلان";
+"filterPPAction" = "تصفية بالسلالة";
+"PPCellLayoutFullWidth" = "العرض الكامل";
+"PPCellLayoutSquare" = "مربع";
+"PPCellLayoutVertical" = "عموديًا";
+"PPCellLayout" = "تخطيط الخلية";
+
+"searchOnly" = "بحث";
+"search" = "البحث";
+"SearchHeroEyebrow" = "بحث بيور بيتس";
+"SearchHeroTitle" = "ابحث في السوق";
+"SearchHeroIdleSubtitle" = "اعثر على الحيوانات والإكسسوارات والخدمات والمتخصصين من مساحة بحث واحدة.";
+"SearchHeroTypingHint" = "اكتب حرفين أو أكثر";
+"SearchHeroSearching" = "جارٍ البحث في الحيوانات والإكسسوارات والخدمات القريبة.";
+"SearchHeroSearchingBadge" = "جارٍ البحث";
+"SearchHeroReady" = "جاهز";
+"SearchHeroLive" = "مباشر";
+"SearchHeroResultsCountFormat" = "%ld نتيجة";
+"SearchHeroResultsSubtitleFormat" = "%ld نتائج منسقة لعبارة \"%@\".";
+
+"DeleteAdTitle"= "حذف الإعلان";
+"EditAdTitle"= "تعديل الإعلان";
+"basicInfoSection"= "معلومات أساسية";
+"descriptionSection"= "الوصف";
+"additionalSection"= "تفاصيل إضافية";
+
+"Species"= "الفئة";
+"Breed"= "السلالة";
+"isFemale"= "أنثى";
+
+"enter_pet_age_in_months"   = "أدخل عمر الحيوان بالأشهر"   ;
+"price"= "السعر";
+"sales"= "المبيعات";
+
+"Discount" = "خصم";
+"discountPercent"= "نسبة الخصم %";
+"enter_discount"= "أدخل نسبة الخصم";
+"hasOffer"= "يتضمن عرض";
+"isNew"= "جديد";
+"adLocation"= "الموقع";
+"select_location"= "اختر موقع الإعلان";
+"postPhotosSection"= "الصور";
+
+
+
+"adTitle"="عنوان او اسم الإعلان";
+"enter_title"= "أدخل الإسم";
+"PostAdTitle"= "إضافة إعلان جديد";
+"age_months"= "العمر (بالأشهر)";
+"enter_price"= "أدخل السعر" ;
+"desc"= "الوصف";
+"enter_description"= "صف الحيوان"  ;
+
+"AddedToCart" = "✔︎ تمت الإضافة";
+"ItemAddedToYourCart" = "تمت إضافة العنصر إلى سلة التسوق الخاصة بك.";
+
+
+"tempDesc" = "اجعل طائرك الببغاء سعيدًا ونشيطًا بهذا الطقم الممتع والملوّن من الألعاب. صُممت لتلبية فضول الطيور الطبيعي وغريزة المضغ لديها، مما يساعد على منع الملل وتشجيع السلوك الصحي. مصنوعة من مواد آمنة وغير سامة مناسبة لجميع أنواع الببغاوات — مثالية للتعليق داخل الأقفاص أو أماكن اللعب.";
+
+
+"AddAddress" = "اضافة عنوان";
+"EditAddress" = "تعديل عنوان";
+"FullName" = "العنوان الكامل";
+"FullNameRequired" = "العنوان الكامل مطلوب";
+"AddressLine1" = "العنوان الأول";
+"AddressLine1Required" = "العنوان الأول مطلوب";
+"AddressLine2Optional" = "العنوان الثاني (اختياري)";
+"Country" = "الدولة";
+"CountryRequired" = "الدولة مطلوبة";
+"City" = "المدينة";
+"CityRequired" = "المدينة مطلوبة";
+"State" = "المنطقة";
+"StateRequired" = "المنطقة مطلوبة";
+"PostalCode" = "الرمز البريدي";
+"PostalCodeRequired" = "الرمز البريدي مطلوب";
+"DefaultShippingAddress" = "العنوان الافتراضي للشحن";
+"MapLocation" = "اختر من الخريطة";
+"TapToSelect" = "اضغط للاختيار";
+"DeleteAddress" = "حذف العنوان";
+"DeleteConfirmTitle" = "حذف العنوان";
+"DeleteConfirmMessage" = "هل أنت متأكد من حذف هذا العنوان؟";
+"Cancel" = "إلغاء";
+"Delete" = "حذف";
+"Save" = "حفظ";
+"AddressFormAddSubtitle" = "أضف عنوان التوصيل مع الدولة والمدينة والمنطقة وتثبيت الموقع على الخريطة.";
+"AddressFormEditSubtitle" = "حدّث تفاصيل التوصيل والموقع بسهولة.";
+"Shipping Addresses"="عناوين الشحن والتوصيل";
+"Add New Address"="إضافة عنوان جديد";
+
+// Arabic
+"CellSectionAds" = "إعلانات";
+"CellSectionAccessories" = "إكسسوارات";
+"CellSectionVet" = "طبيب بيطري";
+"CellSectionServices" = "خدمات";
+"CellSectionFood" = "طعام";
+"NoSavedAddresses" = "لا توجد عناوين بعد";
+"AddressesDeleted" = "تم حذف جميع بيانات العنوان بنجاح";
+
+"DeliverTo"="توصيل الي";
+"DeliverToAddress" = "العنوان";
+"PleaseSelectDeliveryLocation" = "يرجى تحديد موقع التسليم";
+
+
+/* -------------------- PAYMENT FLOW -------------------- */
+"SelectPaymentMethod" = "اختر طريقة الدفع";
+"ContinuePayment" = "متابعة الدفع";
+"PayThrough" = "الدفع من خلال";
+
+/* -------------------- TITLES -------------------- */
+"PaymentMethodTitle" = "طريقة الدفع";
+"AddPaymentTitle" = "إضافة وسيلة دفع";
+"EditPaymentTitle" = "تعديل وسيلة الدفع";
+"PaymentFormTitle" = "إضافة وسيلة دفع جديدة";
+"BillingAddressTitle" = "عنوان الفاتورة";
+"CardInformationTitle" = "معلومات البطاقة";
+"PaymentMethodFooter" = "لن يتم خصم أي مبلغ حتى تقوم بعملية شراء.";
+
+/* -------------------- PAYMENT OPTIONS -------------------- */
+"PaymentOptionCard" = "بطاقة ائتمان / خصم مباشر";
+"PaymentOptionCardSubtitle" = "فيزا، ماستركارد، أمريكان إكسبريس";
+
+"PaymentOptionOoredoo" = "أوريدو موني";
+"PaymentOptionOoredooSubtitle" = "ادفع مباشرة من محفظة أوريدو الخاصة بك";
+
+"PaymentOptionPayPal" = "باي بال";
+"PaymentOptionPayPalSubtitle" = "مدفوعات آمنة حول العالم";
+
+"PaymentOptionCash" = "الدفع عند الاستلام";
+"PaymentOptionCashSubtitle" = "ادفع نقداً عند استلام طلبك";
+
+"PaymentOptionFawry" = "فوري قطر";
+"PaymentOptionFawrySubtitle" = "ادفع بسهولة عبر خدمة فوري.";
+
+/* -------------------- CARD DETAILS -------------------- */
+"CardNumberLabel" = "رقم البطاقة";
+"CardNumberPlaceholder" = "٠٠٠٠ ٠٠٠٠ ٠٠٠٠ ٠٠٠٠";
+"CardExpiryLabel" = "تاريخ الانتهاء";
+"CardExpiryPlaceholder" = "شهر / سنة";
+"CardCVVLabel" = "رمز الأمان";
+"CardCVVPlaceholder" = "الرمز خلف البطاقة";
+
+/* -------------------- BILLING ADDRESS -------------------- */
+"StreetLabel" = "الشارع";
+"CityLabel" = "المدينة";
+"StateLabel" = "المحافظة";
+"PostcodeLabel" = "الرمز البريدي";
+
+/* -------------------- SPECIFIC METHODS -------------------- */
+"PaymentMethodQNBTitle" = "بنك قطر الوطني (QNB)";
+"QNB" = "بنك قطر الوطني (QNB)";
+"PaymentMethodQNBFooter" = "اربط حسابك في بنك قطر الوطني.";
+"QNBAccountTitle" = "رقم الحساب";
+"QNBAccountPlaceholder" = "مطلوب";
+"QNBOTPTitle" = "رمز التحقق OTP";
+"QNBOTPPlaceholder" = "أدخل رمز التحقق";
+
+"PaymentMethodOoredooTitle" = "أوريدو موني";
+"Ooredoo Money" = "أوريدو موني";
+"PaymentMethodOoredooFooter" = "ادفع مباشرة باستخدام محفظة أوريدو الخاصة بك.";
+"OoredooWalletNumberTitle" = "رقم المحفظة";
+"OoredooWalletNumberPlaceholder" = "+974 5555 1234";
+
+"PaymentMethodPayPalTitle" = "باي بال";
+"PaymentMethodPayPalFooter" = "مدفوعات عالمية آمنة عبر حساب باي بال.";
+"PayPalEmailTitle" = "البريد الإلكتروني لباي بال";
+"PayPalEmailPlaceholder" = "you@example.com";
+
+"PaymentMethodCashTitle" = "الدفع عند الاستلام";
+"PaymentMethodCashFooter" = "يمكنك الدفع نقداً عند استلام طلبك.";
+"CashPayment" = "يمكنك الدفع نقداً عند استلام طلبك.";
+"DeliveryNoteTitle" = "ملاحظات التوصيل";
+"DeliveryNotePlaceholder" = "أضف أي تعليمات خاصة";
+"Pay when you receive your order" = "يمكنك الدفع نقداً عند استلام طلبك.";
+
+
+"PaymentMethodFawryTitle" = "تفاصيل الدفع عبر فوري";
+"PaymentMethodFawryFooter" = "أدخل بيانات الدفع الخاصة بك عبر فوري أدناه.";
+"FawryCustomerNameTitle" = "اسم العميل";
+"FawryCustomerNamePlaceholder" = "أدخل اسمك الكامل";
+"FawryMobileTitle" = "رقم الجوال";
+"FawryMobilePlaceholder" = "مثال: 01012345678";
+"FawryEmailTitle" = "البريد الإلكتروني (اختياري)";
+"FawryEmailPlaceholder" = "أدخل عنوان بريدك الإلكتروني";
+"FawryReferenceTitle" = "رمز المرجع";
+"FawryReferencePlaceholder" = "اضغط لتوليد رمز المرجع";
+"GenerateFawryReferenceButton" = "توليد رمز المرجع";
+"FawryReferenceError" = "فشل في توليد رمز المرجع. حاول مرة أخرى.";
+"FawryLoadingTitle" = "جاري إنشاء رمز المرجع...";
+"FawryReferenceGenerated" = "تم إنشاء رمز المرجع بنجاح!";
+
+/* -------------------- ACTIONS -------------------- */
+"Save" = "حفظ";
+"Update" = "تحديث";
+"DoneButtonTitle" = "تم";
+"ConfirmDeleteButton" = "حذف";
+"CancelButton" = "إلغاء";
+"SetDefault" = "تعيين الافتراضي";
+
+/* -------------------- STATUS & CONFIRMATION -------------------- */
+"PaymentMethodSaved" = "تم حفظ وسيلة الدفع";
+"PaymentMethodUpdated" = "تم تحديث وسيلة الدفع";
+"PaymentMethodDeletedSuccess" = "تم حذف وسيلة الدفع بنجاح.";
+"PaymentMethodDeletedFailed" = "فشل حذف وسيلة الدفع، حاول مرة أخرى.";
+"DefaultPaymentMethodUpdated" = "تم تعيين طريقة الدفع الافتراضية";
+"DefaultPaymentMethodUpdated_sub" = "سيتم استخدام هذه الطريقة للشراء القادم.";
+
+/* -------------------- ERRORS & VALIDATION -------------------- */
+"Error" = "خطأ";
+"PleaseSelectPaymentMethod" = "يرجى اختيار وسيلة الدفع أولاً.";
+"PleaseCompleteFields" = "يرجى إكمال الحقول المطلوبة.";
+"FailedToSavePaymentMethod" = "فشل في حفظ وسيلة الدفع.";
+"FailedToUpdatePaymentMethod" = "فشل في تحديث وسيلة الدفع.";
+"PleaseFillCardDetails" = "يرجى إدخال تفاصيل البطاقة.";
+"PleaseEnterQNBAccount" = "يرجى إدخال رقم حساب QNB.";
+"PleaseEnterOoredooNumber" = "يرجى إدخال رقم محفظة أوريدو.";
+"PleaseCompleteFawryDetails" = "يرجى إكمال بيانات فوري.";
+
+/* -------------------- UI LABELS -------------------- */
+"Default" = "افتراضي";
+"DefaultMethodLabel" = "طريقة الدفع الافتراضية";
+"Unknown" = "غير معروف";
+"EditingModeActive" = "وضع التعديل";
+"YouCanEditFieldsBelow" = "يمكنك تعديل تفاصيل وسيلة الدفع أدناه.";
+
+/* -------------------- HINTS -------------------- */
+"PaymentHintAddNew" = "لإضافة وسيلة دفع جديدة، اضغط على بطاقة +.";
+"PaymentHintMoreOptions" = "للمزيد من الخيارات، اضغط مطولاً على وسيلة الدفع.";
+
+"Credit / Debit Card" = "بطاقة ائتمان / خصم مباشر";
+"PaymentMethodCardTitle" = "بطاقة ائتمان / خصم مباشر";
+"PaymentMethodCardFooter" = "سيتم معالجة بطاقتك بأمان.";
+"CardNumberTitle" = "رقم البطاقة";
+"CardNumberPlaceholder" = "٠٠٠٠ ٠٠٠٠ ٠٠٠٠ ٠٠٠٠";
+"ExpiryDateTitle" = "تاريخ الانتهاء";
+"ExpiryDatePlaceholder" = "شهر / سنة";
+"CVVTitle" = "رمز الأمان";
+"CVVPlaceholder" = "الرمز خلف البطاقة";
+
+"Fawry Qatar" = "فوري";
+"Cash on Delivery" = "الدفع عند الاستلام";
+
+
+"Unsupported iOS Version" = "إصدار iOS غير مدعوم";
+"This version of the app is available on iOS 26 and above." = "هذا الإصدار من التطبيق متاح على iOS 26 والإصدارات الأحدث فقط.";
+"OK" = "موافق";
+"ShowAllCards_Ar" = "عرض كل البطاقات";
+
+
+"Out of stock" = "غير متوفر في المخزون";
+"Only" = "متبقي";
+"left in stock" = "فقط";
+"leftInStock" = "فقط";
+"in stock" = "متوفر";
+"inStock" = "متوفر";
+
+"Rials" = "ر.ق";
+"Discount" = "خصم";
+"accessDoneTitle" = "تم إضافة الإكسسوار!";
+"accessDoneDesc" = "تمت إضافة إكسسوار حيوانك الأليف بنجاح.";
+"done" = "تم";
+"tempDesc" = "وصف مؤقت للاختبار";
+
+
+"Complete_Profile" = "أكمل ملفك الشخصي";
+"Add_Photo" = "إضافة صورة";
+"Display_Name" = "الاسم المعروض";
+"First_Name" = "الاسم الأول";
+"Last_Name" = "اسم العائلة";
+"Enter_First_Name" = "أدخل الاسم الأول";
+"Enter_Last_Name" = "أدخل اسم العائلة";
+"Save" = "حفظ";
+"Skip" = "تخطي";
+"Phone_Login" = "تسجيل الدخول برقم الجوال";
+"Enter_OTP" = "أدخل رمز التحقق المكوّن من 6 أرقام";
+"Continue" = "متابعة";
+
+"Use_Photo" = "استخدام الصورة";
+"Tap_To_Change_Photo" = "اضغط لتغيير الصورة";
+"Camera" = "الكاميرا";
+"Photo_Library" = "ألبوم الصور";
+"Cancel" = "إلغاء";
+"Profile_Photo" = "صورة الملف الشخصي";
+"Drag_To_Adjust" = "اسحب للتعديل";
+"Pinch_To_Zoom" = "قرّب وابعِد للتكبير";
+"Swipe_Down_To_Close" = "اسحب للأسفل للإغلاق";
+"Capture" = "التقاط";
+
+"Skip" = "لاحقاً";
+
+"Move & Zoom" = "التحرك والتكبير";
+
+
+"Done" = "تم";
+"Cancel" = "إلغاء";
+"Reset" = "إعادة تعيين";
+"Original" = "أصلي";
+"Square" = "مربع";
+"Delete Changes" = "حذف التغييرات";
+"Yes" = "نعم";
+"No" = "لا";
+
+"Welcome to Pure Pets" = "مرحباً بك في Pure Pets";
+"Maybe Later" = "ربما لاحقاً";
+"Sign in with Google" = "تسجيل الدخول باستخدام Google";
+"Mobile Number" = "رقم الجوال";
+"Continue with Mobile" = "المتابعة باستخدام الجوال";
+"Sign in to continue your pet journey" = "سجّل الدخول لمتابعة رحلتك مع حيوانك الأليف";
+"+Code" = "رمز الدولة";
+
+"verification_title" = "أدخل رمز التحقق";
+"verification_sent_to" = "تم إرسال رمز إلى %@";
+"continue_button" = "متابعة";
+
+"resend_code" = "إعادة إرسال الرمز";
+"resend_timer_format" = "إعادة الإرسال (%ld)";
+"resend_timer_60" = "إعادة الإرسال (60)";
+"resend_timer_45" = "إعادة الإرسال (45)";
+"invalid_code_title" = "رمز غير صحيح";
+"invalid_code_message" = "رمز التحقق الذي أدخلته غير صحيح. يرجى المحاولة مرة أخرى.";
+"ok_button" = "حسناً";
+
+
+/* ---------------------------- */
+/* Phone Number Entry */
+/* ---------------------------- */
+"auth_enter_phone_title" = "أدخل رقم جوالك";
+"auth_enter_phone_message" = "يرجى إدخال رقم الجوال للمتابعة.";
+"auth_phone_required_title" = "رقم مفقود";
+"auth_phone_required_message" = "يرجى إدخال رقم جوالك.";
+
+/* ---------------------------- */
+/* Sending Verification Code */
+/* ---------------------------- */
+"auth_sending_code_title" = "جاري إرسال الرمز…";
+"auth_sending_code_failed_title" = "تعذر إرسال الرمز";
+"auth_sending_code_failed_message" = "يرجى التحقق من الرقم والمحاولة مرة أخرى.";
+
+/* ---------------------------- */
+/* Verification Code Screen */
+/* ---------------------------- */
+"auth_verification_title" = "أدخل رمز التحقق";
+"auth_verification_message" = "تم إرسال رمز إلى %@";
+
+"auth_verifying_code_title" = "جاري التحقق من الرمز…";
+"auth_invalid_code_title" = "رمز غير صحيح";
+"auth_invalid_code_message" = "الرمز الذي أدخلته غير صحيح. يرجى المحاولة مرة أخرى.";
+
+"auth_session_expired_title" = "انتهت الجلسة";
+"auth_session_expired_message" = "انتهت صلاحية الرمز. يرجى طلب رمز جديد.";
+
+/* ---------------------------- */
+/* Google Auth */
+/* ---------------------------- */
+"auth_google_connecting_title" = "جاري الاتصال بجوجل…";
+"auth_google_failed_title" = "فشل تسجيل الدخول عبر جوجل";
+"auth_google_failed_message" = "تعذر التحقق من حساب جوجل. يرجى المحاولة مرة أخرى.";
+
+/* ---------------------------- */
+/* Generic Auth Errors */
+/* ---------------------------- */
+"auth_error_title" = "حدث خطأ";
+"auth_error_message" = "يرجى المحاولة مرة أخرى.";
+
+"auth_network_error_title" = "لا يوجد اتصال";
+"auth_network_error_message" = "يرجى التحقق من اتصال الإنترنت.";
+
+"auth_firebase_error_title" = "خطأ في المصادقة";
+
+/* ---------------------------- */
+/* Login Success */
+/* ---------------------------- */
+"auth_signin_success_title" = "مرحباً!";
+"auth_signin_success_message" = "تم تسجيل دخولك بنجاح.";
+
+/* ---------------------------- */
+/* Logout */
+/* ---------------------------- */
+"auth_signout_title" = "تم تسجيل الخروج";
+"auth_signout_message" = "تم تسجيل خروجك بنجاح.";
+
+
+/* ---------------------------- */
+/* Blocked Account */
+/* ---------------------------- */
+"auth_account_blocked_title" = "حساب مقيّد";
+"auth_account_blocked_message" = "لا يمكن استخدام هذا الحساب حالياً.";
+
+/* Headers */
+"auth_title_welcome" = "مرحباً بك في Pure Pets";
+"auth_subtitle_continue" = "سجّل الدخول لمتابعة رحلتك مع حيوانك الأليف";
+
+/* Apple Token Errors */
+"auth_apple_no_token" = "تعذر التحقق من حساب Apple. يرجى المحاولة مرة أخرى.";
+"auth_apple_failed_title" = "فشل تسجيل الدخول عبر Apple";
+"auth_apple_signing_in" = "جاري تسجيل الدخول…";
+
+/* Account setup */
+"auth_setting_up_account" = "جاري إعداد حسابك…";
+
+/* User document not found */
+"auth_user_not_found" = "لم يتم العثور على بيانات المستخدم.";
+"albums.title" = "الصور";
+
+"assets.footer.photo" = "%ld صورة";
+"assets.footer.photos" = "%ld صور";
+"assets.footer.video" = "%ld فيديو";
+"assets.footer.videos" = "%ld فيديوهات";
+"assets.footer.photo-and-video" = "%ld صورة، %ld فيديو";
+"assets.footer.photos-and-video" = "%ld صور، %ld فيديو";
+"assets.footer.photo-and-videos" = "%ld صورة، %ld فيديوهات";
+"assets.footer.photos-and-videos" = "%ld صور، %ld فيديوهات";
+
+"assets.toolbar.item-selected" = " عنصر محدد";
+"assets.toolbar.items-selected" = " عناصر محددة";
+"assets.toolbar.item-zero" = "لم يتم تحديد صور";
+"add.images.here" = "أضف الصور هنا";
+
+
+"Food Posted!" = "نشر الطعام!";
+"Accessory Posted!" = "تم نشر الاكسسوار!";
+"Your food item has been listed successfully." = "لقد تم إدراج العنصر الغذائي الخاص بك بنجاح.";
+"Your accessory has been listed successfully." = "لقد تم إدراج الاكسسوار الخاص بك بنجاح.";
+ 
+
+"This will be listed as a used item." = "سيتم إدراج هذا كإكسسوار مستخدم (مستعمل).";
+"Notifications" = "تنبيهات";
+
+
+/// MARK: - Accessory / Food Form - General
+"accessory_form_used_note_title"          = "سيتم إدراج هذا المنتج كمنتج مستعمل.";
+
+"accessory_form_category_section_title"   = "فئة الإكسسوارات";
+"food_form_category_section_title"        = "فئة الأغذية";
+
+"accessory_form_details_section_title"    = "تفاصيل الإكسسوار";
+"food_form_details_section_title"         = "تفاصيل المنتج الغذائي";
+
+/// MARK: - Species / Breed (categories)
+"form_species_title"                      = "النوع";
+"form_species_selector_title"             = "اختر النوع";
+"form_species_placeholder"                = "اختر النوع";
+
+"form_breed_title"                        = "السلالة";
+"form_breed_selector_title"               = "اختر السلالة";
+"form_breed_placeholder"                  = "اختر السلالة";
+
+/// MARK: - Name
+"accessory_form_name_title"               = "اسم الإكسسوار";
+"accessory_form_name_placeholder"         = "أدخل اسم الإكسسوار";
+
+"food_form_name_title"                    = "اسم المنتج الغذائي";
+"food_form_name_placeholder"              = "أدخل اسم المنتج الغذائي";
+
+/// MARK: - Price
+"form_price_title"                        = "السعر";
+"form_price_placeholder"                  = "أدخل السعر";
+
+/// MARK: - Description
+"accessory_form_desc_title"               = "وصف الإكسسوار";
+"food_form_desc_title"                    = "وصف المنتج الغذائي";
+"form_desc_placeholder"                   = "أدخل الوصف";
+
+
+
+// Localizable.strings (Arabic)
+"Check out this pet ad!" = "اطلع على إعلان الحيوان الأليف هذا!";
+"Check out this pet accessory!" = "اطلع على ملحق الحيوانات الأليف هذا!";
+"Copied to clipboard!" = "تم النسخ إلى الحافظة!";
+"Shared successfully!" = "تم المشاركة بنجاح!";
+"No images to share" = "لا توجد صور للمشاركة";
+
+// Pet details
+"Title" = "العنوان";
+"Description" = "الوصف";
+"Category" = "الفئة";
+"Breed" = "السلالة";
+"Subcategory" = "الفئة الفرعية";
+"Price" = "السعر";
+"Age" = "العمر";
+"Gender" = "الجنس";
+"Location" = "الموقع";
+"Status" = "الحالة";
+"Condition" = "الحالة";
+"Availability" = "التوفر";
+"Type" = "النوع";
+"Name" = "الاسم";
+"Original Price" = "السعر الأصلي";
+"Final Price" = "السعر النهائي";
+"Discount" = "الخصم";
+"Quantity" = "الكمية";
+"Stock Status" = "حالة المخزون";
+
+// Units and values
+"month" = "شهر";
+"months" = "أشهر";
+"year" = "سنة";
+"years" = "سنوات";
+"Less than 1 month" = "أقل من شهر";
+"Female" = "أنثى";
+"Male" = "ذكر";
+"Sold" = "مباع";
+"Available" = "متوفر";
+"New" = "جديد";
+"Used" = "مستعمل";
+"Not specified" = "غير محدد";
+"Accessory" = "ملحق";
+"Food" = "طعام";
+"Unknown" = "غير معروف";
+"On Sale!" = "في العرض!";
+"In Stock" = "متوفر بالمخزون";
+"Out of Stock" = "غير متوفر";
+"Limited Stock" = "كمية محدودة";
+
+// Sharing options
+"Share Options" = "خيارات المشاركة";
+"Share with Photo" = "شارك مع الصورة";
+"Copy Details" = "نسخ التفاصيل";
+"Save as Text File" = "حفظ كملف نصي";
+"Cancel" = "إلغاء";
+"Share anyway?" = "مشاركة على أي حال؟";
+
+// Actions
+"Save to Photos" = "حفظ في الصور";
+"Share" = "مشاركة";
+"Save to Camera Roll" = "حفظ في ألبوم الصور";
+"Set as Wallpaper" = "تعيين كخلفية";
+
+// Errors and messages
+"Error saving image" = "خطأ في حفظ الصورة";
+"Image saved to Photos" = "تم حفظ الصورة في الصور";
+"Error" = "خطأ";
+"Success" = "نجاح";
+"Info" = "معلومات";
+"Failed to save image" = "فشل في حفظ الصورة";
+"To set as wallpaper, save the image and set it from Photos app" = "لتعيينها كخلفية، احفظ الصورة وقم بتعيينها من تطبيق الصور";
+
+// Viewer/Image controls
+"Close" = "إغلاق";
+"Next" = "التالي";
+"Previous" = "السابق";
+"Zoom In" = "تكبير";
+"Zoom Out" = "تصغير";
+"Loading..." = "جاري التحميل...";
+
+// Pet attributes
+"Pet Age" = "عمر الحيوان";
+"Pet Category" = "فئة الحيوان";
+"Pet Breed" = "سلالة الحيوان";
+"Pet Gender" = "جنس الحيوان";
+"Pet Price" = "سعر الحيوان";
+"Pet Location" = "موقع الحيوان";
+"Pet Status" = "حالة الحيوان";
+
+// Accessory attributes
+"Accessory Name" = "اسم الملحق";
+"Accessory Description" = "وصف الملحق";
+"Accessory Price" = "سعر الملحق";
+"Accessory Category" = "فئة الملحق";
+"Accessory Type" = "نوع الملحق";
+"Accessory Condition" = "حالة الملحق";
+"Accessory Quantity" = "كمية الملحق";
+
+// Common
+"OK" = "موافق";
+"Yes" = "نعم";
+"No" = "لا";
+"Confirm" = "تأكيد";
+"Delete" = "حذف";
+"Edit" = "تعديل";
+"Save" = "حفظ";
+"Done" = "تم";
+"Loading" = "جاري التحميل";
+"loading_images" = "جاري تحميل الصور...";
+"camera_not_available" = "الكاميرا غير متاحة على هذا الجهاز.";
+"camera_permission_needed" = "يرجى السماح بالوصول إلى الكاميرا من الإعدادات.";
+"Please wait" = "يرجى الانتظار";
+"Retry" = "إعادة المحاولة";
+"Continue" = "متابعة";
+"Back" = "رجوع";
+
+
+"No delivery addresses available" = "لا توجد عناوين توصيل متاحة";
+"Add Address" = "إضافة عنوان";
+"Change" = "تغيير";
+// Localizable.strings (Arabic)
+"FullName" = "الاسم الكامل";
+"FullNamePlaceholder" = "أدخل اسمك الكامل";
+"AddressLine1Placeholder" = "عنوان الشارع، المبنى، الشقة";
+"AddressLine2Placeholder" = "الشقة، الجناح، الوحدة، الطابق (اختياري)";
+"PostalCodePlaceholder" = "الرمز البريدي";
+"TapToSelect" = "انقر للاختيار";
+"TapToSelectPlaceholder" = "انقر للاختيار";
+"MainPage" = "الرئيسية";
+"Add New Parrot Card" = "إضافة بطاقة طير جديدة";
+"Add New Archive" = "إضافة أرشيف جديد";
+
+"doneSubTitle" = "إضافة أرشيف جديد";
+"boxNote" = "يُضاف إنتاج هذا الزوج من الفروخ لاحقًا عبر قسم إدارة الصناديق.";
+"deletearchive" = "حذف الارشيف";
+"editarchive" = "تعديل اسم الارشيف";
+"pill" = "فاتورة المبيعات";
+"salesEmptyTitle"     = "لا توجد عناصر بعد";
+"salesEmptyDesc"      = "ليس لديك أي مبيعات أو مشاركات حتى الآن.";
+"addBird"      = "أضف طير للفاتورة";
+
+
+"RestoreItem" = "استعادة العنصر؟";
+"RestoreItemDesc" = "سيتم إرجاع هذا العنصر إلى موقعه الأصلي.";
+"RestoreSuccess" = "تمت استعادة العنصر بنجاح";
+"Restore" = "استعادة";
+"DeleteForever" = "حذف نهائي";
+"DeleteForeverDesc" = "سيتم حذف هذا العنصر نهائيًا ولا يمكن استعادته.";
+"DeletedPermanently" = "تم حذف العنصر نهائيًا";
+"Cancel" = "إلغاء";
+
+
+"WhatsApp" = "واتساب";
+"Return" = "إرجاع";
+"production" = "الانتاج";
+"Please add the output to the box" = "الرجاء إضافة الانتاج للصندوق";
+
+"CageAddedSuccessTitle" = "تمت إضافة القفص";
+"CageAddedSuccessSubtitle" = "تمت إضافة القفص بنجاح.";
+"CardDeletedTitle" = "تم حذف هذه البطاقة";
+"pickBirthDateOrToday" = "اختر تاريخ الميلاد أو اتركه اليوم";
+
+"Undo"= "تراجع";
+"ChildMovedToTrash" = "تم النقل إلى المهملات";
+"RestoredSuccessfully"  = "تمت الاستعادة";
+
+"menu_showCard"    = "عرض البطاقة";
+"menu_deleteChick" = "حذف الفرخ";
+"menu_archiveChick" = "أرشفة الفرخ";
+"menu_transferChick" = "نقل الفرخ";
+"menu_sellChick"   = "بيع الفرخ";
+
+"child_no_card_title" = "لم يتم إنشاء بطاقة";
+"child_no_card_message_fmt" = "لم يتم إنشاء بطاقة للفرخ %@، هل تريد إنشائها الآن؟";
+
+"show_childs" = "عرض الفراخ";   
+"count_childs" = "عدد الفراخ";  
+"delete_child_message_fmt" = "سيتم حذف الفرخ %@. هل أنت متأكد؟";
+"delete_child_title" = "حذف الفرخ";
+"create_card_failed_subtitle" = "تعذر إنشاء البطاقة";
+"create_card_failed_subtitle" = "لم نتمكن من إنشاء البطاقة حالياً. يرجى التحقق من الاتصال والمحاولة مرة أخرى.";
+
+
+"card_in_archive_title" = "البطاقة في الأرشيف";
+"card_in_archive_subtitle_fmt" = "هذه البطاقة (%@) موجودة حالياً في الأرشيف. هل تريد نقلها إلى هذا الصندوق؟";
+"move_to_box" = "نقل إلى الصندوق";
+"cancel" = "إلغاء";
+
+"Bird Actions" = "إجراءات الطائر";
+"SearchBirdsPlaceholder" = "ابحث برقم الحلقة أو السلالة أو الاسم";
+"SearchBirdsPlaceholder" = "ابحث برقم الحلقة أو السلالة أو الاسم";
+
+"SortTitle" = "ترتيب";
+
+"SortByRing" = "رقم الحلقة";
+"SortByDate" = "التاريخ";
+"SortByBreed" = "السلالة";
+
+"SortRingAsc" = "رقم الحلقة (تصاعدي)";
+"SortRingDesc" = "رقم الحلقة (تنازلي)";
+
+"SortNewest" = "الأحدث أولاً";
+"SortOldest" = "الأقدم أولاً";
+
+"SortBreedAsc" = "السلالة (تصاعدي)";
+"SortBreedDesc" = "السلالة (تنازلي)";
+
+"FilterByBreedTitle" = "تصفية حسب السلالة";
+"FilterAllBirds" = "كل الطيور";
+"ClearFilters" = "مسح التصفية";
+"BirdActionsTitle" = "إجراءات الطائر";
+
+
+"addArchiveTitle" = "إضافة أرشيف";
+"enterArchiveName" = "أدخل اسم الأرشيف";
+"save" = "حفظ";
+"cancel" = "إلغاء";
+
+"untitledArchive" = "أرشيف بدون اسم";
+
+"title_ArchiveAlert" = "أرشفة الطائر";
+"subtitle1_ArchiveAlert" = "هل تريد أرشفة";
+"subtitle3_ArchiveAlert" = "إلى الأرشيف";
+"subtitle4_ArchiveAlert" = "؟";
+
+"yes" = "نعم";
+"no" = "لا";
+
+"_archiveTitle" = "الأرشيف";
+"RingID" = "رقم الحلقة";
+
+"cards"        = "البطاقات";
+"cages"        = "الأقفاص";
+"childs"       = "الفروخ";
+"archive"      = "الأرشيف";
+"UnknownItem"  = "عنصر غير معروف";
+"printBill" = "فاتورة البيع";
+
+"BillDate" = "تاريخ الفاتورة";
+"BuyerName" = "اسم المشتري";
+"Mobile" = "رقم الهاتف";
+
+"BirdTitle" = "اسم الطائر";
+"RingID" = "رقم الحلقة";
+
+"Price" = "السعر";
+
+"SalesBillTitle" = "فاتورة بيع – بيور بيتس";
+"SalesBillFileFallback" = "فاتورة";
+"SalesBillFooter" = "تم الإنشاء بواسطة تطبيق بيور بيتس";
+
+"EmptyValue" = "—";
+"currency" = "ريال قطري";
+"InvoiceDetails" = "تفاصيل الفاتورة";
+"TotalAmount"    = "المبلغ المستحق";
+"ViewBirdCard" = "عرض بطاقة الطائر";
+"ReturnBill"   = "العودة للفواتير";
+
+
+/* Cage Header */
+"cage_title" = "القفص";
+"cage_edit" = "تعديل";
+"cage_barcode" = "الباركود";
+
+/* Parent Cards */
+"father_title" = "الأب";
+"mother_title" = "الأم";
+"ring_id" = "رقم الحلقة";
+"unknown_ring" = "حلقة غير معروفة";
+"parent_menu" = "الخيارات";
+"parent_move_archive" = "نقل إلى الأرشيف";
+"parent_sell" = "بيع";
+
+/* Parent Status Overlay */
+"parent_sold" = "تم بيع الطائر";
+"parent_deleted" = "تم حذف البطاقة";
+"parent_moved_archive" = "تم نقل البطاقة إلى الأرشيف";
+"parent_moved_archive_named" = "تم النقل إلى الأرشيف: %@";
+
+/* Chicks Section */
+"chicks_count" = "الفروخ";
+"add_chick" = "إضافة فرخ";
+"add_more_chicks" = "إضافة المزيد من الفراخ";
+
+/* First Egg Section */
+"first_egg_date_title" = "تاريخ أول بيضة";
+"first_egg_not_set" = "لم يتم تعيين تاريخ اول بيضة لهذا الزوج بعد";
+"set_first_egg" = "تعيين";
+
+/* Empty / Missing Data */
+"no_father" = "لا يوجد أب";
+"no_mother" = "لا توجد أم";
+"no_image" = "لا توجد صورة";
+
+/* Accessibility */
+"father_card_accessibility" = "بطاقة طائر الأب";
+"mother_card_accessibility" = "بطاقة طائر الأم";
+"add_chick_accessibility" = "إضافة فرخ إلى هذا القفص";
+"barcode_accessibility" = "عرض باركود القفص";
+"edit_cage_accessibility" = "تعديل القفص";
+"child_ring_id" = "رقم الحلقة:";
+"child_birth_date" = "تاريخ الفقس:";
+"child_birth_date_unknown" = "تاريخ الفقس: غير معروف";
+"child_options" = "خيارات";
+
+
+"parrot_is_sold"           = "تم البيع";
+"card_was_deleted"         = "تم الحذف";
+"card_moved_to_archive"    = "تم النقل إلى الأرشيف";
+"moved_to_archive"         = "تم النقل إلى الأرشيف";
+"Enter chick ring ID" = "أدخل رقم حلقة الفرخ التعريفية";
+"MainCategories" = "التصنيفات الرئيسية";
+"ShowAll"        = "عرض الكل";
+"AllCategories" = "كل التصنيفات";
+
+/* =========================
+   الصفحة الرئيسية – شريط البحث
+   ========================= */
+
+"home_search_placeholder"        = "ابحث عن حيوانات، إكسسوارات، طعام، خدمات";
+"home_search_placeholder_short"  = "ابحث في Pure Pets";
+
+"home_search_hint"               = "ماذا تبحث عنه؟";
+"home_search_recent"             = "عمليات البحث الأخيرة";
+"home_search_clear"              = "مسح البحث";
+"home_search_cancel"             = "إلغاء";
+
+"home_search_no_results"         = "لا توجد نتائج";
+"home_search_try_again"          = "جرّب كلمات أخرى";
+
+"home_search_filter"             = "تصفية";
+"home_search_sort"               = "ترتيب";
+
+"home_search_loading"            = "جاري البحث…";
+"ShowAll"  = "عرض الكل";
+"ShowLess" = "عرض أقل";
+"Home_NearbyAds"        = "بالقرب منك";
+"Home_NearbyAds_Action"    = "";
+"empty_no_results_title" = "لا توجد نتائج";
+"empty_no_results_subtitle" = "جرّب تغيير القسم أو تعديل عوامل التصفية.";
+"empty_retry_button" = "تحديث";
+
+"AllKinds" = "جميع الأنواع";
+
+"SomethingWentWrong" = "حدث خطأ ما";
+
+"SuggestedForYou" = "مقترح لك";
+"BecauseYouViewedFormat" = "لأنك شاهدت %1$@ %2$@";
+
+"BrowseType_Ads" = "إعلانات";
+"BrowseType_Accessories" = "مستلزمات";
+"BrowseType_Services" = "خدمات";
+"RecommendedForYouHint" = "قد يعجبك هذا";
+"Home_CurrentOrdersTitle" = "طلباتك الحالية";
+"Home_CurrentOrdersSubtitle" = "تابع الدفع والتجهيز والتوصيل من مكان واحد.";
+"Home_LastOrderTitle" = "آخر طلب";
+"Home_LastOrderSubtitle" = "تابع أحدث حالة وافتح سجل الطلبات الكامل.";
+"Home_BuyAgainTitle" = "اشترِ مرة أخرى";
+"Home_BuyAgainSubtitle" = "اختيارات سريعة من المنتجات التي طلبتها من قبل.";
+"Home_CurrentOrdersPendingHint" = "بانتظار تأكيد المتجر.";
+"Home_CurrentOrdersPaidHint" = "تم تأكيد الدفع وجارٍ تجهيز الطلب.";
+"Home_CurrentOrdersProcessingHint" = "يتم تجهيز منتجاتك الآن.";
+"Home_CurrentOrdersShippedHint" = "مندوب التوصيل في الطريق إليك.";
+"Home_CurrentOrdersItemsFormat" = "%ld منتجات";
+"Home_CurrentOrdersExpectedPrefix" = "المتوقع";
+"Home_CurrentOrdersUpdatedPrefix" = "آخر تحديث";
+
+"empty_cart_title" = "سلة التسوق فارغة";
+"empty_cart_subtitle" = "لم تقم بإضافة أي منتجات بعد. تصفح المتجر وأضف ما يعجبك.";
+"continue_shopping" = "متابعة التسوق";
+"NoResultsFound" = "لا توجد نتائج مطابقة لبحثك";
+"Required" = "مطلوب";
+"Similar Ads" = "إعلانات مشابهة";
+"Message…" = "رسالة ...";
+"SimilarAaccess" = "قد تحتاج أيضًا";
+"New Message" = "رسالة جديدة";
+
+
+/* ========================= */
+/*        المحادثات          */
+/* ========================= */
+
+"empty_chats_title" = "لا توجد محادثات بعد";
+"empty_chats_subtitle" = "ابدأ الدردشة مع أصحاب الحيوانات والبائعين.";
+"empty_chats_button" = "ابدأ محادثة";
+
+
+"Recording…" = "جاري التسجيل…";
+"Recording locked…" = "تم تثبيت التسجيل…";
+"Slide to cancel" = "اسحب للإلغاء";
+"Press and hold to record" ="اضغط مع الاستمرار للتسجيل";
+/* Chat Menu */
+"chat.pin" = "تثبيت في الأعلى";
+"chat.mute" = "كتم";
+"chat.unmute" = "إلغاء الكتم";
+"chat.muted" = "تم كتم المحادثة";
+"chat.unmuted" = "تم إلغاء كتم المحادثة";
+"chat.bin" = "نقل إلى السلة";
+"chat.unbin" = "استعادة من السلة";
+"chat.binned" = "تم نقل المحادثة إلى السلة";
+"chat.unbinned" = "تمت استعادة المحادثة";
+"chat.background" = "خلفية الدردشة";
+"chat.report" = "إبلاغ";
+"chat.reported" = "تم الإبلاغ";
+
+/* Report Sheet */
+"chat.report.title" = "الإبلاغ عن الدردشة";
+"chat.report.message" = "هل أنت متأكد أنك تريد الإبلاغ عن هذه المحادثة؟ لا يمكن التراجع عن هذا الإجراء.";
+"chat.report.reason.placeholder" = "اشرح ما حدث (اختياري)";
+"chat.report.confirm" = "إبلاغ";
+"chat.report.success" = "تم إرسال البلاغ";
+"chat.report.already" = "تم الإبلاغ مسبقًا";
+"chat.cancel" = "إلغاء";
+/* Bin confirmation */
+"chat.bin.confirm.title" = "نقل إلى السلة";
+"chat.bin.confirm.message" = "يمكنك استعادة هذه المحادثة لاحقًا. لن يتم حذف الرسائل.";
+"chat.bin.confirm.action" = "نقل إلى السلة";
+"chat.unbin.confirm.title" = "استعادة المحادثة";
+"chat.unbin.confirm.message" = "سيتم إعادة المحادثة إلى قائمة الدردشات.";
+"chat.last_seen" = "آخر ظهور";
+"chat.today_at" = "اليوم الساعة %@";
+"chat.yesterday_at" = "أمس الساعة %@";
+"chat.online" = "متصل";
+"chat.offline" = "غير متصل";
+/* ملخص الطلب */
+"Selected Items" = "العناصر المحددة";
+"Shipping Fee" = "رسوم التوصيل";
+"Subtotal" = "المجموع الفرعي";
+"Checkout" = "إتمام الشراء";
+
+/* السلة / الدفع */
+"ContinuePayment" = "المتابعة إلى الدفع";
+"ItemsTotalLabel" = "العناصر";
+"DeliveryLabel" = "التوصيل";
+"TotalSumLabel" = "الإجمالي";
+
+/* حالات فارغة */
+"NoItems" = "لا توجد عناصر";
+"Free" = "مجاني";
+"Pay through" = "الدفع من خلال";
+
+"Securecheckout" = "🔒 دفع آمن — بياناتك محمية بالكامل";
+"Pay Now" = "تأكيد والدفع";
+
+"Checkout" = "متابعة لإتمام الشراء";
+
+"addr_empty_title" = "لا يوجد عنوان";
+"addr_empty_subtitle" = "لا توجد لديك عناوين محفوظة. هل تريد إضافة عنوان جديد الآن؟";
+"addr_empty_btn_add" = "إضافة عنوان";
+"addr_empty_btn_notnow" = "ليس الآن";
+"Select your location" = "اختر موقعك";
+"No nearby ads available" = "لا توجد إعلانات قريبة متاحة";
+"Open Settings" = "فتح الإعدادات";
+"Location permission denied" = "تم رفض إذن الموقع";
+"Please choose a valid location from the map." = "يرجى اختيار موقع صالح من الخريطة.";
+"Select Delivery Location"="حدد موقع التسليم";
+"cart_swipe_remove" = "إزالة";
+"cart_undo_message" = "تمت إزالة المنتج من السلة";
+"cart_support_menu_title" = "الدعم";
+"cart_support_chat" = "بدء محادثة";
+"Pay securely via our QIB gateway"="ادفع بشكل آمن عبر بوابة Pure Pets";
+
+
+/* Hero greetings */
+"Hero_Hello" = "مرحباً";
+"Hero_SweetDreams" = "أحلام سعيدة";
+"Hero_HowAreYou" = "كيف حالك";
+"Hero_Brand" = "بيور بيتس";
+"Hero_TrendingNow" = "الرائج الآن";
+"Hero_FindingNearby" = "جارٍ تحديد الأقرب";
+"Hero_LocationNeeded" = "الموقع مطلوب";
+"Hero_SetYourArea" = "حدّد منطقتك";
+"Hero_LocationCTA" = "اختر المنطقة";
+"Hero_ChangeArea" = "تغيير المنطقة";
+"UseCurrentLocation" = "استخدام الموقع الحالي";
+"Hero_LoadingDescription" = "نجهّز الآن الحيوانات والإكسسوارات والخدمات القريبة منك.";
+"Hero_DeniedDescription" = "فعّل الموقع لعرض الحيوانات والإكسسوارات والخدمات القريبة منك.";
+"Hero_UnsetDescription" = "حدّد منطقتك لتشاهد ما هو رائج حولك.";
+"Hero_ReadyDescriptionFormat" = "حيوانات وإكسسوارات وخدمات متجددة حول %@.";
+"Hero_ReadyDescriptionFallback" = "حيوانات وإكسسوارات وخدمات متجددة جاهزة لمنطقتك.";
+"Hero_LocationMetaLoading" = "جارٍ فحص المنطقة القريبة";
+"Hero_LocationMetaDenied" = "الوصول إلى الموقع متوقف";
+"Hero_LocationMetaReady" = "اضغط لتحديث المنطقة";
+"Hero_LocationMetaUnset" = "اختر منطقتك";
+
+/* Name formatting */
+"Hero_NameCommaRTL" = "%@، %@";
+
+/* Guest greeting */
+"Hero_GuestFormatRTL" = "🐾 %@، انضم إلى محبي الحيوانات الأليفة";
+
+"Good night" = "تصبح على خير";
+"Sweet dreams" =  "أحلام سعيدة";
+
+
+"Hello" = "مرحباً";
+"How are you" = "كيف حالك";
+"join our pets lover community" = "انضم إلى محبي الحيوانات الأليفة";
+
+"payment_load_methods_failed" = "فشل تحميل طرق الدفع.";
+"auth_register_required_subtitle" = "تحتاج إلى التسجيل للمتابعة.";
+"checkout_failed_title" = "فشل إتمام الدفع";
+"order_placed_title" = "تم إنشاء الطلب";
+"order_paid_success_subtitle" = "تمت عملية الدفع بنجاح.";
+ 
+
+"checkout_invalid_address" = "يرجى اختيار عنوان توصيل صالح.";
+"checkout_cart_empty" = "السلة فارغة";
+"checkout_paid_inventory_warning" = "تم الدفع بنجاح، ولكن يوجد خلل في مزامنة المخزون. يرجى مراجعة الدعم.";
+"checkout_payment_failed_default" = "فشلت عملية الدفع";
+"checkout_items_unavailable_default" = "بعض المنتجات لم تعد متوفرة في المخزون.";
+"checkout_item_fallback" = "منتج";
+"checkout_item_out_of_stock_format" = "%@ غير متوفر حالياً.";
+"checkout_item_limited_stock_format" = "%@: المتوفر فقط %ld (المطلوب %ld).";
+"checkout_more_items_format" = "...و %ld منتج(ات) إضافية.";
+"checkout_items_unavailable_fallback" = "المنتجات غير متوفرة حالياً.";
+
+"Paid" = "مدفوع";
+"All" = "الكل";
+"Canceled" = "تم الإلغاء";
+
+/* Orders Module - Refactor 2026 */
+"Total" = "الإجمالي";
+"PaymentMethod" = "طريقة الدفع";
+"DeliveryAddress" = "عنوان التوصيل";
+"Copy" = "نسخ";
+"order_copy_id_subtitle" = "هل تريد نسخ رقم الطلب إلى الحافظة؟";
+"order_id_copied" = "تم نسخ رقم الطلب.";
+"orders_empty_filtered" = "لا توجد طلبات مطابقة.";
+"order_support_request_call" = "طلب اتصال";
+"order_support_button" = "التواصل مع الدعم";
+"order_change_delivery_address" = "تغيير عنوان التوصيل";
+"order_cancel_button" = "إلغاء الطلب";
+"order_edit_location_pending_only" = "يمكن تعديل موقع التوصيل فقط عندما يكون الطلب قيد الانتظار.";
+"order_cancel_title" = "إلغاء الطلب";
+"order_cancel_confirm" = "هل أنت متأكد أنك تريد إلغاء هذا الطلب؟";
+"order_missing_id" = "معرّف الطلب غير متوفر.";
+"order_status" = "الحالة";
+"order_details_no_items" = "لا توجد عناصر متاحة.";
+"order_item" = "عنصر";
+"order_payment_provider_default" = "الدفع الإلكتروني";
+"order_details_title" = "تفاصيل الطلب";
+"order_items_section_title" = "عناصر الطلب";
+"order_total_label" = "الإجمالي";
+"OrderItems" = "عناصر الطلب";
+"Phone number is required to complete payment." = "رقم الهاتف مطلوب لإتمام عملية الدفع.";
+"QIB checkout requires a real iPhone device." = "تتطلب عملية الدفع عبر QIB جهاز iPhone حقيقي.";
+"Unable to open payment screen." = "تعذر فتح شاشة الدفع.";
+"Invalid gateway credentials." = "بيانات بوابة الدفع غير صالحة.";
+"Failed to create payment session." = "فشل إنشاء جلسة الدفع.";
+
+/* Commerce Stable Keys */
+"payment_pay_now" = "ادفع الآن";
+"select_delivery_location_title" = "حدد موقع التسليم";
+"saved_addresses_title" = "العناوين المحفوظة";
+"deliver_addresses_subtitle" = "عناوين التوصيل";
+"deliver_to_another_location" = "التوصيل إلى موقع آخر";
+"deliver_to_current_location" = "التوصيل إلى موقعي الحالي";
+"locating_current_location" = "جاري تحديد موقعك الحالي...";
+"location_access_disabled" = "تم تعطيل الوصول إلى الموقع";
+"unable_detect_current_location" = "تعذر تحديد موقعك الحالي.";
+"unable_detect_current_location_now" = "تعذر تحديد موقعك الحالي الآن.";
+"story_loading" = "جاري تحميل القصص...";
+"story_no_items" = "لا توجد قصص متاحة.";
+"story_load_failed" = "تعذر تحميل القصص.";
+"story_unavailable" = "القصة غير متاحة.";
+"story_uploading" = "جاري رفع القصة...";
+"story_upload_failed" = "فشل رفع القصة.";
+"your_story" = "قصتك";
+"chat_stories_title" = "القصص";
+"auth_register_required_title" = "يرجى التسجيل";
+"payment_qib_gateway_desc" = "ادفع بشكل آمن عبر بوابة QIB";
+"payment_cash_delivery_desc" = "ادفع عند استلام طلبك";
+"payment_header_pay_through" = "الدفع من خلال";
+"payment_builtin_remove_blocked" = "طريقة الدفع هذه مدمجة ولا يمكن حذفها.";
+"payment_builtin_edit_blocked" = "طريقة الدفع هذه مدمجة ولا تحتاج إلى تعديل.";
+"payment_confirm_title" = "تأكيد الدفع";
+"payment_confirm_message_format" = "هل تريد الدفع باستخدام %@؟";
+"payment_pay_using_format" = "الدفع باستخدام %@";
+"payment_confirm_action" = "تأكيد";
+"payment_cancel_action" = "إلغاء";
+"payment_success_title" = "تم الدفع بنجاح";
+"payment_success_message_format" = "تم الدفع بنجاح باستخدام %@";
+"payment_method_name_card" = "بطاقة";
+"payment_method_name_ooredoo" = "أوريدو موني";
+"payment_method_name_paypal" = "باي بال";
+"payment_method_name_fawry" = "فوري قطر";
+"payment_method_name_qnb" = "QNB";
+"payment_method_name_cash" = "الدفع عند الاستلام";
+"payment_method_name_unknown" = "طريقة غير معروفة";
+"payment_method_tap_to_choose" = "اضغط للاختيار";
+"payment_backend_unavailable" = "خدمة الدفع QIB غير متاحة حالياً. يرجى نشر createQibSession و verifyQibPayment في منطقة Firebase المحددة.";
+"payment_backend_permission_denied" = "غير مسموح لك بالدفع لهذا الطلب.";
+"payment_backend_unreachable" = "تعذر الوصول إلى خادم الدفع. تحقق من الاتصال بالإنترنت ثم حاول مرة أخرى.";
+"payment_backend_setup_incomplete" = "إعداد خدمة الدفع غير مكتمل على الخادم.";
+"payment_insecure_session_blocked" = "تم حظر جلسة دفع غير آمنة. يجب أن يعيد الخادم جلسة QIB آمنة.";
+"payment_secure_session_unavailable" = "بيانات الجلسة الآمنة لـ QIB مفقودة من استجابة الخادم.";
+"payment_secure_flow_required" = "تدفق الدفع الآمن لـ QIB غير مفعّل في هذا الإصدار بعد.";
+"payment_request_in_progress" = "طلب الدفع قيد التنفيذ بالفعل.";
+"payment_requires_real_device" = "الدفع عبر QIB يتطلب جهاز iPhone حقيقي.";
+"payment_phone_required" = "رقم الهاتف مطلوب لإتمام عملية الدفع.";
+"payment_invalid_gateway_credentials" = "بيانات بوابة الدفع غير صالحة.";
+"payment_unable_to_open_screen" = "تعذر فتح شاشة الدفع.";
+"payment_qib_sdk_missing" = "حزمة QIB SDK غير موجودة في هذا الإصدار. يرجى إعادة تثبيت/تحديث التطبيق.";
+"payment_qib_sdk_init_failed" = "تعذر تهيئة جلسة QIB SDK.";
+"payment_create_session_failed" = "فشل إنشاء جلسة الدفع.";
+"checkout_payment_verification_pending" = "جاري التحقق من عملية الدفع. يرجى مراجعة حالة الطلب بعد قليل.";
+"cart_undo_action" = "تراجع";
+"adopt_form_required_fields_error" = "يرجى إكمال الحقول المطلوبة.";
+"DeletePaymentMethodTitle" = "حذف طريقة الدفع";
+"DeletePaymentMethodSubtitle" = "هل أنت متأكد أنك تريد حذف طريقة الدفع هذه؟";
+"UnableToSetDefaultMethod" = "تعذر تعيين طريقة الدفع الافتراضية.";
+"FailedToUpdateDefault" = "فشل تحديث طريقة الدفع الافتراضية.";
+"Kind" = "النوع";
+"Created" = "تاريخ الإنشاء";
+"editAdoptPet" = "تعديل حيوان للتبني";
+"pleaseSelectAtLeastOnePhoto" = "يرجى اختيار صورة واحدة على الأقل.";
+"unknownError" = "خطأ غير معروف.";
+"adoptPetAddedDesc" = "تمت إضافة منشور التبني بنجاح.";
+"adoptPetUpdatedTitle" = "تم تحديث منشور التبني";
+"adoptPetUpdatedDesc" = "تم تحديث منشور التبني بنجاح.";
+"max_images_reached" = "تم الوصول إلى الحد الأقصى للصور";
+"max_images_hint" = "الحد الأقصى للصور المسموح به:";
+
+"accessory_view_no_description" = "لا يوجد وصف متاح.";
+"accessory_view_details_title" = "تفاصيل الإكسسوار";
+"accessory_view_seller_title" = "البائع";
+"accessory_view_seller_pending" = "جارِ تحميل بيانات البائع";
+"accessory_view_suggestions_subtitle" = "اقتراحات إضافية من نفس الفئة.";
+"accessory_view_empty_suggestions" = "ستظهر هنا اقتراحات إكسسوارات إضافية قريبًا.";
+"service_view_contact_loading" = "بيانات التواصل قيد التحميل. حاول مرة أخرى.";
+"service_view_description_title" = "الوصف";
+"service_view_details_title" = "تفاصيل الخدمة";
+"service_view_default_title" = "الخدمة";
+"service_view_no_description" = "لا يوجد وصف للخدمة.";
+"service_view_owner_pending" = "جاري تحميل مقدم الخدمة";
+"service_view_category" = "الفئة";
+"service_view_available_date" = "تاريخ التوفر";
+"service_view_owner" = "مقدم الخدمة";
+"service_view_location_unavailable" = "الموقع غير متاح لهذه الخدمة حالياً.";
+"service_view_share_title" = "خدمة";
+"Shop Now" = "تسوق الآن";
+"New Chat"= "دردشة جديدة" ;
+"profile_email_managed_by_provider" = "البريد الإلكتروني مُدار بواسطة مزود تسجيل الدخول.";
+"profile_email_reauth_required" = "يرجى إعادة تسجيل الدخول قبل تغيير البريد الإلكتروني.";
+
+"order_action_track" = "تتبع الطلب";
+"order_action_cancel" = "إلغاء الطلب";
+"order_action_return" = "طلب إرجاع";
+"order_action_refund" = "طلب استرداد";
+"order_action_replacement" = "طلب استبدال";
+"order_action_report_issue" = "الإبلاغ عن مشكلة";
+"order_action_support_case" = "فتح حالة دعم";
+"order_action_unavailable_generic" = "هذا الإجراء غير متاح الآن.";
+"order_action_existing_request_message" = "لديك بالفعل طلب %@ مفتوح لهذا الطلب.";
+"order_action_track_hint" = "تابع تحديثات الدفع والتجهيز والتوصيل من هنا.";
+"order_action_cancel_unavailable_closed" = "هذا الطلب مغلق بالفعل، لذلك لم يعد الإلغاء متاحاً.";
+"order_action_cancel_unavailable_fulfillment" = "الإلغاء متاح فقط قبل بدء التجهيز أو الشحن.";
+"order_action_cancel_hint" = "لا يزال بإمكانك الإلغاء قبل بدء التغليف.";
+"order_action_return_unavailable_not_delivered" = "الإرجاع يصبح متاحاً بعد تسليم الطلب.";
+"order_action_return_unavailable_window" = "الإرجاع متاح لمدة %ld أيام بعد التسليم.";
+"order_action_return_hint" = "يمكنك طلب الإرجاع خلال %ld أيام بعد التسليم.";
+"order_action_refund_unavailable_unpaid" = "طلبات الاسترداد متاحة فقط بعد تأكيد سحب المبلغ.";
+"order_action_refund_unavailable_after_shipment" = "طلبات الاسترداد لا تعود متاحة بعد بدء الشحن.";
+"order_action_refund_unavailable_window" = "طلبات الاسترداد متاحة لمدة %ld أيام بعد الدفع.";
+"order_action_refund_hint" = "يمكن مراجعة طلب الاسترداد خلال %ld أيام بعد الدفع.";
+"order_action_replacement_unavailable_not_delivered" = "طلبات الاستبدال تصبح متاحة بعد التسليم.";
+"order_action_replacement_unavailable_window" = "طلبات الاستبدال متاحة لمدة %ld أيام بعد التسليم.";
+"order_action_replacement_hint" = "يمكنك طلب الاستبدال خلال %ld أيام بعد التسليم.";
+"order_action_complaint_unavailable_not_started" = "الإبلاغ عن المشكلات يصبح متاحاً بعد إنشاء الطلب.";
+"order_action_complaint_unavailable_window" = "الإبلاغ عن المشكلات متاح لمدة %ld أيام بعد الدفع.";
+"order_action_complaint_hint" = "يمكنك الإبلاغ عن مشاكل التوصيل أو الدفع خلال %ld أيام بعد الدفع.";
+"order_action_support_hint" = "أنشئ حالة دعم للأسئلة أو الفواتير أو مساعدة التوصيل.";
+"order_support_unavailable_no_order" = "بيانات الطلب غير متاحة الآن.";
+"order_requests_history_title" = "طلبات ما بعد الشراء";
+"order_existing_request_opened" = "فتحنا طلبك الحالي بدلاً من إنشاء طلب مكرر.";
+"order_request_status_title" = "حالة الطلب";
+"order_request_reason_title" = "السبب";
+"order_request_notes_title" = "ملاحظاتك";
+"order_request_items_title" = "العناصر المتأثرة";
+"order_request_attachments_title" = "الأدلة";
+"order_request_timeline_title" = "التسلسل الزمني للطلب";
+"order_request_timeline_submitted" = "تم إرسال الطلب";
+"order_request_timeline_updated" = "تم تحديث الحالة";
+"order_request_select_reason" = "اختر السبب";
+"order_request_add_photos" = "إضافة صور";
+"order_request_photos_optional" = "الصور اختيارية لكنها تساعدنا في المراجعة بشكل أسرع.";
+"order_request_photos_count" = "تم إرفاق %ld صورة.";
+"order_request_submit" = "إرسال الطلب";
+"order_request_submitting" = "جارٍ الإرسال...";
+"order_request_select_items_error" = "يرجى اختيار العنصر أو العناصر المتأثرة أولاً.";
+"order_request_photos_unavailable" = "اختيار الصور غير متاح على هذا الجهاز.";
+"order_request_status_pending_review" = "قيد المراجعة";
+"order_request_status_approved" = "تمت الموافقة";
+"order_request_status_rejected" = "مرفوض";
+"order_request_status_completed" = "مكتمل";
+"order_request_status_refunded" = "تم الاسترداد";
+"order_request_status_partially_refunded" = "تم استرداد جزء من المبلغ";
+"order_request_status_cancelled" = "ملغي";
+"order_request_status_closed" = "مغلق";
+"order_requests_empty_title" = "لا توجد طلبات بعد";
+"order_requests_empty_subtitle" = "أي طلب إرجاع أو استرداد أو استبدال أو شكوى سترسله سيظهر هنا.";
+"order_tracking_title" = "التسلسل الزمني للطلب";
+"order_tracking_empty" = "لا توجد تحديثات تتبع بعد";
+"order_tracking_empty_subtitle" = "سيظهر هنا أي تحديث جديد للدفع أو التجهيز أو التوصيل.";
+"order_timeline_created_title" = "تم إنشاء الطلب";
+"order_timeline_paid_title" = "تم تأكيد الدفع";
+"order_timeline_processing_title" = "الطلب قيد المعالجة";
+"order_timeline_pending_title" = "التحقق من الدفع قيد الانتظار";
+"order_timeline_shipped_title" = "تم شحن الطلب";
+"order_timeline_delivered_title" = "تم تسليم الطلب";
+"order_timeline_cancelled_title" = "تم إلغاء الطلب";
+"order_timeline_created_summary" = "أنشأنا طلبك وبدأنا مسار الدفع.";
+"order_timeline_paid_summary" = "تم التحقق من عملية الدفع بنجاح.";
+"order_timeline_processing_summary" = "يتم الآن تجهيز طلبك للشحن.";
+"order_timeline_shipped_summary" = "طلبك في الطريق إليك.";
+"order_timeline_delivered_summary" = "تم وضع علامة على الطلب بأنه تم تسليمه.";
+"order_timeline_cancelled_summary" = "تم إلغاء هذا الطلب.";
+"order_reason_cancel_mistake_title" = "تم الطلب بالخطأ";
+"order_reason_cancel_mistake_subtitle" = "أضفت هذا الطلب بدون قصد.";
+"order_reason_changed_mind_title" = "غيّرت رأيي";
+"order_reason_changed_mind_subtitle" = "لم أعد أرغب في هذا المنتج.";
+"order_reason_wrong_address_title" = "عنوان التوصيل خاطئ";
+"order_reason_wrong_address_subtitle" = "أحتاج إلى تعديل مكان التوصيل.";
+"order_reason_found_alternative_title" = "وجدت خياراً آخر";
+"order_reason_found_alternative_subtitle" = "قررت شراء خيار آخر بدلاً منه.";
+"order_reason_not_as_described_title" = "غير مطابق للوصف";
+"order_reason_not_as_described_subtitle" = "تفاصيل المنتج لا تطابق ما استلمته.";
+"order_reason_quality_issue_title" = "مشكلة جودة";
+"order_reason_quality_issue_subtitle" = "جودة المنتج غير مناسبة.";
+"order_reason_arrived_damaged_title" = "وصل تالفاً";
+"order_reason_arrived_damaged_subtitle" = "تضرر المنتج أثناء التوصيل.";
+"order_reason_duplicate_payment_title" = "دفع مكرر";
+"order_reason_duplicate_payment_subtitle" = "تم خصم المبلغ أكثر من مرة لهذا الطلب.";
+"order_reason_payment_issue_title" = "مشكلة دفع";
+"order_reason_payment_issue_subtitle" = "توجد مشكلة في الفاتورة أو الخصم.";
+"order_reason_cancelled_but_charged_title" = "تم الإلغاء لكن تم الخصم";
+"order_reason_cancelled_but_charged_subtitle" = "تم إلغاء الطلب لكن عملية الدفع تمت.";
+"order_reason_missing_item_title" = "عنصر مفقود";
+"order_reason_missing_item_subtitle" = "يوجد عنصر من الطلب لم يصل.";
+"order_reason_damaged_item_title" = "عنصر تالف";
+"order_reason_damaged_item_subtitle" = "العنصر المستلم تالف.";
+"order_reason_wrong_item_title" = "عنصر خاطئ";
+"order_reason_wrong_item_subtitle" = "وصلني منتج مختلف عن المطلوب.";
+"order_reason_defective_item_title" = "عنصر معيب";
+"order_reason_defective_item_subtitle" = "العنصر به عيب أو غير قابل للاستخدام.";
+"order_reason_late_delivery_title" = "تأخر التوصيل";
+"order_reason_late_delivery_subtitle" = "وصل الطلب متأخراً عن المتوقع.";
+"order_reason_order_question_title" = "استفسار عن الطلب";
+"order_reason_order_question_subtitle" = "أحتاج مساعدة لفهم شيء يخص هذا الطلب.";
+"order_reason_delivery_update_title" = "تحديث عن التوصيل";
+"order_reason_delivery_update_subtitle" = "أحتاج مساعدة بخصوص حالة التوصيل أو العنوان.";
+"order_reason_billing_question_title" = "استفسار عن الفاتورة";
+"order_reason_billing_question_subtitle" = "أحتاج مساعدة بخصوص الدفع أو الفاتورة.";
+"order_reason_other_title" = "أخرى";
+"order_reason_other_subtitle" = "حدث شيء آخر وأحتاج إلى دعم.";
+"order_support_too_many_photos" = "يمكنك إرفاق حتى 4 صور لكل طلب.";
+"order_support_upload_failed" = "تعذر رفع إحدى الصور. يرجى المحاولة مرة أخرى.";
+"order_debug_payment_bypass_title" = "تجاوز الدفع التجريبي";
+"order_debug_payment_bypass_enabled" = "وضع التطوير سيحاكي نجاح QIB في هذا المسار التجريبي.";
+"order_debug_payment_bypass_disabled" = "عاد مسار التحقق الحقيقي من الدفع للعمل.";
+"checkout_cod_success_subtitle" = "تم إنشاء الطلب بنجاح. سيتم الدفع نقدًا عند الاستلام.";
+"order_payment_status_pending_collection" = "بانتظار التحصيل";
+"order_timeline_payment_collected_title" = "تم تحصيل الدفع";
+"enter_pet_name" = "أدخل اسم الحيوان";
+"selectGender" = "اختر الجنس";
+"selectCity" = "اختر المدينة";
+"report_alert_title" = "إبلاغ";
+"report_alert_message" = "لماذا تريد الإبلاغ عن هذا العنصر؟";
+"report_reason_spam" = "محتوى مزعج";
+"report_reason_inappropriate" = "محتوى غير مناسب";
+"report_reason_fraud" = "احتيال أو خداع";
+"report_reason_wrong_category" = "تصنيف غير صحيح";
+"report_reason_other" = "أخرى";
+"report_login_required_message" = "يرجى تسجيل الدخول للإبلاغ عن هذا العنصر.";
+"report_submit_title" = "تم إرسال البلاغ";
+"report_submit_message" = "شكرًا لك. سيقوم فريقنا بمراجعة هذا البلاغ.";
+"report_submit_failed_message" = "تعذر إرسال البلاغ. يرجى المحاولة مرة أخرى.";
+
+// MARK: - Permission Helper (Apple 5.1.1 compliance)
+"pp_perm_camera_feature" = "الوصول إلى الكاميرا";
+"pp_perm_photos_feature" = "الوصول إلى الصور";
+"pp_perm_camera_pre_explanation" = "نحتاج إلى الكاميرا لالتقاط صور لإعلاناتك أو صورتك الشخصية.";
+"pp_perm_photos_pre_explanation" = "نحتاج إلى مكتبة الصور لاختيار صور لإعلاناتك أو صورتك الشخصية.";
+"pp_perm_denied_message" = "تم رفض هذا الإذن سابقاً. لن تعمل هذه الميزة بدون الوصول. يمكنك تفعيله من الإعدادات إذا رغبت، أو المتابعة بدونه.";
+"pp_perm_restricted_message" = "هذا الإذن غير متاح حالياً. لن تعمل هذه الميزة بدون الوصول. يمكنك مراجعته من الإعدادات إذا رغبت، أو المتابعة بدونه.";
+"pp_perm_open_settings" = "الإعدادات";
+"pp_perm_continue" = "متابعة";
+"pp_perm_not_now" = "ليس الآن";
+
+// MARK: - Archive Sheet UI
+"archive_sheet_heading" = "تفاصيل الأرشيف";
+"archive_sheet_subtitle" = "راجع البطاقات المؤرشفة، اعرض العناصر بسرعة، أو انقل البطاقة إلى أرشيف آخر.";
+"archive_empty_subtitle" = "ستظهر البطاقات المؤرشفة هنا بمجرد البدء في تنظيمها.";
+"archive_move_title" = "النقل إلى أرشيف آخر";
+"archive_move_subtitle" = "اختر الأرشيف المناسب لنقل هذه البطاقة إليه.";
+"archive_move_picker_hint" = "الأرشيفات المتاحة";
+"archive_move_empty_subtitle" = "أضف أرشيفاً آخر حتى تتمكن من نقل هذه البطاقة.";
