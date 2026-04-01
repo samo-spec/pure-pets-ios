@@ -657,7 +657,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     self.statusLabel.text = [self pp_statusTextForState:state];
     [self pp_setSymbolNamed:iconName onImageView:self.statusIconView pointSize:12.0];
-    self.statusIconView.tintColor = AppPrimaryClr;
+    self.statusIconView.tintColor = AppForgroundColr;
 }
 
 - (void)pp_applyLocationState:(PPHomeHeroLocationState)locationState

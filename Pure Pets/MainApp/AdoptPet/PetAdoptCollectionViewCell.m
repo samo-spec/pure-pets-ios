@@ -495,7 +495,7 @@
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_badgeStackView.leadingAnchor constant:0.0],
         [_titleLabel.trailingAnchor constraintEqualToAnchor:_textContainerView.trailingAnchor ],
 
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_textContainerView.leadingAnchor],
         [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_textContainerView.trailingAnchor],
     ]];
@@ -631,7 +631,7 @@
     self.ctaPillView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.9].CGColor;
     self.ctaPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.6];
 
-    self.ctaPillView.layer.cornerRadius = 22.0;
+    self.ctaPillView.layer.cornerRadius = 18.0;
     self.visualStageView.layer.cornerRadius = 4.0;
     self.badgePillView.layer.cornerRadius = 4.0;
     self.ctaIconBadgeView.layer.cornerRadius = 14.0;

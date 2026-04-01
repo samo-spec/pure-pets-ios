@@ -60,6 +60,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
                         actionTitle:(NSString *)actionTitle
                            expanded:(BOOL)expanded;
 - (void)setExpandedState:(BOOL)expanded animated:(BOOL)animated;
+- (void)refreshDecorativeLayersForCurrentBounds;
 @property (nonatomic, copy, nullable) void (^onTrackTap)(void);
 @property (nonatomic, copy, nullable) void (^onHistoryTap)(void);
 @end
@@ -296,8 +297,11 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.collapsedIconBadgeView = [[UIView alloc] init];
     self.collapsedIconBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedIconBadgeView.layer.cornerRadius = 20.0;
+    self.collapsedIconBadgeView.layer.cornerRadius = 12.0;
     self.collapsedIconBadgeView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.collapsedIconBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [self.collapsedContentView addSubview:self.collapsedIconBadgeView];
 
     self.collapsedIconView = [[UIImageView alloc] init];
@@ -311,8 +315,15 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
         previewImageView.translatesAutoresizingMaskIntoConstraints = NO;
         previewImageView.contentMode = UIViewContentModeScaleAspectFill;
         previewImageView.layer.masksToBounds = YES;
-        previewImageView.layer.borderWidth = 1.5;
-        previewImageView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.92].CGColor;
+        previewImageView.layer.borderWidth = 0.0;
+        previewImageView.layer.borderColor = UIColor.clearColor.CGColor;
+        previewImageView.layer.shadowOpacity = 0.0;
+        previewImageView.layer.shadowRadius = 0.0;
+        previewImageView.layer.shadowOffset = CGSizeZero;
+        previewImageView.layer.shadowColor = UIColor.clearColor.CGColor;
+        if (@available(iOS 13.0, *)) {
+            previewImageView.layer.cornerCurve = kCACornerCurveContinuous;
+        }
         previewImageView.hidden = YES;
         [self.collapsedIconBadgeView addSubview:previewImageView];
         [collapsedPreviewImageViews addObject:previewImageView];
@@ -547,6 +558,11 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     [CATransaction commit];
 }
 
+- (void)refreshDecorativeLayersForCurrentBounds
+{
+    [self pp_updateDecorativeLayers];
+}
+
 - (void)prepareForReuse
 {
     [super prepareForReuse];
@@ -710,13 +726,16 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     for (NSInteger index = 0; index < self.collapsedPreviewImageViews.count; index++) {
         UIImageView *imageView = self.collapsedPreviewImageViews[index];
         imageView.hidden = (index >= (NSInteger)self.previewImageURLs.count);
-        imageView.image = placeholder;
         if (imageView.hidden) {
+            imageView.image = nil;
             continue;
         }
 
         NSString *imageURL = self.previewImageURLs[index];
-        if (didChangePreviewURLs && imageURL.length > 0) {
+        if (didChangePreviewURLs) {
+            imageView.image = placeholder;
+        }
+        if (imageURL.length > 0 && (didChangePreviewURLs || imageView.image == nil)) {
             [GM setImageFromUrlString:imageURL imageView:imageView phImage:@"placeholder"];
         }
     }
@@ -754,22 +773,22 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     NSArray<NSValue *> *frames = @[];
     if (visibleCount == 1) {
-        CGFloat size = MIN(width, height) - 8.0;
+        CGFloat size = MIN(width, height) - 4.0;
         CGRect frame = CGRectMake(floor((width - size) * 0.5), floor((height - size) * 0.5), size, size);
         frames = @[[NSValue valueWithCGRect:frame]];
     } else if (visibleCount == 2) {
-        CGFloat size = MIN(width, height) - 15.0;
+        CGFloat size = MIN(width, height) - 14.0;
         CGFloat y = floor((height - size) * 0.5);
         frames = @[
-            [NSValue valueWithCGRect:CGRectMake(3.0, y - 2.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(width - size - 3.0, y + 2.0, size, size)]
+            [NSValue valueWithCGRect:CGRectMake(2.0, y - 2.0, size, size)],
+            [NSValue valueWithCGRect:CGRectMake(width - size - 2.0, y + 2.0, size, size)]
         ];
     } else {
-        CGFloat size = MIN(width, height) - 20.0;
+        CGFloat size = MIN(width, height) - 18.0;
         frames = @[
-            [NSValue valueWithCGRect:CGRectMake(2.0, height - size - 3.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(floor((width - size) * 0.5), 2.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(width - size - 2.0, height - size - 3.0, size, size)]
+            [NSValue valueWithCGRect:CGRectMake(1.0, height - size - 2.0, size, size)],
+            [NSValue valueWithCGRect:CGRectMake(floor((width - size) * 0.5), 1.0, size, size)],
+            [NSValue valueWithCGRect:CGRectMake(width - size - 1.0, height - size - 2.0, size, size)]
         ];
     }
 
@@ -777,7 +796,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
         UIImageView *imageView = self.collapsedPreviewImageViews[index];
         imageView.hidden = NO;
         imageView.frame = frames[index].CGRectValue;
-        imageView.layer.cornerRadius = floor(CGRectGetWidth(imageView.bounds) * 0.34);
+        imageView.layer.cornerRadius = MIN(8.0, floor(CGRectGetWidth(imageView.bounds) * 0.22));
     }
 }
 
@@ -887,8 +906,8 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     [UIView animateWithDuration:0.42
                           delay:0.0
-         usingSpringWithDamping:(expanded ? 0.82 : 0.88)
-          initialSpringVelocity:0.78
+         usingSpringWithDamping:(expanded ? 0.82 : 0.96)
+          initialSpringVelocity:(expanded ? 0.78 : 0.18)
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.surfaceView.transform = CGAffineTransformIdentity;
@@ -1057,13 +1076,26 @@ static NSString * const PPNearbySelectedLatitudeKey = @"pp.home.nearby.latitude"
 static NSString * const PPNearbySelectedLongitudeKey = @"pp.home.nearby.longitude";
 static NSString * const PPNearbySelectedAreaNameKey = @"pp.home.nearby.areaName";
 static NSString * const PPHomeTopCarouselBannerGroupID = @"HOME_MAIN_TOP_CAROUSEL";
+static NSString * const PPHomeCompletedLastOrderSeenOrderIDKeyPrefix = @"pp.home.completedLastOrder.seen.orderID";
+static NSString * const PPHomeCompletedLastOrderSeenSessionIDKeyPrefix = @"pp.home.completedLastOrder.seen.sessionID";
 static NSTimeInterval const PPNearbyMinimumRefreshInterval = 20.0;
+static NSTimeInterval const PPHomeOtherOrdersRecentLookbackInterval = 24.0 * 60.0 * 60.0;
 static NSTimeInterval const PPHomeCompletedLastOrderVisibilityInterval = 48.0 * 60.0 * 60.0;
 static double const PPNearbyDefaultRadiusKm = 8.0;
 static double const PPNearbyExpandedRadiusKm = 15.0;
 static NSInteger const PPCurrentOrdersVisibleLimit = 4;
 static NSInteger const PPBuyAgainVisibleLimit = 10;
 static CLLocationCoordinate2D const PPNearbyDebugSimulatorCoordinate = {25.285447, 51.531040};
+
+static NSString *PPHomeCurrentAppSessionIdentifier(void)
+{
+    static NSString *sessionIdentifier = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sessionIdentifier = NSUUID.UUID.UUIDString ?: @"";
+    });
+    return sessionIdentifier;
+}
 
 typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     PPNearbyLocationStateUnset = 0,
@@ -1159,7 +1191,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (NSString *)pp_homeOrderKickerTitle:(PPOrder *)order;
 - (NSString *)pp_homeOrderImageURLFromItemData:(NSDictionary *)data;
 - (NSArray<NSString *> *)pp_homeOrderPreviewImageURLs:(PPOrder *)order limit:(NSInteger)limit;
+- (BOOL)pp_hasOtherRecentHomeOrdersWithinInterval:(NSTimeInterval)interval excludingOrder:(PPOrder *)order;
 - (BOOL)pp_shouldHideCompletedLastHomeOrder:(PPOrder *)order;
+- (NSString *)pp_completedLastHomeOrderSeenOrderIDDefaultsKey;
+- (NSString *)pp_completedLastHomeOrderSeenSessionDefaultsKey;
 - (void)pp_setCurrentOrdersExpanded:(BOOL)expanded animated:(BOOL)animated;
 - (NSString *)pp_homeRelativeDateString:(NSDate *)date;
 - (NSString *)pp_homeShortDateString:(NSDate *)date;
@@ -2316,6 +2351,53 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     return orderedURLs.array;
 }
 
+- (BOOL)pp_hasOtherRecentHomeOrdersWithinInterval:(NSTimeInterval)interval excludingOrder:(PPOrder *)order
+{
+    NSString *excludedOrderID = [order isKindOfClass:PPOrder.class] ? PPSafeString(order.orderId) : @"";
+    NSDate *now = [NSDate date];
+
+    for (PPOrder *candidate in self.recentOrders ?: @[]) {
+        if (![candidate isKindOfClass:PPOrder.class]) {
+            continue;
+        }
+
+        NSString *candidateOrderID = PPSafeString(candidate.orderId);
+        if (excludedOrderID.length > 0 && [candidateOrderID isEqualToString:excludedOrderID]) {
+            continue;
+        }
+
+        NSDate *activityDate = candidate.statusUpdatedAt ?: candidate.updatedAt ?: candidate.createdAt;
+        if (![activityDate isKindOfClass:NSDate.class]) {
+            continue;
+        }
+
+        NSTimeInterval elapsed = [now timeIntervalSinceDate:activityDate];
+        if (elapsed <= interval) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+- (NSString *)pp_completedLastHomeOrderSeenOrderIDDefaultsKey
+{
+    NSString *userID = [self pp_currentOrdersUserID];
+    if (userID.length == 0) {
+        return PPHomeCompletedLastOrderSeenOrderIDKeyPrefix;
+    }
+    return [NSString stringWithFormat:@"%@.%@", PPHomeCompletedLastOrderSeenOrderIDKeyPrefix, userID];
+}
+
+- (NSString *)pp_completedLastHomeOrderSeenSessionDefaultsKey
+{
+    NSString *userID = [self pp_currentOrdersUserID];
+    if (userID.length == 0) {
+        return PPHomeCompletedLastOrderSeenSessionIDKeyPrefix;
+    }
+    return [NSString stringWithFormat:@"%@.%@", PPHomeCompletedLastOrderSeenSessionIDKeyPrefix, userID];
+}
+
 - (BOOL)pp_shouldHideCompletedLastHomeOrder:(PPOrder *)order
 {
     if (![order isKindOfClass:PPOrder.class]) {
@@ -2333,7 +2415,38 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:completedDate];
-    return elapsed > PPHomeCompletedLastOrderVisibilityInterval;
+    if (elapsed > PPHomeCompletedLastOrderVisibilityInterval) {
+        return YES;
+    }
+
+    BOOL hasOtherRecentOrders =
+        [self pp_hasOtherRecentHomeOrdersWithinInterval:PPHomeOtherOrdersRecentLookbackInterval
+                                         excludingOrder:order];
+    if (hasOtherRecentOrders) {
+        return NO;
+    }
+
+    NSString *orderID = PPSafeString(order.orderId);
+    if (orderID.length == 0) {
+        return NO;
+    }
+
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSString *storedOrderID = [defaults stringForKey:[self pp_completedLastHomeOrderSeenOrderIDDefaultsKey]] ?: @"";
+    NSString *storedSessionID = [defaults stringForKey:[self pp_completedLastHomeOrderSeenSessionDefaultsKey]] ?: @"";
+    NSString *currentSessionID = PPHomeCurrentAppSessionIdentifier();
+
+    BOOL wasShownInPreviousLaunch =
+        [storedOrderID isEqualToString:orderID] &&
+        storedSessionID.length > 0 &&
+        ![storedSessionID isEqualToString:currentSessionID];
+    if (wasShownInPreviousLaunch) {
+        return YES;
+    }
+
+    [defaults setObject:orderID forKey:[self pp_completedLastHomeOrderSeenOrderIDDefaultsKey]];
+    [defaults setObject:currentSessionID forKey:[self pp_completedLastHomeOrderSeenSessionDefaultsKey]];
+    return NO;
 }
 
 - (nullable PPOrder *)pp_featuredHomeOrder
@@ -4413,9 +4526,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.isCurrentOrdersExpanded = expanded;
     self.layoutManager.isCurrentOrdersExpanded = expanded;
 
+    NSIndexPath *currentOrderIndexPath = nil;
     NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionCurrentOrders];
     if (sectionIndex != NSNotFound) {
-        NSIndexPath *currentOrderIndexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
+        currentOrderIndexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
         UICollectionViewCell *visibleCell =
             [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
         if ([visibleCell isKindOfClass:PPHomeOrderStatusCell.class]) {
@@ -4427,9 +4541,25 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     UICollectionViewCompositionalLayout *newLayout = [self.layoutManager buildLayout];
     [self.collectionView setCollectionViewLayout:newLayout animated:NO];
-    if (!animated) {
+
+    __weak typeof(self) weakSelf = self;
+    NSTimeInterval refreshDelay = animated ? 0.46 : 0.0;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(refreshDelay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.collectionView) return;
+
         [self.collectionView layoutIfNeeded];
-    }
+        if (!currentOrderIndexPath) {
+            return;
+        }
+
+        UICollectionViewCell *visibleCell =
+            [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
+        if ([visibleCell isKindOfClass:PPHomeOrderStatusCell.class]) {
+            [(PPHomeOrderStatusCell *)visibleCell refreshDecorativeLayersForCurrentBounds];
+        }
+    });
 }
 
 
