@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface PPHomeLayoutManager : NSObject
 
 @property (nonatomic, assign) BOOL isMainKindsExpanded;
+@property (nonatomic, assign) BOOL isCurrentOrdersExpanded;
 
 /// Designated initializer
 - (instancetype)initWithMainKindsExpanded:(BOOL)isMainKindsExpanded;

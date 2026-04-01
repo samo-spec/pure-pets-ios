@@ -22,6 +22,10 @@
 
 @import FirebaseAuth;
 
+#define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+
+static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutPreflight";
+
 
 
 #pragma mark - ViewController
@@ -68,6 +72,7 @@
     
     [self setupPaymentCollection];
     [self pp_applyDefaultSelectionIfNeeded];
+    [self pp_refreshCheckoutCallToAction];
     [self fetchUserPaymentInstruments];
     
     
@@ -202,7 +207,7 @@
     __weak typeof(self) weakSelf = self;
     self.addressesListener = [PPADDRESS listenToAddressesWithBlock:^(NSArray<PPAddressModel *> * _Nullable addresses, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"❌ Address listener error in payment flow: %@", error.localizedDescription);
+            PPORDERLog(@"Address listener error | error=%@", error.localizedDescription ?: @"Unknown");
             return;
         }
         [weakSelf pp_applyAddresses:addresses ?: @[]];
@@ -225,6 +230,9 @@
         }
         PPAddressModel *preferred = [strongSelf pp_preferredAddressFrom:strongSelf.Addresses];
         strongSelf.selectedAddress = preferred;
+        PPORDERLog(@"Addresses refreshed | count=%lu | selectedAddressId=%@",
+                   (unsigned long)strongSelf.Addresses.count,
+                   [strongSelf pp_effectiveAddressID:preferred]);
 
         NSString *addressText = [strongSelf pp_bestAddressDisplayText:preferred];
         if (addressText.length > 0) {
@@ -396,6 +404,7 @@
     if (uid.length == 0) {
         self.userInstruments = @[];
         [self.paymentCollection reloadData];
+        [self pp_refreshCheckoutCallToAction];
         return;
     }
 
@@ -404,15 +413,17 @@
                                              completion:^(NSArray<UserPaymentInstrument *> * _Nullable instruments, NSError * _Nullable error) {
         [PPHUD dismiss];
         if (!error) {
-            NSLog(@"✅  fetched Payment Instruments ");
+            PPORDERLog(@"Payment instruments loaded | count=%lu", (unsigned long)instruments.count);
             weakSelf.userInstruments = instruments ?: @[];
             [weakSelf pp_applyDefaultSelectionIfNeeded];
             [weakSelf.paymentCollection reloadData];
+            [weakSelf pp_refreshCheckoutCallToAction];
             [UIView performWithoutAnimation:^{
                 
             }];
 
         } else {
+            PPORDERLog(@"Payment instruments failed to load | error=%@", error.localizedDescription ?: @"Unknown");
             [PPHUD showError:kLang(@"payment_load_methods_failed")];
         }
     }];
@@ -490,6 +501,41 @@
     return YES;
 }
 
+- (BOOL)pp_checkoutMethodRequiresPhone:(NSString *)paymentMethodID
+{
+    NSString *normalized = [[paymentMethodID ?: @"" lowercaseString] copy];
+    return ![normalized isEqualToString:@"cash"];
+}
+
+- (NSError *)pp_checkoutValidationErrorForAddress:(PPAddressModel *)address paymentMethodId:(NSString *)paymentMethodID
+{
+    if (paymentMethodID.length == 0) {
+        return [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain
+                                   code:1000
+                               userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_payment_method_unavailable")}];
+    }
+
+    if (![self pp_isAddressCheckoutValid:address]) {
+        return [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain
+                                   code:1001
+                               userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_invalid_address")}];
+    }
+
+    if ([self pp_checkoutMethodRequiresPhone:paymentMethodID]) {
+        NSString *phone = [self pp_trimmedAddressString:address.phoneNumber];
+        if (phone.length == 0) {
+            phone = [self pp_trimmedAddressString:PPCurrentUser.MobileNo];
+        }
+        if (phone.length == 0) {
+            return [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain
+                                       code:1002
+                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_phone_required")}];
+        }
+    }
+
+    return nil;
+}
+
 - (BOOL)pp_hasAuthenticatedUser
 {
     return [FIRAuth auth].currentUser.uid.length > 0;
@@ -516,16 +562,30 @@
 
 - (void)finishPayments
 {
-    NSLog(@"🛒 Checkout tapped on CartViewController");
+    PPORDERLog(@"Checkout tapped | items=%lu | inProgress=%d",
+               (unsigned long)CartManager.sharedManager.cartItems.count,
+               self.isCheckoutInProgress);
     if (![self pp_hasAuthenticatedUser]) {
         [PPAlertHelper showWarningIn:self
                                title:kLang(@"auth_register_required_title")
                             subtitle:kLang(@"auth_register_required_subtitle")];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+        PPORDERLog(@"Checkout blocked | reason=unauthenticated");
         return;
     }
     if (self.isCheckoutInProgress) {
-        NSLog(@"🛒 Checkout ignored: already in progress");
+        [PPHUD showInfo:kLang(@"payment_request_in_progress")];
+        PPORDERLog(@"Checkout blocked | reason=already_in_progress");
+        return;
+    }
+
+    NSString *selectedPaymentMethodID = [self pp_selectedCheckoutPaymentMethodID];
+    if (selectedPaymentMethodID.length == 0) {
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"checkout_failed_title")
+                          subtitle:kLang(@"checkout_payment_method_unavailable")];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+        PPORDERLog(@"Checkout blocked | reason=no_payment_method");
         return;
     }
 
@@ -539,6 +599,8 @@
                                      title:kLang(@"checkout_failed_title")
                                   subtitle:addressError.localizedDescription ?: kLang(@"SomethingWentWrong")];
                 [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+                PPORDERLog(@"Checkout blocked | reason=address_refresh_failed | error=%@",
+                           addressError.localizedDescription ?: @"Unknown");
                 return;
             }
 
@@ -554,11 +616,19 @@
                 }
             }
 
-            if (![self pp_isAddressCheckoutValid:resolvedAddress]) {
+            NSError *validationError = [self pp_checkoutValidationErrorForAddress:resolvedAddress
+                                                                  paymentMethodId:selectedPaymentMethodID];
+            if (validationError) {
+                NSString *title = validationError.code == 1001
+                    ? kLang(@"select_delivery_location_title")
+                    : kLang(@"checkout_failed_title");
                 [PPAlertHelper showWarningIn:self
-                                       title:kLang(@"select_delivery_location_title")
-                                    subtitle:kLang(@"PleaseSelectDeliveryLocation")];
+                                       title:title
+                                    subtitle:validationError.localizedDescription ?: kLang(@"SomethingWentWrong")];
                 [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+                PPORDERLog(@"Checkout blocked | reason=preflight_failed | paymentMethod=%@ | error=%@",
+                           selectedPaymentMethodID,
+                           validationError.localizedDescription ?: @"Unknown");
                 return;
             }
             self.selectedAddress = resolvedAddress;
@@ -573,7 +643,9 @@
             self.isCheckoutInProgress = YES;
             [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
             [self.summaryView setCheckoutLoading:YES];
-            NSString *selectedPaymentMethodID = PPCurrentUser.SelectedInstrument.methodID ?: @"qib";
+            PPORDERLog(@"Checkout starting | paymentMethod=%@ | addressId=%@",
+                       selectedPaymentMethodID,
+                       [self pp_effectiveAddressID:self.selectedAddress]);
             __weak typeof(self) weakSelf = self;
             [self.checkoutCoordinator startCheckoutWithAddress:self.selectedAddress
                                                paymentMethodId:selectedPaymentMethodID
@@ -585,7 +657,10 @@
                     if (!strongSelf) return;
                     strongSelf.isCheckoutInProgress = NO;
                     [strongSelf.summaryView setCheckoutLoading:NO];
-                    NSLog(@"🛒 Checkout tapped on CartViewController");
+                    PPORDERLog(@"Checkout completed | result=%ld | orderId=%@ | error=%@",
+                               (long)result,
+                               order.orderId ?: @"",
+                               error.localizedDescription ?: @"");
                     if (result == PPCheckoutResultSuccess) {
                         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
                         NSString *successMessage = error.localizedDescription.length > 0
@@ -627,9 +702,10 @@
 {
     [super viewWillAppear:animated];
     [[CartManager sharedManager] refreshPricingConfiguration];
-    [self.summaryView setCheckoutLoading:NO];
+    [self.summaryView setCheckoutLoading:self.isCheckoutInProgress];
     [_summaryView pp_startTrustBannerShimmer];
     [self pp_setupInitialAddressState];
+    [self pp_refreshCheckoutCallToAction];
 
 }
 

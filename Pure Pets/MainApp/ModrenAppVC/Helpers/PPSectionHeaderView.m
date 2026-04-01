@@ -37,9 +37,9 @@
     self.surfaceView.layer.cornerRadius = PPCornerMedium;
 
     // Modern subtle border
-    self.surfaceView.layer.borderWidth = 0.5;
+    self.surfaceView.layer.borderWidth = 1.0;
     self.surfaceView.layer.borderColor =
-        [UIColor.separatorColor colorWithAlphaComponent:0.12].CGColor;
+    [AppForgroundColr colorWithAlphaComponent:0.22].CGColor;
     
     // Design-system elevated shadow
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;

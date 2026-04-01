@@ -46,7 +46,8 @@ static const CGFloat kGapLarge   = PPSpaceMD;
 static const CGFloat kCardTall    = 228.0;
 static const CGFloat kCardMedium  = 188.0;
 static const CGFloat kCardLarge   = 248.0;
-static const CGFloat kCurrentOrdersItemHeight = 224.0;
+static const CGFloat kCurrentOrdersExpandedItemHeight = 224.0;
+static const CGFloat kCurrentOrdersCollapsedItemHeight = 96.0;
 
 // Section header height
 static const CGFloat kHeaderH = 64.0;
@@ -80,11 +81,16 @@ static const CGFloat kHeaderH = 64.0;
 
 + (NSCollectionLayoutSection *)currentOrdersSection
 {
+    return [self currentOrdersSectionExpanded:YES];
+}
+
++ (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded
+{
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:kCurrentOrdersItemHeight]];
+     [NSCollectionLayoutDimension absoluteDimension:(expanded ? kCurrentOrdersExpandedItemHeight : kCurrentOrdersCollapsedItemHeight)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];

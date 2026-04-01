@@ -53,7 +53,7 @@
                 return [PPHomeFunc servicesSection];
 
             case PPHomeSectionCurrentOrders:
-                return [PPHomeFunc currentOrdersSection];
+                return [PPHomeFunc currentOrdersSectionExpanded:weakSelf.isCurrentOrdersExpanded];
 
             case PPHomeSectionCarousel:
                 return [PPHomeFunc carouselSection];

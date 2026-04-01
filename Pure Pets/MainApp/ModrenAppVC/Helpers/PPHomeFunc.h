@@ -17,6 +17,7 @@
 + (NSCollectionLayoutSection *)carouselSection;
 + (NSCollectionLayoutSection *)heroSection;
 + (NSCollectionLayoutSection *)currentOrdersSection;
++ (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded;
 + (NSCollectionLayoutSection *)quickActionsSection;
 + (NSCollectionLayoutSection *)emptyFallbackSection;
 + (NSCollectionLayoutSection *)accessoriesSection;

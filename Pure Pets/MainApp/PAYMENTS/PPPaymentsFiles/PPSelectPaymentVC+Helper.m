@@ -11,6 +11,8 @@
 #import "PPPaymentMethodCell.h"
 #import "PPCommerceFeedbackManager.h"
 
+#define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+
 @interface PPSelectPaymentVC (PPPaymentFlowBridge)
 - (void)finishPayments;
 @end
@@ -99,6 +101,7 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
     if (displayed.count == 0) {
         PPCurrentUser.SelectedInstrument = nil;
+        [self pp_refreshCheckoutCallToAction];
         return;
     }
 
@@ -127,6 +130,7 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
     }
 
     PPCurrentUser.SelectedInstrument = resolved;
+    [self pp_refreshCheckoutCallToAction];
 }
 
 - (void)pp_updateVisibleSelectionForInstrumentID:(NSString *)instrumentID animated:(BOOL)animated
@@ -148,6 +152,46 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
          [visibleCell.instrument.instrumentID isEqualToString:selectedID]);
         [visibleCell updateSelectionState:isCurrent animated:animated];
     }
+}
+
+- (UserPaymentInstrument *)pp_resolvedSelectedInstrument
+{
+    NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
+    if (displayed.count == 0) {
+        return nil;
+    }
+
+    NSString *selectedID = PPCurrentUser.SelectedInstrument.instrumentID ?: @"";
+    if (selectedID.length > 0) {
+        for (UserPaymentInstrument *instrument in displayed) {
+            if ([instrument.instrumentID isEqualToString:selectedID]) {
+                return instrument;
+            }
+        }
+    }
+
+    return displayed.firstObject;
+}
+
+- (NSString *)pp_selectedCheckoutPaymentMethodID
+{
+    UserPaymentInstrument *instrument = [self pp_resolvedSelectedInstrument];
+    return PPPaymentSelectionNormalizedMethodID(instrument.methodID);
+}
+
+- (void)pp_refreshCheckoutCallToAction
+{
+    NSString *paymentMethodID = [self pp_selectedCheckoutPaymentMethodID];
+    BOOL isCash = [paymentMethodID isEqualToString:@"cash"];
+    NSString *title = isCash ? kLang(@"payment_place_order") : kLang(@"payment_pay_now");
+    NSString *symbolName = isCash ? @"shippingbox.fill" : @"creditcard.fill";
+    UIImage *icon = [UIImage pp_symbolNamed:symbolName
+                                  pointSize:18
+                                     weight:UIImageSymbolWeightSemibold
+                                      scale:UIImageSymbolScaleLarge
+                                    palette:@[AppForgroundColr, AppForgroundColr]
+                               makeTemplate:NO];
+    [self.summaryView setCheckoutBTNTitle:title image:icon];
 }
 
 - (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView
@@ -286,9 +330,12 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         return;
     }
     UserPaymentInstrument *selected = displayed[modelIndex];
-    NSLog(@"✅ Selected instrument: %@", selected.displaySummary);
+    PPORDERLog(@"Payment method selected | instrumentId=%@ | methodId=%@",
+               selected.instrumentID ?: @"",
+               selected.methodID ?: @"");
     PPCurrentUser.SelectedInstrument = selected;
     [self pp_updateVisibleSelectionForInstrumentID:selected.instrumentID animated:YES];
+    [self pp_refreshCheckoutCallToAction];
 }
 
 

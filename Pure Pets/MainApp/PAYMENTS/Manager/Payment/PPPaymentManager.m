@@ -11,6 +11,8 @@
 #import "CountryModel.h"
 #import "CitiesManager.h"
 
+#define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+
 @protocol PPPaymentQIBSendRequestCapable <NSObject>
 - (void)sendRequest;
 @end
@@ -27,6 +29,77 @@
 @end
 
 static NSString * const PPPaymentSimulatedPaymentSuccessDefaultsKey = @"PPSimulatedPaymentSuccessEnabled";
+
+static UIViewController *PPPaymentTopViewControllerFromRoot(UIViewController *rootViewController)
+{
+    UIViewController *current = rootViewController;
+    while (current) {
+        UIViewController *next = current.presentedViewController;
+        if (next && !next.isBeingDismissed) {
+            current = next;
+            continue;
+        }
+        if ([current isKindOfClass:UINavigationController.class]) {
+            UIViewController *visible = ((UINavigationController *)current).visibleViewController;
+            if (visible && visible != current) {
+                current = visible;
+                continue;
+            }
+        }
+        if ([current isKindOfClass:UITabBarController.class]) {
+            UIViewController *selected = ((UITabBarController *)current).selectedViewController;
+            if (selected && selected != current) {
+                current = selected;
+                continue;
+            }
+        }
+        break;
+    }
+    return current;
+}
+
+static UIWindow *PPPaymentActiveWindow(void)
+{
+    UIApplication *application = UIApplication.sharedApplication;
+    UIWindow *fallbackWindow = application.keyWindow ?: application.windows.firstObject;
+
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in application.connectedScenes) {
+            if (![scene isKindOfClass:UIWindowScene.class]) {
+                continue;
+            }
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            if (windowScene.activationState != UISceneActivationStateForegroundActive &&
+                windowScene.activationState != UISceneActivationStateForegroundInactive) {
+                continue;
+            }
+
+            for (UIWindow *window in windowScene.windows) {
+                if (window.isKeyWindow) {
+                    return window;
+                }
+            }
+
+            if (!fallbackWindow && windowScene.windows.count > 0) {
+                fallbackWindow = windowScene.windows.firstObject;
+            }
+        }
+    }
+
+    return fallbackWindow;
+}
+
+static UIViewController *PPPaymentResolvedPresenter(UIViewController *preferredController)
+{
+    UIViewController *preferredTop = PPPaymentTopViewControllerFromRoot(preferredController);
+    if (preferredTop.view.window) {
+        return preferredTop;
+    }
+
+    UIWindow *window = preferredController.view.window ?: PPPaymentActiveWindow();
+    UIViewController *windowTop = PPPaymentTopViewControllerFromRoot(window.rootViewController);
+    return windowTop ?: preferredTop ?: preferredController;
+}
 
 static NSString *PPPaymentTrimmedString(NSString *value)
 {
@@ -192,7 +265,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
     NSError *loadError = nil;
     BOOL loaded = [bundle loadAndReturnError:&loadError];
     if (!loaded && loadError) {
-        NSLog(@"[PAYMENT] ⚠️ Unable to load QIBPayment.framework: %@", loadError.localizedDescription);
+        PPORDERLog(@"Unable to load QIBPayment.framework | error=%@", loadError.localizedDescription ?: @"Unknown");
     }
 }
 #endif
@@ -231,6 +304,11 @@ static void PPQIBTryLoadFrameworkBundle(void)
           fromViewController:(UIViewController *)viewController
                   completion:(PPPaymentCompletion)completion
 {
+    PPORDERLog(@"Payment request started | orderId=%@ | workflowStatus=%@ | paymentStatus=%@ | method=%@",
+               order.orderId ?: @"",
+               order.rawStatus ?: @"",
+               order.paymentStatus ?: @"",
+               order.paymentMethodId ?: @"");
     if (!order) {
         NSError *orderMissingError =
         [NSError errorWithDomain:@"PPPayment"
@@ -282,6 +360,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
     NSString *phone = [self normalizedPhoneForQIBForOrder:order];
     if (phone.length == 0) {
+        PPORDERLog(@"Payment blocked | reason=missing_phone | orderId=%@", order.orderId ?: @"");
         [self failWithMessage:kLang(@"payment_phone_required")];
         return;
     }
@@ -355,11 +434,13 @@ static void PPQIBTryLoadFrameworkBundle(void)
         return;
     }
 
-    NSLog(@"[PAYMENT] ⚠️ Using legacy gateway bootstrap. Migrate backend to tokenized/hosted session.");
+    PPORDERLog(@"Using legacy QIB bootstrap | orderId=%@ | currency=%@",
+               order.orderId ?: @"",
+               requestedCurrency ?: @"");
     // U7: secretKey is required by QIB SDK for legacy flow but should NOT be logged or persisted.
     // TODO: Migrate to server-side tokenized sessions to eliminate client-side secret handling.
     if (secretKey.length > 0) {
-        NSLog(@"[PAYMENT] ⚠️ secretKey present in session — server should migrate to tokenized flow");
+        PPORDERLog(@"QIB session contains legacy secret bootstrap | orderId=%@", order.orderId ?: @"");
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -367,23 +448,15 @@ static void PPQIBTryLoadFrameworkBundle(void)
         PPQIBTryLoadFrameworkBundle();
 #endif
 
-        UIViewController *presenter = vc;
-        while (presenter.presentedViewController &&
-               !presenter.presentedViewController.isBeingDismissed) {
-            presenter = presenter.presentedViewController;
-        }
-        if ([presenter isKindOfClass:UINavigationController.class]) {
-            UIViewController *visible = ((UINavigationController *)presenter).visibleViewController;
-            if (visible) presenter = visible;
-        }
-        if ([presenter isKindOfClass:UITabBarController.class]) {
-            UIViewController *selected = ((UITabBarController *)presenter).selectedViewController;
-            if (selected) presenter = selected;
-        }
+        UIViewController *presenter = PPPaymentResolvedPresenter(vc);
         if (!presenter) {
+            PPORDERLog(@"Payment blocked | reason=no_presenter | orderId=%@", order.orderId ?: @"");
             [self failWithMessage:kLang(@"payment_unable_to_open_screen")];
             return;
         }
+        PPORDERLog(@"Resolved payment presenter | orderId=%@ | presenter=%@",
+                   order.orderId ?: @"",
+                   NSStringFromClass(presenter.class));
 
         Class paramsClass = Nil;
         NSArray<NSString *> *candidateClassNames = @[
@@ -399,7 +472,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
             }
         }
         if (!paramsClass) {
-            NSLog(@"[PAYMENT] ❌ QIB SDK class not found. Expected QPRequestParameters from QIBPayment.framework.");
+            PPORDERLog(@"QIB SDK class missing | orderId=%@", order.orderId ?: @"");
             [self failWithMessage:kLang(@"payment_qib_sdk_missing")];
             return;
         }
@@ -421,6 +494,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
         }
 
         if (!params) {
+            PPORDERLog(@"QIB SDK init failed | orderId=%@", order.orderId ?: @"");
             [self failWithMessage:kLang(@"payment_qib_sdk_init_failed")];
             return;
         }
@@ -479,6 +553,10 @@ static void PPQIBTryLoadFrameworkBundle(void)
         }
 
         self.qpParams = params;
+        PPORDERLog(@"Launching QIB request | orderId=%@ | paymentAttemptId=%@ | qibSessionId=%@",
+                   order.orderId ?: @"",
+                   self.paymentAttemptId ?: @"",
+                   self.activeQIBSessionId ?: @"");
         [(id<PPPaymentQIBSendRequestCapable>)params sendRequest];
     });
 }
@@ -509,6 +587,11 @@ static void PPQIBTryLoadFrameworkBundle(void)
         @"paymentAttemptId": self.paymentAttemptId ?: @""
     };
 
+    PPORDERLog(@"Creating QIB session | orderId=%@ | currency=%@ | amount=%.2f",
+               order.orderId ?: @"",
+               safeCurrency ?: @"",
+               (order.totalAmount > 0 ? order.totalAmount : order.amount));
+
     [[functions HTTPSCallableWithName:@"createQibSession"]
      callWithObject:payload
      completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
@@ -537,11 +620,17 @@ static void PPQIBTryLoadFrameworkBundle(void)
                                                  userInfo:@{NSLocalizedDescriptionKey:
                                                                 kLang(@"payment_create_session_failed")}];
             }
+            PPORDERLog(@"Create QIB session failed | orderId=%@ | error=%@",
+                       order.orderId ?: @"",
+                       resolvedError.localizedDescription ?: @"");
             [self failWithError:resolvedError];
             return;
         }
 
         NSDictionary *session = (NSDictionary *)result.data;
+        PPORDERLog(@"QIB session created | orderId=%@ | responseKeys=%@",
+                   order.orderId ?: @"",
+                   session.allKeys ?: @[]);
         [self startQIBWithSession:session
                             order:order
                   viewController:viewController
@@ -618,6 +707,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
 - (void)failWithError:(NSError *)error
 {
+    PPORDERLog(@"Payment flow failed | error=%@", error.localizedDescription ?: @"");
     if (self.completion) {
         self.completion(nil, error);
     }

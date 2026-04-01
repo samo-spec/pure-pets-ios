@@ -16,6 +16,8 @@
 #import "CountryModel.h"
 #import "CitiesManager.h"
 
+#define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
+
 static NSString *const PPOrderInventoryErrorDomain = @"PPOrderInventory";
 static NSString *const PPOrderSupportErrorDomain = @"PPOrderSupport";
 
@@ -590,14 +592,14 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     if (userId.length == 0) {
         NSError *error = [NSError errorWithDomain:@"PPOrder"
                                              code:401
-                                         userInfo:@{NSLocalizedDescriptionKey: @"User not logged in."}];
+                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_register_required_subtitle")}];
         if (completion) completion(nil, error);
         return;
     }
     if (address.userID.length > 0 && ![address.userID isEqualToString:userId]) {
         NSError *ownershipError = [NSError errorWithDomain:@"PPOrder"
                                                       code:403
-                                                  userInfo:@{NSLocalizedDescriptionKey: @"Selected address does not belong to current user."}];
+                                                  userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_invalid_address")}];
         if (completion) completion(nil, ownershipError);
         return;
     }
@@ -605,7 +607,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     if (!shippingSnapshot) {
         NSError *addressError = [NSError errorWithDomain:@"PPOrder"
                                                     code:422
-                                                userInfo:@{NSLocalizedDescriptionKey: @"A valid shipping address is required."}];
+                                                userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_invalid_address")}];
         if (completion) completion(nil, addressError);
         return;
     }
@@ -622,12 +624,12 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         @"paymentMethodId": resolvedPaymentMethodID
     };
 
-    NSLog(@"[PPOrderManager] 📤 createPendingOrder | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@ | provider=%@",
-          (unsigned long)items.count,
-          amount,
-          shippingAddressID ?: @"",
-          resolvedPaymentMethodID ?: @"",
-          resolvedPaymentProvider ?: @"");
+    PPORDERLog(@"Create pending order | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@ | provider=%@",
+               (unsigned long)items.count,
+               amount,
+               shippingAddressID ?: @"",
+               resolvedPaymentMethodID ?: @"",
+               resolvedPaymentProvider ?: @"");
 
     [[functions HTTPSCallableWithName:@"createPendingOrder"]
      callWithObject:payload
@@ -636,10 +638,10 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             NSError *resolvedError = PPOrderWrappedCallableError(error);
             NSError *finalError = resolvedError ?: [NSError errorWithDomain:@"PPOrder"
                                                                        code:500
-                                                                   userInfo:@{NSLocalizedDescriptionKey: @"Failed to create pending order."}];
-            NSLog(@"[PPOrderManager] ❌ createPendingOrder failed | paymentMethod=%@ | error=%@",
-                  resolvedPaymentMethodID ?: @"",
-                  finalError.localizedDescription ?: @"Unknown error");
+                                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong")}];
+            PPORDERLog(@"Create pending order failed | paymentMethod=%@ | error=%@",
+                       resolvedPaymentMethodID ?: @"",
+                       finalError.localizedDescription ?: @"Unknown");
             if (completion) completion(nil, finalError);
             return;
         }
@@ -699,11 +701,11 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         order.createdAt = createdAt;
         order.updatedAt = updatedAt;
 
-        NSLog(@"[PPOrderManager] ✅ createPendingOrder resolved | orderId=%@ | orderNumber=%@ | paymentMethod=%@ | paymentStatus=%@",
-              order.orderId ?: @"",
-              order.orderNumber ?: @"",
-              order.paymentMethodId ?: @"",
-              order.paymentStatus ?: @"");
+        PPORDERLog(@"Create pending order resolved | orderId=%@ | orderNumber=%@ | paymentMethod=%@ | paymentStatus=%@",
+                   order.orderId ?: @"",
+                   order.orderNumber ?: @"",
+                   order.paymentMethodId ?: @"",
+                   order.paymentStatus ?: @"");
 
         if (completion) completion(order, nil);
     }];
@@ -731,14 +733,14 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     if (userId.length == 0) {
         NSError *error = [NSError errorWithDomain:@"PPOrder"
                                              code:401
-                                         userInfo:@{NSLocalizedDescriptionKey: @"User not logged in."}];
+                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_register_required_subtitle")}];
         if (completion) completion(nil, error);
         return;
     }
     if (address.userID.length > 0 && ![address.userID isEqualToString:userId]) {
         NSError *ownershipError = [NSError errorWithDomain:@"PPOrder"
                                                       code:403
-                                                  userInfo:@{NSLocalizedDescriptionKey: @"Selected address does not belong to current user."}];
+                                                  userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_invalid_address")}];
         if (completion) completion(nil, ownershipError);
         return;
     }
@@ -746,18 +748,18 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     if (!shippingSnapshot) {
         NSError *addressError = [NSError errorWithDomain:@"PPOrder"
                                                     code:422
-                                                userInfo:@{NSLocalizedDescriptionKey: @"A valid shipping address is required."}];
+                                                userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_invalid_address")}];
         if (completion) completion(nil, addressError);
         return;
     }
     NSString *shippingAddressID = PPOrderAddressEffectiveID(address);
     NSString *resolvedPaymentMethodID = PPOrderNormalizedPaymentMethodKey(paymentMethodId, nil);
 
-    NSLog(@"[PPOrderManager] 🔎 fetchOrCreatePendingOrder | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@",
-          (unsigned long)items.count,
-          amount,
-          shippingAddressID ?: @"",
-          resolvedPaymentMethodID ?: @"");
+    PPORDERLog(@"Fetch or create pending order | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@",
+               (unsigned long)items.count,
+               amount,
+               shippingAddressID ?: @"",
+               resolvedPaymentMethodID ?: @"");
 
     FIRFirestore *db = FIRFirestore.firestore;
     FIRCollectionReference *ordersRef = [db collectionWithPath:@"Orders"];
@@ -768,7 +770,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         if (error || !snapshot) {
             if (completion) completion(nil, error ?: [NSError errorWithDomain:@"PPOrder"
                                                                          code:500
-                                                                     userInfo:@{NSLocalizedDescriptionKey: @"Failed to load pending orders."}]);
+                                                                     userInfo:@{NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong")}]);
             return;
         }
 
@@ -791,9 +793,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         }
 
         if (bestMatch) {
-            NSLog(@"[PPOrderManager] ♻️ Reusing pending order | orderId=%@ | paymentMethod=%@",
-                  bestMatch.orderId ?: @"",
-                  bestMatch.paymentMethodId ?: @"");
+            PPORDERLog(@"Reusing pending order | orderId=%@ | paymentMethod=%@",
+                       bestMatch.orderId ?: @"",
+                       bestMatch.paymentMethodId ?: @"");
             if (completion) completion(bestMatch, nil);
             return;
         }
@@ -806,7 +808,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             if (failedError || !failedSnapshot) {
                 if (completion) completion(nil, failedError ?: [NSError errorWithDomain:@"PPOrder"
                                                                                    code:500
-                                                                               userInfo:@{NSLocalizedDescriptionKey: @"Failed to load failed orders."}]);
+                                                                               userInfo:@{NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong")}]);
                 return;
             }
 
@@ -845,18 +847,18 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 @"shippingAddressSnapshot": shippingSnapshot.copy ?: @{}
             };
 
-            NSLog(@"[PPOrderManager] 🔁 Preparing failed order for retry | orderId=%@ | paymentMethod=%@",
-                  retryDocId ?: @"",
-                  resolvedPaymentMethodID ?: @"");
+            PPORDERLog(@"Preparing failed order for retry | orderId=%@ | paymentMethod=%@",
+                       retryDocId ?: @"",
+                       resolvedPaymentMethodID ?: @"");
 
             [[functions HTTPSCallableWithName:@"prepareOrderForRetry"]
              callWithObject:payload
              completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable callableError) {
                 if (callableError || ![result.data isKindOfClass:NSDictionary.class]) {
                     // Fallback path: if callable is unavailable, create a new pending order.
-                    NSLog(@"[PPOrderManager] ⚠️ prepareOrderForRetry unavailable, creating new pending order | orderId=%@ | error=%@",
-                          retryDocId ?: @"",
-                          callableError.localizedDescription ?: @"Invalid response");
+                    PPORDERLog(@"prepareOrderForRetry unavailable, creating new pending order | orderId=%@ | error=%@",
+                               retryDocId ?: @"",
+                               callableError.localizedDescription ?: @"Invalid response");
                     [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID completion:completion];
                     return;
                 }
@@ -873,9 +875,9 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 retryMatch.shippingAddressId = shippingAddressID ?: @"";
                 retryMatch.shippingAddressSnapshot = shippingSnapshot.copy;
                 retryMatch.updatedAt = NSDate.date;
-                NSLog(@"[PPOrderManager] ✅ Retry order prepared | orderId=%@ | paymentMethod=%@",
-                      retryMatch.orderId ?: retryDocId ?: @"",
-                      retryMatch.paymentMethodId ?: @"");
+                PPORDERLog(@"Retry order prepared | orderId=%@ | paymentMethod=%@",
+                           retryMatch.orderId ?: retryDocId ?: @"",
+                           retryMatch.paymentMethodId ?: @"");
                 if (completion) completion(retryMatch, nil);
             }];
         }];
@@ -891,7 +893,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     if (aggregated.count == 0) {
         NSError *error = [NSError errorWithDomain:PPOrderInventoryErrorDomain
                                              code:100
-                                         userInfo:@{NSLocalizedDescriptionKey: @"Cart items are invalid."}];
+                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_items_unavailable_fallback")}];
         if (completion) completion(NO, @[], error);
         return;
     }
@@ -950,7 +952,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             NSError *wrapped = [NSError errorWithDomain:PPOrderInventoryErrorDomain
                                                    code:101
                                                userInfo:@{
-                NSLocalizedDescriptionKey: @"Failed to verify live inventory.",
+                NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong"),
                 NSUnderlyingErrorKey: firstError
             }];
             if (completion) completion(NO, @[], wrapped);

@@ -1709,8 +1709,10 @@
 
 "checkout_invalid_address" = "Please select a valid delivery address.";
 "checkout_cart_empty" = "Cart is empty";
+"checkout_payment_method_unavailable" = "No payment method is available right now. Please try again in a moment.";
 "checkout_paid_inventory_warning" = "Payment succeeded, but stock sync needs review by support.";
 "checkout_payment_failed_default" = "Payment failed";
+"checkout_payment_confirmation_delayed" = "We received your payment attempt, but order confirmation is still syncing. Please do not pay again; check your order status shortly.";
 "checkout_items_unavailable_default" = "Some items are no longer available in stock.";
 "checkout_item_fallback" = "Item";
 "checkout_item_out_of_stock_format" = "%@ is out of stock.";
@@ -1746,7 +1748,7 @@
 "order_total_label" = "Total";
 "OrderItems" = "Order Items";
 "Phone number is required to complete payment." = "Phone number is required to complete payment.";
-"QIB checkout requires a real iPhone device." = "QIB checkout requires a real iPhone device.";
+"QIB checkout requires a real iPhone device." = "QIB checkout requires a real device.";
 "Unable to open payment screen." = "Unable to open payment screen.";
 "Invalid gateway credentials." = "Invalid gateway credentials.";
 "Failed to create payment session." = "Failed to create payment session.";
@@ -1798,8 +1800,9 @@
 "payment_insecure_session_blocked" = "Blocked insecure payment session. Backend must return secure tokenized/hosted QIB payload.";
 "payment_secure_session_unavailable" = "Secure QIB session payload is missing from backend response.";
 "payment_secure_flow_required" = "QIB secure payment flow is not enabled in this app build yet.";
+"payment_place_order" = "Place Order";
 "payment_request_in_progress" = "Payment request already in progress.";
-"payment_requires_real_device" = "QIB checkout requires a real iPhone device.";
+"payment_requires_real_device" = "QIB checkout requires a real device.";
 "payment_phone_required" = "Phone number is required to complete payment.";
 "payment_invalid_gateway_credentials" = "Invalid gateway credentials.";
 "payment_unable_to_open_screen" = "Unable to open payment screen.";

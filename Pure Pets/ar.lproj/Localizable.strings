@@ -1666,8 +1666,10 @@
 
 "checkout_invalid_address" = "يرجى اختيار عنوان توصيل صالح.";
 "checkout_cart_empty" = "السلة فارغة";
+"checkout_payment_method_unavailable" = "لا توجد طريقة دفع متاحة حالياً. يرجى المحاولة بعد قليل.";
 "checkout_paid_inventory_warning" = "تم الدفع بنجاح، ولكن يوجد خلل في مزامنة المخزون. يرجى مراجعة الدعم.";
 "checkout_payment_failed_default" = "فشلت عملية الدفع";
+"checkout_payment_confirmation_delayed" = "تم استلام محاولة الدفع، لكن تأكيد الطلب ما زال قيد المزامنة. يرجى عدم الدفع مرة أخرى ومراجعة حالة الطلب بعد قليل.";
 "checkout_items_unavailable_default" = "بعض المنتجات لم تعد متوفرة في المخزون.";
 "checkout_item_fallback" = "منتج";
 "checkout_item_out_of_stock_format" = "%@ غير متوفر حالياً.";
@@ -1704,7 +1706,7 @@
 "order_total_label" = "الإجمالي";
 "OrderItems" = "عناصر الطلب";
 "Phone number is required to complete payment." = "رقم الهاتف مطلوب لإتمام عملية الدفع.";
-"QIB checkout requires a real iPhone device." = "تتطلب عملية الدفع عبر QIB جهاز iPhone حقيقي.";
+"QIB checkout requires a real iPhone device." = "تتطلب عملية الدفع عبر QIB جهازاً حقيقياً.";
 "Unable to open payment screen." = "تعذر فتح شاشة الدفع.";
 "Invalid gateway credentials." = "بيانات بوابة الدفع غير صالحة.";
 "Failed to create payment session." = "فشل إنشاء جلسة الدفع.";
@@ -1756,8 +1758,9 @@
 "payment_insecure_session_blocked" = "تم حظر جلسة دفع غير آمنة. يجب أن يعيد الخادم جلسة QIB آمنة.";
 "payment_secure_session_unavailable" = "بيانات الجلسة الآمنة لـ QIB مفقودة من استجابة الخادم.";
 "payment_secure_flow_required" = "تدفق الدفع الآمن لـ QIB غير مفعّل في هذا الإصدار بعد.";
+"payment_place_order" = "إنشاء الطلب";
 "payment_request_in_progress" = "طلب الدفع قيد التنفيذ بالفعل.";
-"payment_requires_real_device" = "الدفع عبر QIB يتطلب جهاز iPhone حقيقي.";
+"payment_requires_real_device" = "الدفع عبر QIB يتطلب جهازاً حقيقياً.";
 "payment_phone_required" = "رقم الهاتف مطلوب لإتمام عملية الدفع.";
 "payment_invalid_gateway_credentials" = "بيانات بوابة الدفع غير صالحة.";
 "payment_unable_to_open_screen" = "تعذر فتح شاشة الدفع.";

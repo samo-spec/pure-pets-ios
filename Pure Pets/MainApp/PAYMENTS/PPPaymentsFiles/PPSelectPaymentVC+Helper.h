@@ -27,6 +27,10 @@ NS_ASSUME_NONNULL_BEGIN
  - (PaymentMethod *)method:(NSString *)title icon:(NSString *)icon color:(UIColor *)color;
 - (void)onSelectPayment:(UIButton *)sender;
 - (void)pp_applyDefaultSelectionIfNeeded;
+- (NSArray<UserPaymentInstrument *> *)pp_displayedInstruments;
+- (nullable UserPaymentInstrument *)pp_resolvedSelectedInstrument;
+- (NSString *)pp_selectedCheckoutPaymentMethodID;
+- (void)pp_refreshCheckoutCallToAction;
 
 /*
  
