@@ -3588,6 +3588,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
                    withReuseIdentifier:@"PPSectionHeaderView"];
     
+    [self.collectionView registerClass:PPCollectionSectionHeader.class
+            forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
+                   withReuseIdentifier:@"PPCollectionSectionHeader"];
+    
     [self.collectionView registerClass:PPCategoryCardCell.class
             forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
 }
