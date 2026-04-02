@@ -627,6 +627,10 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
         PPORDERLog(@"Verifying payment with Cloud Function | generation=%ld | orderId=%@",
                    (long)generation,
                    order.orderId ?: @"");
+        // Start the delayed-confirmation timeout only after the customer leaves the QIB UI
+        // and we begin backend verification. This avoids showing a false "don't pay again"
+        // warning while the user is still entering card details inside the gateway screen.
+        [self pp_scheduleOrderResolutionTimeoutForOrder:order generation:generation];
 
         FIRFunctions *functions = PPCheckoutFunctionsClient();
 
@@ -752,8 +756,6 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
         self.orderListener = nil;
     }
 
-    [self pp_scheduleOrderResolutionTimeoutForOrder:order generation:generation];
-    
     // U4: Prevent retain cycle in order listener
     __weak typeof(self) weakSelf = self;
     self.orderListener =

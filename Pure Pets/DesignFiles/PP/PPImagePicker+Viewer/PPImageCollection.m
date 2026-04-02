@@ -126,8 +126,11 @@
     // Title label
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM MidFontWithSize:14];
+    _titleLabel.font = [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:14]];
     _titleLabel.textColor = [UIColor secondaryLabelColor];
+    _titleLabel.adjustsFontForContentSizeCategory = YES;
+    _titleLabel.numberOfLines = 1;
+    _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     
     [_titleContainer addSubview:_iconView];
     [_titleContainer addSubview:_titleLabel];
@@ -135,22 +138,27 @@
 
 - (void)setupCollectionView {
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.minimumInteritemSpacing = 4;
-    layout.minimumLineSpacing = 4;
-    layout.sectionInset = UIEdgeInsetsMake(8, 8, 8, 8);
+    layout.minimumInteritemSpacing = 8;
+    layout.minimumLineSpacing = 8;
+    layout.sectionInset = UIEdgeInsetsMake(10, 12, 10, 12);
     layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
     
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
-    _collectionView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:1];
+    _collectionView.backgroundColor = [UIColor secondarySystemBackgroundColor];
     _collectionView.delegate = self;
     _collectionView.dataSource = self;
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
+    _collectionView.alwaysBounceHorizontal = YES;
+    _collectionView.showsHorizontalScrollIndicator = NO;
     
     [_collectionView registerClass:[AddButtonCell class] forCellWithReuseIdentifier:@"AddButtonCell"];
     [_collectionView registerClass:[PP_ImageCell class] forCellWithReuseIdentifier:@"PP_ImageCell"];
     
     _collectionView.layer.masksToBounds = YES;
-    _collectionView.layer.cornerRadius = 12;
+    _collectionView.layer.cornerRadius = 18;
+    if (@available(iOS 13.0, *)) {
+        _collectionView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     _collectionView.clipsToBounds = YES;
 
     _reorderLongPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self
@@ -210,7 +218,7 @@
         [_titleContainer.topAnchor constraintEqualToAnchor:self.topAnchor],
         [_titleContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:6],
         [_titleContainer.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-6],
-        [_titleContainer.heightAnchor constraintEqualToConstant:30],
+        [_titleContainer.heightAnchor constraintEqualToConstant:32],
         
         // Icon
         [_iconView.leadingAnchor constraintEqualToAnchor:_titleContainer.leadingAnchor],
@@ -225,7 +233,7 @@
         [_titleLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor],
         
         // Collection view
-        [_collectionView.topAnchor constraintEqualToAnchor:_titleContainer.bottomAnchor constant:4],
+        [_collectionView.topAnchor constraintEqualToAnchor:_titleContainer.bottomAnchor constant:6],
         [_collectionView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [_collectionView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [_collectionView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
@@ -499,6 +507,74 @@
     });
 }
 
+- (void)pp_presentAddImageOptionsFromViewController:(UIViewController *)viewController
+                                        sourceView:(UIView *)sourceView
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_presentAddImageOptionsFromViewController:viewController sourceView:sourceView];
+        });
+        return;
+    }
+
+    UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
+    if (!presentingVC) {
+        return;
+    }
+    if (presentingVC.presentedViewController && !presentingVC.presentedViewController.isBeingDismissed) {
+        return;
+    }
+
+    NSString *sheetTitle = self.titleText.length > 0 ? self.titleText : kLang(@"add.images.here");
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:sheetTitle
+                                                                   message:nil
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    sheet.view.tintColor = AppPrimaryClr ?: UIColor.labelColor;
+
+    __weak typeof(self) weakSelf = self;
+    UIAlertAction *libraryAction =
+    [UIAlertAction actionWithTitle:kLang(@"Photo_Library")
+                             style:UIAlertActionStyleDefault
+                           handler:^(__unused UIAlertAction * _Nonnull action) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            UIViewController *anchorVC = [weakSelf pp_bestPresentingViewController:nil] ?: presentingVC;
+            [weakSelf openGalleryPickerFromViewController:anchorVC];
+        });
+    }];
+
+    UIAlertAction *cameraAction =
+    [UIAlertAction actionWithTitle:kLang(@"Camera")
+                             style:UIAlertActionStyleDefault
+                           handler:^(__unused UIAlertAction * _Nonnull action) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            UIViewController *anchorVC = [weakSelf pp_bestPresentingViewController:nil] ?: presentingVC;
+            [weakSelf openCameraFromViewController:anchorVC];
+        });
+    }];
+
+    UIAlertAction *cancelAction =
+    [UIAlertAction actionWithTitle:kLang(@"cancel")
+                             style:UIAlertActionStyleCancel
+                           handler:nil];
+
+    [sheet addAction:libraryAction];
+    [sheet addAction:cameraAction];
+    [sheet addAction:cancelAction];
+    sheet.preferredAction = libraryAction;
+
+    UIPopoverPresentationController *popover = sheet.popoverPresentationController;
+    if (popover) {
+        UIView *anchorView = sourceView ?: presentingVC.view;
+        popover.sourceView = anchorView;
+        popover.sourceRect = anchorView.bounds;
+        popover.permittedArrowDirections = UIPopoverArrowDirectionAny;
+    }
+
+    [presentingVC presentViewController:sheet animated:YES completion:nil];
+}
+
 - (void)notifyDelegate {
     if ([self.delegate respondsToSelector:@selector(imageCollection:didUpdateImages:)]) {
         [self.delegate imageCollection:self didUpdateImages:[self allImages]];
@@ -605,35 +681,22 @@
     
     if (isAddButtonCell) {
         AddButtonCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"AddButtonCell" forIndexPath:indexPath];
+        [cell setButtonTitle:@""];
+        [cell setButtonSymbol:@"photo.badge.plus"];
         __weak typeof(self) weakSelf = self;
+        __weak AddButtonCell *weakCell = cell;
         if (@available(iOS 14.0, *)) {
-            UIAction *galleryAction =
-            [UIAction actionWithTitle:kLang(@"Photo_Library")
-                                image:[UIImage systemImageNamed:@"photo.on.rectangle"]
-                           identifier:nil
-                              handler:^(__kindof UIAction * _Nonnull action) {
-                UIViewController *presentingVC = [weakSelf pp_bestPresentingViewController:nil];
-                [weakSelf openGalleryPickerFromViewController:presentingVC];
-            }];
-
-            UIAction *cameraAction =
-            [UIAction actionWithTitle:kLang(@"Camera")
-                                image:[UIImage systemImageNamed:@"camera"]
-                           identifier:nil
-                              handler:^(__kindof UIAction * _Nonnull action) {
-                UIViewController *presentingVC = [weakSelf pp_bestPresentingViewController:nil];
-                [weakSelf openCameraFromViewController:presentingVC];
-            }];
-
-            UIMenu *menu = [UIMenu menuWithTitle:@""
-                                        children:@[galleryAction, cameraAction]];
-            [cell setPrimaryMenu:menu];
-            cell.onTap = nil;
-        } else {
-            cell.onTap = ^{
-                [weakSelf openImagePicker];
-            };
+            [cell setPrimaryMenu:nil];
         }
+        cell.onTap = ^{
+            if ([weakSelf.delegate respondsToSelector:@selector(imageCollectionDidRequestAddImage:)]) {
+                [weakSelf.delegate imageCollectionDidRequestAddImage:weakSelf];
+                return;
+            }
+            UIViewController *presentingVC = [weakSelf pp_bestPresentingViewController:nil];
+            UIView *anchorView = weakCell ?: weakSelf.collectionView;
+            [weakSelf pp_presentAddImageOptionsFromViewController:presentingVC sourceView:anchorView];
+        };
         return cell;
     }
     
@@ -685,8 +748,9 @@
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat collectionHeight = CGRectGetHeight(collectionView.bounds);
     CGFloat collectionWidth = CGRectGetWidth(collectionView.bounds);
-    CGFloat itemWidth = MAX(72.0, collectionHeight - 16.0);
-    CGFloat maxAllowed = MAX(72.0, collectionWidth - 16.0);
+    CGFloat availableHeight = MAX(0.0, collectionHeight - 20.0);
+    CGFloat itemWidth = MAX(84.0, availableHeight);
+    CGFloat maxAllowed = MAX(84.0, collectionWidth - 24.0);
     itemWidth = MIN(itemWidth, maxAllowed);
     return CGSizeMake(itemWidth, itemWidth);
 }
@@ -802,7 +866,7 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     if (!presentingVC) {
         return;
     }
-    [self openGalleryPickerFromViewController:presentingVC];
+    [self pp_presentAddImageOptionsFromViewController:presentingVC sourceView:self.collectionView ?: self];
 }
 
 - (UIViewController *)pp_bestPresentingViewController:(UIViewController * _Nullable)preferredVC
@@ -1171,7 +1235,10 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 
 - (void)presentPickerFromViewController:(UIViewController *)viewController {
     UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
-    [self openGalleryPickerFromViewController:presentingVC];
+    if (!presentingVC) {
+        return;
+    }
+    [self pp_presentAddImageOptionsFromViewController:presentingVC sourceView:self.collectionView ?: self];
 }
 
 - (void)presentEditorForImageAtIndex:(NSInteger)index fromViewController:(UIViewController *)viewController {
