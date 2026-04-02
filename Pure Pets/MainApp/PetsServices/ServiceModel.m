@@ -5,9 +5,11 @@
 //  Created by Mohammed Ahmed on 14/07/2025.
 //
 #import "ServiceModel.h"
+#import "ArabicNormalizer.h"
 
 @interface ServiceModel ()
 @property (nonatomic, copy) NSString *searchTitle;
++ (NSDate *)pp_dateFromValue:(id)value;
 @end
 
 @implementation ServiceModel
@@ -16,19 +18,19 @@
     self = [super init];
     if (self) {
         _serviceID = documentID ?: @"";
-        _title = dict[@"title"];
-        _searchTitle = dict[@"searchTitle"];
-        _desc = dict[@"description"];
+        _title = [dict[@"title"] isKindOfClass:NSString.class] ? dict[@"title"] : @"";
+        _searchTitle = [dict[@"searchTitle"] isKindOfClass:NSString.class] ? dict[@"searchTitle"] : @"";
+        _desc = [dict[@"description"] isKindOfClass:NSString.class] ? dict[@"description"] : @"";
         _price = [dict[@"price"] doubleValue];
         _type = [dict[@"type"] integerValue];
-        _blurHash = dict[@"blurHash"];
-        _category = dict[@"category"];
+        _blurHash = [dict[@"blurHash"] isKindOfClass:NSString.class] ? dict[@"blurHash"] : @"";
+        _category = [dict[@"category"] isKindOfClass:NSString.class] ? dict[@"category"] : @"";
         _petMainKindID = [dict[@"petMainKindID"] integerValue];
-        _availableDate = dict[@"availableDate"];
-        _timestamp = dict[@"timestamp"] ?: [NSDate date];
-        _imageURL = dict[@"imageURL"];
-        _serviceOwnerID = dict[@"serviceOwnerID"];
-        _categoryID = dict[@"categoryID"];
+        _availableDate = [self.class pp_dateFromValue:dict[@"availableDate"]];
+        _timestamp = [self.class pp_dateFromValue:dict[@"timestamp"]] ?: [NSDate date];
+        _imageURL = [dict[@"imageURL"] isKindOfClass:NSString.class] ? dict[@"imageURL"] : nil;
+        _serviceOwnerID = [dict[@"serviceOwnerID"] isKindOfClass:NSString.class] ? dict[@"serviceOwnerID"] : nil;
+        _categoryID = [dict[@"categoryID"] isKindOfClass:NSString.class] ? dict[@"categoryID"] : @"";
     }
     return self;
 }
@@ -59,9 +61,24 @@
     return dict;
 }
 
+- (NSString *)searchTitle {
+    if (_searchTitle.length > 0) {
+        return _searchTitle;
+    }
+    return [ArabicNormalizer normalize:self.title ?: @""];
+}
+
++ (NSDate *)pp_dateFromValue:(id)value {
+    if ([value isKindOfClass:[NSDate class]]) {
+        return value;
+    }
+    if ([value respondsToSelector:@selector(dateValue)]) {
+        return [value dateValue];
+    }
+    return nil;
+}
+
 @end
-
-
 
 
 

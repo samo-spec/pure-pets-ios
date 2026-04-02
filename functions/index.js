@@ -1711,12 +1711,19 @@ async function fetchPaymentAdminCandidateSnapshots() {
 
     return [...candidateSnapshots.values()];
   } catch (error) {
-    logger.warn("Optimized admin notification recipient lookup failed. Falling back to full users scan.", {
+    logger.error("SECURITY: Admin notification recipient lookup failed. Refusing to fall back to full-users scan. No notifications will be sent for this event.", {
       error: error?.message || String(error),
+      stack: error?.stack || "",
     });
-    const fallbackSnapshot = await db.collection(USERS_COLLECTION).get();
-    return fallbackSnapshot.docs || [];
+    return [];
   }
+}
+
+const ADMIN_NOTIFICATION_RECIPIENT_CAP = 200;
+
+function isUserDisabledOrDeactivated(userData) {
+  const safeData = safeObject(userData);
+  return safeData.disabled === true || safeData.deactivated === true || safeData.banned === true;
 }
 
 async function fetchPaymentAdminNotificationRecipients() {
@@ -1727,10 +1734,16 @@ async function fetchPaymentAdminNotificationRecipients() {
   let eligibleRecipientCount = 0;
   let missingPushTokenCount = 0;
   let fallbackPushRecipientCount = 0;
+  let skippedDisabledCount = 0;
   for (const doc of candidateSnapshots) {
     const uid = optionalString(doc.id, 128);
     const userData = safeObject(doc.data());
     if (!uid) {
+      continue;
+    }
+
+    if (isUserDisabledOrDeactivated(userData)) {
+      skippedDisabledCount += 1;
       continue;
     }
 
@@ -1762,12 +1775,40 @@ async function fetchPaymentAdminNotificationRecipients() {
     pushRecipients.push({ uid, token, tokenField: pushTarget.tokenField });
   }
 
+  if (eligibleRecipientCount > ADMIN_NOTIFICATION_RECIPIENT_CAP) {
+    logger.error("SECURITY: Admin notification recipient count exceeds safety cap. Blocking notification to prevent potential broadcast leak.", {
+      eligibleRecipientCount,
+      recipientCap: ADMIN_NOTIFICATION_RECIPIENT_CAP,
+      candidateCount: candidateSnapshots.length,
+      skippedDisabledCount,
+    });
+    return {
+      inboxRecipients: [],
+      pushRecipients: [],
+      eligibleRecipientCount,
+      missingPushTokenCount,
+      fallbackPushRecipientCount,
+      skippedDisabledCount,
+      blocked: true,
+      blockedReason: "recipient_cap_exceeded",
+    };
+  }
+
+  if (skippedDisabledCount > 0) {
+    logger.info("Admin notification recipient resolution skipped disabled/deactivated users", {
+      skippedDisabledCount,
+      eligibleRecipientCount,
+    });
+  }
+
   return {
     inboxRecipients,
     pushRecipients,
     eligibleRecipientCount,
     missingPushTokenCount,
     fallbackPushRecipientCount,
+    skippedDisabledCount,
+    blocked: false,
   };
 }
 
@@ -1876,6 +1917,9 @@ async function sendAdminPaymentNotification(orderId, orderData, definition) {
     eligibleRecipientCount,
     missingPushTokenCount,
     fallbackPushRecipientCount,
+    skippedDisabledCount,
+    blocked,
+    blockedReason,
   } = await fetchPaymentAdminNotificationRecipients();
   logger.info("Admin payment notification recipients resolved", {
     orderId,
@@ -1886,7 +1930,19 @@ async function sendAdminPaymentNotification(orderId, orderData, definition) {
     pushRecipientCount: pushRecipients.length,
     missingPushTokenCount,
     fallbackPushRecipientCount,
+    skippedDisabledCount: skippedDisabledCount || 0,
+    blocked: !!blocked,
   });
+
+  if (blocked) {
+    return {
+      sent: false,
+      reason: blockedReason || "blocked_by_safety_check",
+      eligibleRecipientCount,
+      missingPushTokenCount,
+      fallbackPushRecipientCount,
+    };
+  }
 
   if (inboxRecipients.length === 0) {
     return {
@@ -2026,7 +2082,29 @@ async function sendOrderNotification(orderId, orderData, payload = {}) {
 
   const userRef = db.collection(USERS_COLLECTION).doc(userId);
   const userSnapshot = await userRef.get();
+  if (!userSnapshot.exists) {
+    logger.warn("Order notification target user does not exist", { orderId, userId });
+    return { sent: false, reason: "user_not_found" };
+  }
   const userData = safeObject(userSnapshot.data());
+
+  // Cross-check: the Firestore user document UID must match the order's userId.
+  // Prevents notification delivery if the userId field was corrupted or points to a
+  // different document than expected.
+  if (optionalString(userSnapshot.id, 128) !== userId) {
+    logger.error("SECURITY: Order notification blocked — user document ID does not match order userId.", {
+      orderId,
+      orderUserId: userId,
+      userDocId: optionalString(userSnapshot.id, 128),
+    });
+    return { sent: false, reason: "user_id_mismatch" };
+  }
+
+  if (isUserDisabledOrDeactivated(userData)) {
+    logger.warn("Order notification blocked — target user is disabled/deactivated", { orderId, userId });
+    return { sent: false, reason: "user_disabled" };
+  }
+
   const token = optionalString(userData[USER_PUSH_TOKEN_FIELD], 4096);
   if (!token) {
     return { sent: false, reason: "missing_token" };

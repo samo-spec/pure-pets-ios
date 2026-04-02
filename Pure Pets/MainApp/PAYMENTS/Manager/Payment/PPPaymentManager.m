@@ -504,17 +504,36 @@ static void PPQIBTryLoadFrameworkBundle(void)
         PPPaymentSetValueForCandidateKeys(params, @[@"parentViewController", @"viewController"], presenter);
         PPPaymentSetValueForCandidateKeys(params, @[@"delegate"], self);
 
-        NSString *mode = PPPaymentSessionValue(resolvedSession, @[
-            @"mode", @"paymentMode", @"environment", @"env"
-        ]);
-        if (mode.length == 0) {
-            mode = @"live";
-        }
+    NSString *mode = PPPaymentSessionValue(resolvedSession, @[
+        @"mode", @"paymentMode", @"environment", @"env"
+    ]);
+    if (mode.length == 0) {
+        mode = @"live";
+    }
 
-        NSString *sessionCurrency = PPPaymentResolvedCurrencyCode();
-        if (sessionCurrency.length != 3) {
-            sessionCurrency = @"QAR";
-        }
+    NSString *sessionCurrency = PPPaymentSessionValue(resolvedSession, @[
+        @"currency", @"currencyCode"
+    ]).uppercaseString;
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = PPPaymentTrimmedString(requestedCurrency).uppercaseString;
+    }
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = PPPaymentTrimmedString(order.currency).uppercaseString;
+    }
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = PPPaymentResolvedCurrencyCode();
+    }
+    if (sessionCurrency.length != 3) {
+        sessionCurrency = @"QAR";
+    }
+    order.currency = sessionCurrency;
+
+    PPORDERLog(@"Launching legacy QIB bootstrap | orderId=%@ | mode=%@ | currency=%@ | requestedCurrency=%@ | qibSessionId=%@",
+               order.orderId ?: @"",
+               mode ?: @"",
+               sessionCurrency ?: @"",
+               requestedCurrency ?: @"",
+               self.activeQIBSessionId ?: @"");
 
         NSDictionary *shipping = [order.shippingAddressSnapshot isKindOfClass:NSDictionary.class]
             ? order.shippingAddressSnapshot

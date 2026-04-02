@@ -297,7 +297,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.collapsedIconBadgeView = [[UIView alloc] init];
     self.collapsedIconBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedIconBadgeView.layer.cornerRadius = 12.0;
+    self.collapsedIconBadgeView.layer.cornerRadius = 14.0;
     self.collapsedIconBadgeView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.collapsedIconBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -311,16 +311,12 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     NSMutableArray<UIImageView *> *collapsedPreviewImageViews = [NSMutableArray array];
     for (NSInteger index = 0; index < 3; index++) {
-        UIImageView *previewImageView = [[UIImageView alloc] init];
-        previewImageView.translatesAutoresizingMaskIntoConstraints = NO;
+        UIImageView *previewImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
+        previewImageView.translatesAutoresizingMaskIntoConstraints = YES;
         previewImageView.contentMode = UIViewContentModeScaleAspectFill;
+        previewImageView.clipsToBounds = YES;
         previewImageView.layer.masksToBounds = YES;
-        previewImageView.layer.borderWidth = 0.0;
-        previewImageView.layer.borderColor = UIColor.clearColor.CGColor;
-        previewImageView.layer.shadowOpacity = 0.0;
-        previewImageView.layer.shadowRadius = 0.0;
-        previewImageView.layer.shadowOffset = CGSizeZero;
-        previewImageView.layer.shadowColor = UIColor.clearColor.CGColor;
+        previewImageView.backgroundColor = [UIColor colorWithWhite:0.92 alpha:1.0];
         if (@available(iOS 13.0, *)) {
             previewImageView.layer.cornerCurve = kCACornerCurveContinuous;
         }
@@ -508,12 +504,12 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
         [self.collapsedContentView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-12.0],
         [self.collapsedIconBadgeView.leadingAnchor constraintEqualToAnchor:self.collapsedContentView.leadingAnchor],
         [self.collapsedIconBadgeView.centerYAnchor constraintEqualToAnchor:self.collapsedContentView.centerYAnchor],
-        [self.collapsedIconBadgeView.widthAnchor constraintEqualToConstant:40.0],
-        [self.collapsedIconBadgeView.heightAnchor constraintEqualToConstant:40.0],
+        [self.collapsedIconBadgeView.widthAnchor constraintEqualToConstant:52.0],
+        [self.collapsedIconBadgeView.heightAnchor constraintEqualToConstant:52.0],
         [self.collapsedIconView.centerXAnchor constraintEqualToAnchor:self.collapsedIconBadgeView.centerXAnchor],
         [self.collapsedIconView.centerYAnchor constraintEqualToAnchor:self.collapsedIconBadgeView.centerYAnchor],
-        [self.collapsedIconView.widthAnchor constraintEqualToConstant:18.0],
-        [self.collapsedIconView.heightAnchor constraintEqualToConstant:18.0],
+        [self.collapsedIconView.widthAnchor constraintEqualToConstant:22.0],
+        [self.collapsedIconView.heightAnchor constraintEqualToConstant:22.0],
         [self.collapsedStatusPillView.trailingAnchor constraintEqualToAnchor:self.collapsedChevronContainerView.leadingAnchor constant:-10.0],
         [self.collapsedStatusPillView.centerYAnchor constraintEqualToAnchor:self.collapsedContentView.centerYAnchor],
         [self.collapsedStatusPillView.heightAnchor constraintEqualToConstant:28.0],
@@ -773,22 +769,20 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     NSArray<NSValue *> *frames = @[];
     if (visibleCount == 1) {
-        CGFloat size = MIN(width, height) - 4.0;
-        CGRect frame = CGRectMake(floor((width - size) * 0.5), floor((height - size) * 0.5), size, size);
-        frames = @[[NSValue valueWithCGRect:frame]];
+        frames = @[[NSValue valueWithCGRect:CGRectMake(0.0, 0.0, width, height)]];
     } else if (visibleCount == 2) {
-        CGFloat size = MIN(width, height) - 14.0;
+        CGFloat size = MIN(width, height) - 8.0;
         CGFloat y = floor((height - size) * 0.5);
         frames = @[
-            [NSValue valueWithCGRect:CGRectMake(2.0, y - 2.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(width - size - 2.0, y + 2.0, size, size)]
+            [NSValue valueWithCGRect:CGRectMake(1.0, y - 2.0, size, size)],
+            [NSValue valueWithCGRect:CGRectMake(width - size - 1.0, y + 2.0, size, size)]
         ];
     } else {
-        CGFloat size = MIN(width, height) - 18.0;
+        CGFloat size = MIN(width, height) - 14.0;
         frames = @[
-            [NSValue valueWithCGRect:CGRectMake(1.0, height - size - 2.0, size, size)],
+            [NSValue valueWithCGRect:CGRectMake(1.0, height - size - 1.0, size, size)],
             [NSValue valueWithCGRect:CGRectMake(floor((width - size) * 0.5), 1.0, size, size)],
-            [NSValue valueWithCGRect:CGRectMake(width - size - 1.0, height - size - 2.0, size, size)]
+            [NSValue valueWithCGRect:CGRectMake(width - size - 1.0, height - size - 1.0, size, size)]
         ];
     }
 
@@ -876,7 +870,13 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     _showsExpandedState = expanded;
 
+    UIImpactFeedbackGenerator *haptic =
+        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [haptic prepare];
+    [haptic impactOccurred];
+
     NSArray<UIView *> *expandedViews = [self pp_expandedContentViews];
+
     [self.contentView layoutIfNeeded];
 
     for (UIView *view in expandedViews) {
@@ -887,56 +887,104 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     if (expanded) {
         for (UIView *view in expandedViews) {
             view.alpha = 0.0;
-            view.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+            view.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
         }
         self.collapsedContentView.alpha = 1.0;
         self.collapsedContentView.transform = CGAffineTransformIdentity;
-        self.surfaceView.transform = CGAffineTransformMakeScale(0.985, 0.985);
+        self.surfaceView.transform = CGAffineTransformMakeScale(0.98, 0.98);
     } else {
         for (UIView *view in expandedViews) {
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
         }
         self.collapsedContentView.alpha = 0.0;
-        self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, -10.0);
-        self.surfaceView.transform = CGAffineTransformIdentity;
+        self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, -12.0);
     }
 
     [self pp_applyExpandedConstraintState:expanded];
 
-    [UIView animateWithDuration:0.42
+    // ── Phase 1: Main layout spring — drives constraint change + chevron ──
+    [UIView animateWithDuration:0.52
                           delay:0.0
-         usingSpringWithDamping:(expanded ? 0.82 : 0.96)
-          initialSpringVelocity:(expanded ? 0.78 : 0.18)
+         usingSpringWithDamping:(expanded ? 0.78 : 0.88)
+          initialSpringVelocity:(expanded ? 0.6 : 0.12)
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.surfaceView.transform = CGAffineTransformIdentity;
-        self.collapsedChevronContainerView.transform = CGAffineTransformMakeScale(1.08, 1.08);
-        [self pp_updateChevronAppearanceForExpanded:expanded];
-
-        for (UIView *view in expandedViews) {
-            view.alpha = expanded ? 1.0 : 0.0;
-            view.transform = expanded
-                ? CGAffineTransformIdentity
-                : CGAffineTransformMakeTranslation(0.0, 12.0);
-        }
-
-        self.collapsedContentView.alpha = expanded ? 0.0 : 1.0;
-        self.collapsedContentView.transform = expanded
-            ? CGAffineTransformMakeTranslation(0.0, -12.0)
-            : CGAffineTransformIdentity;
         [self.contentView layoutIfNeeded];
-    } completion:^(__unused BOOL finished) {
-        [self pp_applyExpandedVisibilityState:expanded];
         self.surfaceView.transform = CGAffineTransformIdentity;
+        [self pp_updateChevronAppearanceForExpanded:expanded];
+        self.collapsedChevronContainerView.transform = CGAffineTransformMakeScale(1.12, 1.12);
+    } completion:^(__unused BOOL finished) {
+        [self pp_updateDecorativeLayers];
 
-        [UIView animateWithDuration:0.18
+        // Chevron overshoot settle-back spring
+        [UIView animateWithDuration:0.32
                               delay:0.0
+             usingSpringWithDamping:0.50
+              initialSpringVelocity:0.2
                             options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
         } completion:nil];
     }];
+
+    // ── Phase 2: Staggered content crossfade ──
+    if (expanded) {
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn
+                         animations:^{
+            self.collapsedContentView.alpha = 0.0;
+            self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, -10.0);
+        } completion:nil];
+
+        NSTimeInterval baseDelay = 0.05;
+        NSTimeInterval step = 0.035;
+        for (NSInteger i = 0; i < (NSInteger)expandedViews.count; i++) {
+            UIView *view = expandedViews[i];
+            [UIView animateWithDuration:0.40
+                                  delay:baseDelay + step * i
+                 usingSpringWithDamping:0.80
+                  initialSpringVelocity:0.5
+                                options:UIViewAnimationOptionBeginFromCurrentState
+                             animations:^{
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }
+    } else {
+        NSInteger count = (NSInteger)expandedViews.count;
+        NSTimeInterval step = 0.025;
+        for (NSInteger i = 0; i < count; i++) {
+            UIView *view = expandedViews[count - 1 - i];
+            [UIView animateWithDuration:0.20
+                                  delay:step * i
+                                options:UIViewAnimationOptionCurveEaseIn
+                             animations:^{
+                view.alpha = 0.0;
+                view.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+            } completion:nil];
+        }
+
+        [UIView animateWithDuration:0.34
+                              delay:0.10
+             usingSpringWithDamping:0.84
+              initialSpringVelocity:0.4
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            self.collapsedContentView.alpha = 1.0;
+            self.collapsedContentView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
+
+    // ── Phase 3: Final state cleanup after all animations settle ──
+    NSTimeInterval settleTime = expanded ? 0.72 : 0.56;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(settleTime * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        if (self.showsExpandedState == expanded) {
+            [self pp_applyExpandedVisibilityState:expanded];
+        }
+    });
 }
 
 - (void)pp_setShowsExpandedState:(BOOL)expanded
@@ -1078,6 +1126,8 @@ static NSString * const PPNearbySelectedAreaNameKey = @"pp.home.nearby.areaName"
 static NSString * const PPHomeTopCarouselBannerGroupID = @"HOME_MAIN_TOP_CAROUSEL";
 static NSString * const PPHomeCompletedLastOrderSeenOrderIDKeyPrefix = @"pp.home.completedLastOrder.seen.orderID";
 static NSString * const PPHomeCompletedLastOrderSeenSessionIDKeyPrefix = @"pp.home.completedLastOrder.seen.sessionID";
+static NSString * const PPHomeTerminalOrderSeenOrderIDKeyPrefix = @"pp.home.terminalOrder.seen.orderID";
+static NSString * const PPHomeTerminalOrderSeenSessionIDKeyPrefix = @"pp.home.terminalOrder.seen.sessionID";
 static NSTimeInterval const PPNearbyMinimumRefreshInterval = 20.0;
 static NSTimeInterval const PPHomeOtherOrdersRecentLookbackInterval = 24.0 * 60.0 * 60.0;
 static NSTimeInterval const PPHomeCompletedLastOrderVisibilityInterval = 48.0 * 60.0 * 60.0;
@@ -2449,17 +2499,81 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     return NO;
 }
 
+- (BOOL)pp_isTerminalHomeOrderStatusKey:(NSString *)statusKey
+{
+    return [self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"success", @"paid"]]
+        || [self pp_isFailureHomeOrderStatusKey:statusKey];
+}
+
+- (NSString *)pp_terminalHomeOrderSeenOrderIDDefaultsKey
+{
+    NSString *userID = [self pp_currentOrdersUserID];
+    if (userID.length == 0) {
+        return PPHomeTerminalOrderSeenOrderIDKeyPrefix;
+    }
+    return [NSString stringWithFormat:@"%@.%@", PPHomeTerminalOrderSeenOrderIDKeyPrefix, userID];
+}
+
+- (NSString *)pp_terminalHomeOrderSeenSessionDefaultsKey
+{
+    NSString *userID = [self pp_currentOrdersUserID];
+    if (userID.length == 0) {
+        return PPHomeTerminalOrderSeenSessionIDKeyPrefix;
+    }
+    return [NSString stringWithFormat:@"%@.%@", PPHomeTerminalOrderSeenSessionIDKeyPrefix, userID];
+}
+
+- (BOOL)pp_shouldHideTerminalHomeOrder:(PPOrder *)order
+{
+    if (![order isKindOfClass:PPOrder.class]) {
+        return NO;
+    }
+
+    NSString *statusKey = [self pp_homeOrderStatusKey:order];
+    if (![self pp_isTerminalHomeOrderStatusKey:statusKey]) {
+        return NO;
+    }
+
+    NSString *orderID = PPSafeString(order.orderId);
+    if (orderID.length == 0) {
+        return NO;
+    }
+
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSString *storedOrderID = [defaults stringForKey:[self pp_terminalHomeOrderSeenOrderIDDefaultsKey]] ?: @"";
+    NSString *storedSessionID = [defaults stringForKey:[self pp_terminalHomeOrderSeenSessionDefaultsKey]] ?: @"";
+    NSString *currentSessionID = PPHomeCurrentAppSessionIdentifier();
+
+    BOOL wasShownInPreviousLaunch =
+        [storedOrderID isEqualToString:orderID] &&
+        storedSessionID.length > 0 &&
+        ![storedSessionID isEqualToString:currentSessionID];
+    if (wasShownInPreviousLaunch) {
+        return YES;
+    }
+
+    [defaults setObject:orderID forKey:[self pp_terminalHomeOrderSeenOrderIDDefaultsKey]];
+    [defaults setObject:currentSessionID forKey:[self pp_terminalHomeOrderSeenSessionDefaultsKey]];
+    return NO;
+}
+
 - (nullable PPOrder *)pp_featuredHomeOrder
 {
     id activeOrder = self.currentOrders.firstObject;
     if ([activeOrder isKindOfClass:PPOrder.class]) {
-        return (PPOrder *)activeOrder;
-    }
+        PPOrder *order = (PPOrder *)activeOrder;
 
-    id latestOrder = self.recentOrders.firstObject;
-    if ([latestOrder isKindOfClass:PPOrder.class] &&
-        ![self pp_shouldHideCompletedLastHomeOrder:(PPOrder *)latestOrder]) {
-        return (PPOrder *)latestOrder;
+        if ([self pp_shouldHideTerminalHomeOrder:order]) {
+            return nil;
+        }
+
+        NSDate *createdDate = order.createdAt ?: order.updatedAt;
+        if ([createdDate isKindOfClass:NSDate.class]) {
+            NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:createdDate];
+            if (elapsed <= PPHomeCompletedLastOrderVisibilityInterval) {
+                return order;
+            }
+        }
     }
 
     return nil;
@@ -4540,26 +4654,36 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self invalidateHeaderForSection:PPHomeSectionCurrentOrders];
 
     UICollectionViewCompositionalLayout *newLayout = [self.layoutManager buildLayout];
-    [self.collectionView setCollectionViewLayout:newLayout animated:NO];
+
+    if (!animated) {
+        [self.collectionView setCollectionViewLayout:newLayout animated:NO];
+        [self.collectionView layoutIfNeeded];
+        if (currentOrderIndexPath) {
+            UICollectionViewCell *visibleCell =
+                [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
+            if ([visibleCell isKindOfClass:PPHomeOrderStatusCell.class]) {
+                [(PPHomeOrderStatusCell *)visibleCell refreshDecorativeLayersForCurrentBounds];
+            }
+        }
+        return;
+    }
 
     __weak typeof(self) weakSelf = self;
-    NSTimeInterval refreshDelay = animated ? 0.46 : 0.0;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(refreshDelay * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
+    [self.collectionView setCollectionViewLayout:newLayout
+                                        animated:YES
+                                      completion:^(__unused BOOL finished) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || !self.collectionView) return;
 
         [self.collectionView layoutIfNeeded];
-        if (!currentOrderIndexPath) {
-            return;
-        }
+        if (!currentOrderIndexPath) return;
 
         UICollectionViewCell *visibleCell =
             [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
         if ([visibleCell isKindOfClass:PPHomeOrderStatusCell.class]) {
             [(PPHomeOrderStatusCell *)visibleCell refreshDecorativeLayersForCurrentBounds];
         }
-    });
+    }];
 }
 
 

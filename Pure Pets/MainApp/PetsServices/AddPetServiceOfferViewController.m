@@ -163,7 +163,9 @@
         self.titleRow.value = self.serviceToEdit.title;
         self.descRow.value = self.serviceToEdit.desc;
         self.priceRow.value = @(self.serviceToEdit.price);
-        self.categoryRow.value = [[CategoryModel alloc] initWithID:self.serviceToEdit.categoryID name:self.serviceToEdit.categoryID];
+        NSString *categoryName = self.serviceToEdit.category.length > 0 ? self.serviceToEdit.category : self.serviceToEdit.categoryID;
+        self.selectedCategory = [[CategoryModel alloc] initWithID:self.serviceToEdit.categoryID ?: @"" name:categoryName ?: @""];
+        self.categoryRow.value = self.selectedCategory;
         self.dateRow.value = self.serviceToEdit.availableDate;
 
         self.previewImageView.image = [UIImage imageNamed:@"placeholder"];
@@ -218,6 +220,7 @@
     model.title = values[@"title"];
     model.desc = values[@"description"];
     model.price = [values[@"price"] doubleValue];
+    model.category = self.selectedCategory.name;
     model.categoryID = self.selectedCategory.categoryID;
     model.availableDate = values[@"date"];
     model.timestamp = [NSDate date];
