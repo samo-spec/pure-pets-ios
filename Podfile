@@ -36,6 +36,7 @@ post_install do |installer|
       
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
       config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
 
       # Enable building for simulator
       config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
@@ -50,6 +51,16 @@ post_install do |installer|
       if config.name.include?("SIMULATOR")
         config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
       end
+    end
+  end
+
+  # Fix AFNetworking private header error: remove #import <netinet6/in6.h> from all implementation files
+  af_dir = File.join(installer.sandbox.root.to_s, 'AFNetworking', 'AFNetworking')
+  if Dir.exist?(af_dir)
+    Dir.glob(File.join(af_dir, '*.m')).each do |file_path|
+      content = File.read(file_path)
+      patched = content.gsub(%r{^#import\s+<netinet6/in6\.h>\s*\n}, '')
+      File.write(file_path, patched) if patched != content
     end
   end
 

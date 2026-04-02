@@ -118,6 +118,180 @@ static NSString *PPPaymentSafeString(id value)
     return @"";
 }
 
+static NSString *PPPaymentNormalizedStatusString(id value)
+{
+    NSString *normalized = [[PPPaymentSafeString(value) lowercaseString] copy];
+    if (normalized.length == 0) return @"";
+
+    normalized = [normalized stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+    normalized = [normalized stringByReplacingOccurrencesOfString:@"-" withString:@"_"];
+    while ([normalized containsString:@"__"]) {
+        normalized = [normalized stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
+    }
+    return normalized;
+}
+
+static BOOL PPPaymentStatusMatchesAnyKeyword(NSString *status, NSArray<NSString *> *keywords)
+{
+    if (status.length == 0 || keywords.count == 0) return NO;
+
+    NSString *wrappedStatus = [NSString stringWithFormat:@"_%@_", status];
+    for (NSString *keyword in keywords ?: @[]) {
+        NSString *normalizedKeyword = PPPaymentNormalizedStatusString(keyword);
+        if (normalizedKeyword.length == 0) continue;
+        if ([status isEqualToString:normalizedKeyword]) return YES;
+        if ([wrappedStatus containsString:[NSString stringWithFormat:@"_%@_", normalizedKeyword]]) return YES;
+        if ([status containsString:normalizedKeyword]) return YES;
+    }
+    return NO;
+}
+
+static NSString *PPPaymentStatusFromStringCandidate(NSString *value)
+{
+    NSString *trimmed = PPPaymentTrimmedString(value);
+    if (trimmed.length == 0) return @"";
+
+    NSString *normalized = PPPaymentNormalizedStatusString(trimmed);
+    if (normalized.length > 0 &&
+        (PPPaymentStatusMatchesAnyKeyword(normalized, @[@"success", @"succeeded", @"paid", @"approved", @"authorized", @"captured", @"completed"]) ||
+         PPPaymentStatusMatchesAnyKeyword(normalized, @[@"failed", @"failure", @"declined", @"rejected", @"cancelled", @"canceled", @"cancel", @"error", @"expired", @"voided"]) ||
+         PPPaymentStatusMatchesAnyKeyword(normalized, @[@"pending", @"processing", @"initiated", @"created", @"in_progress", @"verifying", @"verification_pending"]))) {
+        return normalized;
+    }
+
+    NSString *lower = trimmed.lowercaseString;
+    NSArray<NSString *> *patterns = @[
+        @"status=success",
+        @"status=succeeded",
+        @"status=paid",
+        @"status=approved",
+        @"status=authorized",
+        @"status=captured",
+        @"status=completed",
+        @"status=failed",
+        @"status=failure",
+        @"status=declined",
+        @"status=rejected",
+        @"status=cancelled",
+        @"status=canceled",
+        @"status=cancel",
+        @"status=error",
+        @"status=expired",
+        @"status=voided",
+        @"status=pending",
+        @"status=processing",
+        @"status=initiated",
+        @"status=created",
+        @"status=in_progress",
+        @"status=verifying",
+        @"status=verification_pending"
+    ];
+    for (NSString *pattern in patterns) {
+        NSRange range = [lower rangeOfString:pattern];
+        if (range.location == NSNotFound) continue;
+
+        NSArray<NSString *> *parts = [pattern componentsSeparatedByString:@"="];
+        return parts.count == 2 ? PPPaymentNormalizedStatusString(parts.lastObject) : @"";
+    }
+
+    return @"";
+}
+
+static NSString *PPPaymentExtractStringValueForKeys(id object, NSArray<NSString *> *keys, NSInteger depth)
+{
+    if (!object || depth > 4) return @"";
+
+    if ([object isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dictionary = (NSDictionary *)object;
+        for (NSString *key in keys ?: @[]) {
+            NSString *value = PPPaymentSafeString(dictionary[key]);
+            if (value.length > 0) return value;
+        }
+
+        NSArray<NSString *> *nestedKeys = @[@"data", @"response", @"payload", @"result", @"paymentResponse", @"body"];
+        for (NSString *nestedKey in nestedKeys) {
+            NSString *nestedValue = PPPaymentExtractStringValueForKeys(dictionary[nestedKey], keys, depth + 1);
+            if (nestedValue.length > 0) return nestedValue;
+        }
+
+        for (id value in dictionary.allValues) {
+            NSString *nestedValue = PPPaymentExtractStringValueForKeys(value, keys, depth + 1);
+            if (nestedValue.length > 0) return nestedValue;
+        }
+        return @"";
+    }
+
+    if ([object isKindOfClass:NSArray.class]) {
+        for (id value in (NSArray *)object) {
+            NSString *nestedValue = PPPaymentExtractStringValueForKeys(value, keys, depth + 1);
+            if (nestedValue.length > 0) return nestedValue;
+        }
+        return @"";
+    }
+
+    return PPPaymentSafeString(object);
+}
+
+static NSString *PPPaymentExtractStatusFromResponseObject(id object, NSInteger depth)
+{
+    if (!object || depth > 4) return @"";
+
+    if ([object isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dictionary = (NSDictionary *)object;
+        NSArray<NSString *> *keys = @[@"status", @"paymentStatus", @"transactionStatus", @"result", @"responseStatus"];
+        for (NSString *key in keys) {
+            NSString *status = PPPaymentStatusFromStringCandidate(PPPaymentSafeString(dictionary[key]));
+            if (status.length > 0) return status;
+        }
+
+        NSArray<NSString *> *nestedKeys = @[@"data", @"response", @"payload", @"result", @"paymentResponse", @"body"];
+        for (NSString *nestedKey in nestedKeys) {
+            NSString *status = PPPaymentExtractStatusFromResponseObject(dictionary[nestedKey], depth + 1);
+            if (status.length > 0) return status;
+        }
+
+        for (id value in dictionary.allValues) {
+            NSString *status = PPPaymentExtractStatusFromResponseObject(value, depth + 1);
+            if (status.length > 0) return status;
+        }
+        return @"";
+    }
+
+    if ([object isKindOfClass:NSArray.class]) {
+        for (id value in (NSArray *)object) {
+            NSString *status = PPPaymentExtractStatusFromResponseObject(value, depth + 1);
+            if (status.length > 0) return status;
+        }
+        return @"";
+    }
+
+    return PPPaymentStatusFromStringCandidate(PPPaymentSafeString(object));
+}
+
+static NSString *PPPaymentExtractTransactionIdFromResponse(NSDictionary *response)
+{
+    return PPPaymentExtractStringValueForKeys(response,
+                                              @[@"transactionId", @"transactionID", @"transaction_id", @"paymentId", @"paymentID", @"payment_id"],
+                                              0);
+}
+
+static BOOL PPPaymentResponseHasTerminalResult(NSDictionary *response)
+{
+    NSString *status = PPPaymentExtractStatusFromResponseObject(response, 0);
+    if (PPPaymentStatusMatchesAnyKeyword(status, @[@"success", @"succeeded", @"paid", @"approved", @"authorized", @"captured", @"completed"])) {
+        return YES;
+    }
+    if (PPPaymentStatusMatchesAnyKeyword(status, @[@"failed", @"failure", @"declined", @"rejected", @"cancelled", @"canceled", @"cancel", @"error", @"expired", @"voided"])) {
+        return YES;
+    }
+    if (PPPaymentStatusMatchesAnyKeyword(status, @[@"pending", @"processing", @"initiated", @"created", @"in_progress", @"verifying", @"verification_pending"])) {
+        return NO;
+    }
+
+    NSString *transactionId = PPPaymentExtractTransactionIdFromResponse(response);
+    return transactionId.length > 0;
+}
+
 static NSString *PPPaymentResolvedCurrencyCode(void)
 {
     NSString *currencyCode = [[CountryModel safeCurrentCurrencyCode] uppercaseString];
@@ -383,8 +557,16 @@ static void PPQIBTryLoadFrameworkBundle(void)
 #if !TARGET_OS_SIMULATOR
 - (void)qpResponse:(NSDictionary *)response
 {
+    NSDictionary *safeResponse = [response isKindOfClass:NSDictionary.class] ? response : @{};
+    if (!PPPaymentResponseHasTerminalResult(safeResponse)) {
+        PPORDERLog(@"Ignoring non-terminal QIB callback | status=%@ | keys=%@",
+                   PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"",
+                   safeResponse.allKeys ?: @[]);
+        return;
+    }
+
     if (self.completion) {
-        self.completion(response, nil);
+        self.completion(safeResponse, nil);
     }
     [self reset];
 }

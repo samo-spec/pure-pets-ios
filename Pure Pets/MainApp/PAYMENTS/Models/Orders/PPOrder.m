@@ -107,16 +107,15 @@ static BOOL PPOrderLegacyHasCapturedPayment(NSString *paymentMethod, NSString *s
 
     return (transactionID.length > 0 ||
             [paidAt isKindOfClass:NSDate.class] ||
+            [paymentCollectedAt isKindOfClass:NSDate.class] ||
             PPOrderStatusContainsToken(status, @"paid") ||
             PPOrderStatusContainsToken(status, @"success") ||
+            PPOrderStatusContainsToken(status, @"succeeded") ||
             PPOrderStatusContainsToken(status, @"approved") ||
             PPOrderStatusContainsToken(status, @"verified") ||
-            PPOrderStatusContainsToken(status, @"processing") ||
-            PPOrderStatusContainsToken(status, @"preparing") ||
-            PPOrderStatusContainsToken(status, @"packed") ||
-            PPOrderStatusContainsToken(status, @"shipped") ||
-            PPOrderStatusContainsToken(status, @"delivered") ||
-            PPOrderStatusContainsToken(status, @"fulfilled"));
+            PPOrderStatusContainsToken(status, @"authorized") ||
+            PPOrderStatusContainsToken(status, @"captured") ||
+            PPOrderStatusContainsToken(status, @"completed"));
 }
 
 static NSString *PPOrderNormalizedPaymentStatusString(id value, id paymentMethod, id status, id transactionId, id paidAt, id paymentCollectedAt)

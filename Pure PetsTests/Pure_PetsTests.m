@@ -135,6 +135,45 @@
     XCTAssertEqualObjects(data[@"status"], @"failed");
 }
 
+- (void)testQIBProcessingStateDoesNotInferCapturedPaymentWithoutFinalEvidence {
+    PPOrder *order = [PPOrder new];
+    order.orderId = @"ORD_QIB_PENDING";
+    order.userId = @"user_123";
+    order.paymentMethodId = @"qib";
+    order.paymentProvider = @"QIB";
+    order.rawStatus = @"processing";
+    order.status = [PPOrder statusFromRawValue:order.rawStatus];
+    order.paymentStatus = [PPOrder normalizedPaymentStatusFromRawValue:nil
+                                                         paymentMethod:order.paymentMethodId
+                                                                status:order.rawStatus
+                                                           transaction:nil
+                                                                paidAt:nil
+                                                     paymentCollectedAt:nil];
+
+    XCTAssertEqualObjects(order.paymentStatus, @"pending");
+    XCTAssertFalse([order hasCapturedPayment]);
+}
+
+- (void)testQIBPaidEvidenceStillMarksCapturedPayment {
+    PPOrder *order = [PPOrder new];
+    order.orderId = @"ORD_QIB_PAID";
+    order.userId = @"user_123";
+    order.paymentMethodId = @"qib";
+    order.paymentProvider = @"QIB";
+    order.rawStatus = @"processing";
+    order.status = [PPOrder statusFromRawValue:order.rawStatus];
+    order.transactionId = @"txn_123";
+    order.paymentStatus = [PPOrder normalizedPaymentStatusFromRawValue:nil
+                                                         paymentMethod:order.paymentMethodId
+                                                                status:order.rawStatus
+                                                           transaction:order.transactionId
+                                                                paidAt:nil
+                                                     paymentCollectedAt:nil];
+
+    XCTAssertEqualObjects(order.paymentStatus, @"paid");
+    XCTAssertTrue([order hasCapturedPayment]);
+}
+
 - (void)testEligibilityAllowsCancelBeforeShipment {
     PPOrderManager *manager = [PPOrderManager shared];
     NSDate *now = [NSDate dateWithTimeIntervalSince1970:1710000000];

@@ -672,7 +672,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
                                            successMessage:successMessage
                                         presentationState:PPOrderDetailsEntryPresentationStateCheckoutSuccess];
                     } else if (result == PPCheckoutResultPendingVerification) {
-                        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
+                        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
                         [strongSelf pp_openOrderDetailsForOrder:order
                                            successMessage:(error.localizedDescription.length > 0 ? error.localizedDescription : kLang(@"checkout_payment_verification_pending"))
                                         presentationState:PPOrderDetailsEntryPresentationStateVerificationPending];

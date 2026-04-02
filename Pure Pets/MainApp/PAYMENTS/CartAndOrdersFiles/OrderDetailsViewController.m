@@ -19,6 +19,7 @@
 #import "PPSelectOptionViewController.h"
 #import "CountryModel.h"
 #import "CartManager.h"
+#import "PPHomeViewController.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import <math.h>
 @import FirebaseFirestore;
@@ -1539,7 +1540,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.orderManager = [PPOrderManager shared];
     self.isResolvingAddress = NO;
     self.didShowEntryPresentation = NO;
-    self.prefersBackToMainScreen = (self.entryPresentationState != PPOrderDetailsEntryPresentationStateNone);
+    self.prefersBackToMainScreen = NO;
     self.isOrderDetailsScreenVisible = NO;
     self.lastObservedOrderStatusKey = nil;
     
@@ -1548,19 +1549,68 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     [self.dateFormatter setLocalizedDateFormatFromTemplate:@"EEE d MMM yyyy h:mm a"];
 }
 
+- (BOOL)pp_isPushedFromPaymentSelectionViewController
+{
+    NSArray<UIViewController *> *viewControllers = self.navigationController.viewControllers ?: @[];
+    NSUInteger currentIndex = [viewControllers indexOfObject:self];
+    if (currentIndex == NSNotFound || currentIndex == 0) {
+        return NO;
+    }
+
+    Class paymentSelectionClass = NSClassFromString(@"PPSelectPaymentVC");
+    UIViewController *previousViewController = viewControllers[currentIndex - 1];
+    return paymentSelectionClass != Nil && [previousViewController isKindOfClass:paymentSelectionClass];
+}
+
+- (void)pp_showHomeViewControllerAnimated:(BOOL)animated
+{
+    UITabBarController *tabBarController = self.tabBarController;
+    if (tabBarController.viewControllers.count > 0) {
+        UIViewController *homeController = tabBarController.viewControllers.firstObject;
+        if ([homeController isKindOfClass:UINavigationController.class]) {
+            UINavigationController *homeNavigationController = (UINavigationController *)homeController;
+            BOOL isCurrentHomeNavigation = (homeNavigationController == self.navigationController);
+            [homeNavigationController popToRootViewControllerAnimated:isCurrentHomeNavigation];
+            tabBarController.selectedIndex = 0;
+            return;
+        }
+
+        if ([homeController isKindOfClass:PPHomeViewController.class]) {
+            tabBarController.selectedIndex = 0;
+            return;
+        }
+    }
+
+    for (UIViewController *viewController in self.navigationController.viewControllers ?: @[]) {
+        if ([viewController isKindOfClass:PPHomeViewController.class]) {
+            [self.navigationController popToViewController:viewController animated:animated];
+            return;
+        }
+    }
+
+    if (self.navigationController) {
+        [self.navigationController setViewControllers:@[[PPHomeViewController new]] animated:animated];
+        return;
+    }
+
+    [self dismissViewControllerAnimated:animated completion:nil];
+}
+
 - (void)setupNavigationBar
 {
+    self.prefersBackToMainScreen = [self pp_isPushedFromPaymentSelectionViewController];
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"order_details_title") showBack:NO];
 
+    NSString *leftButtonImageName = self.prefersBackToMainScreen ? @"house.fill" : PPChevronName;
     if (@available(iOS 13.0, *)) {
-        UIImage *backImage = [UIImage systemImageNamed:PPChevronName];
+        UIImage *backImage = [UIImage systemImageNamed:leftButtonImageName];
         self.navigationItem.leftBarButtonItem =
         [[UIBarButtonItem alloc] initWithImage:backImage
                                          style:UIBarButtonItemStylePlain
                                         target:self
                                         action:@selector(onBackBarButtonTapped)];
     } else {
-        UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:PPChevronName target:self action:@selector(onBack:)];
+        UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:leftButtonImageName target:self action:@selector(onBack:)];
         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
     }
     
@@ -3092,19 +3142,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         return;
     }
 
-    UITabBarController *tabBarController = self.tabBarController;
-    if (tabBarController.viewControllers.count > 0) {
-        UIViewController *homeController = tabBarController.viewControllers.firstObject;
-        if ([homeController isKindOfClass:UINavigationController.class]) {
-            UINavigationController *homeNavigationController = (UINavigationController *)homeController;
-            BOOL isCurrentHomeNavigation = (homeNavigationController == self.navigationController);
-            [homeNavigationController popToRootViewControllerAnimated:isCurrentHomeNavigation];
-        }
-        tabBarController.selectedIndex = 0;
-        return;
-    }
-
-    [self.navigationController popToRootViewControllerAnimated:YES];
+    [self pp_showHomeViewControllerAnimated:YES];
 }
 
 - (void)onBackBarButtonTapped

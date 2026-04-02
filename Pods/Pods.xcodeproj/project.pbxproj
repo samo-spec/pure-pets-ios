@@ -5799,6 +5799,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = E7C919B0005A340BB3D1E10FCCDBCD50 /* Kingfisher.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/Kingfisher";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -5818,6 +5819,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EA2CB928220D6A6031BB4B127958FB7B /* SDWebImage.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -5858,6 +5860,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C5BFE7820DD2C181DBA9B363E6F60CAB /* WJFrameLayout.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -5900,6 +5903,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEPLOYMENT_POSTPROCESSING = NO;
@@ -5920,6 +5924,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 6D00DCF4CBE0E69DACD428F5E1E715D9 /* SSZipArchive.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -5959,6 +5964,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EA560BE1E0303DF444DEEFA74F32353C /* Masonry.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6001,6 +6007,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8308098F09C3E62FAEE552EEE228376E /* MMSCameraViewController.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6041,6 +6048,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = E2AAE3D663012DBC20D49775E5CE7121 /* HXPHPicker.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6081,6 +6089,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 82FCC697BA45FC048DDEFB94246BFD23 /* TOCropViewController.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/TOCropViewController";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -6103,6 +6112,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 223F6DFE3ECA4CE98047BD2F0DAE1F1B /* TZImagePickerController.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/TZImagePickerController";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -6122,6 +6132,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 5D79933E92CB880CB4EFD0762691FCFB /* lottie-ios_Oc.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6164,6 +6175,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EA2CB928220D6A6031BB4B127958FB7B /* SDWebImage.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/SDWebImage";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -6183,6 +6195,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 08D5FAEA67F2846716D5C20A1E71B4F0 /* lottie-ios_Oc.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6223,6 +6236,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 47786BF4CB85D5AE2F19EB2E89F0BF66 /* IQKeyboardManager.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6266,6 +6280,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1C5CC3B0C5E12A68BC96B505D14683C2 /* AFNetworking.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6308,6 +6323,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 94FC8E5847104F3B448EFF2C349323DD /* TZImagePickerController.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/TZImagePickerController";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -6331,6 +6347,7 @@
 			baseConfigurationReference = 5B455FFB2B95DE871836D545B0A623E3 /* Pods-Pure Pets.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6371,6 +6388,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 20778922EF23FCE50D4FA630F74C62F8 /* MMSCameraViewController.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6413,6 +6431,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 4D77E73111C258E8CC0EA0B019EA30CF /* KVOController.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6453,6 +6472,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D3C8378F5367D803D0283C073900090B /* IQKeyboardManager.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6496,6 +6516,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
@@ -6514,6 +6535,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 797B619D51230C13262C3F8054AEE468 /* KVOController.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6556,6 +6578,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 94FC8E5847104F3B448EFF2C349323DD /* TZImagePickerController.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6665,6 +6688,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EDA4ADA1F002CBA8F1EA1449579BD471 /* SDWebImage.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/SDWebImage";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -6687,6 +6711,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 82FCC697BA45FC048DDEFB94246BFD23 /* TOCropViewController.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6730,6 +6755,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 223F6DFE3ECA4CE98047BD2F0DAE1F1B /* TZImagePickerController.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6833,6 +6859,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D26D1083745A269311E42A7D54483D75 /* TOCropViewController.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/TOCropViewController";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -6852,6 +6879,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 47786BF4CB85D5AE2F19EB2E89F0BF66 /* IQKeyboardManager.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/IQKeyboardManager";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -6874,6 +6902,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 30F2A19D17998E8A7E54408A6D08EDF0 /* Kingfisher.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6917,6 +6946,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = AA1058925672D749BEB331F2C9094FC1 /* MDRadialProgress.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -6959,6 +6989,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EF3A45D74AC95BEE77AF8D2F2257F6AC /* SSZipArchive.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -7000,6 +7031,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = E7C919B0005A340BB3D1E10FCCDBCD50 /* Kingfisher.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -7041,6 +7073,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D3C8378F5367D803D0283C073900090B /* IQKeyboardManager.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/IQKeyboardManager";
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -7060,6 +7093,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 1EF81C477A3CD8506BCA99AB2D483236 /* Masonry.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -7100,6 +7134,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = A27F548E95ACFF4EDC33822E447C6AFF /* HXPHPicker.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -7142,6 +7177,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 647F3DF4E5372CBA7F91E46A9926A905 /* MDRadialProgress.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -7182,6 +7218,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = EDA4ADA1F002CBA8F1EA1449579BD471 /* SDWebImage.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -7224,6 +7261,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = AD6A5D4BFECC3CC6C2C76ACF0232BC18 /* WJFrameLayout.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -7266,6 +7304,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 30F2A19D17998E8A7E54408A6D08EDF0 /* Kingfisher.debug.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CODE_SIGNING_ALLOWED = NO;
 				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)/Kingfisher";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -7288,6 +7327,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 3B4E94589421325FAF2B683833ABBE51 /* AFNetworking.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=watchos*]" = "";
@@ -7328,6 +7368,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = D26D1083745A269311E42A7D54483D75 /* TOCropViewController.release.xcconfig */;
 			buildSettings = {
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -7370,6 +7411,7 @@
 			baseConfigurationReference = 31ACA2AD3CE75C721C3F273EDA8A3E6B /* Pods-Pure Pets.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = NO;
+				CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
