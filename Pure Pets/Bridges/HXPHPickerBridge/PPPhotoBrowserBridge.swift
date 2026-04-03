@@ -61,7 +61,7 @@ import HXPhotoPicker
         var config = PhotoBrowser.Configuration()
         config.tintColor = .black
         config.backgroundColor = .white
-        config.modalPresentationStyle = .fullScreen
+        config.modalPresentationStyle = .pageSheet
         config.showDelete = false
 
         totalAssetCount = assets.count

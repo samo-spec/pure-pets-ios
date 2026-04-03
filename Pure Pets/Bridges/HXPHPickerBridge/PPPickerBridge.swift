@@ -97,9 +97,13 @@ public extension Notification.Name {
         picker.pickerDelegate = self
         self.pickerController = picker
 
-        picker.modalPresentationStyle = .fullScreen
-        picker.navigationBar.backIndicatorImage = UIImage(systemName: "chevron.backward")
-        picker.navigationBar.backIndicatorTransitionMaskImage = UIImage(systemName: "chevron.backward")
+        // Present as sheet
+        picker.modalPresentationStyle = .pageSheet
+
+        // RTL-aware back arrow: chevron.right for Arabic, chevron.left for English
+        let chevron = UIImage(systemName: useArabic ? "chevron.right" : "chevron.left")
+        picker.navigationBar.backIndicatorImage = chevron
+        picker.navigationBar.backIndicatorTransitionMaskImage = chevron
 
         if #available(iOS 15.0, *) {
             let appearance = UINavigationBarAppearance()
@@ -122,7 +126,9 @@ public extension Notification.Name {
         }
 
         previousSemantic = viewController.view.semanticContentAttribute
-        picker.view.semanticContentAttribute = useArabic ? .forceRightToLeft : .forceLeftToRight
+        let direction: UISemanticContentAttribute = useArabic ? .forceRightToLeft : .forceLeftToRight
+        picker.view.semanticContentAttribute = direction
+        picker.navigationBar.semanticContentAttribute = direction
 
         viewController.present(picker, animated: true)
     }

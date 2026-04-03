@@ -40,15 +40,22 @@ public extension Notification.Name {
         var config = EditorConfiguration()
         config.languageType = useArabic ? .arabic : .english
         config.indicatorType = .circle
-        config.modalPresentationStyle = .fullScreen
+        config.modalPresentationStyle = .pageSheet
 
         let asset = EditorAsset(type: .image(image))
         let editorVC = EditorViewController(asset, config: config)
         editorVC.delegate = self
 
         let nav = UINavigationController(rootViewController: editorVC)
-        nav.modalPresentationStyle = .fullScreen
-        nav.view.semanticContentAttribute = useArabic ? .forceRightToLeft : .forceLeftToRight
+        nav.modalPresentationStyle = .pageSheet
+        let direction: UISemanticContentAttribute = useArabic ? .forceRightToLeft : .forceLeftToRight
+        nav.view.semanticContentAttribute = direction
+        nav.navigationBar.semanticContentAttribute = direction
+
+        // RTL-aware back arrow
+        let chevron = UIImage(systemName: useArabic ? "chevron.right" : "chevron.left")
+        nav.navigationBar.backIndicatorImage = chevron
+        nav.navigationBar.backIndicatorTransitionMaskImage = chevron
 
         viewController.present(nav, animated: true)
     }
