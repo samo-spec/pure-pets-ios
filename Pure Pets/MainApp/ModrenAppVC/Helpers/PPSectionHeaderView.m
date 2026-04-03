@@ -32,7 +32,7 @@
     self.surfaceView.layer.cornerRadius  = PPCornerCard;
     self.surfaceView.layer.cornerCurve   = kCACornerCurveContinuous;
     self.surfaceView.layer.borderWidth   = 0.33;
-    self.surfaceView.layer.borderColor   = [UIColor.separatorColor colorWithAlphaComponent:0.28].CGColor;
+    self.surfaceView.layer.borderColor   = [AppForgroundColr colorWithAlphaComponent:0.68].CGColor;
     self.surfaceView.layer.shadowColor   = UIColor.blackColor.CGColor;
     self.surfaceView.layer.shadowOpacity = PPShadowCardOpacity;
     self.surfaceView.layer.shadowRadius  = PPShadowCardRadius;
@@ -183,10 +183,10 @@
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.backgroundColor  = [AppForgroundColr colorWithAlphaComponent:0.55];
-    self.surfaceView.layer.cornerRadius = PPCornerCard;
+    self.surfaceView.layer.cornerRadius = PPCornerMedium;
     self.surfaceView.layer.cornerCurve  = kCACornerCurveContinuous;
     self.surfaceView.layer.borderWidth  = 0.33;
-    self.surfaceView.layer.borderColor  = [UIColor.separatorColor colorWithAlphaComponent:0.28].CGColor;
+    self.surfaceView.layer.borderColor  = [AppForgroundColr colorWithAlphaComponent:0.68].CGColor;
     self.surfaceView.layer.shadowColor   = UIColor.blackColor.CGColor;
     self.surfaceView.layer.shadowOpacity = PPShadowCardOpacity;
     self.surfaceView.layer.shadowRadius  = PPShadowCardRadius;

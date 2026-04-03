@@ -47,7 +47,7 @@
     }
 
     // Logo (same as LaunchScreen: newlogo, centered)
-    UIImage *logoImage = [[UIImage imageNamed:@"newlogo"]
+    UIImage *logoImage = [[UIImage imageNamed:@"PureIconTransFilledV3"]
                           imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     if (logoImage) {
         UIImageView *logoView = [[UIImageView alloc] initWithImage:logoImage];
@@ -58,8 +58,8 @@
         [NSLayoutConstraint activateConstraints:@[
             [logoView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
             [logoView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:146],
-            [logoView.widthAnchor constraintEqualToConstant:166],
-            [logoView.heightAnchor constraintEqualToConstant:150]
+            [logoView.widthAnchor constraintEqualToConstant:156],
+            [logoView.heightAnchor constraintEqualToConstant:140]
         ]];
     }
 

@@ -43,7 +43,7 @@
 #define PPFontLargeTitle   33.0f   // → 34pt (screen titles)
 #define PPFontTitle1       27.0f   // → 28pt (major sections)
 #define PPFontTitle2       21.0f   // → 22pt (card titles, hero)
-#define PPFontTitle3       19.0f   // → 20pt (sub-sections)
+#define PPFontTitle3       18.0f   // → 20pt (sub-sections)
 #define PPFontHeadline     16.0f   // → 17pt (list row primary)
 #define PPFontBody         16.0f   // → 17pt (body text)
 #define PPFontCallout      15.0f   // → 16pt (supporting body)

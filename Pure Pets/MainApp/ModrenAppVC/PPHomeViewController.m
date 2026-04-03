@@ -1193,7 +1193,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) double nearbyRadiusKm;
 @property (nonatomic, strong) NSTimer *nearbyRefreshTimer;
 @property (nonatomic, assign) BOOL isUsingManualNearbySelection;
+@property (nonatomic, strong) UIView *pp_backgroundCanvasView;
 @property (nonatomic, strong) CAGradientLayer *pp_backgroundGradientLayer;
+@property (nonatomic, strong) CAGradientLayer *pp_backgroundTopGlowLayer;
+@property (nonatomic, strong) CAGradientLayer *pp_backgroundAccentGlowLayer;
+@property (nonatomic, strong) CAGradientLayer *pp_backgroundBottomGlowLayer;
+@property (nonatomic, strong) CAGradientLayer *pp_backgroundShineLayer;
+@property (nonatomic, assign) BOOL pp_backgroundAnimationsConfigured;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL isCurrentOrdersExpanded;
@@ -1289,6 +1295,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (nullable MainBannerModel *)pp_homeTopCarouselBannerGroup;
 - (NSArray<PPHomePromoCarouselCard *> *)pp_homePromoFallbackCards;
 - (NSArray<PPHomePromoCarouselCard *> *)pp_promoCardsFromLegacyBannerGroup:(MainBannerModel *)group;
+- (void)pp_layoutBackgroundLayers;
+- (void)pp_startBackgroundAnimationsIfNeeded;
+- (void)pp_stopBackgroundAnimations;
 
 @end
 
@@ -3342,6 +3351,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 {
     [super viewDidAppear:animated];
     self.isHomeScreenVisible = YES;
+    [self pp_startBackgroundAnimationsIfNeeded];
     [self pp_centerNearbySectionIfPossible];
     //[PPHUD showLoading];
     if(!self.warmUpCache)
@@ -5401,6 +5411,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 {
     [super viewDidDisappear:animated];
     self.isHomeScreenVisible = NO;
+    [self pp_stopBackgroundAnimations];
     self.lastObservedHomeOrderID = nil;
     self.lastObservedHomeOrderStatusKey = nil;
     [self pp_stopCurrentOrdersListener];
@@ -6138,14 +6149,68 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)pp_installBackgroundGradient
 {
+    if (self.pp_backgroundCanvasView) {
+        return;
+    }
+
+    UIView *canvas = [[UIView alloc] init];
+    canvas.translatesAutoresizingMaskIntoConstraints = NO;
+    canvas.backgroundColor = UIColor.clearColor;
+    canvas.userInteractionEnabled = NO;
+    canvas.clipsToBounds = YES;
+    [self.view insertSubview:canvas atIndex:0];
+    [NSLayoutConstraint activateConstraints:@[
+        [canvas.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [canvas.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [canvas.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [canvas.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+    ]];
+    self.pp_backgroundCanvasView = canvas;
+
     CAGradientLayer *gradient = [CAGradientLayer layer];
-    gradient.startPoint = CGPointMake(0.5, 0.0);
-    gradient.endPoint   = CGPointMake(0.5, 1.0);
-    gradient.locations   = @[@0.0, @0.45, @1.0];
+    gradient.startPoint = CGPointMake(0.08, 0.0);
+    gradient.endPoint = CGPointMake(0.92, 1.0);
+    gradient.locations = @[@0.0, @0.34, @0.72, @1.0];
     gradient.needsDisplayOnBoundsChange = YES;
-    gradient.frame = self.view.bounds;
-    [self.view.layer insertSublayer:gradient atIndex:0];
+    [canvas.layer addSublayer:gradient];
     self.pp_backgroundGradientLayer = gradient;
+
+    CAGradientLayer *topGlow = [CAGradientLayer layer];
+    topGlow.type = kCAGradientLayerRadial;
+    topGlow.startPoint = CGPointMake(0.5, 0.5);
+    topGlow.endPoint = CGPointMake(1.0, 1.0);
+    topGlow.locations = @[@0.0, @0.30, @1.0];
+    topGlow.needsDisplayOnBoundsChange = YES;
+    [canvas.layer addSublayer:topGlow];
+    self.pp_backgroundTopGlowLayer = topGlow;
+
+    CAGradientLayer *accentGlow = [CAGradientLayer layer];
+    accentGlow.type = kCAGradientLayerRadial;
+    accentGlow.startPoint = CGPointMake(0.5, 0.5);
+    accentGlow.endPoint = CGPointMake(1.0, 1.0);
+    accentGlow.locations = @[@0.0, @0.36, @1.0];
+    accentGlow.needsDisplayOnBoundsChange = YES;
+    [canvas.layer addSublayer:accentGlow];
+    self.pp_backgroundAccentGlowLayer = accentGlow;
+
+    CAGradientLayer *bottomGlow = [CAGradientLayer layer];
+    bottomGlow.type = kCAGradientLayerRadial;
+    bottomGlow.startPoint = CGPointMake(0.5, 0.5);
+    bottomGlow.endPoint = CGPointMake(1.0, 1.0);
+    bottomGlow.locations = @[@0.0, @0.42, @1.0];
+    bottomGlow.needsDisplayOnBoundsChange = YES;
+    [canvas.layer addSublayer:bottomGlow];
+    self.pp_backgroundBottomGlowLayer = bottomGlow;
+
+    CAGradientLayer *shineLayer = [CAGradientLayer layer];
+    shineLayer.startPoint = CGPointMake(0.0, 0.08);
+    shineLayer.endPoint = CGPointMake(1.0, 0.92);
+    shineLayer.locations = @[@0.0, @0.40, @0.64, @1.0];
+    shineLayer.needsDisplayOnBoundsChange = YES;
+    [canvas.layer addSublayer:shineLayer];
+    self.pp_backgroundShineLayer = shineLayer;
+
+    [self pp_layoutBackgroundLayers];
     [self pp_updateBackgroundGradientColors];
 }
 
@@ -6154,38 +6219,165 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (!self.pp_backgroundGradientLayer) return;
 
     UIColor *base = AppForgroundColr ?: [UIColor systemBackgroundColor];
+    BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
 
-    // Light mode:  faint warm blush at the top → base white at the bottom
-    // Dark mode:   subtle warm lift at the top → base dark at the bottom
-    UIColor *tintTop;
-    UIColor *tintMid;
-    if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-        tintTop = [UIColor colorWithRed:0.18 green:0.14 blue:0.16 alpha:1.0];
-        tintMid = base;
+    UIColor *tintTop = nil;
+    UIColor *tintUpperMid = nil;
+    UIColor *tintLowerMid = nil;
+    UIColor *topGlowStart = nil;
+    UIColor *topGlowMid = nil;
+    UIColor *accentGlowStart = nil;
+    UIColor *accentGlowMid = nil;
+    UIColor *bottomGlowStart = nil;
+    UIColor *bottomGlowMid = nil;
+    UIColor *shinePeak = nil;
+    UIColor *shineTail = nil;
+
+    if (isDark) {
+        tintTop = [UIColor colorWithRed:0.10 green:0.09 blue:0.12 alpha:1.0];
+        tintUpperMid = [UIColor colorWithRed:0.09 green:0.11 blue:0.16 alpha:1.0];
+        tintLowerMid = [UIColor colorWithRed:0.07 green:0.11 blue:0.15 alpha:1.0];
+        topGlowStart = [UIColor colorWithRed:0.95 green:0.57 blue:0.41 alpha:0.34];
+        topGlowMid = [UIColor colorWithRed:0.91 green:0.42 blue:0.50 alpha:0.16];
+        accentGlowStart = [UIColor colorWithRed:0.43 green:0.67 blue:0.98 alpha:0.22];
+        accentGlowMid = [UIColor colorWithRed:0.52 green:0.79 blue:1.0 alpha:0.10];
+        bottomGlowStart = [UIColor colorWithRed:0.36 green:0.56 blue:0.88 alpha:0.20];
+        bottomGlowMid = [UIColor colorWithRed:0.48 green:0.72 blue:0.95 alpha:0.08];
+        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.12];
+        shineTail = [UIColor colorWithWhite:1.0 alpha:0.03];
     } else {
-        tintTop = [UIColor colorWithRed:0.996 green:0.955 blue:0.960 alpha:1.0]; // very faint blush
-        tintMid = [UIColor colorWithRed:0.992 green:0.976 blue:0.976 alpha:1.0]; // barely warm
+        tintTop = [UIColor colorWithRed:0.996 green:0.975 blue:0.951 alpha:1.0];
+        tintUpperMid = [UIColor colorWithRed:0.996 green:0.961 blue:0.965 alpha:1.0];
+        tintLowerMid = [UIColor colorWithRed:0.955 green:0.972 blue:0.994 alpha:1.0];
+        topGlowStart = [UIColor colorWithRed:1.0 green:0.89 blue:0.76 alpha:0.92];
+        topGlowMid = [UIColor colorWithRed:1.0 green:0.74 blue:0.72 alpha:0.42];
+        accentGlowStart = [UIColor colorWithRed:0.70 green:0.85 blue:1.0 alpha:0.56];
+        accentGlowMid = [UIColor colorWithRed:0.76 green:0.90 blue:1.0 alpha:0.24];
+        bottomGlowStart = [UIColor colorWithRed:0.81 green:0.91 blue:1.0 alpha:0.42];
+        bottomGlowMid = [UIColor colorWithRed:0.88 green:0.95 blue:1.0 alpha:0.18];
+        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.46];
+        shineTail = [UIColor colorWithWhite:1.0 alpha:0.08];
     }
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.pp_backgroundGradientLayer.colors = @[
         (id)tintTop.CGColor,
-        (id)tintMid.CGColor,
+        (id)tintUpperMid.CGColor,
+        (id)tintLowerMid.CGColor,
         (id)base.CGColor
     ];
+    self.pp_backgroundTopGlowLayer.colors = @[
+        (id)topGlowStart.CGColor,
+        (id)topGlowMid.CGColor,
+        (id)UIColor.clearColor.CGColor
+    ];
+    self.pp_backgroundAccentGlowLayer.colors = @[
+        (id)accentGlowStart.CGColor,
+        (id)accentGlowMid.CGColor,
+        (id)UIColor.clearColor.CGColor
+    ];
+    self.pp_backgroundBottomGlowLayer.colors = @[
+        (id)bottomGlowStart.CGColor,
+        (id)bottomGlowMid.CGColor,
+        (id)UIColor.clearColor.CGColor
+    ];
+    self.pp_backgroundShineLayer.colors = @[
+        (id)UIColor.clearColor.CGColor,
+        (id)shinePeak.CGColor,
+        (id)shineTail.CGColor,
+        (id)UIColor.clearColor.CGColor
+    ];
     [CATransaction commit];
+}
+
+- (void)pp_layoutBackgroundLayers
+{
+    if (!self.pp_backgroundCanvasView) {
+        return;
+    }
+
+    CGRect bounds = self.pp_backgroundCanvasView.bounds;
+    if (CGRectIsEmpty(bounds)) {
+        return;
+    }
+
+    CGFloat width = CGRectGetWidth(bounds);
+    CGFloat height = CGRectGetHeight(bounds);
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.pp_backgroundGradientLayer.frame = bounds;
+    self.pp_backgroundTopGlowLayer.frame =
+        CGRectMake(-width * 0.20, -height * 0.26, width * 1.38, MAX(height * 0.82, width * 0.96));
+    self.pp_backgroundAccentGlowLayer.frame =
+        CGRectMake(width * 0.50, height * 0.05, width * 0.62, width * 0.62);
+    self.pp_backgroundBottomGlowLayer.frame =
+        CGRectMake(-width * 0.12, height * 0.56, width * 0.95, height * 0.66);
+    self.pp_backgroundShineLayer.frame = bounds;
+    [CATransaction commit];
+}
+
+- (void)pp_startBackgroundAnimationsIfNeeded
+{
+    if (self.pp_backgroundAnimationsConfigured || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    CABasicAnimation *topOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    topOpacity.fromValue = @0.82;
+    topOpacity.toValue = @1.0;
+    topOpacity.duration = 7.0;
+    topOpacity.autoreverses = YES;
+    topOpacity.repeatCount = HUGE_VALF;
+    topOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.pp_backgroundTopGlowLayer addAnimation:topOpacity forKey:@"pp.background.top.opacity"];
+
+    CABasicAnimation *topScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    topScale.fromValue = @1.0;
+    topScale.toValue = @1.06;
+    topScale.duration = 11.0;
+    topScale.autoreverses = YES;
+    topScale.repeatCount = HUGE_VALF;
+    topScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.pp_backgroundTopGlowLayer addAnimation:topScale forKey:@"pp.background.top.scale"];
+
+    CABasicAnimation *accentDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    accentDrift.fromValue = @0.0;
+    accentDrift.toValue = @(-20.0);
+    accentDrift.duration = 12.0;
+    accentDrift.autoreverses = YES;
+    accentDrift.repeatCount = HUGE_VALF;
+    accentDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.pp_backgroundAccentGlowLayer addAnimation:accentDrift forKey:@"pp.background.accent.drift"];
+
+    CABasicAnimation *bottomDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    bottomDrift.fromValue = @0.0;
+    bottomDrift.toValue = @18.0;
+    bottomDrift.duration = 13.0;
+    bottomDrift.autoreverses = YES;
+    bottomDrift.repeatCount = HUGE_VALF;
+    bottomDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.pp_backgroundBottomGlowLayer addAnimation:bottomDrift forKey:@"pp.background.bottom.drift"];
+
+    self.pp_backgroundAnimationsConfigured = YES;
+}
+
+- (void)pp_stopBackgroundAnimations
+{
+    [self.pp_backgroundTopGlowLayer removeAnimationForKey:@"pp.background.top.opacity"];
+    [self.pp_backgroundTopGlowLayer removeAnimationForKey:@"pp.background.top.scale"];
+    [self.pp_backgroundAccentGlowLayer removeAnimationForKey:@"pp.background.accent.drift"];
+    [self.pp_backgroundBottomGlowLayer removeAnimationForKey:@"pp.background.bottom.drift"];
+    self.pp_backgroundAnimationsConfigured = NO;
 }
 
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    if (self.pp_backgroundGradientLayer &&
-        !CGRectEqualToRect(self.pp_backgroundGradientLayer.frame, self.view.bounds)) {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        self.pp_backgroundGradientLayer.frame = self.view.bounds;
-        [CATransaction commit];
+    if (self.pp_backgroundCanvasView &&
+        !CGRectEqualToRect(self.pp_backgroundCanvasView.bounds, CGRectZero)) {
+        [self pp_layoutBackgroundLayers];
     }
 }
 
