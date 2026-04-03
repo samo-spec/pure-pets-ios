@@ -6,7 +6,9 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 @interface PPCollectionSectionHeader ()
+@property (nonatomic, strong) UIVisualEffectView *blurView;
 @property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) CAGradientLayer *accentLine;
 @property (nonatomic, strong) UILabel *ppTitleLabel;
 @property (nonatomic, strong) UILabel *ppSubtitleLabel;
 @property (nonatomic, strong) UIButton *ppActionButton;
@@ -25,24 +27,41 @@
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = GM.setSemantic;
 
-    // Glass surface
+    // ── Glassmorphism surface ──
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.55];
-    self.surfaceView.layer.cornerRadius  = PPCornerCard;
+   // self.surfaceView.layer.cornerRadius  = PPCornerCard;
     self.surfaceView.layer.cornerCurve   = kCACornerCurveContinuous;
-    self.surfaceView.layer.borderWidth   = 0.33;
-    self.surfaceView.layer.borderColor   = [AppForgroundColr colorWithAlphaComponent:0.68].CGColor;
-    self.surfaceView.layer.shadowColor   = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = PPShadowCardOpacity;
-    self.surfaceView.layer.shadowRadius  = PPShadowCardRadius;
-    self.surfaceView.layer.shadowOffset  = CGSizeMake(0, PPShadowCardOffsetY);
+   // self.surfaceView.clipsToBounds = YES;
     [self addSubview:self.surfaceView];
+
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:
+        (PPIOS26() ? UIBlurEffectStyleSystemChromeMaterial : UIBlurEffectStyleSystemThinMaterial)];
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
+    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.surfaceView addSubview:self.blurView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.blurView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.blurView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
+        [self.blurView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
+        [self.blurView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+    ]];
+
+    // Accent line at leading edge
+    self.accentLine = [CAGradientLayer layer];
+    self.accentLine.startPoint = CGPointMake(0.5, 0.0);
+    self.accentLine.endPoint   = CGPointMake(0.5, 1.0);
+    self.accentLine.cornerRadius = 2.0;
+    self.accentLine.colors = @[
+        (id)(AppPrimaryClr ?: UIColor.systemTealColor).CGColor,
+        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.3].CGColor,
+    ];
+    [self.surfaceView.layer addSublayer:self.accentLine];
 
     // Title
     self.ppTitleLabel = [[UILabel alloc] init];
     self.ppTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.ppTitleLabel.font      = [GM boldFontWithSize:PPFontTitle3];
+    self.ppTitleLabel.font      = [GM boldFontWithSize:PPFontHeadline];
     self.ppTitleLabel.textColor = AppPrimaryTextClr;
     [self.surfaceView addSubview:self.ppTitleLabel];
 
@@ -74,13 +93,14 @@
                   forControlEvents:UIControlEventTouchUpInside];
     [self.surfaceView addSubview:self.ppActionButton];
 
+    CGFloat leadingInset = PPSpaceBase + 5.0;
     [NSLayoutConstraint activateConstraints:@[
         [self.surfaceView.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor  constant:PPSpaceSM],
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPSpaceSM],
         [self.surfaceView.topAnchor      constraintEqualToAnchor:self.topAnchor      constant:PPSpaceXS],
         [self.surfaceView.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor   constant:-PPSpaceXS],
 
-        [self.ppTitleLabel.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor  constant:PPSpaceBase],
+        [self.ppTitleLabel.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor  constant:leadingInset],
         [self.ppTitleLabel.centerYAnchor  constraintEqualToAnchor:self.surfaceView.centerYAnchor  constant:-PPSpaceXXS],
         [self.ppTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.ppActionButton.leadingAnchor constant:-PPSpaceSM],
 
@@ -124,15 +144,55 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    self.surfaceView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.surfaceView.bounds
-                                   cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
+    CGRect bounds = self.surfaceView.bounds;
+    BOOL isRTL = (self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft);
+    CGFloat lineX = isRTL ? (CGRectGetWidth(bounds) - 4.0 - PPSpaceXS) : PPSpaceXS;
+    self.accentLine.frame = CGRectMake(lineX, 8.0, 4.0, CGRectGetHeight(bounds) - 16.0);
+
+    // Asymmetric corners: leading = 6, trailing = 18
+    CGFloat leadR = 6.0, trailR = 18.0;
+    CGFloat topL = isRTL ? trailR : leadR;
+    CGFloat topR = isRTL ? leadR  : trailR;
+    CGFloat botL = isRTL ? trailR : leadR;
+    CGFloat botR = isRTL ? leadR  : trailR;
+    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:bounds
+                                              byRoundingCorners:UIRectCornerAllCorners
+                                                    cornerRadii:CGSizeZero];
+    path = [self pp_pathForRect:bounds topLeft:topL topRight:topR bottomLeft:botL bottomRight:botR];
+    CAShapeLayer *mask = [CAShapeLayer layer];
+    mask.path = path.CGPath;
+    self.surfaceView.layer.mask = mask;
+}
+
+- (UIBezierPath *)pp_pathForRect:(CGRect)rect
+                         topLeft:(CGFloat)tl topRight:(CGFloat)tr
+                      bottomLeft:(CGFloat)bl bottomRight:(CGFloat)br
+{
+    UIBezierPath *p = [UIBezierPath bezierPath];
+    [p moveToPoint:CGPointMake(tl, 0)];
+    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect) - tr, 0)];
+    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - tr, tr)
+                 radius:tr startAngle:-M_PI_2 endAngle:0 clockwise:YES];
+    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect), CGRectGetHeight(rect) - br)];
+    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - br, CGRectGetHeight(rect) - br)
+                 radius:br startAngle:0 endAngle:M_PI_2 clockwise:YES];
+    [p addLineToPoint:CGPointMake(bl, CGRectGetHeight(rect))];
+    [p addArcWithCenter:CGPointMake(bl, CGRectGetHeight(rect) - bl)
+                 radius:bl startAngle:M_PI_2 endAngle:M_PI clockwise:YES];
+    [p addLineToPoint:CGPointMake(0, tl)];
+    [p addArcWithCenter:CGPointMake(tl, tl)
+                 radius:tl startAngle:M_PI endAngle:-M_PI_2 clockwise:YES];
+    [p closePath];
+    return p;
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {
     [super traitCollectionDidChange:previous];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previous]) {
-        self.surfaceView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.28].CGColor;
+        self.accentLine.colors = @[
+            (id)(AppPrimaryClr ?: UIColor.systemTealColor).CGColor,
+            (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.3].CGColor,
+        ];
     }
 }
 
@@ -157,7 +217,9 @@
 @property (nonatomic, strong, readwrite) UIButton *actionButton;
 @property (nonatomic, strong) NSLayoutConstraint *titleTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *titleCenterConstraint;
+@property (nonatomic, strong) UIVisualEffectView *blurView;
 @property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) CAGradientLayer *accentLine;
 @property (nonatomic, assign) BOOL isExpanded;
 @property (nonatomic, assign) PPHomeSection currentSection;
 @property (nonatomic, assign) CFTimeInterval lastActionTimestamp;
@@ -165,10 +227,12 @@
 
 @implementation PPSectionHeaderView
 
-- (UIColor *)pp_surfaceBackgroundColor
+- (UIColor *)pp_overlayColor
 {
-    UIColor *base = [UIColor secondarySystemGroupedBackgroundColor];
-    return [base colorWithAlphaComponent:(PPIOS26() ? 0.82 : 0.92)];
+    BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    return isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.04]
+        : [AppForgroundColr colorWithAlphaComponent:0.38];
 }
 
 #pragma mark - Init
@@ -185,20 +249,54 @@
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = GM.setSemantic;
 
-    // ── Surface card ──
+    // ── Glassmorphism surface ──
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceView.backgroundColor  = [self pp_surfaceBackgroundColor];
-    self.surfaceView.layer.cornerRadius = PPCornerCard + 6.0;
+    //self.surfaceView.layer.cornerRadius = 0;
     self.surfaceView.layer.cornerCurve  = kCACornerCurveContinuous;
-    self.surfaceView.layer.borderWidth  = 1.0;
-    self.surfaceView.layer.borderColor  = [UIColor.separatorColor colorWithAlphaComponent:0.14].CGColor;
-    self.surfaceView.layer.shadowColor   = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = 0.08;
-    self.surfaceView.layer.shadowRadius  = 20.0;
-    self.surfaceView.layer.shadowOffset  = CGSizeMake(0, 12.0);
+    //self.surfaceView.clipsToBounds = YES;
     [self addSubview:self.surfaceView];
     [self sendSubviewToBack:self.surfaceView];
+
+    // Blur material
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:
+        (PPIOS26() ? UIBlurEffectStyleSystemChromeMaterial : UIBlurEffectStyleSystemUltraThinMaterial)];
+    
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
+    
+    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.surfaceView addSubview:self.blurView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.blurView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [self.blurView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
+        [self.blurView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
+        [self.blurView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+    ]];
+
+    // Tinted overlay for warmth
+    UIView *overlay = [[UIView alloc] init];
+    overlay.translatesAutoresizingMaskIntoConstraints = NO;
+    overlay.backgroundColor =AppClearClr;// [self pp_overlayColor];
+    overlay.userInteractionEnabled = NO;
+    overlay.tag = 999;
+    [self.surfaceView addSubview:overlay];
+    [NSLayoutConstraint activateConstraints:@[
+        [overlay.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
+        [overlay.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor],
+        [overlay.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor],
+        [overlay.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
+    ]];
+
+    // Accent gradient line at leading edge
+    self.accentLine = [CAGradientLayer layer];
+    self.accentLine.startPoint = CGPointMake(0.5, 0.0);
+    self.accentLine.endPoint   = CGPointMake(0.5, 1.0);
+    self.accentLine.cornerRadius = 1.5;
+    self.accentLine.colors = @[
+        (id)(AppPrimaryClr ?: UIColor.systemTealColor).CGColor,
+        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.2].CGColor,
+    ];
+    [self.surfaceView.layer addSublayer:self.accentLine];
 
     // ── Tap gesture ──
     UITapGestureRecognizer *tap =
@@ -219,7 +317,7 @@
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _subtitleLabel.font         = [GM MidFontWithSize:PPFontSubheadline];
     _subtitleLabel.textColor    = UIColor.secondaryLabelColor;
-    _subtitleLabel.numberOfLines = 1;
+    _subtitleLabel.numberOfLines = 2;
     _subtitleLabel.hidden       = YES;
     [self addSubview:_subtitleLabel];
 
@@ -228,8 +326,9 @@
     [self addSubview:_actionButton];
 
     // ── Layout ──
+    CGFloat contentLeading = PPSpaceBase + 5.0;
     self.titleTopConstraint =
-        [_titleLabel.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceXS];
+        [_titleLabel.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:PPSpaceXS + 2.0];
     self.titleCenterConstraint =
         [_titleLabel.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor];
 
@@ -243,54 +342,57 @@
         [self.surfaceView.topAnchor      constraintEqualToAnchor:self.topAnchor      constant:PPSpaceXS],
         [self.surfaceView.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor   constant:-PPSpaceXS],
         // Action button
-        [_actionButton.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-10.0],
+        [_actionButton.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-12.0],
         [_actionButton.centerYAnchor  constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         // Title
-        [_titleLabel.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceBase],
+        [_titleLabel.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:contentLeading],
         [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_actionButton.leadingAnchor constant:-PPSpaceSM],
         // Subtitle
         [_subtitleLabel.leadingAnchor  constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.topAnchor      constraintEqualToAnchor:_titleLabel.bottomAnchor constant:PPSpaceXXS],
+        [_subtitleLabel.topAnchor      constraintEqualToAnchor:_titleLabel.bottomAnchor constant:3.0],
         [_subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_actionButton.leadingAnchor constant:-PPSpaceSM],
     ]];
 }
 
 - (void)pp_buildActionButton {
-    UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
+    UIButtonConfiguration *cfg = [UIButtonConfiguration filledButtonConfiguration];
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 16.0, 10.0, 16.0);
     cfg.imagePadding  = 6;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
     UIImageSymbolConfiguration *symbolCfg =
-        [UIImageSymbolConfiguration configurationWithPointSize:15
-                                                        weight:UIImageSymbolWeightSemibold
+        [UIImageSymbolConfiguration configurationWithPointSize:13
+                                                        weight:UIImageSymbolWeightBold
                                                          scale:UIImageSymbolScaleMedium];
     UIImage *chevron = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolCfg];
     if (@available(iOS 15.0, *)) {
         chevron = [chevron imageByApplyingSymbolConfiguration:
             [UIImageSymbolConfiguration configurationWithPaletteColors:@[
-                AppPrimaryTextClr ?: UIColor.labelColor, AppPrimaryClr ?: UIColor.systemTealColor
+                UIColor.whiteColor
             ]]];
     }
     cfg.image = chevron;
-    cfg.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    cfg.baseBackgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.28 : 0.72)];
-    cfg.background.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.64)];
-    cfg.background.strokeColor = [UIColor.separatorColor colorWithAlphaComponent:0.16];
-    cfg.background.strokeWidth = 1.0;
+
+    // Modern filled capsule with brand color
+    cfg.baseForegroundColor = UIColor.whiteColor;
+    cfg.baseBackgroundColor = AppPrimaryClr ?: UIColor.systemTealColor;
 
     cfg.titleTextAttributesTransformer =
     ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attrs) {
         NSMutableDictionary *m = attrs.mutableCopy;
-        m[NSFontAttributeName]            = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-        m[NSForegroundColorAttributeName] = AppPrimaryTextClr ?: UIColor.labelColor;
+        m[NSFontAttributeName]            = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
+        m[NSForegroundColorAttributeName] = UIColor.whiteColor;
         return m;
     };
 
     _actionButton = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
     _actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     _actionButton.hidden = YES;
+    _actionButton.layer.shadowColor   = (AppPrimaryClr ?: UIColor.systemTealColor).CGColor;
+    _actionButton.layer.shadowOpacity = 0.25;
+    _actionButton.layer.shadowRadius  = 8.0;
+    _actionButton.layer.shadowOffset  = CGSizeMake(0, 4.0);
     [_actionButton addTarget:self
                       action:@selector(pp_actionTapped)
             forControlEvents:UIControlEventTouchUpInside];
@@ -300,17 +402,55 @@
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-    self.surfaceView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.surfaceView.bounds
-                                   cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
+    CGRect bounds = self.surfaceView.bounds;
+    BOOL isRTL = (self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft);
+    CGFloat lineX = isRTL ? (CGRectGetWidth(bounds) - 3.0 - PPSpaceXS) : PPSpaceXS;
+    self.accentLine.frame = CGRectMake(lineX, 8.0, 3.0, CGRectGetHeight(bounds) - 16.0);
+
+    // Asymmetric corners: leading = 6, trailing = 18
+    CGFloat leadR = 10.0, trailR = 26.0;
+    CGFloat topL = isRTL ? trailR : leadR;
+    CGFloat topR = isRTL ? leadR  : trailR;
+    CGFloat botL = isRTL ? trailR : leadR;
+    CGFloat botR = isRTL ? leadR  : trailR;
+    UIBezierPath *path = [self pp_pathForRect:bounds topLeft:topL topRight:topR bottomLeft:botL bottomRight:botR];
+    CAShapeLayer *mask = [CAShapeLayer layer];
+    mask.path = path.CGPath;
+    self.surfaceView.layer.mask = mask;
+}
+
+- (UIBezierPath *)pp_pathForRect:(CGRect)rect
+                         topLeft:(CGFloat)tl topRight:(CGFloat)tr
+                      bottomLeft:(CGFloat)bl bottomRight:(CGFloat)br
+{
+    UIBezierPath *p = [UIBezierPath bezierPath];
+    [p moveToPoint:CGPointMake(tl, 0)];
+    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect) - tr, 0)];
+    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - tr, tr)
+                 radius:tr startAngle:-M_PI_2 endAngle:0 clockwise:YES];
+    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect), CGRectGetHeight(rect) - br)];
+    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - br, CGRectGetHeight(rect) - br)
+                 radius:br startAngle:0 endAngle:M_PI_2 clockwise:YES];
+    [p addLineToPoint:CGPointMake(bl, CGRectGetHeight(rect))];
+    [p addArcWithCenter:CGPointMake(bl, CGRectGetHeight(rect) - bl)
+                 radius:bl startAngle:M_PI_2 endAngle:M_PI clockwise:YES];
+    [p addLineToPoint:CGPointMake(0, tl)];
+    [p addArcWithCenter:CGPointMake(tl, tl)
+                 radius:tl startAngle:M_PI endAngle:-M_PI_2 clockwise:YES];
+    [p closePath];
+    return p;
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {
     [super traitCollectionDidChange:previous];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previous]) {
-        self.surfaceView.backgroundColor = [self pp_surfaceBackgroundColor];
-        self.surfaceView.layer.borderColor =
-            [UIColor.separatorColor colorWithAlphaComponent:0.14].CGColor;
+        UIView *overlay = [self.surfaceView viewWithTag:999];
+        overlay.backgroundColor = [self pp_overlayColor];
+        self.accentLine.colors = @[
+            (id)(AppPrimaryClr ?: UIColor.systemTealColor).CGColor,
+            (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.2].CGColor,
+        ];
+        _actionButton.layer.shadowColor = (AppPrimaryClr ?: UIColor.systemTealColor).CGColor;
     }
 }
 
@@ -342,14 +482,14 @@
     if (iconName.length > 0 && ppHomeSection != PPHomeSectionMainKinds) {
         UIButtonConfiguration *cfg = self.actionButton.configuration;
         UIImage *symbol = [UIImage pp_symbolNamed:iconName
-                                        pointSize:16
-                                           weight:UIImageSymbolWeightSemibold
+                                        pointSize:13
+                                           weight:UIImageSymbolWeightBold
                                             scale:UIImageSymbolScaleMedium
-                                          palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
+                                          palette:@[UIColor.whiteColor]
                                      makeTemplate:YES];
         if (@available(iOS 15.0, *)) {
             symbol = [symbol imageByApplyingSymbolConfiguration:
-                [UIImageSymbolConfiguration configurationWithPaletteColors:@[AppPrimaryTextClr ?: UIColor.labelColor]]];
+                [UIImageSymbolConfiguration configurationWithPaletteColors:@[UIColor.whiteColor]]];
         }
         cfg.image          = symbol;
         cfg.imagePlacement = NSDirectionalRectEdgeLeading;
@@ -374,7 +514,7 @@
     self.titleTopConstraint.active    = NO;
     self.titleCenterConstraint.active = YES;
 
-    self.surfaceView.layer.cornerRadius = PPCornerCard + 6.0;
+    //self.surfaceView.layer.cornerRadius = PPCornerCard;
 
     if (ppHomeSection != PPHomeSectionMainKinds) { return; }
     [self pp_setExpanded:self.isExpanded animated:NO];
@@ -439,6 +579,19 @@
     if ((now - self.lastActionTimestamp) < 0.25) { return; }
     self.lastActionTimestamp = now;
 
+    // Micro-interaction: surface press feedback
+    [UIView animateWithDuration:0.08 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
+        self.surfaceView.transform = CGAffineTransformMakeScale(0.98, 0.98);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.18 delay:0
+             usingSpringWithDamping:0.7
+              initialSpringVelocity:0.4
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.surfaceView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
     if (self.currentSection != PPHomeSectionMainKinds) {
         if (self.onTap) { self.onTap(); }
         return;
@@ -479,10 +632,10 @@
     };
 
     if (animated) {
-        [UIView animateWithDuration:PPAnimDurationNormal
+        [UIView animateWithDuration:0.35
                               delay:0
-             usingSpringWithDamping:PPAnimSpringDamping
-              initialSpringVelocity:0
+             usingSpringWithDamping:0.72
+              initialSpringVelocity:0.6
                             options:UIViewAnimationOptionCurveEaseInOut
                          animations:rotate
                          completion:nil];

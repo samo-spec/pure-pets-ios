@@ -251,13 +251,16 @@
 #define AppPrimaryClr               [[UIColor colorNamed:@"AppPrimaryColor"] colorWithAlphaComponent:1.0]
 #define AppPrimaryClrDarker         [UIColor colorNamed:@"AppPrimaryColorDarker"]
 #define AppPrimaryClrShiner         [UIColor colorNamed:@"AppPrimaryColorShainer"]
-#define AppBackgroundClr            [UIColor colorNamed:@"AppBackgroundColor"]
+
+#define AppBackgroundClr            [UIColor colorWithHexString:@"#F3F4F4"] //[UIColor colorNamed:@"AppBackgroundColor"] //FFE6D4 FCF5EE
 #define AppBackgroundClrLigter      [UIColor colorNamed:@"AppBackgroundColorLigter"]
+#define AppBackgroundClrDarker      [UIColor colorNamed:@"AppBackgroundColorDarker"]
+
 #define AppPrimaryTextClr           [UIColor colorNamed:@"PrimaryTextColor"]
 #define AppSecondaryTextClr         [UIColor colorNamed:@"SecondaryTextColor"]
 #define AppForgroundColr            [UIColor colorNamed:@"AppForegroundColor"]
 #define AppButtonMixColorClr         [UIColor colorNamed:@"AppButtonMixColor"]
-#define AppBackgroundClrDarker         [UIColor colorNamed:@"AppBackgroundColorDarker"]
+
 #define AppCardColor                [[UIColor colorNamed:@"AppCardColor"] colorWithAlphaComponent:1.0]
 
 #pragma mark - Chat Base

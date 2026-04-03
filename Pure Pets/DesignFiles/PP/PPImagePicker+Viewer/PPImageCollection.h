@@ -27,7 +27,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)imageCollectionDidRequestAddImage:(PPImageCollection *)collection;
 @end
 
-@interface PPImageCollection : UIView <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, QBImagePickerControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate>
+@interface PPImageCollection : UIView <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, QBImagePickerControllerDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, UIDocumentPickerDelegate>
 
 @property (nonatomic, weak) id<PPImageCollectionDelegate> delegate;
 @property (nonatomic, strong) UICollectionView *collectionView;

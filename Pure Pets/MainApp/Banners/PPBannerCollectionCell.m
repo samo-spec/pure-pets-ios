@@ -11,7 +11,7 @@
 #import <SDWebImage/SDWebImage.h>
 
 static NSString * const kPPHomePromoCarouselPageCellReuseID = @"PPHomePromoCarouselPageCell";
-static const CGFloat kPPHomeBannerSectionHeight = 180.0;
+static const CGFloat kPPHomeBannerSectionHeight = 160.0;
 static const CGFloat kPPHomeBannerSectionTopInset = 6.0;
 static const CGFloat kPPHomeBannerSectionHorizontalInset = 12.0;
 static const CGFloat kPPHomeBannerSectionBottomInset = 16.0;

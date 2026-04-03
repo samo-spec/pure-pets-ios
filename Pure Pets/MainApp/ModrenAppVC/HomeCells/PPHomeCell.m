@@ -77,7 +77,7 @@
     [self.iconBackdropView addSubview:self.iconView];
 
     self.iconSizeConstraint =
-        [self.iconView.heightAnchor constraintEqualToConstant:52];
+        [self.iconView.heightAnchor constraintEqualToConstant:44];
     self.iconCenterYConstraint =
         [self.iconBackdropView.centerYAnchor constraintEqualToAnchor:self.glassButton.centerYAnchor
                                                             constant:-18];
@@ -276,7 +276,7 @@
         self.iconView.image = kind.KindImageFile;
         self.titleLabel.text = kind.KindName;
         self.titleShadowContainer.hidden = NO;
-        self.iconSizeConstraint.constant = 62;
+        self.iconSizeConstraint.constant = 48;
         self.iconCenterYConstraint.constant = -18;
 
         self.activeGradientColors = [self pp_paletteForKind:kind];

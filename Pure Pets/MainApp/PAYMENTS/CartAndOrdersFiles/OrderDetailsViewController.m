@@ -1588,8 +1588,9 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         }
     }
 
+    // Fallback: pop to root — keeps the tab bar controller hierarchy intact
     if (self.navigationController) {
-        [self.navigationController setViewControllers:@[[PPHomeViewController new]] animated:animated];
+        [self.navigationController popToRootViewControllerAnimated:animated];
         return;
     }
 

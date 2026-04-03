@@ -26,8 +26,10 @@
         
         self.backgroundColor = UIColor.clearColor;
         self.contentView.backgroundColor = UIColor.clearColor;
+        self.contentView.layer.cornerRadius = PPCornersHome;
         self.contentView.layer.masksToBounds = YES;
         self.layer.cornerRadius = PPCornersHome;
+        self.clipsToBounds = NO;
         
         
         

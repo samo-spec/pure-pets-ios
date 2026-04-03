@@ -9,7 +9,10 @@
 #import "PPImageCollection.h"
 #import "QB.h"
 #import <AVFoundation/AVFoundation.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "PPPermissionHelper.h"
+#import "PPSelectOptionViewController.h"
+#import "OptionModel.h"
 
 @interface PPImageCollection () <UISheetPresentationControllerDelegate>
 @property (nonatomic, strong) UIView *titleContainer;
@@ -533,62 +536,73 @@
         return;
     }
 
+    // Self-healing: reset stuck flag before trying to present
+    [self pp_resetStalePresentingFlagIfNeeded];
+
     UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
     if (!presentingVC) {
         return;
     }
-    if (presentingVC.presentedViewController && !presentingVC.presentedViewController.isBeingDismissed) {
+    if (presentingVC.presentedViewController) {
         return;
     }
 
-    NSString *sheetTitle = self.titleText.length > 0 ? self.titleText : kLang(@"add.images.here");
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:sheetTitle
-                                                                   message:nil
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-    sheet.view.tintColor = AppPrimaryClr ?: UIColor.labelColor;
+    // Build modern option models with SF Symbols
+    NSMutableArray<OptionModel *> *options = [NSMutableArray array];
 
-    __weak typeof(self) weakSelf = self;
-    UIAlertAction *libraryAction =
-    [UIAlertAction actionWithTitle:kLang(@"Photo_Library")
-                             style:UIAlertActionStyleDefault
-                           handler:^(__unused UIAlertAction * _Nonnull action) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{
-            UIViewController *anchorVC = [weakSelf pp_bestPresentingViewController:nil] ?: presentingVC;
-            [weakSelf openGalleryPickerFromViewController:anchorVC];
-        });
-    }];
+    OptionModel *libraryOption = [OptionModel optionWithID:@"photo_library"
+                                                     title:kLang(@"Photo_Library")
+                                               systemImage:@"photo.on.rectangle.angled"];
+    libraryOption.subtitle = kLang(@"choose_from_gallery");
+    [options addObject:libraryOption];
 
-    UIAlertAction *cameraAction =
-    [UIAlertAction actionWithTitle:kLang(@"Camera")
-                             style:UIAlertActionStyleDefault
-                           handler:^(__unused UIAlertAction * _Nonnull action) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{
-            UIViewController *anchorVC = [weakSelf pp_bestPresentingViewController:nil] ?: presentingVC;
-            [weakSelf openCameraFromViewController:anchorVC];
-        });
-    }];
-
-    UIAlertAction *cancelAction =
-    [UIAlertAction actionWithTitle:kLang(@"cancel")
-                             style:UIAlertActionStyleCancel
-                           handler:nil];
-
-    [sheet addAction:libraryAction];
-    [sheet addAction:cameraAction];
-    [sheet addAction:cancelAction];
-    sheet.preferredAction = libraryAction;
-
-    UIPopoverPresentationController *popover = sheet.popoverPresentationController;
-    if (popover) {
-        UIView *anchorView = sourceView ?: presentingVC.view;
-        popover.sourceView = anchorView;
-        popover.sourceRect = anchorView.bounds;
-        popover.permittedArrowDirections = UIPopoverArrowDirectionAny;
+    if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
+        OptionModel *cameraOption = [OptionModel optionWithID:@"camera"
+                                                        title:kLang(@"Camera")
+                                                  systemImage:@"camera.fill"];
+        cameraOption.subtitle = kLang(@"take_a_photo");
+        [options addObject:cameraOption];
     }
 
-    [presentingVC presentViewController:sheet animated:YES completion:nil];
+    OptionModel *filesOption = [OptionModel optionWithID:@"files"
+                                                   title:kLang(@"files")
+                                             systemImage:@"folder.fill"];
+    filesOption.subtitle = kLang(@"browse_files");
+    [options addObject:filesOption];
+
+    NSString *sheetTitle = self.titleText.length > 0 ? self.titleText : kLang(@"add.images.here");
+
+    __weak typeof(self) weakSelf = self;
+    PPSelectOptionViewController *optionVC =
+        [[PPSelectOptionViewController alloc] initWithOptions:options
+                                                        title:sheetTitle
+                                                          row:nil
+                                             presentationStyle:PPSelectOptionPresentationMain
+                                                showSearchBar:NO
+                                                   completion:^(id _Nullable selectedObject) {
+        if (![selectedObject isKindOfClass:[OptionModel class]]) return;
+        OptionModel *selected = (OptionModel *)selectedObject;
+        UIViewController *anchorVC = [weakSelf pp_bestPresentingViewController:nil] ?: presentingVC;
+
+        if ([selected.optID isEqualToString:@"photo_library"]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                [weakSelf openGalleryPickerFromViewController:anchorVC];
+            });
+        } else if ([selected.optID isEqualToString:@"camera"]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                [weakSelf openCameraFromViewController:anchorVC];
+            });
+        } else if ([selected.optID isEqualToString:@"files"]) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
+                           dispatch_get_main_queue(), ^{
+                [weakSelf openFilesPickerFromViewController:anchorVC];
+            });
+        }
+    }];
+
+    [presentingVC presentViewController:optionVC animated:YES completion:nil];
 }
 
 - (void)notifyDelegate {
@@ -878,6 +892,7 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 #pragma mark - Image Picker
 
 - (void)openImagePicker {
+    [self pp_resetStalePresentingFlagIfNeeded];
     UIViewController *presentingVC = [self pp_bestPresentingViewController:nil];
     if (!presentingVC) {
         return;
@@ -923,6 +938,11 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         return nil;
     }
 
+    // Block presentation if VC still has a child that is mid-dismiss animation
+    if (vc.presentedViewController && vc.presentedViewController.isBeingDismissed) {
+        return nil;
+    }
+
     return vc;
 }
 
@@ -938,6 +958,28 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     return nil;
 }
 
+/// Self-healing: if `isPresentingMediaPicker` is stuck YES but no picker VC
+/// is actually on screen, reset the flag so the user can pick again.
+- (void)pp_resetStalePresentingFlagIfNeeded
+{
+    if (!self.isPresentingMediaPicker) return;
+    if (self.currentPicker || self.cameraPicker) return;
+
+    UIViewController *parent = [self pp_parentViewController];
+    if (!parent) {
+        // No parent VC → flag is certainly stale
+        self.isPresentingMediaPicker = NO;
+        return;
+    }
+
+    // Walk up the presented chain — if no picker is found, flag is stale
+    UIViewController *presented = parent.presentedViewController;
+    if (!presented) {
+        NSLog(@"[PPImageCollection] Self-healing: resetting stale isPresentingMediaPicker flag");
+        self.isPresentingMediaPicker = NO;
+    }
+}
+
 - (void)openGalleryPickerFromViewController:(UIViewController *)viewController
 {
     if (![NSThread isMainThread]) {
@@ -947,18 +989,21 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         return;
     }
 
+    // Self-healing: reset stuck flag if no picker is actually presented
+    [self pp_resetStalePresentingFlagIfNeeded];
+
     UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
     if (!presentingVC) return;
     if (![self pp_canAddMoreImagesForPresenter:presentingVC]) return;
     if (self.isPresentingMediaPicker || self.currentPicker || self.cameraPicker) return;
-    if (presentingVC.presentedViewController && !presentingVC.presentedViewController.isBeingDismissed) return;
+    if (presentingVC.presentedViewController) return;
     __weak typeof(self) weakSelf = self;
     [PPPermissionHelper requestPhotoLibraryPermissionFromViewController:presentingVC
                                                             completion:^(BOOL granted) {
         if (!granted) return;
         if (!weakSelf) return;
         if (weakSelf.isPresentingMediaPicker || weakSelf.currentPicker || weakSelf.cameraPicker) return;
-        if (presentingVC.presentedViewController && !presentingVC.presentedViewController.isBeingDismissed) return;
+        if (presentingVC.presentedViewController) return;
 
         if ([weakSelf pp_shouldUseTemporaryHXPicker]) {
             [weakSelf pp_presentHXPhotoPickerFromViewController:presentingVC];
@@ -1038,7 +1083,6 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
 - (void)openCameraFromViewController:(UIViewController *)viewController
 {
-    // Ensure we're on the main thread
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self openCameraFromViewController:viewController];
@@ -1047,9 +1091,11 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     }
 
     if (!viewController) return;
+
+    // Self-healing: reset stuck flag if no picker is actually presented
+    [self pp_resetStalePresentingFlagIfNeeded];
+
     if (![self pp_canAddMoreImagesForPresenter:viewController]) return;
-    
-    // Check state flags to prevent concurrent presentations
     if (self.isPresentingMediaPicker || self.currentPicker || self.cameraPicker) return;
 
     if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
@@ -1112,7 +1158,7 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     if (!presentingVC) return;
 
     // If the best VC already presents something, try its root ancestor on iPad
-    if (presentingVC.presentedViewController && !presentingVC.presentedViewController.isBeingDismissed) {
+    if (presentingVC.presentedViewController) {
         if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
             UIViewController *root = presentingVC.view.window.rootViewController;
             while (root.presentedViewController && !root.presentedViewController.isBeingDismissed) {
@@ -1168,6 +1214,63 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
                                               style:UIAlertActionStyleDefault
                                             handler:nil]];
     [viewController presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - Files Picker
+
+- (void)openFilesPickerFromViewController:(UIViewController *)viewController
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self openFilesPickerFromViewController:viewController];
+        });
+        return;
+    }
+
+    [self pp_resetStalePresentingFlagIfNeeded];
+
+    UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
+    if (!presentingVC) return;
+    if (![self pp_canAddMoreImagesForPresenter:presentingVC]) return;
+    if (self.isPresentingMediaPicker || self.currentPicker || self.cameraPicker) return;
+    if (presentingVC.presentedViewController) return;
+
+    UIDocumentPickerViewController *docPicker =
+        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeImage]];
+    docPicker.delegate = self;
+    docPicker.allowsMultipleSelection = ([self imageCount] < self.maxImageCount);
+    docPicker.modalPresentationStyle = UIModalPresentationPageSheet;
+
+    self.isPresentingMediaPicker = YES;
+    [presentingVC presentViewController:docPicker animated:YES completion:nil];
+}
+
+#pragma mark - UIDocumentPickerDelegate
+
+- (void)documentPicker:(UIDocumentPickerViewController *)controller
+didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
+{
+    self.isPresentingMediaPicker = NO;
+    if (urls.count == 0) return;
+
+    NSInteger availableSlots = self.maxImageCount - [self imageCount];
+    NSInteger count = MIN((NSInteger)urls.count, availableSlots);
+    for (NSInteger i = 0; i < count; i++) {
+        NSURL *url = urls[i];
+        BOOL accessed = [url startAccessingSecurityScopedResource];
+        NSData *data = [NSData dataWithContentsOfURL:url];
+        if (accessed) [url stopAccessingSecurityScopedResource];
+
+        UIImage *image = data ? [UIImage imageWithData:data] : nil;
+        if (image) {
+            [self addImage:image];
+        }
+    }
+}
+
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller
+{
+    self.isPresentingMediaPicker = NO;
 }
 
 #pragma mark - QBImagePickerControllerDelegate
@@ -1249,17 +1352,23 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 
 - (void)dismissPicker {
     if (self.currentPicker) {
-        [self.currentPicker dismissViewControllerAnimated:YES completion:^{
+        UIViewController *picker = self.currentPicker;
+        self.currentPicker = nil;
+        self.cameraPicker = nil;
+        [picker dismissViewControllerAnimated:YES completion:^{
             self.isPresentingMediaPicker = NO;
-            self.currentPicker = nil;
-            self.cameraPicker = nil;
             [self pp_cancelLoadingTimeoutIfNeeded];
         }];
     } else {
-        self.isPresentingMediaPicker = NO;
+        // HX picker path: bridge already dismissed the VC, but the dismiss
+        // animation may still be in progress. Delay flag reset to let it finish.
         self.currentPicker = nil;
         self.cameraPicker = nil;
         [self pp_cancelLoadingTimeoutIfNeeded];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            self.isPresentingMediaPicker = NO;
+        });
     }
 }
 

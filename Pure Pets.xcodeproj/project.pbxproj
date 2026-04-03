@@ -211,6 +211,7 @@
 		F22CD3852C6709650098B6E9 /* star.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3782C6709650098B6E9 /* star.png */; };
 		F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22CD37B2C6709650098B6E9 /* FCAlertView.m */; };
 		F22DE0802ECB61C600B2D0D2 /* PPUserSigningController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D6396C2ECB491D00FEBCBB /* PPUserSigningController.m */; };
+		F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */; };
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
 		F240BD442D74D237004DDA6A /* BarcodeGenerator.m in Sources */ = {isa = PBXBuildFile; fileRef = F240BD432D74D237004DDA6A /* BarcodeGenerator.m */; };
@@ -754,17 +755,17 @@
 /* Begin PBXFileReference section */
 		1BE69E138E85D5FDB3F3E6F6 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pure_Pets.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPBottomBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
+		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
 		389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
-		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPSectionHeader.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
+		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSectionHeader.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
-		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPRatingView.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m"; sourceTree = SOURCE_ROOT; };
+		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPRatingView.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m"; sourceTree = SOURCE_ROOT; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
-		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPProductCard.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
+		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
-		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPDiscountBadge.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
+		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPDiscountBadge.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
 		F201B8AF2DA6428200CC46A7 /* lame.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = lame.framework; path = MyFrames/lame.framework; sourceTree = SOURCE_ROOT; };
 		F202A06C2EFE202B0048D4C2 /* PPHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeCell.h; sourceTree = "<group>"; };
 		F202A06D2EFE20330048D4C2 /* PPHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCell.m; sourceTree = "<group>"; };
@@ -886,12 +887,12 @@
 		F213021E2F0C655F006E71AB /* PPSearchViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchViewController.m; sourceTree = "<group>"; };
 		F21302202F0C6619006E71AB /* BBNavigationBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBNavigationBar.h; sourceTree = "<group>"; };
 		F21302212F0C6629006E71AB /* BBNavigationBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBNavigationBar.m; sourceTree = "<group>"; };
-		F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPNavBarTitleView.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.m"; sourceTree = SOURCE_ROOT; };
+		F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavBarTitleView.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.m"; sourceTree = SOURCE_ROOT; };
 		F21302262F0C8FDB006E71AB /* PPFloatingSearchAccessoryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFloatingSearchAccessoryView.h; sourceTree = "<group>"; };
 		F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFloatingSearchAccessoryView.m; sourceTree = "<group>"; };
 		F21391D12D8BC16200B59E5B /* UIButton+PressAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIButton+PressAnimation.h"; sourceTree = "<group>"; };
 		F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIButton+PressAnimation.m"; sourceTree = "<group>"; };
-		F21770792EEBA63E0078C590 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPMenuHelper.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.m"; sourceTree = SOURCE_ROOT; };
+		F21770792EEBA63E0078C590 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPMenuHelper.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.m"; sourceTree = SOURCE_ROOT; };
 		F21843A92E8B9ED700D8BF46 /* PPCollection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCollection.h; sourceTree = "<group>"; };
 		F21843AA2E8B9EE500D8BF46 /* PPCollection.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCollection.m; sourceTree = "<group>"; };
 		F21843AF2E8BB07100D8BF46 /* ImageViewerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ImageViewerController.h; sourceTree = "<group>"; };
@@ -1121,6 +1122,8 @@
 		F22CD37A2C6709650098B6E9 /* FCAlertView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FCAlertView.h; sourceTree = "<group>"; };
 		F22CD37B2C6709650098B6E9 /* FCAlertView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FCAlertView.m; sourceTree = "<group>"; };
 		F22F1B472F79947A00328BF3 /* GoogleMapsCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GoogleMapsCore.xcframework; path = Pods/GoogleMaps/Maps/Frameworks/GoogleMapsCore.xcframework; sourceTree = "<group>"; };
+		F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeOrderStatusCell.h; sourceTree = "<group>"; };
+		F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeOrderStatusCell.m; sourceTree = "<group>"; };
 		F23686EC2C7624DE001E620C /* TQImageViewer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TQImageViewer.h; sourceTree = "<group>"; };
 		F23686ED2C7624DE001E620C /* TQImageViewer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TQImageViewer.m; sourceTree = "<group>"; };
 		F2390C1D2E23F18A0017D4E1 /* CompanyLocationVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CompanyLocationVC.h; sourceTree = "<group>"; };
@@ -1199,7 +1202,7 @@
 		F25082F32DB647250082FF75 /* ItemModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ItemModel.h; sourceTree = "<group>"; };
 		F25082F42DB647250082FF75 /* ItemModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ItemModel.m; sourceTree = "<group>"; };
 		F25100982F73C4D6008F6AFE /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPNavigationController.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.m"; sourceTree = SOURCE_ROOT; };
+		F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavigationController.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.m"; sourceTree = SOURCE_ROOT; };
 		F25373D52E32E3B400CD93E7 /* LeaveFeedbackViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LeaveFeedbackViewController.h; sourceTree = "<group>"; };
 		F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LeaveFeedbackViewController.m; sourceTree = "<group>"; };
 		F253FA642F07182800323CB4 /* PetAdoptView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetAdoptView.h; sourceTree = "<group>"; };
@@ -1823,9 +1826,9 @@
 		F2B5B1952CC753AA00ABAC04 /* StoriesReusableView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StoriesReusableView.m; sourceTree = "<group>"; };
 		F2B5B9572E1E54A5003F463C /* DeliverySwitchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DeliverySwitchCell.h; sourceTree = "<group>"; };
 		F2B5B9582E1E54B7003F463C /* DeliverySwitchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DeliverySwitchCell.m; sourceTree = "<group>"; };
-		F2B604AE2EAE9B69003F6F08 /* PPSelectOptionViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPSelectOptionViewController.m"; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectOptionViewController.m"; sourceTree = SOURCE_ROOT; };
-		F2B604B12EAEAE04003F6F08 /* PPOptionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPOptionCell.m"; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPOptionCell.m"; sourceTree = SOURCE_ROOT; };
-		F2B641B62F4A7F860092C2BF /* PPSelectAddressVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPSelectAddressVC.m"; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectAddressVC.m"; sourceTree = SOURCE_ROOT; };
+		F2B604AE2EAE9B69003F6F08 /* PPSelectOptionViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSelectOptionViewController.m; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectOptionViewController.m"; sourceTree = SOURCE_ROOT; };
+		F2B604B12EAEAE04003F6F08 /* PPOptionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPOptionCell.m; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPOptionCell.m"; sourceTree = SOURCE_ROOT; };
+		F2B641B62F4A7F860092C2BF /* PPSelectAddressVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSelectAddressVC.m; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectAddressVC.m"; sourceTree = SOURCE_ROOT; };
 		F2B641B92F4A95690092C2BF /* PPStory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPStory.h; sourceTree = "<group>"; };
 		F2B641BA2F4A95690092C2BF /* PPStory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPStory.m; sourceTree = "<group>"; };
 		F2B641BC2F4A95D70092C2BF /* PPStoriesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPStoriesManager.h; sourceTree = "<group>"; };
@@ -1905,7 +1908,7 @@
 		F2C5F7762CA01C0500D7897A /* UIView+DCAnimationKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+DCAnimationKit.h"; sourceTree = "<group>"; };
 		F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+DCAnimationKit.m"; sourceTree = "<group>"; };
 		F2C6385F2E5132A3007E4CE4 /* cities.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = cities.json; sourceTree = "<group>"; };
-		F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPModrenSegmrnted.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.m"; sourceTree = SOURCE_ROOT; };
+		F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPModrenSegmrnted.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.m"; sourceTree = SOURCE_ROOT; };
 		F2CA8DCE2F1DC1C800AD4416 /* PPChatsFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPChatsFunc.h; sourceTree = "<group>"; };
 		F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatsFunc.m; sourceTree = "<group>"; };
 		F2CA8DD12F1DCF0400AD4416 /* ChMessagingController+helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+helper.h"; sourceTree = "<group>"; };
@@ -1972,7 +1975,7 @@
 		F2D6396D2ECB4A4500FEBCBB /* PPUserSigningController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserSigningController.h; sourceTree = "<group>"; };
 		F2D6396F2ECB4E1800FEBCBB /* PPUserSigningManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserSigningManager.h; sourceTree = "<group>"; };
 		F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserSigningManager.m; sourceTree = "<group>"; };
-		F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "BBCheckoutSummaryView.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/BBCheckoutSummaryView.m"; sourceTree = SOURCE_ROOT; };
+		F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BBCheckoutSummaryView.m; path = "Pure Pets/DesignFiles/PP/PPNAV/BBCheckoutSummaryView.m"; sourceTree = SOURCE_ROOT; };
 		F2D7F0ED2F135F9100105778 /* NoResult.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NoResult.json; sourceTree = "<group>"; };
 		F2D894842D5534D000256152 /* CoreTelephony.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreTelephony.framework; path = System/Library/Frameworks/CoreTelephony.framework; sourceTree = SDKROOT; };
 		F2D99F782E2849C800CD4552 /* ServiceViewerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServiceViewerViewController.h; sourceTree = "<group>"; };
@@ -1988,7 +1991,6 @@
 		F2DF5DD52EFC92BA009C7B6F /* PPOverlayCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOverlayCoordinator.h; sourceTree = "<group>"; };
 		F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOverlayCoordinator.m; sourceTree = "<group>"; };
 		F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIViewController+PPNavBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m"; sourceTree = SOURCE_ROOT; };
-		F2E0E86F2E7A16D400F0C084 /* UIViewController+PPNavBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "UIViewController+PPNavBar.h"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.h"; sourceTree = SOURCE_ROOT; };
 		F2E0E8722E7A3A3E00F0C084 /* UserModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserModel.h; sourceTree = "<group>"; };
 		F2E0E8732E7A3A3E00F0C084 /* UserModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserModel.m; sourceTree = "<group>"; };
 		F2E0E8752E7A3ABF00F0C084 /* PPRolePermission.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRolePermission.h; sourceTree = "<group>"; };
@@ -2039,7 +2041,7 @@
 		F2F69D2F2EA944DA003ADA14 /* PetAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAd.m; sourceTree = "<group>"; };
 		F2F6C8B12E8D79C10092D85D /* SplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SplashViewController.h; sourceTree = "<group>"; };
 		F2F6C8B22E8D7A730092D85D /* SplashViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SplashViewController.m; sourceTree = "<group>"; };
-		F2F750CA2E7C605E00BACFA8 /* PPS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPS.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPS.m"; sourceTree = SOURCE_ROOT; };
+		F2F750CA2E7C605E00BACFA8 /* PPS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPS.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPS.m"; sourceTree = SOURCE_ROOT; };
 		F2F750CC2E7C82E000BACFA8 /* PPGradientView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPGradientView.h; sourceTree = "<group>"; };
 		F2F750CD2E7C82EA00BACFA8 /* PPGradientView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPGradientView.m; sourceTree = "<group>"; };
 		F2F750D02E7CA97200BACFA8 /* AddUserIconAnimation.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = AddUserIconAnimation.json; sourceTree = "<group>"; };
@@ -2064,8 +2066,7 @@
 		F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVerificationCodeViewController.m; sourceTree = "<group>"; };
 		F2FCEBAD2ECD0969002A9F67 /* PPCompleteProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCompleteProfileVC.h; sourceTree = "<group>"; };
 		F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCompleteProfileVC.m; sourceTree = "<group>"; };
-		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "HXCompatibilityCategories.m"; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
-		F2HXCOMPAT0003 /* HXCompatibilityCategories.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "HXCompatibilityCategories.h"; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.h"; sourceTree = SOURCE_ROOT; };
+		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -2146,6 +2147,8 @@
 		F202A0722EFF15B30048D4C2 /* HomeCells */ = {
 			isa = PBXGroup;
 			children = (
+				F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */,
+				F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */,
 				F2B641B82F4A95290092C2BF /* Stories */,
 				F2F465F02F3B8C8200E5FB60 /* PPHomeHeroCell.h */,
 				F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */,
@@ -4094,6 +4097,25 @@
 		F2AB5EE22CED3A1E00CC5231 /* Recovered References */ = {
 			isa = PBXGroup;
 			children = (
+				F2HXCOMPAT0002 /* HXCompatibilityCategories.m */,
+				F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */,
+				F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */,
+				F2B641B62F4A7F860092C2BF /* PPSelectAddressVC.m */,
+				F21770792EEBA63E0078C590 /* PPMenuHelper.m */,
+				F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */,
+				F2F750CA2E7C605E00BACFA8 /* PPS.m */,
+				2262AF902E74B74B005C8EF0 /* PPBottomBar.m */,
+				F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */,
+				F2B604AE2EAE9B69003F6F08 /* PPSelectOptionViewController.m */,
+				F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */,
+				F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */,
+				F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */,
+				F2B604B12EAEAE04003F6F08 /* PPOptionCell.m */,
+				F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */,
+				3C32792C5C5015883E126EAA /* PPSectionHeader.m */,
+				5567B37190496A6732104BBC /* PPRatingView.m */,
+				EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */,
+				88157B791FE37AB03DA1B1F5 /* PPProductCard.m */,
 			);
 			name = "Recovered References";
 			sourceTree = "<group>";
@@ -4904,9 +4926,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -4956,7 +4982,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "\n";
+			shellScript = "
+";
 		};
 		F419239A25BCE454B7C90E99 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -4966,9 +4993,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5097,6 +5128,7 @@
 				F27146862CCE6B5300F7F3BA /* XLFormPickerCell.m in Sources */,
 				F27146872CCE6B5300F7F3BA /* XLFormStepCounterCell.m in Sources */,
 				F2E78D692F187DA300C5AE68 /* PPAdSharingHelper.m in Sources */,
+				F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */,
 				F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */,
 				F27146882CCE6B5300F7F3BA /* XLFormValidationStatus.m in Sources */,
 				F2C223C62F061DD4006DB76A /* PPHomeFunc.m in Sources */,

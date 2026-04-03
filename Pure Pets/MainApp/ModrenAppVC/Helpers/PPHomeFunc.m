@@ -17,40 +17,33 @@ NS_ASSUME_NONNULL_BEGIN
 
 #pragma mark - Design Tokens (2026)
 
-static const CGFloat kPageInset        = PPScreenMargin;
-static const CGFloat kSectionSpacing   = PPSpaceBase;
+/// Standard spacing unit — every inset/gap derives from this.
+static const CGFloat kStd = 12.0;
 
-static const CGFloat kSuggestionsItemHeight      = 248.0;
+// Aliases so every call-site compiles (all resolve to kStd = 12)
+static const CGFloat kPageInset       = kStd;
+static const CGFloat kSectionSpacing  = kStd;
+static const CGFloat kPadding         = kStd;
+static const CGFloat kGapSmall        = kStd;
+static const CGFloat kGapMedium       = kStd;
+static const CGFloat kGapLarge        = kStd;
+
+
+static const CGFloat PPSize16        = 16;
+static const CGFloat PPSize12       = 16;
+static const CGFloat PPSize6       = 8;
 
 static const CGFloat kHeaderHeight     = 72.0;
-
-static const CGFloat NearByItemWidth  = 200;
-static const CGFloat NearByItemHeight = 288;
-
-static const CGFloat kAdsItemWidth  = 188;
-static const CGFloat kAdsItemHeight = 248;
+static const CGFloat kHeaderHeightMin     = 58.0;
 
 static const CGFloat kAccessoriesItemWidth  = 188;
 static const CGFloat kAccessoriesItemHeight = 248;
 
-static const CGFloat kMainKindsItemWidth  = 106;
-static const CGFloat kMainKindsItemHeight = 132;
-
-// Base spacing
-static const CGFloat kPadding    = PPSpaceBase;
-static const CGFloat kGapSmall   = PPSpaceXS + 2;
-static const CGFloat kGapMedium  = PPSpaceSM;
-static const CGFloat kGapLarge   = PPSpaceMD;
-
 // Standard card sizes
-static const CGFloat kCardTall    = 228.0;
 static const CGFloat kCardMedium  = 188.0;
 static const CGFloat kCardLarge   = 248.0;
 static const CGFloat kCurrentOrdersExpandedItemHeight = 236.0;
-static const CGFloat kCurrentOrdersCollapsedItemHeight = 104.0;
-
-// Section header height
-static const CGFloat kHeaderH = 64.0;
+static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
 
 #pragma mark - Public Sections
  
@@ -74,7 +67,7 @@ static const CGFloat kHeaderH = 64.0;
     [NSCollectionLayoutSection sectionWithGroup:group];
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(14.0, kPadding, 20.0, kPadding);
+    NSDirectionalEdgeInsetsMake(14.0, PPSize16, kPadding, PPSize16);
 
     return section;
 }
@@ -117,14 +110,17 @@ static const CGFloat kHeaderH = 64.0;
 {
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension absoluteDimension:96]
+     [NSCollectionLayoutDimension absoluteDimension:102]
                                      heightDimension:
      [NSCollectionLayoutDimension absoluteDimension:122]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-    item.contentInsets = NSDirectionalEdgeInsetsMake(kGapSmall, kGapSmall, kGapSmall, kGapSmall);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(0,
+                                                     PPSize6,
+                                                     0,
+                                                     PPSize6);
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -136,15 +132,18 @@ static const CGFloat kHeaderH = 64.0;
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
 
-    section.interGroupSpacing = kGapMedium + 2.0;
+    section.interGroupSpacing = 0;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(kGapMedium + 2.0, kPadding, kGapLarge + 6.0, kPadding);
+    NSDirectionalEdgeInsetsMake(kGapMedium , PPSize16, kGapLarge , PPSize16);
 
-    section.boundarySupplementaryItems = @[[self sectionHeader]];
+    section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin]];
 
     return section;
 }
+
+
+
 // MARK: - Accessories Section (and Ads, unified card logic)
 + (NSCollectionLayoutSection *)accessoriesSection
 {
@@ -157,7 +156,10 @@ static const CGFloat kHeaderH = 64.0;
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-    item.contentInsets = NSDirectionalEdgeInsetsMake(kGapSmall, kGapSmall, kGapSmall, kGapSmall);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(0,
+                                                     PPSize6,
+                                                     0,
+                                                     PPSize6);
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -169,12 +171,12 @@ static const CGFloat kHeaderH = 64.0;
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
 
-    section.interGroupSpacing = kGapMedium + 2.0;
+    section.interGroupSpacing = 0;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(kGapMedium + 2.0, kPadding, kGapLarge + 6.0, kPadding);
+    NSDirectionalEdgeInsetsMake(PPSize12, PPSize16, PPSize12, PPSize16);
 
-    section.boundarySupplementaryItems = @[[self sectionHeader]];
+    section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin]];
 
     return section;
 }
@@ -182,8 +184,12 @@ static const CGFloat kHeaderH = 64.0;
 + (NSCollectionLayoutSection *)buyAgainSection
 {
     NSCollectionLayoutSection *section = [self accessoriesSection];
-    section.contentInsets = NSDirectionalEdgeInsetsMake(10.0, kPadding, 32.0, kPadding);
-    section.interGroupSpacing = kGapMedium + 2.0;
+    section.contentInsets = NSDirectionalEdgeInsetsMake(PPSize12,
+                                                        PPSize16,
+                                                        PPSize12,
+                                                        PPSize16);
+    section.interGroupSpacing = 0;
+    section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
     return section;
 }
 + (NSCollectionLayoutSection *)adoptSection {
@@ -200,7 +206,7 @@ static const CGFloat kHeaderH = 64.0;
    [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
    // No inner spacing – single card
-   item.contentInsets = NSDirectionalEdgeInsetsMake(4, 0, 8, 0);
+   item.contentInsets = NSDirectionalEdgeInsetsMake(0, 0, 0, 0);
 
    // =========================
    // Group (single item)
@@ -217,7 +223,7 @@ static const CGFloat kHeaderH = 64.0;
 
    // 10pt margin on each side → width = view width - 20
    section.contentInsets =
-   NSDirectionalEdgeInsetsMake(2, 16, 30, 16);
+   NSDirectionalEdgeInsetsMake(2, PPSize16, PPSize16, PPSize16);
 
    // ❌ No header
    // ❌ No orthogonal scrolling
@@ -247,7 +253,7 @@ static const CGFloat kHeaderH = 64.0;
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-    item.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(0,PPSize6,0,PPSize6);
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -261,74 +267,21 @@ static const CGFloat kHeaderH = 64.0;
 
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(10, kPageInset, 22, kPageInset);
+    NSDirectionalEdgeInsetsMake(PPSize12, PPSize16, PPSize12, PPSize16);
 
-    section.boundarySupplementaryItems = @[[self sectionHeader]];
+    section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
     return section;
 }
-
-/*
- 
-// MARK: - Suggestions Section (Premium carousel)
-+ (NSCollectionLayoutSection *)suggestionsSection
-{
-    NSCollectionLayoutSize *itemSize =
-    [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
-                                     heightDimension:
-     [NSCollectionLayoutDimension fractionalHeightDimension:1.0]];
-
-    NSCollectionLayoutItem *item =
-    [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-    item.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
-
-    NSCollectionLayoutSize *groupSize =
-    [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:0.78]
-                                     heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:kSquareCardH + 10]];
-
-    NSCollectionLayoutGroup *group =
-    [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
-                                                  subitems:@[item]];
-
-    NSCollectionLayoutSection *section =
-    [NSCollectionLayoutSection sectionWithGroup:group];
-
-    section.orthogonalScrollingBehavior =
-    UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
-
-    section.contentInsets =
-    NSDirectionalEdgeInsetsMake(12, kPageInset, kSectionSpacing, kPageInset);
-    section.interGroupSpacing = 12;
-
-    NSCollectionLayoutSize *size =
-    [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
-                                     heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:56]];
-
-   
-    
-    section.boundarySupplementaryItems = @[[NSCollectionLayoutBoundarySupplementaryItem
-                                            boundarySupplementaryItemWithLayoutSize:size
-                                            elementKind:UICollectionElementKindSectionHeader
-                                            alignment:NSRectAlignmentTop]];
-    return section;
-}
-
- */
-
 
 
 // MARK: - Section Header (single source of truth)
-+ (NSCollectionLayoutBoundarySupplementaryItem *)sectionHeader
++ (NSCollectionLayoutBoundarySupplementaryItem *)sectionHeaderWithHeight:(float)height
 {
     NSCollectionLayoutSize *size =
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:kHeaderHeight]];
+     [NSCollectionLayoutDimension absoluteDimension:height]];
 
     return
     [NSCollectionLayoutBoundarySupplementaryItem
@@ -360,16 +313,17 @@ static const CGFloat kHeaderH = 64.0;
                                                     count:3];
 
     group.interItemSpacing =
-    [NSCollectionLayoutSpacing fixedSpacing:kSectionSpacing];
+    [NSCollectionLayoutSpacing fixedSpacing:PPSize6];
 
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
 
-    section.interGroupSpacing = kSectionSpacing;
+    section.interGroupSpacing = 0;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(12, kPageInset, 18, kPageInset);
+    NSDirectionalEdgeInsetsMake(12, PPSize16, 12, PPSize16);
 
-    section.boundarySupplementaryItems = @[[self sectionHeader]];
+    section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin]];
+
     return section;
 }
 
@@ -516,20 +470,20 @@ static const CGFloat kHeaderH = 64.0;
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:(1.0 / 3.0)]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:72]];
+     [NSCollectionLayoutDimension absoluteDimension:54]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
     item.contentInsets =
-    NSDirectionalEdgeInsetsMake(4, 4, 4, 4);
+    NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
 
     // Group (single row, 3 items)
     NSCollectionLayoutSize *groupSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:72]];
+     [NSCollectionLayoutDimension absoluteDimension:54]];
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
@@ -541,7 +495,7 @@ static const CGFloat kHeaderH = 64.0;
 
     section.interGroupSpacing = 0;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(6, 16, 14, 16);
+    NSDirectionalEdgeInsetsMake(6, 12, 6, 12);
 
     return section;
 }
@@ -657,7 +611,7 @@ static const CGFloat kHeaderH = 64.0;
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-    item.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(0, PPSize6, 0, PPSize6);
 
     NSCollectionLayoutSize *groupSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
@@ -679,8 +633,8 @@ static const CGFloat kHeaderH = 64.0;
     UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(14, kPageInset - 4.0, kSectionSpacing + 6.0, kPageInset - 4.0);
-    section.interGroupSpacing = 10;
+    NSDirectionalEdgeInsetsMake(PPSize12, PPSize16, PPSize12, PPSize16);
+    section.interGroupSpacing = 0;
 
     NSCollectionLayoutSize *size =
     [NSCollectionLayoutSize sizeWithWidthDimension:

@@ -24,9 +24,9 @@
     NSArray<NSNumber *> *renderOrder = @[
         @(PPHomeSectionHero),
         @(PPHomeSectionServices),
-        @(PPHomeSectionCurrentOrders),
-        @(PPHomeSectionMainKinds),
         @(PPHomeSectionCarousel),
+        @(PPHomeSectionMainKinds),
+        @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionAdopt),

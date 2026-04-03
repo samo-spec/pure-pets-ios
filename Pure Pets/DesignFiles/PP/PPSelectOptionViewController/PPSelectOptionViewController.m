@@ -424,7 +424,7 @@
         OptionModel *op = (OptionModel *)option;
         title = op.title;
         subtitle = op.subtitle;
-        imageNamed = op.imageName; 
+        imageNamed = op.systemImageName ?: op.imageName; 
     }
     
     

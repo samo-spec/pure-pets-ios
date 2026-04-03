@@ -10,6 +10,9 @@
 #import "PPCarouselItem.h"
 #import "PPCarouselCollectionCell.h"
 
+/// Multiplier for infinite-loop illusion (real items × this = virtual items)
+static const NSInteger kLoopMultiplier = 200;
+
 @interface PPCarouselView () <UICollectionViewDelegate, UICollectionViewDataSource>
 
 @property (nonatomic, strong) UICollectionView *collectionView;
@@ -28,35 +31,33 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
 
-        UICollectionViewCompositionalLayout *layout =
-        [[UICollectionViewCompositionalLayout alloc]
-         initWithSection:[self makeSection]];
+        UICollectionViewFlowLayout *flow = [[UICollectionViewFlowLayout alloc] init];
+        flow.scrollDirection = UICollectionViewScrollDirectionHorizontal;
+        flow.minimumLineSpacing = 12.0;
 
         _collectionView = [[UICollectionView alloc]
                            initWithFrame:CGRectZero
-                 collectionViewLayout:layout];
+                 collectionViewLayout:flow];
         _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
         _collectionView.delegate = self;
         _collectionView.dataSource = self;
         _collectionView.showsHorizontalScrollIndicator = NO;
         _collectionView.backgroundColor = UIColor.clearColor;
-        _collectionView.layer.cornerRadius = PPCornersHome;
+        _collectionView.clipsToBounds = NO;
+        _collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
 
-        // Shadow container (best practice: shadow outside, mask inside)
+        [_collectionView registerClass:PPCarouselCollectionCell.class
+            forCellWithReuseIdentifier:@"PPCarouselCollectionCell"];
+
+        // Shadow container
         UIView *shadowContainer = [UIView new];
         shadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
         shadowContainer.backgroundColor = UIColor.clearColor;
-        shadowContainer.layer.shadowColor = UIColor.blackColor.CGColor;
-        shadowContainer.layer.shadowOpacity = 0.18;
-        shadowContainer.layer.shadowRadius = 16;
-        shadowContainer.layer.shadowOffset = CGSizeMake(0, 6);
-        shadowContainer.layer.cornerRadius = PPCornersHome;
+        shadowContainer.clipsToBounds = NO;
 
-        // Move collectionView inside shadow container
         [self addSubview:shadowContainer];
         [shadowContainer addSubview:_collectionView];
 
-        // Constraints for shadow container
         [NSLayoutConstraint activateConstraints:@[
             [shadowContainer.topAnchor constraintEqualToAnchor:self.topAnchor],
             [shadowContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
@@ -64,65 +65,81 @@
             [shadowContainer.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
         ]];
 
-        // Constraints for collectionView inside shadow container
         [NSLayoutConstraint activateConstraints:@[
             [_collectionView.topAnchor constraintEqualToAnchor:shadowContainer.topAnchor],
             [_collectionView.leadingAnchor constraintEqualToAnchor:shadowContainer.leadingAnchor],
             [_collectionView.trailingAnchor constraintEqualToAnchor:shadowContainer.trailingAnchor],
-            [_collectionView.bottomAnchor constraintEqualToAnchor:shadowContainer.bottomAnchor constant:-24]
+            [_collectionView.bottomAnchor constraintEqualToAnchor:shadowContainer.bottomAnchor constant:-24],
         ]];
-        
-        
-        
-        // Mask only content, not shadow
-        _collectionView.layer.masksToBounds = YES;
 
         _pageControl = [UIPageControl new];
         _pageControl.translatesAutoresizingMaskIntoConstraints = NO;
         _pageControl.currentPageIndicatorTintColor = AppPrimaryClr;
         _pageControl.pageIndicatorTintColor =
             [AppSecondaryTextClr colorWithAlphaComponent:0.25];
-        _pageControl.allowsContinuousInteraction = YES; // iOS 14+
+        _pageControl.allowsContinuousInteraction = YES;
         _pageControl.backgroundStyle = UIPageControlBackgroundStyleMinimal;
+        _pageControl.hidesForSinglePage = YES;
         [shadowContainer addSubview:_pageControl];
-        self.pageControl.hidesForSinglePage = YES;
 
         [NSLayoutConstraint activateConstraints:@[
-            
-
-            [self.pageControl.centerXAnchor
-             constraintEqualToAnchor:shadowContainer.centerXAnchor],
-            [self.pageControl.bottomAnchor constraintEqualToAnchor:shadowContainer.bottomAnchor constant:-8],
+            [_pageControl.centerXAnchor constraintEqualToAnchor:shadowContainer.centerXAnchor],
+            [_pageControl.bottomAnchor constraintEqualToAnchor:shadowContainer.bottomAnchor constant:-4],
         ]];
 
-        [shadowContainer bringSubviewToFront:self.pageControl];
-        
+        [shadowContainer bringSubviewToFront:_pageControl];
     }
     return self;
 }
 
 #pragma mark — Layout
 
-- (NSCollectionLayoutSection *)makeSection {
-    NSCollectionLayoutSize *itemSize =
-    [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
-                                     heightDimension:
-     [NSCollectionLayoutDimension fractionalHeightDimension:1.0]];
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    UICollectionViewFlowLayout *flow = (UICollectionViewFlowLayout *)self.collectionView.collectionViewLayout;
+    CGFloat peekInset = 24.0;
+    CGFloat spacing = flow.minimumLineSpacing;
+    CGFloat itemWidth = self.collectionView.bounds.size.width - (peekInset * 2);
+    CGFloat itemHeight = self.collectionView.bounds.size.height;
+    if (itemWidth > 0 && itemHeight > 0) {
+        flow.itemSize = CGSizeMake(itemWidth, itemHeight);
+        flow.sectionInset = UIEdgeInsetsMake(0, peekInset, 0, peekInset);
+    }
+    (void)spacing;
+}
 
-    NSCollectionLayoutItem *item =
-    [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
+#pragma mark — Infinite Loop Helpers
 
-    NSCollectionLayoutGroup *group =
-    [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
-                                                  subitems:@[item]];
+- (NSInteger)realIndexForIndexPath:(NSIndexPath *)indexPath {
+    if (self.items.count == 0) return 0;
+    return indexPath.item % self.items.count;
+}
 
-    NSCollectionLayoutSection *section =
-    [NSCollectionLayoutSection sectionWithGroup:group];
+- (NSInteger)middleStartIndex {
+    if (self.items.count == 0) return 0;
+    NSInteger total = self.items.count * kLoopMultiplier;
+    NSInteger middle = total / 2;
+    return middle - (middle % self.items.count);
+}
 
-    section.orthogonalScrollingBehavior =
-    UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
-    return section;
+- (void)centerToMiddleIfNeeded {
+    if (self.items.count <= 1) return;
+    NSInteger total = self.items.count * kLoopMultiplier;
+    NSInteger current = [self currentVirtualIndex];
+    // Re-center when near edges
+    if (current < self.items.count * 2 || current > total - self.items.count * 2) {
+        NSInteger realIdx = current % self.items.count;
+        NSInteger newIndex = [self middleStartIndex] + realIdx;
+        [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:newIndex inSection:0]
+                                    atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                            animated:NO];
+    }
+}
+
+- (NSInteger)currentVirtualIndex {
+    CGFloat centerX = self.collectionView.contentOffset.x + self.collectionView.bounds.size.width * 0.5;
+    NSIndexPath *ip = [self.collectionView indexPathForItemAtPoint:CGPointMake(centerX, self.collectionView.bounds.size.height * 0.5)];
+    return ip ? ip.item : 0;
 }
 
 #pragma mark — Configure
@@ -133,6 +150,14 @@
     self.pageControl.currentPage = 0;
     self.lastPageIndex = 0;
     [self.collectionView reloadData];
+
+    if (items.count > 0) {
+        [self.collectionView layoutIfNeeded];
+        NSInteger startIndex = [self middleStartIndex];
+        [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:startIndex inSection:0]
+                                    atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                            animated:NO];
+    }
 
     if (items.count > 1) {
         [self startAutoScroll];
@@ -145,12 +170,13 @@
     [self stopAutoScroll];
     if (self.items.count <= 1) return;
 
+    __weak typeof(self) weakSelf = self;
     self.autoScrollTimer =
     [NSTimer scheduledTimerWithTimeInterval:4.0
-                                     target:self
-                                   selector:@selector(autoScrollTick)
-                                   userInfo:nil
-                                    repeats:YES];
+                                    repeats:YES
+                                      block:^(NSTimer *timer) {
+        [weakSelf autoScrollTick];
+    }];
     [[NSRunLoop mainRunLoop] addTimer:self.autoScrollTimer forMode:NSRunLoopCommonModes];
 }
 
@@ -161,12 +187,13 @@
 
 - (void)autoScrollTick {
     if (self.userDragging || self.items.count == 0) return;
-    NSInteger next = (self.pageControl.currentPage + 1) % self.items.count;
-    NSIndexPath *ip = [NSIndexPath indexPathForItem:next inSection:0];
+    NSInteger nextVirtual = [self currentVirtualIndex] + 1;
+    NSIndexPath *ip = [NSIndexPath indexPathForItem:nextVirtual inSection:0];
     [self.collectionView scrollToItemAtIndexPath:ip
                                 atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
                                         animated:YES];
-    [self animatePageIndicatorToIndex:next];
+    NSInteger realIdx = nextVirtual % self.items.count;
+    [self animatePageIndicatorToIndex:realIdx];
 }
 
 #pragma mark — UIScrollViewDelegate
@@ -176,47 +203,87 @@
     [self stopAutoScroll];
 }
 
-
-#pragma mark - Page Detection (Center Cell)
-
-// Derive current page from center visible cell, not contentOffset
-- (void)updatePageFromVisibleCenter {
-
-    if (self.items.count == 0) return;
-
-    CGPoint center =
-    CGPointMake(self.collectionView.bounds.size.width * 0.5 +
-                self.collectionView.contentOffset.x,
-                self.collectionView.bounds.size.height * 0.5);
-
-    NSIndexPath *centerIndexPath =
-    [self.collectionView indexPathForItemAtPoint:center];
-
-    if (!centerIndexPath) return;
-
-    NSInteger page = centerIndexPath.item;
-
-    if (page != self.lastPageIndex) {
-        [self animatePageIndicatorToIndex:page];
-    }
-}
-
-// Track page continuously as user scrolls, so indicator animates in real time.
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    [self applyParallaxAndScale];
     [self updatePageFromVisibleCenter];
 }
 
 - (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
     self.userDragging = NO;
-    [self updatePageFromVisibleCenter];
+    [self centerToMiddleIfNeeded];
+    [self snapToNearestItem];
     [self startAutoScroll];
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
+    [self centerToMiddleIfNeeded];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    if (!decelerate) {
+        self.userDragging = NO;
+        [self snapToNearestItem];
+        [self startAutoScroll];
+    }
+}
+
+#pragma mark — Snap & Parallax
+
+- (void)snapToNearestItem {
+    CGFloat centerX = self.collectionView.contentOffset.x + self.collectionView.bounds.size.width * 0.5;
+    NSIndexPath *ip = [self.collectionView indexPathForItemAtPoint:CGPointMake(centerX, self.collectionView.bounds.size.height * 0.5)];
+    if (ip) {
+        [self.collectionView scrollToItemAtIndexPath:ip
+                                    atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
+                                            animated:YES];
+    }
+}
+
+- (void)applyParallaxAndScale {
+    CGFloat centerX = self.collectionView.contentOffset.x + self.collectionView.bounds.size.width * 0.5;
+
+    for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+        CGFloat cellCenterX = cell.center.x;
+        CGFloat distance = fabs(centerX - cellCenterX);
+        CGFloat maxDist = self.collectionView.bounds.size.width * 0.6;
+
+        // Scale: 1.0 for center, 0.92 for edges
+        CGFloat normalizedDist = MIN(distance / maxDist, 1.0);
+        CGFloat scale = 1.0 - (normalizedDist * 0.08);
+        cell.transform = CGAffineTransformMakeScale(scale, scale);
+
+        // Alpha: 1.0 center, 0.6 edges
+        cell.alpha = 1.0 - (normalizedDist * 0.4);
+
+        // Shadow on focused cell
+        if (normalizedDist < 0.3) {
+            cell.layer.shadowColor = UIColor.blackColor.CGColor;
+            cell.layer.shadowOpacity = 0.18;
+            cell.layer.shadowRadius = 16;
+            cell.layer.shadowOffset = CGSizeMake(0, 6);
+        } else {
+            cell.layer.shadowOpacity = 0.0;
+        }
+    }
+}
+
+#pragma mark - Page Detection
+
+- (void)updatePageFromVisibleCenter {
+    if (self.items.count == 0) return;
+    NSInteger virtualIdx = [self currentVirtualIndex];
+    NSInteger page = virtualIdx % self.items.count;
+    if (page != self.lastPageIndex) {
+        [self animatePageIndicatorToIndex:page];
+    }
 }
 
 #pragma mark — UICollectionView DataSource
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView
      numberOfItemsInSection:(NSInteger)section {
-    return self.items.count;
+    if (self.items.count <= 1) return self.items.count;
+    return self.items.count * kLoopMultiplier;
 }
 
 - (UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
@@ -225,7 +292,8 @@
     PPCarouselCollectionCell *cell =
     [collectionView dequeueReusableCellWithReuseIdentifier:@"PPCarouselCollectionCell"
                                               forIndexPath:indexPath];
-    [cell configureWithCarouselItem:self.items[indexPath.item]];
+    NSInteger realIdx = [self realIndexForIndexPath:indexPath];
+    [cell configureWithCarouselItem:self.items[realIdx]];
     return cell;
 }
 
@@ -234,7 +302,8 @@
 - (void)collectionView:(UICollectionView *)collectionView
 didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     if (self.onItemTap) {
-        self.onItemTap(self.items[indexPath.item]);
+        NSInteger realIdx = [self realIndexForIndexPath:indexPath];
+        self.onItemTap(self.items[realIdx]);
     }
 }
 
@@ -248,8 +317,10 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
         return;
     }
 
-    // Phase 1: stretch toward direction
     CGFloat direction = (index > self.lastPageIndex) ? 1.0 : -1.0;
+    // Handle wrap-around: 0→last or last→0
+    if (self.lastPageIndex == 0 && index == self.pageControl.numberOfPages - 1) direction = -1.0;
+    if (self.lastPageIndex == self.pageControl.numberOfPages - 1 && index == 0) direction = 1.0;
 
     [UIView animateWithDuration:0.18
                           delay:0
@@ -257,38 +328,29 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
           initialSpringVelocity:0.6
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-
-        // Horizontal stretch
         self.pageControl.transform =
-        CGAffineTransformMakeScale(1.25, 0.9);
-
-        // Slight directional nudge
-        self.pageControl.transform =
-        CGAffineTransformTranslate(self.pageControl.transform,
-                                   direction * 4.0,
-                                   0);
-
+        CGAffineTransformTranslate(
+            CGAffineTransformMakeScale(1.2, 0.88),
+            direction * 4.0, 0);
         self.pageControl.alpha = 0.75;
-
     } completion:^(BOOL finished) {
-
-        // Update page at peak stretch
         self.pageControl.currentPage = index;
         self.lastPageIndex = index;
 
-        // Phase 2: snap back
         [UIView animateWithDuration:0.22
                               delay:0
              usingSpringWithDamping:0.9
               initialSpringVelocity:0.4
                             options:UIViewAnimationOptionCurveEaseInOut
                          animations:^{
-
             self.pageControl.transform = CGAffineTransformIdentity;
             self.pageControl.alpha = 1.0;
-
         } completion:nil];
     }];
+}
+
+- (void)dealloc {
+    [self stopAutoScroll];
 }
 
 @end
