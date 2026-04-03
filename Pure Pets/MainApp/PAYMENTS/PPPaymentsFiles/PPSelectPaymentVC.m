@@ -676,6 +676,10 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
                         [strongSelf pp_openOrderDetailsForOrder:order
                                            successMessage:(error.localizedDescription.length > 0 ? error.localizedDescription : kLang(@"checkout_payment_verification_pending"))
                                         presentationState:PPOrderDetailsEntryPresentationStateVerificationPending];
+                    } else if (result == PPCheckoutResultCancelled) {
+                        PPORDERLog(@"Payment cancelled by user | orderId=%@", order.orderId ?: @"");
+                        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+                        [PPHUD showInfo:kLang(@"payment_cancelled_by_user")];
                     } else {
                         NSString *reason = error.localizedDescription.length > 0
                             ? error.localizedDescription

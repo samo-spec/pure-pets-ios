@@ -1766,6 +1766,8 @@
 "payment_unable_to_open_screen" = "تعذر فتح شاشة الدفع.";
 "payment_qib_sdk_missing" = "حزمة QIB SDK غير موجودة في هذا الإصدار. يرجى إعادة تثبيت/تحديث التطبيق.";
 "payment_qib_sdk_init_failed" = "تعذر تهيئة جلسة QIB SDK.";
+"payment_qib_sdk_error" = "واجهت بوابة الدفع خطأ. يرجى المحاولة مرة أخرى.";
+"payment_cancelled_by_user" = "تم إلغاء الدفع.";
 "payment_create_session_failed" = "فشل إنشاء جلسة الدفع.";
 "checkout_payment_verification_pending" = "جاري التحقق من عملية الدفع. يرجى مراجعة حالة الطلب بعد قليل.";
 "cart_undo_action" = "تراجع";

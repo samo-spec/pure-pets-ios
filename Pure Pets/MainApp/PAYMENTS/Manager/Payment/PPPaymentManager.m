@@ -275,6 +275,12 @@ static NSString *PPPaymentExtractTransactionIdFromResponse(NSDictionary *respons
                                               0);
 }
 
+static BOOL PPPaymentResponseIsCancellation(NSDictionary *response)
+{
+    NSString *status = PPPaymentExtractStatusFromResponseObject(response, 0);
+    return PPPaymentStatusMatchesAnyKeyword(status, @[@"cancelled", @"canceled", @"cancel"]);
+}
+
 static BOOL PPPaymentResponseHasTerminalResult(NSDictionary *response)
 {
     NSString *status = PPPaymentExtractStatusFromResponseObject(response, 0);
@@ -565,6 +571,20 @@ static void PPQIBTryLoadFrameworkBundle(void)
         return;
     }
 
+    if (PPPaymentResponseIsCancellation(safeResponse)) {
+        PPORDERLog(@"QIB payment cancelled by user | status=%@",
+                   PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"");
+        NSError *cancelError =
+        [NSError errorWithDomain:NSCocoaErrorDomain
+                            code:NSUserCancelledError
+                        userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_cancelled_by_user")}];
+        if (self.completion) {
+            self.completion(safeResponse, cancelError);
+        }
+        [self reset];
+        return;
+    }
+
     if (self.completion) {
         self.completion(safeResponse, nil);
     }
@@ -758,7 +778,13 @@ static void PPQIBTryLoadFrameworkBundle(void)
                    order.orderId ?: @"",
                    self.paymentAttemptId ?: @"",
                    self.activeQIBSessionId ?: @"");
-        [(id<PPPaymentQIBSendRequestCapable>)params sendRequest];
+        @try {
+            [(id<PPPaymentQIBSendRequestCapable>)params sendRequest];
+        } @catch (NSException *exception) {
+            PPORDERLog(@"QIB sendRequest threw exception | name=%@ | reason=%@",
+                       exception.name ?: @"", exception.reason ?: @"");
+            [self failWithMessage:kLang(@"payment_qib_sdk_error")];
+        }
     });
 }
 

@@ -37,6 +37,7 @@
 - (void)completeWithSuccess:(FIRDocumentSnapshot * _Nullable)snapshot generation:(NSInteger)generation;
 - (void)completeWithFailure:(FIRDocumentSnapshot * _Nullable)snapshot generation:(NSInteger)generation;
 - (void)completeWithPendingVerification:(NSError *)error generation:(NSInteger)generation;
+- (void)completeWithCancellation:(PPOrder *)order generation:(NSInteger)generation;
 - (void)failOrderWithError:(NSError *)error generation:(NSInteger)generation;
 - (BOOL)pp_isCheckoutGenerationCurrent:(NSInteger)generation;
 - (BOOL)pp_beginTerminalResolutionForGeneration:(NSInteger)generation label:(NSString *)label;
@@ -597,6 +598,14 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
             return;
         }
 
+        if (error && error.code == NSUserCancelledError) {
+            PPORDERLog(@"Payment cancelled by user | generation=%ld | orderId=%@",
+                       (long)generation,
+                       order.orderId ?: @"");
+            [self completeWithCancellation:order generation:generation];
+            return;
+        }
+
         if (error || !response) {
             PPORDERLog(@"Payment SDK failed | generation=%ld | orderId=%@ | error=%@",
                        (long)generation,
@@ -903,6 +912,47 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
 
     if (self.completion) {
         self.completion(PPCheckoutResultPendingVerification, self.currentOrder, error);
+    }
+}
+
+- (void)completeWithCancellation:(PPOrder *)order generation:(NSInteger)generation
+{
+    if (![self pp_beginTerminalResolutionForGeneration:generation label:@"cancelled"]) {
+        return;
+    }
+
+    PPORDERLog(@"Checkout cancelled | generation=%ld | orderId=%@",
+               (long)generation, order.orderId ?: @"");
+
+    NSString *orderId = PPCheckoutTrimmedString(order.orderId);
+    if (orderId.length > 0) {
+        FIRDocumentReference *orderRef =
+            [[FIRFirestore.firestore collectionWithPath:@"Orders"] documentWithPath:orderId];
+        [orderRef updateData:@{
+            @"status": @"cancelled",
+            @"paymentStatus": @"cancelled",
+            @"cancelledAt": [FIRFieldValue fieldValueForServerTimestamp],
+            @"statusUpdatedAt": [FIRFieldValue fieldValueForServerTimestamp],
+            @"cancellationReason": @"payment_cancelled_by_user"
+        } completion:^(NSError * _Nullable firestoreError) {
+            if (firestoreError) {
+                PPORDERLog(@"Failed to cancel order in Firestore | orderId=%@ | error=%@",
+                           orderId, firestoreError.localizedDescription ?: @"");
+            } else {
+                PPORDERLog(@"Order cancelled in Firestore | orderId=%@", orderId);
+            }
+        }];
+    }
+
+    self.currentOrder = nil;
+    [self cleanup];
+
+    if (self.completion) {
+        NSError *cancelError =
+        [NSError errorWithDomain:NSCocoaErrorDomain
+                            code:NSUserCancelledError
+                        userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_cancelled_by_user")}];
+        self.completion(PPCheckoutResultCancelled, order, cancelError);
     }
 }
 

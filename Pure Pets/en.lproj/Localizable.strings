@@ -1808,6 +1808,8 @@
 "payment_unable_to_open_screen" = "Unable to open payment screen.";
 "payment_qib_sdk_missing" = "QIB SDK is missing from this build. Please reinstall/update the app.";
 "payment_qib_sdk_init_failed" = "Unable to initialize QIB SDK session.";
+"payment_qib_sdk_error" = "Payment gateway encountered an error. Please try again.";
+"payment_cancelled_by_user" = "Payment cancelled.";
 "payment_create_session_failed" = "Failed to create payment session.";
 "payment_load_methods_failed" = "Failed to load payment methods.";
 "auth_register_required_subtitle" = "You need to register to continue.";
