@@ -131,8 +131,7 @@
         [self changeColor];
     }
     
-    //1. 设置背景颜色
-    //设置背景图是为了去掉上下黑线
+ 
     self.searchBar.backgroundImage = [[UIImage alloc] init];
     // 设置SearchBar的颜色主题为白色
     self.searchBar.barTintColor = [UIColor whiteColor];

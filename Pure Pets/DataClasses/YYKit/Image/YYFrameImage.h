@@ -12,7 +12,7 @@
 #import <UIKit/UIKit.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYAnimatedImageView.h>
+#import "YYAnimatedImageView.h"
 #else
 #import "YYAnimatedImageView.h"
 #endif

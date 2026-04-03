@@ -165,6 +165,12 @@
 
 @implementation PPSectionHeaderView
 
+- (UIColor *)pp_surfaceBackgroundColor
+{
+    UIColor *base = [UIColor secondarySystemGroupedBackgroundColor];
+    return [base colorWithAlphaComponent:(PPIOS26() ? 0.82 : 0.92)];
+}
+
 #pragma mark - Init
 
 - (instancetype)initWithFrame:(CGRect)frame {
@@ -182,15 +188,15 @@
     // ── Surface card ──
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceView.backgroundColor  = [AppForgroundColr colorWithAlphaComponent:0.55];
-    self.surfaceView.layer.cornerRadius = PPCornerMedium;
+    self.surfaceView.backgroundColor  = [self pp_surfaceBackgroundColor];
+    self.surfaceView.layer.cornerRadius = PPCornerCard + 6.0;
     self.surfaceView.layer.cornerCurve  = kCACornerCurveContinuous;
-    self.surfaceView.layer.borderWidth  = 0.33;
-    self.surfaceView.layer.borderColor  = [AppForgroundColr colorWithAlphaComponent:0.68].CGColor;
+    self.surfaceView.layer.borderWidth  = 1.0;
+    self.surfaceView.layer.borderColor  = [UIColor.separatorColor colorWithAlphaComponent:0.14].CGColor;
     self.surfaceView.layer.shadowColor   = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = PPShadowCardOpacity;
-    self.surfaceView.layer.shadowRadius  = PPShadowCardRadius;
-    self.surfaceView.layer.shadowOffset  = CGSizeMake(0, PPShadowCardOffsetY);
+    self.surfaceView.layer.shadowOpacity = 0.08;
+    self.surfaceView.layer.shadowRadius  = 20.0;
+    self.surfaceView.layer.shadowOffset  = CGSizeMake(0, 12.0);
     [self addSubview:self.surfaceView];
     [self sendSubviewToBack:self.surfaceView];
 
@@ -237,7 +243,7 @@
         [self.surfaceView.topAnchor      constraintEqualToAnchor:self.topAnchor      constant:PPSpaceXS],
         [self.surfaceView.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor   constant:-PPSpaceXS],
         // Action button
-        [_actionButton.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-PPSpaceXS],
+        [_actionButton.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-10.0],
         [_actionButton.centerYAnchor  constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         // Title
         [_titleLabel.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPSpaceBase],
@@ -250,34 +256,37 @@
 }
 
 - (void)pp_buildActionButton {
-    UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceXS, PPSpaceSM, PPSpaceXS, PPSpaceSM);
+    UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
     cfg.imagePadding  = 6;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
     UIImageSymbolConfiguration *symbolCfg =
-        [UIImageSymbolConfiguration configurationWithPointSize:17
+        [UIImageSymbolConfiguration configurationWithPointSize:15
                                                         weight:UIImageSymbolWeightSemibold
                                                          scale:UIImageSymbolScaleMedium];
     UIImage *chevron = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolCfg];
     if (@available(iOS 15.0, *)) {
         chevron = [chevron imageByApplyingSymbolConfiguration:
             [UIImageSymbolConfiguration configurationWithPaletteColors:@[
-                UIColor.tertiaryLabelColor, AppPrimaryClr
+                AppPrimaryTextClr ?: UIColor.labelColor, AppPrimaryClr ?: UIColor.systemTealColor
             ]]];
     }
     cfg.image = chevron;
+    cfg.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    cfg.baseBackgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.28 : 0.72)];
+    cfg.background.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.64)];
+    cfg.background.strokeColor = [UIColor.separatorColor colorWithAlphaComponent:0.16];
+    cfg.background.strokeWidth = 1.0;
 
     cfg.titleTextAttributesTransformer =
     ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attrs) {
         NSMutableDictionary *m = attrs.mutableCopy;
-        m[NSFontAttributeName]            = [GM MidFontWithSize:PPFontSubheadline];
-        m[NSForegroundColorAttributeName] = UIColor.secondaryLabelColor;
+        m[NSFontAttributeName]            = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+        m[NSForegroundColorAttributeName] = AppPrimaryTextClr ?: UIColor.labelColor;
         return m;
     };
-
-    cfg.background.backgroundColor = UIColor.clearColor;
-    cfg.baseBackgroundColor        = UIColor.clearColor;
 
     _actionButton = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
     _actionButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -299,8 +308,9 @@
 - (void)traitCollectionDidChange:(UITraitCollection *)previous {
     [super traitCollectionDidChange:previous];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previous]) {
+        self.surfaceView.backgroundColor = [self pp_surfaceBackgroundColor];
         self.surfaceView.layer.borderColor =
-            [UIColor.separatorColor colorWithAlphaComponent:0.28].CGColor;
+            [UIColor.separatorColor colorWithAlphaComponent:0.14].CGColor;
     }
 }
 
@@ -335,11 +345,11 @@
                                         pointSize:16
                                            weight:UIImageSymbolWeightSemibold
                                             scale:UIImageSymbolScaleMedium
-                                          palette:@[UIColor.tertiaryLabelColor]
+                                          palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
                                      makeTemplate:YES];
         if (@available(iOS 15.0, *)) {
             symbol = [symbol imageByApplyingSymbolConfiguration:
-                [UIImageSymbolConfiguration configurationWithPaletteColors:@[UIColor.tertiaryLabelColor]]];
+                [UIImageSymbolConfiguration configurationWithPaletteColors:@[AppPrimaryTextClr ?: UIColor.labelColor]]];
         }
         cfg.image          = symbol;
         cfg.imagePlacement = NSDirectionalRectEdgeLeading;
@@ -364,7 +374,7 @@
     self.titleTopConstraint.active    = NO;
     self.titleCenterConstraint.active = YES;
 
-    self.surfaceView.layer.cornerRadius = PPCornerCard;
+    self.surfaceView.layer.cornerRadius = PPCornerCard + 6.0;
 
     if (ppHomeSection != PPHomeSectionMainKinds) { return; }
     [self pp_setExpanded:self.isExpanded animated:NO];

@@ -22,7 +22,7 @@ static const CGFloat kSectionSpacing   = PPSpaceBase;
 
 static const CGFloat kSuggestionsItemHeight      = 248.0;
 
- static const CGFloat kHeaderHeight     = 64.0;
+static const CGFloat kHeaderHeight     = 72.0;
 
 static const CGFloat NearByItemWidth  = 200;
 static const CGFloat NearByItemHeight = 288;
@@ -46,8 +46,8 @@ static const CGFloat kGapLarge   = PPSpaceMD;
 static const CGFloat kCardTall    = 228.0;
 static const CGFloat kCardMedium  = 188.0;
 static const CGFloat kCardLarge   = 248.0;
-static const CGFloat kCurrentOrdersExpandedItemHeight = 224.0;
-static const CGFloat kCurrentOrdersCollapsedItemHeight = 96.0;
+static const CGFloat kCurrentOrdersExpandedItemHeight = 236.0;
+static const CGFloat kCurrentOrdersCollapsedItemHeight = 104.0;
 
 // Section header height
 static const CGFloat kHeaderH = 64.0;
@@ -61,7 +61,7 @@ static const CGFloat kHeaderH = 64.0;
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:(PPIOS26() ? 226.0 : 228.0)]];
+     [NSCollectionLayoutDimension absoluteDimension:(PPIOS26() ? 236.0 : 240.0)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -74,7 +74,7 @@ static const CGFloat kHeaderH = 64.0;
     [NSCollectionLayoutSection sectionWithGroup:group];
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(10.0, kPadding, 16.0, kPadding);
+    NSDirectionalEdgeInsetsMake(14.0, kPadding, 20.0, kPadding);
 
     return section;
 }
@@ -106,7 +106,7 @@ static const CGFloat kHeaderH = 64.0;
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(6.0, kPageInset, 14.0, kPageInset);
+    NSDirectionalEdgeInsetsMake(10.0, kPageInset, 18.0, kPageInset);
 
     return section;
 }
@@ -136,10 +136,10 @@ static const CGFloat kHeaderH = 64.0;
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
 
-    section.interGroupSpacing = kGapMedium;
+    section.interGroupSpacing = kGapMedium + 2.0;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(kGapMedium, kPadding, kGapLarge, kPadding);
+    NSDirectionalEdgeInsetsMake(kGapMedium + 2.0, kPadding, kGapLarge + 6.0, kPadding);
 
     section.boundarySupplementaryItems = @[[self sectionHeader]];
 
@@ -169,10 +169,10 @@ static const CGFloat kHeaderH = 64.0;
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
 
-    section.interGroupSpacing = kGapMedium;
+    section.interGroupSpacing = kGapMedium + 2.0;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(kGapMedium, kPadding, kGapLarge, kPadding);
+    NSDirectionalEdgeInsetsMake(kGapMedium + 2.0, kPadding, kGapLarge + 6.0, kPadding);
 
     section.boundarySupplementaryItems = @[[self sectionHeader]];
 
@@ -182,8 +182,8 @@ static const CGFloat kHeaderH = 64.0;
 + (NSCollectionLayoutSection *)buyAgainSection
 {
     NSCollectionLayoutSection *section = [self accessoriesSection];
-    section.contentInsets = NSDirectionalEdgeInsetsMake(8.0, kPadding, 28.0, kPadding);
-    section.interGroupSpacing = kGapMedium;
+    section.contentInsets = NSDirectionalEdgeInsetsMake(10.0, kPadding, 32.0, kPadding);
+    section.interGroupSpacing = kGapMedium + 2.0;
     return section;
 }
 + (NSCollectionLayoutSection *)adoptSection {
@@ -217,7 +217,7 @@ static const CGFloat kHeaderH = 64.0;
 
    // 10pt margin on each side → width = view width - 20
    section.contentInsets =
-   NSDirectionalEdgeInsetsMake(0, 16, 26, 16);
+   NSDirectionalEdgeInsetsMake(2, 16, 30, 16);
 
    // ❌ No header
    // ❌ No orthogonal scrolling
@@ -261,7 +261,7 @@ static const CGFloat kHeaderH = 64.0;
 
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(6, kPageInset, 18, kPageInset);
+    NSDirectionalEdgeInsetsMake(10, kPageInset, 22, kPageInset);
 
     section.boundarySupplementaryItems = @[[self sectionHeader]];
     return section;
@@ -516,7 +516,7 @@ static const CGFloat kHeaderH = 64.0;
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:(1.0 / 3.0)]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:64]];
+     [NSCollectionLayoutDimension absoluteDimension:72]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -529,7 +529,7 @@ static const CGFloat kHeaderH = 64.0;
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:64]];
+     [NSCollectionLayoutDimension absoluteDimension:72]];
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
@@ -541,7 +541,7 @@ static const CGFloat kHeaderH = 64.0;
 
     section.interGroupSpacing = 0;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(2, 16, 10, 16);
+    NSDirectionalEdgeInsetsMake(6, 16, 14, 16);
 
     return section;
 }
@@ -679,8 +679,8 @@ static const CGFloat kHeaderH = 64.0;
     UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(12, 6, kSectionSpacing, 6);
-    section.interGroupSpacing = 6;
+    NSDirectionalEdgeInsetsMake(14, kPageInset - 4.0, kSectionSpacing + 6.0, kPageInset - 4.0);
+    section.interGroupSpacing = 10;
 
     NSCollectionLayoutSize *size =
     [NSCollectionLayoutSize sizeWithWidthDimension:

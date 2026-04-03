@@ -1120,7 +1120,7 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
 }
 
 - (id)getformDataForKey:(NSString *)key withType:(int)type {
-    if ([self.formDataArray containsObjectForKey:key]) {
+    if (key && [self.formDataArray objectForKey:key]) {
         return [self.formDataArray objectForKey:key];
     } else {
         return type == 0 ? @(0) : nil;

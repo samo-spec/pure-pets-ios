@@ -85,9 +85,9 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
 - (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
-        // Initialization code
+#if kHasHXPhotoPicker
         _dynamicCustomConstraints = [NSMutableArray array];
-       
+#endif
     }
     return self;
 }
@@ -154,7 +154,9 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
     
 #endif
     
+#if kHasHXPhotoPicker
     [self.contentView addSubview:self.onePhotoView];
+#endif
     [self.contentView setBackgroundColor:GM.AppForegroundColor];
     [self setBackgroundColor:GM.AppForegroundColor];
     
@@ -171,12 +173,14 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
 
 -(void)updateConstraints
 {
+#if kHasHXPhotoPicker
     if (_dynamicCustomConstraints){
         [self.contentView removeConstraints:_dynamicCustomConstraints];
         [_dynamicCustomConstraints removeAllObjects];
     }
 
     [self.onePhotoView refreshView];
+#endif
     [super updateConstraints];
 }
 
@@ -279,7 +283,9 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
     
     if ( self.rowDescriptor.Jh_imageArr.count && self.rowDescriptor.isStart) {
         self.rowDescriptor.isStart = NO;
+#if kHasHXPhotoPicker
         [self.oneManager clearSelectedList];
+#endif
         NSMutableArray *mUrlArr = @[].mutableCopy;
         /*for (FileModel *file in  self.rowDescriptor.Jh_imageArr) {
             HXPhotoModel *mdl ;
@@ -302,7 +308,9 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
         
        
         self.rowDescriptor.value = self.rowDescriptor.Jh_imageArr;
+#if kHasHXPhotoPicker
         [self.onePhotoView refreshView];
+#endif
        //[self.formViewController updateFormRow:self.rowDescriptor];
     }
      
@@ -318,13 +326,17 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
 
 #pragma mark -- 清空所有图片、视频数据
 - (void)Jh_clearImage {
+#if kHasHXPhotoPicker
     [self.oneManager clearSelectedList];
+#endif
     self.rowDescriptor.Jh_imageArr = @[];
     self.rowDescriptor.Jh_selectImageArr = @[];
     self.rowDescriptor.Jh_selectVideoArr = @[];
+#if kHasHXPhotoPicker
     self.rowDescriptor.Jh_imageAllList = @[];
     self.rowDescriptor.Jh_mixImageArr = @[];
     [self.onePhotoView refreshView];
+#endif
     [self update];
 }
 
@@ -360,6 +372,7 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
 
 
 
+#if kHasHXPhotoPicker
 - (void)photoView:(HXPhotoView *)photoView currentDeleteModel:(HXPhotoModel *)model currentIndex:(NSInteger)index {
     NSSLog(@"%@ --> index - %ld",model,index);
 }
@@ -394,5 +407,6 @@ UIKIT_EXTERN NSUInteger const Jh_OnePhotoViewTopMargin;
 - (void)photoView:(HXPhotoView *)photoView gestureRecognizerEnded:(UILongPressGestureRecognizer *)longPgr indexPath:(NSIndexPath *)indexPath {
     
 }
+#endif
 
 @end

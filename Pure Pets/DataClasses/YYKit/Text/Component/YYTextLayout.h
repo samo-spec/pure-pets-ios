@@ -13,9 +13,9 @@
 #import <CoreText/CoreText.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYTextDebugOption.h>
-#import <YYKit/YYTextLine.h>
-#import <YYKit/YYTextInput.h>
+#import "YYTextDebugOption.h"
+#import "YYTextLine.h"
+#import "YYTextInput.h"
 #else
 #import "YYTextDebugOption.h"
 #import "YYTextLine.h"

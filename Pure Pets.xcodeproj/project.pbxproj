@@ -275,98 +275,6 @@
 		F25B38802E173DDB0066D504 /* OrderModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387F2E173DDB0066D504 /* OrderModel.m */; };
 		F25B38842E1740620066D504 /* OrderCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B38832E1740620066D504 /* OrderCell.m */; };
 		F25CDBE12ED8F2CB00231D9B /* ShowTime in Frameworks */ = {isa = PBXBuildFile; productRef = F25CDBE02ED8F2CB00231D9B /* ShowTime */; };
-		F25CDF052ED9ED7F00231D9B /* HXAlbumlistView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDECB2ED9ED7F00231D9B /* HXAlbumlistView.m */; };
-		F25CDF062ED9ED7F00231D9B /* HXPhotoEditSplashMaskLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE9D2ED9ED7F00231D9B /* HXPhotoEditSplashMaskLayer.m */; };
-		F25CDF072ED9ED7F00231D9B /* HXCircleProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDECF2ED9ED7F00231D9B /* HXCircleProgressView.m */; };
-		F25CDF082ED9ED7F00231D9B /* HXPhotoEditGridView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE932ED9ED7F00231D9B /* HXPhotoEditGridView.m */; };
-		F25CDF092ED9ED7F00231D9B /* HXPhotoEditChartletModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE762ED9ED7F00231D9B /* HXPhotoEditChartletModel.m */; };
-		F25CDF0A2ED9ED7F00231D9B /* HXPhotoClippingView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE7D2ED9ED7F00231D9B /* HXPhotoClippingView.m */; };
-		F25CDF0B2ED9ED7F00231D9B /* HXCustomPreviewView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDED52ED9ED7F00231D9B /* HXCustomPreviewView.m */; };
-		F25CDF0C2ED9ED7F00231D9B /* UIButton+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE4D2ED9ED7F00231D9B /* UIButton+HXExtension.m */; };
-		F25CDF0D2ED9ED7F00231D9B /* HX_PhotoEditViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE712ED9ED7F00231D9B /* HX_PhotoEditViewController.m */; };
-		F25CDF0E2ED9ED7F00231D9B /* HXAlbumModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEB32ED9ED7F00231D9B /* HXAlbumModel.m */; };
-		F25CDF0F2ED9ED7F00231D9B /* HXPhotoEdit.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEAE2ED9ED7F00231D9B /* HXPhotoEdit.m */; };
-		F25CDF102ED9ED7F00231D9B /* HXPhotoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE6C2ED9ED7F00231D9B /* HXPhotoViewController.m */; };
-		F25CDF112ED9ED7F00231D9B /* HXPhotoViewPresentTransition.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEC62ED9ED7F00231D9B /* HXPhotoViewPresentTransition.m */; };
-		F25CDF122ED9ED7F00231D9B /* UIView+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE592ED9ED7F00231D9B /* UIView+HXExtension.m */; };
-		F25CDF132ED9ED7F00231D9B /* HXPhotoEditSplashView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE9F2ED9ED7F00231D9B /* HXPhotoEditSplashView.m */; };
-		F25CDF142ED9ED7F00231D9B /* HXPhotoSubViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEE92ED9ED7F00231D9B /* HXPhotoSubViewCell.m */; };
-		F25CDF152ED9ED7F00231D9B /* HXPhotoEditStickerTrashView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEA72ED9ED7F00231D9B /* HXPhotoEditStickerTrashView.m */; };
-		F25CDF162ED9ED7F00231D9B /* HXPhotoPreviewViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE6A2ED9ED7F00231D9B /* HXPhotoPreviewViewController.m */; };
-		F25CDF172ED9ED7F00231D9B /* HXPhotoEditGridLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE8F2ED9ED7F00231D9B /* HXPhotoEditGridLayer.m */; };
-		F25CDF182ED9ED7F00231D9B /* NSTimer+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE492ED9ED7F00231D9B /* NSTimer+HXExtension.m */; };
-		F25CDF192ED9ED7F00231D9B /* HXPhotoEditGraffitiColorModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE782ED9ED7F00231D9B /* HXPhotoEditGraffitiColorModel.m */; };
-		F25CDF1A2ED9ED7F00231D9B /* HXCameraBottomView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDECD2ED9ED7F00231D9B /* HXCameraBottomView.m */; };
-		F25CDF1B2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorSizeView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE892ED9ED7F00231D9B /* HXPhotoEditGraffitiColorSizeView.m */; };
-		F25CDF1C2ED9ED7F00231D9B /* HXPhotoManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEFF2ED9ED7F00231D9B /* HXPhotoManager.m */; };
-		F25CDF1D2ED9ED7F00231D9B /* HXMECancelBlock.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE742ED9ED7F00231D9B /* HXMECancelBlock.m */; };
-		F25CDF1E2ED9ED7F00231D9B /* HXPhotoEditConfiguration.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEB02ED9ED7F00231D9B /* HXPhotoEditConfiguration.m */; };
-		F25CDF1F2ED9ED7F00231D9B /* HXPhotoEditStickerItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEA12ED9ED7F00231D9B /* HXPhotoEditStickerItem.m */; };
-		F25CDF202ED9ED7F00231D9B /* HXCustomCollectionReusableView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDED32ED9ED7F00231D9B /* HXCustomCollectionReusableView.m */; };
-		F25CDF212ED9ED7F00231D9B /* HXPhotoEditChartletListView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE812ED9ED7F00231D9B /* HXPhotoEditChartletListView.m */; };
-		F25CDF222ED9ED7F00231D9B /* HXPhotoCustomNavigationBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEDB2ED9ED7F00231D9B /* HXPhotoCustomNavigationBar.m */; };
-		F25CDF232ED9ED7F00231D9B /* NSBundle+HXPhotoPicker.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE432ED9ED7F00231D9B /* NSBundle+HXPhotoPicker.m */; };
-		F25CDF242ED9ED7F00231D9B /* HXPickerResult.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEBB2ED9ED7F00231D9B /* HXPickerResult.m */; };
-		F25CDF252ED9ED7F00231D9B /* HXPhotoPreviewImageViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEE12ED9ED7F00231D9B /* HXPhotoPreviewImageViewCell.m */; };
-		F25CDF262ED9ED7F00231D9B /* NSString+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE472ED9ED7F00231D9B /* NSString+HXExtension.m */; };
-		F25CDF272ED9ED7F00231D9B /* HXPhotoEditChartletContentViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE7F2ED9ED7F00231D9B /* HXPhotoEditChartletContentViewCell.m */; };
-		F25CDF282ED9ED7F00231D9B /* NSDate+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE452ED9ED7F00231D9B /* NSDate+HXExtension.m */; };
-		F25CDF292ED9ED7F00231D9B /* HXPhotoConfiguration.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEFC2ED9ED7F00231D9B /* HXPhotoConfiguration.m */; };
-		F25CDF2A2ED9ED7F00231D9B /* HXPhotoView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEEB2ED9ED7F00231D9B /* HXPhotoView.m */; };
-		F25CDF2B2ED9ED7F00231D9B /* UILabel+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE572ED9ED7F00231D9B /* UILabel+HXExtension.m */; };
-		F25CDF2C2ED9ED7F00231D9B /* HXPhotoModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEB72ED9ED7F00231D9B /* HXPhotoModel.m */; };
-		F25CDF2D2ED9ED7F00231D9B /* HXPhotoPreviewLivePhotoCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEE32ED9ED7F00231D9B /* HXPhotoPreviewLivePhotoCell.m */; };
-		F25CDF2E2ED9ED7F00231D9B /* HXCustomCameraViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE622ED9ED7F00231D9B /* HXCustomCameraViewController.m */; };
-		F25CDF2F2ED9ED7F00231D9B /* HXPhotoEditTextView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEAB2ED9ED7F00231D9B /* HXPhotoEditTextView.m */; };
-		F25CDF302ED9ED7F00231D9B /* HXPreviewVideoView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEF52ED9ED7F00231D9B /* HXPreviewVideoView.m */; };
-		F25CDF312ED9ED7F00231D9B /* HXPhotoPersentInteractiveTransition.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEC42ED9ED7F00231D9B /* HXPhotoPersentInteractiveTransition.m */; };
-		F25CDF322ED9ED7F00231D9B /* HXPhotoEditingView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE972ED9ED7F00231D9B /* HXPhotoEditingView.m */; };
-		F25CDF332ED9ED7F00231D9B /* HXCollectionView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDED12ED9ED7F00231D9B /* HXCollectionView.m */; };
-		F25CDF342ED9ED7F00231D9B /* HXPhotoLimitView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEDD2ED9ED7F00231D9B /* HXPhotoLimitView.m */; };
-		F25CDF352ED9ED7F00231D9B /* HXPhotoEditStickerItemView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEA52ED9ED7F00231D9B /* HXPhotoEditStickerItemView.m */; };
-		F25CDF362ED9ED7F00231D9B /* HXPhotoEditGridMaskLayer.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE912ED9ED7F00231D9B /* HXPhotoEditGridMaskLayer.m */; };
-		F25CDF372ED9ED7F00231D9B /* HXPhotoEditImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE952ED9ED7F00231D9B /* HXPhotoEditImageView.m */; };
-		F25CDF382ED9ED7F00231D9B /* HXPhotoTools.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDF022ED9ED7F00231D9B /* HXPhotoTools.m */; };
-		F25CDF392ED9ED7F00231D9B /* HXPhotoEditDrawView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE872ED9ED7F00231D9B /* HXPhotoEditDrawView.m */; };
-		F25CDF3A2ED9ED7F00231D9B /* HXPhotoPreviewBottomView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEDF2ED9ED7F00231D9B /* HXPhotoPreviewBottomView.m */; };
-		F25CDF3B2ED9ED7F00231D9B /* UIImage+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE532ED9ED7F00231D9B /* UIImage+HXExtension.m */; };
-		F25CDF3C2ED9ED7F00231D9B /* HXVideoEditViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE6E2ED9ED7F00231D9B /* HXVideoEditViewController.m */; };
-		F25CDF3D2ED9ED7F00231D9B /* HXCustomAssetModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEB52ED9ED7F00231D9B /* HXCustomAssetModel.m */; };
-		F25CDF3E2ED9ED7F00231D9B /* HXPhotoEditTransition.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEC02ED9ED7F00231D9B /* HXPhotoEditTransition.m */; };
-		F25CDF3F2ED9ED7F00231D9B /* HXCustomCameraController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE602ED9ED7F00231D9B /* HXCustomCameraController.m */; };
-		F25CDF402ED9ED7F00231D9B /* HXCustomNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE642ED9ED7F00231D9B /* HXCustomNavigationController.m */; };
-		F25CDF412ED9ED7F00231D9B /* HXPhotoEditClippingToolBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE852ED9ED7F00231D9B /* HXPhotoEditClippingToolBar.m */; };
-		F25CDF422ED9ED7F00231D9B /* HXPhotoEditResizeControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE9B2ED9ED7F00231D9B /* HXPhotoEditResizeControl.m */; };
-		F25CDF432ED9ED7F00231D9B /* HXAlbumListViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE5E2ED9ED7F00231D9B /* HXAlbumListViewController.m */; };
-		F25CDF442ED9ED7F00231D9B /* HXFullScreenCameraPlayView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDED72ED9ED7F00231D9B /* HXFullScreenCameraPlayView.m */; };
-		F25CDF452ED9ED7F00231D9B /* HXPreviewLivePhotoView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEF32ED9ED7F00231D9B /* HXPreviewLivePhotoView.m */; };
-		F25CDF462ED9ED7F00231D9B /* HXPhotoEditViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE682ED9ED7F00231D9B /* HXPhotoEditViewController.m */; };
-		F25CDF472ED9ED7F00231D9B /* HXPreviewContentView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEEF2ED9ED7F00231D9B /* HXPreviewContentView.m */; };
-		F25CDF482ED9ED7F00231D9B /* HXPhotoCommon.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEFA2ED9ED7F00231D9B /* HXPhotoCommon.m */; };
-		F25CDF492ED9ED7F00231D9B /* UIColor+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE4F2ED9ED7F00231D9B /* UIColor+HXExtension.m */; };
-		F25CDF4A2ED9ED7F00231D9B /* HXPhotoBottomSelectView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDED92ED9ED7F00231D9B /* HXPhotoBottomSelectView.m */; };
-		F25CDF4B2ED9ED7F00231D9B /* HXPhotoEditStickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEA92ED9ED7F00231D9B /* HXPhotoEditStickerView.m */; };
-		F25CDF4C2ED9ED7F00231D9B /* HXPhotoPreviewVideoViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEE52ED9ED7F00231D9B /* HXPhotoPreviewVideoViewCell.m */; };
-		F25CDF4D2ED9ED7F00231D9B /* HXPhotoEditStickerItemContentView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEA32ED9ED7F00231D9B /* HXPhotoEditStickerItemContentView.m */; };
-		F25CDF4E2ED9ED7F00231D9B /* UIFont+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE512ED9ED7F00231D9B /* UIFont+HXExtension.m */; };
-		F25CDF4F2ED9ED7F00231D9B /* NSArray+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE412ED9ED7F00231D9B /* NSArray+HXExtension.m */; };
-		F25CDF502ED9ED7F00231D9B /* HXPhotoViewFlowLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEED2ED9ED7F00231D9B /* HXPhotoViewFlowLayout.m */; };
-		F25CDF512ED9ED7F00231D9B /* HXPhoto3DTouchViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE662ED9ED7F00231D9B /* HXPhoto3DTouchViewController.m */; };
-		F25CDF522ED9ED7F00231D9B /* HX_PhotoEditBottomView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE7B2ED9ED7F00231D9B /* HX_PhotoEditBottomView.m */; };
-		F25CDF532ED9ED7F00231D9B /* UIImageView+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE552ED9ED7F00231D9B /* UIImageView+HXExtension.m */; };
-		F25CDF542ED9ED7F00231D9B /* PHAsset+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE4B2ED9ED7F00231D9B /* PHAsset+HXExtension.m */; };
-		F25CDF552ED9ED7F00231D9B /* HXPhotoEditGraffitiColorViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE8D2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorViewCell.m */; };
-		F25CDF562ED9ED7F00231D9B /* HXPhotoInteractiveTransition.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEC22ED9ED7F00231D9B /* HXPhotoInteractiveTransition.m */; };
-		F25CDF572ED9ED7F00231D9B /* HXAssetManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEF82ED9ED7F00231D9B /* HXAssetManager.m */; };
-		F25CDF582ED9ED7F00231D9B /* HXPhotoEditMosaicView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE992ED9ED7F00231D9B /* HXPhotoEditMosaicView.m */; };
-		F25CDF592ED9ED7F00231D9B /* HXPhotoEditChartletPreviewView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE832ED9ED7F00231D9B /* HXPhotoEditChartletPreviewView.m */; };
-		F25CDF5A2ED9ED7F00231D9B /* HXPhotoPreviewViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEE72ED9ED7F00231D9B /* HXPhotoPreviewViewCell.m */; };
-		F25CDF5B2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE8B2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorView.m */; };
-		F25CDF5C2ED9ED7F00231D9B /* UIViewController+HXExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDE5B2ED9ED7F00231D9B /* UIViewController+HXExtension.m */; };
-		F25CDF5D2ED9ED7F00231D9B /* HXPreviewImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEF12ED9ED7F00231D9B /* HXPreviewImageView.m */; };
-		F25CDF5E2ED9ED7F00231D9B /* HXPhotoViewTransition.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDEC82ED9ED7F00231D9B /* HXPhotoViewTransition.m */; };
-		F25CDF5F2ED9ED7F00231D9B /* HXPhotoPicker.bundle in Resources */ = {isa = PBXBuildFile; fileRef = F25CDEBD2ED9ED7F00231D9B /* HXPhotoPicker.bundle */; };
-		F25CDF622EDA092500231D9B /* PPBottomBarManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F25CDF612EDA092500231D9B /* PPBottomBarManager.m */; };
 		F25DC3092EDDE93300C48787 /* XLFormPhoneCodeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */; };
 		F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC30B2EDDE94400C48787 /* XLFormPhoneCodeCell.m */; };
 		F25DF8A72D60A79F0051EAFF /* NSString+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DF8A62D60A79F0051EAFF /* NSString+Ex.m */; };
@@ -475,8 +383,6 @@
 		F27818602F7B5E1700BCE07F /* FullScreenVideoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F278185F2F7B5E1700BCE07F /* FullScreenVideoViewController.m */; };
 		F27818612F7B5E1700BCE07F /* FullscreenImageViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F278185D2F7B5E1700BCE07F /* FullscreenImageViewController.m */; };
 		F279075C2C9AC7F300F2F07B /* trashChildCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F279075B2C9AC7F300F2F07B /* trashChildCell.m */; };
-		F27A45BC2EDF44D70044040E /* PPXLPhotoRow.m in Sources */ = {isa = PBXBuildFile; fileRef = F27A45BB2EDF44D70044040E /* PPXLPhotoRow.m */; };
-		F27A45BF2EDF44E90044040E /* PPXLPhotoCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27A45BE2EDF44E90044040E /* PPXLPhotoCell.m */; };
 		F27A48292EE07CAA0044040E /* PPCoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27A48282EE07CAA0044040E /* PPCoreBridge.swift */; };
 		F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27A482B2EE07D540044040E /* PPPhotoBrowserBridge.swift */; };
 		F27A482E2EE080A40044040E /* PPEditorBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27A482D2EE080A40044040E /* PPEditorBridge.swift */; };
@@ -801,6 +707,7 @@
 		F2FBFEDD2C82935300E84C14 /* FTPopOverMenu.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FBFEDC2C82935200E84C14 /* FTPopOverMenu.m */; };
 		F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */; };
 		F2FCEBAF2ECD09BF002A9F67 /* PPCompleteProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */; };
+		F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = F2HXCOMPAT0002 /* HXCompatibilityCategories.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -845,24 +752,19 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		186C52B55AAF3B70613E913E /* PPRatingView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPRatingView.h; sourceTree = "<group>"; };
 		1BE69E138E85D5FDB3F3E6F6 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pure_Pets.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		2262AF8F2E74B6F2005C8EF0 /* PPBottomBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBottomBar.h; sourceTree = "<group>"; };
-		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomBar.m; sourceTree = "<group>"; };
+		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPBottomBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
 		389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
-		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPSectionHeader.m; sourceTree = "<group>"; };
+		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPSectionHeader.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
-		50C8A4EEEF7AA2231BE32B73 /* PPProductCard.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPProductCard.h; sourceTree = "<group>"; };
-		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPRatingView.m; sourceTree = "<group>"; };
+		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPRatingView.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m"; sourceTree = SOURCE_ROOT; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
-		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPProductCard.m; sourceTree = "<group>"; };
-		9CF3D08FB0A5297B6992748B /* PPSectionHeader.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPSectionHeader.h; sourceTree = "<group>"; };
+		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPProductCard.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
-		E7340080C03E951FEB2EE798 /* PPDiscountBadge.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDiscountBadge.h; sourceTree = "<group>"; };
-		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPDiscountBadge.m; sourceTree = "<group>"; };
+		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPDiscountBadge.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
 		F201B8AF2DA6428200CC46A7 /* lame.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = lame.framework; path = MyFrames/lame.framework; sourceTree = SOURCE_ROOT; };
 		F202A06C2EFE202B0048D4C2 /* PPHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeCell.h; sourceTree = "<group>"; };
 		F202A06D2EFE20330048D4C2 /* PPHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCell.m; sourceTree = "<group>"; };
@@ -984,14 +886,12 @@
 		F213021E2F0C655F006E71AB /* PPSearchViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchViewController.m; sourceTree = "<group>"; };
 		F21302202F0C6619006E71AB /* BBNavigationBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBNavigationBar.h; sourceTree = "<group>"; };
 		F21302212F0C6629006E71AB /* BBNavigationBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBNavigationBar.m; sourceTree = "<group>"; };
-		F21302232F0C8AF1006E71AB /* PPNavBarTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNavBarTitleView.h; sourceTree = "<group>"; };
-		F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNavBarTitleView.m; sourceTree = "<group>"; };
+		F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPNavBarTitleView.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavBarTitleView.m"; sourceTree = SOURCE_ROOT; };
 		F21302262F0C8FDB006E71AB /* PPFloatingSearchAccessoryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFloatingSearchAccessoryView.h; sourceTree = "<group>"; };
 		F21302272F0C8FE4006E71AB /* PPFloatingSearchAccessoryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFloatingSearchAccessoryView.m; sourceTree = "<group>"; };
 		F21391D12D8BC16200B59E5B /* UIButton+PressAnimation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIButton+PressAnimation.h"; sourceTree = "<group>"; };
 		F21391D22D8BC18300B59E5B /* UIButton+PressAnimation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIButton+PressAnimation.m"; sourceTree = "<group>"; };
-		F21770782EEBA62F0078C590 /* PPMenuHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPMenuHelper.h; sourceTree = "<group>"; };
-		F21770792EEBA63E0078C590 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPMenuHelper.m; sourceTree = "<group>"; };
+		F21770792EEBA63E0078C590 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPMenuHelper.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPMenuHelper.m"; sourceTree = SOURCE_ROOT; };
 		F21843A92E8B9ED700D8BF46 /* PPCollection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCollection.h; sourceTree = "<group>"; };
 		F21843AA2E8B9EE500D8BF46 /* PPCollection.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCollection.m; sourceTree = "<group>"; };
 		F21843AF2E8BB07100D8BF46 /* ImageViewerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ImageViewerController.h; sourceTree = "<group>"; };
@@ -1299,8 +1199,7 @@
 		F25082F32DB647250082FF75 /* ItemModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ItemModel.h; sourceTree = "<group>"; };
 		F25082F42DB647250082FF75 /* ItemModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ItemModel.m; sourceTree = "<group>"; };
 		F25100982F73C4D6008F6AFE /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		F251F8D82E948EBF000B5CF3 /* PPNavigationController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNavigationController.h; sourceTree = "<group>"; };
-		F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNavigationController.m; sourceTree = "<group>"; };
+		F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPNavigationController.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.m"; sourceTree = SOURCE_ROOT; };
 		F25373D52E32E3B400CD93E7 /* LeaveFeedbackViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LeaveFeedbackViewController.h; sourceTree = "<group>"; };
 		F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LeaveFeedbackViewController.m; sourceTree = "<group>"; };
 		F253FA642F07182800323CB4 /* PetAdoptView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetAdoptView.h; sourceTree = "<group>"; };
@@ -1319,194 +1218,6 @@
 		F25B38812E173DF10066D504 /* OrderModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderModel.h; sourceTree = "<group>"; };
 		F25B38822E17404E0066D504 /* OrderItemCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderItemCell.h; sourceTree = "<group>"; };
 		F25B38832E1740620066D504 /* OrderCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderCell.m; sourceTree = "<group>"; };
-		F25CDE402ED9ED7F00231D9B /* NSArray+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSArray+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE412ED9ED7F00231D9B /* NSArray+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSArray+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE422ED9ED7F00231D9B /* NSBundle+HXPhotoPicker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSBundle+HXPhotoPicker.h"; sourceTree = "<group>"; };
-		F25CDE432ED9ED7F00231D9B /* NSBundle+HXPhotoPicker.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSBundle+HXPhotoPicker.m"; sourceTree = "<group>"; };
-		F25CDE442ED9ED7F00231D9B /* NSDate+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSDate+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE452ED9ED7F00231D9B /* NSDate+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSDate+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE462ED9ED7F00231D9B /* NSString+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSString+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE472ED9ED7F00231D9B /* NSString+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSString+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE482ED9ED7F00231D9B /* NSTimer+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSTimer+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE492ED9ED7F00231D9B /* NSTimer+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSTimer+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE4A2ED9ED7F00231D9B /* PHAsset+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "PHAsset+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE4B2ED9ED7F00231D9B /* PHAsset+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PHAsset+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE4C2ED9ED7F00231D9B /* UIButton+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIButton+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE4D2ED9ED7F00231D9B /* UIButton+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIButton+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE4E2ED9ED7F00231D9B /* UIColor+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIColor+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE4F2ED9ED7F00231D9B /* UIColor+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIColor+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE502ED9ED7F00231D9B /* UIFont+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIFont+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE512ED9ED7F00231D9B /* UIFont+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIFont+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE522ED9ED7F00231D9B /* UIImage+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIImage+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE532ED9ED7F00231D9B /* UIImage+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIImage+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE542ED9ED7F00231D9B /* UIImageView+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIImageView+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE552ED9ED7F00231D9B /* UIImageView+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIImageView+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE562ED9ED7F00231D9B /* UILabel+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UILabel+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE572ED9ED7F00231D9B /* UILabel+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UILabel+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE582ED9ED7F00231D9B /* UIView+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE592ED9ED7F00231D9B /* UIView+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE5A2ED9ED7F00231D9B /* UIViewController+HXExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+HXExtension.h"; sourceTree = "<group>"; };
-		F25CDE5B2ED9ED7F00231D9B /* UIViewController+HXExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+HXExtension.m"; sourceTree = "<group>"; };
-		F25CDE5D2ED9ED7F00231D9B /* HXAlbumListViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXAlbumListViewController.h; sourceTree = "<group>"; };
-		F25CDE5E2ED9ED7F00231D9B /* HXAlbumListViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXAlbumListViewController.m; sourceTree = "<group>"; };
-		F25CDE5F2ED9ED7F00231D9B /* HXCustomCameraController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCustomCameraController.h; sourceTree = "<group>"; };
-		F25CDE602ED9ED7F00231D9B /* HXCustomCameraController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCustomCameraController.m; sourceTree = "<group>"; };
-		F25CDE612ED9ED7F00231D9B /* HXCustomCameraViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCustomCameraViewController.h; sourceTree = "<group>"; };
-		F25CDE622ED9ED7F00231D9B /* HXCustomCameraViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCustomCameraViewController.m; sourceTree = "<group>"; };
-		F25CDE632ED9ED7F00231D9B /* HXCustomNavigationController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCustomNavigationController.h; sourceTree = "<group>"; };
-		F25CDE642ED9ED7F00231D9B /* HXCustomNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCustomNavigationController.m; sourceTree = "<group>"; };
-		F25CDE652ED9ED7F00231D9B /* HXPhoto3DTouchViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhoto3DTouchViewController.h; sourceTree = "<group>"; };
-		F25CDE662ED9ED7F00231D9B /* HXPhoto3DTouchViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhoto3DTouchViewController.m; sourceTree = "<group>"; };
-		F25CDE672ED9ED7F00231D9B /* HXPhotoEditViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditViewController.h; sourceTree = "<group>"; };
-		F25CDE682ED9ED7F00231D9B /* HXPhotoEditViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditViewController.m; sourceTree = "<group>"; };
-		F25CDE692ED9ED7F00231D9B /* HXPhotoPreviewViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPreviewViewController.h; sourceTree = "<group>"; };
-		F25CDE6A2ED9ED7F00231D9B /* HXPhotoPreviewViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoPreviewViewController.m; sourceTree = "<group>"; };
-		F25CDE6B2ED9ED7F00231D9B /* HXPhotoViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoViewController.h; sourceTree = "<group>"; };
-		F25CDE6C2ED9ED7F00231D9B /* HXPhotoViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoViewController.m; sourceTree = "<group>"; };
-		F25CDE6D2ED9ED7F00231D9B /* HXVideoEditViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXVideoEditViewController.h; sourceTree = "<group>"; };
-		F25CDE6E2ED9ED7F00231D9B /* HXVideoEditViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXVideoEditViewController.m; sourceTree = "<group>"; };
-		F25CDE702ED9ED7F00231D9B /* HX_PhotoEditViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HX_PhotoEditViewController.h; sourceTree = "<group>"; };
-		F25CDE712ED9ED7F00231D9B /* HX_PhotoEditViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HX_PhotoEditViewController.m; sourceTree = "<group>"; };
-		F25CDE732ED9ED7F00231D9B /* HXMECancelBlock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXMECancelBlock.h; sourceTree = "<group>"; };
-		F25CDE742ED9ED7F00231D9B /* HXMECancelBlock.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXMECancelBlock.m; sourceTree = "<group>"; };
-		F25CDE752ED9ED7F00231D9B /* HXPhotoEditChartletModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditChartletModel.h; sourceTree = "<group>"; };
-		F25CDE762ED9ED7F00231D9B /* HXPhotoEditChartletModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditChartletModel.m; sourceTree = "<group>"; };
-		F25CDE772ED9ED7F00231D9B /* HXPhotoEditGraffitiColorModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditGraffitiColorModel.h; sourceTree = "<group>"; };
-		F25CDE782ED9ED7F00231D9B /* HXPhotoEditGraffitiColorModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditGraffitiColorModel.m; sourceTree = "<group>"; };
-		F25CDE7A2ED9ED7F00231D9B /* HX_PhotoEditBottomView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HX_PhotoEditBottomView.h; sourceTree = "<group>"; };
-		F25CDE7B2ED9ED7F00231D9B /* HX_PhotoEditBottomView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HX_PhotoEditBottomView.m; sourceTree = "<group>"; };
-		F25CDE7C2ED9ED7F00231D9B /* HXPhotoClippingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoClippingView.h; sourceTree = "<group>"; };
-		F25CDE7D2ED9ED7F00231D9B /* HXPhotoClippingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoClippingView.m; sourceTree = "<group>"; };
-		F25CDE7E2ED9ED7F00231D9B /* HXPhotoEditChartletContentViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditChartletContentViewCell.h; sourceTree = "<group>"; };
-		F25CDE7F2ED9ED7F00231D9B /* HXPhotoEditChartletContentViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditChartletContentViewCell.m; sourceTree = "<group>"; };
-		F25CDE802ED9ED7F00231D9B /* HXPhotoEditChartletListView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditChartletListView.h; sourceTree = "<group>"; };
-		F25CDE812ED9ED7F00231D9B /* HXPhotoEditChartletListView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditChartletListView.m; sourceTree = "<group>"; };
-		F25CDE822ED9ED7F00231D9B /* HXPhotoEditChartletPreviewView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditChartletPreviewView.h; sourceTree = "<group>"; };
-		F25CDE832ED9ED7F00231D9B /* HXPhotoEditChartletPreviewView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditChartletPreviewView.m; sourceTree = "<group>"; };
-		F25CDE842ED9ED7F00231D9B /* HXPhotoEditClippingToolBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditClippingToolBar.h; sourceTree = "<group>"; };
-		F25CDE852ED9ED7F00231D9B /* HXPhotoEditClippingToolBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditClippingToolBar.m; sourceTree = "<group>"; };
-		F25CDE862ED9ED7F00231D9B /* HXPhotoEditDrawView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditDrawView.h; sourceTree = "<group>"; };
-		F25CDE872ED9ED7F00231D9B /* HXPhotoEditDrawView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditDrawView.m; sourceTree = "<group>"; };
-		F25CDE882ED9ED7F00231D9B /* HXPhotoEditGraffitiColorSizeView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditGraffitiColorSizeView.h; sourceTree = "<group>"; };
-		F25CDE892ED9ED7F00231D9B /* HXPhotoEditGraffitiColorSizeView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditGraffitiColorSizeView.m; sourceTree = "<group>"; };
-		F25CDE8A2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditGraffitiColorView.h; sourceTree = "<group>"; };
-		F25CDE8B2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditGraffitiColorView.m; sourceTree = "<group>"; };
-		F25CDE8C2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditGraffitiColorViewCell.h; sourceTree = "<group>"; };
-		F25CDE8D2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditGraffitiColorViewCell.m; sourceTree = "<group>"; };
-		F25CDE8E2ED9ED7F00231D9B /* HXPhotoEditGridLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditGridLayer.h; sourceTree = "<group>"; };
-		F25CDE8F2ED9ED7F00231D9B /* HXPhotoEditGridLayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditGridLayer.m; sourceTree = "<group>"; };
-		F25CDE902ED9ED7F00231D9B /* HXPhotoEditGridMaskLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditGridMaskLayer.h; sourceTree = "<group>"; };
-		F25CDE912ED9ED7F00231D9B /* HXPhotoEditGridMaskLayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditGridMaskLayer.m; sourceTree = "<group>"; };
-		F25CDE922ED9ED7F00231D9B /* HXPhotoEditGridView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditGridView.h; sourceTree = "<group>"; };
-		F25CDE932ED9ED7F00231D9B /* HXPhotoEditGridView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditGridView.m; sourceTree = "<group>"; };
-		F25CDE942ED9ED7F00231D9B /* HXPhotoEditImageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditImageView.h; sourceTree = "<group>"; };
-		F25CDE952ED9ED7F00231D9B /* HXPhotoEditImageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditImageView.m; sourceTree = "<group>"; };
-		F25CDE962ED9ED7F00231D9B /* HXPhotoEditingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditingView.h; sourceTree = "<group>"; };
-		F25CDE972ED9ED7F00231D9B /* HXPhotoEditingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditingView.m; sourceTree = "<group>"; };
-		F25CDE982ED9ED7F00231D9B /* HXPhotoEditMosaicView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditMosaicView.h; sourceTree = "<group>"; };
-		F25CDE992ED9ED7F00231D9B /* HXPhotoEditMosaicView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditMosaicView.m; sourceTree = "<group>"; };
-		F25CDE9A2ED9ED7F00231D9B /* HXPhotoEditResizeControl.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditResizeControl.h; sourceTree = "<group>"; };
-		F25CDE9B2ED9ED7F00231D9B /* HXPhotoEditResizeControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditResizeControl.m; sourceTree = "<group>"; };
-		F25CDE9C2ED9ED7F00231D9B /* HXPhotoEditSplashMaskLayer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditSplashMaskLayer.h; sourceTree = "<group>"; };
-		F25CDE9D2ED9ED7F00231D9B /* HXPhotoEditSplashMaskLayer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditSplashMaskLayer.m; sourceTree = "<group>"; };
-		F25CDE9E2ED9ED7F00231D9B /* HXPhotoEditSplashView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditSplashView.h; sourceTree = "<group>"; };
-		F25CDE9F2ED9ED7F00231D9B /* HXPhotoEditSplashView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditSplashView.m; sourceTree = "<group>"; };
-		F25CDEA02ED9ED7F00231D9B /* HXPhotoEditStickerItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditStickerItem.h; sourceTree = "<group>"; };
-		F25CDEA12ED9ED7F00231D9B /* HXPhotoEditStickerItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditStickerItem.m; sourceTree = "<group>"; };
-		F25CDEA22ED9ED7F00231D9B /* HXPhotoEditStickerItemContentView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditStickerItemContentView.h; sourceTree = "<group>"; };
-		F25CDEA32ED9ED7F00231D9B /* HXPhotoEditStickerItemContentView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditStickerItemContentView.m; sourceTree = "<group>"; };
-		F25CDEA42ED9ED7F00231D9B /* HXPhotoEditStickerItemView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditStickerItemView.h; sourceTree = "<group>"; };
-		F25CDEA52ED9ED7F00231D9B /* HXPhotoEditStickerItemView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditStickerItemView.m; sourceTree = "<group>"; };
-		F25CDEA62ED9ED7F00231D9B /* HXPhotoEditStickerTrashView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditStickerTrashView.h; sourceTree = "<group>"; };
-		F25CDEA72ED9ED7F00231D9B /* HXPhotoEditStickerTrashView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditStickerTrashView.m; sourceTree = "<group>"; };
-		F25CDEA82ED9ED7F00231D9B /* HXPhotoEditStickerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditStickerView.h; sourceTree = "<group>"; };
-		F25CDEA92ED9ED7F00231D9B /* HXPhotoEditStickerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditStickerView.m; sourceTree = "<group>"; };
-		F25CDEAA2ED9ED7F00231D9B /* HXPhotoEditTextView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditTextView.h; sourceTree = "<group>"; };
-		F25CDEAB2ED9ED7F00231D9B /* HXPhotoEditTextView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditTextView.m; sourceTree = "<group>"; };
-		F25CDEAD2ED9ED7F00231D9B /* HXPhotoEdit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEdit.h; sourceTree = "<group>"; };
-		F25CDEAE2ED9ED7F00231D9B /* HXPhotoEdit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEdit.m; sourceTree = "<group>"; };
-		F25CDEAF2ED9ED7F00231D9B /* HXPhotoEditConfiguration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditConfiguration.h; sourceTree = "<group>"; };
-		F25CDEB02ED9ED7F00231D9B /* HXPhotoEditConfiguration.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditConfiguration.m; sourceTree = "<group>"; };
-		F25CDEB22ED9ED7F00231D9B /* HXAlbumModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXAlbumModel.h; sourceTree = "<group>"; };
-		F25CDEB32ED9ED7F00231D9B /* HXAlbumModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXAlbumModel.m; sourceTree = "<group>"; };
-		F25CDEB42ED9ED7F00231D9B /* HXCustomAssetModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCustomAssetModel.h; sourceTree = "<group>"; };
-		F25CDEB52ED9ED7F00231D9B /* HXCustomAssetModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCustomAssetModel.m; sourceTree = "<group>"; };
-		F25CDEB62ED9ED7F00231D9B /* HXPhotoModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoModel.h; sourceTree = "<group>"; };
-		F25CDEB72ED9ED7F00231D9B /* HXPhotoModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoModel.m; sourceTree = "<group>"; };
-		F25CDEB82ED9ED7F00231D9B /* HXPhotoViewCellCustomProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoViewCellCustomProtocol.h; sourceTree = "<group>"; };
-		F25CDEB92ED9ED7F00231D9B /* HXPhotoViewProtocol.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoViewProtocol.h; sourceTree = "<group>"; };
-		F25CDEBA2ED9ED7F00231D9B /* HXPickerResult.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPickerResult.h; sourceTree = "<group>"; };
-		F25CDEBB2ED9ED7F00231D9B /* HXPickerResult.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPickerResult.m; sourceTree = "<group>"; };
-		F25CDEBD2ED9ED7F00231D9B /* HXPhotoPicker.bundle */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.plug-in"; path = HXPhotoPicker.bundle; sourceTree = "<group>"; };
-		F25CDEBF2ED9ED7F00231D9B /* HXPhotoEditTransition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoEditTransition.h; sourceTree = "<group>"; };
-		F25CDEC02ED9ED7F00231D9B /* HXPhotoEditTransition.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoEditTransition.m; sourceTree = "<group>"; };
-		F25CDEC12ED9ED7F00231D9B /* HXPhotoInteractiveTransition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoInteractiveTransition.h; sourceTree = "<group>"; };
-		F25CDEC22ED9ED7F00231D9B /* HXPhotoInteractiveTransition.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoInteractiveTransition.m; sourceTree = "<group>"; };
-		F25CDEC32ED9ED7F00231D9B /* HXPhotoPersentInteractiveTransition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPersentInteractiveTransition.h; sourceTree = "<group>"; };
-		F25CDEC42ED9ED7F00231D9B /* HXPhotoPersentInteractiveTransition.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoPersentInteractiveTransition.m; sourceTree = "<group>"; };
-		F25CDEC52ED9ED7F00231D9B /* HXPhotoViewPresentTransition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoViewPresentTransition.h; sourceTree = "<group>"; };
-		F25CDEC62ED9ED7F00231D9B /* HXPhotoViewPresentTransition.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoViewPresentTransition.m; sourceTree = "<group>"; };
-		F25CDEC72ED9ED7F00231D9B /* HXPhotoViewTransition.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoViewTransition.h; sourceTree = "<group>"; };
-		F25CDEC82ED9ED7F00231D9B /* HXPhotoViewTransition.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoViewTransition.m; sourceTree = "<group>"; };
-		F25CDECA2ED9ED7F00231D9B /* HXAlbumlistView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXAlbumlistView.h; sourceTree = "<group>"; };
-		F25CDECB2ED9ED7F00231D9B /* HXAlbumlistView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXAlbumlistView.m; sourceTree = "<group>"; };
-		F25CDECC2ED9ED7F00231D9B /* HXCameraBottomView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCameraBottomView.h; sourceTree = "<group>"; };
-		F25CDECD2ED9ED7F00231D9B /* HXCameraBottomView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCameraBottomView.m; sourceTree = "<group>"; };
-		F25CDECE2ED9ED7F00231D9B /* HXCircleProgressView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCircleProgressView.h; sourceTree = "<group>"; };
-		F25CDECF2ED9ED7F00231D9B /* HXCircleProgressView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCircleProgressView.m; sourceTree = "<group>"; };
-		F25CDED02ED9ED7F00231D9B /* HXCollectionView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCollectionView.h; sourceTree = "<group>"; };
-		F25CDED12ED9ED7F00231D9B /* HXCollectionView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCollectionView.m; sourceTree = "<group>"; };
-		F25CDED22ED9ED7F00231D9B /* HXCustomCollectionReusableView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCustomCollectionReusableView.h; sourceTree = "<group>"; };
-		F25CDED32ED9ED7F00231D9B /* HXCustomCollectionReusableView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCustomCollectionReusableView.m; sourceTree = "<group>"; };
-		F25CDED42ED9ED7F00231D9B /* HXCustomPreviewView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXCustomPreviewView.h; sourceTree = "<group>"; };
-		F25CDED52ED9ED7F00231D9B /* HXCustomPreviewView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXCustomPreviewView.m; sourceTree = "<group>"; };
-		F25CDED62ED9ED7F00231D9B /* HXFullScreenCameraPlayView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXFullScreenCameraPlayView.h; sourceTree = "<group>"; };
-		F25CDED72ED9ED7F00231D9B /* HXFullScreenCameraPlayView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXFullScreenCameraPlayView.m; sourceTree = "<group>"; };
-		F25CDED82ED9ED7F00231D9B /* HXPhotoBottomSelectView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoBottomSelectView.h; sourceTree = "<group>"; };
-		F25CDED92ED9ED7F00231D9B /* HXPhotoBottomSelectView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoBottomSelectView.m; sourceTree = "<group>"; };
-		F25CDEDA2ED9ED7F00231D9B /* HXPhotoCustomNavigationBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoCustomNavigationBar.h; sourceTree = "<group>"; };
-		F25CDEDB2ED9ED7F00231D9B /* HXPhotoCustomNavigationBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoCustomNavigationBar.m; sourceTree = "<group>"; };
-		F25CDEDC2ED9ED7F00231D9B /* HXPhotoLimitView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoLimitView.h; sourceTree = "<group>"; };
-		F25CDEDD2ED9ED7F00231D9B /* HXPhotoLimitView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoLimitView.m; sourceTree = "<group>"; };
-		F25CDEDE2ED9ED7F00231D9B /* HXPhotoPreviewBottomView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPreviewBottomView.h; sourceTree = "<group>"; };
-		F25CDEDF2ED9ED7F00231D9B /* HXPhotoPreviewBottomView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoPreviewBottomView.m; sourceTree = "<group>"; };
-		F25CDEE02ED9ED7F00231D9B /* HXPhotoPreviewImageViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPreviewImageViewCell.h; sourceTree = "<group>"; };
-		F25CDEE12ED9ED7F00231D9B /* HXPhotoPreviewImageViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoPreviewImageViewCell.m; sourceTree = "<group>"; };
-		F25CDEE22ED9ED7F00231D9B /* HXPhotoPreviewLivePhotoCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPreviewLivePhotoCell.h; sourceTree = "<group>"; };
-		F25CDEE32ED9ED7F00231D9B /* HXPhotoPreviewLivePhotoCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoPreviewLivePhotoCell.m; sourceTree = "<group>"; };
-		F25CDEE42ED9ED7F00231D9B /* HXPhotoPreviewVideoViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPreviewVideoViewCell.h; sourceTree = "<group>"; };
-		F25CDEE52ED9ED7F00231D9B /* HXPhotoPreviewVideoViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoPreviewVideoViewCell.m; sourceTree = "<group>"; };
-		F25CDEE62ED9ED7F00231D9B /* HXPhotoPreviewViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPreviewViewCell.h; sourceTree = "<group>"; };
-		F25CDEE72ED9ED7F00231D9B /* HXPhotoPreviewViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoPreviewViewCell.m; sourceTree = "<group>"; };
-		F25CDEE82ED9ED7F00231D9B /* HXPhotoSubViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoSubViewCell.h; sourceTree = "<group>"; };
-		F25CDEE92ED9ED7F00231D9B /* HXPhotoSubViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoSubViewCell.m; sourceTree = "<group>"; };
-		F25CDEEA2ED9ED7F00231D9B /* HXPhotoView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoView.h; sourceTree = "<group>"; };
-		F25CDEEB2ED9ED7F00231D9B /* HXPhotoView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoView.m; sourceTree = "<group>"; };
-		F25CDEEC2ED9ED7F00231D9B /* HXPhotoViewFlowLayout.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoViewFlowLayout.h; sourceTree = "<group>"; };
-		F25CDEED2ED9ED7F00231D9B /* HXPhotoViewFlowLayout.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoViewFlowLayout.m; sourceTree = "<group>"; };
-		F25CDEEE2ED9ED7F00231D9B /* HXPreviewContentView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPreviewContentView.h; sourceTree = "<group>"; };
-		F25CDEEF2ED9ED7F00231D9B /* HXPreviewContentView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPreviewContentView.m; sourceTree = "<group>"; };
-		F25CDEF02ED9ED7F00231D9B /* HXPreviewImageView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPreviewImageView.h; sourceTree = "<group>"; };
-		F25CDEF12ED9ED7F00231D9B /* HXPreviewImageView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPreviewImageView.m; sourceTree = "<group>"; };
-		F25CDEF22ED9ED7F00231D9B /* HXPreviewLivePhotoView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPreviewLivePhotoView.h; sourceTree = "<group>"; };
-		F25CDEF32ED9ED7F00231D9B /* HXPreviewLivePhotoView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPreviewLivePhotoView.m; sourceTree = "<group>"; };
-		F25CDEF42ED9ED7F00231D9B /* HXPreviewVideoView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPreviewVideoView.h; sourceTree = "<group>"; };
-		F25CDEF52ED9ED7F00231D9B /* HXPreviewVideoView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPreviewVideoView.m; sourceTree = "<group>"; };
-		F25CDEF72ED9ED7F00231D9B /* HXAssetManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXAssetManager.h; sourceTree = "<group>"; };
-		F25CDEF82ED9ED7F00231D9B /* HXAssetManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXAssetManager.m; sourceTree = "<group>"; };
-		F25CDEF92ED9ED7F00231D9B /* HXPhotoCommon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoCommon.h; sourceTree = "<group>"; };
-		F25CDEFA2ED9ED7F00231D9B /* HXPhotoCommon.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoCommon.m; sourceTree = "<group>"; };
-		F25CDEFB2ED9ED7F00231D9B /* HXPhotoConfiguration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoConfiguration.h; sourceTree = "<group>"; };
-		F25CDEFC2ED9ED7F00231D9B /* HXPhotoConfiguration.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoConfiguration.m; sourceTree = "<group>"; };
-		F25CDEFD2ED9ED7F00231D9B /* HXPhotoDefine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoDefine.h; sourceTree = "<group>"; };
-		F25CDEFE2ED9ED7F00231D9B /* HXPhotoManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoManager.h; sourceTree = "<group>"; };
-		F25CDEFF2ED9ED7F00231D9B /* HXPhotoManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoManager.m; sourceTree = "<group>"; };
-		F25CDF002ED9ED7F00231D9B /* HXPhotoPicker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoPicker.h; sourceTree = "<group>"; };
-		F25CDF012ED9ED7F00231D9B /* HXPhotoTools.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoTools.h; sourceTree = "<group>"; };
-		F25CDF022ED9ED7F00231D9B /* HXPhotoTools.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = HXPhotoTools.m; sourceTree = "<group>"; };
-		F25CDF032ED9ED7F00231D9B /* HXPhotoTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HXPhotoTypes.h; sourceTree = "<group>"; };
-		F25CDF602EDA091C00231D9B /* PPBottomBarManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBottomBarManager.h; sourceTree = "<group>"; };
-		F25CDF612EDA092500231D9B /* PPBottomBarManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomBarManager.m; sourceTree = "<group>"; };
 		F25D0F4A2CE676D300F66997 /* CoreAudioTypes.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudioTypes.framework; path = System/Library/Frameworks/CoreAudioTypes.framework; sourceTree = SDKROOT; };
 		F25DC3072EDDE92800C48787 /* XLFormPhoneCodeItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormPhoneCodeItem.h; sourceTree = "<group>"; };
 		F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormPhoneCodeItem.m; sourceTree = "<group>"; };
@@ -1677,8 +1388,7 @@
 		F2736E992E827C0A00902E1C /* PPHUD.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHUD.m; sourceTree = "<group>"; };
 		F2736E9B2E82834F00902E1C /* PPAlertHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAlertHelper.h; sourceTree = "<group>"; };
 		F2736E9C2E82834F00902E1C /* PPAlertHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAlertHelper.m; sourceTree = "<group>"; };
-		F2736EB82E83948900902E1C /* XLFormRowFullWidthTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormRowFullWidthTextFieldCell.h; sourceTree = "<group>"; };
-		F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormRowFullWidthTextFieldCell.m; sourceTree = "<group>"; };
+		F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = XLFormRowFullWidthTextFieldCell.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPLeftRight/XLFormRowFullWidthTextFieldCell.m"; sourceTree = SOURCE_ROOT; };
 		F276D6062F13E93F00782A13 /* ArabicNormalizer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArabicNormalizer.h; sourceTree = "<group>"; };
 		F276D6072F13E94800782A13 /* ArabicNormalizer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArabicNormalizer.m; sourceTree = "<group>"; };
 		F276D60B2F14042600782A13 /* PPSearchHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSearchHelper.h; sourceTree = "<group>"; };
@@ -1727,10 +1437,6 @@
 		F278185F2F7B5E1700BCE07F /* FullScreenVideoViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FullScreenVideoViewController.m; sourceTree = "<group>"; };
 		F279075A2C9AC7F300F2F07B /* trashChildCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = trashChildCell.h; sourceTree = "<group>"; };
 		F279075B2C9AC7F300F2F07B /* trashChildCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = trashChildCell.m; sourceTree = "<group>"; };
-		F27A45BA2EDF44C50044040E /* PPXLPhotoRow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPXLPhotoRow.h; sourceTree = "<group>"; };
-		F27A45BB2EDF44D70044040E /* PPXLPhotoRow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPXLPhotoRow.m; sourceTree = "<group>"; };
-		F27A45BD2EDF44DF0044040E /* PPXLPhotoCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPXLPhotoCell.h; sourceTree = "<group>"; };
-		F27A45BE2EDF44E90044040E /* PPXLPhotoCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPXLPhotoCell.m; sourceTree = "<group>"; };
 		F27A48282EE07CAA0044040E /* PPCoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCoreBridge.swift; sourceTree = "<group>"; };
 		F27A482B2EE07D540044040E /* PPPhotoBrowserBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPhotoBrowserBridge.swift; sourceTree = "<group>"; };
 		F27A482D2EE080A40044040E /* PPEditorBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPEditorBridge.swift; sourceTree = "<group>"; };
@@ -2001,10 +1707,8 @@
 		F2A302F82EBA3EC8005E45F0 /* PaymentMethod.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PaymentMethod.m; sourceTree = "<group>"; };
 		F2A302FA2EBA3F08005E45F0 /* UserPaymentInstrumentManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserPaymentInstrumentManager.h; sourceTree = "<group>"; };
 		F2A302FB2EBA3F4E005E45F0 /* UserPaymentInstrumentManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserPaymentInstrumentManager.m; sourceTree = "<group>"; };
-		F2AAEDA42EF9AC16006E0A6F /* UITabBarItem+PPFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UITabBarItem+PPFactory.h"; sourceTree = "<group>"; };
-		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPFactory.m"; sourceTree = "<group>"; };
-		F2AAEDA72EF9E249006E0A6F /* UITabBarItem+PPAdditions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UITabBarItem+PPAdditions.h"; sourceTree = "<group>"; };
-		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPAdditions.m"; sourceTree = "<group>"; };
+		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPFactory.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m"; sourceTree = SOURCE_ROOT; };
+		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPAdditions.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m"; sourceTree = SOURCE_ROOT; };
 		F2AB48702C72CF3C00D88603 /* JGProgressHUD-Defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "JGProgressHUD-Defines.h"; sourceTree = "<group>"; };
 		F2AB48712C72CF3C00D88603 /* JGProgressHUD.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JGProgressHUD.h; sourceTree = "<group>"; };
 		F2AB48722C72CF3C00D88603 /* JGProgressHUDAnimation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = JGProgressHUDAnimation.h; sourceTree = "<group>"; };
@@ -2119,12 +1823,9 @@
 		F2B5B1952CC753AA00ABAC04 /* StoriesReusableView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = StoriesReusableView.m; sourceTree = "<group>"; };
 		F2B5B9572E1E54A5003F463C /* DeliverySwitchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DeliverySwitchCell.h; sourceTree = "<group>"; };
 		F2B5B9582E1E54B7003F463C /* DeliverySwitchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = DeliverySwitchCell.m; sourceTree = "<group>"; };
-		F2B604AD2EAE9B69003F6F08 /* PPSelectOptionViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSelectOptionViewController.h; sourceTree = "<group>"; };
-		F2B604AE2EAE9B69003F6F08 /* PPSelectOptionViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSelectOptionViewController.m; sourceTree = "<group>"; };
-		F2B604B02EAEAE04003F6F08 /* PPOptionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOptionCell.h; sourceTree = "<group>"; };
-		F2B604B12EAEAE04003F6F08 /* PPOptionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOptionCell.m; sourceTree = "<group>"; };
-		F2B641B52F4A7F860092C2BF /* PPSelectAddressVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSelectAddressVC.h; sourceTree = "<group>"; };
-		F2B641B62F4A7F860092C2BF /* PPSelectAddressVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSelectAddressVC.m; sourceTree = "<group>"; };
+		F2B604AE2EAE9B69003F6F08 /* PPSelectOptionViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPSelectOptionViewController.m"; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectOptionViewController.m"; sourceTree = SOURCE_ROOT; };
+		F2B604B12EAEAE04003F6F08 /* PPOptionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPOptionCell.m"; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPOptionCell.m"; sourceTree = SOURCE_ROOT; };
+		F2B641B62F4A7F860092C2BF /* PPSelectAddressVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPSelectAddressVC.m"; path = "Pure Pets/DesignFiles/PP/PPSelectOptionViewController/PPSelectAddressVC.m"; sourceTree = SOURCE_ROOT; };
 		F2B641B92F4A95690092C2BF /* PPStory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPStory.h; sourceTree = "<group>"; };
 		F2B641BA2F4A95690092C2BF /* PPStory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPStory.m; sourceTree = "<group>"; };
 		F2B641BC2F4A95D70092C2BF /* PPStoriesManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPStoriesManager.h; sourceTree = "<group>"; };
@@ -2204,8 +1905,7 @@
 		F2C5F7762CA01C0500D7897A /* UIView+DCAnimationKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+DCAnimationKit.h"; sourceTree = "<group>"; };
 		F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+DCAnimationKit.m"; sourceTree = "<group>"; };
 		F2C6385F2E5132A3007E4CE4 /* cities.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = cities.json; sourceTree = "<group>"; };
-		F2C890122F5C100000A1B2C3 /* PPModrenSegmrnted.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModrenSegmrnted.h; sourceTree = "<group>"; };
-		F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModrenSegmrnted.m; sourceTree = "<group>"; };
+		F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPModrenSegmrnted.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.m"; sourceTree = SOURCE_ROOT; };
 		F2CA8DCE2F1DC1C800AD4416 /* PPChatsFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPChatsFunc.h; sourceTree = "<group>"; };
 		F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatsFunc.m; sourceTree = "<group>"; };
 		F2CA8DD12F1DCF0400AD4416 /* ChMessagingController+helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+helper.h"; sourceTree = "<group>"; };
@@ -2272,8 +1972,7 @@
 		F2D6396D2ECB4A4500FEBCBB /* PPUserSigningController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserSigningController.h; sourceTree = "<group>"; };
 		F2D6396F2ECB4E1800FEBCBB /* PPUserSigningManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserSigningManager.h; sourceTree = "<group>"; };
 		F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserSigningManager.m; sourceTree = "<group>"; };
-		F2D7F0E92F13133300105778 /* BBCheckoutSummaryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBCheckoutSummaryView.h; sourceTree = "<group>"; };
-		F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBCheckoutSummaryView.m; sourceTree = "<group>"; };
+		F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "BBCheckoutSummaryView.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/BBCheckoutSummaryView.m"; sourceTree = SOURCE_ROOT; };
 		F2D7F0ED2F135F9100105778 /* NoResult.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NoResult.json; sourceTree = "<group>"; };
 		F2D894842D5534D000256152 /* CoreTelephony.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreTelephony.framework; path = System/Library/Frameworks/CoreTelephony.framework; sourceTree = SDKROOT; };
 		F2D99F782E2849C800CD4552 /* ServiceViewerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServiceViewerViewController.h; sourceTree = "<group>"; };
@@ -2288,8 +1987,8 @@
 		F2DF5DD32EFC917F009C7B6F /* PPHomeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeViewController.m; sourceTree = "<group>"; };
 		F2DF5DD52EFC92BA009C7B6F /* PPOverlayCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOverlayCoordinator.h; sourceTree = "<group>"; };
 		F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOverlayCoordinator.m; sourceTree = "<group>"; };
-		F2E0E86F2E7A16D400F0C084 /* UIViewController+PPNavBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPNavBar.h"; sourceTree = "<group>"; };
-		F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPNavBar.m"; sourceTree = "<group>"; };
+		F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIViewController+PPNavBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m"; sourceTree = SOURCE_ROOT; };
+		F2E0E86F2E7A16D400F0C084 /* UIViewController+PPNavBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "UIViewController+PPNavBar.h"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.h"; sourceTree = SOURCE_ROOT; };
 		F2E0E8722E7A3A3E00F0C084 /* UserModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserModel.h; sourceTree = "<group>"; };
 		F2E0E8732E7A3A3E00F0C084 /* UserModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserModel.m; sourceTree = "<group>"; };
 		F2E0E8752E7A3ABF00F0C084 /* PPRolePermission.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRolePermission.h; sourceTree = "<group>"; };
@@ -2340,8 +2039,7 @@
 		F2F69D2F2EA944DA003ADA14 /* PetAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PetAd.m; sourceTree = "<group>"; };
 		F2F6C8B12E8D79C10092D85D /* SplashViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SplashViewController.h; sourceTree = "<group>"; };
 		F2F6C8B22E8D7A730092D85D /* SplashViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SplashViewController.m; sourceTree = "<group>"; };
-		F2F750C92E7C605E00BACFA8 /* PPS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPS.h; sourceTree = "<group>"; };
-		F2F750CA2E7C605E00BACFA8 /* PPS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPS.m; sourceTree = "<group>"; };
+		F2F750CA2E7C605E00BACFA8 /* PPS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "PPS.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/PPS.m"; sourceTree = SOURCE_ROOT; };
 		F2F750CC2E7C82E000BACFA8 /* PPGradientView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPGradientView.h; sourceTree = "<group>"; };
 		F2F750CD2E7C82EA00BACFA8 /* PPGradientView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPGradientView.m; sourceTree = "<group>"; };
 		F2F750D02E7CA97200BACFA8 /* AddUserIconAnimation.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = AddUserIconAnimation.json; sourceTree = "<group>"; };
@@ -2366,6 +2064,8 @@
 		F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVerificationCodeViewController.m; sourceTree = "<group>"; };
 		F2FCEBAD2ECD0969002A9F67 /* PPCompleteProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCompleteProfileVC.h; sourceTree = "<group>"; };
 		F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCompleteProfileVC.m; sourceTree = "<group>"; };
+		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "HXCompatibilityCategories.m"; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
+		F2HXCOMPAT0003 /* HXCompatibilityCategories.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "HXCompatibilityCategories.h"; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.h"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3395,341 +3095,6 @@
 			path = UserFiles;
 			sourceTree = "<group>";
 		};
-		F25CDE3C2ED9E45100231D9B /* PPSelectOptionViewController */ = {
-			isa = PBXGroup;
-			children = (
-				F2B641B52F4A7F860092C2BF /* PPSelectAddressVC.h */,
-				F2B641B62F4A7F860092C2BF /* PPSelectAddressVC.m */,
-				F2B604B02EAEAE04003F6F08 /* PPOptionCell.h */,
-				F2B604B12EAEAE04003F6F08 /* PPOptionCell.m */,
-				F2B604AD2EAE9B69003F6F08 /* PPSelectOptionViewController.h */,
-				F2B604AE2EAE9B69003F6F08 /* PPSelectOptionViewController.m */,
-			);
-			path = PPSelectOptionViewController;
-			sourceTree = "<group>";
-		};
-		F25CDE3E2ED9E4E000231D9B /* PPNAV */ = {
-			isa = PBXGroup;
-			children = (
-				F2D7F0E92F13133300105778 /* BBCheckoutSummaryView.h */,
-				F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */,
-				F21302242F0C8B00006E71AB /* PPNavBarTitleView.m */,
-				F21302232F0C8AF1006E71AB /* PPNavBarTitleView.h */,
-				F2AAEDA72EF9E249006E0A6F /* UITabBarItem+PPAdditions.h */,
-				F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */,
-				F25CDF602EDA091C00231D9B /* PPBottomBarManager.h */,
-				F25CDF612EDA092500231D9B /* PPBottomBarManager.m */,
-				2262AF8F2E74B6F2005C8EF0 /* PPBottomBar.h */,
-				2262AF902E74B74B005C8EF0 /* PPBottomBar.m */,
-				F251F8D82E948EBF000B5CF3 /* PPNavigationController.h */,
-				F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */,
-				F2E0E86F2E7A16D400F0C084 /* UIViewController+PPNavBar.h */,
-				F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */,
-			);
-			path = PPNAV;
-			sourceTree = "<group>";
-		};
-		F25CDE3F2ED9E5CB00231D9B /* PPComponent */ = {
-			isa = PBXGroup;
-			children = (
-				F21770782EEBA62F0078C590 /* PPMenuHelper.h */,
-				F21770792EEBA63E0078C590 /* PPMenuHelper.m */,
-				F2C890122F5C100000A1B2C3 /* PPModrenSegmrnted.h */,
-				F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */,
-				F2F750C92E7C605E00BACFA8 /* PPS.h */,
-				F2F750CA2E7C605E00BACFA8 /* PPS.m */,
-				F2736EAF2E83941400902E1C /* PPLeftRight */,
-				F2AAEDA42EF9AC16006E0A6F /* UITabBarItem+PPFactory.h */,
-				F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */,
-				9CF3D08FB0A5297B6992748B /* PPSectionHeader.h */,
-				3C32792C5C5015883E126EAA /* PPSectionHeader.m */,
-				186C52B55AAF3B70613E913E /* PPRatingView.h */,
-				5567B37190496A6732104BBC /* PPRatingView.m */,
-				E7340080C03E951FEB2EE798 /* PPDiscountBadge.h */,
-				EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */,
-				50C8A4EEEF7AA2231BE32B73 /* PPProductCard.h */,
-				88157B791FE37AB03DA1B1F5 /* PPProductCard.m */,
-			);
-			path = PPComponent;
-			sourceTree = "<group>";
-		};
-		F25CDE5C2ED9ED7F00231D9B /* Category */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDE402ED9ED7F00231D9B /* NSArray+HXExtension.h */,
-				F25CDE412ED9ED7F00231D9B /* NSArray+HXExtension.m */,
-				F25CDE422ED9ED7F00231D9B /* NSBundle+HXPhotoPicker.h */,
-				F25CDE432ED9ED7F00231D9B /* NSBundle+HXPhotoPicker.m */,
-				F25CDE442ED9ED7F00231D9B /* NSDate+HXExtension.h */,
-				F25CDE452ED9ED7F00231D9B /* NSDate+HXExtension.m */,
-				F25CDE462ED9ED7F00231D9B /* NSString+HXExtension.h */,
-				F25CDE472ED9ED7F00231D9B /* NSString+HXExtension.m */,
-				F25CDE482ED9ED7F00231D9B /* NSTimer+HXExtension.h */,
-				F25CDE492ED9ED7F00231D9B /* NSTimer+HXExtension.m */,
-				F25CDE4A2ED9ED7F00231D9B /* PHAsset+HXExtension.h */,
-				F25CDE4B2ED9ED7F00231D9B /* PHAsset+HXExtension.m */,
-				F25CDE4C2ED9ED7F00231D9B /* UIButton+HXExtension.h */,
-				F25CDE4D2ED9ED7F00231D9B /* UIButton+HXExtension.m */,
-				F25CDE4E2ED9ED7F00231D9B /* UIColor+HXExtension.h */,
-				F25CDE4F2ED9ED7F00231D9B /* UIColor+HXExtension.m */,
-				F25CDE502ED9ED7F00231D9B /* UIFont+HXExtension.h */,
-				F25CDE512ED9ED7F00231D9B /* UIFont+HXExtension.m */,
-				F25CDE522ED9ED7F00231D9B /* UIImage+HXExtension.h */,
-				F25CDE532ED9ED7F00231D9B /* UIImage+HXExtension.m */,
-				F25CDE542ED9ED7F00231D9B /* UIImageView+HXExtension.h */,
-				F25CDE552ED9ED7F00231D9B /* UIImageView+HXExtension.m */,
-				F25CDE562ED9ED7F00231D9B /* UILabel+HXExtension.h */,
-				F25CDE572ED9ED7F00231D9B /* UILabel+HXExtension.m */,
-				F25CDE582ED9ED7F00231D9B /* UIView+HXExtension.h */,
-				F25CDE592ED9ED7F00231D9B /* UIView+HXExtension.m */,
-				F25CDE5A2ED9ED7F00231D9B /* UIViewController+HXExtension.h */,
-				F25CDE5B2ED9ED7F00231D9B /* UIViewController+HXExtension.m */,
-			);
-			path = Category;
-			sourceTree = "<group>";
-		};
-		F25CDE6F2ED9ED7F00231D9B /* Controller */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDE5D2ED9ED7F00231D9B /* HXAlbumListViewController.h */,
-				F25CDE5E2ED9ED7F00231D9B /* HXAlbumListViewController.m */,
-				F25CDE5F2ED9ED7F00231D9B /* HXCustomCameraController.h */,
-				F25CDE602ED9ED7F00231D9B /* HXCustomCameraController.m */,
-				F25CDE612ED9ED7F00231D9B /* HXCustomCameraViewController.h */,
-				F25CDE622ED9ED7F00231D9B /* HXCustomCameraViewController.m */,
-				F25CDE632ED9ED7F00231D9B /* HXCustomNavigationController.h */,
-				F25CDE642ED9ED7F00231D9B /* HXCustomNavigationController.m */,
-				F25CDE652ED9ED7F00231D9B /* HXPhoto3DTouchViewController.h */,
-				F25CDE662ED9ED7F00231D9B /* HXPhoto3DTouchViewController.m */,
-				F25CDE672ED9ED7F00231D9B /* HXPhotoEditViewController.h */,
-				F25CDE682ED9ED7F00231D9B /* HXPhotoEditViewController.m */,
-				F25CDE692ED9ED7F00231D9B /* HXPhotoPreviewViewController.h */,
-				F25CDE6A2ED9ED7F00231D9B /* HXPhotoPreviewViewController.m */,
-				F25CDE6B2ED9ED7F00231D9B /* HXPhotoViewController.h */,
-				F25CDE6C2ED9ED7F00231D9B /* HXPhotoViewController.m */,
-				F25CDE6D2ED9ED7F00231D9B /* HXVideoEditViewController.h */,
-				F25CDE6E2ED9ED7F00231D9B /* HXVideoEditViewController.m */,
-			);
-			path = Controller;
-			sourceTree = "<group>";
-		};
-		F25CDE722ED9ED7F00231D9B /* Controller */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDE702ED9ED7F00231D9B /* HX_PhotoEditViewController.h */,
-				F25CDE712ED9ED7F00231D9B /* HX_PhotoEditViewController.m */,
-			);
-			path = Controller;
-			sourceTree = "<group>";
-		};
-		F25CDE792ED9ED7F00231D9B /* Model */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDE732ED9ED7F00231D9B /* HXMECancelBlock.h */,
-				F25CDE742ED9ED7F00231D9B /* HXMECancelBlock.m */,
-				F25CDE752ED9ED7F00231D9B /* HXPhotoEditChartletModel.h */,
-				F25CDE762ED9ED7F00231D9B /* HXPhotoEditChartletModel.m */,
-				F25CDE772ED9ED7F00231D9B /* HXPhotoEditGraffitiColorModel.h */,
-				F25CDE782ED9ED7F00231D9B /* HXPhotoEditGraffitiColorModel.m */,
-			);
-			path = Model;
-			sourceTree = "<group>";
-		};
-		F25CDEAC2ED9ED7F00231D9B /* View */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDE7A2ED9ED7F00231D9B /* HX_PhotoEditBottomView.h */,
-				F25CDE7B2ED9ED7F00231D9B /* HX_PhotoEditBottomView.m */,
-				F25CDE7C2ED9ED7F00231D9B /* HXPhotoClippingView.h */,
-				F25CDE7D2ED9ED7F00231D9B /* HXPhotoClippingView.m */,
-				F25CDE7E2ED9ED7F00231D9B /* HXPhotoEditChartletContentViewCell.h */,
-				F25CDE7F2ED9ED7F00231D9B /* HXPhotoEditChartletContentViewCell.m */,
-				F25CDE802ED9ED7F00231D9B /* HXPhotoEditChartletListView.h */,
-				F25CDE812ED9ED7F00231D9B /* HXPhotoEditChartletListView.m */,
-				F25CDE822ED9ED7F00231D9B /* HXPhotoEditChartletPreviewView.h */,
-				F25CDE832ED9ED7F00231D9B /* HXPhotoEditChartletPreviewView.m */,
-				F25CDE842ED9ED7F00231D9B /* HXPhotoEditClippingToolBar.h */,
-				F25CDE852ED9ED7F00231D9B /* HXPhotoEditClippingToolBar.m */,
-				F25CDE862ED9ED7F00231D9B /* HXPhotoEditDrawView.h */,
-				F25CDE872ED9ED7F00231D9B /* HXPhotoEditDrawView.m */,
-				F25CDE882ED9ED7F00231D9B /* HXPhotoEditGraffitiColorSizeView.h */,
-				F25CDE892ED9ED7F00231D9B /* HXPhotoEditGraffitiColorSizeView.m */,
-				F25CDE8A2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorView.h */,
-				F25CDE8B2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorView.m */,
-				F25CDE8C2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorViewCell.h */,
-				F25CDE8D2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorViewCell.m */,
-				F25CDE8E2ED9ED7F00231D9B /* HXPhotoEditGridLayer.h */,
-				F25CDE8F2ED9ED7F00231D9B /* HXPhotoEditGridLayer.m */,
-				F25CDE902ED9ED7F00231D9B /* HXPhotoEditGridMaskLayer.h */,
-				F25CDE912ED9ED7F00231D9B /* HXPhotoEditGridMaskLayer.m */,
-				F25CDE922ED9ED7F00231D9B /* HXPhotoEditGridView.h */,
-				F25CDE932ED9ED7F00231D9B /* HXPhotoEditGridView.m */,
-				F25CDE942ED9ED7F00231D9B /* HXPhotoEditImageView.h */,
-				F25CDE952ED9ED7F00231D9B /* HXPhotoEditImageView.m */,
-				F25CDE962ED9ED7F00231D9B /* HXPhotoEditingView.h */,
-				F25CDE972ED9ED7F00231D9B /* HXPhotoEditingView.m */,
-				F25CDE982ED9ED7F00231D9B /* HXPhotoEditMosaicView.h */,
-				F25CDE992ED9ED7F00231D9B /* HXPhotoEditMosaicView.m */,
-				F25CDE9A2ED9ED7F00231D9B /* HXPhotoEditResizeControl.h */,
-				F25CDE9B2ED9ED7F00231D9B /* HXPhotoEditResizeControl.m */,
-				F25CDE9C2ED9ED7F00231D9B /* HXPhotoEditSplashMaskLayer.h */,
-				F25CDE9D2ED9ED7F00231D9B /* HXPhotoEditSplashMaskLayer.m */,
-				F25CDE9E2ED9ED7F00231D9B /* HXPhotoEditSplashView.h */,
-				F25CDE9F2ED9ED7F00231D9B /* HXPhotoEditSplashView.m */,
-				F25CDEA02ED9ED7F00231D9B /* HXPhotoEditStickerItem.h */,
-				F25CDEA12ED9ED7F00231D9B /* HXPhotoEditStickerItem.m */,
-				F25CDEA22ED9ED7F00231D9B /* HXPhotoEditStickerItemContentView.h */,
-				F25CDEA32ED9ED7F00231D9B /* HXPhotoEditStickerItemContentView.m */,
-				F25CDEA42ED9ED7F00231D9B /* HXPhotoEditStickerItemView.h */,
-				F25CDEA52ED9ED7F00231D9B /* HXPhotoEditStickerItemView.m */,
-				F25CDEA62ED9ED7F00231D9B /* HXPhotoEditStickerTrashView.h */,
-				F25CDEA72ED9ED7F00231D9B /* HXPhotoEditStickerTrashView.m */,
-				F25CDEA82ED9ED7F00231D9B /* HXPhotoEditStickerView.h */,
-				F25CDEA92ED9ED7F00231D9B /* HXPhotoEditStickerView.m */,
-				F25CDEAA2ED9ED7F00231D9B /* HXPhotoEditTextView.h */,
-				F25CDEAB2ED9ED7F00231D9B /* HXPhotoEditTextView.m */,
-			);
-			path = View;
-			sourceTree = "<group>";
-		};
-		F25CDEB12ED9ED7F00231D9B /* HXPhotoEdit */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDE722ED9ED7F00231D9B /* Controller */,
-				F25CDE792ED9ED7F00231D9B /* Model */,
-				F25CDEAC2ED9ED7F00231D9B /* View */,
-				F25CDEAD2ED9ED7F00231D9B /* HXPhotoEdit.h */,
-				F25CDEAE2ED9ED7F00231D9B /* HXPhotoEdit.m */,
-				F25CDEAF2ED9ED7F00231D9B /* HXPhotoEditConfiguration.h */,
-				F25CDEB02ED9ED7F00231D9B /* HXPhotoEditConfiguration.m */,
-			);
-			path = HXPhotoEdit;
-			sourceTree = "<group>";
-		};
-		F25CDEBC2ED9ED7F00231D9B /* Model */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDEB22ED9ED7F00231D9B /* HXAlbumModel.h */,
-				F25CDEB32ED9ED7F00231D9B /* HXAlbumModel.m */,
-				F25CDEB42ED9ED7F00231D9B /* HXCustomAssetModel.h */,
-				F25CDEB52ED9ED7F00231D9B /* HXCustomAssetModel.m */,
-				F25CDEB62ED9ED7F00231D9B /* HXPhotoModel.h */,
-				F25CDEB72ED9ED7F00231D9B /* HXPhotoModel.m */,
-				F25CDEB82ED9ED7F00231D9B /* HXPhotoViewCellCustomProtocol.h */,
-				F25CDEB92ED9ED7F00231D9B /* HXPhotoViewProtocol.h */,
-				F25CDEBA2ED9ED7F00231D9B /* HXPickerResult.h */,
-				F25CDEBB2ED9ED7F00231D9B /* HXPickerResult.m */,
-			);
-			path = Model;
-			sourceTree = "<group>";
-		};
-		F25CDEBE2ED9ED7F00231D9B /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDEBD2ED9ED7F00231D9B /* HXPhotoPicker.bundle */,
-			);
-			path = Resources;
-			sourceTree = "<group>";
-		};
-		F25CDEC92ED9ED7F00231D9B /* TransitionAnimation */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDEBF2ED9ED7F00231D9B /* HXPhotoEditTransition.h */,
-				F25CDEC02ED9ED7F00231D9B /* HXPhotoEditTransition.m */,
-				F25CDEC12ED9ED7F00231D9B /* HXPhotoInteractiveTransition.h */,
-				F25CDEC22ED9ED7F00231D9B /* HXPhotoInteractiveTransition.m */,
-				F25CDEC32ED9ED7F00231D9B /* HXPhotoPersentInteractiveTransition.h */,
-				F25CDEC42ED9ED7F00231D9B /* HXPhotoPersentInteractiveTransition.m */,
-				F25CDEC52ED9ED7F00231D9B /* HXPhotoViewPresentTransition.h */,
-				F25CDEC62ED9ED7F00231D9B /* HXPhotoViewPresentTransition.m */,
-				F25CDEC72ED9ED7F00231D9B /* HXPhotoViewTransition.h */,
-				F25CDEC82ED9ED7F00231D9B /* HXPhotoViewTransition.m */,
-			);
-			path = TransitionAnimation;
-			sourceTree = "<group>";
-		};
-		F25CDEF62ED9ED7F00231D9B /* View */ = {
-			isa = PBXGroup;
-			children = (
-				F25CDECA2ED9ED7F00231D9B /* HXAlbumlistView.h */,
-				F25CDECB2ED9ED7F00231D9B /* HXAlbumlistView.m */,
-				F25CDECC2ED9ED7F00231D9B /* HXCameraBottomView.h */,
-				F25CDECD2ED9ED7F00231D9B /* HXCameraBottomView.m */,
-				F25CDECE2ED9ED7F00231D9B /* HXCircleProgressView.h */,
-				F25CDECF2ED9ED7F00231D9B /* HXCircleProgressView.m */,
-				F25CDED02ED9ED7F00231D9B /* HXCollectionView.h */,
-				F25CDED12ED9ED7F00231D9B /* HXCollectionView.m */,
-				F25CDED22ED9ED7F00231D9B /* HXCustomCollectionReusableView.h */,
-				F25CDED32ED9ED7F00231D9B /* HXCustomCollectionReusableView.m */,
-				F25CDED42ED9ED7F00231D9B /* HXCustomPreviewView.h */,
-				F25CDED52ED9ED7F00231D9B /* HXCustomPreviewView.m */,
-				F25CDED62ED9ED7F00231D9B /* HXFullScreenCameraPlayView.h */,
-				F25CDED72ED9ED7F00231D9B /* HXFullScreenCameraPlayView.m */,
-				F25CDED82ED9ED7F00231D9B /* HXPhotoBottomSelectView.h */,
-				F25CDED92ED9ED7F00231D9B /* HXPhotoBottomSelectView.m */,
-				F25CDEDA2ED9ED7F00231D9B /* HXPhotoCustomNavigationBar.h */,
-				F25CDEDB2ED9ED7F00231D9B /* HXPhotoCustomNavigationBar.m */,
-				F25CDEDC2ED9ED7F00231D9B /* HXPhotoLimitView.h */,
-				F25CDEDD2ED9ED7F00231D9B /* HXPhotoLimitView.m */,
-				F25CDEDE2ED9ED7F00231D9B /* HXPhotoPreviewBottomView.h */,
-				F25CDEDF2ED9ED7F00231D9B /* HXPhotoPreviewBottomView.m */,
-				F25CDEE02ED9ED7F00231D9B /* HXPhotoPreviewImageViewCell.h */,
-				F25CDEE12ED9ED7F00231D9B /* HXPhotoPreviewImageViewCell.m */,
-				F25CDEE22ED9ED7F00231D9B /* HXPhotoPreviewLivePhotoCell.h */,
-				F25CDEE32ED9ED7F00231D9B /* HXPhotoPreviewLivePhotoCell.m */,
-				F25CDEE42ED9ED7F00231D9B /* HXPhotoPreviewVideoViewCell.h */,
-				F25CDEE52ED9ED7F00231D9B /* HXPhotoPreviewVideoViewCell.m */,
-				F25CDEE62ED9ED7F00231D9B /* HXPhotoPreviewViewCell.h */,
-				F25CDEE72ED9ED7F00231D9B /* HXPhotoPreviewViewCell.m */,
-				F25CDEE82ED9ED7F00231D9B /* HXPhotoSubViewCell.h */,
-				F25CDEE92ED9ED7F00231D9B /* HXPhotoSubViewCell.m */,
-				F25CDEEA2ED9ED7F00231D9B /* HXPhotoView.h */,
-				F25CDEEB2ED9ED7F00231D9B /* HXPhotoView.m */,
-				F25CDEEC2ED9ED7F00231D9B /* HXPhotoViewFlowLayout.h */,
-				F25CDEED2ED9ED7F00231D9B /* HXPhotoViewFlowLayout.m */,
-				F25CDEEE2ED9ED7F00231D9B /* HXPreviewContentView.h */,
-				F25CDEEF2ED9ED7F00231D9B /* HXPreviewContentView.m */,
-				F25CDEF02ED9ED7F00231D9B /* HXPreviewImageView.h */,
-				F25CDEF12ED9ED7F00231D9B /* HXPreviewImageView.m */,
-				F25CDEF22ED9ED7F00231D9B /* HXPreviewLivePhotoView.h */,
-				F25CDEF32ED9ED7F00231D9B /* HXPreviewLivePhotoView.m */,
-				F25CDEF42ED9ED7F00231D9B /* HXPreviewVideoView.h */,
-				F25CDEF52ED9ED7F00231D9B /* HXPreviewVideoView.m */,
-			);
-			path = View;
-			sourceTree = "<group>";
-		};
-		F25CDF042ED9ED7F00231D9B /* HXPhotoPicker */ = {
-			isa = PBXGroup;
-			children = (
-				F27A45BE2EDF44E90044040E /* PPXLPhotoCell.m */,
-				F27A45BD2EDF44DF0044040E /* PPXLPhotoCell.h */,
-				F27A45BB2EDF44D70044040E /* PPXLPhotoRow.m */,
-				F27A45BA2EDF44C50044040E /* PPXLPhotoRow.h */,
-				F25CDE5C2ED9ED7F00231D9B /* Category */,
-				F25CDE6F2ED9ED7F00231D9B /* Controller */,
-				F25CDEB12ED9ED7F00231D9B /* HXPhotoEdit */,
-				F25CDEBC2ED9ED7F00231D9B /* Model */,
-				F25CDEBE2ED9ED7F00231D9B /* Resources */,
-				F25CDEC92ED9ED7F00231D9B /* TransitionAnimation */,
-				F25CDEF62ED9ED7F00231D9B /* View */,
-				F25CDEF72ED9ED7F00231D9B /* HXAssetManager.h */,
-				F25CDEF82ED9ED7F00231D9B /* HXAssetManager.m */,
-				F25CDEF92ED9ED7F00231D9B /* HXPhotoCommon.h */,
-				F25CDEFA2ED9ED7F00231D9B /* HXPhotoCommon.m */,
-				F25CDEFB2ED9ED7F00231D9B /* HXPhotoConfiguration.h */,
-				F25CDEFC2ED9ED7F00231D9B /* HXPhotoConfiguration.m */,
-				F25CDEFD2ED9ED7F00231D9B /* HXPhotoDefine.h */,
-				F25CDEFE2ED9ED7F00231D9B /* HXPhotoManager.h */,
-				F25CDEFF2ED9ED7F00231D9B /* HXPhotoManager.m */,
-				F25CDF002ED9ED7F00231D9B /* HXPhotoPicker.h */,
-				F25CDF012ED9ED7F00231D9B /* HXPhotoTools.h */,
-				F25CDF022ED9ED7F00231D9B /* HXPhotoTools.m */,
-				F25CDF032ED9ED7F00231D9B /* HXPhotoTypes.h */,
-			);
-			path = HXPhotoPicker;
-			sourceTree = "<group>";
-		};
 		F25E7FF32EFF71FE0089F659 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
@@ -4051,15 +3416,6 @@
 				F273149C2F31D7E500FFA0B8 /* PPCheckoutCoordinator.m */,
 			);
 			path = Checkout;
-			sourceTree = "<group>";
-		};
-		F2736EAF2E83941400902E1C /* PPLeftRight */ = {
-			isa = PBXGroup;
-			children = (
-				F2736EB82E83948900902E1C /* XLFormRowFullWidthTextFieldCell.h */,
-				F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */,
-			);
-			path = PPLeftRight;
 			sourceTree = "<group>";
 		};
 		F276D6092F1403CE00782A13 /* Helpers */ = {
@@ -4825,10 +4181,7 @@
 			children = (
 				F29952652F2DB8D300F50031 /* ZYCircleProgressView */,
 				F28A09FD2EE772E900EE5055 /* ScaledCenterCarousel */,
-				F25CDE3F2ED9E5CB00231D9B /* PPComponent */,
-				F25CDE3E2ED9E4E000231D9B /* PPNAV */,
 				F27714A92ED775A700B1D062 /* PPImagePicker+Viewer */,
-				F25CDE3C2ED9E45100231D9B /* PPSelectOptionViewController */,
 				F26BA36F2E7FDCCB00A6E85E /* Vet Location */,
 				F2F750CF2E7C82FC00BACFA8 /* PPStyles */,
 			);
@@ -5209,7 +4562,6 @@
 		F2DF22042C504F06004F99A5 /* DesignFiles */ = {
 			isa = PBXGroup;
 			children = (
-				F25CDF042ED9ED7F00231D9B /* HXPhotoPicker */,
 				F2B1A62C2E6EA63F0019FC7C /* PP */,
 				F21E09502E454A7F00690BC5 /* MostUsed */,
 				F21E094F2E4547B200690BC5 /* Helpers */,
@@ -5496,7 +4848,6 @@
 				F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */,
 				F27FAEAF2D2F363200EA6B56 /* JPVideoPlayer.bundle in Resources */,
 				F22CD3852C6709650098B6E9 /* star.png in Resources */,
-				F25CDF5F2ED9ED7F00231D9B /* HXPhotoPicker.bundle in Resources */,
 				F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
 				F2D0C5E82C4BE1BB0023CE53 /* Base in Resources */,
@@ -5553,13 +4904,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5609,8 +4956,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "
-";
+			shellScript = "\n";
 		};
 		F419239A25BCE454B7C90E99 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -5620,13 +4966,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5640,6 +4982,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */,
 				F2977D602E4ABB6B003A7005 /* AppSearchHelper.m in Sources */,
 				F25E80122F00602E0089F659 /* PPSectionHeaderView.m in Sources */,
 				F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */,
@@ -5679,115 +5022,24 @@
 				F271466D2CCE6B5300F7F3BA /* XLFormSwitchCell.m in Sources */,
 				F271466E2CCE6B5300F7F3BA /* XLForm.m in Sources */,
 				F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */,
-				F25CDF052ED9ED7F00231D9B /* HXAlbumlistView.m in Sources */,
-				F25CDF062ED9ED7F00231D9B /* HXPhotoEditSplashMaskLayer.m in Sources */,
-				F25CDF072ED9ED7F00231D9B /* HXCircleProgressView.m in Sources */,
-				F25CDF082ED9ED7F00231D9B /* HXPhotoEditGridView.m in Sources */,
-				F25CDF092ED9ED7F00231D9B /* HXPhotoEditChartletModel.m in Sources */,
-				F25CDF0A2ED9ED7F00231D9B /* HXPhotoClippingView.m in Sources */,
-				F25CDF0B2ED9ED7F00231D9B /* HXCustomPreviewView.m in Sources */,
-				F25CDF0C2ED9ED7F00231D9B /* UIButton+HXExtension.m in Sources */,
 				F28DD5A92F04D83E00FF2671 /* PPDataViewVC.m in Sources */,
-				F25CDF0D2ED9ED7F00231D9B /* HX_PhotoEditViewController.m in Sources */,
-				F25CDF0E2ED9ED7F00231D9B /* HXAlbumModel.m in Sources */,
-				F25CDF0F2ED9ED7F00231D9B /* HXPhotoEdit.m in Sources */,
 				F28A0A0E2EEA3C3F00EE5055 /* AppDataListenerManager.m in Sources */,
-				F25CDF102ED9ED7F00231D9B /* HXPhotoViewController.m in Sources */,
-				F25CDF112ED9ED7F00231D9B /* HXPhotoViewPresentTransition.m in Sources */,
-				F25CDF122ED9ED7F00231D9B /* UIView+HXExtension.m in Sources */,
-				F25CDF132ED9ED7F00231D9B /* HXPhotoEditSplashView.m in Sources */,
 				F21302252F0C8B28006E71AB /* PPNavBarTitleView.m in Sources */,
-				F25CDF142ED9ED7F00231D9B /* HXPhotoSubViewCell.m in Sources */,
-				F25CDF152ED9ED7F00231D9B /* HXPhotoEditStickerTrashView.m in Sources */,
-				F25CDF162ED9ED7F00231D9B /* HXPhotoPreviewViewController.m in Sources */,
-				F25CDF172ED9ED7F00231D9B /* HXPhotoEditGridLayer.m in Sources */,
 				F2B641B72F4A7F860092C2BF /* PPSelectAddressVC.m in Sources */,
-				F25CDF182ED9ED7F00231D9B /* NSTimer+HXExtension.m in Sources */,
-				F25CDF192ED9ED7F00231D9B /* HXPhotoEditGraffitiColorModel.m in Sources */,
-				F25CDF1A2ED9ED7F00231D9B /* HXCameraBottomView.m in Sources */,
-				F25CDF1B2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorSizeView.m in Sources */,
-				F25CDF1C2ED9ED7F00231D9B /* HXPhotoManager.m in Sources */,
-				F25CDF1D2ED9ED7F00231D9B /* HXMECancelBlock.m in Sources */,
-				F25CDF1E2ED9ED7F00231D9B /* HXPhotoEditConfiguration.m in Sources */,
-				F25CDF1F2ED9ED7F00231D9B /* HXPhotoEditStickerItem.m in Sources */,
-				F25CDF202ED9ED7F00231D9B /* HXCustomCollectionReusableView.m in Sources */,
-				F25CDF212ED9ED7F00231D9B /* HXPhotoEditChartletListView.m in Sources */,
-				F25CDF222ED9ED7F00231D9B /* HXPhotoCustomNavigationBar.m in Sources */,
-				F25CDF232ED9ED7F00231D9B /* NSBundle+HXPhotoPicker.m in Sources */,
-				F25CDF242ED9ED7F00231D9B /* HXPickerResult.m in Sources */,
-				F25CDF252ED9ED7F00231D9B /* HXPhotoPreviewImageViewCell.m in Sources */,
-				F25CDF262ED9ED7F00231D9B /* NSString+HXExtension.m in Sources */,
-				F25CDF272ED9ED7F00231D9B /* HXPhotoEditChartletContentViewCell.m in Sources */,
 				F27A48332EE0CB1E0044040E /* PPImageCollection.m in Sources */,
 				F207D0CA2F14D82F00BA6214 /* PPBlurHashGenerator.swift in Sources */,
-				F25CDF282ED9ED7F00231D9B /* NSDate+HXExtension.m in Sources */,
 				F28DD58A2F0193A700FF2671 /* PPHomeServicesCell.m in Sources */,
-				F25CDF292ED9ED7F00231D9B /* HXPhotoConfiguration.m in Sources */,
-				F25CDF2A2ED9ED7F00231D9B /* HXPhotoView.m in Sources */,
-				F25CDF622EDA092500231D9B /* PPBottomBarManager.m in Sources */,
-				F25CDF2B2ED9ED7F00231D9B /* UILabel+HXExtension.m in Sources */,
 				F28A0A0A2EE9C96B00EE5055 /* EllipsePageControl.h in Sources */,
-				F25CDF2C2ED9ED7F00231D9B /* HXPhotoModel.m in Sources */,
 				F273146E2F31169000FFA0B8 /* PPOrder.m in Sources */,
 				F253FA6D2F082F2F00323CB4 /* PPCategoryCardCell.m in Sources */,
-				F25CDF2D2ED9ED7F00231D9B /* HXPhotoPreviewLivePhotoCell.m in Sources */,
-				F25CDF2E2ED9ED7F00231D9B /* HXCustomCameraViewController.m in Sources */,
-				F25CDF2F2ED9ED7F00231D9B /* HXPhotoEditTextView.m in Sources */,
-				F25CDF302ED9ED7F00231D9B /* HXPreviewVideoView.m in Sources */,
-				F25CDF312ED9ED7F00231D9B /* HXPhotoPersentInteractiveTransition.m in Sources */,
-				F25CDF322ED9ED7F00231D9B /* HXPhotoEditingView.m in Sources */,
-				F25CDF332ED9ED7F00231D9B /* HXCollectionView.m in Sources */,
-				F25CDF342ED9ED7F00231D9B /* HXPhotoLimitView.m in Sources */,
-				F25CDF352ED9ED7F00231D9B /* HXPhotoEditStickerItemView.m in Sources */,
-				F25CDF362ED9ED7F00231D9B /* HXPhotoEditGridMaskLayer.m in Sources */,
-				F25CDF372ED9ED7F00231D9B /* HXPhotoEditImageView.m in Sources */,
-				F25CDF382ED9ED7F00231D9B /* HXPhotoTools.m in Sources */,
-				F25CDF392ED9ED7F00231D9B /* HXPhotoEditDrawView.m in Sources */,
-				F25CDF3A2ED9ED7F00231D9B /* HXPhotoPreviewBottomView.m in Sources */,
-				F25CDF3B2ED9ED7F00231D9B /* UIImage+HXExtension.m in Sources */,
-				F25CDF3C2ED9ED7F00231D9B /* HXVideoEditViewController.m in Sources */,
-				F25CDF3D2ED9ED7F00231D9B /* HXCustomAssetModel.m in Sources */,
-				F25CDF3E2ED9ED7F00231D9B /* HXPhotoEditTransition.m in Sources */,
-				F25CDF3F2ED9ED7F00231D9B /* HXCustomCameraController.m in Sources */,
 				F2DF5DD12EFC8EAA009C7B6F /* NewAppVC.m in Sources */,
-				F25CDF402ED9ED7F00231D9B /* HXCustomNavigationController.m in Sources */,
-				F25CDF412ED9ED7F00231D9B /* HXPhotoEditClippingToolBar.m in Sources */,
-				F25CDF422ED9ED7F00231D9B /* HXPhotoEditResizeControl.m in Sources */,
-				F25CDF432ED9ED7F00231D9B /* HXAlbumListViewController.m in Sources */,
 				F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */,
-				F25CDF442ED9ED7F00231D9B /* HXFullScreenCameraPlayView.m in Sources */,
-				F25CDF452ED9ED7F00231D9B /* HXPreviewLivePhotoView.m in Sources */,
-				F25CDF462ED9ED7F00231D9B /* HXPhotoEditViewController.m in Sources */,
-				F25CDF472ED9ED7F00231D9B /* HXPreviewContentView.m in Sources */,
 				F2B641BE2F4A95E60092C2BF /* PPStoriesManager.m in Sources */,
-				F25CDF482ED9ED7F00231D9B /* HXPhotoCommon.m in Sources */,
 				F2B641BB2F4A95690092C2BF /* PPStory.m in Sources */,
 				F2C2252D2F11BF7700569B36 /* CreateAdCoordinator.m in Sources */,
 				F27A48292EE07CAA0044040E /* PPCoreBridge.swift in Sources */,
-				F25CDF492ED9ED7F00231D9B /* UIColor+HXExtension.m in Sources */,
-				F25CDF4A2ED9ED7F00231D9B /* HXPhotoBottomSelectView.m in Sources */,
-				F25CDF4B2ED9ED7F00231D9B /* HXPhotoEditStickerView.m in Sources */,
 				F273147B2F3118A000FFA0B8 /* PPPaymentManager.m in Sources */,
-				F25CDF4C2ED9ED7F00231D9B /* HXPhotoPreviewVideoViewCell.m in Sources */,
-				F25CDF4D2ED9ED7F00231D9B /* HXPhotoEditStickerItemContentView.m in Sources */,
-				F25CDF4E2ED9ED7F00231D9B /* UIFont+HXExtension.m in Sources */,
-				F25CDF4F2ED9ED7F00231D9B /* NSArray+HXExtension.m in Sources */,
-				F25CDF502ED9ED7F00231D9B /* HXPhotoViewFlowLayout.m in Sources */,
-				F25CDF512ED9ED7F00231D9B /* HXPhoto3DTouchViewController.m in Sources */,
-				F25CDF522ED9ED7F00231D9B /* HX_PhotoEditBottomView.m in Sources */,
-				F25CDF532ED9ED7F00231D9B /* UIImageView+HXExtension.m in Sources */,
-				F25CDF542ED9ED7F00231D9B /* PHAsset+HXExtension.m in Sources */,
-				F25CDF552ED9ED7F00231D9B /* HXPhotoEditGraffitiColorViewCell.m in Sources */,
-				F25CDF562ED9ED7F00231D9B /* HXPhotoInteractiveTransition.m in Sources */,
-				F25CDF572ED9ED7F00231D9B /* HXAssetManager.m in Sources */,
-				F25CDF582ED9ED7F00231D9B /* HXPhotoEditMosaicView.m in Sources */,
-				F25CDF592ED9ED7F00231D9B /* HXPhotoEditChartletPreviewView.m in Sources */,
-				F25CDF5A2ED9ED7F00231D9B /* HXPhotoPreviewViewCell.m in Sources */,
-				F25CDF5B2ED9ED7F00231D9B /* HXPhotoEditGraffitiColorView.m in Sources */,
 				F24F9BAE2EE65405002AAD27 /* PPAdsBrowser.m in Sources */,
-				F25CDF5C2ED9ED7F00231D9B /* UIViewController+HXExtension.m in Sources */,
-				F25CDF5D2ED9ED7F00231D9B /* HXPreviewImageView.m in Sources */,
-				F25CDF5E2ED9ED7F00231D9B /* HXPhotoViewTransition.m in Sources */,
 				F24C04D52D2E3E0400A9F61F /* FileModel.m in Sources */,
 				F271466F2CCE6B5300F7F3BA /* XLFormCheckCell.m in Sources */,
 				F27146702CCE6B5300F7F3BA /* XLFormRightDetailCell.m in Sources */,
@@ -6301,9 +5553,7 @@
 				F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F27314982F31CE9300FFA0B8 /* CartManager.m in Sources */,
 				F27FAEA12D2F363200EA6B56 /* JPVideoPlayerCellProtocol.m in Sources */,
-				F27A45BF2EDF44E90044040E /* PPXLPhotoCell.m in Sources */,
 				F27FAEA22D2F363200EA6B56 /* UICollectionView+WebVideoCache.m in Sources */,
-				F27A45BC2EDF44D70044040E /* PPXLPhotoRow.m in Sources */,
 				F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */,
 				F27FAEA32D2F363200EA6B56 /* UITableView+WebVideoCache.m in Sources */,
 				F27FAEA42D2F363200EA6B56 /* JPVideoPlayerSupportUtils.m in Sources */,
@@ -6582,6 +5832,16 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					"\"$(SRCROOT)/Pure Pets/**\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPNAV\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPComponent\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPSelectOptionViewController\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPStyles\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPStyles/PPFuncFiles\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPImagePicker+Viewer\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPComponent/PPLeftRight\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/MostUsed/XLForm/XL\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/AFNetworking/AFNetworking.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager/IQKeyboardManager.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/Masonry/Masonry.framework/Headers\"",
@@ -6688,6 +5948,16 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					"\"$(SRCROOT)/Pure Pets/**\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPNAV\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPComponent\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPSelectOptionViewController\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPStyles\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPStyles/PPFuncFiles\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPImagePicker+Viewer\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/PP/PPComponent/PPLeftRight\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/MostUsed/XLForm/XL\"",
+					"\"$(SRCROOT)/Pure Pets/DesignFiles/MostUsed/XLForm/XL/Cell\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/AFNetworking/AFNetworking.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager/IQKeyboardManager.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/Masonry/Masonry.framework/Headers\"",

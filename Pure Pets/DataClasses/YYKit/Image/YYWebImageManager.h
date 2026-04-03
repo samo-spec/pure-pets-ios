@@ -12,7 +12,7 @@
 #import <UIKit/UIKit.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYImageCache.h>
+#import "YYImageCache.h"
 #else
 #import "YYImageCache.h"
 #endif

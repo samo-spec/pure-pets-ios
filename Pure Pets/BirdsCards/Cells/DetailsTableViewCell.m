@@ -8,6 +8,7 @@
 #import "DetailsTableViewCell.h"
 #import "PrefixHeader.pch"
 #import "Language.h"
+#import "YYImage.h"
 
 @interface DetailsTableViewCell ()
 

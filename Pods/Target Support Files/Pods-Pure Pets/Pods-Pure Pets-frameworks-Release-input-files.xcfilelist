@@ -1,9 +1,8 @@
 ${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks.sh
 ${BUILT_PRODUCTS_DIR}/AFNetworking/AFNetworking.framework
-${BUILT_PRODUCTS_DIR}/HXPHPicker/HXPHPicker.framework
+${BUILT_PRODUCTS_DIR}/HXPhotoPicker/HXPhotoPicker.framework
 ${BUILT_PRODUCTS_DIR}/IQKeyboardManager/IQKeyboardManager.framework
 ${BUILT_PRODUCTS_DIR}/KVOController/KVOController.framework
-${BUILT_PRODUCTS_DIR}/Kingfisher/Kingfisher.framework
 ${BUILT_PRODUCTS_DIR}/MDRadialProgress/MDRadialProgress.framework
 ${BUILT_PRODUCTS_DIR}/MMSCameraViewController/MMSCameraViewController.framework
 ${BUILT_PRODUCTS_DIR}/Masonry/Masonry.framework

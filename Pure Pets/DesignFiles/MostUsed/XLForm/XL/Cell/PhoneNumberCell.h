@@ -25,6 +25,7 @@
 
 // PhoneNumberCell.h
 #import "XLFormTextFieldCell.h"
+#import "XLFormRowFullWidthTextFieldCell.h"
 
 @interface PhoneNumberCell : XLFormRowFullWidthTextFieldCell
 

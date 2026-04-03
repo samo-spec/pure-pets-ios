@@ -140,8 +140,8 @@ typedef NS_ENUM(NSInteger, PPMediaPickerStyle) {
 // Called when user stops recording and sends the audio.
 // The URL points to the recorded file, duration is in seconds.
 - (void)amazingBar:(PPAmazingBar *)bar didSendRecording:(NSURL *)audioURL duration:(NSTimeInterval)duration;
-// Called when user attaches media (array of HXPhotoModel).
-- (void)amazingBar:(PPAmazingBar *)bar didAttachMedia:(NSArray<HXPhotoModel *> *)media;
+// Called when user attaches media (array of UIImage).
+- (void)amazingBar:(PPAmazingBar *)bar didAttachMedia:(NSArray<UIImage *> *)media;
 @end
 
 @interface PPAmazingBar : UIView

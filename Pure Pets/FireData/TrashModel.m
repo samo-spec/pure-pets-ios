@@ -12,6 +12,7 @@
 #import "ArchivesManager.h"
 #import "ArchiveDetailsModel.h"
 #import "TrashModel.h"
+#import "NSObject+YYModel.h"
  
 @implementation TrashModel
 

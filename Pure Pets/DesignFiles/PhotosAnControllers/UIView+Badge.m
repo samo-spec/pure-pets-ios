@@ -56,7 +56,7 @@ static char * const kUIViewBadgePropertyKey =  "badgeLayer";
     // Add content layer if content not null
     if (content != nil) {
         circleLayer.masksToBounds = YES;
-        circleLayer.cornerRadius = circleLayer.height / 2;
+        circleLayer.cornerRadius = circleLayer.bounds.size.height / 2;
         circleLayer.borderColor =  GM.AppForegroundColor.CGColor;
         CATextLayer *textLayer = [CATextLayer layer];
         textLayer.foregroundColor = contentColor.CGColor;

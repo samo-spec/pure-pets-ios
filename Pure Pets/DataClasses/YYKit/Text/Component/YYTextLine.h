@@ -13,7 +13,7 @@
 #import <CoreText/CoreText.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYTextAttribute.h>
+#import "YYTextAttribute.h"
 #else
 #import "YYTextAttribute.h"
 #endif

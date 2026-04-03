@@ -736,7 +736,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)ip
 //  All UI is built with Auto Layout and constraint animations.
 //
  
-@interface PPAmazingBar () <UITextViewDelegate, AVAudioRecorderDelegate, AVAudioPlayerDelegate, HXCustomNavigationControllerDelegate>
+@interface PPAmazingBar () <UITextViewDelegate, AVAudioRecorderDelegate, AVAudioPlayerDelegate, UINavigationControllerDelegate>
 
 @property (nonatomic, strong) UIVisualEffectView *blurView;
 @property (nonatomic, strong) UIVisualEffectView *vibrancyView;
@@ -1022,21 +1022,27 @@ didSelectItemAtIndexPath:(NSIndexPath *)ip
 }
 
 - (void)handleAttach {
-    // Prepare HXPhotoManager and present picker
-    HXPhotoManager *manager = [HXPhotoManager managerWithType:HXPhotoManagerSelectedTypePhotoAndVideo];
-    manager.configuration.saveSystemAblum = YES;
-    manager.configuration.photoMaxNum = 9;
-    manager.configuration.videoMaxNum = 3;
-    manager.configuration.openCamera = YES;
-    manager.configuration.open3DTouchPreview = YES;
-    manager.configuration.supportRotation = NO;
-    
-    // Show picker according to style
-    if (self.mediaPickerStyle == PPMediaPickerStyleOverlay) {
-       
-    } else {
-        // Slide up embedded (present full-screen too as example)
-       
+    // Use PPPickerBridge (Swift HXPhotoPicker bridge) for media selection
+    PPPickerBridge *picker = [[PPPickerBridge alloc] init];
+    [picker configureForMixedMediaWithMaxCount:9 useArabic:[kLang(@"lang") isEqualToString:@"ar"]];
+
+    // Observe result via notification
+    __weak typeof(self) weakSelf = self;
+    id __block token = [[NSNotificationCenter defaultCenter]
+        addObserverForName:@"PPPickerBridgeDidFinish"
+                    object:nil
+                     queue:[NSOperationQueue mainQueue]
+                usingBlock:^(NSNotification *note) {
+        [[NSNotificationCenter defaultCenter] removeObserver:token];
+        NSArray<UIImage *> *images = [PPPickerBridge imagesFromNotification:note];
+        if (images.count > 0) {
+            [weakSelf.delegate amazingBar:(PPAmazingBar *)weakSelf didAttachMedia:images];
+        }
+    }];
+
+    UIViewController *vc = [self topViewController];
+    if (vc) {
+        [picker presentPickerFromViewController:vc];
     }
 }
 
@@ -1148,12 +1154,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)ip
     }
 }
 
-#pragma mark - HXPhotoPicker Delegate (Example)
-
-- (void)photoViewController:(UIViewController *)viewController didFinishSelectList:(NSArray<HXPhotoModel *> *)allList images:(NSArray<UIImage *> *)images {
-    [viewController dismissViewControllerAnimated:YES completion:nil];
-    [self.delegate amazingBar:self didAttachMedia:allList];
-}
+#pragma mark - Media Picker (legacy delegate removed — now uses PPPickerBridge notifications)
 
 #pragma mark - Helpers
 

@@ -177,10 +177,9 @@ code_sign_if_enabled() {
 
 if [[ "$CONFIGURATION" == "Debug" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/AFNetworking/AFNetworking.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/HXPHPicker/HXPHPicker.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/HXPhotoPicker/HXPhotoPicker.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/IQKeyboardManager/IQKeyboardManager.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/KVOController/KVOController.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/Kingfisher/Kingfisher.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/MDRadialProgress/MDRadialProgress.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/MMSCameraViewController/MMSCameraViewController.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/Masonry/Masonry.framework"
@@ -193,10 +192,9 @@ if [[ "$CONFIGURATION" == "Debug" ]]; then
 fi
 if [[ "$CONFIGURATION" == "Release" ]]; then
   install_framework "${BUILT_PRODUCTS_DIR}/AFNetworking/AFNetworking.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/HXPHPicker/HXPHPicker.framework"
+  install_framework "${BUILT_PRODUCTS_DIR}/HXPhotoPicker/HXPhotoPicker.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/IQKeyboardManager/IQKeyboardManager.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/KVOController/KVOController.framework"
-  install_framework "${BUILT_PRODUCTS_DIR}/Kingfisher/Kingfisher.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/MDRadialProgress/MDRadialProgress.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/MMSCameraViewController/MMSCameraViewController.framework"
   install_framework "${BUILT_PRODUCTS_DIR}/Masonry/Masonry.framework"

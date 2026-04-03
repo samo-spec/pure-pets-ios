@@ -9,6 +9,8 @@
 
 #import "PetAdManager.h"
 
+@class YYWebImageOperation;
+
 NS_ASSUME_NONNULL_BEGIN
 
 

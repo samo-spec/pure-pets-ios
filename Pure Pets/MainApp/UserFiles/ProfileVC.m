@@ -8,6 +8,7 @@
 #import "ProfileVC.h"
 #import "PPPermissionHelper.h"
 #import "PhoneNumberCell.h"
+#import "XLFormRowFullWidthTextFieldCell.h"
 #import "PPVerificationCodeViewController.h"
  
 @interface ProfileVC ()<UIImagePickerControllerDelegate,UINavigationControllerDelegate,UIImagePickerControllerDelegate,AddressFormVCDelegate,TOCropViewControllerDelegate,PHPickerViewControllerDelegate>
@@ -67,7 +68,6 @@
 @property (nonatomic, strong) RoundedImageViewWithShadow *avatarIMV;
 @property (nonatomic, strong) UIButton *addPhotoBtn;
 
-@property (nonatomic, strong) HXPhotoManager *avatarPickerManager;
 @property (nonatomic, strong, nullable) UIImage *pendingAvatarImage; // keep for later upload if needed
 
 @property (nonatomic, strong) UIBarButtonItem *saveDataBarButton;
@@ -962,7 +962,7 @@ row.cellConfig[@"titlePosition"] = inputType == XLFormFullWidthTextFieldTypeButt
 }
 
 - (id)getformDataForKey:(NSString *)key withType:(int)type {
-    if ([self.formDataArray containsObjectForKey:key]) {
+    if ([self.formDataArray objectForKey:key] != nil) {
         return [self.formDataArray objectForKey:key];
     } else {
         return type == 0 ? 0 : [NSString stringWithFormat:@"no_value"];

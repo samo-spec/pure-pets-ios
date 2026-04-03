@@ -1,5 +1,7 @@
 // TwoOptionRowCell.m
 
+#import "XLFormRowFullWidthTextFieldCell.h"
+
 
  
 NSString * const XLFormRowDescriptorTypeTwoOptions = @"TwoOptions";

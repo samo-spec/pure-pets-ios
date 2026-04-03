@@ -9,6 +9,8 @@
 #import "PetAd.h"
 #import "PPImageLoaderManager.h"
 #import "PPAdSharingHelper.h"
+#import "YYWebImageManager.h"
+#import "YYWebImageOperation.h"
 
 
 #define SCREEN_WIDTH [UIScreen mainScreen].bounds.size.width

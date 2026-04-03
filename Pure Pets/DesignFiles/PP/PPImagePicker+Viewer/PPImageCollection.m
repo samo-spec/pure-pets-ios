@@ -16,6 +16,8 @@
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) QBImagePickerController *currentPicker;
+@property (nonatomic, strong) PPPickerBridge *photoPickerBridge;
+@property (nonatomic, strong) PPCoreBridge *corePickerBridge;
 @property (nonatomic, strong) UIImagePickerController *cameraPicker;
 @property (nonatomic, strong) UILongPressGestureRecognizer *reorderLongPressGesture;
 @property (nonatomic, assign) BOOL isPresentingMediaPicker;
@@ -75,6 +77,10 @@
 
 - (void)setupEditorBridge {
     _editorBridge = [[PPEditorBridge alloc] init];
+    _photoPickerBridge = [[PPPickerBridge alloc] init];
+    _corePickerBridge = [[PPCoreBridge alloc] init];
+    _corePickerBridge.useArabic = self.useArabic;
+    [_corePickerBridge preparePickerLanguageBundle];
 }
 
 - (void)setupNotifications {
@@ -86,6 +92,16 @@
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(editorDidCancel:)
                                                  name:@"PPEditorBridgeDidCancel"
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(photoPickerDidFinish:)
+                                                 name:@"PPPickerBridgeDidFinish"
+                                               object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(photoPickerDidCancel:)
+                                                 name:@"PPPickerBridgeDidCancel"
                                                object:nil];
 }
 
@@ -944,6 +960,11 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         if (weakSelf.isPresentingMediaPicker || weakSelf.currentPicker || weakSelf.cameraPicker) return;
         if (presentingVC.presentedViewController && !presentingVC.presentedViewController.isBeingDismissed) return;
 
+        if ([weakSelf pp_shouldUseTemporaryHXPicker]) {
+            [weakSelf pp_presentHXPhotoPickerFromViewController:presentingVC];
+            return;
+        }
+
         QBImagePickerController *imagePickerController = [QBImagePickerController new];
         imagePickerController.delegate = weakSelf;
         imagePickerController.allowsMultipleSelection = YES;
@@ -970,6 +991,49 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
             NSLog(@"[PPImageCollection] Gallery picker presented successfully");
         }];
     }];
+}
+
+- (BOOL)pp_shouldUseTemporaryHXPicker
+{
+    // Temporary rollout: keep the legacy QB picker in place for quick rollback,
+    // but route gallery selection through HX while we validate it in the app.
+    return YES;
+}
+
+- (void)pp_presentHXPhotoPickerFromViewController:(UIViewController *)viewController
+{
+    UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
+    if (!presentingVC) {
+        return;
+    }
+
+    if (!self.photoPickerBridge) {
+        self.photoPickerBridge = [[PPPickerBridge alloc] init];
+    }
+    if (!self.corePickerBridge) {
+        self.corePickerBridge = [[PPCoreBridge alloc] init];
+    }
+
+    self.corePickerBridge.useArabic = self.useArabic;
+    [self.corePickerBridge preparePickerLanguageBundle];
+
+    self.photoPickerBridge.useArabic = self.useArabic;
+    self.photoPickerBridge.navigationTitleFont =
+        [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:17]];
+    self.photoPickerBridge.navigationButtonFont =
+        [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:15]];
+
+    NSInteger remainingSlots = MAX(0, self.maxImageCount - [self imageCount]);
+    self.photoPickerBridge.maxSelectionCount = remainingSlots;
+    self.photoPickerBridge.useArabic = self.useArabic;
+    self.photoPickerBridge.allowPhoto = YES;
+    self.photoPickerBridge.allowVideo = NO;
+
+    NSArray<NSString *> *preselectedIdentifiers = [self.imageManager preselectedAssetLocalIdentifiers];
+    self.photoPickerBridge.preselectedAssetIdentifiers = preselectedIdentifiers ?: @[];
+
+    self.isPresentingMediaPicker = YES;
+    [self.photoPickerBridge presentPickerFromViewController:presentingVC];
 }
 
 - (void)openCameraFromViewController:(UIViewController *)viewController
@@ -1229,6 +1293,78 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 
 - (void)editorDidCancel:(NSNotification *)notification {
     self.selectedForEdit = -1;
+}
+
+#pragma mark - HXPhotoPicker Notifications
+
+- (void)photoPickerDidFinish:(NSNotification *)notification
+{
+    if (!self.isPresentingMediaPicker) {
+        return;
+    }
+
+    NSDictionary *userInfo = notification.userInfo;
+    NSArray<PHAsset *> *selectedAssets =
+        [userInfo[@"selectedAssets"] isKindOfClass:[NSArray class]] ? userInfo[@"selectedAssets"] : @[];
+    NSArray<UIImage *> *selectedImages =
+        [userInfo[@"selectedImages"] isKindOfClass:[NSArray class]] ? userInfo[@"selectedImages"] : @[];
+
+    __weak typeof(self) weakSelf = self;
+    [self pp_showLoadingOverlay];
+    [self pp_cancelLoadingTimeoutIfNeeded];
+
+    __block BOOL didFinalize = NO;
+    dispatch_block_t timeoutBlock = dispatch_block_create(0, ^{
+        if (didFinalize || !weakSelf) return;
+        didFinalize = YES;
+        [weakSelf pp_syncImagesFromManager];
+        [weakSelf reloadCollectionView];
+        [weakSelf notifyDelegate];
+        [weakSelf dismissPicker];
+        [weakSelf pp_hideLoadingOverlay];
+    });
+    self.loadingTimeoutBlock = timeoutBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(8.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   timeoutBlock);
+
+    if (selectedAssets.count > 0) {
+        [self.imageManager addAssetsFromPicker:selectedAssets completion:^(BOOL didChange) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (didFinalize) {
+                    return;
+                }
+                didFinalize = YES;
+                [weakSelf pp_cancelLoadingTimeoutIfNeeded];
+                if (!didChange) {
+                    NSLog(@"[PPImageCollection] HXPhotoPicker returned no delta, syncing existing manager images");
+                }
+                [weakSelf pp_syncImagesFromManager];
+                [weakSelf reloadCollectionView];
+                [weakSelf notifyDelegate];
+                [weakSelf dismissPicker];
+                [weakSelf pp_hideLoadingOverlay];
+            });
+        }];
+        return;
+    }
+
+    if (selectedImages.count > 0) {
+        [self addImages:selectedImages];
+    }
+    [self pp_cancelLoadingTimeoutIfNeeded];
+    [self dismissPicker];
+    [self pp_hideLoadingOverlay];
+}
+
+- (void)photoPickerDidCancel:(NSNotification *)notification
+{
+    if (!self.isPresentingMediaPicker) {
+        return;
+    }
+    [self pp_cancelLoadingTimeoutIfNeeded];
+    [self dismissPicker];
+    [self pp_hideLoadingOverlay];
 }
 
 #pragma mark - Convenience

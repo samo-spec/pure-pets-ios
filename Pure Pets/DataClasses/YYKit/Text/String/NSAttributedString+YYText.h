@@ -13,8 +13,8 @@
 #import <CoreText/CoreText.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYTextAttribute.h>
-#import <YYKit/YYTextRubyAnnotation.h>
+#import "YYTextAttribute.h"
+#import "YYTextRubyAnnotation.h"
 #else
 #import "YYTextAttribute.h"
 #import "YYTextRubyAnnotation.h"

@@ -116,137 +116,10 @@
     });
 }
 
+// NOTE: Legacy HXPhotoModel upload method removed (HXPhotoPicker ObjC migrated to Swift).
+// Use uploadFilesfromArray: (UIImage-based) instead.
 
--(void)uploadFilessfromArray:(NSMutableArray<HXPhotoModel *> *)Files
-        completion:(void (^)(NSMutableArray<FileModel *> *filesArray, NSError *error))completion{
-    
-    NSInteger vidIndex = 15;
-    
-    __block NSMutableArray<FileModel *> *lastFilesArray = [[NSMutableArray<FileModel *> alloc]init];
-    if(!Files || Files.count == 0) {
-        completion(lastFilesArray, nil);
-        return;
-    }
-    
-    __block NSError* uploadError = nil;
-    __block NSInteger index = 0;
-    
-    dispatch_group_t uploadGroup = dispatch_group_create();
-    
-    for(HXPhotoModel* xhmodel in Files) {
-        if(xhmodel.subType == 1) { vidIndex = index; }
-        
-        dispatch_group_enter(uploadGroup); //Increment the count of operations
 
-        
-        if (xhmodel.subType == 1 && [self isFileAlreadyOnFirebaseStorage:xhmodel.videoURL]) {
-            [self handleFileAlreadyOnServerForVideo:xhmodel FileID:index completion:^(FileModel *serverFile) {
-                [lastFilesArray addObject:serverFile];
-                index =index+1;
-                 dispatch_group_leave(uploadGroup); //Decrement the operations count
-            }];
-           continue;
-        }
-        
-        if (xhmodel.subType == 0 &&  xhmodel.cameraPhotoType == 3 && [self isFileAlreadyOnFirebaseStorage:xhmodel.networkPhotoUrl]) {
-            [self handleFileAlreadyOnServerForImage:xhmodel FileID:index completion:^(FileModel *serverFile) {
-                [lastFilesArray addObject:serverFile];
-                index =index+1;
-                dispatch_group_leave(uploadGroup); //Decrement the operations count
-            }];
-            continue;
-        }
-        
-        NSURL *fileURL = xhmodel.subType == 0 ? xhmodel.imageURL : xhmodel.videoURL;
-        if(!fileURL) {
-            uploadError = [NSError errorWithDomain:@"com.app.error" code:1001 userInfo:@{NSLocalizedDescriptionKey:@"invalid file url"}];
-             index = index + 1;
-             dispatch_group_leave(uploadGroup);
-            continue;
-        }
-        
-        NSData* fileData = [NSData dataWithContentsOfURL:fileURL];
-        if(!fileData) {
-            uploadError = [NSError errorWithDomain:@"com.app.error" code:1002 userInfo:@{NSLocalizedDescriptionKey:@"File data is not exists"}];
-             index = index + 1;
-            dispatch_group_leave(uploadGroup);
-            continue;
-        }
-        
-        
-        
-        if(xhmodel.subType == 0)
-        {
-            UIImage *image = [self imageFromLocalURL:fileURL];
-            fileData = [GM compressImageToMaxSize:image maxSizeKB:500];
-        }
-        //[self compressImageToMaxSize];
-        NSString *contentType = xhmodel.subType == 0 ? @"image/png" : @"video/mp4";
-        
-        NSString *fileName = [NSString stringWithFormat:@"%@_%ld",[[NSUUID UUID] UUIDString],index];
-        NSString *uniqueFileName = xhmodel.subType == 0 ? [NSString stringWithFormat:@"%@.png",fileName] : [NSString stringWithFormat:@"%@.mp4",fileName];
-        
-        FileModel* newFile = [FileModel new];
-        newFile.ID = index;
-        newFile.FileName = uniqueFileName;
-        newFile.FileType = xhmodel.subType;
-        newFile.videoDuration = xhmodel.subType == 1 ?  xhmodel.videoDuration : 0;
-        [lastFilesArray addObject:newFile];
-        
-        NSString *userID = UserManager.sharedManager.currentUser.ID;
-        NSString *storagePath = [NSString stringWithFormat:@"CardsImages/%@/%@",userID,uniqueFileName];
-        FIRStorageReference *storageRef = [[FIRStorage storage] referenceWithPath:storagePath];
-        FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
-        metadata.contentType = contentType;
-        
-        
-        FIRStorageUploadTask *uploadTask = [storageRef putData:fileData metadata:metadata completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
-            if (error) {
-                uploadError = error;
-                index =index+1;
-                dispatch_group_leave(uploadGroup);
-                return;
-            }
-            
-            [storageRef downloadURLWithCompletion:^(NSURL * _Nullable url, NSError * _Nullable error) {
-                
-                if(error) {
-                    NSLog(@"Error getting download URL: %@", error);
-                    uploadError = error;
-                    index =index+1;
-                    dispatch_group_leave(uploadGroup);
-                    return;
-                }
-                
-                for (int i = 0 ; i < lastFilesArray.count ; i++) {
-                    if([self isFileName:[lastFilesArray objectAtIndex:i].FileName FoundInUrl:url])
-                        [lastFilesArray objectAtIndex:i].FileUrl = url.absoluteString;
-                }
-                
-                ///
-                index =index+1;
-                dispatch_group_leave(uploadGroup); //Decrement the operations count
-            }];
-            
-        }];
-        
-        [uploadTask observeStatus:FIRStorageTaskStatusProgress
-                         handler:^(FIRStorageTaskSnapshot *snapshot) {
-            double progress = 100.0 * (snapshot.progress.completedUnitCount) / (snapshot.progress.totalUnitCount);
-            NSLog(@"Upload Progress: %.2f%%", progress);
-        }];
-        
-    }
-    
-    dispatch_group_notify(uploadGroup, dispatch_get_main_queue(), ^{
-        
-        
-        NSLog(@"orderdArr %@",[lastFilesArray modelToJSONObject]);
-        completion(lastFilesArray, uploadError);
-    });
-    
-}
- 
 - (UIImage *)imageFromLocalURL:(NSURL *)fileURL {
     // Ensure the URL is a file URL
     if (![fileURL isFileURL]) {
@@ -311,32 +184,9 @@
 }
 
 
--(void)handleFileAlreadyOnServerForVideo:(HXPhotoModel *)ph FileID:(NSInteger)ID completion:(void (^)(FileModel *serverFile))completion{
-    NSString *videoFilename = [ph.videoURL lastPathComponent];
-    
-    FileModel* newFile = [FileModel new];
-    newFile.ID = ID;
-    newFile.FileName = videoFilename;
-    newFile.FileType = 1;
-    newFile.FileUrl = ph.videoURL.absoluteString;
-    newFile.videoDuration = ph.subType == 1 ?  ph.videoDuration : 0;
-    
-    completion(newFile);
-}
-- (void)handleFileAlreadyOnServerForImage:(HXPhotoModel *)ph FileID:(NSInteger)ID completion:(void (^)(FileModel *serverFile))completion {
-    
-    NSString *imageFilename = [ph.networkPhotoUrl lastPathComponent];
-    NSLog(@"File Still On Server with IMAGE Name %@", imageFilename);
-    
-    FileModel* newFile = [FileModel new];
-    newFile.ID = ID;
-    newFile.FileName = imageFilename;
-    newFile.FileType = 0;
-    newFile.FileUrl = ph.networkPhotoUrl.absoluteString;
-    newFile.videoDuration = ph.subType == 1 ?  ph.videoDuration : 0;
-    
-    completion(newFile);
-}
+
+
+
 
 
 

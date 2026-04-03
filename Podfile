@@ -6,7 +6,7 @@ target 'Pure Pets' do
   
   pod 'SDWebImage', '~> 5.0'
   
-  pod 'HXPHPicker'
+  pod 'HXPhotoPicker', :path => '../HXPhotoPicker-master'
   pod 'IQKeyboardManager'
   pod 'TZImagePickerController'
   pod 'AFNetworking', '~> 4.0'

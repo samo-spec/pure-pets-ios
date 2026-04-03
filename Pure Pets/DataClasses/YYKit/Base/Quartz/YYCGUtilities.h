@@ -13,7 +13,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYKitMacro.h>
+#import "YYKitMacro.h"
 #else
 #import "YYKitMacro.h"
 #endif

@@ -12,7 +12,7 @@
 #import <UIKit/UIKit.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYTextLayout.h>
+#import "YYTextLayout.h"
 #else
 #import "YYTextLayout.h"
 #endif

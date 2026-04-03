@@ -5,6 +5,7 @@
 
 #import "Styling.h"
 #import "AppManager.h" // for kAppPrimaryColor, etc.
+#import "YYCache.h"
 
 #if __has_include(<Lottie/Lottie.h>)
 #import <Lottie/Lottie.h>

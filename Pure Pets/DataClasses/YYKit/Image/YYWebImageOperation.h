@@ -12,8 +12,8 @@
 #import <UIKit/UIKit.h>
 
 #if __has_include(<YYKit/YYKit.h>)
-#import <YYKit/YYImageCache.h>
-#import <YYKit/YYWebImageManager.h>
+#import "YYImageCache.h"
+#import "YYWebImageManager.h"
 #else
 #import "YYImageCache.h"
 #import "YYWebImageManager.h"

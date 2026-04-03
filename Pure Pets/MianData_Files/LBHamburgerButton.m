@@ -229,7 +229,7 @@
     layer.path = path.CGPath;
     layer.lineWidth = frame.size.height;
     layer.strokeColor = color.CGColor;
-    layer.cornerRadius = layer.size.height /2;
+    layer.cornerRadius = layer.bounds.size.height /2;
     
     CGPathRef bound = CGPathCreateCopyByStrokingPath(layer.path, nil, layer.lineWidth, kCGLineCapButt, kCGLineJoinMiter, layer.miterLimit);
     layer.bounds = CGPathGetBoundingBox(bound);

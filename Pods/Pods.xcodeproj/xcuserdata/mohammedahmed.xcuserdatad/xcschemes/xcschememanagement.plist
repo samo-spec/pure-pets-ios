@@ -14,7 +14,12 @@
 			<key>isShown</key>
 			<false/>
 		</dict>
-		<key>HXPHPicker.xcscheme</key>
+		<key>HXPhotoPicker-HXPhotoPicker_Privacy.xcscheme</key>
+		<dict>
+			<key>isShown</key>
+			<false/>
+		</dict>
+		<key>HXPhotoPicker.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>
@@ -30,16 +35,6 @@
 			<false/>
 		</dict>
 		<key>KVOController.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>Kingfisher-Kingfisher.xcscheme</key>
-		<dict>
-			<key>isShown</key>
-			<false/>
-		</dict>
-		<key>Kingfisher.xcscheme</key>
 		<dict>
 			<key>isShown</key>
 			<false/>

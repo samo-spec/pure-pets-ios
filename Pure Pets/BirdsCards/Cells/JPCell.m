@@ -7,7 +7,7 @@
 //
 
 #import "JPCell.h"
-#import "UIView+HXExtension.h"
+#import "HXCompatibilityCategories.h"
 
 @implementation JPCell
 
