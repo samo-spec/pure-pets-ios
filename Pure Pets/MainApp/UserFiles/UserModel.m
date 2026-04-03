@@ -684,19 +684,9 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
         }
     }
 
-    // If we already have any permissions doc, missing key means denied.
-    if (permissions.count > 0) {
-        return NO;
-    }
-
-    // Bootstrap fallback for legacy users that still do not have permission docs.
-    BOOL legacyAdmin =
-        self.isSuperAdmin || self.role == UserRoleSuperAdmin ||
-        self.isAdmin || self.role == UserRoleAdmin;
-    if (legacyAdmin) {
-        return YES;
-    }
-
+    // If we have explicit permission docs but this key is missing,
+    // fall back to role-based defaults rather than denying outright.
+    // This prevents lockouts from partial permission migration.
     return [PPRolePermission role:self.role hasPermission:cleanPermission];
 }
 

@@ -3015,12 +3015,14 @@ static char kUIViewTapActionKey;
         [weakSelf.navigationController pushViewController:vc animated:YES];
     }]];
     
-    NSArray *servicesGroup = @[
-        [PPActionButton showProtectionActionWithHandler:^(UIAction *action) {
-             MainController *controller =   [MainController new];
+    NSMutableArray *servicesGroup = [NSMutableArray array];
+    UserModel *currentUser = UserManager.sharedManager.currentUser;
+    if (currentUser && [currentUser hasPermissionNamed:kPermProduction]) {
+        [servicesGroup addObject:[PPActionButton showProtectionActionWithHandler:^(UIAction *action) {
+            MainController *controller = [MainController new];
             [weakSelf.navigationController pushViewController:controller animated:YES];
-        }]
-    ];
+        }]];
+    }
     
     NSArray *settingsGroup = @[
         [PPActionButton settingsActionWithHandler:^(UIAction *action) {
