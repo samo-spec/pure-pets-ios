@@ -548,8 +548,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
-        @(PPHomeSectionAdopt),
         @(PPHomeSectionAdsNearBy),
+        @(PPHomeSectionAdopt),
     ]];
 
     // ✅ Hero (always present)

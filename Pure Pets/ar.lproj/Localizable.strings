@@ -1961,3 +1961,9 @@
 "archive_move_subtitle" = "اختر الأرشيف المناسب لنقل هذه البطاقة إليه.";
 "archive_move_picker_hint" = "الأرشيفات المتاحة";
 "archive_move_empty_subtitle" = "أضف أرشيفاً آخر حتى تتمكن من نقل هذه البطاقة.";
+
+/* PPImageCollection – bottom sheet options */
+"choose_from_gallery" = "اختر من معرض الصور";
+"take_a_photo" = "التقط صورة";
+"files" = "الملفات";
+"browse_files" = "تصفح الملفات";

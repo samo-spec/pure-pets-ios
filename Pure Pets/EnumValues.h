@@ -191,19 +191,32 @@ typedef NS_ENUM(NSInteger, PPCategoryItemKind) {
     PPCategoryItemKindGridItem  // 2x2 grid items
 };
 
+/*
+ [snapshot appendSectionsWithIdentifiers:@[
+     @(PPHomeSectionHero),
+     @(PPHomeSectionCurrentOrders),
+     @(PPHomeSectionServices),
+     @(PPHomeSectionCarousel),
+     @(PPHomeSectionMainKinds),
+     @(PPHomeSectionSuggestions),
+     @(PPHomeSectionAccessories),
+     @(PPHomeSectionAdsNearBy),
+     @(PPHomeSectionAdopt),
+     // PPHomeSectionBuyAgain — conditional, appended only when items exist
+ ]];
+ */
+
 typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionHero,
-    PPHomeSectionServices,
     PPHomeSectionCurrentOrders,
-    
+    PPHomeSectionServices,
+    PPHomeSectionCarousel,
     PPHomeSectionMainKinds,
     PPHomeSectionSuggestions,
-    PPHomeSectionCarousel,
     PPHomeSectionAccessories,
     PPHomeSectionAdsNearBy,
     PPHomeSectionAdopt, // legacy (not rendered on home in Pattern 1)
     PPHomeSectionBuyAgain,
-    
 };
 
 typedef NS_ENUM(NSInteger, PPDataSection) {

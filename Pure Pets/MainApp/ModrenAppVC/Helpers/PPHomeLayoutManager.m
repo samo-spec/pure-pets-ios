@@ -23,14 +23,14 @@
     __weak typeof(self) weakSelf = self;
     NSArray<NSNumber *> *renderOrder = @[
         @(PPHomeSectionHero),
+        @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionServices),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionMainKinds),
-        @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
-        @(PPHomeSectionAdopt),
         @(PPHomeSectionAdsNearBy),
+        @(PPHomeSectionAdopt),
         @(PPHomeSectionBuyAgain),
     ];
 

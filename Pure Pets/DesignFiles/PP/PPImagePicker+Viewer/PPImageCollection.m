@@ -1067,6 +1067,10 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:17]];
     self.photoPickerBridge.navigationButtonFont =
         [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:15]];
+    self.photoPickerBridge.buttonFont =
+        [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:16]];
+    self.photoPickerBridge.bottomLabelFont =
+        [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:14]];
 
     NSInteger remainingSlots = MAX(0, self.maxImageCount - [self imageCount]);
     self.photoPickerBridge.maxSelectionCount = remainingSlots;

@@ -22,9 +22,9 @@ static const CGFloat kStd = 12.0;
 
 // Aliases so every call-site compiles (all resolve to kStd = 12)
 static const CGFloat kPageInset       = kStd;
-static const CGFloat kSectionSpacing  = kStd;
+//static const CGFloat kSectionSpacing  = kStd;
 static const CGFloat kPadding         = kStd;
-static const CGFloat kGapSmall        = kStd;
+//static const CGFloat kGapSmall        = kStd;
 static const CGFloat kGapMedium       = kStd;
 static const CGFloat kGapLarge        = kStd;
 
@@ -87,7 +87,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-    item.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 16.0, 0.0, 16.0);
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -99,7 +99,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(10.0, kPageInset, 18.0, kPageInset);
+    NSDirectionalEdgeInsetsMake(12.0, kPageInset, 12.0, kPageInset);
 
     return section;
 }

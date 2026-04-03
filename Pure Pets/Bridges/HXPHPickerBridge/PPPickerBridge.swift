@@ -91,6 +91,8 @@ public extension Notification.Name {
 
     @objc(presentPickerFromViewController:)
     public func presentPicker(from viewController: UIViewController) {
+        applyCustomTextManager()
+
         let config = createPickerConfiguration()
 
         let picker = PhotoPickerController(picker: config)
@@ -100,8 +102,9 @@ public extension Notification.Name {
         // Present as sheet
         picker.modalPresentationStyle = .pageSheet
 
-        // RTL-aware back arrow: chevron.right for Arabic, chevron.left for English
-        let chevron = UIImage(systemName: useArabic ? "chevron.right" : "chevron.left")
+        // Back indicator: use chevron.left always — UIKit auto-mirrors it for RTL
+        let chevron = UIImage(systemName: "chevron.left")?
+            .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
         picker.navigationBar.backIndicatorImage = chevron
         picker.navigationBar.backIndicatorTransitionMaskImage = chevron
 
@@ -110,6 +113,9 @@ public extension Notification.Name {
             appearance.configureWithDefaultBackground()
             appearance.backgroundColor = .systemBackground
 
+            // Back indicator inherits from the appearance too
+            appearance.setBackIndicatorImage(chevron, transitionMaskImage: chevron)
+
             if let titleFont = navigationTitleFont {
                 appearance.titleTextAttributes = [.font: titleFont, .foregroundColor: UIColor.label]
             }
@@ -117,7 +123,10 @@ public extension Notification.Name {
                 let item = UIBarButtonItemAppearance()
                 item.normal.titleTextAttributes = [.font: btnFont, .foregroundColor: UIColor.label]
                 appearance.buttonAppearance = item
-                appearance.backButtonAppearance = item
+
+                let backItem = UIBarButtonItemAppearance()
+                backItem.normal.titleTextAttributes = [.font: btnFont, .foregroundColor: UIColor.label]
+                appearance.backButtonAppearance = backItem
             }
 
             picker.navigationBar.standardAppearance = appearance
@@ -157,6 +166,44 @@ public extension Notification.Name {
     }
 
     // MARK: - Configuration Builder
+
+    /// Apply custom fonts and localized text to HXPhotoPicker's TextManager.
+    private func applyCustomTextManager() {
+        // Bottom toolbar fonts
+        if let btnFont = buttonFont ?? navigationButtonFont {
+            let regular = UIFontMetrics.default.scaledFont(for: btnFont)
+            HX.textManager.picker.photoList.bottomView.previewTitleFont = regular
+            HX.textManager.picker.photoList.bottomView.originalTitleFont = regular
+            HX.textManager.picker.photoList.bottomView.finishTitleFont = regular
+            HX.textManager.picker.photoList.bottomView.permissionsTitleFont = UIFontMetrics.default.scaledFont(
+                for: btnFont.withSize(btnFont.pointSize - 2)
+            )
+            HX.textManager.picker.preview.bottomView.previewTitleFont = regular
+            HX.textManager.picker.preview.bottomView.originalTitleFont = regular
+            HX.textManager.picker.preview.bottomView.finishTitleFont = regular
+            HX.textManager.picker.preview.bottomView.editTitleFont = regular
+        }
+
+        // Back button text (album list → photo list)
+        let backText = useArabic ? "رجوع" : "Back"
+        HX.textManager.picker.albumList.backTitle = .custom(backText)
+
+        // Cancel button text
+        let cancelText = useArabic ? "الغاء" : "Cancel"
+        HX.textManager.picker.preview.cancelTitle = .custom(cancelText)
+
+        // Bottom toolbar button titles
+        let finishText = useArabic ? "انهاء" : "Done"
+        let previewText = useArabic ? "عرض" : "Preview"
+        let originalText = useArabic ? "الاصليه" : "Original"
+
+        HX.textManager.picker.photoList.bottomView.finishTitle = .custom(finishText)
+        HX.textManager.picker.photoList.bottomView.previewTitle = .custom(previewText)
+        HX.textManager.picker.photoList.bottomView.originalTitle = .custom(originalText)
+        HX.textManager.picker.preview.bottomView.finishTitle = .custom(finishText)
+        HX.textManager.picker.preview.bottomView.editTitle = .custom(useArabic ? "تعديل" : "Edit")
+        HX.textManager.picker.preview.bottomView.originalTitle = .custom(originalText)
+    }
 
     private func createPickerConfiguration() -> PickerConfiguration {
         var config = PickerConfiguration()

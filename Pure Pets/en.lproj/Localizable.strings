@@ -2008,3 +2008,9 @@
 "archive_move_subtitle" = "Choose where this card should live next.";
 "archive_move_picker_hint" = "Available archives";
 "archive_move_empty_subtitle" = "Create another archive to move this card.";
+
+/* PPImageCollection – bottom sheet options */
+"choose_from_gallery" = "Choose from gallery";
+"take_a_photo" = "Take a photo";
+"files" = "Files";
+"browse_files" = "Browse files";
