@@ -1193,6 +1193,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) double nearbyRadiusKm;
 @property (nonatomic, strong) NSTimer *nearbyRefreshTimer;
 @property (nonatomic, assign) BOOL isUsingManualNearbySelection;
+@property (nonatomic, strong) CAGradientLayer *pp_backgroundGradientLayer;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL isCurrentOrdersExpanded;
@@ -1853,7 +1854,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.isMainKindsExpanded = NO; // collapsed = horizontal
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
-    self.view.backgroundColor = NewBgColor; //AppBackgroundClrDarker; //AppBackgroundClrDarker;
+    self.view.backgroundColor = AppForgroundColr;
+    
+    [self pp_installBackgroundGradient];
+    
     self.mainKinds = PPMainKindsArray;
     self.selectedCategory = nil; // nil == "All"
     self.blurHashCache = [NSCache new];
@@ -6128,6 +6132,69 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
     
     
+}
+
+#pragma mark - Background Gradient
+
+- (void)pp_installBackgroundGradient
+{
+    CAGradientLayer *gradient = [CAGradientLayer layer];
+    gradient.startPoint = CGPointMake(0.5, 0.0);
+    gradient.endPoint   = CGPointMake(0.5, 1.0);
+    gradient.locations   = @[@0.0, @0.45, @1.0];
+    gradient.needsDisplayOnBoundsChange = YES;
+    gradient.frame = self.view.bounds;
+    [self.view.layer insertSublayer:gradient atIndex:0];
+    self.pp_backgroundGradientLayer = gradient;
+    [self pp_updateBackgroundGradientColors];
+}
+
+- (void)pp_updateBackgroundGradientColors
+{
+    if (!self.pp_backgroundGradientLayer) return;
+
+    UIColor *base = AppForgroundColr ?: [UIColor systemBackgroundColor];
+
+    // Light mode:  faint warm blush at the top → base white at the bottom
+    // Dark mode:   subtle warm lift at the top → base dark at the bottom
+    UIColor *tintTop;
+    UIColor *tintMid;
+    if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+        tintTop = [UIColor colorWithRed:0.18 green:0.14 blue:0.16 alpha:1.0];
+        tintMid = base;
+    } else {
+        tintTop = [UIColor colorWithRed:0.996 green:0.955 blue:0.960 alpha:1.0]; // very faint blush
+        tintMid = [UIColor colorWithRed:0.992 green:0.976 blue:0.976 alpha:1.0]; // barely warm
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.pp_backgroundGradientLayer.colors = @[
+        (id)tintTop.CGColor,
+        (id)tintMid.CGColor,
+        (id)base.CGColor
+    ];
+    [CATransaction commit];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    if (self.pp_backgroundGradientLayer &&
+        !CGRectEqualToRect(self.pp_backgroundGradientLayer.frame, self.view.bounds)) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        self.pp_backgroundGradientLayer.frame = self.view.bounds;
+        [CATransaction commit];
+    }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self pp_updateBackgroundGradientColors];
+    }
 }
 
 
