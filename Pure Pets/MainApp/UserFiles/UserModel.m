@@ -65,14 +65,8 @@ static id _Nullable PPUserFirstValueForKeys(NSDictionary *dict, NSArray<NSString
 }
 
 static UserRole PPUserResolvedRoleFromProfileAndClaims(NSDictionary *profile, NSDictionary *claims) {
-    BOOL hasProfileRoleValue = PPUserFirstValueForKeys(profile, @[kUserKeyRoleValue, kUserKeyRole, kUserKeyRoleName]) != nil;
-    if (hasProfileRoleValue) {
-        UserRole role = PPParseRoleFromUserDoc(profile);
-        if (role != UserRoleUnknown) {
-            return role;
-        }
-    }
-
+    // SECURITY: Claims are signed by Firebase Auth — prefer them over profile fields
+    // which are stored in Firestore and could theoretically be tampered with.
     BOOL hasClaimsRoleValue = PPUserFirstValueForKeys(claims, @[kUserKeyRoleValue, kUserKeyRole, kUserKeyRoleName]) != nil;
     if (hasClaimsRoleValue) {
         UserRole role = PPParseRoleFromUserDoc(claims);
@@ -81,12 +75,21 @@ static UserRole PPUserResolvedRoleFromProfileAndClaims(NSDictionary *profile, NS
         }
     }
 
-    UserRole fallbackRole = PPParseRoleFromUserDoc(profile);
+    // Fallback to profile for legacy users without custom claims
+    BOOL hasProfileRoleValue = PPUserFirstValueForKeys(profile, @[kUserKeyRoleValue, kUserKeyRole, kUserKeyRoleName]) != nil;
+    if (hasProfileRoleValue) {
+        UserRole role = PPParseRoleFromUserDoc(profile);
+        if (role != UserRoleUnknown) {
+            return role;
+        }
+    }
+
+    UserRole fallbackRole = PPParseRoleFromUserDoc(claims);
     if (fallbackRole != UserRoleUnknown) {
         return fallbackRole;
     }
 
-    fallbackRole = PPParseRoleFromUserDoc(claims);
+    fallbackRole = PPParseRoleFromUserDoc(profile);
     return fallbackRole == UserRoleUnknown ? UserRoleUser : fallbackRole;
 }
 
@@ -96,27 +99,35 @@ static BOOL PPUserResolvedBoolFromProfileAndClaims(NSDictionary *profile,
                                                    NSArray<NSString *> *claimKeys,
                                                    BOOL defaultValue,
                                                    BOOL * _Nullable usedProfileValue) {
+    // SECURITY: Prefer claims (signed by Firebase Auth) over profile (Firestore doc)
+    id claimValue = PPUserFirstValueForKeys(claims, claimKeys);
+    if (claimValue) {
+        if (usedProfileValue) *usedProfileValue = NO;
+        return PPUserBoolValue(claimValue);
+    }
+
+    // Fallback to profile for legacy users without custom claims
     id profileValue = PPUserFirstValueForKeys(profile, profileKeys);
     if (profileValue) {
         if (usedProfileValue) *usedProfileValue = YES;
         return PPUserBoolValue(profileValue);
     }
     if (usedProfileValue) *usedProfileValue = NO;
-
-    id claimValue = PPUserFirstValueForKeys(claims, claimKeys);
-    if (claimValue) {
-        return PPUserBoolValue(claimValue);
-    }
     return defaultValue;
 }
 
 static NSString *PPCanonicalPermissionName(NSString *rawName) {
     NSString *name = [PPSafeString(rawName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (name.length == 0) return @"";
-    if ([name isEqualToString:@"ManageUsers"]) return kPermAdoption;
-    if ([name isEqualToString:@"ManageNotificatiuons"] || [name isEqualToString:@"ManageNotifications"]) return kPermModeration;
-    if ([name isEqualToString:@"ManageBanners"]) return kPermPostAds;
-    if ([name isEqualToString:@"Prodection"]) return kPermProduction;
+    NSString *canonical = nil;
+    if ([name isEqualToString:@"ManageUsers"]) canonical = kPermAdoption;
+    else if ([name isEqualToString:@"ManageNotificatiuons"] || [name isEqualToString:@"ManageNotifications"]) canonical = kPermModeration;
+    else if ([name isEqualToString:@"ManageBanners"]) canonical = kPermPostAds;
+    else if ([name isEqualToString:@"Prodection"]) canonical = kPermProduction;
+    if (canonical) {
+        NSLog(@"[Permissions] Canonicalized legacy name '%@' → '%@'", name, canonical);
+        return canonical;
+    }
     return name;
 }
 
@@ -204,7 +215,9 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
 
 @end
 
-@implementation UserModel
+@implementation UserModel {
+    NSDate *_lastPermissionWriteDate;
+}
 
 #pragma mark - Lifecycle
 
@@ -422,15 +435,13 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     }
 
     dict[kUserKeyCountryID] = @(self.CountryID);
-    dict[kUserKeyPPUserTokenID] = self.PPUserTokenID ?: @"";
-    dict[kUserKeyRole] = @(self.role);
     dict[kUserKeyVerified] = @(self.verified);
     dict[kUserKeyPlan] = PPSafeString(self.plan);
     dict[kUserKeyLoginSource] = @(self.loginSource);
-    dict[kUserKeyIsAdmin] = @(self.isAdmin);
-    dict[kUserKeyIsSuperAdmin] = @(self.isSuperAdmin);
-    dict[kUserKeyIsBlocked] = @(self.isBlocked);
-    dict[kUserKeyPPAdminTokenID] = self.PPAdminTokenID ?: @"";
+
+    // SECURITY: role, isAdmin, isSuperAdmin, isBlocked are server-managed.
+    // They are intentionally EXCLUDED from client-originated writes.
+    // Tokens are written via dedicated updateCurrentUserWithPPUserTokenID: path.
 
     // NOTE: Addresses and permissions are stored in dedicated subcollections.
     return dict;
@@ -606,6 +617,20 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
 - (void)setPermissionNamed:(NSString *)permName
                    allowed:(BOOL)allowed
                 completion:(void (^)(NSError * _Nullable))completion {
+    // SECURITY: Debounce — reject writes less than 2 seconds apart
+    static const NSTimeInterval kMinPermissionWriteInterval = 2.0;
+    NSDate *now = [NSDate date];
+    if (_lastPermissionWriteDate &&
+        [now timeIntervalSinceDate:_lastPermissionWriteDate] < kMinPermissionWriteInterval) {
+        NSLog(@"[UserModel] ⚠️ setPermissionNamed: throttled — too frequent (%.1fs since last write).",
+              [now timeIntervalSinceDate:_lastPermissionWriteDate]);
+        if (completion) {
+            completion([UserModel pp_errorWithCode:429 key:@"error_permission_write_throttled"]);
+        }
+        return;
+    }
+    _lastPermissionWriteDate = now;
+
     NSString *cleanPermission = [PPSafeString(permName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     NSString *canonicalPermission = PPCanonicalPermissionName(cleanPermission);
     FIRCollectionReference *permissionsCollection = [self pp_permissionsCollection];
@@ -731,7 +756,18 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
         return nil;
     }
 
-    return [NSKeyedUnarchiver unarchivedObjectOfClass:UserModel.class fromData:data error:nil];
+    UserModel *user = [NSKeyedUnarchiver unarchivedObjectOfClass:UserModel.class fromData:data error:nil];
+    if (user) {
+        // SECURITY: Zero out privilege-granting flags from disk cache.
+        // A jailbroken device could tamper with the .dat file to elevate privileges.
+        // The server re-fetch that immediately follows sign-in will restore correct values.
+        // Note: isBlocked is intentionally preserved — a tampered cache setting it to NO
+        // is harmless because Firestore rules enforce isRequesterBlocked() on all writes.
+        user.role = UserRoleUser;
+        user.isAdmin = NO;
+        user.isSuperAdmin = NO;
+    }
+    return user;
 }
 
 - (void)saveToDisk {

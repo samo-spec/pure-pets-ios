@@ -15,6 +15,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Called by TabBarController to focus search (Apple Phone style)
 - (void)focusSearchField;
 
+/// Opens search with the accessories segment selected and focuses the field.
+- (void)openAccessoriesAll;
+
 @end
 
 NS_ASSUME_NONNULL_END

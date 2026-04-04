@@ -113,9 +113,9 @@
     [self.imageView addSubview:self.bottomOverlay];
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.bottomOverlay.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:4],
-        [self.bottomOverlay.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-4],
-        [self.bottomOverlay.bottomAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:-4],
+        [self.bottomOverlay.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:0],
+        [self.bottomOverlay.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:0],
+        [self.bottomOverlay.bottomAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:0],
         [self.bottomOverlay.heightAnchor constraintEqualToConstant:56]
     ]];
 }
@@ -484,16 +484,16 @@
     // Image (always fills card)
     // =========================
     NSLayoutConstraint *imgTop =
-    [self.imageView.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:0.2];
+    [self.imageView.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:0];
 
     NSLayoutConstraint *imgLeading =
-    [self.imageView.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:0.2];
+    [self.imageView.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:0];
 
     NSLayoutConstraint *imgTrailing =
-    [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-0.2];
+    [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:0];
 
     NSLayoutConstraint *imgBottom =
-    [self.imageView.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-0.2];
+    [self.imageView.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:0];
 
     // =========================
     // Bottom Overlay (already created)

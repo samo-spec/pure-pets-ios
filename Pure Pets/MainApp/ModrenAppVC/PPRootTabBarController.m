@@ -6,6 +6,8 @@
 #import "PPRootTabBarController.h"
 #import "PPHomeViewController.h"
 #import "PPSearchViewController.h"
+#import "MyItemsViewController.h"
+#import "SettingVC.h"
 #import "PPCommerceFeedbackManager.h"
 #import "UserModel.h"
 #import "PPRolePermission.h"
@@ -24,6 +26,11 @@
 #endif
 
 static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
+static NSInteger const PPRootTabIndexHome = 0;
+static NSInteger const PPRootTabIndexChats = 1;
+static NSInteger const PPRootTabIndexAdd = 2;
+static NSInteger const PPRootTabIndexSettings = 3;
+static NSInteger const PPRootTabIndexOrders = 4;
 
 @interface PPRootTabBarController ()
 @property (nonatomic, strong) UIButton *leadingTabButton;
@@ -38,6 +45,10 @@ static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
 @property (nonatomic, assign) NSInteger pp_lastSelectedIndex;
 @property (nonatomic, strong, nullable) UIViewController *addActionPlaceholderViewController;
 - (UIViewController *)pp_makeAddActionPlaceholderViewController;
+- (UIViewController *)pp_makeSettingsRootViewController;
+- (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience;
+- (nullable PPSearchViewController *)pp_existingSearchControllerInNavigationController:(UINavigationController *)navigationController;
+- (void)pp_openSearchExperienceFromCurrentContextOpeningAccessories:(BOOL)openAccessories;
 @end
 
 @implementation PPRootTabBarController
@@ -65,11 +76,11 @@ static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
     [self nav:[self pp_makeAddActionPlaceholderViewController]
          title:nil //kLang(@"new")
          icon:@"" selectedImage:@""];
-    // Search
-    UINavigationController *searchNav =
-    [self nav:[PPSearchViewController new]
-         title:kLang(@"search")
-         icon:@"magnifyingglass" selectedImage:@"searchLast"];
+    // Settings
+    UINavigationController *settingsNav =
+    [self nav:[self pp_makeSettingsRootViewController]
+         title:(kLang(@"menu_action_settings") ?: (kLang(@"Setting") ?: @"Settings"))
+         icon:@"gearshape" selectedImage:@"gearshape.fill"];
 
     // Cart
     
@@ -112,7 +123,7 @@ static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
         homeNav,
         notiNav,
         addNav,
-        searchNav,
+        settingsNav,
         cartNav
     ];
     self.pp_lastSelectedIndex = self.selectedIndex;
@@ -169,51 +180,77 @@ static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
 
 
 - (void)searchButtonTapped {
-    // Switch to the search tab (index 3 in your viewControllers array)
-    if (self.viewControllers.count <= 3) return;
-    self.selectedIndex = 3;
-
-    // Give the search field focus if your view controller supports it
-    UINavigationController *searchNav = (UINavigationController *)self.viewControllers[3];
-    UIViewController *vc = searchNav.topViewController;
-    if ([vc respondsToSelector:@selector(focusSearchField)]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        [vc performSelector:@selector(focusSearchField)];
-#pragma clang diagnostic pop
-    }
+    [self pp_openSearchExperienceFromCurrentContextOpeningAccessories:NO];
 }
 
 
 
 - (void)pp_handleRouteToSearchAccessories
 {
-    // Tabs:
-    // 0 = Home, 1 = Chats, 2 = Add, 3 = Search, 4 = Cart
+    [self pp_openSearchExperienceFromCurrentContextOpeningAccessories:YES];
+}
 
-    self.selectedIndex = 3;
-
+- (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience
+{
     UIViewController *selectedVC = self.selectedViewController;
+    BOOL shouldFallbackToHome =
+        (self.selectedIndex == PPRootTabIndexAdd ||
+         ![selectedVC isKindOfClass:UINavigationController.class]);
 
-    if (![selectedVC isKindOfClass:UINavigationController.class]) {
+    if (shouldFallbackToHome) {
+        if (self.viewControllers.count <= PPRootTabIndexHome) {
+            return nil;
+        }
+        self.selectedIndex = PPRootTabIndexHome;
+        selectedVC = self.viewControllers[PPRootTabIndexHome];
+    }
+
+    return [selectedVC isKindOfClass:UINavigationController.class]
+        ? (UINavigationController *)selectedVC
+        : nil;
+}
+
+- (nullable PPSearchViewController *)pp_existingSearchControllerInNavigationController:(UINavigationController *)navigationController
+{
+    for (UIViewController *viewController in navigationController.viewControllers.reverseObjectEnumerator) {
+        if ([viewController isKindOfClass:PPSearchViewController.class]) {
+            return (PPSearchViewController *)viewController;
+        }
+    }
+    return nil;
+}
+
+- (void)pp_openSearchExperienceFromCurrentContextOpeningAccessories:(BOOL)openAccessories
+{
+    UINavigationController *navigationController =
+        [self pp_preferredNavigationControllerForSearchExperience];
+    if (!navigationController) {
         return;
     }
 
-    UINavigationController *nav =
-    (UINavigationController *)selectedVC;
+    PPSearchViewController *searchController =
+        [self pp_existingSearchControllerInNavigationController:navigationController];
+    BOOL pushedNewSearchController = NO;
 
-    // Always go to Search root
-    [nav popToRootViewControllerAnimated:NO];
-
-    UIViewController *rootVC = nav.viewControllers.firstObject;
-
-    // Tell Search to open Accessories → All
-    if ([rootVC respondsToSelector:@selector(openAccessoriesAll)]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        [rootVC performSelector:@selector(openAccessoriesAll)];
-#pragma clang diagnostic pop
+    if (searchController) {
+        if (navigationController.topViewController != searchController) {
+            [navigationController popToViewController:searchController animated:YES];
+        }
+    } else {
+        searchController = [PPSearchViewController new];
+        [navigationController pushViewController:searchController animated:YES];
+        pushedNewSearchController = YES;
     }
+
+    NSTimeInterval delay = pushedNewSearchController ? 0.34 : 0.08;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        if (openAccessories) {
+            [searchController openAccessoriesAll];
+            return;
+        }
+        [searchController focusSearchField];
+    });
 }
 
 
@@ -522,25 +559,24 @@ static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
     switch (tag) {
 
         case PPBarTagHome:
-            self.selectedIndex = 0;
+            self.selectedIndex = PPRootTabIndexHome;
             break;
 
         case PPBarTagChats:
-            self.selectedIndex = 1;
+            self.selectedIndex = PPRootTabIndexChats;
             break;
 
         case PPBarTagOrdersHistory:
-            self.selectedIndex = 2;
+            self.selectedIndex = PPRootTabIndexOrders;
             break;
 
         case PPBarTagNotifications:
-            self.selectedIndex = 3;
+            self.selectedIndex = PPRootTabIndexSettings;
             break;
 
         case PPBarTagSearch:
         {
-            
-            self.selectedIndex = 3;
+            [self pp_openSearchExperienceFromCurrentContextOpeningAccessories:NO];
             break;
         }
         case PPBarTagNewAd:
@@ -604,6 +640,17 @@ static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
     placeholder.tabBarItem.accessibilityIdentifier = @"pp.root.add.placeholder";
     self.addActionPlaceholderViewController = placeholder;
     return placeholder;
+}
+
+- (UIViewController *)pp_makeSettingsRootViewController
+{
+    UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
+    UIViewController *settingsViewController =
+        [storyboard instantiateViewControllerWithIdentifier:@"SettingVC"];
+    if ([settingsViewController isKindOfClass:SettingVC.class]) {
+        return settingsViewController;
+    }
+    return [SettingVC new];
 }
 
 - (UINavigationController *)nav:(UIViewController *)vc
@@ -966,24 +1013,18 @@ shouldSelectViewController:(UIViewController *)viewController {
     NSUInteger index =
     [tabBarController.viewControllers indexOfObject:viewController];
 
-    if (index == 1) { // Chats tab
+    if (index == PPRootTabIndexChats) { // Chats tab
         if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return NO; }
     }
-    if (index == 4) { // Favorites tab
+    if (index == PPRootTabIndexOrders) {
         if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return NO; }
     }
     
-    if (index == 2) { // Add tab index
+    if (index == PPRootTabIndexAdd) { // Add tab index
         [self presentBottomSheet];
         return NO;
     }
-    if (index == 3) { // Search tab
-        [self activateSearchIfNeeded];
-    }
-    
-   
-    
-    
+
     return YES;
 }
 
@@ -1005,14 +1046,7 @@ shouldSelectViewController:(UIViewController *)viewController {
 
 - (void)activateSearchIfNeeded
 {
-    if (self.viewControllers.count <= 3) return;
-    UINavigationController *searchNav =
-    (UINavigationController *)self.viewControllers[3];
-
-    UIViewController *vc = searchNav.topViewController;
-    if ([vc respondsToSelector:@selector(focusSearchField)]) {
-        [(id)vc focusSearchField];
-    }
+    [self pp_openSearchExperienceFromCurrentContextOpeningAccessories:NO];
 }
 
 @end

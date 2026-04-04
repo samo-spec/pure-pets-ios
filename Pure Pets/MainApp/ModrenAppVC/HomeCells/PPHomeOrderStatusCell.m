@@ -78,14 +78,16 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
+    self.layer.zPosition = 120.0;
+    self.contentView.layer.zPosition = 120.0;
 
     self.shadowView = [[UIView alloc] init];
     self.shadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.shadowView.backgroundColor = UIColor.clearColor;
-    self.shadowView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    self.shadowView.layer.shadowOpacity = PPIOS26() ? 0.16 : 0.10;
-    self.shadowView.layer.shadowRadius = 24.0;
-    self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.shadowView.layer.shadowColor = UIColor.clearColor.CGColor;
+    self.shadowView.layer.shadowOpacity = 0.0;
+    self.shadowView.layer.shadowRadius = 0.0;
+    self.shadowView.layer.shadowOffset = CGSizeZero;
     self.shadowView.layer.cornerRadius = 30.0;
     if (@available(iOS 13.0, *)) {
         self.shadowView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -358,6 +360,11 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     }
     self.collapsedChevronView.image = [UIImage systemImageNamed:@"chevron.down"];
     [self.collapsedChevronContainerView addSubview:self.collapsedChevronView];
+    self.collapsedChevronContainerView.userInteractionEnabled = YES;
+    UITapGestureRecognizer *collapseTapGesture =
+        [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleCollapseTap)];
+    collapseTapGesture.cancelsTouchesInView = YES;
+    [self.collapsedChevronContainerView addGestureRecognizer:collapseTapGesture];
 
     self.progressFillWidthConstraint = [self.progressFillView.widthAnchor constraintEqualToConstant:0.0];
     self.collapsedChevronTopConstraint =
@@ -485,6 +492,8 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 {
     CGSize previousSize = self.bounds.size;
     [super applyLayoutAttributes:layoutAttributes];
+    self.layer.zPosition = MAX(self.layer.zPosition, 120.0);
+    self.contentView.layer.zPosition = self.layer.zPosition;
     if (!CGSizeEqualToSize(previousSize, self.bounds.size)) {
         [self setNeedsLayout];
     }
@@ -497,7 +506,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     self.overlayView.layer.cornerRadius = self.surfaceView.layer.cornerRadius;
     self.overlayGradientLayer.frame = self.overlayView.bounds;
     self.overlayGradientLayer.cornerRadius = self.surfaceView.layer.cornerRadius;
-    self.shadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.shadowView.bounds cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
+    self.shadowView.layer.shadowPath = nil;
     [self pp_updateCollapsedPreviewLayout];
     [CATransaction commit];
 }
@@ -512,6 +521,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     [super prepareForReuse];
     self.onTrackTap = nil;
     self.onHistoryTap = nil;
+    self.onCollapseTap = nil;
     self.trackButton.hidden = NO;
     self.historyButton.hidden = NO;
     self.trackButton.enabled = YES;
@@ -826,6 +836,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     NSArray<UIView *> *expandedViews = [self pp_expandedContentViews];
 
     [self.contentView layoutIfNeeded];
+    [self pp_applyExpandedConstraintState:expanded];
 
     for (UIView *view in expandedViews) {
         view.hidden = NO;
@@ -846,93 +857,44 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
             view.transform = CGAffineTransformIdentity;
         }
         self.collapsedContentView.alpha = 0.0;
-        self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, -12.0);
+        self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
     }
 
-    [self pp_applyExpandedConstraintState:expanded];
-
-    // ── Phase 1: Main layout spring — drives constraint change + chevron ──
-    [UIView animateWithDuration:0.52
-                          delay:0.0
-         usingSpringWithDamping:(expanded ? 0.78 : 0.88)
-          initialSpringVelocity:(expanded ? 0.6 : 0.12)
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        [self.contentView layoutIfNeeded];
-        self.surfaceView.transform = CGAffineTransformIdentity;
-        [self pp_updateChevronAppearanceForExpanded:expanded];
-        self.collapsedChevronContainerView.transform = CGAffineTransformMakeScale(1.12, 1.12);
-    } completion:^(__unused BOOL finished) {
-        [self pp_updateDecorativeLayers];
-
-        // Chevron overshoot settle-back spring
-        [UIView animateWithDuration:0.32
+    [UIView animateWithDuration:0.46
                               delay:0.0
-             usingSpringWithDamping:0.50
-              initialSpringVelocity:0.2
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.28
                             options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
-            self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
+            [self.contentView layoutIfNeeded];
+            self.surfaceView.transform = CGAffineTransformIdentity;
+            [self pp_updateChevronAppearanceForExpanded:expanded];
+            self.collapsedChevronContainerView.transform = CGAffineTransformMakeScale(1.04, 1.04);
 
-    // ── Phase 2: Staggered content crossfade ──
-    if (expanded) {
-        [UIView animateWithDuration:0.18
-                              delay:0.0
-                            options:UIViewAnimationOptionCurveEaseIn
-                         animations:^{
-            self.collapsedContentView.alpha = 0.0;
-            self.collapsedContentView.transform = CGAffineTransformMakeTranslation(0.0, -10.0);
-        } completion:nil];
+            for (UIView *view in expandedViews) {
+                view.alpha = expanded ? 1.0 : 0.0;
+                view.transform = expanded
+                    ? CGAffineTransformIdentity
+                    : CGAffineTransformMakeTranslation(0.0, 10.0);
+            }
 
-        NSTimeInterval baseDelay = 0.05;
-        NSTimeInterval step = 0.035;
-        for (NSInteger i = 0; i < (NSInteger)expandedViews.count; i++) {
-            UIView *view = expandedViews[i];
-            [UIView animateWithDuration:0.40
-                                  delay:baseDelay + step * i
-                 usingSpringWithDamping:0.80
-                  initialSpringVelocity:0.5
-                                options:UIViewAnimationOptionBeginFromCurrentState
+            self.collapsedContentView.alpha = expanded ? 0.0 : 1.0;
+            self.collapsedContentView.transform = expanded
+                ? CGAffineTransformMakeTranslation(0.0, -6.0)
+                : CGAffineTransformIdentity;
+        } completion:^(__unused BOOL finished) {
+            [UIView animateWithDuration:0.18
+                                  delay:0.0
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                              animations:^{
-                view.alpha = 1.0;
-                view.transform = CGAffineTransformIdentity;
+                self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
             } completion:nil];
-        }
-    } else {
-        NSInteger count = (NSInteger)expandedViews.count;
-        NSTimeInterval step = 0.025;
-        for (NSInteger i = 0; i < count; i++) {
-            UIView *view = expandedViews[count - 1 - i];
-            [UIView animateWithDuration:0.20
-                                  delay:step * i
-                                options:UIViewAnimationOptionCurveEaseIn
-                             animations:^{
-                view.alpha = 0.0;
-                view.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-            } completion:nil];
-        }
 
-        [UIView animateWithDuration:0.34
-                              delay:0.10
-             usingSpringWithDamping:0.84
-              initialSpringVelocity:0.4
-                            options:UIViewAnimationOptionBeginFromCurrentState
-                         animations:^{
-            self.collapsedContentView.alpha = 1.0;
-            self.collapsedContentView.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }
-
-    // ── Phase 3: Final state cleanup after all animations settle ──
-    NSTimeInterval settleTime = expanded ? 0.72 : 0.56;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(settleTime * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-        if (self.showsExpandedState == expanded) {
-            [self pp_applyExpandedVisibilityState:expanded];
-        }
-    });
+            if (self.showsExpandedState == expanded) {
+                [self pp_applyExpandedVisibilityState:expanded];
+                [self pp_updateDecorativeLayers];
+            }
+        }];
 }
 
 - (void)pp_setShowsExpandedState:(BOOL)expanded
@@ -1020,6 +982,13 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 {
     if (self.onHistoryTap) {
         self.onHistoryTap();
+    }
+}
+
+- (void)pp_handleCollapseTap
+{
+    if (self.onCollapseTap) {
+        self.onCollapseTap();
     }
 }
 

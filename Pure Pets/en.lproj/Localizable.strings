@@ -1542,6 +1542,12 @@
 "home_search_sort"               = "Sort";
 
 "home_search_loading"            = "Searching…";
+"home_nav_search_trending"       = "Trending";
+"home_nav_search_accessibility"  = "Open smart search";
+"home_nav_search_example_cats"   = "Cats for sale";
+"home_nav_search_example_vets"   = "Nearby vets";
+"home_nav_search_example_food"   = "Dog food";
+"home_nav_search_example_accessories" = "Pet accessories";
 "ShowAll"  = "Show all";
 "ShowLess" = "Show less";
 "search" = "Search";

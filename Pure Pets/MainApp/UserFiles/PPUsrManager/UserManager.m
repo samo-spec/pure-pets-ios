@@ -1815,13 +1815,44 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     safeData[@"createdAt"] = safeData[@"createdAt"] ?: [NSDate date];
     safeData[@"updatedAt"] = [NSDate date];
 
-    [docRef setData:safeData merge:YES completion:^(NSError * _Nullable error) {
+    // SECURITY: Check if document already exists before writing.
+    // If it exists, skip admin-flag defaults to prevent demoting existing admins
+    // (e.g., provider linking can miscategorize existing users as isNew=YES).
+    [docRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"[UserManager] Failed to create user document: %@", error);
-        } else {
-            NSLog(@"[UserManager] User document created for UID: %@", userUID);
+            NSLog(@"[UserManager] Failed to check existing user document: %@", error);
+            if (completion) completion(error);
+            return;
         }
-        if (completion) completion(error);
+
+        if (snapshot.exists) {
+            // Doc exists — strip security-sensitive defaults to avoid demotion
+            NSMutableDictionary *safeUpdateData = [safeData mutableCopy];
+            [safeUpdateData removeObjectForKey:@"role"];
+            [safeUpdateData removeObjectForKey:@"isAdmin"];
+            [safeUpdateData removeObjectForKey:@"isSuperAdmin"];
+            [safeUpdateData removeObjectForKey:@"isAdminAll"];
+            [safeUpdateData removeObjectForKey:@"isBlocked"];
+            [safeUpdateData removeObjectForKey:@"createdAt"];
+            NSLog(@"[UserManager] ⚠️ createUserDocumentForUID: doc already exists for UID %@, merging without admin flags.", userUID);
+            [docRef setData:safeUpdateData merge:YES completion:^(NSError * _Nullable mergeError) {
+                if (mergeError) {
+                    NSLog(@"[UserManager] Failed to merge existing user document: %@", mergeError);
+                }
+                if (completion) completion(mergeError);
+            }];
+            return;
+        }
+
+        // Doc does not exist — safe to create with full defaults
+        [docRef setData:safeData merge:YES completion:^(NSError * _Nullable createError) {
+            if (createError) {
+                NSLog(@"[UserManager] Failed to create user document: %@", createError);
+            } else {
+                NSLog(@"[UserManager] User document created for UID: %@", userUID);
+            }
+            if (completion) completion(createError);
+        }];
     }];
 }
 
@@ -2396,19 +2427,17 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         completion(cachedUser.ID, nil);
         return;
     }
-    // Not in cache, query Firestore
+    // Not in cache — use direct document get (avoids list query, works with tightened read rules)
     FIRFirestore *db = [FIRFirestore firestore];
-    FIRQuery *query = [[db collectionWithPath:@"UsersCol"] queryWhereField:@"ID" isEqualTo:userID];
-    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    FIRDocumentReference *docRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:userID];
+    [docRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable doc, NSError * _Nullable error) {
         if (error) {
             completion(nil, error);
-        } else if (snapshot.documents.count == 0) {
+        } else if (!doc.exists) {
             NSError *err = [NSError errorWithDomain:FUErrorDomain code:FUErrorCodeUserNotFound userInfo:@{NSLocalizedDescriptionKey: @"No user with given ID"}];
             completion(nil, err);
         } else {
-            FIRDocumentSnapshot *doc = snapshot.documents.firstObject;
             NSString *uid = doc.documentID;
-            // Optionally cache
             UserModel *user = [[UserModel alloc] initWithSnapshot:doc];
             if (user) {
                 [UserManager cacheUserModelInMemory:user];
@@ -2888,8 +2917,31 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *ref = [[db collectionWithPath:@"UsersCol"] documentWithPath:uid];
 
-    // Create (no-merge) if new; if you prefer idempotent, switch to merge:YES
-    [ref setData:doc merge:NO completion:^(NSError * _Nullable error) {
+    // SECURITY: Use transaction to create-only-if-not-exists.
+    // Prevents nuking an existing admin doc if addUser is called for an existing UID.
+    __weak typeof(self) weakSelf = self;
+    [db runTransactionWithBlock:^id _Nullable(FIRTransaction * _Nonnull transaction, NSError * _Nullable __autoreleasing * _Nullable errorPointer) {
+        FIRDocumentSnapshot *snapshot = [transaction getDocument:ref error:errorPointer];
+        if (*errorPointer) return nil;
+
+        if (snapshot.exists) {
+            // Doc already exists — safe merge of non-admin fields only
+            NSMutableDictionary *safeUpdate = [doc mutableCopy];
+            [safeUpdate removeObjectForKey:@"role"];
+            [safeUpdate removeObjectForKey:@"isAdmin"];
+            [safeUpdate removeObjectForKey:@"isSuperAdmin"];
+            [safeUpdate removeObjectForKey:@"isAdminAll"];
+            [safeUpdate removeObjectForKey:@"isBlocked"];
+            [safeUpdate removeObjectForKey:@"createdAt"];
+            [transaction setData:safeUpdate forDocument:ref merge:YES];
+            NSLog(@"[UserManager] ⚠️ addUser: doc already exists for UID=%@, merging safely.", uid);
+        } else {
+            // New doc — safe to create with defaults
+            [transaction setData:doc forDocument:ref];
+        }
+        return @YES;
+    } completion:^(id _Nullable result, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
         if (error) {
             NSLog(@"[UserManager] ❌ addUser Firestore failed: %@", error);
             if (completion) completion(error, nil);
@@ -2902,8 +2954,8 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         if (authUser && [authUser.uid isEqualToString:uid]) {
             [UserModel loadCurrentUserModelWithCompletion:^(UserModel * _Nullable u, NSError * _Nullable err) {
                 if (u) {
-                    self.currentUser = u;
-                    [self cacheUser:u];
+                    strongSelf.currentUser = u;
+                    [strongSelf cacheUser:u];
                     NSLog(@"[UserManager] 🔄 currentUser cached after addUser.");
                 }
                 if (completion) completion(nil, uid);
@@ -3621,15 +3673,35 @@ static inline NSString *PPPermNameFor(UserPermission flag) {
     userDict[@"updatedAt"] = [NSDate date];
     userDict[@"loginSource"] = @(UserLoginSourcePPUsers);
 
-    FIRDocumentReference *docRef = [[self.firestore collectionWithPath:@"UsersCol"] documentWithPath:uid];
-    [docRef setData:userDict merge:YES completion:^(NSError * _Nullable error) {
+    FIRFirestore *db = self.firestore;
+    FIRDocumentReference *docRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:uid];
+
+    // SECURITY: Use transaction to create-only-if-not-exists (mirrors first addUser: method).
+    // Prevents overwriting admin flags on existing docs.
+    __weak typeof(self) weakSelf = self;
+    [db runTransactionWithBlock:^id _Nullable(FIRTransaction * _Nonnull transaction, NSError * _Nullable __autoreleasing * _Nullable errorPointer) {
+        FIRDocumentSnapshot *snapshot = [transaction getDocument:docRef error:errorPointer];
+        if (*errorPointer) return nil;
+
+        if (snapshot.exists) {
+            // Doc exists — merge without overwriting createdAt
+            NSMutableDictionary *safeUpdate = [userDict mutableCopy];
+            [safeUpdate removeObjectForKey:@"createdAt"];
+            [transaction setData:safeUpdate forDocument:docRef merge:YES];
+            NSLog(@"[UserManager] ⚠️ addUser(alt): doc already exists for UID=%@, merging safely.", uid);
+        } else {
+            [transaction setData:userDict forDocument:docRef];
+        }
+        return @YES;
+    } completion:^(id _Nullable result, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
         if (error) {
             NSLog(@"[UserManager] ❌ Failed to add user %@: %@", uid, error.localizedDescription);
             if (completion) completion(error, nil);
         } else {
             user.ID = uid;
-            self.currentUser = user;
-            [self cacheUser:user];
+            strongSelf.currentUser = user;
+            [strongSelf cacheUser:user];
             NSLog(@"[UserManager] ✅ User added/merged in Firestore for UID=%@.", uid);
             if (completion) completion(nil, uid);
         }
@@ -3904,13 +3976,12 @@ static inline NSString *PPPermNameFor(UserPermission flag) {
     }
 
     FIRFirestore *db = [FIRFirestore firestore];
-    FIRQuery *query = [[db collectionWithPath:@"UsersCol"] queryWhereField:@"ID" isEqualTo:userID];
-    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    FIRDocumentReference *docRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:userID];
+    [docRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable doc, NSError * _Nullable error) {
         if (error) {
             if (completion) completion(nil, error);
             return;
         }
-        FIRDocumentSnapshot *doc = snapshot.documents.firstObject;
         if (!doc || !doc.exists) {
             if (completion) {
                 completion(nil, [NSError errorWithDomain:FUErrorDomain

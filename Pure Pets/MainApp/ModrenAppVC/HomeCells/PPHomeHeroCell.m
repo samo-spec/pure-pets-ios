@@ -39,12 +39,15 @@
 // Order peek strip (one-line banner below hero card)
 @property (nonatomic, strong) UIControl *orderPeekStrip;
 @property (nonatomic, strong) UIVisualEffectView *orderPeekBlurView;
+@property (nonatomic, strong) UIView *orderPeekTintOverlay;
 @property (nonatomic, strong) UIImageView *orderPeekThumbnail;
 @property (nonatomic, strong) UILabel *orderPeekReferenceLabel;
 @property (nonatomic, strong) UIView *orderPeekStatusDot;
 @property (nonatomic, strong) UILabel *orderPeekStatusLabel;
 @property (nonatomic, strong) UIImageView *orderPeekChevron;
 @property (nonatomic, assign) BOOL orderPeekVisible;
+@property (nonatomic, assign) BOOL orderPeekExpanded;
+@property (nonatomic, strong) UIColor *orderPeekStatusColor;
 @end
 
 static inline UIColor *PPBlendColors(UIColor *a, UIColor *b, CGFloat t)
@@ -477,11 +480,20 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     // Reset peek strip
     self.orderPeekVisible = NO;
+    self.orderPeekExpanded = NO;
     self.orderPeekStrip.alpha = 0.0;
     self.orderPeekStrip.transform = CGAffineTransformMakeTranslation(0.0, -24.0);
+    self.orderPeekStrip.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
     self.orderPeekThumbnail.image = nil;
+    self.orderPeekThumbnail.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
     self.orderPeekReferenceLabel.text = @"";
     self.orderPeekStatusLabel.text = @"";
+    self.orderPeekStatusLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.88];
+    self.orderPeekStatusDot.backgroundColor = [UIColor colorWithRed:1.0 green:0.76 blue:0.26 alpha:1.0];
+    self.orderPeekChevron.tintColor = [UIColor colorWithWhite:1.0 alpha:0.68];
+    self.orderPeekChevron.transform = CGAffineTransformIdentity;
+    self.orderPeekTintOverlay.backgroundColor = [UIColor colorWithRed:0.12 green:0.10 blue:0.18 alpha:0.65];
+    [self pp_stopOrderPeekPulseAnimation];
 }
 
 - (void)configureWithGreeting:(NSString *)greeting
@@ -1154,6 +1166,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.orderPeekStrip.translatesAutoresizingMaskIntoConstraints = NO;
     self.orderPeekStrip.backgroundColor = UIColor.clearColor;
     self.orderPeekStrip.layer.cornerRadius = PPCornerMedium;
+    self.orderPeekStrip.layer.borderWidth = 1.0;
+    self.orderPeekStrip.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
     self.orderPeekStrip.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.orderPeekStrip.layer.cornerCurve = kCACornerCurveContinuous;
@@ -1176,11 +1190,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     [self.orderPeekStrip addSubview:self.orderPeekBlurView];
 
     // Warm overlay tint
-    UIView *peekTintOverlay = [[UIView alloc] init];
-    peekTintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    peekTintOverlay.backgroundColor = [UIColor colorWithRed:0.12 green:0.10 blue:0.18 alpha:0.65];
-    peekTintOverlay.userInteractionEnabled = NO;
-    [self.orderPeekStrip addSubview:peekTintOverlay];
+    self.orderPeekTintOverlay = [[UIView alloc] init];
+    self.orderPeekTintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekTintOverlay.backgroundColor = [UIColor colorWithRed:0.12 green:0.10 blue:0.18 alpha:0.65];
+    self.orderPeekTintOverlay.userInteractionEnabled = NO;
+    [self.orderPeekStrip addSubview:self.orderPeekTintOverlay];
 
     // Thumbnail (small circular image)
     self.orderPeekThumbnail = [[UIImageView alloc] init];
@@ -1213,7 +1227,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.orderPeekStatusLabel = [[UILabel alloc] init];
     self.orderPeekStatusLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.orderPeekStatusLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
-    self.orderPeekStatusLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.72];
+    self.orderPeekStatusLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.88];
     self.orderPeekStatusLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.orderPeekStatusLabel.numberOfLines = 1;
     [self.orderPeekStrip addSubview:self.orderPeekStatusLabel];
@@ -1222,8 +1236,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.orderPeekChevron = [[UIImageView alloc] init];
     self.orderPeekChevron.translatesAutoresizingMaskIntoConstraints = NO;
     self.orderPeekChevron.contentMode = UIViewContentModeScaleAspectFit;
-    self.orderPeekChevron.tintColor = [UIColor colorWithWhite:1.0 alpha:0.52];
-    NSString *chevronName = Language.isRTL ? @"chevron.left" : @"chevron.right";
+    self.orderPeekChevron.tintColor = [UIColor colorWithWhite:1.0 alpha:0.68];
+    NSString *chevronName = @"chevron.down";
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightSemibold];
         self.orderPeekChevron.image = [UIImage systemImageNamed:chevronName withConfiguration:config];
@@ -1237,10 +1251,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.orderPeekBlurView.trailingAnchor constraintEqualToAnchor:self.orderPeekStrip.trailingAnchor],
         [self.orderPeekBlurView.bottomAnchor constraintEqualToAnchor:self.orderPeekStrip.bottomAnchor],
 
-        [peekTintOverlay.topAnchor constraintEqualToAnchor:self.orderPeekStrip.topAnchor],
-        [peekTintOverlay.leadingAnchor constraintEqualToAnchor:self.orderPeekStrip.leadingAnchor],
-        [peekTintOverlay.trailingAnchor constraintEqualToAnchor:self.orderPeekStrip.trailingAnchor],
-        [peekTintOverlay.bottomAnchor constraintEqualToAnchor:self.orderPeekStrip.bottomAnchor],
+        [self.orderPeekTintOverlay.topAnchor constraintEqualToAnchor:self.orderPeekStrip.topAnchor],
+        [self.orderPeekTintOverlay.leadingAnchor constraintEqualToAnchor:self.orderPeekStrip.leadingAnchor],
+        [self.orderPeekTintOverlay.trailingAnchor constraintEqualToAnchor:self.orderPeekStrip.trailingAnchor],
+        [self.orderPeekTintOverlay.bottomAnchor constraintEqualToAnchor:self.orderPeekStrip.bottomAnchor],
     ]];
 
     // Content constraints
@@ -1278,10 +1292,85 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     }
 }
 
+- (void)pp_stopOrderPeekPulseAnimation
+{
+    [self.orderPeekStatusDot.layer removeAnimationForKey:@"pp.orderPeek.dotPulse"];
+    [self.orderPeekTintOverlay.layer removeAnimationForKey:@"pp.orderPeek.tintPulse"];
+}
+
+- (void)pp_startOrderPeekPulseAnimation
+{
+    if ([self.orderPeekStatusDot.layer animationForKey:@"pp.orderPeek.dotPulse"] == nil) {
+        CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+        scaleAnimation.fromValue = @(0.86);
+        scaleAnimation.toValue = @(1.18);
+
+        CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        opacityAnimation.fromValue = @(0.58);
+        opacityAnimation.toValue = @(1.0);
+
+        CAAnimationGroup *pulseGroup = [CAAnimationGroup animation];
+        pulseGroup.animations = @[scaleAnimation, opacityAnimation];
+        pulseGroup.duration = 1.08;
+        pulseGroup.autoreverses = YES;
+        pulseGroup.repeatCount = HUGE_VALF;
+        pulseGroup.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.orderPeekStatusDot.layer addAnimation:pulseGroup forKey:@"pp.orderPeek.dotPulse"];
+    }
+
+    if ([self.orderPeekTintOverlay.layer animationForKey:@"pp.orderPeek.tintPulse"] == nil) {
+        CABasicAnimation *tintAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        tintAnimation.fromValue = @(0.86);
+        tintAnimation.toValue = @(1.0);
+        tintAnimation.duration = 1.25;
+        tintAnimation.autoreverses = YES;
+        tintAnimation.repeatCount = HUGE_VALF;
+        tintAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.orderPeekTintOverlay.layer addAnimation:tintAnimation forKey:@"pp.orderPeek.tintPulse"];
+    }
+}
+
+- (void)pp_applyOrderPeekStyleWithStatusColor:(UIColor *)statusColor expanded:(BOOL)expanded
+{
+    UIColor *resolvedStatusColor = statusColor ?: [UIColor colorWithRed:1.0 green:0.76 blue:0.26 alpha:1.0];
+    UIColor *baseSurfaceColor = [UIColor colorWithRed:0.08 green:0.10 blue:0.15 alpha:1.0];
+    UIColor *tintColor = PPBlendColors(baseSurfaceColor, resolvedStatusColor, expanded ? 0.42 : 0.32);
+
+    self.orderPeekStatusColor = resolvedStatusColor;
+    self.orderPeekExpanded = expanded;
+    self.orderPeekTintOverlay.backgroundColor = [tintColor colorWithAlphaComponent:(expanded ? 0.78 : 0.68)];
+    self.orderPeekStrip.layer.borderColor = [resolvedStatusColor colorWithAlphaComponent:(expanded ? 0.34 : 0.24)].CGColor;
+    self.orderPeekThumbnail.backgroundColor = [resolvedStatusColor colorWithAlphaComponent:(expanded ? 0.24 : 0.16)];
+    self.orderPeekStatusDot.backgroundColor = resolvedStatusColor;
+    self.orderPeekStatusLabel.textColor = resolvedStatusColor;
+    self.orderPeekChevron.tintColor = resolvedStatusColor;
+}
+
+- (void)pp_updateOrderPeekChevronForExpanded:(BOOL)expanded animated:(BOOL)animated
+{
+    void (^updates)(void) = ^{
+        self.orderPeekChevron.transform = expanded
+            ? CGAffineTransformMakeRotation((CGFloat)M_PI)
+            : CGAffineTransformIdentity;
+    };
+
+    if (!animated) {
+        updates();
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                     animations:updates
+                     completion:nil];
+}
+
 - (void)configureOrderPeekWithReference:(nullable NSString *)reference
                             statusTitle:(nullable NSString *)statusTitle
                             statusColor:(nullable UIColor *)statusColor
                         previewImageURL:(nullable NSString *)previewImageURL
+                               expanded:(BOOL)expanded
                                animated:(BOOL)animated
 {
     NSString *safeRef = PPSafeString(reference);
@@ -1294,7 +1383,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     self.orderPeekReferenceLabel.text = safeRef;
     self.orderPeekStatusLabel.text = safeStatus;
-    self.orderPeekStatusDot.backgroundColor = statusColor ?: [UIColor colorWithRed:1.0 green:0.76 blue:0.26 alpha:1.0];
+    [self pp_applyOrderPeekStyleWithStatusColor:statusColor expanded:expanded];
+    [self pp_updateOrderPeekChevronForExpanded:expanded animated:(self.orderPeekVisible && animated)];
+    [self pp_startOrderPeekPulseAnimation];
 
     // Load thumbnail
     NSString *safeURL = PPSafeString(previewImageURL);
@@ -1335,6 +1426,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         return;
     }
     self.orderPeekVisible = NO;
+    [self pp_stopOrderPeekPulseAnimation];
 
     if (!animated) {
         self.orderPeekStrip.alpha = 0.0;

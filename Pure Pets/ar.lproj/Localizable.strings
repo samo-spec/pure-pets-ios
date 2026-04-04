@@ -1492,6 +1492,12 @@
 "home_search_sort"               = "ترتيب";
 
 "home_search_loading"            = "جاري البحث…";
+"home_nav_search_trending"       = "الرائج";
+"home_nav_search_accessibility"  = "افتح البحث الذكي";
+"home_nav_search_example_cats"   = "قطط للبيع";
+"home_nav_search_example_vets"   = "العيادات البيطرية";
+"home_nav_search_example_food"   = "طعام الكلاب";
+"home_nav_search_example_accessories" = "إكسسوارات الحيوانات";
 "ShowAll"  = "عرض الكل";
 "ShowLess" = "عرض أقل";
 "Home_NearbyAds"        = "بالقرب منك";

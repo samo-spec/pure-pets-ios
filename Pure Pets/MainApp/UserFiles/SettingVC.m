@@ -29,6 +29,8 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
 @property (nonatomic, strong) XLFormOptionsObject *optEnglish;
 @property (nonatomic, assign) BOOL alertAppear;
 @property (nonatomic, assign) BOOL isUpdatingNotificationToggle;
+- (void)pp_updatePresentationAppearance;
+- (BOOL)pp_isEmbeddedAsRootTab;
 @end
 
 @implementation SettingVC
@@ -39,7 +41,7 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
     self.prefs = [NSUserDefaults standardUserDefaults];
     self.alertAppear = NO;
 
-    [self pp_setupAppearance];
+    [self pp_updatePresentationAppearance];
     [self initForms];
     [self pp_setupNotificationObservers];
     [self pp_refreshNotificationStatus];
@@ -48,6 +50,7 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_updatePresentationAppearance];
     [self pp_refreshNotificationStatus];
 }
 
@@ -57,9 +60,11 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
 }
 
 - (void)pp_setupAppearance {
-    self.view.layer.cornerRadius = 42;
-    self.view.layer.masksToBounds = YES;
-    self.view.clipsToBounds = YES;
+    BOOL isRootTab = [self pp_isEmbeddedAsRootTab];
+
+    self.view.layer.cornerRadius = isRootTab ? 0.0 : 42.0;
+    self.view.layer.masksToBounds = !isRootTab;
+    self.view.clipsToBounds = !isRootTab;
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
 
     if (self.mTitleLabel) {
@@ -70,6 +75,26 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
     if (self.topView) {
         self.topView.translatesAutoresizingMaskIntoConstraints = YES;
     }
+
+    self.navigationItem.title = kLang(@"Setting");
+}
+
+- (void)pp_updatePresentationAppearance
+{
+    [self pp_setupAppearance];
+}
+
+- (BOOL)pp_isEmbeddedAsRootTab
+{
+    UINavigationController *navigationController = self.navigationController;
+    UITabBarController *tabBarController = self.tabBarController;
+    if (!navigationController || !tabBarController) {
+        return NO;
+    }
+    if (navigationController.viewControllers.firstObject != self) {
+        return NO;
+    }
+    return [tabBarController.viewControllers containsObject:navigationController];
 }
 
 #pragma mark - Actions

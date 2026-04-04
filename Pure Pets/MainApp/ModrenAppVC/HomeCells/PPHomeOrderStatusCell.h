@@ -25,4 +25,5 @@
 - (void)refreshDecorativeLayersForCurrentBounds;
 @property (nonatomic, copy, nullable) void (^onTrackTap)(void);
 @property (nonatomic, copy, nullable) void (^onHistoryTap)(void);
+@property (nonatomic, copy, nullable) void (^onCollapseTap)(void);
 @end

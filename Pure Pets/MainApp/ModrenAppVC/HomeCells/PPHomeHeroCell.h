@@ -26,6 +26,7 @@ typedef NS_ENUM(NSInteger, PPHomeHeroLocationState) {
                             statusTitle:(nullable NSString *)statusTitle
                             statusColor:(nullable UIColor *)statusColor
                         previewImageURL:(nullable NSString *)previewImageURL
+                               expanded:(BOOL)expanded
                                animated:(BOOL)animated;
 - (void)hideOrderPeek:(BOOL)animated;
 

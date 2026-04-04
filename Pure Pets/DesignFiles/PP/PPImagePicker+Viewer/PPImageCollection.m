@@ -352,6 +352,25 @@
     return [sanitized copy];
 }
 
+- (nullable UIImage *)pp_renderableImageAtIndex:(NSInteger)index
+{
+    if (index < 0) {
+        return nil;
+    }
+
+    [self.arrayLock lock];
+    UIImage *candidate =
+        (index < self.mediaOutputArray.count && [self.mediaOutputArray[index] isKindOfClass:[UIImage class]])
+        ? (UIImage *)self.mediaOutputArray[index]
+        : nil;
+    [self.arrayLock unlock];
+
+    if (![self pp_isRenderableImage:candidate]) {
+        return nil;
+    }
+    return candidate;
+}
+
 - (void)pp_syncImagesFromManager
 {
     NSArray *managerImages = [self.imageManager.selectedImages copy] ?: @[];
@@ -988,14 +1007,17 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
 - (void)handleImageTapAtIndex:(NSInteger)index {
     if (index < 0 || index >= [self imageCount]) return;
+
+    UIImage *image = [self pp_renderableImageAtIndex:index];
+    if (![self pp_isRenderableImage:image]) {
+        NSLog(@"[PPImageCollection] Ignoring tap for non-renderable image at index %ld", (long)index);
+        return;
+    }
     
     if (self.allowsEditing) {
         // Store selection and open editor
         self.selectedForEdit = index;
-        
-        NSArray *images = [self allImages];
-        UIImage *image = images[index];
-        
+
         // Present editor through the parent view controller
         if ([self.delegate respondsToSelector:@selector(imageCollection:didSelectImage:AtIndex:)]) {
             [self.delegate imageCollection:self didSelectImage:image AtIndex:index];
@@ -1004,9 +1026,6 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         // You can also present editor directly if you have access to view controller
         //[self.editorBridge presentEditorFromViewController:AppMgr.topViewController withImage:image useArabic:self.useArabic];
     } else {
-        NSArray *images = [self allImages];
-        UIImage *image = images[index];
-        
         // Just notify delegate
         if ([self.delegate respondsToSelector:@selector(imageCollection:didSelectImage:AtIndex:)]) {
             [self.delegate imageCollection:self didSelectImage:image AtIndex:index];
@@ -1028,7 +1047,11 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
 - (UIViewController *)pp_bestPresentingViewController:(UIViewController * _Nullable)preferredVC
 {
-    UIViewController *vc = preferredVC ?: [self pp_parentViewController] ?: AppMgr.topViewController;
+    UIViewController *vc = preferredVC;
+    if ((!vc.isViewLoaded || !vc.view.window) && preferredVC != nil) {
+        vc = nil;
+    }
+    vc = vc ?: [self pp_parentViewController] ?: AppMgr.topViewController;
     if (!vc) {
         return nil;
     }
@@ -1060,6 +1083,10 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     }
 
     if (vc.isBeingDismissed || vc.isBeingPresented) {
+        return nil;
+    }
+
+    if (!vc.isViewLoaded || !vc.view.window) {
         return nil;
     }
 
@@ -1120,11 +1147,14 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
                                                             completion:^(BOOL granted) {
         if (!granted) return;
         if (!weakSelf) return;
+        UIViewController *readyPresenter =
+            [weakSelf pp_bestPresentingViewController:presentingVC] ?: [weakSelf pp_bestPresentingViewController:nil];
+        if (!readyPresenter) return;
         if (weakSelf.isPresentingMediaPicker || weakSelf.currentPicker || weakSelf.cameraPicker) return;
-        if (presentingVC.presentedViewController) return;
+        if (readyPresenter.presentedViewController) return;
 
         if ([weakSelf pp_shouldUseTemporaryHXPicker]) {
-            [weakSelf pp_presentHXPhotoPickerFromViewController:presentingVC];
+            [weakSelf pp_presentHXPhotoPickerFromViewController:readyPresenter];
             return;
         }
 
@@ -1148,9 +1178,9 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         weakSelf.isPresentingMediaPicker = YES;
         weakSelf.currentPicker = imagePickerController;
 
-        [presentingVC presentViewController:imagePickerController
-                                   animated:YES
-                                 completion:^{
+        [readyPresenter presentViewController:imagePickerController
+                                     animated:YES
+                                   completion:^{
             NSLog(@"[PPImageCollection] Gallery picker presented successfully");
         }];
     }];
@@ -1158,8 +1188,10 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
 - (BOOL)pp_shouldUseTemporaryHXPicker
 {
-    // Temporary rollout: keep the legacy QB picker in place for quick rollback,
-    // but route gallery selection through HX while we validate it in the app.
+    // HXPhotoPicker rollout is disabled here because this presentation path is
+    // currently the crash source in the customer app. Keep the bridge in place
+    // for later validation, but route production gallery selection through the
+    // proven QB picker until the HX flow is stabilized.
     return YES;
 }
 
@@ -1233,14 +1265,17 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     [PPPermissionHelper requestCameraPermissionFromViewController:viewController
                                                        completion:^(BOOL granted) {
         if (!granted) return;
+        UIViewController *readyPresenter =
+            [weakSelf pp_bestPresentingViewController:viewController] ?: [weakSelf pp_bestPresentingViewController:nil];
+        if (!readyPresenter) return;
         // iPad: brief delay so any previous alert/popover finishes dismissing
         if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)),
                            dispatch_get_main_queue(), ^{
-                [weakSelf presentCameraPickerFromViewController:viewController];
+                [weakSelf presentCameraPickerFromViewController:readyPresenter];
             });
         } else {
-            [weakSelf presentCameraPickerFromViewController:viewController];
+            [weakSelf presentCameraPickerFromViewController:readyPresenter];
         }
     }];
 }
@@ -1601,12 +1636,22 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 
 - (void)presentEditorForImageAtIndex:(NSInteger)index fromViewController:(UIViewController *)viewController {
     if (index < 0 || index >= [self imageCount] || !viewController) return;
-    
-    NSArray *images = [self allImages];
-    UIImage *image = images[index];
+
+    UIImage *image = [self pp_renderableImageAtIndex:index];
+    if (![self pp_isRenderableImage:image]) {
+        NSLog(@"[PPImageCollection] Skipping editor presentation for non-renderable image at index %ld", (long)index);
+        return;
+    }
+
+    UIViewController *presentingVC = [self pp_bestPresentingViewController:viewController];
+    if (!presentingVC) {
+        NSLog(@"[PPImageCollection] Missing valid presenter for editor at index %ld", (long)index);
+        return;
+    }
+
     self.selectedForEdit = index;
     
-    [self.editorBridge presentEditorFromViewController:viewController withImage:image useArabic:self.useArabic];
+    [self.editorBridge presentEditorFromViewController:presentingVC withImage:image useArabic:self.useArabic];
 }
 
 @end

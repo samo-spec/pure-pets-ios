@@ -79,6 +79,7 @@
         self.professionalAngle = [dictionary[@"professionalAngle"] floatValue];
         self.KindNameAr = dictionary[@"KindNameAr"];
         self.KindNameEn = dictionary[@"KindNameEn"];
+        self.PetColor = dictionary[@"PetColor"];
         self.KindImageNamed = dictionary[@"KindImageNamed"];
         self.KindIconName = dictionary[@"KindIconName"];
         self.KindImageFile = [UIImage imageNamed:self.KindImageNamed];
@@ -103,6 +104,7 @@
         self.KindNameAr = snapshot.data[@"KindNameAr"];
         self.documentID = snapshot.documentID;
         self.KindNameEn = snapshot.data[@"KindNameEn"];
+        self.PetColor = snapshot.data[@"PetColor"];
         self.KindImageNamed = snapshot.data[@"KindImageNamed"];
         self.KindImageUrl = snapshot.data[@"KindImageUrl"];
         self.KindIconName = snapshot.data[@"KindIconName"];
@@ -134,6 +136,7 @@
         self.KindNameAr = data[@"KindNameAr"];
         self.documentID = [NSString stringWithFormat:@"%ld",[data[@"ID"] integerValue]];
         self.KindNameEn = data[@"KindNameEn"];
+        self.PetColor = data[@"PetColor"];
         self.KindImageNamed = data[@"KindImageNamed"];
         self.KindIconName = data[@"KindIconName"];
         self.KindImageUrl = data[@"KindImageUrl"];
@@ -183,6 +186,7 @@
     dict[@"KindNameEn"] = self.KindNameEn ?: @"";
     dict[@"KindImageNamed"] = self.KindImageNamed ?: @"";
     dict[@"KindIconName"] = self.KindIconName ?: @"";
+    dict[@"PetColor"] = self.PetColor ?: @"";
     dict[@"documentID"] = self.documentID ?: @"";
     dict[@"KindImageUrl"] = self.KindImageUrl ?: @"";
     dict[@"LightenAmount"] = @(self.LightenAmount);
@@ -259,6 +263,10 @@
 
 -(UIColor *)kindColor
 {
+    if (self.PetColor && self.PetColor.length > 0) {
+        return [UIColor colorWithHexString:self.PetColor];
+    }
+    
     if(self.ID == 1)        return [UIColor colorWithRed:0.30 green:0.75 blue:0.55 alpha:1.0]; //[UIColor colorWithHexString:@"#E55B46"];
     else if(self.ID == 2)    return [UIColor colorWithHexString:@"#D57E3C"];
     else if(self.ID == 3)    return [UIColor colorWithHexString:@"#491708"];

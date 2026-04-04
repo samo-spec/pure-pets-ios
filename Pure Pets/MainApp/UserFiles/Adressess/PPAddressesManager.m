@@ -75,6 +75,19 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
     address.locatioName = [self pp_trimmedString:address.locatioName];
     address.locationPoints = [self pp_trimmedString:address.locationPoints];
 
+    // SECURITY: Validate phone number format if present (E.164-like: +digits, 7-15 chars)
+    NSString *phone = [self pp_trimmedString:address.phoneNumber];
+    if (phone.length > 0) {
+        NSCharacterSet *allowedPhoneChars = [NSCharacterSet characterSetWithCharactersInString:@"+0123456789"];
+        NSCharacterSet *phoneChars = [NSCharacterSet characterSetWithCharactersInString:phone];
+        BOOL hasOnlyDigitsAndPlus = [allowedPhoneChars isSupersetOfSet:phoneChars];
+        BOOL hasValidLength = (phone.length >= 7 && phone.length <= 16);
+        if (!hasOnlyDigitsAndPlus || !hasValidLength) {
+            return [self pp_errorWithCode:422 description:@"Phone number format is invalid."];
+        }
+        address.phoneNumber = phone;
+    }
+
     if (![address isSemanticallyValid]) {
         return [self pp_errorWithCode:422 description:@"Address fields are incomplete or invalid."];
     }
@@ -220,6 +233,10 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
             if (!commitError) {
                 [self getAllAddressesWithCompletion:nil];
                 [self pp_notifyAddressesChangedForUserID:uid];
+            } else {
+                // SECURITY: Batch failure may leave isDefault state inconsistent — force resync
+                NSLog(@"[PPAddressesManager] ⚠️ Default-swap batch failed, resyncing: %@", commitError.localizedDescription);
+                [self getAllAddressesWithCompletion:nil];
             }
             if (completion) completion(commitError == nil, commitError);
         }];
@@ -408,6 +425,10 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
             if (!commitError) {
                 [self getAllAddressesWithCompletion:nil];
                 [self pp_notifyAddressesChangedForUserID:uid];
+            } else {
+                // SECURITY: Batch failure may leave isDefault state inconsistent — force resync
+                NSLog(@"[PPAddressesManager] ⚠️ Delete batch failed, resyncing: %@", commitError.localizedDescription);
+                [self getAllAddressesWithCompletion:nil];
             }
             if (completion) completion(commitError == nil, commitError);
         }];

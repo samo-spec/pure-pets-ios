@@ -10,6 +10,7 @@
 #import "PPHomeFunc.h"
 #import "PPHomeViewController.h"
 #import "PPSPinnerView.h"
+#import "PPSearchViewController.h"
 #import "PPDataViewInput.h"
 #import "PPDataViewVC.h"
 #import "PPVetLocator.h"
@@ -80,6 +81,290 @@
 @end
 
 @implementation PPHomeHeaderConfig
+@end
+
+@interface PPHomeSmartSearchTitleView : UIControl
+@property (nonatomic, strong, readonly) UILabel *placeholderLabel;
+- (void)setQueryText:(NSString *)text animated:(BOOL)animated;
+@end
+
+@implementation PPHomeSmartSearchTitleView {
+    UIView *_chromeView;
+    UIVisualEffectView *_blurView;
+    UIView *_badgeView;
+    UILabel *_badgeLabel;
+    UIImageView *_searchIconView;
+    UILabel *_placeholderLabel;
+    UIImageView *_sparkleView;
+    CAGradientLayer *_gradientLayer;
+    CAGradientLayer *_shineLayer;
+    BOOL _ambientAnimationsConfigured;
+}
+
+@synthesize placeholderLabel = _placeholderLabel;
+
+- (CGSize)intrinsicContentSize
+{
+    return CGSizeMake(UIViewNoIntrinsicMetric, 40.0);
+}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    CGRect initialFrame = CGRectEqualToRect(frame, CGRectZero)
+        ? CGRectMake(0.0, 0.0, 236.0, 40.0)
+        : frame;
+    self = [super initWithFrame:initialFrame];
+    if (!self) {
+        return nil;
+    }
+
+    self.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+    self.accessibilityLabel =
+        kLang(@"home_nav_search_accessibility") ?:
+        (kLang(@"home_search_hint") ?: @"Open smart search");
+
+    self.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    self.layer.shadowOpacity = 0.10f;
+    self.layer.shadowRadius = 18.0f;
+    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+
+    UIView *chromeView = [[UIView alloc] initWithFrame:self.bounds];
+    chromeView.translatesAutoresizingMaskIntoConstraints = NO;
+    chromeView.backgroundColor = UIColor.clearColor;
+    chromeView.layer.cornerRadius = 20.0;
+    chromeView.layer.masksToBounds = YES;
+    [self addSubview:chromeView];
+    _chromeView = chromeView;
+
+    UIVisualEffectView *blurView =
+        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.userInteractionEnabled = NO;
+    [chromeView addSubview:blurView];
+    _blurView = blurView;
+
+    _gradientLayer = [CAGradientLayer layer];
+    _gradientLayer.startPoint = CGPointMake(0.0, 0.5);
+    _gradientLayer.endPoint = CGPointMake(1.0, 0.5);
+    _gradientLayer.colors = @[
+        (__bridge id)[[UIColor colorWithRed:0.98 green:0.86 blue:0.72 alpha:1.0] colorWithAlphaComponent:0.92].CGColor,
+        (__bridge id)[[UIColor colorWithRed:0.96 green:0.78 blue:0.60 alpha:1.0] colorWithAlphaComponent:0.88].CGColor,
+        (__bridge id)[[UIColor colorWithRed:0.92 green:0.67 blue:0.52 alpha:1.0] colorWithAlphaComponent:0.84].CGColor
+    ];
+    [chromeView.layer insertSublayer:_gradientLayer above:blurView.layer];
+
+    _shineLayer = [CAGradientLayer layer];
+    _shineLayer.startPoint = CGPointMake(0.0, 0.5);
+    _shineLayer.endPoint = CGPointMake(1.0, 0.5);
+    _shineLayer.colors = @[
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.30].CGColor,
+        (__bridge id)[UIColor.clearColor CGColor]
+    ];
+    _shineLayer.opacity = 0.55f;
+    [chromeView.layer addSublayer:_shineLayer];
+
+    chromeView.layer.borderWidth = 1.0;
+    chromeView.layer.borderColor =
+        [[UIColor whiteColor] colorWithAlphaComponent:0.42].CGColor;
+
+    UIView *badgeView = [UIView new];
+    badgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeView.backgroundColor =
+        [[UIColor whiteColor] colorWithAlphaComponent:0.26];
+    badgeView.layer.cornerRadius = 10.0;
+    [chromeView addSubview:badgeView];
+    _badgeView = badgeView;
+
+    UILabel *badgeLabel = [UILabel new];
+    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeLabel.font = [GM boldFontWithSize:10.0];
+    badgeLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    badgeLabel.textAlignment = NSTextAlignmentCenter;
+    badgeLabel.text = kLang(@"home_nav_search_trending") ?: @"Trending";
+    [badgeView addSubview:badgeLabel];
+    _badgeLabel = badgeLabel;
+
+    UIImageView *searchIconView =
+        [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"magnifyingglass"
+                                                         pointSize:13
+                                                            weight:UIImageSymbolWeightSemibold
+                                                             scale:UIImageSymbolScaleMedium
+                                                           palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
+                                                      makeTemplate:YES]];
+    searchIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    searchIconView.contentMode = UIViewContentModeScaleAspectFit;
+    searchIconView.tintColor =
+        [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.88];
+    [chromeView addSubview:searchIconView];
+    _searchIconView = searchIconView;
+
+    UILabel *placeholderLabel = [UILabel new];
+    placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    placeholderLabel.font = [GM MidFontWithSize:13.0];
+    placeholderLabel.textColor =
+        [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.78];
+    placeholderLabel.textAlignment = NSTextAlignmentNatural;
+    placeholderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    placeholderLabel.text = kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
+    [chromeView addSubview:placeholderLabel];
+    _placeholderLabel = placeholderLabel;
+
+    UIImageView *sparkleView =
+        [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"sparkles"
+                                                         pointSize:12
+                                                            weight:UIImageSymbolWeightSemibold
+                                                             scale:UIImageSymbolScaleMedium
+                                                           palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
+                                                      makeTemplate:YES]];
+    sparkleView.translatesAutoresizingMaskIntoConstraints = NO;
+    sparkleView.contentMode = UIViewContentModeScaleAspectFit;
+    sparkleView.tintColor =
+        [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.82];
+    [chromeView addSubview:sparkleView];
+    _sparkleView = sparkleView;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [chromeView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [chromeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [chromeView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+        [blurView.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
+
+        [badgeView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:6.0],
+        [badgeView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
+        [badgeView.heightAnchor constraintEqualToConstant:20.0],
+
+        [badgeLabel.topAnchor constraintEqualToAnchor:badgeView.topAnchor constant:2.0],
+        [badgeLabel.bottomAnchor constraintEqualToAnchor:badgeView.bottomAnchor constant:-2.0],
+        [badgeLabel.leadingAnchor constraintEqualToAnchor:badgeView.leadingAnchor constant:8.0],
+        [badgeLabel.trailingAnchor constraintEqualToAnchor:badgeView.trailingAnchor constant:-8.0],
+
+        [searchIconView.leadingAnchor constraintEqualToAnchor:badgeView.trailingAnchor constant:9.0],
+        [searchIconView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
+        [searchIconView.widthAnchor constraintEqualToConstant:15.0],
+        [searchIconView.heightAnchor constraintEqualToConstant:15.0],
+
+        [sparkleView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-10.0],
+        [sparkleView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
+        [sparkleView.widthAnchor constraintEqualToConstant:14.0],
+        [sparkleView.heightAnchor constraintEqualToConstant:14.0],
+
+        [placeholderLabel.leadingAnchor constraintEqualToAnchor:searchIconView.trailingAnchor constant:7.0],
+        [placeholderLabel.trailingAnchor constraintEqualToAnchor:sparkleView.leadingAnchor constant:-8.0],
+        [placeholderLabel.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor]
+    ]];
+
+    return self;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    _chromeView.layer.cornerRadius = CGRectGetHeight(self.bounds) * 0.5;
+    _gradientLayer.frame = _chromeView.bounds;
+    _shineLayer.frame = CGRectInset(_chromeView.bounds, -24.0, 0.0);
+    self.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                   cornerRadius:CGRectGetHeight(self.bounds) * 0.5].CGPath;
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+
+    if (!self.window) {
+        [_shineLayer removeAnimationForKey:@"pp.home.smartSearch.shine"];
+        [_sparkleView.layer removeAnimationForKey:@"pp.home.smartSearch.sparkle"];
+        _ambientAnimationsConfigured = NO;
+        return;
+    }
+
+    if (_ambientAnimationsConfigured) {
+        return;
+    }
+
+    _ambientAnimationsConfigured = YES;
+
+    CABasicAnimation *shine = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    shine.fromValue = @(-80.0);
+    shine.toValue = @(CGRectGetWidth(self.bounds) + 80.0);
+    shine.duration = 2.8;
+    shine.repeatCount = HUGE_VALF;
+    shine.timingFunction =
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [_shineLayer addAnimation:shine forKey:@"pp.home.smartSearch.shine"];
+
+    CABasicAnimation *sparkle = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    sparkle.fromValue = @(0.96);
+    sparkle.toValue = @(1.10);
+    sparkle.duration = 1.1;
+    sparkle.autoreverses = YES;
+    sparkle.repeatCount = HUGE_VALF;
+    sparkle.timingFunction =
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [_sparkleView.layer addAnimation:sparkle forKey:@"pp.home.smartSearch.sparkle"];
+}
+
+- (void)setQueryText:(NSString *)text animated:(BOOL)animated
+{
+    NSString *safeText = PPSafeString(text);
+    if (safeText.length == 0) {
+        safeText = kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
+    }
+    if ([_placeholderLabel.text isEqualToString:safeText]) {
+        return;
+    }
+
+    self.accessibilityValue = safeText;
+
+    if (!animated) {
+        _placeholderLabel.text = safeText;
+        return;
+    }
+
+    [UIView animateWithDuration:0.16
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, -1.5);
+        self->_placeholderLabel.alpha = 0.72;
+    } completion:^(__unused BOOL finished) {
+        [UIView transitionWithView:self->_placeholderLabel
+                          duration:0.26
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionCurveEaseInOut
+                        animations:^{
+            self->_placeholderLabel.text = safeText;
+        } completion:nil];
+
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn
+                         animations:^{
+            self->_placeholderLabel.transform = CGAffineTransformIdentity;
+            self->_placeholderLabel.alpha = 1.0;
+        } completion:nil];
+    }];
+
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseInOut
+                     animations:^{
+        self->_sparkleView.transform = CGAffineTransformMakeScale(1.10, 1.10);
+    } completion:^(__unused BOOL finished) {
+        [UIView animateWithDuration:0.20
+                         animations:^{
+            self->_sparkleView.transform = CGAffineTransformIdentity;
+        }];
+    }];
+}
+
 @end
 
 static NSString * const PPNearbySelectedLatitudeKey = @"pp.home.nearby.latitude";
@@ -215,6 +500,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (NSString *)pp_completedLastHomeOrderSeenOrderIDDefaultsKey;
 - (NSString *)pp_completedLastHomeOrderSeenSessionDefaultsKey;
 - (void)pp_setCurrentOrdersExpanded:(BOOL)expanded animated:(BOOL)animated;
+- (void)pp_scrollCurrentOrdersSectionIntoViewAnimated:(BOOL)animated;
 - (NSString *)pp_homeRelativeDateString:(NSDate *)date;
 - (NSString *)pp_homeShortDateString:(NSDate *)date;
 - (nullable PPOrder *)pp_featuredHomeOrder;
@@ -238,6 +524,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeProfileItem;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeCartItem;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
+@property (nonatomic, strong, nullable) PPHomeSmartSearchTitleView *homeSmartSearchView;
+@property (nonatomic, strong, nullable) NSTimer *homeSmartSearchTimer;
+@property (nonatomic, copy) NSArray<NSString *> *homeSmartSearchPlaceholders;
+@property (nonatomic, assign) NSInteger homeSmartSearchPlaceholderIndex;
 @property (nonatomic, assign) BOOL didRegisterTimeChangeObserver;
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *blurHashCache;
 @property (nonatomic, strong) dispatch_queue_t blurHashQueue;
@@ -260,6 +550,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_layoutBackgroundLayers;
 - (void)pp_startBackgroundAnimationsIfNeeded;
 - (void)pp_stopBackgroundAnimations;
+- (CGFloat)pp_preferredNavigationSearchWidth;
+- (UIView *)pp_navigationSmartSearchTitleView;
+- (void)pp_openSmartSearch;
+- (NSArray<NSString *> *)pp_resolvedHomeSmartSearchPlaceholders;
+- (NSString *)pp_currentHomeSmartSearchPlaceholder;
+- (void)pp_updateHomeSmartSearchPlaceholderAnimated:(BOOL)animated;
+- (void)pp_startHomeSmartSearchTimerIfNeeded;
+- (void)pp_stopHomeSmartSearchTimer;
+- (void)pp_advanceHomeSmartSearchPlaceholder;
 
 @end
 
@@ -542,8 +841,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     // ✅ Sections ALWAYS visible
     [snapshot appendSectionsWithIdentifiers:@[
         @(PPHomeSectionHero),
-        @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionServices),
+        @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
@@ -559,12 +858,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [snapshot appendItemsWithIdentifiers:@[heroItem]
                intoSectionWithIdentifier:@(PPHomeSectionHero)];
 
-    // ✅ Current Orders (right after hero)
-    NSArray<PPHomeItem *> *currentOrderItems = [self pp_homeCurrentOrderItems];
-    [snapshot appendItemsWithIdentifiers:currentOrderItems
-               intoSectionWithIdentifier:@(PPHomeSectionCurrentOrders)];
-
-    // ✅ Services (static)
+    // ✅ Services (right after hero)
     NSMutableArray *services = [NSMutableArray array];
     for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
         PPHomeItem *item = [PPHomeItem new];
@@ -573,6 +867,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
     [snapshot appendItemsWithIdentifiers:services
                intoSectionWithIdentifier:@(PPHomeSectionServices)];
+
+    // ✅ Current Orders (after services)
+    NSArray<PPHomeItem *> *currentOrderItems = [self pp_homeCurrentOrderItems];
+    [snapshot appendItemsWithIdentifiers:currentOrderItems
+               intoSectionWithIdentifier:@(PPHomeSectionCurrentOrders)];
     
     // ✅ Carousel placeholder (always present)
     PPHomeItem *carouselPlaceholder = [PPHomeItem new];
@@ -1548,6 +1847,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             return nil;
         }
 
+        if ([self pp_isActiveHomeOrder:order]) {
+            return order;
+        }
+
         NSDate *createdDate = order.createdAt ?: order.updatedAt;
         if ([createdDate isKindOfClass:NSDate.class]) {
             NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:createdDate];
@@ -2447,7 +2750,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         }
 
         case PPHomeSectionCurrentOrders: {
-            cfg.hidden = !(self.currentOrdersLoading || [self pp_featuredHomeOrder] != nil);
+            cfg.hidden = !self.isCurrentOrdersExpanded ||
+                         !(self.currentOrdersLoading || [self pp_featuredHomeOrder] != nil);
             cfg.title = kLang(@"Home_LastOrderTitle");
             cfg.subtitle = kLang(@"Home_LastOrderSubtitle");
             cfg.actionTitle = kLang(@"OrderHistory");
@@ -2655,6 +2959,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                 __strong typeof(weakHome) self = weakHome;
                 if (!self) return;
                 [self handleSeeAllForSection:PPHomeSectionCurrentOrders];
+            };
+            cell.onCollapseTap = ^{
+                __strong typeof(weakHome) self = weakHome;
+                if (!self) return;
+                BOOL shouldExpand = !self.isCurrentOrdersExpanded;
+                [self pp_setCurrentOrdersExpanded:shouldExpand animated:YES];
+                if (shouldExpand) {
+                    [self pp_scrollCurrentOrdersSectionIntoViewAnimated:YES];
+                }
             };
             return cell;
         }
@@ -3431,27 +3744,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         }
     };
 
-    // ── Order peek strip (one-line banner below hero) ──
-    PPOrder *featuredOrder = [self pp_featuredHomeOrder];
-    if (featuredOrder && [self pp_isActiveHomeOrder:featuredOrder]) {
-        NSArray<NSString *> *imageURLs = [self pp_homeOrderPreviewImageURLs:featuredOrder limit:1];
-        NSString *firstImageURL = imageURLs.count > 0 ? imageURLs.firstObject : nil;
-
-        [cell configureOrderPeekWithReference:[featuredOrder displayOrderReference]
-                                  statusTitle:[self pp_homeOrderStatusTitle:featuredOrder]
-                                  statusColor:[self pp_homeOrderStatusColor:featuredOrder]
-                              previewImageURL:firstImageURL
-                                     animated:YES];
-
-        cell.onOrderPeekTap = ^{
-            __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-            [self pp_openOrderDetailsForOrder:featuredOrder];
-        };
-    } else {
-        [cell hideOrderPeek:NO];
-        cell.onOrderPeekTap = nil;
-    }
+    [cell hideOrderPeek:NO];
+    cell.onOrderPeekTap = nil;
 }
 
 - (void)refreshHeroSectionAppearance
@@ -3663,54 +3957,93 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (void)pp_setCurrentOrdersExpanded:(BOOL)expanded animated:(BOOL)animated
 {
-    if (!self.collectionView || !self.layoutManager) {
-        self.isCurrentOrdersExpanded = expanded;
-        return;
-    }
-
     if (self.isCurrentOrdersExpanded == expanded &&
-        self.layoutManager.isCurrentOrdersExpanded == expanded) {
+        (!self.layoutManager || self.layoutManager.isCurrentOrdersExpanded == expanded)) {
+        [self refreshHeroSectionAppearance];
         return;
     }
 
     self.isCurrentOrdersExpanded = expanded;
-    self.layoutManager.isCurrentOrdersExpanded = expanded;
 
-    NSIndexPath *currentOrderIndexPath = nil;
+    if (!self.collectionView || !self.layoutManager) {
+        [self refreshHeroSectionAppearance];
+        return;
+    }
+
     NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionCurrentOrders];
-    if (sectionIndex != NSNotFound) {
+    NSIndexPath *currentOrderIndexPath = nil;
+    if (sectionIndex != NSNotFound &&
+        [self.collectionView numberOfItemsInSection:sectionIndex] > 0) {
         currentOrderIndexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
-        UICollectionViewCell *visibleCell =
-            [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
-        if ([visibleCell isKindOfClass:PPHomeOrderStatusCell.class]) {
-            [(PPHomeOrderStatusCell *)visibleCell setExpandedState:expanded animated:animated];
-        }
     }
 
-    [self invalidateHeaderForSection:PPHomeSectionCurrentOrders];
+    PPHomeOrderStatusCell *visibleOrderCell =
+        currentOrderIndexPath
+        ? (PPHomeOrderStatusCell *)[self.collectionView cellForItemAtIndexPath:currentOrderIndexPath]
+        : nil;
+    if (![visibleOrderCell isKindOfClass:PPHomeOrderStatusCell.class]) {
+        visibleOrderCell = nil;
+    }
 
-    UICollectionViewCompositionalLayout *newLayout = [self.layoutManager buildLayout];
-
-    // Capture scroll position to prevent layout jump
+    self.layoutManager.isCurrentOrdersExpanded = expanded;
     CGPoint savedOffset = self.collectionView.contentOffset;
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    [self.collectionView setCollectionViewLayout:newLayout animated:NO];
-    self.collectionView.contentOffset = savedOffset;
-    [self.collectionView layoutIfNeeded];
-    [CATransaction commit];
-
-    // Force layout + decorative layer refresh on the order cell
-    if (currentOrderIndexPath) {
-        UICollectionViewCell *visibleCell =
-            [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
-        if ([visibleCell isKindOfClass:PPHomeOrderStatusCell.class]) {
-            [visibleCell setNeedsLayout];
-            [visibleCell layoutIfNeeded];
-            [(PPHomeOrderStatusCell *)visibleCell refreshDecorativeLayersForCurrentBounds];
-        }
+    UICollectionViewCompositionalLayout *newLayout = [self.layoutManager buildLayout];
+    [self refreshHeroSectionAppearance];
+    if (visibleOrderCell) {
+        [visibleOrderCell setExpandedState:expanded animated:animated];
     }
+
+    __weak typeof(self) weakSelf = self;
+    [self.collectionView setCollectionViewLayout:newLayout
+                                        animated:animated
+                                      completion:^(__unused BOOL finished) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        self.collectionView.contentOffset = savedOffset;
+
+        if (!currentOrderIndexPath) {
+            return;
+        }
+
+        UICollectionViewCell *updatedCell =
+            [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
+        if (![updatedCell isKindOfClass:PPHomeOrderStatusCell.class]) {
+            return;
+        }
+
+        PPHomeOrderStatusCell *updatedOrderCell = (PPHomeOrderStatusCell *)updatedCell;
+        if (updatedOrderCell != visibleOrderCell) {
+            [updatedOrderCell setExpandedState:expanded animated:NO];
+        }
+
+        [updatedOrderCell refreshDecorativeLayersForCurrentBounds];
+    }];
+}
+
+- (void)pp_scrollCurrentOrdersSectionIntoViewAnimated:(BOOL)animated
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionCurrentOrders];
+        if (sectionIndex == NSNotFound || [self.collectionView numberOfItemsInSection:sectionIndex] == 0) {
+            return;
+        }
+
+        NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
+        UICollectionViewLayoutAttributes *attributes =
+            [self.collectionView layoutAttributesForItemAtIndexPath:indexPath];
+        if (attributes) {
+            CGRect targetRect = CGRectInset(attributes.frame, 0.0, -18.0);
+            [self.collectionView scrollRectToVisible:targetRect animated:animated];
+            return;
+        }
+
+        [self.collectionView scrollToItemAtIndexPath:indexPath
+                                    atScrollPosition:UICollectionViewScrollPositionTop
+                                            animated:animated];
+    });
 }
 
 
@@ -3874,6 +4207,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [[PPHomePromoCarouselManager sharedManager] stopListening];
     [self pp_stopCurrentOrdersListener];
     [self stopNearbyRefreshTimer];
+    [self pp_stopHomeSmartSearchTimer];
     self.collectionView.prefetchDataSource = nil;
     [[PPImageLoaderManager shared] cancelAllPrefetching];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -3981,7 +4315,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                 return;
             }
             [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
-            [self pp_setCurrentOrdersExpanded:!self.isCurrentOrdersExpanded animated:YES];
+            [self pp_openOrderDetailsForOrder:(PPOrder *)item.payload];
             return;
         }
             
@@ -4416,8 +4750,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             self.didAutoScrollSuggestions = YES;
         });
     }
-
-    self.navigationItem.titleView = nil;
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -4429,6 +4761,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.lastObservedHomeOrderStatusKey = nil;
     [self pp_stopCurrentOrdersListener];
     [self stopNearbyRefreshTimer];
+    [self pp_stopHomeSmartSearchTimer];
 }
 
 // Show bottom card with haptic feedback
@@ -4508,7 +4841,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)configureNavigationBar {
      self.navigationItem.title = nil;
-    self.navigationItem.titleView = nil;
+    UIView *centerView= [self pp_navigationSmartSearchTitleView];
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
 
     UIImage *cartImage =
@@ -4531,11 +4864,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     self.navigationItem.leftBarButtonItems  = @[profileItem];
     self.navigationItem.rightBarButtonItems = @[self.homeCartItem];
+    [self pp_updateHomeSmartSearchPlaceholderAnimated:NO];
+    [self pp_startHomeSmartSearchTimerIfNeeded];
 
     // 🔔 Notify cart change (already your system)
     [[NSNotificationCenter defaultCenter]
         postNotificationName:kCartUpdatedNotification
                       object:nil];
+    
+    [self pp_navBarSetTitleViewCentered:centerView];
 }
 
 
@@ -4675,6 +5012,146 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     
     self.navigationItem.rightBarButtonItems = items.copy;
+}
+
+- (CGFloat)pp_preferredNavigationSearchWidth
+{
+    CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
+    return MIN(MAX(screenWidth - 168.0, 184.0), 248.0);
+}
+
+- (UIView *)pp_navigationSmartSearchTitleView
+{
+    CGFloat width = [self pp_preferredNavigationSearchWidth];
+    if (!self.homeSmartSearchView) {
+        self.homeSmartSearchView =
+            [[PPHomeSmartSearchTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 40.0)];
+        [self.homeSmartSearchView addTarget:self
+                                     action:@selector(pp_openSmartSearch)
+                           forControlEvents:UIControlEventTouchUpInside];
+    }
+
+    CGRect frame = self.homeSmartSearchView.frame;
+    frame.size.width = width;
+    frame.size.height = 40.0;
+    self.homeSmartSearchView.frame = frame;
+    return self.homeSmartSearchView;
+}
+
+- (void)pp_openSmartSearch
+{
+    UINavigationController *nav = self.navigationController;
+    PPSearchViewController *searchVC = nil;
+
+    for (UIViewController *vc in nav.viewControllers.reverseObjectEnumerator) {
+        if ([vc isKindOfClass:PPSearchViewController.class]) {
+            searchVC = (PPSearchViewController *)vc;
+            break;
+        }
+    }
+
+    if (searchVC) {
+        if (nav.topViewController != searchVC) {
+            [nav popToViewController:searchVC animated:YES];
+        }
+    } else {
+        searchVC = [PPSearchViewController new];
+        [PPHomeHelper pushViewControllerSafely:searchVC from:self animated:YES];
+    }
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.28 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        [searchVC focusSearchField];
+    });
+}
+
+- (NSArray<NSString *> *)pp_resolvedHomeSmartSearchPlaceholders
+{
+    if (self.homeSmartSearchPlaceholders.count > 0) {
+        return self.homeSmartSearchPlaceholders;
+    }
+
+    NSMutableArray<NSString *> *items = [NSMutableArray array];
+    NSArray<NSString *> *candidates = @[
+        kLang(@"home_nav_search_example_cats") ?: @"Cats for sale",
+        kLang(@"home_nav_search_example_vets") ?: @"Nearby vets",
+        kLang(@"home_nav_search_example_food") ?: @"Dog food",
+        kLang(@"home_nav_search_example_accessories") ?: @"Pet accessories"
+    ];
+
+    for (NSString *item in candidates) {
+        NSString *safeItem = PPSafeString(item);
+        if (safeItem.length > 0) {
+            [items addObject:safeItem];
+        }
+    }
+
+    if (items.count == 0) {
+        [items addObject:(kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets")];
+    }
+
+    self.homeSmartSearchPlaceholders = items.copy;
+    self.homeSmartSearchPlaceholderIndex = 0;
+    return self.homeSmartSearchPlaceholders;
+}
+
+- (NSString *)pp_currentHomeSmartSearchPlaceholder
+{
+    NSArray<NSString *> *placeholders = [self pp_resolvedHomeSmartSearchPlaceholders];
+    if (placeholders.count == 0) {
+        return kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
+    }
+
+    NSInteger safeIndex = MAX(0, MIN(self.homeSmartSearchPlaceholderIndex,
+                                     (NSInteger)placeholders.count - 1));
+    return placeholders[safeIndex];
+}
+
+- (void)pp_updateHomeSmartSearchPlaceholderAnimated:(BOOL)animated
+{
+    if (!self.homeSmartSearchView) {
+        return;
+    }
+
+    [self.homeSmartSearchView setQueryText:[self pp_currentHomeSmartSearchPlaceholder]
+                                  animated:animated];
+}
+
+- (void)pp_startHomeSmartSearchTimerIfNeeded
+{
+    [self pp_updateHomeSmartSearchPlaceholderAnimated:NO];
+
+    NSArray<NSString *> *placeholders = [self pp_resolvedHomeSmartSearchPlaceholders];
+    if (placeholders.count <= 1 || self.homeSmartSearchTimer) {
+        return;
+    }
+
+    NSTimer *timer =
+        [NSTimer timerWithTimeInterval:2.4
+                                target:self
+                              selector:@selector(pp_advanceHomeSmartSearchPlaceholder)
+                              userInfo:nil
+                               repeats:YES];
+    [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+    self.homeSmartSearchTimer = timer;
+}
+
+- (void)pp_stopHomeSmartSearchTimer
+{
+    [self.homeSmartSearchTimer invalidate];
+    self.homeSmartSearchTimer = nil;
+}
+
+- (void)pp_advanceHomeSmartSearchPlaceholder
+{
+    NSArray<NSString *> *placeholders = [self pp_resolvedHomeSmartSearchPlaceholders];
+    if (placeholders.count == 0) {
+        return;
+    }
+
+    self.homeSmartSearchPlaceholderIndex =
+        (self.homeSmartSearchPlaceholderIndex + 1) % placeholders.count;
+    [self pp_updateHomeSmartSearchPlaceholderAnimated:YES];
 }
  
 #pragma mark - Navigation Logo Title View
@@ -5403,6 +5880,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (self.pp_backgroundCanvasView &&
         !CGRectEqualToRect(self.pp_backgroundCanvasView.bounds, CGRectZero)) {
         //[self pp_layoutBackgroundLayers];
+    }
+
+    if (self.homeSmartSearchView) {
+        CGRect frame = self.homeSmartSearchView.frame;
+        frame.size.width = [self pp_preferredNavigationSearchWidth];
+        frame.size.height = 40.0;
+        self.homeSmartSearchView.frame = frame;
     }
 }
 

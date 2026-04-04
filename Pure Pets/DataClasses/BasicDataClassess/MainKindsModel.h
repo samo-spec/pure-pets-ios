@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithId:(NSString *)mainKindID dictionary:(NSDictionary *)dictionary;
 @property (nonatomic, strong, nullable) NSString *KindImageUrl;
 @property (nonatomic, strong, nullable) NSString *KindIconName;
+@property (nonatomic, strong, nullable) NSString *PetColor;
 @property (nonatomic, strong) UIImage *KindImageFile;
 @property (nonatomic, assign) float LightenAmount;
 @property (nonatomic, assign) float professionalAngle;

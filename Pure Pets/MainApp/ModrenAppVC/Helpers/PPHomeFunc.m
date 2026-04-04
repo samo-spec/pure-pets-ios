@@ -66,16 +66,15 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
 
-    // Bottom inset accommodates the order peek strip (38pt strip, 14pt overlap → 24pt below cell)
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(14.0, PPSize16, 26.0, PPSize16);
+    NSDirectionalEdgeInsetsMake(14.0, PPSize16, 12.0, PPSize16);
 
     return section;
 }
 
 + (NSCollectionLayoutSection *)currentOrdersSection
 {
-    return [self currentOrdersSectionExpanded:YES];
+    return [self currentOrdersSectionExpanded:NO];
 }
 
 + (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded
