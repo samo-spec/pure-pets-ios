@@ -137,6 +137,7 @@
     chromeView.layer.masksToBounds = YES;
     [self addSubview:chromeView];
     _chromeView = chromeView;
+    [chromeView.heightAnchor constraintEqualToConstant:40.0].active = YES;
 
     UIVisualEffectView *blurView =
         [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
