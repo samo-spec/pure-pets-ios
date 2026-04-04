@@ -806,7 +806,7 @@
 "PaymentMethodTitle" = "طريقة الدفع";
 "AddPaymentTitle" = "إضافة وسيلة دفع";
 "EditPaymentTitle" = "تعديل وسيلة الدفع";
-"PaymentFormTitle" = "إضافة وسيلة دفع جديدة";
+"PaymentFormTitle" = "إختر وسيلة الدفع";
 "BillingAddressTitle" = "عنوان الفاتورة";
 "CardInformationTitle" = "معلومات البطاقة";
 "PaymentMethodFooter" = "لن يتم خصم أي مبلغ حتى تقوم بعملية شراء.";
@@ -919,7 +919,7 @@
 "YouCanEditFieldsBelow" = "يمكنك تعديل تفاصيل وسيلة الدفع أدناه.";
 
 /* -------------------- HINTS -------------------- */
-"PaymentHintAddNew" = "لإضافة وسيلة دفع جديدة، اضغط على بطاقة +.";
+"PaymentHintAddNew" = "إختر وسيلة الدفع المناسبة";
 "PaymentHintMoreOptions" = "للمزيد من الخيارات، اضغط مطولاً على وسيلة الدفع.";
 
 "Credit / Debit Card" = "بطاقة ائتمان / خصم مباشر";

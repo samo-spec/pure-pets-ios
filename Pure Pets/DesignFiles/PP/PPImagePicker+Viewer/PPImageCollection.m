@@ -396,6 +396,122 @@
     }
 }
 
+- (NSString *)pp_localizedSheetStringForKey:(NSString *)key fallback:(NSString *)fallback
+{
+    if (![key isKindOfClass:[NSString class]] || key.length == 0) {
+        return fallback ?: @"";
+    }
+
+    NSString *localized = kLang(key);
+    if ([localized isKindOfClass:[NSString class]]) {
+        NSString *trimmed =
+            [localized stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (trimmed.length > 0 && ![trimmed isEqualToString:key]) {
+            return localized;
+        }
+    }
+
+    return fallback ?: @"";
+}
+
+- (BOOL)pp_isMediaPickerViewController:(UIViewController *)viewController
+{
+    if (!viewController) {
+        return NO;
+    }
+
+    if ([viewController isKindOfClass:[QBImagePickerController class]] ||
+        [viewController isKindOfClass:[UIImagePickerController class]] ||
+        [viewController isKindOfClass:[UIDocumentPickerViewController class]]) {
+        return YES;
+    }
+
+    NSString *className = NSStringFromClass(viewController.class);
+    return [className containsString:@"PhotoPickerController"];
+}
+
+- (BOOL)pp_hasActiveMediaPresentation
+{
+    UIWindow *window = self.window ?: [self pp_parentViewController].view.window ?: AppMgr.topViewController.view.window;
+    UIViewController *cursor = window.rootViewController ?: [self pp_parentViewController] ?: AppMgr.topViewController;
+
+    while (cursor) {
+        if ([self pp_isMediaPickerViewController:cursor]) {
+            return YES;
+        }
+        cursor = cursor.presentedViewController;
+    }
+
+    return NO;
+}
+
+- (void)pp_resetMediaPresentationState
+{
+    self.currentPicker = nil;
+    self.cameraPicker = nil;
+    self.isPresentingMediaPicker = NO;
+    [self pp_cancelLoadingTimeoutIfNeeded];
+}
+
+- (void)pp_scheduleMediaPresentationResetWithAttempts:(NSInteger)attempts
+{
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.12 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        if ([self pp_hasActiveMediaPresentation] && attempts > 0) {
+            [self pp_scheduleMediaPresentationResetWithAttempts:(attempts - 1)];
+            return;
+        }
+
+        [self pp_resetMediaPresentationState];
+    });
+}
+
+- (void)pp_performMediaPresentationAction:(dispatch_block_t)action attempt:(NSInteger)attempt
+{
+    if (!action) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.08 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        [self pp_resetStalePresentingFlagIfNeeded];
+        UIViewController *readyVC = [self pp_bestPresentingViewController:nil];
+        BOOL hostBusy = (readyVC == nil) ||
+                        readyVC.presentedViewController != nil ||
+                        readyVC.isBeingPresented ||
+                        readyVC.isBeingDismissed ||
+                        self.isPresentingMediaPicker;
+        if (hostBusy) {
+            if (attempt < 18) {
+                [self pp_performMediaPresentationAction:action attempt:(attempt + 1)];
+            }
+            return;
+        }
+
+        action();
+    });
+}
+
+- (BOOL)pp_notificationBelongsToCurrentPhotoPicker:(NSNotification *)notification
+{
+    if (notification.object) {
+        return (notification.object == self.photoPickerBridge);
+    }
+    return self.isPresentingMediaPicker;
+}
+
 - (void)setTitle:(NSString *)title icon:(UIImage *)icon {
     _titleText = [title copy];
     _titleLabel.text = _titleText;
@@ -551,26 +667,35 @@
     NSMutableArray<OptionModel *> *options = [NSMutableArray array];
 
     OptionModel *libraryOption = [OptionModel optionWithID:@"photo_library"
-                                                     title:kLang(@"Photo_Library")
+                                                     title:[self pp_localizedSheetStringForKey:@"Photo_Library"
+                                                                                      fallback:@"Photo Library"]
                                                systemImage:@"photo.on.rectangle.angled"];
-    libraryOption.subtitle = kLang(@"choose_from_gallery");
+    libraryOption.subtitle = [self pp_localizedSheetStringForKey:@"choose_from_gallery"
+                                                        fallback:@"Choose from gallery"];
     [options addObject:libraryOption];
 
     if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
         OptionModel *cameraOption = [OptionModel optionWithID:@"camera"
-                                                        title:kLang(@"Camera")
+                                                        title:[self pp_localizedSheetStringForKey:@"Camera"
+                                                                                         fallback:@"Camera"]
                                                   systemImage:@"camera.fill"];
-        cameraOption.subtitle = kLang(@"take_a_photo");
+        cameraOption.subtitle = [self pp_localizedSheetStringForKey:@"take_a_photo"
+                                                           fallback:@"Take a photo"];
         [options addObject:cameraOption];
     }
 
     OptionModel *filesOption = [OptionModel optionWithID:@"files"
-                                                   title:kLang(@"files")
+                                                   title:[self pp_localizedSheetStringForKey:@"files"
+                                                                                    fallback:@"Files"]
                                              systemImage:@"folder.fill"];
-    filesOption.subtitle = kLang(@"browse_files");
+    filesOption.subtitle = [self pp_localizedSheetStringForKey:@"browse_files"
+                                                      fallback:@"Browse files"];
     [options addObject:filesOption];
 
-    NSString *sheetTitle = self.titleText.length > 0 ? self.titleText : kLang(@"add.images.here");
+    NSString *sheetTitle =
+        self.titleText.length > 0
+        ? self.titleText
+        : [self pp_localizedSheetStringForKey:@"add.images.here" fallback:@"Add images here"];
 
     __weak typeof(self) weakSelf = self;
     PPSelectOptionViewController *optionVC =
@@ -584,22 +709,23 @@
         OptionModel *selected = (OptionModel *)selectedObject;
         UIViewController *anchorVC = [weakSelf pp_bestPresentingViewController:nil] ?: presentingVC;
 
-        if ([selected.optID isEqualToString:@"photo_library"]) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
-                           dispatch_get_main_queue(), ^{
-                [weakSelf openGalleryPickerFromViewController:anchorVC];
-            });
-        } else if ([selected.optID isEqualToString:@"camera"]) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
-                           dispatch_get_main_queue(), ^{
-                [weakSelf openCameraFromViewController:anchorVC];
-            });
-        } else if ([selected.optID isEqualToString:@"files"]) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)),
-                           dispatch_get_main_queue(), ^{
-                [weakSelf openFilesPickerFromViewController:anchorVC];
-            });
-        }
+        [weakSelf pp_performMediaPresentationAction:^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+
+            UIViewController *targetPresenter =
+                [self pp_bestPresentingViewController:anchorVC] ?: [self pp_bestPresentingViewController:nil];
+
+            if ([selected.optID isEqualToString:@"photo_library"]) {
+                [self openGalleryPickerFromViewController:targetPresenter];
+            } else if ([selected.optID isEqualToString:@"camera"]) {
+                [self openCameraFromViewController:targetPresenter];
+            } else if ([selected.optID isEqualToString:@"files"]) {
+                [self openFilesPickerFromViewController:targetPresenter];
+            }
+        } attempt:0];
     }];
 
     [presentingVC presentViewController:optionVC animated:YES completion:nil];
@@ -929,8 +1055,7 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         vc = vc.presentingViewController ?: vc;
     }
 
-    if ([vc isKindOfClass:[QBImagePickerController class]] ||
-        [vc isKindOfClass:[UIImagePickerController class]]) {
+    if ([self pp_isMediaPickerViewController:vc]) {
         return nil;
     }
 
@@ -963,21 +1088,14 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 - (void)pp_resetStalePresentingFlagIfNeeded
 {
     if (!self.isPresentingMediaPicker) return;
-    if (self.currentPicker || self.cameraPicker) return;
-
-    UIViewController *parent = [self pp_parentViewController];
-    if (!parent) {
-        // No parent VC → flag is certainly stale
-        self.isPresentingMediaPicker = NO;
+    if ([self pp_hasActiveMediaPresentation]) {
         return;
     }
 
-    // Walk up the presented chain — if no picker is found, flag is stale
-    UIViewController *presented = parent.presentedViewController;
-    if (!presented) {
+    if (self.currentPicker || self.cameraPicker || self.isPresentingMediaPicker) {
         NSLog(@"[PPImageCollection] Self-healing: resetting stale isPresentingMediaPicker flag");
-        self.isPresentingMediaPicker = NO;
     }
+    [self pp_resetMediaPresentationState];
 }
 
 - (void)openGalleryPickerFromViewController:(UIViewController *)viewController
@@ -1104,8 +1222,10 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
     if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
         [self presentSimpleAlertOn:viewController
-                             title:kLang(@"Camera")
-                           message:kLang(@"camera_not_available")];
+                             title:[self pp_localizedSheetStringForKey:@"Camera"
+                                                              fallback:@"Camera"]
+                           message:[self pp_localizedSheetStringForKey:@"camera_not_available"
+                                                              fallback:@"Camera is not available on this device."]];
         return;
     }
 
@@ -1131,15 +1251,10 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         return YES;
     }
 
-    NSString *title = kLang(@"max_images_reached");
-    if (![title isKindOfClass:[NSString class]] || title.length == 0 || [title isEqualToString:@"max_images_reached"]) {
-        title = @"Maximum images reached";
-    }
-
-    NSString *hintPrefix = kLang(@"max_images_hint");
-    if (![hintPrefix isKindOfClass:[NSString class]] || hintPrefix.length == 0 || [hintPrefix isEqualToString:@"max_images_hint"]) {
-        hintPrefix = @"You can upload up to";
-    }
+    NSString *title = [self pp_localizedSheetStringForKey:@"max_images_reached"
+                                                 fallback:@"Maximum images reached"];
+    NSString *hintPrefix = [self pp_localizedSheetStringForKey:@"max_images_hint"
+                                                      fallback:@"Maximum allowed images:"];
 
     NSString *message = [NSString stringWithFormat:@"%@ %ld", hintPrefix, (long)self.maxImageCount];
     [self presentSimpleAlertOn:viewController title:title message:message];
@@ -1214,7 +1329,8 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     [UIAlertController alertControllerWithTitle:finalTitle
                                         message:finalMessage
                                  preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"OK")
+    [alert addAction:[UIAlertAction actionWithTitle:[self pp_localizedSheetStringForKey:@"OK"
+                                                                               fallback:@"OK"]
                                               style:UIAlertActionStyleDefault
                                             handler:nil]];
     [viewController presentViewController:alert animated:YES completion:nil];
@@ -1254,7 +1370,7 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 - (void)documentPicker:(UIDocumentPickerViewController *)controller
 didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
 {
-    self.isPresentingMediaPicker = NO;
+    [self pp_resetMediaPresentationState];
     if (urls.count == 0) return;
 
     NSInteger availableSlots = self.maxImageCount - [self imageCount];
@@ -1274,7 +1390,7 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
 
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller
 {
-    self.isPresentingMediaPicker = NO;
+    [self pp_resetMediaPresentationState];
 }
 
 #pragma mark - QBImagePickerControllerDelegate
@@ -1339,8 +1455,7 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
     }
 
     [picker dismissViewControllerAnimated:YES completion:^{
-        self.isPresentingMediaPicker = NO;
-        self.cameraPicker = nil;
+        [self pp_resetMediaPresentationState];
         [self pp_hideLoadingOverlay];
     }];
 }
@@ -1348,8 +1463,7 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker
 {
     [picker dismissViewControllerAnimated:YES completion:^{
-        self.isPresentingMediaPicker = NO;
-        self.cameraPicker = nil;
+        [self pp_resetMediaPresentationState];
         [self pp_hideLoadingOverlay];
     }];
 }
@@ -1360,19 +1474,14 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
         self.currentPicker = nil;
         self.cameraPicker = nil;
         [picker dismissViewControllerAnimated:YES completion:^{
-            self.isPresentingMediaPicker = NO;
-            [self pp_cancelLoadingTimeoutIfNeeded];
+            [self pp_resetMediaPresentationState];
         }];
     } else {
         // HX picker path: bridge already dismissed the VC, but the dismiss
-        // animation may still be in progress. Delay flag reset to let it finish.
+        // animation may still be in progress, so poll briefly until it fully clears.
         self.currentPicker = nil;
         self.cameraPicker = nil;
-        [self pp_cancelLoadingTimeoutIfNeeded];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.4 * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{
-            self.isPresentingMediaPicker = NO;
-        });
+        [self pp_scheduleMediaPresentationResetWithAttempts:10];
     }
 }
 
@@ -1412,7 +1521,7 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 
 - (void)photoPickerDidFinish:(NSNotification *)notification
 {
-    if (!self.isPresentingMediaPicker) {
+    if (![self pp_notificationBelongsToCurrentPhotoPicker:notification]) {
         return;
     }
 
@@ -1472,7 +1581,7 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
 
 - (void)photoPickerDidCancel:(NSNotification *)notification
 {
-    if (!self.isPresentingMediaPicker) {
+    if (![self pp_notificationBelongsToCurrentPhotoPicker:notification]) {
         return;
     }
     [self pp_cancelLoadingTimeoutIfNeeded];

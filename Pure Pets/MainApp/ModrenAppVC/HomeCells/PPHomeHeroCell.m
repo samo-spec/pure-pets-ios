@@ -35,6 +35,16 @@
 @property (nonatomic, assign) NSInteger lottieLoopToken;
 @property (nonatomic, assign) PPHomeHeroLocationState currentLocationState;
 @property (nonatomic, copy) NSString *lastAnimationSignature;
+
+// Order peek strip (one-line banner below hero card)
+@property (nonatomic, strong) UIControl *orderPeekStrip;
+@property (nonatomic, strong) UIVisualEffectView *orderPeekBlurView;
+@property (nonatomic, strong) UIImageView *orderPeekThumbnail;
+@property (nonatomic, strong) UILabel *orderPeekReferenceLabel;
+@property (nonatomic, strong) UIView *orderPeekStatusDot;
+@property (nonatomic, strong) UILabel *orderPeekStatusLabel;
+@property (nonatomic, strong) UIImageView *orderPeekChevron;
+@property (nonatomic, assign) BOOL orderPeekVisible;
 @end
 
 static inline UIColor *PPBlendColors(UIColor *a, UIColor *b, CGFloat t)
@@ -280,6 +290,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.lottieHeaderView.alpha = 1.0;
     [self.heroSurfaceView addSubview:self.lottieHeaderView];
 
+    // ── Order Peek Strip (one-line banner below hero card) ──
+    [self pp_buildOrderPeekStrip];
+
     [NSLayoutConstraint activateConstraints:@[
         [self.heroShadowView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.heroShadowView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -354,11 +367,25 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.actionButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
         [self.actionButton.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-20.0],
 
-        [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-6.0],
-        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:130],
-        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:130],
+        [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-10.0],
+        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:120],
+        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:120],
         [self.lottieHeaderView.topAnchor constraintEqualToAnchor:self.statusPillView.topAnchor constant:8.0],
      ]];
+
+    // Peek strip constraints — sits below hero surface, overlapping ~14pt behind it
+    {
+        static CGFloat const kPeekStripHeight = 38.0;
+        static CGFloat const kPeekStripOverlap = 10.0;
+        [NSLayoutConstraint activateConstraints:@[
+            [self.orderPeekStrip.topAnchor constraintEqualToAnchor:self.heroShadowView.bottomAnchor constant:-kPeekStripOverlap],
+            [self.orderPeekStrip.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPSpaceLG],
+            [self.orderPeekStrip.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPSpaceLG],
+            [self.orderPeekStrip.heightAnchor constraintEqualToConstant:kPeekStripHeight],
+        ]];
+    }
+    
+    
 
     self.actionButtonHeightConstraint = [self.actionButton.heightAnchor constraintEqualToConstant:PPButtonHeightLG];
     self.actionButtonWidthConstraint = [self.actionButton.widthAnchor constraintEqualToConstant:128.0];
@@ -370,10 +397,35 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     return self;
 }
 
+- (UIBezierPath *)pp_pathForRect:(CGRect)rect
+                         topLeft:(CGFloat)tl topRight:(CGFloat)tr
+                      bottomLeft:(CGFloat)bl bottomRight:(CGFloat)br
+{
+    UIBezierPath *p = [UIBezierPath bezierPath];
+    [p moveToPoint:CGPointMake(tl, 0)];
+    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect) - tr, 0)];
+    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - tr, tr)
+                 radius:tr startAngle:-M_PI_2 endAngle:0 clockwise:YES];
+    [p addLineToPoint:CGPointMake(CGRectGetWidth(rect), CGRectGetHeight(rect) - br)];
+    [p addArcWithCenter:CGPointMake(CGRectGetWidth(rect) - br, CGRectGetHeight(rect) - br)
+                 radius:br startAngle:0 endAngle:M_PI_2 clockwise:YES];
+    [p addLineToPoint:CGPointMake(bl, CGRectGetHeight(rect))];
+    [p addArcWithCenter:CGPointMake(bl, CGRectGetHeight(rect) - bl)
+                 radius:bl startAngle:M_PI_2 endAngle:M_PI clockwise:YES];
+    [p addLineToPoint:CGPointMake(0, tl)];
+    [p addArcWithCenter:CGPointMake(tl, tl)
+                 radius:tl startAngle:M_PI endAngle:-M_PI_2 clockwise:YES];
+    [p closePath];
+    return p;
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
 
+   
+    
+    
     CGRect bounds = self.heroSurfaceView.bounds;
     if (CGRectIsEmpty(bounds)) return;
 
@@ -387,6 +439,13 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     self.orbViewA.layer.cornerRadius = CGRectGetWidth(self.orbViewA.bounds) * 0.5;
     self.orbViewB.layer.cornerRadius = CGRectGetWidth(self.orbViewB.bounds) * 0.5;
+    
+    
+    CGRect orderPeekStripbounds = self.orderPeekStrip.bounds;
+    UIBezierPath *path = [self pp_pathForRect:orderPeekStripbounds topLeft:0 topRight:0 bottomLeft:12 bottomRight:12];
+    CAShapeLayer *mask = [CAShapeLayer layer];
+    mask.path = path.CGPath;
+    self.orderPeekStrip.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
 }
 
 - (void)prepareForReuse
@@ -395,6 +454,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     self.onLocationTap = nil;
     self.onLocationActionTap = nil;
+    self.onOrderPeekTap = nil;
     self.lastAnimationSignature = nil;
     self.paletteLocationSeed = @"";
     self.locationTitleLabel.text = @"";
@@ -414,6 +474,14 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.lottieLoopToken += 1;
     [self.lottieHeaderView stop];
     self.currentLottiePath = nil;
+
+    // Reset peek strip
+    self.orderPeekVisible = NO;
+    self.orderPeekStrip.alpha = 0.0;
+    self.orderPeekStrip.transform = CGAffineTransformMakeTranslation(0.0, -24.0);
+    self.orderPeekThumbnail.image = nil;
+    self.orderPeekReferenceLabel.text = @"";
+    self.orderPeekStatusLabel.text = @"";
 }
 
 - (void)configureWithGreeting:(NSString *)greeting
@@ -1075,6 +1143,212 @@ static inline NSString *PPTrimHeroLine(NSString *line)
             [strongSelf pp_playLottieLoopWithDelay2s];
         });
     }];
+}
+
+#pragma mark - Order Peek Strip
+
+- (void)pp_buildOrderPeekStrip
+{
+    // Container — tappable control, inserted BEHIND the hero surface
+    self.orderPeekStrip = [[UIControl alloc] init];
+    self.orderPeekStrip.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekStrip.backgroundColor = UIColor.clearColor;
+    self.orderPeekStrip.layer.cornerRadius = PPCornerMedium;
+    self.orderPeekStrip.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.orderPeekStrip.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    self.orderPeekStrip.alpha = 0.0;
+    self.orderPeekStrip.transform = CGAffineTransformMakeTranslation(0.0, -24.0);
+    [self.orderPeekStrip addTarget:self action:@selector(pp_handleOrderPeekTap) forControlEvents:UIControlEventTouchUpInside];
+    [self.orderPeekStrip addTarget:self action:@selector(pp_handleInteractiveDown:) forControlEvents:UIControlEventTouchDown];
+    [self.orderPeekStrip addTarget:self action:@selector(pp_handleInteractiveUp:) forControlEvents:UIControlEventTouchUpInside];
+    [self.orderPeekStrip addTarget:self action:@selector(pp_handleInteractiveUp:) forControlEvents:UIControlEventTouchUpOutside];
+    [self.orderPeekStrip addTarget:self action:@selector(pp_handleInteractiveUp:) forControlEvents:UIControlEventTouchCancel];
+    // Insert behind heroShadowView so the overlap is hidden
+    [self.contentView insertSubview:self.orderPeekStrip belowSubview:self.heroShadowView];
+
+    // Blur background
+    UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+    self.orderPeekBlurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    self.orderPeekBlurView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekBlurView.userInteractionEnabled = NO;
+    [self.orderPeekStrip addSubview:self.orderPeekBlurView];
+
+    // Warm overlay tint
+    UIView *peekTintOverlay = [[UIView alloc] init];
+    peekTintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    peekTintOverlay.backgroundColor = [UIColor colorWithRed:0.12 green:0.10 blue:0.18 alpha:0.65];
+    peekTintOverlay.userInteractionEnabled = NO;
+    [self.orderPeekStrip addSubview:peekTintOverlay];
+
+    // Thumbnail (small circular image)
+    self.orderPeekThumbnail = [[UIImageView alloc] init];
+    self.orderPeekThumbnail.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekThumbnail.contentMode = UIViewContentModeScaleAspectFill;
+    self.orderPeekThumbnail.clipsToBounds = YES;
+    self.orderPeekThumbnail.layer.cornerRadius = 11.0;
+    self.orderPeekThumbnail.layer.masksToBounds = YES;
+    self.orderPeekThumbnail.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+    [self.orderPeekStrip addSubview:self.orderPeekThumbnail];
+
+    // Order reference label
+    self.orderPeekReferenceLabel = [[UILabel alloc] init];
+    self.orderPeekReferenceLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekReferenceLabel.font = [GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    self.orderPeekReferenceLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.94];
+    self.orderPeekReferenceLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.orderPeekReferenceLabel.numberOfLines = 1;
+    self.orderPeekReferenceLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
+    [self.orderPeekStrip addSubview:self.orderPeekReferenceLabel];
+
+    // Status dot
+    self.orderPeekStatusDot = [[UIView alloc] init];
+    self.orderPeekStatusDot.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekStatusDot.layer.cornerRadius = 3.0;
+    self.orderPeekStatusDot.backgroundColor = [UIColor colorWithRed:1.0 green:0.76 blue:0.26 alpha:1.0];
+    [self.orderPeekStrip addSubview:self.orderPeekStatusDot];
+
+    // Status label
+    self.orderPeekStatusLabel = [[UILabel alloc] init];
+    self.orderPeekStatusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekStatusLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    self.orderPeekStatusLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.72];
+    self.orderPeekStatusLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.orderPeekStatusLabel.numberOfLines = 1;
+    [self.orderPeekStrip addSubview:self.orderPeekStatusLabel];
+
+    // Chevron
+    self.orderPeekChevron = [[UIImageView alloc] init];
+    self.orderPeekChevron.translatesAutoresizingMaskIntoConstraints = NO;
+    self.orderPeekChevron.contentMode = UIViewContentModeScaleAspectFit;
+    self.orderPeekChevron.tintColor = [UIColor colorWithWhite:1.0 alpha:0.52];
+    NSString *chevronName = Language.isRTL ? @"chevron.left" : @"chevron.right";
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightSemibold];
+        self.orderPeekChevron.image = [UIImage systemImageNamed:chevronName withConfiguration:config];
+    }
+    [self.orderPeekStrip addSubview:self.orderPeekChevron];
+
+    // Constraints for blur + tint overlay (fill)
+    [NSLayoutConstraint activateConstraints:@[
+        [self.orderPeekBlurView.topAnchor constraintEqualToAnchor:self.orderPeekStrip.topAnchor],
+        [self.orderPeekBlurView.leadingAnchor constraintEqualToAnchor:self.orderPeekStrip.leadingAnchor],
+        [self.orderPeekBlurView.trailingAnchor constraintEqualToAnchor:self.orderPeekStrip.trailingAnchor],
+        [self.orderPeekBlurView.bottomAnchor constraintEqualToAnchor:self.orderPeekStrip.bottomAnchor],
+
+        [peekTintOverlay.topAnchor constraintEqualToAnchor:self.orderPeekStrip.topAnchor],
+        [peekTintOverlay.leadingAnchor constraintEqualToAnchor:self.orderPeekStrip.leadingAnchor],
+        [peekTintOverlay.trailingAnchor constraintEqualToAnchor:self.orderPeekStrip.trailingAnchor],
+        [peekTintOverlay.bottomAnchor constraintEqualToAnchor:self.orderPeekStrip.bottomAnchor],
+    ]];
+
+    // Content constraints
+    CGFloat hPad = 14.0;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.orderPeekThumbnail.leadingAnchor constraintEqualToAnchor:self.orderPeekStrip.leadingAnchor constant:hPad],
+        [self.orderPeekThumbnail.centerYAnchor constraintEqualToAnchor:self.orderPeekStrip.centerYAnchor],
+        [self.orderPeekThumbnail.widthAnchor constraintEqualToConstant:22.0],
+        [self.orderPeekThumbnail.heightAnchor constraintEqualToConstant:22.0],
+
+        [self.orderPeekReferenceLabel.leadingAnchor constraintEqualToAnchor:self.orderPeekThumbnail.trailingAnchor constant:PPSpaceSM],
+        [self.orderPeekReferenceLabel.centerYAnchor constraintEqualToAnchor:self.orderPeekStrip.centerYAnchor],
+        [self.orderPeekReferenceLabel.widthAnchor constraintLessThanOrEqualToConstant:160.0],
+
+        [self.orderPeekStatusDot.leadingAnchor constraintEqualToAnchor:self.orderPeekReferenceLabel.trailingAnchor constant:PPSpaceSM],
+        [self.orderPeekStatusDot.centerYAnchor constraintEqualToAnchor:self.orderPeekStrip.centerYAnchor],
+        [self.orderPeekStatusDot.widthAnchor constraintEqualToConstant:6.0],
+        [self.orderPeekStatusDot.heightAnchor constraintEqualToConstant:6.0],
+
+        [self.orderPeekStatusLabel.leadingAnchor constraintEqualToAnchor:self.orderPeekStatusDot.trailingAnchor constant:PPSpaceXS],
+        [self.orderPeekStatusLabel.centerYAnchor constraintEqualToAnchor:self.orderPeekStrip.centerYAnchor],
+        [self.orderPeekStatusLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.orderPeekChevron.leadingAnchor constant:-PPSpaceSM],
+
+        [self.orderPeekChevron.trailingAnchor constraintEqualToAnchor:self.orderPeekStrip.trailingAnchor constant:-hPad],
+        [self.orderPeekChevron.centerYAnchor constraintEqualToAnchor:self.orderPeekStrip.centerYAnchor],
+        [self.orderPeekChevron.widthAnchor constraintEqualToConstant:10.0],
+        [self.orderPeekChevron.heightAnchor constraintEqualToConstant:10.0],
+    ]];
+}
+
+- (void)pp_handleOrderPeekTap
+{
+    if (self.onOrderPeekTap) {
+        self.onOrderPeekTap();
+    }
+}
+
+- (void)configureOrderPeekWithReference:(nullable NSString *)reference
+                            statusTitle:(nullable NSString *)statusTitle
+                            statusColor:(nullable UIColor *)statusColor
+                        previewImageURL:(nullable NSString *)previewImageURL
+                               animated:(BOOL)animated
+{
+    NSString *safeRef = PPSafeString(reference);
+    NSString *safeStatus = PPSafeString(statusTitle);
+
+    if (safeRef.length == 0) {
+        [self hideOrderPeek:animated];
+        return;
+    }
+
+    self.orderPeekReferenceLabel.text = safeRef;
+    self.orderPeekStatusLabel.text = safeStatus;
+    self.orderPeekStatusDot.backgroundColor = statusColor ?: [UIColor colorWithRed:1.0 green:0.76 blue:0.26 alpha:1.0];
+
+    // Load thumbnail
+    NSString *safeURL = PPSafeString(previewImageURL);
+    if (safeURL.length > 0) {
+        self.orderPeekThumbnail.hidden = NO;
+        [GM setImageFromUrlString:safeURL imageView:self.orderPeekThumbnail phImage:@"placeholder"];
+    } else {
+        self.orderPeekThumbnail.hidden = NO;
+        self.orderPeekThumbnail.image = [UIImage imageNamed:@"placeholder"];
+    }
+
+    if (self.orderPeekVisible) {
+        return;
+    }
+    self.orderPeekVisible = YES;
+
+    if (!animated) {
+        self.orderPeekStrip.alpha = 1.0;
+        self.orderPeekStrip.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    // Spring slide-up animation
+    [UIView animateWithDuration:0.52
+                          delay:0.15
+         usingSpringWithDamping:0.72
+          initialSpringVelocity:0.4
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.orderPeekStrip.alpha = 1.0;
+        self.orderPeekStrip.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)hideOrderPeek:(BOOL)animated
+{
+    if (!self.orderPeekVisible) {
+        return;
+    }
+    self.orderPeekVisible = NO;
+
+    if (!animated) {
+        self.orderPeekStrip.alpha = 0.0;
+        self.orderPeekStrip.transform = CGAffineTransformMakeTranslation(0.0, -24.0);
+        return;
+    }
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn
+                     animations:^{
+        self.orderPeekStrip.alpha = 0.0;
+        self.orderPeekStrip.transform = CGAffineTransformMakeTranslation(0.0, -24.0);
+    } completion:nil];
 }
 
 @end

@@ -87,6 +87,21 @@ public extension Notification.Name {
         preselectedAssetIdentifiers.removeAll()
     }
 
+    private func localizedText(
+        key: String,
+        englishFallback: String,
+        arabicFallback: String? = nil
+    ) -> String {
+        let localized = NSLocalizedString(key, comment: englishFallback)
+        if localized != key {
+            return localized
+        }
+        if useArabic {
+            return arabicFallback ?? englishFallback
+        }
+        return englishFallback
+    }
+
     // MARK: - Present Picker
 
     @objc(presentPickerFromViewController:)
@@ -102,8 +117,9 @@ public extension Notification.Name {
         // Present as sheet
         picker.modalPresentationStyle = .pageSheet
 
-        // Back indicator: use chevron.left always — UIKit auto-mirrors it for RTL
-        let chevron = UIImage(systemName: "chevron.left")?
+        // Force the back indicator to match the active language direction.
+        let backSymbolName = useArabic ? "chevron.right" : "chevron.left"
+        let chevron = UIImage(systemName: backSymbolName)?
             .withConfiguration(UIImage.SymbolConfiguration(pointSize: 17, weight: .semibold))
         picker.navigationBar.backIndicatorImage = chevron
         picker.navigationBar.backIndicatorTransitionMaskImage = chevron
@@ -185,23 +201,24 @@ public extension Notification.Name {
         }
 
         // Back button text (album list → photo list)
-        let backText = useArabic ? "رجوع" : "Back"
+        let backText = localizedText(key: "Back", englishFallback: "Back", arabicFallback: "رجوع")
         HX.textManager.picker.albumList.backTitle = .custom(backText)
 
         // Cancel button text
-        let cancelText = useArabic ? "الغاء" : "Cancel"
+        let cancelText = localizedText(key: "Cancel", englishFallback: "Cancel", arabicFallback: "إلغاء")
         HX.textManager.picker.preview.cancelTitle = .custom(cancelText)
 
         // Bottom toolbar button titles
-        let finishText = useArabic ? "انهاء" : "Done"
-        let previewText = useArabic ? "عرض" : "Preview"
-        let originalText = useArabic ? "الاصليه" : "Original"
+        let finishText = localizedText(key: "Done", englishFallback: "Done", arabicFallback: "تم")
+        let previewText = localizedText(key: "Preview", englishFallback: "Preview", arabicFallback: "عرض")
+        let originalText = localizedText(key: "Original", englishFallback: "Original", arabicFallback: "أصلي")
+        let editText = localizedText(key: "Edit", englishFallback: "Edit", arabicFallback: "تعديل")
 
         HX.textManager.picker.photoList.bottomView.finishTitle = .custom(finishText)
         HX.textManager.picker.photoList.bottomView.previewTitle = .custom(previewText)
         HX.textManager.picker.photoList.bottomView.originalTitle = .custom(originalText)
         HX.textManager.picker.preview.bottomView.finishTitle = .custom(finishText)
-        HX.textManager.picker.preview.bottomView.editTitle = .custom(useArabic ? "تعديل" : "Edit")
+        HX.textManager.picker.preview.bottomView.editTitle = .custom(editText)
         HX.textManager.picker.preview.bottomView.originalTitle = .custom(originalText)
     }
 
@@ -243,7 +260,7 @@ public extension Notification.Name {
 
         NotificationCenter.default.post(
             name: .PPPickerBridgeDidFinish,
-            object: nil,
+            object: self,
             userInfo: userInfo
         )
     }
@@ -270,7 +287,7 @@ extension PPPickerBridge: PhotoPickerControllerDelegate {
     public func pickerController(didCancel pickerController: PhotoPickerController) {
         swiftCompletion = nil
 
-        NotificationCenter.default.post(name: .PPPickerBridgeDidCancel, object: nil)
+        NotificationCenter.default.post(name: .PPPickerBridgeDidCancel, object: self)
 
         DispatchQueue.main.async {
             pickerController.dismiss(animated: true) {

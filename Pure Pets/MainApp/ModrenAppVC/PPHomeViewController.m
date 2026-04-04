@@ -935,15 +935,20 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (void)pp_refreshNavigationMenusForCurrentUser {
     if (@available(iOS 14.0, *)) {
-        if (self.homeOptionsItem) {
-            self.homeOptionsItem.menu = [PPActionButton appActionsArrayfor:self];
-        }
-
-        UIBarButtonItem *profileItem = self.navigationItem.leftBarButtonItems.firstObject ?: self.navigationItem.leftBarButtonItem;
+        // Profile button now holds both user + app actions
+        UIBarButtonItem *profileItem = self.homeProfileItem
+            ?: self.navigationItem.leftBarButtonItems.firstObject
+            ?: self.navigationItem.leftBarButtonItem;
         UIView *customView = profileItem.customView;
         if ([customView isKindOfClass:UIButton.class]) {
             UIButton *profileButton = (UIButton *)customView;
-            profileButton.menu = [PPActionButton userActionsArrayfor:self];
+            UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
+            UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
+            profileButton.menu = [UIMenu menuWithTitle:@""
+                                                 image:nil
+                                            identifier:nil
+                                               options:UIMenuOptionsDisplayInline
+                                              children:@[userMenu, appMenu]];
         }
     }
 }
@@ -1916,6 +1921,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.lastObservedHomeOrderStatusKey = nextObservedStatusKey;
     [self reloadSection:PPHomeSectionCurrentOrders];
     [self pp_refreshBuyAgainSection];
+    // Refresh hero peek strip to reflect order changes
+    [self refreshHeroSectionAppearance];
 }
 
 - (void)persistNearbyLocationIfNeeded
@@ -3423,6 +3430,28 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             [self openHomeLocationPicker];
         }
     };
+
+    // ── Order peek strip (one-line banner below hero) ──
+    PPOrder *featuredOrder = [self pp_featuredHomeOrder];
+    if (featuredOrder && [self pp_isActiveHomeOrder:featuredOrder]) {
+        NSArray<NSString *> *imageURLs = [self pp_homeOrderPreviewImageURLs:featuredOrder limit:1];
+        NSString *firstImageURL = imageURLs.count > 0 ? imageURLs.firstObject : nil;
+
+        [cell configureOrderPeekWithReference:[featuredOrder displayOrderReference]
+                                  statusTitle:[self pp_homeOrderStatusTitle:featuredOrder]
+                                  statusColor:[self pp_homeOrderStatusColor:featuredOrder]
+                              previewImageURL:firstImageURL
+                                     animated:YES];
+
+        cell.onOrderPeekTap = ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+            [self pp_openOrderDetailsForOrder:featuredOrder];
+        };
+    } else {
+        [cell hideOrderPeek:NO];
+        cell.onOrderPeekTap = nil;
+    }
 }
 
 - (void)refreshHeroSectionAppearance
@@ -4482,15 +4511,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.navigationItem.titleView = nil;
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
 
- 
-    UIImage *baseImage =
-        [UIImage pp_symbolNamed:@"list.bullet"
-                      pointSize:17
-                         weight:UIImageSymbolWeightSemibold
-                          scale:UIImageSymbolScaleLarge
-                        palette:@[UIColor.grayColor, AppPrimaryTextClr ?: UIColor.systemTealColor]
-                   makeTemplate:NO];
-
     UIImage *cartImage =
         [UIImage pp_symbolNamed:@"cart"
                       pointSize:17
@@ -4500,23 +4520,18 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                    makeTemplate:NO];
 
     UIBarButtonItem *profileItem = [self pp_buildProfileBarButtonItem];
+    self.homeProfileItem = profileItem;
 
     UIBarButtonItem *cartItem =
         [[UIBarButtonItem alloc] initWithImage:cartImage
                                          style:UIBarButtonItemStylePlain
                                         target:self
                                         action:@selector(cartClick)];
-
-    self.homeOptionsItem =
-        [[UIBarButtonItem alloc] initWithImage:baseImage
-                                          menu:[PPActionButton appActionsArrayfor:self]];
-
     self.homeCartItem = cartItem;
 
+    self.navigationItem.leftBarButtonItems  = @[profileItem];
+    self.navigationItem.rightBarButtonItems = @[self.homeCartItem];
 
-        self.navigationItem.leftBarButtonItems = @[profileItem];
-        self.navigationItem.rightBarButtonItems = @[self.homeOptionsItem,self.homeCartItem];
-   
     // 🔔 Notify cart change (already your system)
     [[NSNotificationCenter defaultCenter]
         postNotificationName:kCartUpdatedNotification
@@ -4530,15 +4545,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return; // already visible
     }
 
-    NSMutableArray *items = [NSMutableArray array];
-    [items addObject:self.homeOptionsItem];
-    [items addObject:self.homeCartItem];
-
     [UIView transitionWithView:self.navigationController.navigationBar
                       duration:0.25
                        options:UIViewAnimationOptionTransitionCrossDissolve
                     animations:^{
-        self.navigationItem.rightBarButtonItems = items;
+        self.navigationItem.rightBarButtonItems = @[self.homeCartItem];
     } completion:nil];
 }
 
@@ -4548,14 +4559,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return; // already hidden
     }
 
-    NSMutableArray *items = [NSMutableArray array];
-    [items addObject:self.homeOptionsItem];
-
     [UIView transitionWithView:self.navigationController.navigationBar
                       duration:0.20
                        options:UIViewAnimationOptionTransitionCrossDissolve
                     animations:^{
-        self.navigationItem.rightBarButtonItems = items;
+        self.navigationItem.rightBarButtonItems = @[];
     } completion:nil];
 }
 
@@ -4629,7 +4637,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     if (@available(iOS 14.0, *)) {
-        button.menu = [PPActionButton userActionsArrayfor:self];
+        // Combine user actions + app actions into a single profile menu
+        UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
+        UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
+        button.menu = [UIMenu menuWithTitle:@""
+                                      image:nil
+                                 identifier:nil
+                                    options:UIMenuOptionsDisplayInline
+                                   children:@[userMenu, appMenu]];
         button.showsMenuAsPrimaryAction = YES;
     }
 
@@ -4641,7 +4656,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 {
    
     NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray array];
-    [items addObject:self.homeOptionsItem];
     if (count > 0) {
         if (!self.homeCartItem) {
             UIImage *cartImage = [UIImage pp_symbolNamed:@"cart"
@@ -4842,8 +4856,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         ? UISemanticContentAttributeForceRightToLeft
         : UISemanticContentAttributeForceLeftToRight;
 
-    // Menu + tap safely coexist
-    container.menu = [PPActionButton userActionsArrayfor:self];
+    // Menu + tap safely coexist — combined user + app actions
+    UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
+    UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
+    container.menu = [UIMenu menuWithTitle:@""
+                                     image:nil
+                                identifier:nil
+                                   options:UIMenuOptionsDisplayInline
+                                  children:@[userMenu, appMenu]];
     container.showsMenuAsPrimaryAction = YES;
 
     if (target && action) {

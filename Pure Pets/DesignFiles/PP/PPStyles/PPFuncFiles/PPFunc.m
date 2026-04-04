@@ -2914,26 +2914,40 @@ static char kUIViewTapActionKey;
         [weakSuperVC.navigationController pushViewController:vc animated:YES];
     }]];
 
-    [UserActions addObject:
+    // Cart & Orders in a separate inline group (renders a separator above)
+    NSMutableArray<UIAction *> *commerceActions = [NSMutableArray array];
+
+    [commerceActions addObject:
      [PPActionButton cartActionWithHandler:^(UIAction *action) {
         if(![PPFunc PPUserCheck]) return;
         CartViewController *vc = [CartViewController new];
         [weakSuperVC.navigationController pushViewController:vc animated:YES];
     }]];
 
-    [UserActions addObject:
+    [commerceActions addObject:
      [PPActionButton orderHistoryActionWithHandler:^(UIAction *action) {
         if(![PPFunc PPUserCheck]) return;
         OrderHistoryViewController *vc = [OrderHistoryViewController new];
         [weakSuperVC.navigationController pushViewController:vc animated:YES];
     }]];
- 
-    
+
+    UIMenu *profileGroup = [UIMenu menuWithTitle:@""
+                                           image:nil
+                                      identifier:nil
+                                         options:UIMenuOptionsDisplayInline
+                                        children:UserActions];
+
+    UIMenu *commerceGroup = [UIMenu menuWithTitle:@""
+                                            image:nil
+                                       identifier:nil
+                                          options:UIMenuOptionsDisplayInline
+                                         children:commerceActions];
+
     return [UIMenu menuWithTitle:@""
                             image:nil
                        identifier:nil
                           options:UIMenuOptionsDisplayInline
-                         children:UserActions];
+                         children:@[profileGroup, commerceGroup]];
     
     
 }

@@ -263,7 +263,7 @@
         (PPIOS26() ? UIBlurEffectStyleSystemChromeMaterial : UIBlurEffectStyleSystemUltraThinMaterial)];
     
     self.blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    
+    self.blurView.alpha = 0.85;
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.surfaceView addSubview:self.blurView];
     [NSLayoutConstraint activateConstraints:@[
@@ -417,6 +417,9 @@
     CAShapeLayer *mask = [CAShapeLayer layer];
     mask.path = path.CGPath;
     self.surfaceView.layer.mask = mask;
+    
+    self.surfaceView.layer.borderColor = AppBackgroundClr.CGColor;
+    self.surfaceView.layer.borderWidth = 0.85;
 }
 
 - (UIBezierPath *)pp_pathForRect:(CGRect)rect

@@ -54,7 +54,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:(PPIOS26() ? 236.0 : 240.0)]];
+     [NSCollectionLayoutDimension absoluteDimension:(PPIOS26() ? 226.0 : 240.0)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -66,8 +66,9 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
 
+    // Bottom inset accommodates the order peek strip (38pt strip, 14pt overlap → 24pt below cell)
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(14.0, PPSize16, kPadding, PPSize16);
+    NSDirectionalEdgeInsetsMake(14.0, PPSize16, 26.0, PPSize16);
 
     return section;
 }
@@ -87,7 +88,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-    item.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 16.0, 0.0, 16.0);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0, 0.0, 0);
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -99,7 +100,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 90.0;
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(12.0, kPageInset, 12.0, kPageInset);
+    NSDirectionalEdgeInsetsMake(PPSize6, PPSize12, PPSize12, PPSize12);
 
     return section;
 }

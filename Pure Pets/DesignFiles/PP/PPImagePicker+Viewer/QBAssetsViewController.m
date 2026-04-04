@@ -360,8 +360,15 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
 {
    
     // Left (back) button
-    NSString *backSymbol = PPIsRL ? @"arrow.right" : @"arrow.left";
-    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithCustomView:[self pp_ButtonWithSystemName:backSymbol action:@selector(onBack)]];
+    NSString *backTitle = kLang(@"Back");
+    if (![backTitle isKindOfClass:[NSString class]] || backTitle.length == 0 || [backTitle isEqualToString:@"Back"]) {
+        backTitle = @"Back";
+    }
+    UIBarButtonItem *backItem =
+        [[UIBarButtonItem alloc] initWithTitle:backTitle
+                                         style:UIBarButtonItemStylePlain
+                                        target:self
+                                        action:@selector(onBack)];
     self.navigationItem.leftBarButtonItem = backItem;
     
     // Right (done) button — keep self.doneButton reference for other code
