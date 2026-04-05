@@ -100,6 +100,12 @@ PPUniversalCellDelegate>
 @property (nonatomic, assign) BOOL previousIQKeyboardToolbarEnabled;
 @property (nonatomic, assign) BOOL isOverridingIQKeyboardManager;
 
+@property (nonatomic, strong) NSLayoutConstraint *segmentRowTopExpandedConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *segmentRowTopCollapsedConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *heroBottomConstraint;
+@property (nonatomic, assign) BOOL isHeroCollapsed;
+@property (nonatomic, strong) UIButton *heroCollapseToggleButton;
+
 @end
 
 @implementation PPSearchViewController
@@ -153,9 +159,12 @@ PPUniversalCellDelegate>
     [super viewDidLayoutSubviews];
 
     CGRect heroBounds = self.heroCardView.bounds;
-    self.heroGradientLayer.frame = heroBounds;
-    self.heroMeshLayer.frame = heroBounds;
-    self.heroShineLayer.frame = heroBounds;
+    // Fixed gradient height prevents visual compression during collapse animation
+    CGFloat fixedGradientH = MAX(heroBounds.size.height, 300.0);
+    CGRect gradientRect = CGRectMake(0, 0, heroBounds.size.width, fixedGradientH);
+    self.heroGradientLayer.frame = gradientRect;
+    self.heroMeshLayer.frame = gradientRect;
+    self.heroShineLayer.frame = gradientRect;
     self.heroCardShadowView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.heroCardShadowView.bounds cornerRadius:PPCornerHero].CGPath;
     self.searchFieldChromeView.layer.shadowPath =
@@ -234,6 +243,9 @@ PPUniversalCellDelegate>
 
     self.primaryGlowView = primaryGlow;
     self.secondaryGlowView = secondaryGlow;
+    // Start hidden — animateHeroIfNeeded fades them in with breathing
+    primaryGlow.alpha = 0.0;
+    secondaryGlow.alpha = 0.0;
 }
 
 - (void)setupNavigation
@@ -442,6 +454,13 @@ PPUniversalCellDelegate>
     shine.endPoint = CGPointMake(0.0, 1.0);
     [heroCard.layer insertSublayer:shine above:mesh];
 
+    // Set initial gradient frames so they render on the first frame (before viewDidLayoutSubviews)
+    CGFloat initialW = UIScreen.mainScreen.bounds.size.width - (PPScreenMargin * 2);
+    CGRect initialGradientFrame = CGRectMake(0, 0, initialW, 300.0);
+    gradient.frame = initialGradientFrame;
+    mesh.frame = initialGradientFrame;
+    shine.frame = initialGradientFrame;
+
     UIView *noiseView = [UIView new];
     noiseView.translatesAutoresizingMaskIntoConstraints = NO;
     noiseView.userInteractionEnabled = NO;
@@ -486,7 +505,7 @@ PPUniversalCellDelegate>
     segmentRowView.translatesAutoresizingMaskIntoConstraints = NO;
     segmentRowView.semanticContentAttribute = semanticAttribute;
     segmentRowView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.05];
-    segmentRowView.layer.cornerRadius = 20.0;
+    segmentRowView.layer.cornerRadius = 22.0;
     segmentRowView.layer.masksToBounds = NO;
     segmentRowView.clipsToBounds = NO;
     segmentRowView.layer.borderWidth = 1.0;
@@ -511,9 +530,9 @@ PPUniversalCellDelegate>
     UIStackView *segmentStackView = [[UIStackView alloc] init];
     segmentStackView.translatesAutoresizingMaskIntoConstraints = NO;
     segmentStackView.axis = UILayoutConstraintAxisHorizontal;
-    segmentStackView.alignment = UIStackViewAlignmentCenter;
+    segmentStackView.alignment = UIStackViewAlignmentFill;
     segmentStackView.distribution = UIStackViewDistributionFillEqually;
-    segmentStackView.spacing = 10.0;
+    segmentStackView.spacing = 8.0;
     segmentStackView.semanticContentAttribute = semanticAttribute;
     [segmentScrollView addSubview:segmentStackView];
 
@@ -558,10 +577,32 @@ PPUniversalCellDelegate>
     [heroCard addSubview:subtitleLabel];
     [heroCard addSubview:segmentRowView];
     [segmentRowView addSubview:segmentScrollView];
-    [heroCard addSubview:metaStack];
+
+    // Collapse/expand toggle chevron
+    UIButton *toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *toggleCfg =
+        [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightBold];
+    [toggleButton setImage:[UIImage systemImageNamed:@"chevron.up" withConfiguration:toggleCfg]
+                  forState:UIControlStateNormal];
+    toggleButton.tintColor = [UIColor colorWithWhite:1.0 alpha:0.35];
+    [toggleButton addTarget:self action:@selector(heroCollapseToggleTapped) forControlEvents:UIControlEventTouchUpInside];
+    [heroCard addSubview:toggleButton];
+
     [self.view addSubview:heroShadowView];
 
     CGFloat cardPadding = PPSpaceXL;
+
+    // Dual top constraints for collapse/expand animation
+    NSLayoutConstraint *segTopExpanded =
+        [segmentRowView.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0];
+    NSLayoutConstraint *segTopCollapsed =
+        [segmentRowView.topAnchor constraintEqualToAnchor:heroCard.topAnchor constant:PPSpaceSM];
+    segTopCollapsed.active = NO;
+    // Bottom constraint anchored to toggle grip
+    NSLayoutConstraint *heroBottom =
+        [toggleButton.bottomAnchor constraintEqualToAnchor:heroCard.bottomAnchor constant:-PPSpaceXS];
+
     [NSLayoutConstraint activateConstraints:@[
         [heroShadowView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM],
         [heroShadowView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
@@ -587,10 +628,16 @@ PPUniversalCellDelegate>
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        [segmentRowView.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
-        [segmentRowView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [segmentRowView.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-        [segmentRowView.heightAnchor constraintEqualToConstant:52.0],
+        segTopExpanded,
+        [segmentRowView.leadingAnchor constraintEqualToAnchor:heroCard.leadingAnchor constant:PPSpaceMD],
+        [segmentRowView.trailingAnchor constraintEqualToAnchor:heroCard.trailingAnchor constant:-PPSpaceMD],
+        [segmentRowView.heightAnchor constraintEqualToConstant:76.0],
+
+        [toggleButton.topAnchor constraintEqualToAnchor:segmentRowView.bottomAnchor constant:2.0],
+        [toggleButton.centerXAnchor constraintEqualToAnchor:heroCard.centerXAnchor],
+        [toggleButton.widthAnchor constraintEqualToConstant:44.0],
+        [toggleButton.heightAnchor constraintEqualToConstant:22.0],
+        heroBottom,
 
         [segmentScrollView.topAnchor constraintEqualToAnchor:segmentRowView.topAnchor constant:4.0],
         [segmentScrollView.leadingAnchor constraintEqualToAnchor:segmentRowView.leadingAnchor constant:4.0],
@@ -602,13 +649,13 @@ PPUniversalCellDelegate>
         [segmentStackView.leadingAnchor constraintEqualToAnchor:segmentScrollView.contentLayoutGuide.leadingAnchor],
         [segmentStackView.trailingAnchor constraintEqualToAnchor:segmentScrollView.contentLayoutGuide.trailingAnchor],
         [segmentStackView.heightAnchor constraintEqualToAnchor:segmentScrollView.frameLayoutGuide.heightAnchor],
-        [segmentStackView.widthAnchor constraintGreaterThanOrEqualToAnchor:segmentScrollView.frameLayoutGuide.widthAnchor],
-
-        [metaStack.topAnchor constraintEqualToAnchor:segmentRowView.bottomAnchor constant:18.0],
-        [metaStack.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [metaStack.trailingAnchor constraintLessThanOrEqualToAnchor:titleLabel.trailingAnchor]
+        [segmentStackView.widthAnchor constraintEqualToAnchor:segmentScrollView.frameLayoutGuide.widthAnchor]
     ]];
 
+    self.segmentRowTopExpandedConstraint = segTopExpanded;
+    self.segmentRowTopCollapsedConstraint = segTopCollapsed;
+    self.heroBottomConstraint = heroBottom;
+    self.heroCollapseToggleButton = toggleButton;
     self.heroCardShadowView = heroShadowView;
     self.heroCardView = heroCard;
     self.heroGradientLayer = gradient;
@@ -630,6 +677,13 @@ PPUniversalCellDelegate>
     self.adsBadge = adsBadge;
     self.servicesBadge = servicesBadge;
     self.accessoriesBadge = accessoriesBadge;
+    // All hero content starts hidden — animateHeroIfNeeded reveals with staggered spring
+    self.eyebrowLabel.alpha = 0.0;
+    self.statusPillLabel.alpha = 0.0;
+    self.heroTitleLabel.alpha = 0.0;
+    self.heroSubtitleLabel.alpha = 0.0;
+    self.segmentGlassView.alpha = 0.0;
+    self.heroCollapseToggleButton.alpha = 0.0;
 }
 
 - (void)setupCollectionView
@@ -777,6 +831,20 @@ PPUniversalCellDelegate>
 {
     [textField resignFirstResponder];
     return YES;
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField
+{
+    (void)textField;
+    [self setHeroCollapsed:YES animated:YES];
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
+    (void)textField;
+    if (self.lastQuery.length < kPPSearchMinimumQueryLength) {
+        [self setHeroCollapsed:NO animated:YES];
+    }
 }
 
 #pragma mark - Search Flow
@@ -930,6 +998,63 @@ PPUniversalCellDelegate>
     [self applyResultsAnimated:NO];
     [self updateEmptyState];
     [self updateHeaderStateAnimated:YES];
+
+    if (!self.searchTextField.isFirstResponder) {
+        [self setHeroCollapsed:NO animated:YES];
+    }
+}
+
+#pragma mark - Hero Collapse
+
+- (void)setHeroCollapsed:(BOOL)collapsed animated:(BOOL)animated
+{
+    if (self.isHeroCollapsed == collapsed) return;
+    self.isHeroCollapsed = collapsed;
+
+    // Deactivate both first to avoid momentary constraint conflicts
+    self.segmentRowTopExpandedConstraint.active = NO;
+    self.segmentRowTopCollapsedConstraint.active = NO;
+
+    if (collapsed) {
+        self.segmentRowTopCollapsedConstraint.active = YES;
+    } else {
+        self.segmentRowTopExpandedConstraint.active = YES;
+    }
+
+    // Flip toggle chevron direction
+    UIImageSymbolConfiguration *toggleCfg =
+        [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightBold];
+    NSString *chevronName = collapsed ? @"chevron.down" : @"chevron.up";
+    [self.heroCollapseToggleButton setImage:[UIImage systemImageNamed:chevronName withConfiguration:toggleCfg]
+                                  forState:UIControlStateNormal];
+
+    void (^updates)(void) = ^{
+        CGFloat contentAlpha = collapsed ? 0.0 : 1.0;
+        self.eyebrowLabel.alpha = contentAlpha;
+        self.statusPillLabel.alpha = contentAlpha;
+        self.heroTitleLabel.alpha = contentAlpha;
+        self.heroSubtitleLabel.alpha = contentAlpha;
+        [self.view layoutIfNeeded];
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        updates();
+        return;
+    }
+
+    [UIView animateWithDuration:0.38
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.6
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                     animations:updates
+                     completion:nil];
+}
+
+- (void)heroCollapseToggleTapped
+{
+    [self setHeroCollapsed:!self.isHeroCollapsed animated:YES];
+    [PPFunc triggerLightHaptic];
 }
 
 #pragma mark - Segment Filtering
@@ -1258,8 +1383,11 @@ PPUniversalCellDelegate>
         return;
     }
 
-    UIView *hostView = badge.superview.superview;
-    UIButton *hostButton = [hostView isKindOfClass:UIButton.class] ? (UIButton *)hostView : nil;
+    UIView *hostView = badge.superview;
+    while (hostView && ![hostView isKindOfClass:UIButton.class]) {
+        hostView = hostView.superview;
+    }
+    UIButton *hostButton = (UIButton *)hostView;
 
     if (count <= 0) {
         [UIView animateWithDuration:0.2 animations:^{
@@ -1468,9 +1596,9 @@ PPUniversalCellDelegate>
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.tag = segment;
     button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentFill;
+    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
     button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
-    button.layer.cornerRadius = 16.0;
+    button.layer.cornerRadius = 18.0;
     button.layer.borderWidth = 1.0;
     button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
     button.layer.shadowOpacity = 0.0f;
@@ -1480,13 +1608,9 @@ PPUniversalCellDelegate>
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    UIView *contentView = [UIView new];
-    contentView.translatesAutoresizingMaskIntoConstraints = NO;
-    contentView.userInteractionEnabled = NO;
-    contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-
+    // --- Row 1: Icon (centered) with badge overlay ---
     UIImageSymbolConfiguration *iconConfiguration =
-        [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+        [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightSemibold];
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:iconName
                                                                         withConfiguration:iconConfiguration]];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1494,48 +1618,57 @@ PPUniversalCellDelegate>
     iconView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.82];
     iconView.contentMode = UIViewContentModeScaleAspectFit;
 
-    UILabel *titleLabel = [UILabel new];
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.tag = kPPSearchSegmentTitleTag;
-    titleLabel.text = title ?: @"";
-    titleLabel.font = [GM boldFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
-    titleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.84];
-    titleLabel.textAlignment = NSTextAlignmentNatural;
-    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
-                                                forAxis:UILayoutConstraintAxisHorizontal];
-
     UILabel *countLabel = [self makeBadgeLabel];
     countLabel.tag = kPPSearchSegmentCountTag;
     countLabel.hidden = YES;
     [countLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
                                                 forAxis:UILayoutConstraintAxisHorizontal];
 
-    [button addSubview:contentView];
-    [contentView addSubview:iconView];
-    [contentView addSubview:titleLabel];
-    [contentView addSubview:countLabel];
+    UIView *iconContainer = [UIView new];
+    iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    iconContainer.userInteractionEnabled = NO;
+    iconContainer.clipsToBounds = NO;
+    [iconContainer addSubview:iconView];
+    [iconContainer addSubview:countLabel];
+
+    // --- Row 2: Title (centered, no truncation) ---
+    UILabel *titleLabel = [UILabel new];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.tag = kPPSearchSegmentTitleTag;
+    titleLabel.text = title ?: @"";
+    titleLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    titleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.84];
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.numberOfLines = 1;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.78;
+
+    // --- Vertical stack: icon row → title row ---
+    UIStackView *vStack = [[UIStackView alloc] initWithArrangedSubviews:@[iconContainer, titleLabel]];
+    vStack.translatesAutoresizingMaskIntoConstraints = NO;
+    vStack.axis = UILayoutConstraintAxisVertical;
+    vStack.alignment = UIStackViewAlignmentCenter;
+    vStack.spacing = 4.0;
+    vStack.userInteractionEnabled = NO;
+
+    [button addSubview:vStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [contentView.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:12.0],
-        [contentView.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-12.0],
-        [contentView.topAnchor constraintEqualToAnchor:button.topAnchor],
-        [contentView.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
+        [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:22.0],
+        [iconView.heightAnchor constraintEqualToConstant:22.0],
 
-        [iconView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
-        [iconView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:14.0],
-        [iconView.heightAnchor constraintEqualToConstant:14.0],
+        [countLabel.centerYAnchor constraintEqualToAnchor:iconView.topAnchor constant:-1.0],
+        [countLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:-6.0],
 
-        [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:7.0],
-        [titleLabel.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+        [iconContainer.widthAnchor constraintGreaterThanOrEqualToConstant:36.0],
+        [iconContainer.heightAnchor constraintEqualToConstant:26.0],
 
-        [countLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:titleLabel.trailingAnchor constant:7.0],
-        [countLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
-        [countLabel.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
-
-        [button.heightAnchor constraintEqualToConstant:44.0],
-        [button.widthAnchor constraintGreaterThanOrEqualToConstant:92.0]
+        [vStack.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
+        [vStack.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
+        [vStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:button.leadingAnchor constant:4.0],
+        [vStack.trailingAnchor constraintLessThanOrEqualToAnchor:button.trailingAnchor constant:-4.0],
     ]];
 
     button.isAccessibilityElement = YES;
@@ -1787,8 +1920,8 @@ PPUniversalCellDelegate>
         self.statusPillLabel,
         self.heroTitleLabel,
         self.heroSubtitleLabel,
-        self.metaStackView,
-        self.segmentGlassView
+        self.segmentGlassView,
+        self.heroCollapseToggleButton
     ];
 
     [stagedViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -1816,11 +1949,10 @@ PPUniversalCellDelegate>
         [self.heroShineLayer addAnimation:shineDrift forKey:@"pp.search.hero.shineDrift"];
     }
 
-    self.primaryGlowView.alpha = 1.0;
-    self.secondaryGlowView.alpha = 1.0;
-    [UIView animateWithDuration:0.6 animations:^{
-        self.primaryGlowView.alpha = 0.0;
-        self.secondaryGlowView.alpha = 0.0;
+    // Gentle glow fade-in, then breathing
+    [UIView animateWithDuration:0.9 delay:0.25 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        self.primaryGlowView.alpha = 0.38;
+        self.secondaryGlowView.alpha = 0.28;
     } completion:^(BOOL finished) {
         if (!finished) return;
         // Breathing animation — slow opacity pulse for ambient life

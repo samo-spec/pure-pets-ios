@@ -880,7 +880,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
         // 🔒 Normalize internal layout
         cfg.contentInsets = NSDirectionalEdgeInsetsMake(16, 8, 14, 8);
-        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.22];
 
         cfg.attributedTitle =
