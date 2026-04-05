@@ -237,7 +237,6 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     PPSearchViewController *searchController =
         [self pp_existingSearchControllerInNavigationController:navigationController];
-    BOOL pushedNewSearchController = NO;
 
     if (searchController) {
         if (navigationController.topViewController != searchController) {
@@ -246,18 +245,13 @@ static NSInteger const PPRootTabIndexSettings = 4;
     } else {
         searchController = [PPSearchViewController new];
         [navigationController pushViewController:searchController animated:YES];
-        pushedNewSearchController = YES;
     }
 
-    NSTimeInterval delay = pushedNewSearchController ? 0.34 : 0.08;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-        if (openAccessories) {
-            [searchController openAccessoriesAll];
-            return;
-        }
-        [searchController focusSearchField];
-    });
+    if (openAccessories) {
+        [searchController openAccessoriesAll];
+        return;
+    }
+    [searchController focusSearchField];
 }
 
 

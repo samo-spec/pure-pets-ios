@@ -1095,6 +1095,103 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     return btn;
 }
 
+
+#pragma mark - PPButton circle button helper
+- (UIButton *)pp_ButtonWithSystemNameForNav:(NSString *)imageName action:(SEL)action {
+    UIButton *btn;
+    CGFloat btnSize = PPIOS26() ? 44 :38 ;
+
+    if (@available(iOS 26.0, *)) {
+        
+        UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
+        //cfg.background.backgroundColor = AppBackgroundClrShiner ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+
+        btn = [UIButton new];
+        btn.configuration = cfg;
+        [btn setImage:[UIImage systemImageNamed:imageName] forState:UIControlStateNormal];
+    }
+    else if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
+        
+        // ✅ Set background color through configuration
+        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+        cfg.background.cornerRadius = btnSize / 2;
+        
+        btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+        btn.clipsToBounds = YES;
+    } else {
+        btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        btn.contentEdgeInsets = UIEdgeInsetsMake(6, 6, 6, 6);
+         btn.layer.cornerRadius = btnSize/2;
+         btn.clipsToBounds = YES;
+    }
+
+    // Try SF Symbol first → fallback to asset
+    UIImage *icon = [UIImage systemImageNamed:imageName];
+    if (!icon) {
+        icon = [UIImage imageNamed:imageName];
+        icon = [UIImage pp_resizedImage:icon toPointSize:PPIOS26() ? 18 : 15];
+    }
+
+    if (!icon) {
+        DLog(@"[pp_circleButton] ⚠️ No image found for name: %@", imageName);
+        icon = [UIImage new]; // fallback empty
+    }
+    
+    if([imageName isEqualToString:@"headset"]) {
+        icon = [[UIImage pp_resizedImage:icon toPointSize:18] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    }
+
+    [btn setImage:icon forState:UIControlStateNormal];
+
+    btn.translatesAutoresizingMaskIntoConstraints = NO;
+    
+    
+    // ✅ Remove the old backgroundColor assignment for iOS 15+
+    if (@available(iOS 26.0, *)) {
+        // Background is already set in configuration
+        //btn.tintColor = AppPrimaryClr ?: [UIColor systemBlueColor];
+    } else {
+        btn.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
+        btn.layer.cornerRadius = btnSize/2;
+        btn.layer.masksToBounds = YES;
+        
+        btn.tintColor = UIColor.labelColor;
+        
+        [self addLiquidGlassBorderToView:btn];
+    }
+
+    [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    
+    [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
+    [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
+    
+    btn.layer.shadowColor = AppShadowClr.CGColor;
+    btn.layer.shadowOpacity = 0.07;
+    btn.layer.shadowOffset = CGSizeMake(0, 2);
+    btn.layer.shadowRadius = 6;
+    btn.layer.masksToBounds = NO; // shadow needs this
+
+    
+    // 🔹 If it's SF Symbol, apply config
+    if ([UIImage systemImageNamed:imageName]) {
+        UIImageSymbolConfiguration *config =
+        [UIImageSymbolConfiguration configurationWithPointSize:20
+                                                        weight:UIImageSymbolWeightRegular
+                                                         scale:UIImageSymbolScaleMedium];
+        [btn setImage:[icon imageByApplyingSymbolConfiguration:config]
+              forState:UIControlStateNormal];
+        btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    } else {
+        btn.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    }
+    
+    //[PPButtonHelper attachTapAnimationToButton:btn style:PPButtonAnimationStylePulse];
+    return btn;
+}
+
 #pragma mark - PPButton circle button helper
 - (UIButton *)pp_ZeroButtonWithSystemName:(NSString *)imageName action:(nullable SEL)action {
     UIButton *btn;

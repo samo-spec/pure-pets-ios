@@ -38,14 +38,13 @@ static NSInteger const kPPSearchMinimumQueryLength = 2;
 static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
 
 @interface PPSearchViewController ()
-<UISearchResultsUpdating,
-UISearchControllerDelegate,
-UISearchBarDelegate,
+<UISearchBarDelegate,
 UICollectionViewDelegate,
 UICollectionViewDelegateFlowLayout,
 PPUniversalCellDelegate>
 
-@property (nonatomic, strong) UISearchController *searchController;
+@property (nonatomic, strong) UIView *searchBarContainerView;
+@property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
 
@@ -88,6 +87,7 @@ PPUniversalCellDelegate>
 @property (nonatomic, assign) NSInteger currentSearchRequestID;
 @property (nonatomic, strong) dispatch_queue_t searchQueue;
 @property (nonatomic, copy, nullable) dispatch_block_t pendingDebounceBlock;
+@property (nonatomic, assign) BOOL pendingSearchFieldFocus;
 
 @end
 
@@ -120,6 +120,19 @@ PPUniversalCellDelegate>
 {
     [super viewDidAppear:animated];
     [self animateHeroIfNeeded];
+    [self pp_activatePendingSearchFieldFocusIfPossible];
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    [self pp_schedulePendingSearchFieldFocusIfNeeded];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    [[self pp_searchTextField] resignFirstResponder];
 }
 
 - (void)viewDidLayoutSubviews
@@ -133,6 +146,7 @@ PPUniversalCellDelegate>
     self.primaryGlowView.layer.cornerRadius = CGRectGetWidth(self.primaryGlowView.bounds) * 0.5;
     self.secondaryGlowView.layer.cornerRadius = CGRectGetWidth(self.secondaryGlowView.bounds) * 0.5;
     [self updateBadgePositions];
+    [self pp_activatePendingSearchFieldFocusIfPossible];
 }
 
 - (void)dealloc
@@ -148,9 +162,8 @@ PPUniversalCellDelegate>
 - (void)focusSearchField
 {
     [self loadViewIfNeeded];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.searchController.searchBar becomeFirstResponder];
-    });
+    self.pendingSearchFieldFocus = YES;
+    [self pp_activatePendingSearchFieldFocusIfPossible];
 }
 
 - (void)openAccessoriesAll
@@ -216,23 +229,36 @@ PPUniversalCellDelegate>
 
 - (void)setupSearch
 {
-    UISearchController *searchController = [[UISearchController alloc] initWithSearchResultsController:nil];
-    searchController.obscuresBackgroundDuringPresentation = NO;
-    searchController.hidesNavigationBarDuringPresentation = NO;
-    searchController.searchResultsUpdater = self;
-    searchController.delegate = self;
-    searchController.searchBar.delegate = self;
-    searchController.searchBar.placeholder = kLang(@"SearchPlaceholder");
+    UIView *container = [UIView new];
+    container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.backgroundColor = UIColor.clearColor;
+    container.preservesSuperviewLayoutMargins = YES;
+    if (@available(iOS 11.0, *)) {
+        container.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0,
+                                                                        kPPSearchHorizontalInset,
+                                                                        8.0,
+                                                                        kPPSearchHorizontalInset);
+    } else {
+        container.layoutMargins = UIEdgeInsetsMake(0.0, kPPSearchHorizontalInset, 8.0, kPPSearchHorizontalInset);
+    }
 
-    UISearchBar *searchBar = searchController.searchBar;
+    UISearchBar *searchBar = [[UISearchBar alloc] initWithFrame:CGRectZero];
+    searchBar.translatesAutoresizingMaskIntoConstraints = NO;
+    searchBar.delegate = self;
+    searchBar.placeholder = kLang(@"SearchPlaceholder");
     searchBar.searchBarStyle = UISearchBarStyleMinimal;
     searchBar.barTintColor = AppClearClr;
     searchBar.tintColor = AppPrimaryClr;
+    searchBar.backgroundImage = [UIImage new];
+    searchBar.showsCancelButton = NO;
 
-    if (@available(iOS 13.0, *)) {
-        UITextField *textField = searchBar.searchTextField;
+    UITextField *textField = [self pp_searchTextFieldForSearchBar:searchBar];
+    if (textField) {
         textField.font = [GM MidFontWithSize:16];
         textField.textColor = UIColor.labelColor;
+        textField.textAlignment = NSTextAlignmentNatural;
+        textField.returnKeyType = UIReturnKeySearch;
+        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
         textField.layer.cornerRadius = 16.0;
         textField.layer.masksToBounds = YES;
         textField.layer.borderWidth = 1.0;
@@ -250,10 +276,23 @@ PPUniversalCellDelegate>
         searchIcon.tintColor = [UIColor colorWithWhite:1.0 alpha:0.68];
     }
 
-    self.searchController = searchController;
-    self.navigationItem.searchController = searchController;
-    self.navigationItem.hidesSearchBarWhenScrolling = NO;
-    self.definesPresentationContext = YES;
+    [container addSubview:searchBar];
+    [self.view addSubview:container];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [container.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [container.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [container.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [container.heightAnchor constraintEqualToConstant:60.0],
+
+        [searchBar.leadingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.leadingAnchor],
+        [searchBar.trailingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.trailingAnchor],
+        [searchBar.bottomAnchor constraintEqualToAnchor:container.layoutMarginsGuide.bottomAnchor],
+        [searchBar.heightAnchor constraintEqualToConstant:52.0]
+    ]];
+
+    self.searchBarContainerView = container;
+    self.searchBar = searchBar;
 }
 
 - (void)setupHeroHeader
@@ -362,7 +401,7 @@ PPUniversalCellDelegate>
 
     CGFloat cardPadding = PPSpaceXL;
     [NSLayoutConstraint activateConstraints:@[
-        [heroCard.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM],
+        [heroCard.topAnchor constraintEqualToAnchor:self.searchBarContainerView.bottomAnchor constant:PPSpaceSM],
         [heroCard.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
         [heroCard.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
 
@@ -594,38 +633,23 @@ PPUniversalCellDelegate>
     self.emptySubtitleLabel = subtitleLabel;
 }
 
-#pragma mark - UISearchControllerDelegate
-
-- (void)didDismissSearchController:(UISearchController *)searchController
-{
-    [self resetSearchState];
-}
-
 #pragma mark - UISearchBarDelegate
+
+- (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText
+{
+    [self handleSearchQueryUpdateWithRawText:searchText];
+}
 
 - (void)searchBarCancelButtonClicked:(UISearchBar *)searchBar
 {
+    searchBar.text = @"";
+    [searchBar resignFirstResponder];
     [self resetSearchState];
 }
 
-#pragma mark - UISearchResultsUpdating
-
-- (void)updateSearchResultsForSearchController:(UISearchController *)searchController
+- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar
 {
-    NSString *query = [self normalizedQueryFromRawString:searchController.searchBar.text];
-
-    if (query.length < kPPSearchMinimumQueryLength) {
-        [self resetSearchState];
-        return;
-    }
-
-    if ([query isEqualToString:self.lastQuery]) {
-        return;
-    }
-
-    self.lastQuery = query;
-    [self updateHeaderStateAnimated:YES];
-    [self performSearchDebounced:query];
+    [searchBar resignFirstResponder];
 }
 
 #pragma mark - Search Flow
@@ -639,7 +663,7 @@ PPUniversalCellDelegate>
             return;
         }
 
-        NSString *query = [strongSelf normalizedQueryFromRawString:strongSelf.searchController.searchBar.text];
+        NSString *query = [strongSelf normalizedQueryFromRawString:strongSelf.searchBar.text];
         if (query.length >= kPPSearchMinimumQueryLength &&
             ![query isEqualToString:strongSelf.lastQuery]) {
             strongSelf.lastQuery = query;
@@ -669,6 +693,24 @@ PPUniversalCellDelegate>
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kPPSearchDebounceDelay * NSEC_PER_SEC)),
                    dispatch_get_main_queue(),
                    block);
+}
+
+- (void)handleSearchQueryUpdateWithRawText:(nullable NSString *)rawText
+{
+    NSString *query = [self normalizedQueryFromRawString:rawText];
+
+    if (query.length < kPPSearchMinimumQueryLength) {
+        [self resetSearchState];
+        return;
+    }
+
+    if ([query isEqualToString:self.lastQuery]) {
+        return;
+    }
+
+    self.lastQuery = query;
+    [self updateHeaderStateAnimated:YES];
+    [self performSearchDebounced:query];
 }
 
 - (void)executeSearchForQuery:(NSString *)query
@@ -1117,6 +1159,60 @@ PPUniversalCellDelegate>
         case PPSearchSegmentAds:
         default:
             return kLang(@"Ads");
+    }
+}
+
+- (UITextField *)pp_searchTextField
+{
+    return [self pp_searchTextFieldForSearchBar:self.searchBar];
+}
+
+- (UITextField *)pp_searchTextFieldForSearchBar:(UISearchBar *)searchBar
+{
+    if (!searchBar) {
+        return nil;
+    }
+
+    if (@available(iOS 13.0, *)) {
+        return searchBar.searchTextField;
+    }
+
+    return [searchBar valueForKey:@"searchField"];
+}
+
+- (void)pp_schedulePendingSearchFieldFocusIfNeeded
+{
+    if (!self.pendingSearchFieldFocus) {
+        return;
+    }
+
+    id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
+    if (!coordinator) {
+        [self pp_activatePendingSearchFieldFocusIfPossible];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [coordinator animateAlongsideTransition:nil
+                                 completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
+        [weakSelf pp_activatePendingSearchFieldFocusIfPossible];
+    }];
+}
+
+- (void)pp_activatePendingSearchFieldFocusIfPossible
+{
+    if (!self.pendingSearchFieldFocus || !self.isViewLoaded || self.view.window == nil) {
+        return;
+    }
+
+    UITextField *textField = [self pp_searchTextField];
+    if (!textField || textField.isFirstResponder) {
+        self.pendingSearchFieldFocus = (textField == nil);
+        return;
+    }
+
+    if ([textField becomeFirstResponder]) {
+        self.pendingSearchFieldFocus = NO;
     }
 }
 

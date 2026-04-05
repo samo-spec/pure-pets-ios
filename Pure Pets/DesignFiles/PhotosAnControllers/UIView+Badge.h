@@ -62,6 +62,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)addBadgeWithContent:(NSString *)content
                  badgeColor:(UIColor *)color;
 
+- (void)addBadgeWithContent:(NSString *)content
+                 badgeColor:(UIColor *)color
+                 textColor:(UIColor *)textColor
+                     offset:(CGPoint)offset
+                badgeRadius:(CGFloat)badgeRadius;
+
+
 /**
  * Add a badge to the UIView with given content, color and offset.
  *

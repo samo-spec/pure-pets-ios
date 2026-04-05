@@ -83,15 +83,31 @@ static char * const kUIViewBadgePropertyKey =  "badgeLayer";
     }
 }
 
+
 - (void)addBadgeWithContent:(NSString *)content
                  badgeColor:(UIColor *)color
+                 textColor:(UIColor *)textColor
                      offset:(CGPoint)offset
                 badgeRadius:(CGFloat)badgeRadius {
     
     UIFont *font = [GM boldFontWithSize:12];
     [self addBadgeWithContent:content
                   contentFont:font
-                 contentColor:[UIColor blackColor]
+                 contentColor:textColor
+                   badgeColor:color
+                       offset:offset
+                  badgeRadius:badgeRadius];
+}
+
+- (void)addBadgeWithContent:(NSString *)content
+                 badgeColor:(UIColor *)color
+                     offset:(CGPoint)offset
+                badgeRadius:(CGFloat)badgeRadius {
+    
+    UIFont *font = [GM boldFontWithSize:10];
+    [self addBadgeWithContent:content
+                  contentFont:font
+                 contentColor:AppForgroundColr
                    badgeColor:color
                        offset:offset
                   badgeRadius:badgeRadius];
