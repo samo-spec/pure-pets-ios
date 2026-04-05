@@ -8,6 +8,7 @@
 
 #import "PPAdSubmitCoordinator.h"
 #import "PetAdManager.h"
+#import "PPImageUploadValidator.h"
  
 
 @interface PPAdSubmitCoordinator ()
@@ -33,6 +34,26 @@
 - (void)start
 {
     if (self.onStart) self.onStart();
+
+    // ── Client-side image validation before any upload ──
+    if (self.images.count > 0) {
+        NSInteger failedIndex = 0;
+        PPImageValidationResult result =
+            [PPImageUploadValidator validateImages:self.images
+                                       failedIndex:&failedIndex];
+        if (result != PPImageValidationResultValid) {
+            NSString *message = [PPImageUploadValidator localizedMessageForResult:result];
+            NSError *validationError =
+                [NSError errorWithDomain:@"PPAdSubmitCoordinator"
+                                    code:(NSInteger)result
+                                userInfo:@{
+                                    NSLocalizedDescriptionKey: message,
+                                    @"failedImageIndex": @(failedIndex)
+                                }];
+            if (self.onFailure) self.onFailure(validationError);
+            return;
+        }
+    }
 
     if (self.mode == PPAdSubmitModeCreate) {
         [self createFlow];

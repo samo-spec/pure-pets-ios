@@ -62,9 +62,41 @@ static inline NSString *SRTypeToString(SearchResultType t) {
 }
 
 - (void)setResults:(NSArray<SearchResultItem *> *)results {
-    _results = results;
-    
-    
+    // Snapshot-copy for thread safety — the caller's mutable array
+    // can't mutate underneath us while we're mid-reload.
+    NSArray *snapshot = [results copy];
+
+    if (![NSThread isMainThread]) {
+        // Re-dispatch to main queue; UIKit must only be touched there.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self->_results = snapshot;
+            [self pp_setNeedsResultsReload];
+        });
+        return;
+    }
+
+    _results = snapshot;
+    [self pp_setNeedsResultsReload];
+}
+
+#pragma mark - Debounced Reload
+
+/// Coalesces rapid-fire data source changes into a single reloadData
+/// call, preventing the "number of sections/rows mismatch" crash that
+/// occurs when two async completions race on the same run-loop turn.
+- (void)pp_setNeedsResultsReload {
+    [NSObject cancelPreviousPerformRequestsWithTarget:self
+                                             selector:@selector(pp_performResultsReload)
+                                               object:nil];
+    [self performSelector:@selector(pp_performResultsReload)
+               withObject:nil
+               afterDelay:0.05];
+}
+
+/// Single, authoritative reload point. When this fires, _results is
+/// already set to its final value, so the table view data-source
+/// methods see a consistent snapshot.
+- (void)pp_performResultsReload {
     [self.tableView reloadData];
     [self updateEmptyState];
 }
@@ -150,6 +182,8 @@ static inline NSString *SRTypeToString(SearchResultType t) {
 }
 
 - (void)dealloc {
+    // Cancel any pending debounced reload to avoid messaging a deallocated object.
+    [NSObject cancelPreviousPerformRequestsWithTarget:self];
     NSLog(@"[SearchResults] dealloc");
 }
 

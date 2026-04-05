@@ -588,6 +588,21 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                     paymentMethodId:(NSString *)paymentMethodId
                           completion:(void (^)(PPOrder *, NSError *))completion
 {
+    [self createPendingOrderWithItems:items
+                               amount:amount
+                              address:address
+                      paymentMethodId:paymentMethodId
+                       idempotencyKey:nil
+                           completion:completion];
+}
+
+- (void)createPendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                              amount:(double)amount
+                            address:(PPAddressModel * _Nullable)address
+                    paymentMethodId:(NSString *)paymentMethodId
+                     idempotencyKey:(NSString *)idempotencyKey
+                          completion:(void (^)(PPOrder *, NSError *))completion
+{
     NSString *userId = [FIRAuth auth].currentUser.uid ?: @"";
     if (userId.length == 0) {
         NSError *error = [NSError errorWithDomain:@"PPOrder"
@@ -616,13 +631,16 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     NSString *resolvedPaymentProvider = PPOrderResolvedPaymentProviderForMethod(resolvedPaymentMethodID);
 
     FIRFunctions *functions = PPOrderFunctionsClient();
-    NSDictionary *payload = @{
+    NSMutableDictionary *payload = [@{
         @"items": items ?: @[],
         @"shippingAddressId": shippingAddressID ?: @"",
         @"currency": PPOrderResolvedCurrencyCode(),
         @"paymentProvider": resolvedPaymentProvider,
         @"paymentMethodId": resolvedPaymentMethodID
-    };
+    } mutableCopy];
+    if (idempotencyKey.length > 0) {
+        payload[@"idempotencyKey"] = idempotencyKey;
+    }
 
     PPORDERLog(@"Create pending order | items=%lu | amount=%.2f | addressId=%@ | paymentMethod=%@ | provider=%@",
                (unsigned long)items.count,
@@ -729,6 +747,21 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                             paymentMethodId:(NSString *)paymentMethodId
                                   completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion
 {
+    [self fetchOrCreatePendingOrderWithItems:items
+                                      amount:amount
+                                     address:address
+                             paymentMethodId:paymentMethodId
+                              idempotencyKey:nil
+                                   completion:completion];
+}
+
+- (void)fetchOrCreatePendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                                     amount:(double)amount
+                                    address:(PPAddressModel * _Nullable)address
+                            paymentMethodId:(NSString *)paymentMethodId
+                             idempotencyKey:(NSString *)idempotencyKey
+                                  completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion
+{
     NSString *userId = [FIRAuth auth].currentUser.uid ?: @"";
     if (userId.length == 0) {
         NSError *error = [NSError errorWithDomain:@"PPOrder"
@@ -800,6 +833,8 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             return;
         }
 
+        // ── Continuation: failed-order retry + new order creation ──────────
+        void (^continueWithOrderResolution)(void) = ^{
         // Fallback: allow retry on recently cancelled orders by resetting to pending.
         FIRQuery *failedQuery = [[ordersRef queryWhereField:@"userId" isEqualTo:userId]
                                  queryWhereField:@"status" isEqualTo:@"failed"];
@@ -831,12 +866,12 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             }
 
             if (!retryMatch || retryDocId.length == 0) {
-                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID completion:completion];
+                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
                 return;
             }
 
             if ([resolvedPaymentMethodID isEqualToString:@"cash"]) {
-                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID completion:completion];
+                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
                 return;
             }
 
@@ -859,7 +894,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                     PPORDERLog(@"prepareOrderForRetry unavailable, creating new pending order | orderId=%@ | error=%@",
                                retryDocId ?: @"",
                                callableError.localizedDescription ?: @"Invalid response");
-                    [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID completion:completion];
+                    [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
                     return;
                 }
 
@@ -881,6 +916,51 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 if (completion) completion(retryMatch, nil);
             }];
         }];
+        };
+
+        // ── Idempotency dedup guard ────────────────────────────────────────
+        // When an idempotencyKey is supplied, query Firestore for an existing
+        // order created with that key before falling through to creation.
+        // This prevents duplicate orders when a network timeout causes the
+        // client to retry after the backend already persisted the document.
+        if (idempotencyKey.length > 0) {
+            FIRQuery *idempotencyQuery = [[ordersRef queryWhereField:@"idempotencyKey" isEqualTo:idempotencyKey]
+                                          queryWhereField:@"userId" isEqualTo:userId];
+
+            [idempotencyQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable idempSnapshot, NSError * _Nullable idempError) {
+                if (!idempError && idempSnapshot.documents.count > 0) {
+                    // Pick the newest order matching this key.
+                    PPOrder *existingOrder = nil;
+                    NSTimeInterval idempNewest = 0;
+                    for (FIRDocumentSnapshot *doc in idempSnapshot.documents) {
+                        PPOrder *candidate = [PPOrder orderFromSnapshot:doc];
+                        if (!candidate) continue;
+                        NSTimeInterval t = candidate.createdAt.timeIntervalSince1970;
+                        if (t > idempNewest) {
+                            idempNewest = t;
+                            existingOrder = candidate;
+                        }
+                    }
+                    if (existingOrder) {
+                        PPORDERLog(@"Reusing order by idempotency key | orderId=%@ | key=%@",
+                                   existingOrder.orderId ?: @"",
+                                   idempotencyKey);
+                        if (completion) completion(existingOrder, nil);
+                        return;
+                    }
+                }
+
+                // No existing order for this key (or query error) — continue normally.
+                if (idempError) {
+                    PPORDERLog(@"Idempotency key query failed, continuing | key=%@ | error=%@",
+                               idempotencyKey,
+                               idempError.localizedDescription ?: @"");
+                }
+                continueWithOrderResolution();
+            }];
+        } else {
+            continueWithOrderResolution();
+        }
     }];
 }
 

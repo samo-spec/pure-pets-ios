@@ -119,6 +119,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 @property (nonatomic, assign) BOOL isFetchingMore;
 @property (nonatomic, assign) BOOL hasMorePages;
 @property (nonatomic, strong) NSDateFormatter *orderDateFormatter;
+@property (nonatomic, copy, nullable) dispatch_block_t loadingTimeoutBlock;
+@property (nonatomic, copy, nullable) NSString *lastFetchErrorMessage; // Track error state for empty state display
 
 @end
 
@@ -293,6 +295,54 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 #pragma mark - Data
 
+- (void)cancelLoadingTimeout
+{
+    if (self.loadingTimeoutBlock) {
+        dispatch_block_cancel(self.loadingTimeoutBlock);
+        self.loadingTimeoutBlock = nil;
+    }
+}
+
+- (void)scheduleLoadingTimeout
+{
+    [self cancelLoadingTimeout];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t timeoutBlock = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.loadingTimeoutBlock = nil;
+
+        if (strongSelf.initialLoader.isAnimating) {
+            [strongSelf finishFetchingWithErrorMessage:nil reset:YES];
+            [strongSelf showLoadingTimeoutErrorWithRetry];
+        }
+    });
+    self.loadingTimeoutBlock = timeoutBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   timeoutBlock);
+}
+
+- (void)showLoadingTimeoutErrorWithRetry
+{
+    if (self.presentedViewController) return;
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"connection_timeout_title")
+                                                                  message:kLang(@"connection_timeout_message")
+                                                           preferredStyle:UIAlertControllerStyleAlert];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        [weakSelf fetchOrdersReset:YES];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)fetchOrdersReset:(BOOL)reset
 {
     if (reset) {
@@ -305,6 +355,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         [self.tableView reloadData];
         [self applyFiltersAndReload];
         [self.initialLoader startAnimating];
+        [self scheduleLoadingTimeout];
     } else {
         if (self.isFetchingInitial || self.isFetchingMore || !self.hasMorePages || !self.lastDocument) return;
         self.isFetchingMore = YES;
@@ -366,11 +417,16 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (void)finishFetchingWithErrorMessage:(NSString * _Nullable)errorMessage reset:(BOOL)reset
 {
     (void)reset;
+    [self cancelLoadingTimeout];
     self.isFetchingInitial = NO;
     self.isFetchingMore = NO;
     [self.initialLoader stopAnimating];
     [self.refreshControl endRefreshing];
     [self setPaginationLoading:NO];
+
+    // Track error state so updateEmptyState can show error-specific UI
+    self.lastFetchErrorMessage = errorMessage;
+
     [self applyFiltersAndReload];
 
     if (errorMessage.length > 0) {
@@ -574,25 +630,57 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     }
 
     if (self.displayedOrders.count > 0) {
+        // Clear error state on successful data load
+        self.lastFetchErrorMessage = nil;
         [PPEmptyStateHelper updateEmptyStateForListView:(UICollectionView *)self.tableView
                                               dataCount:self.displayedOrders.count
                                                  config:self.emptyStateConfig];
         return;
     }
 
+    // Determine whether this empty state is due to an error or genuinely empty data
+    BOOL isErrorState = (self.lastFetchErrorMessage.length > 0);
+
     NSString *trimmed = [self.searchText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     BOOL hasSearchOrFilter = (trimmed.length > 0 &&
                               ![trimmed isEqualToString:@""]) ||
     ![self.selectedStatusFilterKey isEqualToString:kOrderHistoryFilterAll];
 
-    NSString *title = hasSearchOrFilter ? kLang(@"empty_no_results_title") : kLang(@"NoOrders");
-    if (![title isKindOfClass:NSString.class] || title.length == 0 || [title isEqualToString:@"NoOrders"]) {
-        title = hasSearchOrFilter ? (kLang(@"empty_no_results_title") ?: @"") : (kLang(@"OrderHistory") ?: @"");
+    NSString *title;
+    NSString *subTitle;
+    NSString *buttonTitle;
+
+    if (isErrorState) {
+        // Error-specific empty state — clearly communicates failure and offers retry
+        title = kLang(@"load_error_title") ?: @"";
+        if (![title isKindOfClass:NSString.class] || title.length == 0 || [title isEqualToString:@"load_error_title"]) {
+            title = @"Unable to Load";
+        }
+        subTitle = kLang(@"load_error_retry") ?: @"";
+        if (![subTitle isKindOfClass:NSString.class] || subTitle.length == 0 || [subTitle isEqualToString:@"load_error_retry"]) {
+            subTitle = @"Something went wrong. Pull to refresh or tap Retry.";
+        }
+        buttonTitle = kLang(@"retry") ?: @"";
+        if (![buttonTitle isKindOfClass:NSString.class] || buttonTitle.length == 0 || [buttonTitle isEqualToString:@"retry"]) {
+            buttonTitle = kLang(@"empty_retry_button") ?: @"Retry";
+        }
+        self.emptyStateConfig.animationName = @"404.json";
+        self.emptyStateConfig.isNetworkFile = NO;
+    } else {
+        // Normal empty state
+        title = hasSearchOrFilter ? kLang(@"empty_no_results_title") : kLang(@"NoOrders");
+        if (![title isKindOfClass:NSString.class] || title.length == 0 || [title isEqualToString:@"NoOrders"]) {
+            title = hasSearchOrFilter ? (kLang(@"empty_no_results_title") ?: @"") : (kLang(@"OrderHistory") ?: @"");
+        }
+        subTitle = hasSearchOrFilter ? (kLang(@"orders_empty_filtered") ?: @"") : @"";
+        buttonTitle = kLang(@"empty_retry_button") ?: @"";
+        self.emptyStateConfig.animationName = @"Shopping Cart Empty.json";
+        self.emptyStateConfig.isNetworkFile = YES;
     }
 
     self.emptyStateConfig.title = title ?: @"";
-    self.emptyStateConfig.subTitle = hasSearchOrFilter ? (kLang(@"orders_empty_filtered") ?: @"") : @"";
-    self.emptyStateConfig.buttonTitle = kLang(@"empty_retry_button") ?: @"";
+    self.emptyStateConfig.subTitle = subTitle;
+    self.emptyStateConfig.buttonTitle = buttonTitle;
     self.emptyStateConfig.target = self;
     self.emptyStateConfig.action = @selector(refreshOrders);
 

@@ -153,6 +153,13 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 
         self.tableBottomConstraint.active = YES;
     }
+
+    // L-03: Refresh undo container shadowPath after layout resolves bounds
+    if (self.undoContainerView && !CGRectIsEmpty(self.undoContainerView.bounds)) {
+        self.undoContainerView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.undoContainerView.bounds
+                                      cornerRadius:self.undoContainerView.layer.cornerRadius].CGPath;
+    }
 }
 
 - (void)reloadFormData {
@@ -222,8 +229,11 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
         [super viewWillAppear:animated];
         [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"cartTitle") showBack:NO];
          self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"xmark") style:UIBarButtonItemStylePlain target:self action:@selector(onDissmiss)];
+        self.navigationItem.leftBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_close_cart", @"Close cart");
         
         self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"headphones.dots") style:UIBarButtonItemStylePlain target:self action:@selector(startEditingCartItems)];
+        self.navigationItem.rightBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
+        self.navigationItem.rightBarButtonItem.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
         
     }
     else
@@ -234,6 +244,8 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
                                                                                     style:UIBarButtonItemStylePlain
                                                                                    target:self
                                                                                    action:@selector(startEditingCartItems)];
+        self.navigationItem.rightBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
+        self.navigationItem.rightBarButtonItem.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
 
     }
 
@@ -430,6 +442,7 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     container.layer.shadowOpacity = 0.12;
     container.layer.shadowOffset = CGSizeMake(0, 4);
     container.layer.shadowRadius = 8;
+    container.layer.masksToBounds = NO;
     container.alpha = 0.0;
     container.hidden = YES;
 
@@ -447,6 +460,8 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     [undoButton setTitle:kLang(@"cart_undo_action") forState:UIControlStateNormal];
     [undoButton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
     [undoButton addTarget:self action:@selector(pp_undoLastRemovalTapped) forControlEvents:UIControlEventTouchUpInside];
+    undoButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_undo_remove", @"Undo remove");
+    undoButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_undo_remove_hint", @"Double-tap to restore the removed item");
 
     [container addSubview:label];
     [container addSubview:undoButton];

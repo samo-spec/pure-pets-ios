@@ -34,7 +34,7 @@
                                 <size key="shadowOffset" width="0.0" height="0.0"/>
                             </label>
                             <imageView userInteractionEnabled="NO" contentMode="scaleToFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="PureIconTransFilledV3" translatesAutoresizingMaskIntoConstraints="NO" id="0qK-kL-r8Y">
-                                <rect key="frame" x="120" y="154" width="150" height="150"/>
+                                <rect key="frame" x="110" y="196" width="172" height="172"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                 <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <color key="tintColor" name="AppPrimaryColor"/>

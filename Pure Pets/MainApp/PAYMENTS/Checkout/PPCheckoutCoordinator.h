@@ -14,6 +14,16 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+/// Posted by SceneDelegate when the scene becomes active.
+/// PPCheckoutCoordinator observes this during an in-flight QIB payment
+/// to re-check the order's Firestore status after an app-resume.
+extern NSNotificationName const PPAppDidBecomeActiveNotification;
+
+/// Key in NSError.userInfo indicating the failure is retryable (payment error
+/// or timeout).  Value is an NSNumber wrapping a BOOL.
+/// Validation errors (out-of-stock, invalid address, etc.) never carry this flag.
+extern NSString *const PPCheckoutErrorIsRetryableKey;
+
 typedef NS_ENUM(NSInteger, PPCheckoutResult) {
     PPCheckoutResultSuccess,
     PPCheckoutResultPendingVerification,

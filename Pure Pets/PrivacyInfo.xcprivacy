@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+    PrivacyInfo.xcprivacy
+    Pure Pets
+
+    App-level privacy manifest required since iOS 17 / May 2024.
+    Declares required-reason API usage for the app target and bundled
+    libraries (YYKit, JPVideoPlayer) that do not ship their own manifests.
+    Pod and SPM dependencies provide their own manifests separately.
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- ================================================================== -->
+    <!-- TRACKING: The app does not track users across other companies' apps -->
+    <!-- ================================================================== -->
+    <key>NSPrivacyTracking</key>
+    <false/>
+
+    <!-- ================================================================== -->
+    <!-- TRACKING DOMAINS: None — no cross-app tracking                     -->
+    <!-- ================================================================== -->
+    <key>NSPrivacyTrackingDomains</key>
+    <array/>
+
+    <!-- ================================================================== -->
+    <!-- REQUIRED-REASON API DECLARATIONS                                   -->
+    <!-- Covers app code + bundled YYKit / JPVideoPlayer usage              -->
+    <!-- ================================================================== -->
+    <key>NSPrivacyAccessedAPITypes</key>
+    <array>
+
+        <!-- ============================================================== -->
+        <!-- 1. UserDefaults                                                -->
+        <!-- Used by: app code (20+ files — GM.h, UserManager,             -->
+        <!--   PaymentManager, CartManager, BrowseHistoryManager, etc.)     -->
+        <!-- Reason CA92.1: Access user defaults to read/write data that    -->
+        <!--   is only accessible to the app itself.                        -->
+        <!-- ============================================================== -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>CA92.1</string>
+            </array>
+        </dict>
+
+        <!-- ============================================================== -->
+        <!-- 2. File Timestamp APIs                                         -->
+        <!-- Used by: YYKeychain (bundled YYKit), JPVideoPlayerCache,       -->
+        <!--   JPVideoPlayerManager — all access modification/creation      -->
+        <!--   dates for cache eviction and content management.             -->
+        <!-- Reason DDA9.1: Access file timestamps within the app container -->
+        <!--   or app-group container to manage cached content.             -->
+        <!-- Reason C617.1: Access timestamps of files inside the app       -->
+        <!--   container, app-group container, or CloudKit container.       -->
+        <!-- ============================================================== -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>DDA9.1</string>
+                <string>C617.1</string>
+            </array>
+        </dict>
+
+        <!-- ============================================================== -->
+        <!-- 3. Disk Space APIs                                             -->
+        <!-- Used by: YYDiskCache (bundled YYKit), JPVideoPlayerCache,      -->
+        <!--   UIDevice+YYAdd — check available disk space before writing   -->
+        <!--   cached data to prevent out-of-space failures.               -->
+        <!-- Reason E174.1: Check available disk space to determine         -->
+        <!--   whether the app can write data to disk.                     -->
+        <!-- ============================================================== -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategoryDiskSpace</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>E174.1</string>
+            </array>
+        </dict>
+
+        <!-- ============================================================== -->
+        <!-- 4. System Boot Time / Uptime APIs                              -->
+        <!-- Used by: YYWebImageOperation, UIDevice+YYAdd, YYAsyncLayer,   -->
+        <!--   YYDispatchQueuePool (all bundled YYKit) — use systemUptime   -->
+        <!--   and mach_absolute_time to measure elapsed time intervals.   -->
+        <!-- Reason 35F9.1: Calculate the amount of time that has elapsed   -->
+        <!--   between events occurring within the app.                    -->
+        <!-- ============================================================== -->
+        <dict>
+            <key>NSPrivacyAccessedAPIType</key>
+            <string>NSPrivacyAccessedAPICategorySystemBootTime</string>
+            <key>NSPrivacyAccessedAPITypeReasons</key>
+            <array>
+                <string>35F9.1</string>
+            </array>
+        </dict>
+
+    </array>
+
+    <!-- ================================================================== -->
+    <!-- COLLECTED DATA TYPES                                               -->
+    <!-- Declares what data the app collects, purposes, and linkage.        -->
+    <!-- ================================================================== -->
+    <key>NSPrivacyCollectedDataTypes</key>
+    <array>
+
+        <!-- Name — collected for user profile display -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeName</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Email Address — collected for authentication -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeEmailAddress</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Phone Number — collected for phone-based authentication -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePhoneNumber</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Photos or Videos — collected for pet advertisements -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePhotosOrVideos</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Precise Location — collected for delivery address and maps -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePreciseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Coarse Location — collected for nearby services discovery -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeCoarseLocation</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- User ID — Firebase Auth UID, linked to user identity -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeUserID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <true/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Crash Data — Firebase Crashlytics, not linked to identity -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeCrashData</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+            </array>
+        </dict>
+
+        <!-- Performance Data — Firebase Analytics/Performance, not linked -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypePerformanceData</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
+        </dict>
+
+        <!-- Device ID — Firebase Analytics install identifier, not linked -->
+        <dict>
+            <key>NSPrivacyCollectedDataType</key>
+            <string>NSPrivacyCollectedDataTypeDeviceID</string>
+            <key>NSPrivacyCollectedDataTypeLinked</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypeTracking</key>
+            <false/>
+            <key>NSPrivacyCollectedDataTypePurposes</key>
+            <array>
+                <string>NSPrivacyCollectedDataTypePurposeAnalytics</string>
+            </array>
+        </dict>
+
+    </array>
+
+</dict>
+</plist>

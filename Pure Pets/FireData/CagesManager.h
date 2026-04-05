@@ -24,8 +24,10 @@ typedef void(^VoidWithError)(NSError * _Nullable error);
 
 + (instancetype)sharedManager;
 // CagesManager.m
-- (void)listenForCageWithID:(NSString *)cageID
-                   onChange:(void (^)(CageModel *cage))onChange;
+/// Listens for real-time changes to a specific cage document.
+/// Returns a FIRListenerRegistration that the caller MUST remove when no longer needed.
+- (id<FIRListenerRegistration>)listenForCageWithID:(NSString *)cageID
+                                          onChange:(void (^)(CageModel *cage))onChange;
 #pragma mark - Cages (الأقفاص)
 
 /// جلب كل الأقفاص لمستخدم معين (نداء لمرة واحدة).

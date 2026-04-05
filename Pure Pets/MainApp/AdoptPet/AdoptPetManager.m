@@ -5,6 +5,7 @@
 
 #import "AdoptPetManager.h"
 #import "AdoptPetModel.h"
+#import "PPImageUploadValidator.h"
 @import Firebase;
 @import FirebaseStorage;
 
@@ -31,6 +32,25 @@ static NSInteger const kFirestoreInQueryLimit = 10;
 - (void)createPet:(AdoptPetModel *)model
            images:(NSArray<UIImage *> *)images
        completion:(AdoptPetCreateCompletion)completion {
+
+    // ── Client-side image validation before upload ──
+    if (images.count > 0) {
+        NSInteger failedIndex = 0;
+        PPImageValidationResult result =
+            [PPImageUploadValidator validateImages:images failedIndex:&failedIndex];
+        if (result != PPImageValidationResultValid) {
+            if (completion) {
+                NSString *message = [PPImageUploadValidator localizedMessageForResult:result];
+                NSError *validationError =
+                    [NSError errorWithDomain:@"AdoptPetManager"
+                                        code:(NSInteger)result
+                                    userInfo:@{NSLocalizedDescriptionKey: message}];
+                completion(NO, nil, validationError);
+            }
+            return;
+        }
+    }
+
     FIRDocumentReference *doc = [[self petsCollection] documentWithAutoID];
     model.documentID = doc.documentID;
 
@@ -238,6 +258,24 @@ static NSInteger const kFirestoreInQueryLimit = 10;
                                            userInfo:@{NSLocalizedDescriptionKey: @"Missing document ID"}]);
         }
         return;
+    }
+
+    // ── Client-side image validation before upload ──
+    if (images.count > 0) {
+        NSInteger failedIndex = 0;
+        PPImageValidationResult result =
+            [PPImageUploadValidator validateImages:images failedIndex:&failedIndex];
+        if (result != PPImageValidationResultValid) {
+            if (completion) {
+                NSString *message = [PPImageUploadValidator localizedMessageForResult:result];
+                NSError *validationError =
+                    [NSError errorWithDomain:@"AdoptPetManager"
+                                        code:(NSInteger)result
+                                    userInfo:@{NSLocalizedDescriptionKey: message}];
+                completion(NO, validationError);
+            }
+            return;
+        }
     }
 
     __weak typeof(self) weakSelf = self;

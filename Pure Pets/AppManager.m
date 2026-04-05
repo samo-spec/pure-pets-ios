@@ -15,6 +15,29 @@
 
 @implementation AppManager
 
++ (FIRFirestore *)pp_configuredFirestoreInstance
+{
+    static FIRFirestore *sharedFirestore = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        if ([FIRApp defaultApp] == nil) {
+            [FIRApp configure];
+        }
+
+        sharedFirestore = [FIRFirestore firestore];
+
+        FIRPersistentCacheIndexManager *indexManager = sharedFirestore.persistentCacheIndexManager;
+        if (indexManager) {
+            // Firestore persistence is already enabled by default in the current SDK.
+            // Only keep the safe cache-index setup here so late AppManager init cannot
+            // crash when another code path touched Firestore earlier in launch.
+            [indexManager enableIndexAutoCreation];
+        }
+    });
+
+    return sharedFirestore ?: [FIRFirestore firestore];
+}
+
 /*
  witch one load frist SceneDelegate or AppDelegate , and depends on best practices what should i use
  */
@@ -68,6 +91,7 @@ static NSInteger loadingCardFlag = 0;
 - (void)stopAllListener {
     //NSLog(@"AppManager: Application terminating - removing listeners After Logot");
     [self stopListeningForUsers];
+    [self stopListeningForTriggers];
     [AppData stopAllListeners];
     [AppDataListenerManager.shared stopAllListeners];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:@"stopAllListener" object:nil];
@@ -127,18 +151,7 @@ static NSInteger loadingCardFlag = 0;
 {
     self = [super init];
     if (self != nil) {
-        if ([FIRApp defaultApp] == nil) {
-            [FIRApp configure];
-        }
-        dF = [FIRFirestore firestore];
-        FIRFirestoreSettings *setting = [[FIRFirestoreSettings alloc]init];
-        setting.persistenceEnabled = YES;
-        dF.settings = setting;
-        FIRPersistentCacheIndexManager *indexManager = dF.persistentCacheIndexManager;
-        if (indexManager) {
-            //Indexing is disabled by default
-            [indexManager enableIndexAutoCreation];
-        }
+        dF = [AppManager pp_configuredFirestoreInstance];
         
         // [self  deleteMyDataFromFirestore];
         //[self  compressImagesInFirebaseStorageFolder:@"/CardsImages"];
@@ -231,6 +244,7 @@ static NSInteger loadingCardFlag = 0;
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [self stopListeningForUsers]; // Stop listening for UsersCol changes
+    [self stopListeningForTriggers]; // Stop listening for trGCol changes
 
     [AppData stopAllListeners];
     
@@ -245,6 +259,15 @@ static NSInteger loadingCardFlag = 0;
         [self.usersListener remove];
         self.usersListener = nil;
         //NSLog(@"AppManager: Users listener removed.");
+    }
+}
+
+// Trigger Listener
+- (void)stopListeningForTriggers {
+    if (self.triggerListener) {
+        [self.triggerListener remove];
+        self.triggerListener = nil;
+        startListen = 0;
     }
 }
 
@@ -1137,6 +1160,7 @@ int startListen = 0;
     // // NSLog(@"TRIGER ------>>>>>>  START LISTENING");
      FIRCollectionReference *MslListener = [dF collectionWithPath:@"trGCol"];
     
+    self.triggerListener =
     [MslListener addSnapshotListenerWithIncludeMetadataChanges:YES
                                                       listener:^(FIRQuerySnapshot *_Nullable snapshot, NSError *_Nullable error) {
         if (error != nil) {

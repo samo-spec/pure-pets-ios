@@ -7,11 +7,16 @@
 #import "ProfileVC.h"
 #import "PPImageLoaderManager.h"
 #import <SDWebImage/UIImageView+WebCache.h>
+#import <SafariServices/SFSafariViewController.h>
 @import UserNotifications;
 
 static NSString *const kSettingsAutoPlayKey        = @"isAutoPlaySet";
 static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
 static NSString *const kSettingsNotificationsKey   = @"notificationsSet";
+
+// MARK: Legal URLs — update these to the production website URLs when available.
+static NSString *const kPPPrivacyPolicyURL   = @"https://purepetsapp.com/privacy-policy";
+static NSString *const kPPTermsOfServiceURL  = @"https://purepetsapp.com/terms-of-service";
 
 #pragma mark - PPSettingsRowModel
 
@@ -174,7 +179,7 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
 
     PPSettingsRowModel *langRow = [PPSettingsRowModel new];
     langRow.type = PPSettingsRowTypeSegment;
-    langRow.title = kLang(@"changelanguage") ?: @"Language";
+    langRow.title = kLang(@"Language") ?: @"Language";
     langRow.iconName = @"globe";
     langRow.iconTint = UIColor.whiteColor;
     langRow.iconBackground = [UIColor systemTealColor];
@@ -231,6 +236,32 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     clearCacheRow.onTap = ^{ [weakSelf pp_clearCache]; };
     storageSection.rows = @[clearCacheRow];
     [allSections addObject:storageSection];
+
+    // Section: Legal
+    PPSettingsSectionModel *legalSection = [PPSettingsSectionModel new];
+    legalSection.headerTitle = kLang(@"LegalSectionHeader") ?: @"Legal";
+    NSMutableArray<PPSettingsRowModel *> *legalRows = [NSMutableArray array];
+
+    PPSettingsRowModel *privacyPolicyRow = [PPSettingsRowModel new];
+    privacyPolicyRow.type = PPSettingsRowTypeNavigation;
+    privacyPolicyRow.title = kLang(@"PrivacyPolicy") ?: @"Privacy Policy";
+    privacyPolicyRow.iconName = @"hand.raised.fill";
+    privacyPolicyRow.iconTint = UIColor.whiteColor;
+    privacyPolicyRow.iconBackground = [UIColor systemIndigoColor];
+    privacyPolicyRow.onTap = ^{ [weakSelf pp_openLegalURL:kPPPrivacyPolicyURL]; };
+    [legalRows addObject:privacyPolicyRow];
+
+    PPSettingsRowModel *termsRow = [PPSettingsRowModel new];
+    termsRow.type = PPSettingsRowTypeNavigation;
+    termsRow.title = kLang(@"TermsOfService") ?: @"Terms of Service";
+    termsRow.iconName = @"doc.text.fill";
+    termsRow.iconTint = UIColor.whiteColor;
+    termsRow.iconBackground = [UIColor systemGrayColor];
+    termsRow.onTap = ^{ [weakSelf pp_openLegalURL:kPPTermsOfServiceURL]; };
+    [legalRows addObject:termsRow];
+
+    legalSection.rows = legalRows;
+    [allSections addObject:legalSection];
 
     // Section: Account
     if (PPIsUserLoggedIn) {
@@ -696,6 +727,19 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
             });
         }];
     }];
+}
+
+#pragma mark - Legal
+
+- (void)pp_openLegalURL:(NSString *)urlString
+{
+    NSURL *url = [NSURL URLWithString:urlString];
+    if (!url) return;
+
+    SFSafariViewController *safariVC = [[SFSafariViewController alloc] initWithURL:url];
+    safariVC.preferredControlTintColor = AppPrimaryClr;
+    safariVC.modalPresentationStyle = UIModalPresentationPageSheet;
+    [self presentViewController:safariVC animated:YES completion:nil];
 }
 
 #pragma mark - Logout

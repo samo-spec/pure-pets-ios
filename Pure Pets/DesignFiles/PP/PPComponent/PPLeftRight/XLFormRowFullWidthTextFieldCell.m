@@ -471,7 +471,7 @@ NSString * const XLFormRowDescriptorTypeFullWidthTextField = @"XLFormRowFullWidt
             [self.textField.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-20],
             
         ]];
-        self.textField.textAlignment = NSTextAlignmentLeft;
+        self.textField.textAlignment = NSTextAlignmentNatural;
     }
     
     

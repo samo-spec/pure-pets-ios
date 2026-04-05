@@ -282,8 +282,10 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.listener = [self.orderManager listenToTimelineEventsForOrder:self.order
                                                                update:^(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable __unused error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            weakSelf.events = events ?: @[];
-            [weakSelf.tableView reloadData];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            strongSelf.events = events ?: @[];
+            [strongSelf.tableView reloadData];
         });
     }];
 }
@@ -377,8 +379,10 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.listener = [self.orderManager listenToSupportRequestsForOrderID:self.order.orderId
                                                                   update:^(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable __unused error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            weakSelf.requests = requests ?: @[];
-            [weakSelf.tableView reloadData];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            strongSelf.requests = requests ?: @[];
+            [strongSelf.tableView reloadData];
         });
     }];
 }
@@ -507,8 +511,10 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
                                                               requestID:self.request.requestId
                                                                  update:^(NSArray<PPOrderTimelineEvent *> *events, NSError * _Nullable __unused error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            weakSelf.events = events ?: @[];
-            [weakSelf reloadContent];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            strongSelf.events = events ?: @[];
+            [strongSelf reloadContent];
         });
     }];
 }
@@ -993,27 +999,29 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
                                      forOrder:self.order
                                    completion:^(PPOrderSupportRequest * _Nullable request, BOOL __unused deduplicated, NSError * _Nullable error) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf setSubmitLoading:NO];
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
+                [strongSelf setSubmitLoading:NO];
                 if (error) {
-                    [weakSelf showMessage:error.localizedDescription ?: kLang(@"SomethingWentWrong")
-                                    title:weakSelf.title];
+                    [strongSelf showMessage:error.localizedDescription ?: kLang(@"SomethingWentWrong")
+                                    title:strongSelf.title];
                     return;
                 }
-                if (weakSelf.onComplete) weakSelf.onComplete();
+                if (strongSelf.onComplete) strongSelf.onComplete();
                 if (request) {
-                    UIViewController *detailsVC = [PPOrderSupportRequestDetailsViewController controllerWithOrder:weakSelf.order
-                                                                                                   orderManager:weakSelf.orderManager
+                    UIViewController *detailsVC = [PPOrderSupportRequestDetailsViewController controllerWithOrder:strongSelf.order
+                                                                                                   orderManager:strongSelf.orderManager
                                                                                                         request:request];
-                    if (weakSelf.navigationController) {
-                        NSMutableArray *stack = weakSelf.navigationController.viewControllers.mutableCopy;
+                    if (strongSelf.navigationController) {
+                        NSMutableArray *stack = strongSelf.navigationController.viewControllers.mutableCopy;
                         if (stack.count > 0) {
                             [stack removeLastObject];
                         }
                         [stack addObject:detailsVC];
-                        [weakSelf.navigationController setViewControllers:stack animated:YES];
+                        [strongSelf.navigationController setViewControllers:stack animated:YES];
                     }
                 } else {
-                    [weakSelf.navigationController popViewControllerAnimated:YES];
+                    [strongSelf.navigationController popViewControllerAnimated:YES];
                 }
             });
         }];
@@ -1030,10 +1038,12 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
                                    progress:nil
                                  completion:^(NSArray<PPOrderSupportAttachment *> *attachments, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
             if (error) {
-                [weakSelf setSubmitLoading:NO];
-                [weakSelf showMessage:error.localizedDescription ?: kLang(@"order_support_upload_failed")
-                                title:weakSelf.title];
+                [strongSelf setSubmitLoading:NO];
+                [strongSelf showMessage:error.localizedDescription ?: kLang(@"order_support_upload_failed")
+                                title:strongSelf.title];
                 return;
             }
             submitDraft(attachments ?: @[]);
@@ -1415,6 +1425,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 @property (nonatomic, strong) UIView *loadingOverlay;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
+@property (nonatomic, copy, nullable) dispatch_block_t loadingTimeoutBlock;
 
 @property (nonatomic, strong) NSDateFormatter *dateFormatter;
 @property (nonatomic, strong) NSMutableArray<NSMutableDictionary *> *lineItems;
@@ -1514,12 +1525,20 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     
     if (self.headerCard) {
         [Styling addLiquidGlassBorderToView:self.headerCard cornerRadius:24 color:AppBackgroundClrDarker];
+        // L-03: Refresh shadowPath after Auto Layout resolves final bounds
+        self.headerCard.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.headerCard.bounds
+                                      cornerRadius:self.headerCard.layer.cornerRadius].CGPath;
     }
     if (self.summaryPanel) {
         [Styling addLiquidGlassBorderToView:self.summaryPanel cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.22]];
     }
     if (self.deliveryMapCard) {
         [Styling addLiquidGlassBorderToView:self.deliveryMapCard cornerRadius:20 color:AppBackgroundClrDarker];
+        // L-03: Refresh shadowPath after Auto Layout resolves final bounds
+        self.deliveryMapCard.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.deliveryMapCard.bounds
+                                      cornerRadius:self.deliveryMapCard.layer.cornerRadius].CGPath;
     }
     self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
     self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
@@ -2732,10 +2751,12 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         [self.inFlightAccessoryIDs addObject:itemID];
         [self fetchAccessoryDataForID:itemID completion:^(NSDictionary * _Nullable data) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf.inFlightAccessoryIDs removeObject:itemID];
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
+                [strongSelf.inFlightAccessoryIDs removeObject:itemID];
                 if (!data) return;
-                weakSelf.accessoryCache[itemID] = data;
-                [weakSelf applyAccessoryData:data toLineItemsWithID:itemID];
+                strongSelf.accessoryCache[itemID] = data;
+                [strongSelf applyAccessoryData:data toLineItemsWithID:itemID];
             });
         }];
     }
@@ -3096,15 +3117,17 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
                                  forOrder:self.order
                                completion:^(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf stopLoading];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            [strongSelf stopLoading];
             if (error) {
-                [weakSelf showErrorMessage:error.localizedDescription ?: kLang(@"Error")];
+                [strongSelf showErrorMessage:error.localizedDescription ?: kLang(@"Error")];
                 return;
             }
 
-            [weakSelf showSuccessMessage:deduplicated ? kLang(@"order_existing_request_opened") : kLang(@"OrderCanceled")];
+            [strongSelf showSuccessMessage:deduplicated ? kLang(@"order_existing_request_opened") : kLang(@"OrderCanceled")];
             if (request) {
-                [weakSelf openRequestDetailsForRequest:request];
+                [strongSelf openRequestDetailsForRequest:request];
             }
         });
     }];
@@ -3251,18 +3274,20 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     __weak typeof(self) weakSelf = self;
     [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nonnull addresses, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            weakSelf.isResolvingAddress = NO;
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            strongSelf.isResolvingAddress = NO;
             if (error || addresses.count == 0) {
-                [weakSelf refreshDeliveryMap];
+                [strongSelf refreshDeliveryMap];
                 return;
             }
             
-            weakSelf.availableAddresses = addresses;
-            PPAddressModel *matched = [weakSelf preferredAddressFromList:addresses shippingAddressID:shippingAddressID];
+            strongSelf.availableAddresses = addresses;
+            PPAddressModel *matched = [strongSelf preferredAddressFromList:addresses shippingAddressID:shippingAddressID];
             if (matched) {
-                weakSelf.selectedAddressModel = matched;
+                strongSelf.selectedAddressModel = matched;
             }
-            [weakSelf refreshDeliveryMap];
+            [strongSelf refreshDeliveryMap];
         });
     }];
 }
@@ -3350,12 +3375,14 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     __weak typeof(self) weakSelf = self;
     [ref updateData:payload completion:^(NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            [weakSelf stopLoading];
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            [strongSelf stopLoading];
             if (error) {
-                [weakSelf showErrorMessage:error.localizedDescription ?: kLang(@"Error")];
+                [strongSelf showErrorMessage:error.localizedDescription ?: kLang(@"Error")];
                 return;
             }
-            [weakSelf showSuccessMessage:kLang(@"LocationUpdated")];
+            [strongSelf showSuccessMessage:kLang(@"LocationUpdated")];
         });
     }];
 }
@@ -3527,9 +3554,13 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         if (error || !snapshot.exists) return;
         PPOrder *updatedOrder = [PPOrder orderFromSnapshot:snapshot];
         if (!updatedOrder) return;
-        NSString *nextStatusKey = [weakSelf normalizedStatusKeyForOrder:updatedOrder];
-        NSString *previousStatusKey = [weakSelf safeString:weakSelf.lastObservedOrderStatusKey];
-        BOOL shouldPlayStatusFeedback = weakSelf.isOrderDetailsScreenVisible &&
+
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        NSString *nextStatusKey = [strongSelf normalizedStatusKeyForOrder:updatedOrder];
+        NSString *previousStatusKey = [strongSelf safeString:strongSelf.lastObservedOrderStatusKey];
+        BOOL shouldPlayStatusFeedback = strongSelf.isOrderDetailsScreenVisible &&
                                         previousStatusKey.length > 0 &&
                                         nextStatusKey.length > 0 &&
                                         ![previousStatusKey isEqualToString:nextStatusKey];
@@ -3538,19 +3569,21 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
             AudioServicesPlaySystemSound(1110);
         }
 
-        weakSelf.lastObservedOrderStatusKey = nextStatusKey;
-        weakSelf.order = updatedOrder;
-        [weakSelf configureWithCurrentOrder];
+        strongSelf.lastObservedOrderStatusKey = nextStatusKey;
+        strongSelf.order = updatedOrder;
+        [strongSelf configureWithCurrentOrder];
     }];
 
     self.requestsListener = [self.orderManager listenToSupportRequestsForOrderID:self.order.orderId
                                                                           update:^(NSArray<PPOrderSupportRequest *> *requests, NSError * _Nullable __unused error) {
         dispatch_async(dispatch_get_main_queue(), ^{
-            weakSelf.supportRequests = requests ?: @[];
-            weakSelf.eligibilityDecisions = [weakSelf.orderManager eligibilityDecisionsForOrder:weakSelf.order
-                                                                                        requests:weakSelf.supportRequests
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            strongSelf.supportRequests = requests ?: @[];
+            strongSelf.eligibilityDecisions = [strongSelf.orderManager eligibilityDecisionsForOrder:strongSelf.order
+                                                                                        requests:strongSelf.supportRequests
                                                                                    referenceDate:[NSDate date]];
-            [weakSelf updateButtonsState];
+            [strongSelf updateButtonsState];
         });
     }];
 
@@ -3685,6 +3718,13 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     view.layer.shadowOffset = CGSizeMake(0, 14);
     view.layer.shadowOpacity = PPIOS26() ? 0.12 : 0.08;
     view.layer.shadowRadius = 28;
+    // L-03: Pre-compute shadow path to eliminate offscreen rendering passes.
+    // Updated in viewDidLayoutSubviews once final bounds are resolved.
+    if (!CGRectIsEmpty(view.bounds)) {
+        view.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:view.bounds
+                                      cornerRadius:view.layer.cornerRadius].CGPath;
+    }
 }
 
 - (NSString *)formattedTotalForOrder:(PPOrder *)order
@@ -3845,14 +3885,66 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
+- (void)cancelLoadingTimeout
+{
+    if (self.loadingTimeoutBlock) {
+        dispatch_block_cancel(self.loadingTimeoutBlock);
+        self.loadingTimeoutBlock = nil;
+    }
+}
+
+- (void)scheduleLoadingTimeout
+{
+    [self cancelLoadingTimeout];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t timeoutBlock = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.loadingTimeoutBlock = nil;
+
+        if (strongSelf.loadingIndicator.isAnimating) {
+            [strongSelf stopLoading];
+            [strongSelf showLoadingTimeoutErrorWithRetry];
+        }
+    });
+    self.loadingTimeoutBlock = timeoutBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   timeoutBlock);
+}
+
+- (void)showLoadingTimeoutErrorWithRetry
+{
+    if (self.presentedViewController) return;
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"connection_timeout_title")
+                                                                  message:kLang(@"connection_timeout_message")
+                                                           preferredStyle:UIAlertControllerStyleAlert];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf configureWithCurrentOrder];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)startLoading
 {
     self.loadingOverlay.hidden = NO;
     [self.loadingIndicator startAnimating];
+    [self scheduleLoadingTimeout];
 }
 
 - (void)stopLoading
 {
+    [self cancelLoadingTimeout];
     self.loadingOverlay.hidden = YES;
     [self.loadingIndicator stopAnimating];
 }

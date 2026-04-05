@@ -1,30 +1,120 @@
-{\rtf1\ansi\ansicpg1252\cocoartf2869
-\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 .AppleSystemUIFontMonospaced-Regular;}
-{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red20\green0\blue196;}
-{\*\expandedcolortbl;;\csgray\c0;\cssrgb\c10980\c0\c81176;}
-\margl1440\margr1440\vieww11520\viewh8400\viewkind0
-\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+.DS_Store
+Pods/
+.build/
+.bundle/
+vendor/
+DerivedData/
+build/
+*.xcworkspace
+*.xcuserdata
+.idea/
 
-\f0\fs24 \cf0 *.zip\
-*.apk\
-*.ipa\
-*.DS_Store\
-SDKs/\
-build/\
-DerivedData/\
-Pure Pets IOS/vendor/bundle\
-PurePetsAdmin/boringssl\
-vendor/bundle\
-\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
 
-\f1\fs26 \cf2 Pods\cf3 /\cf2 \
-*.framework\
-DerivedData\cf3 /\
-xcuserdata/\
-*.xcuserstate\
-Pods/\
-xcuserdata/\
-*.xcuserstate\
-DerivedData/\
-build/\
-.DS_Store}
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcworkspace
+*.xcuserdata
+
+# CocoaPods
+Pods/
+
+# Ruby / Bundler
+.bundle/
+vendor/bundle/
+
+# IDE
+.idea/
+
+# Firebase sensitive
+GoogleService-Info.plist
+
+
+# Xcode
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+
+# CocoaPods
+Pods/
+!Podfile
+!Podfile.lock
+
+# Carthage
+Carthage/Build/
+
+# SPM
+.build/
+Package.resolved
+
+# Firebase
+GoogleService-Info.plist
+
+# Environment
+.env
+.env.*
+
+# Debug symbols
+*.dSYM
+*.dSYM.zip
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+
+# Archives
+*.ipa
+*.xcarchive
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# IDE / Editor configs
+.idea/
+.vscode/
+*.swp
+*~
+
+# Docker (not applicable to iOS)
+Dockerfile
+docker-compose*
+compose*.yaml
+
+# Ruby / Bundler
+vendor/
+.bundle/
+Gemfile
+Gemfile.lock
+
+# Firebase debug logs
+firebase-debug.log
+firestore-debug.log
+firebase-debug.*.log
+
+# Project-specific
+*.zip
+*.apk
+*.framework
+SDKs/

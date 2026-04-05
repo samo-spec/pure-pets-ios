@@ -537,18 +537,26 @@
     self.galleryShareButton =
     [self pp_makeGlassCircleButtonWithSymbol:@"square.and.arrow.up"
                                       action:@selector(shareAdBTN:)];
+    self.galleryShareButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_share_ad", @"Share ad");
+    self.galleryShareButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_share_ad_hint", @"Double-tap to share this ad");
     
     self.galleryFavoriteButton =
     [self pp_makeGlassCircleButtonWithSymbol:@"heart"
                                       action:@selector(toggleFavorite)];
+    self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
+    self.galleryFavoriteButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_favorite_hint", @"Double-tap to add or remove from favorites");
     
     self.galleryReportButton =
     [self pp_makeGlassCircleButtonWithSymbol:@"flag"
                                       action:@selector(reportAdBTN:)];
+    self.galleryReportButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_report_ad", @"Report ad");
+    self.galleryReportButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_report_ad_hint", @"Double-tap to report this ad");
     
     self.galleryDismissButton =
     [self pp_makeGlassCircleButtonWithSymbol:@"xmark"
                                       action:@selector(dismiss)];
+    self.galleryDismissButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_close", @"Close");
+    self.galleryDismissButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_close_hint", @"Double-tap to close this screen");
     
     NSMutableArray *leadingButtons = [NSMutableArray arrayWithObjects:
         self.galleryShareButton,
@@ -628,11 +636,13 @@
     
     if (self.isFavorite) {
         [self setSymbol:@"heart" forButton:self.galleryFavoriteButton filled:YES];
+        self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_unfavorite", @"Remove from favorites");
         [GM triggerHapticFeedback]; // if you have haptic util
         [PetAdManager addFavoriteAdWithID:self.ad.adID collection:@"favoritesAds" forUserID:[UserManager sharedManager].currentUser.ID];
         NSLog(@"✅ Added to favorites");
     } else {
         [self setSymbol:@"heart" forButton:self.galleryFavoriteButton filled:NO];
+        self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
         [PetAdManager removeFavoriteAdWithID:self.ad.adID collection:@"favoritesAds" forUserID:[UserManager sharedManager].currentUser.ID];
         NSLog(@"❌ Removed from favorites");
     }
@@ -667,7 +677,9 @@
                          completion:^(BOOL favorited) {
             self.isFavorite = favorited;
             [self setSymbol:@"heart" forButton:self.galleryFavoriteButton filled:self.isFavorite];
-            
+            self.galleryFavoriteButton.accessibilityLabel = self.isFavorite
+                ? NSLocalizedString(@"a11y_btn_unfavorite", @"Remove from favorites")
+                : NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
         }];
     }
     
@@ -1139,22 +1151,42 @@
     NSString *currentUID = [self trackingUserID];
     if (currentUID.length == 0) return;
     
+    FIRFirestore *db = [FIRFirestore firestore];
+
+    // 1. Flag on the content document (array-union for multi-reporter support)
     FIRDocumentReference *docRef =
-        [[[FIRFirestore firestore] collectionWithPath:collection] documentWithPath:docID];
+        [[db collectionWithPath:collection] documentWithPath:docID];
     
     [docRef updateData:@{
-        @"status": @"flagged",
-        @"flagReason": reason,
-        @"reportedBy": currentUID,
-        @"reportedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    } completion:^(NSError *error) {
-        dispatch_async(dispatch_get_main_queue(),
- ^{
+        @"reportedBy"    : [FIRFieldValue fieldValueForArrayUnion:@[currentUID]],
+        @"reportCount"   : [FIRFieldValue fieldValueForIntegerIncrement:1],
+        @"lastReportedAt": [FIRFieldValue fieldValueForServerTimestamp]
+    } completion:nil];
+
+    // 2. Write a dedicated report document for audit trail
+    NSString *reportID = [NSString stringWithFormat:@"%@_%@", docID, currentUID];
+    FIRDocumentReference *reportRef = [[db collectionWithPath:@"reports"] documentWithPath:reportID];
+
+    NSDictionary *reportData = @{
+        @"reportId"         : reportID,
+        @"contentId"        : docID,
+        @"contentType"      : @"pet_ad",
+        @"collection"       : collection,
+        @"reason"           : reason,
+        @"reporterUid"      : currentUID,
+        @"reportedOwnerUid" : self.ad.ownerID ?: @"",
+        @"status"           : @"pending",
+        @"platform"         : @"ios",
+        @"createdAt"        : [FIRFieldValue fieldValueForServerTimestamp],
+        @"updatedAt"        : [FIRFieldValue fieldValueForServerTimestamp]
+    };
+
+    [reportRef setData:reportData merge:YES completion:^(NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
                 [GM showAlertWithTitle:kLang(@"Error") message:kLang(@"report_submit_failed_message") imageName:@"" inViewController:self];
             } else {
                 [PPAlertHelper showSuccessIn:self title:kLang(@"report_submit_title") subtitle:kLang(@"report_submit_message")];
-               
             }
         });
     }];

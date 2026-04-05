@@ -80,6 +80,7 @@ static NSString *const kBuyerDraftPricesKey = @"pricesByCardID";
 @property (nonatomic, strong) FileUploadManager *uploadManager;
 @property (nonatomic, assign) BOOL hasUserModifiedForm;
 @property (nonatomic, assign) BOOL isHydratingFormData;
+@property (nonatomic, copy, nullable) dispatch_block_t uploadTimeoutBlock;
 
 @end;
 
@@ -1138,7 +1139,58 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
     [self.view addSubview:_uploadProgressV];
 }
 
+#pragma mark - Upload Timeout Protection
 
+- (void)pp_cancelUploadTimeout {
+    if (self.uploadTimeoutBlock) {
+        dispatch_block_cancel(self.uploadTimeoutBlock);
+        self.uploadTimeoutBlock = nil;
+    }
+}
+
+- (void)pp_scheduleUploadTimeout {
+    [self pp_cancelUploadTimeout];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t timeoutBlock = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.uploadTimeoutBlock = nil;
+
+        // Reset UI state directly (already on main queue)
+        [strongSelf.uploadProgressView stopAnimating];
+        [strongSelf.BKbutton stopAnimation];
+        [strongSelf.BKbutton setEnabled:YES];
+        [strongSelf.view endEditing:YES];
+        [strongSelf.tableView setUserInteractionEnabled:YES];
+        strongSelf.form.disabled = NO;
+        strongSelf.mform.disabled = NO;
+
+        [strongSelf pp_showUploadTimeoutError];
+    });
+    self.uploadTimeoutBlock = timeoutBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   timeoutBlock);
+}
+
+- (void)pp_showUploadTimeoutError {
+    if (self.presentedViewController) return;
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"upload_timeout_title")
+                                                                  message:kLang(@"upload_timeout_message")
+                                                           preferredStyle:UIAlertControllerStyleAlert];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        [weakSelf sendFormDataToServer];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
 
 - (void)sendFormDataToServer {
     [self syncSelectedBirdsAndPriceRows];
@@ -1156,6 +1208,8 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
     self.form.disabled = YES;
     self.mform.disabled = YES;
     [self.tableView setUserInteractionEnabled:NO];
+
+    [self pp_scheduleUploadTimeout];
 
     NSString *buyer_nameS = [self normalizedPriceStringFromValue:[self getformDataForKey:@"buyer_name" withType:1]];
     NSString *buyer_mobileS = [self normalizedPriceStringFromValue:[self getformDataForKey:@"buyer_mobile" withType:1]];
@@ -1368,6 +1422,7 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
 - (void)processUploadCompleteWithError:(BOOL)error CardID:(NSString *)CardID {
     (void)CardID;
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_cancelUploadTimeout];
         [self.uploadProgressView stopAnimating];
         [self.BKbutton stopAnimation];
         [self.BKbutton setEnabled:YES];

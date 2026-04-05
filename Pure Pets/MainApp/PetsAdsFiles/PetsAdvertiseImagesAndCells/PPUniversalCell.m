@@ -266,7 +266,7 @@
     self.adLocationLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.9];
     self.adLocationLabel.numberOfLines = 3; // allow up to 3 lines
     self.adLocationLabel.lineBreakMode = NSLineBreakByWordWrapping;
-    self.adLocationLabel.textAlignment = NSTextAlignmentLeft;
+    self.adLocationLabel.textAlignment = NSTextAlignmentNatural;
     self.adLocationLabel.hidden = YES;
 
     // Subtle contrast shadow (glass-friendly)
@@ -391,6 +391,8 @@
     [self.card addSubview:self.offerBadge];
  
     self.favButton = [[FavoriteFloatingButton alloc] init];
+    self.favButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
+    self.favButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_favorite_hint", @"Double-tap to add or remove from favorites");
 
     self.shareButton =
     [self iconButton:@"square.and.arrow.up"
@@ -401,6 +403,8 @@
     [self.shareButton.widthAnchor constraintEqualToConstant:38.0].active = YES;
     [self.shareButton.heightAnchor constraintEqualToConstant:38.0].active = YES;
     self.shareButton.hidden = YES;
+    self.shareButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_share", @"Share");
+    self.shareButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_share_hint", @"Double-tap to share this listing");
     
     self.moreOptionsButton =
     [self iconButton:@"ellipsis"
@@ -408,8 +412,8 @@
                  size:38.0
        baseForground:UIColor.labelColor
       baseBackground:[AppForgroundColr colorWithAlphaComponent:0.72]];
-    
-    
+    self.moreOptionsButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_more_options", @"More options");
+    self.moreOptionsButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_more_options_hint", @"Double-tap to see edit and delete options");
     
     self.moreOptionsButton.menu = [self ownerActionsArray];
     self.moreOptionsButton.showsMenuAsPrimaryAction = YES;
@@ -444,12 +448,16 @@
     self.addButton.titleLabel.adjustsFontSizeToFitWidth = YES;
     self.addButton.titleLabel.minimumScaleFactor = 0.7;
     self.addButton.titleLabel.lineBreakMode = NSLineBreakByClipping;
+    self.addButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_add_to_cart", @"Add to cart");
+    self.addButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_add_to_cart_hint", @"Double-tap to add this item to your cart");
     [self.addButton addTarget:self action:@selector(tapAddCollapsed) forControlEvents:UIControlEventTouchUpInside];
     [self.card addSubview:self.addButton];
     
     self.minusBtn = [self iconButton:@"-" buttonKind:ButtonKindText size:34.0 baseForground:AppPrimaryClr baseBackground:AppForgroundColr];
+    self.minusBtn.accessibilityLabel = NSLocalizedString(@"a11y_btn_decrease_qty", @"Decrease quantity");
     [self.minusBtn addTarget:self action:@selector(tapMinus) forControlEvents:UIControlEventTouchUpInside];
     self.plusBtn = [self iconButton:@"+" buttonKind:ButtonKindText size:34.0 baseForground:AppPrimaryClr baseBackground:AppForgroundColr];
+    self.plusBtn.accessibilityLabel = NSLocalizedString(@"a11y_btn_increase_qty", @"Increase quantity");
     [self.plusBtn addTarget:self action:@selector(tapPlus) forControlEvents:UIControlEventTouchUpInside];
     
     self.qtyLabel = [self createQtyLabel];
@@ -899,6 +907,8 @@
     self.userInteractionEnabled = YES;
     self.contentView.userInteractionEnabled = YES;
     
+    // ── Accessibility: Composite cell label ──
+    [self pp_updateAccessibilityLabel];
     
 }
 
@@ -957,6 +967,62 @@
 
 
 #pragma mark - Shadow Styles
+
+#pragma mark - Accessibility
+
+- (void)pp_updateAccessibilityLabel
+{
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+
+    // Title (pet name, accessory name, etc.)
+    NSString *title = PPSafeString(self.vm.title);
+    if (title.length > 0) {
+        [parts addObject:title];
+    }
+
+    // Price
+    NSString *priceText = self.priceLabel.text;
+    if (priceText.length > 0) {
+        [parts addObject:priceText];
+    }
+
+    // Discount
+    NSString *discountText = PPSafeString(self.vm.discountText);
+    if (discountText.length > 0) {
+        NSString *discountFormat = NSLocalizedString(@"a11y_cell_discount_format", @"Discount: %@");
+        [parts addObject:[NSString stringWithFormat:discountFormat, discountText]];
+    }
+
+    // Location
+    NSString *location = PPSafeString(self.vm.location);
+    if (location.length > 0) {
+        [parts addObject:location];
+    }
+
+    // Stock status
+    NSString *stockText = self.stockQtyLabel.text;
+    if (!self.stockQtyLabel.hidden && stockText.length > 0) {
+        [parts addObject:stockText];
+    }
+
+    // Cart quantity
+    if (self.context == PPCellForMarket && self.quantity > 0) {
+        NSString *qtyFormat = NSLocalizedString(@"a11y_cell_qty_in_cart_format", @"%ld in cart");
+        [parts addObject:[NSString stringWithFormat:qtyFormat, (long)self.quantity]];
+    }
+
+    // Contextual reason (e.g. "Near you")
+    NSString *reason = PPSafeString(self.vm.contextualReasonText);
+    if (reason.length > 0) {
+        [parts addObject:reason];
+    }
+
+    self.accessibilityLabel = [parts componentsJoinedByString:@", "];
+    self.accessibilityHint  = NSLocalizedString(@"a11y_cell_tap_hint", @"Double-tap to view details");
+}
 
 - (void)applyHomeAdShadow {
     self.layer.masksToBounds = NO;

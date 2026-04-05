@@ -319,11 +319,12 @@
 
 
 // CagesManager.m
-- (void)listenForCageWithID:(NSString *)cageID
-                 onChange:(void (^)(CageModel *cage))onChange
+- (id<FIRListenerRegistration>)listenForCageWithID:(NSString *)cageID
+                                          onChange:(void (^)(CageModel *cage))onChange
 {
     FIRFirestore *db = [FIRFirestore firestore];
 
+    id<FIRListenerRegistration> registration =
     [[[db collectionWithPath:@"CagesCol"]
       documentWithPath:cageID]
      addSnapshotListener:^(FIRDocumentSnapshot *snapshot, NSError *error) {
@@ -342,6 +343,7 @@
             });
         }
     }];
+    return registration;
 }
 
 // Disallow direct init to enforce singleton usage.

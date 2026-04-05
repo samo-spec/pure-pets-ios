@@ -73,8 +73,8 @@
     self.collectionView .translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
         [self.collectionView .topAnchor constraintEqualToAnchor:self.topAnchor],
-        [self.collectionView .leftAnchor constraintEqualToAnchor:self.leftAnchor],
-        [self.collectionView .rightAnchor constraintEqualToAnchor:self.rightAnchor],
+        [self.collectionView .leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.collectionView .trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [self.collectionView .heightAnchor constraintEqualToAnchor:self.heightAnchor]
     ]];
     

@@ -154,7 +154,6 @@
 
     self.closeButton = [self modernIconButtonWithSymbol:@"xmark" selector:@selector(closeTapped)];
     self.shareButton = [self modernIconButtonWithSymbol:@"square.and.arrow.up" selector:@selector(shareTapped)];
-    self.reportButton = [self modernIconButtonWithSymbol:@"flag" selector:@selector(reportAdBTN)];
 
     [self.contentView addSubview:self.heroCard];
     [self.heroCard addSubview:self.heroImageView];
@@ -163,7 +162,18 @@
     [self.heroCard addSubview:self.priceLabel];
     [self.heroCard addSubview:self.closeButton];
     [self.heroCard addSubview:self.shareButton];
-    [self.heroCard addSubview:self.reportButton];
+
+    // Only show report button when viewing another user's service
+    BOOL isOwner = NO;
+    NSString *currentUID = [self trackingUserID];
+    if (currentUID.length > 0 && self.service.serviceOwnerID.length > 0 &&
+        [currentUID isEqualToString:self.service.serviceOwnerID]) {
+        isOwner = YES;
+    }
+    if (!isOwner) {
+        self.reportButton = [self modernIconButtonWithSymbol:@"flag" selector:@selector(reportAdBTN)];
+        [self.heroCard addSubview:self.reportButton];
+    }
 
     [NSLayoutConstraint activateConstraints:@[
         [self.heroCard.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16],
@@ -186,11 +196,6 @@
         [self.shareButton.widthAnchor constraintEqualToConstant:36],
         [self.shareButton.heightAnchor constraintEqualToConstant:36],
 
-        [self.reportButton.topAnchor constraintEqualToAnchor:self.shareButton.bottomAnchor constant:8],
-        [self.reportButton.trailingAnchor constraintEqualToAnchor:self.heroCard.trailingAnchor constant:-12],
-        [self.reportButton.widthAnchor constraintEqualToConstant:36],
-        [self.reportButton.heightAnchor constraintEqualToConstant:36],
-
         [self.priceLabel.trailingAnchor constraintEqualToAnchor:self.heroCard.trailingAnchor constant:-16],
         [self.priceLabel.bottomAnchor constraintEqualToAnchor:self.heroCard.bottomAnchor constant:-16],
         [self.priceLabel.heightAnchor constraintEqualToConstant:34],
@@ -204,6 +209,14 @@
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroCard.trailingAnchor constant:-16],
         [self.subtitleLabel.bottomAnchor constraintEqualToAnchor:self.heroCard.bottomAnchor constant:-16],
     ]];
+    if (self.reportButton) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.reportButton.topAnchor constraintEqualToAnchor:self.shareButton.bottomAnchor constant:8],
+            [self.reportButton.trailingAnchor constraintEqualToAnchor:self.heroCard.trailingAnchor constant:-12],
+            [self.reportButton.widthAnchor constraintEqualToConstant:36],
+            [self.reportButton.heightAnchor constraintEqualToConstant:36],
+        ]];
+    }
 
     [self.heroCard.layer insertSublayer:self.heroOverlay above:self.heroImageView.layer];
 }
@@ -579,28 +592,40 @@
 }
 
 - (void)reportAdBTN {
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:kLang(@"report_alert_title")
-                                                                  message:kLang(@"report_alert_message")
-                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    if (![UserManager sharedManager].isUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
 
-    NSArray *reasons = @[
-        kLang(@"report_reason_spam"),
-        kLang(@"report_reason_inappropriate"),
-        kLang(@"report_reason_fraud"),
-        kLang(@"report_reason_other")
-    ];
+    NSString *currentUID = [self trackingUserID];
+    if (currentUID.length > 0 && self.service.serviceOwnerID.length > 0 &&
+        [currentUID isEqualToString:self.service.serviceOwnerID]) {
+        return;
+    }
 
-    for (NSString *reason in reasons) {
-        [sheet addAction:[UIAlertAction actionWithTitle:reason
-                                                  style:UIAlertActionStyleDefault
-                                                handler:^(UIAlertAction * _Nonnull action) {
-            [self submitServiceReportWithReason:reason];
-        }]];
+    UIAlertController *sheet = [UIAlertController
+        alertControllerWithTitle:kLang(@"report_alert_title")
+        message:kLang(@"report_alert_message")
+        preferredStyle:UIAlertControllerStyleActionSheet];
+
+    NSDictionary *reasons = @{
+        @"spam": kLang(@"report_reason_spam"),
+        @"inappropriate_content": kLang(@"report_reason_inappropriate"),
+        @"scam_fraud": kLang(@"report_reason_fraud"),
+        @"wrong_category": kLang(@"report_reason_wrong_category"),
+        @"other": kLang(@"report_reason_other")
+    };
+
+    for (NSString *code in @[@"inappropriate_content", @"scam_fraud", @"wrong_category", @"spam", @"other"]) {
+        [sheet addAction:[UIAlertAction actionWithTitle:reasons[code]
+            style:UIAlertActionStyleDefault
+            handler:^(UIAlertAction *action) {
+                [self submitServiceReportWithReasonCode:code];
+            }]];
     }
 
     [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
+        style:UIAlertActionStyleCancel handler:nil]];
 
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         sheet.popoverPresentationController.sourceView = self.reportButton;
@@ -610,24 +635,46 @@
     [self presentViewController:sheet animated:YES completion:nil];
 }
 
-- (void)submitServiceReportWithReason:(NSString *)reason {
-    NSString *uid = PPCurrentFIRAuthUser.uid;
-    if (!uid || !self.service.serviceID) return;
+- (void)submitServiceReportWithReasonCode:(NSString *)reasonCode {
+    NSString *uid = [self trackingUserID];
+    if (uid.length == 0 || self.service.serviceID.length == 0) return;
 
-    FIRDocumentReference *ref = [[FIRFirestore.firestore collectionWithPath:@"serviceOffers"]
-                                  documentWithPath:self.service.serviceID];
+    FIRFirestore *db = [FIRFirestore firestore];
 
-    [ref updateData:@{
-        @"status"      : @"flagged",
-        @"flagReason"  : reason,
-        @"reportedBy"  : uid,
-        @"reportedAt"  : FIRFieldValue.fieldValueForServerTimestamp
-    } completion:^(NSError * _Nullable error) {
+    // 1. Flag on the content document (array-union for multi-reporter support)
+    FIRDocumentReference *contentRef = [[db collectionWithPath:@"serviceOffers"]
+                                        documentWithPath:self.service.serviceID];
+
+    [contentRef updateData:@{
+        @"reportedBy"    : [FIRFieldValue fieldValueForArrayUnion:@[uid]],
+        @"reportCount"   : [FIRFieldValue fieldValueForIntegerIncrement:1],
+        @"lastReportedAt": [FIRFieldValue fieldValueForServerTimestamp]
+    } completion:nil];
+
+    // 2. Write a dedicated report document for audit trail
+    NSString *reportID = [NSString stringWithFormat:@"%@_%@", self.service.serviceID, uid];
+    FIRDocumentReference *reportRef = [[db collectionWithPath:@"reports"] documentWithPath:reportID];
+
+    NSDictionary *reportData = @{
+        @"reportId"         : reportID,
+        @"contentId"        : self.service.serviceID,
+        @"contentType"      : @"serviceOffer",
+        @"collection"       : @"serviceOffers",
+        @"reason"           : reasonCode,
+        @"reporterUid"      : uid,
+        @"reportedOwnerUid" : self.service.serviceOwnerID ?: @"",
+        @"status"           : @"pending",
+        @"platform"         : @"ios",
+        @"createdAt"        : [FIRFieldValue fieldValueForServerTimestamp],
+        @"updatedAt"        : [FIRFieldValue fieldValueForServerTimestamp]
+    };
+
+    [reportRef setData:reportData merge:YES completion:^(NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
-                [PPAlertHelper showInfoIn:self title:kLang(@"error") subtitle:error.localizedDescription];
-             } else {
-                 [PPAlertHelper showSuccessIn:self title:kLang(@"report_submit_title") subtitle:kLang(@"report_submit_message")];
+                [PPAlertHelper showInfoIn:self title:kLang(@"error") subtitle:kLang(@"report_submit_failed_message")];
+            } else {
+                [PPAlertHelper showSuccessIn:self title:kLang(@"report_submit_title") subtitle:kLang(@"report_submit_message")];
             }
         });
     }];

@@ -907,15 +907,37 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     }
     if (currentUID.length == 0) return;
     
+    FIRFirestore *db = [FIRFirestore firestore];
+
+    // 1. Flag on the content document (array-union for multi-reporter support)
     FIRDocumentReference *docRef =
-        [[[FIRFirestore firestore] collectionWithPath:@"adopt_pets"] documentWithPath:docID];
+        [[db collectionWithPath:@"adopt_pets"] documentWithPath:docID];
     
     [docRef updateData:@{
-        @"status": @"flagged",
-        @"flagReason": reason,
-        @"reportedBy": currentUID,
-        @"reportedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    } completion:^(NSError *error) {
+        @"reportedBy"    : [FIRFieldValue fieldValueForArrayUnion:@[currentUID]],
+        @"reportCount"   : [FIRFieldValue fieldValueForIntegerIncrement:1],
+        @"lastReportedAt": [FIRFieldValue fieldValueForServerTimestamp]
+    } completion:nil];
+
+    // 2. Write a dedicated report document for audit trail
+    NSString *reportID = [NSString stringWithFormat:@"%@_%@", docID, currentUID];
+    FIRDocumentReference *reportRef = [[db collectionWithPath:@"reports"] documentWithPath:reportID];
+
+    NSDictionary *reportData = @{
+        @"reportId"         : reportID,
+        @"contentId"        : docID,
+        @"contentType"      : @"adopt_pet",
+        @"collection"       : @"adopt_pets",
+        @"reason"           : reason,
+        @"reporterUid"      : currentUID,
+        @"reportedOwnerUid" : self.model.ownerID ?: @"",
+        @"status"           : @"pending",
+        @"platform"         : @"ios",
+        @"createdAt"        : [FIRFieldValue fieldValueForServerTimestamp],
+        @"updatedAt"        : [FIRFieldValue fieldValueForServerTimestamp]
+    };
+
+    [reportRef setData:reportData merge:YES completion:^(NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
                 UIAlertController *alert = [UIAlertController

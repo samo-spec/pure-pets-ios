@@ -675,6 +675,23 @@ row.cellConfig[@"titlePosition"] = inputType == XLFormFullWidthTextFieldTypeButt
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+
+    // M-05: Auth gate — prevent guest users from accessing the profile edit form.
+    // Without this check, unauthenticated users can reach PPCurrentUser fields
+    // (CountryID, MobileNo, etc.) which resolve to nil/zero and cause undefined behaviour.
+    if (!UserManager.sharedManager.isUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        // Pop back safely on the next run-loop tick so the navigation stack settles first.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (self.navigationController) {
+                [self.navigationController popViewControllerAnimated:YES];
+            } else {
+                [self dismissViewControllerAnimated:YES completion:nil];
+            }
+        });
+        return;
+    }
+
     [self BellowIos26Buttons];
     //[self setupTopBar];
   

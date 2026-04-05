@@ -62,18 +62,18 @@
         self.dialCodeLabel.translatesAutoresizingMaskIntoConstraints = NO;
         [self.dialCodeLabel sizeToFit];
         [NSLayoutConstraint activateConstraints:@[
-            // Country button left
-            [self.countryButton.leftAnchor constraintEqualToAnchor:self.contentView.leftAnchor constant:16],
+            // Country button at leading edge
+            [self.countryButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16],
             [self.countryButton.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [self.countryButton.widthAnchor constraintEqualToConstant:40],
 
             // Dial code next to flag
-            [self.dialCodeLabel.leftAnchor constraintEqualToAnchor:self.countryButton.rightAnchor constant:8],
+            [self.dialCodeLabel.leadingAnchor constraintEqualToAnchor:self.countryButton.trailingAnchor constant:8],
             [self.dialCodeLabel.centerYAnchor constraintEqualToAnchor:self.countryButton.centerYAnchor],
 
             // Number field fills the rest
-            [self.numberField.leftAnchor constraintEqualToAnchor:self.dialCodeLabel.rightAnchor constant:12],
-            [self.numberField.rightAnchor constraintEqualToAnchor:self.contentView.rightAnchor constant:-16],
+            [self.numberField.leadingAnchor constraintEqualToAnchor:self.dialCodeLabel.trailingAnchor constant:12],
+            [self.numberField.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
             [self.numberField.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [self.numberField.heightAnchor constraintEqualToConstant:44]
         ]];

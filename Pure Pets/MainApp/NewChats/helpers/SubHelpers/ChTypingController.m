@@ -194,4 +194,11 @@ static NSTimeInterval const kTypingDebounceInterval = 1.5;
     [self start];  // attach listener for new thread
 }
 
+- (void)dealloc {
+    [self.listener remove];
+    self.listener = nil;
+    [self.debounceTimer invalidate];
+    self.debounceTimer = nil;
+}
+
 @end

@@ -2014,6 +2014,8 @@
 "pp_perm_open_settings" = "Settings";
 "pp_perm_continue" = "Continue";
 "pp_perm_not_now" = "Not Now";
+"pp_perm_location_title" = "Location Access";
+"pp_perm_location_denied_message" = "Location access is needed for accurate delivery addresses. Please enable it in Settings.";
 
 // MARK: - Archive Sheet UI
 "archive_sheet_heading" = "Archive details";
@@ -2061,6 +2063,113 @@
 "everyone" = "Everyone";
 "noOne" = "No one";
 "Guest" = "Guest";
+"LegalSectionHeader" = "Legal";
+"PrivacyPolicy" = "Privacy Policy";
+"TermsOfService" = "Terms of Service";
 "checkout_item_price_invalid" = "One or more items have an invalid price. Please remove them and try again.";
 "checkout_generic_error" = "Something went wrong during checkout. Please try again.";
+
+/* Payment Retry (H-07) */
+"payment_failed_title" = "Payment Failed";
+"retry_payment" = "Retry Payment";
+"payment_pending_title" = "Payment Pending";
+"view_order_status" = "View Order";
+
 "home_quick_action_nearest_vet" = "Nearest Vet";
+
+/* Firestore Error Notifications (H-10) */
+"firestore_error_generic" = "Something went wrong. Please try again.";
+"firestore_error_cart" = "Cart sync issue. Your changes may not be saved.";
+"firestore_error_payment" = "Payment method update failed. Please try again.";
+"firestore_error_accessories" = "Could not load products. Pull to refresh.";
+
+/* Load Error Empty State (M-09) */
+"load_error_title" = "Unable to Load";
+"load_error_retry" = "Something went wrong. Pull to refresh or tap Retry.";
+"retry" = "Retry";
+
+/* Loading Timeout Protection */
+"connection_timeout_title" = "Connection Timeout";
+"connection_timeout_message" = "Unable to load data. Please check your internet connection and try again.";
+"upload_timeout_title" = "Request Timeout";
+"upload_timeout_message" = "The upload is taking too long. Please check your connection and try again.";
+"save_timeout_message" = "Saving is taking too long. Please check your connection and try again.";
+
+/* M-19: Offline status banner */
+"offline_banner_text" = "No Internet Connection";
+
+/* Offline Pre-Check (M-11) */
+"offline_action_title" = "No Internet Connection";
+"offline_action_message" = "Please check your connection and try again.";
+
+/* ============================================================
+   Accessibility Labels (M-13)
+   ============================================================ */
+
+/* Tab Bar */
+"a11y_tab_home" = "Home";
+"a11y_tab_home_hint" = "Browse pet ads and services";
+"a11y_tab_notifications" = "Notifications";
+"a11y_tab_notifications_hint" = "View your chats and notifications";
+"a11y_tab_add" = "Add new post";
+"a11y_tab_orders" = "Orders";
+"a11y_tab_orders_hint" = "View your order history";
+"a11y_tab_settings" = "Settings";
+"a11y_tab_settings_hint" = "App settings and account";
+
+/* Navigation Buttons */
+"a11y_btn_cart" = "Shopping cart";
+"a11y_btn_cart_hint" = "Double-tap to open your cart";
+"a11y_btn_add_new" = "Add new post";
+"a11y_btn_add_new_hint" = "Create a new pet ad, accessory listing, or adoption post";
+"a11y_btn_close_cart" = "Close cart";
+"a11y_btn_cart_support" = "Contact support";
+"a11y_btn_cart_support_hint" = "Double-tap to contact customer support";
+"a11y_btn_close" = "Close";
+"a11y_btn_close_hint" = "Double-tap to close this screen";
+
+/* Favorite Button */
+"a11y_btn_favorite" = "Add to favorites";
+"a11y_btn_unfavorite" = "Remove from favorites";
+"a11y_btn_favorite_hint" = "Double-tap to add or remove from favorites";
+
+/* Share & Report */
+"a11y_btn_share" = "Share";
+"a11y_btn_share_hint" = "Double-tap to share this listing";
+"a11y_btn_share_ad" = "Share ad";
+"a11y_btn_share_ad_hint" = "Double-tap to share this ad";
+"a11y_btn_report_ad" = "Report ad";
+"a11y_btn_report_ad_hint" = "Double-tap to report this ad";
+"a11y_btn_more_options" = "More options";
+"a11y_btn_more_options_hint" = "Double-tap to see edit and delete options";
+
+/* Cart & Checkout */
+"a11y_btn_add_to_cart" = "Add to cart";
+"a11y_btn_add_to_cart_hint" = "Double-tap to add this item to your cart";
+"a11y_btn_decrease_qty" = "Decrease quantity";
+"a11y_btn_increase_qty" = "Increase quantity";
+"a11y_btn_checkout" = "Checkout";
+"a11y_btn_checkout_hint" = "Double-tap to proceed to checkout";
+"a11y_btn_undo_remove" = "Undo remove";
+"a11y_btn_undo_remove_hint" = "Double-tap to restore the removed item";
+"a11y_btn_remove_cart_item" = "Remove item";
+"a11y_btn_remove_cart_item_hint" = "Double-tap to remove this item from your cart";
+"a11y_cart_qty_stepper" = "Item quantity";
+
+/* Contact Actions */
+"a11y_btn_call_advertiser" = "Call advertiser";
+"a11y_btn_call_advertiser_hint" = "Double-tap to call this person";
+"a11y_btn_chat_advertiser" = "Chat with advertiser";
+"a11y_btn_chat_advertiser_hint" = "Double-tap to start a chat with this person";
+"a11y_btn_call_user_format" = "Call %@";
+"a11y_btn_chat_user_format" = "Chat with %@";
+
+/* Pet Ad Cell */
+"a11y_cell_discount_format" = "Discount: %@";
+"a11y_cell_qty_in_cart_format" = "%ld in cart";
+"a11y_cell_tap_hint" = "Double-tap to view details";
+
+/* Search */
+"a11y_search_segment" = "Search category filter";
+"a11y_search_segment_hint" = "Choose between Ads, Services, or Accessories";
+"a11y_search_field_hint" = "Type to search for pets, services, or accessories";

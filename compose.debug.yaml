@@ -1,6 +1,0 @@
-services:
-  purepetsios:
-    image: purepetsios
-    build:
-      context: .
-      dockerfile: ./Dockerfile

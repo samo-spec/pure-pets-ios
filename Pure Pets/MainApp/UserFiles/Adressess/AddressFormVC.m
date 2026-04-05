@@ -35,6 +35,8 @@
 @property (nonatomic, assign) BOOL didApplyInitialLocation;
 @property (nonatomic, strong) CountryModel *resolvedCountry;
 @property (nonatomic, strong) UIView *formHeaderView;
+/// Guard flag — show the "open Settings" alert at most once per form session.
+@property (nonatomic, assign) BOOL didShowLocationPermissionAlert;
 @end
 
 @implementation AddressFormVC
@@ -610,6 +612,7 @@
     }
     if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
         [self pp_applyResolvedCountryDefaultsIfNeeded];
+        [self pp_showLocationPermissionDeniedAlertIfNeeded];
         return;
     }
 
@@ -1062,6 +1065,7 @@ NSString * stringFromInteger(NSInteger vlaue)
     } else if (status == kCLAuthorizationStatusDenied ||
                status == kCLAuthorizationStatusRestricted) {
         [self pp_applyResolvedCountryDefaultsIfNeeded];
+        [self pp_showLocationPermissionDeniedAlertIfNeeded];
     }
 }
 
@@ -1074,6 +1078,7 @@ NSString * stringFromInteger(NSInteger vlaue)
     } else if (status == kCLAuthorizationStatusDenied ||
                status == kCLAuthorizationStatusRestricted) {
         [self pp_applyResolvedCountryDefaultsIfNeeded];
+        [self pp_showLocationPermissionDeniedAlertIfNeeded];
     }
 }
 
@@ -1305,6 +1310,42 @@ NSString * stringFromInteger(NSInteger vlaue)
     
     
 }
+
+#pragma mark - Location Permission Denied Alert
+
+/// Shows a one-time alert offering to open Settings when location permission is denied.
+/// The alert is only presented once per form session to avoid pestering the user.
+- (void)pp_showLocationPermissionDeniedAlertIfNeeded
+{
+    if (self.didShowLocationPermissionAlert) {
+        return;
+    }
+    self.didShowLocationPermissionAlert = YES;
+
+    NSString *title   = kLang(@"pp_perm_location_title");
+    NSString *message = kLang(@"pp_perm_location_denied_message");
+
+    UIAlertController *alert =
+        [UIAlertController alertControllerWithTitle:title
+                                            message:message
+                                     preferredStyle:UIAlertControllerStyleAlert];
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_open_settings")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction * _Nonnull action) {
+        NSURL *settingsURL = [NSURL URLWithString:UIApplicationOpenSettingsURLString];
+        if ([[UIApplication sharedApplication] canOpenURL:settingsURL]) {
+            [[UIApplication sharedApplication] openURL:settingsURL options:@{} completionHandler:nil];
+        }
+    }]];
+
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"pp_perm_not_now")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 @end
 
 

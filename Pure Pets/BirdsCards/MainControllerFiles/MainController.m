@@ -362,6 +362,11 @@ TrashCollectionViewCellDelegate,SalesCellDelegate,UITextFieldDelegate>
         dispatch_block_cancel(self.pendingSnapshotBlock);
         self.pendingSnapshotBlock = nil;
     }
+    // Remove all Firestore child-count listeners to prevent leaked connections
+    for (id<FIRListenerRegistration> listener in self.childsCountListeners.allValues) {
+        [listener remove];
+    }
+    [self.childsCountListeners removeAllObjects];
 }
 
 - (void)configureDiffableDataSource

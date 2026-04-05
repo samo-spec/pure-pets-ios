@@ -27,6 +27,14 @@ static char * const kUIViewBadgePropertyKey =  "badgeLayer";
                      offset:(CGPoint)offset
                 badgeRadius:(CGFloat)badgeRadius {
     
+    [self removeBadge];
+    [self layoutIfNeeded];
+
+    CGRect targetBounds = self.bounds;
+    if (CGRectIsEmpty(targetBounds)) {
+        return;
+    }
+
     self.layer.masksToBounds = NO;
     CAShapeLayer *circleLayer = [CAShapeLayer layer];
     CGPoint center = CGPointMake(badgeRadius, badgeRadius);
@@ -40,7 +48,7 @@ static char * const kUIViewBadgePropertyKey =  "badgeLayer";
     circleLayer.borderWidth = 2;
    
     circleLayer.contentsScale = [UIScreen mainScreen].scale;
-    circleLayer.frame = CGRectMake(CGRectGetWidth(self.frame) - badgeRadius + offset.x,
+    circleLayer.frame = CGRectMake(CGRectGetWidth(targetBounds) - badgeRadius + offset.x,
                                    -badgeRadius + offset.y,
                                    2 * badgeRadius,
                                    2 * badgeRadius);

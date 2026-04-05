@@ -51,6 +51,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)fetchServicesForAllMainKinds:(void (^)(NSArray<ServiceModel *> *services,
                                                NSError * _Nullable error))completion;
+
+/// Removes all active Firestore listeners. Call on logout or when listeners are no longer needed.
+- (void)stopAllListeners;
 @end
 
 NS_ASSUME_NONNULL_END

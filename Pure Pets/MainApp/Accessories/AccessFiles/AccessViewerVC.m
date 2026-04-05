@@ -14,6 +14,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPPetsTitleView.h"
 #import "ChManager.h"
+#import "PPNetworkRetryHelper.h"
 
 // ─────────────────────────────────────────────────────────
 // MARK: - Enterprise Design System Constants
@@ -1196,6 +1197,20 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 }
 
 - (void)addToCartButtonTapped:(NSInteger)quantity{
+    // M-11: Offline pre-check — prevent Firestore writes when offline
+    if (![PPNetworkRetryHelper isNetworkAvailable]) {
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"offline_action_title")
+                            subtitle:kLang(@"offline_action_message")
+                          completion:nil];
+        return;
+    }
+
+    // H-01: Auth gate — prevent unauthenticated users from creating orphaned cart documents
+    if (![self pp_ensureSignedInForAction]) {
+        return;
+    }
+
     NSInteger stockQty = MAX(self.accessAds.quantity, 0);
     NSInteger existingQty = [[CartManager sharedManager] quantityForAccessory:self.accessAds];
     NSInteger requestedQty = MAX(quantity, 1);

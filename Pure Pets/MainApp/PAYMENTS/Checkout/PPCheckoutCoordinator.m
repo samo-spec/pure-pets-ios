@@ -15,6 +15,7 @@
 #import "PPOrder.h"
 #import "PPAddressModel.h"
 #import "PPAddressesManager.h"
+#import "PPNetworkRetryHelper.h"
 #import <math.h>
 
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
@@ -32,6 +33,11 @@
 @property (nonatomic, assign) NSInteger checkoutGeneration;
 @property (nonatomic, assign) BOOL hasResolvedCheckout;
 
+/// UUID generated once per checkout attempt.  Survives retries within the
+/// same coordinator instance so that a network-timeout retry does not create
+/// a duplicate order.  Cleared on success or explicit cancellation.
+@property (nonatomic, copy, nullable) NSString *checkoutIdempotencyKey;
+
 - (NSError *)checkoutInventoryErrorFromIssues:(NSArray<NSDictionary *> *)issues;
 - (void)beginPaymentForOrder:(PPOrder *)order generation:(NSInteger)generation;
 - (void)startListeningToOrder:(PPOrder *)order generation:(NSInteger)generation;
@@ -40,6 +46,7 @@
 - (void)completeWithPendingVerification:(NSError *)error generation:(NSInteger)generation;
 - (void)completeWithCancellation:(PPOrder *)order generation:(NSInteger)generation;
 - (void)failOrderWithError:(NSError *)error generation:(NSInteger)generation;
+- (void)failOrderWithError:(NSError *)error retryable:(BOOL)retryable generation:(NSInteger)generation;
 - (BOOL)pp_isCheckoutGenerationCurrent:(NSInteger)generation;
 - (BOOL)pp_beginTerminalResolutionForGeneration:(NSInteger)generation label:(NSString *)label;
 - (void)pp_fetchLatestOrderSnapshotForOrder:(PPOrder *)order
@@ -49,6 +56,8 @@
                                                       PPOrder * _Nullable latestOrder,
                                                       NSError * _Nullable error))completion;
 - (void)pp_scheduleOrderResolutionTimeoutForOrder:(PPOrder *)order generation:(NSInteger)generation;
+- (void)pp_registerForAppResumeNotification;
+- (void)pp_unregisterForAppResumeNotification;
 
 @end
 
@@ -270,6 +279,9 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
     return [FIRFunctions functionsForRegion:region];
 }
 
+NSNotificationName const PPAppDidBecomeActiveNotification = @"PPAppDidBecomeActive";
+NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
+
 @implementation PPCheckoutCoordinator
 
 - (instancetype)initWithPresentingViewController:(UIViewController *)viewController
@@ -440,6 +452,24 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
 {
     PPORDERLog(@"Start checkout flow");
 
+    // M-11: Offline pre-check — block checkout when there is no connectivity
+    if (![PPNetworkRetryHelper isNetworkAvailable]) {
+        PPORDERLog(@"Checkout blocked | reason=offline");
+        NSError *offlineError = [NSError errorWithDomain:@"Checkout"
+                                                    code:1010
+                                                userInfo:@{NSLocalizedDescriptionKey: kLang(@"offline_action_message")}];
+        if (self.presentingVC) {
+            [PPAlertHelper showWarningIn:self.presentingVC
+                                   title:kLang(@"offline_action_title")
+                                subtitle:kLang(@"offline_action_message")
+                              completion:nil];
+        }
+        if (completion) {
+            completion(PPCheckoutResultFailed, nil, offlineError);
+        }
+        return;
+    }
+
     if (self.isCheckoutInProgress) {
         NSError *inProgressError = [NSError errorWithDomain:@"Checkout"
                                                        code:1009
@@ -466,6 +496,17 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
     self.hasResolvedCheckout = NO;
     self.checkoutGeneration += 1;
     NSInteger generation = self.checkoutGeneration;
+
+    // Generate a stable idempotency key for this checkout attempt.
+    // If one already exists (retry after a transient failure), keep it so
+    // the backend can deduplicate the order creation request.
+    if (!self.checkoutIdempotencyKey) {
+        self.checkoutIdempotencyKey = [[NSUUID UUID] UUIDString];
+    }
+    PPORDERLog(@"Checkout idempotency key | generation=%ld | key=%@",
+               (long)generation,
+               self.checkoutIdempotencyKey);
+
     CartManager *cart = CartManager.sharedManager;
 
     // 1️⃣ Validate cart
@@ -542,6 +583,7 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
          amount:cartSubtotal
          address:self.selectedAddress
          paymentMethodId:self.selectedPaymentMethodId
+         idempotencyKey:self.checkoutIdempotencyKey
          completion:^(PPOrder *order, NSError *error) {
             if (![self pp_isCheckoutGenerationCurrent:generation] || self.hasResolvedCheckout) {
                 PPORDERLog(@"Ignoring stale pending-order callback | generation=%ld", (long)generation);
@@ -615,7 +657,7 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
                        (long)generation,
                        order.orderId ?: @"",
                        error.localizedDescription ?: @"");
-            [self failOrderWithError:error generation:generation];
+            [self failOrderWithError:error retryable:YES generation:generation];
             return;
         }
 
@@ -632,7 +674,7 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
             PPORDERLog(@"Payment binding missing secure identifiers | generation=%ld | orderId=%@",
                        (long)generation,
                        order.orderId ?: @"");
-            [self failOrderWithError:bindingError generation:generation];
+            [self failOrderWithError:bindingError retryable:YES generation:generation];
             return;
         }
 
@@ -721,7 +763,7 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
                 NSError *verificationFailure = [NSError errorWithDomain:@"Checkout"
                                                                    code:1002
                                                                userInfo:@{NSLocalizedDescriptionKey: failureReason}];
-                [self failOrderWithError:verificationFailure generation:generation];
+                [self failOrderWithError:verificationFailure retryable:YES generation:generation];
                 return;
             }
 
@@ -768,6 +810,10 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
         [self.orderListener remove];
         self.orderListener = nil;
     }
+
+    // H-08: Register for app-resume notifications so we can re-check
+    // payment status after the user returns from a banking app.
+    [self pp_registerForAppResumeNotification];
 
     // U4: Prevent retain cycle in order listener
     __weak typeof(self) weakSelf = self;
@@ -856,6 +902,9 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
 
     PPORDERLog(@"Checkout success | generation=%ld | orderId=%@", (long)generation, self.currentOrder.orderId ?: @"");
 
+    // Order placed — clear idempotency key so any future checkout gets a fresh key.
+    self.checkoutIdempotencyKey = nil;
+
     // Prevent repeated "paid" callbacks while we perform inventory transaction.
     if (self.orderListener) {
         [self.orderListener remove];
@@ -895,7 +944,8 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
     NSError *error =
     [NSError errorWithDomain:@"Checkout"
                         code:1002
-                    userInfo:@{NSLocalizedDescriptionKey: reason}];
+                    userInfo:@{NSLocalizedDescriptionKey: reason,
+                               PPCheckoutErrorIsRetryableKey: @YES}];
     
     if (self.completion) {
         self.completion(PPCheckoutResultFailed, self.currentOrder, error);
@@ -914,8 +964,16 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
                error.localizedDescription ?: @"");
     [self cleanup];
 
+    // H-07: Mark pending-verification as retryable so the caller can
+    // offer "Retry Payment" alongside "View Order Status".
+    NSMutableDictionary *enrichedUserInfo = [error.userInfo mutableCopy] ?: [NSMutableDictionary dictionary];
+    enrichedUserInfo[PPCheckoutErrorIsRetryableKey] = @YES;
+    NSError *retryableError = [NSError errorWithDomain:error.domain
+                                                  code:error.code
+                                              userInfo:[enrichedUserInfo copy]];
+
     if (self.completion) {
-        self.completion(PPCheckoutResultPendingVerification, self.currentOrder, error);
+        self.completion(PPCheckoutResultPendingVerification, self.currentOrder, retryableError);
     }
 }
 
@@ -948,6 +1006,9 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
         }];
     }
 
+    // User explicitly cancelled — clear idempotency key so next checkout starts fresh.
+    self.checkoutIdempotencyKey = nil;
+
     self.currentOrder = nil;
     [self cleanup];
 
@@ -962,21 +1023,40 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
 
 - (void)failOrderWithError:(NSError *)error generation:(NSInteger)generation
 {
+    [self failOrderWithError:error retryable:NO generation:generation];
+}
+
+- (void)failOrderWithError:(NSError *)error retryable:(BOOL)retryable generation:(NSInteger)generation
+{
     if (![self pp_beginTerminalResolutionForGeneration:generation label:@"error"]) {
         return;
     }
 
-    PPORDERLog(@"Checkout error | generation=%ld | orderId=%@ | error=%@",
+    PPORDERLog(@"Checkout error | generation=%ld | orderId=%@ | retryable=%d | error=%@",
                (long)generation,
                self.currentOrder.orderId ?: @"",
+               retryable,
                error.localizedDescription ?: @"");
     // Force next attempt to re-resolve order from Firestore.
     self.currentOrder = nil;
 
     [self cleanup];
-    
+
+    // H-07: Enrich the error with the retryable flag so the presentation
+    // layer can offer a "Retry Payment" action for QIB payment failures
+    // while keeping non-retryable validation errors (out-of-stock, etc.)
+    // as simple dismissible alerts.
+    NSError *deliveredError = error;
+    if (retryable) {
+        NSMutableDictionary *enrichedUserInfo = [error.userInfo mutableCopy] ?: [NSMutableDictionary dictionary];
+        enrichedUserInfo[PPCheckoutErrorIsRetryableKey] = @YES;
+        deliveredError = [NSError errorWithDomain:error.domain
+                                             code:error.code
+                                         userInfo:[enrichedUserInfo copy]];
+    }
+
     if (self.completion) {
-        self.completion(PPCheckoutResultFailed, self.currentOrder, error);
+        self.completion(PPCheckoutResultFailed, self.currentOrder, deliveredError);
     }
 }
 
@@ -986,6 +1066,9 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
         [self.orderListener remove];
         self.orderListener = nil;
     }
+    
+    // H-08: Stop listening for app-resume when checkout is no longer active.
+    [self pp_unregisterForAppResumeNotification];
     
     [CartManager.sharedManager setValue:@(NO) forKey:@"_isLocked"];
     self.isCheckoutInProgress = NO;
@@ -1031,6 +1114,87 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
     return [NSError errorWithDomain:@"Checkout"
                                code:1003
                            userInfo:@{NSLocalizedDescriptionKey: message ?: kLang(@"checkout_items_unavailable_fallback")}];
+}
+
+- (void)dealloc {
+    [self.orderListener remove];
+    self.orderListener = nil;
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:PPAppDidBecomeActiveNotification
+                                                  object:nil];
+}
+
+#pragma mark - App Resume Checkpoint (H-08)
+
+- (void)pp_registerForAppResumeNotification
+{
+    // Remove first to avoid duplicate registrations when reusing an order.
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:PPAppDidBecomeActiveNotification
+                                                  object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleAppDidBecomeActive)
+                                                 name:PPAppDidBecomeActiveNotification
+                                               object:nil];
+}
+
+- (void)pp_unregisterForAppResumeNotification
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:PPAppDidBecomeActiveNotification
+                                                  object:nil];
+}
+
+- (void)handleAppDidBecomeActive
+{
+    // Only act when a QIB payment is actively in flight.
+    if (!self.isCheckoutInProgress) return;
+    if (self.hasResolvedCheckout) return;
+
+    NSString *orderId = PPCheckoutTrimmedString(self.currentOrder.orderId);
+    if (orderId.length == 0) return;
+
+    NSInteger generation = self.checkoutGeneration;
+    if (generation <= 0) return;
+
+    PPORDERLog(@"App resumed during active checkout | generation=%ld | orderId=%@",
+               (long)generation, orderId);
+
+    // Supplementary one-shot fetch to catch status changes that occurred
+    // while the app was backgrounded (e.g. user completed OTP in banking app).
+    // The existing Firestore listener will reconnect on its own, but there is
+    // a window where the listener has not yet delivered the latest snapshot.
+    // This fetch closes that gap.
+    [self pp_fetchLatestOrderSnapshotForOrder:self.currentOrder
+                                   generation:generation
+                                       reason:@"app_did_become_active"
+                                   completion:^(FIRDocumentSnapshot * _Nullable snapshot,
+                                                PPOrder * _Nullable latestOrder,
+                                                NSError * _Nullable error) {
+        // Generation and resolution guards are already enforced inside
+        // pp_fetchLatestOrderSnapshotForOrder and the terminal methods below.
+        if (![self pp_isCheckoutGenerationCurrent:generation] || self.hasResolvedCheckout) {
+            return;
+        }
+
+        if (latestOrder && PPCheckoutOrderHasSuccessState(latestOrder)) {
+            PPORDERLog(@"App resume detected payment success | generation=%ld | orderId=%@",
+                       (long)generation, orderId);
+            [self completeWithSuccess:snapshot generation:generation];
+            return;
+        }
+
+        if (latestOrder && PPCheckoutOrderHasFailureState(latestOrder)) {
+            PPORDERLog(@"App resume detected payment failure | generation=%ld | orderId=%@",
+                       (long)generation, orderId);
+            [self completeWithFailure:snapshot generation:generation];
+            return;
+        }
+
+        // Still pending — the Firestore listener will deliver subsequent updates.
+        PPORDERLog(@"App resume: order still pending | generation=%ld | orderId=%@",
+                   (long)generation, orderId);
+    }];
 }
 
 @end

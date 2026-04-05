@@ -133,6 +133,18 @@ static NSInteger const PPRootTabIndexSettings = 4;
         cartNav,
         settingsNav
     ];
+
+    // ── Accessibility: Tab bar items ──
+    homeNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_home", @"Home tab");
+    homeNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_home_hint", @"Browse pet ads and services");
+    notiNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_notifications", @"Notifications tab");
+    notiNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_notifications_hint", @"View your chats and notifications");
+    addNav.tabBarItem.accessibilityLabel      = NSLocalizedString(@"a11y_tab_add", @"Add new post tab");
+    cartNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_orders", @"Orders tab");
+    cartNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_orders_hint", @"View your order history");
+    settingsNav.tabBarItem.accessibilityLabel = NSLocalizedString(@"a11y_tab_settings", @"Settings tab");
+    settingsNav.tabBarItem.accessibilityHint  = NSLocalizedString(@"a11y_tab_settings_hint", @"App settings and account");
+
     self.pp_lastSelectedIndex = self.selectedIndex;
     //[self addBottomFadeBelowTabBar];
     [self configureAppearance];
@@ -933,6 +945,11 @@ static NSInteger const PPRootTabIndexSettings = 4;
     // iOS <26: cornerRadius + clipsToBounds already set above — keep them intact
 
     [showAddMenuButton addTarget:self action:@selector(presentBottomSheet) forControlEvents:UIControlEventTouchUpInside];
+
+    // ── Accessibility: Add new post button ──
+    showAddMenuButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_add_new", @"Add new post");
+    showAddMenuButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_add_new_hint", @"Create a new pet ad, accessory listing, or adoption post");
+    showAddMenuButton.accessibilityTraits = UIAccessibilityTraitButton;
 
     [self.tabBar addSubview:showAddMenuButton];
     self.leadingTabButton = showAddMenuButton;

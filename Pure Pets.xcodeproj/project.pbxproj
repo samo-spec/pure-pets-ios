@@ -7,13 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		16AFE532B20F126B74BF4140 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 471B98E18FD0A42C1B1F054F /* Network.framework */; };
 		2262AF912E74B76A005C8EF0 /* PPBottomBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 2262AF902E74B74B005C8EF0 /* PPBottomBar.m */; };
 		22E169D82E75E75A00F50C9E /* PPFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = 22E169D72E75E75A00F50C9E /* PPFunc.m */; };
 		32EB72B8657EBD39543086FC /* PPSectionHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = 3C32792C5C5015883E126EAA /* PPSectionHeader.m */; };
 		59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 425167313B2C23734EA30648 /* PPPermissionHelper.m */; };
+		681F854AFE262E5D016D4061 /* PPOfflineBannerView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */; };
 		7487A7B746BA7354A187635D /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */; };
 		8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
+		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
 		F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A06D2EFE20330048D4C2 /* PPHomeCell.m */; };
@@ -276,6 +279,15 @@
 		F25B38802E173DDB0066D504 /* OrderModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B387F2E173DDB0066D504 /* OrderModel.m */; };
 		F25B38842E1740620066D504 /* OrderCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25B38832E1740620066D504 /* OrderCell.m */; };
 		F25CDBE12ED8F2CB00231D9B /* ShowTime in Frameworks */ = {isa = PBXBuildFile; productRef = F25CDBE02ED8F2CB00231D9B /* ShowTime */; };
+		F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F25D68BD2F82761700700694 /* PrivacyInfo.xcprivacy */; };
+		F25D68C72F82773300700694 /* PPImageUploadValidator.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68BF2F82773200700694 /* PPImageUploadValidator.h */; };
+		F25D68C82F82773300700694 /* PPFirestoreErrorNotifier.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C12F82773200700694 /* PPFirestoreErrorNotifier.h */; };
+		F25D68C92F82773300700694 /* PPNetworkRetryHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C22F82773200700694 /* PPNetworkRetryHelper.m */; };
+		F25D68CA2F82773300700694 /* PPNetworkRetryHelper.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C42F82773200700694 /* PPNetworkRetryHelper.h */; };
+		F25D68CB2F82773300700694 /* PPOfflineBannerView.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C52F82773200700694 /* PPOfflineBannerView.h */; };
+		F25D68CC2F82773300700694 /* PPFirestoreErrorNotifier.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C62F82773300700694 /* PPFirestoreErrorNotifier.m */; };
+		F25D68CD2F82776C00700694 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 471B98E18FD0A42C1B1F054F /* Network.framework */; };
+		F25D68D02F829B4900700694 /* PPHomeCartNavButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */; };
 		F25DC3092EDDE93300C48787 /* XLFormPhoneCodeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */; };
 		F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC30B2EDDE94400C48787 /* XLFormPhoneCodeCell.m */; };
 		F25DF8A72D60A79F0051EAFF /* NSString+Ex.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DF8A62D60A79F0051EAFF /* NSString+Ex.m */; };
@@ -355,7 +367,6 @@
 		F27314922F31995A00FFA0B8 /* PPPaymentMethodCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27314912F31994600FFA0B8 /* PPPaymentMethodCell.m */; };
 		F27314952F319F8B00FFA0B8 /* PPAddressPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F27314942F319F6300FFA0B8 /* PPAddressPickerView.m */; };
 		F27314982F31CE9300FFA0B8 /* CartManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F27314972F31CE9300FFA0B8 /* CartManager.m */; };
-		F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CALC002F40A00000000002 /* PPCartCalculator.m */; };
 		F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F273149C2F31D7E500FFA0B8 /* PPCheckoutCoordinator.m */; };
 		F2736E972E8265D800902E1C /* Styling.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E962E8265D800902E1C /* Styling.m */; };
 		F2736E9A2E827C0A00902E1C /* PPHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E992E827C0A00902E1C /* PPHUD.m */; };
@@ -628,6 +639,7 @@
 		F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8722E7A3A3E00F0C084 /* UserModel.h */; };
 		F2CA8DD02F1DC1C900AD4416 /* PPChatsFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */; };
 		F2CA8DD32F1DCF2500AD4416 /* ChMessagingController+helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CA8DD22F1DCF2500AD4416 /* ChMessagingController+helper.m */; };
+		F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CALC002F40A00000000002 /* PPCartCalculator.m */; };
 		F2CD36E02E901F350056F59C /* InstallationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CD36DF2E901F350056F59C /* InstallationManager.m */; };
 		F2CD9CA52CAB16AA00C0827B /* UISearchBar+FMAdd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CD9CA42CAB16AA00C0827B /* UISearchBar+FMAdd.m */; };
 		F2CDB0A92DCCB0AA0009E210 /* AppAssets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2CDB0A82DCCB0AA0009E210 /* AppAssets.xcassets */; };
@@ -756,16 +768,21 @@
 /* Begin PBXFileReference section */
 		1BE69E138E85D5FDB3F3E6F6 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pure_Pets.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOfflineBannerView.m; sourceTree = "<group>"; };
 		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
 		389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSectionHeader.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
+		471B98E18FD0A42C1B1F054F /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPRatingView.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m"; sourceTree = SOURCE_ROOT; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
 		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
+		B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageUploadValidator.m; sourceTree = "<group>"; };
+		B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageUploadValidator.h; sourceTree = "<group>"; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
+		CD265F6B6EB1BDC3367DBB26 /* PPOfflineBannerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOfflineBannerView.h; sourceTree = "<group>"; };
 		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPDiscountBadge.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
 		F201B8AF2DA6428200CC46A7 /* lame.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = lame.framework; path = MyFrames/lame.framework; sourceTree = SOURCE_ROOT; };
 		F202A06C2EFE202B0048D4C2 /* PPHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeCell.h; sourceTree = "<group>"; };
@@ -1223,6 +1240,17 @@
 		F25B38822E17404E0066D504 /* OrderItemCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderItemCell.h; sourceTree = "<group>"; };
 		F25B38832E1740620066D504 /* OrderCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderCell.m; sourceTree = "<group>"; };
 		F25D0F4A2CE676D300F66997 /* CoreAudioTypes.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudioTypes.framework; path = System/Library/Frameworks/CoreAudioTypes.framework; sourceTree = SDKROOT; };
+		F25D68BD2F82761700700694 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = "Pure Pets/PrivacyInfo.xcprivacy"; sourceTree = "<group>"; };
+		F25D68BF2F82773200700694 /* PPImageUploadValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PPImageUploadValidator.h; path = "Pure Pets/MainApp/Helpers/PPImageUploadValidator.h"; sourceTree = "<group>"; };
+		F25D68C02F82773200700694 /* PPOfflineBannerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPOfflineBannerView.m; path = "Pure Pets/MainApp/Helpers/PPOfflineBannerView.m"; sourceTree = "<group>"; };
+		F25D68C12F82773200700694 /* PPFirestoreErrorNotifier.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PPFirestoreErrorNotifier.h; path = "Pure Pets/MainApp/Helpers/PPFirestoreErrorNotifier.h"; sourceTree = "<group>"; };
+		F25D68C22F82773200700694 /* PPNetworkRetryHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNetworkRetryHelper.m; path = "Pure Pets/MainApp/Helpers/PPNetworkRetryHelper.m"; sourceTree = "<group>"; };
+		F25D68C32F82773200700694 /* PPImageUploadValidator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPImageUploadValidator.m; path = "Pure Pets/MainApp/Helpers/PPImageUploadValidator.m"; sourceTree = "<group>"; };
+		F25D68C42F82773200700694 /* PPNetworkRetryHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PPNetworkRetryHelper.h; path = "Pure Pets/MainApp/Helpers/PPNetworkRetryHelper.h"; sourceTree = "<group>"; };
+		F25D68C52F82773200700694 /* PPOfflineBannerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PPOfflineBannerView.h; path = "Pure Pets/MainApp/Helpers/PPOfflineBannerView.h"; sourceTree = "<group>"; };
+		F25D68C62F82773300700694 /* PPFirestoreErrorNotifier.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPFirestoreErrorNotifier.m; path = "Pure Pets/MainApp/Helpers/PPFirestoreErrorNotifier.m"; sourceTree = "<group>"; };
+		F25D68CE2F829B2800700694 /* PPHomeCartNavButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeCartNavButton.h; sourceTree = "<group>"; };
+		F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCartNavButton.m; sourceTree = "<group>"; };
 		F25DC3072EDDE92800C48787 /* XLFormPhoneCodeItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormPhoneCodeItem.h; sourceTree = "<group>"; };
 		F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormPhoneCodeItem.m; sourceTree = "<group>"; };
 		F25DC30A2EDDE93A00C48787 /* XLFormPhoneCodeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormPhoneCodeCell.h; sourceTree = "<group>"; };
@@ -1384,8 +1412,6 @@
 		F27314942F319F6300FFA0B8 /* PPAddressPickerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAddressPickerView.m; sourceTree = "<group>"; };
 		F27314972F31CE9300FFA0B8 /* CartManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartManager.m; sourceTree = "<group>"; };
 		F27314992F31CEC700FFA0B8 /* CartManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CartManager.h; sourceTree = "<group>"; };
-		F2CALC001F40A00000000001 /* PPCartCalculator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartCalculator.h; sourceTree = "<group>"; };
-		F2CALC002F40A00000000002 /* PPCartCalculator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartCalculator.m; sourceTree = "<group>"; };
 		F273149B2F31D7DD00FFA0B8 /* PPCheckoutCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCheckoutCoordinator.h; sourceTree = "<group>"; };
 		F273149C2F31D7E500FFA0B8 /* PPCheckoutCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCheckoutCoordinator.m; sourceTree = "<group>"; };
 		F2736E952E8265D800902E1C /* Styling.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Styling.h; sourceTree = "<group>"; };
@@ -1916,6 +1942,8 @@
 		F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatsFunc.m; sourceTree = "<group>"; };
 		F2CA8DD12F1DCF0400AD4416 /* ChMessagingController+helper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "ChMessagingController+helper.h"; sourceTree = "<group>"; };
 		F2CA8DD22F1DCF2500AD4416 /* ChMessagingController+helper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "ChMessagingController+helper.m"; sourceTree = "<group>"; };
+		F2CALC001F40A00000000001 /* PPCartCalculator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartCalculator.h; sourceTree = "<group>"; };
+		F2CALC002F40A00000000002 /* PPCartCalculator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartCalculator.m; sourceTree = "<group>"; };
 		F2CD36DE2E901F2A0056F59C /* InstallationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InstallationManager.h; sourceTree = "<group>"; };
 		F2CD36DF2E901F350056F59C /* InstallationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = InstallationManager.m; sourceTree = "<group>"; };
 		F2CD9CA32CAB16AA00C0827B /* UISearchBar+FMAdd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UISearchBar+FMAdd.h"; sourceTree = "<group>"; };
@@ -2085,8 +2113,10 @@
 				F25100892F73C2D8008F6AFE /* FirebaseFirestore in Frameworks */,
 				F20CB1502EF516E500CDD5AD /* FirebaseCrashlytics in Frameworks */,
 				F2D894852D5534D000256152 /* CoreTelephony.framework in Frameworks */,
+				16AFE532B20F126B74BF4140 /* Network.framework in Frameworks */,
 				F251008F2F73C2D8008F6AFE /* FirebaseMLModelDownloader in Frameworks */,
 				F251008B2F73C2D8008F6AFE /* FirebaseFunctions in Frameworks */,
+				F25D68CD2F82776C00700694 /* Network.framework in Frameworks */,
 				F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */,
 				F20CB1462EF514C300CDD5AD /* FirebaseAuth in Frameworks */,
 				F20CB1A22F45F00100CDD5AD /* FirebaseAppCheck in Frameworks */,
@@ -2138,6 +2168,7 @@
 				F22F1B472F79947A00328BF3 /* GoogleMapsCore.xcframework */,
 				F201B8AF2DA6428200CC46A7 /* lame.framework */,
 				F2D894842D5534D000256152 /* CoreTelephony.framework */,
+				471B98E18FD0A42C1B1F054F /* Network.framework */,
 				F2A1DD7B2D043A79009F0B62 /* UIKit.framework */,
 				F2A1DD792D043A72009F0B62 /* SystemConfiguration.framework */,
 				F2A1DD732D0439FD009F0B62 /* UserNotifications.framework */,
@@ -3104,6 +3135,8 @@
 		F25E7FF32EFF71FE0089F659 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
+				F25D68CE2F829B2800700694 /* PPHomeCartNavButton.h */,
+				F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */,
 				F207D0B22F14988500BA6214 /* PPImageLoaderManager.h */,
 				F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */,
 				F253FA672F07708100323CB4 /* PPHomeLayoutManager.h */,
@@ -4323,6 +4356,10 @@
 				F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */,
 				F2390C1D2E23F18A0017D4E1 /* CompanyLocationVC.h */,
 				F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */,
+				CD265F6B6EB1BDC3367DBB26 /* PPOfflineBannerView.h */,
+				2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */,
+				B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */,
+				B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -4431,6 +4468,15 @@
 		F2D0C5CC2C4BE1B80023CE53 = {
 			isa = PBXGroup;
 			children = (
+				F25D68C12F82773200700694 /* PPFirestoreErrorNotifier.h */,
+				F25D68C62F82773300700694 /* PPFirestoreErrorNotifier.m */,
+				F25D68BF2F82773200700694 /* PPImageUploadValidator.h */,
+				F25D68C32F82773200700694 /* PPImageUploadValidator.m */,
+				F25D68C42F82773200700694 /* PPNetworkRetryHelper.h */,
+				F25D68C22F82773200700694 /* PPNetworkRetryHelper.m */,
+				F25D68C52F82773200700694 /* PPOfflineBannerView.h */,
+				F25D68C02F82773200700694 /* PPOfflineBannerView.m */,
+				F25D68BD2F82761700700694 /* PrivacyInfo.xcprivacy */,
 				F273148B2F31540B00FFA0B8 /* QIBPayment.framework */,
 				F2D0C5D72C4BE1B80023CE53 /* Pure Pets */,
 				F2D0C5F32C4BE1BB0023CE53 /* Pure PetsTests */,
@@ -4856,6 +4902,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */,
 				F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */,
 				F25100992F73C4D6008F6AFE /* GoogleService-Info.plist in Resources */,
 				F20E9D6E2CF3193B00B810EB /* button_background_icloud_normal@2x.png in Resources */,
@@ -5018,6 +5065,14 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F25D68C72F82773300700694 /* PPImageUploadValidator.h in Sources */,
+				681F854AFE262E5D016D4061 /* PPOfflineBannerView.m in Sources */,
+				F25D68C82F82773300700694 /* PPFirestoreErrorNotifier.h in Sources */,
+				F25D68C92F82773300700694 /* PPNetworkRetryHelper.m in Sources */,
+				A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */,
+				F25D68CA2F82773300700694 /* PPNetworkRetryHelper.h in Sources */,
+				F25D68CB2F82773300700694 /* PPOfflineBannerView.h in Sources */,
+				F25D68CC2F82773300700694 /* PPFirestoreErrorNotifier.m in Sources */,
 				F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */,
 				F2977D602E4ABB6B003A7005 /* AppSearchHelper.m in Sources */,
 				F25E80122F00602E0089F659 /* PPSectionHeaderView.m in Sources */,
@@ -5437,6 +5492,7 @@
 				F22C07B52EF66C2F00C00EAC /* YYClassInfo.m in Sources */,
 				F22C07B62EF66C2F00C00EAC /* CALayer+YYAdd.m in Sources */,
 				F22C07B72EF66C2F00C00EAC /* NSObject+YYAdd.m in Sources */,
+				F25D68D02F829B4900700694 /* PPHomeCartNavButton.m in Sources */,
 				F22C07B82EF66C2F00C00EAC /* YYImage.m in Sources */,
 				F22C07B92EF66C2F00C00EAC /* YYTextEffectWindow.m in Sources */,
 				F22C07BA2EF66C2F00C00EAC /* UITextField+YYAdd.m in Sources */,
@@ -5889,8 +5945,8 @@
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app needs to send Apple events for [explain purpose].";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app uses Apple Music access to enhance your experience by integrating with your media library.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to capture photos for your ad.";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app needs access to local network to communicate with devices.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets needs access to your camera to take photos for pet ads, chat messages, and your profile picture.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to suggest the right country and nearby services.";
@@ -6005,8 +6061,8 @@
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app needs to send Apple events for [explain purpose].";
 				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app uses Apple Music access to enhance your experience by integrating with your media library.";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Allow camera access to capture photos for your ad.";
-				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "This app needs access to local network to communicate with devices.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets needs access to your camera to take photos for pet ads, chat messages, and your profile picture.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to suggest the right country and nearby services.";

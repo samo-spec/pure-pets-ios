@@ -4,6 +4,7 @@
 //
 
 #import "UserPaymentInstrumentManager.h"
+#import "PPFirestoreErrorNotifier.h"
  
 @interface UserPaymentInstrumentManager ()
 @property (nonatomic, strong) FIRFirestore *db;
@@ -72,6 +73,7 @@
         if (!strongSelf) return;
         if (error) {
             NSLog(@"❌ Firestore listener error: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextPaymentInstrumentListener];
             if (completion) completion(nil, error);
             return;
         }
@@ -111,6 +113,7 @@
     [[_db collectionWithPath:path] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ Firestore fetch error: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextPaymentInstrumentFetch];
             if (completion) completion(nil, error);
             return;
         }
@@ -163,6 +166,7 @@
     FIRDocumentReference *createdRef = [ref addDocumentWithData:dict completion:^(NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ Failed to add instrument: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextPaymentInstrumentAdd];
             if (completion) completion(NO, error);
             return;
         }
@@ -189,6 +193,7 @@
     [col getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ Error fetching instruments to update default: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextPaymentInstrumentSetDefault];
             if (completion) completion(NO, error);
             return;
         }
@@ -205,6 +210,7 @@
         [batch commitWithCompletion:^(NSError * _Nullable err) {
             if (err) {
                 NSLog(@"❌ Failed to update default instrument: %@", err.localizedDescription);
+                [PPFirestoreErrorNotifier postError:err context:PPFirestoreContextPaymentInstrumentDefaultBatch];
                 if (completion) completion(NO, err);
             } else {
                 NSLog(@"✅ Default instrument set to %@", instrument.maskedDetails);
@@ -231,6 +237,7 @@
     [[_db documentWithPath:docPath] deleteDocumentWithCompletion:^(NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ Delete failed: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextPaymentInstrumentDelete];
             if (completion) completion(NO, error);
         } else {
             NSLog(@"✅ Instrument deleted successfully");

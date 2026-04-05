@@ -10,6 +10,7 @@
 #import <QuartzCore/QuartzCore.h>
 
 #import "BBNavigationBar.h"
+#import "Language.h"
 #import "PPImageLoaderManager.h"
 #import "PPOverlayCoordinator.h"
 #import "PPInsetLabel.h"
@@ -35,6 +36,9 @@ static CGFloat const kPPSearchHorizontalInset = 16.0;
 static CGFloat const kPPSearchInteritemSpacing = 14.0;
 static CGFloat const kPPSearchLineSpacing = 18.0;
 static NSInteger const kPPSearchMinimumQueryLength = 2;
+static NSInteger const kPPSearchSegmentIconTag = 9101;
+static NSInteger const kPPSearchSegmentTitleTag = 9102;
+static NSInteger const kPPSearchSegmentCountTag = 9103;
 static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
 
 @interface PPSearchViewController ()
@@ -57,6 +61,7 @@ PPUniversalCellDelegate>
 
 @property (nonatomic, strong) UIView *primaryGlowView;
 @property (nonatomic, strong) UIView *secondaryGlowView;
+@property (nonatomic, strong) UIView *heroCardShadowView;
 @property (nonatomic, strong) UIView *heroCardView;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *heroMeshLayer;
@@ -65,20 +70,20 @@ PPUniversalCellDelegate>
 @property (nonatomic, strong) UILabel *eyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
+@property (nonatomic, strong) UIScrollView *segmentScrollView;
+@property (nonatomic, strong) UIStackView *segmentButtonsStackView;
+@property (nonatomic, copy) NSArray<UIButton *> *segmentButtons;
 @property (nonatomic, strong) UIStackView *metaStackView;
 @property (nonatomic, strong) UILabel *statusPillLabel;
 @property (nonatomic, strong) UILabel *scopePillLabel;
 @property (nonatomic, strong) UILabel *countPillLabel;
 @property (nonatomic, strong) UILabel *queryPillLabel;
 
-@property (nonatomic, strong) UISegmentedControl *searchSegment;
-@property (nonatomic, strong) UIVisualEffectView *segmentGlassView;
+@property (nonatomic, assign) PPSearchSegment selectedSearchSegment;
+@property (nonatomic, strong) UIView *segmentGlassView;
 @property (nonatomic, strong) UILabel *adsBadge;
 @property (nonatomic, strong) UILabel *servicesBadge;
 @property (nonatomic, strong) UILabel *accessoriesBadge;
-@property (nonatomic, strong) NSLayoutConstraint *adsBadgeCenterX;
-@property (nonatomic, strong) NSLayoutConstraint *servicesBadgeCenterX;
-@property (nonatomic, strong) NSLayoutConstraint *accessoriesBadgeCenterX;
 
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, strong) UIImageView *emptyStateIconView;
@@ -151,9 +156,13 @@ PPUniversalCellDelegate>
     self.heroGradientLayer.frame = heroBounds;
     self.heroMeshLayer.frame = heroBounds;
     self.heroShineLayer.frame = heroBounds;
+    self.heroCardShadowView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.heroCardShadowView.bounds cornerRadius:PPCornerHero].CGPath;
+    self.searchFieldChromeView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.searchFieldChromeView.bounds
+                                   cornerRadius:self.searchFieldChromeView.layer.cornerRadius].CGPath;
     self.primaryGlowView.layer.cornerRadius = CGRectGetWidth(self.primaryGlowView.bounds) * 0.5;
     self.secondaryGlowView.layer.cornerRadius = CGRectGetWidth(self.secondaryGlowView.bounds) * 0.5;
-    [self updateBadgePositions];
 }
 
 - (void)dealloc
@@ -179,7 +188,8 @@ PPUniversalCellDelegate>
 - (void)openAccessoriesAll
 {
     [self loadViewIfNeeded];
-    self.searchSegment.selectedSegmentIndex = PPSearchSegmentAccessories;
+    self.selectedSearchSegment = PPSearchSegmentAccessories;
+    [self pp_updateSegmentButtonsSelectionAnimated:NO];
     [self applySegmentFilter];
     [self focusSearchField];
 }
@@ -188,40 +198,38 @@ PPUniversalCellDelegate>
 
 - (void)setupBackdrop
 {
-    // Primary warm glow — larger, softer amber-rose orb
     UIView *primaryGlow = [UIView new];
     primaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     primaryGlow.userInteractionEnabled = NO;
-    primaryGlow.backgroundColor = [[UIColor colorWithRed:0.92 green:0.50 blue:0.30 alpha:1.0] colorWithAlphaComponent:0.14];
-    primaryGlow.layer.shadowColor = [UIColor colorWithRed:0.92 green:0.50 blue:0.30 alpha:1.0].CGColor;
-    primaryGlow.layer.shadowOpacity = 0.22;
-    primaryGlow.layer.shadowRadius = 100.0;
+    primaryGlow.backgroundColor = [[UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.18];
+    primaryGlow.layer.shadowColor = [UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0].CGColor;
+    primaryGlow.layer.shadowOpacity = 0.24;
+    primaryGlow.layer.shadowRadius = 120.0;
     primaryGlow.layer.shadowOffset = CGSizeZero;
     primaryGlow.layer.cornerRadius = 50.0;
 
-    // Secondary cool glow — violet orb for depth contrast
     UIView *secondaryGlow = [UIView new];
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.backgroundColor = [[UIColor colorWithRed:0.40 green:0.22 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.10];
-    secondaryGlow.layer.shadowColor = [UIColor colorWithRed:0.40 green:0.22 blue:0.66 alpha:1.0].CGColor;
-    secondaryGlow.layer.shadowOpacity = 0.20;
-    secondaryGlow.layer.shadowRadius = 90.0;
+    secondaryGlow.backgroundColor = [[UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0] colorWithAlphaComponent:0.10];
+    secondaryGlow.layer.shadowColor = [UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0].CGColor;
+    secondaryGlow.layer.shadowOpacity = 0.18;
+    secondaryGlow.layer.shadowRadius = 96.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
     secondaryGlow.layer.cornerRadius = 45.0;
     [self.view addSubview:primaryGlow];
     [self.view addSubview:secondaryGlow];
 
     [NSLayoutConstraint activateConstraints:@[
-        [primaryGlow.widthAnchor constraintEqualToConstant:300.0],
-        [primaryGlow.heightAnchor constraintEqualToConstant:300.0],
-        [primaryGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-90.0],
-        [primaryGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:100.0],
+        [primaryGlow.widthAnchor constraintEqualToConstant:320.0],
+        [primaryGlow.heightAnchor constraintEqualToConstant:320.0],
+        [primaryGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-120.0],
+        [primaryGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:120.0],
 
-        [secondaryGlow.widthAnchor constraintEqualToConstant:260.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:260.0],
-        [secondaryGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:180.0],
-        [secondaryGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-100.0]
+        [secondaryGlow.widthAnchor constraintEqualToConstant:250.0],
+        [secondaryGlow.heightAnchor constraintEqualToConstant:250.0],
+        [secondaryGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:140.0],
+        [secondaryGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-110.0]
     ]];
 
     self.primaryGlowView = primaryGlow;
@@ -239,10 +247,13 @@ PPUniversalCellDelegate>
 
 - (void)setupSearch
 {
+    UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
+
     UIView *container = [UIView new];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = UIColor.clearColor;
     container.preservesSuperviewLayoutMargins = YES;
+    container.semanticContentAttribute = semanticAttribute;
     if (@available(iOS 11.0, *)) {
         container.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0,
                                                                         kPPSearchHorizontalInset,
@@ -255,30 +266,42 @@ PPUniversalCellDelegate>
     NSString *placeholderText = [self pp_modernSearchPlaceholderText];
     UIView *chromeView = [UIView new];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
-    chromeView.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.92];
-    chromeView.layer.cornerRadius = 18.0;
-    chromeView.layer.masksToBounds = YES;
+    chromeView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.96];
+    chromeView.semanticContentAttribute = semanticAttribute;
+    chromeView.layer.cornerRadius = 20.0;
+    chromeView.layer.masksToBounds = NO;
     chromeView.layer.borderWidth = 1.0;
-    chromeView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.40].CGColor;
+    chromeView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.04].CGColor;
+    chromeView.layer.shadowColor = [UIColor colorWithWhite:0.09 alpha:1.0].CGColor;
+    chromeView.layer.shadowOpacity = 0.08f;
+    chromeView.layer.shadowRadius = 18.0f;
+    chromeView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     if (@available(iOS 13.0, *)) {
         chromeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+
+    UIView *accentView = [UIView new];
+    accentView.translatesAutoresizingMaskIntoConstraints = NO;
+    accentView.backgroundColor = AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0];
+    accentView.layer.cornerRadius = 1.5;
+    accentView.layer.masksToBounds = YES;
 
     UIImageSymbolConfiguration *iconConfig =
         [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
     UIImageView *iconView =
         [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:iconConfig]];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = [UIColor secondaryLabelColor];
+    iconView.tintColor = [UIColor colorWithWhite:0.38 alpha:1.0];
     iconView.contentMode = UIViewContentModeScaleAspectFit;
 
     UITextField *textField = [UITextField new];
     textField.translatesAutoresizingMaskIntoConstraints = NO;
     textField.delegate = self;
+    textField.semanticContentAttribute = semanticAttribute;
     textField.textAlignment = NSTextAlignmentNatural;
     textField.textColor = UIColor.labelColor;
     textField.tintColor = AppPrimaryClr;
-    textField.font = [GM MidFontWithSize:16];
+    textField.font = [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
     textField.borderStyle = UITextBorderStyleNone;
     textField.backgroundColor = UIColor.clearColor;
     textField.clearButtonMode = UITextFieldViewModeWhileEditing;
@@ -288,6 +311,7 @@ PPUniversalCellDelegate>
     textField.autocorrectionType = UITextAutocorrectionTypeDefault;
     textField.spellCheckingType = UITextSpellCheckingTypeDefault;
     textField.accessibilityLabel = placeholderText;
+    textField.accessibilityHint  = NSLocalizedString(@"a11y_search_field_hint", @"Type to search for pets, services, or accessories");
     [textField addTarget:self
                   action:@selector(searchTextFieldEditingChanged:)
         forControlEvents:UIControlEventEditingChanged];
@@ -295,11 +319,13 @@ PPUniversalCellDelegate>
     UILabel *placeholderLabel = [UILabel new];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
     placeholderLabel.userInteractionEnabled = NO;
+    placeholderLabel.semanticContentAttribute = semanticAttribute;
     placeholderLabel.text = placeholderText;
-    placeholderLabel.font = [GM MidFontWithSize:16];
-    placeholderLabel.textColor = [UIColor secondaryLabelColor];
+    placeholderLabel.font = [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
+    placeholderLabel.textColor = [UIColor colorWithWhite:0.52 alpha:1.0];
     placeholderLabel.textAlignment = NSTextAlignmentNatural;
 
+    [chromeView addSubview:accentView];
     [chromeView addSubview:iconView];
     [chromeView addSubview:textField];
     [chromeView addSubview:placeholderLabel];
@@ -314,9 +340,14 @@ PPUniversalCellDelegate>
         [chromeView.leadingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.leadingAnchor],
         [chromeView.trailingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.trailingAnchor],
         [chromeView.bottomAnchor constraintEqualToAnchor:container.layoutMarginsGuide.bottomAnchor],
-        [chromeView.heightAnchor constraintEqualToConstant:50.0],
+        [chromeView.heightAnchor constraintEqualToConstant:52.0],
 
-        [iconView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:14.0],
+        [accentView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:12.0],
+        [accentView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
+        [accentView.widthAnchor constraintEqualToConstant:3.0],
+        [accentView.heightAnchor constraintEqualToConstant:18.0],
+
+        [iconView.leadingAnchor constraintEqualToAnchor:accentView.trailingAnchor constant:10.0],
         [iconView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
         [iconView.widthAnchor constraintEqualToConstant:18.0],
         [iconView.heightAnchor constraintEqualToConstant:18.0],
@@ -349,55 +380,72 @@ PPUniversalCellDelegate>
 
 - (void)setupHeroHeader
 {
+    UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
+    NSTextAlignment textAlignment = Language.alignmentForCurrentLanguage;
+
+    UIView *heroShadowView = [UIView new];
+    heroShadowView.translatesAutoresizingMaskIntoConstraints = NO;
+    heroShadowView.backgroundColor = UIColor.clearColor;
+    heroShadowView.semanticContentAttribute = semanticAttribute;
+    heroShadowView.layer.cornerRadius = PPCornerHero;
+    heroShadowView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    heroShadowView.layer.shadowOpacity = 0.18f;
+    heroShadowView.layer.shadowRadius = 28.0f;
+    heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    if (@available(iOS 13.0, *)) {
+        heroShadowView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
     UIView *heroCard = [UIView new];
     heroCard.translatesAutoresizingMaskIntoConstraints = NO;
+    heroCard.semanticContentAttribute = semanticAttribute;
     heroCard.layer.cornerRadius = PPCornerHero;
     heroCard.layer.masksToBounds = YES;
-    heroCard.layer.borderWidth = 0.5;
-    heroCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    heroCard.layer.borderWidth = 1.0;
+    heroCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    if (@available(iOS 13.0, *)) {
+        heroCard.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 
-    // --- Primary gradient: deep plum → rich berry → warm amber sweep ---
     CAGradientLayer *gradient = [CAGradientLayer layer];
     gradient.colors = @[
-        (id)[UIColor colorWithRed:0.10 green:0.05 blue:0.20 alpha:1.0].CGColor,
-        (id)[UIColor colorWithRed:0.18 green:0.08 blue:0.24 alpha:1.0].CGColor,
-        (id)[UIColor colorWithRed:0.28 green:0.12 blue:0.20 alpha:1.0].CGColor,
-        (id)[UIColor colorWithRed:0.36 green:0.18 blue:0.10 alpha:1.0].CGColor
+        (id)[UIColor colorWithRed:0.14 green:0.07 blue:0.16 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.23 green:0.10 blue:0.19 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.34 green:0.16 blue:0.17 alpha:1.0].CGColor,
+        (id)[UIColor colorWithRed:0.46 green:0.23 blue:0.16 alpha:1.0].CGColor
     ];
-    gradient.locations = @[@0.0, @0.32, @0.66, @1.0];
-    gradient.startPoint = CGPointMake(0.0, 0.0);
+    gradient.locations = @[@0.0, @0.30, @0.72, @1.0];
+    gradient.startPoint = CGPointMake(0.0, 0.1);
     gradient.endPoint = CGPointMake(1.0, 1.0);
     [heroCard.layer insertSublayer:gradient atIndex:0];
 
-    // --- Mesh overlay: cool teal ↔ warm coral for dimensional depth ---
     CAGradientLayer *mesh = [CAGradientLayer layer];
     mesh.colors = @[
-        (id)[UIColor colorWithRed:0.04 green:0.20 blue:0.32 alpha:0.40].CGColor,
+        (id)[UIColor colorWithRed:0.98 green:0.82 blue:0.56 alpha:0.26].CGColor,
+        (id)[UIColor colorWithRed:0.66 green:0.30 blue:0.40 alpha:0.18].CGColor,
         (id)[UIColor clearColor].CGColor,
-        (id)[UIColor colorWithRed:0.40 green:0.16 blue:0.10 alpha:0.30].CGColor
+        (id)[UIColor colorWithRed:0.18 green:0.28 blue:0.34 alpha:0.18].CGColor
     ];
-    mesh.locations = @[@0.0, @0.45, @1.0];
+    mesh.locations = @[@0.0, @0.28, @0.64, @1.0];
     mesh.startPoint = CGPointMake(1.0, 0.0);
     mesh.endPoint = CGPointMake(0.0, 1.0);
     [heroCard.layer insertSublayer:mesh above:gradient];
 
-    // --- Top-edge shine for glass material feel ---
     CAGradientLayer *shine = [CAGradientLayer layer];
     shine.colors = @[
-        (id)[UIColor colorWithWhite:1.0 alpha:0.14].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.22].CGColor,
         (id)[UIColor colorWithWhite:1.0 alpha:0.05].CGColor,
         (id)[UIColor clearColor].CGColor
     ];
-    shine.locations = @[@0.0, @0.04, @0.15];
+    shine.locations = @[@0.0, @0.06, @0.20];
     shine.startPoint = CGPointMake(0.0, 0.0);
     shine.endPoint = CGPointMake(0.0, 1.0);
     [heroCard.layer insertSublayer:shine above:mesh];
 
-    // --- Noise texture overlay for material grain ---
     UIView *noiseView = [UIView new];
     noiseView.translatesAutoresizingMaskIntoConstraints = NO;
     noiseView.userInteractionEnabled = NO;
-    noiseView.backgroundColor = [UIColor colorWithPatternImage:[self pp_noiseImageWithSize:CGSizeMake(64, 64) opacity:0.035]];
+    noiseView.backgroundColor = [UIColor colorWithPatternImage:[self pp_noiseImageWithSize:CGSizeMake(64, 64) opacity:0.028]];
     [heroCard addSubview:noiseView];
     [NSLayoutConstraint activateConstraints:@[
         [noiseView.topAnchor constraintEqualToAnchor:heroCard.topAnchor],
@@ -406,74 +454,162 @@ PPUniversalCellDelegate>
         [noiseView.bottomAnchor constraintEqualToAnchor:heroCard.bottomAnchor]
     ]];
 
-    // --- Eyebrow label with warm gold accent ---
     UILabel *eyebrow = [UILabel new];
     eyebrow.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrow.font = [GM boldFontWithSize:PPFontFootnote];
     eyebrow.textColor = [UIColor colorWithRed:0.98 green:0.82 blue:0.56 alpha:0.94];
+    eyebrow.textAlignment = textAlignment;
     eyebrow.text = kLang(@"SearchHeroEyebrow");
 
-    // --- Hero title: large, bold, pure white ---
+    UILabel *statusPill = [self makeHeroPillLabel];
+
     UILabel *titleLabel = [UILabel new];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:30];
+    titleLabel.font = [GM boldFontWithSize:31] ?: [UIFont systemFontOfSize:31.0 weight:UIFontWeightBold];
     titleLabel.textColor = UIColor.whiteColor;
     titleLabel.numberOfLines = 2;
+    titleLabel.textAlignment = textAlignment;
     titleLabel.text = kLang(@"SearchHeroTitle");
 
-    // --- Subtitle with improved readability ---
     UILabel *subtitleLabel = [UILabel new];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:PPFontSubheadline];
-    subtitleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.75];
+    subtitleLabel.font = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.76];
     subtitleLabel.numberOfLines = 3;
+    subtitleLabel.textAlignment = textAlignment;
 
-    UILabel *statusPill = [self makeHeroPillLabel];
     UILabel *scopePill = [self makeHeroPillLabel];
     UILabel *countPill = [self makeHeroPillLabel];
     UILabel *queryPill = [self makeHeroPillLabel];
 
-    UIStackView *metaStack = [[UIStackView alloc] initWithArrangedSubviews:@[
-        statusPill,
-        scopePill,
-        countPill,
-        queryPill
-    ]];
+    UIView *segmentRowView = [UIView new];
+    segmentRowView.translatesAutoresizingMaskIntoConstraints = NO;
+    segmentRowView.semanticContentAttribute = semanticAttribute;
+    segmentRowView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.05];
+    segmentRowView.layer.cornerRadius = 20.0;
+    segmentRowView.layer.masksToBounds = NO;
+    segmentRowView.clipsToBounds = NO;
+    segmentRowView.layer.borderWidth = 1.0;
+    segmentRowView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    if (@available(iOS 13.0, *)) {
+        segmentRowView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIScrollView *segmentScrollView = [UIScrollView new];
+    segmentScrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    segmentScrollView.backgroundColor = UIColor.clearColor;
+    segmentScrollView.showsHorizontalScrollIndicator = NO;
+    segmentScrollView.alwaysBounceHorizontal = NO;
+    segmentScrollView.delaysContentTouches = NO;
+    segmentScrollView.userInteractionEnabled = YES;
+    segmentScrollView.semanticContentAttribute = semanticAttribute;
+    segmentScrollView.clipsToBounds = NO;
+    if (@available(iOS 11.0, *)) {
+        segmentScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
+    }
+
+    UIStackView *segmentStackView = [[UIStackView alloc] init];
+    segmentStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    segmentStackView.axis = UILayoutConstraintAxisHorizontal;
+    segmentStackView.alignment = UIStackViewAlignmentCenter;
+    segmentStackView.distribution = UIStackViewDistributionFillEqually;
+    segmentStackView.spacing = 10.0;
+    segmentStackView.semanticContentAttribute = semanticAttribute;
+    [segmentScrollView addSubview:segmentStackView];
+
+    NSArray<NSDictionary<NSString *, id> *> *segmentDescriptors = [self pp_searchSegmentDescriptors];
+    NSMutableArray<UIButton *> *segmentButtons = [NSMutableArray arrayWithCapacity:segmentDescriptors.count];
+    __block UILabel *adsBadge = nil;
+    __block UILabel *servicesBadge = nil;
+    __block UILabel *accessoriesBadge = nil;
+    [segmentDescriptors enumerateObjectsUsingBlock:^(NSDictionary<NSString *,id> * _Nonnull descriptor, __unused NSUInteger idx, __unused BOOL * _Nonnull stop) {
+        PPSearchSegment segment = (PPSearchSegment)[descriptor[@"segment"] integerValue];
+        UIButton *button = [self pp_makeSegmentBadgeButtonWithTitle:descriptor[@"title"]
+                                                           iconName:descriptor[@"icon"]
+                                                            segment:segment];
+        UILabel *countLabel = [self pp_segmentCountLabelForButton:button];
+        switch (segment) {
+            case PPSearchSegmentAds:
+                adsBadge = countLabel;
+                break;
+            case PPSearchSegmentServices:
+                servicesBadge = countLabel;
+                break;
+            case PPSearchSegmentAccessories:
+                accessoriesBadge = countLabel;
+                break;
+        }
+        [segmentStackView addArrangedSubview:button];
+        [segmentButtons addObject:button];
+    }];
+
+    UIStackView *metaStack = [[UIStackView alloc] initWithArrangedSubviews:@[scopePill, countPill, queryPill]];
     metaStack.translatesAutoresizingMaskIntoConstraints = NO;
     metaStack.axis = UILayoutConstraintAxisHorizontal;
     metaStack.spacing = PPSpaceSM;
-    metaStack.alignment = UIStackViewAlignmentLeading;
-    metaStack.distribution = UIStackViewDistributionFillProportionally;
+    metaStack.alignment = UIStackViewAlignmentCenter;
+    metaStack.distribution = UIStackViewDistributionFill;
+    metaStack.semanticContentAttribute = semanticAttribute;
 
+    [heroShadowView addSubview:heroCard];
     [heroCard addSubview:eyebrow];
+    [heroCard addSubview:statusPill];
     [heroCard addSubview:titleLabel];
     [heroCard addSubview:subtitleLabel];
+    [heroCard addSubview:segmentRowView];
+    [segmentRowView addSubview:segmentScrollView];
     [heroCard addSubview:metaStack];
-    [self.view addSubview:heroCard];
+    [self.view addSubview:heroShadowView];
 
     CGFloat cardPadding = PPSpaceXL;
     [NSLayoutConstraint activateConstraints:@[
-        [heroCard.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM],
-        [heroCard.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
-        [heroCard.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
+        [heroShadowView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM],
+        [heroShadowView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
+        [heroShadowView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
+
+        [heroCard.topAnchor constraintEqualToAnchor:heroShadowView.topAnchor],
+        [heroCard.leadingAnchor constraintEqualToAnchor:heroShadowView.leadingAnchor],
+        [heroCard.trailingAnchor constraintEqualToAnchor:heroShadowView.trailingAnchor],
+        [heroCard.bottomAnchor constraintEqualToAnchor:heroShadowView.bottomAnchor],
 
         [eyebrow.topAnchor constraintEqualToAnchor:heroCard.topAnchor constant:cardPadding],
         [eyebrow.leadingAnchor constraintEqualToAnchor:heroCard.leadingAnchor constant:cardPadding],
-        [eyebrow.trailingAnchor constraintLessThanOrEqualToAnchor:heroCard.trailingAnchor constant:-cardPadding],
+        [eyebrow.trailingAnchor constraintLessThanOrEqualToAnchor:statusPill.leadingAnchor constant:-PPSpaceSM],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:eyebrow.bottomAnchor constant:PPSpaceSM],
+        [statusPill.centerYAnchor constraintEqualToAnchor:eyebrow.centerYAnchor],
+        [statusPill.trailingAnchor constraintEqualToAnchor:heroCard.trailingAnchor constant:-cardPadding],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:eyebrow.bottomAnchor constant:12.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:heroCard.leadingAnchor constant:cardPadding],
         [titleLabel.trailingAnchor constraintEqualToAnchor:heroCard.trailingAnchor constant:-cardPadding],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:PPSpaceSM],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:10.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        [metaStack.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:PPSpaceBase],
+        [segmentRowView.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
+        [segmentRowView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [segmentRowView.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [segmentRowView.heightAnchor constraintEqualToConstant:52.0],
+
+        [segmentScrollView.topAnchor constraintEqualToAnchor:segmentRowView.topAnchor constant:4.0],
+        [segmentScrollView.leadingAnchor constraintEqualToAnchor:segmentRowView.leadingAnchor constant:4.0],
+        [segmentScrollView.trailingAnchor constraintEqualToAnchor:segmentRowView.trailingAnchor constant:-4.0],
+        [segmentScrollView.bottomAnchor constraintEqualToAnchor:segmentRowView.bottomAnchor constant:-4.0],
+
+        [segmentStackView.topAnchor constraintEqualToAnchor:segmentScrollView.contentLayoutGuide.topAnchor],
+        [segmentStackView.bottomAnchor constraintEqualToAnchor:segmentScrollView.contentLayoutGuide.bottomAnchor],
+        [segmentStackView.leadingAnchor constraintEqualToAnchor:segmentScrollView.contentLayoutGuide.leadingAnchor],
+        [segmentStackView.trailingAnchor constraintEqualToAnchor:segmentScrollView.contentLayoutGuide.trailingAnchor],
+        [segmentStackView.heightAnchor constraintEqualToAnchor:segmentScrollView.frameLayoutGuide.heightAnchor],
+        [segmentStackView.widthAnchor constraintGreaterThanOrEqualToAnchor:segmentScrollView.frameLayoutGuide.widthAnchor],
+
+        [metaStack.topAnchor constraintEqualToAnchor:segmentRowView.bottomAnchor constant:18.0],
         [metaStack.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [metaStack.trailingAnchor constraintLessThanOrEqualToAnchor:titleLabel.trailingAnchor]
     ]];
 
+    self.heroCardShadowView = heroShadowView;
     self.heroCardView = heroCard;
     self.heroGradientLayer = gradient;
     self.heroMeshLayer = mesh;
@@ -482,11 +618,18 @@ PPUniversalCellDelegate>
     self.eyebrowLabel = eyebrow;
     self.heroTitleLabel = titleLabel;
     self.heroSubtitleLabel = subtitleLabel;
+    self.segmentGlassView = segmentRowView;
+    self.segmentScrollView = segmentScrollView;
+    self.segmentButtonsStackView = segmentStackView;
+    self.segmentButtons = segmentButtons.copy;
     self.metaStackView = metaStack;
     self.statusPillLabel = statusPill;
     self.scopePillLabel = scopePill;
     self.countPillLabel = countPill;
     self.queryPillLabel = queryPill;
+    self.adsBadge = adsBadge;
+    self.servicesBadge = servicesBadge;
+    self.accessoriesBadge = accessoriesBadge;
 }
 
 - (void)setupCollectionView
@@ -547,83 +690,9 @@ PPUniversalCellDelegate>
 
 - (void)setupSearchSegment
 {
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
-    UIVisualEffectView *glassView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    glassView.translatesAutoresizingMaskIntoConstraints = NO;
-    glassView.layer.cornerRadius = 24.0;
-    glassView.layer.masksToBounds = YES;
-    glassView.layer.borderWidth = 1.0;
-    glassView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.14].CGColor;
-
-    UISegmentedControl *segment = [[UISegmentedControl alloc] initWithItems:@[
-        kLang(@"Ads"),
-        kLang(@"services"),
-        kLang(@"Accessories")
-    ]];
-    segment.selectedSegmentIndex = PPSearchSegmentAds;
-    segment.translatesAutoresizingMaskIntoConstraints = NO;
-    segment.backgroundColor = UIColor.clearColor;
-    segment.selectedSegmentTintColor = [UIColor colorWithWhite:1.0 alpha:0.88];
-    [segment addTarget:self action:@selector(searchSegmentChanged) forControlEvents:UIControlEventValueChanged];
-
-    NSDictionary *normalAttrs = @{
-        NSFontAttributeName : [GM MidFontWithSize:14],
-        NSForegroundColorAttributeName : [UIColor colorWithWhite:1.0 alpha:0.68]
-    };
-    NSDictionary *selectedAttrs = @{
-        NSFontAttributeName : [GM boldFontWithSize:14],
-        NSForegroundColorAttributeName : UIColor.labelColor
-    };
-    [segment setTitleTextAttributes:normalAttrs forState:UIControlStateNormal];
-    [segment setTitleTextAttributes:selectedAttrs forState:UIControlStateSelected];
-
-    [glassView.contentView addSubview:segment];
-
-    self.adsBadge = [self makeBadgeLabel];
-    self.servicesBadge = [self makeBadgeLabel];
-    self.accessoriesBadge = [self makeBadgeLabel];
-    [glassView.contentView addSubview:self.adsBadge];
-    [glassView.contentView addSubview:self.servicesBadge];
-    [glassView.contentView addSubview:self.accessoriesBadge];
-
-    [self.heroCardView addSubview:glassView];
-
-    self.adsBadgeCenterX = [self.adsBadge.centerXAnchor constraintEqualToAnchor:segment.leadingAnchor];
-    self.servicesBadgeCenterX = [self.servicesBadge.centerXAnchor constraintEqualToAnchor:segment.leadingAnchor];
-    self.accessoriesBadgeCenterX = [self.accessoriesBadge.centerXAnchor constraintEqualToAnchor:segment.leadingAnchor];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [glassView.topAnchor constraintEqualToAnchor:self.metaStackView.bottomAnchor constant:18.0],
-        [glassView.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:16.0],
-        [glassView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-16.0],
-        [glassView.heightAnchor constraintEqualToConstant:48.0],
-        [glassView.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:-16.0],
-
-        [segment.leadingAnchor constraintEqualToAnchor:glassView.contentView.leadingAnchor constant:0.5],
-        [segment.trailingAnchor constraintEqualToAnchor:glassView.contentView.trailingAnchor constant:-0.5],
-        [segment.topAnchor constraintEqualToAnchor:glassView.contentView.topAnchor constant:0.5],
-        [segment.bottomAnchor constraintEqualToAnchor:glassView.contentView.bottomAnchor constant:-0.5],
-
-        self.adsBadgeCenterX,
-        self.servicesBadgeCenterX,
-        self.accessoriesBadgeCenterX,
-
-        [self.adsBadge.topAnchor constraintEqualToAnchor:glassView.contentView.topAnchor constant:-2.0],
-        [self.adsBadge.widthAnchor constraintGreaterThanOrEqualToConstant:20.0],
-        [self.adsBadge.heightAnchor constraintEqualToConstant:20.0],
-
-        [self.servicesBadge.topAnchor constraintEqualToAnchor:glassView.contentView.topAnchor constant:-2.0],
-        [self.servicesBadge.widthAnchor constraintGreaterThanOrEqualToConstant:20.0],
-        [self.servicesBadge.heightAnchor constraintEqualToConstant:20.0],
-
-        [self.accessoriesBadge.topAnchor constraintEqualToAnchor:glassView.contentView.topAnchor constant:-2.0],
-        [self.accessoriesBadge.widthAnchor constraintGreaterThanOrEqualToConstant:20.0],
-        [self.accessoriesBadge.heightAnchor constraintEqualToConstant:20.0]
-    ]];
-
-    self.searchSegment = segment;
-    self.segmentGlassView = glassView;
+    self.selectedSearchSegment = PPSearchSegmentAds;
     [self pp_hideAllBadges];
+    [self pp_updateSegmentButtonsSelectionAnimated:NO];
 }
 
 - (void)setupEmptyState
@@ -696,8 +765,11 @@ PPUniversalCellDelegate>
 - (BOOL)textFieldShouldClear:(UITextField *)textField
 {
     (void)textField;
-    [self pp_updateSearchPlaceholderVisibility];
     [self resetSearchState];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_updateSearchPlaceholderVisibility];
+        [self pp_updateSegmentButtonsSelectionAnimated:YES];
+    });
     return YES;
 }
 
@@ -862,14 +934,27 @@ PPUniversalCellDelegate>
 
 #pragma mark - Segment Filtering
 
-- (void)searchSegmentChanged
+- (void)segmentBadgeTapped:(UIButton *)sender
 {
-    [self applySegmentFilter];
+    PPSearchSegment segment = (PPSearchSegment)sender.tag;
+    if (segment < PPSearchSegmentAds || segment > PPSearchSegmentAccessories) {
+        segment = PPSearchSegmentAds;
+    }
+
+    if (self.selectedSearchSegment != segment) {
+        self.selectedSearchSegment = segment;
+        [self pp_updateSegmentButtonsSelectionAnimated:YES];
+        [self applySegmentFilter];
+    } else {
+        [self pp_scrollSegmentButtonIntoView:sender animated:YES];
+    }
+
+    [PPFunc triggerLightHaptic];
 }
 
 - (void)applySegmentFilter
 {
-    NSInteger selectedIndex = self.searchSegment.selectedSegmentIndex;
+    NSInteger selectedIndex = self.selectedSearchSegment;
     if (selectedIndex < PPSearchSegmentAds || selectedIndex > PPSearchSegmentAccessories) {
         selectedIndex = PPSearchSegmentAds;
     }
@@ -989,7 +1074,7 @@ PPUniversalCellDelegate>
     self.heroTitleLabel.text = kLang(@"SearchHeroTitle");
 
     if (!hasValidQuery) {
-        statusText = kLang(@"SearchHeroReady");
+        statusText = kLang(@"Hero_TrendingNow") ?: kLang(@"SearchHeroReady");
         subtitleText = kLang(@"SearchHeroIdleSubtitle");
         countText = kLang(@"SearchHeroTypingHint");
     } else if (self.isSearching) {
@@ -1016,19 +1101,41 @@ PPUniversalCellDelegate>
     [self setPill:self.queryPillLabel hidden:!showQueryPill animated:animated];
     [self setPill:self.countPillLabel hidden:!showCountPill animated:animated];
 
-    UIColor *statusBackground = self.isSearching
-        ? [[UIColor colorWithRed:0.98 green:0.69 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.24]
-        : [AppPrimaryClr colorWithAlphaComponent:0.22];
-    UIColor *statusForeground = self.isSearching
-        ? [UIColor colorWithRed:1.0 green:0.94 blue:0.80 alpha:1.0]
-        : [UIColor colorWithWhite:1.0 alpha:0.96];
+    UIColor *scopeTint = [self pp_scopeTintColorForSelectedSegment];
+    UIColor *statusBackground = nil;
+    UIColor *statusForeground = nil;
+
+    if (!hasValidQuery) {
+        statusBackground = [[UIColor colorWithRed:0.98 green:0.82 blue:0.56 alpha:1.0] colorWithAlphaComponent:0.18];
+        statusForeground = [UIColor colorWithRed:1.0 green:0.96 blue:0.88 alpha:0.98];
+    } else if (self.isSearching) {
+        statusBackground = [[UIColor colorWithRed:0.98 green:0.69 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.22];
+        statusForeground = [UIColor colorWithRed:1.0 green:0.94 blue:0.80 alpha:1.0];
+    } else if (self.results.count > 0) {
+        statusBackground = [scopeTint colorWithAlphaComponent:0.22];
+        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.98];
+    } else {
+        statusBackground = [UIColor colorWithWhite:1.0 alpha:0.08];
+        statusForeground = [UIColor colorWithWhite:1.0 alpha:0.88];
+    }
 
     self.statusPillLabel.backgroundColor = statusBackground;
     self.statusPillLabel.textColor = statusForeground;
-    self.scopePillLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    self.statusPillLabel.layer.borderColor = [statusForeground colorWithAlphaComponent:0.10].CGColor;
+
+    self.scopePillLabel.backgroundColor = [scopeTint colorWithAlphaComponent:0.18];
+    self.scopePillLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.96];
+    self.scopePillLabel.layer.borderColor = [scopeTint colorWithAlphaComponent:0.18].CGColor;
+
     self.countPillLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    self.countPillLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.88];
+    self.countPillLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.06].CGColor;
+
     self.queryPillLabel.backgroundColor = [[UIColor colorWithRed:0.98 green:0.81 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.18];
     self.queryPillLabel.textColor = [[UIColor colorWithRed:1.0 green:0.95 blue:0.83 alpha:1.0] colorWithAlphaComponent:0.95];
+    self.queryPillLabel.layer.borderColor = [[UIColor colorWithRed:0.98 green:0.81 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.18].CGColor;
+
+    [self pp_updateSegmentButtonsSelectionAnimated:animated];
 }
 
 - (void)updateEmptyState
@@ -1122,28 +1229,20 @@ PPUniversalCellDelegate>
 
 - (UILabel *)makeBadgeLabel
 {
-    UILabel *label = [UILabel new];
+    PPInsetLabel *label = [PPInsetLabel new];
     label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.textInsets = UIEdgeInsetsMake(3.0, 7.0, 3.0, 7.0);
     label.textAlignment = NSTextAlignmentCenter;
-    label.font = [GM boldFontWithSize:11];
-    label.textColor = UIColor.whiteColor;
-    label.backgroundColor = AppPrimaryClr;
+    label.font = [GM boldFontWithSize:10.0] ?: [UIFont systemFontOfSize:10.0 weight:UIFontWeightBold];
+    label.textColor = [UIColor colorWithWhite:1.0 alpha:0.84];
+    label.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
     label.layer.cornerRadius = 10.0;
     label.layer.masksToBounds = YES;
     label.alpha = 0.0;
+    [NSLayoutConstraint activateConstraints:@[
+        [label.heightAnchor constraintEqualToConstant:20.0]
+    ]];
     return label;
-}
-
-- (void)updateBadgePositions
-{
-    if (self.searchSegment.numberOfSegments <= 0) {
-        return;
-    }
-
-    CGFloat segmentWidth = self.searchSegment.bounds.size.width / (CGFloat)self.searchSegment.numberOfSegments;
-    self.adsBadgeCenterX.constant = segmentWidth * 0.5;
-    self.servicesBadgeCenterX.constant = segmentWidth * 1.5;
-    self.accessoriesBadgeCenterX.constant = segmentWidth * 2.5;
 }
 
 - (void)pp_hideAllBadges
@@ -1155,20 +1254,62 @@ PPUniversalCellDelegate>
 
 - (void)pp_updateBadge:(UILabel *)badge count:(NSInteger)count
 {
-    if (count <= 0) {
-        [UIView animateWithDuration:0.2 animations:^{
-            badge.alpha = 0.0;
-            badge.transform = CGAffineTransformMakeScale(0.8, 0.8);
-        }];
+    if (badge == nil) {
         return;
     }
 
-    badge.text = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count];
-    if (badge.alpha > 0.01) {
+    UIView *hostView = badge.superview.superview;
+    UIButton *hostButton = [hostView isKindOfClass:UIButton.class] ? (UIButton *)hostView : nil;
+
+    if (count <= 0) {
+        [UIView animateWithDuration:0.2 animations:^{
+            badge.hidden = NO;
+            badge.alpha = 0.0;
+            badge.transform = CGAffineTransformMakeScale(0.8, 0.8);
+        } completion:^(__unused BOOL finished) {
+            badge.hidden = YES;
+            badge.text = nil;
+        }];
+        hostButton.accessibilityValue = nil;
+        return;
+    }
+
+    NSString *nextText = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count];
+    BOOL wasVisible = (badge.alpha > 0.01 && !badge.hidden);
+    BOOL didChangeValue = ![badge.text isEqualToString:nextText];
+
+    badge.hidden = NO;
+    hostButton.accessibilityValue = nextText;
+
+    if (wasVisible) {
+        if (didChangeValue) {
+            [UIView transitionWithView:badge
+                              duration:0.18
+                               options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState
+                            animations:^{
+                badge.text = nextText;
+            } completion:nil];
+
+            if (!UIAccessibilityIsReduceMotionEnabled()) {
+                badge.transform = CGAffineTransformMakeScale(1.12, 1.12);
+                [UIView animateWithDuration:0.20
+                                      delay:0.0
+                     usingSpringWithDamping:0.58
+                      initialSpringVelocity:0.55
+                                    options:UIViewAnimationOptionBeginFromCurrentState
+                                 animations:^{
+                    badge.transform = CGAffineTransformIdentity;
+                } completion:nil];
+            } else {
+                badge.transform = CGAffineTransformIdentity;
+            }
+        }
+
         badge.transform = CGAffineTransformIdentity;
         return;
     }
 
+    badge.text = nextText;
     badge.transform = CGAffineTransformMakeScale(0.6, 0.6);
     [UIView animateWithDuration:0.25
                           delay:0.0
@@ -1205,7 +1346,7 @@ PPUniversalCellDelegate>
 
 - (NSString *)selectedSegmentTitle
 {
-    NSInteger selectedIndex = self.searchSegment.selectedSegmentIndex;
+    NSInteger selectedIndex = self.selectedSearchSegment;
     switch (selectedIndex) {
         case PPSearchSegmentServices:
             return kLang(@"services");
@@ -1296,6 +1437,254 @@ PPUniversalCellDelegate>
 {
     BOOL shouldHidePlaceholder = self.searchTextField.text.length > 0;
     self.searchPlaceholderLabel.hidden = shouldHidePlaceholder;
+}
+
+- (NSArray<NSDictionary<NSString *, id> *> *)pp_searchSegmentDescriptors
+{
+    return @[
+        @{
+            @"title" : (kLang(@"Ads") ?: @"Ads"),
+            @"icon" : @"tag.fill",
+            @"segment" : @(PPSearchSegmentAds)
+        },
+        @{
+            @"title" : (kLang(@"services") ?: @"Services"),
+            @"icon" : @"stethoscope",
+            @"segment" : @(PPSearchSegmentServices)
+        },
+        @{
+            @"title" : (kLang(@"Accessories") ?: @"Accessories"),
+            @"icon" : @"shippingbox.fill",
+            @"segment" : @(PPSearchSegmentAccessories)
+        }
+    ];
+}
+
+- (UIButton *)pp_makeSegmentBadgeButtonWithTitle:(NSString *)title
+                                        iconName:(NSString *)iconName
+                                         segment:(PPSearchSegment)segment
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.tag = segment;
+    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentFill;
+    button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+    button.layer.cornerRadius = 16.0;
+    button.layer.borderWidth = 1.0;
+    button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    button.layer.shadowOpacity = 0.0f;
+    button.layer.shadowRadius = 12.0f;
+    button.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIView *contentView = [UIView new];
+    contentView.translatesAutoresizingMaskIntoConstraints = NO;
+    contentView.userInteractionEnabled = NO;
+    contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    UIImageSymbolConfiguration *iconConfiguration =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:iconName
+                                                                        withConfiguration:iconConfiguration]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tag = kPPSearchSegmentIconTag;
+    iconView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.82];
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+
+    UILabel *titleLabel = [UILabel new];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.tag = kPPSearchSegmentTitleTag;
+    titleLabel.text = title ?: @"";
+    titleLabel.font = [GM boldFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+    titleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.84];
+    titleLabel.textAlignment = NSTextAlignmentNatural;
+    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [titleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                forAxis:UILayoutConstraintAxisHorizontal];
+
+    UILabel *countLabel = [self makeBadgeLabel];
+    countLabel.tag = kPPSearchSegmentCountTag;
+    countLabel.hidden = YES;
+    [countLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisHorizontal];
+
+    [button addSubview:contentView];
+    [contentView addSubview:iconView];
+    [contentView addSubview:titleLabel];
+    [contentView addSubview:countLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [contentView.leadingAnchor constraintEqualToAnchor:button.leadingAnchor constant:12.0],
+        [contentView.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-12.0],
+        [contentView.topAnchor constraintEqualToAnchor:button.topAnchor],
+        [contentView.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
+
+        [iconView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:14.0],
+        [iconView.heightAnchor constraintEqualToConstant:14.0],
+
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:7.0],
+        [titleLabel.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+
+        [countLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:titleLabel.trailingAnchor constant:7.0],
+        [countLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
+        [countLabel.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor],
+
+        [button.heightAnchor constraintEqualToConstant:44.0],
+        [button.widthAnchor constraintGreaterThanOrEqualToConstant:92.0]
+    ]];
+
+    button.isAccessibilityElement = YES;
+    button.accessibilityLabel = title ?: @"";
+    button.accessibilityHint = NSLocalizedString(@"a11y_search_segment_hint", @"Choose between Ads, Services, or Accessories");
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+
+    [button addTarget:self action:@selector(segmentBadgeTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_segmentButtonTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_segmentButtonTouchUp:) forControlEvents:UIControlEventTouchUpOutside];
+    [button addTarget:self action:@selector(pp_segmentButtonTouchUp:) forControlEvents:UIControlEventTouchCancel];
+    return button;
+}
+
+- (UILabel *)pp_segmentCountLabelForButton:(UIButton *)button
+{
+    return (UILabel *)[button viewWithTag:kPPSearchSegmentCountTag];
+}
+
+- (UIImageView *)pp_segmentIconViewForButton:(UIButton *)button
+{
+    return (UIImageView *)[button viewWithTag:kPPSearchSegmentIconTag];
+}
+
+- (UILabel *)pp_segmentTitleLabelForButton:(UIButton *)button
+{
+    return (UILabel *)[button viewWithTag:kPPSearchSegmentTitleTag];
+}
+
+- (void)pp_segmentButtonTouchDown:(UIButton *)button
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    [UIView animateWithDuration:0.12
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformMakeScale(0.975, 0.975);
+    } completion:nil];
+}
+
+- (void)pp_segmentButtonTouchUp:(UIButton *)button
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        button.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+         usingSpringWithDamping:0.82
+          initialSpringVelocity:0.24
+                        options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_updateSegmentButtonsSelectionAnimated:(BOOL)animated
+{
+    __block UIButton *selectedButton = nil;
+    [self.segmentButtons enumerateObjectsUsingBlock:^(UIButton * _Nonnull button, __unused NSUInteger idx, __unused BOOL * _Nonnull stop) {
+        PPSearchSegment segment = (PPSearchSegment)button.tag;
+        BOOL isSelected = (segment == self.selectedSearchSegment);
+        if (isSelected && selectedButton == nil) {
+            selectedButton = button;
+        }
+        [self pp_applySegmentButton:button selected:isSelected animated:animated];
+    }];
+
+    if (selectedButton != nil) {
+        [self pp_scrollSegmentButtonIntoView:selectedButton animated:animated];
+    }
+}
+
+- (void)pp_applySegmentButton:(UIButton *)button selected:(BOOL)selected animated:(BOOL)animated
+{
+    UIColor *accentColor = [self pp_scopeTintColorForSegment:(PPSearchSegment)button.tag];
+    UIImageView *iconView = [self pp_segmentIconViewForButton:button];
+    UILabel *titleLabel = [self pp_segmentTitleLabelForButton:button];
+    UILabel *countLabel = [self pp_segmentCountLabelForButton:button];
+    button.accessibilityTraits = UIAccessibilityTraitButton | (selected ? UIAccessibilityTraitSelected : 0);
+
+    void (^updates)(void) = ^{
+        button.backgroundColor = selected
+            ? [accentColor colorWithAlphaComponent:0.24]
+            : [UIColor colorWithWhite:1.0 alpha:0.08];
+        button.layer.borderColor = (selected
+            ? [accentColor colorWithAlphaComponent:0.34]
+            : [UIColor colorWithWhite:1.0 alpha:0.08]).CGColor;
+        button.layer.shadowColor = accentColor.CGColor;
+        button.layer.shadowOpacity = selected ? 0.14f : 0.0f;
+
+        UIColor *contentColor = selected
+            ? [UIColor colorWithWhite:1.0 alpha:0.98]
+            : [UIColor colorWithWhite:1.0 alpha:0.84];
+        iconView.tintColor = contentColor;
+        titleLabel.textColor = contentColor;
+
+        countLabel.backgroundColor = selected
+            ? [UIColor colorWithWhite:1.0 alpha:0.18]
+            : [UIColor colorWithWhite:1.0 alpha:0.12];
+        countLabel.textColor = selected
+            ? [UIColor colorWithWhite:1.0 alpha:0.98]
+            : [UIColor colorWithWhite:1.0 alpha:0.84];
+    };
+
+    if (!animated) {
+        updates();
+        return;
+    }
+
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                     animations:updates
+                     completion:nil];
+}
+
+- (void)pp_scrollSegmentButtonIntoView:(UIButton *)button animated:(BOOL)animated
+{
+    if (button == nil || self.segmentScrollView == nil) {
+        return;
+    }
+
+    CGRect buttonRect = [button convertRect:button.bounds toView:self.segmentScrollView];
+    CGFloat horizontalInset = 18.0;
+    CGRect targetRect = CGRectInset(buttonRect, -horizontalInset, 0.0);
+    [self.segmentScrollView scrollRectToVisible:targetRect animated:animated];
+}
+
+- (UIColor *)pp_scopeTintColorForSelectedSegment
+{
+    return [self pp_scopeTintColorForSegment:self.selectedSearchSegment];
+}
+
+- (UIColor *)pp_scopeTintColorForSegment:(PPSearchSegment)segment
+{
+    switch (segment) {
+        case PPSearchSegmentServices:
+            return [UIColor colorWithRed:0.34 green:0.66 blue:0.72 alpha:1.0];
+        case PPSearchSegmentAccessories:
+            return [UIColor colorWithRed:0.83 green:0.56 blue:0.28 alpha:1.0];
+        case PPSearchSegmentAds:
+        default:
+            return AppPrimaryClr ?: [UIColor colorWithRed:0.72 green:0.22 blue:0.36 alpha:1.0];
+    }
 }
 
 - (void)setLabel:(UILabel *)label text:(NSString *)text animated:(BOOL)animated
@@ -1395,6 +1784,7 @@ PPUniversalCellDelegate>
     self.didAnimateHero = YES;
     NSArray<UIView *> *stagedViews = @[
         self.eyebrowLabel,
+        self.statusPillLabel,
         self.heroTitleLabel,
         self.heroSubtitleLabel,
         self.metaStackView,
@@ -1414,6 +1804,17 @@ PPUniversalCellDelegate>
             view.transform = CGAffineTransformIdentity;
         } completion:nil];
     }];
+
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        CABasicAnimation *shineDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+        shineDrift.fromValue = @(-36.0);
+        shineDrift.toValue = @(36.0);
+        shineDrift.duration = 5.4;
+        shineDrift.autoreverses = YES;
+        shineDrift.repeatCount = HUGE_VALF;
+        shineDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.heroShineLayer addAnimation:shineDrift forKey:@"pp.search.hero.shineDrift"];
+    }
 
     self.primaryGlowView.alpha = 1.0;
     self.secondaryGlowView.alpha = 1.0;

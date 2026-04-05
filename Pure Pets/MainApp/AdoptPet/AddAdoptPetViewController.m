@@ -50,6 +50,7 @@ static inline NSString *PPAdoptSafeString(id value) {
 @property (nonatomic, strong) UIActivityIndicatorView *saveActivityIndicator;
 @property (nonatomic, assign) BOOL hasUserModifiedForm;
 @property (nonatomic, assign) BOOL isHydratingFormData;
+@property (nonatomic, copy, nullable) dispatch_block_t saveTimeoutBlock;
 @end
 
 @implementation AddAdoptPetViewController
@@ -641,6 +642,59 @@ static inline NSString *PPAdoptSafeString(id value) {
     }
 }
 
+#pragma mark - Save Timeout Protection
+
+- (void)pp_cancelSaveTimeout {
+    if (self.saveTimeoutBlock) {
+        dispatch_block_cancel(self.saveTimeoutBlock);
+        self.saveTimeoutBlock = nil;
+    }
+}
+
+- (void)pp_scheduleSaveTimeout {
+    [self pp_cancelSaveTimeout];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t timeoutBlock = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.saveTimeoutBlock = nil;
+
+        if (strongSelf.isSaving) {
+            // Reset UI state without triggering the generic error alert
+            strongSelf.saveBarButton.enabled = YES;
+            [strongSelf.saveActivityIndicator stopAnimating];
+            strongSelf.saveBarButton.customView = nil;
+            [GM ActivityLoadingAnimationView:NO onView:strongSelf.tableView];
+            strongSelf.isSaving = NO;
+
+            [strongSelf pp_showSaveTimeoutError];
+        }
+    });
+    self.saveTimeoutBlock = timeoutBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   timeoutBlock);
+}
+
+- (void)pp_showSaveTimeoutError {
+    if (self.presentedViewController) return;
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"upload_timeout_title")
+                                                                  message:kLang(@"save_timeout_message")
+                                                           preferredStyle:UIAlertControllerStyleAlert];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        [weakSelf saveTapped];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 #pragma mark - Save
 
 - (void)saveTapped {
@@ -717,6 +771,7 @@ static inline NSString *PPAdoptSafeString(id value) {
 
     self.isSaving = YES;
     [GM ActivityLoadingAnimationView:YES onView:self.tableView];
+    [self pp_scheduleSaveTimeout];
 
     AdoptPetModel *model = [self buildModelFromForm];
     __weak typeof(self) weakSelf = self;
@@ -748,6 +803,7 @@ static inline NSString *PPAdoptSafeString(id value) {
 - (void)pp_finishSaveWithSuccess:(BOOL)success
                            error:(NSError * _Nullable)error
                        isEditing:(BOOL)isEditing {
+    [self pp_cancelSaveTimeout];
     self.saveBarButton.enabled = YES;
     [self.saveActivityIndicator stopAnimating];
     self.saveBarButton.customView = nil;

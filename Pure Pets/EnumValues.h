@@ -21,6 +21,9 @@ static NSString *const kSavedCartKey = @"savedCartItems";
 static NSString *const kCartUpdatedNotification = @"CartUpdated";
 static NSString *const kCartPricingConfigurationDidChangeNotification = @"CartPricingConfigurationDidChange";
 
+// Firestore error notification (observed by PPFirestoreErrorNotifier global handler)
+static NSString *const kPPFirestoreErrorOccurredNotification = @"PPFirestoreErrorOccurred";
+
 // PPNotifications.m
 static NSString * const PPAdDidFinishUploadNotification = @"PPAdDidFinishUploadNotification";
 

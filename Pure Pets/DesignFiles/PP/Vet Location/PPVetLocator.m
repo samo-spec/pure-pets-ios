@@ -521,4 +521,9 @@ static CLLocationCoordinate2D const kSampleLocationCoordinate = {30.0444, 31.235
     [self presentViewController:ac animated:YES completion:nil];
 }
 
+- (void)dealloc {
+    [self.locationTimer invalidate];
+    self.locationTimer = nil;
+}
+
 @end

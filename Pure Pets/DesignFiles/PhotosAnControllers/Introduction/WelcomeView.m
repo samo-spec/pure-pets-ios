@@ -91,4 +91,9 @@
     }
 }
 
+- (void)dealloc {
+    [stipTimer invalidate];
+    stipTimer = nil;
+}
+
 @end

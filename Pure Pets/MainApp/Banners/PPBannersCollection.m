@@ -316,4 +316,9 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
     [self.delegate didTapOn_BannerViewModel:pannerViewModel];
 }
 
+- (void)dealloc {
+    [self.autoScrollTimer invalidate];
+    self.autoScrollTimer = nil;
+}
+
 @end

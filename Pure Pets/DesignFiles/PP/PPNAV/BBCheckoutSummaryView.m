@@ -355,7 +355,7 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     self.shippingValueLabel.textAlignment = NSTextAlignmentNatural;
     self.shippingLabel.textAlignment = NSTextAlignmentNatural;
 
-    self.subtotalAttributedLabel.textAlignment = NSTextAlignmentRight;
+    self.subtotalAttributedLabel.textAlignment = NSTextAlignmentNatural;
     // Pricing Stack
     self.pricingStack = [[UIStackView alloc] init];
     self.pricingStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -374,6 +374,8 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     //self.checkoutBTN.clipsToBounds = YES;
     //[self.checkoutBTN setTitle:kLang(@"Checkout") forState:UIControlStateNormal];
     self.checkoutBTN.titleLabel.font = [GM boldFontWithSize:16];
+    self.checkoutBTN.accessibilityLabel = NSLocalizedString(@"a11y_btn_checkout", @"Checkout");
+    self.checkoutBTN.accessibilityHint  = NSLocalizedString(@"a11y_btn_checkout_hint", @"Double-tap to proceed to checkout");
     [self.checkoutBTN addTarget:self action:@selector(didTapCheckout) forControlEvents:UIControlEventTouchUpInside];
 
     // Glass / frosted configuration for iOS 16+, fallback for older

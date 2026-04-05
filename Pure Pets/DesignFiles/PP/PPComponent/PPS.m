@@ -1421,6 +1421,6 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
         [[NSUserDefaults standardUserDefaults] setBool:YES forKey:key];
     });
 }
- 
+
 @end
 

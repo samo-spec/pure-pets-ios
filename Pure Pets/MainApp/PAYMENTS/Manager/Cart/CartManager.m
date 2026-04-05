@@ -7,6 +7,7 @@
 #import "CartManager.h"
 #import "PetAccessoryManager.h"
 #import "PPCartCalculator.h"
+#import "PPFirestoreErrorNotifier.h"
 #import <UIKit/UIKit.h>
 #import <math.h>
 
@@ -17,6 +18,7 @@
 @property (nonatomic, assign, readwrite) double deliveryFee;
 @property (nonatomic, assign, readwrite) BOOL cashOnDeliveryEnabled;
 @property (nonatomic, assign, readwrite) BOOL onlinePaymentEnabled;
+@property (nonatomic, strong, nullable) id<FIRListenerRegistration> cartListener;
 
 @end
 @implementation CartManager
@@ -87,6 +89,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     [settingsRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
             NSLog(@"[Cart] ⚠️ Pricing config fetch failed: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartPricingFetch];
             return;
         }
         NSDictionary *data = [snapshot.data isKindOfClass:NSDictionary.class] ? snapshot.data : @{};
@@ -206,6 +209,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
         if (error) {
             NSLog(@"❌ Failed to sync cart item %@: %@",
                   item.itemID, error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartItemSync];
         }
     }];
 }
@@ -408,6 +412,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     [batch commitWithCompletion:^(NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ Failed to sync cart batch: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartBatchSync];
         } else {
             NSLog(@"✅ Cart batch synced");
         }
@@ -423,11 +428,18 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     NSString *userID = PPCurrentFIRAuthUser.uid;
     if (userID.length == 0) userID = UserManager.sharedManager.currentUser.ID;
     if (userID.length == 0) { return; }
+
+    // Remove previous listener to prevent stacking
+    [self.cartListener remove];
+    self.cartListener = nil;
+
     FIRFirestore *db = [FIRFirestore firestore];
+    self.cartListener =
     [[[[db collectionWithPath:@"UsersCol"] documentWithPath:userID] collectionWithPath:@"cartItems"]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
         if (error) {
             NSLog(@"❌ Cart listener error: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartListener];
             return;
         }
         if (!snapshot) return;
@@ -561,6 +573,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
             if (updateError) {
                 NSLog(@"❌ Failed to update remote quantity: %@",
                       updateError.localizedDescription);
+                [PPFirestoreErrorNotifier postError:updateError context:PPFirestoreContextCartQuantityUpdate];
             }
         }];
     }
@@ -623,6 +636,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
         if (error) {
             NSLog(@"❌ Error querying Firestore for delete: %@",
                   error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextCartDeleteQuery];
             return;
         }
 
@@ -632,6 +646,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
                 if (err) {
                     NSLog(@"❌ Failed to delete cart item: %@",
                           err.localizedDescription);
+                    [PPFirestoreErrorNotifier postError:err context:PPFirestoreContextCartDeleteItem];
                 } else {
                     NSLog(@"🗑️ Deleted cart item: %@",
                           item.itemID);
@@ -703,8 +718,15 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
     return YES;
 }
 
+- (void)stopListeningToCartChanges {
+    [self.cartListener remove];
+    self.cartListener = nil;
+}
+
 - (void)dealloc
 {
+    [self.cartListener remove];
+    self.cartListener = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:UIApplicationDidBecomeActiveNotification
                                                   object:nil];

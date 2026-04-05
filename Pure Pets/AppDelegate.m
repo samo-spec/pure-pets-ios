@@ -3,6 +3,8 @@
 #import "XLFormRowFullWidthTextFieldCell.h"
 #import <TargetConditionals.h>
 #import "PPPaymentManager.h"
+#import "PPFirestoreErrorNotifier.h"
+#import "PPOfflineBannerView.h"
 #if __has_include(<FirebaseAppCheck/FirebaseAppCheck.h>)
 @import FirebaseAppCheck;
 #define PP_HAS_FIREBASE_APPCHECK 1
@@ -62,6 +64,9 @@
     dispatch_once(&onceToken, ^{
         [self pp_configureAppCheckIfAvailable];
         [FIRApp configure];
+        // Firestore persistence is enabled by default in Firebase iOS SDK 12.x.
+        // Cache size uses the SDK default (100MB with auto-GC).
+
 #if DEBUG
         [FIRFirestore enableLogging:YES];
         [[FIRConfiguration sharedInstance] setLoggerLevel:FIRLoggerLevelMin];
@@ -71,6 +76,12 @@
 #endif
         [FIRMessaging messaging].delegate = self;
     });
+
+    // ✅ Register global Firestore error observer (non-blocking banner)
+    [PPFirestoreErrorNotifier registerGlobalObserver];
+
+    // ✅ Start persistent offline status banner (M-19)
+    [[PPOfflineBannerView sharedBanner] startMonitoring];
 
     // Detect fresh install and clear user if needed
     [[PPAuthManager shared] handleFreshInstall];

@@ -1278,6 +1278,11 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     }
 }
 
+- (void)dealloc {
+    [self.autoScrollTimer invalidate];
+    self.autoScrollTimer = nil;
+}
+
 @end
 
 @implementation PPBannerCollectionCell
@@ -1449,6 +1454,11 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.placeholderView.hidden = NO;
     self.bannersView.hidden = YES;
     self.promoCarouselView.hidden = YES;
+    [self.bannersView stopAutoScroll];
+    [self.promoCarouselView stopAutoScroll];
+}
+
+- (void)dealloc {
     [self.bannersView stopAutoScroll];
     [self.promoCarouselView stopAutoScroll];
 }

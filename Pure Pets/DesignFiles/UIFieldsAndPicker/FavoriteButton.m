@@ -205,6 +205,9 @@
     self.adjustsImageWhenHighlighted = NO;
     self.showsMenuAsPrimaryAction = NO;
     self.isFavorite = NO;
+    self.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
+    self.accessibilityHint  = NSLocalizedString(@"a11y_btn_favorite_hint", @"Double-tap to add or remove from favorites");
+    self.accessibilityTraits = UIAccessibilityTraitButton;
 
     // Use a full 44pt hit target even though the visual stays compact.
     CGFloat size = 38.0;
@@ -249,6 +252,11 @@
 
     self.backgroundColor = bgColor;
     self.tintColor = iconColor;
+
+    // ── Accessibility: Update label based on favorite state ──
+    self.accessibilityLabel = self.isFavorite
+        ? NSLocalizedString(@"a11y_btn_unfavorite", @"Remove from favorites")
+        : NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
 
     [self setImage:[UIImage systemImageNamed:iconName]
           forState:UIControlStateNormal];

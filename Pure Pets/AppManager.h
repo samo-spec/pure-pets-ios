@@ -79,7 +79,8 @@ NS_ASSUME_NONNULL_BEGIN
 // USERS
 @property (nonatomic, strong) NSMutableArray<UserModel *> *usersArray;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> usersListener;
-
+/// Listener for the trGCol (trigger) collection — real-time card transfer triggers.
+@property (nonatomic, strong, nullable) id<FIRListenerRegistration> triggerListener;
 
 @property (strong, nonatomic) NSMutableDictionary<NSString *, NSDictionary *> *localUsers;
 @property (nonatomic, strong) _Nullable id<FIRListenerRegistration> listenerRegistration;

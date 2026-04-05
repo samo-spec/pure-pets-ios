@@ -25,6 +25,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)saveCart;
 - (void)clearCart;
 - (void)startListeningToCartChanges;
+/// Stops the Firestore cart listener. Call on logout or when the listener is no longer needed.
+- (void)stopListeningToCartChanges;
 - (NSInteger)quantityForAccessory:(PetAccessory *)accessory;
 - (void)updateQuantity:(NSInteger)newQuantity
               forItem:(CartItem *)item

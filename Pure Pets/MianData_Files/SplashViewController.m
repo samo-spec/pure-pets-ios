@@ -80,6 +80,9 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     self.backgroundGradientLayer.frame = self.view.bounds;
     self.topGlowView.layer.cornerRadius = CGRectGetHeight(self.topGlowView.bounds) * 0.5;
     self.bottomGlowView.layer.cornerRadius = CGRectGetHeight(self.bottomGlowView.bounds) * 0.5;
+    
+    self.backgroundGradientLayer.opacity = 0.3;
+    //self.bottomGlowView.alpha = 0.5;
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -516,8 +519,8 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     NSInteger activeSegments = MIN(MAX((NSInteger)phase + 1, 1), (NSInteger)self.progressSegments.count);
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     UIColor *activeColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *inactiveColor =
-        [[AppSecondaryTextClr ?: UIColor.secondaryLabelColor] colorWithAlphaComponent:isDark ? 0.18 : 0.14];
+    UIColor *secondaryBase = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    UIColor *inactiveColor = [secondaryBase colorWithAlphaComponent:isDark ? 0.18 : 0.14];
 
     [self.progressSegments enumerateObjectsUsingBlock:^(UIView *segment, NSUInteger idx, BOOL *stop) {
         BOOL isActive = ((NSInteger)idx < activeSegments);

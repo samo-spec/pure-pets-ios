@@ -2737,6 +2737,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     [self.userStatusListener remove];
     self.userStatusListener = nil;
     [self stopAllRecordingUpdates];
+    [self stopSilenceDetection];
     [self stopPreviewDisplayLink];
     [self.previewPlayer stop];
     self.previewPlayer = nil;

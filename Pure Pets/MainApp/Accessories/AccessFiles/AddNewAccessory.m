@@ -1,6 +1,7 @@
 #import "AddNewAccessory.h"
 #import "PPImageCollection.h"
 #import "UserManager.h"
+#import "PPNetworkRetryHelper.h"
 
 static NSString *const PPAddAccessoryLanguageDidChangeNotification = @"LanguageDidChangeNotification";
 static NSString *const PPAddAccessoryErrorDomain = @"PPAddAccessoryErrorDomain";
@@ -53,6 +54,7 @@ static inline NSString *PPAccessorySafeString(id value) {
 @property (nonatomic, assign) BOOL hasUserModifiedForm;
 @property (nonatomic, assign) BOOL isHydratingFormData;
 @property (nonatomic, assign) BOOL isHydratingMedia;
+@property (nonatomic, copy, nullable) dispatch_block_t uploadTimeoutBlock;
 
 - (UIView *)pp_modernBlurTitleViewWithTitle:(NSString *)title subtitle:(NSString *)subtitle;
 
@@ -1104,6 +1106,15 @@ static inline NSString *PPAccessorySafeString(id value) {
 }
 
 - (void)uploadAd {
+    // M-11: Offline pre-check — prevent Firestore write attempts when offline
+    if (![PPNetworkRetryHelper isNetworkAvailable]) {
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"offline_action_title")
+                            subtitle:kLang(@"offline_action_message")
+                          completion:nil];
+        return;
+    }
+
     if (UserManager.sharedManager.isCurrentUserBlocked) {
         [self pp_handleLiveBlockedStateIfNeeded];
         return;
@@ -1144,6 +1155,61 @@ static inline NSString *PPAccessorySafeString(id value) {
     [self pp_submitAccessoryIsEditing:isEditing images:normalizedImages];
 }
 
+- (void)pp_cancelUploadTimeout {
+    if (self.uploadTimeoutBlock) {
+        dispatch_block_cancel(self.uploadTimeoutBlock);
+        self.uploadTimeoutBlock = nil;
+    }
+}
+
+- (void)pp_scheduleUploadTimeout {
+    [self pp_cancelUploadTimeout];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t timeoutBlock = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.uploadTimeoutBlock = nil;
+
+        if (strongSelf.isSubmittingAccessory) {
+            // Reset UI state directly (already on main queue)
+            strongSelf.isSubmittingAccessory = NO;
+            strongSelf.form.disabled = NO;
+            strongSelf.mform.disabled = NO;
+            strongSelf.imageCollection.userInteractionEnabled = YES;
+            [strongSelf pp_setSubmitEnabled:YES];
+            [strongSelf pp_hideUploadIndicatorOnNavBar];
+            if (strongSelf.isProgressAnimating) {
+                [strongSelf.uploadProgressView stopAnimating];
+                strongSelf.isProgressAnimating = NO;
+            }
+            [strongSelf pp_showUploadTimeoutError];
+        }
+    });
+    self.uploadTimeoutBlock = timeoutBlock;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(15.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(),
+                   timeoutBlock);
+}
+
+- (void)pp_showUploadTimeoutError {
+    if (self.presentedViewController) return;
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"upload_timeout_title")
+                                                                  message:kLang(@"upload_timeout_message")
+                                                           preferredStyle:UIAlertControllerStyleAlert];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(__unused UIAlertAction *action) {
+        [weakSelf uploadAd];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
 - (void)pp_beginSubmitUI {
     dispatch_async(dispatch_get_main_queue(), ^{
         if (self.isSubmittingAccessory) {
@@ -1162,11 +1228,15 @@ static inline NSString *PPAccessorySafeString(id value) {
             [self.uploadProgressView startAnimating];
             self.isProgressAnimating = YES;
         }
+
+        [self pp_scheduleUploadTimeout];
     });
 }
 
 - (void)pp_finishSubmitUI {
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_cancelUploadTimeout];
+
         if (!self.isSubmittingAccessory && !self.isProgressAnimating) {
             [self pp_hideUploadIndicatorOnNavBar];
             return;

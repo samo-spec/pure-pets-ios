@@ -225,9 +225,10 @@
     ]];
 
     // Accessibility
-    self.removeButton.accessibilityLabel = NSLocalizedString(@"Remove item", nil);
-    self.minusButton.accessibilityLabel = NSLocalizedString(@"Decrease quantity", nil);
-    self.plusButton.accessibilityLabel = NSLocalizedString(@"Increase quantity", nil);
+    self.removeButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_remove_cart_item", @"Remove item");
+    self.removeButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_remove_cart_item_hint", @"Double-tap to remove this item from your cart");
+    self.minusButton.accessibilityLabel  = NSLocalizedString(@"a11y_btn_decrease_qty", @"Decrease quantity");
+    self.plusButton.accessibilityLabel   = NSLocalizedString(@"a11y_btn_increase_qty", @"Increase quantity");
 }
 
 
@@ -371,9 +372,15 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
 
-    
-    
-    
+    // ── L-03: shadowPath optimization ──
+    // Pre-compute shadow path so Core Animation avoids expensive
+    // per-frame offscreen rendering. Must live in layoutSubviews to
+    // track size changes (rotation, multitasking, dynamic type).
+    if (self.cardContainer) {
+        self.cardContainer.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.cardContainer.bounds
+                                      cornerRadius:self.cardContainer.layer.cornerRadius].CGPath;
+    }
 }
 
 

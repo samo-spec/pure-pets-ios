@@ -71,210 +71,9 @@
 
 @end
 
-@interface PPHomeCartNavButton : UIControl
-- (void)updateCount:(NSInteger)count animated:(BOOL)animated;
-@end
 
-@implementation PPHomeCartNavButton {
-    UIView *_surfaceView;
-    UIImageView *_iconView;
-    PPInsetLabel *_badgeLabel;
-    NSLayoutConstraint *_badgeMinWidthConstraint;
-    CAGradientLayer *_highlightLayer;
-    NSInteger _renderedCount;
-}
 
-- (CGSize)intrinsicContentSize
-{
-    return CGSizeMake(36.0, 36.0);
-}
 
-- (instancetype)initWithFrame:(CGRect)frame
-{
-    CGRect initialFrame = CGRectEqualToRect(frame, CGRectZero)
-        ? CGRectMake(0.0, 0.0, 36.0, 36.0)
-        : frame;
-    self = [super initWithFrame:initialFrame];
-    if (!self) {
-        return nil;
-    }
-
-    self.backgroundColor = UIColor.clearColor;
-    self.clipsToBounds = NO;
-    self.accessibilityTraits = UIAccessibilityTraitButton;
-    self.accessibilityLabel = kLang(@"Cart") ?: @"Cart";
-
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.layer.shadowOpacity = 0.08f;
-    self.layer.shadowRadius = 10.0f;
-    self.layer.shadowOffset = CGSizeMake(0.0, 4.0);
-
-    UIView *surfaceView = [[UIView alloc] initWithFrame:self.bounds];
-    surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    surfaceView.userInteractionEnabled = NO;
-    surfaceView.layer.cornerRadius = 18.0;
-    surfaceView.layer.borderWidth = 0.8;
-    surfaceView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self addSubview:surfaceView];
-    _surfaceView = surfaceView;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [surfaceView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
-    ]];
-
-    _highlightLayer = [CAGradientLayer layer];
-    _highlightLayer.startPoint = CGPointMake(0.5, 0.0);
-    _highlightLayer.endPoint = CGPointMake(0.5, 1.0);
-    [surfaceView.layer insertSublayer:_highlightLayer atIndex:0];
-
-    UIImageView *iconView = [[UIImageView alloc] initWithImage:
-        [UIImage pp_symbolNamed:@"cart.fill"
-                      pointSize:18
-                         weight:UIImageSymbolWeightSemibold
-                          scale:UIImageSymbolScaleMedium
-                        palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
-                   makeTemplate:YES]];
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    [surfaceView addSubview:iconView];
-    _iconView = iconView;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [iconView.centerXAnchor constraintEqualToAnchor:surfaceView.centerXAnchor],
-        [iconView.centerYAnchor constraintEqualToAnchor:surfaceView.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:18.0],
-        [iconView.heightAnchor constraintEqualToConstant:18.0]
-    ]];
-
-    PPInsetLabel *badgeLabel = [[PPInsetLabel alloc] init];
-    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    badgeLabel.textInsets = UIEdgeInsetsMake(1.5, 5.0, 1.5, 5.0);
-    badgeLabel.textAlignment = NSTextAlignmentCenter;
-    badgeLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightBold];
-    badgeLabel.textColor = UIColor.whiteColor;
-    badgeLabel.backgroundColor = UIColor.systemRedColor;
-    badgeLabel.adjustsFontSizeToFitWidth = YES;
-    badgeLabel.minimumScaleFactor = 0.82;
-    badgeLabel.layer.cornerRadius = 8.5;
-    badgeLabel.layer.borderWidth = 1.0;
-    badgeLabel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.92].CGColor;
-    badgeLabel.layer.masksToBounds = YES;
-    badgeLabel.hidden = YES;
-    badgeLabel.alpha = 0.0;
-    badgeLabel.userInteractionEnabled = NO;
-    if (@available(iOS 13.0, *)) {
-        badgeLabel.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [surfaceView addSubview:badgeLabel];
-    _badgeLabel = badgeLabel;
-
-    _badgeMinWidthConstraint = [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:17.0];
-    _badgeMinWidthConstraint.active = YES;
-    [NSLayoutConstraint activateConstraints:@[
-        [badgeLabel.heightAnchor constraintEqualToConstant:17.0],
-        [badgeLabel.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:1.0],
-        [badgeLabel.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-1.0]
-    ]];
-
-    [self pp_applyPalette];
-    return self;
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    _highlightLayer.frame = _surfaceView.bounds;
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:CGRectGetWidth(self.bounds) * 0.5].CGPath;
-}
-
-- (void)tintColorDidChange
-{
-    [super tintColorDidChange];
-    [self pp_applyPalette];
-}
-
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
-{
-    [super traitCollectionDidChange:previousTraitCollection];
-    if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applyPalette];
-        }
-    } else {
-        [self pp_applyPalette];
-    }
-}
-
-- (void)setHighlighted:(BOOL)highlighted
-{
-    [super setHighlighted:highlighted];
-    [UIView animateWithDuration:highlighted ? 0.12 : 0.18
-                          delay:0.0
-         usingSpringWithDamping:highlighted ? 1.0 : 0.72
-          initialSpringVelocity:0.0
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.transform = highlighted ? CGAffineTransformMakeScale(0.94, 0.94) : CGAffineTransformIdentity;
-        self.alpha = highlighted ? 0.92 : 1.0;
-    } completion:nil];
-}
-
-- (void)updateCount:(NSInteger)count animated:(BOOL)animated
-{
-    NSInteger safeCount = MAX(count, 0);
-    BOOL shouldShowBadge = safeCount > 0;
-    NSString *text = (safeCount > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)safeCount];
-    BOOL valueChanged = ![_badgeLabel.text isEqualToString:text];
-    BOOL wasHidden = _badgeLabel.hidden;
-
-    _renderedCount = safeCount;
-    _badgeLabel.text = text;
-    CGFloat textWidth = ceil([text sizeWithAttributes:@{NSFontAttributeName : _badgeLabel.font}].width) + 8.0;
-    _badgeMinWidthConstraint.constant = MAX(17.0, textWidth);
-    _badgeLabel.hidden = !shouldShowBadge;
-    _badgeLabel.alpha = shouldShowBadge ? 1.0 : 0.0;
-    self.accessibilityValue = shouldShowBadge ? text : nil;
-
-    [self setNeedsLayout];
-    [self layoutIfNeeded];
-
-    if (shouldShowBadge && animated && (wasHidden || valueChanged)) {
-        _badgeLabel.transform = CGAffineTransformMakeScale(0.82, 0.82);
-        [UIView animateWithDuration:0.22
-                              delay:0.0
-             usingSpringWithDamping:0.72
-              initialSpringVelocity:0.18
-                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            self->_badgeLabel.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    } else if (!shouldShowBadge) {
-        _badgeLabel.transform = CGAffineTransformIdentity;
-    }
-}
-
-- (void)pp_applyPalette
-{
-    UIColor *surfaceColor = [AppForgroundColr colorWithAlphaComponent:0.66] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-    UIColor *iconColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    _surfaceView.backgroundColor = surfaceColor;
-    _surfaceView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14].CGColor;
-    _iconView.tintColor = iconColor;
-    _highlightLayer.colors = @[
-        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.34].CGColor,
-        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-}
-
-@end
 
 
 @class PPCarouselItem;
@@ -300,9 +99,8 @@
 
 @implementation PPHomeSmartSearchTitleView {
     UIView *_chromeView;
-    UIVisualEffectView *_blurView;
-    UIView *_leadingOrbView;
-    UIImageView *_searchIconView;
+    UIView *_leadingChipView;
+    UIImageView *_leadingIconView;
     UIStackView *_textStackView;
     UIStackView *_signalRowView;
     UIView *_signalDotView;
@@ -310,15 +108,7 @@
     UILabel *_placeholderLabel;
     UIView *_trailingOrbView;
     UIImageView *_chevronView;
-    UIView *_activityDotView;
-    CAGradientLayer *_gradientLayer;
-    CAGradientLayer *_ambientGlowLayer;
-    CAGradientLayer *_liquidBorderLayer;
-    CAShapeLayer *_liquidBorderMaskLayer;
-    CAGradientLayer *_topHighlightLayer;
-    CAGradientLayer *_bottomTintLayer;
-    CAGradientLayer *_shineLayer;
-    BOOL _ambientAnimationsConfigured;
+    BOOL _signalAnimationsConfigured;
 }
 
 @synthesize placeholderLabel = _placeholderLabel;
@@ -331,7 +121,7 @@
 - (instancetype)initWithFrame:(CGRect)frame
 {
     CGRect initialFrame = CGRectEqualToRect(frame, CGRectZero)
-        ? CGRectMake(0.0, 0.0, 240.0, 46.0)
+        ? CGRectMake(0.0, 0.0, 240.0, 44.0)
         : frame;
     self = [super initWithFrame:initialFrame];
     if (!self) {
@@ -344,116 +134,51 @@
     self.accessibilityLabel =
         kLang(@"home_nav_search_accessibility") ?:
         (kLang(@"home_search_hint") ?: @"Open smart search");
+    self.accessibilityHint = kLang(@"home_search_hint") ?: @"What are you looking for?";
     self.clipsToBounds = NO;
     _showSmartPillBackground = NO;
 
     self.layer.shadowColor = [UIColor colorWithWhite:0.02 alpha:1.0].CGColor;
-    self.layer.shadowOpacity = 0.08f;
-    self.layer.shadowRadius = 16.0f;
-    self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.layer.shadowOpacity = 0.0f;
+    self.layer.shadowRadius = 14.0f;
+    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
 
-    UIButton *chromeView = PPIOS26() ? [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass] : (UIButton *)[[UIView alloc] initWithFrame:self.bounds];
+    UIView *chromeView = [[UIView alloc] initWithFrame:self.bounds];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
     chromeView.backgroundColor = UIColor.clearColor;
     chromeView.userInteractionEnabled = NO;
-    chromeView.layer.cornerRadius = 23.0;
+    chromeView.layer.cornerRadius = 21.0;
     chromeView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         chromeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-
-    if (@available(iOS 26.0, *)) {
-        UIButtonConfiguration *config = chromeView.configuration;
-        config.background.backgroundColor = [AppBackgroundClrLigter colorWithAlphaComponent:0.16];
-        config.baseBackgroundColor = [AppBackgroundClrLigter colorWithAlphaComponent:0.16];
-        chromeView.configuration = config;
-    }
-
-
     [self addSubview:chromeView];
     _chromeView = chromeView;
-    [chromeView.heightAnchor constraintEqualToConstant:46.0].active = YES;
+    [chromeView.heightAnchor constraintEqualToConstant:44.0].active = YES;
 
-    UIVisualEffectView *blurView =
-        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.userInteractionEnabled = NO;
-    [chromeView addSubview:blurView];
-    blurView.alpha = 0;
-    _blurView = blurView;
-
-    _gradientLayer = [CAGradientLayer layer];
-    _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    //_gradientLayer.opacity = 0;
-    [chromeView.layer insertSublayer:_gradientLayer above:blurView.layer];
-
-    _ambientGlowLayer = [CAGradientLayer layer];
-    _ambientGlowLayer.startPoint = CGPointMake(0.0, 0.5);
-    _ambientGlowLayer.endPoint = CGPointMake(1.0, 0.5);
-    _ambientGlowLayer.opacity = 0.24f;
-    [chromeView.layer addSublayer:_ambientGlowLayer];
-
-    _topHighlightLayer = [CAGradientLayer layer];
-    _topHighlightLayer.startPoint = CGPointMake(0.5, 0.0);
-    _topHighlightLayer.endPoint = CGPointMake(0.5, 1.0);
-    _topHighlightLayer.opacity = 0.92f;
-    [chromeView.layer addSublayer:_topHighlightLayer];
-
-    _bottomTintLayer = [CAGradientLayer layer];
-    _bottomTintLayer.startPoint = CGPointMake(0.5, 0.0);
-    _bottomTintLayer.endPoint = CGPointMake(0.5, 1.0);
-    _bottomTintLayer.opacity = 0.0f;
-    [chromeView.layer addSublayer:_bottomTintLayer];
-
-    _liquidBorderLayer = [CAGradientLayer layer];
-    _liquidBorderLayer.startPoint = CGPointMake(0.0, 0.3);
-    _liquidBorderLayer.endPoint = CGPointMake(1.0, 0.7);
-    _liquidBorderMaskLayer = [CAShapeLayer layer];
-    _liquidBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
-    _liquidBorderMaskLayer.lineWidth = 1.0f;
-    _liquidBorderLayer.mask = _liquidBorderMaskLayer;
-    [chromeView.layer addSublayer:_liquidBorderLayer];
-
-    _shineLayer = [CAGradientLayer layer];
-    _shineLayer.startPoint = CGPointMake(0.0, 0.5);
-    _shineLayer.endPoint = CGPointMake(1.0, 0.5);
-    _shineLayer.colors = @[
-        (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.24].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    _shineLayer.opacity = 1.0f;
-    [chromeView.layer addSublayer:_shineLayer];
-
-    chromeView.layer.borderWidth = 0.75f;
-    chromeView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
-
-    UIView *leadingOrbView = [UIView new];
-    leadingOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    leadingOrbView.userInteractionEnabled = NO;
-    leadingOrbView.layer.cornerRadius = 14.0;
-    leadingOrbView.layer.masksToBounds = YES;
+    UIView *leadingChipView = [UIView new];
+    leadingChipView.translatesAutoresizingMaskIntoConstraints = NO;
+    leadingChipView.userInteractionEnabled = NO;
+    leadingChipView.layer.cornerRadius = 14.0;
+    leadingChipView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
-        leadingOrbView.layer.cornerCurve = kCACornerCurveContinuous;
+        leadingChipView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [chromeView addSubview:leadingOrbView];
-    _leadingOrbView = leadingOrbView;
+    [chromeView addSubview:leadingChipView];
+    _leadingChipView = leadingChipView;
 
-    if(PPIOS26()) { _blurView.alpha = 0; }
-
-    UIImageView *searchIconView =
-        [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"magnifyingglass"
-                                                         pointSize:10
-                                                            weight:UIImageSymbolWeightMedium
+    UIImageView *leadingIconView =
+        [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"flame.fill"
+                                                         pointSize:12
+                                                            weight:UIImageSymbolWeightSemibold
                                                              scale:UIImageSymbolScaleMedium
-                                                           palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
+                                                           palette:@[AppPrimaryClr ?: AppPrimaryClrShiner ?: UIColor.systemOrangeColor]
                                                       makeTemplate:YES]];
-    searchIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    searchIconView.contentMode = UIViewContentModeScaleAspectFit;
-    searchIconView.userInteractionEnabled = NO;
-    [leadingOrbView addSubview:searchIconView];
-    _searchIconView = searchIconView;
+    leadingIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    leadingIconView.contentMode = UIViewContentModeScaleAspectFit;
+    leadingIconView.userInteractionEnabled = NO;
+    [leadingChipView addSubview:leadingIconView];
+    _leadingIconView = leadingIconView;
 
     UIStackView *textStackView = [[UIStackView alloc] init];
     textStackView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -485,7 +210,7 @@
     UILabel *signalLabel = [UILabel new];
     signalLabel.translatesAutoresizingMaskIntoConstraints = NO;
     signalLabel.font = [GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold];
-    signalLabel.textAlignment = NSTextAlignmentNatural;
+    signalLabel.textAlignment = GM.setAligment;
     signalLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     signalLabel.adjustsFontSizeToFitWidth = YES;
     signalLabel.minimumScaleFactor = 0.84;
@@ -506,7 +231,7 @@
     placeholderLabel.minimumScaleFactor = 0.82;
     placeholderLabel.numberOfLines = 1;
     placeholderLabel.userInteractionEnabled = NO;
-    placeholderLabel.text = kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
+    placeholderLabel.text = kLang(@"home_nav_search_example_cats") ?: @"Cats for sale";
     [textStackView addArrangedSubview:placeholderLabel];
     _placeholderLabel = placeholderLabel;
 
@@ -540,58 +265,40 @@
     [trailingOrbView addSubview:chevronView];
     _chevronView = chevronView;
 
-    UIView *activityDotView = [UIView new];
-    activityDotView.translatesAutoresizingMaskIntoConstraints = NO;
-    activityDotView.userInteractionEnabled = NO;
-    activityDotView.layer.cornerRadius = 3.0;
-    activityDotView.layer.masksToBounds = YES;
-    [chromeView addSubview:activityDotView];
-    _activityDotView = activityDotView;
-
     [NSLayoutConstraint activateConstraints:@[
         [chromeView.topAnchor constraintEqualToAnchor:self.topAnchor],
         [chromeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [chromeView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
 
-        [blurView.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
+        [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:7.0],
+        [leadingChipView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
+        [leadingChipView.widthAnchor constraintEqualToConstant:28.0],
+        [leadingChipView.heightAnchor constraintEqualToConstant:28.0],
 
-        [leadingOrbView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:8.0],
-        [leadingOrbView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [leadingOrbView.widthAnchor constraintEqualToConstant:22.0],
-        [leadingOrbView.heightAnchor constraintEqualToConstant:22.0],
-
-        [searchIconView.centerXAnchor constraintEqualToAnchor:leadingOrbView.centerXAnchor],
-        [searchIconView.centerYAnchor constraintEqualToAnchor:leadingOrbView.centerYAnchor],
-        [searchIconView.widthAnchor constraintEqualToConstant:18.0],
-        [searchIconView.heightAnchor constraintEqualToConstant:18.0],
+        [leadingIconView.centerXAnchor constraintEqualToAnchor:leadingChipView.centerXAnchor],
+        [leadingIconView.centerYAnchor constraintEqualToAnchor:leadingChipView.centerYAnchor],
+        [leadingIconView.widthAnchor constraintEqualToConstant:14.0],
+        [leadingIconView.heightAnchor constraintEqualToConstant:14.0],
 
         [signalDotView.widthAnchor constraintEqualToConstant:5.5],
         [signalDotView.heightAnchor constraintEqualToConstant:5.5],
 
-        [textStackView.leadingAnchor constraintEqualToAnchor:leadingOrbView.trailingAnchor constant:8.0],
+        [textStackView.leadingAnchor constraintEqualToAnchor:leadingChipView.trailingAnchor constant:10.0],
         [textStackView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [textStackView.topAnchor constraintGreaterThanOrEqualToAnchor:chromeView.topAnchor constant:7.0],
-        [textStackView.bottomAnchor constraintLessThanOrEqualToAnchor:chromeView.bottomAnchor constant:-7.0],
-        [textStackView.trailingAnchor constraintEqualToAnchor:trailingOrbView.leadingAnchor constant:-8.0],
+        [textStackView.topAnchor constraintGreaterThanOrEqualToAnchor:chromeView.topAnchor constant:6.5],
+        [textStackView.bottomAnchor constraintLessThanOrEqualToAnchor:chromeView.bottomAnchor constant:-6.5],
+        [textStackView.trailingAnchor constraintEqualToAnchor:trailingOrbView.leadingAnchor constant:-10.0],
 
-        [trailingOrbView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-8.0],
+        [trailingOrbView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-7.0],
         [trailingOrbView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [trailingOrbView.widthAnchor constraintEqualToConstant:22.0],
-        [trailingOrbView.heightAnchor constraintEqualToConstant:22.0],
+        [trailingOrbView.widthAnchor constraintEqualToConstant:24.0],
+        [trailingOrbView.heightAnchor constraintEqualToConstant:24.0],
 
         [chevronView.centerXAnchor constraintEqualToAnchor:trailingOrbView.centerXAnchor],
         [chevronView.centerYAnchor constraintEqualToAnchor:trailingOrbView.centerYAnchor],
-        [chevronView.widthAnchor constraintEqualToConstant:16.0],
-        [chevronView.heightAnchor constraintEqualToConstant:16.0],
-
-        [activityDotView.widthAnchor constraintEqualToConstant:5.0],
-        [activityDotView.heightAnchor constraintEqualToConstant:5.0],
-        [activityDotView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [activityDotView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-11.0]
+        [chevronView.widthAnchor constraintEqualToConstant:14.0],
+        [chevronView.heightAnchor constraintEqualToConstant:14.0]
     ]];
 
     [_placeholderLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
@@ -625,29 +332,18 @@
 {
     [super layoutSubviews];
     CGFloat width = CGRectGetWidth(self.bounds);
-    BOOL showsSignalRow = width >= 242.0;
-    _signalRowView.hidden = !showsSignalRow;
-    _activityDotView.hidden = showsSignalRow;
-    _textStackView.spacing = showsSignalRow ? 0.5 : 0.0;
+    BOOL compact = width < 224.0;
+    _textStackView.spacing = compact ? 0.0 : 0.5;
+    _signalLabel.font = compact
+        ? ([GM MidFontWithSize:8.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold])
+        : ([GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold]);
+    _placeholderLabel.font = compact
+        ? ([GM boldFontWithSize:12.75] ?: [UIFont systemFontOfSize:12.75 weight:UIFontWeightSemibold])
+        : ([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]);
     _chromeView.layer.cornerRadius = CGRectGetHeight(self.bounds) * 0.5;
-    _leadingOrbView.layer.cornerRadius = CGRectGetHeight(_leadingOrbView.bounds) * 0.5;
+    _leadingChipView.layer.cornerRadius = CGRectGetHeight(_leadingChipView.bounds) * 0.5;
     _trailingOrbView.layer.cornerRadius = CGRectGetHeight(_trailingOrbView.bounds) * 0.5;
     _signalDotView.layer.cornerRadius = CGRectGetHeight(_signalDotView.bounds) * 0.5;
-    _activityDotView.layer.cornerRadius = CGRectGetHeight(_activityDotView.bounds) * 0.5;
-    CGRect chromeBounds = _chromeView.bounds;
-    _gradientLayer.frame = chromeBounds;
-    _ambientGlowLayer.frame = CGRectInset(chromeBounds, -42.0, -12.0);
-    _topHighlightLayer.frame = chromeBounds;
-    _bottomTintLayer.frame = chromeBounds;
-    _liquidBorderLayer.frame = chromeBounds;
-    _liquidBorderMaskLayer.frame = chromeBounds;
-    CGFloat rimInset = 0.58f;
-    CGFloat rimRadius = MAX(0.0, CGRectGetHeight(chromeBounds) * 0.5 - rimInset);
-    UIBezierPath *rimPath =
-        [UIBezierPath bezierPathWithRoundedRect:CGRectInset(chromeBounds, rimInset, rimInset)
-                                   cornerRadius:rimRadius];
-    _liquidBorderMaskLayer.path = rimPath.CGPath;
-    _shineLayer.frame = CGRectInset(chromeBounds, -48.0, 0.0);
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                    cornerRadius:CGRectGetHeight(self.bounds) * 0.5].CGPath;
@@ -658,54 +354,42 @@
     [super didMoveToWindow];
 
     if (!self.window) {
-        [_shineLayer removeAnimationForKey:@"pp.home.smartSearch.shine"];
-        [_ambientGlowLayer removeAnimationForKey:@"pp.home.smartSearch.ambient"];
-        [_liquidBorderLayer removeAnimationForKey:@"pp.home.smartSearch.borderPulse"];
-        [_activityDotView.layer removeAnimationForKey:@"pp.home.smartSearch.activityPulse"];
-        _ambientAnimationsConfigured = NO;
+        [_signalDotView.layer removeAnimationForKey:@"pp.home.smartSearch.signalPulse"];
+        _signalAnimationsConfigured = NO;
         return;
     }
 
-    if (_ambientAnimationsConfigured || UIAccessibilityIsReduceMotionEnabled() || CGRectGetWidth(self.bounds) <= 0.0) {
+    if (_signalAnimationsConfigured || UIAccessibilityIsReduceMotionEnabled() || CGRectGetWidth(self.bounds) <= 0.0) {
         return;
     }
 
-    _ambientAnimationsConfigured = YES;
-
-    CABasicAnimation *shine = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    shine.fromValue = @(-92.0);
-    shine.toValue = @(CGRectGetWidth(self.bounds) + 92.0);
-    shine.duration = 5.2;
-    shine.repeatCount = HUGE_VALF;
-    shine.timingFunction =
-        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [_shineLayer addAnimation:shine forKey:@"pp.home.smartSearch.shine"];
+    _signalAnimationsConfigured = YES;
 
     CABasicAnimation *pulseScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    pulseScale.fromValue = @(0.96);
-    pulseScale.toValue = @(1.10);
+    pulseScale.fromValue = @(0.88);
+    pulseScale.toValue = @(1.18);
     pulseScale.timingFunction =
         [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
 
     CABasicAnimation *pulseOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    pulseOpacity.fromValue = @(0.68);
-    pulseOpacity.toValue = @(0.92);
+    pulseOpacity.fromValue = @(0.60);
+    pulseOpacity.toValue = @(1.0);
     pulseOpacity.timingFunction =
         [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
 
-    CAAnimationGroup *activityPulse = [CAAnimationGroup animation];
-    activityPulse.duration = 1.8;
-    activityPulse.repeatCount = HUGE_VALF;
-    activityPulse.autoreverses = YES;
-    activityPulse.animations = @[pulseScale, pulseOpacity];
-    [_activityDotView.layer addAnimation:activityPulse forKey:@"pp.home.smartSearch.activityPulse"];
+    CAAnimationGroup *signalPulse = [CAAnimationGroup animation];
+    signalPulse.duration = 1.6;
+    signalPulse.repeatCount = HUGE_VALF;
+    signalPulse.autoreverses = YES;
+    signalPulse.animations = @[pulseScale, pulseOpacity];
+    [_signalDotView.layer addAnimation:signalPulse forKey:@"pp.home.smartSearch.signalPulse"];
 }
 
 - (void)setQueryText:(NSString *)text animated:(BOOL)animated
 {
     NSString *safeText = PPSafeString(text);
     if (safeText.length == 0) {
-        safeText = kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
+        safeText = kLang(@"home_nav_search_example_cats") ?: @"Cats for sale";
     }
     if ([_placeholderLabel.text isEqualToString:safeText]) {
         return;
@@ -724,10 +408,10 @@
                      animations:^{
         self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, -1.5);
         self->_placeholderLabel.alpha = 0.0;
-        self->_signalRowView.alpha = 0.82;
+        self->_signalRowView.alpha = 0.72;
     } completion:^(__unused BOOL finished) {
         self->_placeholderLabel.text = safeText;
-        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, 1.5);
+        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, 2.0);
 
         [UIView animateWithDuration:0.22
                               delay:0.0
@@ -745,12 +429,12 @@
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseInOut
                      animations:^{
+        self->_leadingChipView.transform = CGAffineTransformMakeScale(1.04, 1.04);
         self->_trailingOrbView.transform = CGAffineTransformMakeScale(1.03, 1.03);
-        self->_activityDotView.transform = CGAffineTransformMakeScale(1.08, 1.08);
     } completion:^(__unused BOOL finished) {
         [UIView animateWithDuration:0.24 delay:0.0 usingSpringWithDamping:0.82 initialSpringVelocity:0.25 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+            self->_leadingChipView.transform = CGAffineTransformIdentity;
             self->_trailingOrbView.transform = CGAffineTransformIdentity;
-            self->_activityDotView.transform = CGAffineTransformIdentity;
         } completion:^(BOOL finished) {
         }];
     }];
@@ -781,81 +465,33 @@
 - (void)pp_applyPalette
 {
     UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *accentColor = [UIColor colorNamed:@"NewBg"] ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
-    UIColor *surfaceColor = AppForgroundColr ?: [UIColor systemBackgroundColor];
+    UIColor *accentColor = AppPrimaryClr ?: AppPrimaryClrShiner ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
+    UIColor *surfaceColor = AppForgroundColr ?: [UIColor secondarySystemBackgroundColor];
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    UIColor *glassWhite = [UIColor whiteColor];
-
-    if (@available(iOS 13.0, *)) {
-        UIBlurEffectStyle blurStyle =
-            isDark ? UIBlurEffectStyleSystemUltraThinMaterialDark
-                   : UIBlurEffectStyleSystemUltraThinMaterialLight;
-        _blurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
-    }
-
-    _gradientLayer.colors = @[
-        (__bridge id)[surfaceColor colorWithAlphaComponent:isDark ? 0.34 : 0.12].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.04 : 0.15].CGColor,
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.08 : 0.06].CGColor,
-        (__bridge id)[surfaceColor colorWithAlphaComponent:isDark ? 0.22 : 0.08].CGColor
-    ];
-    _gradientLayer.locations = @[@0.0, @0.24, @0.68, @1.0];
-    _gradientLayer.opacity = 1.0f;
-    _ambientGlowLayer.colors = @[
-        (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.05 : 0.09].CGColor,
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.08 : 0.07].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    _ambientGlowLayer.locations = @[@0.0, @0.26, @0.62, @1.0];
-    _topHighlightLayer.colors = @[
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.14 : 0.30].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.04 : 0.08].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    _topHighlightLayer.locations = @[@0.0, @0.28, @0.75];
-    _topHighlightLayer.opacity = 0.62f;
-    _bottomTintLayer.colors = @[
-        (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.07 : 0.05].CGColor,
-        (__bridge id)[[UIColor colorWithWhite:(isDark ? 0.0 : 1.0)
-                                       alpha:(isDark ? 0.10 : 0.01)] CGColor]
-    ];
-    _bottomTintLayer.locations = @[@0.0, @0.64, @1.0];
-    _bottomTintLayer.opacity = 0.36f;
-    _liquidBorderLayer.colors = @[
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.34 : 0.52].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.10 : 0.16].CGColor,
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.12 : 0.10].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.22 : 0.38].CGColor
-    ];
-    _liquidBorderLayer.locations = @[@0.0, @0.22, @0.64, @1.0];
+    CGFloat surfaceAlpha = _showSmartPillBackground ? (isDark ? 0.96 : 0.98) : 0.0;
+    _chromeView.backgroundColor = [surfaceColor colorWithAlphaComponent:surfaceAlpha];
+    _chromeView.layer.borderWidth = _showSmartPillBackground ? 1.0f : 0.0f;
     _chromeView.layer.borderColor =
-        [[glassWhite colorWithAlphaComponent:isDark ? 0.08 : 0.16] CGColor];
+        [[textColor colorWithAlphaComponent:isDark ? 0.12 : 0.07] CGColor];
 
-    _leadingOrbView.backgroundColor =
-        [glassWhite colorWithAlphaComponent:isDark ? 0.08 : 0.15];
-    _leadingOrbView.layer.borderWidth = 0.8f;
-    _leadingOrbView.layer.borderColor =
-        [[glassWhite colorWithAlphaComponent:isDark ? 0.10 : 0.16] CGColor];
-    _searchIconView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.99 : 0.97];
+    _leadingChipView.backgroundColor =
+        [accentColor colorWithAlphaComponent:isDark ? 0.24 : 0.12];
+    _leadingChipView.layer.borderWidth = 1.0f;
+    _leadingChipView.layer.borderColor =
+        [[accentColor colorWithAlphaComponent:isDark ? 0.22 : 0.14] CGColor];
+    _leadingIconView.tintColor = accentColor;
 
-    _signalDotView.backgroundColor = AppPrimaryClrShiner;
-    _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.72 : 0.68];
-    _placeholderLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.99 : 0.98];
+    _signalDotView.backgroundColor = AppPrimaryClrShiner ?: accentColor;
+    _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.72 : 0.58];
+    _placeholderLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.96 : 0.90];
 
     _trailingOrbView.backgroundColor =
-        [glassWhite colorWithAlphaComponent:isDark ? 0.08 : 0.14];
-    _trailingOrbView.layer.borderWidth = 0.8f;
+        [textColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
+    _trailingOrbView.layer.borderWidth = 1.0f;
     _trailingOrbView.layer.borderColor =
-        [[glassWhite colorWithAlphaComponent:isDark ? 0.10 : 0.16] CGColor];
-    _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.94 : 0.86];
-    _activityDotView.backgroundColor = accentColor;
-    _shineLayer.opacity = isDark ? 0.08f : 0.10f;
-
-    if (!_showSmartPillBackground) {
-        [self pp_applySmartPillBackgroundVisibility];
-    }
+        [[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06] CGColor];
+    _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
+    self.layer.shadowOpacity = _showSmartPillBackground ? (isDark ? 0.16f : 0.08f) : 0.0f;
 }
 
 - (void)pp_updateInteractiveStateAnimated:(BOOL)animated
@@ -863,12 +499,11 @@
     void (^changes)(void) = ^{
         BOOL isPressed = self.highlighted;
         BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        self->_chromeView.transform = isPressed ? CGAffineTransformMakeScale(0.992, 0.992) : CGAffineTransformIdentity;
-        self->_leadingOrbView.transform = isPressed ? CGAffineTransformMakeScale(0.97, 0.97) : CGAffineTransformIdentity;
+        self->_chromeView.transform = isPressed ? CGAffineTransformMakeScale(0.988, 0.988) : CGAffineTransformIdentity;
+        self->_leadingChipView.transform = isPressed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
         self->_trailingOrbView.transform = isPressed ? CGAffineTransformMakeScale(0.97, 0.97) : CGAffineTransformIdentity;
-        self.layer.shadowOpacity = isDark ? 0.12f : 0.08f;
-            
-        self.layer.shadowRadius = isPressed ? 18.0f : 16.0f;
+        self.layer.shadowOpacity = self->_showSmartPillBackground ? (isPressed ? (isDark ? 0.20f : 0.12f) : (isDark ? 0.16f : 0.08f)) : 0.0f;
+        self.layer.shadowRadius = isPressed ? 18.0f : 14.0f;
         self->_chromeView.alpha = self.enabled ? (isPressed ? 0.98 : 1.0) : 0.72;
     };
 
@@ -895,17 +530,8 @@
 
 - (void)pp_applySmartPillBackgroundVisibility
 {
-    BOOL show = _showSmartPillBackground;
-    show = YES;
-    _blurView.hidden          = show;
-    _gradientLayer.hidden     = !show;
-    _ambientGlowLayer.hidden  = show;
-    _topHighlightLayer.hidden = show;
-    _bottomTintLayer.hidden   = !show;
-    _liquidBorderLayer.hidden = !show;
-    _shineLayer.hidden        = show;
-    _chromeView.layer.borderWidth = show ? 0.75f : 0.0f;
-    self.layer.shadowOpacity      = show ? 0.08f : 0.0f;
+    [self pp_applyPalette];
+    [self pp_updateInteractiveStateAnimated:NO];
 }
 
 @end
@@ -940,7 +566,7 @@
     self.layer.cornerRadius = 22.0;
     self.layer.cornerCurve = kCACornerCurveContinuous;
     self.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.layer.shadowOpacity = 0.06f;
+    self.layer.shadowOpacity = 0.12f;
     self.layer.shadowRadius = 14.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 9.0);
     self.clipsToBounds = NO;
@@ -1178,6 +804,8 @@
         } completion:nil];
         index += 1;
     }
+    
+    
 }
 
 - (void)pp_buildUI
@@ -3769,6 +3397,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.isHomeScreenVisible = YES;
     [self pp_startBackgroundAnimationsIfNeeded];
     [self pp_centerNearbySectionIfPossible];
+    [self updateCartQuantityBadge];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self updateCartQuantityBadge];
+    });
     //[PPHUD showLoading];
     if(!self.warmUpCache)
     {
@@ -6339,6 +5971,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                    makeTemplate:YES]];
 
     self.homeCartButton = [self pp_ButtonWithSystemName:@"cart" action:@selector(cartClick)];
+    self.homeCartButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart", @"Shopping cart");
+    self.homeCartButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_hint", @"Double-tap to open your cart");
     return [[UIBarButtonItem alloc] initWithCustomView:self.homeCartButton];
 }
 
@@ -6455,15 +6089,45 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (!self.homeCartButton) {
         return;
     }
-    
-    if (count > 0) {
-        NSString *badgeText = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count];
-        [self.homeCartButton addBadgeWithContent:badgeText
-                                      badgeColor:AppPrimaryClr
-                                         offset:CGPointMake(-10, 10)
-                                    badgeRadius:9.5];
-    } else {
-        [self.homeCartButton removeBadge];
+
+    UIButton *badgeHost = self.homeCartButton;
+    [badgeHost removeBadge];
+
+    if (count <= 0) {
+        return;
+    }
+
+    NSString *badgeText = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count];
+    UIColor *badgeColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+
+    void (^applyBadge)(void) = ^{
+        UIButton *strongBadgeHost = self.homeCartButton;
+        if (!strongBadgeHost) {
+            return;
+        }
+
+        [strongBadgeHost layoutIfNeeded];
+        [self.homeCartItem.customView layoutIfNeeded];
+
+        if (CGRectIsEmpty(strongBadgeHost.bounds)) {
+            return;
+        }
+
+        [strongBadgeHost removeBadge];
+        [strongBadgeHost addBadgeWithContent:badgeText
+                                  badgeColor:badgeColor
+                                     offset:CGPointMake(-10, 10)
+                                badgeRadius:9.5];
+    };
+
+    applyBadge();
+
+    if (animated || CGRectIsEmpty(badgeHost.bounds)) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.navigationController.navigationBar setNeedsLayout];
+            [self.navigationController.navigationBar layoutIfNeeded];
+            applyBadge();
+        });
     }
 }
 
@@ -6479,6 +6143,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (!self.homeSmartSearchView) {
         self.homeSmartSearchView =
             [[PPHomeSmartSearchTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 42.0)];
+        self.homeSmartSearchView.showSmartPillBackground = YES;
         [self.homeSmartSearchView addTarget:self
                                      action:@selector(pp_openSmartSearch)
                            forControlEvents:UIControlEventTouchUpInside];
@@ -6522,11 +6187,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     NSMutableArray<NSString *> *items = [NSMutableArray array];
-    NSString *primaryPlaceholder = kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
-    if (PPSafeString(primaryPlaceholder).length > 0) {
-        [items addObject:primaryPlaceholder];
-    }
-
     BOOL prefersExpandedExamples = [self pp_preferredNavigationSearchWidth] >= 232.0;
     NSArray<NSString *> *candidates = prefersExpandedExamples
         ? @[
@@ -6562,7 +6222,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     NSArray<NSString *> *placeholders = [self pp_resolvedHomeSmartSearchPlaceholders];
     if (placeholders.count == 0) {
-        return kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
+        return kLang(@"home_nav_search_example_cats") ?: @"Cats for sale";
     }
 
     NSInteger safeIndex = MAX(0, MIN(self.homeSmartSearchPlaceholderIndex,

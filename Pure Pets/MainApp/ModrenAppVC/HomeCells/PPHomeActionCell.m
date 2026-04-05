@@ -116,7 +116,7 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
     self.glowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.glowView.userInteractionEnabled = NO;
     self.glowView.hidden = YES;
-    self.glowView.layer.cornerRadius = PPCornerMedium;
+    self.glowView.layer.cornerRadius = 22;
     self.glowView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.glowView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -158,11 +158,12 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
 
     UIImage *chevronImage =
         [UIImage pp_symbolNamed:(Language.isRTL ? @"chevron.left" : @"chevron.right")
-                      pointSize:12
+                      pointSize:14
                          weight:UIImageSymbolWeightBold
                           scale:UIImageSymbolScaleMedium
                         palette:@[[AppPrimaryTextClr colorWithAlphaComponent:0.72] ?: UIColor.secondaryLabelColor]
                    makeTemplate:YES];
+    
     self.chevronView = [[UIImageView alloc] initWithImage:chevronImage];
     self.chevronView.translatesAutoresizingMaskIntoConstraints = NO;
     self.chevronView.contentMode = UIViewContentModeScaleAspectFit;
@@ -190,8 +191,8 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
 
         [self.glowView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:10.0],
         [self.glowView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.glowView.widthAnchor constraintEqualToConstant:92.0],
-        [self.glowView.heightAnchor constraintEqualToConstant:40.0],
+        [self.glowView.widthAnchor constraintEqualToConstant:102.0],
+        [self.glowView.heightAnchor constraintEqualToConstant:44.0],
 
         [self.iconChipView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:12.0],
         [self.iconChipView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],

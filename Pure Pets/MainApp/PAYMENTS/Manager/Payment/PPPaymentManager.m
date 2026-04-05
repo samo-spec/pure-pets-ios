@@ -604,6 +604,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
     NSString *gatewayId = PPPaymentSessionValue(resolvedSession, @[
         @"gatewayId", @"gatewayID", @"GatewayId", @"gateway_id"
     ]);
+    // TODO(H-14-phase2): Remove secretKey extraction — Phase 2 uses paymentUrl instead.
     NSString *secretKey = PPPaymentSessionValue(resolvedSession, @[
         @"secretKey", @"secret", @"SecretKey", @"secret_key"
     ]);
@@ -628,7 +629,22 @@ static void PPQIBTryLoadFrameworkBundle(void)
         order.qibSessionId = serverQibSessionId;
     }
     if (gatewayId.length == 0 || secretKey.length == 0) {
+        // ─── H-14 SECURE FLOW GATE ─────────────────────────────────────────────
+        // When the createQibSession Cloud Function returns a paymentUrl (Phase 2
+        // hosted checkout), this path should open the URL in a secure in-app
+        // browser instead of failing.
+        //
+        // TODO(H-14-phase2): Implement hosted checkout handler:
+        //   1. Open paymentURL in SFSafariViewController or WKWebView
+        //   2. Register a URL scheme / universal link callback for payment result
+        //   3. Call verifyQibPayment Cloud Function to confirm the result server-side
+        //   4. Remove the entire legacy secretKey / QPRequestParameters flow below
+        // ────────────────────────────────────────────────────────────────────────
         if (sessionToken.length > 0 || paymentURL.length > 0) {
+            PPORDERLog(@"Secure session received but hosted checkout not yet implemented | orderId=%@ | hasToken=%d | hasURL=%d",
+                       order.orderId ?: @"",
+                       (sessionToken.length > 0),
+                       (paymentURL.length > 0));
             [self failWithMessage:kLang(@"payment_secure_flow_required")];
             return;
         }
@@ -636,13 +652,27 @@ static void PPQIBTryLoadFrameworkBundle(void)
         return;
     }
 
+    // ─── H-14 LEGACY FLOW (PHASE 1) ────────────────────────────────────────
+    // The QIB SDK (QPRequestParameters) requires secretKey on the client.
+    // The secret is fetched from the createQibSession Cloud Function, which
+    // reads it from Firebase Secret Manager — it is NOT embedded in the binary.
+    //
+    // However, the secret still transits through the client, which is a
+    // residual security risk. This entire legacy block should be removed
+    // once QIB provides a hosted checkout API (Phase 2).
+    //
+    // Migration checklist (H-14-phase2):
+    //   [ ] QIB provides hosted-checkout / server-to-server endpoint
+    //   [ ] createQibSession Cloud Function returns paymentUrl instead of secretKey
+    //   [ ] iOS opens paymentUrl in SFSafariViewController (see gate above)
+    //   [ ] Remove QPRequestParameters + secretKey injection below
+    //   [ ] Remove PPQIBTryLoadFrameworkBundle dependency
+    // ────────────────────────────────────────────────────────────────────────
     PPORDERLog(@"Using legacy QIB bootstrap | orderId=%@ | currency=%@",
                order.orderId ?: @"",
                requestedCurrency ?: @"");
-    // U7: secretKey is required by QIB SDK for legacy flow but should NOT be logged or persisted.
-    // TODO: Migrate to server-side tokenized sessions to eliminate client-side secret handling.
     if (secretKey.length > 0) {
-        PPORDERLog(@"QIB session contains legacy secret bootstrap | orderId=%@", order.orderId ?: @"");
+        PPORDERLog(@"QIB session contains server-managed secret bootstrap | orderId=%@", order.orderId ?: @"");
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -681,18 +711,20 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
         SEL initSelector = @selector(initWithViewController:);
         id params = nil;
-        @try {
-            if ([paramsClass instancesRespondToSelector:initSelector]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-                id allocInstance = [paramsClass alloc];
-                params = [allocInstance performSelector:initSelector withObject:presenter];
-#pragma clang diagnostic pop
-            } else if ([paramsClass instancesRespondToSelector:@selector(init)]) {
-                params = [[paramsClass alloc] init];
-            }
-        } @catch (__unused NSException *exception) {
-            params = nil;
+        if ([paramsClass instancesRespondToSelector:initSelector]) {
+            id allocInstance = [paramsClass alloc];
+            IMP imp = [allocInstance methodForSelector:initSelector];
+            id (*initWithVC)(id, SEL, UIViewController *) = (id (*)(id, SEL, UIViewController *))imp;
+            params = initWithVC(allocInstance, initSelector, presenter);
+            PPORDERLog(@"QIB SDK params initialized via initWithViewController: | orderId=%@ | class=%@",
+                       order.orderId ?: @"", NSStringFromClass(paramsClass));
+        } else if ([paramsClass instancesRespondToSelector:@selector(init)]) {
+            params = [[paramsClass alloc] init];
+            PPORDERLog(@"QIB SDK params initialized via init (no initWithViewController:) | orderId=%@ | class=%@",
+                       order.orderId ?: @"", NSStringFromClass(paramsClass));
+        } else {
+            PPORDERLog(@"QIB SDK params class responds to neither initWithViewController: nor init | orderId=%@ | class=%@",
+                       order.orderId ?: @"", NSStringFromClass(paramsClass));
         }
 
         if (!params) {
@@ -754,6 +786,9 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
         NSNumber *amountNumber = @((order.totalAmount > 0 ? order.totalAmount : order.amount));
         PPPaymentSetValueForCandidateKeys(params, @[@"gatewayId", @"gatewayID", @"GatewayId", @"gateway_id"], gatewayId);
+        // TODO(H-14-phase2): Remove secretKey injection once hosted checkout replaces the legacy QIB SDK flow.
+        // The secret is sourced from createQibSession Cloud Function (Firebase Secret Manager),
+        // NOT from the app binary. It transits client-side only because QPRequestParameters requires it.
         PPPaymentSetValueForCandidateKeys(params, @[@"secretKey", @"secret", @"SecretKey", @"secret_key"], secretKey);
         PPPaymentSetValueForCandidateKeys(params, @[@"mode", @"paymentMode", @"environment", @"env"], mode);
         PPPaymentSetValueForCandidateKeys(params, @[@"amount"], amountNumber);

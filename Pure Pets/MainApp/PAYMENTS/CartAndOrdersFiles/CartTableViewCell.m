@@ -19,28 +19,64 @@
 
 
 - (void)awakeViews {
-   
-    _itemImageView = [[UIImageView alloc] initWithFrame:CGRectMake(10, 10, 80, 80)];
+
+    // RTL/LTR — leading/trailing anchors auto-flip with semantic attribute
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    _itemImageView = [[UIImageView alloc] init];
+    _itemImageView.translatesAutoresizingMaskIntoConstraints = NO;
     _itemImageView.contentMode = UIViewContentModeScaleAspectFill;
     _itemImageView.layer.cornerRadius = 10;
     _itemImageView.clipsToBounds = YES;
     [self.contentView addSubview:_itemImageView];
 
-    _nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(100, 0, self.contentView.frame.size.width - 110, 30)];
-    _nameLabel.font =  [GM boldFontWithSize:16];
+    _nameLabel = [[UILabel alloc] init];
+    _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _nameLabel.font = [GM boldFontWithSize:16];
+    _nameLabel.textAlignment = NSTextAlignmentNatural;
     [self.contentView addSubview:_nameLabel];
 
-    _priceLabel = [[UILabel alloc] initWithFrame:CGRectMake(100, 50, self.contentView.frame.size.width - 110, 30)];
-    _priceLabel.font =  [GM MidFontWithSize:16];
+    _priceLabel = [[UILabel alloc] init];
+    _priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _priceLabel.font = [GM MidFontWithSize:16];
+    _priceLabel.textAlignment = NSTextAlignmentNatural;
     [self.contentView addSubview:_priceLabel];
-    
-    
-    self.qtyButton = [[FloatingQuantityButton alloc] initWithFrame:CGRectMake(10, _priceLabel.hx_maxy + 10, 170, 40)];
+
+    // qtyButton stays frame-based (FloatingQuantityButton manages its own internal layout)
+    self.qtyButton = [[FloatingQuantityButton alloc] initWithFrame:CGRectZero];
     self.qtyButton.onQuantityChanged = ^(NSInteger newQty) {
         NSLog(@"Qty updated to %ld", (long)newQty);
     };
     [self.contentView addSubview:self.qtyButton];
-    
+
+    // ── Accessibility: Cart item cell ──
+    self.isAccessibilityElement = NO; // Allow children to be individually accessible
+    _itemImageView.isAccessibilityElement = NO; // Decorative
+    self.qtyButton.accessibilityLabel = NSLocalizedString(@"a11y_cart_qty_stepper", @"Item quantity");
+
+    // ── Auto Layout (RTL-safe via leading/trailing — no manual branching) ──
+    CGFloat padding = 10.0;
+    CGFloat imageSize = 80.0;
+
+    [NSLayoutConstraint activateConstraints:@[
+        // Image: fixed size, leading edge
+        [_itemImageView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:padding],
+        [_itemImageView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:padding],
+        [_itemImageView.widthAnchor constraintEqualToConstant:imageSize],
+        [_itemImageView.heightAnchor constraintEqualToConstant:imageSize],
+
+        // Name: after image, full trailing width
+        [_nameLabel.leadingAnchor constraintEqualToAnchor:_itemImageView.trailingAnchor constant:padding],
+        [_nameLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-padding],
+        [_nameLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+
+        // Price: below name, same horizontal span
+        [_priceLabel.leadingAnchor constraintEqualToAnchor:_nameLabel.leadingAnchor],
+        [_priceLabel.trailingAnchor constraintEqualToAnchor:_nameLabel.trailingAnchor],
+        [_priceLabel.topAnchor constraintEqualToAnchor:_nameLabel.bottomAnchor],
+    ]];
+
 }
 
 - (void)setSelected:(BOOL)selected animated:(BOOL)animated {
@@ -53,39 +89,18 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
 
-    BOOL isRTL = YES;
-    if([Language languageVal] == 0)
-        isRTL = NO;
-    
-    CGFloat imageSize = 80;
-    CGFloat padding = 10;
-    CGFloat contentWidth = self.contentView.frame.size.width;
+    // Update layout direction for runtime language changes
+    UISemanticContentAttribute attr = Language.semanticAttributeForCurrentLanguage;
+    self.semanticContentAttribute = attr;
+    self.contentView.semanticContentAttribute = attr;
 
-    if (isRTL) {
-        self.itemImageView.frame = CGRectMake(contentWidth - padding - imageSize, padding, imageSize, imageSize);
-        self.nameLabel.frame = CGRectMake(padding, 0, contentWidth - imageSize - 3 * padding, 30);
-        self.priceLabel.frame = CGRectMake(padding, CGRectGetMaxY(self.nameLabel.frame) , contentWidth - imageSize - 3 * padding, 20);
-        
-        self.priceLabel.textAlignment = NSTextAlignmentRight;
-        self.nameLabel.textAlignment = NSTextAlignmentRight;
-        
-        self.qtyButton.frame = CGRectMake(contentWidth - padding - imageSize - 110, self.priceLabel.hx_maxy + 5, 80, 40);
-        [self.qtyButton setAutoShowHide:0];
-        [self.qtyButton showStepper];
- 
-        
-    } else {
-        self.itemImageView.frame = CGRectMake(padding, padding, imageSize, imageSize);
-        self.nameLabel.frame = CGRectMake(imageSize + padding + padding, 0, contentWidth - imageSize - 3 * padding, 30);
-        self.priceLabel.frame = CGRectMake(imageSize + padding + padding, CGRectGetMaxY(self.nameLabel.frame) , contentWidth - imageSize - 3 * padding, 20);
-        
-        self.priceLabel.textAlignment = NSTextAlignmentLeft;
-        self.nameLabel.textAlignment = NSTextAlignmentLeft;
-        
-        self.qtyButton.frame = CGRectMake(imageSize + padding + padding, self.priceLabel.hx_maxy + 5, 120, 40);
-        [self.qtyButton setAutoShowHide:0];
-        [self.qtyButton showStepper];
-    }
+    // Position qtyButton below priceLabel (frame-based for FloatingQuantityButton compatibility)
+    // After Auto Layout pass, priceLabel.frame is resolved and safe to read.
+    CGFloat qtyY = CGRectGetMaxY(self.priceLabel.frame) + 5;
+    CGFloat qtyX = self.priceLabel.frame.origin.x;
+    self.qtyButton.frame = CGRectMake(qtyX, qtyY, 120, 40);
+    [self.qtyButton setAutoShowHide:0];
+    [self.qtyButton showStepper];
 }
 
 @end

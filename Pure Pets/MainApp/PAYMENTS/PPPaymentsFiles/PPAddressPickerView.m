@@ -289,4 +289,18 @@ typedef NS_ENUM(NSUInteger, PPAddressPickerState) {
     }
 }
 
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+
+    // L-03: Pre-compute shadow path so Core Animation avoids expensive
+    // per-frame offscreen rendering on the glass container shadow.
+    if (!CGRectIsEmpty(self.bounds)) {
+        self.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                      cornerRadius:self.blurView.layer.cornerRadius].CGPath;
+    }
+}
+
 @end

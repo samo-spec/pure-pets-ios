@@ -14,6 +14,7 @@
 #import "UserManager.h"
 #import "UserModel.h"
 #import "PPRolePermission.h"
+#import "PPFirestoreErrorNotifier.h"
 
 @interface PetAccessoryManager ()
 @property (nonatomic, strong) FIRFirestore *firestore;
@@ -218,6 +219,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         if (error || !snapshot) {
             NSLog(@"❌ fetchAccessoriesForMainCategoryID error: %@",
                   error.localizedDescription);
+            if (error) {
+                [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextAccessoryFetch];
+            }
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(@[]);
             });
@@ -271,6 +275,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
         if (error || !snapshot) {
             NSLog(@"❌ fetchSimilarAccessoriesForAd error: %@", error.localizedDescription);
+            if (error) {
+                [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextAccessorySimilar];
+            }
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(@[]);
             });
@@ -333,6 +340,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         if (error || !snapshot) {
             NSLog(@"❌ fetchAccessoriesOfKind:MainCategory:subKindID error: %@",
                   error.localizedDescription);
+            if (error) {
+                [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextAccessoryKindFetch];
+            }
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(@[]);
             });
@@ -388,6 +398,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
         if (error) {
             NSLog(@"❌ fetchAccessoriesOfKind error: %@", error.localizedDescription);
+            [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextAccessoryKindFetch];
 
             dispatch_async(dispatch_get_main_queue(), ^{
                 completion(@[]);
@@ -438,6 +449,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
         if (error || !snapshot) {
             NSLog(@"❌ searchAccessoriesWithText error: %@", error.localizedDescription);
+            if (error) {
+                [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextAccessorySearch];
+            }
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(@[]);
             });
@@ -495,6 +509,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
         if (error || !snapshot) {
             NSLog(@"❌ fetchLatestAccessoriesHasOffers error: %@", error.localizedDescription);
+            if (error) {
+                [PPFirestoreErrorNotifier postError:error context:PPFirestoreContextAccessoryOffers];
+            }
             if (completion) completion(@[], error);
             return;
         }

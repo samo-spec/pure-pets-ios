@@ -81,11 +81,15 @@
 
     // ---- Call Button ----
     self.callButton = [self actionButtonWithSymbol:@"phone.fill"];
+    self.callButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_call_advertiser", @"Call advertiser");
+    self.callButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_call_advertiser_hint", @"Double-tap to call this person");
     [self.callButton addTarget:self action:@selector(callTapped) forControlEvents:UIControlEventTouchUpInside];
     [blurView.contentView addSubview:self.callButton];
 
     // ---- Chat Button ----
     self.chatButton = [self actionButtonWithSymbol:@"message.fill"];
+    self.chatButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_chat_advertiser", @"Chat with advertiser");
+    self.chatButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_chat_advertiser_hint", @"Double-tap to start a chat with this person");
     [self.chatButton addTarget:self action:@selector(chatTapped) forControlEvents:UIControlEventTouchUpInside];
     [blurView.contentView addSubview:self.chatButton];
     self.callButton.enabled = NO;
@@ -153,20 +157,20 @@
     self.callBlock = callBlock;
 
     self.nameLabel.text = user.PPBestDisplayName ?: user.UserName ?: kLang(@"Contact Advertiser");
-    /*
-     if([self.ad.ownerID isEqualToString:PPCurrentUser.ID])
-     {
-         self.contactView.userInteractionEnabled = NO;
-         self.contactView.alpha = 0.85;
-         
-     }
-     */
-    
+
     BOOL canContact = ![user.ID isEqualToString:PPCurrentUser.ID];
     self.callButton.enabled = canContact;
     self.chatButton.enabled = canContact;
     self.callButton.alpha = canContact ? 1.0 : 0.55;
     self.chatButton.alpha = canContact ? 1.0 : 0.55;
+
+    // ── Accessibility: Update contact view label with user name ──
+    self.isAccessibilityElement = NO; // Let children be individually accessible
+    NSString *displayName = self.nameLabel.text;
+    self.callButton.accessibilityLabel = [NSString stringWithFormat:
+        NSLocalizedString(@"a11y_btn_call_user_format", @"Call %@"), displayName];
+    self.chatButton.accessibilityLabel = [NSString stringWithFormat:
+        NSLocalizedString(@"a11y_btn_chat_user_format", @"Chat with %@"), displayName];
     
     [PPImageLoaderManager.shared setImageOnImageView:self.avatarImageView url:user.UserImageUrl.absoluteString placeholder:PPSYSImage(@"person.crop.circle.fill") complation:^(UIImage * _Nonnull image,
                                                                                                                                                     NSString * _Nullable urlString) {

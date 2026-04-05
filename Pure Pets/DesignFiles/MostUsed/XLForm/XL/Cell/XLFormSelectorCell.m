@@ -29,7 +29,7 @@
 #import "XLFormSelectorCell.h"
 #import "NSArray+XLFormAdditions.h"
 
-@interface XLFormSelectorCell() <UIActionSheetDelegate, UIPickerViewDelegate, UIPickerViewDataSource, UIPopoverControllerDelegate>
+@interface XLFormSelectorCell() <UIPickerViewDelegate, UIPickerViewDataSource, UIPopoverControllerDelegate>
 
 @property (nonatomic) UIPickerView * pickerView;
 @property (nonatomic) UIPopoverController *popoverController;
@@ -241,119 +241,55 @@
     }
     else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorActionSheet]){
 
-
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 80000
-        UIActionSheet * actionSheet = [[UIActionSheet alloc] initWithTitle:self.rowDescriptor.selectorTitle
-                                                                  delegate:self
-                                                         cancelButtonTitle:nil
-                                                    destructiveButtonTitle:nil
-                                                         otherButtonTitles:nil];
+        XLFormViewController * formViewController = self.formViewController;
+        UIAlertController * alertController = [UIAlertController alertControllerWithTitle:self.rowDescriptor.selectorTitle
+                                                                                  message:nil
+                                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil)
+                                                            style:UIAlertActionStyleCancel
+                                                          handler:nil]];
+        alertController.popoverPresentationController.sourceView = formViewController.tableView;
+        UIView* v = (self.detailTextLabel ?: self.textLabel) ?: self.contentView;
+        alertController.popoverPresentationController.sourceRect = [formViewController.tableView convertRect:v.frame fromView:self];
+        __weak __typeof(self)weakSelf = self;
         for (id option in self.rowDescriptor.selectorOptions) {
-            [actionSheet addButtonWithTitle:[option displayText]];
-        }
-        actionSheet.cancelButtonIndex = [actionSheet addButtonWithTitle:NSLocalizedString(@"Cancel", nil)];
-        actionSheet.tag = [self.rowDescriptor hash];
-        [actionSheet showInView:controller.view];
-#else
-        if ([UIAlertController class]) {
-            XLFormViewController * formViewController = self.formViewController;
-            UIAlertController * alertController = [UIAlertController alertControllerWithTitle:self.rowDescriptor.selectorTitle
-                                                                                      message:nil
-                                                                               preferredStyle:UIAlertControllerStyleActionSheet];
-            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil)
-                                                                style:UIAlertActionStyleCancel
-                                                              handler:nil]];
-            alertController.popoverPresentationController.sourceView = formViewController.tableView;
-            UIView* v = (self.detailTextLabel ?: self.textLabel) ?: self.contentView;
-            alertController.popoverPresentationController.sourceRect = [formViewController.tableView convertRect:v.frame fromView:self];
-            __weak __typeof(self)weakSelf = self;
-            for (id option in self.rowDescriptor.selectorOptions) {
-				NSString *optionTitle = [option displayText];
-				if (self.rowDescriptor.valueTransformer){
-					NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
-					NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
-					NSString * transformedValue = [valueTransformer transformedValue:[option valueData]];
-					if (transformedValue) {
-						optionTitle = transformedValue;
-					}
-				}
-                [alertController addAction:[UIAlertAction actionWithTitle:optionTitle
-                                                                    style:UIAlertActionStyleDefault
-                                                                  handler:^(UIAlertAction *action) {
-                                                                      [weakSelf.rowDescriptor setValue:option];
-                                                                      [formViewController.tableView reloadData];
-                                                                  }]];
+            NSString *optionTitle = [option displayText];
+            if (self.rowDescriptor.valueTransformer){
+                NSAssert([self.rowDescriptor.valueTransformer isSubclassOfClass:[NSValueTransformer class]], @"valueTransformer is not a subclass of NSValueTransformer");
+                NSValueTransformer * valueTransformer = [self.rowDescriptor.valueTransformer new];
+                NSString * transformedValue = [valueTransformer transformedValue:[option valueData]];
+                if (transformedValue) {
+                    optionTitle = transformedValue;
+                }
             }
-            [formViewController presentViewController:alertController animated:YES completion:nil];
+            [alertController addAction:[UIAlertAction actionWithTitle:optionTitle
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:^(UIAlertAction *action) {
+                                                                  [weakSelf.rowDescriptor setValue:option];
+                                                                  [formViewController.tableView reloadData];
+                                                              }]];
         }
-#ifndef XL_APP_EXTENSIONS
-        else{
-            UIActionSheet * actionSheet = [[UIActionSheet alloc] initWithTitle:self.rowDescriptor.selectorTitle
-                                                                      delegate:self
-                                                             cancelButtonTitle:nil
-                                                        destructiveButtonTitle:nil
-                                                             otherButtonTitles:nil];
-            for (id option in self.rowDescriptor.selectorOptions) {
-                [actionSheet addButtonWithTitle:[option displayText]];
-            }
-            actionSheet.cancelButtonIndex = [actionSheet addButtonWithTitle:NSLocalizedString(@"Cancel", nil)];
-            actionSheet.tag = [self.rowDescriptor hash];
-            [actionSheet showInView:controller.view];
-        }
-#endif
-#endif
+        [formViewController presentViewController:alertController animated:YES completion:nil];
         [controller.tableView deselectRowAtIndexPath:[controller.form indexPathOfFormRow:self.rowDescriptor] animated:YES];
     }
     else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorAlertView]){
 
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 80000
-        UIAlertView * alertView = [[UIAlertView alloc] initWithTitle:self.rowDescriptor.selectorTitle
-                                                             message:nil
-                                                            delegate:self
-                                                   cancelButtonTitle:nil
-                                                   otherButtonTitles:nil];
+        UIAlertController * alertController = [UIAlertController alertControllerWithTitle:self.rowDescriptor.selectorTitle
+                                                                                  message:nil
+                                                                           preferredStyle:UIAlertControllerStyleAlert];
+        __weak __typeof(self)weakSelf = self;
         for (id option in self.rowDescriptor.selectorOptions) {
-            [alertView addButtonWithTitle:[option displayText]];
+            [alertController addAction:[UIAlertAction actionWithTitle:[option displayText]
+                                                                style:UIAlertActionStyleDefault
+                                                              handler:^(UIAlertAction *action) {
+                                                                  [weakSelf.rowDescriptor setValue:option];
+                                                                  [weakSelf.formViewController.tableView reloadData];
+                                                              }]];
         }
-        alertView.cancelButtonIndex = [alertView addButtonWithTitle:NSLocalizedString(@"Cancel", nil)];
-        alertView.tag = [self.rowDescriptor hash];
-        [alertView show];
-#else
-        if ([UIAlertController class]) {
-            UIAlertController * alertController = [UIAlertController alertControllerWithTitle:self.rowDescriptor.selectorTitle
-                                                                                      message:nil
-                                                                               preferredStyle:UIAlertControllerStyleAlert];
-            __weak __typeof(self)weakSelf = self;
-            for (id option in self.rowDescriptor.selectorOptions) {
-                [alertController addAction:[UIAlertAction actionWithTitle:[option displayText]
-                                                                    style:UIAlertActionStyleDefault
-                                                                  handler:^(UIAlertAction *action) {
-                                                                      [weakSelf.rowDescriptor setValue:option];
-                                                                      [weakSelf.formViewController.tableView reloadData];
-                                                                  }]];
-            }
-            [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil)
-                                                                style:UIAlertActionStyleCancel
-                                                              handler:nil]];
-            [controller presentViewController:alertController animated:YES completion:nil];
-
-        }
-#ifndef XL_APP_EXTENSIONS
-        else{
-            UIAlertView * alertView = [[UIAlertView alloc] initWithTitle:self.rowDescriptor.selectorTitle
-                                                                 message:nil
-                                                                delegate:self
-                                                       cancelButtonTitle:nil
-                                                       otherButtonTitles:nil];
-            for (id option in self.rowDescriptor.selectorOptions) {
-                [alertView addButtonWithTitle:[option displayText]];
-            }
-            alertView.cancelButtonIndex = [alertView addButtonWithTitle:NSLocalizedString(@"Cancel", nil)];
-            alertView.tag = [self.rowDescriptor hash];
-            [alertView show];
-        }
-#endif
-#endif
+        [alertController addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil)
+                                                            style:UIAlertActionStyleCancel
+                                                          handler:nil]];
+        [controller presentViewController:alertController animated:YES completion:nil];
         [controller.tableView deselectRowAtIndexPath:[controller.form indexPathOfFormRow:self.rowDescriptor] animated:YES];
     }
     else if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorPickerView]){
@@ -374,46 +310,7 @@
     self.detailTextLabel.textColor = _beforeChangeColor;
 }
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED < 80000
 
-#pragma mark - UIActionSheetDelegate
-
-- (void)actionSheet:(UIActionSheet *)actionSheet clickedButtonAtIndex:(NSInteger)buttonIndex
-{
-    if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorActionSheet]){
-        if ([actionSheet cancelButtonIndex] != buttonIndex){
-            NSString * title = [actionSheet buttonTitleAtIndex:buttonIndex];
-            for (id option in self.rowDescriptor.selectorOptions){
-                if ([[option displayText] isEqualToString:title]){
-                    [self.rowDescriptor setValue:option];
-                    [self.formViewController.tableView reloadData];
-                    break;
-                }
-            }
-        }
-    }
-}
-
-
-#pragma mark - UIAlertViewDelegate
-
-- (void)alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
-{
-    if ([self.rowDescriptor.rowType isEqualToString:XLFormRowDescriptorTypeSelectorAlertView]){
-        if ([alertView cancelButtonIndex] != buttonIndex){
-            NSString * title = [alertView buttonTitleAtIndex:buttonIndex];
-            for (id option in self.rowDescriptor.selectorOptions){
-                if ([[option displayText] isEqualToString:title]){
-                    [self.rowDescriptor setValue:option];
-                    [self.formViewController.tableView reloadData];
-                    break;
-                }
-            }
-        }
-    }
-}
-
-#endif
 
 #pragma mark - UIPickerViewDelegate
 

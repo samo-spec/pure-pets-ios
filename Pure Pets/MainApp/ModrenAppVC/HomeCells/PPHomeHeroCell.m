@@ -108,6 +108,35 @@ static inline UIColor *PPLocationAccentColor(NSString *seed)
     return [UIColor colorWithHue:hue saturation:saturation brightness:brightness alpha:1.0];
 }
 
+static inline CGFloat PPClampUnit(CGFloat value)
+{
+    return fmax(0.0, fmin(1.0, value));
+}
+
+static inline CGFloat PPLerpFloat(CGFloat start, CGFloat end, CGFloat progress)
+{
+    progress = PPClampUnit(progress);
+    return start + ((end - start) * progress);
+}
+
+static inline CGPoint PPLerpPoint(CGPoint start, CGPoint end, CGFloat progress)
+{
+    return CGPointMake(PPLerpFloat(start.x, end.x, progress),
+                       PPLerpFloat(start.y, end.y, progress));
+}
+
+static NSArray<UIColor *> *PPInterpolatePaletteStops(NSArray<UIColor *> *fromColors,
+                                                     NSArray<UIColor *> *toColors,
+                                                     CGFloat progress)
+{
+    NSUInteger count = MIN(fromColors.count, toColors.count);
+    NSMutableArray<UIColor *> *colors = [NSMutableArray arrayWithCapacity:count];
+    for (NSUInteger idx = 0; idx < count; idx++) {
+        [colors addObject:PPBlendColors(fromColors[idx], toColors[idx], progress)];
+    }
+    return colors.copy;
+}
+
 static inline NSString *PPTrimHeroLine(NSString *line)
 {
     NSString *safe = PPSafeString(line);
@@ -371,7 +400,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.lottieHeaderView.translatesAutoresizingMaskIntoConstraints = NO;
     self.lottieHeaderView.backgroundColor = UIColor.clearColor;
     self.lottieHeaderView.userInteractionEnabled = NO;
-    self.lottieHeaderView.contentMode = UIViewContentModeScaleAspectFit;
+    self.lottieHeaderView.contentMode = UIViewContentModeScaleAspectFill;
     self.lottieHeaderView.alpha = 1.0;
     [self.heroSurfaceView addSubview:self.lottieHeaderView];
 
@@ -473,8 +502,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.actionButton.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
 
         [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12.0],
-        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:122],
-        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:122],
+        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:112],
+        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:112],
         [self.lottieHeaderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
      ]];
 
@@ -1041,93 +1070,236 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
 - (void)pp_applyPaletteForCurrentTime
 {
-    NSInteger hour = [[NSCalendar currentCalendar] component:NSCalendarUnitHour fromDate:NSDate.date];
+    NSDate *now = NSDate.date;
+    NSDateComponents *components =
+        [[NSCalendar currentCalendar] components:(NSCalendarUnitHour | NSCalendarUnitMinute)
+                                        fromDate:now];
+    NSInteger minutesOfDay = (components.hour * 60) + components.minute;
     UIColor *accent = PPLocationAccentColor(self.paletteLocationSeed);
+    UIColor *liftedAccent = PPBlendColors(accent, UIColor.whiteColor, 0.22);
 
-    NSArray<UIColor *> *baseColors = nil;
-    CGPoint start = CGPointMake(0.0, 0.0);
-    CGPoint end = CGPointMake(1.0, 1.0);
+    NSArray<NSDictionary<NSString *, id> *> *paletteAnchors = @[
+        @{
+            @"minute" : @0,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#080A16" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#0D1430" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#122149" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#182C5B" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#22336B" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.96, 1.0)]
+        },
+        @{
+            @"minute" : @300,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#0B1020" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#151A36" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#23274E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#332B57" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#4B315D" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.06, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.94, 0.98)]
+        },
+        @{
+            @"minute" : @360,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#2C1C3A" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#62315F" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#AD5A6E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#E28A72" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F6BE86" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.08)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(1.0, 0.90)]
+        },
+        @{
+            @"minute" : @450,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#5C314E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#915065" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#CC7A62" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#E8A165" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F5CD8C" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.06)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 0.94)]
+        },
+        @{
+            @"minute" : @600,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#2F5D9E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#4A84C1" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#69B4D6" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#95D7CC" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F0E0A1" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.02, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 1.0)]
+        },
+        @{
+            @"minute" : @780,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#1273A2" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#249AC2" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#46BED2" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#80D7C1" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F8E0A5" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.94, 1.0)]
+        },
+        @{
+            @"minute" : @960,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#315DAE" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#547ED0" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#8A7DCF" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#CF86AB" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F3B07F" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 0.98)]
+        },
+        @{
+            @"minute" : @1080,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#372B69" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#6C438E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#B05D95" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#EB8A67" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#FFBF79" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.02)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(1.0, 0.86)]
+        },
+        @{
+            @"minute" : @1170,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#141B37" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#24395D" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#385078" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#5B5D92" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#8F6DA2" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 0.96)]
+        },
+        @{
+            @"minute" : @1260,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#101427" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#1D2342" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#322A55" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#513165" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#733C72" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.06, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.96, 1.0)]
+        },
+        @{
+            @"minute" : @1380,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#090C19" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#11162C" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#1A2240" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#253055" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#304068" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.05, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.95, 1.0)]
+        },
+        @{
+            @"minute" : @1440,
+            @"colors" : @[
+                [UIColor hx_colorWithHexStr:@"#080A16" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#0D1430" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#122149" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#182C5B" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#22336B" alpha:1.0]
+            ],
+            @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
+            @"end" : [NSValue valueWithCGPoint:CGPointMake(0.96, 1.0)]
+        }
+    ];
 
-    if (hour < 6) {
-        // Deep Space — near-black with cool blue depth
-        baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#090B1A" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#111D3A" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#1A2950" alpha:1.0]
-        ];
-    } else if (hour < 11) {
-        // Amber Horizon — warm peach into soft plum
-        baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#D4956A" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#C06C54" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#7A3B4E" alpha:1.0]
-        ];
-        start = CGPointMake(0.0, 0.05);
-        end = CGPointMake(1.0, 0.92);
-    } else if (hour < 17) {
-        // Ocean Teal — rich teal flowing into deep indigo
-        baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#1B6B75" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#2C4068" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#3B2667" alpha:1.0]
-        ];
-        start = CGPointMake(0.0, 0.0);
-        end = CGPointMake(0.95, 1.0);
-    } else if (hour < 21) {
-        // Twilight Rose — deep violet with warm rose accent
-        baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#1E1A3A" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#4A2462" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#8B4367" alpha:1.0]
-        ];
-        start = CGPointMake(0.0, 0.0);
-        end = CGPointMake(1.0, 0.88);
-    } else {
-        // Obsidian — refined near-black with subtle blue undertone
-        baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#0A0D14" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#121826" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#1B2238" alpha:1.0]
-        ];
+    NSDictionary<NSString *, id> *fromPalette = paletteAnchors.firstObject;
+    NSDictionary<NSString *, id> *toPalette = paletteAnchors.lastObject;
+    for (NSUInteger idx = 0; idx + 1 < paletteAnchors.count; idx++) {
+        NSDictionary<NSString *, id> *candidate = paletteAnchors[idx];
+        NSDictionary<NSString *, id> *next = paletteAnchors[idx + 1];
+        NSInteger startMinute = [candidate[@"minute"] integerValue];
+        NSInteger endMinute = [next[@"minute"] integerValue];
+        if (minutesOfDay >= startMinute && minutesOfDay <= endMinute) {
+            fromPalette = candidate;
+            toPalette = next;
+            break;
+        }
     }
 
-    NSMutableArray *blendedColors = [NSMutableArray arrayWithCapacity:baseColors.count];
+    NSInteger fromMinute = [fromPalette[@"minute"] integerValue];
+    NSInteger toMinute = [toPalette[@"minute"] integerValue];
+    CGFloat paletteProgress =
+        (toMinute > fromMinute)
+            ? ((CGFloat)(minutesOfDay - fromMinute) / (CGFloat)(toMinute - fromMinute))
+            : 0.0;
+
+    NSArray<UIColor *> *baseColors =
+        PPInterpolatePaletteStops(fromPalette[@"colors"], toPalette[@"colors"], paletteProgress);
+    CGPoint start =
+        PPLerpPoint([fromPalette[@"start"] CGPointValue],
+                    [toPalette[@"start"] CGPointValue],
+                    paletteProgress);
+    CGPoint end =
+        PPLerpPoint([fromPalette[@"end"] CGPointValue],
+                    [toPalette[@"end"] CGPointValue],
+                    paletteProgress);
+
+    NSArray<NSNumber *> *accentMixes = @[@0.03, @0.06, @0.11, @0.18, @0.14];
+    NSMutableArray<UIColor *> *resolvedColors = [NSMutableArray arrayWithCapacity:baseColors.count];
+    NSMutableArray *gradientColors = [NSMutableArray arrayWithCapacity:baseColors.count];
     for (NSUInteger idx = 0; idx < baseColors.count; idx++) {
         UIColor *base = baseColors[idx];
-        UIColor *deepened = PPBlendColors(base, UIColor.blackColor, idx == 0 ? 0.06 : 0.12);
-        [blendedColors addObject:PPBlendColors(deepened, accent, 0.08)];
+        CGFloat deepenMix = (idx == 0) ? 0.08 : (idx == baseColors.count - 1 ? 0.03 : 0.05);
+        UIColor *deepened = PPBlendColors(base, UIColor.blackColor, deepenMix);
+        UIColor *accentSource = (idx >= 3) ? liftedAccent : accent;
+        UIColor *resolved =
+            PPBlendColors(deepened, accentSource, [accentMixes[idx] doubleValue]);
+        [resolvedColors addObject:resolved];
+        [gradientColors addObject:(id)resolved.CGColor];
     }
 
-    NSMutableArray *gradientColors = [NSMutableArray arrayWithCapacity:blendedColors.count];
-    for (UIColor *color in blendedColors) {
-        [gradientColors addObject:(id)color.CGColor];
-    }
-
-    UIColor *glowPrimary = [PPBlendColors(accent, UIColor.whiteColor, 0.18) colorWithAlphaComponent:0.34];
-    UIColor *glowSecondary = [PPBlendColors(accent, UIColor.whiteColor, 0.45) colorWithAlphaComponent:0.18];
+    UIColor *glowPrimary =
+        [PPBlendColors(resolvedColors[2], liftedAccent, 0.32) colorWithAlphaComponent:0.30];
+    UIColor *glowSecondary =
+        [PPBlendColors(resolvedColors[4], liftedAccent, 0.24) colorWithAlphaComponent:0.22];
+    UIColor *statusPillFill =
+        [PPBlendColors(resolvedColors[1], UIColor.whiteColor, 0.16) colorWithAlphaComponent:0.24];
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.gradientLayer.startPoint = start;
     self.gradientLayer.endPoint = end;
     self.gradientLayer.colors = gradientColors;
-    self.gradientLayer.locations = @[@0.0, @0.55, @1.0];
+    self.gradientLayer.locations = @[@0.0, @0.16, @0.42, @0.74, @1.0];
     self.ambientGlowLayer.colors = @[
         (id)glowPrimary.CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:0.02].CGColor,
+        (id)[glowSecondary colorWithAlphaComponent:0.08].CGColor,
         (id)[UIColor colorWithWhite:1.0 alpha:0.0].CGColor
     ];
     self.bottomShadeLayer.colors = @[
         (id)[UIColor colorWithWhite:0.0 alpha:0.0].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.08].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.24].CGColor
+        (id)[UIColor colorWithWhite:0.0 alpha:0.06].CGColor,
+        (id)[UIColor colorWithWhite:0.0 alpha:0.22].CGColor
     ];
     [CATransaction commit];
 
-    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.12];
-    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.14];
-    self.statusPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
-    self.brandLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.76];
+    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.18];
+    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.20];
+    self.statusPillView.backgroundColor = statusPillFill;
+    self.brandLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.80];
 }
 
 #pragma mark - Motion
@@ -1380,18 +1552,18 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         return @"Woman playing with a dog";
     }
     if (hour < 12) {
-        return @"Man Giving Food To Fish";
+        return @"Boy Giving Food To Bird";
     }
     if (hour < 17) {
         return @"Man playing with a dog";
     }
     if (hour < 20) {
-        return @"CatPlaying";
+        return @"Loader cat new";//Boy Giving Food To Rabbit New //Loader cat  //Loader cat new
     }
     if (hour < 23) {
         return @"evening chair cat and girl";
     }
-    return @"CatPlaying";
+    return @"man playing with cat during free time";
 }
 
 - (void)pp_updateLottieForCurrentTimeIfNeeded
@@ -1407,7 +1579,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     }
 
     self.currentLottiePath = path;
-
+    self.lottieHeaderView.alpha = 0.90;
     __weak typeof(self) weakSelf = self;
     NSString *storagePath = [NSString stringWithFormat:@"LottieAnimations/%@.json", path];
     [AppClasses fetchLottieJSONFromFirebasePath:storagePath completion:^(NSDictionary * _Nonnull jsonDict,

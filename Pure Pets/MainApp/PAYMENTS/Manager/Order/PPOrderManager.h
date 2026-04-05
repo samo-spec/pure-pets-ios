@@ -134,6 +134,23 @@ typedef NS_ENUM(NSInteger, PPOrderCustomerActionType) {
                             paymentMethodId:(nullable NSString *)paymentMethodId
                                   completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion;
 
+/// Idempotent variant – pass a UUID that uniquely identifies this checkout attempt.
+/// If an order with the same key already exists for the current user, it is returned
+/// instead of creating a duplicate.  Pass nil to fall back to the legacy behaviour.
+- (void)createPendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                              amount:(double)amount
+                            address:(PPAddressModel * _Nullable)address
+                    paymentMethodId:(nullable NSString *)paymentMethodId
+                     idempotencyKey:(nullable NSString *)idempotencyKey
+                          completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion;
+
+- (void)fetchOrCreatePendingOrderWithItems:(NSArray<NSDictionary *> *)items
+                                     amount:(double)amount
+                                    address:(PPAddressModel * _Nullable)address
+                            paymentMethodId:(nullable NSString *)paymentMethodId
+                             idempotencyKey:(nullable NSString *)idempotencyKey
+                                  completion:(void (^)(PPOrder * _Nullable order, NSError * _Nullable error))completion;
+
 /// Validate that requested quantities are currently available in `petAccessories`.
 /// `issues` contains dictionaries with: itemID, name, requestedQty, availableQty.
 - (void)validateInventoryForItems:(NSArray<NSDictionary *> *)items

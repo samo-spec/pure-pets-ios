@@ -2,6 +2,7 @@
 #import "AppDelegate.h"
 #import "PPUserSigningController.h"
 #import "SplashViewController.h"
+#import "PPCheckoutCoordinator.h"
 @import GoogleSignIn;
 #import "ChNotificationRouter.h"
 
@@ -263,6 +264,9 @@ self.window.semanticContentAttribute = attr;
 - (void)sceneDidBecomeActive:(UIScene *)scene { [self updateUserOnlineStatus:YES];    [UIApplication sharedApplication].applicationIconBadgeNumber = 0;
 [self tryHandlePendingChatNotification];
 [self pp_startUserScopedListenersIfPossible];
+
+// H-08: Notify in-flight payment flows to re-check order status after app resume.
+[[NSNotificationCenter defaultCenter] postNotificationName:PPAppDidBecomeActiveNotification object:nil];
 }
 - (void)sceneWillResignActive:(UIScene *)scene { [self updateUserOnlineStatus:NO]; }
 - (void)sceneDidEnterBackground:(UIScene *)scene { [self updateUserOnlineStatus:NO]; }

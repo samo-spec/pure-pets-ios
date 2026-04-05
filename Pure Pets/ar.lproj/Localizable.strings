@@ -1967,6 +1967,8 @@
 "pp_perm_open_settings" = "الإعدادات";
 "pp_perm_continue" = "متابعة";
 "pp_perm_not_now" = "ليس الآن";
+"pp_perm_location_title" = "الوصول إلى الموقع";
+"pp_perm_location_denied_message" = "يحتاج التطبيق إلى الوصول إلى موقعك لعناوين التوصيل الدقيقة. يرجى تفعيله من الإعدادات.";
 
 // MARK: - Archive Sheet UI
 "archive_sheet_heading" = "تفاصيل الأرشيف";
@@ -2014,6 +2016,147 @@
 "everyone" = "الجميع";
 "noOne" = "لا أحد";
 "Guest" = "زائر";
+"LegalSectionHeader" = "قانوني";
+"PrivacyPolicy" = "سياسة الخصوصية";
+"TermsOfService" = "شروط الاستخدام";
 "checkout_item_price_invalid" = "سعر أحد المنتجات غير صالح. يرجى إزالته والمحاولة مرة أخرى.";
 "checkout_generic_error" = "حدث خطأ أثناء إتمام الدفع. يرجى المحاولة مرة أخرى.";
+
+/* Payment Retry – إعادة محاولة الدفع (H-07) */
+"payment_failed_title" = "فشل الدفع";
+"retry_payment" = "إعادة المحاولة";
+"payment_pending_title" = "الدفع قيد الانتظار";
+"view_order_status" = "عرض الطلب";
+
 "home_quick_action_nearest_vet" = "أقرب بيطري";
+
+/* Firestore Error Notifications (H-10) */
+"firestore_error_generic" = "حدث خطأ ما. يرجى المحاولة مرة أخرى.";
+"firestore_error_cart" = "مشكلة في مزامنة السلة. قد لا يتم حفظ تغييراتك.";
+"firestore_error_payment" = "فشل تحديث طريقة الدفع. يرجى المحاولة مرة أخرى.";
+"firestore_error_accessories" = "تعذر تحميل المنتجات. اسحب للتحديث.";
+
+/* Load Error Empty State (M-09) */
+"load_error_title" = "تعذر التحميل";
+"load_error_retry" = "حدث خطأ ما. اسحب للتحديث أو اضغط إعادة المحاولة.";
+"retry" = "إعادة المحاولة";
+
+/* ============================================================
+   Missing keys – added to match en.lproj/Localizable.strings
+   ============================================================ */
+
+/* Address */
+"Address" = "العنوان";
+
+/* App Identity */
+"AppName" = "Pure Pets";
+
+/* Payment Form – Billing */
+"BillingNameTitle" = "اسم صاحب الفاتورة";
+"FirstNameLabel" = "الاسم الأول";
+"LastNameLabel" = "اسم العائلة";
+"FieldRequiredPlaceholder" = "مطلوب";
+"StreetPlaceholder" = "The 9";
+
+/* Payment Flow */
+"GiveOrderTo" = "التوصيل إلى";
+"Select Payment Method" = "اختر طريقة الدفع";
+"Continue Payment" = "متابعة الدفع";
+"Qatar National Bank" = "بنك قطر الوطني";
+
+/* Card Creation */
+"create_card_failed_title" = "تعذر إنشاء البطاقة";
+"ShowAllCards_En" = "Show all cards";
+
+/* Home – Nearby Ads */
+"Home_NearbyAds_Sub" = "إعلانات قريبة منك";
+
+/* Hero Section – LTR Variants (fallback for bidirectional support) */
+"Hero_NameCommaLTR" = "%@، %@";
+"Hero_GuestFormatLTR" = "🐾 %@، انضم إلى مجتمع محبي الحيوانات الأليفة";
+
+/* Loading Timeout Protection */
+"connection_timeout_title" = "انتهت مهلة الاتصال";
+"connection_timeout_message" = "تعذّر تحميل البيانات. يرجى التحقق من اتصالك بالإنترنت والمحاولة مرة أخرى.";
+"upload_timeout_title" = "انتهت مهلة الطلب";
+"upload_timeout_message" = "يستغرق الرفع وقتًا طويلاً. يرجى التحقق من اتصالك والمحاولة مرة أخرى.";
+"save_timeout_message" = "يستغرق الحفظ وقتًا طويلاً. يرجى التحقق من اتصالك والمحاولة مرة أخرى.";
+
+/* M-19: Offline status banner */
+"offline_banner_text" = "لا يوجد اتصال بالإنترنت";
+
+/* Offline Pre-Check (M-11) */
+"offline_action_title" = "لا يوجد اتصال بالإنترنت";
+"offline_action_message" = "يرجى التحقق من اتصالك والمحاولة مرة أخرى.";
+
+/* ============================================================
+   Accessibility Labels (M-13) – تسميات إمكانية الوصول
+   ============================================================ */
+
+/* Tab Bar – شريط التبويب */
+"a11y_tab_home" = "الرئيسية";
+"a11y_tab_home_hint" = "تصفح إعلانات الحيوانات والخدمات";
+"a11y_tab_notifications" = "الإشعارات";
+"a11y_tab_notifications_hint" = "عرض المحادثات والإشعارات";
+"a11y_tab_add" = "إضافة إعلان جديد";
+"a11y_tab_orders" = "الطلبات";
+"a11y_tab_orders_hint" = "عرض سجل الطلبات";
+"a11y_tab_settings" = "الإعدادات";
+"a11y_tab_settings_hint" = "إعدادات التطبيق والحساب";
+
+/* Navigation Buttons – أزرار التنقل */
+"a11y_btn_cart" = "سلة التسوق";
+"a11y_btn_cart_hint" = "انقر مرتين لفتح السلة";
+"a11y_btn_add_new" = "إضافة إعلان جديد";
+"a11y_btn_add_new_hint" = "إنشاء إعلان حيوان أليف أو إكسسوار أو تبني";
+"a11y_btn_close_cart" = "إغلاق السلة";
+"a11y_btn_cart_support" = "تواصل مع الدعم";
+"a11y_btn_cart_support_hint" = "انقر مرتين للتواصل مع خدمة العملاء";
+"a11y_btn_close" = "إغلاق";
+"a11y_btn_close_hint" = "انقر مرتين لإغلاق هذه الشاشة";
+
+/* Favorite Button – زر المفضلة */
+"a11y_btn_favorite" = "إضافة للمفضلة";
+"a11y_btn_unfavorite" = "إزالة من المفضلة";
+"a11y_btn_favorite_hint" = "انقر مرتين للإضافة أو الإزالة من المفضلة";
+
+/* Share & Report – مشاركة وإبلاغ */
+"a11y_btn_share" = "مشاركة";
+"a11y_btn_share_hint" = "انقر مرتين لمشاركة هذا الإعلان";
+"a11y_btn_share_ad" = "مشاركة الإعلان";
+"a11y_btn_share_ad_hint" = "انقر مرتين لمشاركة هذا الإعلان";
+"a11y_btn_report_ad" = "الإبلاغ عن الإعلان";
+"a11y_btn_report_ad_hint" = "انقر مرتين للإبلاغ عن هذا الإعلان";
+"a11y_btn_more_options" = "خيارات إضافية";
+"a11y_btn_more_options_hint" = "انقر مرتين لعرض خيارات التعديل والحذف";
+
+/* Cart & Checkout – السلة والدفع */
+"a11y_btn_add_to_cart" = "إضافة إلى السلة";
+"a11y_btn_add_to_cart_hint" = "انقر مرتين لإضافة هذا المنتج إلى السلة";
+"a11y_btn_decrease_qty" = "تقليل الكمية";
+"a11y_btn_increase_qty" = "زيادة الكمية";
+"a11y_btn_checkout" = "إتمام الشراء";
+"a11y_btn_checkout_hint" = "انقر مرتين للمتابعة إلى الدفع";
+"a11y_btn_undo_remove" = "تراجع عن الحذف";
+"a11y_btn_undo_remove_hint" = "انقر مرتين لاستعادة المنتج المحذوف";
+"a11y_btn_remove_cart_item" = "حذف المنتج";
+"a11y_btn_remove_cart_item_hint" = "انقر مرتين لحذف هذا المنتج من السلة";
+"a11y_cart_qty_stepper" = "كمية المنتج";
+
+/* Contact Actions – أزرار التواصل */
+"a11y_btn_call_advertiser" = "اتصال بالمعلن";
+"a11y_btn_call_advertiser_hint" = "انقر مرتين للاتصال بهذا الشخص";
+"a11y_btn_chat_advertiser" = "محادثة مع المعلن";
+"a11y_btn_chat_advertiser_hint" = "انقر مرتين لبدء محادثة مع هذا الشخص";
+"a11y_btn_call_user_format" = "اتصال بـ %@";
+"a11y_btn_chat_user_format" = "محادثة مع %@";
+
+/* Pet Ad Cell – خلية الإعلان */
+"a11y_cell_discount_format" = "خصم: %@";
+"a11y_cell_qty_in_cart_format" = "%ld في السلة";
+"a11y_cell_tap_hint" = "انقر مرتين لعرض التفاصيل";
+
+/* Search – البحث */
+"a11y_search_segment" = "تصفية فئة البحث";
+"a11y_search_segment_hint" = "اختر بين الإعلانات أو الخدمات أو الإكسسوارات";
+"a11y_search_field_hint" = "اكتب للبحث عن حيوانات أليفة أو خدمات أو إكسسوارات";

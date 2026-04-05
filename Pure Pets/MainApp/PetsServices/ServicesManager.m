@@ -16,6 +16,7 @@
 
 @implementation ServicesManager {
     id<FIRListenerRegistration>  _allServicesListener;
+    id<FIRListenerRegistration>  _kindServicesListener;
 }
 
 static NSError *PPServiceCreatePermissionError(NSString *message) {
@@ -125,7 +126,12 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
 - (void)listenToServicesForPetMainKindID:(NSInteger)kindID
                               completion:(void (^)(NSArray<ServiceModel *> *, NSError * _Nullable))completion {
     FIRFirestore *db = [FIRFirestore firestore];
-    
+
+    // Remove previous kind-specific listener to prevent stacking
+    [_kindServicesListener remove];
+    _kindServicesListener = nil;
+
+    _kindServicesListener =
     [[[db collectionWithPath:@"serviceOffers"] queryWhereField:@"petMainKindID" isEqualTo:@(kindID)]
      addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
          if (error) {
@@ -382,5 +388,15 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
     }];
 }
 
+- (void)stopAllListeners {
+    [_allServicesListener remove];
+    _allServicesListener = nil;
+    [_kindServicesListener remove];
+    _kindServicesListener = nil;
+}
+
+- (void)dealloc {
+    [self stopAllListeners];
+}
 
 @end

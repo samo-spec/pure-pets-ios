@@ -636,65 +636,150 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
                 [[PPCheckoutCoordinator alloc] initWithPresentingViewController:self];
             }
 
-            self.isCheckoutInProgress = YES;
-            [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
-            [self.summaryView setCheckoutLoading:YES];
-            PPORDERLog(@"Checkout starting | paymentMethod=%@ | addressId=%@",
-                       selectedPaymentMethodID,
-                       [self pp_effectiveAddressID:self.selectedAddress]);
-            __weak typeof(self) weakSelf = self;
-            [self.checkoutCoordinator startCheckoutWithAddress:self.selectedAddress
-                                               paymentMethodId:selectedPaymentMethodID
-                                                    completion:^(PPCheckoutResult result,
-                                                                 PPOrder *order,
-                                                                 NSError *error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    __strong typeof(weakSelf) strongSelf = weakSelf;
-                    if (!strongSelf) return;
-                    strongSelf.isCheckoutInProgress = NO;
-                    [strongSelf.summaryView setCheckoutLoading:NO];
-                    PPORDERLog(@"Checkout completed | result=%ld | orderId=%@ | error=%@",
-                               (long)result,
-                               order.orderId ?: @"",
-                               error.localizedDescription ?: @"");
-                    if (result == PPCheckoutResultSuccess) {
-                        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
-                        NSString *successMessage = error.localizedDescription.length > 0
-                        ? error.localizedDescription
-                        : ((order && [order isCashOnDelivery])
-                           ? kLang(@"checkout_cod_success_subtitle")
-                           : kLang(@"order_paid_success_subtitle"));
-                        [strongSelf pp_openOrderDetailsForOrder:order
-                                           successMessage:successMessage
-                                        presentationState:PPOrderDetailsEntryPresentationStateCheckoutSuccess];
-                    } else if (result == PPCheckoutResultPendingVerification) {
-                        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
-                        [strongSelf pp_openOrderDetailsForOrder:order
-                                           successMessage:(error.localizedDescription.length > 0 ? error.localizedDescription : kLang(@"checkout_payment_verification_pending"))
-                                        presentationState:PPOrderDetailsEntryPresentationStateVerificationPending];
-                    } else if (result == PPCheckoutResultCancelled) {
-                        PPORDERLog(@"Payment cancelled by user | orderId=%@", order.orderId ?: @"");
-                        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
-                        [PPHUD showInfo:kLang(@"payment_cancelled_by_user")];
-                    } else {
-                        NSString *rawReason = error.localizedDescription ?: @"";
-                        NSString *reason;
-                        if ([rawReason rangeOfString:@"must be a positive number" options:NSCaseInsensitiveSearch].location != NSNotFound) {
-                            reason = kLang(@"checkout_item_price_invalid") ?: @"One or more items have an invalid price. Please remove them and try again.";
-                        } else if (rawReason.length > 0 && [rawReason rangeOfString:@"-" options:0].location != NSNotFound && rawReason.length > 30) {
-                            // Raw SDK error with UUIDs — show generic user-friendly message
-                            reason = kLang(@"checkout_generic_error") ?: kLang(@"SomethingWentWrong");
-                        } else {
-                            reason = rawReason.length > 0 ? rawReason : kLang(@"SomethingWentWrong");
-                        }
-                        PPORDERLog(@"Checkout failed | rawError=%@", rawReason);
-                        [PPAlertHelper showErrorIn:strongSelf title:kLang(@"checkout_failed_title") subtitle:reason];
-                        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
-                    }
-                });
-            }];
+            [self pp_startCheckoutWithPaymentMethodId:selectedPaymentMethodID];
         });
     }];
+}
+
+#pragma mark - Checkout Execution & Retry (H-07)
+
+/// Starts the QIB checkout flow.  Called both from the initial checkout tap
+/// and from the "Retry Payment" action after a retryable failure or timeout.
+/// The coordinator's checkoutIdempotencyKey is preserved across failures,
+/// so the backend safely deduplicates order creation on retry.
+- (void)pp_startCheckoutWithPaymentMethodId:(NSString *)paymentMethodId
+{
+    self.isCheckoutInProgress = YES;
+    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+    [self.summaryView setCheckoutLoading:YES];
+    PPORDERLog(@"Checkout starting | paymentMethod=%@ | addressId=%@",
+               paymentMethodId,
+               [self pp_effectiveAddressID:self.selectedAddress]);
+
+    __weak typeof(self) weakSelf = self;
+    [self.checkoutCoordinator startCheckoutWithAddress:self.selectedAddress
+                                        paymentMethodId:paymentMethodId
+                                             completion:^(PPCheckoutResult result,
+                                                          PPOrder *order,
+                                                          NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            [strongSelf pp_handleCheckoutResult:result
+                                          order:order
+                                          error:error
+                                paymentMethodId:paymentMethodId];
+        });
+    }];
+}
+
+/// Handles every terminal checkout result.  Success, cancellation, and
+/// non-retryable failures behave exactly as before.  For retryable QIB
+/// payment failures and timeouts a "Retry Payment" button is offered.
+- (void)pp_handleCheckoutResult:(PPCheckoutResult)result
+                          order:(PPOrder * _Nullable)order
+                          error:(NSError * _Nullable)error
+                paymentMethodId:(NSString *)paymentMethodId
+{
+    self.isCheckoutInProgress = NO;
+    [self.summaryView setCheckoutLoading:NO];
+    PPORDERLog(@"Checkout completed | result=%ld | orderId=%@ | error=%@",
+               (long)result,
+               order.orderId ?: @"",
+               error.localizedDescription ?: @"");
+
+    if (result == PPCheckoutResultSuccess) {
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
+        NSString *successMessage = error.localizedDescription.length > 0
+            ? error.localizedDescription
+            : ((order && [order isCashOnDelivery])
+               ? kLang(@"checkout_cod_success_subtitle")
+               : kLang(@"order_paid_success_subtitle"));
+        [self pp_openOrderDetailsForOrder:order
+                           successMessage:successMessage
+                        presentationState:PPOrderDetailsEntryPresentationStateCheckoutSuccess];
+
+    } else if (result == PPCheckoutResultPendingVerification) {
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+
+        // H-07: Offer retry for timeout / pending-verification states.
+        BOOL isRetryable = [error.userInfo[PPCheckoutErrorIsRetryableKey] boolValue];
+        NSString *pendingMessage = error.localizedDescription.length > 0
+            ? error.localizedDescription
+            : kLang(@"checkout_payment_verification_pending");
+
+        if (isRetryable) {
+            __weak typeof(self) weakRetry = self;
+            [PPAlertHelper showConfirmationIn:self
+                                        title:kLang(@"payment_pending_title")
+                                     subtitle:pendingMessage
+                                confirmButton:kLang(@"retry_payment")
+                                 cancelButton:kLang(@"view_order_status")
+                                         icon:nil
+                                 confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+                __strong typeof(weakRetry) retryStrong = weakRetry;
+                if (!retryStrong) return;
+                PPORDERLog(@"User chose retry after pending verification | paymentMethod=%@", paymentMethodId);
+                [retryStrong pp_startCheckoutWithPaymentMethodId:paymentMethodId];
+            }
+                                  cancelBlock:^{
+                __strong typeof(weakRetry) retryStrong = weakRetry;
+                if (!retryStrong) return;
+                PPORDERLog(@"User chose view order after pending verification | orderId=%@", order.orderId ?: @"");
+                [retryStrong pp_openOrderDetailsForOrder:order
+                                          successMessage:pendingMessage
+                                       presentationState:PPOrderDetailsEntryPresentationStateVerificationPending];
+            }];
+        } else {
+            [self pp_openOrderDetailsForOrder:order
+                               successMessage:pendingMessage
+                            presentationState:PPOrderDetailsEntryPresentationStateVerificationPending];
+        }
+
+    } else if (result == PPCheckoutResultCancelled) {
+        PPORDERLog(@"Payment cancelled by user | orderId=%@", order.orderId ?: @"");
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+        [PPHUD showInfo:kLang(@"payment_cancelled_by_user")];
+
+    } else {
+        // PPCheckoutResultFailed
+        NSString *rawReason = error.localizedDescription ?: @"";
+        NSString *reason;
+        if ([rawReason rangeOfString:@"must be a positive number" options:NSCaseInsensitiveSearch].location != NSNotFound) {
+            reason = kLang(@"checkout_item_price_invalid") ?: @"One or more items have an invalid price. Please remove them and try again.";
+        } else if (rawReason.length > 0 && [rawReason rangeOfString:@"-" options:0].location != NSNotFound && rawReason.length > 30) {
+            // Raw SDK error with UUIDs — show generic user-friendly message
+            reason = kLang(@"checkout_generic_error") ?: kLang(@"SomethingWentWrong");
+        } else {
+            reason = rawReason.length > 0 ? rawReason : kLang(@"SomethingWentWrong");
+        }
+
+        // H-07: Offer retry for QIB payment failures (SDK error, verification
+        // failure, Firestore-confirmed decline).  Validation errors (out-of-stock,
+        // invalid address, etc.) remain non-retryable.
+        BOOL isRetryable = [error.userInfo[PPCheckoutErrorIsRetryableKey] boolValue];
+        PPORDERLog(@"Checkout failed | rawError=%@ | retryable=%d", rawReason, isRetryable);
+
+        if (isRetryable) {
+            __weak typeof(self) weakRetry = self;
+            [PPAlertHelper showConfirmationIn:self
+                                        title:kLang(@"payment_failed_title")
+                                     subtitle:reason
+                                confirmButton:kLang(@"retry_payment")
+                                 cancelButton:kLang(@"cancel")
+                                         icon:nil
+                                 confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+                __strong typeof(weakRetry) retryStrong = weakRetry;
+                if (!retryStrong) return;
+                PPORDERLog(@"User chose retry after payment failure | paymentMethod=%@", paymentMethodId);
+                [retryStrong pp_startCheckoutWithPaymentMethodId:paymentMethodId];
+            }
+                                  cancelBlock:nil];
+        } else {
+            [PPAlertHelper showErrorIn:self title:kLang(@"checkout_failed_title") subtitle:reason];
+        }
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+    }
 }
 
 

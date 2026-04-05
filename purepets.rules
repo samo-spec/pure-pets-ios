@@ -810,7 +810,35 @@ service cloud.firestore {
     }
 
     // ════════════════════════════════════════════════════════════════════════
-    //  24. CATCH-ALL — Deny everything else by default
+    //  24. UGC CONTENT REPORTS — reports/{reportId}
+    // ════════════════════════════════════════════════════════════════════════
+
+    match /reports/{reportId} {
+      // Only admins/moderators can read reports
+      allow read: if isModerator();
+
+      // Any signed-in, non-blocked user can create a report for content
+      // they don't own. Doc ID format: {contentId}_{reporterUid}.
+      allow create: if isSignedIn()
+        && isNotBlocked()
+        && request.resource.data.reporterUid == uid()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.contentId is string
+        && request.resource.data.contentType is string
+        && request.resource.data.reason is string;
+
+      // Reporter can upsert their own report (merge:YES)
+      allow update: if isSignedIn()
+        && isNotBlocked()
+        && resource.data.reporterUid == uid()
+        && request.resource.data.reporterUid == uid()
+        && request.resource.data.status == 'pending';
+
+      allow delete: if false;
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    //  25. CATCH-ALL — Deny everything else by default
     // ════════════════════════════════════════════════════════════════════════
     //  Firestore denies unmatched paths by default, but we add an explicit
     //  match to document intent and prevent accidental open access.

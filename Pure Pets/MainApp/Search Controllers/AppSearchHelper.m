@@ -40,9 +40,11 @@
     ]];
     if ([foodKeys containsObject:k]) {
         [[PetAccessoryManager sharedManager] fetchAccessoriesOfKind:AccessTypeFood completion:^(NSArray<PetAccessory *> *items) {
-            self.resultsVC.results = [self pp_itemsFromAccessories:items];
-            [self.resultsVC.tableView reloadData];
-            [svc.searchBar resignFirstResponder];
+            NSArray<SearchResultItem *> *mapped = [self pp_itemsFromAccessories:items];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.resultsVC.results = mapped;
+                [svc.searchBar resignFirstResponder];
+            });
         }];
         return YES;
     }
@@ -55,9 +57,11 @@
     ]];
     if ([accKeys containsObject:k]) {
         [[PetAccessoryManager sharedManager] fetchAccessoriesOfKind:AccessTypeAccessory completion:^(NSArray<PetAccessory *> *items) {
-            self.resultsVC.results = [self pp_itemsFromAccessories:items];
-            [self.resultsVC.tableView reloadData];
-            [svc.searchBar resignFirstResponder];
+            NSArray<SearchResultItem *> *mapped = [self pp_itemsFromAccessories:items];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.resultsVC.results = mapped;
+                [svc.searchBar resignFirstResponder];
+            });
         }];
         return YES;
     }
@@ -71,15 +75,19 @@
     if ([vetKeys containsObject:k]) {
         if ([[VetManager sharedManager] respondsToSelector:@selector(fetchAllVetsWithCompletion:)]) {
             [[VetManager sharedManager] fetchAllVetsWithCompletion:^(NSArray<VetModel *> * _Nonnull vetsArray, NSError * _Nullable error) {
-                self.resultsVC.results = [self pp_itemsFromVets:vetsArray];
-                [self.resultsVC.tableView reloadData];
-                [svc.searchBar resignFirstResponder];
+                NSArray<SearchResultItem *> *mapped = [self pp_itemsFromVets:vetsArray];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.resultsVC.results = mapped;
+                    [svc.searchBar resignFirstResponder];
+                });
             }];
         } else {
             [[VetManager sharedManager] getVetsForPetMainKindID:0 completion:^(NSArray<VetModel *> *vets, NSError *err) {
-                self.resultsVC.results = [self pp_itemsFromVets:vets];
-                [self.resultsVC.tableView reloadData];
-                [svc.searchBar resignFirstResponder];
+                NSArray<SearchResultItem *> *mapped = [self pp_itemsFromVets:vets];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.resultsVC.results = mapped;
+                    [svc.searchBar resignFirstResponder];
+                });
             }];
         }
         return YES;
@@ -222,7 +230,6 @@
     if (text.length == 0) {
         NSLog(@"[Search] performQuery skipped (empty text)");
         self.resultsVC.results = @[];
-        [self.resultsVC.tableView reloadData];
         return;
     }
 
@@ -252,7 +259,6 @@
             return;
         }
         self.resultsVC.results = results;
-        [self.resultsVC.tableView reloadData];
     }];
 }
 

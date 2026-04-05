@@ -376,6 +376,7 @@
     _badgeImageView.image = nil;
     _badgeImageView.hidden = YES;
 
+    [self stopCountdown];
     [self hideCountdownView];
 }
 
@@ -717,6 +718,10 @@
     });
 }
 
+- (void)dealloc {
+    [self.countdownTimer invalidate];
+    self.countdownTimer = nil;
+}
 
 
 
