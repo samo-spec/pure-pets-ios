@@ -38,13 +38,16 @@ static NSInteger const kPPSearchMinimumQueryLength = 2;
 static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
 
 @interface PPSearchViewController ()
-<UISearchBarDelegate,
+<UITextFieldDelegate,
 UICollectionViewDelegate,
 UICollectionViewDelegateFlowLayout,
 PPUniversalCellDelegate>
 
 @property (nonatomic, strong) UIView *searchBarContainerView;
-@property (nonatomic, strong) UISearchBar *searchBar;
+@property (nonatomic, strong) UIView *searchFieldChromeView;
+@property (nonatomic, strong) UIImageView *searchFieldIconView;
+@property (nonatomic, strong) UITextField *searchTextField;
+@property (nonatomic, strong) UILabel *searchPlaceholderLabel;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
 
@@ -88,6 +91,9 @@ PPUniversalCellDelegate>
 @property (nonatomic, strong) dispatch_queue_t searchQueue;
 @property (nonatomic, copy, nullable) dispatch_block_t pendingDebounceBlock;
 @property (nonatomic, assign) BOOL pendingSearchFieldFocus;
+@property (nonatomic, assign) BOOL previousIQKeyboardManagerEnabled;
+@property (nonatomic, assign) BOOL previousIQKeyboardToolbarEnabled;
+@property (nonatomic, assign) BOOL isOverridingIQKeyboardManager;
 
 @end
 
@@ -126,6 +132,7 @@ PPUniversalCellDelegate>
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_applySearchKeyboardManagerOverridesIfNeeded];
     [self pp_schedulePendingSearchFieldFocusIfNeeded];
 }
 
@@ -133,6 +140,7 @@ PPUniversalCellDelegate>
 {
     [super viewWillDisappear:animated];
     [[self pp_searchTextField] resignFirstResponder];
+    [self pp_restoreSearchKeyboardManagerOverridesIfNeeded];
 }
 
 - (void)viewDidLayoutSubviews
@@ -146,7 +154,6 @@ PPUniversalCellDelegate>
     self.primaryGlowView.layer.cornerRadius = CGRectGetWidth(self.primaryGlowView.bounds) * 0.5;
     self.secondaryGlowView.layer.cornerRadius = CGRectGetWidth(self.secondaryGlowView.bounds) * 0.5;
     [self updateBadgePositions];
-    [self pp_activatePendingSearchFieldFocusIfPossible];
 }
 
 - (void)dealloc
@@ -155,6 +162,7 @@ PPUniversalCellDelegate>
         dispatch_block_cancel(self.pendingDebounceBlock);
         self.pendingDebounceBlock = nil;
     }
+    [self pp_restoreSearchKeyboardManagerOverridesIfNeeded];
 }
 
 #pragma mark - Public
@@ -163,7 +171,9 @@ PPUniversalCellDelegate>
 {
     [self loadViewIfNeeded];
     self.pendingSearchFieldFocus = YES;
-    [self pp_activatePendingSearchFieldFocusIfPossible];
+    if (self.view.window != nil && self.transitionCoordinator == nil) {
+        [self pp_activatePendingSearchFieldFocusIfPossible];
+    }
 }
 
 - (void)openAccessoriesAll
@@ -242,57 +252,99 @@ PPUniversalCellDelegate>
         container.layoutMargins = UIEdgeInsetsMake(0.0, kPPSearchHorizontalInset, 8.0, kPPSearchHorizontalInset);
     }
 
-    UISearchBar *searchBar = [[UISearchBar alloc] initWithFrame:CGRectZero];
-    searchBar.translatesAutoresizingMaskIntoConstraints = NO;
-    searchBar.delegate = self;
-    searchBar.placeholder = kLang(@"SearchPlaceholder");
-    searchBar.searchBarStyle = UISearchBarStyleMinimal;
-    searchBar.barTintColor = AppClearClr;
-    searchBar.tintColor = AppPrimaryClr;
-    searchBar.backgroundImage = [UIImage new];
-    searchBar.showsCancelButton = NO;
-
-    UITextField *textField = [self pp_searchTextFieldForSearchBar:searchBar];
-    if (textField) {
-        textField.font = [GM MidFontWithSize:16];
-        textField.textColor = UIColor.labelColor;
-        textField.textAlignment = NSTextAlignmentNatural;
-        textField.returnKeyType = UIReturnKeySearch;
-        textField.clearButtonMode = UITextFieldViewModeWhileEditing;
-        textField.layer.cornerRadius = 16.0;
-        textField.layer.masksToBounds = YES;
-        textField.layer.borderWidth = 1.0;
-        textField.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.18].CGColor;
-        textField.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
-
-        NSMutableAttributedString *placeholder =
-        [[NSMutableAttributedString alloc] initWithString:kLang(@"SearchPlaceholder") attributes:@{
-            NSForegroundColorAttributeName : [UIColor colorWithWhite:1.0 alpha:0.58],
-            NSFontAttributeName : [GM MidFontWithSize:15]
-        }];
-        textField.attributedPlaceholder = placeholder;
-
-        UIImageView *searchIcon = [textField valueForKey:@"leftView"];
-        searchIcon.tintColor = [UIColor colorWithWhite:1.0 alpha:0.68];
+    NSString *placeholderText = [self pp_modernSearchPlaceholderText];
+    UIView *chromeView = [UIView new];
+    chromeView.translatesAutoresizingMaskIntoConstraints = NO;
+    chromeView.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.92];
+    chromeView.layer.cornerRadius = 18.0;
+    chromeView.layer.masksToBounds = YES;
+    chromeView.layer.borderWidth = 1.0;
+    chromeView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.40].CGColor;
+    if (@available(iOS 13.0, *)) {
+        chromeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    [container addSubview:searchBar];
+    UIImageSymbolConfiguration *iconConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
+    UIImageView *iconView =
+        [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"magnifyingglass" withConfiguration:iconConfig]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = [UIColor secondaryLabelColor];
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+
+    UITextField *textField = [UITextField new];
+    textField.translatesAutoresizingMaskIntoConstraints = NO;
+    textField.delegate = self;
+    textField.textAlignment = NSTextAlignmentNatural;
+    textField.textColor = UIColor.labelColor;
+    textField.tintColor = AppPrimaryClr;
+    textField.font = [GM MidFontWithSize:16];
+    textField.borderStyle = UITextBorderStyleNone;
+    textField.backgroundColor = UIColor.clearColor;
+    textField.clearButtonMode = UITextFieldViewModeWhileEditing;
+    textField.returnKeyType = UIReturnKeySearch;
+    textField.enablesReturnKeyAutomatically = NO;
+    textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
+    textField.autocorrectionType = UITextAutocorrectionTypeDefault;
+    textField.spellCheckingType = UITextSpellCheckingTypeDefault;
+    textField.accessibilityLabel = placeholderText;
+    [textField addTarget:self
+                  action:@selector(searchTextFieldEditingChanged:)
+        forControlEvents:UIControlEventEditingChanged];
+
+    UILabel *placeholderLabel = [UILabel new];
+    placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    placeholderLabel.userInteractionEnabled = NO;
+    placeholderLabel.text = placeholderText;
+    placeholderLabel.font = [GM MidFontWithSize:16];
+    placeholderLabel.textColor = [UIColor secondaryLabelColor];
+    placeholderLabel.textAlignment = NSTextAlignmentNatural;
+
+    [chromeView addSubview:iconView];
+    [chromeView addSubview:textField];
+    [chromeView addSubview:placeholderLabel];
+    [container addSubview:chromeView];
     [self.view addSubview:container];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [container.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
         [container.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [container.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [container.heightAnchor constraintEqualToConstant:60.0],
 
-        [searchBar.leadingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.leadingAnchor],
-        [searchBar.trailingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.trailingAnchor],
-        [searchBar.bottomAnchor constraintEqualToAnchor:container.layoutMarginsGuide.bottomAnchor],
-        [searchBar.heightAnchor constraintEqualToConstant:52.0]
+        [chromeView.leadingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.leadingAnchor],
+        [chromeView.trailingAnchor constraintEqualToAnchor:container.layoutMarginsGuide.trailingAnchor],
+        [chromeView.bottomAnchor constraintEqualToAnchor:container.layoutMarginsGuide.bottomAnchor],
+        [chromeView.heightAnchor constraintEqualToConstant:50.0],
+
+        [iconView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:14.0],
+        [iconView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:18.0],
+        [iconView.heightAnchor constraintEqualToConstant:18.0],
+
+        [textField.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:10.0],
+        [textField.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-14.0],
+        [textField.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
+        [textField.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
+
+        [placeholderLabel.leadingAnchor constraintEqualToAnchor:textField.leadingAnchor],
+        [placeholderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:textField.trailingAnchor],
+        [placeholderLabel.centerYAnchor constraintEqualToAnchor:textField.centerYAnchor]
     ]];
 
+    if (@available(iOS 15.0, *)) {
+        [constraints addObject:[container.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor constant:-12.0]];
+    } else {
+        [constraints addObject:[container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0]];
+    }
+
+    [NSLayoutConstraint activateConstraints:constraints];
+
     self.searchBarContainerView = container;
-    self.searchBar = searchBar;
+    self.searchFieldChromeView = chromeView;
+    self.searchFieldIconView = iconView;
+    self.searchTextField = textField;
+    self.searchPlaceholderLabel = placeholderLabel;
+    [self pp_updateSearchPlaceholderVisibility];
 }
 
 - (void)setupHeroHeader
@@ -401,7 +453,7 @@ PPUniversalCellDelegate>
 
     CGFloat cardPadding = PPSpaceXL;
     [NSLayoutConstraint activateConstraints:@[
-        [heroCard.topAnchor constraintEqualToAnchor:self.searchBarContainerView.bottomAnchor constant:PPSpaceSM],
+        [heroCard.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:PPSpaceSM],
         [heroCard.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
         [heroCard.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
 
@@ -462,7 +514,7 @@ PPUniversalCellDelegate>
         [collectionView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:14.0],
         [collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        [collectionView.bottomAnchor constraintEqualToAnchor:self.searchBarContainerView.topAnchor constant:-12.0]
     ]];
 
     self.collectionView = collectionView;
@@ -591,14 +643,14 @@ PPUniversalCellDelegate>
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.font = [GM boldFontWithSize:22];
-    titleLabel.textColor = UIColor.whiteColor;
+    titleLabel.textColor = AppSecondaryTextClr;
     titleLabel.numberOfLines = 2;
 
     UILabel *subtitleLabel = [UILabel new];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     subtitleLabel.font = [GM MidFontWithSize:14];
-    subtitleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.70];
+    subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.70];
     subtitleLabel.numberOfLines = 3;
 
     [container addSubview:iconView];
@@ -633,23 +685,26 @@ PPUniversalCellDelegate>
     self.emptySubtitleLabel = subtitleLabel;
 }
 
-#pragma mark - UISearchBarDelegate
+#pragma mark - UITextFieldDelegate
 
-- (void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText
+- (void)searchTextFieldEditingChanged:(UITextField *)textField
 {
-    [self handleSearchQueryUpdateWithRawText:searchText];
+    [self pp_updateSearchPlaceholderVisibility];
+    [self handleSearchQueryUpdateWithRawText:textField.text];
 }
 
-- (void)searchBarCancelButtonClicked:(UISearchBar *)searchBar
+- (BOOL)textFieldShouldClear:(UITextField *)textField
 {
-    searchBar.text = @"";
-    [searchBar resignFirstResponder];
+    (void)textField;
+    [self pp_updateSearchPlaceholderVisibility];
     [self resetSearchState];
+    return YES;
 }
 
-- (void)searchBarSearchButtonClicked:(UISearchBar *)searchBar
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
 {
-    [searchBar resignFirstResponder];
+    [textField resignFirstResponder];
+    return YES;
 }
 
 #pragma mark - Search Flow
@@ -663,7 +718,7 @@ PPUniversalCellDelegate>
             return;
         }
 
-        NSString *query = [strongSelf normalizedQueryFromRawString:strongSelf.searchBar.text];
+        NSString *query = [strongSelf normalizedQueryFromRawString:strongSelf.searchTextField.text];
         if (query.length >= kPPSearchMinimumQueryLength &&
             ![query isEqualToString:strongSelf.lastQuery]) {
             strongSelf.lastQuery = query;
@@ -1164,20 +1219,41 @@ PPUniversalCellDelegate>
 
 - (UITextField *)pp_searchTextField
 {
-    return [self pp_searchTextFieldForSearchBar:self.searchBar];
+    return self.searchTextField;
 }
 
-- (UITextField *)pp_searchTextFieldForSearchBar:(UISearchBar *)searchBar
+- (NSString *)pp_modernSearchPlaceholderText
 {
-    if (!searchBar) {
-        return nil;
+    NSString *modernText = kLang(@"SearchPlaceholderModern");
+    if (modernText.length > 0) {
+        return modernText;
+    }
+    return kLang(@"SearchPlaceholder");
+}
+
+- (void)pp_applySearchKeyboardManagerOverridesIfNeeded
+{
+    IQKeyboardManager *manager = [IQKeyboardManager sharedManager];
+    if (!self.isOverridingIQKeyboardManager) {
+        self.previousIQKeyboardManagerEnabled = manager.enable;
+        self.previousIQKeyboardToolbarEnabled = manager.enableAutoToolbar;
+        self.isOverridingIQKeyboardManager = YES;
     }
 
-    if (@available(iOS 13.0, *)) {
-        return searchBar.searchTextField;
+    manager.enable = NO;
+    manager.enableAutoToolbar = NO;
+}
+
+- (void)pp_restoreSearchKeyboardManagerOverridesIfNeeded
+{
+    if (!self.isOverridingIQKeyboardManager) {
+        return;
     }
 
-    return [searchBar valueForKey:@"searchField"];
+    IQKeyboardManager *manager = [IQKeyboardManager sharedManager];
+    manager.enable = self.previousIQKeyboardManagerEnabled;
+    manager.enableAutoToolbar = self.previousIQKeyboardToolbarEnabled;
+    self.isOverridingIQKeyboardManager = NO;
 }
 
 - (void)pp_schedulePendingSearchFieldFocusIfNeeded
@@ -1214,6 +1290,12 @@ PPUniversalCellDelegate>
     if ([textField becomeFirstResponder]) {
         self.pendingSearchFieldFocus = NO;
     }
+}
+
+- (void)pp_updateSearchPlaceholderVisibility
+{
+    BOOL shouldHidePlaceholder = self.searchTextField.text.length > 0;
+    self.searchPlaceholderLabel.hidden = shouldHidePlaceholder;
 }
 
 - (void)setLabel:(UILabel *)label text:(NSString *)text animated:(BOOL)animated

@@ -328,7 +328,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
 
-    section.interGroupSpacing = 0;
+    section.interGroupSpacing = 6;
     section.contentInsets =
     NSDirectionalEdgeInsetsMake(12, PPSize16, 12, PPSize16);
 

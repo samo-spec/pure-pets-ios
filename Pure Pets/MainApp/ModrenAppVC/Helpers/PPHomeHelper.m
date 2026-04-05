@@ -7,13 +7,21 @@
 
 #import "PPHomeHelper.h"
 #import "AccessViewerVC.h"
-#import "AppSearchHelper.h"
+#import "PPSearchViewController.h"
 #import <objc/runtime.h>
 #import <QuartzCore/QuartzCore.h>
 
 static void *kPPNavLastActionTimestampKey = &kPPNavLastActionTimestampKey;
 static const CFTimeInterval kPPNavActionDebounce = 0.35;
 static const CFTimeInterval kPPNavRetryDelay = 0.20;
+
+@interface PPHomeHelper ()
+
++ (BOOL)pp_popToViewControllerSafely:(UIViewController *)viewController
+              inNavigationController:(UINavigationController *)navigationController
+                            animated:(BOOL)animated;
+
+@end
 
 #pragma mark - 🧩 PPItem (Diffable Item Wrapper)
 
@@ -49,7 +57,44 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
 @implementation PPHomeHelper
 
 + (void)searchTappedFrom:(UIViewController *)controller {
-    [AppSearchHelper presentSearchFrom:controller];
+    if (!controller) {
+        return;
+    }
+
+    UINavigationController *navigationController = [self currentNavigationControllerFor:controller];
+    PPSearchViewController *searchController = nil;
+
+    for (UIViewController *viewController in navigationController.viewControllers.reverseObjectEnumerator) {
+        if ([viewController isKindOfClass:PPSearchViewController.class]) {
+            searchController = (PPSearchViewController *)viewController;
+            break;
+        }
+    }
+
+    if (searchController) {
+        [searchController focusSearchField];
+        if (navigationController.topViewController != searchController) {
+            [self pp_popToViewControllerSafely:searchController
+                        inNavigationController:navigationController
+                                      animated:YES];
+        }
+        return;
+    }
+
+    searchController = [PPSearchViewController new];
+    [searchController focusSearchField];
+
+    if (navigationController) {
+        [self pushViewControllerSafely:searchController from:controller animated:YES];
+        return;
+    }
+
+    UINavigationController *modalNavigationController =
+        [[UINavigationController alloc] initWithRootViewController:searchController];
+    [self presentViewControllerSafely:modalNavigationController
+                                 from:controller
+                             animated:YES
+                           completion:nil];
 }
 + (UIMenu *)actionsArrayFrom:(UIViewController *)controller
               layoutManager:(PPCollectionLayoutManager *)layoutManager
@@ -537,6 +582,38 @@ static const CFTimeInterval kPPNavRetryDelay = 0.20;
         });
     } else {
         [nav pushViewController:viewController animated:animated];
+    }
+    return YES;
+}
+
++ (BOOL)pp_popToViewControllerSafely:(UIViewController *)viewController
+              inNavigationController:(UINavigationController *)navigationController
+                            animated:(BOOL)animated
+{
+    if (!viewController || !navigationController) {
+        return NO;
+    }
+
+    if (![self pp_canNavigateWithNavigationController:navigationController]) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kPPNavRetryDelay * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            if (![self pp_canNavigateWithNavigationController:navigationController]) {
+                return;
+            }
+            if (![navigationController.viewControllers containsObject:viewController]) {
+                return;
+            }
+            [navigationController popToViewController:viewController animated:animated];
+        });
+        return NO;
+    }
+
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [navigationController popToViewController:viewController animated:animated];
+        });
+    } else {
+        [navigationController popToViewController:viewController animated:animated];
     }
     return YES;
 }

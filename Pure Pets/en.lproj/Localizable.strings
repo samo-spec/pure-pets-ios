@@ -203,6 +203,7 @@
 "SearchNoResultsTitle" = "No results";
 "SearchHere" = "Search here";
 "SearchPlaceholder" = "Search pets, accessories, services, vets";
+"SearchPlaceholderModern" = "Search pets, services, or accessories";
 "SelectCountryTitle" = "Select your country";
 "Select_address" = "Choose the Title";
 "Send" = "Send";

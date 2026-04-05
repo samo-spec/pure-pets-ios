@@ -1049,40 +1049,45 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     CGPoint end = CGPointMake(1.0, 1.0);
 
     if (hour < 6) {
+        // Deep Space — near-black with cool blue depth
         baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#12131D" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#1A2142" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#202C5B" alpha:1.0]
+            [UIColor hx_colorWithHexStr:@"#090B1A" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#111D3A" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#1A2950" alpha:1.0]
         ];
     } else if (hour < 11) {
+        // Amber Horizon — warm peach into soft plum
         baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#FFB660" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#FF7B43" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#C3472C" alpha:1.0]
+            [UIColor hx_colorWithHexStr:@"#D4956A" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#C06C54" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#7A3B4E" alpha:1.0]
         ];
-        start = CGPointMake(0.0, 0.1);
-        end = CGPointMake(1.0, 0.95);
+        start = CGPointMake(0.0, 0.05);
+        end = CGPointMake(1.0, 0.92);
     } else if (hour < 17) {
+        // Ocean Teal — rich teal flowing into deep indigo
         baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#F6C163" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#EF7C40" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#8644C7" alpha:1.0]
+            [UIColor hx_colorWithHexStr:@"#1B6B75" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#2C4068" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#3B2667" alpha:1.0]
         ];
-        start = CGPointMake(0.05, 0.0);
-        end = CGPointMake(1.0, 1.0);
+        start = CGPointMake(0.0, 0.0);
+        end = CGPointMake(0.95, 1.0);
     } else if (hour < 21) {
+        // Twilight Rose — deep violet with warm rose accent
         baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#2E2B6E" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#6C2F96" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#FF7A46" alpha:1.0]
+            [UIColor hx_colorWithHexStr:@"#1E1A3A" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#4A2462" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#8B4367" alpha:1.0]
         ];
         start = CGPointMake(0.0, 0.0);
         end = CGPointMake(1.0, 0.88);
     } else {
+        // Obsidian — refined near-black with subtle blue undertone
         baseColors = @[
-            [UIColor hx_colorWithHexStr:@"#111625" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#1B2A48" alpha:1.0],
-            [UIColor hx_colorWithHexStr:@"#303C72" alpha:1.0]
+            [UIColor hx_colorWithHexStr:@"#0A0D14" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#121826" alpha:1.0],
+            [UIColor hx_colorWithHexStr:@"#1B2238" alpha:1.0]
         ];
     }
 

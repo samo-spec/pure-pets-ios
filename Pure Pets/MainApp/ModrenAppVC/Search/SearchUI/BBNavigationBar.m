@@ -26,7 +26,7 @@
     if (@available(iOS 15.0, *)) {
 
         UINavigationBarAppearance *appearance = [UINavigationBarAppearance new];
- 
+        [appearance configureWithTransparentBackground];
         appearance.backgroundColor = UIColor.clearColor;
         appearance.shadowColor = UIColor.clearColor;
 
@@ -38,6 +38,14 @@
 
         appearance.titleTextAttributes = titleAttrs;
         appearance.largeTitleTextAttributes = titleAttrs;
+
+        UIImageSymbolConfiguration *backConfig =
+            [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold];
+        NSString *backSymbolName = Language.isRTL ? @"chevron.right" : @"chevron.left";
+        UIImage *backImage = [UIImage systemImageNamed:backSymbolName withConfiguration:backConfig];
+        if (backImage) {
+            [appearance setBackIndicatorImage:backImage transitionMaskImage:backImage];
+        }
 
         navBar.standardAppearance = appearance;
         navBar.scrollEdgeAppearance = appearance;

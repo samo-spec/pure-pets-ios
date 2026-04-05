@@ -767,16 +767,9 @@
 - (void)tintColorDidChange
 {
     [super tintColorDidChange];
-    [self pp_forceTextColors];
-}
-
-- (void)pp_forceTextColors
-{
-    UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    _searchIconView.tintColor = textColor;
-    _signalLabel.textColor = textColor;
-    _placeholderLabel.textColor = textColor;
-    _chevronView.tintColor = textColor;
+    // Nav-bar scroll-edge transitions can propagate tint updates while scrolling.
+    // Reapplying the steady home-search palette keeps the title view colors locked.
+    [self pp_applyPalette];
 }
 
 - (void)setHighlighted:(BOOL)highlighted
