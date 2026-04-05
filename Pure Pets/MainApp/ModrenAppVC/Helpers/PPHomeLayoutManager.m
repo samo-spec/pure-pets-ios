@@ -24,7 +24,7 @@
     NSArray<NSNumber *> *renderOrder = @[
         @(PPHomeSectionHero),
         @(PPHomeSectionQuickActions),
-        @(PPHomeSectionServices),
+       // @(PPHomeSectionServices),
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionMainKinds),
@@ -53,8 +53,8 @@
             case PPHomeSectionQuickActions:
                 return [PPHomeFunc quickActionsSection];
 
-            case PPHomeSectionServices:
-                return [PPHomeFunc servicesSection];
+            //case PPHomeSectionServices:
+                //return [PPHomeFunc servicesSection];
 
             case PPHomeSectionCurrentOrders:
                 return [PPHomeFunc currentOrdersSectionExpanded:weakSelf.isCurrentOrdersExpanded];

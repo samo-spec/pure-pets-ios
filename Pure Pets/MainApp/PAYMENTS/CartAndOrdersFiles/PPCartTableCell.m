@@ -29,6 +29,7 @@
 @property (nonatomic, strong, readwrite) UIImageView *itemImageView;
 @property (nonatomic, strong, readwrite) UILabel *nameLabel;
 @property (nonatomic, strong, readwrite) UILabel *priceLabel;
+@property (nonatomic, strong, readwrite) UILabel *originalPriceLabel;
 @property (nonatomic, strong, readwrite) UILabel *quantityLabel;
 
 @property (nonatomic, strong) UIStackView *textStack;
@@ -85,7 +86,7 @@
     // Product image
     self.itemImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
     self.itemImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.itemImageView.layer.cornerRadius = 14.0;
+    self.itemImageView.layer.cornerRadius = 16.0;
     self.itemImageView.clipsToBounds = YES;
     self.itemImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.itemImageView.backgroundColor = UIColor.secondarySystemBackgroundColor;
@@ -107,12 +108,29 @@
     self.priceLabel.numberOfLines = 1;
     self.priceLabel.textAlignment = NSTextAlignmentNatural;
 
+    // Original price (strikethrough — only visible when discount active)
+    self.originalPriceLabel = [[UILabel alloc] init];
+    self.originalPriceLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.originalPriceLabel.font = [GM fontWithSize:13];
+    self.originalPriceLabel.textColor = UIColor.tertiaryLabelColor;
+    self.originalPriceLabel.numberOfLines = 1;
+    self.originalPriceLabel.textAlignment = NSTextAlignmentNatural;
+    self.originalPriceLabel.hidden = YES;
+
+    // Price stack (discounted price first, original price below it)
+    UIStackView *priceStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.priceLabel, self.originalPriceLabel]];
+    priceStack.translatesAutoresizingMaskIntoConstraints = NO;
+    priceStack.axis = UILayoutConstraintAxisVertical;
+    priceStack.spacing = 4.0;
+    priceStack.alignment = UIStackViewAlignmentLeading;
+
     // Text stack
-    self.textStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.nameLabel, self.priceLabel]];
+    self.textStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.nameLabel, priceStack]];
     self.textStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.textStack.axis = UILayoutConstraintAxisVertical;
-    self.textStack.spacing = 12.0;
+    self.textStack.spacing = 8.0;
     self.textStack.alignment = UIStackViewAlignmentFill;
+    self.textStack.distribution = UIStackViewDistributionFill;
     [self.cardContainer addSubview:self.textStack];
 
     // Quantity label
@@ -270,6 +288,8 @@
     self.itemImageView.image = nil;
     self.nameLabel.text = @"";
     self.priceLabel.text = @"";
+    self.originalPriceLabel.attributedText = nil;
+    self.originalPriceLabel.hidden = YES;
     self.quantityLabel.text = @"";
 
     [self pp_setCardHighlighted:NO animated:NO];
@@ -291,18 +311,33 @@
 
     self.nameLabel.text = item.name ?: @"";
 
-    // Currency display (kept as-is style but safe)
-    self.priceLabel.text = [PPChatsFunc formattedCurrency:item.quantity];
-
     self.quantityLabel.text = [NSString stringWithFormat:@"%ld", (long)item.quantity];
 
     [GM setImageFromUrlString:item.imageURL imageView:self.itemImageView phImage:@"placeholder"];
-    
+
+    // Effective (charged) price
     self.priceLabel.text = [PPChatsFunc formattedCurrency:item.price];
 
-    
+    // Show strikethrough original price when discounted
+    if (item.hasDiscount) {
+        self.priceLabel.textColor = UIColor.labelColor;
+        NSString *origText = [PPChatsFunc formattedCurrency:item.originalPrice];
+        NSDictionary *strikeAttrs = @{
+            NSStrikethroughStyleAttributeName: @(NSUnderlineStyleSingle),
+            NSForegroundColorAttributeName: UIColor.tertiaryLabelColor,
+            NSFontAttributeName: self.originalPriceLabel.font
+        };
+        self.originalPriceLabel.attributedText = [[NSAttributedString alloc] initWithString:origText attributes:strikeAttrs];
+        self.originalPriceLabel.hidden = NO;
+    } else {
+        self.priceLabel.textColor = UIColor.labelColor;
+        self.originalPriceLabel.attributedText = nil;
+        self.originalPriceLabel.hidden = YES;
+    }
 
-    DLog(@"Configured cell for itemID=%@ name=%@", item.itemID, item.name);
+    DLog(@"Configured cell | itemID=%@ | name=%@ | price=%.2f | original=%.2f | discount=%@ | qty=%ld",
+         item.itemID, item.name, item.price, item.originalPrice,
+         item.hasDiscount ? @"YES" : @"NO", (long)item.quantity);
 }
 
 #pragma mark - Actions

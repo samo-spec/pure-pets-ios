@@ -738,30 +738,64 @@ static void *kPPTransitionStyleKey = &kPPTransitionStyleKey;
     if (!self.pp_badgeLabel || self.pp_badgeLabel.superview != containerView) {
         [self.pp_badgeLabel removeFromSuperview];
 
-        UILabel *label = [[UILabel alloc] initWithFrame:CGRectZero];
-        label.backgroundColor = UIColor.systemRedColor;
-        label.textColor = UIColor.whiteColor;
+        PPInsetLabel *label = [[PPInsetLabel alloc] initWithFrame:CGRectZero];
+        UIColor *badgeFill = AppPrimaryClr ?: [UIColor systemPinkColor];
+        UIColor *badgeTextColor = UIColor.whiteColor;
+        UIColor *badgeBorderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.26];
+
+        label.textInsets = UIEdgeInsetsMake(3.0, 7.0, 3.0, 7.0);
+        label.backgroundColor = badgeFill;
+        label.textColor = badgeTextColor;
         label.textAlignment = NSTextAlignmentCenter;
-        label.font = [GM MidFontWithSize:12];
-        label.layer.cornerRadius = 9;
-        label.clipsToBounds = YES;
+        label.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightBold];
+        label.numberOfLines = 1;
+        label.adjustsFontSizeToFitWidth = YES;
+        label.minimumScaleFactor = 0.86;
+        label.layer.cornerRadius = 10.5;
+        label.layer.borderWidth = 1.0;
+        label.layer.borderColor = badgeBorderColor.CGColor;
+        label.layer.shadowColor = (AppPrimaryClrDarker ?: UIColor.blackColor).CGColor;
+        label.layer.shadowOpacity = 0.22f;
+        label.layer.shadowRadius = 9.0f;
+        label.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+        label.clipsToBounds = NO;
         label.translatesAutoresizingMaskIntoConstraints = NO;
+        label.userInteractionEnabled = NO;
+        label.layer.zPosition = 12.0f;
+        if (@available(iOS 13.0, *)) {
+            label.layer.cornerCurve = kCACornerCurveContinuous;
+        }
 
         self.pp_badgeLabel = label;
 
         [containerView addSubview:label];
 
-        // Pin in the top-trailing corner once the bar button has a real view.
         [NSLayoutConstraint activateConstraints:@[
-            [label.heightAnchor constraintEqualToConstant:18],
-            [label.widthAnchor constraintGreaterThanOrEqualToConstant:18],
-            [label.topAnchor constraintEqualToAnchor:containerView.topAnchor constant:1],
-            [label.trailingAnchor constraintEqualToAnchor:containerView.trailingAnchor constant:2]
+            [label.heightAnchor constraintGreaterThanOrEqualToConstant:21.0],
+            [label.widthAnchor constraintGreaterThanOrEqualToConstant:21.0],
+            [label.topAnchor constraintEqualToAnchor:containerView.topAnchor constant:-4.0],
+            [label.trailingAnchor constraintEqualToAnchor:containerView.trailingAnchor constant:5.0]
         ]];
     }
 
+    BOOL valueChanged = ![self.pp_badgeLabel.text isEqualToString:value];
     self.pp_badgeLabel.text = value;
+    [self.pp_badgeLabel invalidateIntrinsicContentSize];
+    [containerView setNeedsLayout];
+    [containerView layoutIfNeeded];
     self.pp_pendingBadgeValue = nil;
+
+    if (valueChanged) {
+        self.pp_badgeLabel.transform = CGAffineTransformMakeScale(0.86, 0.86);
+        [UIView animateWithDuration:0.24
+                              delay:0.0
+             usingSpringWithDamping:0.68
+              initialSpringVelocity:0.2
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.pp_badgeLabel.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
 }
 
 - (void)pp_removeBadge {
@@ -771,8 +805,6 @@ static void *kPPTransitionStyleKey = &kPPTransitionStyleKey;
 }
 
 @end
-
-
 
 
 

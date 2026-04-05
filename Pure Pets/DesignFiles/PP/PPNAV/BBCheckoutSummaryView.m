@@ -8,6 +8,7 @@
 #import "BBCheckoutSummaryView.h"
 #import "PPChatsFunc.h"
 #import "CartManager.h"
+#import "PPCartCalculator.h"
 
 
 @interface BBCheckoutSummaryView () <UICollectionViewDataSource, UICollectionViewDelegate>
@@ -88,12 +89,8 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
 
     self.previewItems = items ?: @[];
 
-    CGFloat itemsTotal = 0.0;
-    for (CartItem *item in self.previewItems) {
-        itemsTotal += item.price * item.quantity;
-    }
-    CGFloat shipping = self.previewItems.count == 0 ? 0.0 : [CartManager sharedManager].deliveryFee;
-    [self updateTotalsWithItems:itemsTotal shipping:shipping showTitle:self.showDetails];
+    PPCartSummary *summary = [PPCartCalculator currentSummary];
+    [self updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:self.showDetails];
 
     BOOL shouldShowPreview =
         self.showsItemsPreview && self.previewItems.count > 0;

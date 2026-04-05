@@ -2049,3 +2049,17 @@
 "home_greeting_named_format_ltr" = "%1$@, %2$@ 🐾";
 "home_suggestion_reason_nearby" = "Near you";
 "home_suggestion_reason_previous_orders" = "Based on your previous orders";
+
+/* Settings Screen */
+"ViewProfile" = "View Profile";
+"Storage" = "Storage";
+"ClearCache" = "Clear Cache";
+"ClearCacheMessage" = "This will clear all cached images and data.";
+"Logout" = "Logout";
+"LogoutMessage" = "Are you sure you want to log out?";
+"everyone" = "Everyone";
+"noOne" = "No one";
+"Guest" = "Guest";
+"checkout_item_price_invalid" = "One or more items have an invalid price. Please remove them and try again.";
+"checkout_generic_error" = "Something went wrong during checkout. Please try again.";
+"home_quick_action_nearest_vet" = "Nearest Vet";

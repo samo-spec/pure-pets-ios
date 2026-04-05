@@ -67,7 +67,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     [NSCollectionLayoutSection sectionWithGroup:group];
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(12.0, PPSize16, 12.0, PPSize16);
+    NSDirectionalEdgeInsetsMake(8.0, PPSize16, 16.0, PPSize16);
 
     return section;
 }
@@ -99,7 +99,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(PPSize6, PPSize12, PPSize12, PPSize12);
+    NSDirectionalEdgeInsetsMake(8.0, PPSize16, 16.0, PPSize16);
 
     return section;
 }
@@ -553,7 +553,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
    NSCollectionLayoutSize *itemSize =
    [NSCollectionLayoutSize sizeWithWidthDimension:
-    [NSCollectionLayoutDimension absoluteDimension:156.0]
+    [NSCollectionLayoutDimension absoluteDimension:176.0]
                                     heightDimension:
     [NSCollectionLayoutDimension absoluteDimension:64.0]];
 
@@ -571,8 +571,8 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
    section.orthogonalScrollingBehavior =
        UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-   section.interGroupSpacing = 10.0;
-   section.contentInsets = NSDirectionalEdgeInsetsMake(0.0, PPSize16, 10.0, PPSize16);
+   section.interGroupSpacing = 12.0;
+   section.contentInsets = NSDirectionalEdgeInsetsMake(4.0, PPSize16, 12.0, PPSize16);
 
    return section;
 }

@@ -11,6 +11,7 @@
 #import "PPCheckoutCoordinator.h"
 #import "PPPaymentManager.h"
 #import "CartManager.h"
+#import "PPCartCalculator.h"
 #import "PPAddressesManager.h"
 #import "UserModel.h"
 #import "AddressFormVC.h"
@@ -111,12 +112,11 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         NSLog(@"🛒 Checkout tapped on PPSelectPaymentVC+Helper");
         [weakSelf finishPayments];
     };
-    // Update summary with cart data
-    CGFloat itemsTotal = 0.0;
-    
+    // Update summary with cart data via centralized calculator
+    PPCartSummary *summary = [PPCartCalculator currentSummary];
+
     BOOL showShowCollectionPreview = CartManager.sharedManager.cartItems.count > 3;
-    for (CartItem *item in CartManager.sharedManager.cartItems) {  itemsTotal += item.price * item.quantity; }
-    [self.summaryView updateTotalsWithItems:itemsTotal shipping:[CartManager sharedManager].deliveryFee showTitle:NO];
+    [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
     self.summaryView.showDetails = !showShowCollectionPreview ;
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
     self.summaryView.showsItemsPreview = showShowCollectionPreview;
@@ -348,13 +348,9 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
 - (void)pp_refreshCheckoutPricingPresentation
 {
-    CGFloat itemsTotal = 0.0;
-    for (CartItem *item in CartManager.sharedManager.cartItems) {
-        itemsTotal += item.price * item.quantity;
-    }
+    PPCartSummary *summary = [PPCartCalculator currentSummary];
 
-    CGFloat shippingFee = CartManager.sharedManager.cartItems.count > 0 ? [CartManager sharedManager].deliveryFee : 0.0;
-    [self.summaryView updateTotalsWithItems:itemsTotal shipping:shippingFee showTitle:NO];
+    [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
 
     [self pp_applyDefaultSelectionIfNeeded];
@@ -681,9 +677,17 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
                         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
                         [PPHUD showInfo:kLang(@"payment_cancelled_by_user")];
                     } else {
-                        NSString *reason = error.localizedDescription.length > 0
-                            ? error.localizedDescription
-                            : kLang(@"SomethingWentWrong");
+                        NSString *rawReason = error.localizedDescription ?: @"";
+                        NSString *reason;
+                        if ([rawReason rangeOfString:@"must be a positive number" options:NSCaseInsensitiveSearch].location != NSNotFound) {
+                            reason = kLang(@"checkout_item_price_invalid") ?: @"One or more items have an invalid price. Please remove them and try again.";
+                        } else if (rawReason.length > 0 && [rawReason rangeOfString:@"-" options:0].location != NSNotFound && rawReason.length > 30) {
+                            // Raw SDK error with UUIDs — show generic user-friendly message
+                            reason = kLang(@"checkout_generic_error") ?: kLang(@"SomethingWentWrong");
+                        } else {
+                            reason = rawReason.length > 0 ? rawReason : kLang(@"SomethingWentWrong");
+                        }
+                        PPORDERLog(@"Checkout failed | rawError=%@", rawReason);
                         [PPAlertHelper showErrorIn:strongSelf title:kLang(@"checkout_failed_title") subtitle:reason];
                         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
                     }

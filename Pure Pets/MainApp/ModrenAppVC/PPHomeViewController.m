@@ -282,6 +282,7 @@
     signalLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     signalLabel.adjustsFontSizeToFitWidth = YES;
     signalLabel.minimumScaleFactor = 0.84;
+    signalLabel.numberOfLines = 1;
     signalLabel.userInteractionEnabled = NO;
     signalLabel.text = kLang(@"home_nav_search_trending") ?: @"Trending";
     [signalRowView addArrangedSubview:signalLabel];
@@ -289,13 +290,14 @@
 
     UILabel *placeholderLabel = [UILabel new];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    placeholderLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    placeholderLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
     placeholderLabel.textAlignment = NSTextAlignmentNatural;
     placeholderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     placeholderLabel.adjustsFontSizeToFitWidth = YES;
     placeholderLabel.allowsDefaultTighteningForTruncation = YES;
     placeholderLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
-    placeholderLabel.minimumScaleFactor = 0.72;
+    placeholderLabel.minimumScaleFactor = 0.82;
+    placeholderLabel.numberOfLines = 1;
     placeholderLabel.userInteractionEnabled = NO;
     placeholderLabel.text = kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
     [textStackView addArrangedSubview:placeholderLabel];
@@ -318,9 +320,9 @@
     NSString *chevronSymbolName = isRTL ? @"chevron.forward" : @"chevron.backward";
     UIImageView *chevronView =
         [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:chevronSymbolName
-                                                         pointSize:10
+                                                         pointSize:11
                                                             weight:UIImageSymbolWeightBold
-                                                             scale:UIImageSymbolScaleSmall
+                                                             scale:UIImageSymbolScaleMedium
                                                            palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
                                                       makeTemplate:YES]];
     chevronView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -352,8 +354,8 @@
 
         [leadingOrbView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:8.0],
         [leadingOrbView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [leadingOrbView.widthAnchor constraintEqualToConstant:24.0],
-        [leadingOrbView.heightAnchor constraintEqualToConstant:24.0],
+        [leadingOrbView.widthAnchor constraintEqualToConstant:22.0],
+        [leadingOrbView.heightAnchor constraintEqualToConstant:22.0],
 
         [searchIconView.centerXAnchor constraintEqualToAnchor:leadingOrbView.centerXAnchor],
         [searchIconView.centerYAnchor constraintEqualToAnchor:leadingOrbView.centerYAnchor],
@@ -363,21 +365,21 @@
         [signalDotView.widthAnchor constraintEqualToConstant:5.5],
         [signalDotView.heightAnchor constraintEqualToConstant:5.5],
 
-        [textStackView.leadingAnchor constraintEqualToAnchor:leadingOrbView.trailingAnchor constant:10.0],
+        [textStackView.leadingAnchor constraintEqualToAnchor:leadingOrbView.trailingAnchor constant:8.0],
         [textStackView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
         [textStackView.topAnchor constraintGreaterThanOrEqualToAnchor:chromeView.topAnchor constant:7.0],
         [textStackView.bottomAnchor constraintLessThanOrEqualToAnchor:chromeView.bottomAnchor constant:-7.0],
-        [textStackView.trailingAnchor constraintLessThanOrEqualToAnchor:trailingOrbView.leadingAnchor constant:-2.0],
+        [textStackView.trailingAnchor constraintEqualToAnchor:trailingOrbView.leadingAnchor constant:-8.0],
 
         [trailingOrbView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-8.0],
         [trailingOrbView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [trailingOrbView.widthAnchor constraintEqualToConstant:24.0],
-        [trailingOrbView.heightAnchor constraintEqualToConstant:24.0],
+        [trailingOrbView.widthAnchor constraintEqualToConstant:22.0],
+        [trailingOrbView.heightAnchor constraintEqualToConstant:22.0],
 
         [chevronView.centerXAnchor constraintEqualToAnchor:trailingOrbView.centerXAnchor],
         [chevronView.centerYAnchor constraintEqualToAnchor:trailingOrbView.centerYAnchor],
-        [chevronView.widthAnchor constraintEqualToConstant:20.0],
-        [chevronView.heightAnchor constraintEqualToConstant:20.0],
+        [chevronView.widthAnchor constraintEqualToConstant:16.0],
+        [chevronView.heightAnchor constraintEqualToConstant:16.0],
 
         [activityDotView.widthAnchor constraintEqualToConstant:5.0],
         [activityDotView.heightAnchor constraintEqualToConstant:5.0],
@@ -416,7 +418,7 @@
 {
     [super layoutSubviews];
     CGFloat width = CGRectGetWidth(self.bounds);
-    BOOL showsSignalRow = width >= 214.0;
+    BOOL showsSignalRow = width >= 242.0;
     _signalRowView.hidden = !showsSignalRow;
     _activityDotView.hidden = showsSignalRow;
     _textStackView.spacing = showsSignalRow ? 0.5 : 0.0;
@@ -564,7 +566,7 @@
 - (void)pp_applyPalette
 {
     UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *accentColor = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
+    UIColor *accentColor = AppBackgroundClrDarker ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
     UIColor *surfaceColor = AppForgroundColr ?: [UIColor systemBackgroundColor];
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     UIColor *glassWhite = [UIColor whiteColor];
@@ -577,64 +579,64 @@
     }
 
     _gradientLayer.colors = @[
-        (__bridge id)[surfaceColor colorWithAlphaComponent:isDark ? 0.44 : 0.18].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.05 : 0.22].CGColor,
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.10 : 0.08].CGColor,
-        (__bridge id)[surfaceColor colorWithAlphaComponent:isDark ? 0.30 : 0.14].CGColor
+        (__bridge id)[surfaceColor colorWithAlphaComponent:isDark ? 0.34 : 0.12].CGColor,
+        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.04 : 0.15].CGColor,
+        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.08 : 0.06].CGColor,
+        (__bridge id)[surfaceColor colorWithAlphaComponent:isDark ? 0.22 : 0.08].CGColor
     ];
     _gradientLayer.locations = @[@0.0, @0.24, @0.68, @1.0];
     _gradientLayer.opacity = 1.0f;
     _ambientGlowLayer.colors = @[
         (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.06 : 0.12].CGColor,
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.10 : 0.09].CGColor,
+        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.05 : 0.09].CGColor,
+        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.08 : 0.07].CGColor,
         (__bridge id)[UIColor.clearColor CGColor]
     ];
     _ambientGlowLayer.locations = @[@0.0, @0.26, @0.62, @1.0];
     _topHighlightLayer.colors = @[
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.18 : 0.40].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.06 : 0.12].CGColor,
+        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.14 : 0.30].CGColor,
+        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.04 : 0.08].CGColor,
         (__bridge id)[UIColor.clearColor CGColor]
     ];
     _topHighlightLayer.locations = @[@0.0, @0.28, @0.75];
     _topHighlightLayer.opacity = 0.62f;
     _bottomTintLayer.colors = @[
         (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.08 : 0.06].CGColor,
+        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.07 : 0.05].CGColor,
         (__bridge id)[[UIColor colorWithWhite:(isDark ? 0.0 : 1.0)
-                                       alpha:(isDark ? 0.14 : 0.02)] CGColor]
+                                       alpha:(isDark ? 0.10 : 0.01)] CGColor]
     ];
     _bottomTintLayer.locations = @[@0.0, @0.64, @1.0];
     _bottomTintLayer.opacity = 0.36f;
     _liquidBorderLayer.colors = @[
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.42 : 0.60].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.12 : 0.20].CGColor,
-        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.14 : 0.12].CGColor,
-        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.28 : 0.46].CGColor
+        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.34 : 0.52].CGColor,
+        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.10 : 0.16].CGColor,
+        (__bridge id)[accentColor colorWithAlphaComponent:isDark ? 0.12 : 0.10].CGColor,
+        (__bridge id)[glassWhite colorWithAlphaComponent:isDark ? 0.22 : 0.38].CGColor
     ];
     _liquidBorderLayer.locations = @[@0.0, @0.22, @0.64, @1.0];
     _chromeView.layer.borderColor =
-        [[glassWhite colorWithAlphaComponent:isDark ? 0.06 : 0.14] CGColor];
+        [[glassWhite colorWithAlphaComponent:isDark ? 0.08 : 0.16] CGColor];
 
     _leadingOrbView.backgroundColor =
-        [glassWhite colorWithAlphaComponent:isDark ? 0.10 : 0.22];
+        [glassWhite colorWithAlphaComponent:isDark ? 0.08 : 0.15];
     _leadingOrbView.layer.borderWidth = 0.8f;
     _leadingOrbView.layer.borderColor =
-        [[glassWhite colorWithAlphaComponent:isDark ? 0.12 : 0.22] CGColor];
-    _searchIconView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.96 : 0.92];
+        [[glassWhite colorWithAlphaComponent:isDark ? 0.10 : 0.16] CGColor];
+    _searchIconView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.99 : 0.97];
 
-    _signalDotView.backgroundColor = accentColor;
-    _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.60 : 0.54];
-    _placeholderLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.94 : 0.88];
+    _signalDotView.backgroundColor = AppPrimaryClrShiner;
+    _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.72 : 0.68];
+    _placeholderLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.99 : 0.98];
 
     _trailingOrbView.backgroundColor =
-        [glassWhite colorWithAlphaComponent:isDark ? 0.09 : 0.20];
+        [glassWhite colorWithAlphaComponent:isDark ? 0.08 : 0.14];
     _trailingOrbView.layer.borderWidth = 0.8f;
     _trailingOrbView.layer.borderColor =
-        [[glassWhite colorWithAlphaComponent:isDark ? 0.12 : 0.20] CGColor];
-    _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.80 : 0.66];
+        [[glassWhite colorWithAlphaComponent:isDark ? 0.10 : 0.16] CGColor];
+    _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.94 : 0.86];
     _activityDotView.backgroundColor = accentColor;
-    _shineLayer.opacity = isDark ? 0.10f : 0.14f;
+    _shineLayer.opacity = isDark ? 0.08f : 0.10f;
 
     if (!_showSmartPillBackground) {
         [self pp_applySmartPillBackgroundVisibility];
@@ -679,13 +681,14 @@
 - (void)pp_applySmartPillBackgroundVisibility
 {
     BOOL show = _showSmartPillBackground;
-    _blurView.hidden          = !show;
-    _gradientLayer.hidden     = !show;
-    _ambientGlowLayer.hidden  = !show;
-    //_topHighlightLayer.hidden = !show;
+    show = YES;
+    _blurView.hidden          = show;
+    _gradientLayer.hidden     = show;
+    _ambientGlowLayer.hidden  = show;
+    _topHighlightLayer.hidden = show;
     _bottomTintLayer.hidden   = !show;
-    //_liquidBorderLayer.hidden = !show;
-    //_shineLayer.hidden        = !show;
+    _liquidBorderLayer.hidden = !show;
+    _shineLayer.hidden        = !show;
     _chromeView.layer.borderWidth = show ? 0.75f : 0.0f;
     self.layer.shadowOpacity      = show ? 0.08f : 0.0f;
 }
@@ -1251,6 +1254,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL accessoriesLoaded;
 @property (nonatomic, assign) BOOL nearbyLoaded;
 @property (nonatomic, assign) BOOL nearbyLoading;
+@property (nonatomic, assign) BOOL hideServiceSection;
 @property (nonatomic, strong, nullable) MainKindsModel *selectedCategory;
 @property (nonatomic, strong) PPHomeLayoutManager *layoutManager;
 @property (nonatomic, strong) UICollectionView *collectionView;
@@ -1697,10 +1701,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [[NSDiffableDataSourceSnapshot alloc] init];
 
     // ✅ Sections ALWAYS visible
-    [snapshot appendSectionsWithIdentifiers:@[
+    NSMutableArray<NSNumber *> *sections = [@[
         @(PPHomeSectionHero),
         @(PPHomeSectionQuickActions),
-        @(PPHomeSectionServices),
+    ] mutableCopy];
+    if (!self.hideServiceSection) {
+        [sections addObject:@(PPHomeSectionServices)];
+    }
+    [sections addObjectsFromArray:@[
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionMainKinds),
@@ -1709,6 +1717,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionAdopt),
     ]];
+    [snapshot appendSectionsWithIdentifiers:sections];
 
     // ✅ Hero (always present)
     PPHomeItem *heroItem = [PPHomeItem new];
@@ -1728,14 +1737,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                intoSectionWithIdentifier:@(PPHomeSectionQuickActions)];
 
     // ✅ Services (right after hero)
-    NSMutableArray *services = [NSMutableArray array];
-    for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
-        PPHomeItem *item = [PPHomeItem new];
-        item.payload = service;
-        [services addObject:item];
+    if (!self.hideServiceSection) {
+        NSMutableArray *services = [NSMutableArray array];
+        for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
+            PPHomeItem *item = [PPHomeItem new];
+            item.payload = service;
+            [services addObject:item];
+        }
+        [snapshot appendItemsWithIdentifiers:services
+                   intoSectionWithIdentifier:@(PPHomeSectionServices)];
     }
-    [snapshot appendItemsWithIdentifiers:services
-               intoSectionWithIdentifier:@(PPHomeSectionServices)];
 
     // ✅ Current Orders (after services)
     NSArray<PPHomeItem *> *currentOrderItems = [self pp_homeCurrentOrderItems];
@@ -2009,6 +2020,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
    // [PetAdManager.sharedManager migrateImageMetaToImageItemsOnce];
     //[CartManager.sharedManager clearCart];
     self.isMainKindsExpanded = NO; // collapsed = horizontal
+    self.hideServiceSection = YES;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
     self.view.backgroundColor = AppBackgroundClr;
@@ -5652,6 +5664,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_emitSoftImpactHaptic];
 
     switch (quickAction.type) {
+        case PPHomeQuickActionTypeNearestVet:
+            [self openNearestVet];
+            break;
         case PPHomeQuickActionTypeSellPet:
         case PPHomeQuickActionTypeAddAd:
             [self pp_openAddNewAdComposer];
@@ -6103,6 +6118,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.contentEdgeInsets = UIEdgeInsetsZero;
     button.adjustsImageWhenHighlighted = NO;
+    button.clipsToBounds = NO;
     button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78] ?: [UIColor colorWithWhite:1.0 alpha:0.92];
     button.layer.cornerRadius = kSize * 0.5;
     button.layer.borderWidth = 0.8;
@@ -6124,7 +6140,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:
         [UIImage pp_symbolNamed:@"cart"
-                      pointSize:14
+                      pointSize:16
                          weight:UIImageSymbolWeightMedium
                           scale:UIImageSymbolScaleMedium
                         palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
@@ -6269,23 +6285,38 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count
 {
+    BOOL shouldShowCart = (count > 0);
+    BOOL isAlreadyShowing = [self.navigationItem.rightBarButtonItems containsObject:self.homeCartItem];
+
+    if (shouldShowCart && !self.homeCartItem) {
+        self.homeCartItem = [self pp_buildCartBarButtonItem];
+    }
+
+    if (shouldShowCart && isAlreadyShowing) {
+        UIView *cartView = self.homeCartItem.customView;
+        [cartView setNeedsLayout];
+        [cartView layoutIfNeeded];
+        [self.navigationController.navigationBar setNeedsLayout];
+        [self.navigationController.navigationBar layoutIfNeeded];
+        return;
+    }
 
     NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray array];
-    if (count > 0) {
-        if (!self.homeCartItem) {
-            self.homeCartItem = [self pp_buildCartBarButtonItem];
-        }
+    if (shouldShowCart) {
         [items addObject:self.homeCartItem];
     }
 
-
     self.navigationItem.rightBarButtonItems = items.copy;
+    [self.homeCartItem.customView setNeedsLayout];
+    [self.homeCartItem.customView layoutIfNeeded];
+    [self.navigationController.navigationBar setNeedsLayout];
+    [self.navigationController.navigationBar layoutIfNeeded];
 }
 
 - (CGFloat)pp_preferredNavigationSearchWidth
 {
     CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
-    return MIN(MAX(screenWidth - 142.0, 206.0), 276.0);
+    return MIN(MAX(screenWidth - 112.0, 206.0), 320.0);
 }
 
 - (UIView *)pp_navigationSmartSearchTitleView
@@ -6340,16 +6371,29 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     NSMutableArray<NSString *> *items = [NSMutableArray array];
-    NSArray<NSString *> *candidates = @[
-        kLang(@"home_nav_search_example_cats_compact") ?: @"Cats",
-        kLang(@"home_nav_search_example_vets_compact") ?: @"Vet",
-        kLang(@"home_nav_search_example_food_compact") ?: @"Food",
-        kLang(@"home_nav_search_example_accessories_compact") ?: @"Gear"
-    ];
+    NSString *primaryPlaceholder = kLang(@"home_search_placeholder_short") ?: @"Search in Pure Pets";
+    if (PPSafeString(primaryPlaceholder).length > 0) {
+        [items addObject:primaryPlaceholder];
+    }
+
+    BOOL prefersExpandedExamples = [self pp_preferredNavigationSearchWidth] >= 232.0;
+    NSArray<NSString *> *candidates = prefersExpandedExamples
+        ? @[
+            kLang(@"home_nav_search_example_cats") ?: @"Cats for sale",
+            kLang(@"home_nav_search_example_vets") ?: @"Nearby vets",
+            kLang(@"home_nav_search_example_food") ?: @"Dog food",
+            kLang(@"home_nav_search_example_accessories") ?: @"Pet accessories"
+        ]
+        : @[
+            kLang(@"home_nav_search_example_cats_compact") ?: @"Cats",
+            kLang(@"home_nav_search_example_vets_compact") ?: @"Vet",
+            kLang(@"home_nav_search_example_food_compact") ?: @"Food",
+            kLang(@"home_nav_search_example_accessories_compact") ?: @"Gear"
+        ];
 
     for (NSString *item in candidates) {
         NSString *safeItem = PPSafeString(item);
-        if (safeItem.length > 0) {
+        if (safeItem.length > 0 && ![items containsObject:safeItem]) {
             [items addObject:safeItem];
         }
     }
@@ -6773,21 +6817,28 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                          kLang(@"left in stock")]];
     }
 
-         if (safeQuantity == 0) {
-            [[CartManager sharedManager] removeItemForAccessory:access];
+    if (safeQuantity == 0) {
+        [PPFunc triggerWarningHaptic];
+        [[CartManager sharedManager] removeItemForAccessory:access];
+    } else {
+        CartManager *cart = [CartManager sharedManager];
+        CartItem *existing = [cart getCartItemForItemID:access.accessoryID];
+        CartItem *item = [[CartItem alloc] initWithAccessory:access quantity:safeQuantity];
+        if (existing) {
+            [cart updateQuantity:safeQuantity forItem:item completion:nil];
         } else {
-            CartManager *cart = [CartManager sharedManager];
-            CartItem *existing = [cart getCartItemForItemID:access.accessoryID];
-            CartItem *item = [[CartItem alloc] initWithAccessory:access quantity:safeQuantity];
-            if (existing) {
-                [cart updateQuantity:safeQuantity forItem:item completion:nil];
-            } else {
-                BOOL didAdd = [cart addItem:item];
-                if (!didAdd) {
-                    [PPHUD showError:kLang(@"Out of stock")];
-                }
+            BOOL didAdd = [cart addItem:item];
+            if (!didAdd) {
+                [PPHUD showError:kLang(@"Out of stock")];
             }
         }
+
+        if (safeQuantity == 1) {
+            [PPFunc triggerLightHaptic];
+        } else {
+            [PPFunc triggerMediumHaptic];
+        }
+    }
 
     NSLog(@"[Quantity] Quantity %ld", (long)safeQuantity);
 
@@ -6809,18 +6860,21 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    NSUInteger count = CartManager.sharedManager.cartItems.count;
+    NSInteger count = [CartManager.sharedManager totalItemsCount];
+    count = MAX(count, 0);
     [self refreshNavigationRightItemsForCartCount:count];
 
-    if (@available(iOS 26.0, *)) {
-        UIBarButtonItemBadge *badge =
-            count > 0 ? [UIBarButtonItemBadge badgeWithCount:count] : nil;
-        badge.font = [GM MidFontWithSize:12];
-        [self.homeCartItem setBadge:badge];
-    } else {
-        [self.homeCartItem pp_setBadgeValue:
-            count > 0 ? [NSString stringWithFormat:@"%lu",(unsigned long)count] : nil];
+    if (!self.homeCartItem) {
+        self.homeCartItem = [self pp_buildCartBarButtonItem];
     }
+
+    if (@available(iOS 26.0, *)) {
+        [self.homeCartItem setBadge:nil];
+    }
+
+    NSString *badgeValue =
+        count > 0 ? (count > 99 ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count]) : nil;
+    [self.homeCartItem pp_setBadgeValue:badgeValue];
 
     // Animated show / hide
     if (count > 0) {
@@ -6829,7 +6883,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
        // [self pp_hideCartBarButtonAnimated];
     }
     [self pp_showCartBarButtonAnimated];
-    NSLog(@"[CartBadge] Updated count=%lu", (unsigned long)count);
+    [self.homeCartItem.customView setNeedsLayout];
+    [self.homeCartItem.customView layoutIfNeeded];
+    [self.navigationController.navigationBar setNeedsLayout];
+    [self.navigationController.navigationBar layoutIfNeeded];
+    NSLog(@"[CartBadge] Updated count=%ld", (long)count);
 }
 
 

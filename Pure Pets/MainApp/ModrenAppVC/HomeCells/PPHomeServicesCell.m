@@ -363,7 +363,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
 
     self.gradientLayer.colors = @[(id)gradientColors.firstObject.CGColor,
                                   (id)gradientColors.lastObject.CGColor];
-    self.surfaceView.layer.borderWidth = 0.8;
+    self.surfaceView.layer.borderWidth = 0.0;
     self.surfaceView.layer.borderColor = [accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.10].CGColor;
 
     UIButtonConfiguration *config = _cardView.configuration;
@@ -374,7 +374,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     [_cardView setNeedsLayout];
     self.surfaceView.layer.cornerRadius = _cardView.layer.cornerRadius;
     
-    self.accentGlowView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.14 : 0.10];
+    self.accentGlowView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.14 : 0.16];
     self.iconChipView.backgroundColor = darkMode
     ? [UIColor.whiteColor colorWithAlphaComponent:0.08]
     : [UIColor.whiteColor colorWithAlphaComponent:0.62];

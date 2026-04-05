@@ -12,12 +12,12 @@
 
 static NSString * const kPPHomePromoCarouselPageCellReuseID = @"PPHomePromoCarouselPageCell";
 static const CGFloat kPPHomeBannerSectionHeight = 168.0;
-static const CGFloat kPPHomeBannerSectionTopInset = 6.0;
+static const CGFloat kPPHomeBannerSectionTopInset = 4.0;
 static const CGFloat kPPHomeBannerSectionHorizontalInset = 16.0;
 static const CGFloat kPPHomeBannerSectionBottomInset = 12.0;
 static const CGFloat kPPHomeBannerCellVerticalPadding = 4.0;
 static const CGFloat kPPHomePromoCarouselCardWidthFraction = 0.88;
-static const CGFloat kPPHomePromoCarouselLineSpacing = 8.0;
+static const CGFloat kPPHomePromoCarouselLineSpacing = 12.0;
 static const CGFloat kPPHomePromoCarouselPageControlBottomInset = 10.0;
 static const CGFloat kPPHomePromoCarouselPageControlHeight = 20.0;
 static const CGFloat kPPHomePromoCarouselViewportEpsilon = 1.0;
@@ -233,14 +233,14 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _shadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _shadowContainer.backgroundColor = UIColor.clearColor;
     _shadowContainer.layer.shadowColor = [UIColor colorWithWhite:0 alpha:1].CGColor;
-    _shadowContainer.layer.shadowOpacity = 0.09;
-    _shadowContainer.layer.shadowRadius = 16.0;
+    _shadowContainer.layer.shadowOpacity = 0.08;
+    _shadowContainer.layer.shadowRadius = 18.0;
     _shadowContainer.layer.shadowOffset = CGSizeMake(0, 10);
     [self.contentView addSubview:_shadowContainer];
 
     _cardSurface = [UIView new];
     _cardSurface.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardSurface.layer.cornerRadius = 24.0;
+    _cardSurface.layer.cornerRadius = PPNewCorner;
     _cardSurface.layer.masksToBounds = YES;
     _cardSurface.backgroundColor = UIColor.systemOrangeColor;
     if (@available(iOS 13.0, *)) {
@@ -283,8 +283,8 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _borderLayer = [CAShapeLayer layer];
     _borderLayer.fillColor = UIColor.clearColor.CGColor;
-    _borderLayer.lineWidth = 1.0;
-    _borderLayer.strokeColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
+    _borderLayer.lineWidth = 1.1;
+    _borderLayer.strokeColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14].CGColor;
     [_cardSurface.layer addSublayer:_borderLayer];
 
     _backgroundImageView = [UIImageView new];
@@ -301,10 +301,10 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _contentPanelView = [UIView new];
     _contentPanelView.translatesAutoresizingMaskIntoConstraints = NO;
-    _contentPanelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
-    _contentPanelView.layer.cornerRadius = 20.0;
-    _contentPanelView.layer.borderWidth = 0.8;
-    _contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor;
+    _contentPanelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
+    _contentPanelView.layer.cornerRadius = PPCornerMedium;
+    _contentPanelView.layer.borderWidth = 1.0;
+    _contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor;
     _contentPanelView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         _contentPanelView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -342,7 +342,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _badgeLabel.hidden = YES;
     _titleLabel = [UILabel new];
     _titleLabel.numberOfLines = 2;
-    _titleLabel.font = [GM boldFontWithSize:18];
+    _titleLabel.font = [GM boldFontWithSize:19];
     _titleLabel.textColor = UIColor.whiteColor;
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
@@ -351,8 +351,8 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _subtitleLabel = [UILabel new];
     _subtitleLabel.numberOfLines = 2;
-    _subtitleLabel.font = [GM MidFontWithSize:12.5];
-    _subtitleLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.84];
+    _subtitleLabel.font = [GM MidFontWithSize:13.0];
+    _subtitleLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
     _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -377,7 +377,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     [_primaryButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_primaryButton addTarget:self action:@selector(primaryButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [_buttonsRow addArrangedSubview:_primaryButton];
-    [_primaryButton.heightAnchor constraintEqualToConstant:38.0].active = YES;
+    [_primaryButton.heightAnchor constraintEqualToConstant:40.0].active = YES;
     [_primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:48.0].active = YES;
 
     _secondaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -387,7 +387,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     [_secondaryButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_secondaryButton addTarget:self action:@selector(secondaryButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [_buttonsRow addArrangedSubview:_secondaryButton];
-    [_secondaryButton.heightAnchor constraintEqualToConstant:38.0].active = YES;
+    [_secondaryButton.heightAnchor constraintEqualToConstant:40.0].active = YES;
     [_secondaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:48.0].active = YES;
 
     _characterGlowView = [UIView new];
@@ -512,6 +512,12 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.borderLayer.path =
         [UIBezierPath bezierPathWithRoundedRect:CGRectInset(self.cardSurface.bounds, 0.5, 0.5)
                                    cornerRadius:self.cardSurface.layer.cornerRadius].CGPath;
+    for (UIButton *button in @[self.primaryButton, self.secondaryButton]) {
+        CGFloat radius = CGRectGetHeight(button.bounds) * 0.5;
+        button.layer.cornerRadius = radius;
+        button.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:button.bounds cornerRadius:radius].CGPath;
+    }
     self.characterGlowView.layer.cornerRadius = CGRectGetHeight(self.characterGlowView.bounds) * 0.5;
 
     CGRect bounds = self.cardSurface.bounds;
@@ -607,8 +613,8 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.backgroundTintView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.04];
     self.characterGlowView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.09];
     self.characterGlowView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
-    self.contentPanelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
-    self.contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor;
+    self.contentPanelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
+    self.contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor;
     self.shadowContainer.layer.shadowColor = [UIColor colorWithWhite:0 alpha:1].CGColor;
     self.gradientLayer.hidden = NO;
     self.shapeLayerOne.hidden = NO;
@@ -647,10 +653,10 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         self.highlightLayer.hidden = YES;
         self.backgroundTintView.hidden = YES;
         self.cardSurface.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
-        self.contentPanelView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.22];
-        self.contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor;
-        self.characterGlowView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.14];
-        self.characterGlowView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor;
+        self.contentPanelView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.26];
+        self.contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.16].CGColor;
+        self.characterGlowView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.16];
+        self.characterGlowView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
         self.shadowContainer.layer.shadowColor = [UIColor colorWithWhite:0 alpha:1].CGColor;
     } else {
         // Gradient mode — use card colors or random modern gradient
@@ -681,9 +687,9 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         ];
         self.shapeLayerOne.fillColor = [accentColor colorWithAlphaComponent:0.16].CGColor;
         self.shapeLayerTwo.fillColor = [UIColor.whiteColor colorWithAlphaComponent:0.06].CGColor;
-        self.backgroundTintView.backgroundColor = [deepTone colorWithAlphaComponent:0.08];
-        self.contentPanelView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
-        self.contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
+        self.backgroundTintView.backgroundColor = [deepTone colorWithAlphaComponent:0.06];
+        self.contentPanelView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
+        self.contentPanelView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.13].CGColor;
         self.characterGlowView.backgroundColor = [accentColor colorWithAlphaComponent:0.14];
         self.characterGlowView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
         self.shadowContainer.layer.shadowColor = [PPPromoBlendColor(endColor, UIColor.blackColor, 0.25) CGColor];
@@ -764,7 +770,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         : [UIButtonConfiguration tintedButtonConfiguration];
 
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(9, 14, 9, 14);
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(10, 16, 10, 16);
         cfg.image = icon;
         cfg.imagePadding = 6;
         cfg.imagePlacement = Language.isRTL ? NSDirectionalRectEdgeTrailing : NSDirectionalRectEdgeLeading;
@@ -777,10 +783,10 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         }];
 
         if (isPrimary) {
-            cfg.baseBackgroundColor = [UIColor colorWithWhite:1 alpha:0.90];
+            cfg.baseBackgroundColor = [UIColor colorWithWhite:1 alpha:0.97];
             cfg.baseForegroundColor = primaryText;
         } else {
-            cfg.baseBackgroundColor = [UIColor colorWithWhite:1 alpha:0.12];
+            cfg.baseBackgroundColor = [UIColor colorWithWhite:1 alpha:0.14];
             cfg.baseForegroundColor = secondaryText;
         }
 
@@ -803,14 +809,14 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         : UISemanticContentAttributeForceLeftToRight;
 
         button.backgroundColor = isPrimary
-        ? [UIColor colorWithWhite:1 alpha:0.95]
-        : [UIColor colorWithWhite:1 alpha:0.12];
+        ? [UIColor colorWithWhite:1 alpha:0.97]
+        : [UIColor colorWithWhite:1 alpha:0.14];
 
         button.layer.cornerRadius = 20.0;
         button.layer.borderWidth = isPrimary ? 0.0 : 1.0;
-        button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor;
-        button.layer.masksToBounds = YES;
-        button.contentEdgeInsets = UIEdgeInsetsMake(9, 14, 9, 14);
+        button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.16].CGColor;
+        button.layer.masksToBounds = NO;
+        button.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
     }
 
     if (@available(iOS 13.0, *)) {
@@ -818,10 +824,14 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     }
     if (!isPrimary) {
         button.layer.borderWidth = 1.0;
-        button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor;
+        button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.16].CGColor;
     } else {
         button.layer.borderWidth = 0.0;
     }
+    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    button.layer.shadowOpacity = isPrimary ? 0.12f : 0.0f;
+    button.layer.shadowRadius = isPrimary ? 8.0f : 0.0f;
+    button.layer.shadowOffset = isPrimary ? CGSizeMake(0.0, 4.0) : CGSizeZero;
 
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 
@@ -1306,9 +1316,9 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _shadowContainer.backgroundColor = UIColor.clearColor;
     _shadowContainer.layer.cornerRadius = PPNewCorner;
     _shadowContainer.layer.shadowColor = UIColor.blackColor.CGColor;
-    _shadowContainer.layer.shadowOpacity = 0.06;
+    _shadowContainer.layer.shadowOpacity = 0.08;
     _shadowContainer.layer.shadowRadius = 18;
-    _shadowContainer.layer.shadowOffset = CGSizeMake(0, 8);
+    _shadowContainer.layer.shadowOffset = CGSizeMake(0, 10);
     [self.contentView addSubview:_shadowContainer];
 
     _bannersView = [[PPBannersCollection alloc] init];

@@ -252,7 +252,7 @@
 #define AppPrimaryClrDarker         [UIColor colorNamed:@"AppPrimaryColorDarker"]
 #define AppPrimaryClrShiner         [UIColor colorNamed:@"AppPrimaryColorShainer"]
 //F3F4F4 //EFECE3
-#define AppBackgroundClr            [[UIColor colorWithHexString:@"#F8F4F4"] colorWithAlphaComponent:0.05] //F3F4F4//[UIColor colorNamed:@"AppBackgroundColor"] //FFE6D4 FCF5EE
+#define AppBackgroundClr             [UIColor colorNamed:@"AppBackgroundColor"] //F3F4F4//[UIColor colorNamed:@"AppBackgroundColor"] //FFE6D4 FCF5EE
 #define AppBackgroundClrLigter      [UIColor colorNamed:@"AppBackgroundColorLigter"]
 #define AppBackgroundClrDarker      [UIColor colorNamed:@"AppBackgroundColorDarker"]
 

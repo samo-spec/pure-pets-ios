@@ -37,6 +37,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 @property (nonatomic, strong) UIButton *emptyCard;
  @property (nonatomic, strong) PPNewBottomBar *bottomBar;
 @property (nonatomic, strong) CAGradientLayer *bottomFadeLayer;
+@property (nonatomic, strong) CALayer *tabBarTopSeparatorLayer;
 @property (nonatomic, strong, nullable) UIControl *blockedOverlayView;
 @property (nonatomic, strong, nullable) UIView *blockedOverlayCardView;
 @property (nonatomic, strong, nullable) LOTAnimationView *blockedHeaderAnimationView;
@@ -50,6 +51,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 - (nullable PPSearchViewController *)pp_existingSearchControllerInNavigationController:(UINavigationController *)navigationController;
 - (void)pp_openSearchExperienceFromCurrentContextOpeningAccessories:(BOOL)openAccessories;
 - (void)pp_updateTabBarSelectionIndicatorIfNeeded;
+- (void)pp_updateTabBarTopSeparatorIfNeeded;
 - (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize
                                            indicatorSize:(CGSize)indicatorSize
                                                fillColor:(UIColor *)fillColor
@@ -289,6 +291,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     [self pp_updateBlockedOverlayTopInset];
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
+    [self pp_updateTabBarTopSeparatorIfNeeded];
 }
 
 #pragma mark - Blocked Overlay
@@ -680,16 +683,17 @@ static NSInteger const PPRootTabIndexSettings = 4;
 // Floating background (emulates iOS 26 look)
 - (void)pp_configureFloatingBackgroundForAppearance:(UITabBarAppearance *)appearance {
     if (@available(iOS 26.0, *)) {
-        // iOS 26+: Transparent — Liquid Glass handles the tab bar chrome
         [appearance configureWithTransparentBackground];
-        appearance.backgroundColor = UIColor.clearColor;
-    } else if (@available(iOS 13.0, *)) {
-        // iOS <26: Frosted translucent background for a polished tab bar
-        [appearance configureWithDefaultBackground];
         appearance.backgroundEffect =
             [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         appearance.backgroundColor =
-            [AppForgroundColr colorWithAlphaComponent:0.74];
+            [AppForgroundColr colorWithAlphaComponent:0.28];
+    } else if (@available(iOS 13.0, *)) {
+        [appearance configureWithDefaultBackground];
+        appearance.backgroundEffect =
+            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+        appearance.backgroundColor =
+            [AppForgroundColr colorWithAlphaComponent:0.82];
     } else {
         appearance.backgroundImage = [UIImage new];
         appearance.shadowImage = [UIImage new];
@@ -711,7 +715,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
         appearance.compactInlineLayoutAppearance.selected.titleTextAttributes = clearSelectedTitle;
         
         NSDictionary<NSAttributedStringKey, id> *normalTitle =
-        @{ NSForegroundColorAttributeName: UIColor.secondaryLabelColor,
+        @{ NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.72],
            NSFontAttributeName: [GM MidFontWithSize:PPFontCaption2]};
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = normalTitle;
         appearance.inlineLayoutAppearance.normal.titleTextAttributes = normalTitle;
@@ -719,17 +723,14 @@ static NSInteger const PPRootTabIndexSettings = 4;
         appearance.stackedLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
         appearance.inlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
         appearance.compactInlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
-        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.secondaryLabelColor;
-        appearance.inlineLayoutAppearance.normal.iconColor = UIColor.secondaryLabelColor;
-        appearance.compactInlineLayoutAppearance.normal.iconColor = UIColor.secondaryLabelColor;
+        appearance.stackedLayoutAppearance.normal.iconColor = [UIColor.labelColor colorWithAlphaComponent:0.72];
+        appearance.inlineLayoutAppearance.normal.iconColor = [UIColor.labelColor colorWithAlphaComponent:0.72];
+        appearance.compactInlineLayoutAppearance.normal.iconColor = [UIColor.labelColor colorWithAlphaComponent:0.72];
         
         if (@available(iOS 26.0, *)) {
-            // iOS 26+: Liquid Glass — no shadow line, no background effect
             appearance.shadowColor = UIColor.clearColor;
-            appearance.backgroundEffect = nil;
         } else {
-            // iOS <26: Subtle top separator for visual definition
-            appearance.shadowColor = [[UIColor labelColor] colorWithAlphaComponent:0.06];
+            appearance.shadowColor = UIColor.clearColor;
         }
         
         // 🫁 Add breathing space between icon and title
@@ -748,9 +749,9 @@ static NSInteger const PPRootTabIndexSettings = 4;
             self.tabBar.scrollEdgeAppearance = appearance;
         }
         self.tabBar.layer.shadowColor = UIColor.blackColor.CGColor;
-        self.tabBar.layer.shadowOpacity = 0.05;
-        self.tabBar.layer.shadowRadius = 16.0;
-        self.tabBar.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+        self.tabBar.layer.shadowOpacity = 0.08;
+        self.tabBar.layer.shadowRadius = 18.0;
+        self.tabBar.layer.shadowOffset = CGSizeMake(0.0, 10.0);
         self.tabBar.layer.masksToBounds = NO;
         
     } else {
@@ -764,6 +765,28 @@ static NSInteger const PPRootTabIndexSettings = 4;
         self.tabBar.tintColor = AppPrimaryClr;
         self.tabBar.unselectedItemTintColor = UIColor.secondaryLabelColor;
     }
+}
+
+- (void)pp_updateTabBarTopSeparatorIfNeeded
+{
+    if (!self.tabBar) {
+        return;
+    }
+
+    if (!self.tabBarTopSeparatorLayer) {
+        self.tabBarTopSeparatorLayer = [CALayer layer];
+        [self.tabBar.layer addSublayer:self.tabBarTopSeparatorLayer];
+    }
+
+    CGFloat scale = UIScreen.mainScreen.scale ?: 1.0;
+    CGFloat lineHeight = 1.0 / MAX(scale, 1.0);
+    CGFloat horizontalInset = 14.0;
+    CGFloat availableWidth = MAX(0.0, CGRectGetWidth(self.tabBar.bounds) - (horizontalInset * 2.0));
+    self.tabBarTopSeparatorLayer.frame = CGRectMake(horizontalInset, 0.0, availableWidth, lineHeight);
+    self.tabBarTopSeparatorLayer.backgroundColor =
+        [[UIColor labelColor] colorWithAlphaComponent:0.10].CGColor;
+    self.tabBarTopSeparatorLayer.hidden =
+        self.tabBar.hidden || self.tabBar.alpha < 0.01 || availableWidth <= 0.0;
 }
 
 - (void)pp_updateTabBarSelectionIndicatorIfNeeded

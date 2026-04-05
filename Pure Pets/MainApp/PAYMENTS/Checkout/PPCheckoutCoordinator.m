@@ -9,6 +9,7 @@
 #import "PPCheckoutCoordinator.h"
 
 #import "CartManager.h"
+#import "PPCartCalculator.h"
 #import "PPOrderManager.h"
 #import "PPPaymentManager.h"
 #import "PPOrder.h"
@@ -479,8 +480,11 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
 
     self.isCheckoutInProgress = YES;
 
-    double cartSubtotal = [cart subtotalAmount];
-    double cartTotal = [cart totalAmount];
+    PPCartSummary *checkoutSummary = [PPCartCalculator currentSummary];
+    double cartSubtotal = checkoutSummary.subtotal;
+    double cartTotal = checkoutSummary.finalTotal;
+
+    [PPCartCalculator logDetailedSummary:checkoutSummary items:cart.cartItems];
 
     PPORDERLog(@"Cart validated | generation=%ld | items=%lu | subtotal=%.2f | total=%.2f | paymentMethod=%@ | addressId=%@",
                (long)generation,

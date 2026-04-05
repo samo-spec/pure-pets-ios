@@ -355,6 +355,7 @@
 		F27314922F31995A00FFA0B8 /* PPPaymentMethodCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27314912F31994600FFA0B8 /* PPPaymentMethodCell.m */; };
 		F27314952F319F8B00FFA0B8 /* PPAddressPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F27314942F319F6300FFA0B8 /* PPAddressPickerView.m */; };
 		F27314982F31CE9300FFA0B8 /* CartManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F27314972F31CE9300FFA0B8 /* CartManager.m */; };
+		F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = F2CALC002F40A00000000002 /* PPCartCalculator.m */; };
 		F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F273149C2F31D7E500FFA0B8 /* PPCheckoutCoordinator.m */; };
 		F2736E972E8265D800902E1C /* Styling.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E962E8265D800902E1C /* Styling.m */; };
 		F2736E9A2E827C0A00902E1C /* PPHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E992E827C0A00902E1C /* PPHUD.m */; };
@@ -1383,6 +1384,8 @@
 		F27314942F319F6300FFA0B8 /* PPAddressPickerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAddressPickerView.m; sourceTree = "<group>"; };
 		F27314972F31CE9300FFA0B8 /* CartManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartManager.m; sourceTree = "<group>"; };
 		F27314992F31CEC700FFA0B8 /* CartManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CartManager.h; sourceTree = "<group>"; };
+		F2CALC001F40A00000000001 /* PPCartCalculator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCartCalculator.h; sourceTree = "<group>"; };
+		F2CALC002F40A00000000002 /* PPCartCalculator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCartCalculator.m; sourceTree = "<group>"; };
 		F273149B2F31D7DD00FFA0B8 /* PPCheckoutCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCheckoutCoordinator.h; sourceTree = "<group>"; };
 		F273149C2F31D7E500FFA0B8 /* PPCheckoutCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCheckoutCoordinator.m; sourceTree = "<group>"; };
 		F2736E952E8265D800902E1C /* Styling.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Styling.h; sourceTree = "<group>"; };
@@ -3408,6 +3411,8 @@
 			children = (
 				F27314992F31CEC700FFA0B8 /* CartManager.h */,
 				F27314972F31CE9300FFA0B8 /* CartManager.m */,
+				F2CALC001F40A00000000001 /* PPCartCalculator.h */,
+				F2CALC002F40A00000000002 /* PPCartCalculator.m */,
 			);
 			path = Cart;
 			sourceTree = "<group>";
@@ -5584,6 +5589,7 @@
 				F2E1345F2DDC6F40006770E5 /* AddNewAccessory.m in Sources */,
 				F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F27314982F31CE9300FFA0B8 /* CartManager.m in Sources */,
+				F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */,
 				F27FAEA12D2F363200EA6B56 /* JPVideoPlayerCellProtocol.m in Sources */,
 				F27FAEA22D2F363200EA6B56 /* UICollectionView+WebVideoCache.m in Sources */,
 				F2A25D752F195D6600B5E0F6 /* PPInfoPillsView.m in Sources */,

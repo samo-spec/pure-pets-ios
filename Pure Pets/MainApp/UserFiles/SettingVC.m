@@ -6,6 +6,7 @@
 #import "PPRootTabBarController.h"
 #import "ProfileVC.h"
 #import "PPImageLoaderManager.h"
+#import <SDWebImage/UIImageView+WebCache.h>
 @import UserNotifications;
 
 static NSString *const kSettingsAutoPlayKey        = @"isAutoPlaySet";
@@ -308,10 +309,59 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
     cell.backgroundColor = AppForgroundColr;
 
-    UIImageConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:24 weight:UIImageSymbolWeightMedium];
-    cell.imageView.image = [UIImage systemImageNamed:@"person.circle.fill" withConfiguration:config];
-    cell.imageView.tintColor = AppPrimaryClr;
+    CGFloat avatarSize = 40.0;
+    UIImageView *avatarView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, avatarSize, avatarSize)];
+    avatarView.contentMode = UIViewContentModeScaleAspectFill;
+    avatarView.layer.cornerRadius = avatarSize / 2.0;
+    avatarView.clipsToBounds = YES;
+    avatarView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
+
+    UIImageConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
+    UIImage *placeholder = [UIImage systemImageNamed:@"person.circle.fill" withConfiguration:config];
+    avatarView.image = placeholder;
+    avatarView.tintColor = AppPrimaryClr;
+
+    id currentUser = PPCurrentUser ?: UserManager.sharedManager.currentUser;
+    NSURL *avatarURL = [currentUser valueForKey:@"UserImageUrl"];
+    if (avatarURL) {
+        [avatarView sd_setImageWithURL:avatarURL
+                      placeholderImage:placeholder
+                               options:SDWebImageRetryFailed
+                             completed:nil];
+        avatarView.contentMode = UIViewContentModeScaleAspectFill;
+    }
+
+    cell.imageView.image = placeholder;
+    // Force layout to get imageView frame, then replace with custom avatar
+    [cell layoutIfNeeded];
+    for (UIView *subview in cell.contentView.subviews) {
+        if (subview == cell.imageView) {
+            avatarView.frame = CGRectMake(0, 0, avatarSize, avatarSize);
+            cell.imageView.image = [self pp_transparentImageOfSize:CGSizeMake(avatarSize, avatarSize)];
+            avatarView.tag = 9999;
+            UIView *existing = [cell.contentView viewWithTag:9999];
+            [existing removeFromSuperview];
+            avatarView.translatesAutoresizingMaskIntoConstraints = NO;
+            [cell.contentView addSubview:avatarView];
+            [NSLayoutConstraint activateConstraints:@[
+                [avatarView.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:16.0],
+                [avatarView.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+                [avatarView.widthAnchor constraintEqualToConstant:avatarSize],
+                [avatarView.heightAnchor constraintEqualToConstant:avatarSize]
+            ]];
+            break;
+        }
+    }
+
     return cell;
+}
+
+- (UIImage *)pp_transparentImageOfSize:(CGSize)size
+{
+    UIGraphicsBeginImageContextWithOptions(size, NO, 0);
+    UIImage *img = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return img;
 }
 
 - (UITableViewCell *)pp_toggleCellForRow:(PPSettingsRowModel *)row

@@ -24,6 +24,9 @@
 + (NSArray<PPHomeQuickActionModel *> *)defaultHomeQuickActions
 {
     return @[
+        [self modelWithType:PPHomeQuickActionTypeNearestVet
+                      title:(kLang(@"home_quick_action_nearest_vet") ?: @"Nearest Vet")
+                   iconName:@"cross.case.circle.fill"],
         [self modelWithType:PPHomeQuickActionTypeSellPet
                       title:(kLang(@"home_quick_action_sell_pet") ?: @"Sell a pet")
                    iconName:@"pawprint.circle.fill"],

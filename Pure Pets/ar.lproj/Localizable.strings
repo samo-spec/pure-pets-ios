@@ -2002,3 +2002,17 @@
 "home_greeting_named_format_ltr" = "%1$@, %2$@ 🐾";
 "home_suggestion_reason_nearby" = "قريب منك";
 "home_suggestion_reason_previous_orders" = "بناءً على طلباتك السابقة";
+
+/* Settings Screen */
+"ViewProfile" = "عرض الملف الشخصي";
+"Storage" = "التخزين";
+"ClearCache" = "مسح ذاكرة التخزين المؤقت";
+"ClearCacheMessage" = "سيؤدي ذلك إلى مسح جميع الصور والبيانات المخزنة مؤقتًا.";
+"Logout" = "تسجيل الخروج";
+"LogoutMessage" = "هل أنت متأكد أنك تريد تسجيل الخروج؟";
+"everyone" = "الجميع";
+"noOne" = "لا أحد";
+"Guest" = "زائر";
+"checkout_item_price_invalid" = "سعر أحد المنتجات غير صالح. يرجى إزالته والمحاولة مرة أخرى.";
+"checkout_generic_error" = "حدث خطأ أثناء إتمام الدفع. يرجى المحاولة مرة أخرى.";
+"home_quick_action_nearest_vet" = "أقرب بيطري";

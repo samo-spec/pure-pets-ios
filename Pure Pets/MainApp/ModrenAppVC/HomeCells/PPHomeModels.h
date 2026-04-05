@@ -9,6 +9,7 @@
 #import <Foundation/Foundation.h>
 
 typedef NS_ENUM(NSInteger, PPHomeQuickActionType) {
+    PPHomeQuickActionTypeNearestVet,
     PPHomeQuickActionTypeSellPet,
     PPHomeQuickActionTypeAdopt,
     PPHomeQuickActionTypeAddAd,

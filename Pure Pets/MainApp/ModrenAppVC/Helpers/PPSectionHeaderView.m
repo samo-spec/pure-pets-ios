@@ -247,6 +247,40 @@
 
 #pragma mark - Build UI
 
+- (UIButtonConfiguration *)pp_baseActionButtonConfiguration
+{
+    UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 12.0, 8.0, 12.0);
+    cfg.imagePadding  = 6;
+    cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+
+    UIImageSymbolConfiguration *symbolCfg =
+        [UIImageSymbolConfiguration configurationWithPointSize:13
+                                                        weight:UIImageSymbolWeightBold
+                                                         scale:UIImageSymbolScaleMedium];
+    UIImage *chevron = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolCfg];
+    if (@available(iOS 15.0, *)) {
+        chevron = [chevron imageByApplyingSymbolConfiguration:
+            [UIImageSymbolConfiguration configurationWithPaletteColors:@[
+                AppSecondaryTextClr
+            ]]];
+    }
+    cfg.image = chevron;
+    cfg.baseForegroundColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    cfg.baseBackgroundColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.10];
+
+    cfg.titleTextAttributesTransformer =
+    ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attrs) {
+        NSMutableDictionary *m = attrs.mutableCopy;
+        m[NSFontAttributeName]            = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightSemibold];
+        m[NSForegroundColorAttributeName] = AppPrimaryClr ?: UIColor.systemTealColor;
+        return m;
+    };
+
+    return cfg;
+}
+
 - (void)pp_buildUI {
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = GM.setSemantic;
@@ -267,7 +301,7 @@
         (PPIOS26() ? UIBlurEffectStyleSystemChromeMaterial : UIBlurEffectStyleSystemUltraThinMaterial)];
     
     self.blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    self.blurView.alpha = 0.40;
+    self.blurView.alpha = 0.36;
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.surfaceView addSubview:self.blurView];
     [NSLayoutConstraint activateConstraints:@[
@@ -312,14 +346,14 @@
     // ── Title ──
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font      = [GM boldFontWithSize:PPFontTitle2];
+    _titleLabel.font      = [GM boldFontWithSize:19.0] ?: [UIFont systemFontOfSize:19.0 weight:UIFontWeightBold];
     _titleLabel.textColor = AppPrimaryTextClr;
     [self addSubview:_titleLabel];
 
     // ── Subtitle ──
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font         = [GM MidFontWithSize:PPFontSubheadline];
+    _subtitleLabel.font         = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     _subtitleLabel.textColor    = UIColor.secondaryLabelColor;
     _subtitleLabel.numberOfLines = 2;
     _subtitleLabel.hidden       = YES;
@@ -353,48 +387,17 @@
         [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_actionButton.leadingAnchor constant:-PPSpaceSM],
         // Subtitle
         [_subtitleLabel.leadingAnchor  constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.topAnchor      constraintEqualToAnchor:_titleLabel.bottomAnchor constant:3.0],
+        [_subtitleLabel.topAnchor      constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
         [_subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_actionButton.leadingAnchor constant:-PPSpaceSM],
     ]];
 }
 
 - (void)pp_buildActionButton {
-    UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-    cfg.imagePadding  = 6;
-    cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-
-    UIImageSymbolConfiguration *symbolCfg =
-        [UIImageSymbolConfiguration configurationWithPointSize:13
-                                                        weight:UIImageSymbolWeightBold
-                                                         scale:UIImageSymbolScaleMedium];
-    UIImage *chevron = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symbolCfg];
-    if (@available(iOS 15.0, *)) {
-        chevron = [chevron imageByApplyingSymbolConfiguration:
-            [UIImageSymbolConfiguration configurationWithPaletteColors:@[
-                UIColor.whiteColor
-            ]]];
-    }
-    cfg.image = chevron;
-
-    // Modern filled capsule with brand color
-    cfg.baseForegroundColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    cfg.baseBackgroundColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.10];
-
-    cfg.titleTextAttributesTransformer =
-    ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attrs) {
-        NSMutableDictionary *m = attrs.mutableCopy;
-        m[NSFontAttributeName]            = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-        m[NSForegroundColorAttributeName] = AppPrimaryClr ?: UIColor.systemTealColor;
-        return m;
-    };
-
-    _actionButton = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+    _actionButton = [UIButton buttonWithConfiguration:[self pp_baseActionButtonConfiguration] primaryAction:nil];
     _actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     _actionButton.hidden = YES;
     _actionButton.layer.shadowColor   = UIColor.blackColor.CGColor;
-    _actionButton.layer.shadowOpacity = 0.04;
+    _actionButton.layer.shadowOpacity = 0.05;
     _actionButton.layer.shadowRadius  = 8.0;
     _actionButton.layer.shadowOffset  = CGSizeMake(0, 3.0);
     [_actionButton addTarget:self
@@ -421,7 +424,7 @@
     mask.path = path.CGPath;
     self.surfaceView.layer.mask = mask;
     
-    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
+    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.06].CGColor;
     self.surfaceView.layer.borderWidth = 0.75;
 }
 
@@ -474,34 +477,32 @@
 {
     self.currentSection = ppHomeSection;
     self.titleLabel.text = title;
+    self.actionButton.configuration = [self pp_baseActionButtonConfiguration];
+    self.actionButton.imageView.transform = CGAffineTransformIdentity;
 
     // Action button visibility
     BOOL showAction = (ppHomeSection == PPHomeSectionMainKinds || actionTitle.length > 0);
     self.actionButton.hidden = !showAction;
 
-    if (actionTitle.length > 0) {
-        [self.actionButton setTitle:actionTitle forState:UIControlStateNormal];
-        self.actionButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    }
+    UIButtonConfiguration *cfg = self.actionButton.configuration;
+    cfg.title = actionTitle.length > 0 ? actionTitle : @"";
+    self.actionButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     // Custom icon for non-MainKinds sections
     if (iconName.length > 0 && ppHomeSection != PPHomeSectionMainKinds) {
-        UIButtonConfiguration *cfg = self.actionButton.configuration;
         UIImage *symbol = [UIImage pp_symbolNamed:iconName
                                         pointSize:13
                                            weight:UIImageSymbolWeightBold
                                             scale:UIImageSymbolScaleMedium
-                                          palette:@[UIColor.whiteColor]
+                                          palette:@[AppSecondaryTextClr]
                                      makeTemplate:YES];
-        if (@available(iOS 15.0, *)) {
-            symbol = [symbol imageByApplyingSymbolConfiguration:
-                [UIImageSymbolConfiguration configurationWithPaletteColors:@[UIColor.whiteColor]]];
-        }
         cfg.image          = symbol;
         cfg.imagePlacement = NSDirectionalRectEdgeLeading;
         cfg.imagePadding   = 6;
-        self.actionButton.configuration = cfg;
+    } else {
+        cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
     }
+    self.actionButton.configuration = cfg;
 
     // Menu
     if (menu) {
@@ -521,6 +522,10 @@
     self.titleCenterConstraint.active = YES;
 
     //self.surfaceView.layer.cornerRadius = PPCornerCard;
+
+    [self setNeedsUpdateConstraints];
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 
     if (ppHomeSection != PPHomeSectionMainKinds) { return; }
     [self pp_setExpanded:self.isExpanded animated:NO];
@@ -555,6 +560,10 @@
         self.titleCenterConstraint.active = YES;
     }
 
+    [self setNeedsUpdateConstraints];
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
+
     [self pp_setExpanded:(ppHomeSection == PPHomeSectionMainKinds && self.isExpanded) animated:NO];
 }
 
@@ -573,9 +582,20 @@
     // Reset menu state
     self.actionButton.showsMenuAsPrimaryAction = NO;
     self.actionButton.menu = nil;
+    self.actionButton.configuration = [self pp_baseActionButtonConfiguration];
+    self.titleTopConstraint.active = NO;
+    self.titleCenterConstraint.active = YES;
+    self.surfaceView.transform = CGAffineTransformIdentity;
 
     // Reset chevron rotation
     self.actionButton.imageView.transform = CGAffineTransformIdentity;
+}
+
+- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    [super applyLayoutAttributes:layoutAttributes];
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 
 #pragma mark - Actions

@@ -107,7 +107,7 @@
     if (self.bottomOverlay) return;
     
     self.bottomOverlay =
-    [[PPBottomOverlayBlur alloc] initWithHeight:56
+    [[PPBottomOverlayBlur alloc] initWithHeight:62
                                    cornerRadius:PPCornerMedium];
     if (@available(iOS 13.0, *)) {
         self.bottomOverlay.layer.cornerCurve = kCACornerCurveContinuous;
@@ -119,7 +119,7 @@
         [self.bottomOverlay.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:0],
         [self.bottomOverlay.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:0],
         [self.bottomOverlay.bottomAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:0],
-        [self.bottomOverlay.heightAnchor constraintEqualToConstant:56]
+        [self.bottomOverlay.heightAnchor constraintEqualToConstant:62]
     ]];
 }
 
@@ -570,7 +570,7 @@
     self.textStackTrailingToEdgeConstraint =
     [self.textStack.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-10];
     self.textStackTrailingToDiscountConstraint =
-    [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.discountValueLabel.leadingAnchor constant:-8];
+    [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.discountValueLabel.leadingAnchor constant:-2];
 
     NSLayoutConstraint *discountTrailing =
     [self.discountValueLabel.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-10];

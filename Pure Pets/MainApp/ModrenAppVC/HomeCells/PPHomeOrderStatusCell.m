@@ -86,9 +86,9 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     self.shadowView.backgroundColor = UIColor.clearColor;
     self.shadowView.layer.shadowColor = UIColor.blackColor.CGColor;
     self.shadowView.layer.shadowOpacity = 0.08;
-    self.shadowView.layer.shadowRadius = 16.0;
-    self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    self.shadowView.layer.cornerRadius = 28.0;
+    self.shadowView.layer.shadowRadius = 18.0;
+    self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.shadowView.layer.cornerRadius = PPNewCorner;
     if (@available(iOS 13.0, *)) {
         self.shadowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -96,10 +96,10 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.14 : 0.96)];
-    self.surfaceView.layer.cornerRadius = 28.0;
-    self.surfaceView.layer.borderWidth = 0.85;
-    self.surfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.14 : 0.12)].CGColor;
+    self.surfaceView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.98)];
+    self.surfaceView.layer.cornerRadius = PPNewCorner;
+    self.surfaceView.layer.borderWidth = 1.0;
+    self.surfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.16)].CGColor;
     self.surfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -110,7 +110,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     self.materialView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
     self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
     self.materialView.userInteractionEnabled = NO;
-    self.materialView.alpha = PPIOS26() ? 0.74 : 1.0;
+    self.materialView.alpha = PPIOS26() ? 0.68 : 0.96;
     [self.surfaceView addSubview:self.materialView];
 
     self.overlayView = [[UIView alloc] init];
@@ -145,7 +145,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.orderKickerLabel = [[UILabel alloc] init];
     self.orderKickerLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.orderKickerLabel.font = [GM MidFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    self.orderKickerLabel.font = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
     self.orderKickerLabel.textColor = UIColor.secondaryLabelColor;
     self.orderKickerLabel.numberOfLines = 1;
     self.orderKickerLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -153,7 +153,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.orderLabel = [[UILabel alloc] init];
     self.orderLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.orderLabel.font = [GM boldFontWithSize:20] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightBold];
+    self.orderLabel.font = [GM boldFontWithSize:21] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
     self.orderLabel.textColor = UIColor.labelColor;
     self.orderLabel.numberOfLines = 1;
     self.orderLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -161,7 +161,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.metaLabel = [[UILabel alloc] init];
     self.metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.metaLabel.font = [GM MidFontWithSize:12] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    self.metaLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
     self.metaLabel.textColor = UIColor.secondaryLabelColor;
     self.metaLabel.numberOfLines = 1;
     self.metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -198,8 +198,8 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.actionRailView = [[UIView alloc] init];
     self.actionRailView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionRailView.layer.cornerRadius = 18.0;
-    self.actionRailView.layer.borderWidth = 0.85;
+    self.actionRailView.layer.cornerRadius = PPCornerMedium;
+    self.actionRailView.layer.borderWidth = 1.0;
     self.actionRailView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.actionRailView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -216,7 +216,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.trackButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.trackButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.trackButton.layer.cornerRadius = 16.0;
+    self.trackButton.layer.cornerRadius = 17.0;
     self.trackButton.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.trackButton.layer.cornerCurve = kCACornerCurveContinuous;
@@ -228,7 +228,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 
     self.historyButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.historyButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.historyButton.layer.cornerRadius = 16.0;
+    self.historyButton.layer.cornerRadius = 17.0;
     self.historyButton.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.historyButton.layer.cornerCurve = kCACornerCurveContinuous;
@@ -947,28 +947,28 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
 {
     self.currentStatusColor = statusColor ?: UIColor.systemBlueColor;
     UIColor *resolved = self.currentStatusColor;
-    UIColor *chipBackground = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.16 : 0.14);
-    UIColor *softOverlay = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.14 : 0.10);
+    UIColor *chipBackground = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.24 : 0.15);
+    UIColor *softOverlay = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
 
     self.chipView.backgroundColor = chipBackground;
     self.chipView.layer.borderWidth = 0.8;
-    self.chipView.layer.borderColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.16).CGColor;
+    self.chipView.layer.borderColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20).CGColor;
     self.chipLabel.textColor = resolved;
     self.chipIconView.tintColor = resolved;
     self.progressFillView.backgroundColor = resolved;
-    self.surfaceView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.14 : 0.10) CGColor];
-    self.actionRailView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.10 : 0.06);
-    self.actionRailView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.12) CGColor];
+    self.surfaceView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.22 : 0.16) CGColor];
+    self.actionRailView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
+    self.actionRailView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20) CGColor];
     self.collapsedIconBadgeView.backgroundColor = chipBackground;
     self.collapsedIconView.tintColor = resolved;
-    self.collapsedStatusPillView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.14 : 0.12);
+    self.collapsedStatusPillView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.18 : 0.14);
     self.collapsedStatusPillLabel.textColor = resolved;
     self.collapsedChevronContainerView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.14) CGColor];
     self.collapsedChevronTintView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.10);
     self.collapsedChevronView.tintColor = resolved;
     self.overlayGradientLayer.colors = @[
         (id)softOverlay.CGColor,
-        (id)[PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.04) CGColor],
+        (id)[PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.03) CGColor],
         (id)[UIColor clearColor].CGColor
     ];
 }

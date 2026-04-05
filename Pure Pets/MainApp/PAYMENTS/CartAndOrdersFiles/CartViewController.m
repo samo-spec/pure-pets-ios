@@ -7,6 +7,7 @@
 #import "CartViewController.h"
 #import "BBCheckoutSummaryView.h"
 #import "CartManager.h"
+#import "PPCartCalculator.h"
 #import "PPOrderManager.h"
 #import "PPSPinnerView.h"
 #import "ChManager.h"
@@ -117,10 +118,9 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
          NSLog(@"🛒 Checkout tapped on CART      +Helper");
         [weakSelf checkoutTapped];
     };
-    // Update summary with cart data
-    CGFloat itemsTotal = 0.0;
-    for (CartItem *item in CartManager.sharedManager.cartItems) {itemsTotal += item.price * item.quantity; }
-    [self.summaryView updateTotalsWithItems:itemsTotal shipping:[CartManager sharedManager].deliveryFee showTitle:YES];
+    // Update summary with cart data via centralized calculator
+    PPCartSummary *initSummary = [PPCartCalculator currentSummary];
+    [self.summaryView updateTotalsWithItems:initSummary.subtotal shipping:initSummary.shippingFee showTitle:YES];
     self.summaryView.showDetails =YES;
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
     self.summaryView.showsItemsPreview =  NO;
@@ -156,16 +156,8 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 }
 
 - (void)reloadFormData {
-    CGFloat totalPrice = 0;
-    NSInteger totalQty = 0;
-
-    for (CartItem *item in [CartManager sharedManager].cartItems) {
-        totalPrice += item.price * item.quantity;
-        totalQty += item.quantity;
-    }
-
-    (void)totalPrice;
-    (void)totalQty;
+    // All pricing now flows through PPCartCalculator — no local math needed.
+    // updateTotalLabel and pp_cartDidUpdate handle the UI refresh path.
 }
 - (void)setupFormFooterFrom:(NSString *)setupFrom {
     
@@ -379,27 +371,16 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 }
 
 - (void)updateTotalLabel {
-    CGFloat itemsTotal = 0.0;
-    NSInteger totalQty = 0;
-
-    for (CartItem *item in [CartManager sharedManager].cartItems) {
-        itemsTotal += item.price * item.quantity;
-        totalQty += item.quantity;
-    }
-
-    // Shipping policy: 0 if cart empty, otherwise 22
-    CGFloat shipping = ([CartManager sharedManager].cartItems.count == 0) ? 0.0 : [CartManager sharedManager].deliveryFee;
+    PPCartSummary *summary = [PPCartCalculator currentSummary];
 
     // Keep summary in sync
-    [self.summaryView updateTotalsWithItems:itemsTotal shipping:shipping showTitle:YES];
+    [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:YES];
 
     // Show/hide summary
-    self.summaryView.alpha = ([CartManager sharedManager].cartItems.count > 0) ? 1.0 : 0.0;
+    self.summaryView.alpha = (summary.uniqueItems > 0) ? 1.0 : 0.0;
 
     // Empty state
     [self pp_applyEmptyStateIfNeeded];
-
-    (void)totalQty; // kept for future UI uses
 }
 
 // Guard: Only reload if not mutating table (prevents reload/deleteRows conflict)

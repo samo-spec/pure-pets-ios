@@ -6,6 +6,7 @@
 //
 #import "CartManager.h"
 #import "PetAccessoryManager.h"
+#import "PPCartCalculator.h"
 #import <UIKit/UIKit.h>
 #import <math.h>
 
@@ -174,6 +175,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
         @"name": item.name ?: @"",
         @"quantity": @(MAX(quantity, 0)),
         @"price": @(item.price),
+        @"originalPrice": @(item.originalPrice),
         @"imageURL": item.imageURL ?: @""
     } mutableCopy];
     if (item.stockQuantity != NSNotFound) {
@@ -310,6 +312,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
             @"name": item.name ?: @"",
             @"quantity": @(MAX(item.quantity, 0)),
             @"price": @(item.price),
+            @"originalPrice": @(item.originalPrice),
             @"imageURL": item.imageURL ?: @"",
         } mutableCopy];
         if (item.stockQuantity != NSNotFound) {
@@ -336,6 +339,13 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
             item.stockQuantity = NSNotFound;
         }
         item.price = [dict[@"price"] floatValue];
+        // Restore originalPrice; fallback to price for pre-migration data
+        if ([dict[@"originalPrice"] respondsToSelector:@selector(floatValue)]) {
+            float stored = [dict[@"originalPrice"] floatValue];
+            item.originalPrice = stored > 0.0f ? stored : item.price;
+        } else {
+            item.originalPrice = item.price;
+        }
         item.imageURL = dict[@"imageURL"] ?: @"";
         [self.cartItems addObject:item];
     }
@@ -387,6 +397,7 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
             @"name": item.name ?: @"",
             @"quantity": @(item.quantity),
             @"price": @(item.price),
+            @"originalPrice": @(item.originalPrice),
             @"imageURL": item.imageURL ?: @""
         } mutableCopy];
         if (item.stockQuantity != NSNotFound) {
@@ -440,6 +451,13 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
                 item.stockQuantity = NSNotFound;
             }
             item.price = [doc[@"price"] floatValue];
+            // Restore originalPrice from remote; fallback to price
+            if ([doc[@"originalPrice"] respondsToSelector:@selector(floatValue)]) {
+                float remote = [doc[@"originalPrice"] floatValue];
+                item.originalPrice = remote > 0.0f ? remote : item.price;
+            } else {
+                item.originalPrice = item.price;
+            }
             item.imageURL = doc[@"imageURL"] ?: @"";
 
             CartItem *existing = mergedByItemID[item.itemID];
@@ -644,27 +662,18 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
 }
 
 - (NSInteger)totalItemsCount {
-    NSInteger total = 0;
-    for (CartItem *item in self.cartItems) {
-        total += item.quantity;
-    }
-    return total;
+    PPCartSummary *summary = [PPCartCalculator summaryForItems:self.cartItems shippingFee:0.0];
+    return summary.totalQuantity;
 }
 
 - (double)subtotalAmount {
-    double total = 0.0;
-    for (CartItem *item in self.cartItems) {
-        total += (item.price * item.quantity);
-    }
-    return total;
+    PPCartSummary *summary = [PPCartCalculator summaryForItems:self.cartItems shippingFee:0.0];
+    return summary.subtotal;
 }
 
 - (double)totalAmount {
-    double subtotal = [self subtotalAmount];
-    double shipping = [self pp_currentCheckoutShippingFee];
-    double tax = 0.0;
-    double discount = 0.0;
-    return MAX(0, subtotal + shipping + tax - discount);
+    PPCartSummary *summary = [PPCartCalculator currentSummary];
+    return summary.finalTotal;
 }
 
 - (BOOL)isCartEmpty {
