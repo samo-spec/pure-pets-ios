@@ -66,15 +66,15 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _cardView.layer.cornerRadius = PPCornerMedium;
     _cardView.layer.cornerCurve = kCACornerCurveContinuous;
     _cardView.layer.shadowColor = UIColor.blackColor.CGColor;
-    _cardView.layer.shadowOpacity = PPShadowElevatedOpacity;
-    _cardView.layer.shadowRadius = PPShadowElevatedRadius;
+    _cardView.layer.shadowOpacity = 0.06;
+    _cardView.layer.shadowRadius = 12.0;
     
     UIButtonConfiguration *config = _cardView.configuration;
     config.background.cornerRadius = PPCornerMedium;
     _cardView .configuration = config;
     
     
-    _cardView.layer.shadowOffset = CGSizeMake(0, PPShadowElevatedOffsetY);
+    _cardView.layer.shadowOffset = CGSizeMake(0, 8.0);
     [self.contentView addSubview:_cardView];
 
     _surfaceView = [[UIView alloc] init];
@@ -93,15 +93,15 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _accentGlowView = [[UIView alloc] init];
     _accentGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     _accentGlowView.userInteractionEnabled = NO;
-    _accentGlowView.alpha = 0.35;
-    _accentGlowView.layer.cornerRadius = 62.0;
+    _accentGlowView.alpha = 0.18;
+    _accentGlowView.layer.cornerRadius = 56.0;
     [_surfaceView addSubview:_accentGlowView];
 
     _watermarkView = [[UIImageView alloc] init];
     _watermarkView.translatesAutoresizingMaskIntoConstraints = NO;
     _watermarkView.userInteractionEnabled = NO;
     _watermarkView.contentMode = UIViewContentModeScaleAspectFit;
-    _watermarkView.alpha = 0.12;
+    _watermarkView.alpha = 0.08;
     [_surfaceView addSubview:_watermarkView];
 
     _iconChipView = [[UIView alloc] init];
@@ -109,7 +109,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _iconChipView.userInteractionEnabled = NO;
     _iconChipView.layer.cornerRadius = PPCornerMedium;
     _iconChipView.layer.cornerCurve = kCACornerCurveContinuous;
-    _iconChipView.hidden=YES;
+    _iconChipView.hidden=NO;
     [_surfaceView addSubview:_iconChipView];
 
     _iconView = [[UIImageView alloc] init];
@@ -135,7 +135,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _chevronPillView = [[UIView alloc] init];
     _chevronPillView.translatesAutoresizingMaskIntoConstraints = NO;
     _chevronPillView.userInteractionEnabled = NO;
-    _chevronPillView.layer.cornerRadius = 16.0;
+    _chevronPillView.layer.cornerRadius = 15.0;
     _chevronPillView.layer.cornerCurve = kCACornerCurveContinuous;
     [_surfaceView addSubview:_chevronPillView];
 
@@ -178,19 +178,19 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
         [_chevronPillView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
         [_chevronView.centerXAnchor constraintEqualToAnchor:_chevronPillView.centerXAnchor],
         [_chevronView.centerYAnchor constraintEqualToAnchor:_chevronPillView.centerYAnchor],
-        [_chevronView.widthAnchor constraintEqualToConstant:26.0],
-        [_chevronView.heightAnchor constraintEqualToConstant:26.0],
+        [_chevronView.widthAnchor constraintEqualToConstant:16.0],
+        [_chevronView.heightAnchor constraintEqualToConstant:16.0],
     ]];
 
     self.compactConstraints = @[
-        [_iconChipView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:17.0],
+        [_iconChipView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:4.0],
         [_iconChipView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:12.0],
         [_iconChipView.widthAnchor constraintEqualToConstant:32.0],
         [_iconChipView.heightAnchor constraintEqualToConstant:32.0],
 
         [_chevronPillView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
-        [_chevronPillView.widthAnchor constraintEqualToConstant:30.0],
-        [_chevronPillView.heightAnchor constraintEqualToConstant:30.0],
+        [_chevronPillView.widthAnchor constraintEqualToConstant:28.0],
+        [_chevronPillView.heightAnchor constraintEqualToConstant:28.0],
         
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:12.0],
         [_titleLabel.centerYAnchor constraintEqualToAnchor:_chevronPillView.centerYAnchor constant:0.0],
@@ -213,8 +213,8 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
         [_titleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
 
         [_chevronPillView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
-        [_chevronPillView.widthAnchor constraintEqualToConstant:24.0],
-        [_chevronPillView.heightAnchor constraintEqualToConstant:24.0],
+        [_chevronPillView.widthAnchor constraintEqualToConstant:28.0],
+        [_chevronPillView.heightAnchor constraintEqualToConstant:28.0],
     ];
 }
 
@@ -363,7 +363,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
 
     self.gradientLayer.colors = @[(id)gradientColors.firstObject.CGColor,
                                   (id)gradientColors.lastObject.CGColor];
-    self.surfaceView.layer.borderWidth = 0.0;
+    self.surfaceView.layer.borderWidth = 0.8;
     self.surfaceView.layer.borderColor = [accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.10].CGColor;
 
     UIButtonConfiguration *config = _cardView.configuration;
@@ -374,13 +374,13 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     [_cardView setNeedsLayout];
     self.surfaceView.layer.cornerRadius = _cardView.layer.cornerRadius;
     
-    self.accentGlowView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.22 : 0.18];
+    self.accentGlowView.backgroundColor = [accentColor colorWithAlphaComponent:darkMode ? 0.14 : 0.10];
     self.iconChipView.backgroundColor = darkMode
-    ? [UIColor.whiteColor colorWithAlphaComponent:0.10]
-    : [UIColor.whiteColor colorWithAlphaComponent:0.68];
+    ? [UIColor.whiteColor colorWithAlphaComponent:0.08]
+    : [UIColor.whiteColor colorWithAlphaComponent:0.62];
     self.chevronPillView.backgroundColor = darkMode
-    ? [UIColor.whiteColor colorWithAlphaComponent:0.34]
-    : [accentColor colorWithAlphaComponent:0.12];
+    ? [UIColor.whiteColor colorWithAlphaComponent:0.18]
+    : [accentColor colorWithAlphaComponent:0.10];
 
     self.titleLabel.textColor = darkMode ? UIColor.whiteColor : PPHomeServiceRGBA(17.0, 24.0, 31.0, 1.0);
     self.eyebrowLabel.textColor = darkMode
@@ -389,7 +389,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     self.chevronView.tintColor = darkMode ? UIColor.whiteColor : accentColor;
 
     UIImage *iconImage = [self configuredImageForService:service
-                                               pointSize:self.usesCompactLayout ? 20.0 : 26.0
+                                               pointSize:self.usesCompactLayout ? 18.0 : 24.0
                                                   weight:UIImageSymbolWeightSemibold
                                          alwaysTemplate:YES];
     UIImage *watermarkImage = [self configuredImageForService:service
@@ -404,21 +404,20 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
 
     
     self.watermarkView.image = watermarkImage;
-    self.watermarkView.tintColor = [accentColor colorWithAlphaComponent:darkMode ? 0.26 : 0.14];
-    self.watermarkView.alpha = self.usesCompactLayout ? 0.22 : (darkMode ? 0.22 : 0.14);
+    self.watermarkView.tintColor = [accentColor colorWithAlphaComponent:darkMode ? 0.18 : 0.10];
+    self.watermarkView.alpha = self.usesCompactLayout ? 0.16 : (darkMode ? 0.16 : 0.10);
 
     UIImageSymbolConfiguration *chevronConfig =
-    [UIImageSymbolConfiguration configurationWithPointSize:self.usesCompactLayout ? 11.0 : 13.0
+    [UIImageSymbolConfiguration configurationWithPointSize:self.usesCompactLayout ? 11.0 : 12.0
                                                      weight:UIImageSymbolWeightBold];
-    self.chevronView.image = [[[UIImage systemImageNamed:@"chevron.forward"]
+    NSString *chevronName = Language.isRTL ? @"chevron.left" : @"chevron.right";
+    self.chevronView.image = [[[UIImage systemImageNamed:chevronName]
                                imageWithConfiguration:chevronConfig]
                               imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-
-    self.chevronView.image = iconImage;
-    self.chevronView.tintColor = darkMode ? UIColor.whiteColor : accentColor;
-    self.chevronView.tintColor = accentColor;
-    self.iconView.tintColor = accentColor;
+    self.chevronView.tintColor = [accentColor colorWithAlphaComponent:darkMode ? 0.92 : 0.82];
+    self.iconView.tintColor = darkMode ? UIColor.whiteColor : accentColor;
     self.cardView.accessibilityLabel = service.title;
+    self.cardView.accessibilityHint = kLang(@"Open") ?: @"Open";
 }
 
 #pragma mark - Configuration
@@ -498,7 +497,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
 
     CGFloat scale = highlighted ? PPTapScaleDown : 1.0;
     CGFloat lift = highlighted ? -2.0 : 0.0;
-    CGFloat shadowOpacity = highlighted ? 0.18 : PPShadowElevatedOpacity;
+    CGFloat shadowOpacity = highlighted ? 0.10 : 0.06;
 
     [UIView animateWithDuration:PPAnimDurationFast
                           delay:0.0

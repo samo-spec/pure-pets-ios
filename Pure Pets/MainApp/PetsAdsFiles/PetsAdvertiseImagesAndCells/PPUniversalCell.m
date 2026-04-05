@@ -32,6 +32,9 @@
 @property (nonatomic, copy, nullable) PPQuantityChangedHandler onQuantityChanged;
 @property (nonatomic, strong) UILabel *adLocationLabel;
 @property (nonatomic, strong) UIImageView *locationIconView;
+@property (nonatomic, strong) UIStackView *reasonBadgeStack;
+@property (nonatomic, strong) UIImageView *reasonBadgeIconView;
+@property (nonatomic, strong) UILabel *reasonBadgeLabel;
 ///@property (nonatomic, strong) NSLayoutConstraint *actionBarBottomToCardConstraint;
 //@property (nonatomic, strong) NSLayoutConstraint *actionBarbuttomToAddButtonConstraint;
 //@property (nonatomic, strong) NSLayoutConstraint *actionBarYConstraint;
@@ -129,9 +132,9 @@
         self.contentView.clipsToBounds = NO;
         self.clipsToBounds = NO;
         self.layer.shadowColor = AppShadowClr.CGColor;
-        self.layer.shadowOpacity = PPShadowElevatedOpacity;
-        self.layer.shadowRadius = PPShadowElevatedRadius;
-        self.layer.shadowOffset = CGSizeMake(0, PPShadowElevatedOffsetY);
+        self.layer.shadowOpacity = 0.08;
+        self.layer.shadowRadius = 14.0;
+        self.layer.shadowOffset = CGSizeMake(0, 8.0);
         self.layer.backgroundColor = AppClearClr.CGColor;
         self.contentView.backgroundColor = AppClearClr;
         self.backgroundColor = AppClearClr;
@@ -174,6 +177,9 @@
     self.locationIconView.hidden = YES;
     self.adLocationLabel.alpha = 0;
     self.locationIconView.alpha = 0;
+    self.reasonBadgeStack.hidden = YES;
+    self.reasonBadgeLabel.text = @"";
+    self.reasonBadgeIconView.image = nil;
     [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
     
     
@@ -226,7 +232,9 @@
     self.imageView = [self createImageView];
     [self.card addSubview:self.imageView];
     self.imageView.alpha = 1.0;
-    self.card.backgroundColor = UIColor.whiteColor;
+    self.card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor;
+    self.card.layer.borderWidth = 0.75;
+    self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
     self.imageView.clipsToBounds = YES;
      //self.overlay = [PPNavigationController  setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge];
  
@@ -263,7 +271,7 @@
 
     // Subtle contrast shadow (glass-friendly)
     self.adLocationLabel.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.adLocationLabel.layer.shadowOpacity = 0.35;
+    self.adLocationLabel.layer.shadowOpacity = 0.24;
     self.adLocationLabel.layer.shadowRadius = 2.0;
     self.adLocationLabel.layer.shadowOffset = CGSizeMake(0, 1);
 
@@ -289,8 +297,10 @@
     self.locationStack.alignment = UIStackViewAlignmentCenter;
     self.locationStack.spacing = 4;
     self.locationStack.backgroundColor =
-    [[UIColor blackColor] colorWithAlphaComponent:0.5];
+    [[UIColor blackColor] colorWithAlphaComponent:0.38];
     self.locationStack.layer.cornerRadius = 10;
+    self.locationStack.layer.borderWidth = 0.75;
+    self.locationStack.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
     self.locationStack.layer.masksToBounds = YES;
     self.locationStack.layoutMargins =
     UIEdgeInsetsMake(4, 6, 4, 8);
@@ -316,6 +326,46 @@
         [self.locationIconView.heightAnchor constraintEqualToConstant:14],
     ]];
     self.locationStack.hidden = YES;
+
+    self.reasonBadgeIconView = [[UIImageView alloc] init];
+    self.reasonBadgeIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reasonBadgeIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.reasonBadgeIconView.tintColor = UIColor.whiteColor;
+
+    self.reasonBadgeLabel = [[UILabel alloc] init];
+    self.reasonBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reasonBadgeLabel.font = [GM MidFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    self.reasonBadgeLabel.textColor = UIColor.whiteColor;
+    self.reasonBadgeLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.reasonBadgeLabel.numberOfLines = 1;
+    self.reasonBadgeLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+
+    self.reasonBadgeStack =
+    [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.reasonBadgeIconView,
+        self.reasonBadgeLabel
+    ]];
+    self.reasonBadgeStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reasonBadgeStack.axis = UILayoutConstraintAxisHorizontal;
+    self.reasonBadgeStack.alignment = UIStackViewAlignmentCenter;
+    self.reasonBadgeStack.spacing = 5.0;
+    self.reasonBadgeStack.backgroundColor =
+        [[UIColor blackColor] colorWithAlphaComponent:0.34];
+    self.reasonBadgeStack.layer.cornerRadius = 10.0;
+    self.reasonBadgeStack.layer.cornerCurve = kCACornerCurveContinuous;
+    self.reasonBadgeStack.layer.masksToBounds = YES;
+    self.reasonBadgeStack.layoutMargins = UIEdgeInsetsMake(5, 8, 5, 10);
+    self.reasonBadgeStack.layoutMarginsRelativeArrangement = YES;
+    self.reasonBadgeStack.hidden = YES;
+    [self.card addSubview:self.reasonBadgeStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.reasonBadgeStack.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:10.0],
+        [self.reasonBadgeStack.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:10.0],
+        [self.reasonBadgeStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.card.trailingAnchor constant:-74.0],
+        [self.reasonBadgeIconView.widthAnchor constraintEqualToConstant:12.0],
+        [self.reasonBadgeIconView.heightAnchor constraintEqualToConstant:12.0]
+    ]];
     
     // Keep the overlay content compact like the previous version: title + price
     // inside the glass strip, with discount and stock badges anchored separately.
@@ -534,10 +584,10 @@
     // Floating actions
     // =========================
     NSLayoutConstraint *actionLeading =
-    [self.actionBar.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:8];
+    [self.actionBar.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:10];
 
     NSLayoutConstraint *actionBottom =
-    [self.actionBar.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-8];
+    [self.actionBar.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-10];
 
     actionBottom.active = YES;
     actionLeading.active = YES;
@@ -546,8 +596,8 @@
     // Add / Stepper footer
     // =========================
     [NSLayoutConstraint activateConstraints:@[
-        [self.addButton.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-6],
-        [self.addButton.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-6],
+        [self.addButton.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-8],
+        [self.addButton.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-8],
         [self.stepperView.trailingAnchor constraintEqualToAnchor:self.addButton.trailingAnchor],
         [self.stepperView.bottomAnchor constraintEqualToAnchor:self.addButton.bottomAnchor]
     ]];
@@ -564,8 +614,8 @@
     ]];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:12],
-        [self.stockQtyLabel.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12],
+        [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:10],
+        [self.stockQtyLabel.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-10],
         [self.stockQtyLabel.heightAnchor constraintEqualToConstant:28],
     ]];
 
@@ -731,6 +781,25 @@
     self.subtitleLabel.text = vm.subtitle;
  
     self.subtitleLabel.hidden = (vm.subtitle.length == 0);
+
+    NSString *reasonText = PPSafeString(vm.contextualReasonText);
+    self.reasonBadgeLabel.text = reasonText;
+    self.reasonBadgeStack.hidden = (reasonText.length == 0);
+    if (reasonText.length > 0) {
+        NSString *iconName = PPSafeString(vm.contextualReasonIconName);
+        if (iconName.length == 0) {
+            iconName = @"sparkles";
+        }
+        self.reasonBadgeIconView.image =
+            [UIImage pp_symbolNamed:iconName
+                          pointSize:11
+                             weight:UIImageSymbolWeightBold
+                              scale:UIImageSymbolScaleSmall
+                            palette:@[UIColor.whiteColor]
+                       makeTemplate:YES];
+    } else {
+        self.reasonBadgeIconView.image = nil;
+    }
  
     // 4️⃣ Async load real image
     if (vm.imageURL.length > 0 && loader) {
@@ -893,18 +962,18 @@
     self.layer.masksToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.layer.shadowOpacity = PPShadowElevatedOpacity;
-    self.layer.shadowRadius = PPShadowElevatedRadius;
-    self.layer.shadowOffset = CGSizeMake(0, PPShadowElevatedOffsetY);
+    self.layer.shadowOpacity = 0.08;
+    self.layer.shadowRadius = 14.0;
+    self.layer.shadowOffset = CGSizeMake(0, 8.0);
 }
 
 - (void)applyDefaultShadow {
     self.layer.masksToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.shadowColor = AppShadowClr.CGColor;
-    self.layer.shadowOpacity = PPShadowCardOpacity;
-    self.layer.shadowRadius = PPShadowCardRadius;
-    self.layer.shadowOffset = CGSizeMake(0, PPShadowCardOffsetY);
+    self.layer.shadowOpacity = 0.06;
+    self.layer.shadowRadius = 12.0;
+    self.layer.shadowOffset = CGSizeMake(0, 7.0);
 }
 
 - (void)setQuantityToLabel:(PPInsetLabel *)label qty:(NSInteger)qty {

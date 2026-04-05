@@ -22,9 +22,14 @@
 @property (nonatomic, strong) UILabel *headlineLabel;
 @property (nonatomic, strong) UILabel *supportLabel;
 @property (nonatomic, strong) UIControl *locationControl;
+@property (nonatomic, strong) UIView *locationAccentWashView;
+@property (nonatomic, strong) UIView *locationIconPlateView;
 @property (nonatomic, strong) UIImageView *locationIconView;
 @property (nonatomic, strong) UILabel *locationTitleLabel;
 @property (nonatomic, strong) UILabel *locationMetaLabel;
+@property (nonatomic, strong) UIView *locationStatusChipView;
+@property (nonatomic, strong) UIView *locationStatusDotView;
+@property (nonatomic, strong) UILabel *locationStatusLabel;
 @property (nonatomic, strong) UIImageView *locationChevronView;
 @property (nonatomic, strong) UIButton *actionButton;
 @property (nonatomic, strong) NSLayoutConstraint *actionButtonHeightConstraint;
@@ -131,9 +136,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroShadowView.backgroundColor = UIColor.clearColor;
     self.heroShadowView.layer.shadowColor = [UIColor colorWithWhite:0.03 alpha:1.0].CGColor;
-    self.heroShadowView.layer.shadowOpacity = PPShadowElevatedOpacity + 0.06;
-    self.heroShadowView.layer.shadowRadius = PPShadowElevatedRadius + 2;
-    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    self.heroShadowView.layer.shadowOpacity = 0.10;
+    self.heroShadowView.layer.shadowRadius = 20.0;
+    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
     if (@available(iOS 13.0, *)) {
         self.heroShadowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -142,7 +147,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroSurfaceView = [[UIView alloc] init];
     self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroSurfaceView.backgroundColor = [UIColor hx_colorWithHexStr:@"#17171E" alpha:1.0];
-    self.heroSurfaceView.layer.cornerRadius = PPCornerHero + 6;
+    self.heroSurfaceView.layer.cornerRadius = PPCornerHero + 4;
     self.heroSurfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -170,19 +175,19 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.bottomShadeLayer.endPoint = CGPointMake(0.5, 1.0);
     self.bottomShadeLayer.colors = @[
         (id)[UIColor colorWithWhite:0.0 alpha:0.0].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.38].CGColor
+        (id)[UIColor colorWithWhite:0.0 alpha:0.24].CGColor
     ];
     [self.heroSurfaceView.layer addSublayer:self.bottomShadeLayer];
 
     self.orbViewA = [[UIView alloc] init];
     self.orbViewA.translatesAutoresizingMaskIntoConstraints = NO;
-    self.orbViewA.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
+    self.orbViewA.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
     self.orbViewA.userInteractionEnabled = NO;
     [self.heroSurfaceView addSubview:self.orbViewA];
 
     self.orbViewB = [[UIView alloc] init];
     self.orbViewB.translatesAutoresizingMaskIntoConstraints = NO;
-    self.orbViewB.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.06];
+    self.orbViewB.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.04];
     self.orbViewB.userInteractionEnabled = NO;
     [self.heroSurfaceView addSubview:self.orbViewB];
 
@@ -195,8 +200,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.statusPillView.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusPillView.layer.cornerRadius = 15.0;
     self.statusPillView.layer.masksToBounds = YES;
+    self.statusPillView.hidden = YES;
+    self.statusPillView.alpha = 0.0;
     [self.heroSurfaceView addSubview:self.statusPillView];
-   
+
     self.statusIconView = [[UIImageView alloc] init];
     self.statusIconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusIconView.contentMode = UIViewContentModeScaleAspectFit;
@@ -231,9 +238,14 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationControl = [[UIControl alloc] init];
     self.locationControl.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationControl.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
-    self.locationControl.layer.cornerRadius = PPCornerLarge / 2;
+    self.locationControl.layer.cornerRadius = 31.0;
     self.locationControl.layer.borderWidth = 1.0;
     self.locationControl.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    self.locationControl.layer.masksToBounds = YES;
+    self.locationControl.accessibilityTraits = UIAccessibilityTraitButton;
+    if (@available(iOS 13.0, *)) {
+        self.locationControl.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     [self.locationControl addTarget:self action:@selector(pp_handleLocationTap) forControlEvents:UIControlEventTouchUpInside];
     [self.locationControl addTarget:self action:@selector(pp_handleInteractiveDown:) forControlEvents:UIControlEventTouchDown];
     [self.locationControl addTarget:self action:@selector(pp_handleInteractiveUp:) forControlEvents:UIControlEventTouchUpInside];
@@ -241,15 +253,38 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     [self.locationControl addTarget:self action:@selector(pp_handleInteractiveUp:) forControlEvents:UIControlEventTouchCancel];
     [self.heroSurfaceView addSubview:self.locationControl];
 
+    self.locationAccentWashView = [[UIView alloc] init];
+    self.locationAccentWashView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.locationAccentWashView.userInteractionEnabled = NO;
+    self.locationAccentWashView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
+    self.locationAccentWashView.layer.cornerRadius = 22.0;
+    self.locationAccentWashView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.locationAccentWashView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.locationControl addSubview:self.locationAccentWashView];
+
+    self.locationIconPlateView = [[UIView alloc] init];
+    self.locationIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.locationIconPlateView.userInteractionEnabled = NO;
+    self.locationIconPlateView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+    self.locationIconPlateView.layer.cornerRadius = 18.0;
+    self.locationIconPlateView.layer.borderWidth = 1.0;
+    self.locationIconPlateView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    if (@available(iOS 13.0, *)) {
+        self.locationIconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.locationControl addSubview:self.locationIconPlateView];
+
     self.locationIconView = [[UIImageView alloc] init];
     self.locationIconView.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationIconView.contentMode = UIViewContentModeScaleAspectFit;
     self.locationIconView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.96];
-    [self.locationControl addSubview:self.locationIconView];
+    [self.locationIconPlateView addSubview:self.locationIconView];
 
     self.locationTitleLabel = [[UILabel alloc] init];
     self.locationTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.locationTitleLabel.font = [GM boldFontWithSize:14] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    self.locationTitleLabel.font = [GM boldFontWithSize:15] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
     self.locationTitleLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.98];
     self.locationTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.locationTitleLabel.numberOfLines = 1;
@@ -258,21 +293,50 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationMetaLabel = [[UILabel alloc] init];
     self.locationMetaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationMetaLabel.font = [GM MidFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
-    self.locationMetaLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.70];
+    self.locationMetaLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.74];
     self.locationMetaLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.locationMetaLabel.numberOfLines = 1;
     [self.locationControl addSubview:self.locationMetaLabel];
+
+    self.locationStatusChipView = [[UIView alloc] init];
+    self.locationStatusChipView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.locationStatusChipView.userInteractionEnabled = NO;
+    self.locationStatusChipView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
+    self.locationStatusChipView.layer.cornerRadius = 16.0;
+    self.locationStatusChipView.layer.borderWidth = 1.0;
+    self.locationStatusChipView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    if (@available(iOS 13.0, *)) {
+        self.locationStatusChipView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.locationControl addSubview:self.locationStatusChipView];
+
+    self.locationStatusDotView = [[UIView alloc] init];
+    self.locationStatusDotView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.locationStatusDotView.userInteractionEnabled = NO;
+    self.locationStatusDotView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.96];
+    self.locationStatusDotView.layer.cornerRadius = 3.5;
+    [self.locationStatusChipView addSubview:self.locationStatusDotView];
+
+    self.locationStatusLabel = [[UILabel alloc] init];
+    self.locationStatusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.locationStatusLabel.font = [GM boldFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    self.locationStatusLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.96];
+    self.locationStatusLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.locationStatusLabel.numberOfLines = 1;
+    [self.locationStatusChipView addSubview:self.locationStatusLabel];
 
     self.locationChevronView = [[UIImageView alloc] init];
     self.locationChevronView.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationChevronView.contentMode = UIViewContentModeScaleAspectFit;
     self.locationChevronView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.90];
-    [self.locationControl addSubview:self.locationChevronView];
+    [self.locationStatusChipView addSubview:self.locationChevronView];
 
     self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionButton.layer.cornerRadius = PPButtonHeightLG / 2.0;
     self.actionButton.layer.masksToBounds = YES;
+    self.actionButton.layer.borderWidth = 0.85;
+    self.actionButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
     if (@available(iOS 13.0, *)) {
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -307,23 +371,23 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.heroShadowView.trailingAnchor],
         [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.heroShadowView.bottomAnchor],
 
-        [self.orbViewA.widthAnchor constraintEqualToConstant:180.0],
-        [self.orbViewA.heightAnchor constraintEqualToConstant:180.0],
-        [self.orbViewA.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:40.0],
-        [self.orbViewA.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-34.0],
+        [self.orbViewA.widthAnchor constraintEqualToConstant:168.0],
+        [self.orbViewA.heightAnchor constraintEqualToConstant:168.0],
+        [self.orbViewA.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:28.0],
+        [self.orbViewA.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-28.0],
 
         [self.orbViewB.widthAnchor constraintEqualToConstant:0.0],
         [self.orbViewB.heightAnchor constraintEqualToConstant:0.0],
         [self.orbViewB.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-34.0],
         [self.orbViewB.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:48.0],
 
-        [self.brandLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
-        [self.brandLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:20.0],
+        [self.brandLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
+        [self.brandLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
         [self.brandLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-140.0],
 
-        [self.statusPillView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
-        [self.statusPillView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
-        [self.statusPillView.heightAnchor constraintEqualToConstant:30.0],
+        [self.statusPillView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-20.0],
+        [self.statusPillView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:20.0],
+        [self.statusPillView.heightAnchor constraintEqualToConstant:28.0],
 
         [self.statusIconView.leadingAnchor constraintEqualToAnchor:self.statusPillView.leadingAnchor constant:11.0],
         [self.statusIconView.centerYAnchor constraintEqualToAnchor:self.statusPillView.centerYAnchor],
@@ -334,46 +398,70 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.statusLabel.trailingAnchor constraintEqualToAnchor:self.statusPillView.trailingAnchor constant:-12.0],
         [self.statusLabel.centerYAnchor constraintEqualToAnchor:self.statusPillView.centerYAnchor],
 
-        [self.headlineLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
-        [self.headlineLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:16.0],
-        [self.headlineLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-176.0],
+        [self.headlineLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
+        [self.headlineLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:22.0],
+        [self.headlineLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-168.0],
 
         [self.supportLabel.leadingAnchor constraintEqualToAnchor:self.headlineLabel.leadingAnchor],
-        [self.supportLabel.topAnchor constraintEqualToAnchor:self.headlineLabel.bottomAnchor constant:8.0],
-        [self.supportLabel.widthAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.widthAnchor multiplier:0.54],
-        [self.supportLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-132.0],
+        [self.supportLabel.topAnchor constraintEqualToAnchor:self.headlineLabel.bottomAnchor constant:10.0],
+        [self.supportLabel.widthAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.widthAnchor multiplier:0.52],
+        [self.supportLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-126.0],
 
-        [self.locationControl.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:20.0],
-        [self.locationControl.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-20.0],
-        [self.locationControl.heightAnchor constraintEqualToConstant:58.0],
-        [self.locationControl.widthAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.widthAnchor multiplier:0.60],
-        [self.locationControl.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor constant:-10.0],
+        [self.locationControl.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
+        [self.locationControl.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
+        [self.locationControl.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
+        [self.locationControl.heightAnchor constraintEqualToConstant:62.0],
 
-        [self.locationIconView.leadingAnchor constraintEqualToAnchor:self.locationControl.leadingAnchor constant:14.0],
-        [self.locationIconView.centerYAnchor constraintEqualToAnchor:self.locationControl.centerYAnchor],
-        [self.locationIconView.widthAnchor constraintEqualToConstant:14.0],
-        [self.locationIconView.heightAnchor constraintEqualToConstant:14.0],
+        [self.locationAccentWashView.trailingAnchor constraintEqualToAnchor:self.locationControl.trailingAnchor constant:-8.0],
+        [self.locationAccentWashView.topAnchor constraintEqualToAnchor:self.locationControl.topAnchor constant:8.0],
+        [self.locationAccentWashView.bottomAnchor constraintEqualToAnchor:self.locationControl.bottomAnchor constant:-8.0],
+        [self.locationAccentWashView.widthAnchor constraintEqualToConstant:126.0],
 
-        [self.locationChevronView.trailingAnchor constraintEqualToAnchor:self.locationControl.trailingAnchor constant:-12.0],
-        [self.locationChevronView.centerYAnchor constraintEqualToAnchor:self.locationControl.centerYAnchor],
-        [self.locationChevronView.widthAnchor constraintEqualToConstant:10.0],
-        [self.locationChevronView.heightAnchor constraintEqualToConstant:10.0],
+        [self.locationIconPlateView.leadingAnchor constraintEqualToAnchor:self.locationControl.leadingAnchor constant:12.0],
+        [self.locationIconPlateView.centerYAnchor constraintEqualToAnchor:self.locationControl.centerYAnchor],
+        [self.locationIconPlateView.widthAnchor constraintEqualToConstant:36.0],
+        [self.locationIconPlateView.heightAnchor constraintEqualToConstant:36.0],
 
-        [self.locationTitleLabel.leadingAnchor constraintEqualToAnchor:self.locationIconView.trailingAnchor constant:10.0],
-        [self.locationTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.locationChevronView.leadingAnchor constant:-8.0],
+        [self.locationIconView.centerXAnchor constraintEqualToAnchor:self.locationIconPlateView.centerXAnchor],
+        [self.locationIconView.centerYAnchor constraintEqualToAnchor:self.locationIconPlateView.centerYAnchor],
+        [self.locationIconView.widthAnchor constraintEqualToConstant:15.0],
+        [self.locationIconView.heightAnchor constraintEqualToConstant:15.0],
+
+        [self.locationStatusChipView.trailingAnchor constraintEqualToAnchor:self.locationControl.trailingAnchor constant:-12.0],
+        [self.locationStatusChipView.centerYAnchor constraintEqualToAnchor:self.locationControl.centerYAnchor],
+        [self.locationStatusChipView.heightAnchor constraintEqualToConstant:32.0],
+        [self.locationStatusChipView.widthAnchor constraintGreaterThanOrEqualToConstant:88.0],
+
+        [self.locationStatusDotView.leadingAnchor constraintEqualToAnchor:self.locationStatusChipView.leadingAnchor constant:10.0],
+        [self.locationStatusDotView.centerYAnchor constraintEqualToAnchor:self.locationStatusChipView.centerYAnchor],
+        [self.locationStatusDotView.widthAnchor constraintEqualToConstant:7.0],
+        [self.locationStatusDotView.heightAnchor constraintEqualToConstant:7.0],
+
+        [self.locationChevronView.trailingAnchor constraintEqualToAnchor:self.locationStatusChipView.trailingAnchor constant:-10.0],
+        [self.locationChevronView.centerYAnchor constraintEqualToAnchor:self.locationStatusChipView.centerYAnchor],
+        [self.locationChevronView.widthAnchor constraintEqualToConstant:9.0],
+        [self.locationChevronView.heightAnchor constraintEqualToConstant:9.0],
+
+        [self.locationStatusLabel.leadingAnchor constraintEqualToAnchor:self.locationStatusDotView.trailingAnchor constant:7.0],
+        [self.locationStatusLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.locationChevronView.leadingAnchor constant:-6.0],
+        [self.locationStatusLabel.centerYAnchor constraintEqualToAnchor:self.locationStatusChipView.centerYAnchor],
+
+        [self.locationTitleLabel.leadingAnchor constraintEqualToAnchor:self.locationIconPlateView.trailingAnchor constant:12.0],
+        [self.locationTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.locationStatusChipView.leadingAnchor constant:-12.0],
         [self.locationTitleLabel.topAnchor constraintEqualToAnchor:self.locationControl.topAnchor constant:11.0],
 
         [self.locationMetaLabel.leadingAnchor constraintEqualToAnchor:self.locationTitleLabel.leadingAnchor],
-        [self.locationMetaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.locationChevronView.leadingAnchor constant:-8.0],
+        [self.locationMetaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.locationStatusChipView.leadingAnchor constant:-12.0],
         [self.locationMetaLabel.topAnchor constraintEqualToAnchor:self.locationTitleLabel.bottomAnchor constant:2.0],
+        [self.locationMetaLabel.bottomAnchor constraintEqualToAnchor:self.locationControl.bottomAnchor constant:-11.0],
 
         [self.actionButton.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
-        [self.actionButton.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-20.0],
+        [self.actionButton.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
 
-        [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-10.0],
-        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:120],
-        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:120],
-        [self.lottieHeaderView.topAnchor constraintEqualToAnchor:self.statusPillView.topAnchor constant:8.0],
+        [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-6.0],
+        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:112],
+        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:112],
+        [self.lottieHeaderView.topAnchor constraintEqualToAnchor:self.statusPillView.topAnchor constant:10.0],
      ]];
 
     // Peek strip constraints — sits below hero surface, overlapping ~14pt behind it
@@ -390,10 +478,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     
     
 
-    self.actionButtonHeightConstraint = [self.actionButton.heightAnchor constraintEqualToConstant:PPButtonHeightLG];
-    self.actionButtonWidthConstraint = [self.actionButton.widthAnchor constraintEqualToConstant:128.0];
+    self.actionButtonHeightConstraint = [self.actionButton.heightAnchor constraintEqualToConstant:0.0];
+    self.actionButtonWidthConstraint = [self.actionButton.widthAnchor constraintEqualToConstant:0.0];
     self.actionButtonHeightConstraint.active = YES;
     self.actionButtonWidthConstraint.active = YES;
+    self.actionButton.hidden = YES;
 
     [self pp_applyPaletteForCurrentTime];
     [self pp_startAmbientAnimationsIfNeeded];
@@ -462,17 +551,22 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.paletteLocationSeed = @"";
     self.locationTitleLabel.text = @"";
     self.locationMetaLabel.text = @"";
+    self.locationStatusLabel.text = @"";
     self.headlineLabel.text = @"";
     self.headlineLabel.attributedText = nil;
     self.supportLabel.text = @"";
     self.statusLabel.text = @"";
-    self.actionButton.hidden = NO;
-    self.actionButton.alpha = 1.0;
-    self.actionButtonHeightConstraint.constant = PPButtonHeightLG;
-    self.actionButtonWidthConstraint.constant = 128.0;
+    self.actionButton.hidden = YES;
+    self.actionButton.alpha = 0.0;
+    self.actionButtonHeightConstraint.constant = 0.0;
+    self.actionButtonWidthConstraint.constant = 0.0;
     self.locationControl.alpha = 1.0;
     self.locationControl.transform = CGAffineTransformIdentity;
     self.actionButton.transform = CGAffineTransformIdentity;
+    self.locationStatusDotView.transform = CGAffineTransformIdentity;
+    self.locationAccentWashView.alpha = 1.0;
+    [self.locationStatusDotView.layer removeAnimationForKey:@"pp.hero.location.dotPulse"];
+    [self.locationAccentWashView.layer removeAnimationForKey:@"pp.hero.location.washPulse"];
 
     self.lottieLoopToken += 1;
     [self.lottieHeaderView stop];
@@ -518,15 +612,20 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.supportLabel.text = [self pp_supportTextForLocation:safeLocation state:locationState];
     self.locationTitleLabel.text = safeLocation.length > 0 ? safeLocation : (kLang(@"Select your location") ?: @"Select your location");
     self.locationMetaLabel.text = [self pp_locationMetaTextForState:locationState];
+    self.locationControl.accessibilityLabel = self.locationTitleLabel.text;
+    self.locationControl.accessibilityValue = self.locationMetaLabel.text;
 
-    [self pp_setSymbolNamed:@"location.fill" onImageView:self.locationIconView pointSize:14.0];
+    [self pp_setSymbolNamed:[self pp_locationSymbolNameForState:locationState]
+                onImageView:self.locationIconView
+                  pointSize:15.0];
     [self pp_setSymbolNamed:(Language.isRTL ? @"chevron.left" : @"chevron.right")
                 onImageView:self.locationChevronView
-                  pointSize:10.0];
+                  pointSize:9.0];
 
     if (resolvedActionTitle.length == 0) {
         resolvedActionTitle = [self pp_defaultActionTitleForState:locationState];
     }
+    self.locationControl.accessibilityHint = resolvedActionTitle;
     [self pp_applyLocationState:locationState actionTitle:resolvedActionTitle];
 
     NSString *signature = [NSString stringWithFormat:@"%@|%@|%@|%ld|%@",
@@ -591,13 +690,18 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         return [NSString stringWithFormat:@"%@\n%@", line1, line2];
     }
 
-    return [NSString stringWithFormat:@"%@\n%@", line1, (kLang(@"Hero_Brand") ?: @"Trending now")]; //Hero_TrendingNow
+    return line1;
 }
 
 - (NSAttributedString *)pp_attributedHeadlineWithGreeting:(NSString *)greeting
                                                  userName:(NSString *)userName
 {
     NSString *headline = [self pp_headlineTextWithGreeting:greeting userName:userName];
+
+    // Strip the paw emoji — we replace it with a tinted SF Symbol below
+    headline = [headline stringByReplacingOccurrencesOfString:@"\U0001F43E" withString:@""];
+    headline = [headline stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+
     NSArray<NSString *> *lines =
         [headline componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]];
 
@@ -621,11 +725,13 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     paragraph.lineBreakMode = NSLineBreakByWordWrapping;
     paragraph.lineSpacing = 1.0;
 
+    UIColor *textColor = UIColor.whiteColor;
+
     NSMutableAttributedString *result =
         [[NSMutableAttributedString alloc] initWithString:firstLine
                                                attributes:@{
         NSFontAttributeName : firstLineFont,
-        NSForegroundColorAttributeName : UIColor.whiteColor,
+        NSForegroundColorAttributeName : textColor,
         NSParagraphStyleAttributeName : paragraph
     }];
 
@@ -634,13 +740,41 @@ static inline NSString *PPTrimHeroLine(NSString *line)
             [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"\n%@", secondLine]
                                             attributes:@{
             NSFontAttributeName : secondLineFont,
-            NSForegroundColorAttributeName : UIColor.whiteColor,
+            NSForegroundColorAttributeName : textColor,
             NSParagraphStyleAttributeName : paragraph
         }];
         [result appendAttributedString:secondLineAttributed];
+        [result appendAttributedString:[self pp_tintedPawAttachmentForFont:secondLineFont color:textColor]];
+    } else if (firstLine.length > 0) {
+        [result appendAttributedString:[self pp_tintedPawAttachmentForFont:firstLineFont color:textColor]];
     }
 
     return result;
+}
+
+/// Builds a tinted pawprint SF Symbol attachment that matches the greeting text color.
+- (NSAttributedString *)pp_tintedPawAttachmentForFont:(UIFont *)font color:(UIColor *)color
+{
+    NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+    CGFloat iconSize = font.pointSize * 0.82;
+    UIImageSymbolConfiguration *config =
+        [UIImageSymbolConfiguration configurationWithPointSize:iconSize
+                                                        weight:UIImageSymbolWeightSemibold];
+    UIImage *pawImage = [[UIImage systemImageNamed:@"pawprint.fill"
+                                 withConfiguration:config]
+                         imageWithTintColor:color
+                         renderingMode:UIImageRenderingModeAlwaysOriginal];
+    attachment.image = pawImage;
+    attachment.bounds = CGRectMake(0.0, font.descender * 0.3, iconSize, iconSize);
+
+    NSMutableAttributedString *pawString =
+        [[NSMutableAttributedString alloc] initWithString:@" "];
+    [pawString appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+    [pawString addAttributes:@{
+        NSForegroundColorAttributeName : color,
+        NSFontAttributeName : font
+    } range:NSMakeRange(0, pawString.length)];
+    return pawString;
 }
 
 - (NSString *)pp_statusTextForState:(PPHomeHeroLocationState)state
@@ -699,6 +833,36 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     }
 }
 
+- (NSString *)pp_locationChipTextForState:(PPHomeHeroLocationState)state
+{
+    switch (state) {
+        case PPHomeHeroLocationStateLoading:
+            return kLang(@"Hero_LocationChipLoading") ?: @"Locating";
+        case PPHomeHeroLocationStateDenied:
+            return kLang(@"Hero_LocationChipDenied") ?: @"Allow access";
+        case PPHomeHeroLocationStateReady:
+            return kLang(@"Hero_LocationChipReady") ?: @"Change your location";
+        case PPHomeHeroLocationStateUnset:
+        default:
+            return kLang(@"Hero_LocationChipUnset") ?: @"Choose area";
+    }
+}
+
+- (NSString *)pp_locationSymbolNameForState:(PPHomeHeroLocationState)state
+{
+    switch (state) {
+        case PPHomeHeroLocationStateLoading:
+            return @"location.north.line.fill";
+        case PPHomeHeroLocationStateDenied:
+            return @"location.slash.fill";
+        case PPHomeHeroLocationStateReady:
+            return @"location.fill";
+        case PPHomeHeroLocationStateUnset:
+        default:
+            return @"map.fill";
+    }
+}
+
 - (NSString *)pp_defaultActionTitleForState:(PPHomeHeroLocationState)state
 {
     switch (state) {
@@ -744,53 +908,84 @@ static inline NSString *PPTrimHeroLine(NSString *line)
                   actionTitle:(nullable NSString *)actionTitle
 {
     self.currentLocationState = locationState;
+    (void)actionTitle;
+    self.actionButton.hidden = YES;
+    self.actionButton.alpha = 0.0;
+    self.actionButtonHeightConstraint.constant = 0.0;
+    self.actionButtonWidthConstraint.constant = 0.0;
+    [self.actionButton setTitle:@"" forState:UIControlStateNormal];
 
-    BOOL showAction = (PPSafeString(actionTitle).length > 0 && locationState != PPHomeHeroLocationStateLoading);
-    self.actionButton.hidden = !showAction;
-    self.actionButton.alpha = showAction ? 1.0 : 0.0;
-    self.actionButtonHeightConstraint.constant = showAction ? PPButtonHeightLG : 0.0;
-
-    if (showAction) {
-        [self.actionButton setTitle:actionTitle forState:UIControlStateNormal];
-        CGFloat measuredWidth =
-            ceil([actionTitle sizeWithAttributes:@{
-                NSFontAttributeName : (self.actionButton.titleLabel.font ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold])
-            }].width) + PPSpace4XL;
-        self.actionButtonWidthConstraint.constant = MAX(128.0, MIN(180.0, measuredWidth));
-    } else {
-        self.actionButtonWidthConstraint.constant = 0.0;
-        [self.actionButton setTitle:@"" forState:UIControlStateNormal];
-    }
-
+    UIColor *accent = PPLocationAccentColor(self.paletteLocationSeed);
+    UIColor *liftedAccent = PPBlendColors(accent, UIColor.whiteColor, 0.26);
     UIColor *glassFill = [UIColor colorWithWhite:1.0 alpha:0.15];
-    UIColor *glassBorder = [UIColor colorWithWhite:1.0 alpha:0.10];
-    UIColor *buttonFill = [UIColor colorWithWhite:1.0 alpha:0.16];
-    UIColor *buttonTitleColor = UIColor.whiteColor;
+    UIColor *glassBorder = [UIColor colorWithWhite:1.0 alpha:0.09];
+    UIColor *iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.15];
+    UIColor *iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.08];
+    UIColor *accentWashFill = [liftedAccent colorWithAlphaComponent:0.14];
+    UIColor *chipFill = [UIColor colorWithWhite:1.0 alpha:0.14];
+    UIColor *chipBorder = [UIColor colorWithWhite:1.0 alpha:0.12];
+    UIColor *chipTextColor = [UIColor colorWithWhite:1.0 alpha:0.96];
+    UIColor *dotColor = [liftedAccent colorWithAlphaComponent:0.98];
 
     switch (locationState) {
         case PPHomeHeroLocationStateDenied:
             glassFill = [UIColor colorWithWhite:1.0 alpha:0.12];
             glassBorder = [UIColor colorWithWhite:1.0 alpha:0.08];
-            buttonFill = [UIColor colorWithWhite:1.0 alpha:0.96];
-            buttonTitleColor = [UIColor hx_colorWithHexStr:@"#12131A" alpha:1.0];
+            iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.16];
+            iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.08];
+            accentWashFill = [UIColor colorWithWhite:1.0 alpha:0.12];
+            chipFill = [UIColor colorWithWhite:1.0 alpha:0.92];
+            chipBorder = [UIColor colorWithWhite:1.0 alpha:0.0];
+            chipTextColor = [UIColor hx_colorWithHexStr:@"#151725" alpha:1.0];
+            dotColor = [UIColor hx_colorWithHexStr:@"#FF8C54" alpha:1.0];
             break;
 
         case PPHomeHeroLocationStateLoading:
             glassFill = [UIColor colorWithWhite:1.0 alpha:0.12];
             glassBorder = [UIColor colorWithWhite:1.0 alpha:0.08];
-            buttonFill = [UIColor colorWithWhite:1.0 alpha:0.14];
+            iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.17];
+            iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.10];
+            accentWashFill = [liftedAccent colorWithAlphaComponent:0.18];
+            chipFill = [UIColor colorWithWhite:1.0 alpha:0.18];
+            chipBorder = [UIColor colorWithWhite:1.0 alpha:0.12];
+            dotColor = [UIColor hx_colorWithHexStr:@"#FFD36B" alpha:1.0];
             break;
 
         case PPHomeHeroLocationStateReady:
+            glassFill = [UIColor colorWithWhite:1.0 alpha:0.16];
+            glassBorder = [UIColor colorWithWhite:1.0 alpha:0.10];
+            iconPlateFill = [liftedAccent colorWithAlphaComponent:0.20];
+            iconPlateBorder = [liftedAccent colorWithAlphaComponent:0.18];
+            accentWashFill = [liftedAccent colorWithAlphaComponent:0.20];
+            chipFill = [liftedAccent colorWithAlphaComponent:0.22];
+            chipBorder = [liftedAccent colorWithAlphaComponent:0.18];
+            dotColor = [UIColor colorWithWhite:1.0 alpha:0.96];
+            break;
         case PPHomeHeroLocationStateUnset:
         default:
+            glassFill = [UIColor colorWithWhite:1.0 alpha:0.14];
+            glassBorder = [UIColor colorWithWhite:1.0 alpha:0.09];
+            iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.15];
+            iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.08];
+            accentWashFill = [liftedAccent colorWithAlphaComponent:0.14];
+            chipFill = [UIColor colorWithWhite:1.0 alpha:0.16];
+            chipBorder = [UIColor colorWithWhite:1.0 alpha:0.11];
             break;
     }
 
     self.locationControl.backgroundColor = glassFill;
     self.locationControl.layer.borderColor = glassBorder.CGColor;
-    self.actionButton.backgroundColor = buttonFill;
-    [self.actionButton setTitleColor:buttonTitleColor forState:UIControlStateNormal];
+    self.locationAccentWashView.backgroundColor = accentWashFill;
+    self.locationIconPlateView.backgroundColor = iconPlateFill;
+    self.locationIconPlateView.layer.borderColor = iconPlateBorder.CGColor;
+    self.locationStatusChipView.backgroundColor = chipFill;
+    self.locationStatusChipView.layer.borderColor = chipBorder.CGColor;
+    self.locationStatusLabel.text = [self pp_locationChipTextForState:locationState];
+    self.locationStatusLabel.textColor = chipTextColor;
+    self.locationStatusDotView.backgroundColor = dotColor;
+    self.locationChevronView.tintColor = [chipTextColor colorWithAlphaComponent:(locationState == PPHomeHeroLocationStateDenied ? 0.72 : 0.88)];
+    self.locationIconView.tintColor = [UIColor colorWithWhite:1.0 alpha:(locationState == PPHomeHeroLocationStateDenied ? 0.94 : 0.98)];
+    [self pp_updateLocationPulseForState:locationState];
 }
 
 #pragma mark - Palette
@@ -870,14 +1065,14 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     ];
     self.bottomShadeLayer.colors = @[
         (id)[UIColor colorWithWhite:0.0 alpha:0.0].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.10].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.34].CGColor
+        (id)[UIColor colorWithWhite:0.0 alpha:0.08].CGColor,
+        (id)[UIColor colorWithWhite:0.0 alpha:0.24].CGColor
     ];
     [CATransaction commit];
 
-    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.18];
-    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.22];
-    self.statusPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.12];
+    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.14];
+    self.statusPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
     self.brandLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.76];
 }
 
@@ -885,35 +1080,72 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
 - (void)pp_startAmbientAnimationsIfNeeded
 {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
     if ([self.orbViewA.layer animationForKey:@"pp.hero.breatheA"]) {
         return;
     }
 
     CABasicAnimation *breatheA = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    breatheA.fromValue = @(0.96);
-    breatheA.toValue = @(1.07);
-    breatheA.duration = 6.0;
+    breatheA.fromValue = @(0.98);
+    breatheA.toValue = @(1.03);
+    breatheA.duration = 7.2;
     breatheA.autoreverses = YES;
     breatheA.repeatCount = HUGE_VALF;
     breatheA.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.orbViewA.layer addAnimation:breatheA forKey:@"pp.hero.breatheA"];
 
     CABasicAnimation *breatheB = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    breatheB.fromValue = @(0.94);
-    breatheB.toValue = @(1.08);
-    breatheB.duration = 7.4;
+    breatheB.fromValue = @(0.97);
+    breatheB.toValue = @(1.04);
+    breatheB.duration = 8.6;
     breatheB.autoreverses = YES;
     breatheB.repeatCount = HUGE_VALF;
     breatheB.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.orbViewB.layer addAnimation:breatheB forKey:@"pp.hero.breatheB"];
 
     CABasicAnimation *glow = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    glow.fromValue = @(0.85);
-    glow.toValue = @(1.0);
-    glow.duration = 4.8;
+    glow.fromValue = @(0.72);
+    glow.toValue = @(0.90);
+    glow.duration = 6.2;
     glow.autoreverses = YES;
     glow.repeatCount = HUGE_VALF;
     [self.ambientGlowLayer addAnimation:glow forKey:@"pp.hero.glow"];
+}
+
+- (void)pp_updateLocationPulseForState:(PPHomeHeroLocationState)state
+{
+    [self.locationStatusDotView.layer removeAnimationForKey:@"pp.hero.location.dotPulse"];
+    [self.locationAccentWashView.layer removeAnimationForKey:@"pp.hero.location.washPulse"];
+    self.locationStatusDotView.transform = CGAffineTransformIdentity;
+    self.locationAccentWashView.alpha = 1.0;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    if (state != PPHomeHeroLocationStateReady && state != PPHomeHeroLocationStateLoading) {
+        return;
+    }
+
+    CABasicAnimation *dotPulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    dotPulse.fromValue = @(0.92);
+    dotPulse.toValue = @(1.14);
+    dotPulse.duration = (state == PPHomeHeroLocationStateLoading ? 0.92 : 1.38);
+    dotPulse.autoreverses = YES;
+    dotPulse.repeatCount = HUGE_VALF;
+    dotPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.locationStatusDotView.layer addAnimation:dotPulse forKey:@"pp.hero.location.dotPulse"];
+
+    CABasicAnimation *washPulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    washPulse.fromValue = @(0.72);
+    washPulse.toValue = @(1.0);
+    washPulse.duration = (state == PPHomeHeroLocationStateLoading ? 1.4 : 2.1);
+    washPulse.autoreverses = YES;
+    washPulse.repeatCount = HUGE_VALF;
+    washPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.locationAccentWashView.layer addAnimation:washPulse forKey:@"pp.hero.location.washPulse"];
 }
 
 - (void)pp_runEntranceAnimationIfNeededWithSignature:(NSString *)signature
@@ -926,7 +1158,6 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     NSArray<UIView *> *animatedViews = @[
         self.brandLabel,
-        self.statusPillView,
         self.headlineLabel,
         self.supportLabel,
         self.locationControl,
@@ -945,16 +1176,6 @@ static inline NSString *PPTrimHeroLine(NSString *line)
                      animations:^{
         self.brandLabel.alpha = 1.0;
         self.brandLabel.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [UIView animateWithDuration:0.52
-                          delay:0.05
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.15
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self.statusPillView.alpha = 1.0;
-        self.statusPillView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.62
@@ -1025,6 +1246,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 {
     if (self.onLocationTap) {
         self.onLocationTap();
+        return;
+    }
+    if (self.onLocationActionTap) {
+        self.onLocationActionTap();
     }
 }
 

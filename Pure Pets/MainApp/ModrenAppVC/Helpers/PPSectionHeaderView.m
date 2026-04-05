@@ -32,6 +32,8 @@
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
    // self.surfaceView.layer.cornerRadius  = PPCornerCard;
     self.surfaceView.layer.cornerCurve   = kCACornerCurveContinuous;
+    self.surfaceView.layer.borderWidth = 0.75;
+    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
    // self.surfaceView.clipsToBounds = YES;
     [self addSubview:self.surfaceView];
 
@@ -39,6 +41,7 @@
         (PPIOS26() ? UIBlurEffectStyleSystemChromeMaterial : UIBlurEffectStyleSystemThinMaterial)];
     self.blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.blurView.alpha = 0.34;
     [self.surfaceView addSubview:self.blurView];
     [NSLayoutConstraint activateConstraints:@[
         [self.blurView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor],
@@ -53,8 +56,8 @@
     self.accentLine.endPoint   = CGPointMake(0.5, 1.0);
     self.accentLine.cornerRadius = 2.0;
     self.accentLine.colors = @[
-        (id)(AppPrimaryClr ?: UIColor.systemTealColor).CGColor,
-        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.3].CGColor,
+        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.90].CGColor,
+        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.18].CGColor,
     ];
     [self.surfaceView.layer addSublayer:self.accentLine];
 
@@ -146,11 +149,10 @@
     [super layoutSubviews];
     CGRect bounds = self.surfaceView.bounds;
     BOOL isRTL = (self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft);
-    CGFloat lineX = isRTL ? (CGRectGetWidth(bounds) - 4.0 - PPSpaceXS) : PPSpaceXS;
-    self.accentLine.frame = CGRectMake(lineX, 8.0, 4.0, CGRectGetHeight(bounds) - 16.0);
+    CGFloat lineX = isRTL ? (CGRectGetWidth(bounds) - 2.5 - PPSpaceXS) : PPSpaceXS;
+    self.accentLine.frame = CGRectMake(lineX, 10.0, 2.5, CGRectGetHeight(bounds) - 20.0);
 
-    // Asymmetric corners: leading = 6, trailing = 18
-    CGFloat leadR = 6.0, trailR = 18.0;
+    CGFloat leadR = 16.0, trailR = 16.0;
     CGFloat topL = isRTL ? trailR : leadR;
     CGFloat topR = isRTL ? leadR  : trailR;
     CGFloat botL = isRTL ? trailR : leadR;
@@ -232,7 +234,7 @@
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     return isDark
         ? [UIColor colorWithWhite:1.0 alpha:0.04]
-        : [AppForgroundColr colorWithAlphaComponent:0.38];
+        : [AppForgroundColr colorWithAlphaComponent:0.56];
 }
 
 #pragma mark - Init
@@ -254,6 +256,8 @@
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     //self.surfaceView.layer.cornerRadius = 0;
     self.surfaceView.layer.cornerCurve  = kCACornerCurveContinuous;
+    self.surfaceView.layer.borderWidth = 0.75;
+    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
     //self.surfaceView.clipsToBounds = YES;
     [self addSubview:self.surfaceView];
     [self sendSubviewToBack:self.surfaceView];
@@ -263,7 +267,7 @@
         (PPIOS26() ? UIBlurEffectStyleSystemChromeMaterial : UIBlurEffectStyleSystemUltraThinMaterial)];
     
     self.blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    self.blurView.alpha = 0.85;
+    self.blurView.alpha = 0.40;
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.surfaceView addSubview:self.blurView];
     [NSLayoutConstraint activateConstraints:@[
@@ -276,7 +280,7 @@
     // Tinted overlay for warmth
     UIView *overlay = [[UIView alloc] init];
     overlay.translatesAutoresizingMaskIntoConstraints = NO;
-    overlay.backgroundColor =AppClearClr;// [self pp_overlayColor];
+    overlay.backgroundColor = [self pp_overlayColor];
     overlay.userInteractionEnabled = NO;
     overlay.tag = 999;
     [self.surfaceView addSubview:overlay];
@@ -293,8 +297,8 @@
     self.accentLine.endPoint   = CGPointMake(0.5, 1.0);
     self.accentLine.cornerRadius = 1.5;
     self.accentLine.colors = @[
-        (id)(AppPrimaryClr ?: UIColor.systemTealColor).CGColor,
-        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.2].CGColor,
+        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.92].CGColor,
+        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.16].CGColor,
     ];
     [self.surfaceView.layer addSublayer:self.accentLine];
 
@@ -355,8 +359,8 @@
 }
 
 - (void)pp_buildActionButton {
-    UIButtonConfiguration *cfg = [UIButtonConfiguration filledButtonConfiguration];
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 16.0, 10.0, 16.0);
+    UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
     cfg.imagePadding  = 6;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
@@ -375,24 +379,24 @@
     cfg.image = chevron;
 
     // Modern filled capsule with brand color
-    cfg.baseForegroundColor = UIColor.whiteColor;
-    cfg.baseBackgroundColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    cfg.baseForegroundColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    cfg.baseBackgroundColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.10];
 
     cfg.titleTextAttributesTransformer =
     ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attrs) {
         NSMutableDictionary *m = attrs.mutableCopy;
-        m[NSFontAttributeName]            = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightBold];
-        m[NSForegroundColorAttributeName] = UIColor.whiteColor;
+        m[NSFontAttributeName]            = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+        m[NSForegroundColorAttributeName] = AppPrimaryClr ?: UIColor.systemTealColor;
         return m;
     };
 
     _actionButton = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
     _actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     _actionButton.hidden = YES;
-    _actionButton.layer.shadowColor   = (AppPrimaryClr ?: UIColor.systemTealColor).CGColor;
-    _actionButton.layer.shadowOpacity = 0.25;
+    _actionButton.layer.shadowColor   = UIColor.blackColor.CGColor;
+    _actionButton.layer.shadowOpacity = 0.04;
     _actionButton.layer.shadowRadius  = 8.0;
-    _actionButton.layer.shadowOffset  = CGSizeMake(0, 4.0);
+    _actionButton.layer.shadowOffset  = CGSizeMake(0, 3.0);
     [_actionButton addTarget:self
                       action:@selector(pp_actionTapped)
             forControlEvents:UIControlEventTouchUpInside];
@@ -404,11 +408,10 @@
     [super layoutSubviews];
     CGRect bounds = self.surfaceView.bounds;
     BOOL isRTL = (self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft);
-    CGFloat lineX = isRTL ? (CGRectGetWidth(bounds) - 3.0 - PPSpaceXS) : PPSpaceXS;
-    self.accentLine.frame = CGRectMake(lineX, 8.0, 3.0, CGRectGetHeight(bounds) - 16.0);
+    CGFloat lineX = isRTL ? (CGRectGetWidth(bounds) - 2.5 - PPSpaceXS) : PPSpaceXS;
+    self.accentLine.frame = CGRectMake(lineX, 10.0, 2.5, CGRectGetHeight(bounds) - 20.0);
 
-    // Asymmetric corners: leading = 6, trailing = 18
-    CGFloat leadR = 10.0, trailR = 26.0;
+    CGFloat leadR = 16.0, trailR = 16.0;
     CGFloat topL = isRTL ? trailR : leadR;
     CGFloat topR = isRTL ? leadR  : trailR;
     CGFloat botL = isRTL ? trailR : leadR;
@@ -418,8 +421,8 @@
     mask.path = path.CGPath;
     self.surfaceView.layer.mask = mask;
     
-    self.surfaceView.layer.borderColor = AppBackgroundClr.CGColor;
-    self.surfaceView.layer.borderWidth = 0.85;
+    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
+    self.surfaceView.layer.borderWidth = 0.75;
 }
 
 - (UIBezierPath *)pp_pathForRect:(CGRect)rect
@@ -450,10 +453,10 @@
         UIView *overlay = [self.surfaceView viewWithTag:999];
         overlay.backgroundColor = [self pp_overlayColor];
         self.accentLine.colors = @[
-            (id)(AppPrimaryClr ?: UIColor.systemTealColor).CGColor,
-            (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.2].CGColor,
+            (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.92].CGColor,
+            (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.16].CGColor,
         ];
-        _actionButton.layer.shadowColor = (AppPrimaryClr ?: UIColor.systemTealColor).CGColor;
+        _actionButton.layer.shadowColor = UIColor.blackColor.CGColor;
     }
 }
 
@@ -478,7 +481,7 @@
 
     if (actionTitle.length > 0) {
         [self.actionButton setTitle:actionTitle forState:UIControlStateNormal];
-        self.actionButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+        self.actionButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     }
 
     // Custom icon for non-MainKinds sections

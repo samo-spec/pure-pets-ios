@@ -29,8 +29,8 @@ static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
 static NSInteger const PPRootTabIndexHome = 0;
 static NSInteger const PPRootTabIndexChats = 1;
 static NSInteger const PPRootTabIndexAdd = 2;
-static NSInteger const PPRootTabIndexSettings = 3;
-static NSInteger const PPRootTabIndexOrders = 4;
+static NSInteger const PPRootTabIndexOrders = 3;
+static NSInteger const PPRootTabIndexSettings = 4;
 
 @interface PPRootTabBarController ()
 @property (nonatomic, strong) UIButton *leadingTabButton;
@@ -49,6 +49,11 @@ static NSInteger const PPRootTabIndexOrders = 4;
 - (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience;
 - (nullable PPSearchViewController *)pp_existingSearchControllerInNavigationController:(UINavigationController *)navigationController;
 - (void)pp_openSearchExperienceFromCurrentContextOpeningAccessories:(BOOL)openAccessories;
+- (void)pp_updateTabBarSelectionIndicatorIfNeeded;
+- (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize
+                                           indicatorSize:(CGSize)indicatorSize
+                                               fillColor:(UIColor *)fillColor
+                                             strokeColor:(UIColor *)strokeColor;
 @end
 
 @implementation PPRootTabBarController
@@ -123,8 +128,8 @@ static NSInteger const PPRootTabIndexOrders = 4;
         homeNav,
         notiNav,
         addNav,
-        settingsNav,
-        cartNav
+        cartNav,
+        settingsNav
     ];
     self.pp_lastSelectedIndex = self.selectedIndex;
     //[self addBottomFadeBelowTabBar];
@@ -283,6 +288,7 @@ static NSInteger const PPRootTabIndexOrders = 4;
     [super viewDidLayoutSubviews];
 
     [self pp_updateBlockedOverlayTopInset];
+    [self pp_updateTabBarSelectionIndicatorIfNeeded];
 }
 
 #pragma mark - Blocked Overlay
@@ -644,9 +650,8 @@ static NSInteger const PPRootTabIndexOrders = 4;
 
 - (UIViewController *)pp_makeSettingsRootViewController
 {
-    UIStoryboard *storyboard = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
-    UIViewController *settingsViewController =
-        [storyboard instantiateViewControllerWithIdentifier:@"SettingVC"];
+     SettingVC *settingsViewController =
+    [SettingVC new];
     if ([settingsViewController isKindOfClass:SettingVC.class]) {
         return settingsViewController;
     }
@@ -677,13 +682,14 @@ static NSInteger const PPRootTabIndexOrders = 4;
     if (@available(iOS 26.0, *)) {
         // iOS 26+: Transparent — Liquid Glass handles the tab bar chrome
         [appearance configureWithTransparentBackground];
+        appearance.backgroundColor = UIColor.clearColor;
     } else if (@available(iOS 13.0, *)) {
         // iOS <26: Frosted translucent background for a polished tab bar
         [appearance configureWithDefaultBackground];
         appearance.backgroundEffect =
-            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         appearance.backgroundColor =
-            [AppForgroundColr colorWithAlphaComponent:0.82];
+            [AppForgroundColr colorWithAlphaComponent:0.74];
     } else {
         appearance.backgroundImage = [UIImage new];
         appearance.shadowImage = [UIImage new];
@@ -710,6 +716,12 @@ static NSInteger const PPRootTabIndexOrders = 4;
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = normalTitle;
         appearance.inlineLayoutAppearance.normal.titleTextAttributes = normalTitle;
         appearance.compactInlineLayoutAppearance.normal.titleTextAttributes = normalTitle;
+        appearance.stackedLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+        appearance.inlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+        appearance.compactInlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+        appearance.stackedLayoutAppearance.normal.iconColor = UIColor.secondaryLabelColor;
+        appearance.inlineLayoutAppearance.normal.iconColor = UIColor.secondaryLabelColor;
+        appearance.compactInlineLayoutAppearance.normal.iconColor = UIColor.secondaryLabelColor;
         
         if (@available(iOS 26.0, *)) {
             // iOS 26+: Liquid Glass — no shadow line, no background effect
@@ -721,7 +733,7 @@ static NSInteger const PPRootTabIndexOrders = 4;
         }
         
         // 🫁 Add breathing space between icon and title
-        UIOffset titleOffset = UIOffsetMake(0, 4);
+        UIOffset titleOffset = UIOffsetMake(0, 3);
 
         appearance.stackedLayoutAppearance.normal.titlePositionAdjustment = titleOffset;
         appearance.stackedLayoutAppearance.selected.titlePositionAdjustment = titleOffset;
@@ -735,6 +747,11 @@ static NSInteger const PPRootTabIndexOrders = 4;
         if (@available(iOS 15.0, *)) {
             self.tabBar.scrollEdgeAppearance = appearance;
         }
+        self.tabBar.layer.shadowColor = UIColor.blackColor.CGColor;
+        self.tabBar.layer.shadowOpacity = 0.05;
+        self.tabBar.layer.shadowRadius = 16.0;
+        self.tabBar.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+        self.tabBar.layer.masksToBounds = NO;
         
     } else {
         NSDictionary<NSAttributedStringKey, id> *clearSelectedTitle =
@@ -749,11 +766,65 @@ static NSInteger const PPRootTabIndexOrders = 4;
     }
 }
 
+- (void)pp_updateTabBarSelectionIndicatorIfNeeded
+{
+    if (!self.tabBar || self.tabBar.items.count == 0) {
+        return;
+    }
+
+    CGSize tabBarSize = self.tabBar.bounds.size;
+    if (tabBarSize.width <= 0.0 || tabBarSize.height <= 0.0) {
+        return;
+    }
+
+    CGFloat itemWidth = floor(tabBarSize.width / (CGFloat)self.tabBar.items.count);
+    if (itemWidth <= 0.0) {
+        return;
+    }
+
+    CGSize itemSize = CGSizeMake(itemWidth, tabBarSize.height);
+    CGSize indicatorSize = CGSizeMake(MIN(60.0, MAX(44.0, itemWidth - 18.0)), 34.0);
+    UIColor *fillColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:(PPIOS26() ? 0.12 : 0.10)];
+    UIColor *strokeColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.14];
+    self.tabBar.selectionIndicatorImage =
+        [self pp_tabBarSelectionIndicatorImageForItemSize:itemSize
+                                            indicatorSize:indicatorSize
+                                                fillColor:fillColor
+                                              strokeColor:strokeColor];
+}
+
+- (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize
+                                           indicatorSize:(CGSize)indicatorSize
+                                               fillColor:(UIColor *)fillColor
+                                             strokeColor:(UIColor *)strokeColor
+{
+    if (itemSize.width <= 0.0 || itemSize.height <= 0.0) {
+        return nil;
+    }
+
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+    format.opaque = NO;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:itemSize format:format];
+    return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
+        CGRect indicatorRect = CGRectMake((itemSize.width - indicatorSize.width) * 0.5,
+                                          6.0,
+                                          indicatorSize.width,
+                                          indicatorSize.height);
+        UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:indicatorRect cornerRadius:17.0];
+        [fillColor setFill];
+        [path fill];
+        [strokeColor setStroke];
+        path.lineWidth = 0.75;
+        [path stroke];
+    }];
+}
+
 - (void)addPlusTabBarButton {
 
 
     UIButton *showAddMenuButton = [UIButton buttonWithType:UIButtonTypeSystem];
     showAddMenuButton.translatesAutoresizingMaskIntoConstraints = NO;
+    showAddMenuButton.adjustsImageWhenHighlighted = NO;
 
     UIImageSymbolConfiguration *symbolConfig =
     [UIImageSymbolConfiguration configurationWithPointSize:17
@@ -779,15 +850,14 @@ static NSInteger const PPRootTabIndexOrders = 4;
         cfg.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
 
         // 🔒 Normalize internal layout
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(18, 6, 16, 6);
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(16, 8, 14, 8);
         cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        ///cfg.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
-        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.3];
+        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.22];
 
         cfg.attributedTitle =
-        [[NSAttributedString alloc] initWithString:kLang(@"new") attributes:@{ NSFontAttributeName : [GM boldFontWithSize:14],  NSForegroundColorAttributeName : AppPrimaryTextClr }];
+        [[NSAttributedString alloc] initWithString:kLang(@"new") attributes:@{ NSFontAttributeName : [GM boldFontWithSize:13],  NSForegroundColorAttributeName : AppPrimaryTextClr }];
         cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        cfg.background.cornerRadius = 12;
+        cfg.background.cornerRadius = 14;
         cfg.image = icon;
         
         cfg.baseForegroundColor = AppForgroundColr;
@@ -836,10 +906,10 @@ static NSInteger const PPRootTabIndexOrders = 4;
     // Shadow + clipping — version-specific handling
     if (@available(iOS 26.0, *)) {
         // iOS 26+: Glass button — external shadow for depth, no clipping
-        showAddMenuButton.layer.shadowColor = AppPrimaryTextClr.CGColor;
-        showAddMenuButton.layer.shadowOpacity = 0.10;
-        showAddMenuButton.layer.shadowRadius = 8;
-        showAddMenuButton.layer.shadowOffset = CGSizeMake(0, 3);
+        showAddMenuButton.layer.shadowColor = UIColor.blackColor.CGColor;
+        showAddMenuButton.layer.shadowOpacity = 0.08;
+        showAddMenuButton.layer.shadowRadius = 10;
+        showAddMenuButton.layer.shadowOffset = CGSizeMake(0, 4);
         showAddMenuButton.layer.masksToBounds = NO;
         showAddMenuButton.clipsToBounds = NO;
     }
@@ -853,8 +923,8 @@ static NSInteger const PPRootTabIndexOrders = 4;
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.tabBar.centerXAnchor],
         [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-10],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:58],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:58]
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:56],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:56]
     ]];
     
     // 🔒 Force DARK mode for glass button only
@@ -871,6 +941,10 @@ static NSInteger const PPRootTabIndexOrders = 4;
 
 
 - (void)presentBottomSheet {
+    if (@available(iOS 10.0, *)) {
+        UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+        [feedback impactOccurred];
+    }
     
     if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return; }
     if (UserManager.sharedManager.isCurrentUserBlocked) {

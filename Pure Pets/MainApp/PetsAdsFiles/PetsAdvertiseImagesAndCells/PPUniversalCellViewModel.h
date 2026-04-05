@@ -36,6 +36,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSNumber *finalPrice;               // Auto-calculated final price
 @property (nonatomic, strong) NSNumber *price;                     // Base/original price
 @property (nonatomic, assign) CGFloat preferredAspectRatio;
+@property (nonatomic, copy, nullable) NSString *contextualReasonText;
+@property (nonatomic, copy, nullable) NSString *contextualReasonIconName;
 - (instancetype)initWithModel:(id)model
                       context:(PPCellContext)context;
 - (instancetype)initWithModel:(id)model ppDataSection:(PPDataSection)ppDataSection;

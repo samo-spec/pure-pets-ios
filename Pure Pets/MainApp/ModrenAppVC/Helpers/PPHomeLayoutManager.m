@@ -23,8 +23,9 @@
     __weak typeof(self) weakSelf = self;
     NSArray<NSNumber *> *renderOrder = @[
         @(PPHomeSectionHero),
-        @(PPHomeSectionCurrentOrders),
+        @(PPHomeSectionQuickActions),
         @(PPHomeSectionServices),
+        @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
@@ -48,6 +49,9 @@
 
             case PPHomeSectionHero:
                 return [PPHomeFunc heroSection];
+
+            case PPHomeSectionQuickActions:
+                return [PPHomeFunc quickActionsSection];
 
             case PPHomeSectionServices:
                 return [PPHomeFunc servicesSection];

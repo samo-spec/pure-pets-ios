@@ -1160,7 +1160,7 @@
 
 // Localizable.strings (Arabic)
 "Check out this pet ad!" = "اطلع على إعلان الحيوان الأليف هذا!";
-"Check out this pet accessory!" = "اطلع على ملحق الحيوانات الأليف هذا!";
+"Check out this pet accessory!" = "اطلع على إكسسوار الحيوانات الأليف هذا!";
 "Copied to clipboard!" = "تم النسخ إلى الحافظة!";
 "Shared successfully!" = "تم المشاركة بنجاح!";
 "No images to share" = "لا توجد صور للمشاركة";
@@ -1199,7 +1199,7 @@
 "New" = "جديد";
 "Used" = "مستعمل";
 "Not specified" = "غير محدد";
-"Accessory" = "ملحق";
+"Accessory" = "إكسسوار";
 "Food" = "طعام";
 "Unknown" = "غير معروف";
 "On Sale!" = "في العرض!";
@@ -1248,13 +1248,13 @@
 "Pet Status" = "حالة الحيوان";
 
 // Accessory attributes
-"Accessory Name" = "اسم الملحق";
-"Accessory Description" = "وصف الملحق";
-"Accessory Price" = "سعر الملحق";
-"Accessory Category" = "فئة الملحق";
-"Accessory Type" = "نوع الملحق";
-"Accessory Condition" = "حالة الملحق";
-"Accessory Quantity" = "كمية الملحق";
+"Accessory Name" = "اسم الإكسسوار";
+"Accessory Description" = "وصف الإكسسوار";
+"Accessory Price" = "سعر الإكسسوار";
+"Accessory Category" = "فئة الإكسسوار";
+"Accessory Type" = "نوع الإكسسوار";
+"Accessory Condition" = "حالة الإكسسوار";
+"Accessory Quantity" = "كمية الإكسسوار";
 
 // Common
 "OK" = "موافق";
@@ -1498,6 +1498,10 @@
 "home_nav_search_example_vets"   = "العيادات البيطرية";
 "home_nav_search_example_food"   = "طعام الكلاب";
 "home_nav_search_example_accessories" = "إكسسوارات الحيوانات";
+"home_nav_search_example_cats_compact" = "قطط";
+"home_nav_search_example_vets_compact" = "بيطري";
+"home_nav_search_example_food_compact" = "طعام";
+"home_nav_search_example_accessories_compact" = "إكسسوارات";
 "ShowAll"  = "عرض الكل";
 "ShowLess" = "عرض أقل";
 "Home_NearbyAds"        = "بالقرب منك";
@@ -1648,6 +1652,10 @@
 "Hero_LocationMetaDenied" = "الوصول إلى الموقع متوقف";
 "Hero_LocationMetaReady" = "اضغط لتحديث المنطقة";
 "Hero_LocationMetaUnset" = "اختر منطقتك";
+"Hero_LocationChipLoading" = "جارٍ التحديد";
+"Hero_LocationChipDenied" = "يلزم إذن";
+"Hero_LocationChipReady" = "قريب منك";
+"Hero_LocationChipUnset" = "اختر الآن";
 
 /* Name formatting */
 "Hero_NameCommaRTL" = "%@، %@";
@@ -1973,3 +1981,24 @@
 "take_a_photo" = "التقط صورة";
 "files" = "الملفات";
 "browse_files" = "تصفح الملفات";
+"home_quick_action_sell_pet" = "بيع حيوان";
+"home_quick_action_adopt" = "تبني";
+"home_quick_action_add_ad" = "إضافة إعلان";
+"home_quick_action_request_service" = "طلب خدمة";
+"home_location_sheet_title" = "اختر موقعك الذكي";
+"home_location_sheet_subtitle" = "بدّل بين موقعك الحالي والمناطق الأخيرة بسرعة، مع الحفاظ على تجربة قريبة منك وبدون تعقيد.";
+"home_location_sheet_use_current" = "استخدام موقعي الحالي";
+"home_location_sheet_use_current_subtitle" = "تحديث النتائج القريبة بناءً على GPS";
+"home_location_sheet_change_area" = "تغيير المنطقة";
+"home_location_sheet_change_area_subtitle" = "اختر مدينة أو حيًا آخر";
+"home_location_sheet_open_settings_subtitle" = "اسمح بالوصول للموقع للحفاظ على دقة النتائج القريبة";
+"home_location_sheet_recent_title" = "المواقع الأخيرة";
+"home_location_sheet_recent_subtitle" = "اضغط لإعادة استخدام هذا الموقع";
+"home_location_sheet_current_subtitle_auto" = "نقوم بتحديث النتائج القريبة تلقائيًا حسب موقعك الحالي.";
+"home_location_sheet_current_subtitle_manual" = "تعرض الشاشة الآن نتائج قريبة من المنطقة التي اخترتها يدويًا.";
+"home_location_sheet_current_subtitle_denied" = "يمكنك اختيار منطقة يدويًا أو تفعيل صلاحية الموقع للحصول على نتائج أدق.";
+"home_location_sheet_current_subtitle_unset" = "اختر أفضل موقع لعرض الحيوانات والخدمات الأقرب إليك.";
+"home_greeting_named_format_rtl" = "%1$@ يا %2$@ 🐾";
+"home_greeting_named_format_ltr" = "%1$@, %2$@ 🐾";
+"home_suggestion_reason_nearby" = "قريب منك";
+"home_suggestion_reason_previous_orders" = "بناءً على طلباتك السابقة";

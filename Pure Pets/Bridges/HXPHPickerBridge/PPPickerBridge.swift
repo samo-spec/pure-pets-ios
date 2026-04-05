@@ -186,18 +186,16 @@ public extension Notification.Name {
     /// Apply custom fonts and localized text to HXPhotoPicker's TextManager.
     private func applyCustomTextManager() {
         // Bottom toolbar fonts
+        // Fonts arrive already scaled via UIFontMetrics from the caller — do NOT scale again.
         if let btnFont = buttonFont ?? navigationButtonFont {
-            let regular = UIFontMetrics.default.scaledFont(for: btnFont)
-            HX.textManager.picker.photoList.bottomView.previewTitleFont = regular
-            HX.textManager.picker.photoList.bottomView.originalTitleFont = regular
-            HX.textManager.picker.photoList.bottomView.finishTitleFont = regular
-            HX.textManager.picker.photoList.bottomView.permissionsTitleFont = UIFontMetrics.default.scaledFont(
-                for: btnFont.withSize(btnFont.pointSize - 2)
-            )
-            HX.textManager.picker.preview.bottomView.previewTitleFont = regular
-            HX.textManager.picker.preview.bottomView.originalTitleFont = regular
-            HX.textManager.picker.preview.bottomView.finishTitleFont = regular
-            HX.textManager.picker.preview.bottomView.editTitleFont = regular
+            HX.textManager.picker.photoList.bottomView.previewTitleFont = btnFont
+            HX.textManager.picker.photoList.bottomView.originalTitleFont = btnFont
+            HX.textManager.picker.photoList.bottomView.finishTitleFont = btnFont
+            HX.textManager.picker.photoList.bottomView.permissionsTitleFont = btnFont.withSize(btnFont.pointSize - 2)
+            HX.textManager.picker.preview.bottomView.previewTitleFont = btnFont
+            HX.textManager.picker.preview.bottomView.originalTitleFont = btnFont
+            HX.textManager.picker.preview.bottomView.finishTitleFont = btnFont
+            HX.textManager.picker.preview.bottomView.editTitleFont = btnFont
         }
 
         // Back button text (album list → photo list)

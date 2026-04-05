@@ -1548,6 +1548,10 @@
 "home_nav_search_example_vets"   = "Nearby vets";
 "home_nav_search_example_food"   = "Dog food";
 "home_nav_search_example_accessories" = "Pet accessories";
+"home_nav_search_example_cats_compact" = "Cats";
+"home_nav_search_example_vets_compact" = "Vet";
+"home_nav_search_example_food_compact" = "Food";
+"home_nav_search_example_accessories_compact" = "Gear";
 "ShowAll"  = "Show all";
 "ShowLess" = "Show less";
 "search" = "Search";
@@ -1699,6 +1703,10 @@
 "Hero_LocationMetaDenied" = "Location access is off";
 "Hero_LocationMetaReady" = "Tap to update area";
 "Hero_LocationMetaUnset" = "Choose your area";
+"Hero_LocationChipLoading" = "Locating";
+"Hero_LocationChipDenied" = "Allow access";
+"Hero_LocationChipReady" = "Nearby";
+"Hero_LocationChipUnset" = "Choose area";
 
 /* Name formatting */
 "Hero_NameCommaLTR" = "%@, %@";
@@ -2020,3 +2028,24 @@
 "take_a_photo" = "Take a photo";
 "files" = "Files";
 "browse_files" = "Browse files";
+"home_quick_action_sell_pet" = "Sell a pet";
+"home_quick_action_adopt" = "Adopt";
+"home_quick_action_add_ad" = "Add ad";
+"home_quick_action_request_service" = "Request service";
+"home_location_sheet_title" = "Choose your smart location";
+"home_location_sheet_subtitle" = "Switch between your live GPS position and recent areas quickly, while keeping nearby discovery smooth.";
+"home_location_sheet_use_current" = "Use current location";
+"home_location_sheet_use_current_subtitle" = "Refresh nearby results using GPS";
+"home_location_sheet_change_area" = "Change area";
+"home_location_sheet_change_area_subtitle" = "Pick another city or neighborhood";
+"home_location_sheet_open_settings_subtitle" = "Allow location access to keep nearby results accurate";
+"home_location_sheet_recent_title" = "Recent locations";
+"home_location_sheet_recent_subtitle" = "Tap to reuse this location";
+"home_location_sheet_current_subtitle_auto" = "Nearby results update automatically around your current area.";
+"home_location_sheet_current_subtitle_manual" = "You are currently browsing around the area you selected manually.";
+"home_location_sheet_current_subtitle_denied" = "Choose an area manually or enable location access for more accurate nearby results.";
+"home_location_sheet_current_subtitle_unset" = "Choose the best location for pets and services around you.";
+"home_greeting_named_format_rtl" = "%1$@, %2$@ 🐾";
+"home_greeting_named_format_ltr" = "%1$@, %2$@ 🐾";
+"home_suggestion_reason_nearby" = "Near you";
+"home_suggestion_reason_previous_orders" = "Based on your previous orders";

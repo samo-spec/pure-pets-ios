@@ -39,7 +39,7 @@
     self.glassButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.glassButton.layer.cornerRadius = PPNewCorner;
     self.glassButton.clipsToBounds = YES;
-    self.glassButton.layer.borderWidth = 1.0;
+    self.glassButton.layer.borderWidth = 0.8;
     [self.glassButton addTarget:self
                          action:@selector(handleTap)
                forControlEvents:UIControlEventTouchUpInside];
@@ -83,20 +83,20 @@
                                                             constant:-18];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.topGlowView.widthAnchor constraintEqualToConstant:88],
-        [self.topGlowView.heightAnchor constraintEqualToConstant:88],
+        [self.topGlowView.widthAnchor constraintEqualToConstant:76],
+        [self.topGlowView.heightAnchor constraintEqualToConstant:76],
         [self.topGlowView.topAnchor constraintEqualToAnchor:self.glassButton.topAnchor constant:-18],
         [self.topGlowView.trailingAnchor constraintEqualToAnchor:self.glassButton.trailingAnchor constant:18],
 
-        [self.bottomGlowView.widthAnchor constraintEqualToConstant:78],
-        [self.bottomGlowView.heightAnchor constraintEqualToConstant:78],
+        [self.bottomGlowView.widthAnchor constraintEqualToConstant:70],
+        [self.bottomGlowView.heightAnchor constraintEqualToConstant:70],
         [self.bottomGlowView.bottomAnchor constraintEqualToAnchor:self.glassButton.bottomAnchor constant:26],
         [self.bottomGlowView.leadingAnchor constraintEqualToAnchor:self.glassButton.leadingAnchor constant:-16],
 
         [self.iconBackdropView.centerXAnchor constraintEqualToAnchor:self.glassButton.centerXAnchor],
         self.iconCenterYConstraint,
-        [self.iconBackdropView.widthAnchor constraintEqualToConstant:60],
-        [self.iconBackdropView.heightAnchor constraintEqualToConstant:60],
+        [self.iconBackdropView.widthAnchor constraintEqualToConstant:56],
+        [self.iconBackdropView.heightAnchor constraintEqualToConstant:56],
 
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconBackdropView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconBackdropView.centerYAnchor],
@@ -108,9 +108,9 @@
     self.titleShadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleShadowContainer.layer.cornerRadius = PPCornerSmall;
     self.titleShadowContainer.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.titleShadowContainer.layer.shadowOpacity = PPShadowElevatedOpacity;
-    self.titleShadowContainer.layer.shadowRadius = PPShadowElevatedRadius;
-    self.titleShadowContainer.layer.shadowOffset = CGSizeMake(0, PPShadowCardOffsetY);
+    self.titleShadowContainer.layer.shadowOpacity = 0.08;
+    self.titleShadowContainer.layer.shadowRadius = 8.0;
+    self.titleShadowContainer.layer.shadowOffset = CGSizeMake(0, 4.0);
     [self.glassButton addSubview:self.titleShadowContainer];
 
     self.titleBackground = [[UIView alloc] init];
@@ -129,24 +129,24 @@
     [NSLayoutConstraint activateConstraints:@[
         [self.titleShadowContainer.leadingAnchor constraintEqualToAnchor:self.glassButton.leadingAnchor constant:8],
         [self.titleShadowContainer.trailingAnchor constraintEqualToAnchor:self.glassButton.trailingAnchor constant:-8],
-        [self.titleShadowContainer.bottomAnchor constraintEqualToAnchor:self.glassButton.bottomAnchor constant:-9],
-        [self.titleShadowContainer.heightAnchor constraintEqualToConstant:30],
+        [self.titleShadowContainer.bottomAnchor constraintEqualToAnchor:self.glassButton.bottomAnchor constant:-8],
+        [self.titleShadowContainer.heightAnchor constraintEqualToConstant:32],
 
         [self.titleBackground.topAnchor constraintEqualToAnchor:self.titleShadowContainer.topAnchor],
         [self.titleBackground.bottomAnchor constraintEqualToAnchor:self.titleShadowContainer.bottomAnchor],
         [self.titleBackground.leadingAnchor constraintEqualToAnchor:self.titleShadowContainer.leadingAnchor],
         [self.titleBackground.trailingAnchor constraintEqualToAnchor:self.titleShadowContainer.trailingAnchor],
 
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.titleBackground.leadingAnchor constant:8],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.titleBackground.trailingAnchor constant:-8],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.titleBackground.leadingAnchor constant:10],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.titleBackground.trailingAnchor constant:-10],
         [self.titleLabel.topAnchor constraintEqualToAnchor:self.titleBackground.topAnchor],
         [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.titleBackground.bottomAnchor],
     ]];
 
     self.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.layer.shadowOpacity = PPShadowElevatedOpacity;
-    self.layer.shadowRadius = PPShadowElevatedRadius;
-    self.layer.shadowOffset = CGSizeMake(0, PPShadowElevatedOffsetY);
+    self.layer.shadowOpacity = 0.07;
+    self.layer.shadowRadius = 12.0;
+    self.layer.shadowOffset = CGSizeMake(0, 7.0);
 }
 
 - (void)layoutSubviews
@@ -206,7 +206,7 @@
     self.titleLabel.text = nil;
     self.titleShadowContainer.hidden = NO;
 
-    self.iconSizeConstraint.constant = 42;
+    self.iconSizeConstraint.constant = 40;
     self.iconCenterYConstraint.constant = -18;
 
     self.iconView.tintColor = UIColor.labelColor;
@@ -224,7 +224,7 @@
     config.baseBackgroundColor = UIColor.clearColor;
     self.glassButton.configuration = config;
     self.glassButton.backgroundColor = UIColor.clearColor;
-    self.glassButton.layer.borderWidth = 1.0;
+    self.glassButton.layer.borderWidth = 0.8;
     self.glassButton.layer.borderColor = UIColor.clearColor.CGColor;
 
     self.transform = CGAffineTransformIdentity;
@@ -289,8 +289,8 @@
                        contentColor:contentColor
                               isAll:NO];
         
-        config.background.backgroundColor = [self.activeAccentColor colorWithAlphaComponent:0.5];
-        config.baseBackgroundColor =  [self.activeAccentColor colorWithAlphaComponent:0.5];
+        config.background.backgroundColor = [self.activeAccentColor colorWithAlphaComponent:0.42];
+        config.baseBackgroundColor =  [self.activeAccentColor colorWithAlphaComponent:0.42];
         self.glassButton.configuration = config;
     }
 
@@ -409,20 +409,20 @@
         : [[UIColor whiteColor] colorWithAlphaComponent:0.18]).CGColor;
 
     self.titleBackground.backgroundColor =
-        [pillBase colorWithAlphaComponent:isAll ? 0.78 : 0.20];
+        [pillBase colorWithAlphaComponent:isAll ? 0.82 : 0.18];
     self.titleLabel.textColor = contentColor;
 
     self.iconBackdropView.backgroundColor =
-        [iconBase colorWithAlphaComponent:isAll ? 0.92 : 0.16];
+        [iconBase colorWithAlphaComponent:isAll ? 0.90 : 0.14];
     self.iconBackdropView.layer.borderColor = (isAll
         ? [contentColor colorWithAlphaComponent:0.08]
         : [[UIColor whiteColor] colorWithAlphaComponent:0.22]).CGColor;
 
     self.iconView.tintColor = contentColor;
     self.topGlowView.backgroundColor =
-        [[UIColor whiteColor] colorWithAlphaComponent:isAll ? 0.28 : 0.22];
+        [[UIColor whiteColor] colorWithAlphaComponent:isAll ? 0.18 : 0.12];
     self.bottomGlowView.backgroundColor =
-        [accent colorWithAlphaComponent:isAll ? 0.18 : 0.26];
+        [accent colorWithAlphaComponent:isAll ? 0.14 : 0.18];
     self.titleShadowContainer.layer.shadowColor = accent.CGColor;
 }
 
@@ -486,13 +486,13 @@
         ? [UIColor hx_colorWithHexStr:@"#6F819B"]
         : (self.model.kindColor ?: AppPrimaryClr));
 
-    CGFloat scale = selected ? 1.035 : 1.0;
-    CGFloat shadowOpacity = selected ? 0.22 : PPShadowElevatedOpacity;
-    CGFloat shadowRadius = selected ? 28.0 : PPShadowElevatedRadius;
-    CGSize shadowOffset = selected ? CGSizeMake(0, 16) : CGSizeMake(0, PPShadowElevatedOffsetY);
+    CGFloat scale = selected ? 1.02 : 1.0;
+    CGFloat shadowOpacity = selected ? 0.12 : 0.07;
+    CGFloat shadowRadius = selected ? 18.0 : 12.0;
+    CGSize shadowOffset = selected ? CGSizeMake(0, 10) : CGSizeMake(0, 7.0);
     UIColor *borderColor = self.isAll
-        ? [accent colorWithAlphaComponent:selected ? 0.28 : 0.14]
-        : [[UIColor whiteColor] colorWithAlphaComponent:selected ? 0.42 : 0.18];
+        ? [accent colorWithAlphaComponent:selected ? 0.24 : 0.12]
+        : [[UIColor whiteColor] colorWithAlphaComponent:selected ? 0.30 : 0.14];
 
     void (^changes)(void) = ^{
         self.transform = CGAffineTransformMakeScale(scale, scale);
@@ -501,13 +501,13 @@
         self.layer.shadowRadius = shadowRadius;
         self.layer.shadowOffset = shadowOffset;
         self.glassButton.layer.borderColor = borderColor.CGColor;
-        self.glassButton.layer.borderWidth = selected ? 1.5 : 1.0;
-        self.topGlowView.alpha = selected ? (self.isAll ? 0.46 : 0.70) : (self.isAll ? 0.30 : 0.48);
-        self.bottomGlowView.alpha = selected ? (self.isAll ? 0.34 : 0.58) : (self.isAll ? 0.18 : 0.34);
-        self.iconBackdropView.transform = selected ? CGAffineTransformMakeScale(1.04, 1.04) : CGAffineTransformIdentity;
-        self.titleBackground.alpha = selected ? 1.0 : 0.92;
-        self.titleShadowContainer.layer.shadowOpacity = self.titleShadowContainer.hidden ? 0.0 : (selected ? 0.18 : 0.10);
-        self.titleShadowContainer.layer.shadowRadius = selected ? 12.0 : 8.0;
+        self.glassButton.layer.borderWidth = selected ? 1.2 : 0.8;
+        self.topGlowView.alpha = selected ? (self.isAll ? 0.28 : 0.36) : (self.isAll ? 0.12 : 0.18);
+        self.bottomGlowView.alpha = selected ? (self.isAll ? 0.20 : 0.30) : (self.isAll ? 0.10 : 0.16);
+        self.iconBackdropView.transform = selected ? CGAffineTransformMakeScale(1.02, 1.02) : CGAffineTransformIdentity;
+        self.titleBackground.alpha = selected ? 1.0 : 0.94;
+        self.titleShadowContainer.layer.shadowOpacity = self.titleShadowContainer.hidden ? 0.0 : (selected ? 0.12 : 0.06);
+        self.titleShadowContainer.layer.shadowRadius = selected ? 10.0 : 8.0;
     };
 
     if (animated) {

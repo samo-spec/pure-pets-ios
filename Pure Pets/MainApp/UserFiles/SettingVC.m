@@ -1,57 +1,95 @@
 //
 //  SettingVC.m
 //  Pure Pets
-//
 
 #import "SettingVC.h"
 #import "PPRootTabBarController.h"
-#import "YYAnimatedImageView.h"
+#import "ProfileVC.h"
+#import "PPImageLoaderManager.h"
 @import UserNotifications;
 
-NSString *const knotificationsSet = @"notificationsSet";
-NSString *const kautoPlaySet = @"autoPlaySet";
-NSString *const kmessagesSet = @"messagesSet";
-NSString *const klanguageSet = @"languageSet";
-NSString *const kDarkSet = @"DarkSet";
-
-static NSString *const kSettingsAutoPlayKey = @"isAutoPlaySet";
+static NSString *const kSettingsAutoPlayKey        = @"isAutoPlaySet";
 static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
+static NSString *const kSettingsNotificationsKey   = @"notificationsSet";
 
-@interface SettingVC ()
-@property (weak, nonatomic) IBOutlet NSLayoutConstraint *tableHeightConstraint;
-@property (weak, nonatomic) IBOutlet UIView *containerView;
+#pragma mark - PPSettingsRowModel
 
+typedef NS_ENUM(NSInteger, PPSettingsRowType) {
+    PPSettingsRowTypeProfile,
+    PPSettingsRowTypeToggle,
+    PPSettingsRowTypeNavigation,
+    PPSettingsRowTypeSegment,
+    PPSettingsRowTypeDestructive,
+    PPSettingsRowTypeVersion
+};
+
+@interface PPSettingsRowModel : NSObject
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy, nullable) NSString *subtitle;
+@property (nonatomic, copy, nullable) NSString *iconName;
+@property (nonatomic, strong, nullable) UIColor *iconTint;
+@property (nonatomic, strong, nullable) UIColor *iconBackground;
+@property (nonatomic, assign) PPSettingsRowType type;
+@property (nonatomic, assign) BOOL toggleValue;
+@property (nonatomic, copy, nullable) NSArray<NSString *> *segmentTitles;
+@property (nonatomic, assign) NSInteger segmentIndex;
+@property (nonatomic, copy, nullable) void (^onToggle)(BOOL isOn);
+@property (nonatomic, copy, nullable) void (^onTap)(void);
+@property (nonatomic, copy, nullable) void (^onSegmentChange)(NSInteger index);
+@end
+
+@implementation PPSettingsRowModel
+@end
+
+#pragma mark - PPSettingsSectionModel
+
+@interface PPSettingsSectionModel : NSObject
+@property (nonatomic, copy, nullable) NSString *headerTitle;
+@property (nonatomic, copy, nullable) NSString *footerTitle;
+@property (nonatomic, strong) NSArray<PPSettingsRowModel *> *rows;
+@end
+
+@implementation PPSettingsSectionModel
+@end
+
+#pragma mark - Cell IDs
+
+static NSString *const kSettingsCellID  = @"PPSettingsCell";
+static NSString *const kProfileCellID   = @"PPProfileCell";
+static NSString *const kVersionCellID   = @"PPVersionCell";
+
+#pragma mark - SettingVC
+
+@interface SettingVC () <UITableViewDataSource, UITableViewDelegate>
+@property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) NSArray<PPSettingsSectionModel *> *sections;
 @property (nonatomic, strong) NSUserDefaults *prefs;
-@property (nonatomic, strong) XLFormDescriptor *mform;
-@property (nonatomic, strong) XLFormRowDescriptor *languageRow;
-@property (nonatomic, strong) XLFormRowDescriptor *notificationsRow;
-@property (nonatomic, strong) XLFormOptionsObject *optArabic;
-@property (nonatomic, strong) XLFormOptionsObject *optEnglish;
 @property (nonatomic, assign) BOOL alertAppear;
-@property (nonatomic, assign) BOOL isUpdatingNotificationToggle;
-- (void)pp_updatePresentationAppearance;
-- (BOOL)pp_isEmbeddedAsRootTab;
 @end
 
 @implementation SettingVC
 
-- (void)viewDidLoad {
-    [super viewDidLoad];
+#pragma mark - Lifecycle
 
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
     self.prefs = [NSUserDefaults standardUserDefaults];
     self.alertAppear = NO;
+    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.navigationItem.title = kLang(@"Setting");
 
-    [self pp_updatePresentationAppearance];
-    [self initForms];
+    [self pp_setupTableView];
+    [self pp_buildSections];
     [self pp_setupNotificationObservers];
-    [self pp_refreshNotificationStatus];
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    [self pp_updatePresentationAppearance];
-    [self pp_refreshNotificationStatus];
+    [self pp_buildSections];
+    [self.tableView reloadData];
+    [self pp_refreshNotificationStatusAsync];
 }
 
 - (void)dealloc
@@ -59,242 +97,408 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
-- (void)pp_setupAppearance {
-    BOOL isRootTab = [self pp_isEmbeddedAsRootTab];
+#pragma mark - Table View Setup
 
-    self.view.layer.cornerRadius = isRootTab ? 0.0 : 42.0;
-    self.view.layer.masksToBounds = !isRootTab;
-    self.view.clipsToBounds = !isRootTab;
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
-
-    if (self.mTitleLabel) {
-        self.mTitleLabel.font = [GM boldFontWithSize:22];
-        self.mTitleLabel.text = kLang(@"Setting");
-    }
-
-    if (self.topView) {
-        self.topView.translatesAutoresizingMaskIntoConstraints = YES;
-    }
-
-    self.navigationItem.title = kLang(@"Setting");
-}
-
-- (void)pp_updatePresentationAppearance
+- (void)pp_setupTableView
 {
-    [self pp_setupAppearance];
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStyleInsetGrouped];
+    self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.tableView.dataSource = self;
+    self.tableView.delegate = self;
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.separatorInset = UIEdgeInsetsMake(0, 56, 0, 0);
+    self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 56.0;
+
+    [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:kSettingsCellID];
+    [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:kProfileCellID];
+    [self.tableView registerClass:UITableViewCell.class forCellReuseIdentifier:kVersionCellID];
+
+    [self.view addSubview:self.tableView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.tableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
 }
 
-- (BOOL)pp_isEmbeddedAsRootTab
+#pragma mark - Build Sections
+
+- (void)pp_buildSections
 {
-    UINavigationController *navigationController = self.navigationController;
-    UITabBarController *tabBarController = self.tabBarController;
-    if (!navigationController || !tabBarController) {
-        return NO;
-    }
-    if (navigationController.viewControllers.firstObject != self) {
-        return NO;
-    }
-    return [tabBarController.viewControllers containsObject:navigationController];
-}
-
-#pragma mark - Actions
-
-- (IBAction)dismissMe:(id)sender {
-    [self dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (IBAction)popBTN:(id)sender {
-    [self dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (IBAction)dismissSettingBTN:(id)sender {
-    [self dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (void)changeLanguage {
-    [self showLanguageSetupAlertFrom:self];
-}
-
-#pragma mark - Form
-
-- (void)initForms {
-    self.mform = [XLFormDescriptor formDescriptorWithTitle:nil];
-    self.mform.assignFirstResponderOnShow = NO;
-
+    NSMutableArray<PPSettingsSectionModel *> *allSections = [NSMutableArray array];
     __weak typeof(self) weakSelf = self;
 
-    XLFormSectionDescriptor *appSection = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"AppSetting")];
-    [self.mform addFormSection:appSection];
-
-    XLFormRowDescriptor *darkModeRow = [XLFormRowDescriptor formRowDescriptorWithTag:kDarkSet
-                                                                              rowType:XLFormRowDescriptorTypeBooleanSwitch
-                                                                                title:kLang(@"DarkSetPalce")];
-    [darkModeRow.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"textLabel.font"];
-    [darkModeRow.cellConfigAtConfigure setObject:[GM appPrimaryColor] forKey:@"switchControl.onTintColor"];
-    darkModeRow.height = 44;
-    UIUserInterfaceStyle savedStyle = [self loadUserInterfaceStyle];
-    BOOL isDark = (savedStyle == UIUserInterfaceStyleDark);
-    darkModeRow.value = @(isDark);
-    darkModeRow.onChangeBlock = ^(id  _Nullable oldValue, id  _Nullable newValue, XLFormRowDescriptor * _Nonnull rowDescriptor) {
-        [weakSelf pp_applyThemeIsDark:[newValue boolValue]];
-    };
-    [appSection addFormRow:darkModeRow];
-
-    XLFormRowDescriptor *autoPlayRow = [XLFormRowDescriptor formRowDescriptorWithTag:kautoPlaySet
-                                                                              rowType:XLFormRowDescriptorTypeBooleanSwitch
-                                                                                title:kLang(@"autoPlaySetPalce")];
-    [autoPlayRow.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"textLabel.font"];
-    [autoPlayRow.cellConfigAtConfigure setObject:[GM appPrimaryColor] forKey:@"switchControl.onTintColor"];
-    autoPlayRow.height = 44;
-    autoPlayRow.value = @([self.prefs boolForKey:kSettingsAutoPlayKey]);
-    autoPlayRow.onChangeBlock = ^(id  _Nullable oldValue, id  _Nullable newValue, XLFormRowDescriptor * _Nonnull rowDescriptor) {
-        [weakSelf.prefs setBool:[newValue boolValue] forKey:kSettingsAutoPlayKey];
-    };
-    [appSection addFormRow:autoPlayRow];
-
-    self.languageRow = [XLFormRowDescriptor formRowDescriptorWithTag:@"languageSegment"
-                                                              rowType:XLFormRowDescriptorTypeSelectorSegmentedControl
-                                                                title:kLang(@"changelanguage")];
-    [self.languageRow.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"textLabel.font"];
-    self.languageRow.height = 80;
-
-    self.optEnglish = [XLFormOptionsObject formOptionsObjectWithValue:@(0) displayText:kLang(@"English")];
-    self.optArabic = [XLFormOptionsObject formOptionsObjectWithValue:@(1) displayText:kLang(@"Arabic")];
-    self.languageRow.selectorOptions = @[self.optArabic, self.optEnglish];
-    self.languageRow.value = Language.isRTL ? self.optArabic : self.optEnglish;
-    self.languageRow.onChangeBlock = ^(id  _Nullable oldValue, id  _Nullable newValue, XLFormRowDescriptor * _Nonnull rowDescriptor) {
-        XLFormOptionsObject *obj = [newValue isKindOfClass:XLFormOptionsObject.class] ? (XLFormOptionsObject *)newValue : nil;
-        NSInteger selectedIndex = [obj.formValue integerValue];
-        if (selectedIndex == [Language languageVal]) {
-            return;
+    // Section: Profile
+    if (PPIsUserLoggedIn) {
+        PPSettingsSectionModel *profileSection = [PPSettingsSectionModel new];
+        PPSettingsRowModel *profileRow = [PPSettingsRowModel new];
+        profileRow.type = PPSettingsRowTypeProfile;
+        id currentUser = PPCurrentUser ?: UserManager.sharedManager.currentUser;
+        profileRow.title = PPSafeString([currentUser valueForKey:@"PPBestDisplayName"]);
+        if (profileRow.title.length == 0) {
+            profileRow.title = PPSafeString([currentUser valueForKey:@"UserName"]);
         }
+        profileRow.subtitle = kLang(@"ViewProfile") ?: @"View profile";
+        profileRow.onTap = ^{ [weakSelf pp_openProfile]; };
+        profileSection.rows = @[profileRow];
+        [allSections addObject:profileSection];
+    }
+
+    // Section: App Settings
+    PPSettingsSectionModel *appSection = [PPSettingsSectionModel new];
+    appSection.headerTitle = kLang(@"AppSetting");
+    NSMutableArray<PPSettingsRowModel *> *appRows = [NSMutableArray array];
+
+    PPSettingsRowModel *darkRow = [PPSettingsRowModel new];
+    darkRow.type = PPSettingsRowTypeToggle;
+    darkRow.title = kLang(@"DarkSetPalce") ?: @"Dark Mode";
+    darkRow.iconName = @"moon.fill";
+    darkRow.iconTint = UIColor.whiteColor;
+    darkRow.iconBackground = [UIColor colorWithRed:0.38 green:0.22 blue:0.72 alpha:1.0];
+    darkRow.toggleValue = ([self loadUserInterfaceStyle] == UIUserInterfaceStyleDark);
+    darkRow.onToggle = ^(BOOL isOn) { [weakSelf pp_applyThemeIsDark:isOn]; };
+    [appRows addObject:darkRow];
+
+    PPSettingsRowModel *autoPlayRow = [PPSettingsRowModel new];
+    autoPlayRow.type = PPSettingsRowTypeToggle;
+    autoPlayRow.title = kLang(@"autoPlaySetPalce") ?: @"Auto-play Videos";
+    autoPlayRow.iconName = @"play.circle.fill";
+    autoPlayRow.iconTint = UIColor.whiteColor;
+    autoPlayRow.iconBackground = [UIColor systemBlueColor];
+    autoPlayRow.toggleValue = [self.prefs boolForKey:kSettingsAutoPlayKey];
+    autoPlayRow.onToggle = ^(BOOL isOn) { [weakSelf.prefs setBool:isOn forKey:kSettingsAutoPlayKey]; };
+    [appRows addObject:autoPlayRow];
+
+    PPSettingsRowModel *langRow = [PPSettingsRowModel new];
+    langRow.type = PPSettingsRowTypeSegment;
+    langRow.title = kLang(@"changelanguage") ?: @"Language";
+    langRow.iconName = @"globe";
+    langRow.iconTint = UIColor.whiteColor;
+    langRow.iconBackground = [UIColor systemTealColor];
+    langRow.segmentTitles = @[kLang(@"Arabic") ?: @"العربية", kLang(@"English") ?: @"English"];
+    langRow.segmentIndex = Language.isRTL ? 0 : 1;
+    langRow.onSegmentChange = ^(NSInteger index) {
+        if (index == [Language languageVal]) return;
         [weakSelf showLanguageSetupAlertFrom:weakSelf];
     };
-    [appSection addFormRow:self.languageRow];
+    [appRows addObject:langRow];
 
-    XLFormSectionDescriptor *privacySection = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PrivacySetting")];
-    [self.mform addFormSection:privacySection];
+    appSection.rows = appRows;
+    [allSections addObject:appSection];
 
-    XLFormRowDescriptor *notificationsRow = [XLFormRowDescriptor formRowDescriptorWithTag:knotificationsSet
-                                                                                   rowType:XLFormRowDescriptorTypeBooleanSwitch
-                                                                                     title:kLang(@"notificationsSetPalce")];
-    [notificationsRow.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"textLabel.font"];
-    [notificationsRow.cellConfigAtConfigure setObject:[GM appPrimaryColor] forKey:@"switchControl.onTintColor"];
-    notificationsRow.height = 44;
-    notificationsRow.value = @([self.prefs boolForKey:knotificationsSet]);
-    notificationsRow.onChangeBlock = ^(id  _Nullable oldValue, id  _Nullable newValue, XLFormRowDescriptor * _Nonnull rowDescriptor) {
-        if (weakSelf.isUpdatingNotificationToggle) {
-            return;
-        }
-        [weakSelf pp_handleNotificationToggle:[newValue boolValue]];
-    };
-    [privacySection addFormRow:notificationsRow];
-    self.notificationsRow = notificationsRow;
+    // Section: Privacy
+    PPSettingsSectionModel *privacySection = [PPSettingsSectionModel new];
+    privacySection.headerTitle = kLang(@"PrivacySetting");
+    NSMutableArray<PPSettingsRowModel *> *privacyRows = [NSMutableArray array];
 
-    XLFormRowDescriptor *messagesRow = [XLFormRowDescriptor formRowDescriptorWithTag:kmessagesSet
-                                                                              rowType:XLFormRowDescriptorTypeSelectorAlertView
-                                                                                title:kLang(@"kmessagesSetPalce")];
-    [messagesRow.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"textLabel.font"];
-    messagesRow.height = 44;
-
-    XLFormOptionsObject *everyoneOption = [XLFormOptionsObject formOptionsObjectWithValue:@(0)
-                                                                                displayText:kLang(@"everyone")];
-    XLFormOptionsObject *noOneOption = [XLFormOptionsObject formOptionsObjectWithValue:@(1)
-                                                                             displayText:kLang(@"noOne")];
-    messagesRow.selectorOptions = @[everyoneOption, noOneOption];
+    PPSettingsRowModel *notiRow = [PPSettingsRowModel new];
+    notiRow.type = PPSettingsRowTypeToggle;
+    notiRow.title = kLang(@"notificationsSetPalce") ?: @"Notifications";
+    notiRow.iconName = @"bell.badge.fill";
+    notiRow.iconTint = UIColor.whiteColor;
+    notiRow.iconBackground = [UIColor systemRedColor];
+    notiRow.toggleValue = [self.prefs boolForKey:kSettingsNotificationsKey];
+    notiRow.onToggle = ^(BOOL isOn) { [weakSelf pp_handleNotificationToggle:isOn]; };
+    [privacyRows addObject:notiRow];
 
     NSInteger savedPrivacy = [self.prefs integerForKey:kSettingsMessagesPrivacyKey];
-    messagesRow.value = (savedPrivacy == 1) ? noOneOption : everyoneOption;
-    messagesRow.onChangeBlock = ^(id  _Nullable oldValue, id  _Nullable newValue, XLFormRowDescriptor * _Nonnull rowDescriptor) {
-        XLFormOptionsObject *obj = [newValue isKindOfClass:XLFormOptionsObject.class] ? (XLFormOptionsObject *)newValue : nil;
-        [weakSelf.prefs setInteger:[obj.formValue integerValue] forKey:kSettingsMessagesPrivacyKey];
-    };
-    [privacySection addFormRow:messagesRow];
+    PPSettingsRowModel *messagesRow = [PPSettingsRowModel new];
+    messagesRow.type = PPSettingsRowTypeNavigation;
+    messagesRow.title = kLang(@"kmessagesSetPalce") ?: @"Messages";
+    messagesRow.subtitle = (savedPrivacy == 1) ? (kLang(@"noOne") ?: @"No one") : (kLang(@"everyone") ?: @"Everyone");
+    messagesRow.iconName = @"message.fill";
+    messagesRow.iconTint = UIColor.whiteColor;
+    messagesRow.iconBackground = [UIColor systemGreenColor];
+    messagesRow.onTap = ^{ [weakSelf pp_showMessagesPrivacyPicker]; };
+    [privacyRows addObject:messagesRow];
 
-    self.form = self.mform;
-    self.tableView.backgroundColor = AppBackgroundClr;
-    self.tableView.scrollEnabled = YES;
-    UIEdgeInsets inset = UIEdgeInsetsMake(12, 0, 20, 0);
-    self.tableView.contentInset = inset;
-    self.tableView.scrollIndicatorInsets = inset;
+    privacySection.rows = privacyRows;
+    [allSections addObject:privacySection];
+
+    // Section: Storage
+    PPSettingsSectionModel *storageSection = [PPSettingsSectionModel new];
+    storageSection.headerTitle = kLang(@"Storage") ?: @"Storage";
+    PPSettingsRowModel *clearCacheRow = [PPSettingsRowModel new];
+    clearCacheRow.type = PPSettingsRowTypeNavigation;
+    clearCacheRow.title = kLang(@"ClearCache") ?: @"Clear Cache";
+    clearCacheRow.iconName = @"trash.circle.fill";
+    clearCacheRow.iconTint = UIColor.whiteColor;
+    clearCacheRow.iconBackground = [UIColor systemOrangeColor];
+    clearCacheRow.subtitle = [self pp_formattedCacheSize];
+    clearCacheRow.onTap = ^{ [weakSelf pp_clearCache]; };
+    storageSection.rows = @[clearCacheRow];
+    [allSections addObject:storageSection];
+
+    // Section: Account
+    if (PPIsUserLoggedIn) {
+        PPSettingsSectionModel *accountSection = [PPSettingsSectionModel new];
+        PPSettingsRowModel *logoutRow = [PPSettingsRowModel new];
+        logoutRow.type = PPSettingsRowTypeDestructive;
+        logoutRow.title = kLang(@"Logout") ?: @"Logout";
+        logoutRow.iconName = @"rectangle.portrait.and.arrow.right";
+        logoutRow.iconTint = UIColor.whiteColor;
+        logoutRow.iconBackground = [UIColor systemRedColor];
+        logoutRow.onTap = ^{ [weakSelf pp_confirmLogout]; };
+        accountSection.rows = @[logoutRow];
+        [allSections addObject:accountSection];
+    }
+
+    // Section: Version
+    PPSettingsSectionModel *versionSection = [PPSettingsSectionModel new];
+    PPSettingsRowModel *versionRow = [PPSettingsRowModel new];
+    versionRow.type = PPSettingsRowTypeVersion;
+    NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"";
+    NSString *build   = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"] ?: @"";
+    versionRow.title = [NSString stringWithFormat:@"Pure Pets v%@ (%@)", version, build];
+    versionSection.rows = @[versionRow];
+    [allSections addObject:versionSection];
+
+    self.sections = [allSections copy];
 }
 
--(void)viewWillLayoutSubviews
+#pragma mark - UITableViewDataSource
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
 {
-    [super viewWillLayoutSubviews];
-    [self pp_layoutTableView];
+    return (NSInteger)self.sections.count;
 }
 
-- (void)viewDidLayoutSubviews {
-    [super viewDidLayoutSubviews];
-    [self pp_layoutTableView];
-}
-
-- (void)pp_layoutTableView
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
-    if (!self.tableView) {
-        return;
-    }
-    CGFloat top = 0.0;
-    if (self.topView) {
-        top = CGRectGetMaxY(self.topView.frame);
-    }
-    CGFloat bottom = 0.0;
-    if (@available(iOS 11.0, *)) {
-        bottom = self.view.safeAreaInsets.bottom;
-    }
+    return (NSInteger)self.sections[section].rows.count;
+}
 
-    CGFloat height = CGRectGetHeight(self.view.bounds) - top - bottom;
-    height = MAX(0.0, height);
+- (nullable NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section
+{
+    return self.sections[section].headerTitle;
+}
 
-    self.tableView.frame = CGRectMake(0.0, top, CGRectGetWidth(self.view.bounds), height);
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
+    switch (row.type) {
+        case PPSettingsRowTypeProfile:
+            return [self pp_profileCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeVersion:
+            return [self pp_versionCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeToggle:
+            return [self pp_toggleCellForRow:row tableView:tableView indexPath:indexPath];
+        case PPSettingsRowTypeSegment:
+            return [self pp_segmentCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeNavigation:
+        case PPSettingsRowTypeDestructive:
+            return [self pp_navigationCellForRow:row tableView:tableView];
+    }
+    return [tableView dequeueReusableCellWithIdentifier:kSettingsCellID forIndexPath:indexPath];
+}
+
+#pragma mark - Cell Builders
+
+- (UITableViewCell *)pp_profileCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
+{
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:kProfileCellID];
+    cell.textLabel.text = row.title.length > 0 ? row.title : (kLang(@"Guest") ?: @"Guest");
+    cell.textLabel.font = [GM boldFontWithSize:18];
+    cell.textLabel.textColor = AppPrimaryTextClr;
+    cell.detailTextLabel.text = row.subtitle;
+    cell.detailTextLabel.font = [GM fontWithSize:13];
+    cell.detailTextLabel.textColor = AppSecondaryTextClr;
+    cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    cell.backgroundColor = AppForgroundColr;
+
+    UIImageConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:24 weight:UIImageSymbolWeightMedium];
+    cell.imageView.image = [UIImage systemImageNamed:@"person.circle.fill" withConfiguration:config];
+    cell.imageView.tintColor = AppPrimaryClr;
+    return cell;
+}
+
+- (UITableViewCell *)pp_toggleCellForRow:(PPSettingsRowModel *)row
+                               tableView:(UITableView *)tableView
+                               indexPath:(NSIndexPath *)indexPath
+{
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kSettingsCellID];
+    cell.textLabel.text = row.title;
+    cell.textLabel.font = [GM MidFontWithSize:15];
+    cell.textLabel.textColor = AppPrimaryTextClr;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.backgroundColor = AppForgroundColr;
+    cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
+
+    UISwitch *toggle = [[UISwitch alloc] init];
+    toggle.on = row.toggleValue;
+    toggle.onTintColor = AppPrimaryClr;
+    toggle.tag = indexPath.section * 100 + indexPath.row;
+    [toggle addTarget:self action:@selector(pp_switchToggled:) forControlEvents:UIControlEventValueChanged];
+    cell.accessoryView = toggle;
+    return cell;
+}
+
+- (UITableViewCell *)pp_segmentCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
+{
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kSettingsCellID];
+    cell.textLabel.text = row.title;
+    cell.textLabel.font = [GM MidFontWithSize:15];
+    cell.textLabel.textColor = AppPrimaryTextClr;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.backgroundColor = AppForgroundColr;
+    cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
+
+    UISegmentedControl *segment = [[UISegmentedControl alloc] initWithItems:row.segmentTitles];
+    segment.selectedSegmentIndex = row.segmentIndex;
+    segment.frame = CGRectMake(0, 0, 160, 30);
+    [segment setTitleTextAttributes:@{NSFontAttributeName: [GM fontWithSize:12]} forState:UIControlStateNormal];
+    [segment addTarget:self action:@selector(pp_segmentChanged:) forControlEvents:UIControlEventValueChanged];
+    cell.accessoryView = segment;
+    return cell;
+}
+
+- (UITableViewCell *)pp_navigationCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
+{
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:kSettingsCellID];
+    cell.textLabel.text = row.title;
+    cell.textLabel.font = [GM MidFontWithSize:15];
+    cell.backgroundColor = AppForgroundColr;
+    if (row.type == PPSettingsRowTypeDestructive) {
+        cell.textLabel.textColor = UIColor.systemRedColor;
+        cell.accessoryType = UITableViewCellAccessoryNone;
+    } else {
+        cell.textLabel.textColor = AppPrimaryTextClr;
+        cell.accessoryType = UITableViewCellAccessoryDisclosureIndicator;
+    }
+    cell.detailTextLabel.text = row.subtitle;
+    cell.detailTextLabel.font = [GM fontWithSize:13];
+    cell.detailTextLabel.textColor = AppSecondaryTextClr;
+    cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
+    return cell;
+}
+
+- (UITableViewCell *)pp_versionCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
+{
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kVersionCellID];
+    cell.textLabel.text = row.title;
+    cell.textLabel.font = [GM fontWithSize:12];
+    cell.textLabel.textColor = AppSecondaryTextClr;
+    cell.textLabel.textAlignment = NSTextAlignmentCenter;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.backgroundColor = UIColor.clearColor;
+    return cell;
+}
+
+#pragma mark - Icon Builder
+
+- (UIImage *)pp_iconImageForName:(NSString *)name tint:(UIColor *)tint background:(UIColor *)background
+{
+    CGFloat size = 30.0;
+    CGFloat cornerRadius = 7.0;
+    UIGraphicsBeginImageContextWithOptions(CGSizeMake(size, size), NO, 0);
+    UIBezierPath *roundedRect = [UIBezierPath bezierPathWithRoundedRect:CGRectMake(0, 0, size, size)
+                                                          cornerRadius:cornerRadius];
+    [(background ?: AppPrimaryClr) setFill];
+    [roundedRect fill];
+
+    UIImageSymbolConfiguration *config =
+        [UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightMedium];
+    UIImage *symbol = [[UIImage systemImageNamed:(name ?: @"gearshape") withConfiguration:config]
+                       imageWithTintColor:(tint ?: UIColor.whiteColor) renderingMode:UIImageRenderingModeAlwaysOriginal];
+    if (symbol) {
+        CGSize symbolSize = symbol.size;
+        CGFloat x = (size - symbolSize.width) / 2.0;
+        CGFloat y = (size - symbolSize.height) / 2.0;
+        [symbol drawInRect:CGRectMake(x, y, symbolSize.width, symbolSize.height)];
+    }
+    UIImage *result = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return result;
+}
+
+#pragma mark - UITableViewDelegate
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
+    if (row.onTap) { row.onTap(); }
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
+    if (row.type == PPSettingsRowTypeProfile) return 72.0;
+    if (row.type == PPSettingsRowTypeVersion) return 44.0;
+    return 52.0;
+}
+
+#pragma mark - Control Actions
+
+- (void)pp_switchToggled:(UISwitch *)sender
+{
+    NSInteger section = sender.tag / 100;
+    NSInteger row = sender.tag % 100;
+    if (section < (NSInteger)self.sections.count &&
+        row < (NSInteger)self.sections[section].rows.count) {
+        PPSettingsRowModel *model = self.sections[section].rows[row];
+        model.toggleValue = sender.isOn;
+        if (model.onToggle) { model.onToggle(sender.isOn); }
+    }
+}
+
+- (void)pp_segmentChanged:(UISegmentedControl *)sender
+{
+    for (PPSettingsSectionModel *section in self.sections) {
+        for (PPSettingsRowModel *row in section.rows) {
+            if (row.type == PPSettingsRowTypeSegment && row.onSegmentChange) {
+                row.onSegmentChange(sender.selectedSegmentIndex);
+                return;
+            }
+        }
+    }
+}
+
+#pragma mark - Profile
+
+- (void)pp_openProfile
+{
+    ProfileVC *profileVC = [[ProfileVC alloc] init];
+    [self.navigationController pushViewController:profileVC animated:YES];
 }
 
 #pragma mark - Theme
 
-- (void)pp_applyThemeIsDark:(BOOL)isDark {
+- (void)pp_applyThemeIsDark:(BOOL)isDark
+{
     UIUserInterfaceStyle style = isDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
     [self saveUserInterfaceStyle:style];
-
     [self.prefs setObject:(isDark ? @"dark" : @"light") forKey:@"themePreference"];
-
-    if (@available(iOS 13.0, *)) {
-        UIWindow *window = [self keyWindow];
-        if (window) {
-            window.overrideUserInterfaceStyle = style;
-        }
-    }
-
+    UIWindow *window = [self pp_keyWindow];
+    if (window) { window.overrideUserInterfaceStyle = style; }
+    [self pp_buildSections];
     [self.tableView reloadData];
 }
 
-- (void)saveUserInterfaceStyle:(UIUserInterfaceStyle)style {
+- (void)saveUserInterfaceStyle:(UIUserInterfaceStyle)style
+{
     [[NSUserDefaults standardUserDefaults] setInteger:style forKey:kUserInterfaceStyleKey];
 }
 
-- (UIUserInterfaceStyle)loadUserInterfaceStyle {
+- (UIUserInterfaceStyle)loadUserInterfaceStyle
+{
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     if ([defaults objectForKey:kUserInterfaceStyleKey] != nil) {
         return (UIUserInterfaceStyle)[defaults integerForKey:kUserInterfaceStyleKey];
     }
-
     NSString *legacyTheme = [defaults stringForKey:@"themePreference"];
-    if ([legacyTheme isEqualToString:@"dark"]) {
-        return UIUserInterfaceStyleDark;
-    }
-    if ([legacyTheme isEqualToString:@"light"]) {
-        return UIUserInterfaceStyleLight;
-    }
+    if ([legacyTheme isEqualToString:@"dark"]) return UIUserInterfaceStyleDark;
+    if ([legacyTheme isEqualToString:@"light"]) return UIUserInterfaceStyleLight;
     return UIUserInterfaceStyleUnspecified;
 }
 
 #pragma mark - Language
 
-- (void)showLanguageSetupAlertFrom:(UIViewController *)viewController {
-    if (self.alertAppear) {
-        return;
-    }
-
+- (void)showLanguageSetupAlertFrom:(UIViewController *)viewController
+{
+    if (self.alertAppear) return;
     self.alertAppear = YES;
 
     NSString *title = kLang(@"Language Setup");
@@ -311,11 +515,7 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
                          confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-
-        if (!didConfirm) {
-            strongSelf.alertAppear = NO;
-            return;
-        }
+        if (!didConfirm) { strongSelf.alertAppear = NO; return; }
 
         NSInteger newLangVal = ([Language languageVal] == 0) ? 1 : 0;
         [Language userSelectedLanguage:LanguageCode[newLangVal]];
@@ -323,19 +523,19 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
         if ([strongSelf.delegate respondsToSelector:@selector(changeLanguageWithCode:)]) {
             [strongSelf.delegate changeLanguageWithCode:(int)newLangVal];
         }
-
-        [strongSelf applyLanguageChangeAndReloadUIFrom:strongSelf];
+        [strongSelf pp_applyLanguageChangeAndReloadUI];
         strongSelf.alertAppear = NO;
     }
                            cancelBlock:^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-
-        strongSelf.languageRow.value = Language.isRTL ? strongSelf.optArabic : strongSelf.optEnglish;
-        [strongSelf updateFormRow:strongSelf.languageRow];
+        [strongSelf pp_buildSections];
+        [strongSelf.tableView reloadData];
         strongSelf.alertAppear = NO;
     }];
 }
+
+#pragma mark - Notifications
 
 - (void)pp_setupNotificationObservers
 {
@@ -345,100 +545,132 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
                                                object:nil];
 }
 
-- (void)pp_handleAppWillEnterForeground
-{
-    [self pp_refreshNotificationStatus];
-}
+- (void)pp_handleAppWillEnterForeground { [self pp_refreshNotificationStatusAsync]; }
 
-- (void)pp_refreshNotificationStatus
+- (void)pp_refreshNotificationStatusAsync
 {
-    if (!self.notificationsRow) {
-        return;
-    }
-
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
-    [center getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings * _Nonnull settings) {
+    __weak typeof(self) weakSelf = self;
+    [[UNUserNotificationCenter currentNotificationCenter]
+        getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings * _Nonnull settings) {
         BOOL authorized = (settings.authorizationStatus == UNAuthorizationStatusAuthorized ||
                            settings.authorizationStatus == UNAuthorizationStatusProvisional ||
                            settings.authorizationStatus == UNAuthorizationStatusEphemeral);
-
-        BOOL prefEnabled = [self.prefs boolForKey:knotificationsSet];
+        BOOL prefEnabled = [weakSelf.prefs boolForKey:kSettingsNotificationsKey];
         if (!authorized && prefEnabled) {
-            [self.prefs setBool:NO forKey:knotificationsSet];
-            prefEnabled = NO;
+            [weakSelf.prefs setBool:NO forKey:kSettingsNotificationsKey];
         }
-
-        BOOL effective = (authorized && prefEnabled);
         dispatch_async(dispatch_get_main_queue(), ^{
-            [self pp_updateNotificationRowValue:effective];
+            [weakSelf pp_buildSections];
+            [weakSelf.tableView reloadData];
         });
     }];
-}
-
-- (void)pp_updateNotificationRowValue:(BOOL)isOn
-{
-    if (!self.notificationsRow) {
-        return;
-    }
-
-    self.isUpdatingNotificationToggle = YES;
-    self.notificationsRow.value = @(isOn);
-    [self updateFormRow:self.notificationsRow];
-    self.isUpdatingNotificationToggle = NO;
 }
 
 - (void)pp_handleNotificationToggle:(BOOL)isOn
 {
-    if (isOn) {
-        [self pp_requestNotificationAuthorization];
-        return;
-    }
-
-    [self.prefs setBool:NO forKey:knotificationsSet];
+    if (isOn) { [self pp_requestNotificationAuthorization]; return; }
+    [self.prefs setBool:NO forKey:kSettingsNotificationsKey];
 }
 
 - (void)pp_requestNotificationAuthorization
 {
-    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     UNAuthorizationOptions options =
         (UNAuthorizationOptionAlert | UNAuthorizationOptionSound | UNAuthorizationOptionBadge);
-
     __weak typeof(self) weakSelf = self;
-    [center requestAuthorizationWithOptions:options
-                          completionHandler:^(BOOL granted, NSError * _Nullable error) {
+    [[UNUserNotificationCenter currentNotificationCenter]
+        requestAuthorizationWithOptions:options
+                      completionHandler:^(BOOL granted, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
-
-            if (error) {
-                NSLog(@"[Settings] Notification permission error: %@", error.localizedDescription);
-            }
-
             if (granted) {
-                [strongSelf.prefs setBool:YES forKey:knotificationsSet];
-                [strongSelf pp_updateNotificationRowValue:YES];
+                [strongSelf.prefs setBool:YES forKey:kSettingsNotificationsKey];
                 [UIApplication.sharedApplication registerForRemoteNotifications];
             } else {
-                [strongSelf.prefs setBool:NO forKey:knotificationsSet];
-                [strongSelf pp_updateNotificationRowValue:NO];
+                [strongSelf.prefs setBool:NO forKey:kSettingsNotificationsKey];
                 [PPHUD showError:kLang(@"Notifications permission denied")];
             }
+            [strongSelf pp_buildSections];
+            [strongSelf.tableView reloadData];
         });
     }];
 }
 
-- (void)applyLanguageChangeAndReloadUIFrom:(UIViewController *)sourceVC {
+#pragma mark - Messages Privacy
+
+- (void)pp_showMessagesPrivacyPicker
+{
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"kmessagesSetPalce")
+                                                                  message:nil
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"everyone") ?: @"Everyone")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction *a) {
+        [weakSelf.prefs setInteger:0 forKey:kSettingsMessagesPrivacyKey];
+        [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"noOne") ?: @"No one")
+                                              style:UIAlertActionStyleDefault
+                                            handler:^(UIAlertAction *a) {
+        [weakSelf.prefs setInteger:1 forKey:kSettingsMessagesPrivacyKey];
+        [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel") style:UIAlertActionStyleCancel handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - Cache
+
+- (NSString *)pp_formattedCacheSize
+{
+    NSUInteger diskSize = [SDImageCache sharedImageCache].totalDiskSize;
+    NSByteCountFormatter *formatter = [[NSByteCountFormatter alloc] init];
+    formatter.countStyle = NSByteCountFormatterCountStyleFile;
+    return [formatter stringFromByteCount:(long long)diskSize];
+}
+
+- (void)pp_clearCache
+{
+    __weak typeof(self) weakSelf = self;
+    [GM showDeleteConfirmationFrom:self
+                             title:(kLang(@"ClearCache") ?: @"Clear Cache")
+                           message:(kLang(@"ClearCacheMessage") ?: @"This will clear all cached images and data.")
+                        completion:^(BOOL confirmed) {
+        if (!confirmed) return;
+        [[SDImageCache sharedImageCache] clearMemory];
+        [[SDImageCache sharedImageCache] clearDiskOnCompletion:^{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [weakSelf pp_buildSections]; [weakSelf.tableView reloadData];
+                [PPHUD showSuccess:(kLang(@"CacheCleared") ?: @"Cache cleared")];
+            });
+        }];
+    }];
+}
+
+#pragma mark - Logout
+
+- (void)pp_confirmLogout
+{
+    __weak typeof(self) weakSelf = self;
+    [GM showDeleteConfirmationFrom:self
+                             title:(kLang(@"Logout") ?: @"Logout")
+                           message:(kLang(@"LogoutMessage") ?: @"Are you sure you want to log out?")
+                        completion:^(BOOL confirmed) {
+        if (!confirmed) return;
+        [GM logoutFromConroller:weakSelf];
+    }];
+}
+
+#pragma mark - Language Reload
+
+- (void)pp_applyLanguageChangeAndReloadUI
+{
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIWindow *window = [self keyWindow];
-        if (!window) {
-            return;
-        }
-
-        UIViewController *newRoot = [self buildRootController];
-        if (!newRoot) {
-            return;
-        }
-
+        UIWindow *window = [self pp_keyWindow];
+        if (!window) return;
+        UIViewController *newRoot = [[PPRootTabBarController alloc] init];
+        if (!newRoot) return;
         [UIView transitionWithView:window
                           duration:0.35
                            options:UIViewAnimationOptionTransitionCrossDissolve
@@ -452,17 +684,12 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
     });
 }
 
-- (UIWindow *)keyWindow {
+- (UIWindow *)pp_keyWindow
+{
     for (UIWindow *window in UIApplication.sharedApplication.windows) {
-        if (window.isKeyWindow) {
-            return window;
-        }
+        if (window.isKeyWindow) return window;
     }
     return UIApplication.sharedApplication.windows.firstObject;
-}
-
-- (UIViewController *)buildRootController {
-    return [[PPRootTabBarController alloc] init];
 }
 
 @end

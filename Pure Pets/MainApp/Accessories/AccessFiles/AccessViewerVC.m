@@ -1167,7 +1167,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 -(void)loadItemsCountInBadge
 {
     [self.cartButton removeBadge];
-    [self.cartButton addBadgeWithContent:[NSString stringWithFormat:@"%ld",[CartManager sharedManager].cartItems.count] contentFont:[GM MidFontWithSize:12] contentColor:UIColor.whiteColor badgeColor:GM.appPrimaryColor offset:CGPointMake(-10, 9) badgeRadius:[CartManager sharedManager].cartItems.count == 0 ? 0 : 11];
+    NSInteger totalQty = [[CartManager sharedManager] totalItemsCount];
+    [self.cartButton addBadgeWithContent:[NSString stringWithFormat:@"%ld", (long)totalQty] contentFont:[GM MidFontWithSize:12] contentColor:UIColor.whiteColor badgeColor:GM.appPrimaryColor offset:CGPointMake(-10, 9) badgeRadius:totalQty == 0 ? 0 : 11];
 }
 
 - (void)updateCartAndReloadCollection {

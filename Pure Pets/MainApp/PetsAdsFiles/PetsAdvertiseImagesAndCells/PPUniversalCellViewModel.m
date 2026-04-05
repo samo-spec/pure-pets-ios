@@ -43,6 +43,8 @@
     _imageURL = nil;
     _modelContext = context;
     _preferredAspectRatio = 0; // 0 = unspecified
+    _contextualReasonText = nil;
+    _contextualReasonIconName = nil;
     
     
    // NSLog(@"modelPPPPP %p", model);
@@ -258,6 +260,8 @@
     _imageURL = nil;
     _imageSize = CGSizeMake(1, 1.2);
     _preferredAspectRatio = 1.2;
+    _contextualReasonText = nil;
+    _contextualReasonIconName = nil;
 
     _isOwner = NO;
     _hasOffer = NO;

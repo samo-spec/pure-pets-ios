@@ -208,6 +208,7 @@ typedef NS_ENUM(NSInteger, PPCategoryItemKind) {
 
 typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionHero,
+    PPHomeSectionQuickActions,
     PPHomeSectionCurrentOrders,
     PPHomeSectionServices,
     PPHomeSectionCarousel,

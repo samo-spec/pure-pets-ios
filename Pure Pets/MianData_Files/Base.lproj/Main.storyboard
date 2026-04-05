@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24506" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="10Q-d8-2xY">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24765" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="10Q-d8-2xY">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
-        <deployment identifier="iOS"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24504"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24743"/>
         <capability name="Image references" minToolsVersion="12.0"/>
         <capability name="Named colors" minToolsVersion="9.0"/>
         <capability name="Safe area layout guides" minToolsVersion="9.0"/>
@@ -210,9 +209,6 @@
                                             </userDefinedRuntimeAttribute>
                                             <userDefinedRuntimeAttribute type="boolean" keyPath="layer.clipToBounds" value="YES"/>
                                         </userDefinedRuntimeAttributes>
-                                        <connections>
-                                            <action selector="popBTN:" destination="NQo-hB-dEM" eventType="touchUpInside" id="OGZ-DS-kCc"/>
-                                        </connections>
                                     </button>
                                     <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="checkdisactive" translatesAutoresizingMaskIntoConstraints="NO" id="CHf-yc-bul">
                                         <rect key="frame" x="349" y="67" width="30" height="30"/>
@@ -390,16 +386,6 @@
                         </userDefinedRuntimeAttribute>
                     </userDefinedRuntimeAttributes>
                     <connections>
-                        <outlet property="UserImage" destination="OSq-vP-iYc" id="8iQ-9J-IPy"/>
-                        <outlet property="addImageLabel" destination="I1H-sf-tKP" id="HjA-BJ-EzS"/>
-                        <outlet property="containerView" destination="2Io-ri-hqB" id="Rdx-Il-Y0V"/>
-                        <outlet property="loginButton" destination="8TT-m6-cp6" id="LWF-4F-2oG"/>
-                        <outlet property="loginLabel" destination="HRE-Gk-mfx" id="HC8-WX-cqD"/>
-                        <outlet property="mTitleLabel" destination="l5w-7G-HYy" id="z5X-bz-New"/>
-                        <outlet property="tableView" destination="DNL-E1-tR2" id="GtP-Or-1Co"/>
-                        <outlet property="tempImg" destination="CHf-yc-bul" id="Tsa-Sa-xFJ"/>
-                        <outlet property="topView" destination="ibz-rD-Z7n" id="BgF-M1-9Zq"/>
-                        <outlet property="userImageView" destination="OSq-vP-iYc" id="uJD-Sx-cdv"/>
                         <segue destination="XlK-0w-WMf" kind="show" identifier="showOTP" id="Koc-0P-nic"/>
                         <segue destination="SBu-yy-NGt" kind="showDetail" identifier="XLFormOptionsViewController" id="fQ9-k5-My6"/>
                         <segue destination="30R-s4-gdm" kind="show" identifier="PickerSheetViewController" id="OOr-t7-Jua"/>
@@ -1181,7 +1167,7 @@
             <objects>
                 <tableViewController restorationIdentifier="XLFormOptionsViewController" storyboardIdentifier="XLFormOptionsViewController" id="SBu-yy-NGt" customClass="XLFormOptionsViewController" sceneMemberID="viewController">
                     <tableView key="view" clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="insetGrouped" separatorStyle="default" rowHeight="-1" estimatedRowHeight="-1" sectionHeaderHeight="18" estimatedSectionHeaderHeight="-1" sectionFooterHeight="18" estimatedSectionFooterHeight="-1" id="Cze-8C-1CT">
-                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                        <rect key="frame" x="0.0" y="0.0" width="393" height="793"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <color key="backgroundColor" name="AppBackgroundColor"/>
                         <color key="tintColor" red="0.54117647058823526" green="0.082352941176470587" blue="0.2196078431372549" alpha="1" colorSpace="calibratedRGB"/>
@@ -2030,43 +2016,6 @@
                 <placeholder placeholderIdentifier="IBFirstResponder" id="mdc-cV-gbs" userLabel="First Responder" sceneMemberID="firstResponder"/>
             </objects>
             <point key="canvasLocation" x="-3521.3740458015268" y="-670.42253521126759"/>
-        </scene>
-        <!--SettingVC-->
-        <scene sceneID="Y62-5j-dBD">
-            <objects>
-                <viewController storyboardIdentifier="SettingVC" id="GpN-Tb-KAe" customClass="SettingVC" sceneMemberID="viewController">
-                    <view key="view" contentMode="scaleToFill" id="9lF-Kn-dy7">
-                        <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
-                        <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                        <subviews>
-                            <view contentMode="scaleToFill" id="A4e-g3-Hh1">
-                                <rect key="frame" x="0.0" y="0.0" width="393" height="70"/>
-                                <autoresizingMask key="autoresizingMask" widthSizable="YES" flexibleMaxY="YES"/>
-                                <subviews>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="الإعدادات" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="pcX-c7-Gl1">
-                                        <rect key="frame" x="85" y="14" width="221" height="50"/>
-                                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" widthSizable="YES" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <fontDescription key="fontDescription" type="system" pointSize="16"/>
-                                        <color key="textColor" name="PrimaryTextColor"/>
-                                        <nil key="highlightedColor"/>
-                                    </label>
-                                </subviews>
-                                <color key="backgroundColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <color key="tintColor" name="AppPrimaryColor"/>
-                            </view>
-                        </subviews>
-                        <viewLayoutGuide key="safeArea" id="xic-CR-Ivs"/>
-                        <color key="backgroundColor" name="sm_ofwhite_backGround"/>
-                    </view>
-                    <navigationItem key="navigationItem" id="jVJ-gY-dOe"/>
-                    <connections>
-                        <outlet property="mTitleLabel" destination="pcX-c7-Gl1" id="Vgn-uq-bYE"/>
-                        <outlet property="topView" destination="A4e-g3-Hh1" id="zBS-eJ-q2A"/>
-                    </connections>
-                </viewController>
-                <placeholder placeholderIdentifier="IBFirstResponder" id="IJO-8c-HOg" userLabel="First Responder" customClass="UIResponder" sceneMemberID="firstResponder"/>
-            </objects>
-            <point key="canvasLocation" x="-4541" y="172"/>
         </scene>
         <!--Picker Sheet View Controller-->
         <scene sceneID="HDP-zM-3O8">
@@ -2925,14 +2874,14 @@
         <segue reference="DTi-IX-ei7"/>
         <segue reference="azj-Bk-AoK"/>
         <segue reference="xnn-ks-LcG"/>
-        <segue reference="JrP-Cy-0tC"/>
+        <segue reference="fQ9-k5-My6"/>
         <segue reference="RDU-Fh-WR0"/>
         <segue reference="Y8d-iu-d8x"/>
         <segue reference="tBT-fC-NhM"/>
         <segue reference="dP9-HR-pI5"/>
         <segue reference="YXR-RW-x8j"/>
         <segue reference="z8w-OM-tfE"/>
-        <segue reference="ylv-t8-nC0"/>
+        <segue reference="Koc-0P-nic"/>
     </inferredMetricsTieBreakers>
     <color key="tintColor" white="0.0" alpha="0.0" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
     <resources>
@@ -2958,7 +2907,7 @@
         <image name="person.crop.circle.fill" catalog="system" width="128" height="123"/>
         <image name="person.fill" catalog="system" width="128" height="120"/>
         <image name="place1" width="256" height="256"/>
-        <image name="placeholder" width="500" height="750"/>
+        <image name="placeholder" width="341.33334350585938" height="512"/>
         <image name="plus" catalog="system" width="128" height="113"/>
         <image name="profile5" width="128" height="128"/>
         <image name="refresh-arrow" width="128" height="128"/>
@@ -2970,7 +2919,7 @@
             <color red="1" green="0.79199999570846558" blue="0.15700000524520874" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
         </namedColor>
         <namedColor name="AppBackgroundColor">
-            <color red="0.94900000095367432" green="0.94900000095367432" blue="0.94900000095367432" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
+            <color red="0.98400002717971802" green="0.9649999737739563" blue="0.9649999737739563" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
         </namedColor>
         <namedColor name="AppBackgroundColorDarker">
             <color red="0.88235294117647056" green="0.88235294117647056" blue="0.88235294117647056" alpha="1" colorSpace="custom" customColorSpace="displayP3"/>
