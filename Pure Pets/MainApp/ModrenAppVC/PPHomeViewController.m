@@ -557,6 +557,21 @@
     }
 }
 
+- (void)tintColorDidChange
+{
+    [super tintColorDidChange];
+    [self pp_forceTextColors];
+}
+
+- (void)pp_forceTextColors
+{
+    UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    _searchIconView.tintColor = textColor;
+    _signalLabel.textColor = textColor;
+    _placeholderLabel.textColor = textColor;
+    _chevronView.tintColor = textColor;
+}
+
 - (void)setHighlighted:(BOOL)highlighted
 {
     [super setHighlighted:highlighted];
@@ -566,7 +581,7 @@
 - (void)pp_applyPalette
 {
     UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *accentColor = AppBackgroundClrDarker ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
+    UIColor *accentColor = [UIColor colorNamed:@"NewBg"] ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
     UIColor *surfaceColor = AppForgroundColr ?: [UIColor systemBackgroundColor];
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     UIColor *glassWhite = [UIColor whiteColor];
@@ -683,7 +698,7 @@
     BOOL show = _showSmartPillBackground;
     show = YES;
     _blurView.hidden          = show;
-    _gradientLayer.hidden     = show;
+    _gradientLayer.hidden     = !show;
     _ambientGlowLayer.hidden  = show;
     _topHighlightLayer.hidden = show;
     _bottomTintLayer.hidden   = !show;
@@ -1385,6 +1400,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) UIView *profileCard;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeProfileItem;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeCartItem;
+@property (nonatomic, strong, nullable) UIButton *homeCartButton;
+@property (nonatomic, strong, nullable) PPInsetLabel *homeCartBadgeLabel;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *homeCartBadgeMinWidthConstraint;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
 @property (nonatomic, strong, nullable) PPHomeSmartSearchTitleView *homeSmartSearchView;
 @property (nonatomic, strong, nullable) NSTimer *homeSmartSearchTimer;
@@ -4260,6 +4278,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
             PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier forIndexPath:indexPath];
                 cell.delegate = strongSelf;
+            cell.delegate = self;
         if (item.universalViewModel) {
 
 
@@ -6097,14 +6116,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeCartItem = [self pp_buildCartBarButtonItem];
 
     self.navigationItem.leftBarButtonItems  = @[profileItem];
-    self.navigationItem.rightBarButtonItems = @[self.homeCartItem];
+    [self refreshNavigationRightItemsForCartCount:[CartManager.sharedManager totalItemsCount]];
     [self pp_updateHomeSmartSearchPlaceholderAnimated:NO];
     [self pp_startHomeSmartSearchTimerIfNeeded];
-
-    // 🔔 Notify cart change (already your system)
-    [[NSNotificationCenter defaultCenter]
-        postNotificationName:kCartUpdatedNotification
-                      object:nil];
 
     [self pp_navBarSetTitleViewCentered:centerView];
 }
@@ -6119,7 +6133,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     button.contentEdgeInsets = UIEdgeInsetsZero;
     button.adjustsImageWhenHighlighted = NO;
     button.clipsToBounds = NO;
-    button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78] ?: [UIColor colorWithWhite:1.0 alpha:0.92];
+    button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.60] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
     button.layer.cornerRadius = kSize * 0.5;
     button.layer.borderWidth = 0.8;
     button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor;
@@ -6139,9 +6153,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     ]];
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:
-        [UIImage pp_symbolNamed:@"cart"
-                      pointSize:16
-                         weight:UIImageSymbolWeightMedium
+        [UIImage pp_symbolNamed:@"cart.fill"
+                      pointSize:18
+                         weight:UIImageSymbolWeightRegular
                           scale:UIImageSymbolScaleMedium
                         palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
                    makeTemplate:YES]];
@@ -6156,6 +6170,42 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [iconView.widthAnchor constraintEqualToConstant:18.0],
         [iconView.heightAnchor constraintEqualToConstant:18.0]
     ]];
+
+    PPInsetLabel *badgeLabel = [[PPInsetLabel alloc] init];
+    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeLabel.textInsets = UIEdgeInsetsMake(1.5, 5.0, 1.5, 5.0);
+    badgeLabel.textAlignment = NSTextAlignmentCenter;
+    badgeLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightBold];
+    badgeLabel.textColor = UIColor.whiteColor;
+    badgeLabel.backgroundColor = UIColor.systemRedColor;
+    badgeLabel.adjustsFontSizeToFitWidth = YES;
+    badgeLabel.minimumScaleFactor = 0.82;
+    badgeLabel.layer.cornerRadius = 8.5;
+    badgeLabel.layer.borderWidth = 1.0;
+    badgeLabel.layer.borderColor = [[UIColor blueColor] colorWithAlphaComponent:0.92].CGColor;
+    badgeLabel.layer.masksToBounds = YES;
+    badgeLabel.hidden = NO;
+    badgeLabel.alpha = 1.0;
+    badgeLabel.userInteractionEnabled = NO;
+    //badgeLabel.layer.zPosition = 20.0f;
+    if (@available(iOS 13.0, *)) {
+        badgeLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [button addSubview:badgeLabel];
+    [button bringSubviewToFront:badgeLabel];
+
+    NSLayoutConstraint *badgeMinWidth =
+        [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:17.0];
+    badgeMinWidth.active = YES;
+    [NSLayoutConstraint activateConstraints:@[
+        [badgeLabel.heightAnchor constraintEqualToConstant:17.0],
+        [badgeLabel.topAnchor constraintEqualToAnchor:button.topAnchor constant:1.0],
+        [badgeLabel.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:-1.0]
+    ]];
+
+    self.homeCartButton = button;
+    self.homeCartBadgeLabel = badgeLabel;
+    self.homeCartBadgeMinWidthConstraint = badgeMinWidth;
 
     return [[UIBarButtonItem alloc] initWithCustomView:button];
 }
@@ -6285,32 +6335,56 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count
 {
-    BOOL shouldShowCart = (count > 0);
-    BOOL isAlreadyShowing = [self.navigationItem.rightBarButtonItems containsObject:self.homeCartItem];
-
-    if (shouldShowCart && !self.homeCartItem) {
+    (void)count;
+    if (!self.homeCartItem) {
         self.homeCartItem = [self pp_buildCartBarButtonItem];
     }
 
-    if (shouldShowCart && isAlreadyShowing) {
-        UIView *cartView = self.homeCartItem.customView;
-        [cartView setNeedsLayout];
-        [cartView layoutIfNeeded];
-        [self.navigationController.navigationBar setNeedsLayout];
-        [self.navigationController.navigationBar layoutIfNeeded];
-        return;
+    BOOL isAlreadyShowing = [self.navigationItem.rightBarButtonItems containsObject:self.homeCartItem];
+    if (!isAlreadyShowing || self.navigationItem.rightBarButtonItems.count != 1) {
+        self.navigationItem.rightBarButtonItems = @[self.homeCartItem];
     }
 
-    NSMutableArray<UIBarButtonItem *> *items = [NSMutableArray array];
-    if (shouldShowCart) {
-        [items addObject:self.homeCartItem];
-    }
-
-    self.navigationItem.rightBarButtonItems = items.copy;
     [self.homeCartItem.customView setNeedsLayout];
     [self.homeCartItem.customView layoutIfNeeded];
     [self.navigationController.navigationBar setNeedsLayout];
     [self.navigationController.navigationBar layoutIfNeeded];
+}
+
+- (void)pp_applyHomeCartBadgeCount:(NSInteger)count
+{
+    if (!self.homeCartBadgeLabel || !self.homeCartButton) {
+        return;
+    }
+
+    NSInteger safeCount = MAX(count, 0);
+    BOOL shouldShowBadge = safeCount > 0;
+    NSString *text = (safeCount > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)safeCount];
+    BOOL valueChanged = ![self.homeCartBadgeLabel.text isEqualToString:text];
+    BOOL wasHidden = self.homeCartBadgeLabel.hidden;
+
+    self.homeCartBadgeLabel.text = text;
+    CGFloat textWidth = ceil([text sizeWithAttributes:@{NSFontAttributeName : self.homeCartBadgeLabel.font}].width) + 8.0;
+    self.homeCartBadgeMinWidthConstraint.constant = MAX(16.0, textWidth);
+    self.homeCartBadgeLabel.hidden = !shouldShowBadge;
+    self.homeCartBadgeLabel.alpha = shouldShowBadge ? 1.0 : 0.0;
+    self.homeCartBadgeLabel.backgroundColor = UIColor.redColor;
+    [self.homeCartButton setNeedsLayout];
+    [self.homeCartButton layoutIfNeeded];
+
+    if (shouldShowBadge && (wasHidden || valueChanged)) {
+        self.homeCartBadgeLabel.transform = CGAffineTransformMakeScale(0.82, 0.82);
+        [UIView animateWithDuration:0.22
+                              delay:0.0
+             usingSpringWithDamping:0.72
+              initialSpringVelocity:0.15
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.homeCartBadgeLabel.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    } else if (!shouldShowBadge) {
+        self.homeCartBadgeLabel.transform = CGAffineTransformIdentity;
+    }
 }
 
 - (CGFloat)pp_preferredNavigationSearchWidth
@@ -6832,6 +6906,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                 [PPHUD showError:kLang(@"Out of stock")];
             }
         }
+        
+        [self updateCartQuantityBadge];
 
         if (safeQuantity == 1) {
             [PPFunc triggerLightHaptic];
@@ -6850,9 +6926,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 }
 
 
+
+
 - (void)updateCartQuantityBadge
 {
-
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self updateCartQuantityBadge];
@@ -6863,26 +6940,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     NSInteger count = [CartManager.sharedManager totalItemsCount];
     count = MAX(count, 0);
     [self refreshNavigationRightItemsForCartCount:count];
-
-    if (!self.homeCartItem) {
-        self.homeCartItem = [self pp_buildCartBarButtonItem];
-    }
-
-    if (@available(iOS 26.0, *)) {
-        [self.homeCartItem setBadge:nil];
-    }
-
-    NSString *badgeValue =
-        count > 0 ? (count > 99 ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count]) : nil;
-    [self.homeCartItem pp_setBadgeValue:badgeValue];
-
-    // Animated show / hide
-    if (count > 0) {
-       //+ ** [self pp_showCartBarButtonAnimated];
-    } else {
-       // [self pp_hideCartBarButtonAnimated];
-    }
-    [self pp_showCartBarButtonAnimated];
+    [self pp_applyHomeCartBadgeCount:count];
     [self.homeCartItem.customView setNeedsLayout];
     [self.homeCartItem.customView layoutIfNeeded];
     [self.navigationController.navigationBar setNeedsLayout];
