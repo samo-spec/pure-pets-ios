@@ -757,10 +757,22 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 {
     [super viewWillLayoutSubviews];
     [self pp_refreshProfileHeaderContent];
+    CGFloat headerWidth = CGRectGetWidth(self.tableView.bounds);
+    if (headerWidth <= 0.0) {
+        headerWidth = CGRectGetWidth(self.view.bounds);
+    }
+    CGRect headerBounds = self.headerRoot.bounds;
+    if (ABS(headerBounds.size.width - headerWidth) > 0.5) {
+        headerBounds.size.width = headerWidth;
+        self.headerRoot.bounds = headerBounds;
+    }
     [self.headerRoot setNeedsLayout];
     [self.headerRoot layoutIfNeeded];
-    CGFloat headerHeight = [self.headerRoot systemLayoutSizeFittingSize:UILayoutFittingCompressedSize].height;
+    CGFloat headerHeight = [self.headerRoot systemLayoutSizeFittingSize:CGSizeMake(headerWidth, UILayoutFittingCompressedSize.height)
+                                        withHorizontalFittingPriority:UILayoutPriorityRequired
+                                              verticalFittingPriority:UILayoutPriorityFittingSizeLevel].height;
     CGRect frame = self.headerRoot.frame;
+    frame.size.width = headerWidth;
     frame.size.height = headerHeight;
     self.headerRoot.frame = frame;
     self.tableView.tableHeaderView = self.headerRoot;
