@@ -47,7 +47,28 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     PPProfileContactRowCount
 };
 
-@interface PPProfileTextFieldCell : UITableViewCell
+static const CGFloat kPPProfileCellHorizontalInset = 20.0;
+static const CGFloat kPPProfileCellVerticalInset   = 10.0;
+
+@interface PPProfileBaseCell : UITableViewCell
+@end
+
+@implementation PPProfileBaseCell
+
+- (void)setFrame:(CGRect)frame
+{
+    frame.origin.x = kPPProfileCellHorizontalInset;
+    frame.size.width -= kPPProfileCellHorizontalInset * 2.0;
+    frame.origin.y += kPPProfileCellVerticalInset * 0.5;
+    frame.size.height -= kPPProfileCellVerticalInset;
+    if (frame.size.width  < 0.0) frame.size.width  = 0.0;
+    if (frame.size.height < 0.0) frame.size.height = 0.0;
+    [super setFrame:frame];
+}
+
+@end
+
+@interface PPProfileTextFieldCell : PPProfileBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextField *textField;
 - (void)configureWithTitle:(NSString *)title
@@ -150,7 +171,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 
 @end
 
-@interface PPProfilePhoneCell : UITableViewCell
+@interface PPProfilePhoneCell : PPProfileBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *prefixLabel;
 @property (nonatomic, strong) UITextField *textField;
@@ -266,7 +287,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 
 @end
 
-@interface PPProfileTextViewCell : UITableViewCell
+@interface PPProfileTextViewCell : PPProfileBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, strong) UILabel *placeholderLabel;
@@ -380,7 +401,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 
 @end
 
-@interface PPProfileSelectorCell : UITableViewCell
+@interface PPProfileSelectorCell : PPProfileBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *valueLabel;
 @property (nonatomic, strong) UILabel *flagLabel;
@@ -468,7 +489,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 
 @end
 
-@interface PPProfileAddressCell : UITableViewCell
+@interface PPProfileAddressCell : PPProfileBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *detailLabel;
 @property (nonatomic, strong) UILabel *badgeLabel;
@@ -560,7 +581,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 
 @end
 
-@interface PPProfileActionCell : UITableViewCell
+@interface PPProfileActionCell : PPProfileBaseCell
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
 - (void)configureWithTitle:(NSString *)title iconName:(NSString *)iconName;
@@ -1482,15 +1503,6 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     if (!PPIOS26()) {
         [Styling applyBackgroundStyleForTableView:tableView cell:cell indexPath:indexPath useRowCardMode:NO];
     }
-
-    CGRect frame = cell.frame;
-    CGFloat horizontalInset = 20.0;
-    CGFloat verticalInset = 10.0;
-    frame.origin.x = horizontalInset;
-    frame.size.width = MAX(0.0, CGRectGetWidth(tableView.bounds) - (horizontalInset * 2.0));
-    frame.origin.y += verticalInset * 0.5;
-    frame.size.height = MAX(0.0, frame.size.height - verticalInset);
-    cell.frame = frame;
 
     cell.backgroundColor = UIColor.clearColor;
     cell.clipsToBounds = NO;
