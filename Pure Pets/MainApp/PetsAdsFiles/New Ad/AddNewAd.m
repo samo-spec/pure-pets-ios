@@ -15,7 +15,6 @@ static NSString * const PPAddNewAdDraftDefaultsPrefix = @"pp.add_pet_ad.draft";
 static NSString * const PPAddNewAdDraftFormDataKey = @"formData";
 static NSString * const PPAddNewAdDraftImagePathsKey = @"imagePaths";
 static NSString * const PPAddNewAdDraftMediaMutatedKey = @"didMutateMedia";
-static NSInteger const PPAddNewAdCardBackgroundTag = 73041;
 static CGFloat const PPAddNewAdDraftImageMaxPixelSize = 1800.0;
 
 static NSString * const PPAdTextFieldCellID  = @"PPAdTextFieldCell";
@@ -30,6 +29,27 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     if (fabs(coordinate.latitude) < DBL_EPSILON && fabs(coordinate.longitude) < DBL_EPSILON) return NO;
     return YES;
 }
+
+static const CGFloat kPPAdCellHorizontalInset = 20.0;
+static const CGFloat kPPAdCellVerticalInset   = 10.0;
+
+@interface PPAdBaseCell : UITableViewCell
+@end
+
+@implementation PPAdBaseCell
+
+- (void)setFrame:(CGRect)frame
+{
+    frame.origin.x = kPPAdCellHorizontalInset;
+    frame.size.width -= kPPAdCellHorizontalInset * 2.0;
+    frame.origin.y += kPPAdCellVerticalInset * 0.5;
+    frame.size.height -= kPPAdCellVerticalInset;
+    if (frame.size.width  < 0.0) frame.size.width  = 0.0;
+    if (frame.size.height < 0.0) frame.size.height = 0.0;
+    [super setFrame:frame];
+}
+
+@end
 
 #pragma mark - PPAdFormField
 
@@ -65,7 +85,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 #pragma mark - PPAdTextFieldCell
 
-@interface PPAdTextFieldCell : UITableViewCell <UITextFieldDelegate>
+@interface PPAdTextFieldCell : PPAdBaseCell <UITextFieldDelegate>
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextField *textField;
 @property (nonatomic, copy) void(^onValueChanged)(NSString *text);
@@ -134,7 +154,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 #pragma mark - PPAdSelectorCell
 
-@interface PPAdSelectorCell : UITableViewCell
+@interface PPAdSelectorCell : PPAdBaseCell
 @property (nonatomic, strong) UILabel *fieldTitleLabel;
 @property (nonatomic, strong) UILabel *valueLabel;
 @property (nonatomic, strong) UIImageView *chevronView;
@@ -214,7 +234,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 #pragma mark - PPAdSwitchCell
 
-@interface PPAdSwitchCell : UITableViewCell
+@interface PPAdSwitchCell : PPAdBaseCell
 @property (nonatomic, strong) UILabel *fieldTitleLabel;
 @property (nonatomic, strong) UISwitch *toggleSwitch;
 @property (nonatomic, copy) void(^onSwitchChanged)(BOOL isOn);
@@ -265,7 +285,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 #pragma mark - PPAdTextViewCell
 
-@interface PPAdTextViewCell : UITableViewCell <UITextViewDelegate>
+@interface PPAdTextViewCell : PPAdBaseCell <UITextViewDelegate>
 @property (nonatomic, strong) UILabel *fieldTitleLabel;
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, strong) UILabel *placeholderLabel;
@@ -374,6 +394,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, assign) BOOL formDisabled;
 @property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderHeight;
 @property (nonatomic, assign) BOOL isUpdatingHeroLayout;
+
+@property (nonatomic, assign) BOOL DidUpdatingHeroLayout;
 @end
 
 
@@ -457,6 +479,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.presented=NO;
+    
+    self.DidUpdatingHeroLayout=NO;
     self.isHydratingFormData = YES;
     self.isHydratingMedia = NO;
     self.hasUserModifiedForm = NO;
@@ -1898,84 +1922,36 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
     titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    titleLabel.text = title;
+    titleLabel.text = title ?: @"";
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [container addSubview:titleLabel];
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     subtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.9];
-    subtitleLabel.text = subtitle;
+    subtitleLabel.text = subtitle ?: @"";
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    subtitleLabel.numberOfLines = 2;
     [container addSubview:subtitleLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [accentBar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:18.0],
+        [accentBar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:20.0],
         [accentBar.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
         [accentBar.widthAnchor constraintEqualToConstant:28.0],
         [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
         [titleLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:9.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:accentBar.leadingAnchor],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-18.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-20.0],
 
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor]
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-8.0]
     ]];
 
     return container;
-}
-
-// Modern form cell styling using layout margins and constraints
-- (void)pp_styleModernFormCell:(UITableViewCell *)cell tableView:(UITableView *)tableView indexPath:(NSIndexPath *)indexPath
-{
-    if (!cell || !indexPath) {
-        return;
-    }
-
-    cell.backgroundColor = UIColor.clearColor;
-    cell.clipsToBounds = NO;
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
-
-    UIEdgeInsets layoutMargins = UIEdgeInsetsMake(3.0, 16.0, 3.0, 16.0);
-    cell.separatorInset = UIEdgeInsetsMake(0.0, CGRectGetWidth(tableView.bounds), 0.0, 0.0);
-    cell.layoutMargins = layoutMargins;
-    cell.preservesSuperviewLayoutMargins = NO;
-    cell.contentView.layoutMargins = layoutMargins;
-    cell.contentView.preservesSuperviewLayoutMargins = NO;
-
-    UIView *cardView = [cell.contentView viewWithTag:PPAddNewAdCardBackgroundTag];
-    if (!cardView) {
-        cardView = [[UIView alloc] initWithFrame:CGRectZero];
-        cardView.translatesAutoresizingMaskIntoConstraints = NO;
-        cardView.tag = PPAddNewAdCardBackgroundTag;
-        cardView.userInteractionEnabled = NO;
-        [cell.contentView insertSubview:cardView atIndex:0];
-
-        [NSLayoutConstraint activateConstraints:@[
-            [cardView.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:3.0],
-            [cardView.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-3.0],
-            [cardView.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor],
-            [cardView.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor]
-        ]];
-    }
-
-    cardView.backgroundColor = [self pp_adSurfaceColor];
-    cardView.layer.cornerRadius = 18.0;
-    cardView.layer.masksToBounds = YES;
-    cardView.layer.borderWidth = 1.0;
-    cardView.layer.borderColor = [self pp_adSurfaceBorderColor].CGColor;
-
-    cell.contentView.backgroundColor = UIColor.clearColor;
-    cell.contentView.layer.cornerRadius = 0.0;
-    cell.contentView.layer.masksToBounds = NO;
-
-    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cell.layer.shadowOpacity = 0.05;
-    cell.layer.shadowRadius = 12.0;
-    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
-    cell.layer.masksToBounds = NO;
-    cell.layer.shadowPath = nil;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
@@ -1986,7 +1962,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
-    return section < (NSInteger)self.formSections.count ? 58.0 : 0.0001;
+    return section < (NSInteger)self.formSections.count ? 76.0 : 0.000001;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForHeaderInSection:(NSInteger)section
@@ -1996,7 +1972,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
 {
-    return 8.0;
+    return 0.000001;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
@@ -2004,12 +1980,29 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     return [UIView new];
 }
 
+- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section
+{
+    return 0.000001;
+}
+
 // Style cell before display and after creation
 - (void)tableView:(UITableView *)tableView
   willDisplayCell:(UITableViewCell *)cell
 forRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    [self pp_styleModernFormCell:cell tableView:tableView indexPath:indexPath];
+    cell.backgroundColor = UIColor.clearColor;
+    cell.clipsToBounds = NO;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.contentView.backgroundColor = [self pp_adSurfaceColor];
+    cell.contentView.layer.cornerRadius = 20.0;
+    cell.contentView.layer.masksToBounds = YES;
+    cell.contentView.layer.borderWidth = 1.0;
+    cell.contentView.layer.borderColor = [self pp_adSurfaceBorderColor].CGColor;
+    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    cell.layer.shadowOpacity = 0.05;
+    cell.layer.shadowRadius = 12.0;
+    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    cell.layer.masksToBounds = NO;
 }
 
 // cellForRowAtIndexPath moved to Form Field Helpers section above
@@ -2132,7 +2125,6 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
                 if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
                 if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
             };
-            [self pp_styleModernFormCell:cell tableView:tableView indexPath:indexPath];
             return cell;
         }
         case PPAdFieldTypeSelector: {
@@ -2140,7 +2132,6 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
             [cell configureWithField:field];
             cell.userInteractionEnabled = !effectiveDisabled;
             cell.contentView.alpha = effectiveDisabled ? 0.45 : 1.0;
-            [self pp_styleModernFormCell:cell tableView:tableView indexPath:indexPath];
             return cell;
         }
         case PPAdFieldTypeSwitch: {
@@ -2153,7 +2144,6 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
                 if (field.onChangeBlock) field.onChangeBlock(oldValue, field.value);
                 if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
             };
-            [self pp_styleModernFormCell:cell tableView:tableView indexPath:indexPath];
             return cell;
         }
         case PPAdFieldTypeTextView: {
@@ -2166,7 +2156,6 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
                 if (field.onChangeBlock) field.onChangeBlock(oldValue, text);
                 if (!weakSelf.isHydratingFormData) weakSelf.hasUserModifiedForm = YES;
             };
-            [self pp_styleModernFormCell:cell tableView:tableView indexPath:indexPath];
             return cell;
         }
     }
@@ -2344,8 +2333,8 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self.tableView registerClass:[PPAdSwitchCell class] forCellReuseIdentifier:PPAdSwitchCellID];
     [self.tableView registerClass:[PPAdTextViewCell class] forCellReuseIdentifier:PPAdTextViewCellID];
 
-    self.tableView.estimatedSectionFooterHeight = 10;
-    self.tableView.sectionFooterHeight = 10;
+    self.tableView.estimatedSectionFooterHeight = 0.000001;
+    self.tableView.sectionFooterHeight = 0.000001;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 64.0;
 }
@@ -2472,12 +2461,27 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     }
 }
 
+- (void)viewWillLayoutSubviews {
+    [super viewWillLayoutSubviews];
+   /*
+    if (!self.uploadProgressView) {
+        GSIndeterminateProgressView *pv = [[GSIndeterminateProgressView alloc] initWithFrame:CGRectMake(0,  self.navigationController.navigationBar.hx_maxy , self.view.hx_w, 4)];
+        pv.progressTintColor = [GM appPrimaryColor];
+        pv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
+        pv.backgroundColor = [PPColorUtils pp_selectedCellColorFromPrimary]; //UIColor.whiteColor;
+        [self.view addSubview:pv];
+        self.uploadProgressView = pv;
+    }
+    */
+}
 
 -(void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
+    
+    if(self.DidUpdatingHeroLayout == YES) return;;
     [self pp_applyAdCanvasBackground];
-    if (self.backgroundGlowViewTop) {
+     if (self.backgroundGlowViewTop) {
         self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
         self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
         [self.view sendSubviewToBack:self.backgroundGlowViewBottom];
@@ -2494,6 +2498,8 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.imageCollection.layer.shadowRadius = 14.0;
     self.imageCollection.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     self.imageCollection.layer.masksToBounds = NO;
+    
+    self.DidUpdatingHeroLayout=YES;
 }
 
 - (void)pp_updateFormHeroHeaderLayoutIfNeeded
@@ -2963,19 +2969,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 #pragma mark - Progress bar host
 
-- (void)viewWillLayoutSubviews {
-    [super viewWillLayoutSubviews];
-   /*
-    if (!self.uploadProgressView) {
-        GSIndeterminateProgressView *pv = [[GSIndeterminateProgressView alloc] initWithFrame:CGRectMake(0,  self.navigationController.navigationBar.hx_maxy , self.view.hx_w, 4)];
-        pv.progressTintColor = [GM appPrimaryColor];
-        pv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
-        pv.backgroundColor = [PPColorUtils pp_selectedCellColorFromPrimary]; //UIColor.whiteColor;
-        [self.view addSubview:pv];
-        self.uploadProgressView = pv;
-    }
-    */
-}
+
 
 -(void)dismiss
 {
