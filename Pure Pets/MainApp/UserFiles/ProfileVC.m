@@ -760,7 +760,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     [self pp_applyProfileCanvasBackground];
     [self.tableView reloadData];
 
-    [[NSNotificationCenter defaultCenter] postNotificationName:PPHideSystemTabBarNotification object:nil];
+    //[[NSNotificationCenter defaultCenter] postNotificationName:PPHideSystemTabBarNotification object:nil];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -931,6 +931,15 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     [self setformDataArray:@(self.selectedCountry.ID) forKey:@"CountryID"];
     [self pp_captureProfileDraftBaseline];
     self.pendingAvatarImage = nil;
+
+    // Reload avatar from (potentially updated) URL
+    if (PPCurrentUser.UserImageUrl.absoluteString.length > 0) {
+        [self.avatarIMV.imageView cancelCurrentImageRequest];
+        [GM setImageFromUrlString:PPSafeString(PPCurrentUser.UserImageUrl.absoluteString)
+                        imageView:self.avatarIMV.imageView
+                          phImage:@"person.crop.circle.fill"];
+    }
+
     self.suppressEditTracking = NO;
     [self.tableView reloadData];
     [self pp_refreshProfileHeaderContent];
@@ -2062,6 +2071,9 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
 - (void)updateAvatar:(UIImage *)image
 {
+    // Cancel any in-flight YYWebImage request so it doesn't overwrite the new photo
+    [self.avatarIMV.imageView cancelCurrentImageRequest];
+
     [UIView transitionWithView:self.avatarIMV
                       duration:0.3
                        options:UIViewAnimationOptionTransitionCrossDissolve

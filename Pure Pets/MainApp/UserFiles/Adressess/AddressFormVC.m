@@ -620,6 +620,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
 @property (nonatomic, strong) UIView *headerRoot;
 @property (nonatomic, strong) UIView *headerCardView;
+@property (nonatomic, strong) UIView *headerGradientBar;
 @property (nonatomic, strong) UILabel *headerEyebrowLabel;
 @property (nonatomic, strong) UILabel *headerTitleLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
@@ -706,18 +707,18 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [[UIColor colorWithRed:0.95 green:0.77 blue:0.65 alpha:1.0] colorWithAlphaComponent:0.14];
+    topGlow.backgroundColor = [[UIColor colorWithRed:0.95 green:0.77 blue:0.65 alpha:1.0] colorWithAlphaComponent:0.30];
     topGlow.layer.shadowColor = [UIColor colorWithRed:0.95 green:0.73 blue:0.52 alpha:1.0].CGColor;
-    topGlow.layer.shadowOpacity = 0.11;
+    topGlow.layer.shadowOpacity = 0.22;
     topGlow.layer.shadowRadius = 60.0;
     topGlow.layer.shadowOffset = CGSizeZero;
 
     UIView *bottomGlow = [[UIView alloc] init];
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [[UIColor colorWithRed:0.75 green:0.52 blue:0.58 alpha:1.0] colorWithAlphaComponent:0.08];
+    bottomGlow.backgroundColor = [[UIColor colorWithRed:0.75 green:0.52 blue:0.58 alpha:1.0] colorWithAlphaComponent:0.22];
     bottomGlow.layer.shadowColor = [UIColor colorWithRed:0.71 green:0.34 blue:0.42 alpha:1.0].CGColor;
-    bottomGlow.layer.shadowOpacity = 0.08;
+    bottomGlow.layer.shadowOpacity = 0.18;
     bottomGlow.layer.shadowRadius = 70.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
 
@@ -817,6 +818,12 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
     self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
     self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
+
+    // Resize gradient accent bar layer to match its host view
+    CAGradientLayer *gradient = (CAGradientLayer *)self.headerGradientBar.layer.sublayers.firstObject;
+    if ([gradient isKindOfClass:CAGradientLayer.class]) {
+        gradient.frame = self.headerGradientBar.bounds;
+    }
 }
 
 #pragma mark - Setup
@@ -866,11 +873,12 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     cardView.layer.borderWidth = 1.0;
     cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.56].CGColor;
     cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cardView.layer.shadowOpacity = 0.08;
-    cardView.layer.shadowRadius = 22.0;
-    cardView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    cardView.layer.shadowOpacity = 0.10;
+    cardView.layer.shadowRadius = 28.0;
+    cardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
     [headerRoot addSubview:cardView];
 
+    // Frosted tint overlay
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
     tintView.backgroundColor = [[UIColor colorWithRed:0.99 green:0.94 blue:0.90 alpha:1.0] colorWithAlphaComponent:0.58];
@@ -878,23 +886,46 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
 
+    // Decorative gradient stripe at top
+    CAGradientLayer *accentGradient = [CAGradientLayer layer];
+    accentGradient.colors = @[
+        (id)(AppPrimaryClr ?: UIColor.systemOrangeColor).CGColor,
+        (id)[[AppPrimaryClr ?: UIColor.systemOrangeColor colorWithAlphaComponent:0.32] CGColor]
+    ];
+    accentGradient.startPoint = CGPointMake(0.0, 0.5);
+    accentGradient.endPoint = CGPointMake(1.0, 0.5);
+    accentGradient.frame = CGRectMake(0.0, 0.0, 400.0, 5.0);
+    accentGradient.cornerRadius = 2.5;
+
+    UIView *gradientBar = [[UIView alloc] init];
+    gradientBar.translatesAutoresizingMaskIntoConstraints = NO;
+    gradientBar.layer.cornerRadius = 2.5;
+    gradientBar.layer.masksToBounds = YES;
+    [gradientBar.layer addSublayer:accentGradient];
+    [cardView addSubview:gradientBar];
+
+    // Large icon badge with subtle inner glow
     UIView *iconBadge = [[UIView alloc] init];
     iconBadge.translatesAutoresizingMaskIntoConstraints = NO;
-    iconBadge.backgroundColor = [[AppPrimaryClr ?: UIColor.systemOrangeColor colorWithAlphaComponent:0.12] colorWithAlphaComponent:1.0];
-    iconBadge.layer.cornerRadius = 24.0;
+    UIColor *brandClr = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    iconBadge.backgroundColor = [brandClr colorWithAlphaComponent:0.14];
+    iconBadge.layer.cornerRadius = 28.0;
     iconBadge.layer.masksToBounds = YES;
+    iconBadge.layer.borderWidth = 1.0;
+    iconBadge.layer.borderColor = [brandClr colorWithAlphaComponent:0.18].CGColor;
     [cardView addSubview:iconBadge];
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"mappin.and.ellipse"]];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    iconView.tintColor = brandClr;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
     [iconBadge addSubview:iconView];
 
     UILabel *eyebrowLabel = [[UILabel alloc] init];
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    eyebrowLabel.textColor = [[AppPrimaryClr ?: UIColor.systemOrangeColor colorWithAlphaComponent:0.92] colorWithAlphaComponent:1.0];
+    eyebrowLabel.textColor = [brandClr colorWithAlphaComponent:0.92];
+    eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [cardView addSubview:eyebrowLabel];
 
     UILabel *titleLabel = [[UILabel alloc] init];
@@ -913,13 +944,14 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [cardView addSubview:subtitleLabel];
 
+    // Meta pill badge
     UILabel *metaLabel = [[UILabel alloc] init];
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-    metaLabel.textColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    metaLabel.textColor = brandClr;
     metaLabel.numberOfLines = 2;
     metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    metaLabel.backgroundColor = [[AppPrimaryClr ?: UIColor.systemOrangeColor colorWithAlphaComponent:0.10] colorWithAlphaComponent:1.0];
+    metaLabel.backgroundColor = [brandClr colorWithAlphaComponent:0.10];
     metaLabel.layer.cornerRadius = 16.0;
     metaLabel.layer.masksToBounds = YES;
     [cardView addSubview:metaLabel];
@@ -935,37 +967,49 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        [iconBadge.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
+        // Gradient accent bar at the very top
+        [gradientBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:14.0],
+        [gradientBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
+        [gradientBar.widthAnchor constraintEqualToConstant:52.0],
+        [gradientBar.heightAnchor constraintEqualToConstant:5.0],
+
+        // Icon badge — larger, rounded square
+        [iconBadge.topAnchor constraintEqualToAnchor:gradientBar.bottomAnchor constant:16.0],
         [iconBadge.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [iconBadge.widthAnchor constraintEqualToConstant:48.0],
-        [iconBadge.heightAnchor constraintEqualToConstant:48.0],
+        [iconBadge.widthAnchor constraintEqualToConstant:56.0],
+        [iconBadge.heightAnchor constraintEqualToConstant:56.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:22.0],
-        [iconView.heightAnchor constraintEqualToConstant:22.0],
+        [iconView.widthAnchor constraintEqualToConstant:26.0],
+        [iconView.heightAnchor constraintEqualToConstant:26.0],
 
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:20.0],
+        // Eyebrow — vertically centered with icon badge
+        [eyebrowLabel.centerYAnchor constraintEqualToAnchor:iconBadge.topAnchor constant:14.0],
         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:iconBadge.trailingAnchor constant:14.0],
         [eyebrowLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:6.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:eyebrowLabel.leadingAnchor],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:eyebrowLabel.trailingAnchor],
+        // Title
+        [titleLabel.topAnchor constraintEqualToAnchor:iconBadge.bottomAnchor constant:16.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
+        // Subtitle — comfortable spacing below title
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:10.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:14.0],
+        // Meta pill
+        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:16.0],
         [metaLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:titleLabel.trailingAnchor],
-        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-18.0],
+        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-20.0],
         [metaLabel.heightAnchor constraintGreaterThanOrEqualToConstant:32.0]
     ]];
 
     self.headerRoot = headerRoot;
     self.headerCardView = cardView;
+    self.headerGradientBar = gradientBar;
     self.headerEyebrowLabel = eyebrowLabel;
     self.headerTitleLabel = titleLabel;
     self.headerSubtitleLabel = subtitleLabel;
@@ -1965,7 +2009,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
-    return section == 0 ? 50.0 : 58.0;
+    return section == 0 ? 58.0 : 72.0;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForHeaderInSection:(NSInteger)section
@@ -1975,12 +2019,12 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
 {
-    return 0.000001;
+    return 18.0;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section
 {
-    return 0.000001;
+    return 18.0;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
@@ -2058,7 +2102,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor]
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-6.0]
     ]];
 
     return container;
