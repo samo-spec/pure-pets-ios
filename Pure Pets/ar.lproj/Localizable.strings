@@ -436,7 +436,7 @@
 "notFound" = "لا يوجد";
 "not_logged_in" = "لم يتم تسجيل الدخول";
 "note" = "ملاحظات";
-"notificationsSetPalce" = "الإشعارات";
+"notificationsSetPalce" = "المحادثات";
 "ok" = "حسنًا";
 "okSanan" = "حسناً";
 "other" = "اخري";
@@ -2107,8 +2107,8 @@
 /* Tab Bar – شريط التبويب */
 "a11y_tab_home" = "الرئيسية";
 "a11y_tab_home_hint" = "تصفح إعلانات الحيوانات والخدمات";
-"a11y_tab_notifications" = "الإشعارات";
-"a11y_tab_notifications_hint" = "عرض المحادثات والإشعارات";
+"a11y_tab_notifications" = "المحادثات";
+"a11y_tab_notifications_hint" = "عرض المحادثات";
 "a11y_tab_add" = "إضافة إعلان جديد";
 "a11y_tab_orders" = "الطلبات";
 "a11y_tab_orders_hint" = "عرض سجل الطلبات";

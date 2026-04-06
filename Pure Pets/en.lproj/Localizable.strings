@@ -436,7 +436,7 @@
 "notFound" = "None";
 "not_logged_in" = "Not logged in";
 "note" = "Notes";
-"notificationsSetPalce" = "Notifications";
+"notificationsSetPalce" = "Chats";
 "ok" = "OK";
 "okSanan" = "OK";
 "other" = "other";
@@ -1149,7 +1149,7 @@
 
 
 "home" = "Home";
-"Notifications" = "Notifications";
+"Notifications" = "Chats";
 
 "Food Posted!" = "Food Posted!";
 "Accessory Posted!" = "Accessory Posted!";
@@ -2121,7 +2121,7 @@
 "a11y_tab_home" = "Home";
 "a11y_tab_home_hint" = "Browse pet ads and services";
 "a11y_tab_notifications" = "Notifications";
-"a11y_tab_notifications_hint" = "View your chats and notifications";
+"a11y_tab_notifications_hint" = "View your chats";
 "a11y_tab_add" = "Add new post";
 "a11y_tab_orders" = "Orders";
 "a11y_tab_orders_hint" = "View your order history";

@@ -9,6 +9,9 @@
 #import "PPPermissionHelper.h"
 #import "PPVerificationCodeViewController.h"
 #import "PPSelectOptionViewController.h"
+
+#define PPDispatchMain(block) dispatch_async(dispatch_get_main_queue(), block)
+
 @import FirebaseAuth;
 @import FirebaseStorage;
 @import PhotosUI;
