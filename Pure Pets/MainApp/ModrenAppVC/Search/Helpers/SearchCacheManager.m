@@ -11,6 +11,7 @@
 #import "PetAccessoryManager.h"
 #import "ServicesManager.h"
 #import "ArabicNormalizer.h"
+#import "PPSearchHelper.h"
 
 @interface SearchCacheManager ()
 
@@ -131,6 +132,9 @@
 
     // END
     if ([text hasSuffix:query]) return YES;
+
+    // FUZZY — Levenshtein fallback (typo tolerance)
+    if ([PPSearchHelper pp_isFuzzyMatchForText:text query:query]) return YES;
 
     return NO;
 }

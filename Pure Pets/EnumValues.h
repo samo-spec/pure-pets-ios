@@ -120,7 +120,8 @@ typedef NS_ENUM(NSInteger, PPSearchRank) {
     PPSearchRankPrefix       = 1,
     PPSearchRankWordStart    = 2,
     PPSearchRankContains     = 3,
-    PPSearchRankWeak         = 4    // lowest
+    PPSearchRankFuzzy        = 4,   // typo-tolerant (Levenshtein)
+    PPSearchRankWeak         = 5    // lowest
 };
 typedef NS_ENUM(NSInteger, PPButtonStyle) {
     PPButtonStyleFilled,   // solid background
@@ -149,7 +150,8 @@ typedef NS_ENUM(NSInteger, PPSearchMatchType) {
     PPSearchMatchExact,
     PPSearchMatchStartsWith,
     PPSearchMatchEndsWith,
-    PPSearchMatchContains
+    PPSearchMatchContains,
+    PPSearchMatchFuzzy
 };
 
 

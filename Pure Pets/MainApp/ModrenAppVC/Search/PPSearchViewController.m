@@ -959,6 +959,14 @@ PPUniversalCellDelegate>
         if (rank1 < rank2) return NSOrderedAscending;
         if (rank1 > rank2) return NSOrderedDescending;
 
+        // Tiebreak fuzzy matches by edit distance (lower = better)
+        if (rank1 == PPSearchRankFuzzy) {
+            NSUInteger d1 = [PPSearchHelper pp_bestFuzzyDistanceForText:[self searchableTextForObject:obj1] query:query];
+            NSUInteger d2 = [PPSearchHelper pp_bestFuzzyDistanceForText:[self searchableTextForObject:obj2] query:query];
+            if (d1 < d2) return NSOrderedAscending;
+            if (d1 > d2) return NSOrderedDescending;
+        }
+
         NSString *title1 = [self displayTitleForObject:obj1];
         NSString *title2 = [self displayTitleForObject:obj2];
         NSComparisonResult titleCompare = [title1 localizedCaseInsensitiveCompare:title2];
