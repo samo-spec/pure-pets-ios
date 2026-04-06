@@ -9,6 +9,7 @@
 #import "AddressFormVC.h"
 #import "CountryModel.h"
 #import "GM.h"
+#import "LocationPickerViewController.h"
 #import "XLFormRowFullWidthTextFieldCell.h"
 @import FirebaseAuth;
 @import CoreLocation;
