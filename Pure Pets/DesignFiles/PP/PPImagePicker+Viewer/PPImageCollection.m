@@ -9,6 +9,7 @@
 #import "PPImageCollection.h"
 #import "QB.h"
 #import <AVFoundation/AVFoundation.h>
+#import <ImageIO/ImageIO.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "PPPermissionHelper.h"
 #import "PPSelectOptionViewController.h"
@@ -34,6 +35,8 @@
 @end
 
 @implementation PPImageCollection
+
+static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
 #pragma mark - Initialization
 
@@ -405,6 +408,44 @@
     return [image isKindOfClass:[UIImage class]] &&
            image.size.width > 0.0 &&
            image.size.height > 0.0;
+}
+
+- (UIImage *)pp_downsampledImageFromData:(NSData *)data
+                            maxPixelSize:(CGFloat)maxPixelSize
+{
+    if (![data isKindOfClass:NSData.class] || data.length == 0) {
+        return nil;
+    }
+
+    NSDictionary *sourceOptions = @{
+        (NSString *)kCGImageSourceShouldCache : @NO
+    };
+    CGImageSourceRef source =
+        CGImageSourceCreateWithData((__bridge CFDataRef)data, (__bridge CFDictionaryRef)sourceOptions);
+    if (!source) {
+        return [UIImage imageWithData:data];
+    }
+
+    NSDictionary *thumbnailOptions = @{
+        (NSString *)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
+        (NSString *)kCGImageSourceCreateThumbnailWithTransform : @YES,
+        (NSString *)kCGImageSourceShouldCacheImmediately : @NO,
+        (NSString *)kCGImageSourceThumbnailMaxPixelSize : @((NSInteger)MAX(1.0, maxPixelSize))
+    };
+    CGImageRef thumbnail =
+        CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)thumbnailOptions);
+    CFRelease(source);
+
+    if (!thumbnail) {
+        return [UIImage imageWithData:data];
+    }
+
+    UIImage *image =
+        [UIImage imageWithCGImage:thumbnail
+                            scale:UIScreen.mainScreen.scale
+                      orientation:UIImageOrientationUp];
+    CGImageRelease(thumbnail);
+    return [self pp_normalizedImageForCollection:image];
 }
 
 - (NSArray<UIImage *> *)pp_sanitizedImagesFromArray:(NSArray *)images
@@ -864,7 +905,8 @@
         NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             UIImage *image = nil;
             if (data && !error) {
-                image = [UIImage imageWithData:data];
+                image = [self pp_downsampledImageFromData:data
+                                             maxPixelSize:PPImageCollectionRemoteImageMaxPixelSize];
             }
             
             UIImage *finalImage = image ?: [UIImage new];

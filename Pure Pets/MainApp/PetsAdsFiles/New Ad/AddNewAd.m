@@ -5,6 +5,7 @@
 #import "ZYCircleProgressView.h"
 #import "PPSelectOptionViewController.h"
 #import <Pure_Pets-Swift.h>
+#import <ImageIO/ImageIO.h>
 #import <math.h>
 #import <float.h>
 
@@ -15,6 +16,7 @@ static NSString * const PPAddNewAdDraftFormDataKey = @"formData";
 static NSString * const PPAddNewAdDraftImagePathsKey = @"imagePaths";
 static NSString * const PPAddNewAdDraftMediaMutatedKey = @"didMutateMedia";
 static NSInteger const PPAddNewAdCardBackgroundTag = 73041;
+static CGFloat const PPAddNewAdDraftImageMaxPixelSize = 1800.0;
 
 static NSString * const PPAdTextFieldCellID  = @"PPAdTextFieldCell";
 static NSString * const PPAdSelectorCellID   = @"PPAdSelectorCell";
@@ -370,6 +372,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, assign) BOOL isHydratingFormData;
 @property (nonatomic, assign) BOOL isHydratingMedia;
 @property (nonatomic, assign) BOOL formDisabled;
+@property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderHeight;
+@property (nonatomic, assign) BOOL isUpdatingHeroLayout;
 @end
 
 
@@ -1446,12 +1450,92 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     NSMutableArray<UIImage *> *images = [NSMutableArray array];
     for (NSString *path in paths) {
         if (![path isKindOfClass:NSString.class] || path.length == 0) continue;
-        UIImage *image = [UIImage imageWithContentsOfFile:path];
+        UIImage *image = [self pp_downsampledDraftImageAtPath:path maxPixelSize:PPAddNewAdDraftImageMaxPixelSize];
         if (image) {
             [images addObject:image];
         }
     }
     return images.copy;
+}
+
+- (UIImage *)pp_downsampledDraftImageAtPath:(NSString *)path
+                               maxPixelSize:(CGFloat)maxPixelSize
+{
+    if (![path isKindOfClass:NSString.class] || path.length == 0) {
+        return nil;
+    }
+
+    NSURL *fileURL = [NSURL fileURLWithPath:path];
+    NSDictionary *sourceOptions = @{
+        (NSString *)kCGImageSourceShouldCache : @NO
+    };
+    CGImageSourceRef source =
+        CGImageSourceCreateWithURL((__bridge CFURLRef)fileURL, (__bridge CFDictionaryRef)sourceOptions);
+    if (!source) {
+        return [UIImage imageWithContentsOfFile:path];
+    }
+
+    NSDictionary *thumbnailOptions = @{
+        (NSString *)kCGImageSourceCreateThumbnailFromImageAlways : @YES,
+        (NSString *)kCGImageSourceCreateThumbnailWithTransform : @YES,
+        (NSString *)kCGImageSourceShouldCacheImmediately : @NO,
+        (NSString *)kCGImageSourceThumbnailMaxPixelSize : @((NSInteger)MAX(1.0, maxPixelSize))
+    };
+    CGImageRef thumbnail =
+        CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)thumbnailOptions);
+    CFRelease(source);
+
+    if (!thumbnail) {
+        return [UIImage imageWithContentsOfFile:path];
+    }
+
+    UIImage *image =
+        [UIImage imageWithCGImage:thumbnail
+                            scale:UIScreen.mainScreen.scale
+                      orientation:UIImageOrientationUp];
+    CGImageRelease(thumbnail);
+    return image;
+}
+
+- (void)pp_restoreDraftImagesFromPaths:(NSArray<NSString *> *)paths
+{
+    NSArray<NSString *> *imagePaths =
+        [paths isKindOfClass:NSArray.class] ? [paths copy] : @[];
+
+    self.isHydratingMedia = YES;
+    [self.imageCollection clearAllImages];
+
+    if (imagePaths.count == 0) {
+        self.isHydratingMedia = NO;
+        [self pp_setMediaLoadingVisible:NO textKey:@"loading_images" fallback:@"Loading images..."];
+        [self pp_refreshFormHeroContent];
+        return;
+    }
+
+    [self pp_setMediaLoadingVisible:YES textKey:@"loading_images" fallback:@"Loading images..."];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        NSArray<UIImage *> *draftImages = [self imagesFromDraftPaths:imagePaths];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                return;
+            }
+
+            if (draftImages.count > 0) {
+                [strongSelf.imageCollection addImages:draftImages];
+            }
+            strongSelf.isHydratingMedia = NO;
+            [strongSelf pp_setMediaLoadingVisible:NO textKey:@"loading_images" fallback:@"Loading images..."];
+            [strongSelf pp_refreshFormHeroContent];
+        });
+    });
 }
 
 - (void)clearSavedDraft
@@ -1591,17 +1675,10 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         }
     }
 
-    NSArray<UIImage *> *draftImages = [self imagesFromDraftPaths:payload[PPAddNewAdDraftImagePathsKey]];
-    self.isHydratingMedia = YES;
-    [self.imageCollection clearAllImages];
-    if (draftImages.count > 0) {
-        [self.imageCollection addImages:draftImages];
-    }
-    self.isHydratingMedia = NO;
-
     self.didMutateMediaAfterPrefill = [storedValues[PPAddNewAdDraftMediaMutatedKey] boolValue];
     self.hasUserModifiedForm = NO;
     self.isHydratingFormData = NO;
+    [self pp_restoreDraftImagesFromPaths:payload[PPAddNewAdDraftImagePathsKey]];
     [self.tableView reloadData];
     return YES;
 }
@@ -2407,27 +2484,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         [self.view sendSubviewToBack:self.backgroundGlowViewTop];
     }
     self.tableView.alpha = 1;
-
-    if (self.formHeroContainerView) {
-        CGFloat width = CGRectGetWidth(self.view.bounds) - 32.0;
-        CGFloat fittingHeight =
-            [self.formHeroContainerView systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)].height;
-        if (fittingHeight < 160.0) {
-            fittingHeight = 184.0;
-        }
-        CGRect headerFrame = self.formHeroContainerView.frame;
-        headerFrame.origin.x = 0.0;
-        headerFrame.origin.y = 0.0;
-        headerFrame.size.width = width;
-        headerFrame.size.height = fittingHeight;
-        if (!CGRectEqualToRect(self.formHeroContainerView.frame, headerFrame)) {
-            self.formHeroContainerView.frame = headerFrame;
-            self.tableView.tableHeaderView = self.formHeroContainerView;
-        }
-        self.formHeroContainerView.layer.cornerRadius = 26.0;
-        self.formHeroContainerView.layer.borderWidth = 1.0;
-        self.formHeroContainerView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.56].CGColor;
-    }
+    [self pp_updateFormHeroHeaderLayoutIfNeeded];
 
     self.imageCollection.layer.cornerRadius = 26.0;
     self.imageCollection.layer.borderWidth = 1.0;
@@ -2437,6 +2494,41 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.imageCollection.layer.shadowRadius = 14.0;
     self.imageCollection.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     self.imageCollection.layer.masksToBounds = NO;
+}
+
+- (void)pp_updateFormHeroHeaderLayoutIfNeeded
+{
+    if (!self.formHeroContainerView || self.isUpdatingHeroLayout) {
+        return;
+    }
+
+    CGFloat fullWidth = CGRectGetWidth(self.tableView.bounds);
+    if (fullWidth <= 0.0) {
+        return;
+    }
+
+    self.isUpdatingHeroLayout = YES;
+
+    CGSize fittingSize =
+        [self.formHeroContainerView systemLayoutSizeFittingSize:CGSizeMake(fullWidth, UILayoutFittingCompressedSize.height)
+                              withHorizontalFittingPriority:UILayoutPriorityRequired
+                                    verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+
+    CGFloat targetHeight = MAX(184.0, ceil(fittingSize.height));
+
+    self.formHeroContainerView.layer.cornerRadius = 26.0;
+    self.formHeroContainerView.layer.borderWidth = 1.0;
+    self.formHeroContainerView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.56].CGColor;
+
+    if (fabs(self.lastAppliedFormHeroHeaderHeight - targetHeight) > 0.5) {
+        self.lastAppliedFormHeroHeaderHeight = targetHeight;
+        CGRect headerFrame = self.formHeroContainerView.frame;
+        headerFrame.size.height = targetHeight;
+        self.formHeroContainerView.frame = headerFrame;
+        self.tableView.tableHeaderView = self.formHeroContainerView;
+    }
+
+    self.isUpdatingHeroLayout = NO;
 }
 
 - (void)saveFormData:(UIBarButtonItem *)sender {
