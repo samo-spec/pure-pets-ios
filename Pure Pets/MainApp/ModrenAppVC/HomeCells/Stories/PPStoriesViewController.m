@@ -85,10 +85,6 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     ]];
 
     [self pp_applySectionTitle];
-
-//#if DEBUG
-    [[PPStoriesManager shared] seedDemoStoriesOnceIfNeededWithCompletion:nil];
-//#endif
 }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -226,7 +222,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     if (!story.isSeen) {
         story.isSeen = YES;
         [collectionView reloadItemsAtIndexPaths:@[indexPath]];
-        [[PPStoriesManager shared] markStorySeenForUserID:story.userID completion:nil];
+        [[PPStoriesManager shared] recordViewForStoryOwnerID:story.userID completion:nil];
     }
 
     NSArray<PPStory *> *playableStories = [self pp_playableStories];
@@ -260,6 +256,9 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     PPStory *myStory = nil;
     for (PPStory *story in stories) {
         if (![story isKindOfClass:PPStory.class]) {
+            continue;
+        }
+        if ([story isExpired]) {
             continue;
         }
         if (currentUserID.length > 0 && [story.userID isEqualToString:currentUserID]) {

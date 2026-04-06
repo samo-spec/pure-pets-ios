@@ -143,7 +143,7 @@ static const CGFloat PPStoryTrackLineWidth = 2.0;
 
 - (void)prepareForReuse {
     [super prepareForReuse];
-    self.imageView.image = nil;
+    self.imageView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
     self.nameLabel.text = @"";
     self.accessibilityLabel = @"";
     self.onAddBadgeTapped = nil;
@@ -152,6 +152,7 @@ static const CGFloat PPStoryTrackLineWidth = 2.0;
     [CATransaction setDisableActions:YES];
     self.ringLayer.strokeEnd = 1.0;
     self.ringTrackLayer.opacity = 1.0;
+    self.ringGradientLayer.hidden = YES;
     [self.ringTrackLayer removeAllAnimations];
     [self.ringLayer removeAllAnimations];
     [self.ringGradientLayer removeAllAnimations];

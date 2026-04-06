@@ -12,8 +12,6 @@
 #import "GM.h"
 
 static NSString * const PPStoriesCollectionPath = @"stories";
-static NSString * const PPStoriesSeedDefaultsKey = @"PPStoriesSeededDemoDataV1";
-
 static NSString *PPStoriesTrimmedString(id value)
 {
     if (![value isKindOfClass:NSString.class]) {
@@ -99,21 +97,32 @@ static NSString *PPStoriesTrimmedString(id value)
     }];
 }
 
-- (void)markStorySeenForUserID:(NSString *)userID
-                     completion:(void (^ _Nullable)(NSError * _Nullable error))completion
+- (void)recordViewForStoryOwnerID:(NSString *)ownerID
+                       completion:(void (^ _Nullable)(NSError * _Nullable error))completion
 {
-    NSString *trimmedUserID =
-        [userID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (trimmedUserID.length == 0) {
+    NSString *trimmedOwnerID =
+        [ownerID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmedOwnerID.length == 0) {
+        if (completion) completion(nil);
+        return;
+    }
+
+    NSString *currentUID = PPStoriesTrimmedString([FIRAuth auth].currentUser.uid);
+    if (currentUID.length == 0) {
+        if (completion) completion(nil);
+        return;
+    }
+
+    if ([trimmedOwnerID isEqualToString:currentUID]) {
         if (completion) completion(nil);
         return;
     }
 
     FIRDocumentReference *docRef =
-        [[self.db collectionWithPath:PPStoriesCollectionPath] documentWithPath:trimmedUserID];
-    [docRef setData:@{
-        @"isSeen": @(YES)
-    } merge:YES completion:^(NSError * _Nullable error) {
+        [[self.db collectionWithPath:PPStoriesCollectionPath] documentWithPath:trimmedOwnerID];
+    [docRef updateData:@{
+        @"viewedBy": [FIRFieldValue fieldValueForArrayUnion:@[currentUID]]
+    } completion:^(NSError * _Nullable error) {
         if (completion) {
             completion(error);
         }
@@ -201,6 +210,10 @@ static NSString *PPStoriesTrimmedString(id value)
             payload[@"isSeen"] = @(NO);
             payload[@"updatedAt"] = [FIRTimestamp timestampWithDate:[NSDate date]];
             payload[@"items"] = items;
+            payload[@"viewedBy"] = @[currentUserID];
+            if (!snapshot.exists) {
+                payload[@"createdAt"] = [FIRTimestamp timestampWithDate:[NSDate date]];
+            }
             if (photoURLString.length > 0) {
                 payload[@"userImageUrl"] = photoURLString;
             }
@@ -214,60 +227,12 @@ static NSString *PPStoriesTrimmedString(id value)
     }];
 }
 
-- (void)seedDemoStoriesOnceIfNeededWithCompletion:(PPStoriesSeedCompletion _Nullable)completion
-{
-    if ([NSUserDefaults.standardUserDefaults boolForKey:PPStoriesSeedDefaultsKey]) {
-        if (completion) {
-            completion(0, nil);
-        }
-        return;
-    }
-
-    [self seedDemoStoriesForceWithCompletion:^(NSInteger insertedCount, NSError * _Nullable error) {
-        if (!error) {
-            [NSUserDefaults.standardUserDefaults setBool:YES forKey:PPStoriesSeedDefaultsKey];
-        }
-        if (completion) {
-            completion(insertedCount, error);
-        }
-    }];
-}
-
-- (void)seedDemoStoriesForceWithCompletion:(PPStoriesSeedCompletion _Nullable)completion
-{
-    NSArray<NSDictionary *> *storiesPayload = [self pp_demoStoryPayloads];
-    if (storiesPayload.count == 0) {
-        if (completion) {
-            completion(0, nil);
-        }
-        return;
-    }
-
-    FIRWriteBatch *batch = [self.db batch];
-    for (NSDictionary *storyData in storiesPayload) {
-        NSString *userID = [storyData[@"userID"] isKindOfClass:[NSString class]] ? storyData[@"userID"] : @"";
-        if (userID.length == 0) {
-            continue;
-        }
-
-        NSMutableDictionary *dataToWrite = [storyData mutableCopy];
-        [dataToWrite removeObjectForKey:@"userID"];
-        FIRDocumentReference *docRef = [[self.db collectionWithPath:PPStoriesCollectionPath]
-                                        documentWithPath:userID];
-        [batch setData:dataToWrite forDocument:docRef];
-    }
-
-    [batch commitWithCompletion:^(NSError * _Nullable error) {
-        if (completion) {
-            completion(error ? 0 : storiesPayload.count, error);
-        }
-    }];
-}
-
 - (FIRQuery *)pp_storiesQuery
 {
-    // U5: Limit unbounded stories query to 200 documents
-    return [[[self.db collectionWithPath:PPStoriesCollectionPath]
+    FIRTimestamp *cutoff = [FIRTimestamp timestampWithDate:
+        [[NSDate date] dateByAddingTimeInterval:-PPStoryExpiryInterval]];
+    return [[[[self.db collectionWithPath:PPStoriesCollectionPath]
+              queryWhereField:@"updatedAt" isGreaterThan:cutoff]
              queryOrderedByField:@"updatedAt"
              descending:YES] queryLimitedTo:200];
 }
@@ -311,6 +276,25 @@ static NSString *PPStoriesTrimmedString(id value)
         story.updatedAt = (NSDate *)ts;
     }
 
+    id createdTs = data[@"createdAt"];
+    if ([createdTs isKindOfClass:[FIRTimestamp class]]) {
+        story.createdAt = [(FIRTimestamp *)createdTs dateValue];
+    }
+
+    NSArray *viewedByRaw = [data[@"viewedBy"] isKindOfClass:NSArray.class] ? data[@"viewedBy"] : @[];
+    NSMutableSet<NSString *> *viewedBySet = [NSMutableSet set];
+    for (id uid in viewedByRaw) {
+        if ([uid isKindOfClass:NSString.class] && [(NSString *)uid length] > 0) {
+            [viewedBySet addObject:uid];
+        }
+    }
+    story.viewedBy = [viewedBySet copy];
+
+    NSString *currentUID = PPStoriesTrimmedString([FIRAuth auth].currentUser.uid);
+    if (currentUID.length > 0 && story.viewedBy.count > 0) {
+        story.isSeen = [story.viewedBy containsObject:currentUID];
+    }
+
     NSMutableArray<PPStoryItem *> *items = [NSMutableArray array];
     NSArray *rawItems = [data[@"items"] isKindOfClass:[NSArray class]] ? data[@"items"] : @[];
     for (NSDictionary *itemDict in rawItems) {
@@ -337,107 +321,6 @@ static NSString *PPStoriesTrimmedString(id value)
     }
     story.items = items;
     return story;
-}
-
-- (NSArray<NSDictionary *> *)pp_demoStoryPayloads
-{
-    NSArray<NSString *> *names = @[
-        @"Luna Vet",
-        @"Milo Grooming",
-        @"Bella Store",
-        @"Oscar Food",
-        @"Nala Care",
-        @"Coco Pets",
-        @"Leo Market",
-        @"Ruby Clinic",
-        @"Max Supplies",
-        @"Zoe Boutique"
-    ];
-
-    NSArray<NSString *> *avatarURLs = @[
-        @"https://loremflickr.com/200/200/dog",
-        @"https://loremflickr.com/200/200/cat",
-        @"https://loremflickr.com/200/200/bird",
-        @"https://loremflickr.com/200/200/puppy",
-        @"https://loremflickr.com/200/200/kitten",
-        @"https://loremflickr.com/200/200/parrot",
-        @"https://loremflickr.com/200/200/dog?lock=7",
-        @"https://loremflickr.com/200/200/cat?lock=8",
-        @"https://loremflickr.com/200/200/bird?lock=9",
-        @"https://loremflickr.com/200/200/pet?lock=10"
-    ];
-
-    NSArray<NSString *> *mediaURLs = @[
-        @"https://loremflickr.com/1080/1920/parrot",
-        @"https://loremflickr.com/1080/1920/parrot?lock=1",
-        @"https://loremflickr.com/1080/1920/parrot?lock=2",
-        @"https://loremflickr.com/1080/1920/macaw",
-        @"https://loremflickr.com/1080/1920/cockatoo",
-        @"https://loremflickr.com/1080/1920/parakeet",
-        @"https://loremflickr.com/1080/1920/parrot?lock=7",
-        @"https://loremflickr.com/1080/1920/macaw?lock=8",
-        @"https://loremflickr.com/1080/1920/cockatoo?lock=9",
-        @"https://loremflickr.com/1080/1920/tropical-bird?lock=10"
-    ];
-
-    NSArray<NSString *> *videoURLs = @[
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerFun.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerMeltdowns.mp4",
-        @"https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4"
-    ];
-
-    NSMutableArray<NSDictionary *> *payload = [NSMutableArray arrayWithCapacity:names.count];
-    for (NSInteger i = 0; i < names.count; i++) {
-        NSDate *updatedAt = [NSDate dateWithTimeIntervalSinceNow:-(i * 7 * 60)];
-
-        NSMutableArray<NSDictionary *> *items = [NSMutableArray array];
-
-        // Always add one image
-        [items addObject:@{
-            @"mediaUrl": mediaURLs[i],
-            @"mediaType": @"image",
-            @"duration": @((i % 3) + 4)
-        }];
-
-        // For even indexes, add a video item
-        if (i % 2 == 0) {
-            NSString *videoURL = videoURLs[i % videoURLs.count];
-            [items addObject:@{
-                @"mediaUrl": videoURL,
-                @"mediaType": @"video",
-                @"duration": @8
-            }];
-        }
-
-        // For every third story, add another image
-        if (i % 3 == 0) {
-            NSInteger secondIndex = (i + 3) % mediaURLs.count;
-            [items addObject:@{
-                @"mediaUrl": mediaURLs[secondIndex],
-                @"mediaType": @"image",
-                @"duration": @5
-            }];
-        }
-
-        NSDictionary *storyData = @{
-            @"userID": [NSString stringWithFormat:@"pp_demo_story_%02ld", (long)(i + 1)],
-            @"userName": names[i],
-            @"userImageUrl": avatarURLs[i],
-            @"isSeen": @(i % 4 == 0),
-            @"updatedAt": [FIRTimestamp timestampWithDate:updatedAt],
-            @"items": items
-        };
-        [payload addObject:storyData];
-    }
-
-    return payload.copy;
 }
 
 @end

@@ -7,13 +7,27 @@
 
 #import "PPStory.h"
 #import "PPStoryPlayerViewController.h"
+#import "PPStoriesManager.h"
 #import "PPImageLoaderManager.h"
+#import "Language.h"
+#import "GM.h"
+#import <FirebaseAuth/FirebaseAuth.h>
+#import <AVFoundation/AVFoundation.h>
 
 static NSString * const PPStoryProgressPulseAnimationKey = @"pp.story.progress.pulse";
 static NSString * const PPStoryProgressSlideAnimationKey = @"pp.story.progress.slide";
 static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 
 @interface PPStoryPlayerViewController () <UIGestureRecognizerDelegate>
+@property (nonatomic, strong) NSArray<PPStory *> *stories;
+@property (nonatomic, assign) NSInteger currentStoryIndex;
+@property (nonatomic, assign) NSInteger currentItemIndex;
+@property (nonatomic, strong) UIImageView *imageView;
+@property (nonatomic, strong) AVPlayer *player;
+@property (nonatomic, strong) AVPlayerLayer *playerLayer;
+@property (nonatomic, strong) UIView *progressContainer;
+@property (nonatomic, strong) NSMutableArray<UIProgressView *> *progressBars;
+@property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, strong) UIButton *dismissButton;
 @property (nonatomic, strong) UIButton *muteButton;
 @property (nonatomic, strong) UIPanGestureRecognizer *dismissPanGesture;
@@ -26,14 +40,16 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 @property (nonatomic, assign) NSInteger videoLoadToken;
 @property (nonatomic, assign) BOOL isInteractiveDismissInProgress;
 @property (nonatomic, assign) BOOL isPausedByLongPress;
- 
 
 @property (nonatomic, strong) id playerTimeObserver;
 @property (nonatomic, strong) CADisplayLink *displayLink;
 @property (nonatomic, assign) CFTimeInterval imageStartTime;
 @property (nonatomic, assign) NSTimeInterval imageDuration;
 
-
+@property (nonatomic, strong) UIImageView *userAvatarView;
+@property (nonatomic, strong) UILabel *userNameHeaderLabel;
+@property (nonatomic, strong) UILabel *storyTimeLabel;
+@property (nonatomic, assign) NSTimeInterval pausedImageElapsed;
 @end
 
 @implementation PPStoryPlayerViewController
@@ -112,6 +128,35 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 
 - (void)pp_setupControls
 {
+    UIImageView *avatar = [[UIImageView alloc] init];
+    avatar.translatesAutoresizingMaskIntoConstraints = NO;
+    avatar.contentMode = UIViewContentModeScaleAspectFill;
+    avatar.clipsToBounds = YES;
+    avatar.layer.cornerRadius = 16.0;
+    avatar.layer.borderWidth = 1.5;
+    avatar.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.85].CGColor;
+    avatar.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+    avatar.tintColor = [UIColor colorWithWhite:1.0 alpha:0.7];
+    [self.view addSubview:avatar];
+    self.userAvatarView = avatar;
+
+    UILabel *nameLabel = [[UILabel alloc] init];
+    nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    nameLabel.font = [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    nameLabel.textColor = UIColor.whiteColor;
+    nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    nameLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view addSubview:nameLabel];
+    self.userNameHeaderLabel = nameLabel;
+
+    UILabel *timeLabel = [[UILabel alloc] init];
+    timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    timeLabel.font = [UIFont systemFontOfSize:12.0 weight:UIFontWeightRegular];
+    timeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.65];
+    timeLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view addSubview:timeLabel];
+    self.storyTimeLabel = timeLabel;
+
     UIButton *dismissButton = [UIButton buttonWithType:UIButtonTypeSystem];
     dismissButton.translatesAutoresizingMaskIntoConstraints = NO;
     dismissButton.tintColor = UIColor.whiteColor;
@@ -134,15 +179,33 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     [self pp_updateMuteButtonAppearance];
 
     [NSLayoutConstraint activateConstraints:@[
-        [dismissButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
-        [dismissButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:18.0],
+        [avatar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
+        [avatar.topAnchor constraintEqualToAnchor:self.progressContainer.bottomAnchor constant:10.0],
+        [avatar.widthAnchor constraintEqualToConstant:32.0],
+        [avatar.heightAnchor constraintEqualToConstant:32.0],
+
+        [nameLabel.leadingAnchor constraintEqualToAnchor:avatar.trailingAnchor constant:8.0],
+        [nameLabel.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
+        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:muteButton.leadingAnchor constant:-8.0],
+
+        [timeLabel.leadingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor constant:6.0],
+        [timeLabel.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
+
+        [dismissButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0],
+        [dismissButton.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
         [dismissButton.widthAnchor constraintEqualToConstant:36.0],
         [dismissButton.heightAnchor constraintEqualToConstant:36.0],
-        [muteButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0],
-        [muteButton.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:18.0],
+
+        [muteButton.trailingAnchor constraintEqualToAnchor:dismissButton.leadingAnchor constant:-8.0],
+        [muteButton.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
         [muteButton.widthAnchor constraintEqualToConstant:36.0],
         [muteButton.heightAnchor constraintEqualToConstant:36.0]
     ]];
+
+    [nameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                              forAxis:UILayoutConstraintAxisHorizontal];
+    [timeLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh
+                                forAxis:UILayoutConstraintAxisHorizontal];
 }
 
 - (void)pp_setupGestures
@@ -151,6 +214,12 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
                                                                            action:@selector(handleTap:)];
     tap.cancelsTouchesInView = NO;
     [self.view addGestureRecognizer:tap];
+
+    UILongPressGestureRecognizer *longPress =
+        [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleLongPress:)];
+    longPress.minimumPressDuration = 0.25;
+    longPress.cancelsTouchesInView = NO;
+    [self.view addGestureRecognizer:longPress];
 
     self.dismissPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleDismissPan:)];
     self.dismissPanGesture.delegate = self;
@@ -180,6 +249,14 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
         [self nextStory];
         return;
     }
+
+    NSString *currentUID = [FIRAuth auth].currentUser.uid ?: @"";
+    if (currentUID.length > 0 && ![story.userID isEqualToString:currentUID]) {
+        story.isSeen = YES;
+        [[PPStoriesManager shared] recordViewForStoryOwnerID:story.userID completion:nil];
+    }
+
+    [self pp_updateUserInfoForCurrentStory];
 
     CGFloat totalW = self.view.bounds.size.width - 24.0;
     CGFloat spacing = 4.0;
@@ -437,20 +514,26 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     if (self.currentItemIndex < 0 ||
         self.currentItemIndex >= self.progressBars.count) return;
 
-    UIProgressView *pv = self.progressBars[self.currentItemIndex];
-
     if (gesture.state == UIGestureRecognizerStateBegan) {
 
         self.isPausedByLongPress = YES;
 
-        
-
-        // Pause timer
-        [self.timer invalidate];
-        self.timer = nil;
-
-        // Pause video
         [self.player pause];
+
+        if (self.displayLink) {
+            self.pausedImageElapsed = CACurrentMediaTime() - self.imageStartTime;
+            [self.displayLink invalidate];
+            self.displayLink = nil;
+        }
+
+        [UIView animateWithDuration:0.15 animations:^{
+            self.progressContainer.alpha = 0.0;
+            self.userAvatarView.alpha = 0.0;
+            self.userNameHeaderLabel.alpha = 0.0;
+            self.storyTimeLabel.alpha = 0.0;
+            self.dismissButton.alpha = 0.0;
+            self.muteButton.alpha = 0.0;
+        }];
     }
 
     else if (gesture.state == UIGestureRecognizerStateEnded ||
@@ -459,20 +542,27 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
         if (!self.isPausedByLongPress) return;
         self.isPausedByLongPress = NO;
 
-        // Resume layer timing
- 
-        pv.layer.speed = 1.0;
-        pv.layer.timeOffset = 0.0;
-        pv.layer.beginTime = 0.0;
-
- 
- 
-        CGFloat currentProgress = pv.progress;
- 
-        // Resume video
         if (self.currentPlayerItem) {
             [self.player play];
         }
+        else if (self.pausedImageElapsed > 0) {
+            self.imageStartTime = CACurrentMediaTime() - self.pausedImageElapsed;
+            self.pausedImageElapsed = 0;
+            self.displayLink =
+                [CADisplayLink displayLinkWithTarget:self
+                                            selector:@selector(pp_handleImageTick:)];
+            [self.displayLink addToRunLoop:[NSRunLoop mainRunLoop]
+                                   forMode:NSRunLoopCommonModes];
+        }
+
+        [UIView animateWithDuration:0.15 animations:^{
+            self.progressContainer.alpha = 1.0;
+            self.userAvatarView.alpha = 1.0;
+            self.userNameHeaderLabel.alpha = 1.0;
+            self.storyTimeLabel.alpha = 1.0;
+            self.dismissButton.alpha = 1.0;
+            self.muteButton.alpha = 1.0;
+        }];
     }
 }
 
@@ -637,9 +727,8 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 
     CGPoint loc = [tap locationInView:self.view];
 
-    // Ignore taps on buttons (so mute does NOT navigate)
-    if (CGRectContainsPoint(self.muteButton.frame, loc) ||
-        CGRectContainsPoint(self.dismissButton.frame, loc)) {
+    CGFloat topBarHeight = self.view.safeAreaInsets.top + 60.0;
+    if (loc.y < topBarHeight) {
         return;
     }
 
@@ -800,6 +889,62 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     NSString *userID = story.userID ?: @"";
     NSString *media = item.mediaURL.absoluteString ?: @"";
     return [NSString stringWithFormat:@"%@|%ld|%@", userID, (long)self.currentItemIndex, media];
+}
+
+#pragma mark - User Info
+
+- (void)pp_updateUserInfoForCurrentStory
+{
+    if (self.currentStoryIndex < 0 || self.currentStoryIndex >= (NSInteger)self.stories.count) {
+        return;
+    }
+
+    PPStory *story = self.stories[self.currentStoryIndex];
+
+    NSString *name = [story.userName stringByTrimmingCharactersInSet:
+                      NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (name.length == 0) {
+        name = kLang(@"Unknown");
+    }
+    self.userNameHeaderLabel.text = name;
+    self.storyTimeLabel.text = [self pp_timeAgoFromDate:story.updatedAt];
+
+    if (story.userImageURL) {
+        [PPImageLoaderManager.shared setImageOnImageView:self.userAvatarView
+                                                      url:story.userImageURL.absoluteString
+                                               placeholder:[UIImage systemImageNamed:@"person.crop.circle.fill"]
+                                                complation:nil];
+    } else {
+        self.userAvatarView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+        self.userAvatarView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.7];
+    }
+}
+
+- (NSString *)pp_timeAgoFromDate:(NSDate *)date
+{
+    if (!date) return @"";
+
+    if (@available(iOS 13.0, *)) {
+        NSRelativeDateTimeFormatter *formatter = [[NSRelativeDateTimeFormatter alloc] init];
+        formatter.unitsStyle = NSRelativeDateTimeFormatterUnitsStyleAbbreviated;
+        return [formatter localizedStringForDate:date relativeToDate:[NSDate date]];
+    }
+
+    NSTimeInterval seconds = -[date timeIntervalSinceNow];
+    if (seconds < 60) return @"now";
+    if (seconds < 3600) return [NSString stringWithFormat:@"%ldm", (long)(seconds / 60)];
+    if (seconds < 86400) return [NSString stringWithFormat:@"%ldh", (long)(seconds / 3600)];
+    return [NSString stringWithFormat:@"%ldd", (long)(seconds / 86400)];
+}
+
+- (UIStatusBarStyle)preferredStatusBarStyle
+{
+    return UIStatusBarStyleLightContent;
+}
+
+- (BOOL)prefersStatusBarHidden
+{
+    return YES;
 }
 
 @end

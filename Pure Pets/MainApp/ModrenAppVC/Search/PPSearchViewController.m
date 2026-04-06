@@ -41,6 +41,18 @@ static NSInteger const kPPSearchSegmentTitleTag = 9102;
 static NSInteger const kPPSearchSegmentCountTag = 9103;
 static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
 
+@interface PPSearchRankedResult : NSObject
+
+@property (nonatomic, strong) id object;
+@property (nonatomic, assign) PPSearchScore searchScore;
+@property (nonatomic, copy) NSString *displayTitle;
+@property (nonatomic, copy) NSString *stableIdentifier;
+
+@end
+
+@implementation PPSearchRankedResult
+@end
+
 @interface PPSearchViewController ()
 <UITextFieldDelegate,
 UICollectionViewDelegate,
@@ -948,36 +960,74 @@ PPUniversalCellDelegate>
 
 - (NSArray<id> *)rankedResultsFromItems:(NSArray<id> *)items query:(NSString *)query
 {
-    if (items.count <= 1) {
+    if (items.count == 0) {
         return items ?: @[];
     }
 
-    return [items sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2) {
-        PPSearchRank rank1 = [PPSearchHelper pp_rankForText:[self searchableTextForObject:obj1] query:query];
-        PPSearchRank rank2 = [PPSearchHelper pp_rankForText:[self searchableTextForObject:obj2] query:query];
+    NSString *normalizedQuery = [PPSearchHelper pp_normalizedSearchString:query];
+    if (normalizedQuery.length == 0) {
+        return @[];
+    }
 
-        if (rank1 < rank2) return NSOrderedAscending;
-        if (rank1 > rank2) return NSOrderedDescending;
-
-        // Tiebreak fuzzy matches by edit distance (lower = better)
-        if (rank1 == PPSearchRankFuzzy) {
-            NSUInteger d1 = [PPSearchHelper pp_bestFuzzyDistanceForText:[self searchableTextForObject:obj1] query:query];
-            NSUInteger d2 = [PPSearchHelper pp_bestFuzzyDistanceForText:[self searchableTextForObject:obj2] query:query];
-            if (d1 < d2) return NSOrderedAscending;
-            if (d1 > d2) return NSOrderedDescending;
+    NSMutableArray<PPSearchRankedResult *> *scoredItems =
+        [NSMutableArray arrayWithCapacity:items.count];
+    for (id obj in items) {
+        NSString *searchableText = [self searchableTextForObject:obj];
+        PPSearchScore score = [PPSearchHelper pp_scoreForText:searchableText
+                                              normalizedQuery:normalizedQuery];
+        if (!score.matched) {
+            continue;
         }
 
-        NSString *title1 = [self displayTitleForObject:obj1];
-        NSString *title2 = [self displayTitleForObject:obj2];
+        PPSearchRankedResult *rankedResult = [PPSearchRankedResult new];
+        rankedResult.object = obj;
+        rankedResult.searchScore = score;
+        rankedResult.displayTitle = [self displayTitleForObject:obj];
+        rankedResult.stableIdentifier = [self stableIdentifierForObject:obj];
+        [scoredItems addObject:rankedResult];
+    }
+
+    if (scoredItems.count <= 1) {
+        NSMutableArray<id> *singleResult = [NSMutableArray arrayWithCapacity:scoredItems.count];
+        for (PPSearchRankedResult *rankedResult in scoredItems) {
+            if (rankedResult.object) {
+                [singleResult addObject:rankedResult.object];
+            }
+        }
+        return singleResult.copy;
+    }
+
+    [scoredItems sortUsingComparator:^NSComparisonResult(PPSearchRankedResult *result1,
+                                                         PPSearchRankedResult *result2) {
+        PPSearchScore score1 = result1.searchScore;
+        PPSearchScore score2 = result2.searchScore;
+
+        if (score1.rank < score2.rank) return NSOrderedAscending;
+        if (score1.rank > score2.rank) return NSOrderedDescending;
+
+        if (score1.sortScore < score2.sortScore) return NSOrderedAscending;
+        if (score1.sortScore > score2.sortScore) return NSOrderedDescending;
+
+        NSString *title1 = result1.displayTitle ?: @"";
+        NSString *title2 = result2.displayTitle ?: @"";
         NSComparisonResult titleCompare = [title1 localizedCaseInsensitiveCompare:title2];
         if (titleCompare != NSOrderedSame) {
             return titleCompare;
         }
 
-        NSString *id1 = [self stableIdentifierForObject:obj1];
-        NSString *id2 = [self stableIdentifierForObject:obj2];
-        return [id1 compare:id2];
+        NSString *identifier1 = result1.stableIdentifier ?: @"";
+        NSString *identifier2 = result2.stableIdentifier ?: @"";
+        return [identifier1 compare:identifier2];
     }];
+
+    NSMutableArray<id> *sortedObjects = [NSMutableArray arrayWithCapacity:scoredItems.count];
+    for (PPSearchRankedResult *rankedResult in scoredItems) {
+        if (rankedResult.object) {
+            [sortedObjects addObject:rankedResult.object];
+        }
+    }
+
+    return sortedObjects.copy;
 }
 
 - (NSString *)normalizedQueryFromRawString:(nullable NSString *)rawText

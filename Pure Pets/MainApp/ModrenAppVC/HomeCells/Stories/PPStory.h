@@ -13,6 +13,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+extern const NSTimeInterval PPStoryExpiryInterval;
+
 @interface PPStory : NSObject
 @property (nonatomic, strong) NSString *userID;
 @property (nonatomic, strong) NSString *userName;
@@ -20,6 +22,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSArray<PPStoryItem *> *items;
 @property (nonatomic, assign) BOOL isSeen;
 @property (nonatomic, strong, nullable) NSDate *updatedAt;
+@property (nonatomic, strong, nullable) NSDate *createdAt;
+@property (nonatomic, strong) NSSet<NSString *> *viewedBy;
+- (BOOL)isExpired;
+- (BOOL)isSeenByUserID:(NSString *)userID;
 @end
 
 

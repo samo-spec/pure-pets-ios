@@ -12,8 +12,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^PPStoriesFetchCompletion)(NSArray<PPStory *> *stories,
                                          NSError * _Nullable error);
-typedef void (^PPStoriesSeedCompletion)(NSInteger insertedCount,
-                                        NSError * _Nullable error);
 typedef void (^PPStoriesWriteCompletion)(NSError * _Nullable error);
 
 @interface PPStoriesManager : NSObject
@@ -23,12 +21,10 @@ typedef void (^PPStoriesWriteCompletion)(NSError * _Nullable error);
 - (void)fetchStoriesForUserID:(NSString *)userID
                     completion:(PPStoriesFetchCompletion)completion;
 - (nullable id<FIRListenerRegistration>)observeStoriesWithCompletion:(PPStoriesFetchCompletion)completion;
-- (void)markStorySeenForUserID:(NSString *)userID
-                     completion:(void (^ _Nullable)(NSError * _Nullable error))completion;
+- (void)recordViewForStoryOwnerID:(NSString *)ownerID
+                       completion:(void (^ _Nullable)(NSError * _Nullable error))completion;
 - (void)addImageStoryItemForCurrentUser:(UIImage *)image
                               completion:(PPStoriesWriteCompletion _Nullable)completion;
-- (void)seedDemoStoriesOnceIfNeededWithCompletion:(PPStoriesSeedCompletion _Nullable)completion;
-- (void)seedDemoStoriesForceWithCompletion:(PPStoriesSeedCompletion _Nullable)completion;
 @end
 
 NS_ASSUME_NONNULL_END

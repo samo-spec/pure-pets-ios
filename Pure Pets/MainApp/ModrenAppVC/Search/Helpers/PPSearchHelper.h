@@ -20,7 +20,48 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef struct {
+    BOOL matched;
+    PPSearchRank rank;
+    PPSearchMatchType matchType;
+    NSUInteger sortScore;
+    NSUInteger matchLocation;
+    NSUInteger matchedWordIndex;
+    NSUInteger matchedWordLength;
+    NSUInteger fuzzyDistance;
+} PPSearchScore;
+
+NS_INLINE PPSearchScore PPSearchScoreMake(BOOL matched,
+                                          PPSearchRank rank,
+                                          PPSearchMatchType matchType,
+                                          NSUInteger sortScore,
+                                          NSUInteger matchLocation,
+                                          NSUInteger matchedWordIndex,
+                                          NSUInteger matchedWordLength,
+                                          NSUInteger fuzzyDistance)
+{
+    PPSearchScore score;
+    score.matched = matched;
+    score.rank = rank;
+    score.matchType = matchType;
+    score.sortScore = sortScore;
+    score.matchLocation = matchLocation;
+    score.matchedWordIndex = matchedWordIndex;
+    score.matchedWordLength = matchedWordLength;
+    score.fuzzyDistance = fuzzyDistance;
+    return score;
+}
+
 @interface PPSearchHelper : NSObject
+
++ (NSString *)pp_normalizedSearchString:(NSString *)text;
+
++ (PPSearchScore)pp_scoreForText:(NSString *)text
+                           query:(NSString *)query;
+
++ (PPSearchScore)pp_scoreForText:(NSString *)text
+                 normalizedQuery:(NSString *)normalizedQuery;
+
 + (PPSearchRank)pp_rankForText:(NSString *)text query:(NSString *)query;
 
 + (PPSearchMatchType)matchText:(NSString *)text

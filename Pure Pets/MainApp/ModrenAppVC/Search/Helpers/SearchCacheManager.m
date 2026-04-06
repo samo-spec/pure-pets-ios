@@ -10,7 +10,6 @@
 #import "PetAdManager.h"
 #import "PetAccessoryManager.h"
 #import "ServicesManager.h"
-#import "ArabicNormalizer.h"
 #import "PPSearchHelper.h"
 
 @interface SearchCacheManager ()
@@ -90,53 +89,44 @@
 - (NSArray *)searchWithQuery:(NSString *)query {
     if (query.length == 0) return @[];
 
-    NSString *normalized =
-        [ArabicNormalizer normalize:query];
+    NSString *normalizedQuery = [PPSearchHelper pp_normalizedSearchString:query];
+    if (normalizedQuery.length == 0) {
+        return @[];
+    }
 
     NSMutableArray *results = [NSMutableArray array];
 
     // Ads
     for (PetAd *ad in self.ads) {
-        if ([self matchText:ad.searchTitle query:normalized]) {
+        NSString *searchableText = ad.searchTitle.length > 0 ? ad.searchTitle : ad.adTitle;
+        PPSearchScore score = [PPSearchHelper pp_scoreForText:searchableText
+                                              normalizedQuery:normalizedQuery];
+        if (score.matched) {
             [results addObject:ad];
         }
     }
 
     // Accessories
     for (PetAccessory *a in self.accessories) {
-        if ([self matchText:a.searchTitle query:normalized]) {
+        NSString *searchableText = a.searchTitle.length > 0 ? a.searchTitle : a.name;
+        PPSearchScore score = [PPSearchHelper pp_scoreForText:searchableText
+                                              normalizedQuery:normalizedQuery];
+        if (score.matched) {
             [results addObject:a];
         }
     }
 
     // Services
     for (ServiceModel *s in self.services) {
-        if ([self matchText:s.searchTitle query:normalized]) {
+        NSString *searchableText = s.searchTitle.length > 0 ? s.searchTitle : s.title;
+        PPSearchScore score = [PPSearchHelper pp_scoreForText:searchableText
+                                              normalizedQuery:normalizedQuery];
+        if (score.matched) {
             [results addObject:s];
         }
     }
 
     return results;
-}
-
-#pragma mark - Matching Logic
-
-- (BOOL)matchText:(NSString *)text query:(NSString *)query {
-    if (text.length == 0 || query.length == 0) return NO;
-
-    // CONTAINS
-    if ([text containsString:query]) return YES;
-
-    // PREFIX
-    if ([text hasPrefix:query]) return YES;
-
-    // END
-    if ([text hasSuffix:query]) return YES;
-
-    // FUZZY — Levenshtein fallback (typo tolerance)
-    if ([PPSearchHelper pp_isFuzzyMatchForText:text query:query]) return YES;
-
-    return NO;
 }
 
 #pragma mark - Clear
