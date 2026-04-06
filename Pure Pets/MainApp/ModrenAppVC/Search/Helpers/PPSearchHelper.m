@@ -15,19 +15,22 @@ typedef struct {
     NSUInteger distance;
     NSUInteger location;
     NSUInteger wordIndex;
-    NSUInteger wordLength;
+    NSUInteger wordLength;       // full word length (consistent with contains path)
+    NSUInteger candidateLength;  // matched substring length (for sortScore delta)
 } PPFuzzyCandidate;
 
 NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
                                                 NSUInteger location,
                                                 NSUInteger wordIndex,
-                                                NSUInteger wordLength)
+                                                NSUInteger wordLength,
+                                                NSUInteger candidateLength)
 {
     PPFuzzyCandidate candidate;
     candidate.distance = distance;
     candidate.location = location;
     candidate.wordIndex = wordIndex;
     candidate.wordLength = wordLength;
+    candidate.candidateLength = candidateLength;
     return candidate;
 }
 
@@ -62,10 +65,17 @@ NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
         return @"";
     }
 
+    // Fixed locale for deterministic normalization (avoids Turkish-I problem)
+    static NSLocale *searchLocale;
+    static dispatch_once_t localeOnce;
+    dispatch_once(&localeOnce, ^{
+        searchLocale = [NSLocale localeWithLocaleIdentifier:@"ar"];
+    });
+
     normalized =
         [normalized stringByFoldingWithOptions:NSDiacriticInsensitiveSearch | NSWidthInsensitiveSearch
-                                        locale:[NSLocale currentLocale]];
-    normalized = [normalized lowercaseStringWithLocale:[NSLocale currentLocale]];
+                                        locale:searchLocale];
+    normalized = [normalized lowercaseStringWithLocale:searchLocale];
 
     NSArray<NSString *> *segments =
         [normalized componentsSeparatedByCharactersInSet:[self pp_searchSeparatorCharacterSet]];
@@ -185,7 +195,7 @@ NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
                                                words:words
                                      normalizedQuery:normalizedQuery];
     if (fuzzyCandidate.distance != NSUIntegerMax) {
-        NSUInteger lengthDelta = [self pp_lengthDeltaBetweenLength:fuzzyCandidate.wordLength
+        NSUInteger lengthDelta = [self pp_lengthDeltaBetweenLength:fuzzyCandidate.candidateLength
                                                          andLength:queryLength];
         NSUInteger sortScore =
             (fuzzyCandidate.distance * 1000) +
@@ -254,7 +264,6 @@ NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
     for (NSUInteger j = 1; j <= m; j++) {
         NSUInteger prev = row[0];
         row[0] = j;
-        NSUInteger rowMin = row[0];
         unichar tc = [target characterAtIndex:j - 1];
 
         for (NSUInteger i = 1; i <= n; i++) {
@@ -267,15 +276,7 @@ NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
             if (row[i - 1] + 1 < value) value = row[i - 1] + 1;
 
             row[i] = value;
-            if (value < rowMin) {
-                rowMin = value;
-            }
             prev = saved;
-        }
-
-        if (rowMin > maxDist) {
-            free(row);
-            return maxDist + 1;
         }
     }
 
@@ -385,18 +386,19 @@ NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
                                            normalizedQuery:(NSString *)normalizedQuery
 {
     if (normalizedText.length == 0 || normalizedQuery.length == 0 || words.count == 0) {
-        return PPFuzzyCandidateMake(NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax);
+        return PPFuzzyCandidateMake(NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax);
     }
 
     NSUInteger threshold = [self pp_fuzzyThresholdForQueryLength:normalizedQuery.length];
     if (threshold == 0) {
-        return PPFuzzyCandidateMake(NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax);
+        return PPFuzzyCandidateMake(NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax);
     }
 
     NSUInteger bestDistance = NSUIntegerMax;
     NSUInteger bestLocation = NSUIntegerMax;
     NSUInteger bestWordIndex = NSUIntegerMax;
     NSUInteger bestWordLength = NSUIntegerMax;
+    NSUInteger bestCandidateLength = NSUIntegerMax;
     NSUInteger bestLengthDelta = NSUIntegerMax;
 
     NSUInteger cursor = 0;
@@ -455,14 +457,16 @@ NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
                     bestDistance = distance;
                     bestLocation = location;
                     bestWordIndex = wordIndex;
-                    bestWordLength = candidateLength;
+                    bestWordLength = wordLength;         // full word length
+                    bestCandidateLength = candidateLength; // matched substring length
                     bestLengthDelta = lengthDelta;
 
                     if (bestDistance == 0) {
                         return PPFuzzyCandidateMake(bestDistance,
                                                     bestLocation,
                                                     bestWordIndex,
-                                                    bestWordLength);
+                                                    bestWordLength,
+                                                    bestCandidateLength);
                     }
                 }
             }
@@ -472,13 +476,14 @@ NS_INLINE PPFuzzyCandidate PPFuzzyCandidateMake(NSUInteger distance,
     }
 
     if (bestDistance == NSUIntegerMax) {
-        return PPFuzzyCandidateMake(NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax);
+        return PPFuzzyCandidateMake(NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax, NSUIntegerMax);
     }
 
     return PPFuzzyCandidateMake(bestDistance,
                                 bestLocation,
                                 bestWordIndex,
-                                bestWordLength);
+                                bestWordLength,
+                                bestCandidateLength);
 }
 
 @end

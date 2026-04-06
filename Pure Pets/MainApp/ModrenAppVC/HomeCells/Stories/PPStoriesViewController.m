@@ -18,14 +18,14 @@
 #import "PPHUD.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 
-static const CGFloat PPStoriesSidePadding = 16.0;
-static const CGFloat PPStoriesTopPadding = 12.0;
-static const CGFloat PPStoriesBottomPadding = 12.0;
-static const CGFloat PPStoriesItemSpacing = 12.0;
-static const CGFloat PPStoriesItemWidth = 94.0;
-static const CGFloat PPStoriesItemHeight = 112.0;
-static const CGFloat PPStoriesTitleTopPadding = 8.0;
-static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
+static const CGFloat PPStoriesSidePadding      = 12.0;
+static const CGFloat PPStoriesTopPadding        = 8.0;
+static const CGFloat PPStoriesBottomPadding     = 10.0;
+static const CGFloat PPStoriesItemSpacing       = 10.0;
+static const CGFloat PPStoriesItemWidth         = 88.0;
+static const CGFloat PPStoriesItemHeight        = 108.0;
+static const CGFloat PPStoriesTitleTopPadding   = 10.0;
+static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
 
 @interface PPStoriesViewController ()
 @property (nonatomic, strong) UILabel *sectionTitleLabel;
@@ -35,6 +35,8 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
 @property (nonatomic, strong, nullable) PPStory *currentUserStory;
 @property (nonatomic, strong, nullable) ImagePicker *imagePicker;
 @property (nonatomic, assign) BOOL isUploadingStory;
+@property (nonatomic, assign) BOOL hasPlayedEntrance;
+@property (nonatomic, strong) UIVisualEffectView *glassBackdrop;
 @end
 
 @implementation PPStoriesViewController
@@ -43,9 +45,19 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
 
+    // Glass backdrop card
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    _glassBackdrop = [[UIVisualEffectView alloc] initWithEffect:blur];
+    _glassBackdrop.translatesAutoresizingMaskIntoConstraints = NO;
+    _glassBackdrop.layer.cornerRadius = 20.0;
+    _glassBackdrop.layer.masksToBounds = YES;
+    _glassBackdrop.layer.borderWidth = 0.5;
+    _glassBackdrop.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [self.view addSubview:_glassBackdrop];
+
     _sectionTitleLabel = [UILabel new];
     _sectionTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _sectionTitleLabel.font = [GM MidFontWithSize:16.0];
+    _sectionTitleLabel.font = [GM boldFontWithSize:15.0];
     _sectionTitleLabel.textColor = UIColor.labelColor;
     _sectionTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     _sectionTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
@@ -75,9 +87,14 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
         [_collectionView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:0.0];
 
     [NSLayoutConstraint activateConstraints:@[
+        [_glassBackdrop.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:4.0],
+        [_glassBackdrop.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:8.0],
+        [_glassBackdrop.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-8.0],
+        [_glassBackdrop.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-4.0],
+
         [_sectionTitleLabel.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:PPStoriesTitleTopPadding],
-        [_sectionTitleLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPStoriesSidePadding],
-        [_sectionTitleLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPStoriesSidePadding],
+        [_sectionTitleLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPStoriesSidePadding + 8.0],
+        [_sectionTitleLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-(PPStoriesSidePadding + 8.0)],
         [_collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [_collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         _collectionTopConstraint,
@@ -87,75 +104,60 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     [self pp_applySectionTitle];
 }
 
-- (void)viewWillAppear:(BOOL)animated
-{
+- (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     [self startObservingStories];
 }
 
-- (void)viewWillDisappear:(BOOL)animated
-{
+- (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     [self stopObservingStories];
 }
 
-- (void)dealloc
-{
+- (void)dealloc {
     [self stopObservingStories];
 }
 
-- (void)setSectionTitleText:(NSString * _Nullable)sectionTitleText
-{
+- (void)setSectionTitleText:(NSString * _Nullable)sectionTitleText {
     _sectionTitleText = [sectionTitleText copy];
     [self pp_applySectionTitle];
 }
 
-- (void)setSectionTitleLocalizationKey:(NSString * _Nullable)sectionTitleLocalizationKey
-{
+- (void)setSectionTitleLocalizationKey:(NSString * _Nullable)sectionTitleLocalizationKey {
     _sectionTitleLocalizationKey = [sectionTitleLocalizationKey copy];
     [self pp_applySectionTitle];
 }
 
-- (void)startObservingStories
-{
+- (void)startObservingStories {
     if (self.storiesListener) {
         return;
     }
 
     __weak typeof(self) weakSelf = self;
     self.storiesListener = [[PPStoriesManager shared] observeStoriesWithCompletion:^(NSArray<PPStory *> *stories, NSError * _Nullable error) {
-       
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self) {
-                return;
-            }
+            if (!self) return;
             [self pp_applyIncomingStories:error ? @[] : (stories ?: @[]) error:error];
         });
-        
     }];
 
-    // Fallback for environments where listener cannot be attached.
     if (!self.storiesListener) {
         [self reloadStories];
     }
 }
 
-- (void)stopObservingStories
-{
+- (void)stopObservingStories {
     [self.storiesListener remove];
     self.storiesListener = nil;
 }
 
-- (void)reloadStories
-{
+- (void)reloadStories {
     __weak typeof(self) weakSelf = self;
     [[PPStoriesManager shared] fetchStoriesWithCompletion:^(NSArray<PPStory *> *stories, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self) {
-                return;
-            }
+            if (!self) return;
             [self pp_applyIncomingStories:error ? @[] : (stories ?: @[]) error:error];
         });
     }];
@@ -164,12 +166,13 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
 #pragma mark - CollectionView
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    (void)collectionView;
-    (void)section;
+    (void)collectionView; (void)section;
     return self.stories.count + ([self pp_hasCurrentUserEntry] ? 1 : 0);
 }
 
-- (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
+- (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView
+                           cellForItemAtIndexPath:(NSIndexPath *)indexPath
+{
     PPStoryCollectionViewCell *cell =
         [collectionView dequeueReusableCellWithReuseIdentifier:@"StoryCell" forIndexPath:indexPath];
 
@@ -188,6 +191,13 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
             [cell configureWithStory:story currentUserEntry:NO showAddBadge:NO];
         }
     }
+
+    // Staggered entrance animation (first load only)
+    if (!self.hasPlayedEntrance) {
+        NSTimeInterval delay = indexPath.item * 0.06;
+        [cell playEntranceAnimationWithDelay:delay];
+    }
+
     return cell;
 }
 
@@ -248,19 +258,14 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     }
 }
 
-- (void)pp_applyIncomingStories:(NSArray<PPStory *> *)stories error:(NSError * _Nullable)error
-{
+- (void)pp_applyIncomingStories:(NSArray<PPStory *> *)stories error:(NSError * _Nullable)error {
     (void)error;
     NSString *currentUserID = [self pp_currentUserID];
     NSMutableArray<PPStory *> *otherStories = [NSMutableArray array];
     PPStory *myStory = nil;
     for (PPStory *story in stories) {
-        if (![story isKindOfClass:PPStory.class]) {
-            continue;
-        }
-        if ([story isExpired]) {
-            continue;
-        }
+        if (![story isKindOfClass:PPStory.class]) continue;
+        if ([story isExpired]) continue;
         if (currentUserID.length > 0 && [story.userID isEqualToString:currentUserID]) {
             myStory = story;
             continue;
@@ -268,13 +273,21 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
         [otherStories addObject:story];
     }
 
+    BOOL isFirstLoad = (self.stories == nil || self.stories.count == 0) && !self.hasPlayedEntrance;
     self.currentUserStory = myStory;
     self.stories = otherStories.copy;
     [self.collectionView reloadData];
 
-    // Preserve scroll position unless user is near the beginning
+    // Mark entrance as played after first load
+    if (isFirstLoad && (otherStories.count > 0 || [self pp_hasCurrentUserEntry])) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            self.hasPlayedEntrance = YES;
+        });
+    }
+
+    // Preserve scroll position unless near beginning
     CGFloat currentOffsetX = self.collectionView.contentOffset.x;
-    CGFloat threshold = 60.0; // distance considered "near beginning"
+    CGFloat threshold = 60.0;
 
     if ([self pp_hasCurrentUserEntry] && currentOffsetX <= threshold) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -301,32 +314,25 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     }
 }
 
-- (NSString *)pp_currentUserID
-{
+- (NSString *)pp_currentUserID {
     NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
-    if (uid.length > 0) {
-        return uid;
-    }
+    if (uid.length > 0) return uid;
     return [UserManager sharedManager].currentUser.ID ?: @"";
 }
 
-- (BOOL)pp_hasCurrentUserEntry
-{
+- (BOOL)pp_hasCurrentUserEntry {
     return [self pp_currentUserID].length > 0;
 }
 
-- (BOOL)pp_isCurrentUserEntryAtIndex:(NSInteger)index
-{
+- (BOOL)pp_isCurrentUserEntryAtIndex:(NSInteger)index {
     return [self pp_hasCurrentUserEntry] && index == 0;
 }
 
-- (NSInteger)pp_currentUserEntryOffset
-{
+- (NSInteger)pp_currentUserEntryOffset {
     return [self pp_hasCurrentUserEntry] ? 1 : 0;
 }
 
-- (PPStory *)pp_currentUserDisplayStory
-{
+- (PPStory *)pp_currentUserDisplayStory {
     UserModel *currentUser = [UserManager sharedManager].currentUser;
     if (self.currentUserStory.items.count > 0) {
         if (!self.currentUserStory.userImageURL) {
@@ -345,17 +351,13 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     return displayStory;
 }
 
-- (PPStory * _Nullable)pp_storyForDisplayIndex:(NSInteger)displayIndex
-{
+- (PPStory * _Nullable)pp_storyForDisplayIndex:(NSInteger)displayIndex {
     NSInteger modelIndex = displayIndex - [self pp_currentUserEntryOffset];
-    if (modelIndex < 0 || modelIndex >= (NSInteger)self.stories.count) {
-        return nil;
-    }
+    if (modelIndex < 0 || modelIndex >= (NSInteger)self.stories.count) return nil;
     return self.stories[modelIndex];
 }
 
-- (NSArray<PPStory *> *)pp_playableStories
-{
+- (NSArray<PPStory *> *)pp_playableStories {
     NSMutableArray<PPStory *> *all = [NSMutableArray array];
     if (self.currentUserStory.items.count > 0) {
         [all addObject:self.currentUserStory];
@@ -364,28 +366,18 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     return all.copy;
 }
 
-- (void)pp_handleAddStoryTapped
-{
-    if (self.isUploadingStory) {
-        return;
-    }
+- (void)pp_handleAddStoryTapped {
+    if (self.isUploadingStory) return;
 
     UIViewController *presenter = self.parentViewController ?: self;
-    if (!presenter || presenter.presentedViewController) {
-        return;
-    }
+    if (!presenter || presenter.presentedViewController) return;
 
     self.imagePicker = [[ImagePicker alloc] initWithPresentingViewController:presenter];
     __weak typeof(self) weakSelf = self;
     [self.imagePicker showImageSourceSelection:^(UIImage * _Nullable image, NSError * _Nullable error) {
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
-            return;
-        }
-
-        if (error || !image) {
-            return;
-        }
+        if (!self) return;
+        if (error || !image) return;
 
         self.isUploadingStory = YES;
         [PPHUD showLoading:kLang(@"story_uploading")];
@@ -404,11 +396,8 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
     }];
 }
 
-- (void)pp_applySectionTitle
-{
-    if (!self.isViewLoaded) {
-        return;
-    }
+- (void)pp_applySectionTitle {
+    if (!self.isViewLoaded) return;
 
     NSString *resolvedTitle = self.sectionTitleText ?: @"";
     if (self.sectionTitleLocalizationKey.length > 0) {
@@ -429,9 +418,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
                   layout:(UICollectionViewLayout *)collectionViewLayout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath
 {
-    (void)collectionView;
-    (void)collectionViewLayout;
-    (void)indexPath;
+    (void)collectionView; (void)collectionViewLayout; (void)indexPath;
     return CGSizeMake(PPStoriesItemWidth, PPStoriesItemHeight);
 }
 
@@ -439,9 +426,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 6.0;
                    layout:(UICollectionViewLayout *)collectionViewLayout
 minimumLineSpacingForSectionAtIndex:(NSInteger)section
 {
-    (void)collectionView;
-    (void)collectionViewLayout;
-    (void)section;
+    (void)collectionView; (void)collectionViewLayout; (void)section;
     return PPStoriesItemSpacing;
 }
 
@@ -449,9 +434,7 @@ minimumLineSpacingForSectionAtIndex:(NSInteger)section
                         layout:(UICollectionViewLayout *)collectionViewLayout
         insetForSectionAtIndex:(NSInteger)section
 {
-    (void)collectionView;
-    (void)collectionViewLayout;
-    (void)section;
+    (void)collectionView; (void)collectionViewLayout; (void)section;
     return UIEdgeInsetsMake(PPStoriesTopPadding, PPStoriesSidePadding, PPStoriesBottomPadding, PPStoriesSidePadding);
 }
 

@@ -155,7 +155,7 @@ static NSString *PPStoriesTrimmedString(id value)
     }
 
     __weak typeof(self) weakSelf = self;
-    [GM uploadImageToStories:image completion:^(NSURL * _Nullable url) {
+    [GM uploadImageToStories:image forUserID:currentUserID completion:^(NSURL * _Nullable url) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) {
             return;

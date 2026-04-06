@@ -107,7 +107,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (NSString *)ageFromBirthday:(NSDate *)birthdate;
 + (void)shareToWhatsApp:(NSString *)textToShare sharingImage:(UIImage *)sharingImage inViewController:(UIViewController *)VC;
-+ (void)uploadImageToStories:(UIImage *)image completion:(void (^_Nullable)(NSURL * _Nullable url))completion;
++ (void)uploadImageToStories:(UIImage *)image forUserID:(NSString *)userID completion:(void (^_Nullable)(NSURL * _Nullable url))completion;
 +(NSMutableArray *)getSegmentedTitleForLanguage:(NSInteger)languageCode;
 +(void)ConfigEmptyViewForCollection:(UICollectionView *)collectionView Title:(NSString *)title Subtitle:(NSString *)Subtitle imageName:(NSString *)imageName completion:(void (^)(NSInteger complete))completion;
 + (NSString *)getArchiveTitleByID:(NSString *)archiveID fromArchiveArray:(NSArray<ArchiveModel *> *)archiveArray;

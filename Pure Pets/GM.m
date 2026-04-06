@@ -1499,57 +1499,70 @@ CGSize getImageSizeSafely(UIImage *image) {
 
 
 
-+ (void)uploadImageToStories:(UIImage *)image completion:(void (^_Nullable)(NSURL * _Nullable url))completion {
++ (void)uploadImageToStories:(UIImage *)image forUserID:(NSString *)userID completion:(void (^_Nullable)(NSURL * _Nullable url))completion {
 
-  NSString *uniqueFileName = [[NSUUID UUID] UUIDString];
-  NSString *fileName = [NSString stringWithFormat:@"STORY_%@%@", uniqueFileName, @".jpeg"];
-    
+    if (!completion) {
+        completion = ^(NSURL * _Nullable __unused u) {};
+    }
+
+    if (userID.length == 0) {
+        NSLog(@"⚠️ [Stories] uploadImageToStories: userID is empty");
+        completion(nil);
+        return;
+    }
+
+    // Resize before compression to keep uploads fast and prevent timeouts
+    UIImage *resizedImage = [self resizeImage:image withMaxDimension:1080];
+
+    NSData *imageData = UIImageJPEGRepresentation(resizedImage, 0.7);
+    if (!imageData) {
+        NSLog(@"⚠️ [Stories] Failed to create JPEG data from image");
+        completion(nil);
+        return;
+    }
+
+    // Protect upload when app is backgrounded
+    __block UIBackgroundTaskIdentifier bgTask =
+        [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:^{
+            [[UIApplication sharedApplication] endBackgroundTask:bgTask];
+            bgTask = UIBackgroundTaskInvalid;
+        }];
+
+    NSString *uniqueFileName = [[NSUUID UUID] UUIDString];
+    NSString *fileName = [NSString stringWithFormat:@"STORY_%@.jpeg", uniqueFileName];
+
+    // Path must match storage.rules: stories/{userId}/{allPaths=**}
     FIRStorage *storage = [FIRStorage storage];
     FIRStorageReference *storageRef = [storage reference];
-    FIRStorageReference *CardsImagesRef = [storageRef child:[NSString stringWithFormat:@"StoriesImages"]];
-    
-  FIRStorageReference *imageRef = [CardsImagesRef child:fileName];
+    FIRStorageReference *userStoriesRef = [storageRef child:[NSString stringWithFormat:@"stories/%@", userID]];
+    FIRStorageReference *imageRef = [userStoriesRef child:fileName];
 
-  NSData *imageData;
-  imageData = UIImageJPEGRepresentation(image, 0.7);
+    FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
+    metadata.contentType = @"image/jpeg";
 
-  if (imageData == nil) {
-      //NSLog(@"Failed to create image data");
-      // 3. End background Task
-      return;
-  }
+    [imageRef putData:imageData metadata:metadata completion:^(FIRStorageMetadata * _Nullable meta, NSError * _Nullable error) {
+        (void)meta;
+        if (error) {
+            NSLog(@"⚠️ [Stories] Storage upload error: %@", error.localizedDescription);
+            completion(nil);
+            if (bgTask != UIBackgroundTaskInvalid) {
+                [[UIApplication sharedApplication] endBackgroundTask:bgTask];
+                bgTask = UIBackgroundTaskInvalid;
+            }
+            return;
+        }
 
-  FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
-  metadata.contentType = @"image/jpeg";
-
-  FIRStorageUploadTask *uploadTask = [imageRef putData:imageData metadata:metadata];
-
-  [uploadTask observeStatus:FIRStorageTaskStatusProgress
-                    handler:^(FIRStorageTaskSnapshot *snapshot) {
-      //NSLog(@"Upload Progress: %.2f%%", progress);
-  }];
-
-  [uploadTask observeStatus:FIRStorageTaskStatusSuccess
-                    handler:^(FIRStorageTaskSnapshot *snapshot) {
-      //NSLog(@"Successfully uploaded image!");
-      [imageRef downloadURLWithCompletion:^(NSURL *_Nullable URL, NSError *_Nullable error) {
-          if (error != nil) {
-              //NSLog(@"Error getting download URL: %@", error);
-              completion(nil);
-              return;
-          }
-
-          //NSLog(@"Download URL: %@", URL);
-           completion(URL);
-      }];
-  }];
-
-  [uploadTask observeStatus:FIRStorageTaskStatusFailure
-                    handler:^(FIRStorageTaskSnapshot *snapshot) {
-      //NSLog(@"Error uploading image: %@", snapshot.error);
-      // 3. End background Task
-       completion(nil);
-  }];
+        [imageRef downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable dlError) {
+            if (dlError) {
+                NSLog(@"⚠️ [Stories] Download URL error: %@", dlError.localizedDescription);
+            }
+            completion(dlError ? nil : URL);
+            if (bgTask != UIBackgroundTaskInvalid) {
+                [[UIApplication sharedApplication] endBackgroundTask:bgTask];
+                bgTask = UIBackgroundTaskInvalid;
+            }
+        }];
+    }];
 }
 
 +(NSMutableArray *)getAdsSegmentedTitleForLanguage:(NSInteger)languageCode

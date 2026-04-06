@@ -19,6 +19,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) CAGradientLayer *ringGradientLayer;
 @property (nonatomic, strong) UIButton *addBadgeButton;
 @property (nonatomic, copy, nullable) dispatch_block_t onAddBadgeTapped;
+
+/// Entrance animation for staggered spring reveal
+- (void)playEntranceAnimationWithDelay:(NSTimeInterval)delay;
+
 - (void)configureWithStory:(PPStory *)story;
 - (void)configureWithStory:(PPStory *)story
           currentUserEntry:(BOOL)isCurrentUserEntry

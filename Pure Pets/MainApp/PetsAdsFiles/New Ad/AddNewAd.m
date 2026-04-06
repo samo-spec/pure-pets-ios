@@ -14,6 +14,7 @@ static NSString * const PPAddNewAdDraftDefaultsPrefix = @"pp.add_pet_ad.draft";
 static NSString * const PPAddNewAdDraftFormDataKey = @"formData";
 static NSString * const PPAddNewAdDraftImagePathsKey = @"imagePaths";
 static NSString * const PPAddNewAdDraftMediaMutatedKey = @"didMutateMedia";
+static NSInteger const PPAddNewAdCardBackgroundTag = 73041;
 
 static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     if (!isfinite(coordinate.latitude) || !isfinite(coordinate.longitude)) return NO;
@@ -48,6 +49,13 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
 @property (nonatomic, strong) ZYCircleProgressView *uploadCircleProgressView;
 @property (nonatomic, strong) UILabel *uploadProgressValueLabel;
 @property (nonatomic, strong) UILabel *uploadProgressTitleLabel;
+@property (nonatomic, strong) UIView *backgroundGlowViewTop;
+@property (nonatomic, strong) UIView *backgroundGlowViewBottom;
+@property (nonatomic, strong) UIView *formHeroContainerView;
+@property (nonatomic, strong) UILabel *formHeroEyebrowLabel;
+@property (nonatomic, strong) UILabel *formHeroTitleLabel;
+@property (nonatomic, strong) UILabel *formHeroSubtitleLabel;
+@property (nonatomic, strong) UILabel *formHeroMetaLabel;
 @property (nonatomic, assign) BOOL isSubmittingAd;
 @property (nonatomic, assign) BOOL isPrefillInProgress;
 @property (nonatomic, copy) NSString *createFlowAdID;
@@ -59,6 +67,41 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
 
 
 @implementation AddNewAd
+
+- (UIColor *)pp_adCanvasColor
+{
+    return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
+}
+
+- (UIColor *)pp_adSurfaceColor
+{
+    return [[UIColor whiteColor] colorWithAlphaComponent:0.84];
+}
+
+- (UIColor *)pp_adSurfaceBorderColor
+{
+    return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
+}
+
+- (void)pp_applyAdCanvasBackground
+{
+    UIColor *canvasColor = [self pp_adCanvasColor];
+    self.view.backgroundColor = canvasColor;
+    self.view.opaque = YES;
+    self.navigationController.view.backgroundColor = canvasColor;
+
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.opaque = NO;
+    self.tableView.alwaysBounceVertical = YES;
+
+    UIView *backgroundView = self.tableView.backgroundView;
+    if (!backgroundView) {
+        backgroundView = [[UIView alloc] initWithFrame:self.tableView.bounds];
+        backgroundView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self.tableView.backgroundView = backgroundView;
+    }
+    backgroundView.backgroundColor = canvasColor;
+}
 
 
 - (UIBarButtonItem *)pp_uploadSpinnerBarItem
@@ -111,9 +154,12 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     [self initBase];
     [self initForm];
     [self setBackAndCorners];
+    [self pp_applyAdCanvasBackground];
     [self setupImageCollection];
     [self setupPrefillLoadingUI];
     [self setupUploadProgressUI];
+    [self setupModernBackdrop];
+    [self setupFormHeroHeader];
     self.photoBrowserBridge = [PPPhotoBrowserBridge new];
     self.photoBrowserBridge.useArabic = Language.isRTL;
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -121,10 +167,12 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
                                                name:PPAddNewAdLanguageDidChangeNotification
                                                object:nil];
     [self pp_refreshMediaLocalizedText];
+    [self pp_refreshFormHeroContent];
     if (![self restoreDraftIfNeeded]) {
         [self configureForEditingIfNeeded];
     }
     self.isHydratingFormData = NO;
+    [self pp_refreshFormHeroContent];
     
     
     // PPImageCollection owns editor notifications and picker handling.
@@ -301,6 +349,191 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
         [titleLabel.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor constant:-12.0],
         [titleLabel.topAnchor constraintEqualToAnchor:circleView.bottomAnchor constant:14.0]
     ]];
+}
+
+- (void)setupModernBackdrop
+{
+    if (self.backgroundGlowViewTop || self.backgroundGlowViewBottom) {
+        return;
+    }
+
+    UIView *topGlow = [[UIView alloc] init];
+    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    topGlow.userInteractionEnabled = NO;
+    topGlow.backgroundColor = [[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12];
+    topGlow.layer.shadowColor = [UIColor colorWithRed:0.97 green:0.80 blue:0.64 alpha:1.0].CGColor;
+    topGlow.layer.shadowOpacity = 0.10;
+    topGlow.layer.shadowRadius = 62.0;
+    topGlow.layer.shadowOffset = CGSizeZero;
+
+    UIView *bottomGlow = [[UIView alloc] init];
+    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomGlow.userInteractionEnabled = NO;
+    bottomGlow.backgroundColor = [[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06];
+    bottomGlow.layer.shadowColor = [UIColor colorWithRed:0.73 green:0.31 blue:0.32 alpha:1.0].CGColor;
+    bottomGlow.layer.shadowOpacity = 0.08;
+    bottomGlow.layer.shadowRadius = 72.0;
+    bottomGlow.layer.shadowOffset = CGSizeZero;
+
+    [self.view insertSubview:topGlow belowSubview:self.tableView];
+    [self.view insertSubview:bottomGlow belowSubview:self.tableView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [topGlow.widthAnchor constraintEqualToConstant:220.0],
+        [topGlow.heightAnchor constraintEqualToConstant:220.0],
+        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-64.0],
+        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:80.0],
+
+        [bottomGlow.widthAnchor constraintEqualToConstant:210.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:210.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:44.0],
+        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-68.0]
+    ]];
+
+    self.backgroundGlowViewTop = topGlow;
+    self.backgroundGlowViewBottom = bottomGlow;
+}
+
+- (void)setupFormHeroHeader
+{
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    UIColor *primaryTextColor = AppPrimaryTextClr ?: UIColor.labelColor;
+
+    UIView *heroView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 176.0)];
+    heroView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    heroView.userInteractionEnabled = NO;
+    heroView.backgroundColor = [self pp_adSurfaceColor];
+    heroView.layer.cornerRadius = 26.0;
+    heroView.layer.masksToBounds = NO;
+    heroView.layer.borderWidth = 1.0;
+    heroView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.56].CGColor;
+    heroView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    heroView.layer.shadowOpacity = 0.08;
+    heroView.layer.shadowRadius = 22.0;
+    heroView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+
+    UIView *tintView = [[UIView alloc] initWithFrame:heroView.bounds];
+    tintView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    tintView.backgroundColor = [[UIColor colorWithRed:0.98 green:0.94 blue:0.90 alpha:1.0] colorWithAlphaComponent:0.52];
+    tintView.layer.cornerRadius = 26.0;
+    tintView.layer.masksToBounds = YES;
+    [heroView addSubview:tintView];
+
+    UIView *accentBand = [[UIView alloc] init];
+    accentBand.translatesAutoresizingMaskIntoConstraints = NO;
+    accentBand.backgroundColor = accentColor;
+    accentBand.layer.cornerRadius = 2.0;
+    accentBand.layer.masksToBounds = YES;
+    [heroView addSubview:accentBand];
+
+    UILabel *eyebrowLabel = [[UILabel alloc] init];
+    eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    eyebrowLabel.textColor = [accentColor colorWithAlphaComponent:0.92];
+    eyebrowLabel.textAlignment = NSTextAlignmentNatural;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:28.0] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
+    titleLabel.textColor = primaryTextColor;
+    titleLabel.numberOfLines = 2;
+    titleLabel.textAlignment = NSTextAlignmentNatural;
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.88];
+    subtitleLabel.numberOfLines = 3;
+    subtitleLabel.textAlignment = NSTextAlignmentNatural;
+
+    UILabel *metaLabel = [[UILabel alloc] init];
+    metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    metaLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightSemibold];
+    metaLabel.textColor = [primaryTextColor colorWithAlphaComponent:0.70];
+    metaLabel.textAlignment = NSTextAlignmentNatural;
+    metaLabel.numberOfLines = 1;
+    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.62];
+    metaLabel.layer.cornerRadius = 14.0;
+    metaLabel.layer.masksToBounds = YES;
+
+    UIView *metaContainer = [[UIView alloc] init];
+    metaContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    metaContainer.backgroundColor = UIColor.clearColor;
+    [metaContainer addSubview:metaLabel];
+
+    [heroView addSubview:eyebrowLabel];
+    [heroView addSubview:titleLabel];
+    [heroView addSubview:subtitleLabel];
+    [heroView addSubview:metaContainer];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [accentBand.topAnchor constraintEqualToAnchor:heroView.topAnchor constant:18.0],
+        [accentBand.leadingAnchor constraintEqualToAnchor:heroView.leadingAnchor constant:20.0],
+        [accentBand.widthAnchor constraintEqualToConstant:34.0],
+        [accentBand.heightAnchor constraintEqualToConstant:4.0],
+
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:accentBand.bottomAnchor constant:16.0],
+        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:heroView.leadingAnchor constant:20.0],
+        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:heroView.trailingAnchor constant:-20.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:8.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:eyebrowLabel.leadingAnchor],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:eyebrowLabel.trailingAnchor],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+
+        [metaContainer.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:14.0],
+        [metaContainer.leadingAnchor constraintEqualToAnchor:subtitleLabel.leadingAnchor],
+        [metaContainer.trailingAnchor constraintLessThanOrEqualToAnchor:subtitleLabel.trailingAnchor],
+        [metaContainer.bottomAnchor constraintEqualToAnchor:heroView.bottomAnchor constant:-18.0],
+
+        [metaLabel.leadingAnchor constraintEqualToAnchor:metaContainer.leadingAnchor],
+        [metaLabel.trailingAnchor constraintEqualToAnchor:metaContainer.trailingAnchor],
+        [metaLabel.topAnchor constraintEqualToAnchor:metaContainer.topAnchor],
+        [metaLabel.bottomAnchor constraintEqualToAnchor:metaContainer.bottomAnchor],
+        [metaLabel.heightAnchor constraintEqualToConstant:30.0]
+    ]];
+
+    self.formHeroContainerView = heroView;
+    self.formHeroEyebrowLabel = eyebrowLabel;
+    self.formHeroTitleLabel = titleLabel;
+    self.formHeroSubtitleLabel = subtitleLabel;
+    self.formHeroMetaLabel = metaLabel;
+
+    self.tableView.tableHeaderView = heroView;
+}
+
+- (void)pp_refreshFormHeroContent
+{
+    NSString *eyebrow = (self.mode == AdEditorModeEdit)
+        ? [self pp_localizedStringForKey:@"editing_mode" fallback:@"Editing mode"]
+        : [self pp_localizedStringForKey:@"new_listing" fallback:@"New listing"];
+    NSString *title = (self.mode == AdEditorModeEdit)
+        ? [self pp_localizedStringForKey:@"EditAdTitle" fallback:@"Refine your listing"]
+        : [self pp_localizedStringForKey:@"PostAdTitle" fallback:@"Create a polished ad"];
+
+    NSString *kindName = self.selectedMainKind.KindName ?: self.selectedKind.KindName ?: @"";
+    NSString *subtitle = kindName.length > 0
+        ? kindName
+        : [self pp_localizedStringForKey:@"compose_listing_hint" fallback:@"Lead with the right details, then add a strong photo set."];
+
+    NSString *imageText =
+        [NSString stringWithFormat:@"%@ %ld/%ld",
+         [self pp_localizedStringForKey:@"photos" fallback:@"Photos"],
+         (long)[self safeMediaOutputCount],
+         (long)self.imageCollection.maxImageCount];
+    NSString *stateText = self.isPrefillInProgress
+        ? [self pp_localizedStringForKey:@"loading_images" fallback:@"Loading images..."]
+        : ((self.mode == AdEditorModeEdit)
+           ? [self pp_localizedStringForKey:@"ready_to_update" fallback:@"Ready to update"]
+           : [self pp_localizedStringForKey:@"draft_ready" fallback:@"Draft ready"]);
+
+    self.formHeroEyebrowLabel.text = [eyebrow uppercaseString];
+    self.formHeroTitleLabel.text = title;
+    self.formHeroSubtitleLabel.text = subtitle;
+    self.formHeroMetaLabel.text = [NSString stringWithFormat:@"  %@  •  %@  ", imageText, stateText];
 }
 
 - (void)pp_setCircularUploadProgressVisible:(BOOL)visible
@@ -1169,17 +1402,19 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     [self.view addSubview:self.imageCollection];
     self.imageCollection.translatesAutoresizingMaskIntoConstraints = NO;
 
-     float height = 140;
+     float height = 172;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.imageCollection.topAnchor constraintEqualToAnchor:self.tableView.bottomAnchor constant:14],
         [self.imageCollection.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
         [self.imageCollection.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
+        [self.imageCollection.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-14.0],
         [self.imageCollection.heightAnchor constraintEqualToConstant:height]
     ]];
 
-    self.tableView.scrollEnabled = NO;
-    self.tableView.backgroundColor = AppBackgroundClr;
+    self.tableView.scrollEnabled = YES;
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, height + 34.0, 0.0);
+    self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, height + 24.0, 0.0);
 }
 
 - (void)pp_presentAdLocationPickerForRow:(XLFormRowDescriptor *)row
@@ -1249,6 +1484,158 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
         return;
     }
     [super didSelectFormRow:formRow];
+}
+
+- (NSArray<NSString *> *)pp_sectionHeaderContentForSection:(NSInteger)section
+{
+    if (section == 0) {
+        return @[
+            [self pp_localizedStringForKey:@"basicInfoSection" fallback:@"Ad basics"],
+            [self pp_localizedStringForKey:@"basic_info_subtitle" fallback:@"Shape the listing title and taxonomy first."]
+        ];
+    }
+
+    return @[
+        [self pp_localizedStringForKey:@"details" fallback:@"Details"],
+        [self pp_localizedStringForKey:@"details_subtitle" fallback:@"Finish pricing, location, and the written pitch."]
+    ];
+}
+
+- (UIView *)pp_sectionHeaderViewForTitle:(NSString *)title subtitle:(NSString *)subtitle
+{
+    UIView *container = [[UIView alloc] init];
+    container.backgroundColor = UIColor.clearColor;
+
+    UIView *accentBar = [[UIView alloc] init];
+    accentBar.translatesAutoresizingMaskIntoConstraints = NO;
+    accentBar.backgroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    accentBar.layer.cornerRadius = 2.0;
+    [container addSubview:accentBar];
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    titleLabel.text = title;
+    [container addSubview:titleLabel];
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.9];
+    subtitleLabel.text = subtitle;
+    [container addSubview:subtitleLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [accentBar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:18.0],
+        [accentBar.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
+        [accentBar.widthAnchor constraintEqualToConstant:28.0],
+        [accentBar.heightAnchor constraintEqualToConstant:4.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:9.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:accentBar.leadingAnchor],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-18.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor]
+    ]];
+
+    return container;
+}
+
+// Modern form cell styling using layout margins and constraints
+- (void)pp_styleModernFormCell:(UITableViewCell *)cell tableView:(UITableView *)tableView indexPath:(NSIndexPath *)indexPath
+{
+    if (!cell || !indexPath) {
+        return;
+    }
+
+    cell.backgroundColor = UIColor.clearColor;
+    cell.clipsToBounds = NO;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+
+    UIEdgeInsets layoutMargins = UIEdgeInsetsMake(3.0, 16.0, 3.0, 16.0);
+    cell.separatorInset = UIEdgeInsetsMake(0.0, CGRectGetWidth(tableView.bounds), 0.0, 0.0);
+    cell.layoutMargins = layoutMargins;
+    cell.preservesSuperviewLayoutMargins = NO;
+    cell.contentView.layoutMargins = layoutMargins;
+    cell.contentView.preservesSuperviewLayoutMargins = NO;
+
+    UIView *cardView = [cell.contentView viewWithTag:PPAddNewAdCardBackgroundTag];
+    if (!cardView) {
+        cardView = [[UIView alloc] initWithFrame:CGRectZero];
+        cardView.translatesAutoresizingMaskIntoConstraints = NO;
+        cardView.tag = PPAddNewAdCardBackgroundTag;
+        cardView.userInteractionEnabled = NO;
+        [cell.contentView insertSubview:cardView atIndex:0];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [cardView.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:3.0],
+            [cardView.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-3.0],
+            [cardView.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor],
+            [cardView.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor]
+        ]];
+    }
+
+    cardView.backgroundColor = [self pp_adSurfaceColor];
+    cardView.layer.cornerRadius = 18.0;
+    cardView.layer.masksToBounds = YES;
+    cardView.layer.borderWidth = 1.0;
+    cardView.layer.borderColor = [self pp_adSurfaceBorderColor].CGColor;
+
+    cell.contentView.backgroundColor = UIColor.clearColor;
+    cell.contentView.layer.cornerRadius = 0.0;
+    cell.contentView.layer.masksToBounds = NO;
+
+    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    cell.layer.shadowOpacity = 0.05;
+    cell.layer.shadowRadius = 12.0;
+    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    cell.layer.masksToBounds = NO;
+    cell.layer.shadowPath = nil;
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
+{
+    NSArray<NSString *> *content = [self pp_sectionHeaderContentForSection:section];
+    return [self pp_sectionHeaderViewForTitle:content.firstObject subtitle:content.lastObject];
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
+{
+    return section < self.form.formSections.count ? 58.0 : 0.0001;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForHeaderInSection:(NSInteger)section
+{
+    return [self tableView:tableView heightForHeaderInSection:section];
+}
+
+- (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
+{
+    return 8.0;
+}
+
+- (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
+{
+    return [UIView new];
+}
+
+// Style cell before display and after creation
+- (void)tableView:(UITableView *)tableView
+  willDisplayCell:(UITableViewCell *)cell
+forRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    [self pp_styleModernFormCell:cell tableView:tableView indexPath:indexPath];
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView
+         cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    UITableViewCell *cell = [super tableView:tableView cellForRowAtIndexPath:indexPath];
+    [self pp_styleModernFormCell:cell tableView:tableView indexPath:indexPath];
+    return cell;
 }
  
 
@@ -1435,7 +1822,7 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
                                                          rowType:XLFormRowDescriptorTypeTextView
                                                            title:nil];
     [self.descRow.cellConfigAtConfigure setObject:kLang(@"enter_description") forKey:@"textView.placeholder"];
-    self.descRow.height = 70;
+    self.descRow.height = 116;
     self.descRow.required = YES;
     self.descRow.onChangeBlock = ^(id oldValue, id newValue, XLFormRowDescriptor *row) {
         weakSelf.adModel.adDescription = newValue;
@@ -1449,6 +1836,7 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     self.tableView.estimatedSectionFooterHeight = 10;
     self.tableView.sectionFooterHeight = 10;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
+    self.tableView.estimatedRowHeight = 64.0;
 }
 
 #pragma mark - Prefill when Editing
@@ -1557,23 +1945,62 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
 
 - (void)setBackAndCorners
 {
-    self.view.layer.cornerRadius = 25;
-    self.view.clipsToBounds = YES;
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
-    self.tableView.backgroundColor = AppBackgroundClrLigter;
-    self.tableView.layer.cornerRadius = 25;
-    self.tableView.clipsToBounds = YES;
+    self.view.layer.cornerRadius = 0.0;
+    self.view.clipsToBounds = NO;
+    self.view.backgroundColor = [self pp_adCanvasColor];
+    self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.cellLayoutMarginsFollowReadableWidth = NO;
+    self.tableView.layer.cornerRadius = 0.0;
+    self.tableView.clipsToBounds = NO;
+    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    if (@available(iOS 15.0, *)) {
+        self.tableView.sectionHeaderTopPadding = 0.0;
+    }
 }
 
 
 -(void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    [self.view sendSubviewToBack:self.tableView];
+    [self pp_applyAdCanvasBackground];
+    if (self.backgroundGlowViewTop) {
+        self.backgroundGlowViewTop.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewTop.bounds) * 0.5;
+        self.backgroundGlowViewBottom.layer.cornerRadius = CGRectGetWidth(self.backgroundGlowViewBottom.bounds) * 0.5;
+        [self.view sendSubviewToBack:self.backgroundGlowViewBottom];
+        [self.view sendSubviewToBack:self.backgroundGlowViewTop];
+    }
     self.tableView.alpha = 1;
-    //self.photoView.backgroundColor = UIColor.systemMintColor;
-     
 
+    if (self.formHeroContainerView) {
+        CGFloat width = CGRectGetWidth(self.view.bounds) - 32.0;
+        CGFloat fittingHeight =
+            [self.formHeroContainerView systemLayoutSizeFittingSize:CGSizeMake(width, UILayoutFittingCompressedSize.height)].height;
+        if (fittingHeight < 160.0) {
+            fittingHeight = 184.0;
+        }
+        CGRect headerFrame = self.formHeroContainerView.frame;
+        headerFrame.origin.x = 0.0;
+        headerFrame.origin.y = 0.0;
+        headerFrame.size.width = width;
+        headerFrame.size.height = fittingHeight;
+        if (!CGRectEqualToRect(self.formHeroContainerView.frame, headerFrame)) {
+            self.formHeroContainerView.frame = headerFrame;
+            self.tableView.tableHeaderView = self.formHeroContainerView;
+        }
+        self.formHeroContainerView.layer.cornerRadius = 26.0;
+        self.formHeroContainerView.layer.borderWidth = 1.0;
+        self.formHeroContainerView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.56].CGColor;
+    }
+
+    self.imageCollection.layer.cornerRadius = 26.0;
+    self.imageCollection.layer.borderWidth = 1.0;
+    self.imageCollection.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.48].CGColor;
+    self.imageCollection.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    self.imageCollection.layer.shadowOpacity = 0.06;
+    self.imageCollection.layer.shadowRadius = 14.0;
+    self.imageCollection.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.imageCollection.layer.masksToBounds = NO;
 }
 
 - (void)saveFormData:(UIBarButtonItem *)sender {
@@ -2041,38 +2468,20 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     CGFloat height = safeSubtitle.length ? 50.0 : 42.0;
 
     UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, height)];
-    container.backgroundColor = UIColor.clearColor;
+    container.backgroundColor = [self pp_adSurfaceColor];
     container.userInteractionEnabled = NO;
     container.semanticContentAttribute =
     Language.isRTL ? UISemanticContentAttributeForceRightToLeft
                    : UISemanticContentAttributeForceLeftToRight;
 
     CGFloat cornerRadius = height / 2.0;
-    if (@available(iOS 13.0, *)) {
-        UIVisualEffectView *blurView =
-        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial]];
-        blurView.frame = container.bounds;
-        blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        blurView.userInteractionEnabled = NO;
-        blurView.layer.cornerRadius = cornerRadius;
-        blurView.layer.masksToBounds = YES;
-        [container addSubview:blurView];
-
-        UIView *tintView = [[UIView alloc] initWithFrame:blurView.bounds];
-        tintView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        tintView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.08];
-        [blurView.contentView addSubview:tintView];
-    } else {
-        container.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.12];
-    }
-
     container.layer.cornerRadius = cornerRadius;
     container.layer.borderWidth = 1.0;
-    container.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.16 : 0.10].CGColor;
-    container.layer.shadowColor = [AppShadowClr colorWithAlphaComponent:0.18].CGColor;
-    container.layer.shadowOffset = CGSizeMake(0, 8);
-    container.layer.shadowOpacity = 1.0;
-    container.layer.shadowRadius = 18.0;
+    container.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.52].CGColor;
+    container.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    container.layer.shadowOffset = CGSizeMake(0, 6);
+    container.layer.shadowOpacity = 0.06;
+    container.layer.shadowRadius = 14.0;
 
     UIStackView *stack = [[UIStackView alloc] init];
     stack.axis = UILayoutConstraintAxisVertical;
@@ -2226,6 +2635,7 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
     [row.cellConfig setObject:@(GM.setAligment) forKey:@"detailTextLabel.textAlignment"];
     row.cellConfig[@"inputType"] = @(inputType);
     row.cellConfig[@"titlePosition"] = @(XLFormFullWidthTextFieldTitlePosTop);
+    row.cellConfig[@"TitlePos"] = @(XLFormFullWidthTextFieldTitlePosTop);
     
     row.required = required;
     if (value) row.value = value;
@@ -2260,6 +2670,7 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
 
 - (void)pp_reloadMediaUI {
     dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_refreshFormHeroContent];
         [self.imageCollection reloadCollectionView];
     });
 }

@@ -13,11 +13,15 @@
 #import "PPPermissionHelper.h"
 #import "PPSelectOptionViewController.h"
 #import "OptionModel.h"
+#import "Styling.h"
 
 @interface PPImageCollection () <UISheetPresentationControllerDelegate>
 @property (nonatomic, strong) UIView *titleContainer;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *countPillLabel;
+@property (nonatomic, strong) UILabel *helperLabel;
+@property (nonatomic, strong) UIView *collectionShellView;
 @property (nonatomic, strong) QBImagePickerController *currentPicker;
 @property (nonatomic, strong) PPPickerBridge *photoPickerBridge;
 @property (nonatomic, strong) PPCoreBridge *corePickerBridge;
@@ -133,7 +137,7 @@
                                              configurationByApplyingConfiguration:
                                                  [UIImageSymbolConfiguration configurationWithPaletteColors:@[
                                                     [UIColor secondaryLabelColor],
-                                                    [AppPrimaryClr  colorWithAlphaComponent:1.1]
+                                                    [AppPrimaryClr colorWithAlphaComponent:1.0]
                                                  ]]];
     
     UIImage *icon = [UIImage systemImageNamed:@"photo.on.rectangle" withConfiguration:symConfig];
@@ -150,20 +154,57 @@
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.numberOfLines = 1;
     _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+
+    _countPillLabel = [[UILabel alloc] init];
+    _countPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _countPillLabel.font = [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:11.5]];
+    _countPillLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    _countPillLabel.textAlignment = NSTextAlignmentCenter;
+    _countPillLabel.adjustsFontForContentSizeCategory = YES;
+    _countPillLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.84];
+    _countPillLabel.layer.cornerRadius = 13.0;
+    _countPillLabel.layer.masksToBounds = YES;
+
+    _helperLabel = [[UILabel alloc] init];
+    _helperLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _helperLabel.font = [[UIFontMetrics defaultMetrics] scaledFontForFont:[GM MidFontWithSize:11.0]];
+    _helperLabel.textColor = [UIColor tertiaryLabelColor];
+    _helperLabel.adjustsFontForContentSizeCategory = YES;
+    _helperLabel.numberOfLines = 1;
+    _helperLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _helperLabel.text = kLang(@"drag_to_reorder");
+    if (![_helperLabel.text isKindOfClass:NSString.class] || _helperLabel.text.length == 0 || [_helperLabel.text isEqualToString:@"drag_to_reorder"]) {
+        _helperLabel.text = @"Tap to edit. Hold to reorder.";
+    }
     
     [_titleContainer addSubview:_iconView];
     [_titleContainer addSubview:_titleLabel];
+    [_titleContainer addSubview:_countPillLabel];
+    [_titleContainer addSubview:_helperLabel];
 }
 
 - (void)setupCollectionView {
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.minimumInteritemSpacing = 8;
-    layout.minimumLineSpacing = 8;
-    layout.sectionInset = UIEdgeInsetsMake(10, 12, 10, 12);
+    layout.minimumInteritemSpacing = 10;
+    layout.minimumLineSpacing = 10;
+    layout.sectionInset = UIEdgeInsetsMake(10, 10, 10, 10);
     layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
+
+    _collectionShellView = [[UIView alloc] init];
+    _collectionShellView.translatesAutoresizingMaskIntoConstraints = NO;
+    _collectionShellView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.76];
+    _collectionShellView.layer.cornerRadius = 24.0;
+    _collectionShellView.layer.masksToBounds = NO;
+    _collectionShellView.layer.borderWidth = 1.0;
+    _collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08].CGColor;
+    _collectionShellView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    _collectionShellView.layer.shadowOpacity = 0.05;
+    _collectionShellView.layer.shadowRadius = 12.0;
+    _collectionShellView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    [self addSubview:_collectionShellView];
     
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
-    _collectionView.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    _collectionView.backgroundColor = UIColor.clearColor;
     _collectionView.delegate = self;
     _collectionView.dataSource = self;
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -173,18 +214,13 @@
     [_collectionView registerClass:[AddButtonCell class] forCellWithReuseIdentifier:@"AddButtonCell"];
     [_collectionView registerClass:[PP_ImageCell class] forCellWithReuseIdentifier:@"PP_ImageCell"];
     
-    _collectionView.layer.masksToBounds = YES;
-    _collectionView.layer.cornerRadius = 18;
-    if (@available(iOS 13.0, *)) {
-        _collectionView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    _collectionView.clipsToBounds = YES;
+    _collectionView.clipsToBounds = NO;
 
     _reorderLongPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self
                                                                               action:@selector(handleReorderLongPress:)];
     [_collectionView addGestureRecognizer:_reorderLongPressGesture];
     
-    [self addSubview:_collectionView];
+    [_collectionShellView addSubview:_collectionView];
 }
 
 - (void)setupLoadingOverlay {
@@ -231,31 +267,65 @@
     });
 }
 
+- (void)pp_refreshTitlePresentation
+{
+    NSInteger currentCount = [self imageCount];
+    self.countPillLabel.text = [NSString stringWithFormat:@"  %ld/%ld  ", (long)currentCount, (long)self.maxImageCount];
+    self.collectionShellView.backgroundColor =
+        currentCount > 0
+        ? [[UIColor whiteColor] colorWithAlphaComponent:0.84]
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    self.loadingOverlay.layer.cornerRadius = 24.0;
+    [self pp_refreshTitlePresentation];
+    self.collectionShellView.layer.cornerRadius = 24.0;
+    self.collectionShellView.layer.borderWidth = 1.0;
+    self.collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08].CGColor;
+    self.countPillLabel.layer.borderWidth = 1.0;
+    self.countPillLabel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.65].CGColor;
+}
+
 - (void)setupConstraints {
     [NSLayoutConstraint activateConstraints:@[
         // Title container
         [_titleContainer.topAnchor constraintEqualToAnchor:self.topAnchor],
         [_titleContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:6],
-        [_titleContainer.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-6],
-        [_titleContainer.heightAnchor constraintEqualToConstant:32],
+        [_titleContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6],
+        [_titleContainer.heightAnchor constraintEqualToConstant:44],
         
         // Icon
         [_iconView.leadingAnchor constraintEqualToAnchor:_titleContainer.leadingAnchor],
-        [_iconView.centerYAnchor constraintEqualToAnchor:_titleLabel.centerYAnchor],
+        [_iconView.topAnchor constraintEqualToAnchor:_titleContainer.topAnchor constant:2.0],
         [_iconView.widthAnchor constraintEqualToConstant:20],
         [_iconView.heightAnchor constraintEqualToConstant:20],
         
         // Title label
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_iconView.trailingAnchor constant:6],
-        [_titleLabel.topAnchor constraintEqualToAnchor:_titleContainer.topAnchor],
-        [_titleLabel.bottomAnchor constraintEqualToAnchor:_titleContainer.bottomAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor],
+        [_titleLabel.centerYAnchor constraintEqualToAnchor:_iconView.centerYAnchor],
+        [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_countPillLabel.leadingAnchor constant:-8.0],
+
+        [_countPillLabel.centerYAnchor constraintEqualToAnchor:_titleLabel.centerYAnchor],
+        [_countPillLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor],
+        [_countPillLabel.heightAnchor constraintEqualToConstant:26.0],
+        [_countPillLabel.widthAnchor constraintGreaterThanOrEqualToConstant:56.0],
+
+        [_helperLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
+        [_helperLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_helperLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor],
         
-        // Collection view
-        [_collectionView.topAnchor constraintEqualToAnchor:_titleContainer.bottomAnchor constant:6],
-        [_collectionView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [_collectionView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [_collectionView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+        [_collectionShellView.topAnchor constraintEqualToAnchor:_titleContainer.bottomAnchor constant:10.0],
+        [_collectionShellView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [_collectionShellView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [_collectionShellView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+        [_collectionView.topAnchor constraintEqualToAnchor:_collectionShellView.topAnchor constant:8.0],
+        [_collectionView.leadingAnchor constraintEqualToAnchor:_collectionShellView.leadingAnchor constant:8.0],
+        [_collectionView.trailingAnchor constraintEqualToAnchor:_collectionShellView.trailingAnchor constant:-8.0],
+        [_collectionView.bottomAnchor constraintEqualToAnchor:_collectionShellView.bottomAnchor constant:-8.0]
     ]];
 }
 
@@ -537,6 +607,7 @@
     if (icon) {
         _iconView.image = icon;
     }
+    [self pp_refreshTitlePresentation];
 }
 
 - (void)setTitleText:(NSString *)titleText {
@@ -751,6 +822,7 @@
 }
 
 - (void)notifyDelegate {
+    [self pp_refreshTitlePresentation];
     if ([self.delegate respondsToSelector:@selector(imageCollection:didUpdateImages:)]) {
         [self.delegate imageCollection:self didUpdateImages:[self allImages]];
     }
@@ -923,9 +995,9 @@
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat collectionHeight = CGRectGetHeight(collectionView.bounds);
     CGFloat collectionWidth = CGRectGetWidth(collectionView.bounds);
-    CGFloat availableHeight = MAX(0.0, collectionHeight - 20.0);
-    CGFloat itemWidth = MAX(84.0, availableHeight);
-    CGFloat maxAllowed = MAX(84.0, collectionWidth - 24.0);
+    CGFloat availableHeight = MAX(0.0, collectionHeight - 8.0);
+    CGFloat itemWidth = MAX(92.0, availableHeight);
+    CGFloat maxAllowed = MAX(92.0, collectionWidth - 18.0);
     itemWidth = MIN(itemWidth, maxAllowed);
     return CGSizeMake(itemWidth, itemWidth);
 }

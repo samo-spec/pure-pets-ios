@@ -1,5 +1,5 @@
 //
-//  SearchCacheManager 2.h
+//  SearchCacheManager.m
 //  Pure Pets
 //
 //  Created by Mohammed Ahmed on 12/01/2026.
