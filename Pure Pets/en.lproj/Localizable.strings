@@ -2173,3 +2173,29 @@
 "a11y_search_segment" = "Search category filter";
 "a11y_search_segment_hint" = "Choose between Ads, Services, or Accessories";
 "a11y_search_field_hint" = "Type to search for pets, services, or accessories";
+
+/* AddNewAd – Form */
+"add_images_required"       = "Image required";
+"add_images_required_desc"  = "Please add at least one image before posting your ad.";
+"max_images_reached"        = "Maximum images reached";
+"max_images_hint"           = "You can upload up to";
+"editing_mode"              = "Editing mode";
+"new_listing"               = "New listing";
+"compose_listing_hint"      = "Lead with the right details, then add a strong photo set.";
+"ready_to_update"           = "Ready to update";
+"draft_ready"               = "Draft ready";
+"uploading_images"          = "Uploading images...";
+"please_wait_prefill"       = "Please wait until images finish loading.";
+"submit_failed"             = "Unable to save your ad right now. Please try again.";
+"basic_info_subtitle"       = "Shape the listing title and taxonomy first.";
+"details_subtitle"          = "Finish pricing, location, and the written pitch.";
+"pet_details_section"       = "Pet details";
+"pet_details_subtitle"      = "Describe the pet's gender and age.";
+"listing_details_section"   = "Listing details";
+"listing_details_subtitle"  = "Set the price, location, and write a description.";
+"validation_fill_required"  = "Please fill in all required fields.";
+"validation_title_required" = "Ad title is required.";
+"validation_price_invalid"  = "Please enter a valid price greater than zero.";
+"validation_age_invalid"    = "Please enter a valid age in months.";
+"location_invalid"          = "Please choose a valid location from the map.";
+"Loading"                   = "Loading";

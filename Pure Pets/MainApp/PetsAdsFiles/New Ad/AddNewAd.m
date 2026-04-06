@@ -1457,7 +1457,8 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
         if (!PPIsValidAdCoordinate(coordinate)) {
             [PPAlertHelper showErrorIn:self
                                  title:kLang(@"Location")
-                              subtitle:kLang(@"Please choose a valid location from the map.")];
+                              subtitle:[self pp_localizedStringForKey:@"location_invalid"
+                                                              fallback:@"Please choose a valid location from the map."]];
             return;
         }
 
@@ -1495,9 +1496,16 @@ static inline BOOL PPIsValidAdCoordinate(CLLocationCoordinate2D coordinate) {
         ];
     }
 
+    if (section == 1) {
+        return @[
+            [self pp_localizedStringForKey:@"pet_details_section" fallback:@"Pet details"],
+            [self pp_localizedStringForKey:@"pet_details_subtitle" fallback:@"Describe the pet's gender and age."]
+        ];
+    }
+
     return @[
-        [self pp_localizedStringForKey:@"details" fallback:@"Details"],
-        [self pp_localizedStringForKey:@"details_subtitle" fallback:@"Finish pricing, location, and the written pitch."]
+        [self pp_localizedStringForKey:@"listing_details_section" fallback:@"Listing details"],
+        [self pp_localizedStringForKey:@"listing_details_subtitle" fallback:@"Set the price, location, and write a description."]
     ];
 }
 
@@ -1762,8 +1770,8 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     
     [self.mform addFormSection:section];
     
-    // 📝 Section 3: Description
-    section = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"")];
+    // ── Section 2: Pet Details (Gender, Age) ──
+    section = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"pet_details_section")];
     // Gender
     XLFormRowDescriptor *genderRow = [XLFormRowDescriptor formRowDescriptorWithTag:@"isFemale"
                                                                            rowType:XLFormRowDescriptorTypeBooleanSwitch
@@ -1787,6 +1795,11 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         weakSelf.adModel.petAgeMonths = newValue;
     };
     [section addFormRow:self.petAgeRow];
+    
+    [self.mform addFormSection:section];
+    
+    // ── Section 3: Listing Details (Price, Location, Description) ──
+    section = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"listing_details_section")];
     
     // Price
     self.priceRow = [XLFormRowDescriptor formRowDescriptorWithTag:kprice
@@ -2048,6 +2061,29 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
+    // 1b – Custom field-level validation
+    if ([self.priceRow.value respondsToSelector:@selector(integerValue)] &&
+        [self.priceRow.value integerValue] <= 0) {
+        NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
+        NSString *subtitle = [self pp_localizedStringForKey:@"validation_price_invalid"
+                                                    fallback:@"Please enter a valid price greater than zero."];
+        UITableViewCell *priceCell = [self.tableView cellForRowAtIndexPath:[self.form indexPathOfFormRow:self.priceRow]];
+        [GM animateCell:priceCell];
+        [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
+        return;
+    }
+
+    if ([self.petAgeRow.value respondsToSelector:@selector(integerValue)] &&
+        [self.petAgeRow.value integerValue] <= 0) {
+        NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
+        NSString *subtitle = [self pp_localizedStringForKey:@"validation_age_invalid"
+                                                    fallback:@"Please enter a valid age in months."];
+        UITableViewCell *ageCell = [self.tableView cellForRowAtIndexPath:[self.form indexPathOfFormRow:self.petAgeRow]];
+        [GM animateCell:ageCell];
+        [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
+        return;
+    }
+
     if (!isEditing && ![self pp_validateCreateHasAtLeastOneImage]) {
         return;
     }
@@ -2108,13 +2144,18 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         errorCount++;
         [GM animateCell:cell];
     }];
+    NSString *title = [self pp_localizedStringForKey:@"error" fallback:@"Error"];
+    NSString *subtitle = [self pp_localizedStringForKey:@"validation_fill_required"
+                                                fallback:@"Please fill in all required fields."];
+    [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
 }
 
 - (BOOL)pp_validateAdLocationBeforeSubmit
 {
     if (!self.hasSelectedAdCoordinate || !PPIsValidAdCoordinate(self.selectedAdCoordinate)) {
         NSString *title = kLang(@"Location");
-        NSString *subtitle = kLang(@"Please choose a valid location from the map.");
+        NSString *subtitle = [self pp_localizedStringForKey:@"location_invalid"
+                                                    fallback:@"Please choose a valid location from the map."];
         [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
         return NO;
     }

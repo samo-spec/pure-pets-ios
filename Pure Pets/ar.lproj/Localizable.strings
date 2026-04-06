@@ -2160,3 +2160,27 @@
 "a11y_search_segment" = "تصفية فئة البحث";
 "a11y_search_segment_hint" = "اختر بين الإعلانات أو الخدمات أو الإكسسوارات";
 "a11y_search_field_hint" = "اكتب للبحث عن حيوانات أليفة أو خدمات أو إكسسوارات";
+
+/* AddNewAd – النموذج */
+"add_images_required"       = "مطلوب صورة واحدة على الأقل";
+"add_images_required_desc"  = "يرجى إضافة صورة واحدة على الأقل قبل نشر إعلانك.";
+"editing_mode"              = "وضع التعديل";
+"new_listing"               = "إعلان جديد";
+"compose_listing_hint"      = "ابدأ بالتفاصيل المهمة ثم أضف صوراً واضحة.";
+"ready_to_update"           = "جاهز للتحديث";
+"draft_ready"               = "المسودة جاهزة";
+"uploading_images"          = "جاري رفع الصور...";
+"please_wait_prefill"       = "يرجى الانتظار حتى انتهاء تحميل الصور.";
+"submit_failed"             = "تعذر حفظ إعلانك الآن. يرجى المحاولة مرة أخرى.";
+"basic_info_subtitle"       = "ابدأ بعنوان الإعلان والتصنيف.";
+"details_subtitle"          = "أكمل السعر والموقع والوصف.";
+"pet_details_section"       = "تفاصيل الحيوان";
+"pet_details_subtitle"      = "حدد جنس وعمر الحيوان.";
+"listing_details_section"   = "تفاصيل الإعلان";
+"listing_details_subtitle"  = "حدد السعر والموقع واكتب وصفاً.";
+"validation_fill_required"  = "يرجى ملء جميع الحقول المطلوبة.";
+"validation_title_required" = "عنوان الإعلان مطلوب.";
+"validation_price_invalid"  = "يرجى إدخال سعر صالح أكبر من صفر.";
+"validation_age_invalid"    = "يرجى إدخال عمر صالح بالأشهر.";
+"location_invalid"          = "يرجى اختيار موقع صالح من الخريطة.";
+"Loading"                   = "جاري التحميل";
