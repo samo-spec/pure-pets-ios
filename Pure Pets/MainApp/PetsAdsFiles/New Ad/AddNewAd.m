@@ -4,7 +4,7 @@
 #import "LocationPickerViewController.h"
 #import "ZYCircleProgressView.h"
 #import "PPSelectOptionViewController.h"
-@import SwiftBridging;
+#import <Pure_Pets-Swift.h>
 #import <math.h>
 #import <float.h>
 

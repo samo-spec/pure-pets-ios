@@ -35,7 +35,28 @@ typedef NS_ENUM(NSInteger, PPAddressFieldKind) {
     PPAddressFieldKindLocation
 };
 
-@interface PPAddressTextFieldCell : UITableViewCell
+static const CGFloat kPPAddressCellHorizontalInset = 16.0;
+static const CGFloat kPPAddressCellVerticalInset   = 6.0;
+
+@interface PPAddressBaseCell : UITableViewCell
+@end
+
+@implementation PPAddressBaseCell
+
+- (void)setFrame:(CGRect)frame
+{
+    frame.origin.x = kPPAddressCellHorizontalInset;
+    frame.size.width -= kPPAddressCellHorizontalInset * 2.0;
+    frame.origin.y += kPPAddressCellVerticalInset * 0.5;
+    frame.size.height -= kPPAddressCellVerticalInset;
+    if (frame.size.width  < 0.0) frame.size.width  = 0.0;
+    if (frame.size.height < 0.0) frame.size.height = 0.0;
+    [super setFrame:frame];
+}
+
+@end
+
+@interface PPAddressTextFieldCell : PPAddressBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextField *textField;
 - (void)configureWithTitle:(NSString *)title
@@ -141,7 +162,7 @@ typedef NS_ENUM(NSInteger, PPAddressFieldKind) {
 
 @end
 
-@interface PPAddressSelectorCell : UITableViewCell
+@interface PPAddressSelectorCell : PPAddressBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *valueLabel;
 @property (nonatomic, strong) UILabel *detailLabel;
@@ -244,7 +265,7 @@ typedef NS_ENUM(NSInteger, PPAddressFieldKind) {
 
 @end
 
-@interface PPAddressSwitchCell : UITableViewCell
+@interface PPAddressSwitchCell : PPAddressBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UISwitch *toggleSwitch;
@@ -333,7 +354,7 @@ typedef NS_ENUM(NSInteger, PPAddressFieldKind) {
 
 @end
 
-@interface PPAddressActionCell : UITableViewCell
+@interface PPAddressActionCell : PPAddressBaseCell
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
 - (void)configureWithTitle:(NSString *)title
@@ -1885,15 +1906,6 @@ typedef NS_ENUM(NSInteger, PPAddressFieldKind) {
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    CGRect frame = cell.frame;
-    CGFloat horizontalInset = 16.0;
-    CGFloat verticalInset = 6.0;
-    frame.origin.x = horizontalInset;
-    frame.size.width = MAX(0.0, CGRectGetWidth(tableView.bounds) - (horizontalInset * 2.0));
-    frame.origin.y += verticalInset * 0.5;
-    frame.size.height = MAX(0.0, frame.size.height - verticalInset);
-    cell.frame = frame;
-
     BOOL isDangerSection = [self pp_sectionKindForSection:indexPath.section] == PPAddressSectionKindDanger;
     UIColor *surfaceColor = isDangerSection
         ? [[UIColor systemRedColor] colorWithAlphaComponent:0.08]

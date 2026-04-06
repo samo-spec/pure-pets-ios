@@ -825,6 +825,10 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     self.addPhotoBtn.layer.shadowOpacity = 0.12;
     self.addPhotoBtn.layer.shadowRadius = 14.0;
     self.addPhotoBtn.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.tableView.backgroundView = nil;
+
+    self.tableView.backgroundColor = AppClearClr;
+    
 }
 
 - (void)dealloc
@@ -1501,7 +1505,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (!PPIOS26()) {
-        [Styling applyBackgroundStyleForTableView:tableView cell:cell indexPath:indexPath useRowCardMode:NO];
+       // [Styling applyBackgroundStyleForTableView:tableView cell:cell indexPath:indexPath useRowCardMode:NO];
     }
 
     cell.backgroundColor = UIColor.clearColor;
