@@ -6836,37 +6836,37 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     UIColor *shineTail = nil;
 
     if (isDark) {
-        // Deep charcoal base with cool blue undertones
-        tintTop = [UIColor colorWithRed:0.07 green:0.07 blue:0.11 alpha:1.0];
-        tintUpperMid = [UIColor colorWithRed:0.06 green:0.08 blue:0.14 alpha:1.0];
-        tintLowerMid = [UIColor colorWithRed:0.05 green:0.06 blue:0.12 alpha:1.0];
-        // Warm coral/amber glow — top-left focal point
-        topGlowStart = [UIColor colorWithRed:0.98 green:0.52 blue:0.32 alpha:0.30];
-        topGlowMid = [UIColor colorWithRed:0.94 green:0.36 blue:0.42 alpha:0.12];
-        // Electric teal/cyan accent — modern contrast
-        accentGlowStart = [UIColor colorWithRed:0.18 green:0.82 blue:0.86 alpha:0.20];
-        accentGlowMid = [UIColor colorWithRed:0.24 green:0.72 blue:0.90 alpha:0.08];
-        // Soft indigo/violet — lower depth
-        bottomGlowStart = [UIColor colorWithRed:0.44 green:0.32 blue:0.82 alpha:0.18];
-        bottomGlowMid = [UIColor colorWithRed:0.38 green:0.28 blue:0.72 alpha:0.06];
-        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.08];
-        shineTail = [UIColor colorWithWhite:1.0 alpha:0.02];
+        // Deep charcoal base with richer blue-violet undertones
+        tintTop = [UIColor colorWithRed:0.05 green:0.04 blue:0.10 alpha:1.0];
+        tintUpperMid = [UIColor colorWithRed:0.04 green:0.05 blue:0.14 alpha:1.0];
+        tintLowerMid = [UIColor colorWithRed:0.04 green:0.04 blue:0.11 alpha:1.0];
+        // Vibrant coral/amber glow — top-left focal point
+        topGlowStart = [UIColor colorWithRed:1.0 green:0.48 blue:0.28 alpha:0.38];
+        topGlowMid = [UIColor colorWithRed:0.96 green:0.32 blue:0.38 alpha:0.16];
+        // Electric teal accent — punchy contrast
+        accentGlowStart = [UIColor colorWithRed:0.14 green:0.78 blue:0.90 alpha:0.26];
+        accentGlowMid = [UIColor colorWithRed:0.20 green:0.68 blue:0.92 alpha:0.12];
+        // Rich violet — deeper lower glow
+        bottomGlowStart = [UIColor colorWithRed:0.40 green:0.26 blue:0.86 alpha:0.24];
+        bottomGlowMid = [UIColor colorWithRed:0.34 green:0.22 blue:0.76 alpha:0.10];
+        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.10];
+        shineTail = [UIColor colorWithWhite:1.0 alpha:0.03];
     } else {
-        // Airy ivory base with lavender-mint undertones
-        tintTop = [UIColor colorWithRed:0.98 green:0.97 blue:0.99 alpha:1.0];
-        tintUpperMid = [UIColor colorWithRed:0.97 green:0.95 blue:0.98 alpha:1.0];
-        tintLowerMid = [UIColor colorWithRed:0.95 green:0.97 blue:0.99 alpha:1.0];
-        // Soft apricot/peach glow — organic warmth
-        topGlowStart = [UIColor colorWithRed:1.0 green:0.82 blue:0.64 alpha:0.72];
-        topGlowMid = [UIColor colorWithRed:0.98 green:0.68 blue:0.62 alpha:0.30];
-        // Cool mint/teal accent — fresh contrast
-        accentGlowStart = [UIColor colorWithRed:0.48 green:0.90 blue:0.88 alpha:0.38];
-        accentGlowMid = [UIColor colorWithRed:0.56 green:0.86 blue:0.92 alpha:0.14];
-        // Soft lilac/lavender — subtle depth
-        bottomGlowStart = [UIColor colorWithRed:0.76 green:0.68 blue:0.96 alpha:0.30];
-        bottomGlowMid = [UIColor colorWithRed:0.80 green:0.74 blue:0.94 alpha:0.12];
-        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.38];
-        shineTail = [UIColor colorWithWhite:1.0 alpha:0.06];
+        // Warm ivory base with lavender-mint undertones
+        tintTop = [UIColor colorWithRed:0.98 green:0.97 blue:1.0 alpha:1.0];
+        tintUpperMid = [UIColor colorWithRed:0.96 green:0.94 blue:0.99 alpha:1.0];
+        tintLowerMid = [UIColor colorWithRed:0.94 green:0.96 blue:1.0 alpha:1.0];
+        // Vivid apricot/peach glow — richer warmth
+        topGlowStart = [UIColor colorWithRed:1.0 green:0.76 blue:0.54 alpha:0.80];
+        topGlowMid = [UIColor colorWithRed:1.0 green:0.60 blue:0.52 alpha:0.36];
+        // Saturated mint/teal accent
+        accentGlowStart = [UIColor colorWithRed:0.40 green:0.88 blue:0.86 alpha:0.44];
+        accentGlowMid = [UIColor colorWithRed:0.48 green:0.84 blue:0.94 alpha:0.20];
+        // Richer lilac/lavender depth
+        bottomGlowStart = [UIColor colorWithRed:0.70 green:0.60 blue:0.98 alpha:0.38];
+        bottomGlowMid = [UIColor colorWithRed:0.74 green:0.66 blue:0.96 alpha:0.16];
+        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.42];
+        shineTail = [UIColor colorWithWhite:1.0 alpha:0.08];
     }
 
     [CATransaction begin];

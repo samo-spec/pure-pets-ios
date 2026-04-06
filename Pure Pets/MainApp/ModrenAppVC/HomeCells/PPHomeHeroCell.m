@@ -1079,146 +1079,158 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     UIColor *liftedAccent = PPBlendColors(accent, UIColor.whiteColor, 0.22);
 
     NSArray<NSDictionary<NSString *, id> *> *paletteAnchors = @[
+        // ── Midnight (00:00) — deep ink violet ──
         @{
             @"minute" : @0,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#080A16" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#0D1430" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#122149" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#182C5B" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#22336B" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#0A0820" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#12103A" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#1C1854" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#251F6E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#312882" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.96, 1.0)]
         },
+        // ── Pre-dawn (05:00) — inky indigo with rose undertow ──
         @{
             @"minute" : @300,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#0B1020" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#151A36" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#23274E" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#332B57" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#4B315D" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#0E0C28" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#1A1444" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#2E2060" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#48286A" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#6A3478" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.06, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.94, 0.98)]
         },
+        // ── Dawn (06:00) — coral-rose horizon to warm amber ──
         @{
             @"minute" : @360,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#2C1C3A" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#62315F" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#AD5A6E" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#E28A72" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#F6BE86" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#2A1640" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#6E2E5C" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#C05670" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F08A5E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#FFC26A" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.08)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(1.0, 0.90)]
         },
+        // ── Golden hour (07:30) — peach-rose to bright gold ──
         @{
             @"minute" : @450,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#5C314E" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#915065" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#CC7A62" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#E8A165" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#F5CD8C" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#5E2848" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#A84860" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#E87858" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#FFA94E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#FFD878" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.06)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 0.94)]
         },
+        // ── Morning (10:00) — vivid sky blue to soft gold ──
         @{
             @"minute" : @600,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#2F5D9E" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#4A84C1" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#69B4D6" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#95D7CC" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#F0E0A1" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#1858A8" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#3388D0" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#50B8E2" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#78DEC6" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F2DA82" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.02, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 1.0)]
         },
+        // ── Midday (13:00) — crisp cerulean to aqua mint ──
         @{
             @"minute" : @780,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#1273A2" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#249AC2" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#46BED2" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#80D7C1" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#F8E0A5" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#0860B0" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#1A8CCC" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#30B8DA" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#62DCC0" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#FAE090" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.94, 1.0)]
         },
+        // ── Afternoon (16:00) — azure to warm lavender-coral ──
         @{
             @"minute" : @960,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#315DAE" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#547ED0" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#8A7DCF" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#CF86AB" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#F3B07F" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#2050B8" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#4874D8" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#7878D4" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#C878AE" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F5A870" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 0.98)]
         },
+        // ── Sunset (18:00) — plum to fiery gold ──
         @{
             @"minute" : @1080,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#372B69" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#6C438E" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#B05D95" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#EB8A67" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#FFBF79" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#2E1870" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#6C3890" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#C05098" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#F08050" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#FFC05A" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.0, 0.02)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(1.0, 0.86)]
         },
+        // ── Twilight (19:30) — deep indigo to soft mauve ──
         @{
             @"minute" : @1170,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#141B37" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#24395D" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#385078" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#5B5D92" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#8F6DA2" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#101440" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#1E2868" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#303E88" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#5050A0" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#8860B0" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.98, 0.96)]
         },
+        // ── Evening (21:00) — rich violet-purple ──
         @{
             @"minute" : @1260,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#101427" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#1D2342" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#322A55" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#513165" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#733C72" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#0C0E30" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#181850" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#2E2468" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#4C3080" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#6E3C90" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.06, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.96, 1.0)]
         },
+        // ── Late night (23:00) — deep midnight ──
         @{
             @"minute" : @1380,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#090C19" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#11162C" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#1A2240" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#253055" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#304068" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#080618" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#0E0C2E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#161448" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#201C5E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#2C2472" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.05, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.95, 1.0)]
         },
+        // ── Midnight wrap (24:00) — matches 00:00 ──
         @{
             @"minute" : @1440,
             @"colors" : @[
-                [UIColor hx_colorWithHexStr:@"#080A16" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#0D1430" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#122149" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#182C5B" alpha:1.0],
-                [UIColor hx_colorWithHexStr:@"#22336B" alpha:1.0]
+                [UIColor hx_colorWithHexStr:@"#0A0820" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#12103A" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#1C1854" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#251F6E" alpha:1.0],
+                [UIColor hx_colorWithHexStr:@"#312882" alpha:1.0]
             ],
             @"start" : [NSValue valueWithCGPoint:CGPointMake(0.04, 0.0)],
             @"end" : [NSValue valueWithCGPoint:CGPointMake(0.96, 1.0)]
@@ -1257,7 +1269,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
                     [toPalette[@"end"] CGPointValue],
                     paletteProgress);
 
-    NSArray<NSNumber *> *accentMixes = @[@0.03, @0.06, @0.11, @0.18, @0.14];
+    NSArray<NSNumber *> *accentMixes = @[@0.04, @0.08, @0.14, @0.22, @0.18];
     NSMutableArray<UIColor *> *resolvedColors = [NSMutableArray arrayWithCapacity:baseColors.count];
     NSMutableArray *gradientColors = [NSMutableArray arrayWithCapacity:baseColors.count];
     for (NSUInteger idx = 0; idx < baseColors.count; idx++) {
@@ -1272,9 +1284,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     }
 
     UIColor *glowPrimary =
-        [PPBlendColors(resolvedColors[2], liftedAccent, 0.32) colorWithAlphaComponent:0.30];
+        [PPBlendColors(resolvedColors[2], liftedAccent, 0.38) colorWithAlphaComponent:0.36];
     UIColor *glowSecondary =
-        [PPBlendColors(resolvedColors[4], liftedAccent, 0.24) colorWithAlphaComponent:0.22];
+        [PPBlendColors(resolvedColors[4], liftedAccent, 0.30) colorWithAlphaComponent:0.28];
     UIColor *statusPillFill =
         [PPBlendColors(resolvedColors[1], UIColor.whiteColor, 0.16) colorWithAlphaComponent:0.24];
 
@@ -1296,8 +1308,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     ];
     [CATransaction commit];
 
-    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.18];
-    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.20];
+    self.orbViewA.backgroundColor = [glowPrimary colorWithAlphaComponent:0.24];
+    self.orbViewB.backgroundColor = [glowSecondary colorWithAlphaComponent:0.26];
     self.statusPillView.backgroundColor = statusPillFill;
     self.brandLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.80];
 }
