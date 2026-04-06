@@ -1,5 +1,5 @@
 # Uncomment the next line to define a global platform for your project
-platform :ios, '13.0'
+platform :ios, '15.0'
 
 target 'Pure Pets' do
   use_frameworks!
@@ -26,6 +26,8 @@ target 'Pure Pets' do
   #pod 'RNFrostedSidebar', '~> 0.2.0'
   pod 'MDRadialProgress'
  
+ pod 'RecaptchaEnterprise', '18.9.0-beta02'
+
  
 end
 

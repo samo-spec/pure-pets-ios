@@ -8,7 +8,7 @@
 #import "ProfileVC.h"
 #import "PPPermissionHelper.h"
 #import "PPVerificationCodeViewController.h"
-#import "PickerSheetViewController.h"
+#import "PPSelectOptionViewController.h"
 @import FirebaseAuth;
 @import FirebaseStorage;
 @import PhotosUI;
@@ -1096,27 +1096,27 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.backgroundColor = [self pp_profileSurfaceColor];
-    cardView.layer.cornerRadius = 28.0;
+    cardView.layer.cornerRadius = 32.0;
     cardView.layer.masksToBounds = NO;
     cardView.layer.borderWidth = 1.0;
     cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.55].CGColor;
     cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cardView.layer.shadowOpacity = 0.08;
-    cardView.layer.shadowRadius = 22.0;
-    cardView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    cardView.layer.shadowOpacity = 0.10;
+    cardView.layer.shadowRadius = 28.0;
+    cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     [self.headerRoot addSubview:cardView];
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [[UIColor colorWithRed:0.98 green:0.94 blue:0.90 alpha:1.0] colorWithAlphaComponent:0.55];
-    tintView.layer.cornerRadius = 28.0;
+    tintView.backgroundColor = [[UIColor colorWithRed:0.98 green:0.95 blue:0.91 alpha:1.0] colorWithAlphaComponent:0.48];
+    tintView.layer.cornerRadius = 32.0;
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
 
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
     accentBar.backgroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    accentBar.layer.cornerRadius = 2.0;
+    accentBar.layer.cornerRadius = 2.5;
     [cardView addSubview:accentBar];
 
     UILabel *eyebrowLabel = [[UILabel alloc] init];
@@ -1166,56 +1166,57 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 
     UIButton *addPhotoButton = [UIButton buttonWithType:UIButtonTypeSystem];
     addPhotoButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [addPhotoButton setTitle:[self pp_localizedProfileStringForKey:@"Add Photo" fallback:@"Add Photo"] forState:UIControlStateNormal];
+    [addPhotoButton setTitle:kLang(@"Add Photo") forState:UIControlStateNormal];
     [addPhotoButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     addPhotoButton.backgroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    addPhotoButton.layer.cornerRadius = 20.0;
+    addPhotoButton.layer.cornerRadius = 22.0;
+    addPhotoButton.contentEdgeInsets = UIEdgeInsetsMake(0, 28, 0, 28);
     [addPhotoButton.titleLabel setFont:[GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold]];
     [addPhotoButton addTarget:self action:@selector(didTapAddPhoto) forControlEvents:UIControlEventTouchUpInside];
     [cardView addSubview:addPhotoButton];
     self.addPhotoBtn = addPhotoButton;
 
     [NSLayoutConstraint activateConstraints:@[
-        [cardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:8.0],
-        [cardView.leadingAnchor constraintEqualToAnchor:self.headerRoot.leadingAnchor constant:16.0],
-        [cardView.trailingAnchor constraintEqualToAnchor:self.headerRoot.trailingAnchor constant:-16.0],
-        [cardView.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-10.0],
+        [cardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:10.0],
+        [cardView.leadingAnchor constraintEqualToAnchor:self.headerRoot.leadingAnchor constant:20.0],
+        [cardView.trailingAnchor constraintEqualToAnchor:self.headerRoot.trailingAnchor constant:-20.0],
+        [cardView.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-12.0],
 
         [tintView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
         [tintView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
+        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:16.0],
         [accentBar.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [accentBar.widthAnchor constraintEqualToConstant:36.0],
-        [accentBar.heightAnchor constraintEqualToConstant:4.0],
+        [accentBar.widthAnchor constraintEqualToConstant:44.0],
+        [accentBar.heightAnchor constraintEqualToConstant:5.0],
 
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:14.0],
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
         [eyebrowLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
 
         [avatarView.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [avatarView.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:14.0],
+        [avatarView.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:16.0],
         [avatarView.widthAnchor constraintEqualToConstant:108.0],
         [avatarView.heightAnchor constraintEqualToConstant:108.0],
 
-        [nameLabel.topAnchor constraintEqualToAnchor:avatarView.bottomAnchor constant:18.0],
-        [nameLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:20.0],
-        [nameLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-20.0],
+        [nameLabel.topAnchor constraintEqualToAnchor:avatarView.bottomAnchor constant:20.0],
+        [nameLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [nameLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
-        [handleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:6.0],
+        [handleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:8.0],
         [handleLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
         [handleLabel.trailingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:10.0],
-        [metaLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor constant:12.0],
-        [metaLabel.trailingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor constant:-12.0],
+        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:12.0],
+        [metaLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor constant:8.0],
+        [metaLabel.trailingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor constant:-8.0],
 
-        [addPhotoButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:18.0],
+        [addPhotoButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:22.0],
         [addPhotoButton.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [addPhotoButton.widthAnchor constraintGreaterThanOrEqualToConstant:136.0],
-        [addPhotoButton.heightAnchor constraintEqualToConstant:42.0],
-        [addPhotoButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-20.0]
+        [addPhotoButton.widthAnchor constraintGreaterThanOrEqualToConstant:148.0],
+        [addPhotoButton.heightAnchor constraintEqualToConstant:44.0],
+        [addPhotoButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0]
     ]];
 
     self.headerCardView = cardView;
@@ -1247,7 +1248,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
         fullName = draftHandle.length > 0 ? draftHandle : [self pp_trimmedString:PPCurrentUser.UserName];
     }
     if (fullName.length == 0) {
-        fullName = [self pp_localizedProfileStringForKey:@"UserProfile" fallback:@"Your profile"];
+        fullName = kLang(@"UserProfile");
     }
 
     NSString *handle = draftHandle.length > 0 ? draftHandle : [self pp_trimmedString:PPCurrentUser.UserName];
@@ -1255,7 +1256,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
         handle = [@"@" stringByAppendingString:handle];
     }
     if (handle.length == 0) {
-        handle = [self pp_localizedProfileStringForKey:@"profile_identity_hint" fallback:@"Account details and saved places"];
+        handle = kLang(@"profile_identity_hint");
     }
 
     NSString *email = [self pp_trimmedString:self.draftUserEmail];
@@ -1279,10 +1280,10 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
         meta = email.length > 0 ? email : phone;
     }
     if (meta.length == 0) {
-        meta = [self pp_localizedProfileStringForKey:@"member_since" fallback:@"Keep your identity and delivery details up to date."];
+        meta = kLang(@"member_since");
     }
 
-    self.headerEyebrowLabel.text = [[self pp_localizedProfileStringForKey:@"account" fallback:@"Account"] uppercaseString];
+    self.headerEyebrowLabel.text = [kLang(@"account") uppercaseString];
     self.headerNameLabel.text = fullName;
     self.headerHandleLabel.text = handle;
     self.headerMetaLabel.text = meta;
@@ -1480,8 +1481,8 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     }
 
     CGRect frame = cell.frame;
-    CGFloat horizontalInset = 16.0;
-    CGFloat verticalInset = 6.0;
+    CGFloat horizontalInset = 20.0;
+    CGFloat verticalInset = 10.0;
     frame.origin.x = horizontalInset;
     frame.size.width = MAX(0.0, CGRectGetWidth(tableView.bounds) - (horizontalInset * 2.0));
     frame.origin.y += verticalInset * 0.5;
@@ -1492,7 +1493,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     cell.clipsToBounds = NO;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     cell.contentView.backgroundColor = [self pp_profileSurfaceColor];
-    cell.contentView.layer.cornerRadius = 18.0;
+    cell.contentView.layer.cornerRadius = 20.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth = 1.0;
     cell.contentView.layer.borderColor = [self pp_profileSurfaceBorderColor].CGColor;
@@ -1565,7 +1566,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
         case PPProfileSectionDetails:
         case PPProfileSectionContact:
         case PPProfileSectionAddresses:
-            return 58.0;
+            return 76.0;
         default:
             return 0.000001;
     }
@@ -1596,18 +1597,18 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     switch (section) {
         case PPProfileSectionDetails:
             return @[
-                [self pp_localizedProfileStringForKey:@"profile_details" fallback:@"Profile details"],
-                [self pp_localizedProfileStringForKey:@"profile_details_hint" fallback:@"Keep your public identity clean and recognizable."]
+                kLang(@"profile_details"),
+                kLang(@"profile_details_hint")
             ];
         case PPProfileSectionContact:
             return @[
-                [self pp_localizedProfileStringForKey:@"contact_and_bio" fallback:@"Contact and bio"],
-                [self pp_localizedProfileStringForKey:@"contact_and_bio_hint" fallback:@"Use current contact info so orders and support reach you quickly."]
+                kLang(@"contact_and_bio"),
+                kLang(@"contact_and_bio_hint")
             ];
         case PPProfileSectionAddresses:
             return @[
-                [self pp_localizedProfileStringForKey:@"saved_addresses" fallback:@"Saved addresses"],
-                [self pp_localizedProfileStringForKey:@"saved_addresses_hint" fallback:@"Choose where deliveries should land without editing every time."]
+                kLang(@"saved_addresses"),
+                kLang(@"saved_addresses_hint")
             ];
         default:
             return @[@"", @""];
@@ -1630,6 +1631,7 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
     titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     titleLabel.text = title ?: @"";
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [container addSubview:titleLabel];
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
@@ -1637,21 +1639,24 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
     subtitleLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     subtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.9];
     subtitleLabel.text = subtitle ?: @"";
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    subtitleLabel.numberOfLines = 2;
     [container addSubview:subtitleLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [accentBar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:18.0],
+        [accentBar.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:20.0],
         [accentBar.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
         [accentBar.widthAnchor constraintEqualToConstant:28.0],
         [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
         [titleLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:9.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:accentBar.leadingAnchor],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-18.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-20.0],
 
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor]
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [subtitleLabel.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-8.0]
     ]];
 
     return container;
@@ -1770,16 +1775,26 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 
 - (void)pp_presentCountryPicker
 {
-    PickerSheetViewController *picker = [PickerSheetViewController new];
-    picker.pick = PickSunCountries;
-    picker.pickerData = self.contriesArray.mutableCopy;
+    NSMutableArray<CountryCodeModel *> *countries = [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
+    if (countries.count == 0) {
+        return;
+    }
 
     __weak typeof(self) weakSelf = self;
-    picker.completionHandler = ^(CountryCodeModel *selectedCountry) {
-        [weakSelf pp_updateSelectedCountry:selectedCountry userInitiated:YES];
-    };
-
-    [PPFunc presentSheetFrom:self sheetVC:picker detentStyle:PPSheetDetentStyle70];
+    PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
+        initWithOptions:countries
+                  title:kLang(@"code_Palce")
+                    row:nil
+       presentationStyle:PPSelectOptionPresentationSheet
+             completion:^(id _Nullable selectedObject) {
+        PPDispatchMain(^{
+            if (![selectedObject isKindOfClass:[CountryCodeModel class]]) {
+                return;
+            }
+            [weakSelf pp_updateSelectedCountry:(CountryCodeModel *)selectedObject userInitiated:YES];
+        });
+    }];
+    [self presentViewController:vc animated:YES completion:nil];
 }
 
 - (void)pp_updateSelectedCountry:(CountryCodeModel *)country userInitiated:(BOOL)userInitiated

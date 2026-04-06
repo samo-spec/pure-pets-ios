@@ -1871,6 +1871,17 @@
 "profile_email_managed_by_provider" = "Email is managed by your login provider.";
 "profile_email_reauth_required" = "Please reauthenticate before changing email.";
 
+/* Profile Screen — Section Headers */
+"profile_details" = "Profile details";
+"profile_details_hint" = "Keep your public identity clean and recognizable.";
+"contact_and_bio" = "Contact and bio";
+"contact_and_bio_hint" = "Use current contact info so orders and support reach you quickly.";
+"saved_addresses" = "Saved addresses";
+"saved_addresses_hint" = "Choose where deliveries should land without editing every time.";
+"account" = "Account";
+"profile_identity_hint" = "Account details and saved places";
+"member_since" = "Keep your identity and delivery details up to date.";
+
 "order_action_track" = "Track order";
 "order_action_cancel" = "Cancel order";
 "order_action_return" = "Request return";

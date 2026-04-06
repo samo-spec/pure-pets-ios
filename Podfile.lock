@@ -47,6 +47,11 @@ PODS:
   - Masonry (1.1.0)
   - MDRadialProgress (1.3.2)
   - MMSCameraViewController (1.4.0)
+  - RecaptchaEnterprise (18.9.0-beta02):
+    - RecaptchaEnterpriseSDK (= 18.9.0-beta02)
+    - RecaptchaInterop (~> 101.0.0)
+  - RecaptchaEnterpriseSDK (18.9.0-beta02)
+  - RecaptchaInterop (101.0.0)
   - SDWebImage (5.21.7):
     - SDWebImage/Core (= 5.21.7)
   - SDWebImage/Core (5.21.7)
@@ -69,6 +74,7 @@ DEPENDENCIES:
   - Masonry
   - MDRadialProgress
   - MMSCameraViewController (~> 1.4.0)
+  - RecaptchaEnterprise (= 18.9.0-beta02)
   - SDWebImage (~> 5.0)
   - SSZipArchive
   - TOCropViewController
@@ -85,6 +91,9 @@ SPEC REPOS:
     - Masonry
     - MDRadialProgress
     - MMSCameraViewController
+    - RecaptchaEnterprise
+    - RecaptchaEnterpriseSDK
+    - RecaptchaInterop
     - SDWebImage
     - SSZipArchive
     - TOCropViewController
@@ -105,12 +114,15 @@ SPEC CHECKSUMS:
   Masonry: 678fab65091a9290e40e2832a55e7ab731aad201
   MDRadialProgress: 1068574b9b4b870f64b605b07f734385bde5104d
   MMSCameraViewController: 2f854543eeba7c0f9824249bda47732d8fd51968
+  RecaptchaEnterprise: c01fea5e9307ddfa15993017ea0acd8448aa5040
+  RecaptchaEnterpriseSDK: 621187a39cf845b83cdf1c9f21d60bf89cdb5e76
+  RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
   TOCropViewController: 9002a9b12d8104d7478cdc306d80f0efea7fe2c5
   TZImagePickerController: 3751b9b850d00802e9f4f7bd8e1365ee5c4f0990
   WJFrameLayout: ea2bf40ad2795931efb3f116d69d238faf64cd0f
 
-PODFILE CHECKSUM: 8e3f3cc1649dd3787de8f18c6def340491ee5a3f
+PODFILE CHECKSUM: 4ec551f1bc82c285d67f4bdc84f4c9cc42b43d75
 
 COCOAPODS: 1.16.2

@@ -1824,6 +1824,17 @@
 "profile_email_managed_by_provider" = "البريد الإلكتروني مُدار بواسطة مزود تسجيل الدخول.";
 "profile_email_reauth_required" = "يرجى إعادة تسجيل الدخول قبل تغيير البريد الإلكتروني.";
 
+/* Profile Screen — Section Headers */
+"profile_details" = "تفاصيل الملف الشخصي";
+"profile_details_hint" = "حافظ على هويتك العامة واضحة ومميزة.";
+"contact_and_bio" = "التواصل والنبذة";
+"contact_and_bio_hint" = "استخدم بيانات تواصل محدّثة حتى تصلك الطلبات والدعم بسرعة.";
+"saved_addresses" = "العناوين المحفوظة";
+"saved_addresses_hint" = "اختر وجهة التوصيل دون الحاجة لتعديلها في كل مرة.";
+"account" = "الحساب";
+"profile_identity_hint" = "تفاصيل الحساب والأماكن المحفوظة";
+"member_since" = "حافظ على بياناتك وعناوين التوصيل محدّثة.";
+
 "order_action_track" = "تتبع الطلب";
 "order_action_cancel" = "إلغاء الطلب";
 "order_action_return" = "طلب إرجاع";
