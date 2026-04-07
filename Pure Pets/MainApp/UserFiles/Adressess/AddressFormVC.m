@@ -698,6 +698,15 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     self.tableView.backgroundColor = UIColor.clearColor;
 }
 
+- (NSString *)pp_localizedAddressStringForKey:(NSString *)key fallback:(NSString *)fallback
+{
+    NSString *value = key.length ? kLang(key) : nil;
+    if (![value isKindOfClass:NSString.class] || value.length == 0 || [value isEqualToString:key]) {
+        return fallback ?: @"";
+    }
+    return value;
+}
+
 - (void)pp_setupBackdrop
 {
     if (self.backgroundGlowViewTop || self.backgroundGlowViewBottom) {
@@ -869,50 +878,75 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.backgroundColor = [self pp_surfaceColor];
-    cardView.layer.cornerRadius = 28.0;
+    cardView.layer.cornerRadius = 30.0;
     cardView.layer.borderWidth = 1.0;
-    cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.56].CGColor;
+    cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.68].CGColor;
     cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cardView.layer.shadowOpacity = 0.10;
-    cardView.layer.shadowRadius = 28.0;
+    cardView.layer.shadowOpacity = 0.08;
+    cardView.layer.shadowRadius = 24.0;
     cardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
     [headerRoot addSubview:cardView];
 
-    // Frosted tint overlay
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [[UIColor colorWithRed:0.99 green:0.94 blue:0.90 alpha:1.0] colorWithAlphaComponent:0.58];
-    tintView.layer.cornerRadius = 28.0;
+    tintView.backgroundColor = [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.74];
+    tintView.layer.cornerRadius = 30.0;
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
 
-    // Decorative gradient stripe at top
+    UIColor *brandClr = AppPrimaryClr ?: UIColor.systemOrangeColor;
+
+    UIView *ambientGlow = [[UIView alloc] init];
+    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    ambientGlow.backgroundColor = [brandClr colorWithAlphaComponent:0.16];
+    ambientGlow.userInteractionEnabled = NO;
+    ambientGlow.layer.cornerRadius = 92.0;
+    ambientGlow.layer.shadowColor = [brandClr colorWithAlphaComponent:0.58].CGColor;
+    ambientGlow.layer.shadowOpacity = 0.18;
+    ambientGlow.layer.shadowRadius = 42.0;
+    ambientGlow.layer.shadowOffset = CGSizeZero;
+    [cardView addSubview:ambientGlow];
+
+    UIView *secondaryGlow = [[UIView alloc] init];
+    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.42];
+    secondaryGlow.userInteractionEnabled = NO;
+    secondaryGlow.layer.cornerRadius = 54.0;
+    secondaryGlow.layer.shadowColor = [[UIColor whiteColor] colorWithAlphaComponent:0.45].CGColor;
+    secondaryGlow.layer.shadowOpacity = 0.22;
+    secondaryGlow.layer.shadowRadius = 24.0;
+    secondaryGlow.layer.shadowOffset = CGSizeZero;
+    [cardView addSubview:secondaryGlow];
+
     CAGradientLayer *accentGradient = [CAGradientLayer layer];
     accentGradient.colors = @[
-        (id)(AppPrimaryClr ?: UIColor.systemOrangeColor).CGColor,
-        (id)[[AppPrimaryClr ?: UIColor.systemOrangeColor colorWithAlphaComponent:0.32] CGColor]
+        (id)[brandClr colorWithAlphaComponent:0.96].CGColor,
+        (id)[[UIColor colorWithRed:0.99 green:0.77 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.88].CGColor,
+        (id)[[UIColor whiteColor] colorWithAlphaComponent:0.18].CGColor
     ];
     accentGradient.startPoint = CGPointMake(0.0, 0.5);
     accentGradient.endPoint = CGPointMake(1.0, 0.5);
-    accentGradient.frame = CGRectMake(0.0, 0.0, 400.0, 5.0);
-    accentGradient.cornerRadius = 2.5;
+    accentGradient.frame = CGRectMake(0.0, 0.0, 400.0, 6.0);
+    accentGradient.cornerRadius = 3.0;
 
     UIView *gradientBar = [[UIView alloc] init];
     gradientBar.translatesAutoresizingMaskIntoConstraints = NO;
-    gradientBar.layer.cornerRadius = 2.5;
+    gradientBar.layer.cornerRadius = 3.0;
     gradientBar.layer.masksToBounds = YES;
     [gradientBar.layer addSublayer:accentGradient];
     [cardView addSubview:gradientBar];
 
-    // Large icon badge with subtle inner glow
     UIView *iconBadge = [[UIView alloc] init];
     iconBadge.translatesAutoresizingMaskIntoConstraints = NO;
-    UIColor *brandClr = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    iconBadge.backgroundColor = [brandClr colorWithAlphaComponent:0.14];
-    iconBadge.layer.cornerRadius = 28.0;
+    iconBadge.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.66];
+    iconBadge.layer.cornerRadius = 31.0;
     iconBadge.layer.masksToBounds = YES;
     iconBadge.layer.borderWidth = 1.0;
     iconBadge.layer.borderColor = [brandClr colorWithAlphaComponent:0.18].CGColor;
+    iconBadge.layer.shadowColor = [brandClr colorWithAlphaComponent:0.35].CGColor;
+    iconBadge.layer.shadowOpacity = 0.18;
+    iconBadge.layer.shadowRadius = 18.0;
+    iconBadge.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     [cardView addSubview:iconBadge];
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"mappin.and.ellipse"]];
@@ -921,16 +955,25 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
     [iconBadge addSubview:iconView];
 
+    UIView *eyebrowPill = [[UIView alloc] init];
+    eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
+    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.72];
+    eyebrowPill.layer.cornerRadius = 14.0;
+    eyebrowPill.layer.masksToBounds = YES;
+    eyebrowPill.layer.borderWidth = 1.0;
+    eyebrowPill.layer.borderColor = [brandClr colorWithAlphaComponent:0.10].CGColor;
+    [cardView addSubview:eyebrowPill];
+
     UILabel *eyebrowLabel = [[UILabel alloc] init];
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     eyebrowLabel.textColor = [brandClr colorWithAlphaComponent:0.92];
     eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [cardView addSubview:eyebrowLabel];
+    [eyebrowPill addSubview:eyebrowLabel];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:27.0] ?: [UIFont systemFontOfSize:27.0 weight:UIFontWeightBold];
+    titleLabel.font = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
     titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     titleLabel.numberOfLines = 2;
     titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -939,72 +982,83 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
-    subtitleLabel.textColor = [UIColor secondaryLabelColor];
+    subtitleLabel.textColor = [[UIColor secondaryLabelColor] colorWithAlphaComponent:0.92];
     subtitleLabel.numberOfLines = 0;
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [cardView addSubview:subtitleLabel];
 
-    // Meta pill badge
     UILabel *metaLabel = [[UILabel alloc] init];
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     metaLabel.textColor = brandClr;
     metaLabel.numberOfLines = 2;
     metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    metaLabel.backgroundColor = [brandClr colorWithAlphaComponent:0.10];
-    metaLabel.layer.cornerRadius = 16.0;
+    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.masksToBounds = YES;
+    metaLabel.layer.borderWidth = 1.0;
+    metaLabel.layer.borderColor = [brandClr colorWithAlphaComponent:0.14].CGColor;
     [cardView addSubview:metaLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [cardView.topAnchor constraintEqualToAnchor:headerRoot.topAnchor constant:8.0],
+        [cardView.topAnchor constraintEqualToAnchor:headerRoot.topAnchor constant:10.0],
         [cardView.leadingAnchor constraintEqualToAnchor:headerRoot.leadingAnchor constant:16.0],
         [cardView.trailingAnchor constraintEqualToAnchor:headerRoot.trailingAnchor constant:-16.0],
-        [cardView.bottomAnchor constraintEqualToAnchor:headerRoot.bottomAnchor constant:-12.0],
+        [cardView.bottomAnchor constraintEqualToAnchor:headerRoot.bottomAnchor constant:-14.0],
 
         [tintView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
         [tintView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        // Gradient accent bar at the very top
-        [gradientBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:14.0],
-        [gradientBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [gradientBar.widthAnchor constraintEqualToConstant:52.0],
-        [gradientBar.heightAnchor constraintEqualToConstant:5.0],
+        [ambientGlow.widthAnchor constraintEqualToConstant:184.0],
+        [ambientGlow.heightAnchor constraintEqualToConstant:184.0],
+        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-72.0],
+        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:76.0],
 
-        // Icon badge — larger, rounded square
-        [iconBadge.topAnchor constraintEqualToAnchor:gradientBar.bottomAnchor constant:16.0],
-        [iconBadge.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [iconBadge.widthAnchor constraintEqualToConstant:56.0],
-        [iconBadge.heightAnchor constraintEqualToConstant:56.0],
+        [secondaryGlow.widthAnchor constraintEqualToConstant:108.0],
+        [secondaryGlow.heightAnchor constraintEqualToConstant:108.0],
+        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:36.0],
+        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-36.0],
+
+        [gradientBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:20.0],
+        [gradientBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [gradientBar.widthAnchor constraintEqualToConstant:72.0],
+        [gradientBar.heightAnchor constraintEqualToConstant:6.0],
+
+        [iconBadge.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:24.0],
+        [iconBadge.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
+        [iconBadge.widthAnchor constraintEqualToConstant:62.0],
+        [iconBadge.heightAnchor constraintEqualToConstant:62.0],
 
         [iconView.centerXAnchor constraintEqualToAnchor:iconBadge.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconBadge.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:26.0],
-        [iconView.heightAnchor constraintEqualToConstant:26.0],
+        [iconView.widthAnchor constraintEqualToConstant:28.0],
+        [iconView.heightAnchor constraintEqualToConstant:28.0],
 
-        // Eyebrow — vertically centered with icon badge
-        [eyebrowLabel.centerYAnchor constraintEqualToAnchor:iconBadge.topAnchor constant:14.0],
-        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:iconBadge.trailingAnchor constant:14.0],
-        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
+        [eyebrowPill.topAnchor constraintEqualToAnchor:gradientBar.bottomAnchor constant:16.0],
+        [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:iconBadge.leadingAnchor constant:-16.0],
+        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
 
-        // Title
-        [titleLabel.topAnchor constraintEqualToAnchor:iconBadge.bottomAnchor constant:16.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
+        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:12.0],
+        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-12.0],
+        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
 
-        // Subtitle — comfortable spacing below title
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:10.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:18.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:12.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        // Meta pill
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:16.0],
+        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
         [metaLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:titleLabel.trailingAnchor],
-        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-20.0],
-        [metaLabel.heightAnchor constraintGreaterThanOrEqualToConstant:32.0]
+        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
+        [metaLabel.heightAnchor constraintGreaterThanOrEqualToConstant:34.0]
     ]];
 
     self.headerRoot = headerRoot;
@@ -1091,15 +1145,19 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
 - (NSString *)pp_formTitleText
 {
-    return self.address ? (kLang(@"EditAddress") ?: @"Edit address") : (kLang(@"AddAddress") ?: @"Add address");
+    return self.address
+        ? [self pp_localizedAddressStringForKey:@"EditAddress" fallback:@"Edit address"]
+        : [self pp_localizedAddressStringForKey:@"AddAddress" fallback:@"Add address"];
 }
 
 - (NSString *)pp_formSubtitleText
 {
     if (self.address) {
-        return kLang(@"AddressFormEditSubtitle") ?: @"Update your delivery details, map pin, and checkout preferences.";
+        return [self pp_localizedAddressStringForKey:@"AddressFormEditSubtitle"
+                                            fallback:@"Update your delivery details, map pin, and checkout preferences."];
     }
-    return kLang(@"AddressFormAddSubtitle") ?: @"Create a delivery address with the right country, city, area, and map pin.";
+    return [self pp_localizedAddressStringForKey:@"AddressFormAddSubtitle"
+                                        fallback:@"Create a delivery address with the right country, city, area, and map pin."];
 }
 
 - (NSString *)pp_headerMetaText
@@ -1119,12 +1177,12 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     if (self.selectedLocationName.length > 0) {
         return self.selectedLocationName;
     }
-    return kLang(@"MapLocation") ?: @"Delivery details";
+    return [self pp_localizedAddressStringForKey:@"AddressHeroMetaFallback" fallback:@"Delivery details ready"];
 }
 
 - (void)pp_refreshHeaderContent
 {
-    self.headerEyebrowLabel.text = [[kLang(@"DefaultShippingAddress") ?: @"Shipping address" uppercaseString] copy];
+    self.headerEyebrowLabel.text = [self pp_localizedAddressStringForKey:@"AddressHeroEyebrow" fallback:@"Delivery destination"];
     self.headerTitleLabel.text = [self pp_formTitleText];
     self.headerSubtitleLabel.text = [self pp_formSubtitleText];
 
@@ -2009,7 +2067,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
 {
-    return section == 0 ? 58.0 : 72.0;
+    return section == 0 ? 64.0 : 72.0;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForHeaderInSection:(NSInteger)section
@@ -2019,12 +2077,12 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
 {
-    return 18.0;
+    return 22.0;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section
 {
-    return 18.0;
+    return 22.0;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
@@ -2037,28 +2095,28 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     switch (sectionKind) {
         case PPAddressSectionKindRecipient:
             return @[
-                kLang(@"Recipient") ?: @"Recipient",
-                kLang(@"RecipientSubtitle") ?: @"Who receives the order and which number should delivery call?"
+                [self pp_localizedAddressStringForKey:@"Recipient" fallback:@"Recipient"],
+                [self pp_localizedAddressStringForKey:@"RecipientSubtitle" fallback:@"Who receives the order and which number should delivery call?"]
             ];
         case PPAddressSectionKindStreet:
             return @[
-                kLang(@"StreetDetails") ?: @"Street details",
-                kLang(@"StreetDetailsSubtitle") ?: @"Add the lines couriers need to find the exact door."
+                [self pp_localizedAddressStringForKey:@"StreetDetails" fallback:@"Street details"],
+                [self pp_localizedAddressStringForKey:@"StreetDetailsSubtitle" fallback:@"Add the lines couriers need to find the exact door."]
             ];
         case PPAddressSectionKindGeography:
             return @[
-                kLang(@"AreaAndMap") ?: @"Area and map",
-                kLang(@"AreaAndMapSubtitle") ?: @"Country, city, area, and the map pin should all point to the same place."
+                [self pp_localizedAddressStringForKey:@"AreaAndMap" fallback:@"Area and map"],
+                [self pp_localizedAddressStringForKey:@"AreaAndMapSubtitle" fallback:@"Country, city, area, and the map pin should all point to the same place."]
             ];
         case PPAddressSectionKindPreferences:
             return @[
-                kLang(@"DeliveryPreferences") ?: @"Delivery preferences",
-                kLang(@"DeliveryPreferencesSubtitle") ?: @"Choose how this address should behave at checkout."
+                [self pp_localizedAddressStringForKey:@"DeliveryPreferences" fallback:@"Delivery preferences"],
+                [self pp_localizedAddressStringForKey:@"DeliveryPreferencesSubtitle" fallback:@"Choose how this address should behave at checkout."]
             ];
         case PPAddressSectionKindDanger:
             return @[
-                kLang(@"DangerZone") ?: @"Danger zone",
-                kLang(@"DangerZoneSubtitle") ?: @"Remove this saved address permanently."
+                [self pp_localizedAddressStringForKey:@"DangerZone" fallback:@"Danger zone"],
+                [self pp_localizedAddressStringForKey:@"DangerZoneSubtitle" fallback:@"Remove this saved address permanently."]
             ];
     }
 }

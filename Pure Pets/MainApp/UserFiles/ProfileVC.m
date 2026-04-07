@@ -815,16 +815,16 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     [self.view sendSubviewToBack:self.backgroundGlowViewTop];
 
     self.avatarIMV.layer.borderWidth = 3.0;
-    self.avatarIMV.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78].CGColor;
+    self.avatarIMV.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.86].CGColor;
 
     self.headerCardView.layer.borderWidth = 1.0;
-    self.headerCardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.55].CGColor;
+    self.headerCardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.68].CGColor;
 
     self.addPhotoBtn.layer.borderWidth = 0.0;
     self.addPhotoBtn.layer.shadowColor = [UIColor colorWithRed:0.16 green:0.09 blue:0.10 alpha:1.0].CGColor;
-    self.addPhotoBtn.layer.shadowOpacity = 0.12;
-    self.addPhotoBtn.layer.shadowRadius = 14.0;
-    self.addPhotoBtn.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.addPhotoBtn.layer.shadowOpacity = 0.10;
+    self.addPhotoBtn.layer.shadowRadius = 18.0;
+    self.addPhotoBtn.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     self.tableView.backgroundView = nil;
 
     self.tableView.backgroundColor = AppClearClr;
@@ -931,15 +931,6 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     [self setformDataArray:@(self.selectedCountry.ID) forKey:@"CountryID"];
     [self pp_captureProfileDraftBaseline];
     self.pendingAvatarImage = nil;
-
-    // Reload avatar from (potentially updated) URL
-    if (PPCurrentUser.UserImageUrl.absoluteString.length > 0) {
-        [self.avatarIMV.imageView cancelCurrentImageRequest];
-        [GM setImageFromUrlString:PPSafeString(PPCurrentUser.UserImageUrl.absoluteString)
-                        imageView:self.avatarIMV.imageView
-                          phImage:@"person.crop.circle.fill"];
-    }
-
     self.suppressEditTracking = NO;
     [self.tableView reloadData];
     [self pp_refreshProfileHeaderContent];
@@ -1130,37 +1121,83 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     self.headerRoot = [[UIView alloc] init];
     self.headerRoot.backgroundColor = UIColor.clearColor;
 
+    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.backgroundColor = [self pp_profileSurfaceColor];
-    cardView.layer.cornerRadius = 32.0;
+    cardView.layer.cornerRadius = 34.0;
     cardView.layer.masksToBounds = NO;
     cardView.layer.borderWidth = 1.0;
-    cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.55].CGColor;
+    cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.68].CGColor;
     cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cardView.layer.shadowOpacity = 0.10;
-    cardView.layer.shadowRadius = 28.0;
+    cardView.layer.shadowOpacity = 0.08;
+    cardView.layer.shadowRadius = 24.0;
     cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     [self.headerRoot addSubview:cardView];
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [[UIColor colorWithRed:0.98 green:0.95 blue:0.91 alpha:1.0] colorWithAlphaComponent:0.48];
-    tintView.layer.cornerRadius = 32.0;
+    tintView.backgroundColor = [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    tintView.layer.cornerRadius = 34.0;
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
 
+    UIView *ambientGlow = [[UIView alloc] init];
+    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    ambientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.16];
+    ambientGlow.userInteractionEnabled = NO;
+    ambientGlow.layer.cornerRadius = 94.0;
+    ambientGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.50].CGColor;
+    ambientGlow.layer.shadowOpacity = 0.16;
+    ambientGlow.layer.shadowRadius = 42.0;
+    ambientGlow.layer.shadowOffset = CGSizeZero;
+    [cardView addSubview:ambientGlow];
+
+    UIView *secondaryGlow = [[UIView alloc] init];
+    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.40];
+    secondaryGlow.userInteractionEnabled = NO;
+    secondaryGlow.layer.cornerRadius = 58.0;
+    secondaryGlow.layer.shadowColor = [[UIColor whiteColor] colorWithAlphaComponent:0.45].CGColor;
+    secondaryGlow.layer.shadowOpacity = 0.20;
+    secondaryGlow.layer.shadowRadius = 22.0;
+    secondaryGlow.layer.shadowOffset = CGSizeZero;
+    [cardView addSubview:secondaryGlow];
+
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    accentBar.layer.cornerRadius = 2.5;
+    accentBar.backgroundColor = brandColor;
+    accentBar.layer.cornerRadius = 3.0;
     [cardView addSubview:accentBar];
+
+    UIView *eyebrowPill = [[UIView alloc] init];
+    eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
+    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+    eyebrowPill.layer.cornerRadius = 14.0;
+    eyebrowPill.layer.borderWidth = 1.0;
+    eyebrowPill.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
+    eyebrowPill.layer.masksToBounds = YES;
+    [cardView addSubview:eyebrowPill];
 
     UILabel *eyebrowLabel = [[UILabel alloc] init];
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    eyebrowLabel.textColor = [(AppPrimaryClr ?: UIColor.labelColor) colorWithAlphaComponent:0.92];
-    [cardView addSubview:eyebrowLabel];
+    eyebrowLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
+    eyebrowLabel.textAlignment = NSTextAlignmentCenter;
+    [eyebrowPill addSubview:eyebrowLabel];
+
+    UIView *avatarHalo = [[UIView alloc] init];
+    avatarHalo.translatesAutoresizingMaskIntoConstraints = NO;
+    avatarHalo.backgroundColor = [brandColor colorWithAlphaComponent:0.12];
+    avatarHalo.layer.cornerRadius = 62.0;
+    avatarHalo.layer.borderWidth = 1.0;
+    avatarHalo.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.48].CGColor;
+    avatarHalo.layer.shadowColor = [brandColor colorWithAlphaComponent:0.30].CGColor;
+    avatarHalo.layer.shadowOpacity = 0.12;
+    avatarHalo.layer.shadowRadius = 22.0;
+    avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    [cardView addSubview:avatarHalo];
 
     RoundedImageViewWithShadow *avatarView = [[RoundedImageViewWithShadow alloc] initWithImage:[UIImage systemImageNamed:@"person.crop.circle.fill"]];
     avatarView.userInteractionEnabled = YES;
@@ -1174,12 +1211,12 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(didTapAddPhoto)];
     [avatarView addGestureRecognizer:tap];
-    [cardView addSubview:avatarView];
+    [avatarHalo addSubview:avatarView];
     self.avatarIMV = avatarView;
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    nameLabel.font = [GM boldFontWithSize:30.0] ?: [UIFont systemFontOfSize:30.0 weight:UIFontWeightBold];
+    nameLabel.font = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
     nameLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     nameLabel.textAlignment = NSTextAlignmentCenter;
     nameLabel.numberOfLines = 2;
@@ -1196,18 +1233,28 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     UILabel *metaLabel = [[UILabel alloc] init];
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
-    metaLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.62];
+    metaLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
     metaLabel.textAlignment = NSTextAlignmentCenter;
     metaLabel.numberOfLines = 2;
+    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.layer.cornerRadius = 17.0;
+    metaLabel.layer.borderWidth = 1.0;
+    metaLabel.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
+    metaLabel.layer.masksToBounds = YES;
     [cardView addSubview:metaLabel];
 
     UIButton *addPhotoButton = [UIButton buttonWithType:UIButtonTypeSystem];
     addPhotoButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [addPhotoButton setTitle:kLang(@"Add Photo") forState:UIControlStateNormal];
+    [addPhotoButton setTitle:[self pp_localizedProfileStringForKey:@"Add Photo" fallback:@"Add Photo"] forState:UIControlStateNormal];
+    [addPhotoButton setImage:[UIImage systemImageNamed:@"camera.fill"] forState:UIControlStateNormal];
     [addPhotoButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    addPhotoButton.backgroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    addPhotoButton.layer.cornerRadius = 22.0;
-    addPhotoButton.contentEdgeInsets = UIEdgeInsetsMake(0, 28, 0, 28);
+    addPhotoButton.tintColor = UIColor.whiteColor;
+    addPhotoButton.backgroundColor = brandColor;
+    addPhotoButton.layer.cornerRadius = 24.0;
+    addPhotoButton.contentEdgeInsets = UIEdgeInsetsMake(0, 22, 0, 22);
+    addPhotoButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    addPhotoButton.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 6);
+    addPhotoButton.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
     [addPhotoButton.titleLabel setFont:[GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold]];
     [addPhotoButton addTarget:self action:@selector(didTapAddPhoto) forControlEvents:UIControlEventTouchUpInside];
     [cardView addSubview:addPhotoButton];
@@ -1217,27 +1264,49 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
         [cardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:10.0],
         [cardView.leadingAnchor constraintEqualToAnchor:self.headerRoot.leadingAnchor constant:20.0],
         [cardView.trailingAnchor constraintEqualToAnchor:self.headerRoot.trailingAnchor constant:-20.0],
-        [cardView.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-12.0],
+        [cardView.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-14.0],
 
         [tintView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
         [tintView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:16.0],
-        [accentBar.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [accentBar.widthAnchor constraintEqualToConstant:44.0],
-        [accentBar.heightAnchor constraintEqualToConstant:5.0],
+        [ambientGlow.widthAnchor constraintEqualToConstant:188.0],
+        [ambientGlow.heightAnchor constraintEqualToConstant:188.0],
+        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-82.0],
+        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:82.0],
 
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
-        [eyebrowLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
+        [secondaryGlow.widthAnchor constraintEqualToConstant:116.0],
+        [secondaryGlow.heightAnchor constraintEqualToConstant:116.0],
+        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:42.0],
+        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-34.0],
 
-        [avatarView.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [avatarView.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:16.0],
+        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:22.0],
+        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [accentBar.widthAnchor constraintEqualToConstant:72.0],
+        [accentBar.heightAnchor constraintEqualToConstant:6.0],
+
+        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
+        [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
+        [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
+        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
+
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
+        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:12.0],
+        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-12.0],
+        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
+
+        [avatarHalo.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
+        [avatarHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:20.0],
+        [avatarHalo.widthAnchor constraintEqualToConstant:124.0],
+        [avatarHalo.heightAnchor constraintEqualToConstant:124.0],
+
+        [avatarView.centerXAnchor constraintEqualToAnchor:avatarHalo.centerXAnchor],
+        [avatarView.centerYAnchor constraintEqualToAnchor:avatarHalo.centerYAnchor],
         [avatarView.widthAnchor constraintEqualToConstant:108.0],
         [avatarView.heightAnchor constraintEqualToConstant:108.0],
 
-        [nameLabel.topAnchor constraintEqualToAnchor:avatarView.bottomAnchor constant:20.0],
+        [nameLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:22.0],
         [nameLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [nameLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
@@ -1245,14 +1314,15 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
         [handleLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
         [handleLabel.trailingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:12.0],
-        [metaLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor constant:8.0],
-        [metaLabel.trailingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor constant:-8.0],
+        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:14.0],
+        [metaLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:cardView.leadingAnchor constant:34.0],
+        [metaLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
+        [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
 
-        [addPhotoButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:22.0],
+        [addPhotoButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:24.0],
         [addPhotoButton.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [addPhotoButton.widthAnchor constraintGreaterThanOrEqualToConstant:148.0],
-        [addPhotoButton.heightAnchor constraintEqualToConstant:44.0],
+        [addPhotoButton.widthAnchor constraintGreaterThanOrEqualToConstant:158.0],
+        [addPhotoButton.heightAnchor constraintEqualToConstant:48.0],
         [addPhotoButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0]
     ]];
 
@@ -1285,7 +1355,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
         fullName = draftHandle.length > 0 ? draftHandle : [self pp_trimmedString:PPCurrentUser.UserName];
     }
     if (fullName.length == 0) {
-        fullName = kLang(@"UserProfile");
+        fullName = [self pp_localizedProfileStringForKey:@"UserProfile" fallback:@"Profile"];
     }
 
     NSString *handle = draftHandle.length > 0 ? draftHandle : [self pp_trimmedString:PPCurrentUser.UserName];
@@ -1293,7 +1363,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
         handle = [@"@" stringByAppendingString:handle];
     }
     if (handle.length == 0) {
-        handle = kLang(@"profile_identity_hint");
+        handle = [self pp_localizedProfileStringForKey:@"profile_identity_hint"
+                                              fallback:@"Account details and saved places"];
     }
 
     NSString *email = [self pp_trimmedString:self.draftUserEmail];
@@ -1317,13 +1388,14 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
         meta = email.length > 0 ? email : phone;
     }
     if (meta.length == 0) {
-        meta = kLang(@"member_since");
+        meta = [self pp_localizedProfileStringForKey:@"member_since"
+                                            fallback:@"Keep your identity and delivery details up to date."];
     }
 
-    self.headerEyebrowLabel.text = [kLang(@"account") uppercaseString];
+    self.headerEyebrowLabel.text = [self pp_localizedProfileStringForKey:@"account" fallback:@"Account"];
     self.headerNameLabel.text = fullName;
     self.headerHandleLabel.text = handle;
-    self.headerMetaLabel.text = meta;
+    self.headerMetaLabel.text = [NSString stringWithFormat:@"  %@  ", meta];
 }
 
 #pragma mark - Table Data
@@ -2071,9 +2143,6 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
 - (void)updateAvatar:(UIImage *)image
 {
-    // Cancel any in-flight YYWebImage request so it doesn't overwrite the new photo
-    [self.avatarIMV.imageView cancelCurrentImageRequest];
-
     [UIView transitionWithView:self.avatarIMV
                       duration:0.3
                        options:UIViewAnimationOptionTransitionCrossDissolve

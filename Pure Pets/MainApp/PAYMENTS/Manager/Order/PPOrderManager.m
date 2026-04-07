@@ -144,16 +144,134 @@ static NSString *PPOrderResolvedPaymentProviderForMethod(NSString *paymentMethod
     return [PPOrderNormalizedPaymentMethodKey(paymentMethodID, nil) isEqualToString:@"cash"] ? @"CASH" : @"QIB";
 }
 
+static void PPOrderConfigureLimitedUseTokensIfSupported(FIRFunctions *functions) {
+    if (!functions) return;
+
+    SEL setter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
+    if (![functions respondsToSelector:setter]) {
+        return;
+    }
+
+    NSMethodSignature *signature = [functions methodSignatureForSelector:setter];
+    if (!signature) {
+        return;
+    }
+
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+    BOOL enabled = YES;
+    [invocation setSelector:setter];
+    [invocation setTarget:functions];
+    [invocation setArgument:&enabled atIndex:2];
+    [invocation invoke];
+}
+
 static FIRFunctions *PPOrderFunctionsClient(void) {
+    FIRFunctions *functions = nil;
     NSString *customDomain = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
     if (customDomain.length > 0) {
-        return [FIRFunctions functionsForCustomDomain:customDomain];
+        functions = [FIRFunctions functionsForCustomDomain:customDomain];
+    } else {
+        NSString *region = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
+        if (region.length == 0) {
+            region = @"us-central1";
+        }
+        functions = [FIRFunctions functionsForRegion:region];
     }
-    NSString *region = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
-    if (region.length == 0) {
-        region = @"us-central1";
+    PPOrderConfigureLimitedUseTokensIfSupported(functions);
+    return functions;
+}
+
+static NSString *PPOrderFunctionsMessageCandidate(id value, NSInteger depth) {
+    if (!value || depth > 4) return @"";
+
+    if ([value isKindOfClass:NSString.class]) {
+        return PPOrderTrimmedString((NSString *)value);
     }
-    return [FIRFunctions functionsForRegion:region];
+    if ([value isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dictionary = (NSDictionary *)value;
+        NSArray<NSString *> *preferredKeys = @[
+            @"message",
+            @"error",
+            @"reason",
+            @"details",
+            NSLocalizedFailureReasonErrorKey,
+            NSLocalizedDescriptionKey
+        ];
+        for (NSString *key in preferredKeys) {
+            NSString *candidate = PPOrderFunctionsMessageCandidate(dictionary[key], depth + 1);
+            if (candidate.length > 0) {
+                return candidate;
+            }
+        }
+        for (id nestedValue in dictionary.allValues) {
+            NSString *candidate = PPOrderFunctionsMessageCandidate(nestedValue, depth + 1);
+            if (candidate.length > 0) {
+                return candidate;
+            }
+        }
+        return @"";
+    }
+    if ([value isKindOfClass:NSArray.class]) {
+        for (id nestedValue in (NSArray *)value) {
+            NSString *candidate = PPOrderFunctionsMessageCandidate(nestedValue, depth + 1);
+            if (candidate.length > 0) {
+                return candidate;
+            }
+        }
+        return @"";
+    }
+    if ([value isKindOfClass:NSError.class]) {
+        NSError *nestedError = (NSError *)value;
+        NSString *candidate = PPOrderFunctionsMessageCandidate(nestedError.userInfo, depth + 1);
+        if (candidate.length > 0) {
+            return candidate;
+        }
+
+        candidate = PPOrderTrimmedString(nestedError.localizedFailureReason);
+        if (candidate.length > 0) {
+            return candidate;
+        }
+
+        return PPOrderTrimmedString(nestedError.localizedDescription);
+    }
+
+    if ([value respondsToSelector:@selector(stringValue)]) {
+        return PPOrderTrimmedString([value stringValue]);
+    }
+    return @"";
+}
+
+static NSString *PPOrderLocalizedKnownBackendMessage(NSString *message) {
+    NSString *trimmed = PPOrderTrimmedString(message);
+    if (trimmed.length == 0) return @"";
+
+    NSString *lowercase = trimmed.lowercaseString;
+    if ([lowercase containsString:@"order not found"]) {
+        return kLang(@"payment_backend_order_not_found");
+    }
+    if ([lowercase containsString:@"order is no longer pending"]) {
+        return kLang(@"payment_backend_order_not_pending");
+    }
+    if ([lowercase containsString:@"requested amount does not match the order total"]) {
+        return kLang(@"payment_backend_amount_changed");
+    }
+    if ([lowercase containsString:@"online payment is currently unavailable"]) {
+        return kLang(@"payment_backend_online_payment_disabled");
+    }
+    return trimmed;
+}
+
+static NSString *PPOrderFunctionsServerMessageFromError(NSError *error) {
+    if (!error) return @"";
+
+    NSString *candidate = PPOrderFunctionsMessageCandidate(error.userInfo, 0);
+    if (candidate.length == 0) {
+        candidate = PPOrderTrimmedString(error.localizedFailureReason);
+    }
+    if (candidate.length == 0) {
+        candidate = PPOrderTrimmedString(error.localizedDescription);
+    }
+    return PPOrderLocalizedKnownBackendMessage(candidate);
 }
 
 static NSString *PPOrderFriendlyFunctionsErrorMessage(NSError *error) {
@@ -161,15 +279,16 @@ static NSString *PPOrderFriendlyFunctionsErrorMessage(NSError *error) {
 
     NSString *domain = [PPOrderTrimmedString(error.domain).lowercaseString copy];
     BOOL isFunctionsError = [domain containsString:@"functions"];
-    NSString *serverMessage = PPOrderTrimmedString(error.localizedDescription);
+    NSString *serverMessage = PPOrderFunctionsServerMessageFromError(error);
     if (!isFunctionsError) {
         return serverMessage;
     }
 
     switch ((FIRFunctionsErrorCode)error.code) {
         case FIRFunctionsErrorCodeUnimplemented:
-        case FIRFunctionsErrorCodeNotFound:
             return kLang(@"payment_backend_unavailable");
+        case FIRFunctionsErrorCodeNotFound:
+            return serverMessage.length > 0 ? serverMessage : kLang(@"payment_backend_order_not_found");
         case FIRFunctionsErrorCodeUnauthenticated:
             return kLang(@"auth_register_required_title");
         case FIRFunctionsErrorCodePermissionDenied:

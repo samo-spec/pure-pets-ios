@@ -2498,7 +2498,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.imageCollection.layer.shadowRadius = 14.0;
     self.imageCollection.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     self.imageCollection.layer.masksToBounds = NO;
-    
+    //self.imageCollection.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.85];
     self.DidUpdatingHeroLayout=YES;
 }
 

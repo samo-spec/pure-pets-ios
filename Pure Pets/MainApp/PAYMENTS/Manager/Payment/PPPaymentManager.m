@@ -372,13 +372,153 @@ static NSString *PPPaymentFunctionsRegion(void)
     return configured.length > 0 ? configured : @"us-central1";
 }
 
+static void PPPaymentConfigureLimitedUseTokensIfSupported(FIRFunctions *functions)
+{
+    if (!functions) return;
+
+    SEL setter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
+    if (![functions respondsToSelector:setter]) {
+        return;
+    }
+
+    NSMethodSignature *signature = [functions methodSignatureForSelector:setter];
+    if (!signature) {
+        return;
+    }
+
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+    BOOL enabled = YES;
+    [invocation setSelector:setter];
+    [invocation setTarget:functions];
+    [invocation setArgument:&enabled atIndex:2];
+    [invocation invoke];
+}
+
 static FIRFunctions *PPPaymentFunctionsClient(void)
 {
+    FIRFunctions *functions = nil;
     NSString *customDomain = PPPaymentTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
     if (customDomain.length > 0) {
-        return [FIRFunctions functionsForCustomDomain:customDomain];
+        functions = [FIRFunctions functionsForCustomDomain:customDomain];
+    } else {
+        functions = [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
     }
-    return [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
+    PPPaymentConfigureLimitedUseTokensIfSupported(functions);
+    return functions;
+}
+
+static NSString *PPPaymentFunctionsMessageCandidate(id value, NSInteger depth)
+{
+    if (!value || depth > 4) return @"";
+
+    if ([value isKindOfClass:NSString.class]) {
+        return PPPaymentTrimmedString((NSString *)value);
+    }
+    if ([value isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dictionary = (NSDictionary *)value;
+        NSArray<NSString *> *preferredKeys = @[
+            @"message",
+            @"error",
+            @"reason",
+            @"details",
+            NSLocalizedFailureReasonErrorKey,
+            NSLocalizedDescriptionKey
+        ];
+        for (NSString *key in preferredKeys) {
+            NSString *candidate = PPPaymentFunctionsMessageCandidate(dictionary[key], depth + 1);
+            if (candidate.length > 0) {
+                return candidate;
+            }
+        }
+
+        for (id nestedValue in dictionary.allValues) {
+            NSString *candidate = PPPaymentFunctionsMessageCandidate(nestedValue, depth + 1);
+            if (candidate.length > 0) {
+                return candidate;
+            }
+        }
+        return @"";
+    }
+    if ([value isKindOfClass:NSArray.class]) {
+        for (id nestedValue in (NSArray *)value) {
+            NSString *candidate = PPPaymentFunctionsMessageCandidate(nestedValue, depth + 1);
+            if (candidate.length > 0) {
+                return candidate;
+            }
+        }
+        return @"";
+    }
+    if ([value isKindOfClass:NSError.class]) {
+        NSError *nestedError = (NSError *)value;
+        NSString *candidate = PPPaymentFunctionsMessageCandidate(nestedError.userInfo, depth + 1);
+        if (candidate.length > 0) {
+            return candidate;
+        }
+
+        candidate = PPPaymentTrimmedString(nestedError.localizedFailureReason);
+        if (candidate.length > 0) {
+            return candidate;
+        }
+
+        return PPPaymentTrimmedString(nestedError.localizedDescription);
+    }
+
+    return PPPaymentSafeString(value);
+}
+
+static NSString *PPPaymentLocalizedKnownBackendMessage(NSString *message)
+{
+    NSString *trimmed = PPPaymentTrimmedString(message);
+    if (trimmed.length == 0) return @"";
+
+    NSString *lowercase = trimmed.lowercaseString;
+    if ([lowercase containsString:@"order not found"]) {
+        return kLang(@"payment_backend_order_not_found");
+    }
+    if ([lowercase containsString:@"order is no longer pending"]) {
+        return kLang(@"payment_backend_order_not_pending");
+    }
+    if ([lowercase containsString:@"requested amount does not match the order total"]) {
+        return kLang(@"payment_backend_amount_changed");
+    }
+    if ([lowercase containsString:@"online payment is currently unavailable"]) {
+        return kLang(@"payment_backend_online_payment_disabled");
+    }
+    return trimmed;
+}
+
+static NSString *PPPaymentFunctionsServerMessageFromError(NSError *error)
+{
+    if (!error) return @"";
+
+    NSString *candidate = PPPaymentFunctionsMessageCandidate(error.userInfo, 0);
+    if (candidate.length == 0) {
+        candidate = PPPaymentTrimmedString(error.localizedFailureReason);
+    }
+    if (candidate.length == 0) {
+        candidate = PPPaymentTrimmedString(error.localizedDescription);
+    }
+    return PPPaymentLocalizedKnownBackendMessage(candidate);
+}
+
+static BOOL PPPaymentShouldRetryWithQARForCallableError(NSError *error)
+{
+    if (!error) return NO;
+
+    if (error.code != FIRFunctionsErrorCodeInvalidArgument &&
+        error.code != FIRFunctionsErrorCodeFailedPrecondition) {
+        return NO;
+    }
+
+    NSString *message = PPPaymentFunctionsServerMessageFromError(error).lowercaseString;
+    if (message.length == 0) {
+        return NO;
+    }
+
+    return ([message containsString:@"currency"] &&
+            ([message containsString:@"unsupported"] ||
+             [message containsString:@"invalid"] ||
+             [message containsString:@"qar"]));
 }
 
 static NSString *PPPaymentFriendlyFunctionsErrorMessage(NSError *error)
@@ -387,15 +527,16 @@ static NSString *PPPaymentFriendlyFunctionsErrorMessage(NSError *error)
 
     NSString *domain = [PPPaymentTrimmedString(error.domain).lowercaseString copy];
     BOOL isFunctionsError = [domain containsString:@"functions"];
-    NSString *serverMessage = PPPaymentTrimmedString(error.localizedDescription);
+    NSString *serverMessage = PPPaymentFunctionsServerMessageFromError(error);
     if (!isFunctionsError) {
         return serverMessage;
     }
 
     switch ((FIRFunctionsErrorCode)error.code) {
         case FIRFunctionsErrorCodeUnimplemented:
-        case FIRFunctionsErrorCodeNotFound:
             return kLang(@"payment_backend_unavailable");
+        case FIRFunctionsErrorCodeNotFound:
+            return serverMessage.length > 0 ? serverMessage : kLang(@"payment_backend_order_not_found");
         case FIRFunctionsErrorCodeUnauthenticated:
             return kLang(@"auth_register_required_title");
         case FIRFunctionsErrorCodePermissionDenied:
@@ -858,7 +999,13 @@ static void PPQIBTryLoadFrameworkBundle(void)
      callWithObject:payload
      completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
         if (error || ![result.data isKindOfClass:NSDictionary.class]) {
-            if (allowQARFallback && ![safeCurrency isEqualToString:@"QAR"]) {
+            if (allowQARFallback &&
+                ![safeCurrency isEqualToString:@"QAR"] &&
+                PPPaymentShouldRetryWithQARForCallableError(error)) {
+                PPORDERLog(@"Retrying QIB session creation with QAR fallback | orderId=%@ | failedCurrency=%@ | error=%@",
+                           order.orderId ?: @"",
+                           safeCurrency ?: @"",
+                           error.localizedDescription ?: @"");
                 [self createQIBSessionForOrder:order
                                       currency:@"QAR"
                                 viewController:viewController

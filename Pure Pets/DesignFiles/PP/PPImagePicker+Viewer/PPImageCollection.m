@@ -23,6 +23,8 @@
 @property (nonatomic, strong) UILabel *countPillLabel;
 @property (nonatomic, strong) UILabel *helperLabel;
 @property (nonatomic, strong) UIView *collectionShellView;
+@property (nonatomic, strong) UIVisualEffectView *collectionShellBlurView;
+@property (nonatomic, strong) UIView *collectionShellTintView;
 @property (nonatomic, strong) QBImagePickerController *currentPicker;
 @property (nonatomic, strong) PPPickerBridge *photoPickerBridge;
 @property (nonatomic, strong) PPCoreBridge *corePickerBridge;
@@ -32,6 +34,11 @@
 @property (nonatomic, strong) UIView *loadingOverlay;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingSpinner;
 @property (nonatomic, copy) dispatch_block_t loadingTimeoutBlock;
+@property (nonatomic, strong) NSLayoutConstraint *titleContainerLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *titleContainerTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *iconLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *countPillTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *helperTrailingConstraint;
 @end
 
 @implementation PPImageCollection
@@ -48,6 +55,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
         _allowsEditing = YES;
         _allowsReordering = YES;
         _selectedForEdit = -1;
+        _headerContentInsets = UIEdgeInsetsMake(0.0, 8.0, 0.0, 8.0);
         _arrayLock = [[NSRecursiveLock alloc] init];
         _mediaOutputArray = [[NSMutableArray alloc] init];
         
@@ -164,7 +172,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _countPillLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     _countPillLabel.textAlignment = NSTextAlignmentCenter;
     _countPillLabel.adjustsFontForContentSizeCategory = YES;
-    _countPillLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.84];
+    _countPillLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.94];
     _countPillLabel.layer.cornerRadius = 13.0;
     _countPillLabel.layer.masksToBounds = YES;
 
@@ -195,16 +203,32 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
     _collectionShellView = [[UIView alloc] init];
     _collectionShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    _collectionShellView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.76];
+    _collectionShellView.backgroundColor = UIColor.clearColor;
     _collectionShellView.layer.cornerRadius = 24.0;
     _collectionShellView.layer.masksToBounds = NO;
     _collectionShellView.layer.borderWidth = 1.0;
-    _collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08].CGColor;
+    _collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.05].CGColor;
     _collectionShellView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    _collectionShellView.layer.shadowOpacity = 0.05;
-    _collectionShellView.layer.shadowRadius = 12.0;
-    _collectionShellView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    _collectionShellView.layer.shadowOpacity = 0.03;
+    _collectionShellView.layer.shadowRadius = 10.0;
+    _collectionShellView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [self addSubview:_collectionShellView];
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = UIBlurEffectStyleSystemUltraThinMaterialLight;
+    }
+    _collectionShellBlurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    _collectionShellBlurView.translatesAutoresizingMaskIntoConstraints = NO;
+    _collectionShellBlurView.userInteractionEnabled = NO;
+    _collectionShellBlurView.clipsToBounds = YES;
+    [_collectionShellView addSubview:_collectionShellBlurView];
+
+    _collectionShellTintView = [[UIView alloc] init];
+    _collectionShellTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    _collectionShellTintView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
+    _collectionShellTintView.userInteractionEnabled = NO;
+    [_collectionShellBlurView.contentView addSubview:_collectionShellTintView];
     
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     _collectionView.backgroundColor = UIColor.clearColor;
@@ -274,10 +298,10 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 {
     NSInteger currentCount = [self imageCount];
     self.countPillLabel.text = [NSString stringWithFormat:@"  %ld/%ld  ", (long)currentCount, (long)self.maxImageCount];
-    self.collectionShellView.backgroundColor =
+    self.collectionShellTintView.backgroundColor =
         currentCount > 0
-        ? [[UIColor whiteColor] colorWithAlphaComponent:0.84]
-        : [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+        ? [[UIColor whiteColor] colorWithAlphaComponent:0.12]
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.20];
 }
 
 - (void)layoutSubviews
@@ -286,23 +310,35 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     self.loadingOverlay.layer.cornerRadius = 24.0;
     [self pp_refreshTitlePresentation];
     self.collectionShellView.layer.cornerRadius = 24.0;
+    self.collectionShellBlurView.layer.cornerRadius = 24.0;
     self.collectionShellView.layer.borderWidth = 1.0;
-    self.collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08].CGColor;
+    self.collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.05].CGColor;
     self.countPillLabel.layer.borderWidth = 1.0;
-    self.countPillLabel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.65].CGColor;
+    self.countPillLabel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.72].CGColor;
 }
 
 - (void)setupConstraints {
+    self.titleContainerLeadingConstraint =
+        [_titleContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:self.headerContentInsets.left];
+    self.titleContainerTrailingConstraint =
+        [_titleContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-self.headerContentInsets.right];
+    self.iconLeadingConstraint =
+        [_iconView.leadingAnchor constraintEqualToAnchor:_titleContainer.leadingAnchor constant:self.headerContentInsets.left];
+    self.countPillTrailingConstraint =
+        [_countPillLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor constant:-self.headerContentInsets.right];
+    self.helperTrailingConstraint =
+        [_helperLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor constant:-self.headerContentInsets.right];
+
     [NSLayoutConstraint activateConstraints:@[
         // Title container
         [_titleContainer.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [_titleContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:6],
-        [_titleContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-6],
+        self.titleContainerLeadingConstraint,
+        self.titleContainerTrailingConstraint,
         [_titleContainer.heightAnchor constraintEqualToConstant:44],
         
         // Icon
-        [_iconView.leadingAnchor constraintEqualToAnchor:_titleContainer.leadingAnchor],
-        [_iconView.topAnchor constraintEqualToAnchor:_titleContainer.topAnchor constant:2.0],
+        self.iconLeadingConstraint,
+        [_iconView.topAnchor constraintEqualToAnchor:_titleContainer.topAnchor constant:8.0],
         [_iconView.widthAnchor constraintEqualToConstant:20],
         [_iconView.heightAnchor constraintEqualToConstant:20],
         
@@ -312,24 +348,50 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
         [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_countPillLabel.leadingAnchor constant:-8.0],
 
         [_countPillLabel.centerYAnchor constraintEqualToAnchor:_titleLabel.centerYAnchor],
-        [_countPillLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor],
+        self.countPillTrailingConstraint,
         [_countPillLabel.heightAnchor constraintEqualToConstant:26.0],
         [_countPillLabel.widthAnchor constraintGreaterThanOrEqualToConstant:56.0],
 
-        [_helperLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
+        [_helperLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
         [_helperLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_helperLabel.trailingAnchor constraintEqualToAnchor:_titleContainer.trailingAnchor],
+        self.helperTrailingConstraint,
         
         [_collectionShellView.topAnchor constraintEqualToAnchor:_titleContainer.bottomAnchor constant:10.0],
         [_collectionShellView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [_collectionShellView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [_collectionShellView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
 
+        [_collectionShellBlurView.topAnchor constraintEqualToAnchor:_collectionShellView.topAnchor],
+        [_collectionShellBlurView.leadingAnchor constraintEqualToAnchor:_collectionShellView.leadingAnchor],
+        [_collectionShellBlurView.trailingAnchor constraintEqualToAnchor:_collectionShellView.trailingAnchor],
+        [_collectionShellBlurView.bottomAnchor constraintEqualToAnchor:_collectionShellView.bottomAnchor],
+
+        [_collectionShellTintView.topAnchor constraintEqualToAnchor:_collectionShellBlurView.contentView.topAnchor],
+        [_collectionShellTintView.leadingAnchor constraintEqualToAnchor:_collectionShellBlurView.contentView.leadingAnchor],
+        [_collectionShellTintView.trailingAnchor constraintEqualToAnchor:_collectionShellBlurView.contentView.trailingAnchor],
+        [_collectionShellTintView.bottomAnchor constraintEqualToAnchor:_collectionShellBlurView.contentView.bottomAnchor],
+
         [_collectionView.topAnchor constraintEqualToAnchor:_collectionShellView.topAnchor constant:8.0],
         [_collectionView.leadingAnchor constraintEqualToAnchor:_collectionShellView.leadingAnchor constant:8.0],
         [_collectionView.trailingAnchor constraintEqualToAnchor:_collectionShellView.trailingAnchor constant:-8.0],
         [_collectionView.bottomAnchor constraintEqualToAnchor:_collectionShellView.bottomAnchor constant:-8.0]
     ]];
+}
+
+- (void)setHeaderContentInsets:(UIEdgeInsets)headerContentInsets
+{
+    if (UIEdgeInsetsEqualToEdgeInsets(_headerContentInsets, headerContentInsets)) {
+        return;
+    }
+
+    _headerContentInsets = headerContentInsets;
+    self.titleContainerLeadingConstraint.constant = headerContentInsets.left;
+    self.titleContainerTrailingConstraint.constant = -headerContentInsets.right;
+    self.iconLeadingConstraint.constant = headerContentInsets.left;
+    self.countPillTrailingConstraint.constant = -headerContentInsets.right;
+    self.helperTrailingConstraint.constant = -headerContentInsets.right;
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 
 #pragma mark - Public Methods

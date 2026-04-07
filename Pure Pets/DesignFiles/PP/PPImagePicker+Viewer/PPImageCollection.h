@@ -41,6 +41,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL allowsEditing;
 @property (nonatomic, assign) BOOL allowsReordering;
 @property (nonatomic, strong) NSString *titleText;
+@property (nonatomic, assign) UIEdgeInsets headerContentInsets;
 
 // State
 @property (nonatomic, assign) NSInteger selectedForEdit;

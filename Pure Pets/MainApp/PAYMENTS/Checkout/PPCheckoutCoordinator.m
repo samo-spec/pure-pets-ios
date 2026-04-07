@@ -16,6 +16,7 @@
 #import "PPAddressModel.h"
 #import "PPAddressesManager.h"
 #import "PPNetworkRetryHelper.h"
+@import FirebaseFunctions;
 #import <math.h>
 
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
@@ -58,6 +59,9 @@
 - (void)pp_scheduleOrderResolutionTimeoutForOrder:(PPOrder *)order generation:(NSInteger)generation;
 - (void)pp_registerForAppResumeNotification;
 - (void)pp_unregisterForAppResumeNotification;
+- (void)pp_prepareOrderForRetryAfterLaunchFailureForOrder:(PPOrder *)order
+                                               generation:(NSInteger)generation
+                                               completion:(dispatch_block_t)completion;
 
 @end
 
@@ -267,16 +271,31 @@ static BOOL PPCheckoutAddressHasMinimumData(PPAddressModel *address)
 
 static FIRFunctions *PPCheckoutFunctionsClient(void)
 {
+    FIRFunctions *functions = nil;
     NSString *customDomain = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
     if (customDomain.length > 0) {
-        return [FIRFunctions functionsForCustomDomain:customDomain];
+        functions = [FIRFunctions functionsForCustomDomain:customDomain];
+    } else {
+        NSString *region = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
+        if (region.length == 0) {
+            region = @"us-central1";
+        }
+        functions = [FIRFunctions functionsForRegion:region];
     }
 
-    NSString *region = PPCheckoutTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsRegion"]);
-    if (region.length == 0) {
-        region = @"us-central1";
+    SEL setter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
+    if (functions && [functions respondsToSelector:setter]) {
+        NSMethodSignature *signature = [functions methodSignatureForSelector:setter];
+        if (signature) {
+            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+            BOOL enabled = YES;
+            [invocation setSelector:setter];
+            [invocation setTarget:functions];
+            [invocation setArgument:&enabled atIndex:2];
+            [invocation invoke];
+        }
     }
-    return [FIRFunctions functionsForRegion:region];
+    return functions;
 }
 
 NSNotificationName const PPAppDidBecomeActiveNotification = @"PPAppDidBecomeActive";
@@ -409,6 +428,51 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
             [self completeWithPendingVerification:pendingError generation:generation];
         }];
     });
+}
+
+- (void)pp_prepareOrderForRetryAfterLaunchFailureForOrder:(PPOrder *)order
+                                               generation:(NSInteger)generation
+                                               completion:(dispatch_block_t)completion
+{
+    NSString *orderId = PPCheckoutTrimmedString(order.orderId);
+    NSString *shippingAddressId = PPCheckoutTrimmedString(order.shippingAddressId);
+    NSDictionary *shippingAddressSnapshot =
+        [order.shippingAddressSnapshot isKindOfClass:NSDictionary.class] ? order.shippingAddressSnapshot : @{};
+
+    if (orderId.length == 0 || shippingAddressId.length == 0 || shippingAddressSnapshot.count == 0 || [order isCashOnDelivery]) {
+        if (completion) {
+            completion();
+        }
+        return;
+    }
+
+    PPORDERLog(@"Preparing order for payment retry after launch failure | generation=%ld | orderId=%@",
+               (long)generation,
+               orderId);
+
+    FIRFunctions *functions = PPCheckoutFunctionsClient();
+    [[functions HTTPSCallableWithName:@"prepareOrderForRetry"]
+     callWithObject:@{
+        @"orderId": orderId,
+        @"shippingAddressId": shippingAddressId,
+        @"shippingAddressSnapshot": shippingAddressSnapshot
+    }
+     completion:^(__unused FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            PPORDERLog(@"prepareOrderForRetry failed after launch error | generation=%ld | orderId=%@ | error=%@",
+                       (long)generation,
+                       orderId,
+                       error.localizedDescription ?: @"");
+        } else {
+            PPORDERLog(@"Order prepared for retry after launch error | generation=%ld | orderId=%@",
+                       (long)generation,
+                       orderId);
+        }
+
+        if (completion) {
+            completion();
+        }
+    }];
 }
 
 - (void)startCheckoutWithCompletion:(PPCheckoutCompletion)completion
@@ -557,22 +621,12 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
             return;
         }
 
-        // Reuse in-memory order while staying on same payment screen/session.
-        if (self.currentOrder.orderId.length > 0 &&
-            self.currentOrder.status == PPOrderStatusPending &&
-            [self.currentOrder.paymentMethodId isEqualToString:self.selectedPaymentMethodId] &&
-            PPCheckoutOrderMatchesCart(self.currentOrder, items, cartSubtotal, self.selectedAddress.documentID)) {
-            PPORDERLog(@"Reusing in-memory pending order | generation=%ld | orderId=%@", (long)generation, self.currentOrder.orderId ?: @"");
-            if ([self.selectedPaymentMethodId isEqualToString:@"cash"]) {
-                [self completeWithSuccess:nil generation:generation];
-            } else {
-                [self startListeningToOrder:self.currentOrder generation:generation];
-                [self beginPaymentForOrder:self.currentOrder generation:generation];
-            }
-            return;
-        }
         if (self.currentOrder.orderId.length > 0) {
-            // Cart changed or order state drifted; avoid charging stale order details.
+            // Always re-resolve pending orders from Firestore before payment launch so
+            // we do not charge against a stale in-memory snapshot.
+            PPORDERLog(@"Discarding in-memory pending order before payment launch refresh | generation=%ld | orderId=%@",
+                       (long)generation,
+                       self.currentOrder.orderId ?: @"");
             self.currentOrder = nil;
         }
 
@@ -653,11 +707,25 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
         }
 
         if (error || !response) {
+            NSError *launchError = error;
+            if (!launchError) {
+                launchError = [NSError errorWithDomain:@"Checkout"
+                                                  code:1002
+                                              userInfo:@{NSLocalizedDescriptionKey:
+                                                             kLang(@"checkout_payment_failed_default")}];
+            }
             PPORDERLog(@"Payment SDK failed | generation=%ld | orderId=%@ | error=%@",
                        (long)generation,
                        order.orderId ?: @"",
-                       error.localizedDescription ?: @"");
-            [self failOrderWithError:error retryable:YES generation:generation];
+                       launchError.localizedDescription ?: @"");
+            [self pp_prepareOrderForRetryAfterLaunchFailureForOrder:order
+                                                         generation:generation
+                                                         completion:^{
+                if (![self pp_isCheckoutGenerationCurrent:generation] || self.hasResolvedCheckout) {
+                    return;
+                }
+                [self failOrderWithError:launchError retryable:YES generation:generation];
+            }];
             return;
         }
 
@@ -674,7 +742,14 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
             PPORDERLog(@"Payment binding missing secure identifiers | generation=%ld | orderId=%@",
                        (long)generation,
                        order.orderId ?: @"");
-            [self failOrderWithError:bindingError retryable:YES generation:generation];
+            [self pp_prepareOrderForRetryAfterLaunchFailureForOrder:order
+                                                         generation:generation
+                                                         completion:^{
+                if (![self pp_isCheckoutGenerationCurrent:generation] || self.hasResolvedCheckout) {
+                    return;
+                }
+                [self failOrderWithError:bindingError retryable:YES generation:generation];
+            }];
             return;
         }
 

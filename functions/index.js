@@ -83,6 +83,7 @@ const LEGACY_PUBLIC_ORDER_NUMBER_SUFFIX_LENGTH = 12;
 const COMMERCE_CONFIG_COLLECTION = "CommerceConfig";
 const COMMERCE_PAYMENT_SETTINGS_DOC = "payments";
 const DEFAULT_DELIVERY_FEE = 22;
+const QIB_CLIENT_RESPONSE_GRACE_MS = 30 * 60 * 1000;
 const ORDER_EVENTS_COLLECTION = "events";
 const ORDER_REQUESTS_COLLECTION = "requests";
 const REQUEST_EVENTS_SUBCOLLECTION = "events";
@@ -1244,11 +1245,20 @@ async function getOwnedOrder(orderId, uid) {
   const orderRef = db.collection("Orders").doc(orderId);
   const snapshot = await orderRef.get();
   if (!snapshot.exists) {
+    logger.warn("Owned order lookup failed because the document does not exist", {
+      orderId,
+      uid,
+    });
     throw new HttpsError("not-found", "Order not found.");
   }
   const orderData = safeObject(snapshot.data());
   const orderUserId = optionalString(orderData.userId, 128);
   if (!orderUserId || orderUserId !== uid) {
+    logger.warn("Owned order lookup denied because the order belongs to another user", {
+      orderId,
+      uid,
+      orderUserId,
+    });
     throw new HttpsError("permission-denied", "You are not allowed to modify this order.");
   }
   return { orderRef, orderData };
@@ -1280,6 +1290,27 @@ function orderHasCapturedPayment(orderData) {
     return false;
   }
   return legacyOrderHasCapturedPayment(orderData);
+}
+
+function qibAttemptAnchorMillis(orderData = {}) {
+  const source = safeObject(orderData);
+  return (
+    epochMillisFromTimestamp(source.qibSessionCreatedAt) ||
+    epochMillisFromTimestamp(source.updatedAt) ||
+    epochMillisFromTimestamp(source.createdAt)
+  );
+}
+
+function orderHasActiveQibAttempt(orderData = {}) {
+  const source = safeObject(orderData);
+  return (
+    storedOrderPaymentMethodId(source) === ORDER_PAYMENT_METHOD_QIB &&
+    (
+      optionalString(source.paymentAttemptId, 128).length > 0 ||
+      optionalString(source.qibSessionId, 128).length > 0 ||
+      epochMillisFromTimestamp(source.qibSessionCreatedAt) > 0
+    )
+  );
 }
 
 function resolveUserDisplayNameFromData(data) {
@@ -3264,19 +3295,40 @@ exports.createQibSession = onCall(
     const { orderRef, orderData } = await getOwnedOrder(orderId, uid);
     const paymentSettings = await readCommercePaymentSettings();
     if (isCashOnDeliveryOrder(orderData)) {
+      logger.warn("QIB session rejected for a cash on delivery order", {
+        orderId,
+        uid,
+      });
       throw new HttpsError("failed-precondition", "Cash on delivery orders do not require an online payment session.");
     }
     assertAllowedCheckoutPaymentMethod(ORDER_PAYMENT_METHOD_QIB, paymentSettings.data);
     const currentStatus = normalizedStatus(orderData.status);
     if (currentStatus !== "pending") {
+      logger.warn("QIB session rejected because the order is no longer pending", {
+        orderId,
+        uid,
+        currentStatus,
+      });
       throw new HttpsError("failed-precondition", "Order is no longer pending.");
     }
 
     const storedAmount = Number(orderData.totalAmount ?? orderData.amount ?? 0);
     if (!Number.isFinite(storedAmount) || storedAmount <= 0) {
+      logger.error("QIB session rejected because the stored order total is invalid", {
+        orderId,
+        uid,
+        storedAmount,
+      });
       throw new HttpsError("failed-precondition", "Order total is invalid.");
     }
     if (Math.abs(storedAmount - amount) > 0.01) {
+      logger.warn("QIB session rejected because the requested amount does not match the stored total", {
+        orderId,
+        uid,
+        requestedAmount: amount,
+        storedAmount,
+        currency,
+      });
       throw new HttpsError("invalid-argument", "Requested amount does not match the order total.");
     }
 
@@ -4137,12 +4189,30 @@ exports.reconcileQibPendingVerifications = onSchedule(
         continue;
       }
 
+      if (!orderHasActiveQibAttempt(orderData)) {
+        stillPending += 1;
+        continue;
+      }
+
       const paymentResponse = extractStoredClientPaymentResponse(orderData);
       if (Object.keys(paymentResponse).length === 0) {
+        const attemptAgeMillis = nowMillis - qibAttemptAnchorMillis(orderData);
+        if (attemptAgeMillis < QIB_CLIENT_RESPONSE_GRACE_MS) {
+          stillPending += 1;
+          continue;
+        }
+
         await orderRef.update({
           verificationStatus: ORDER_VERIFICATION_FAILED,
           verificationLastError: "Missing client payment response payload.",
           status: ORDER_STATUS_FAILED,
+          qibSessionId: fieldValue.delete(),
+          paymentAttemptId: fieldValue.delete(),
+          qibSessionCurrency: fieldValue.delete(),
+          qibSessionPhone: fieldValue.delete(),
+          qibSessionCreatedAt: fieldValue.delete(),
+          verificationNextRetryAt: fieldValue.delete(),
+          verificationRetryCount: fieldValue.delete(),
           statusUpdatedAt: fieldValue.serverTimestamp(),
           updatedAt: fieldValue.serverTimestamp(),
         });
