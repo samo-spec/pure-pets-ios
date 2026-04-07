@@ -38,6 +38,12 @@ typedef NS_ENUM(NSInteger, PPAddressFieldKind) {
 static const CGFloat kPPAddressCellHorizontalInset = 16.0;
 static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
+static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void) {
+    return Language.isRTL
+        ? UISemanticContentAttributeForceRightToLeft
+        : UISemanticContentAttributeForceLeftToRight;
+}
+
 @interface PPAddressBaseCell : UITableViewCell
 @end
 
@@ -83,6 +89,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -100,6 +108,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     textField.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
     textField.clearButtonMode = UITextFieldViewModeWhileEditing;
     textField.autocorrectionType = UITextAutocorrectionTypeNo;
+    textField.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
     [self.contentView addSubview:textField];
     self.textField = textField;
 
@@ -136,6 +145,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
                     action:(SEL)action
                   delegate:(id<UITextFieldDelegate>)delegate
 {
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
@@ -152,7 +163,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
         : Language.alignmentForCurrentLanguage;
     self.textField.semanticContentAttribute = fieldKind == PPAddressFieldKindPhoneNumber
         ? UISemanticContentAttributeForceLeftToRight
-        : Language.semanticAttributeForCurrentLanguage;
+        : PPAddressCurrentSemanticAttribute();
 
     [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
     if (target && action) {
@@ -184,6 +195,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -246,6 +259,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
                placeholder:(NSString *)placeholder
                     detail:(NSString *)detail
 {
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
     NSString *trimmedValue = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     BOOL hasValue = trimmedValue.length > 0;
 
@@ -287,6 +302,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -340,6 +357,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
                     target:(id)target
                     action:(SEL)action
 {
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.subtitleLabel.text = subtitle ?: @"";
@@ -373,6 +392,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
 
     UIImageView *iconView = [[UIImageView alloc] init];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -406,6 +427,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
                   iconName:(NSString *)iconName
                destructive:(BOOL)destructive
 {
+    self.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAddressCurrentSemanticAttribute();
     UIColor *tintColor = destructive ? UIColor.systemRedColor : (AppPrimaryClr ?: UIColor.systemOrangeColor);
     self.iconView.tintColor = tintColor;
     self.iconView.image = [UIImage systemImageNamed:iconName ?: @"trash"];
@@ -969,6 +992,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     eyebrowLabel.textColor = [brandClr colorWithAlphaComponent:0.92];
     eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    
     [eyebrowPill addSubview:eyebrowLabel];
 
     UILabel *titleLabel = [[UILabel alloc] init];
@@ -987,7 +1011,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [cardView addSubview:subtitleLabel];
 
-    UILabel *metaLabel = [[UILabel alloc] init];
+    PPInsetLabel *metaLabel = [[PPInsetLabel alloc] init];
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     metaLabel.textColor = brandClr;
@@ -998,6 +1022,8 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
     metaLabel.layer.masksToBounds = YES;
     metaLabel.layer.borderWidth = 1.0;
     metaLabel.layer.borderColor = [brandClr colorWithAlphaComponent:0.14].CGColor;
+    metaLabel.textInsets = UIEdgeInsetsMake(3, 8, 3, 8);
+
     [cardView addSubview:metaLabel];
 
     [NSLayoutConstraint activateConstraints:@[

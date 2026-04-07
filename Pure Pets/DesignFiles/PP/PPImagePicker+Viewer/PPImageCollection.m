@@ -48,6 +48,16 @@
 
 static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
+static inline UISemanticContentAttribute PPImageCollectionSemanticAttributeForArabic(BOOL useArabic) {
+    return useArabic
+        ? UISemanticContentAttributeForceRightToLeft
+        : UISemanticContentAttributeForceLeftToRight;
+}
+
+static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useArabic) {
+    return useArabic ? NSTextAlignmentRight : NSTextAlignmentLeft;
+}
+
 #pragma mark - Initialization
 
 - (instancetype)initWithFrame:(CGRect)frame maxImageCount:(NSInteger)maxCount useArabic:(BOOL)useArabic {
@@ -130,6 +140,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
 - (void)setupUI {
     self.backgroundColor = [UIColor clearColor];
+    self.semanticContentAttribute = PPImageCollectionSemanticAttributeForArabic(self.useArabic);
 
     // Setup title container
     [self setupTitleContainer];
@@ -139,6 +150,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
     // Layout constraints
     [self setupConstraints];
+    [self pp_applyLayoutDirection];
 }
 
 - (void)setupTitleContainer {
@@ -153,6 +165,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _titleContainer.layer.cornerRadius = 18.0;
     _titleContainer.layer.cornerCurve = kCACornerCurveContinuous;
     _titleContainer.clipsToBounds = YES;
+    _titleContainer.semanticContentAttribute = PPImageCollectionSemanticAttributeForArabic(self.useArabic);
     [self addSubview:_titleContainer];
 
     // Icon
@@ -177,7 +190,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.numberOfLines = 1;
     _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    _titleLabel.textAlignment = NSTextAlignmentNatural;
+    _titleLabel.textAlignment = PPImageCollectionTextAlignmentForArabic(self.useArabic);
 
     _countPillLabel = [[UILabel alloc] init];
     _countPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -196,7 +209,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _helperLabel.adjustsFontForContentSizeCategory = YES;
     _helperLabel.numberOfLines = 1;
     _helperLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    _helperLabel.textAlignment = NSTextAlignmentNatural;
+    _helperLabel.textAlignment = PPImageCollectionTextAlignmentForArabic(self.useArabic);
     _helperLabel.text = kLang(@"drag_to_reorder");
     if (![_helperLabel.text isKindOfClass:NSString.class] || _helperLabel.text.length == 0 || [_helperLabel.text isEqualToString:@"drag_to_reorder"]) {
         _helperLabel.text = @"Tap to edit. Hold to reorder.";
@@ -213,7 +226,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.minimumInteritemSpacing = 10;
     layout.minimumLineSpacing = 10;
-    layout.sectionInset = UIEdgeInsetsMake(10, 10, 10, 10);
+    layout.sectionInset = UIEdgeInsetsMake(10.0, 12.0, 10.0, 12.0);
     layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
 
     _collectionShellView = [[UIView alloc] init];
@@ -221,6 +234,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _collectionShellView.backgroundColor = UIColor.clearColor;
     _collectionShellView.layer.cornerRadius = 24.0;
     _collectionShellView.layer.masksToBounds = NO;
+    _collectionShellView.semanticContentAttribute = PPImageCollectionSemanticAttributeForArabic(self.useArabic);
     _collectionShellView.layer.borderWidth = 1.0;
     _collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.05].CGColor;
     _collectionShellView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
@@ -252,6 +266,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     _collectionView.alwaysBounceHorizontal = YES;
     _collectionView.showsHorizontalScrollIndicator = NO;
+    _collectionView.semanticContentAttribute = PPImageCollectionSemanticAttributeForArabic(self.useArabic);
     
     [_collectionView registerClass:[AddButtonCell class] forCellWithReuseIdentifier:@"AddButtonCell"];
     [_collectionView registerClass:[PP_ImageCell class] forCellWithReuseIdentifier:@"PP_ImageCell"];
@@ -347,6 +362,20 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     self.countPillLabel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.72].CGColor;
 }
 
+- (void)pp_applyLayoutDirection
+{
+    UISemanticContentAttribute semantic = PPImageCollectionSemanticAttributeForArabic(self.useArabic);
+    NSTextAlignment textAlignment = PPImageCollectionTextAlignmentForArabic(self.useArabic);
+
+    self.semanticContentAttribute = semantic;
+    self.titleContainer.semanticContentAttribute = semantic;
+    self.collectionShellView.semanticContentAttribute = semantic;
+    self.collectionView.semanticContentAttribute = semantic;
+    self.titleLabel.textAlignment = textAlignment;
+    self.helperLabel.textAlignment = textAlignment;
+    self.countPillLabel.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+}
+
 - (void)setupConstraints {
     self.titleContainerLeadingConstraint =
         [_titleContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor];
@@ -429,6 +458,17 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     self.countPillTrailingConstraint.constant = -headerContentInsets.right;
     self.helperTrailingConstraint.constant = -headerContentInsets.right;
     [self setNeedsLayout];
+}
+
+- (void)setUseArabic:(BOOL)useArabic
+{
+    if (_useArabic == useArabic) {
+        return;
+    }
+
+    _useArabic = useArabic;
+    [self pp_applyLayoutDirection];
+    [self reloadCollectionView];
 }
 
 #pragma mark - Public Methods
@@ -1139,16 +1179,26 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat collectionHeight = CGRectGetHeight(collectionView.bounds);
     CGFloat collectionWidth = CGRectGetWidth(collectionView.bounds);
-    CGFloat availableHeight = MAX(0.0, collectionHeight - 8.0);
+    UIEdgeInsets sectionInset = UIEdgeInsetsZero;
+    CGFloat minimumLineSpacing = 10.0;
+    if ([collectionViewLayout isKindOfClass:UICollectionViewFlowLayout.class]) {
+        UICollectionViewFlowLayout *flowLayout = (UICollectionViewFlowLayout *)collectionViewLayout;
+        sectionInset = flowLayout.sectionInset;
+        minimumLineSpacing = flowLayout.minimumLineSpacing;
+    }
+
+    CGFloat horizontalInsets = sectionInset.left + sectionInset.right;
+    CGFloat verticalInsets = sectionInset.top + sectionInset.bottom;
+    CGFloat availableHeight = MAX(0.0, collectionHeight - verticalInsets);
     NSInteger imageCount = [self imageCount];
     BOOL shouldShowAddButton = (imageCount < self.maxImageCount);
     BOOL isEmptyStateAddButton = (imageCount == 0 && shouldShowAddButton && indexPath.item == 0);
     if (isEmptyStateAddButton) {
-        CGFloat emptyWidth = MAX(156.0, collectionWidth - 8.0);
+        CGFloat emptyWidth = MAX(156.0, collectionWidth - horizontalInsets);
         return CGSizeMake(emptyWidth, availableHeight);
     }
     CGFloat itemWidth = MAX(92.0, availableHeight);
-    CGFloat maxAllowed = MAX(92.0, collectionWidth - 18.0);
+    CGFloat maxAllowed = MAX(92.0, collectionWidth - horizontalInsets - minimumLineSpacing);
     itemWidth = MIN(itemWidth, maxAllowed);
     return CGSizeMake(itemWidth, itemWidth);
 }

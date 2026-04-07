@@ -50,6 +50,16 @@ typedef NS_ENUM(NSInteger, PPProfileContactRow) {
 static const CGFloat kPPProfileCellHorizontalInset = 20.0;
 static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
+static inline UISemanticContentAttribute PPProfileCurrentSemanticAttribute(void) {
+    return Language.isRTL
+        ? UISemanticContentAttributeForceRightToLeft
+        : UISemanticContentAttributeForceLeftToRight;
+}
+
+static inline NSString *PPProfileForwardChevronSymbolName(void) {
+    return Language.isRTL ? @"chevron.left" : @"chevron.right";
+}
+
 @interface PPProfileBaseCell : UITableViewCell
 @end
 
@@ -97,6 +107,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.preservesSuperviewLayoutMargins = NO;
     self.contentView.preservesSuperviewLayoutMargins = NO;
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -116,6 +128,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     textField.adjustsFontSizeToFitWidth = NO;
     textField.autocorrectionType = UITextAutocorrectionTypeNo;
     textField.textAlignment = Language.alignmentForCurrentLanguage;
+    textField.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     [self.contentView addSubview:textField];
     self.textField = textField;
 
@@ -152,6 +165,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
                     action:(SEL)action
                   delegate:(id<UITextFieldDelegate>)delegate
 {
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.textField.text = text ?: @"";
@@ -163,6 +178,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     self.textField.returnKeyType = returnKeyType;
     self.textField.autocapitalizationType = autocapitalizationType;
     self.textField.textAlignment = Language.alignmentForCurrentLanguage;
+    self.textField.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
     if (target && action) {
         [self.textField addTarget:target action:action forControlEvents:UIControlEventEditingChanged];
@@ -196,6 +212,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -227,6 +245,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     textField.keyboardType = UIKeyboardTypePhonePad;
     textField.textContentType = UITextContentTypeTelephoneNumber;
     textField.textAlignment = NSTextAlignmentLeft;
+    textField.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     textField.autocorrectionType = UITextAutocorrectionTypeNo;
     textField.autocapitalizationType = UITextAutocapitalizationTypeNone;
     self.textField = textField;
@@ -272,6 +291,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
                     action:(SEL)action
                   delegate:(id<UITextFieldDelegate>)delegate
 {
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.prefixLabel.text = prefix.length > 0 ? prefix : @"";
@@ -279,6 +300,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     self.textField.placeholder = placeholder ?: @"";
     self.textField.tag = fieldKind;
     self.textField.delegate = delegate;
+    self.textField.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
     if (target && action) {
         [self.textField addTarget:target action:action forControlEvents:UIControlEventEditingChanged];
@@ -312,6 +334,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -331,6 +355,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     textView.textContainer.lineFragmentPadding = 0.0;
     textView.autocorrectionType = UITextAutocorrectionTypeNo;
     textView.textAlignment = Language.alignmentForCurrentLanguage;
+    textView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     [self.contentView addSubview:textView];
     self.textView = textView;
 
@@ -371,11 +396,14 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
                  fieldKind:(PPProfileFieldKind)fieldKind
                   delegate:(id<UITextViewDelegate>)delegate
 {
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.textView.tag = fieldKind;
     self.textView.delegate = delegate;
     self.textView.textAlignment = Language.alignmentForCurrentLanguage;
+    self.textView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.textView.text = text ?: @"";
     self.placeholderLabel.text = placeholder ?: @"";
     self.placeholderLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -422,6 +450,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -480,6 +510,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
                      value:(NSString *)value
                       flag:(NSString *)flag
 {
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.valueLabel.text = value ?: @"";
@@ -508,6 +540,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -537,7 +571,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     [self.contentView addSubview:detailLabel];
     self.detailLabel = detailLabel;
 
-    UIImageView *chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"chevron.right"]];
+    UIImageView *chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:PPProfileForwardChevronSymbolName()]];
     chevronView.translatesAutoresizingMaskIntoConstraints = NO;
     chevronView.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.75];
     chevronView.contentMode = UIViewContentModeScaleAspectFit;
@@ -570,6 +604,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
 - (void)configureWithAddress:(PPAddressModel *)address
 {
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     NSString *title = address.fullName.length > 0 ? address.fullName : (address.locatioName.length > 0 ? address.locatioName : kLang(@"Shipping Addresses"));
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -577,6 +613,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     self.detailLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.badgeLabel.hidden = !address.isDefault;
     self.titleLabel.textColor = address.isDefault ? (AppPrimaryClr ?: UIColor.labelColor) : (AppPrimaryTextClr ?: UIColor.labelColor);
+    self.chevronView.image = [UIImage systemImageNamed:PPProfileForwardChevronSymbolName()];
 }
 
 @end
@@ -598,6 +635,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     UIImageView *iconView = [[UIImageView alloc] init];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -743,6 +782,8 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    self.view.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    self.tableView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     if (!UserManager.sharedManager.isUserLoggedIn) {
         [UserManager showPromptOnTopController];
@@ -1180,11 +1221,12 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     eyebrowPill.layer.masksToBounds = YES;
     [cardView addSubview:eyebrowPill];
 
-    UILabel *eyebrowLabel = [[UILabel alloc] init];
+    PPInsetLabel *eyebrowLabel = [[PPInsetLabel alloc] init];
     eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     eyebrowLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
     eyebrowLabel.textAlignment = NSTextAlignmentCenter;
+    eyebrowLabel.textInsets = UIEdgeInsetsMake(6, 12, 6, 12);
     [eyebrowPill addSubview:eyebrowLabel];
 
     UIView *avatarHalo = [[UIView alloc] init];
@@ -1222,15 +1264,16 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     nameLabel.numberOfLines = 2;
     [cardView addSubview:nameLabel];
 
-    UILabel *handleLabel = [[UILabel alloc] init];
+    PPInsetLabel *handleLabel = [[PPInsetLabel alloc] init];
     handleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     handleLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
     handleLabel.textColor = [UIColor secondaryLabelColor];
     handleLabel.textAlignment = NSTextAlignmentCenter;
     handleLabel.numberOfLines = 1;
+    handleLabel.textInsets = UIEdgeInsetsMake(6, 12, 6, 12);
     [cardView addSubview:handleLabel];
 
-    UILabel *metaLabel = [[UILabel alloc] init];
+    PPInsetLabel *metaLabel = [[PPInsetLabel alloc] init];
     metaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     metaLabel.font = [GM MidFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     metaLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
@@ -1241,6 +1284,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     metaLabel.layer.borderWidth = 1.0;
     metaLabel.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
     metaLabel.layer.masksToBounds = YES;
+    metaLabel.textInsets = UIEdgeInsetsMake(6, 12, 6, 12);
     [cardView addSubview:metaLabel];
 
     UIButton *addPhotoButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -2035,6 +2079,7 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 - (void)didTapAddPhoto
 {
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil message:nil preferredStyle:UIAlertControllerStyleActionSheet];
+    sheet.view.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
     if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
         [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"Camera")
@@ -2057,6 +2102,63 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     sheet.popoverPresentationController.sourceView = self.addPhotoBtn;
     sheet.popoverPresentationController.sourceRect = self.addPhotoBtn.bounds;
     [self presentViewController:sheet animated:YES completion:nil];
+}
+
+- (BOOL)pp_isRenderableAvatarImage:(UIImage *)image
+{
+    return [image isKindOfClass:UIImage.class] &&
+           image.size.width > 0.0 &&
+           image.size.height > 0.0;
+}
+
+- (void)pp_processPickedAvatarImage:(UIImage *)image error:(NSError *)error
+{
+    if (error) {
+        NSLog(@"Profile avatar picker failed: %@", error.localizedDescription ?: @"Unknown error");
+        return;
+    }
+
+    if (![self pp_isRenderableAvatarImage:image]) {
+        NSLog(@"Profile avatar picker returned a non-renderable image.");
+        return;
+    }
+
+    PPDispatchMain(^{
+        [self handlePickedImage:image];
+    });
+}
+
+- (void)pp_loadAvatarImageFromItemProvider:(NSItemProvider *)itemProvider
+{
+    if (!itemProvider) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    if ([itemProvider canLoadObjectOfClass:UIImage.class]) {
+        [itemProvider loadObjectOfClass:UIImage.class completionHandler:^(id<NSItemProviderReading>  _Nullable object, NSError * _Nullable error) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            UIImage *image = [object isKindOfClass:UIImage.class] ? (UIImage *)object : nil;
+            [self pp_processPickedAvatarImage:image error:error];
+        }];
+        return;
+    }
+
+    if ([itemProvider hasItemConformingToTypeIdentifier:@"public.image"]) {
+        [itemProvider loadDataRepresentationForTypeIdentifier:@"public.image"
+                                            completionHandler:^(NSData * _Nullable data, NSError * _Nullable error) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+
+            UIImage *image = data.length > 0 ? [UIImage imageWithData:data] : nil;
+            [self pp_processPickedAvatarImage:image error:error];
+        }];
+    }
 }
 
 - (void)openPhotoPicker
@@ -2113,20 +2215,15 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     }
 
     PHPickerResult *result = results.firstObject;
-    if ([result.itemProvider canLoadObjectOfClass:[UIImage class]]) {
-        [result.itemProvider loadObjectOfClass:[UIImage class] completionHandler:^(UIImage *image, NSError *error) {
-            if (image && !error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [self handlePickedImage:image];
-                });
-            }
-        }];
-    }
+    [self pp_loadAvatarImageFromItemProvider:result.itemProvider];
 }
 
 - (void)imagePickerController:(UIImagePickerController *)picker didFinishPickingMediaWithInfo:(NSDictionary<NSString *,id> *)info
 {
-    UIImage *image = info[UIImagePickerControllerOriginalImage];
+    UIImage *image = info[UIImagePickerControllerEditedImage];
+    if (![self pp_isRenderableAvatarImage:image]) {
+        image = info[UIImagePickerControllerOriginalImage];
+    }
     [picker dismissViewControllerAnimated:YES completion:^{
         [self handlePickedImage:image];
     }];
@@ -2134,6 +2231,9 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
 
 - (void)handlePickedImage:(UIImage *)image
 {
+    if (![self pp_isRenderableAvatarImage:image]) {
+        return;
+    }
     [UIImage pp_presentCircularCropperWithImage:image fromController:self];
 }
 

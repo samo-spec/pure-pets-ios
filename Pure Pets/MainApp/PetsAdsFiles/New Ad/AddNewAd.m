@@ -8,6 +8,9 @@
 #import <ImageIO/ImageIO.h>
 #import <math.h>
 #import <float.h>
+@import FirebaseAuth;
+@import FirebaseFirestore;
+@import FirebaseStorage;
 
 static NSString * const PPAddNewAdUploadErrorDomain = @"PPAddNewAdUploadErrorDomain";
 static NSString * const PPAddNewAdLanguageDidChangeNotification = @"LanguageDidChangeNotification";
@@ -42,19 +45,32 @@ static inline UIColor *PPAdFormPrimaryTextColor(void) {
 }
 
 static inline UIColor *PPAdFormSurfaceColor(void) {
-    return [[UIColor whiteColor] colorWithAlphaComponent:0.88];
+    return [AppBackgroundClrLigter colorWithAlphaComponent:0.88];
 }
 
 static inline UIColor *PPAdFormMutedSurfaceColor(void) {
-    return [[UIColor whiteColor] colorWithAlphaComponent:0.72];
+    return [AppForgroundColr colorWithAlphaComponent:0.92];
 }
 
 static inline UIColor *PPAdFormBorderColor(void) {
     return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
 }
 
+static inline UISemanticContentAttribute PPAdCurrentSemanticAttribute(void) {
+    return Language.isRTL
+        ? UISemanticContentAttributeForceRightToLeft
+        : UISemanticContentAttributeForceLeftToRight;
+}
+
+static inline NSTextAlignment PPAdCurrentTextAlignment(void) {
+    return Language.alignmentForCurrentLanguage;
+}
+
+static inline NSString *PPAdForwardSymbolName(void) {
+    return Language.isRTL ? @"arrow.left" : @"arrow.right";
+}
+
 @interface PPAdBaseCell : UITableViewCell
-@property (nonatomic, strong) UIView *surfaceView;
 - (void)applyDisabledState:(BOOL)disabled;
 @end
 
@@ -69,23 +85,8 @@ static inline UIColor *PPAdFormBorderColor(void) {
         self.clipsToBounds = NO;
         self.contentView.clipsToBounds = NO;
         self.selectionStyle = UITableViewCellSelectionStyleNone;
-
-        _surfaceView = [[UIView alloc] init];
-        _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-        _surfaceView.backgroundColor = PPAdFormSurfaceColor();
-        _surfaceView.layer.cornerRadius = 22.0;
-        _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-        _surfaceView.layer.borderWidth = 1.0;
-        _surfaceView.layer.borderColor = PPAdFormBorderColor().CGColor;
-        _surfaceView.layer.masksToBounds = YES;
-        [self.contentView addSubview:_surfaceView];
-
-        [NSLayoutConstraint activateConstraints:@[
-            [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-            [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-            [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-            [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor]
-        ]];
+        self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+        self.contentView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     }
     return self;
 }
@@ -101,21 +102,9 @@ static inline UIColor *PPAdFormBorderColor(void) {
     [super setFrame:frame];
 }
 
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    self.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    self.layer.shadowOpacity = 0.045;
-    self.layer.shadowRadius = 14.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.contentView.bounds
-                                   cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
-}
-
 - (void)applyDisabledState:(BOOL)disabled
 {
-    self.surfaceView.alpha = disabled ? 0.58 : 1.0;
+    self.contentView.alpha = disabled ? 0.58 : 1.0;
 }
 
 @end
@@ -156,7 +145,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 @interface PPAdTextFieldCell : PPAdBaseCell <UITextFieldDelegate>
 @property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, strong) UIView *inputBackgroundView;
 @property (nonatomic, strong) UITextField *textField;
 @property (nonatomic, copy) void(^onValueChanged)(NSString *text);
 @end
@@ -167,53 +155,46 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (self) {
         _titleLabel = [[UILabel alloc] init];
         _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _titleLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-        _titleLabel.textColor = [PPAdFormAccentColor() colorWithAlphaComponent:0.80];
-        _titleLabel.textAlignment = NSTextAlignmentNatural;
-        [self.surfaceView addSubview:_titleLabel];
-
-        _inputBackgroundView = [[UIView alloc] init];
-        _inputBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
-        _inputBackgroundView.backgroundColor = PPAdFormMutedSurfaceColor();
-        _inputBackgroundView.layer.cornerRadius = 16.0;
-        _inputBackgroundView.layer.cornerCurve = kCACornerCurveContinuous;
-        _inputBackgroundView.layer.borderWidth = 1.0;
-        _inputBackgroundView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.60].CGColor;
-        [self.surfaceView addSubview:_inputBackgroundView];
+        _titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+        _titleLabel.textColor = PPAdFormPrimaryTextColor();
+        _titleLabel.textAlignment = PPAdCurrentTextAlignment();
+        [self.contentView addSubview:_titleLabel];
 
         _textField = [[UITextField alloc] init];
         _textField.translatesAutoresizingMaskIntoConstraints = NO;
         _textField.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
         _textField.textColor = PPAdFormPrimaryTextColor();
-        _textField.textAlignment = NSTextAlignmentNatural;
+        _textField.textAlignment = PPAdCurrentTextAlignment();
+        _textField.semanticContentAttribute = PPAdCurrentSemanticAttribute();
         _textField.backgroundColor = UIColor.clearColor;
         _textField.delegate = self;
         _textField.returnKeyType = UIReturnKeyDone;
         _textField.clearButtonMode = UITextFieldViewModeWhileEditing;
         [_textField addTarget:self action:@selector(textFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
-        [_inputBackgroundView addSubview:_textField];
+        [self.contentView addSubview:_textField];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_titleLabel.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
-            [_titleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-            [_titleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
+            [_titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
+            [_titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+            [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
 
-            [_inputBackgroundView.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
-            [_inputBackgroundView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-            [_inputBackgroundView.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-            [_inputBackgroundView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-16.0],
-            [_inputBackgroundView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
-
-            [_textField.leadingAnchor constraintEqualToAnchor:_inputBackgroundView.leadingAnchor constant:14.0],
-            [_textField.trailingAnchor constraintEqualToAnchor:_inputBackgroundView.trailingAnchor constant:-14.0],
-            [_textField.centerYAnchor constraintEqualToAnchor:_inputBackgroundView.centerYAnchor]
+            [_textField.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
+            [_textField.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+            [_textField.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
+            [_textField.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
+            [_textField.heightAnchor constraintGreaterThanOrEqualToConstant:24.0]
         ]];
     }
     return self;
 }
 
 - (void)configureWithField:(PPAdFormField *)field {
+    self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.titleLabel.text = field.title;
+    self.titleLabel.textAlignment = PPAdCurrentTextAlignment();
+    self.textField.textAlignment = PPAdCurrentTextAlignment();
+    self.textField.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     UIColor *placeholderColor = [UIColor.placeholderTextColor colorWithAlphaComponent:0.75];
     self.textField.attributedPlaceholder = field.placeholder.length
         ? [[NSAttributedString alloc] initWithString:field.placeholder
@@ -244,7 +225,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 @interface PPAdSelectorCell : PPAdBaseCell
 @property (nonatomic, strong) UILabel *fieldTitleLabel;
-@property (nonatomic, strong) UIView *valueContainerView;
 @property (nonatomic, strong) UILabel *valueLabel;
 @property (nonatomic, strong) UIImageView *chevronView;
 @end
@@ -255,70 +235,64 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (self) {
         _fieldTitleLabel = [[UILabel alloc] init];
         _fieldTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _fieldTitleLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-        _fieldTitleLabel.textColor = [PPAdFormAccentColor() colorWithAlphaComponent:0.80];
-        _fieldTitleLabel.textAlignment = NSTextAlignmentNatural;
-        [self.surfaceView addSubview:_fieldTitleLabel];
-
-        _valueContainerView = [[UIView alloc] init];
-        _valueContainerView.translatesAutoresizingMaskIntoConstraints = NO;
-        _valueContainerView.backgroundColor = PPAdFormMutedSurfaceColor();
-        _valueContainerView.layer.cornerRadius = 16.0;
-        _valueContainerView.layer.cornerCurve = kCACornerCurveContinuous;
-        _valueContainerView.layer.borderWidth = 1.0;
-        _valueContainerView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.60].CGColor;
-        [self.surfaceView addSubview:_valueContainerView];
+        _fieldTitleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+        _fieldTitleLabel.textColor = PPAdFormPrimaryTextColor();
+        _fieldTitleLabel.textAlignment = PPAdCurrentTextAlignment();
+        [self.contentView addSubview:_fieldTitleLabel];
 
         _valueLabel = [[UILabel alloc] init];
         _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _valueLabel.font = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
-        _valueLabel.textAlignment = NSTextAlignmentNatural;
-        [_valueContainerView addSubview:_valueLabel];
+        _valueLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+        _valueLabel.textColor = PPAdFormPrimaryTextColor();
+        _valueLabel.textAlignment = PPAdCurrentTextAlignment();
+        [self.contentView addSubview:_valueLabel];
 
-        _chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:(PPChevronName ?: @"chevron.forward")]];
+        _chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:PPAdForwardSymbolName()]];
         _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
         _chevronView.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.62];
         _chevronView.contentMode = UIViewContentModeScaleAspectFit;
-        [_valueContainerView addSubview:_chevronView];
+        [self.contentView addSubview:_chevronView];
 
         [_fieldTitleLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
         [_valueLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
         [_valueLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_fieldTitleLabel.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
-            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-            [_fieldTitleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
+            [_fieldTitleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
+            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+            [_fieldTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
 
-            [_valueContainerView.topAnchor constraintEqualToAnchor:_fieldTitleLabel.bottomAnchor constant:8.0],
-            [_valueContainerView.leadingAnchor constraintEqualToAnchor:_fieldTitleLabel.leadingAnchor],
-            [_valueContainerView.trailingAnchor constraintEqualToAnchor:_fieldTitleLabel.trailingAnchor],
-            [_valueContainerView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-16.0],
-            [_valueContainerView.heightAnchor constraintGreaterThanOrEqualToConstant:50.0],
-
-            [_chevronView.trailingAnchor constraintEqualToAnchor:_valueContainerView.trailingAnchor constant:-14.0],
-            [_chevronView.centerYAnchor constraintEqualToAnchor:_valueContainerView.centerYAnchor],
+            [_chevronView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:10.0],
+            [_chevronView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
             [_chevronView.widthAnchor constraintEqualToConstant:14.0],
             [_chevronView.heightAnchor constraintEqualToConstant:14.0],
 
-            [_valueLabel.leadingAnchor constraintEqualToAnchor:_valueContainerView.leadingAnchor constant:14.0],
-            [_valueLabel.trailingAnchor constraintEqualToAnchor:_chevronView.leadingAnchor constant:-8.0],
-            [_valueLabel.centerYAnchor constraintEqualToAnchor:_valueContainerView.centerYAnchor]
+            [_valueLabel.leadingAnchor constraintEqualToAnchor:_fieldTitleLabel.leadingAnchor],
+            [_valueLabel.topAnchor constraintEqualToAnchor:_fieldTitleLabel.bottomAnchor constant:8.0],
+            [_valueLabel.trailingAnchor constraintEqualToAnchor:_chevronView.leadingAnchor constant:-12.0],
+            [_valueLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0]
         ]];
     }
     return self;
 }
 
 - (void)configureWithField:(PPAdFormField *)field {
+    self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.fieldTitleLabel.text = field.title;
+    self.fieldTitleLabel.textAlignment = PPAdCurrentTextAlignment();
+    self.valueLabel.textAlignment = PPAdCurrentTextAlignment();
+    self.chevronView.image = [UIImage systemImageNamed:PPAdForwardSymbolName()];
     NSString *displayValue = nil;
     if (field.value) {
         if ([field.value isKindOfClass:NSString.class]) {
             displayValue = (NSString *)field.value;
+        } else if ([field.value respondsToSelector:@selector(formDisplayText)]) {
+            displayValue = [field.value performSelector:@selector(formDisplayText)];
         } else if ([field.value respondsToSelector:@selector(KindName)]) {
-            displayValue = [field.value KindName];
+            displayValue = [field.value performSelector:@selector(KindName)];
         } else if ([field.value respondsToSelector:@selector(SubKindName)]) {
-            displayValue = [field.value SubKindName];
+            displayValue = [field.value performSelector:@selector(SubKindName)];
         } else {
             displayValue = [NSString stringWithFormat:@"%@", field.value];
         }
@@ -351,29 +325,32 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         _fieldTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         _fieldTitleLabel.font = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
         _fieldTitleLabel.textColor = PPAdFormPrimaryTextColor();
-        _fieldTitleLabel.textAlignment = NSTextAlignmentNatural;
-        [self.surfaceView addSubview:_fieldTitleLabel];
+        _fieldTitleLabel.textAlignment = PPAdCurrentTextAlignment();
+        [self.contentView addSubview:_fieldTitleLabel];
 
         _toggleSwitch = [[UISwitch alloc] init];
         _toggleSwitch.onTintColor = PPAdFormAccentColor();
         _toggleSwitch.translatesAutoresizingMaskIntoConstraints = NO;
         [_toggleSwitch addTarget:self action:@selector(switchChanged:) forControlEvents:UIControlEventValueChanged];
-        [self.surfaceView addSubview:_toggleSwitch];
+        [self.contentView addSubview:_toggleSwitch];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-            [_fieldTitleLabel.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-            [_toggleSwitch.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
-            [_toggleSwitch.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+            [_fieldTitleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [_toggleSwitch.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+            [_toggleSwitch.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [_fieldTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_toggleSwitch.leadingAnchor constant:-12.0],
-            [self.surfaceView.heightAnchor constraintGreaterThanOrEqualToConstant:72.0]
+            [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:72.0]
         ]];
     }
     return self;
 }
 
 - (void)configureWithField:(PPAdFormField *)field {
+    self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.fieldTitleLabel.text = field.title;
+    self.fieldTitleLabel.textAlignment = PPAdCurrentTextAlignment();
     self.toggleSwitch.on = [field.value boolValue];
     self.toggleSwitch.enabled = !field.disabled;
     [self applyDisabledState:field.disabled];
@@ -388,7 +365,6 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 @interface PPAdTextViewCell : PPAdBaseCell <UITextViewDelegate>
 @property (nonatomic, strong) UILabel *fieldTitleLabel;
-@property (nonatomic, strong) UIView *inputBackgroundView;
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, strong) UILabel *placeholderLabel;
 @property (nonatomic, copy) void(^onTextChanged)(NSString *text);
@@ -400,57 +376,44 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     if (self) {
         _fieldTitleLabel = [[UILabel alloc] init];
         _fieldTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _fieldTitleLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-        _fieldTitleLabel.textColor = [PPAdFormAccentColor() colorWithAlphaComponent:0.80];
-        _fieldTitleLabel.textAlignment = NSTextAlignmentNatural;
-        [self.surfaceView addSubview:_fieldTitleLabel];
-
-        _inputBackgroundView = [[UIView alloc] init];
-        _inputBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
-        _inputBackgroundView.backgroundColor = PPAdFormMutedSurfaceColor();
-        _inputBackgroundView.layer.cornerRadius = 18.0;
-        _inputBackgroundView.layer.cornerCurve = kCACornerCurveContinuous;
-        _inputBackgroundView.layer.borderWidth = 1.0;
-        _inputBackgroundView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.60].CGColor;
-        [self.surfaceView addSubview:_inputBackgroundView];
+        _fieldTitleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+        _fieldTitleLabel.textColor = PPAdFormPrimaryTextColor();
+        _fieldTitleLabel.textAlignment = PPAdCurrentTextAlignment();
+        [self.contentView addSubview:_fieldTitleLabel];
 
         _textView = [[UITextView alloc] init];
         _textView.translatesAutoresizingMaskIntoConstraints = NO;
-        _textView.font = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+        _textView.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightRegular];
         _textView.textColor = PPAdFormPrimaryTextColor();
         _textView.backgroundColor = UIColor.clearColor;
-        _textView.textAlignment = NSTextAlignmentNatural;
+        _textView.textAlignment = PPAdCurrentTextAlignment();
+        _textView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
         _textView.textContainerInset = UIEdgeInsetsZero;
         _textView.textContainer.lineFragmentPadding = 0.0;
         _textView.delegate = self;
         _textView.scrollEnabled = NO;
-        [_inputBackgroundView addSubview:_textView];
+        [self.contentView addSubview:_textView];
 
         _placeholderLabel = [[UILabel alloc] init];
         _placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
         _placeholderLabel.font = _textView.font;
         _placeholderLabel.textColor = [UIColor.placeholderTextColor colorWithAlphaComponent:0.72];
-        _placeholderLabel.textAlignment = NSTextAlignmentNatural;
+        _placeholderLabel.textAlignment = PPAdCurrentTextAlignment();
         [_textView addSubview:_placeholderLabel];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_fieldTitleLabel.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
-            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-            [_fieldTitleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
+            [_fieldTitleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
+            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+            [_fieldTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
 
-            [_inputBackgroundView.topAnchor constraintEqualToAnchor:_fieldTitleLabel.bottomAnchor constant:8.0],
-            [_inputBackgroundView.leadingAnchor constraintEqualToAnchor:_fieldTitleLabel.leadingAnchor],
-            [_inputBackgroundView.trailingAnchor constraintEqualToAnchor:_fieldTitleLabel.trailingAnchor],
-            [_inputBackgroundView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-16.0],
-            [_inputBackgroundView.heightAnchor constraintGreaterThanOrEqualToConstant:126.0],
-
-            [_textView.topAnchor constraintEqualToAnchor:_inputBackgroundView.topAnchor constant:14.0],
-            [_textView.leadingAnchor constraintEqualToAnchor:_inputBackgroundView.leadingAnchor constant:14.0],
-            [_textView.trailingAnchor constraintEqualToAnchor:_inputBackgroundView.trailingAnchor constant:-14.0],
-            [_textView.bottomAnchor constraintEqualToAnchor:_inputBackgroundView.bottomAnchor constant:-14.0],
+            [_textView.topAnchor constraintEqualToAnchor:_fieldTitleLabel.bottomAnchor constant:8.0],
+            [_textView.leadingAnchor constraintEqualToAnchor:_fieldTitleLabel.leadingAnchor],
+            [_textView.trailingAnchor constraintEqualToAnchor:_fieldTitleLabel.trailingAnchor],
+            [_textView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
+            [_textView.heightAnchor constraintGreaterThanOrEqualToConstant:116.0],
 
             [_placeholderLabel.topAnchor constraintEqualToAnchor:_textView.topAnchor],
-            [_placeholderLabel.leadingAnchor constraintEqualToAnchor:_textView.leadingAnchor],
+            [_placeholderLabel.leadingAnchor constraintEqualToAnchor:_textView.leadingAnchor constant:2.0],
             [_placeholderLabel.trailingAnchor constraintEqualToAnchor:_textView.trailingAnchor]
         ]];
     }
@@ -458,9 +421,15 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 }
 
 - (void)configureWithField:(PPAdFormField *)field {
+    self.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.fieldTitleLabel.text = field.title ?: kLang(@"enter_description");
+    self.fieldTitleLabel.textAlignment = PPAdCurrentTextAlignment();
+    self.textView.textAlignment = PPAdCurrentTextAlignment();
+    self.textView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.textView.text = [field.value isKindOfClass:NSString.class] ? field.value : @"";
     self.placeholderLabel.text = field.placeholder;
+    self.placeholderLabel.textAlignment = PPAdCurrentTextAlignment();
     self.placeholderLabel.hidden = (self.textView.text.length > 0);
     self.textView.editable = !field.disabled;
     [self applyDisabledState:field.disabled];
@@ -503,6 +472,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, strong) UILabel *formHeroTitleLabel;
 @property (nonatomic, strong) UILabel *formHeroSubtitleLabel;
 @property (nonatomic, strong) UILabel *formHeroMetaLabel;
+@property (nonatomic, strong) UIView *imageCollectionFooterContainerView;
 @property (nonatomic, assign) BOOL isSubmittingAd;
 @property (nonatomic, assign) BOOL isPrefillInProgress;
 @property (nonatomic, copy) NSString *createFlowAdID;
@@ -513,6 +483,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 @property (nonatomic, assign) BOOL formDisabled;
 @property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderHeight;
 @property (nonatomic, assign) CGFloat lastAppliedFormHeroHeaderWidth;
+@property (nonatomic, assign) CGFloat lastAppliedImageCollectionFooterWidth;
 @end
 
 
@@ -598,9 +569,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.presented=NO;
     self.lastAppliedFormHeroHeaderHeight = 0.0;
     self.lastAppliedFormHeroHeaderWidth = 0.0;
+    self.lastAppliedImageCollectionFooterWidth = 0.0;
     self.isHydratingFormData = YES;
     self.isHydratingMedia = NO;
     self.hasUserModifiedForm = NO;
+    self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
 
     [self initBase];
     [self initForm];
@@ -652,6 +625,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
     self.photoBrowserBridge.useArabic = Language.isRTL;
     self.imageCollection.useArabic = Language.isRTL;
+    self.imageCollection.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     NSString *title = [self pp_localizedStringForKey:@"add.images.here"
                                              fallback:@"Add images here"];
     [self.imageCollection setTitle:title icon:nil];
@@ -681,10 +655,14 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 - (void)pp_handleLanguageDidChange:(NSNotification *)note
 {
     (void)note;
+    self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.tableView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.imageCollectionFooterContainerView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     [self pp_refreshMediaLocalizedText];
     self.uploadProgressTitleLabel.text = [self pp_localizedStringForKey:@"uploading_images" fallback:@"Uploading images..."];
     [self pp_refreshFormHeroContent];
     [self.tableView reloadData];
+    [self pp_updateImageCollectionFooterLayoutIfNeeded];
 }
 
 - (NSArray<UIImage *> *)safeMediaOutputArray {
@@ -755,6 +733,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     overlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.62];
     overlay.layer.cornerRadius = 16.0;
     overlay.layer.masksToBounds = YES;
+    overlay.userInteractionEnabled = NO;
     overlay.hidden = YES;
 
     ZYCircleProgressView *circleView = [[ZYCircleProgressView alloc] init];
@@ -791,8 +770,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.uploadProgressTitleLabel = titleLabel;
 
     [NSLayoutConstraint activateConstraints:@[
-        [overlay.centerXAnchor constraintEqualToAnchor:self.imageCollection.centerXAnchor],
-        [overlay.centerYAnchor constraintEqualToAnchor:self.imageCollection.centerYAnchor],
+        [overlay.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [overlay.centerYAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.centerYAnchor constant:-20.0],
         [overlay.widthAnchor constraintEqualToConstant:168.0],
         [overlay.heightAnchor constraintEqualToConstant:176.0],
 
@@ -1070,9 +1049,11 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
          (long)self.imageCollection.maxImageCount];
     NSString *stateText = self.isPrefillInProgress
         ? [self pp_localizedStringForKey:@"loading_images" fallback:@"Loading images..."]
-        : ((self.mode == AdEditorModeEdit)
-           ? [self pp_localizedStringForKey:@"ready_to_update" fallback:@"Ready to update"]
-           : [self pp_localizedStringForKey:@"draft_ready" fallback:@"Draft ready"]);
+        : (self.isSubmittingAd
+           ? [self pp_localizedStringForKey:@"uploading_images" fallback:@"Uploading images..."]
+           : ((self.mode == AdEditorModeEdit)
+              ? [self pp_localizedStringForKey:@"ready_to_update" fallback:@"Ready to update"]
+              : [self pp_localizedStringForKey:@"draft_ready" fallback:@"Draft ready"]));
 
     self.formHeroEyebrowLabel.text = eyebrow;
     self.formHeroTitleLabel.text = title;
@@ -1098,6 +1079,82 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     return 252.0;
 }
 
+- (NSString *)pp_authenticatedFirebaseUID
+{
+    return PPSafeString([FIRAuth auth].currentUser.uid);
+}
+
+- (NSString *)pp_submitOwnerID
+{
+    NSString *authUID = [self pp_authenticatedFirebaseUID];
+    if (authUID.length > 0) {
+        return authUID;
+    }
+    return PPSafeString(UserManager.sharedManager.currentUser.ID);
+}
+
+- (BOOL)pp_ensureAuthenticatedSessionForSubmit
+{
+    if ([self pp_authenticatedFirebaseUID].length > 0) {
+        return YES;
+    }
+
+    NSString *title = [self pp_localizedStringForKey:@"sign_in_required"
+                                             fallback:@"Sign in required"];
+    NSString *subtitle =
+        [self pp_localizedStringForKey:@"ad_submit_session_required"
+                              fallback:@"Please sign in again before posting your ad."];
+    [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
+    return NO;
+}
+
+- (NSString *)pp_storagePathForAdID:(NSString *)adID index:(NSInteger)index
+{
+    NSString *fileName = [self pp_storageFileNameForAdID:adID index:index];
+    return [NSString stringWithFormat:@"pet_ads/%@", fileName];
+}
+
+- (NSString *)pp_userFacingSubmitMessageForError:(NSError * _Nullable)error
+                                        fallback:(NSString *)fallback
+{
+    if (![error isKindOfClass:NSError.class]) {
+        return fallback;
+    }
+
+    if ([error.domain isEqualToString:FIRStorageErrorDomain]) {
+        if (error.code == FIRStorageErrorCodeUnauthenticated) {
+            return [self pp_localizedStringForKey:@"ad_submit_session_required"
+                                         fallback:@"Please sign in again before posting your ad."];
+        }
+
+        if (error.code == FIRStorageErrorCodeUnauthorized) {
+            return [self pp_localizedStringForKey:@"ad_upload_failed_retry"
+                                         fallback:@"We couldn't upload your ad photos right now. Please try again."];
+        }
+    }
+
+    if ([error.domain isEqualToString:FIRFirestoreErrorDomain] &&
+        error.code == FIRFirestoreErrorCodePermissionDenied) {
+        return [self pp_localizedStringForKey:@"ad_save_failed_retry"
+                                     fallback:@"We couldn't save your ad right now. Please try again."];
+    }
+
+    NSString *lowerDescription = [[error.localizedDescription ?: @"" lowercaseString] copy];
+    if ([lowerDescription containsString:@"permission"] ||
+        [lowerDescription containsString:@"unauthorized"]) {
+        return [self pp_localizedStringForKey:@"ad_upload_failed_retry"
+                                     fallback:@"We couldn't upload your ad photos right now. Please try again."];
+    }
+
+    if ([lowerDescription containsString:@"unauthenticated"] ||
+        [lowerDescription containsString:@"sign in"]) {
+        return [self pp_localizedStringForKey:@"ad_submit_session_required"
+                                     fallback:@"Please sign in again before posting your ad."];
+    }
+
+    return error.localizedDescription.length ? error.localizedDescription : fallback;
+}
+
 - (void)pp_setCircularUploadProgressVisible:(BOOL)visible
 {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -1105,6 +1162,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             self.uploadProgressTitleLabel.text = [self pp_localizedStringForKey:@"uploading_images" fallback:@"Uploading images..."];
             self.uploadProgressValueLabel.text = @"0%";
             self.uploadCircleProgressView.progress = 0.0;
+            [self.view bringSubviewToFront:self.uploadProgressOverlay];
         }
         self.uploadProgressOverlay.hidden = !visible;
     });
@@ -1274,6 +1332,24 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
                            userInfo:@{NSLocalizedDescriptionKey: message}];
 }
 
+- (void)pp_cleanupFailedCreatedAd:(PetAd *)ad
+                    originalError:(NSError *)error
+{
+    if (ad.adID.length == 0) {
+        [self pp_handleSubmitFailure:error];
+        return;
+    }
+
+    [[PetAdManager sharedManager] deletePetAd:ad completion:^(NSError *cleanupError) {
+        if (cleanupError) {
+            NSLog(@"⚠️ [CreateAd] Failed to rollback ad %@ after submit error: %@",
+                  ad.adID,
+                  cleanupError.localizedDescription ?: @"Unknown cleanup error");
+        }
+        [self pp_handleSubmitFailure:error];
+    }];
+}
+
 - (BOOL)pp_validateCreateHasAtLeastOneImage
 {
     if ([self safeMediaOutputCount] > 0) {
@@ -1383,13 +1459,15 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             continue;
         }
 
-        NSString *fileName = [self pp_storageFileNameForAdID:ad.adID index:idx];
+        NSString *storagePath = [self pp_storagePathForAdID:ad.adID index:idx];
+        FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
+        metadata.contentType = @"image/jpeg";
 
         FIRStorageReference *ref =
-        [rootRef child:[NSString stringWithFormat:@"pet_ads/%@/%@", ad.adID, fileName]];
+        [rootRef child:storagePath];
 
         FIRStorageUploadTask *uploadTask =
-            [ref putData:data metadata:nil completion:^(FIRStorageMetadata *meta, NSError *error) {
+            [ref putData:data metadata:metadata completion:^(FIRStorageMetadata *meta, NSError *error) {
 
             if (error) {
                 NSLog(@"❌ [uploadUIImages] Upload failed idx=%ld | %@",
@@ -2030,6 +2108,32 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [self forceLTRRecursively:sub];
     }
 }
+
+- (void)pp_updateImageCollectionFooterLayoutIfNeeded
+{
+    if (!self.imageCollectionFooterContainerView) {
+        return;
+    }
+
+    CGFloat footerWidth = CGRectGetWidth(self.tableView.bounds);
+    if (footerWidth <= 0.0) {
+        footerWidth = CGRectGetWidth(self.view.bounds);
+    }
+    if (footerWidth <= 0.0) {
+        return;
+    }
+
+    CGFloat footerHeight = 236.0;
+    if (fabs(self.lastAppliedImageCollectionFooterWidth - footerWidth) < 0.5 &&
+        fabs(CGRectGetHeight(self.imageCollectionFooterContainerView.frame) - footerHeight) < 0.5) {
+        return;
+    }
+
+    self.lastAppliedImageCollectionFooterWidth = footerWidth;
+    self.imageCollectionFooterContainerView.frame = CGRectMake(0.0, 0.0, footerWidth, footerHeight);
+    self.tableView.tableFooterView = self.imageCollectionFooterContainerView;
+}
+
 - (void)setupImageCollection {
     self.imageCollection =
         [[PPImageCollection alloc] initWithFrame:CGRectZero
@@ -2042,22 +2146,30 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.imageCollection.backgroundColor = UIColor.clearColor;
     [self pp_refreshMediaLocalizedText];
 
-    [self.view addSubview:self.imageCollection];
+    UIView *footerContainer = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, CGRectGetWidth(self.view.bounds), 236.0)];
+    footerContainer.backgroundColor = UIColor.clearColor;
+    footerContainer.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.imageCollectionFooterContainerView = footerContainer;
+
+    [footerContainer addSubview:self.imageCollection];
     self.imageCollection.translatesAutoresizingMaskIntoConstraints = NO;
 
     CGFloat height = 212.0;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.imageCollection.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:16.0],
-        [self.imageCollection.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16.0],
-        [self.imageCollection.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-16.0],
+        [self.imageCollection.topAnchor constraintEqualToAnchor:footerContainer.topAnchor constant:8.0],
+        [self.imageCollection.leadingAnchor constraintEqualToAnchor:footerContainer.leadingAnchor constant:16.0],
+        [self.imageCollection.trailingAnchor constraintEqualToAnchor:footerContainer.trailingAnchor constant:-16.0],
+        [self.imageCollection.bottomAnchor constraintEqualToAnchor:footerContainer.bottomAnchor constant:-16.0],
         [self.imageCollection.heightAnchor constraintEqualToConstant:height]
     ]];
 
+    self.tableView.tableFooterView = footerContainer;
     self.tableView.scrollEnabled = YES;
     self.tableView.backgroundColor = UIColor.clearColor;
-    self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, height + 40.0, 0.0);
-    self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, height + 28.0, 0.0);
+    self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    [self pp_updateImageCollectionFooterLayoutIfNeeded];
 }
 
 - (void)pp_presentAdLocationPicker
@@ -2228,7 +2340,15 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     cell.backgroundColor = UIColor.clearColor;
     cell.clipsToBounds = NO;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.contentView.backgroundColor = UIColor.clearColor;
+    cell.contentView.backgroundColor = [self pp_adSurfaceColor];
+    cell.contentView.layer.cornerRadius = 20.0;
+    cell.contentView.layer.masksToBounds = YES;
+    cell.contentView.layer.borderWidth = 1.0;
+    cell.contentView.layer.borderColor = [self pp_adSurfaceBorderColor].CGColor;
+    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    cell.layer.shadowOpacity = 0.05;
+    cell.layer.shadowRadius = 12.0;
+    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     cell.layer.masksToBounds = NO;
 }
 
@@ -2694,6 +2814,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
     [self pp_updateFormHeroHeaderLayoutIfNeeded];
+    [self pp_updateImageCollectionFooterLayoutIfNeeded];
    /*
     if (!self.uploadProgressView) {
         GSIndeterminateProgressView *pv = [[GSIndeterminateProgressView alloc] initWithFrame:CGRectMake(0,  self.navigationController.navigationBar.hx_maxy , self.view.hx_w, 4)];
@@ -2731,7 +2852,9 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
                                        cornerRadius:self.formHeroCardView.layer.cornerRadius].CGPath;
     }
     [self.view bringSubviewToFront:self.tableView];
-    [self.view bringSubviewToFront:self.imageCollection];
+    if (self.imageCollection.superview == self.view) {
+        [self.view bringSubviewToFront:self.imageCollection];
+    }
     
 }
 
@@ -2850,6 +2973,10 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     if (![self pp_validateAdLocationBeforeSubmit]) {
         return;
     }
+
+    if (![self pp_ensureAuthenticatedSessionForSubmit]) {
+        return;
+    }
     
     // 2️⃣ Prepare the ad model
     if (!isEditing) {
@@ -2860,7 +2987,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         if (!self.adModel.postedDate) {
             self.adModel.postedDate = NSDate.date;
         }
-        self.adModel.ownerID = [UserManager sharedManager].currentUser.ID;
+        self.adModel.ownerID = [self pp_submitOwnerID];
 
         // 🔥 New production defaults
         self.adModel.status = PetAdStatusActive;
@@ -2933,12 +3060,13 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 {
     NSArray<UIImage *> *imagesToUpload = [self safeMediaOutputArray];
     self.isSubmittingAd = YES;
+    [self pp_refreshFormHeroContent];
 
     [self pp_showUploadIndicatorOnNavBar];
     [self pp_setCircularUploadProgressVisible:YES];
     [self pp_updateCircularUploadProgress:0.0];
     [self pp_setSubmitEnabled:NO];
-    [self pp_setMediaLoadingVisible:YES textKey:@"uploading_images" fallback:@"Uploading images..."];
+    [self pp_setMediaLoadingVisible:NO textKey:@"uploading_images" fallback:@"Uploading images..."];
 
     dispatch_async(dispatch_get_main_queue(), ^{
         self.formDisabled = YES;
@@ -2972,33 +3100,51 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    // 🔒 IMPORTANT: Start with EMPTY imageItems
     self.adModel.imageItems = @[];
+    [self prepareSearchMetadataForAd:self.adModel];
 
-    [self uploadUIImages:images
-                   forAd:self.adModel
-               completion:^(PetAd *updatedAd, NSError *error)
+    __weak typeof(self) weakSelf = self;
+    [[PetAdManager sharedManager] addPetAd:self.adModel
+                                completion:^(NSError *error)
     {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
         if (error) {
             [self pp_handleSubmitFailure:error];
             return;
         }
 
-        // 🔒 SINGLE SOURCE OF TRUTH
-        [self prepareSearchMetadataForAd:updatedAd];
-        [[PetAdManager sharedManager] addPetAd:updatedAd
-                                    completion:^(NSError *error)
+        if (images.count == 0) {
+            [self pp_finishCreateSuccess];
+            return;
+        }
+
+        [self uploadUIImages:images
+                       forAd:self.adModel
+                   completion:^(PetAd *updatedAd, NSError *uploadError)
         {
-            if (error) {
-                [self pp_handleSubmitFailure:error];
+            if (uploadError) {
+                [self pp_cleanupFailedCreatedAd:self.adModel originalError:uploadError];
                 return;
             }
-            self.adModel = updatedAd;
-            [self pp_finishCreateSuccess];
+
+            [self prepareSearchMetadataForAd:updatedAd];
+            [[PetAdManager sharedManager] updatePetAd:updatedAd
+                                           completion:^(NSError *updateError)
+            {
+                if (updateError) {
+                    [self pp_cleanupFailedCreatedAd:updatedAd originalError:updateError];
+                    return;
+                }
+
+                self.adModel = updatedAd;
+                [self pp_finishCreateSuccess];
+            }];
         }];
     }];
-
-    
 }
 
 - (void)pp_updateExistingAdWithImages:(NSArray<UIImage *> *)images
@@ -3102,7 +3248,12 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     NSString *fallbackSubtitle =
         [self pp_localizedStringForKey:@"submit_failed"
                               fallback:@"Unable to save your ad right now. Please try again."];
-    NSString *subtitle = error.localizedDescription.length ? error.localizedDescription : fallbackSubtitle;
+    NSLog(@"❌ [AdSubmit] Failure | domain=%@ | code=%ld | message=%@",
+          error.domain ?: @"",
+          (long)error.code,
+          error.localizedDescription ?: @"");
+    NSString *subtitle = [self pp_userFacingSubmitMessageForError:error
+                                                         fallback:fallbackSubtitle];
     dispatch_async(dispatch_get_main_queue(), ^{
         [PPAlertHelper showErrorIn:self title:title subtitle:subtitle];
         [self pp_finishSubmitUI];
@@ -3138,6 +3289,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     dispatch_async(dispatch_get_main_queue(), ^{
         self.isSubmittingAd = NO;
         self.formDisabled = NO;
+        [self pp_refreshFormHeroContent];
         [self.tableView reloadData];
         self.imageCollection.userInteractionEnabled = !self.isPrefillInProgress;
         [self pp_setCircularUploadProgressVisible:NO];
@@ -3207,7 +3359,11 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
     //[PPBarMgr hide];
+    self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.tableView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    self.imageCollectionFooterContainerView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     [self pp_refreshMediaLocalizedText];
+    [self pp_updateImageCollectionFooterLayoutIfNeeded];
     
     if(!self.presented)
     {

@@ -529,6 +529,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     [self pp_applyPaletteForCurrentTime];
     [self pp_startAmbientAnimationsIfNeeded];
+     
+    
+    
     return self;
 }
 

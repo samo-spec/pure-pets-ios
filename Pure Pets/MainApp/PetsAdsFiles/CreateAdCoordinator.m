@@ -10,6 +10,7 @@
 #import "AddNewAd.h"
 #import "PetAdManager.h"
 #import "UserManager.h"
+@import FirebaseAuth;
 
 
 @interface CreateAdCoordinator ()
@@ -23,6 +24,32 @@
 @end
 
 @implementation CreateAdCoordinator
+
+- (NSString *)pp_authenticatedOwnerID
+{
+    NSString *authUID = [[FIRAuth auth].currentUser.uid ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (authUID.length > 0) {
+        return authUID;
+    }
+    return [[UserManager.sharedManager.currentUser.ID ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] copy];
+}
+
+- (void)pp_rollbackCreatedAdAfterError:(NSError *)error
+{
+    if (self.ad.adID.length == 0) {
+        [self finishWithError:error];
+        return;
+    }
+
+    [[PetAdManager sharedManager] deletePetAd:self.ad completion:^(NSError *cleanupError) {
+        if (cleanupError) {
+            NSLog(@"⚠️ CreateAdCoordinator rollback failed for %@: %@",
+                  self.ad.adID,
+                  cleanupError.localizedDescription ?: @"Unknown cleanup error");
+        }
+        [self finishWithError:error];
+    }];
+}
 
 #pragma mark - Init
 
@@ -83,6 +110,32 @@
     // 2️⃣ Prepare search metadata ONLY
     [self prepareSearchMetadataForAd:self.ad];
 
+    if (self.mode == AdEditorModeCreate && images.count > 0) {
+        self.ad.imageItems = @[];
+        [[PetAdManager sharedManager] addPetAd:self.ad completion:^(NSError *error) {
+            if (error) {
+                [self finishWithError:error];
+                return;
+            }
+
+            [self uploadImages:images completion:^(NSError *uploadError) {
+                if (uploadError) {
+                    [self pp_rollbackCreatedAdAfterError:uploadError];
+                    return;
+                }
+
+                [[PetAdManager sharedManager] updatePetAd:self.ad completion:^(NSError *updateError) {
+                    if (updateError) {
+                        [self pp_rollbackCreatedAdAfterError:updateError];
+                        return;
+                    }
+                    [self finishSuccessfully];
+                }];
+            }];
+        }];
+        return;
+    }
+
     // 3️⃣ Upload images (if any), then persist
     if (images.count > 0) {
         [self uploadImages:images completion:^(NSError *error) {
@@ -104,7 +157,7 @@
 
     self.ad.adID = NSUUID.UUID.UUIDString;
     self.ad.postedDate = NSDate.date;
-    self.ad.ownerID = UserManager.sharedManager.currentUser.ID;
+    self.ad.ownerID = [self pp_authenticatedOwnerID];
 
     self.ad.status = PetAdStatusActive;
     self.ad.visibility = PetAdVisibilityPublic;

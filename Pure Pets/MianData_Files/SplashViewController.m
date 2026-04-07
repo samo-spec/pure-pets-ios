@@ -43,6 +43,7 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
 @property (nonatomic, strong) UIStackView *progressStackView;
 @property (nonatomic, strong) NSArray<UIView *> *progressSegments;
 @property (nonatomic, strong) UILabel *footerLabel;
+@property (nonatomic, strong) LOTAnimationView *logoAnimationView;
 - (BOOL)pp_isRTL;
 - (void)pp_buildSplashInterface;
 - (void)pp_applySplashTheme;
@@ -59,7 +60,17 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
 @end
 
 @implementation SplashViewController
+- (void)setupLogoLottieFromPath {
+    NSString *path = [[NSBundle mainBundle] pathForResource:@"purepets_logo_premium" ofType:@"json"];
+    self.logoAnimationView = [LOTAnimationView animationWithFilePath:path];
+    self.logoAnimationView.frame = CGRectMake(0, 0, 220, 220);
+    self.logoAnimationView.center = self.view.center;
+    self.logoAnimationView.contentMode = UIViewContentModeScaleAspectFit;
+    self.logoAnimationView.loopAnimation = YES;
 
+    [self.view addSubview:self.logoAnimationView];
+    [self.logoAnimationView play];
+}
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -71,6 +82,8 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     [self pp_updateLoadingPhase:PPSplashLoadingPhaseBootstrapping detail:self.currentLoadingDetail];
 
     [PPHUD dismiss];
+    
+    [self setupLogoLottieFromPath];
 }
 
 - (void)viewDidLayoutSubviews
@@ -329,6 +342,9 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
         [footerLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-24.0],
         [footerLabel.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-22.0]
     ]];
+    
+    
+    
 }
 
 - (void)pp_applySplashTheme

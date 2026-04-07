@@ -577,6 +577,7 @@
 		F2AEC1572D6EBA6900B55427 /* LUNSegmentedControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */; };
 		F2AEC1582D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */; };
 		F2AEC1592D6EBA6900B55427 /* LUNGradientView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1512D6EBA6900B55427 /* LUNGradientView.m */; };
+		F2AED6692F84E4AD00CCD6A4 /* purepets_logo_premium.json in Resources */ = {isa = PBXBuildFile; fileRef = F2AED6682F84E4AD00CCD6A4 /* purepets_logo_premium.json */; };
 		F2B02B172EF6CCD0001A7B19 /* PPCageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B162EF6CCC2001A7B19 /* PPCageCell.m */; };
 		F2B02B1A2EF6CF4C001A7B19 /* PPBirdCardView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B192EF6CDB3001A7B19 /* PPBirdCardView.m */; };
 		F2B02B212EF86462001A7B19 /* PPTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B202EF86462001A7B19 /* PPTextField.m */; };
@@ -1824,6 +1825,7 @@
 		F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LUNSegmentedControl.m; sourceTree = "<group>"; };
 		F2AEC1542D6EBA6900B55427 /* UIView+LUNRemoveConstraints.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+LUNRemoveConstraints.h"; sourceTree = "<group>"; };
 		F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+LUNRemoveConstraints.m"; sourceTree = "<group>"; };
+		F2AED6682F84E4AD00CCD6A4 /* purepets_logo_premium.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = purepets_logo_premium.json; sourceTree = "<group>"; };
 		F2B02B142EF6CA3E001A7B19 /* PPCageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCageCell.h; sourceTree = "<group>"; };
 		F2B02B162EF6CCC2001A7B19 /* PPCageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCageCell.m; sourceTree = "<group>"; };
 		F2B02B182EF6CD67001A7B19 /* PPBirdCardView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBirdCardView.h; sourceTree = "<group>"; };
@@ -4775,6 +4777,7 @@
 			isa = PBXGroup;
 			children = (
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
+				F2AED6682F84E4AD00CCD6A4 /* purepets_logo_premium.json */,
 				F2D44D1F2F3D611200999337 /* map_dark_style.json */,
 				F2F750D02E7CA97200BACFA8 /* AddUserIconAnimation.json */,
 				F2C6385F2E5132A3007E4CE4 /* cities.json */,
@@ -4905,6 +4908,7 @@
 				F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */,
 				F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */,
 				F25100992F73C4D6008F6AFE /* GoogleService-Info.plist in Resources */,
+				F2AED6692F84E4AD00CCD6A4 /* purepets_logo_premium.json in Resources */,
 				F20E9D6E2CF3193B00B810EB /* button_background_icloud_normal@2x.png in Resources */,
 				F20E9D6F2CF3193B00B810EB /* button_background_icloud_highlight@2x.png in Resources */,
 				F20E9D702CF3193B00B810EB /* placeholder_vesper@2x.png in Resources */,
@@ -4978,9 +4982,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5030,7 +5038,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "\n";
+			shellScript = "
+";
 		};
 		F419239A25BCE454B7C90E99 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -5040,9 +5049,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;

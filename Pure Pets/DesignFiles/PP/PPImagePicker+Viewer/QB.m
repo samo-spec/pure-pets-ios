@@ -75,9 +75,10 @@
     config.background.cornerRadius = 12;
     config.background.backgroundColor = [PPColorUtils pp_selectedCellColorFromPrimary];
     config.baseBackgroundColor = [PPColorUtils pp_selectedCellColorFromPrimary];
+    config.baseForegroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
     config.image = [UIImage systemImageNamed:@"photo.badge.plus"];
     config.imagePadding = 6;
-    config.contentInsets = NSDirectionalEdgeInsetsMake(0, 0,0, 0);
+    config.contentInsets = NSDirectionalEdgeInsetsMake(18.0, 20.0, 18.0, 20.0);
     UIImageSymbolConfiguration *palette =
         [UIImageSymbolConfiguration configurationWithPaletteColors:@[
             AppPrimaryTextClr,
@@ -110,6 +111,13 @@
                        action:@selector(tapAction)
              forControlEvents:UIControlEventTouchUpInside];
     self.addButton.layer.cornerRadius = 12;
+    self.addButton.semanticContentAttribute = Language.isRTL
+        ? UISemanticContentAttributeForceRightToLeft
+        : UISemanticContentAttributeForceLeftToRight;
+    self.addButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    self.addButton.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    self.addButton.titleLabel.numberOfLines = 2;
+    self.addButton.titleLabel.textAlignment = NSTextAlignmentCenter;
     
 
     [NSLayoutConstraint activateConstraints:@[
@@ -127,6 +135,9 @@
     UIButtonConfiguration *cfg = self.addButton.configuration;
     cfg.title = title;
     self.addButton.configuration = cfg;
+    self.addButton.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    self.addButton.titleLabel.numberOfLines = 2;
+    self.addButton.titleLabel.textAlignment = NSTextAlignmentCenter;
 }
 
 - (void)setButtonSymbol:(NSString *)symbol {
@@ -134,6 +145,9 @@
     UIButtonConfiguration *cfg = self.addButton.configuration;
     cfg.image = [UIImage systemImageNamed:symbol];
     self.addButton.configuration = cfg;
+    self.addButton.titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    self.addButton.titleLabel.numberOfLines = 2;
+    self.addButton.titleLabel.textAlignment = NSTextAlignmentCenter;
 }
 
 #pragma mark - Tap
@@ -186,12 +200,15 @@
     self.contentView.clipsToBounds = NO;
     
     _bgButton = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
-    _bgButton.configuration.background.cornerRadius = 12;
-    _bgButton.layer.cornerRadius = 12;
+    UIButtonConfiguration *config = _bgButton.configuration;
+    config.background.cornerRadius = 16;
+    _bgButton.configuration = config;
+    _bgButton.configuration.background.cornerRadius = 16;
+    _bgButton.layer.cornerRadius = 16;
     [self.contentView addSubview:_bgButton];
     _bgButton.layer.cornerRadius = 16;
     _bgButton.layer.masksToBounds = YES;
-    
+    _bgButton.configuration = config;
     [NSLayoutConstraint activateConstraints:@[
         [_bgButton.widthAnchor constraintEqualToAnchor:self.contentView.heightAnchor],
         [_bgButton.heightAnchor constraintEqualToAnchor:self.contentView.heightAnchor],
@@ -218,7 +235,7 @@
     _imageView.translatesAutoresizingMaskIntoConstraints = NO;
     _imageView.contentMode = UIViewContentModeScaleAspectFill;
     _imageView.clipsToBounds = YES;
-    _imageView.layer.cornerRadius = 12;
+    _imageView.layer.cornerRadius = 16;
     [_bgButton addSubview:_imageView];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -287,7 +304,5 @@
 }
 
 @end
-
-
 
 
