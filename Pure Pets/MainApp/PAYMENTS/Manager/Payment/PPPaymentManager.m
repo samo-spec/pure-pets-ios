@@ -704,6 +704,13 @@ static void PPQIBTryLoadFrameworkBundle(void)
 #if !TARGET_OS_SIMULATOR
 - (void)qpResponse:(NSDictionary *)response
 {
+    // Guard: ignore if already reset (prevents double-callback from QIB SDK)
+    if (!self.completion) {
+        PPORDERLog(@"Ignoring QIB callback after reset | keys=%@",
+                   ([response isKindOfClass:NSDictionary.class] ? [response allKeys] : @[]));
+        return;
+    }
+
     NSDictionary *safeResponse = [response isKindOfClass:NSDictionary.class] ? response : @{};
     if (!PPPaymentResponseHasTerminalResult(safeResponse)) {
         PPORDERLog(@"Ignoring non-terminal QIB callback | status=%@ | keys=%@",
@@ -712,6 +719,11 @@ static void PPQIBTryLoadFrameworkBundle(void)
         return;
     }
 
+    // Capture completion and reset BEFORE invoking the callback.
+    // This prevents re-entrant or duplicate callbacks from corrupting state.
+    PPPaymentCompletion capturedCompletion = self.completion;
+    [self reset];
+
     if (PPPaymentResponseIsCancellation(safeResponse)) {
         PPORDERLog(@"QIB payment cancelled by user | status=%@",
                    PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"");
@@ -719,17 +731,11 @@ static void PPQIBTryLoadFrameworkBundle(void)
         [NSError errorWithDomain:NSCocoaErrorDomain
                             code:NSUserCancelledError
                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_cancelled_by_user")}];
-        if (self.completion) {
-            self.completion(safeResponse, cancelError);
-        }
-        [self reset];
+        capturedCompletion(safeResponse, cancelError);
         return;
     }
 
-    if (self.completion) {
-        self.completion(safeResponse, nil);
-    }
-    [self reset];
+    capturedCompletion(safeResponse, nil);
 }
 #endif
 
@@ -769,6 +775,17 @@ static void PPQIBTryLoadFrameworkBundle(void)
         self.activeQIBSessionId = serverQibSessionId;
         order.qibSessionId = serverQibSessionId;
     }
+    // Validate binding IDs — without these, QIB payment may succeed but
+    // server-side verification will fail, leaving the order stuck in pending.
+    if (serverPaymentAttemptId.length == 0 || serverQibSessionId.length == 0) {
+        PPORDERLog(@"Session missing binding IDs | orderId=%@ | hasAttemptId=%d | hasSessionId=%d",
+                   order.orderId ?: @"",
+                   (serverPaymentAttemptId.length > 0),
+                   (serverQibSessionId.length > 0));
+        [self failWithMessage:kLang(@"payment_session_incomplete")];
+        return;
+    }
+
     if (gatewayId.length == 0 || secretKey.length == 0) {
         // ─── H-14 SECURE FLOW GATE ─────────────────────────────────────────────
         // When the createQibSession Cloud Function returns a paymentUrl (Phase 2
@@ -1117,14 +1134,25 @@ static void PPQIBTryLoadFrameworkBundle(void)
 - (void)failWithError:(NSError *)error
 {
     PPORDERLog(@"Payment flow failed | error=%@", error.localizedDescription ?: @"");
-    if (self.completion) {
-        self.completion(nil, error);
-    }
+
+    // Capture completion and reset BEFORE invoking the callback to
+    // prevent re-entrant or duplicate callbacks (same pattern as qpResponse:).
+    PPPaymentCompletion capturedCompletion = self.completion;
     [self reset];
+
+    if (capturedCompletion) {
+        capturedCompletion(nil, error);
+    }
 }
 
 - (void)reset
 {
+    // Break the retain cycle: self → qpParams → delegate(strong) → self.
+    // Must nil the delegate BEFORE releasing qpParams, in case the SDK
+    // retains the params object internally.
+    if (self.qpParams) {
+        PPPaymentSetValueForCandidateKeys(self.qpParams, @[@"delegate"], nil);
+    }
     self.qpParams = nil;
     self.completion = nil;
     self.paymentAttemptId = nil;

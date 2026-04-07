@@ -94,7 +94,7 @@
     
    
 
-    self.tableView.rowHeight = 64.0;
+    self.tableView.rowHeight = 48.0;
     self.tableView.backgroundColor = PPIOS26() ? AppClearClr : [AppBackgroundClr colorWithAlphaComponent:0.8];
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     

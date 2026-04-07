@@ -1103,7 +1103,7 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
         self.statesArray = @[];
     }
 }
-
+ 
 - (void)pp_configureNavigationItems
 {
     NSString *screenTitle = self.address ? (kLang(@"EditAddress") ?: @"Edit address") : (kLang(@"AddAddress") ?: @"Add address");
@@ -1116,10 +1116,10 @@ static const CGFloat kPPAddressCellVerticalInset   = 6.0;
                                                                  style:UIBarButtonItemStylePlain
                                                                 target:self
                                                                 action:@selector(pp_handleLeadingAction)];
-    self.saveBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:kLang(@"Save") ?: @"Save"
-                                                              style:UIBarButtonItemStyleDone
-                                                             target:self
-                                                             action:@selector(saveButtonPressed:)];
+    
+    UIButton *sav = [PPButtonHelper pp_buttonWithTitle:kLang(@"Save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveButtonPressed:)];
+    self.saveBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:sav];
+
     self.navigationItem.leftBarButtonItem = self.leadingBarButtonItem;
     self.navigationItem.rightBarButtonItem = self.saveBarButtonItem;
     [self pp_setSavingState:self.isSaving];

@@ -1788,6 +1788,7 @@
 "payment_backend_setup_incomplete" = "إعداد خدمة الدفع غير مكتمل على الخادم.";
 "payment_insecure_session_blocked" = "تم حظر جلسة دفع غير آمنة. يجب أن يعيد الخادم جلسة QIB آمنة.";
 "payment_secure_session_unavailable" = "بيانات الجلسة الآمنة لـ QIB مفقودة من استجابة الخادم.";
+"payment_session_incomplete" = "جلسة الدفع تفتقد معرّفات الربط المطلوبة. يرجى المحاولة مرة أخرى.";
 "payment_secure_flow_required" = "تدفق الدفع الآمن لـ QIB غير مفعّل في هذا الإصدار بعد.";
 "payment_place_order" = "إنشاء الطلب";
 "payment_request_in_progress" = "طلب الدفع قيد التنفيذ بالفعل.";

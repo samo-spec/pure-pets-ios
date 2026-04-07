@@ -36,9 +36,12 @@
 @property (nonatomic, copy) dispatch_block_t loadingTimeoutBlock;
 @property (nonatomic, strong) NSLayoutConstraint *titleContainerLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *titleContainerTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *titleContainerHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *iconLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *countPillTrailingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *helperTrailingConstraint;
+@property (nonatomic, strong) UIVisualEffectView *blurView;
+@property (nonatomic, strong) UIBlurEffect *blur;
 @end
 
 @implementation PPImageCollection
@@ -55,7 +58,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
         _allowsEditing = YES;
         _allowsReordering = YES;
         _selectedForEdit = -1;
-        _headerContentInsets = UIEdgeInsetsMake(0.0, 8.0, 0.0, 8.0);
+        _headerContentInsets = UIEdgeInsetsMake(0.0, 16.0, 0.0, 16.0);
         _arrayLock = [[NSRecursiveLock alloc] init];
         _mediaOutputArray = [[NSMutableArray alloc] init];
         
@@ -127,22 +130,31 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
 - (void)setupUI {
     self.backgroundColor = [UIColor clearColor];
-    
+
     // Setup title container
     [self setupTitleContainer];
-    
+
     // Setup collection view
     [self setupCollectionView];
-    
+
     // Layout constraints
     [self setupConstraints];
 }
 
 - (void)setupTitleContainer {
+    _blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    _blurView = [[UIVisualEffectView alloc] initWithEffect:_blur];
+    _blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    //blurView.layer.cornerRadius = 20.0;
+    _blurView.clipsToBounds = YES;
+
     _titleContainer = [[UIView alloc] init];
     _titleContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    _titleContainer.layer.cornerRadius = 18.0;
+    _titleContainer.layer.cornerCurve = kCACornerCurveContinuous;
+    _titleContainer.clipsToBounds = YES;
     [self addSubview:_titleContainer];
-    
+
     // Icon
     UIImageSymbolConfiguration *symConfig = [[UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightRegular]
                                              configurationByApplyingConfiguration:
@@ -150,13 +162,13 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
                                                     [UIColor secondaryLabelColor],
                                                     [AppPrimaryClr colorWithAlphaComponent:1.0]
                                                  ]]];
-    
+
     UIImage *icon = [UIImage systemImageNamed:@"photo.on.rectangle" withConfiguration:symConfig];
     _iconView = [[UIImageView alloc] initWithImage:icon];
     _iconView.translatesAutoresizingMaskIntoConstraints = NO;
     _iconView.contentMode = UIViewContentModeScaleAspectFit;
     _iconView.tintColor = [UIColor labelColor];
-    
+
     // Title label
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -165,6 +177,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.numberOfLines = 1;
     _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _titleLabel.textAlignment = NSTextAlignmentNatural;
 
     _countPillLabel = [[UILabel alloc] init];
     _countPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -183,11 +196,13 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _helperLabel.adjustsFontForContentSizeCategory = YES;
     _helperLabel.numberOfLines = 1;
     _helperLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    _helperLabel.textAlignment = NSTextAlignmentNatural;
     _helperLabel.text = kLang(@"drag_to_reorder");
     if (![_helperLabel.text isKindOfClass:NSString.class] || _helperLabel.text.length == 0 || [_helperLabel.text isEqualToString:@"drag_to_reorder"]) {
         _helperLabel.text = @"Tap to edit. Hold to reorder.";
     }
-    
+
+    [_titleContainer addSubview:_blurView];
     [_titleContainer addSubview:_iconView];
     [_titleContainer addSubview:_titleLabel];
     [_titleContainer addSubview:_countPillLabel];
@@ -216,7 +231,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
     if (@available(iOS 13.0, *)) {
-        blurStyle = UIBlurEffectStyleSystemUltraThinMaterialLight;
+        blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
     }
     _collectionShellBlurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
     _collectionShellBlurView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -226,7 +241,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
     _collectionShellTintView = [[UIView alloc] init];
     _collectionShellTintView.translatesAutoresizingMaskIntoConstraints = NO;
-    _collectionShellTintView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
+    _collectionShellTintView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.0];
     _collectionShellTintView.userInteractionEnabled = NO;
     [_collectionShellBlurView.contentView addSubview:_collectionShellTintView];
     
@@ -253,10 +268,19 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 - (void)setupLoadingOverlay {
     _loadingOverlay = [[UIView alloc] initWithFrame:CGRectZero];
     _loadingOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    _loadingOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.15];
+    _loadingOverlay.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.08];
     _loadingOverlay.layer.cornerRadius = 16;
     _loadingOverlay.hidden = YES;
-    
+    _loadingOverlay.clipsToBounds = YES;
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleLight;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
+    }
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    [_loadingOverlay addSubview:blurView];
+
     UIActivityIndicatorViewStyle style = UIActivityIndicatorViewStyleLarge;
     if (@available(iOS 13.0, *)) {
         style = UIActivityIndicatorViewStyleLarge;
@@ -264,16 +288,21 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     _loadingSpinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:style];
     _loadingSpinner.translatesAutoresizingMaskIntoConstraints = NO;
     _loadingSpinner.color = AppPrimaryClr ?: UIColor.labelColor;
-    
+
     [_loadingOverlay addSubview:_loadingSpinner];
     [self addSubview:_loadingOverlay];
-    
+
     [NSLayoutConstraint activateConstraints:@[
         [_loadingOverlay.topAnchor constraintEqualToAnchor:self.topAnchor],
         [_loadingOverlay.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [_loadingOverlay.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [_loadingOverlay.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-        
+
+        [blurView.topAnchor constraintEqualToAnchor:_loadingOverlay.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:_loadingOverlay.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:_loadingOverlay.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:_loadingOverlay.bottomAnchor],
+
         [_loadingSpinner.centerXAnchor constraintEqualToAnchor:_loadingOverlay.centerXAnchor],
         [_loadingSpinner.centerYAnchor constraintEqualToAnchor:_loadingOverlay.centerYAnchor]
     ]];
@@ -309,6 +338,7 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     [super layoutSubviews];
     self.loadingOverlay.layer.cornerRadius = 24.0;
     [self pp_refreshTitlePresentation];
+    self.blurView.layer.cornerRadius = self.titleContainer.layer.cornerRadius;
     self.collectionShellView.layer.cornerRadius = 24.0;
     self.collectionShellBlurView.layer.cornerRadius = 24.0;
     self.collectionShellView.layer.borderWidth = 1.0;
@@ -319,9 +349,11 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
 
 - (void)setupConstraints {
     self.titleContainerLeadingConstraint =
-        [_titleContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:self.headerContentInsets.left];
+        [_titleContainer.leadingAnchor constraintEqualToAnchor:self.leadingAnchor];
     self.titleContainerTrailingConstraint =
-        [_titleContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-self.headerContentInsets.right];
+        [_titleContainer.trailingAnchor constraintEqualToAnchor:self.trailingAnchor];
+    self.titleContainerHeightConstraint =
+        [_titleContainer.heightAnchor constraintEqualToConstant:62.0];
     self.iconLeadingConstraint =
         [_iconView.leadingAnchor constraintEqualToAnchor:_titleContainer.leadingAnchor constant:self.headerContentInsets.left];
     self.countPillTrailingConstraint =
@@ -334,14 +366,19 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
         [_titleContainer.topAnchor constraintEqualToAnchor:self.topAnchor],
         self.titleContainerLeadingConstraint,
         self.titleContainerTrailingConstraint,
-        [_titleContainer.heightAnchor constraintEqualToConstant:44],
-        
+        self.titleContainerHeightConstraint,
+
+        [_blurView.leadingAnchor constraintEqualToAnchor:self.titleContainer.leadingAnchor],
+        [_blurView.trailingAnchor constraintEqualToAnchor:self.titleContainer.trailingAnchor],
+        [_blurView.topAnchor constraintEqualToAnchor:self.titleContainer.topAnchor],
+        [_blurView.bottomAnchor constraintEqualToAnchor:self.titleContainer.bottomAnchor],
+
         // Icon
         self.iconLeadingConstraint,
-        [_iconView.topAnchor constraintEqualToAnchor:_titleContainer.topAnchor constant:8.0],
+        [_iconView.topAnchor constraintEqualToAnchor:_titleContainer.topAnchor constant:10.0],
         [_iconView.widthAnchor constraintEqualToConstant:20],
         [_iconView.heightAnchor constraintEqualToConstant:20],
-        
+
         // Title label
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_iconView.trailingAnchor constant:6],
         [_titleLabel.centerYAnchor constraintEqualToAnchor:_iconView.centerYAnchor],
@@ -352,10 +389,11 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
         [_countPillLabel.heightAnchor constraintEqualToConstant:26.0],
         [_countPillLabel.widthAnchor constraintGreaterThanOrEqualToConstant:56.0],
 
-        [_helperLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
+        [_helperLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4.0],
         [_helperLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         self.helperTrailingConstraint,
-        
+        [_helperLabel.bottomAnchor constraintLessThanOrEqualToAnchor:_titleContainer.bottomAnchor constant:-8.0],
+
         [_collectionShellView.topAnchor constraintEqualToAnchor:_titleContainer.bottomAnchor constant:10.0],
         [_collectionShellView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
         [_collectionShellView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
@@ -385,13 +423,12 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     }
 
     _headerContentInsets = headerContentInsets;
-    self.titleContainerLeadingConstraint.constant = headerContentInsets.left;
-    self.titleContainerTrailingConstraint.constant = -headerContentInsets.right;
+    self.titleContainerLeadingConstraint.constant = 0.0;
+    self.titleContainerTrailingConstraint.constant = 0.0;
     self.iconLeadingConstraint.constant = headerContentInsets.left;
     self.countPillTrailingConstraint.constant = -headerContentInsets.right;
     self.helperTrailingConstraint.constant = -headerContentInsets.right;
     [self setNeedsLayout];
-    [self layoutIfNeeded];
 }
 
 #pragma mark - Public Methods
@@ -1032,7 +1069,10 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     
     if (isAddButtonCell) {
         AddButtonCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"AddButtonCell" forIndexPath:indexPath];
-        [cell setButtonTitle:@""];
+        NSString *buttonTitle = (imageCount == 0)
+            ? (self.titleText.length > 0 ? self.titleText : [self pp_localizedSheetStringForKey:@"add.images.here" fallback:@"Add images here"])
+            : @"";
+        [cell setButtonTitle:buttonTitle];
         [cell setButtonSymbol:@"photo.badge.plus"];
         __weak typeof(self) weakSelf = self;
         __weak AddButtonCell *weakCell = cell;
@@ -1100,6 +1140,13 @@ static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
     CGFloat collectionHeight = CGRectGetHeight(collectionView.bounds);
     CGFloat collectionWidth = CGRectGetWidth(collectionView.bounds);
     CGFloat availableHeight = MAX(0.0, collectionHeight - 8.0);
+    NSInteger imageCount = [self imageCount];
+    BOOL shouldShowAddButton = (imageCount < self.maxImageCount);
+    BOOL isEmptyStateAddButton = (imageCount == 0 && shouldShowAddButton && indexPath.item == 0);
+    if (isEmptyStateAddButton) {
+        CGFloat emptyWidth = MAX(156.0, collectionWidth - 8.0);
+        return CGSizeMake(emptyWidth, availableHeight);
+    }
     CGFloat itemWidth = MAX(92.0, availableHeight);
     CGFloat maxAllowed = MAX(92.0, collectionWidth - 18.0);
     itemWidth = MIN(itemWidth, maxAllowed);

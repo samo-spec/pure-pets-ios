@@ -1830,6 +1830,7 @@
 "payment_backend_setup_incomplete" = "Payment setup is incomplete on backend.";
 "payment_insecure_session_blocked" = "Blocked insecure payment session. Backend must return secure tokenized/hosted QIB payload.";
 "payment_secure_session_unavailable" = "Secure QIB session payload is missing from backend response.";
+"payment_session_incomplete" = "Payment session is missing required binding IDs. Please try again.";
 "payment_secure_flow_required" = "QIB secure payment flow is not enabled in this app build yet.";
 "payment_place_order" = "Place Order";
 "payment_request_in_progress" = "Payment request already in progress.";

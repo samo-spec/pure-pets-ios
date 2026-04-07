@@ -165,7 +165,7 @@
     if (collectionView == _optionsCollectionView) {
         return CGSizeMake(100, 40);
     } else {
-        CGFloat width = (self.bounds.size.width - 36) / 2.0;
+        CGFloat width = (self.bounds.size.width - 52) / 2.0;
         return CGSizeMake(width, width * 1.2);
     }
 }

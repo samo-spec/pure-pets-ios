@@ -1252,9 +1252,14 @@ static const CGFloat kPPProfileCellVerticalInset   = 10.0;
     addPhotoButton.backgroundColor = brandColor;
     addPhotoButton.layer.cornerRadius = 24.0;
     addPhotoButton.contentEdgeInsets = UIEdgeInsetsMake(0, 22, 0, 22);
-    addPhotoButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-    addPhotoButton.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 6);
-    addPhotoButton.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
+    addPhotoButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    if ([Language isRTL]) {
+        addPhotoButton.imageEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
+        addPhotoButton.titleEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 6);
+    } else {
+        addPhotoButton.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 6);
+        addPhotoButton.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
+    }
     [addPhotoButton.titleLabel setFont:[GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold]];
     [addPhotoButton addTarget:self action:@selector(didTapAddPhoto) forControlEvents:UIControlEventTouchUpInside];
     [cardView addSubview:addPhotoButton];

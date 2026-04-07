@@ -1115,6 +1115,10 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     // Force next attempt to re-resolve order from Firestore.
     self.currentOrder = nil;
 
+    // Clear idempotency key so a retry starts with a fresh key.
+    // Without this, backend deduplication may return the old failed order.
+    self.checkoutIdempotencyKey = nil;
+
     [self cleanup];
 
     // H-07: Enrich the error with the retryable flag so the presentation

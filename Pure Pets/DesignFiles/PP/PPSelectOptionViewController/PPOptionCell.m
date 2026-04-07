@@ -47,7 +47,7 @@
 
             [_titleLabel.leadingAnchor constraintEqualToAnchor:_circleImageView.trailingAnchor constant:12],
             [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16],
-            [_titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:-14],
+            [_titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:-10],
 
             [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
             [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
