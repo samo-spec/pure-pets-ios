@@ -1121,7 +1121,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         return fallback;
     }
 
-    if ([error.domain isEqualToString:FIRStorageErrorDomain]) {
+    if ([error.domain isEqualToString:FIRStorageErrorCodeDomain]) {
         if (error.code == FIRStorageErrorCodeUnauthenticated) {
             return [self pp_localizedStringForKey:@"ad_submit_session_required"
                                          fallback:@"Please sign in again before posting your ad."];
