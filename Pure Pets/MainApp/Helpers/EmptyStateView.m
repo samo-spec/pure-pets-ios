@@ -108,7 +108,7 @@
         [self.stackView addArrangedSubview:self.reloadButton];
         self.reloadButton.translatesAutoresizingMaskIntoConstraints = NO;
         [NSLayoutConstraint activateConstraints:@[
-            [self.reloadButton.widthAnchor constraintEqualToConstant:180],
+            [self.reloadButton.widthAnchor constraintEqualToConstant:200],
             [self.reloadButton.heightAnchor constraintEqualToConstant:44]
         ]];
     }
@@ -119,8 +119,11 @@
 
     CGSize fittingSize =
     [self.stackView systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
-
+    
     self.stackView.bounds = (CGRect){CGPointZero, fittingSize};
+    CGRect frame2  = self.stackView.frame;
+    frame2.size.width = 180;
+    self.stackView.frame = frame2;
     self.stackView.center = CGPointMake(CGRectGetMidX(self.bounds),
                                         CGRectGetMidY(self.bounds));
 
@@ -142,7 +145,7 @@
                       subTitle:subTitle
                    buttonTitle:buttonTitle
                         target:target
-                 emptyIconSize:300
+                 emptyIconSize:250
                  isNetworkFile:isNetworkFile
                         action:action];
 }

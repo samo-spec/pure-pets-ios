@@ -522,6 +522,7 @@
 "welcome" = "مرحباً";
 "welcomelogin" = "مرحبا بك";
 "whyleavingus" = "هل يمكن أن تخبرنا لماذا تغادرنا؟";
+"feedback_subtitle" = "ملاحظاتك تساعدنا على التحسين";
 "withRingId" = "بالرقم";
 "work" = "العمل";
 "familyhome" = "منزل العائلة";
@@ -1515,6 +1516,22 @@
 "home_nav_search_example_vets_compact" = "بيطري";
 "home_nav_search_example_food_compact" = "طعام";
 "home_nav_search_example_accessories_compact" = "إكسسوارات";
+"home_nav_search_example_grooming" = "تنظيف الحيوانات";
+"home_nav_search_example_training" = "تدريب الكلاب";
+"home_nav_search_example_grooming_compact" = "تنظيف";
+"home_nav_search_example_training_compact" = "تدريب";
+"home_nav_search_example_birds"            = "طيور للبيع";
+"home_nav_search_example_toys"             = "ألعاب الحيوانات";
+"home_nav_search_example_adopt"            = "تبنّي حيوان أليف";
+"home_nav_search_example_fish"             = "أسماك الزينة";
+"home_nav_search_example_boarding"         = "إيواء الحيوانات";
+"home_nav_search_example_pharmacy"         = "صيدلية بيطرية";
+"home_nav_search_example_birds_compact"    = "طيور";
+"home_nav_search_example_toys_compact"     = "ألعاب";
+"home_nav_search_example_adopt_compact"    = "تبنّي";
+"home_nav_search_example_fish_compact"     = "أسماك";
+"home_nav_search_example_boarding_compact" = "إيواء";
+"home_nav_search_example_pharmacy_compact" = "أدوية";
 "ShowAll"  = "عرض الكل";
 "ShowLess" = "عرض أقل";
 "Home_NearbyAds"        = "بالقرب منك";
@@ -2212,3 +2229,112 @@
 "validation_age_invalid"    = "يرجى إدخال عمر صالح بالأشهر.";
 "location_invalid"          = "يرجى اختيار موقع صالح من الخريطة.";
 "Loading"                   = "جاري التحميل";
+
+
+
+
+"pet_profiles_title" = "ملفات الحيوانات الأليفة";
+"pet_profiles_subtitle" = "إدارة الحيوانات، التطعيمات، والحيوان الافتراضي";
+"pet_profiles_manage" = "إدارة الحيوانات";
+"pet_profiles_add_first" = "أضف أول حيوان أليف";
+"pet_profiles_empty" = "لا توجد حيوانات بعد. أضف أول ملف للحيوان الأليف.";
+"pet_add_title" = "إضافة حيوان أليف";
+"pet_edit_title" = "تعديل الحيوان الأليف";
+"pet_name_placeholder" = "اسم الحيوان";
+"pet_breed_placeholder" = "السلالة";
+"pet_age_months_placeholder" = "العمر بالشهور";
+"pet_default_toggle" = "تعيين كحيوان افتراضي";
+"pet_default_action" = "تعيين كافتراضي";
+"pet_photo_pick" = "اختيار صورة الحيوان";
+"pet_photo_change" = "تغيير الصورة";
+"pet_vaccine_add" = "إضافة تطعيم";
+"pet_vaccine_name" = "اسم التطعيم";
+"pet_vaccines_short" = "تطعيمات";
+"pet_reminders_tab" = "التذكيرات";
+"pet_chats_tab" = "الدردشات";
+"pet_reminder_add" = "إضافة تذكير";
+"pet_reminder_edit" = "تعديل التذكير";
+"pet_reminder_title" = "عنوان التذكير";
+"pet_reminder_vaccination" = "التطعيم";
+"pet_reminder_food" = "الأكل";
+"pet_reminder_appointment" = "المواعيد";
+"pet_unknown" = "حيوان أليف";
+
+// ── ملفات الحيوانات الأليفة (PetsProfiles refactor) ──────────
+"pet_age_months_short" = "شهر";
+"pet_age_years_short" = "سنة";
+"pet_field_name" = "اسم الحيوان";
+"pet_field_breed" = "السلالة";
+"pet_field_age" = "العمر (بالشهور)";
+"pet_section_info" = "المعلومات الأساسية";
+"pet_section_settings" = "الإعدادات";
+"pet_section_vaccinations" = "التطعيمات";
+"pet_photo_tap" = "اضغط لتغيير الصورة";
+"pet_name_required" = "الاسم مطلوب";
+"pet_name_required_msg" = "الرجاء إدخال اسم للحيوان الأليف.";
+"pet_delete_confirm_title" = "حذف الحيوان الأليف";
+"pet_delete_confirm_msg" = "هل أنت متأكد من حذف ملف هذا الحيوان الأليف؟ لا يمكن التراجع عن هذا الإجراء.";
+"pet_profiles_empty_title" = "لا توجد حيوانات أليفة";
+"pet_profiles_empty_subtitle" = "أضف أول ملف للحيوان الأليف للبدء.";
+"pet_no_pets" = "لا توجد حيوانات";
+"pet_no_pets_title" = "لا توجد حيوانات";
+"pet_no_pets_msg" = "أضف ملف حيوان أليف أولاً.";
+"pet_vaccine_edit" = "تعديل التطعيم";
+"pet_vaccine_name_prompt" = "أدخل اسم التطعيم";
+"pet_vaccine_no_date" = "بدون تاريخ";
+"pet_vaccine_no_notes" = "بدون ملاحظات";
+
+// ── تذكيرات الحيوانات الأليفة ───────────────────────────────
+"pet_reminders_empty_title" = "لا توجد تذكيرات";
+"pet_reminders_empty_subtitle" = "أضف تذكيرات للتطعيمات والأكل والمواعيد.";
+"pet_reminder_title_section" = "العنوان";
+"pet_reminder_type_section" = "النوع";
+"pet_reminder_pet_section" = "الحيوان الأليف";
+"pet_reminder_date_section" = "التاريخ والوقت";
+"pet_reminder_toggle_section" = "الحالة";
+"pet_reminder_fire_date" = "التاريخ والوقت";
+"pet_reminder_enabled" = "مفعّل";
+"pet_reminder_select_pet" = "اختر الحيوان الأليف";
+"pet_reminder_no_date" = "لم يتم تحديد تاريخ";
+"pet_reminder_enable" = "تفعيل";
+"pet_reminder_disable" = "تعطيل";
+"pet_reminder_delete_title" = "حذف التذكير";
+"pet_reminder_delete_msg" = "هل أنت متأكد من حذف هذا التذكير؟";
+"pet_reminder_title_required" = "العنوان مطلوب";
+"pet_reminder_title_required_msg" = "الرجاء إدخال عنوان للتذكير.";
+"pet_reminder_pet_required" = "الحيوان الأليف مطلوب";
+"pet_reminder_pet_required_msg" = "الرجاء اختيار حيوان أليف لهذا التذكير.";
+
+/* Vaccination Editor Sheet */
+"pet_vaccine_add_subtitle" = "سجّل تطعيمًا مع التاريخ والملاحظات وتذكير اختياري بالجرعة التالية.";
+"pet_vaccine_edit_subtitle" = "حدّث تفاصيل التطعيم وحدد تذكيرًا للجرعة القادمة.";
+"pet_vaccine_date" = "تاريخ التطعيم";
+"pet_vaccine_applied" = "تم في";
+"pet_vaccine_notes_label" = "ملاحظات";
+"pet_vaccine_notes_placeholder" = "ملاحظات اختيارية حول هذا التطعيم…";
+"pet_vaccine_next_due" = "تاريخ الجرعة التالية";
+"pet_vaccine_remind" = "ذكّرني";
+
+/* Hero dedup */
+"pet_companions" = "رفقاء";
+"pet_profiles_get_started" = "🐾 ابدأ الآن";
+"pet_profile_single" = "ملف";
+"ipad_promo_title" = "لماذا ملفات الحيوانات؟";
+"ipad_promo_body" = "🐾 احفظ كل تفاصيل حيوانك في مكان واحد\n💉 تتبع التطعيمات ومواعيد الجرعات القادمة\n⏰ ضع تذكيرات للطعام والزيارات البيطرية والعناية\n📋 وصول سريع للسلالة والعمر والملاحظات الصحية";
+"pet_breed_unknown" = "سلالة غير معروفة";
+"pet_years" = "سنة";
+"pet_months" = "شهر";
+
+// Pet reminder hints
+"pet_reminder_active_single" = "نشط";
+"pet_reminder_active_plural" = "نشطة";
+"pet_reminder_date_hint" = "حدّد الوقت الذي يجب أن يظهر فيه هذا التذكير في جدول الرعاية.";
+"pet_reminder_pet_hint" = "اربط التذكير بالملف الصحيح قبل الحفظ.";
+"pet_reminder_title_hint" = "أعطِ التذكير اسمًا قصيرًا يمكنك التعرف عليه بنظرة.";
+"pet_reminder_toggle_hint" = "أبقِه نشطًا الآن أو احفظه معطلاً حتى يصبح الجدول جاهزًا.";
+"pet_reminder_type_hint" = "اختر سياق الرعاية ليكون التذكير سهل التصفح لاحقًا.";
+
+// Pet editor section hints
+"pet_section_info_hint" = "الاسم والسلالة والعمر تجعل الملف يبدو مكتملًا بلمحة.";
+"pet_section_settings_hint" = "اختر ما إذا كان هذا الملف سيقود بقية تجربة الحيوان الأليف.";
+"pet_section_vaccinations_hint" = "احتفظ بملاحظات سريعة ليسهل مراجعة التذكيرات وقرارات الرعاية.";

@@ -15,6 +15,7 @@
 #import "PPPetsTitleView.h"
 #import "ChManager.h"
 #import "PPNetworkRetryHelper.h"
+#import "PPModernAvatarRenderer.h"
 
 // ─────────────────────────────────────────────────────────
 // MARK: - Enterprise Design System Constants
@@ -1015,7 +1016,9 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         return;
     }
 
-    UIImage *placeholder = PPSYSImage(@"person.crop.circle.fill");
+    UIImage *placeholder = self.ownerModel
+        ? [PPModernAvatarRenderer avatarImageForName:self.ownerModel.UserName size:kAVSellerAvatarSize]
+        : PPSYSImage(@"person.crop.circle.fill");
     self.sellerAvatarImageView.image = placeholder;
 
     NSString *imageURL = PPSafeString(self.ownerModel.UserImageUrl.absoluteString);

@@ -9,6 +9,7 @@
 #import "Language.h"
 #import "PPImageLoaderManager.h"
 #import "GM.h"
+#import "PPModernAvatarRenderer.h"
 
 static const CGFloat PPStoryRingHostSize   = 78.0;
 static const CGFloat PPStoryAvatarSize     = 64.0;
@@ -281,12 +282,11 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
     if (story.userImageURL) {
         [PPImageLoaderManager.shared setImageOnImageView:self.imageView
                                                      url:story.userImageURL.absoluteString
-                                              placeholder:PPSYSImage(@"person.crop.circle.fill")
+                                              placeholder:[PPModernAvatarRenderer avatarImageForName:story.userName size:PPStoryAvatarSize]
                                                complation:^(UIImage * _Nullable image, NSString * _Nullable urlString) {
         }];
     } else {
-        self.imageView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
-        self.imageView.tintColor = [UIColor colorWithWhite:0.70 alpha:1.0];
+        self.imageView.image = [PPModernAvatarRenderer avatarImageForName:story.userName size:PPStoryAvatarSize];
     }
 
     self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@",

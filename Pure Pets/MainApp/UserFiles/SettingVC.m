@@ -6,9 +6,13 @@
 #import "PPRootTabBarController.h"
 #import "ProfileVC.h"
 #import "PPImageLoaderManager.h"
+#import "PPModernAvatarRenderer.h"
 #import <SDWebImage/UIImageView+WebCache.h>
 #import <SafariServices/SFSafariViewController.h>
 @import UserNotifications;
+
+
+
 
 static NSString *const kSettingsAutoPlayKey        = @"isAutoPlaySet";
 static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
@@ -347,10 +351,8 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     avatarView.clipsToBounds = YES;
     avatarView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
 
-    UIImageConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightMedium];
-    UIImage *placeholder = [UIImage systemImageNamed:@"person.circle.fill" withConfiguration:config];
+    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:40];
     avatarView.image = placeholder;
-    avatarView.tintColor = AppPrimaryClr;
 
     id currentUser = PPCurrentUser ?: UserManager.sharedManager.currentUser;
     NSURL *avatarURL = [currentUser valueForKey:@"UserImageUrl"];

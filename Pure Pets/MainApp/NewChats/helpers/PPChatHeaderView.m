@@ -7,6 +7,7 @@
 
 
 #import "PPChatHeaderView.h"
+#import "PPModernAvatarRenderer.h"
 
 static NSString * const PPChatHeaderSupportAvatarToken = @"purepets://support-logo";
 
@@ -200,7 +201,7 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
         self.avatarView.contentMode = UIViewContentModeScaleAspectFill;
         self.avatarView.backgroundColor = UIColor.clearColor;
         [self.avatarView sd_setImageWithURL:user.UserImageUrl
-                           placeholderImage:[UIImage systemImageNamed:@"person.crop.circle.fill"]];
+                           placeholderImage:[PPModernAvatarRenderer avatarImageForName:user.UserName size:44]];
     }
     
     [self startListeningToUserPresence:user];

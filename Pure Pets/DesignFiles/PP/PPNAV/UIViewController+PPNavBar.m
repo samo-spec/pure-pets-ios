@@ -8,6 +8,7 @@
 #import "UIViewController+PPNavBar.h"
 #import <objc/runtime.h>
 #import "ChatPresenceManager.h"
+#import "PPModernAvatarRenderer.h"
 #pragma mark - Accessors
 
 static inline UIView *PPBarForVC(UIViewController *vc) {
@@ -110,12 +111,13 @@ static UIImage *PPNavSupportLogoImage(void) {
     } else if (user.UserImageUrl.absoluteString.length > 0) {
         avatar.contentMode = UIViewContentModeScaleAspectFill;
         avatar.backgroundColor = UIColor.secondarySystemBackgroundColor;
+        avatar.image = [PPModernAvatarRenderer avatarImageForName:user.UserName size:32];
         [GM setImageFromUrlString:user.UserImageUrl.absoluteString
                         imageView:avatar
                           phImage:@"person.crop.circle.fill"
                         completion:nil];
     } else {
-        avatar.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+        avatar.image = [PPModernAvatarRenderer avatarImageForName:user.UserName size:32];
         avatar.contentMode = UIViewContentModeScaleAspectFill;
         avatar.backgroundColor = UIColor.secondarySystemBackgroundColor;
     }
@@ -1660,9 +1662,12 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     ]];
 
     if (usr) {
+        imageView.image = [PPModernAvatarRenderer avatarImageForName:usr.UserName size:size - 4];
         [GM setImageFromUrlString:PPSafeString(usr.UserImageUrl.absoluteString)
                         imageView:imageView
                          phImage:@"sysUserIcon"];
+    } else {
+        imageView.image = [PPModernAvatarRenderer avatarImageForName:nil size:size - 4];
     }
 
     return container;

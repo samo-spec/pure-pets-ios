@@ -5,6 +5,9 @@
 #import "AppDataListenerManager.h"
 #import "CartManager.h"
 #import "ChManager.h"
+#import "PPPetProfile.h"
+#import "PPPetReminder.h"
+
 
 @import FirebaseAuth;
 @import FirebaseFirestore;
@@ -15,10 +18,13 @@
 @import UIKit;
 NSString * const LanguageDidChangeNotification = @"LanguageDidChangeNotification";
 
+static NSString * const kPPPetProfilesCollection = @"petProfiles";
+static NSString * const kPPPetRemindersCollection = @"petReminders";
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface UserManager ()
-
+ 
 @property (nonatomic, strong) FIRFunctions *functions;
 @property (nonatomic, strong, nullable) id authStateListenerHandle;  // handle for Auth state listener
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> blockedStateListener;
@@ -48,6 +54,207 @@ NSString *const PPUserManagerDidSyncCurrentUserNotification = @"PPUserManagerDid
 NSString *const PPUserManagerDidSignOutNotification = @"PPUserManagerDidSignOutNotification";
 NSString *const PPUserManagerDidUpdateBlockedStateNotification = @"PPUserManagerDidUpdateBlockedStateNotification";
 NSString *const PPUserManagerBlockedStateUserInfoKey = @"isBlocked";
+
+
+
+
+
+
+/*******************************************************************************************************************************************************************************************/
+
+- (nullable FIRDocumentReference *)pp_currentUserDocumentReference
+{
+    NSString *uid = [FIRAuth auth].currentUser.uid ?: self.currentUser.ID;
+    if (uid.length == 0) { return nil; }
+    return [[[FIRFirestore firestore] collectionWithPath:@"UsersCol"] documentWithPath:uid];
+}
+
+- (void)fetchPetProfilesForCurrentUserWithCompletion:(void (^)(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error))completion
+{
+    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
+    if (!userRef) {
+        if (completion) completion(@[], [NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
+        return;
+    }
+
+    [[[userRef collectionWithPath:kPPPetProfilesCollection] queryOrderedByField:@"createdAt" descending:NO]
+     getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSMutableArray<PPPetProfile *> *items = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+            PPPetProfile *pet = [[PPPetProfile alloc] initWithSnapshot:doc];
+            if (pet) [items addObject:pet];
+        }
+        if (completion) completion(items.copy, error);
+    }];
+}
+
+- (void)savePetProfile:(PPPetProfile *)pet completion:(void (^)(NSError * _Nullable error))completion
+{
+    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
+    if (!userRef) {
+        if (completion) completion([NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
+        return;
+    }
+
+    NSString *petID = pet.petID.length ? pet.petID : [NSUUID UUID].UUIDString;
+    pet.petID = petID;
+    pet.updatedAt = [NSDate date];
+    if (!pet.createdAt) pet.createdAt = pet.updatedAt;
+
+    FIRDocumentReference *petRef = [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:petID];
+    NSDictionary *data = [pet toDictionary];
+    [[FIRFirestore firestore] runTransactionWithBlock:^id _Nullable(FIRTransaction * _Nonnull transaction,
+                                                                    NSError *__autoreleasing  _Nullable * _Nullable errorPointer) {
+
+        FIRDocumentSnapshot *userSnap = [transaction getDocument:userRef error:errorPointer];
+        if (*errorPointer) {
+            return nil;
+        }
+
+        NSString *oldDefaultPetID = [userSnap.data[@"defaultPetProfileID"] isKindOfClass:NSString.class]
+            ? userSnap.data[@"defaultPetProfileID"]
+            : nil;
+
+        if (pet.isDefaultPet) {
+            if (oldDefaultPetID.length && ![oldDefaultPetID isEqualToString:petID]) {
+                FIRDocumentReference *oldPetRef =
+                    [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:oldDefaultPetID];
+
+                [transaction updateData:@{
+                    @"isDefaultPet": @NO,
+                    @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+                } forDocument:oldPetRef];
+            }
+
+            [transaction setData:@{
+                @"defaultPetProfileID": petID,
+                @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+            } forDocument:userRef merge:YES];
+        }
+
+        [transaction setData:data forDocument:petRef merge:YES];
+        return nil;
+
+    } completion:^(id _Nullable result, NSError * _Nullable error) {
+        if (completion) completion(error);
+    }];
+}
+
+- (void)deletePetProfileWithID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion
+{
+    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
+    if (!userRef || petID.length == 0) {
+        if (completion) completion([NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid pet id"}]);
+        return;
+    }
+
+    [[[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:petID] deleteDocumentWithCompletion:completion];
+}
+
+- (void)setDefaultPetProfileID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion
+{
+    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
+    if (!userRef || petID.length == 0) {
+        if (completion) completion([NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid pet id"}]);
+        return;
+    }
+
+    [self fetchPetProfilesForCurrentUserWithCompletion:^(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error) {
+        if (error) { if (completion) completion(error); return; }
+
+        FIRWriteBatch *batch = [[FIRFirestore firestore] batch];
+        for (PPPetProfile *pet in pets) {
+            FIRDocumentReference *ref = [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:pet.petID];
+            [batch updateData:@{ @"isDefaultPet": @([pet.petID isEqualToString:petID]),
+                                 @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp] }
+                  forDocument:ref];
+        }
+        [batch setData:@{ @"defaultPetProfileID": petID,
+                          @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp] }
+           forDocument:userRef
+                merge:YES];
+        [batch commitWithCompletion:completion];
+    }];
+}
+
+- (void)uploadPetImage:(UIImage *)image petID:(NSString *)petID completion:(void (^)(NSString * _Nullable imageURL, NSError * _Nullable error))completion
+{
+    NSString *uid = [FIRAuth auth].currentUser.uid ?: self.currentUser.ID;
+    if (uid.length == 0 || petID.length == 0 || !image) {
+        if (completion) completion(nil, [NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Missing pet image data"}]);
+        return;
+    }
+
+    NSData *data = [GM compressImageToMaxSize:image maxSizeKB:600] ?: UIImageJPEGRepresentation(image, 0.82);
+    FIRStorageReference *ref = [[[[[FIRStorage storage] reference] child:@"users"] child:uid] child:[NSString stringWithFormat:@"pets/%@/avatar.jpg", petID]];
+
+    FIRStorageMetadata *meta = [FIRStorageMetadata new];
+    meta.contentType = @"image/jpeg";
+
+    [ref putData:data metadata:meta completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
+        if (error) {
+            if (completion) completion(nil, error);
+            return;
+        }
+        [ref downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable error) {
+            if (completion) completion(URL.absoluteString, error);
+        }];
+    }];
+}
+
+- (void)fetchPetRemindersForCurrentUserWithCompletion:(void (^)(NSArray<PPPetReminder *> * _Nullable reminders, NSError * _Nullable error))completion
+{
+    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
+    if (!userRef) {
+        if (completion) completion(@[], [NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
+        return;
+    }
+
+    [[[userRef collectionWithPath:kPPPetRemindersCollection] queryOrderedByField:@"fireDate" descending:NO]
+     getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSMutableArray<PPPetReminder *> *items = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+            PPPetReminder *reminder = [[PPPetReminder alloc] initWithSnapshot:doc];
+            if (reminder) [items addObject:reminder];
+        }
+        if (completion) completion(items.copy, error);
+    }];
+}
+
+- (void)savePetReminder:(PPPetReminder *)reminder completion:(void (^)(NSError * _Nullable error))completion
+{
+    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
+    if (!userRef) {
+        if (completion) completion([NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
+        return;
+    }
+
+    NSString *identifier = reminder.reminderID.length ? reminder.reminderID : [NSUUID UUID].UUIDString;
+    reminder.reminderID = identifier;
+    reminder.updatedAt = [NSDate date];
+    if (!reminder.createdAt) reminder.createdAt = reminder.updatedAt;
+
+    FIRDocumentReference *ref = [[userRef collectionWithPath:kPPPetRemindersCollection] documentWithPath:identifier];
+    [ref setData:[reminder toDictionary] merge:YES completion:completion];
+}
+
+- (void)deletePetReminderWithID:(NSString *)reminderID completion:(void (^)(NSError * _Nullable error))completion
+{
+    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
+    if (!userRef || reminderID.length == 0) {
+        if (completion) completion([NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid reminder id"}]);
+        return;
+    }
+
+    [[[userRef collectionWithPath:kPPPetRemindersCollection] documentWithPath:reminderID] deleteDocumentWithCompletion:completion];
+}
+
+
+/*******************************************************************************************************************************************************************************************/
+
+
+
+
 
 static NSString *PPUserManagerTrimmedString(id value)
 {
@@ -3094,67 +3301,6 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
         return [NSString stringWithFormat:@"%@، %@", greeting ?: @"", userName ?: @""];
     }
 }
-/*
-
-- (NSString *)profileNameAndTitleWithMode:(ProfileGreetingShorteningMode)mode {
-    self.currentUser = PPIsUserLoggedIn ? PPCurrentUser : nil;
-    NSLog(@"profileNameAndTitleWithMode → Logged in: %@", PPIsUserLoggedIn ? @"YES" : @"NO");
-    
-    if (!PPIsUserLoggedIn) {
-        return kLang(@"JoinUs");
-    }
-    
-    // Detect time of day
-    NSDate *now = [NSDate date];
-    NSInteger hour = [[NSCalendar currentCalendar] component:NSCalendarUnitHour fromDate:now];
-    NSString *greeting;
-    if (hour < 12) {
-        greeting = kLang(@"Good morning");
-    } else if (hour < 18) {
-        greeting = kLang(@"Good afternoon");
-    } else {
-        greeting = kLang(@"Good evening");
-    }
-    
-    NSString *userName = [UserManager sharedManager].currentUser.UserName ?: @"";
-    
-    // ✂️ Shorten username if needed
-    if (mode == ProfileGreetingShorteningModeShortName || mode == ProfileGreetingShorteningModeBoth) {
-        if (userName.length > 0) {
-            NSArray *components = [userName componentsSeparatedByString:@" "];
-            if (components.count > 1) {
-                NSString *firstName = components.firstObject;
-                NSString *lastInitial = [[components.lastObject substringToIndex:1] uppercaseString];
-                userName = [NSString stringWithFormat:@"%@ %@", firstName, lastInitial]; // Mohammed A.
-            } else if (userName.length > 12) {
-                userName = [NSString stringWithFormat:@"%@…", [userName substringToIndex:10]];
-            }
-        }
-    }
-    
-    // ✂️ Shorten greeting if needed
-    if (mode == ProfileGreetingShorteningModeShortGreet || mode == ProfileGreetingShorteningModeBoth) {
-        if (Language.languageVal == 0) {
-            // English
-            if ([greeting containsString:@"morning"]) greeting = kLang(@"Morning");
-            else if ([greeting containsString:@"afternoon"]) greeting = kLang(@"Afternoon");
-            else if ([greeting containsString:@"evening"]) greeting = kLang(@"Evening");
-        } else {
-            // Arabic equivalents → صباح/مساء
-            if ([greeting containsString:@"صباح"]) greeting = @"صباح";
-            else if ([greeting containsString:@"مساء"]) greeting = @"مساء";
-        }
-    }
-    
-    // Localized return
-    if (Language.languageVal == 0) {
-        return [NSString stringWithFormat:@"%@, %@", greeting, userName];
-    } else {
-        return [NSString stringWithFormat:@"%@، %@", greeting, userName];
-    }
-}
-*/
-
 @end
 
 NS_ASSUME_NONNULL_END
@@ -3241,976 +3387,4 @@ static NSString * const kPPAuthHasLaunchedBeforeKey = @"PPAuthHasLaunchedBefore"
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-/*
-#import "UserManager.h"
-
-
-// Map enum -> canonical doc ID
-static inline NSString *PPPermNameFor(UserPermission flag) {
-    switch (flag) {
-        case UserPermissionPostAds:     return kPermPostAds;
-        case UserPermissionSellNew:     return kPermSellNew;
-        case UserPermissionSellUsed:    return kPermSellUsed;
-        case UserPermissionAdoption:    return kPermAdoption;
-        case UserPermissionManageStore: return kPermManageStore;
-        case UserPermissionModeration:  return kPermModeration;
-        case UserPermissionAdminAll:    return kPermAdminAll;
-        default:                        return nil;
-    }
-}
-
-
-
-
-@interface UserManager ()
-// Firestore reference
-@property (nonatomic, strong) FIRFirestore *firestore;
-
-// Listener for observing user document changes
-@property (nonatomic, strong) id<FIRListenerRegistration> listener;
-
-// Currently logged-in user
-@property (nonatomic, strong, readwrite, nullable) UserModel *currentUser;
-
-// Flag to track if this is a new user
-@property (nonatomic, assign, readwrite) BOOL isNewUser;
-@end
-
-@implementation UserManager
-
-
-
-- (void)startListeningCurrentUserPermissionsWithChange:(void (^_Nullable)(NSDictionary<NSString *, NSNumber *> *perms))onChange {
-    if (!self.currentUser) return;
-    [self.currentUser startListeningPermissionsWithChange:onChange];
-}
-
-- (void)stopListeningCurrentUserPermissions {
-    [self.currentUser stopListeningPermissions];
-}
-
-- (void)updatePermission:(UserPermission)flag
-                 enabled:(BOOL)enabled
-              forUserIDs:(NSArray<NSString *> *)userIDs
-              completion:(void(^)(NSError * _Nullable error))completion
-{
-    NSString *name = PPPermNameFor(flag);
-    if (!name || userIDs.count == 0) { if (completion) completion(nil); return; }
-
-    FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
-    FIRWriteBatch *batch = [db batch];
-
-    for (NSString *uid in userIDs) {
-        if (uid.length == 0) continue;
-        FIRDocumentReference *doc =
-            [[[[db collectionWithPath:@"UsersCol"]
-                documentWithPath:uid]
-               collectionWithPath:@"permissions"]
-              documentWithPath:name];
-        [batch setData:@{@"allowed": @(enabled)} forDocument:doc];
-    }
-
-    [batch commitWithCompletion:^(NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"[Perms] Batch commit failed: %@", error.localizedDescription);
-        }
-        if (completion) completion(error);
-    }];
-}
-
-
-- (BOOL)currentUserCan:(UserPermission)flag {
-    UserModel *u = self.currentUser;
-    if (!u) return NO;
-    if (u.isAdminAll) return YES;
-
-    NSString *name = PPPermNameFor(flag);
-    if (!name) return NO;
-
-    // Prefer the live map if you already started listening/fetched; otherwise false until loaded.
-    return [u hasPermissionNamed:name];
-}
-
-
-
-// Singleton instance
-+ (instancetype)sharedManager {
-    static UserManager *sharedInstance = nil;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        sharedInstance = [[UserManager alloc] init];
-        sharedInstance.firestore = [FIRFirestore firestore];
-    });
-    return sharedInstance;
-}
-
-#pragma mark - Save User
-
-
-
-#pragma mark - Observe User Document
-
-// Observe changes to a specific user's document in Firestore
-- (void)observeUserWithUID:(NSString *)uid
-                 onUpdate:(void (^)(UserModel * _Nullable user, NSError * _Nullable error))onUpdate {
-
-    // Stop previous listener if any
-    [self stopListening];
-
-    FIRDocumentReference *docRef = [[self.firestore collectionWithPath:@"UsersCol"] documentWithPath:uid];
-    self.listener = [docRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error) {
-            onUpdate(nil, error);
-            return;
-        }
-        if (snapshot.exists) {
-            UserModel *model = [[UserModel alloc] initWithSnapshot:snapshot];
-            self.currentUser = model;
-            [self cacheUser:model];
-            onUpdate(model, nil);
-        } else {
-            onUpdate(nil, [NSError errorWithDomain:@"UserManager" code:404 userInfo:@{NSLocalizedDescriptionKey: @"User not found"}]);
-        }
-    }];
-}
-
-#pragma mark - Get User by ID
-
-// Fetch user once by UID
-- (void)getUserWithUID:(NSString *)uid
-            completion:(void (^)(UserModel * _Nullable user, NSError * _Nullable error))completion {
-
-    // Guard: invalid UID
-    if (uid.length == 0) {
-        if (completion) {
-            completion(nil, [NSError errorWithDomain:@"UserManager"
-                                                code:400
-                                            userInfo:@{NSLocalizedDescriptionKey: @"Invalid UID"}]);
-        }
-        return;
-    }
-
-    NSString *currentUID = [FIRAuth auth].currentUser.uid ?: @"";
-    if (currentUID.length > 0 && ![uid isEqualToString:currentUID]) {
-        [self getOtherUserModelFromFirestoreWithUID:uid completion:completion];
-        return;
-    }
-
-    [[[self.firestore collectionWithPath:@"UsersCol"] documentWithPath:uid]
-     getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error) {
-            completion(nil, error);
-            return;
-        }
-        if (snapshot.exists) {
-            UserModel *model = [[UserModel alloc] initWithSnapshot:snapshot];
-            self.currentUser = model;
-            [self cacheUser:model];
-            completion(model, nil);
-        } else {
-            completion(nil, [NSError errorWithDomain:@"UserManager" code:404 userInfo:@{NSLocalizedDescriptionKey: @"User not found"}]);
-        }
-    }];
-}
-
-#pragma mark - Local Cache
-
-// Cache user to NSUserDefaults
-- (void)cacheUser:(UserModel *)user {
-    if (!user || user.ID.length == 0) return;
-
-    self.currentUser = user;
-    [user saveToDisk];
-    [self setUserDefaultsFromUserModel:user];
-
-    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
-    [defs setObject:user.ID forKey:@"lastLoggedInUID"];
-    [defs setObject:user.ID forKey:@"lastAuthenticatedUID"];
-    [defs synchronize];
-}
-
-// Load cached user from NSUserDefaults
-- (void)loadCachedUser {
-    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
-    FIRUser *authUser = [FIRAuth auth].currentUser;
-    if (!authUser.uid.length) {
-        self.currentUser = nil;
-        return;
-    }
-
-    NSString *cachedUID = [defs stringForKey:@"lastLoggedInUID"];
-    if (cachedUID.length > 0 && ![cachedUID isEqualToString:authUser.uid]) {
-        self.currentUser = nil;
-        return;
-    }
-
-    UserModel *model = [UserModel loadSavedUserWithUID:authUser.uid];
-    if (!model) {
-        model = [self getUserModelFromDefaults];
-    }
-    if (model.ID.length > 0 && ![model.ID isEqualToString:authUser.uid]) {
-        self.currentUser = nil;
-        return;
-    }
-    self.currentUser = model;
-}
-
-#pragma mark - Online Status
-
-// Update online status in Firestore
-- (void)updateOnlineStatus:(BOOL)isOnline {
-    NSString *uid = [self pp_currentUserDocumentUID];
-    if (uid.length == 0) return;
-
-    FIRDocumentReference *doc = [[self.firestore collectionWithPath:@"UserPresence"] documentWithPath:uid];
-    NSMutableDictionary *payload = [@{
-        @"uid": uid,
-        @"online": @(isOnline),
-        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    } mutableCopy];
-    if (!isOnline) {
-        payload[@"lastSeen"] = [FIRFieldValue fieldValueForServerTimestamp];
-    }
-    [doc setData:payload merge:YES];
-
-}
-
-// Update last seen timestamp in Firestore
-- (void)updateLastSeen {
-    NSString *uid = [self pp_currentUserDocumentUID];
-    if (uid.length == 0) return;
-
-    FIRDocumentReference *doc = [[self.firestore collectionWithPath:@"UserPresence"] documentWithPath:uid];
-    [doc setData:@{
-        @"uid": uid,
-        @"online": @NO,
-        @"lastSeen": [FIRFieldValue fieldValueForServerTimestamp],
-        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    } merge:YES];
-}
-
-#pragma mark - Stop Firestore Listener
-
-// Stop listening to user changes
-- (void)stopListening {
-    if (self.listener) {
-        [self.listener remove];
-        self.listener = nil;
-    }
-}
-
-
-- (BOOL)isUserLoggedIn {
-    FIRUser *authUser = [FIRAuth auth].currentUser;
-    if (!authUser.uid.length) {
-        return NO;
-    }
-    if (self.currentUser.ID.length > 0 &&
-        ![self.currentUser.ID isEqualToString:authUser.uid]) {
-        return NO;
-    }
-    return YES;
-}
-
-
-- (void)updateCurrentUserWithPPUserTokenID:(NSString *)PPUserTokenID SubID:(NSString *)SubID {
-    (void)SubID;
-    [self updateCurrentUserWithPPUserTokenID:PPUserTokenID];
-}
-
-
-- (void)updateUser:(UserModel *)user completion:(void (^)(BOOL success, NSError * _Nullable error))completion {
-    if (!user) {
-        if (completion) {
-            completion(NO, [NSError errorWithDomain:@"UserManager"
-                                               code:400
-                                           userInfo:@{NSLocalizedDescriptionKey: @"Invalid user model."}]);
-        }
-        return;
-    }
-
-    NSString *uid = user.ID;
-    if (uid.length == 0) {
-        uid = [FIRAuth auth].currentUser.uid;
-    }
-    if (uid.length == 0) {
-        if (completion) {
-            completion(NO, [NSError errorWithDomain:@"UserManager"
-                                               code:401
-                                           userInfo:@{NSLocalizedDescriptionKey: @"User not logged in."}]);
-        }
-        return;
-    }
-
-    NSMutableDictionary *userDict = [[user toDictionary] mutableCopy];
-    if (!userDict) userDict = [NSMutableDictionary dictionary];
-    [userDict removeObjectForKey:@"createdAt"];
-    userDict[@"ID"] = uid;
-    userDict[@"updatedAt"] = [NSDate date];
-    userDict[@"loginSource"] = @(UserLoginSourcePPUsers);
-
-    FIRDocumentReference *docRef = [[self.firestore collectionWithPath:@"UsersCol"] documentWithPath:uid];
-    [docRef setData:userDict merge:YES completion:^(NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"[UserManager] ❌ Failed to update user %@: %@", uid, error.localizedDescription);
-            if (completion) completion(NO, error);
-        } else {
-            user.ID = uid;
-            self.currentUser = user;
-            [self cacheUser:user];
-            NSLog(@"[UserManager] ✅ User document merged for UID=%@.", uid);
-            if (completion) completion(YES, nil);
-        }
-    }];
-}
-
-
-
-- (void)uploadUserImage:(UIImage *)image
-         userImageName:(NSString *)imageName
-            completion:(void (^)(NSError * _Nullable error, NSString * _Nullable imageURL))completion {
-
-    NSString *uid = [self pp_currentUserDocumentUID];
-    if (!image || imageName.length == 0 || uid.length == 0) {
-        if (completion) {
-            completion([NSError errorWithDomain:@"UserManager"
-                                           code:400
-                                       userInfo:@{NSLocalizedDescriptionKey: @"Invalid image or user"}],
-                       nil);
-        }
-        return;
-    }
-
-    NSData *imageData = UIImageJPEGRepresentation(image, 0.8); // You can use PNG if needed
-    if (!imageData) {
-        completion([NSError errorWithDomain:@"UserManager"
-                                       code:401
-                                   userInfo:@{NSLocalizedDescriptionKey: @"Image conversion failed"}],
-                   nil);
-        return;
-    }
-
-    NSString *storagePath = [NSString stringWithFormat:@"UsersImages/%@", imageName];
-    FIRStorageReference *ref = [[[FIRStorage storage] reference] child:storagePath];
-
-    FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
-    metadata.contentType = @"image/jpeg";
-
-    [ref putData:imageData metadata:metadata completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"❌ Failed to upload image: %@", error.localizedDescription);
-            if (completion) completion(error, nil);
-            return;
-        }
-
-        [ref downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable error) {
-            if (error || !URL) {
-                NSLog(@"❌ Failed to get download URL: %@", error.localizedDescription);
-                if (completion) completion(error, nil);
-                return;
-            }
-
-            NSString *urlString = URL.absoluteString;
-
-            // Update Firestore
-            FIRDocumentReference *docRef = [[self.firestore collectionWithPath:@"UsersCol"] documentWithPath:uid];
-            [docRef updateData:@{@"UserImageUrl": urlString} completion:^(NSError * _Nullable error) {
-                if (error) {
-                    NSLog(@"⚠️ Uploaded image but failed to update Firestore: %@", error.localizedDescription);
-                    if (completion) completion(error, urlString);
-                } else {
-                    NSLog(@"✅ Image uploaded and Firestore updated");
-                    self.currentUser.UserImageUrl = URL;
-                    [self cacheUser:self.currentUser];
-                    if (completion) completion(nil, urlString);
-                }
-            }];
-        }];
-    }];
-}
-
-- (void)addUser:(UserModel *)user
-     completion:(void (^)(NSError * _Nullable error, NSString * _Nullable userID))completion {
-    if (!user) {
-        if (completion) {
-            completion([NSError errorWithDomain:@"UserManager"
-                                           code:400
-                                       userInfo:@{NSLocalizedDescriptionKey: @"Invalid user model."}],
-                       nil);
-        }
-        return;
-    }
-
-    NSString *uid = user.ID;
-    if (uid.length == 0) {
-        uid = [FIRAuth auth].currentUser.uid;
-    }
-    if (uid.length == 0) {
-        if (completion) {
-            completion([NSError errorWithDomain:@"UserManager"
-                                           code:401
-                                       userInfo:@{NSLocalizedDescriptionKey: @"User not logged in."}],
-                       nil);
-        }
-        return;
-    }
-
-    NSMutableDictionary *userDict = [[user toDictionary] mutableCopy];
-    if (!userDict) userDict = [NSMutableDictionary dictionary];
-    userDict[@"ID"] = uid;
-    userDict[@"createdAt"] = userDict[@"createdAt"] ?: [NSDate date];
-    userDict[@"updatedAt"] = [NSDate date];
-    userDict[@"loginSource"] = @(UserLoginSourcePPUsers);
-
-    FIRFirestore *db = self.firestore;
-    FIRDocumentReference *docRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:uid];
-
-    // SECURITY: Use transaction to create-only-if-not-exists (mirrors first addUser: method).
-    // Prevents overwriting admin flags on existing docs.
-    __weak typeof(self) weakSelf = self;
-    [db runTransactionWithBlock:^id _Nullable(FIRTransaction * _Nonnull transaction, NSError * _Nullable __autoreleasing * _Nullable errorPointer) {
-        FIRDocumentSnapshot *snapshot = [transaction getDocument:docRef error:errorPointer];
-        if (*errorPointer) return nil;
-
-        if (snapshot.exists) {
-            // Doc exists — merge without overwriting createdAt
-            NSMutableDictionary *safeUpdate = [userDict mutableCopy];
-            [safeUpdate removeObjectForKey:@"createdAt"];
-            [transaction setData:safeUpdate forDocument:docRef merge:YES];
-            NSLog(@"[UserManager] ⚠️ addUser(alt): doc already exists for UID=%@, merging safely.", uid);
-        } else {
-            [transaction setData:userDict forDocument:docRef];
-        }
-        return @YES;
-    } completion:^(id _Nullable result, NSError * _Nullable error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (error) {
-            NSLog(@"[UserManager] ❌ Failed to add user %@: %@", uid, error.localizedDescription);
-            if (completion) completion(error, nil);
-        } else {
-            user.ID = uid;
-            strongSelf.currentUser = user;
-            [strongSelf cacheUser:user];
-            NSLog(@"[UserManager] ✅ User added/merged in Firestore for UID=%@.", uid);
-            if (completion) completion(nil, uid);
-        }
-    }];
-}
-
--(void)setUserImageForUser:(UserModel *)user toImageView:(UIImageView *)imageView
-{
-    [self setUserImageForUser:user toImageView:imageView parentCircle:nil];
-}
--(void)setUserImageForUser:(UserModel *)user toImageView:(UIImageView *)imageView  parentCircle:(UIView * _Nullable)circle
-{
-    NSString *imName  = @"person.crop.circle.fill";
-        if (!user || !imageView) return;
-
-        if (user.UserImageUrl) {
-            // Use already resolved URL
-            
-            [GM setImageFromUrlString:user.UserImageUrl.absoluteString imageView:imageView phImage:@"man" completion:^(UIImage * _Nullable image, NSError * _Nullable error) {
-                [UIView animateWithDuration:0.2 animations:^{
-                    imageView.layer.borderColor = [GM AppForegroundColor].CGColor;
-                    imageView.layer.borderWidth = 1.0;
-                }];
-                if(!image) imageView.image = [UIImage systemImageNamed:imName];
-            }];
-            //[self loadImageFromURL:user.UserImageUrl into:imageView];
-            
-            
-        } else if (user.UserImageName.length > 0) {
-            // Load from Firebase Storage
-            NSString *path = [NSString stringWithFormat:@"UsersImages/%@", user.UserImageName];
-            FIRStorageReference *ref = [[[FIRStorage storage] reference] child:path];
-            [ref downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable error) {
-                if (!error && URL) {
-                    user.UserImageUrl = URL;
-                    [self loadImageFromURL:URL into:imageView];
-                } else {
-                    NSLog(@"❌ Failed to load user image: %@", error.localizedDescription);
-                    imageView.image = [UIImage systemImageNamed:imName];
-                }
-            }];
-        } else {
-            imageView.image =[UIImage systemImageNamed:imName];
-        }
-    
-    if(!user.UserImageUrl)
-    {
-        
-        [PPFunc PPPlaceIcon:@"plus" onPostions:IconPostionsBottomRight onView:circle ?  circle  : imageView];
-    }
-    
-
-}
-
-
-// Make sure you have:
-// #import <YYWebImage/YYWebImage.h>
-// #import <YYImage/YYImage.h>
-
-- (void)loadImageFromURL:(NSURL *)url into:(UIImageView *)imageView {
-    if (!imageView) return;
-
-    UIImage *placeholder = [UIImage systemImageNamed:@"person.crop.circle.fill"];
-
-    if (!url) {
-        // Fallback instantly
-        dispatch_async(dispatch_get_main_queue(), ^{
-            imageView.image = placeholder;
-        });
-        return;
-    }
-
-    // Safe UI setup on main
-    dispatch_async(dispatch_get_main_queue(), ^{
-        imageView.contentMode = UIViewContentModeScaleAspectFill;
-        imageView.clipsToBounds = YES;
-    });
-
-    // Nice defaults: progressive + fade
-    YYWebImageOptions opts =
-        YYWebImageOptionProgressive |
-        YYWebImageOptionSetImageWithFadeAnimation;
-
-    __weak typeof(imageView) weakIV = imageView;
-    [imageView setImageWithURL:url
-                      placeholder:placeholder
-                          options:opts
-                         progress:nil
-                        transform:nil
-                       completion:^(UIImage * _Nullable image,
-                                    NSURL * _Nonnull imageURL,
-                                    YYWebImageFromType from,
-                                    YYWebImageStage stage,
-                                    NSError * _Nullable error)
-    {
-        __strong typeof(weakIV) iv = weakIV;
-        if (!iv) return;
-
-        if (error || !image) {
-            // keep placeholder on failure
-#ifdef DEBUG
-            NSLog(@"[YYImage] load failed: %@ | %@", imageURL.absoluteString, error.localizedDescription);
-#endif
-            return;
-        }
-
-#ifdef DEBUG
-        NSString *source = (from == YYWebImageFromMemoryCache ? @"memory"
-                         : from == YYWebImageFromDiskCache   ? @"disk"
-                         :                                     @"network");
-        NSLog(@"[YYImage] loaded from %@: %@", source, imageURL.absoluteString);
-#endif
-        // Nothing else needed; yy_setImageWithURL already applied the image (with fade)
-    }];
-}
-
-
-
-
-- (void)setUserDefaultsFromUserModel:(UserModel *)userModel {
-    if (!userModel || userModel.ID.length == 0) {
-        NSLog(@"USER ----->>  ❌ Invalid userModel. Cannot save to UserDefaults.");
-        return;
-    }
-
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-
-    [defaults setObject:userModel.ID forKey:@"userID"];
-    [defaults setObject:userModel.UserName ?: @"" forKey:@"UserName"];
-    [defaults setObject:userModel.FirstName ?: @"" forKey:@"FirstName"];
-    [defaults setObject:userModel.LastName ?: @"" forKey:@"LastName"];
-    [defaults setObject:userModel.MobileNo ?: @"" forKey:@"MobileNo"];
-    [defaults setObject:userModel.UserEmail ?: @"" forKey:@"UserEmail"];
-    [defaults setObject:userModel.UserImageName ?: @"" forKey:@"UserImageName"];
-    [defaults setObject:userModel.UserAbout ?: @"" forKey:@"UserAbout"];
-    //[defaults setObject:userModel.loginType ?: @"" forKey:@"loginType"];
-    //[defaults setObject:userModel.GIDuserID ?: @"" forKey:@"GIDuserID"];
-    [defaults setInteger:userModel.CountryID forKey:@"CountryID"];
-
-    if (userModel.UserImageUrl.absoluteString) {
-        [defaults setObject:userModel.UserImageUrl.absoluteString forKey:@"UserImageUrl"];
-    }
-
-    if (userModel.PPUserTokenID) {
-        [defaults setObject:userModel.PPUserTokenID forKey:@"PPUserTokenID"];
-    }
-
-    if (userModel.loginDate && [userModel.loginDate isKindOfClass:[FIRTimestamp class]]) {
-        FIRTimestamp *timestamp = (FIRTimestamp *)userModel.loginDate;
-        [defaults setObject:timestamp.dateValue forKey:@"loginDate"];
-    } else if ([userModel.loginDate isKindOfClass:[NSDate class]]) {
-        [defaults setObject:userModel.loginDate forKey:@"loginDate"];
-    }
-    
-    
-
-    [defaults synchronize];
-    
-    NSLog(@"USER ----->>  ✅ User info saved to UserDefaults.");
-}
-
-
-- (UserModel *)getUserModelFromDefaults {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-
-    UserModel *userModel = [[UserModel alloc] init];
-    
-    userModel.ID = [defaults stringForKey:@"userID"];
-    if (userModel.ID.length == 0) {
-        userModel.ID = [defaults stringForKey:@"uid"];
-    }
-    userModel.UserName = [defaults stringForKey:@"UserName"];
-    userModel.FirstName = [defaults stringForKey:@"FirstName"];
-    userModel.LastName = [defaults stringForKey:@"LastName"];
-    userModel.MobileNo = [defaults stringForKey:@"MobileNo"];
-    userModel.UserEmail = [defaults stringForKey:@"UserEmail"];
-    userModel.UserImageName = [defaults stringForKey:@"UserImageName"];
-    userModel.UserAbout = [defaults stringForKey:@"UserAbout"];
-
-    userModel.CountryID = (int)[defaults integerForKey:@"CountryID"];
-
-    NSString *urlString = [defaults stringForKey:@"UserImageUrl"];
-    if (urlString.length > 0) {
-        userModel.UserImageUrl = [NSURL URLWithString:urlString];
-    }
-
-    userModel.PPUserTokenID = [defaults stringForKey:@"PPUserTokenID"];
-
-    NSDate *loginDate = [defaults objectForKey:@"loginDate"];
-    if ([loginDate isKindOfClass:[NSDate class]]) {
-        userModel.loginDate = loginDate;
-    }
-
-    if (userModel.ID.length > 0) {
-        NSLog(@"USER ----->> ✅ UserModel loaded from UserDefaults");
-        return userModel;
-    } else {
-        NSLog(@"USER ----->> ❌ No valid UserModel found in UserDefaults");
-        return nil;
-    }
-}
-
-
-// Optional:  A helper function to clear all user defaults.  Useful for logout.
-- (void)clearUserDefaults {
-    NSUserDefaults *defs = [NSUserDefaults standardUserDefaults];
-    NSString *uid = [defs stringForKey:@"lastLoggedInUID"];
-    if (uid.length > 0) {
-        [UserModel clearCachedUserWithUID:uid];
-    }
-
-    NSArray<NSString *> *keysToRemove = @[
-        @"lastLoggedInUID",
-        @"lastAuthenticatedUID",
-        @"userID",
-        @"uid",
-        @"UserName",
-        @"FirstName",
-        @"LastName",
-        @"MobileNo",
-        @"UserEmail",
-        @"UserImageName",
-        @"UserAbout",
-        @"CountryID",
-        @"PPUserTokenID",
-        @"SubID",
-        @"loginDate",
-        @"UserImageUrl"
-    ];
-    for (NSString *key in keysToRemove) {
-        [defs removeObjectForKey:key];
-    }
-    [defs synchronize];
-    NSLog(@"[UserManager] Cleared cached user defaults.");
-}
-
-
-- (void)logoutAndClearAll {
-    [self pp_stopTokenRefreshTimer];
-    [self stopListeningCurrentUserPermissions];
-    if (self.listener) {
-        [self.listener remove];
-        self.listener = nil;
-    }
-    [self stopListening];
-    [[AppDataListenerManager shared] stopAllListeners];
-    [[ChManager sharedManager] stopListening];
-    [[ChManager sharedManager] stopAllThreadMessageListeners];
-    [CartManager.sharedManager clearCart];
-
-    [self clearUserDefaults];
-    self.currentUser = nil;
-    PPCurrentUser = nil;
-    self.isNewUser = NO;
-    NSLog(@"[UserManager] Logged out and cleared user-scoped state.");
-}
-
-+ (void)getUidByUserID:(NSString *)userID completion:(void (^)(NSString * _Nullable uid, NSError * _Nullable error))completion {
-    if (userID.length == 0) {
-        if (completion) {
-            completion(nil, [NSError errorWithDomain:FUErrorDomain
-                                                code:FUErrorCodeInvalidParameter
-                                            userInfo:@{NSLocalizedDescriptionKey: @"User ID is required."}]);
-        }
-        return;
-    }
-
-    UserModel *cachedUser = userCacheByID[userID];
-    if (cachedUser.ID.length > 0) {
-        if (completion) completion(cachedUser.ID, nil);
-        return;
-    }
-
-    FIRFirestore *db = [FIRFirestore firestore];
-    FIRDocumentReference *docRef = [[db collectionWithPath:@"UsersCol"] documentWithPath:userID];
-    [docRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable doc, NSError * _Nullable error) {
-        if (error) {
-            if (completion) completion(nil, error);
-            return;
-        }
-        if (!doc || !doc.exists) {
-            if (completion) {
-                completion(nil, [NSError errorWithDomain:FUErrorDomain
-                                                    code:FUErrorCodeUserNotFound
-                                                userInfo:@{NSLocalizedDescriptionKey: @"User not found."}]);
-            }
-            return;
-        }
-
-        UserModel *model = [[UserModel alloc] initWithSnapshot:doc];
-        if (model) {
-            [self cacheUserModelInMemory:model];
-        }
-        NSString *uid = model.ID.length > 0 ? model.ID : doc.documentID;
-        if (completion) completion(uid, nil);
-    }];
-}
-
-
-
-+ (NSString *)uidForID:(NSString *)userID {
-    if (userID.length == 0) return nil;
-    UserModel *cached = userCacheByID[userID];
-    if (cached.ID.length > 0) {
-        return cached.ID;
-    }
-    for (UserModel *user in AppManager.sharedInstance.usersArray) {
-        if ([user.ID isEqualToString:userID]) {
-            [self cacheUserModelInMemory:user];
-            return user.ID;
-        }
-    }
-    return nil;
-}
-
-+ (NSString *)iDForUid:(NSString *)uid {
-    if (uid.length == 0) return nil;
-    UserModel *cached = userCacheByUID[uid];
-    if (cached.ID.length > 0) {
-        return cached.ID;
-    }
-    for (UserModel *user in AppManager.sharedInstance.usersArray) {
-        if ([user.ID isEqualToString:uid]) {
-            [self cacheUserModelInMemory:user];
-            return user.ID;
-        }
-    }
-    return nil;
-}
-
-+ (UserModel *)userModelForID:(NSString *)userID {
-    if (!userID || userID.length == 0) return nil;
-
-    for (UserModel *user in AppManager.sharedInstance.usersArray) {
-        if ([user.ID isEqualToString:userID]) {
-            return user;
-        }
-    }
-    return nil;
-}
-
-
-+ (void)showPromptOnTopController {
-    UIViewController *topVC = [self topViewController];
-    if (!topVC) return;
-
-    // Avoid showing login if it’s already visible anywhere
-    if ([self isShowingLoginFrom:topVC]) {
-        return;
-    }
-
-    [PPAlertHelper showConfirmationIn:topVC
-                                title:kLang(@"Not Registered")
-                             subtitle:kLang(@"You need to register to continue.")
-                        confirmButton:kLang(@"Register")
-                         cancelButton:kLang(@"cancel")
-                                 icon:[UIImage systemImageNamed:@"person.crop.circle.badge.questionmark"]
-                         confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
-        if (!didConfirm) return;
-        [PPUserSigningManager presentSignInFrom:topVC
-                                withCountryCode:CitiesManager.shared.CurrentCountry.countryCode
-                              presentationStyle:PPSignInPresentationStyleSheet
-                           autoDismissOnSuccess:YES
-                                         success:^(__unused UserModel *user) {
-            [PPFunc reloadAppUI];
-            [[AppDataListenerManager shared] stopAllListeners];
-            [[AppDataListenerManager shared] startListenersForUser:PPCurrentUser.ID];
-        } failure:^(__unused NSError *error) {
-        } cancelled:^{
-        }];
-    } cancelBlock:^{}];
-}
-
-+ (BOOL)isLoginOnStack:(UINavigationController *)nav {
-    for (UIViewController *vc in nav.viewControllers) {
-        if ([vc isKindOfClass:PPUserSigningController.class]) return YES;
-    }
-    return NO;
-}
-
-+ (BOOL)isShowingLoginFrom:(UIViewController *)vc {
-    if ([vc isKindOfClass:PPUserSigningController.class]) return YES;
-    if ([vc isKindOfClass:UINavigationController.class]) {
-        return [self isLoginOnStack:(UINavigationController *)vc];
-    }
-    if (vc.navigationController && [self isLoginOnStack:vc.navigationController]) return YES;
-    if (vc.presentedViewController) return [self isShowingLoginFrom:vc.presentedViewController];
-    return NO;
-}
-
-
-
-+ (UIViewController *)topViewController {
-    UIWindow *win = [self activeWindow];
-    return [self topViewControllerFrom:win.rootViewController];
-}
-
-+ (UIWindow *)activeWindow {
-    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (scene.activationState == UISceneActivationStateForegroundActive &&
-            [scene isKindOfClass:UIWindowScene.class]) {
-            for (UIWindow *w in ((UIWindowScene *)scene).windows) {
-                if (w.isKeyWindow) return w;
-            }
-        }
-    }
-    // Fallback (pre-iOS 13 or no key flag)
-    for (UIWindow *w in UIApplication.sharedApplication.windows) {
-        if (w.isKeyWindow) return w;
-    }
-    return UIApplication.sharedApplication.windows.firstObject;
-}
-
-+ (UIViewController *)topViewControllerFrom:(UIViewController *)vc {
-    if ([vc isKindOfClass:UINavigationController.class]) {
-        return [self topViewControllerFrom:((UINavigationController *)vc).visibleViewController];
-    } else if ([vc isKindOfClass:UITabBarController.class]) {
-        return [self topViewControllerFrom:((UITabBarController *)vc).selectedViewController];
-    } else if (vc.presentedViewController) {
-        return [self topViewControllerFrom:vc.presentedViewController];
-    } else {
-        return vc;
-    }
-}
-
-
-@end
-
-/*
  
- 
- 
- 
- 
- 
- 
- 
- 
- // ========================================  FUM MANAGER SOURCE ==============================//
-
- #pragma mark - Auth listener (top level)
-
- - (void)startAuthListenerWithChangeBlock:(void(^)(FIRUser * _Nullable authUser,
-                                                   UserModel * _Nullable userModel))block
- {
-     if (self.authHandle) {
-         [[FIRAuth auth] removeAuthStateDidChangeListener:self.authHandle];
-         self.authHandle = 0;
-     }
-
-     __weak typeof(self) weakSelf = self;
-     self.authHandle = [[FIRAuth auth] addAuthStateDidChangeListener:^(FIRAuth *auth, FIRUser * _Nullable authUser) {
-         __strong typeof(weakSelf) self = weakSelf;
-         if (!self) return;
-
-         if (!authUser) { if (block) block(nil, nil); return; }
-
-         [[self userDocumentRefForUID:authUser.uid] getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snap, NSError * _Nullable err) {
-             FUUserDoc *d = nil;
-             if (snap.exists && snap.data) {
-                 d = [FUUserDoc new];
-                 d.uid         = authUser.uid;
-                 d.email       = FUString(snap[@"email"])       ?: authUser.email;
-                 d.displayName = FUString(snap[@"displayName"]) ?: authUser.displayName;
-                 d.photoURL    = FUURL(snap[@"photoURL"])       ?: authUser.photoURL;
-                 d.raw         = snap.data;
-             }
-             UserModel *merged = [self userModelFromAuth:authUser doc:d];
-             if (block) block(authUser, merged);
-         }];
-     }];
- }
-
- - (void)reloadCurrentUserWithCompletion:(void(^)(UserModel * _Nullable user,
-                                                  NSError * _Nullable error))completion
- {
-     FIRUser *authUser = [FIRAuth auth].currentUser;
-     if (!authUser) { if (completion) completion(nil, nil); return; }
-
-     [[self userDocumentRefForUID:authUser.uid] getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snap, NSError * _Nullable err) {
-         if (err) { if (completion) completion(nil, err); return; }
-         FUUserDoc *d = nil;
-         if (snap.exists && snap.data) {
-             d = [FUUserDoc new];
-             d.uid         = authUser.uid;
-             d.email       = FUString(snap[@"email"])       ?: authUser.email;
-             d.displayName = FUString(snap[@"displayName"]) ?: authUser.displayName;
-             d.photoURL    = FUURL(snap[@"photoURL"])       ?: authUser.photoURL;
-             d.raw         = snap.data;
-         }
-         UserModel *merged = [self userModelFromAuth:authUser doc:d];
-         if (completion) completion(merged, nil);
-     }];
- }
-
- #pragma mark - Arbitrary field updates
-
- - (void)updateUserFieldsForUID:(NSString *)uid
-                         fields:(NSDictionary<NSString *,id> *)fields
-                     completion:(FUErrorBlock)completion
- {
-     if (uid.length == 0 || fields.count == 0) { if (completion) completion([self p_err:@"Invalid uid or empty fields" code:-1]); return; }
-
-     [[[self.db collectionWithPath:kFUUsersCollection] documentWithPath:uid]
-      updateData:fields
-      completion:^(NSError * _Nullable error) {
-         if (completion) completion(error);
-     }];
- }
- // ========================================  FUM MANAGER SOURCE ==============================//
-
- */

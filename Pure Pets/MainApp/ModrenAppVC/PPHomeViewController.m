@@ -16,6 +16,7 @@
 #import "PPVetLocator.h"
 #import "PPBrowseHistoryManager.h"
 #import "PPImageLoaderManager.h"
+#import "PPModernAvatarRenderer.h"
 #import "SearchCacheManager.h"
 #import "PPHomeLayoutManager.h"
 #import "AdoptPetsViewController.h"
@@ -109,6 +110,7 @@
     UIView *_trailingOrbView;
     UIImageView *_chevronView;
     BOOL _signalAnimationsConfigured;
+    NSUInteger _placeholderColorIndex;
 }
 
 @synthesize placeholderLabel = _placeholderLabel;
@@ -246,12 +248,11 @@
     [chromeView addSubview:trailingOrbView];
     _trailingOrbView = trailingOrbView;
 
-    BOOL isRTL =
-        [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:self.semanticContentAttribute] ==
-        UIUserInterfaceLayoutDirectionRightToLeft;
-    NSString *chevronSymbolName = isRTL ? @"chevron.forward" : @"chevron.backward";
+    BOOL isRTL = Language.isRTL;
+
+        NSString *forwardChevron = Language.isRTL ? @"chevron.left" : @"chevron.right";
     UIImageView *chevronView =
-        [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:chevronSymbolName
+    [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:forwardChevron
                                                          pointSize:11
                                                             weight:UIImageSymbolWeightBold
                                                              scale:UIImageSymbolScaleMedium
@@ -309,7 +310,7 @@
                                                       forAxis:UILayoutConstraintAxisHorizontal];
 
     [self pp_applyPalette];
-    [self pp_updateInteractiveStateAnimated:NO];
+    [self pp_updateInteractiveStateAnimated:YES];
 
     return self;
 }
@@ -385,6 +386,28 @@
     [_signalDotView.layer addAnimation:signalPulse forKey:@"pp.home.smartSearch.signalPulse"];
 }
 
+- (UIColor *)pp_nextPlaceholderColor
+{
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    NSArray<UIColor *> *palette = @[
+        [UIColor colorWithRed:0.96 green:0.40 blue:0.32 alpha:1.0],   // coral
+        [UIColor colorWithRed:0.20 green:0.65 blue:0.85 alpha:1.0],   // ocean blue
+        [UIColor colorWithRed:0.58 green:0.39 blue:0.87 alpha:1.0],   // amethyst
+        [UIColor colorWithRed:0.18 green:0.75 blue:0.54 alpha:1.0],   // emerald
+        [UIColor colorWithRed:0.94 green:0.60 blue:0.22 alpha:1.0],   // tangerine
+        [UIColor colorWithRed:0.84 green:0.32 blue:0.62 alpha:1.0],   // rose
+        [UIColor colorWithRed:0.30 green:0.55 blue:0.92 alpha:1.0],   // royal blue
+        [UIColor colorWithRed:0.16 green:0.72 blue:0.42 alpha:1.0],   // jade
+        [UIColor colorWithRed:0.78 green:0.52 blue:0.20 alpha:1.0],   // amber
+        [UIColor colorWithRed:0.46 green:0.32 blue:0.78 alpha:1.0],   // indigo
+        [UIColor colorWithRed:0.90 green:0.44 blue:0.46 alpha:1.0],   // blush
+        [UIColor colorWithRed:0.22 green:0.60 blue:0.72 alpha:1.0],   // teal
+    ];
+    UIColor *base = palette[_placeholderColorIndex % palette.count];
+    _placeholderColorIndex = (_placeholderColorIndex + 1) % palette.count;
+    return isDark ? [base colorWithAlphaComponent:0.96] : [base colorWithAlphaComponent:0.88];
+}
+
 - (void)setQueryText:(NSString *)text animated:(BOOL)animated
 {
     NSString *safeText = PPSafeString(text);
@@ -395,10 +418,12 @@
         return;
     }
 
+    UIColor *nextColor = [self pp_nextPlaceholderColor];
     self.accessibilityValue = safeText;
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
         _placeholderLabel.text = safeText;
+        _placeholderLabel.textColor = nextColor;
         return;
     }
 
@@ -411,6 +436,7 @@
         self->_signalRowView.alpha = 0.72;
     } completion:^(__unused BOOL finished) {
         self->_placeholderLabel.text = safeText;
+        self->_placeholderLabel.textColor = nextColor;
         self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, 2.0);
 
         [UIView animateWithDuration:0.22
@@ -5796,7 +5822,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)setProfileCard
 {
-    UIImage *profileAvatar = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+    UIImage *profileAvatar = [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:36];
     NSString *title = [UsrMgr profileNameAndTitleWithMode:ProfileGreetingShorteningModeShotNameOnly] ? : @"";
     NSString *subtitle = Language.isRTL ? CitiesManager.shared.CurrentCountry.arName : CitiesManager.shared.CurrentCountry.enName ? : @"";
     UIButton *profile = (UIButton *)[self pp_profileViewWithImage:profileAvatar
@@ -6018,19 +6044,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [avatar.bottomAnchor constraintEqualToAnchor:button.bottomAnchor constant:-1.0]
     ]];
 
-    // Placeholder
-    UIImage *placeholder = [UIImage imageNamed:@"man"];
-    UIImage *fallback =
-        [UIImage pp_symbolNamed:@"person.crop.circle.fill"
-                      pointSize:22
-                         weight:UIImageSymbolWeightSemibold
-                          scale:UIImageSymbolScaleMedium
-                        palette:@[AppPrimaryClr ?: UIColor.systemTealColor]
-                   makeTemplate:YES];
+    // Placeholder — PPModernAvatarRenderer for personalized initials
+    UIImage *renderedAvatar = [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:34];
 
-    avatar.image = placeholder ?: fallback;
-    avatar.tintColor = placeholder ? nil : (AppPrimaryClr ?: UIColor.systemTealColor);
-    avatar.contentMode = placeholder ? UIViewContentModeScaleAspectFill : UIViewContentModeCenter;
+    avatar.image = renderedAvatar;
+    avatar.tintColor = nil;
+    avatar.contentMode = UIViewContentModeScaleAspectFill;
 
     // Remote image
     NSString *url = PPSafeString(PPCurrentUser.UserImageUrl.absoluteString);
@@ -6042,10 +6061,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                                     NSError * _Nullable error)
         {
             if (!image || error) {
-                avatar.image = placeholder ?: fallback;
-                avatar.tintColor = placeholder ? nil : (AppPrimaryClr ?: UIColor.systemTealColor);
-                avatar.contentMode = placeholder ? UIViewContentModeScaleAspectFill
-                                                 : UIViewContentModeCenter;
+                avatar.image = renderedAvatar;
+                avatar.tintColor = nil;
+                avatar.contentMode = UIViewContentModeScaleAspectFill;
                 return;
             }
             avatar.image = image;
@@ -6190,16 +6208,32 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     BOOL prefersExpandedExamples = [self pp_preferredNavigationSearchWidth] >= 232.0;
     NSArray<NSString *> *candidates = prefersExpandedExamples
         ? @[
-            kLang(@"home_nav_search_example_cats") ?: @"Cats for sale",
-            kLang(@"home_nav_search_example_vets") ?: @"Nearby vets",
-            kLang(@"home_nav_search_example_food") ?: @"Dog food",
-            kLang(@"home_nav_search_example_accessories") ?: @"Pet accessories"
+            kLang(@"home_nav_search_example_cats")        ?: @"Cats for sale",
+            kLang(@"home_nav_search_example_vets")        ?: @"Nearby vets",
+            kLang(@"home_nav_search_example_food")        ?: @"Dog food",
+            kLang(@"home_nav_search_example_accessories") ?: @"Pet accessories",
+            kLang(@"home_nav_search_example_grooming")    ?: @"Pet grooming",
+            kLang(@"home_nav_search_example_training")    ?: @"Dog training",
+            kLang(@"home_nav_search_example_birds")       ?: @"Birds for sale",
+            kLang(@"home_nav_search_example_toys")        ?: @"Pet toys & games",
+            kLang(@"home_nav_search_example_adopt")       ?: @"Adopt a pet",
+            kLang(@"home_nav_search_example_fish")        ?: @"Aquarium fish",
+            kLang(@"home_nav_search_example_boarding")    ?: @"Pet boarding",
+            kLang(@"home_nav_search_example_pharmacy")    ?: @"Pet pharmacy",
         ]
         : @[
-            kLang(@"home_nav_search_example_cats_compact") ?: @"Cats",
-            kLang(@"home_nav_search_example_vets_compact") ?: @"Vet",
-            kLang(@"home_nav_search_example_food_compact") ?: @"Food",
-            kLang(@"home_nav_search_example_accessories_compact") ?: @"Gear"
+            kLang(@"home_nav_search_example_cats_compact")        ?: @"Cats",
+            kLang(@"home_nav_search_example_vets_compact")        ?: @"Vet",
+            kLang(@"home_nav_search_example_food_compact")        ?: @"Food",
+            kLang(@"home_nav_search_example_accessories_compact") ?: @"Gear",
+            kLang(@"home_nav_search_example_grooming_compact")    ?: @"Groom",
+            kLang(@"home_nav_search_example_training_compact")    ?: @"Train",
+            kLang(@"home_nav_search_example_birds_compact")       ?: @"Birds",
+            kLang(@"home_nav_search_example_toys_compact")        ?: @"Toys",
+            kLang(@"home_nav_search_example_adopt_compact")       ?: @"Adopt",
+            kLang(@"home_nav_search_example_fish_compact")        ?: @"Fish",
+            kLang(@"home_nav_search_example_boarding_compact")    ?: @"Board",
+            kLang(@"home_nav_search_example_pharmacy_compact")    ?: @"Meds",
         ];
 
     for (NSString *item in candidates) {
@@ -6484,7 +6518,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     avatar.layer.cornerRadius = kAvatarSize / 2.0;
     avatar.layer.masksToBounds = YES;
     avatar.tintColor = AppPrimaryTextClr;
-    avatar.image = image ?: [UIImage systemImageNamed:@"person.crop.circle.fill"];
+    avatar.image = usr
+        ? [PPModernAvatarRenderer avatarImageForName:usr.UserName size:kAvatarSize]
+        : (image ?: [UIImage systemImageNamed:@"person.crop.circle.fill"]);
 
     [NSLayoutConstraint activateConstraints:@[
         [avatar.widthAnchor constraintEqualToConstant:kAvatarSize],
@@ -6492,9 +6528,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     ]];
 
     if (usr) {
-        [GM setImageFromUrlString:PPSafeString(usr.UserImageUrl.absoluteString)
-                        imageView:avatar
-                          phImage:@"person.crop.circle.fill"];
+        NSString *avatarURLStr = PPSafeString(usr.UserImageUrl.absoluteString);
+        if (avatarURLStr.length > 0) {
+            [GM setImageFromUrlString:avatarURLStr
+                            imageView:avatar
+                              phImage:@"person.crop.circle.fill"];
+        }
     }
 
     // =====================================================

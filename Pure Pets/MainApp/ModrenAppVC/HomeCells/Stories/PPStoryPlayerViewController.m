@@ -11,6 +11,7 @@
 #import "PPImageLoaderManager.h"
 #import "Language.h"
 #import "GM.h"
+#import "PPModernAvatarRenderer.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <AVFoundation/AVFoundation.h>
 
@@ -912,11 +913,10 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     if (story.userImageURL) {
         [PPImageLoaderManager.shared setImageOnImageView:self.userAvatarView
                                                       url:story.userImageURL.absoluteString
-                                               placeholder:[UIImage systemImageNamed:@"person.crop.circle.fill"]
+                                               placeholder:[PPModernAvatarRenderer avatarImageForName:story.userName size:32]
                                                 complation:nil];
     } else {
-        self.userAvatarView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
-        self.userAvatarView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.7];
+        self.userAvatarView.image = [PPModernAvatarRenderer avatarImageForName:story.userName size:32];
     }
 }
 

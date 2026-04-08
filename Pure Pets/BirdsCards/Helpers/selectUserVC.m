@@ -9,6 +9,7 @@
 #import "UIView+XLFormAdditions.h"
 #import "UISearchBar+FMAdd.h"
 #import "ImageModel.h"
+#import "PPModernAvatarRenderer.h"
 
 #import "AppDelegate.h"
 
@@ -374,7 +375,9 @@
     cell.mainImageView.layer.borderColor = GM.appPrimaryColor.CGColor;
     cell.mainImageView.layer.borderWidth = 1.5;
     
-    [GM setImageFromUrlString:[self.userArray objectAtIndex:indexPath.row].UserImageUrl.absoluteString imageView:cell.mainImageView phImage:@"man"];
+    UserModel *cellUser = [self.userArray objectAtIndex:indexPath.row];
+    cell.mainImageView.image = [PPModernAvatarRenderer avatarImageForName:cellUser.UserName size:44];
+    [GM setImageFromUrlString:cellUser.UserImageUrl.absoluteString imageView:cell.mainImageView phImage:@"man"];
     
     return cell;
 }

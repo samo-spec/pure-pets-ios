@@ -9,6 +9,7 @@
 // PPOptionCell.m
 #import "PPOptionCell.h"
 #import "PPImageLoaderManager.h"
+#import "PPModernAvatarRenderer.h"
 @implementation PPOptionCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
@@ -72,7 +73,7 @@
     
     
 
-    self.circleImageView.image = image ?: [UIImage systemImageNamed:@"person.crop.circle.fill"];
+    self.circleImageView.image = image ?: [PPModernAvatarRenderer avatarImageForName:title size:40];
 }
 
 
@@ -87,7 +88,7 @@
     } else {
         self.subtitleLabel.hidden = NO;
     }
-    [PPImageLoaderManager.shared setImageOnImageView:self.circleImageView url:imageUrl placeholder:PPSYSImage(@"person.crop.circle.fill") complation:^(UIImage * _Nonnull image,
+    [PPImageLoaderManager.shared setImageOnImageView:self.circleImageView url:imageUrl placeholder:[PPModernAvatarRenderer avatarImageForName:title size:40] complation:^(UIImage * _Nonnull image,
                                                                                                                                                     NSString * _Nullable urlString) {
         
     }];

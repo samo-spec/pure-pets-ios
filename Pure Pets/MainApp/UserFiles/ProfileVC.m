@@ -9,6 +9,12 @@
 #import "PPPermissionHelper.h"
 #import "PPVerificationCodeViewController.h"
 #import "PPSelectOptionViewController.h"
+#import "SettingVC.h"
+#import "PPNotificationsHubViewController.h"
+#import "PPPetProfilesViewController.h"
+#import "PPModernAvatarRenderer.h"
+// ...
+
 
 #define PPDispatchMain(block) dispatch_async(dispatch_get_main_queue(), block)
 
@@ -16,11 +22,13 @@
 @import FirebaseStorage;
 @import PhotosUI;
 
+// Add a new enumeration value for pets before PPProfileSectionCount
 typedef NS_ENUM(NSInteger, PPProfileSection) {
     PPProfileSectionDetails = 0,
     PPProfileSectionContact,
     PPProfileSectionAddresses,
-    PPProfileSectionCount
+    PPProfileSectionPets,       // NEW: Pet Profiles section
+    PPProfileSectionCount       // ensures the count is now 4 instead of 3
 };
 
 typedef NS_ENUM(NSInteger, PPProfileFieldKind) {
@@ -133,11 +141,11 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     self.textField = textField;
 
     [NSLayoutConstraint activateConstraints:@[
-        [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
 
-        [textField.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
+        [textField.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
         [textField.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [textField.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
         [textField.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
@@ -662,7 +670,9 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:10.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
         [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16.0],
-        [titleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-16.0]
+        [titleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-16.0],
+
+        [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
     ]];
 
     return self;
@@ -679,6 +689,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
 
 @interface ProfileVC ()<UITableViewDelegate, UITableViewDataSource, UITextFieldDelegate, UITextViewDelegate, UIImagePickerControllerDelegate, UINavigationControllerDelegate, AddressFormVCDelegate, TOCropViewControllerDelegate, PHPickerViewControllerDelegate>
 @property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, assign) NSInteger petProfilesCount;
 @property (nonatomic, strong) NSArray<PPAddressModel *> *addresses;
 @property (nonatomic, strong) id<FIRListenerRegistration> addressListener;
 @property (nonatomic, strong) NSMutableArray<CountryCodeModel *> *contriesArray;
@@ -737,7 +748,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     UIColor *canvasColor = [self pp_profileCanvasColor];
     self.view.backgroundColor = canvasColor;
     self.view.opaque = YES;
-    self.navigationController.view.backgroundColor = canvasColor;
+    self.navigationController.view.backgroundColor = AppClearClr;
 
     if (!self.tableView) {
         return;
@@ -801,6 +812,19 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     [self pp_applyProfileCanvasBackground];
     [self.tableView reloadData];
 
+    __weak typeof(self) weakSelf = self;
+    [[UserManager sharedManager] fetchPetProfilesForCurrentUserWithCompletion:^(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            weakSelf.petProfilesCount = pets.count;
+            if (weakSelf.isViewLoaded) {
+                // Use reloadData to avoid NSInternalInconsistencyException when the
+                // address listener has already mutated self.addresses (section 2 row
+                // count) between the prior reloadData and this callback.
+                [weakSelf.tableView reloadData];
+            }
+        });
+    }];
+
     //[[NSNotificationCenter defaultCenter] postNotificationName:PPHideSystemTabBarNotification object:nil];
 }
 
@@ -861,11 +885,11 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     self.headerCardView.layer.borderWidth = 1.0;
     self.headerCardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.68].CGColor;
 
-    self.addPhotoBtn.layer.borderWidth = 0.0;
-    self.addPhotoBtn.layer.shadowColor = [UIColor colorWithRed:0.16 green:0.09 blue:0.10 alpha:1.0].CGColor;
-    self.addPhotoBtn.layer.shadowOpacity = 0.10;
-    self.addPhotoBtn.layer.shadowRadius = 18.0;
-    self.addPhotoBtn.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.addPhotoBtn.layer.borderColor = UIColor.whiteColor.CGColor;
+    self.addPhotoBtn.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    self.addPhotoBtn.layer.shadowOpacity = 0.18;
+    self.addPhotoBtn.layer.shadowRadius = 6.0;
+    self.addPhotoBtn.layer.shadowOffset = CGSizeMake(0.0, 2.0);
     self.tableView.backgroundView = nil;
 
     self.tableView.backgroundColor = AppClearClr;
@@ -1226,7 +1250,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     eyebrowLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
     eyebrowLabel.textAlignment = NSTextAlignmentCenter;
-    eyebrowLabel.textInsets = UIEdgeInsetsMake(6, 12, 6, 12);
+    eyebrowLabel.textInsets = UIEdgeInsetsMake(2, 0, 2, 0);
     [eyebrowPill addSubview:eyebrowLabel];
 
     UIView *avatarHalo = [[UIView alloc] init];
@@ -1241,12 +1265,17 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     [cardView addSubview:avatarHalo];
 
-    RoundedImageViewWithShadow *avatarView = [[RoundedImageViewWithShadow alloc] initWithImage:[UIImage systemImageNamed:@"person.crop.circle.fill"]];
+    RoundedImageViewWithShadow *avatarView = [[RoundedImageViewWithShadow alloc] initWithImage:[PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:72]];
     avatarView.userInteractionEnabled = YES;
     if (PPCurrentUser.UserImageUrl) {
         [GM setImageFromUrlString:PPSafeString(PPCurrentUser.UserImageUrl.absoluteString)
                         imageView:avatarView.imageView
                           phImage:@"person.crop.circle.fill"];
+    }
+    else
+    {
+        avatarView.imageView.image =
+        [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:72];
     }
     avatarView.layer.cornerRadius = 54.0;
     avatarView.layer.masksToBounds = YES;
@@ -1287,27 +1316,23 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     metaLabel.textInsets = UIEdgeInsetsMake(6, 12, 6, 12);
     [cardView addSubview:metaLabel];
 
-    UIButton *addPhotoButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    addPhotoButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [addPhotoButton setTitle:[self pp_localizedProfileStringForKey:@"Add Photo" fallback:@"Add Photo"] forState:UIControlStateNormal];
-    [addPhotoButton setImage:[UIImage systemImageNamed:@"camera.fill"] forState:UIControlStateNormal];
-    [addPhotoButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    addPhotoButton.tintColor = UIColor.whiteColor;
-    addPhotoButton.backgroundColor = brandColor;
-    addPhotoButton.layer.cornerRadius = 24.0;
-    addPhotoButton.contentEdgeInsets = UIEdgeInsetsMake(0, 22, 0, 22);
-    addPhotoButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    if ([Language isRTL]) {
-        addPhotoButton.imageEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
-        addPhotoButton.titleEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 6);
-    } else {
-        addPhotoButton.imageEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 6);
-        addPhotoButton.titleEdgeInsets = UIEdgeInsetsMake(0, 6, 0, 0);
-    }
-    [addPhotoButton.titleLabel setFont:[GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold]];
-    [addPhotoButton addTarget:self action:@selector(didTapAddPhoto) forControlEvents:UIControlEventTouchUpInside];
-    [cardView addSubview:addPhotoButton];
-    self.addPhotoBtn = addPhotoButton;
+    // Pencil edit badge on avatar corner
+    UIButton *editBadge = [UIButton buttonWithType:UIButtonTypeSystem];
+    editBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *pencilConfig = [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+    [editBadge setImage:[[UIImage systemImageNamed:@"pencil" withConfiguration:pencilConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
+    editBadge.tintColor = UIColor.whiteColor;
+    editBadge.backgroundColor = brandColor;
+    editBadge.layer.cornerRadius = 16.0;
+    editBadge.layer.borderWidth = 2.5;
+    editBadge.layer.borderColor = UIColor.whiteColor.CGColor;
+    editBadge.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    editBadge.layer.shadowOpacity = 0.18;
+    editBadge.layer.shadowRadius = 6.0;
+    editBadge.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    [editBadge addTarget:self action:@selector(didTapAddPhoto) forControlEvents:UIControlEventTouchUpInside];
+    [avatarHalo addSubview:editBadge];
+    self.addPhotoBtn = editBadge;
 
     [NSLayoutConstraint activateConstraints:@[
         [cardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:10.0],
@@ -1355,7 +1380,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [avatarView.widthAnchor constraintEqualToConstant:108.0],
         [avatarView.heightAnchor constraintEqualToConstant:108.0],
 
-        [nameLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:22.0],
+        [nameLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:12.0],
         [nameLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [nameLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
@@ -1363,16 +1388,16 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [handleLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor],
         [handleLabel.trailingAnchor constraintEqualToAnchor:nameLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:14.0],
+        [metaLabel.topAnchor constraintEqualToAnchor:handleLabel.bottomAnchor constant:8],
         [metaLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:cardView.leadingAnchor constant:34.0],
         [metaLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
         [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
+        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
 
-        [addPhotoButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:24.0],
-        [addPhotoButton.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [addPhotoButton.widthAnchor constraintGreaterThanOrEqualToConstant:158.0],
-        [addPhotoButton.heightAnchor constraintEqualToConstant:48.0],
-        [addPhotoButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0]
+        [editBadge.widthAnchor constraintEqualToConstant:32.0],
+        [editBadge.heightAnchor constraintEqualToConstant:32.0],
+        [editBadge.trailingAnchor constraintEqualToAnchor:avatarHalo.trailingAnchor constant:-2.0],
+        [editBadge.bottomAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:-2.0],
     ]];
 
     self.headerCardView = cardView;
@@ -1512,6 +1537,8 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
             return PPProfileContactRowCount;
         case PPProfileSectionAddresses:
             return self.addresses.count + 1;
+        case PPProfileSectionPets:
+            return 1;
         default:
             return 0;
     }
@@ -1619,6 +1646,18 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         }
     }
 
+    if (indexPath.section == PPProfileSectionPets) {
+        PPProfileActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileActionCell" forIndexPath:indexPath];
+        NSString *title = self.petProfilesCount > 0
+            ? [NSString stringWithFormat:@"%@ (%ld)",
+               (kLang(@"pet_profiles_manage") ?: @"Manage pets"),
+               (long)self.petProfilesCount]
+            : (kLang(@"pet_profiles_add_first") ?: @"Add your first pet");
+        [cell configureWithTitle:title iconName:@"pawprint.circle.fill"];
+        cell.accessibilityIdentifier = @"profile_pet_profiles_card";
+        return cell;
+    }
+
     if ([self pp_isAddressActionRow:indexPath]) {
         PPProfileActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileActionCell" forIndexPath:indexPath];
         [cell configureWithTitle:kLang(@"Add New Address") iconName:@"plus"];
@@ -1658,6 +1697,9 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     if (indexPath.section == PPProfileSectionContact && indexPath.row == PPProfileContactRowCountry) {
         return YES;
     }
+    if (indexPath.section == PPProfileSectionPets) {
+        return YES;
+    }
     return [self pp_isAddressRow:indexPath] || [self pp_isAddressActionRow:indexPath];
 }
 
@@ -1667,6 +1709,12 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
 
     if (indexPath.section == PPProfileSectionContact && indexPath.row == PPProfileContactRowCountry) {
         [self pp_presentCountryPicker];
+        return;
+    }
+
+    if (indexPath.section == PPProfileSectionPets) {
+        PPPetProfilesViewController *petsVC = [PPPetProfilesViewController new];
+        [self.navigationController pushViewController:petsVC animated:YES];
         return;
     }
 
@@ -1715,7 +1763,8 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         case PPProfileSectionDetails:
         case PPProfileSectionContact:
         case PPProfileSectionAddresses:
-            return 76.0;
+        case PPProfileSectionPets:
+            return 83.0;
         default:
             return 0.000001;
     }
@@ -1758,6 +1807,11 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
             return @[
                 kLang(@"saved_addresses"),
                 kLang(@"saved_addresses_hint")
+            ];
+        case PPProfileSectionPets:
+            return @[
+                (kLang(@"pet_profiles_title") ?: @"Pet Profiles"),
+                (kLang(@"pet_profiles_subtitle") ?: @"Manage your pets, vaccines, and default pet")
             ];
         default:
             return @[@"", @""];

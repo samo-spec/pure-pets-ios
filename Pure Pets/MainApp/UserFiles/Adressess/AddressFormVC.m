@@ -339,7 +339,9 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:5.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-        [subtitleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-15.0]
+        [subtitleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-15.0],
+
+        [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
     ]];
 
     return self;
@@ -417,7 +419,9 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:10.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
         [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:16.0],
-        [titleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-16.0]
+        [titleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-16.0],
+
+        [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
     ]];
 
     return self;

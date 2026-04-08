@@ -7,6 +7,7 @@
 #import <QuartzCore/QuartzCore.h>
 #import "PPImageLoaderManager.h"
 #import "UserModel.h"
+#import "PPModernAvatarRenderer.h"
 @interface UserContactView ()
 
 @property (nonatomic, copy) dispatch_block_t chatBlock;
@@ -172,7 +173,7 @@
     self.chatButton.accessibilityLabel = [NSString stringWithFormat:
         NSLocalizedString(@"a11y_btn_chat_user_format", @"Chat with %@"), displayName];
     
-    [PPImageLoaderManager.shared setImageOnImageView:self.avatarImageView url:user.UserImageUrl.absoluteString placeholder:PPSYSImage(@"person.crop.circle.fill") complation:^(UIImage * _Nonnull image,
+    [PPImageLoaderManager.shared setImageOnImageView:self.avatarImageView url:user.UserImageUrl.absoluteString placeholder:[PPModernAvatarRenderer avatarImageForName:user.UserName size:44] complation:^(UIImage * _Nonnull image,
                                                                                                                                                     NSString * _Nullable urlString) {
         
     }];
@@ -478,7 +479,7 @@
         }];
 
     } else {
-        _avatarView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+        _avatarView.image = [PPModernAvatarRenderer avatarImageForName:user.UserName size:44];
     }
     [self setNeedsLayout];
     _avatarView.layer.cornerRadius = _avatarView.hx_h / 2;

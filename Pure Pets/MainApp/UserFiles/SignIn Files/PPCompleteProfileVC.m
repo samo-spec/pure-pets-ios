@@ -13,11 +13,13 @@
 #import "UserManager.h"
 #import "CitiesManager.h"
 #import "CountryModel.h"
+#import "PPModernAvatarRenderer.h"
 
 @interface PPCompleteProfileVC ()<UIAdaptivePresentationControllerDelegate>
 
 @property (nonatomic, strong) UIView *headerRoot;
 @property (nonatomic, strong) UIImageView *avatarIMV;
+@property (nonatomic, strong) UIImage *avatarPlaceholderImage;
 @property (nonatomic, strong) UIButton *addPhotoBtn;
 
 @property (nonatomic, strong) UIButton *saveBTN;
@@ -149,15 +151,14 @@
     self.headerRoot.backgroundColor = UIColor.clearColor;
 
     // Avatar
-    self.avatarIMV = [[UIImageView alloc] initWithImage:
-                      [UIImage systemImageNamed:@"person.crop.circle.fill"]];
+    self.avatarPlaceholderImage = [PPModernAvatarRenderer avatarImageForName:self.editingUser.UserName size:110];
+    self.avatarIMV = [[UIImageView alloc] initWithImage:self.avatarPlaceholderImage];
     self.avatarIMV.backgroundColor = UIColor.clearColor;
     self.avatarIMV.layer.cornerRadius = 55;
     self.avatarIMV.clipsToBounds = YES;
     self.avatarIMV.userInteractionEnabled = YES;
     self.avatarIMV.translatesAutoresizingMaskIntoConstraints = NO;
-    self.avatarIMV.tintColor = [self pp_selectedCellColorFromPrimary];
-    self.avatarIMV.contentMode = UIViewContentModeScaleToFill;
+    self.avatarIMV.contentMode = UIViewContentModeScaleAspectFill;
     if (self.editingUser.UserImageUrl.absoluteString.length > 5) {
         [GM setImageFromUrlString:PPSafeString(self.editingUser.UserImageUrl.absoluteString)
                         imageView:self.avatarIMV
@@ -545,7 +546,7 @@
 - (void)uploadAvatarIfNeeded:(void(^)(void))completion {
 
     if (!self.avatarIMV.image ||
-        self.avatarIMV.image == [UIImage systemImageNamed:@"person.crop.circle.fill"]) {
+        self.avatarIMV.image == self.avatarPlaceholderImage) {
         if (completion) {
             completion();
         }

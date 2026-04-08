@@ -9,6 +9,7 @@
 #import "ChatThreadModel.h"
 #import "ChatPresenceManager.h"
 #import "PPImageLoaderManager.h"
+#import "PPModernAvatarRenderer.h"
 
 static NSString * const PPChCellSupportAvatarToken = @"purepets://support-logo";
 
@@ -277,13 +278,14 @@ static UIImage *PPChCellSupportLogoImage(void) {
         } else if (avatarURL.length > 0) {
             self.avatarView.imageView.contentMode = UIViewContentModeScaleAspectFill;
             self.avatarView.imageView.backgroundColor = UIColor.clearColor;
+            self.avatarView.imageView.image = [PPModernAvatarRenderer avatarImageForName:user.UserName size:52];
             [PPImageLoaderManager.shared setImageOnImageView:self.avatarView.imageView
                                                          url:avatarURL
-                                                 placeholder:PPSYSImage(@"person.crop.circle.fill")
+                                                 placeholder:[PPModernAvatarRenderer avatarImageForName:user.UserName size:52]
                                                   complation:^(__unused UIImage * _Nullable image, __unused NSString * _Nullable urlString) {
             }];
         } else {
-            self.avatarView.imageView.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
+            self.avatarView.imageView.image = [PPModernAvatarRenderer avatarImageForName:user.UserName size:52];
             self.avatarView.imageView.contentMode = UIViewContentModeScaleAspectFill;
             self.avatarView.imageView.backgroundColor = UIColor.clearColor;
         }
@@ -792,6 +794,7 @@ static UIImage *PPChCellSupportLogoImage(void) {
          //NSLog(@"🖼 [ThreadCell] loading avatar=%@", otherUser.UserImageUrl.absoluteString);
          self.avatarView.imageView.contentMode = UIViewContentModeScaleAspectFill;
          self.avatarView.imageView.backgroundColor = UIColor.clearColor;
+         self.avatarView.imageView.image = [PPModernAvatarRenderer avatarImageForName:otherUser.UserName size:52];
          [GM setImageFromUrlString:PPSafeString(avatarURL)
                          imageView:self.avatarView.imageView
                            phImage:@"person.crop.circle.fill" completion:^(UIImage * _Nullable image, NSError * _Nullable error) {
@@ -800,7 +803,7 @@ static UIImage *PPChCellSupportLogoImage(void) {
      } else {
          //NSLog(@"🖼 [ThreadCell] using placeholder avatar");
          self.avatarView.imageView.image =
-             [UIImage systemImageNamed:@"person.crop.circle.fill"];
+             [PPModernAvatarRenderer avatarImageForName:otherUser.UserName size:52];
          self.avatarView.imageView.contentMode = UIViewContentModeScaleAspectFill;
          self.avatarView.imageView.backgroundColor = UIColor.clearColor;
      }

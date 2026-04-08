@@ -56,6 +56,9 @@
  */
 #import "PPUserSigningController.h"
 #import "PPUserSigningManager.h"
+@class UserModel;
+@class PPPetProfile;
+@class PPPetReminder;
 
 extern NSString * _Nullable const LanguageDidChangeNotification;
 
@@ -66,6 +69,8 @@ typedef NS_ENUM(NSInteger, ProfileGreetingShorteningMode) {
     ProfileGreetingShorteningModeBoth,
     ProfileGreetingShorteningModeShotNameOnly  // Shorten both greeting + username
 };
+
+
 @import FirebaseCore;
 @import Firebase;
 @import FirebaseFunctions;
@@ -132,9 +137,24 @@ static inline NSString * _Nullable PPPermNameFor(UserPermission flag) {
 
 
 
+
+
 // MARK: - UserManager Interface
 
 @interface UserManager : NSObject
+
+ 
+- (void)fetchPetProfilesForCurrentUserWithCompletion:(void (^)(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error))completion;
+- (void)savePetProfile:(PPPetProfile *)pet completion:(void (^)(NSError * _Nullable error))completion;
+- (void)deletePetProfileWithID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion;
+- (void)setDefaultPetProfileID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion;
+- (void)uploadPetImage:(UIImage *)image petID:(NSString *)petID completion:(void (^)(NSString * _Nullable imageURL, NSError * _Nullable error))completion;
+
+- (void)fetchPetRemindersForCurrentUserWithCompletion:(void (^)(NSArray<PPPetReminder *> * _Nullable reminders, NSError * _Nullable error))completion;
+- (void)savePetReminder:(PPPetReminder *)reminder completion:(void (^)(NSError * _Nullable error))completion;
+- (void)deletePetReminderWithID:(NSString *)reminderID completion:(void (^)(NSError * _Nullable error))completion;
+
+
 
 /// The singleton instance of UserManager
 + (instancetype)sharedManager;

@@ -25,6 +25,14 @@
 @class LOTAnimationView;
 #endif
 
+#import "SettingVC.h"
+#import "PPNotificationsHubViewController.h"
+
+// ...
+
+
+
+
 static NSString * const kPPBlockedOverlaySupportPhoneNumber = @"+97459997720";
 static NSInteger const PPRootTabIndexHome = 0;
 static NSInteger const PPRootTabIndexChats = 1;
@@ -73,29 +81,22 @@ static NSInteger const PPRootTabIndexSettings = 4;
          icon:@"house" selectedImage:@"house.fill"];
 
     // Notifications
-    UINavigationController *notiNav =
-    [self nav:[UserChatsViewController new]
-         title:kLang(@"Notifications")
-         icon:@"bell" selectedImage:@"bellLast"];
+    //UINavigationController *notiNav = [self nav:[UserChatsViewController new] title:kLang(@"Notifications") icon:@"bell" selectedImage:@"bellLast"];
 
     // Add (center)
-    UINavigationController *addNav =
-    [self nav:[self pp_makeAddActionPlaceholderViewController]
-         title:nil //kLang(@"new")
-         icon:@"" selectedImage:@""];
+    UINavigationController *addNav = [self nav:[self pp_makeAddActionPlaceholderViewController] title:nil  icon:@"" selectedImage:@""];
     // Settings
-    UINavigationController *settingsNav =
-    [self nav:[self pp_makeSettingsRootViewController]
-         title:(kLang(@"menu_action_settings") ?: (kLang(@"Setting") ?: @"Settings"))
-         icon:@"gearshape" selectedImage:@"gearshape.fill"];
+    UINavigationController *settingsNav = [self nav:[self pp_makeSettingsRootViewController]   title:(kLang(@"menu_action_settings") ?: (kLang(@"Setting") ?: @"Settings"))  icon:@"gearshape" selectedImage:@"gearshape.fill"];
 
     // Cart
     
-    UINavigationController *cartNav =
-    [self nav:[OrderHistoryViewController new]
-         title:kLang(@"menu_action_orders")
-         icon:@"cart.badge.clock" selectedImage:@"checklist"];
+    UINavigationController *cartNav = [self nav:[OrderHistoryViewController new] title:kLang(@"menu_action_orders") icon:@"cart.badge.clock" selectedImage:@"checklist"];
    
+    
+    UINavigationController *notiNav = [self nav:[PPNotificationsHubViewController new]  title:kLang(@"Notifications")   icon:@"bell" selectedImage:@"bellLast"];
+
+    notiNav.tabBarItem.accessibilityHint =
+        NSLocalizedString(@"a11y_tab_notifications_hint", @"View pet reminders and chats");
     /*
      
      
