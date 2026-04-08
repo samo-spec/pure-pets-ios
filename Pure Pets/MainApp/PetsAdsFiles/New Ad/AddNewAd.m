@@ -144,7 +144,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 #pragma mark - PPAdTextFieldCell
 
 @interface PPAdTextFieldCell : PPAdBaseCell <UITextFieldDelegate>
-@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) PPInsetLabel *titleLabel;
 @property (nonatomic, strong) UITextField *textField;
 @property (nonatomic, copy) void(^onValueChanged)(NSString *text);
 @end
@@ -153,11 +153,12 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
-        _titleLabel = [[UILabel alloc] init];
+        _titleLabel = [[PPInsetLabel alloc] init];
         _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
         _titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
         _titleLabel.textColor = PPAdFormPrimaryTextColor();
         _titleLabel.textAlignment = PPAdCurrentTextAlignment();
+        _titleLabel.textInsets = UIEdgeInsetsMake(3, 3, 3, 3);
         [self.contentView addSubview:_titleLabel];
 
         _textField = [[UITextField alloc] init];
@@ -174,14 +175,14 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [self.contentView addSubview:_textField];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
+            [_titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:10.0],
             [_titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
             [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
 
             [_textField.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
             [_textField.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
             [_textField.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-            [_textField.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
+            [_textField.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-10.0],
             [_textField.heightAnchor constraintGreaterThanOrEqualToConstant:24.0]
         ]];
     }

@@ -502,8 +502,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.actionButton.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
 
         [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12.0],
-        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:112],
-        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:112],
+        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:132],
+        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:132],
         [self.lottieHeaderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
      ]];
 

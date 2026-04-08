@@ -202,7 +202,7 @@
     self.pillTabBar = pills;
 
     // Size for nav bar titleView
-    pills.frame = CGRectMake(0, 0, 260, 44);
+    pills.frame = CGRectMake(0, 0, 320, 44);
     self.navigationItem.titleView = pills;
 
     __weak typeof(self) ws = self;

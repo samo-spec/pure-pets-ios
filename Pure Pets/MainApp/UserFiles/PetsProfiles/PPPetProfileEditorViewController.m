@@ -770,6 +770,14 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     return PPEditorSectionCount;
 }
 
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == PPEditorSectionSettings || indexPath.section == PPEditorSectionVaccinations) {
+            return 60.0;
+    }
+    return UITableViewAutomaticDimension;
+}
+
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     switch (section) {
         case PPEditorSectionPhoto:        return 0;

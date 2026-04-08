@@ -1250,7 +1250,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     eyebrowLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
     eyebrowLabel.textAlignment = NSTextAlignmentCenter;
-    eyebrowLabel.textInsets = UIEdgeInsetsMake(2, 0, 2, 0);
+   // eyebrowLabel.textInsets = UIEdgeInsetsMake(0, 0, 0, 0);
     [eyebrowPill addSubview:eyebrowLabel];
 
     UIView *avatarHalo = [[UIView alloc] init];
@@ -1764,15 +1764,38 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         case PPProfileSectionContact:
         case PPProfileSectionAddresses:
         case PPProfileSectionPets:
-            return 83.0;
+            return 73.0;
         default:
             return 0.000001;
     }
 }
 
+// Leave heightForFooterInSection unchanged.
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section
 {
     return 0.000001;
+}
+
+/*
+    - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+    {
+        if (indexPath.section == PPProfileSectionPets) {
+            return 60.0;
+        }
+        return UITableViewAutomaticDimension;
+    }*/
+// New method: heightForRowAtIndexPath
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == PPProfileSectionPets) {
+        return 60.0;
+    }
+    
+        else  if ([self pp_isAddressActionRow:indexPath]) {
+            return 60.0;
+        }
+    
+    return UITableViewAutomaticDimension;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section
@@ -1789,6 +1812,8 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
 {
     return [self tableView:tableView heightForHeaderInSection:section];
 }
+
+
 
 - (NSArray<NSString *> *)pp_sectionHeaderContentForSection:(NSInteger)section
 {

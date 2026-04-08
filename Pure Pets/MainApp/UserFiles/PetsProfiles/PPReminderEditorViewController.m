@@ -4,7 +4,7 @@
 //
 //  Created by Mohammed Ahmed on 4/7/26.
 //  Modern UI — matches ProfileVC.m form style exactly (accent-bar headers,
-//  ProfileTextFieldCell-pattern fields, inset base cells, PPHUD).
+//  PPProfileTextFieldCell-pattern cells, inset base cells, UITableViewStylePlain).
 //
 
 #import "PPReminderEditorViewController.h"
@@ -19,6 +19,12 @@
 
 static const CGFloat kPPRemEdCellHInset = 20.0;
 static const CGFloat kPPRemEdCellVInset = 10.0;
+
+static NSString *const kPPRemEdTextFieldCellID  = @"PPRemEdTextFieldCell";
+static NSString *const kPPRemEdSegmentCellID    = @"PPRemEdSegmentCell";
+static NSString *const kPPRemEdSelectorCellID   = @"PPRemEdSelectorCell";
+static NSString *const kPPRemEdDatePickerCellID = @"PPRemEdDatePickerCell";
+static NSString *const kPPRemEdSwitchCellID     = @"PPRemEdSwitchCell";
 
 static inline UISemanticContentAttribute PPRemEdSemanticAttr(void) {
     return PPPetsCurrentSemanticAttribute();
@@ -35,7 +41,9 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     PPRemEdSectionCount   = 5
 };
 
-// ─── Base Cell (ProfileVC inset pattern) ──────────────────
+// ═══════════════════════════════════════════════════════════
+// MARK: - PPRemEdBaseCell  (ProfileVC PPProfileBaseCell pattern)
+// ═══════════════════════════════════════════════════════════
 
 @interface PPRemEdBaseCell : UITableViewCell
 @end
@@ -54,14 +62,16 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
 @end
 
-// ─── Text Field Cell (ProfileVC PPProfileTextFieldCell pattern) ──
+// ═══════════════════════════════════════════════════════════
+// MARK: - PPRemEdTextFieldCell  (ProfileVC PPProfileTextFieldCell pattern)
+// ═══════════════════════════════════════════════════════════
 
-@interface PPRemEdFieldCell : PPRemEdBaseCell
-@property (nonatomic, strong) UILabel     *titleLabel;
-@property (nonatomic, strong) UITextField *textField;
+@interface PPRemEdTextFieldCell : PPRemEdBaseCell
+@property (nonatomic, strong, readonly) UILabel     *cellTitleLabel;
+@property (nonatomic, strong, readonly) UITextField *cellTextField;
 @end
 
-@implementation PPRemEdFieldCell
+@implementation PPRemEdTextFieldCell
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
     self = [super initWithStyle:style reuseIdentifier:rid];
@@ -75,49 +85,347 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     self.semanticContentAttribute = PPRemEdSemanticAttr();
     self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
 
-    _titleLabel = [UILabel new];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    _titleLabel.textColor = PPPetsUIPrimaryTextColor();
-    _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.contentView addSubview:_titleLabel];
+    _cellTitleLabel = [UILabel new];
+    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _cellTitleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.contentView addSubview:_cellTitleLabel];
 
-    _textField = [UITextField new];
-    _textField.translatesAutoresizingMaskIntoConstraints = NO;
-    _textField.borderStyle       = UITextBorderStyleNone;
-    _textField.backgroundColor   = UIColor.clearColor;
-    _textField.textColor         = PPPetsUIPrimaryTextColor();
-    _textField.font              = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _textField.clearButtonMode   = UITextFieldViewModeWhileEditing;
-    _textField.autocorrectionType = UITextAutocorrectionTypeNo;
-    _textField.textAlignment     = Language.alignmentForCurrentLanguage;
-    _textField.semanticContentAttribute = PPRemEdSemanticAttr();
-    [self.contentView addSubview:_textField];
+    _cellTextField = [UITextField new];
+    _cellTextField.translatesAutoresizingMaskIntoConstraints = NO;
+    _cellTextField.borderStyle       = UITextBorderStyleNone;
+    _cellTextField.backgroundColor   = UIColor.clearColor;
+    _cellTextField.textColor         = PPPetsUIPrimaryTextColor();
+    _cellTextField.font              = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    _cellTextField.clearButtonMode   = UITextFieldViewModeWhileEditing;
+    _cellTextField.autocorrectionType = UITextAutocorrectionTypeNo;
+    _cellTextField.textAlignment     = Language.alignmentForCurrentLanguage;
+    _cellTextField.semanticContentAttribute = PPRemEdSemanticAttr();
+    [self.contentView addSubview:_cellTextField];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_titleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
-        [_titleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [_cellTitleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
+        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+        [_cellTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
 
-        [_textField.topAnchor      constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
-        [_textField.leadingAnchor  constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_textField.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-        [_textField.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
-        [_textField.heightAnchor   constraintGreaterThanOrEqualToConstant:24.0],
+        [_cellTextField.topAnchor      constraintEqualToAnchor:_cellTitleLabel.bottomAnchor constant:6.0],
+        [_cellTextField.leadingAnchor  constraintEqualToAnchor:_cellTitleLabel.leadingAnchor],
+        [_cellTextField.trailingAnchor constraintEqualToAnchor:_cellTitleLabel.trailingAnchor],
+        [_cellTextField.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
+        [_cellTextField.heightAnchor   constraintGreaterThanOrEqualToConstant:24.0],
     ]];
     return self;
 }
 
 - (void)prepareForReuse {
     [super prepareForReuse];
-    [self.textField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
+    _cellTitleLabel.text = nil;
+    _cellTextField.text  = nil;
+    _cellTextField.placeholder = nil;
+    [_cellTextField removeTarget:nil action:NULL forControlEvents:UIControlEventEditingChanged];
+    _cellTextField.delegate = nil;
+}
+
+- (void)configureWithTitle:(NSString *)title
+                      text:(NSString *)text
+               placeholder:(NSString *)placeholder
+                  delegate:(id<UITextFieldDelegate>)delegate
+                    target:(id)target
+                    action:(SEL)action {
+    _cellTitleLabel.text     = title;
+    _cellTextField.text      = text;
+    _cellTextField.placeholder = placeholder;
+    _cellTextField.delegate  = delegate;
+    _cellTextField.returnKeyType = UIReturnKeyDone;
+    if (target && action) {
+        [_cellTextField addTarget:target action:action forControlEvents:UIControlEventEditingChanged];
+    }
 }
 
 @end
 
-// ─── View Controller ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════
+// MARK: - PPRemEdSegmentCell  (inset base + full-width segmented control)
+// ═══════════════════════════════════════════════════════════
 
-@interface PPReminderEditorViewController () <UITextFieldDelegate>
+@interface PPRemEdSegmentCell : PPRemEdBaseCell
+@property (nonatomic, strong, readonly) UIView *controlContainer;
+@end
+
+@implementation PPRemEdSegmentCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
+    self = [super initWithStyle:style reuseIdentifier:rid];
+    if (!self) return nil;
+
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.preservesSuperviewLayoutMargins = NO;
+    self.contentView.preservesSuperviewLayoutMargins = NO;
+    self.semanticContentAttribute = PPRemEdSemanticAttr();
+    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
+
+    _controlContainer = [UIView new];
+    _controlContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    _controlContainer.backgroundColor = UIColor.clearColor;
+    [self.contentView addSubview:_controlContainer];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_controlContainer.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor      constant:14.0],
+        [_controlContainer.bottomAnchor   constraintEqualToAnchor:self.contentView.bottomAnchor   constant:-14.0],
+        [_controlContainer.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:18.0],
+        [_controlContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+    ]];
+    return self;
+}
+
+- (void)embedControl:(UIView *)control {
+    for (UIView *sub in _controlContainer.subviews) {
+        [sub removeFromSuperview];
+    }
+    control.translatesAutoresizingMaskIntoConstraints = NO;
+    [_controlContainer addSubview:control];
+    [NSLayoutConstraint activateConstraints:@[
+        [control.topAnchor      constraintEqualToAnchor:_controlContainer.topAnchor],
+        [control.bottomAnchor   constraintEqualToAnchor:_controlContainer.bottomAnchor],
+        [control.leadingAnchor  constraintEqualToAnchor:_controlContainer.leadingAnchor],
+        [control.trailingAnchor constraintEqualToAnchor:_controlContainer.trailingAnchor],
+    ]];
+}
+
+@end
+
+// ═══════════════════════════════════════════════════════════
+// MARK: - PPRemEdSelectorCell  (ProfileVC PPProfileSelectorCell pattern)
+// ═══════════════════════════════════════════════════════════
+
+@interface PPRemEdSelectorCell : PPRemEdBaseCell
+@property (nonatomic, strong, readonly) UILabel     *cellTitleLabel;
+@property (nonatomic, strong, readonly) UIImageView *iconView;
+@property (nonatomic, strong, readonly) UILabel     *valueLabel;
+@property (nonatomic, strong, readonly) UIImageView *chevronView;
+@end
+
+@implementation PPRemEdSelectorCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
+    self = [super initWithStyle:style reuseIdentifier:rid];
+    if (!self) return nil;
+
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.preservesSuperviewLayoutMargins = NO;
+    self.contentView.preservesSuperviewLayoutMargins = NO;
+    self.semanticContentAttribute = PPRemEdSemanticAttr();
+    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
+
+    _cellTitleLabel = [UILabel new];
+    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _cellTitleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.contentView addSubview:_cellTitleLabel];
+
+    _iconView = [[UIImageView alloc] init];
+    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconView.contentMode = UIViewContentModeScaleAspectFit;
+    _iconView.tintColor = PPPetsUIBrandColor();
+    [self.contentView addSubview:_iconView];
+
+    _valueLabel = [UILabel new];
+    _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _valueLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    _valueLabel.textColor = PPPetsUIPrimaryTextColor();
+    _valueLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    _valueLabel.numberOfLines = 2;
+    [self.contentView addSubview:_valueLabel];
+
+    _chevronView = [[UIImageView alloc] init];
+    _chevronView.translatesAutoresizingMaskIntoConstraints = NO;
+    _chevronView.contentMode = UIViewContentModeCenter;
+    _chevronView.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.6];
+    _chevronView.image = [UIImage systemImageNamed:PPPetsForwardChevronSymbolName()
+                                 withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightMedium]];
+    [self.contentView addSubview:_chevronView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_cellTitleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
+        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+        [_cellTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+
+        [_iconView.topAnchor    constraintEqualToAnchor:_cellTitleLabel.bottomAnchor constant:8.0],
+        [_iconView.leadingAnchor constraintEqualToAnchor:_cellTitleLabel.leadingAnchor],
+        [_iconView.widthAnchor  constraintEqualToConstant:22.0],
+        [_iconView.heightAnchor constraintEqualToConstant:22.0],
+        [_iconView.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
+
+        [_valueLabel.centerYAnchor constraintEqualToAnchor:_iconView.centerYAnchor],
+        [_valueLabel.leadingAnchor constraintEqualToAnchor:_iconView.trailingAnchor constant:8.0],
+        [_valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_chevronView.leadingAnchor constant:-8.0],
+        [_valueLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-14.0],
+
+        [_chevronView.centerYAnchor constraintEqualToAnchor:_iconView.centerYAnchor],
+        [_chevronView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [_chevronView.widthAnchor  constraintEqualToConstant:12.0],
+        [_chevronView.heightAnchor constraintEqualToConstant:12.0],
+    ]];
+    return self;
+}
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    _cellTitleLabel.text = nil;
+    _valueLabel.text     = nil;
+    _iconView.image      = nil;
+}
+
+- (void)configureWithTitle:(NSString *)title value:(NSString *)value iconName:(NSString *)iconName {
+    _cellTitleLabel.text = title;
+    _valueLabel.text     = value;
+    _iconView.image      = [[UIImage systemImageNamed:iconName ?: @"pawprint.fill"]
+                             imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+}
+
+@end
+
+// ═══════════════════════════════════════════════════════════
+// MARK: - PPRemEdDatePickerCell  (inset base + label + compact date picker)
+// ═══════════════════════════════════════════════════════════
+
+@interface PPRemEdDatePickerCell : PPRemEdBaseCell
+@property (nonatomic, strong, readonly) UILabel *cellTitleLabel;
+@property (nonatomic, strong, readonly) UIView  *pickerContainer;
+@end
+
+@implementation PPRemEdDatePickerCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
+    self = [super initWithStyle:style reuseIdentifier:rid];
+    if (!self) return nil;
+
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.preservesSuperviewLayoutMargins = NO;
+    self.contentView.preservesSuperviewLayoutMargins = NO;
+    self.semanticContentAttribute = PPRemEdSemanticAttr();
+    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
+
+    _cellTitleLabel = [UILabel new];
+    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _cellTitleLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.contentView addSubview:_cellTitleLabel];
+
+    _pickerContainer = [UIView new];
+    _pickerContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    _pickerContainer.backgroundColor = UIColor.clearColor;
+    [self.contentView addSubview:_pickerContainer];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+        [_cellTitleLabel.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_cellTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_pickerContainer.leadingAnchor constant:-8.0],
+
+        [_pickerContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [_pickerContainer.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_pickerContainer.topAnchor      constraintGreaterThanOrEqualToAnchor:self.contentView.topAnchor    constant:8.0],
+        [_pickerContainer.bottomAnchor   constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
+    ]];
+    return self;
+}
+
+- (void)embedDatePicker:(UIDatePicker *)picker {
+    for (UIView *sub in _pickerContainer.subviews) {
+        [sub removeFromSuperview];
+    }
+    picker.translatesAutoresizingMaskIntoConstraints = NO;
+    [_pickerContainer addSubview:picker];
+    [NSLayoutConstraint activateConstraints:@[
+        [picker.topAnchor      constraintEqualToAnchor:_pickerContainer.topAnchor],
+        [picker.bottomAnchor   constraintEqualToAnchor:_pickerContainer.bottomAnchor],
+        [picker.leadingAnchor  constraintEqualToAnchor:_pickerContainer.leadingAnchor],
+        [picker.trailingAnchor constraintEqualToAnchor:_pickerContainer.trailingAnchor],
+    ]];
+}
+
+@end
+
+// ═══════════════════════════════════════════════════════════
+// MARK: - PPRemEdSwitchCell  (inset base + icon + title + switch)
+// ═══════════════════════════════════════════════════════════
+
+@interface PPRemEdSwitchCell : PPRemEdBaseCell
+@property (nonatomic, strong, readonly) UIImageView *iconView;
+@property (nonatomic, strong, readonly) UILabel     *cellTitleLabel;
+@end
+
+@implementation PPRemEdSwitchCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)rid {
+    self = [super initWithStyle:style reuseIdentifier:rid];
+    if (!self) return nil;
+
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.preservesSuperviewLayoutMargins = NO;
+    self.contentView.preservesSuperviewLayoutMargins = NO;
+    self.semanticContentAttribute = PPRemEdSemanticAttr();
+    self.contentView.semanticContentAttribute = PPRemEdSemanticAttr();
+
+    _iconView = [[UIImageView alloc] init];
+    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconView.contentMode = UIViewContentModeScaleAspectFit;
+    _iconView.tintColor = PPPetsUIBrandColor();
+    [self.contentView addSubview:_iconView];
+
+    _cellTitleLabel = [UILabel new];
+    _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _cellTitleLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.contentView addSubview:_cellTitleLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_iconView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+        [_iconView.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_iconView.widthAnchor    constraintEqualToConstant:20.0],
+        [_iconView.heightAnchor   constraintEqualToConstant:20.0],
+
+        [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:_iconView.trailingAnchor constant:10.0],
+        [_cellTitleLabel.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [_cellTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-60.0],
+
+        [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
+    ]];
+    return self;
+}
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    _cellTitleLabel.text = nil;
+    _iconView.image      = nil;
+    self.accessoryView   = nil;
+}
+
+- (void)configureWithTitle:(NSString *)title iconName:(NSString *)iconName switchControl:(UISwitch *)sw {
+    _cellTitleLabel.text = title;
+    _iconView.image = [[UIImage systemImageNamed:iconName ?: @"bell.badge.fill"]
+                        imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    self.accessoryView = sw;
+}
+
+@end
+
+// ═══════════════════════════════════════════════════════════
+// MARK: - View Controller
+// ═══════════════════════════════════════════════════════════
+
+@interface PPReminderEditorViewController () <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate>
 @property (nonatomic, strong) PPPetReminder *reminder;
 @property (nonatomic, assign) BOOL isNewReminder;
 
@@ -125,20 +433,21 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 @property (nonatomic, assign) NSInteger selectedPetIndex;
 @property (nonatomic, assign) BOOL petsLoaded;
 
-@property (nonatomic, strong) UITextField          *titleField;
-@property (nonatomic, strong) UISegmentedControl   *typeControl;
-@property (nonatomic, strong) UIDatePicker         *datePicker;
-@property (nonatomic, strong) UISwitch             *enableSwitch;
-@property (nonatomic, strong) UIView               *headerRoot;
-@property (nonatomic, strong) UIView               *headerCardView;
-@property (nonatomic, strong) PPInsetLabel         *heroEyebrowLabel;
-@property (nonatomic, strong) UILabel              *heroTitleLabel;
-@property (nonatomic, strong) UILabel              *heroSubtitleLabel;
-@property (nonatomic, strong) PPInsetLabel         *heroMetaLabel;
-@property (nonatomic, strong) UIImageView          *heroSymbolView;
-@property (nonatomic, strong) UIView               *backgroundGlowViewTop;
-@property (nonatomic, strong) UIView               *backgroundGlowViewBottom;
-@property (nonatomic, strong) NSArray<UIView *>    *floatingCircles;
+@property (nonatomic, strong) UITableView            *tableView;
+@property (nonatomic, strong) UITextField             *titleField;
+@property (nonatomic, strong) UISegmentedControl      *typeControl;
+@property (nonatomic, strong) UIDatePicker            *datePicker;
+@property (nonatomic, strong) UISwitch                *enableSwitch;
+@property (nonatomic, strong) UIView                  *headerRoot;
+@property (nonatomic, strong) UIView                  *headerCardView;
+@property (nonatomic, strong) PPInsetLabel            *heroEyebrowLabel;
+@property (nonatomic, strong) UILabel                 *heroTitleLabel;
+@property (nonatomic, strong) UILabel                 *heroSubtitleLabel;
+@property (nonatomic, strong) PPInsetLabel            *heroMetaLabel;
+@property (nonatomic, strong) UIImageView             *heroSymbolView;
+@property (nonatomic, strong) UIView                  *backgroundGlowViewTop;
+@property (nonatomic, strong) UIView                  *backgroundGlowViewBottom;
+@property (nonatomic, strong) NSArray<UIView *>       *floatingCircles;
 @end
 
 @implementation PPReminderEditorViewController
@@ -146,7 +455,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 #pragma mark - Init
 
 - (instancetype)initWithReminder:(PPPetReminder *)reminder {
-    self = [super initWithStyle:UITableViewStyleInsetGrouped];
+    self = [super initWithNibName:nil bundle:nil];
     if (self) {
         _isNewReminder = (reminder == nil);
         _reminder = reminder ?: [PPPetReminder new];
@@ -162,33 +471,42 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
 #pragma mark - Lifecycle
 
-- (void)loadView {
-    // UITableViewController sets self.view = self.tableView.
-    // We need a container view so backdrop glow views can be inserted *behind* the table.
-    [super loadView];
-
-    UITableView *tv = self.tableView;
-    UIView *container = [[UIView alloc] initWithFrame:tv.frame];
-    container.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    tv.frame = container.bounds;
-    tv.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [container addSubview:tv];
-    self.view = container;
-}
-
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    self.tableView.backgroundColor  = UIColor.clearColor;
-    self.tableView.separatorStyle   = UITableViewCellSeparatorStyleNone;
-    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
-    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
-    self.tableView.showsVerticalScrollIndicator = NO;
-    self.tableView.semanticContentAttribute = PPRemEdSemanticAttr();
+    // ── Table (ProfileVC pattern: UITableViewStylePlain) ──
+    UITableView *tv = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    tv.translatesAutoresizingMaskIntoConstraints = NO;
+    tv.dataSource       = self;
+    tv.delegate         = self;
+    tv.backgroundColor  = UIColor.clearColor;
+    tv.separatorStyle   = UITableViewCellSeparatorStyleNone;
+    tv.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    tv.rowHeight        = UITableViewAutomaticDimension;
+    tv.estimatedRowHeight = 84.0;
+    tv.contentInset     = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    tv.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    tv.showsVerticalScrollIndicator = NO;
+    tv.showsHorizontalScrollIndicator = NO;
+    tv.semanticContentAttribute = PPRemEdSemanticAttr();
     if (@available(iOS 15.0, *)) {
-        self.tableView.sectionHeaderTopPadding = 0.0;
+        tv.sectionHeaderTopPadding = 0.0;
     }
+
+    [tv registerClass:[PPRemEdTextFieldCell  class] forCellReuseIdentifier:kPPRemEdTextFieldCellID];
+    [tv registerClass:[PPRemEdSegmentCell    class] forCellReuseIdentifier:kPPRemEdSegmentCellID];
+    [tv registerClass:[PPRemEdSelectorCell   class] forCellReuseIdentifier:kPPRemEdSelectorCellID];
+    [tv registerClass:[PPRemEdDatePickerCell class] forCellReuseIdentifier:kPPRemEdDatePickerCellID];
+    [tv registerClass:[PPRemEdSwitchCell     class] forCellReuseIdentifier:kPPRemEdSwitchCellID];
+
+    [self.view addSubview:tv];
+    [NSLayoutConstraint activateConstraints:@[
+        [tv.topAnchor      constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [tv.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
+        [tv.leadingAnchor  constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
+        [tv.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
+    ]];
+    self.tableView = tv;
 
     self.title = self.isNewReminder
         ? (kLang(@"pet_reminder_add")  ?: @"Add Reminder")
@@ -246,14 +564,15 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 }
 
 - (void)pp_applyCanvasBackground {
-    PPPetsApplyCanvasBackground(self, nil);
-    self.tableView.backgroundColor = UIColor.clearColor;
+    PPPetsApplyCanvasBackground(self, self.tableView);
 }
 
 - (void)pp_setupBackdrop {
     if (self.backgroundGlowViewTop || self.backgroundGlowViewBottom) {
         return;
     }
+
+    UIView *containerView = self.view;
 
     UIView *topGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12],
                                           [UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0],
@@ -264,21 +583,19 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
                                              0.08,
                                              72.0);
 
-    [self.view insertSubview:topGlow belowSubview:self.tableView];
-    [self.view insertSubview:bottomGlow belowSubview:self.tableView];
+    [containerView insertSubview:bottomGlow atIndex:0];
+    [containerView insertSubview:topGlow atIndex:0];
 
-    // Anchor to the container's own edges (not safeAreaLayoutGuide)
-    // because the view is not yet in a window hierarchy during viewDidLoad.
     [NSLayoutConstraint activateConstraints:@[
         [topGlow.widthAnchor constraintEqualToConstant:220.0],
         [topGlow.heightAnchor constraintEqualToConstant:220.0],
-        [topGlow.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-22.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:84.0],
+        [topGlow.topAnchor constraintEqualToAnchor:containerView.topAnchor constant:-22.0],
+        [topGlow.trailingAnchor constraintEqualToAnchor:containerView.trailingAnchor constant:84.0],
 
         [bottomGlow.widthAnchor constraintEqualToConstant:200.0],
         [bottomGlow.heightAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:48.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-64.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:containerView.bottomAnchor constant:48.0],
+        [bottomGlow.leadingAnchor constraintEqualToAnchor:containerView.leadingAnchor constant:-64.0],
     ]];
 
     self.backgroundGlowViewTop = topGlow;
@@ -687,126 +1004,85 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     return 0.000001;
 }
 
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.section == 1) {
+        return 83.0;
+    }
+    
+    else  if (indexPath.section == 3 || indexPath.section == 4) {
+        return 60.0;
+    }
+    
+    return UITableViewAutomaticDimension;
+}
+
+
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     switch (indexPath.section) {
-        case PPRemEdSectionTitle:  return [self pp_titleCell];
-        case PPRemEdSectionType:   return [self pp_typeCell];
-        case PPRemEdSectionPet:    return [self pp_petCell];
-        case PPRemEdSectionDate:   return [self pp_dateCell];
-        case PPRemEdSectionToggle: return [self pp_toggleCell];
-        default: return [UITableViewCell new];
+        case PPRemEdSectionTitle: {
+            PPRemEdTextFieldCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdTextFieldCellID forIndexPath:indexPath];
+            // Hide cell's built-in text field, embed the shared titleField instead
+            cell.cellTitleLabel.text = kLang(@"pet_reminder_title") ?: @"Reminder Title";
+            cell.cellTextField.hidden = YES;
+
+            [self.titleField removeFromSuperview];
+            self.titleField.translatesAutoresizingMaskIntoConstraints = NO;
+            [cell.contentView addSubview:self.titleField];
+            [NSLayoutConstraint activateConstraints:@[
+                [self.titleField.topAnchor      constraintEqualToAnchor:cell.cellTitleLabel.bottomAnchor constant:6.0],
+                [self.titleField.leadingAnchor  constraintEqualToAnchor:cell.cellTitleLabel.leadingAnchor],
+                [self.titleField.trailingAnchor constraintEqualToAnchor:cell.cellTitleLabel.trailingAnchor],
+                [self.titleField.bottomAnchor   constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-14.0],
+                [self.titleField.heightAnchor   constraintGreaterThanOrEqualToConstant:24.0],
+            ]];
+            return cell;
+        }
+        case PPRemEdSectionType: {
+            PPRemEdSegmentCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSegmentCellID forIndexPath:indexPath];
+            [cell embedControl:self.typeControl];
+            return cell;
+        }
+        case PPRemEdSectionPet: {
+            PPRemEdSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSelectorCellID forIndexPath:indexPath];
+
+            NSString *value = nil;
+            UIColor *valueColor = PPPetsUIPrimaryTextColor();
+
+            if (self.petsLoaded && self.selectedPetIndex != NSNotFound && self.selectedPetIndex < (NSInteger)self.pets.count) {
+                PPPetProfile *pet = self.pets[self.selectedPetIndex];
+                value = pet.name.length ? pet.name : (kLang(@"pet_unknown") ?: @"Pet");
+                valueColor = PPPetsUIBrandColor();
+            } else if (self.petsLoaded && self.pets.count == 0) {
+                value = kLang(@"pet_no_pets") ?: @"No pets added";
+                valueColor = UIColor.tertiaryLabelColor;
+            } else {
+                value = kLang(@"please_wait") ?: @"Loading…";
+                valueColor = UIColor.tertiaryLabelColor;
+            }
+
+            [cell configureWithTitle:(kLang(@"pet_reminder_select_pet") ?: @"Select Pet")
+                               value:value
+                            iconName:@"pawprint.fill"];
+            cell.valueLabel.textColor = valueColor;
+            return cell;
+        }
+        case PPRemEdSectionDate: {
+            PPRemEdDatePickerCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdDatePickerCellID forIndexPath:indexPath];
+            cell.cellTitleLabel.text = kLang(@"pet_reminder_fire_date") ?: @"Date & Time";
+            [cell embedDatePicker:self.datePicker];
+            return cell;
+        }
+        case PPRemEdSectionToggle: {
+            PPRemEdSwitchCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSwitchCellID forIndexPath:indexPath];
+            [cell configureWithTitle:(kLang(@"pet_reminder_enabled") ?: @"Enabled")
+                            iconName:@"bell.badge.fill"
+                       switchControl:self.enableSwitch];
+            return cell;
+        }
+        default:
+            return [UITableViewCell new];
     }
-}
-
-#pragma mark - Cell Builders
-
-- (UITableViewCell *)pp_titleCell {
-    PPRemEdFieldCell *cell = [[PPRemEdFieldCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-
-    cell.titleLabel.text = kLang(@"pet_reminder_title") ?: @"Reminder Title";
-
-    self.titleField.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.titleField removeFromSuperview];
-
-    // Replace the cell's built-in textField with our shared titleField
-    cell.textField.hidden = YES;
-    [cell.contentView addSubview:self.titleField];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.titleField.topAnchor      constraintEqualToAnchor:cell.titleLabel.bottomAnchor constant:8.0],
-        [self.titleField.leadingAnchor  constraintEqualToAnchor:cell.titleLabel.leadingAnchor],
-        [self.titleField.trailingAnchor constraintEqualToAnchor:cell.titleLabel.trailingAnchor],
-        [self.titleField.bottomAnchor   constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-14.0],
-        [self.titleField.heightAnchor   constraintGreaterThanOrEqualToConstant:24.0],
-    ]];
-    return cell;
-}
-
-- (UITableViewCell *)pp_typeCell {
-    PPRemEdBaseCell *cell = [[PPRemEdBaseCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.selectionStyle  = UITableViewCellSelectionStyleNone;
-    cell.backgroundColor = UIColor.clearColor;
-
-    self.typeControl.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.typeControl removeFromSuperview];
-    [cell.contentView addSubview:self.typeControl];
-    [NSLayoutConstraint activateConstraints:@[
-        [self.typeControl.topAnchor      constraintEqualToAnchor:cell.contentView.topAnchor      constant:14.0],
-        [self.typeControl.bottomAnchor   constraintEqualToAnchor:cell.contentView.bottomAnchor   constant:-14.0],
-        [self.typeControl.leadingAnchor  constraintEqualToAnchor:cell.contentView.leadingAnchor  constant:18.0],
-        [self.typeControl.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-18.0],
-    ]];
-    return cell;
-}
-
-- (UITableViewCell *)pp_petCell {
-    PPRemEdBaseCell *cell = [[PPRemEdBaseCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:nil];
-    cell.backgroundColor = UIColor.clearColor;
-    cell.accessoryType   = UITableViewCellAccessoryDisclosureIndicator;
-    cell.textLabel.font  = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightMedium];
-    cell.textLabel.textColor = PPPetsUIPrimaryTextColor();
-    cell.textLabel.text  = kLang(@"pet_reminder_select_pet") ?: @"Select Pet";
-    cell.textLabel.textAlignment = Language.alignmentForCurrentLanguage;
-
-    cell.imageView.image = [[UIImage systemImageNamed:@"pawprint.fill"]
-                            imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    cell.imageView.tintColor = PPPetsUIBrandColor();
-
-    if (self.petsLoaded && self.selectedPetIndex != NSNotFound && self.selectedPetIndex < (NSInteger)self.pets.count) {
-        PPPetProfile *pet = self.pets[self.selectedPetIndex];
-        cell.detailTextLabel.text = pet.name.length ? pet.name : (kLang(@"pet_unknown") ?: @"Pet");
-        cell.detailTextLabel.textColor = PPPetsUIBrandColor();
-        cell.detailTextLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:PPFontSubheadline weight:UIFontWeightMedium];
-    } else if (self.petsLoaded && self.pets.count == 0) {
-        cell.detailTextLabel.text = kLang(@"pet_no_pets") ?: @"No pets added";
-        cell.detailTextLabel.textColor = UIColor.tertiaryLabelColor;
-    } else {
-        cell.detailTextLabel.text = kLang(@"please_wait") ?: @"Loading…";
-        cell.detailTextLabel.textColor = UIColor.tertiaryLabelColor;
-    }
-    return cell;
-}
-
-- (UITableViewCell *)pp_dateCell {
-    PPRemEdBaseCell *cell = [[PPRemEdBaseCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.selectionStyle  = UITableViewCellSelectionStyleNone;
-    cell.backgroundColor = UIColor.clearColor;
-
-    UILabel *lbl  = [UILabel new];
-    lbl.translatesAutoresizingMaskIntoConstraints = NO;
-    lbl.font      = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightMedium];
-    lbl.textColor = PPPetsUIPrimaryTextColor();
-    lbl.text      = kLang(@"pet_reminder_fire_date") ?: @"Date & Time";
-    lbl.textAlignment = Language.alignmentForCurrentLanguage;
-    [cell.contentView addSubview:lbl];
-
-    self.datePicker.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.datePicker removeFromSuperview];
-    [cell.contentView addSubview:self.datePicker];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [lbl.leadingAnchor  constraintEqualToAnchor:cell.contentView.leadingAnchor constant:18.0],
-        [lbl.centerYAnchor  constraintEqualToAnchor:cell.contentView.centerYAnchor],
-        [self.datePicker.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-18.0],
-        [self.datePicker.centerYAnchor  constraintEqualToAnchor:cell.contentView.centerYAnchor],
-        [self.datePicker.topAnchor      constraintGreaterThanOrEqualToAnchor:cell.contentView.topAnchor    constant:8.0],
-        [self.datePicker.bottomAnchor   constraintLessThanOrEqualToAnchor:cell.contentView.bottomAnchor constant:-8.0],
-        [lbl.trailingAnchor constraintLessThanOrEqualToAnchor:self.datePicker.leadingAnchor constant:-8.0],
-    ]];
-    return cell;
-}
-
-- (UITableViewCell *)pp_toggleCell {
-    PPRemEdBaseCell *cell = [[PPRemEdBaseCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-    cell.selectionStyle  = UITableViewCellSelectionStyleNone;
-    cell.backgroundColor = UIColor.clearColor;
-    cell.textLabel.text  = kLang(@"pet_reminder_enabled") ?: @"Enabled";
-    cell.textLabel.font  = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightMedium];
-    cell.textLabel.textColor = PPPetsUIPrimaryTextColor();
-    cell.textLabel.textAlignment = Language.alignmentForCurrentLanguage;
-
-    [self.enableSwitch removeFromSuperview];
-    cell.accessoryView = self.enableSwitch;
-    return cell;
 }
 
 #pragma mark - UITableViewDelegate

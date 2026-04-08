@@ -533,7 +533,7 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
     [avatarHalo addSubview:headerAnimView];
 
     __weak LOTAnimationView *weakAnim = headerAnimView;
-    [AppClasses setAnimationNamed:@"Womanlovingpetcats"
+    [AppClasses setAnimationNamed:@"petprofile"//Womanlovingpetcats
                            ToView:headerAnimView
                         withSpeed:0.7
                        completion:^(BOOL success) {

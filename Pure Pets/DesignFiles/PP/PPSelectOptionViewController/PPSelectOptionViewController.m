@@ -418,6 +418,21 @@
         imageURLString = op.UserImageUrl.absoluteString;
     }
     
+    else if ([option isKindOfClass:[MainKindsModel class]]) {
+        
+        MainKindsModel *op = (MainKindsModel *)option;
+        title = op.KindName;
+        imageURLString = op.KindImageUrl;
+    }
+    
+    
+    else if ([option isKindOfClass:[SubKindModel class]]) {
+        
+        SubKindModel *op = (SubKindModel *)option;
+        title = op.SubKindName;
+        imageURLString = op.subKindIconUrl;
+    }
+    
     
     else if ([option isKindOfClass:[OptionModel class]]) {
         

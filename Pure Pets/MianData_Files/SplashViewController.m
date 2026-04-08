@@ -61,15 +61,8 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
 
 @implementation SplashViewController
 - (void)setupLogoLottieFromPath {
-    NSString *path = [[NSBundle mainBundle] pathForResource:@"purepets_logo_premium" ofType:@"json"];
-    self.logoAnimationView = [LOTAnimationView animationWithFilePath:path];
-    self.logoAnimationView.frame = CGRectMake(0, 0, 220, 220);
-    self.logoAnimationView.center = self.view.center;
-    self.logoAnimationView.contentMode = UIViewContentModeScaleAspectFit;
-    self.logoAnimationView.loopAnimation = YES;
-
-    [self.view addSubview:self.logoAnimationView];
-    [self.logoAnimationView play];
+   
+   
 }
 - (void)viewDidLoad
 {
@@ -82,6 +75,17 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     [self pp_updateLoadingPhase:PPSplashLoadingPhaseBootstrapping detail:self.currentLoadingDetail];
 
     [PPHUD dismiss];
+    
+    self.logoAnimationView = [LOTAnimationView animationNamed:@"AddUserIconAnimation.json"];
+   self.logoAnimationView.frame = CGRectMake(0, 0, 240, 240);
+   self.logoAnimationView.center = self.view.center;
+   self.logoAnimationView.contentMode = UIViewContentModeScaleAspectFit;
+   self.logoAnimationView.loopAnimation = YES;
+    self.logoAnimationView.backgroundColor =  UIColor.redColor;
+   //[self.view addSubview:self.logoAnimationView];
+    
+    
+    
     
     [self setupLogoLottieFromPath];
 }
@@ -96,6 +100,8 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     
     self.backgroundGradientLayer.opacity = 0.3;
     //self.bottomGlowView.alpha = 0.5;
+    
+    //[self.logoAnimationView play];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection

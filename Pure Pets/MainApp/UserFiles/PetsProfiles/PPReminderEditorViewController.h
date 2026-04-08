@@ -9,6 +9,6 @@
 #import <UIKit/UIKit.h>
 @class PPPetReminder;
 
-@interface PPReminderEditorViewController : UITableViewController
+@interface PPReminderEditorViewController : UIViewController
 - (instancetype)initWithReminder:(PPPetReminder * _Nullable)reminder;
 @end
