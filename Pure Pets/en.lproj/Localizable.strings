@@ -506,6 +506,7 @@
 "titleStringChildDataNotSaved" = "You have not saved chick data";
 "titleStringEditDidntSave" = "You did not save edits to the card";
  "topTitleCompleteChild" = "Child Data Complete";
+"BirdsCard" = "Bird Card";
 "topTitleEditCard" = "Edit Bird Card";
 "topViewLabel" = "Log in";
 "transferToBox" = "Transfer of the chick";

@@ -766,9 +766,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
 
     self.semanticContentAttribute = semantic;
-    self.contentView.semanticContentAttribute = semantic;
-    self.heroSurfaceView.semanticContentAttribute = semantic;
-    self.locationControl.semanticContentAttribute = semantic;
+    //self.contentView.semanticContentAttribute = semantic;
+    //self.heroSurfaceView.semanticContentAttribute = semantic;
+    //self.locationControl.semanticContentAttribute = semantic;
     self.currentGreetingText = safeGreeting;
     self.currentUserNameText = safeUserName;
 

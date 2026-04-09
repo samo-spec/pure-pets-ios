@@ -5,7 +5,7 @@
 //  Created by Mohammed Ahmed on 4/9/26.
 //
 
-
+#import "PPProfileBaseCell.h"
 @interface PPProfileSelectorCell : PPProfileBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *valueLabel;

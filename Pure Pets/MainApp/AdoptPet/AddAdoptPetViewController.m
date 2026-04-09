@@ -1189,9 +1189,9 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(nonnull NSIndexPath *)indexPath{
     if(indexPath.row == 0)
-        if(indexPath.row == 1 || indexPath.row == 2 || indexPath.row == 1 || indexPath.row == 1) return 64;
+        if(indexPath.row == 0 || indexPath.row == 1 || indexPath.row == 2 || indexPath.row == 3 ||indexPath.row == 4 || indexPath.row == 5) return 83;
     if(indexPath.row == 1)
-        if(indexPath.row == 0 || indexPath.row == 1) return 64;
+        if(indexPath.row == 0 || indexPath.row == 1) return 83;
     return UITableViewAutomaticDimension;
 }
 

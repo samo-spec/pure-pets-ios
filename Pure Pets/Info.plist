@@ -82,5 +82,15 @@
 		<string>remote-notification</string>
 		<string>fetch</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Camera access is needed to take pet photos and capture images for listings</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Photo library access is needed to select images for pet profiles and listings</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save images to your photo library</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Location is used to show nearby pet services and stores</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Microphone access is needed for voice messages in chat</string>
 </dict>
 </plist>

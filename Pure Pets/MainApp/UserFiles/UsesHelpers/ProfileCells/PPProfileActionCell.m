@@ -10,37 +10,29 @@
 
 @interface PPProfileActionCell ()
 @property (nonatomic, assign) BOOL pp_didSetupViews;
-- (void)pp_commonInit;
 @end
 
 @implementation PPProfileActionCell
 
-- (instancetype)init
-{
-    return [self initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
-}
+#pragma mark - Initializers
 
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
-{
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (!self) {
-        return nil;
+    if (self) {
+        [self pp_commonInit];
     }
-
-    [self pp_commonInit];
     return self;
 }
 
-- (instancetype)initWithCoder:(NSCoder *)coder
-{
+- (instancetype)initWithCoder:(NSCoder *)coder {
     self = [super initWithCoder:coder];
-    if (!self) {
-        return nil;
+    if (self) {
+        [self pp_commonInit];
     }
-
-    [self pp_commonInit];
     return self;
 }
+
+#pragma mark - Setup
 
 - (void)pp_commonInit
 {
@@ -51,6 +43,10 @@
 
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.preservesSuperviewLayoutMargins = NO;
+    self.contentView.preservesSuperviewLayoutMargins = NO;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
     self.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.contentView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
 
@@ -84,8 +80,22 @@
     ]];
 }
 
+#pragma mark - Reuse
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    self.iconView.image = nil;
+    self.titleLabel.text = nil;
+    self.accessibilityIdentifier = nil;
+}
+
+#pragma mark - Public
+
 - (void)configureWithTitle:(NSString *)title iconName:(NSString *)iconName
 {
+    self.semanticContentAttribute = GM.setSemantic;
+    self.contentView.semanticContentAttribute =GM.setSemantic;
     self.titleLabel.text = title ?: @"";
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.iconView.image = [UIImage systemImageNamed:iconName ?: @"plus"];

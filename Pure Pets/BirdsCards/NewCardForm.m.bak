@@ -8,6 +8,7 @@
 
 #import "NewCardForm.h"
 #import "AppDelegate.h"
+#import "BKCircularLoadingButton.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPSelectOptionViewController.h"
 #import "PPModrenSegmrnted.h"
@@ -16,12 +17,11 @@
 #pragma mark - Design Tokens
 // =============================================================================
 
-static NSString * const PPCardTextFieldCellID  = @"PPCardTextFieldCell";
-static NSString * const PPCardSelectorCellID   = @"PPCardSelectorCell";
-static NSString * const PPCardSwitchCellID     = @"PPCardSwitchCell";
-static NSString * const PPCardTextViewCellID   = @"PPCardTextViewCell";
-static NSString * const PPCardSegmentedCellID  = @"PPCardSegmentedCell";
-static NSString * const PPCardImageCellID      = @"PPCardImageCell";
+static NSString * const PPCardTextFieldCellID   = @"PPCardTextFieldCell";
+static NSString * const PPCardSelectorCellID    = @"PPCardSelectorCell";
+static NSString * const PPCardTextViewCellID    = @"PPCardTextViewCell";
+static NSString * const PPCardSegmentedCellID   = @"PPCardSegmentedCell";
+static NSString * const PPCardImageCellID       = @"PPCardImageCell";
 
 static const CGFloat kPPCardCellHorizontalInset = 20.0;
 static const CGFloat kPPCardCellVerticalInset   = 10.0;
@@ -92,13 +92,6 @@ static inline NSString *PPCardForwardSymbolName(void) {
     [super setFrame:frame];
 }
 
-- (void)layoutSubviews {
-    [super layoutSubviews];
-    // Keep shadowPath in sync with the content view's rounded rect to prevent jumping
-    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:self.contentView.frame cornerRadius:20.0];
-    self.layer.shadowPath = path.CGPath;
-}
-
 - (void)applyDisabledState:(BOOL)disabled {
     self.contentView.alpha = disabled ? 0.58 : 1.0;
 }
@@ -113,10 +106,10 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
     PPCardFieldTypeText,
     PPCardFieldTypeInteger,
     PPCardFieldTypeSelector,
-    PPCardFieldTypeSwitch,
     PPCardFieldTypeTextView,
     PPCardFieldTypeSegmented,
-    PPCardFieldTypeImage
+    PPCardFieldTypeImage,
+    PPCardFieldTypeDisplay
 };
 
 @interface PPCardFormField : NSObject
@@ -136,7 +129,7 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
 @implementation PPCardFormField
 - (instancetype)init {
     self = [super init];
-    if (self) { _height = 56.0; _required = NO; _disabled = NO; }
+    if (self) { _height = 52.0; _required = NO; _disabled = NO; }
     return self;
 }
 @end
@@ -210,12 +203,10 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
         self.textField.keyboardType = UIKeyboardTypeDefault;
         self.textField.text = [field.value isKindOfClass:NSString.class] ? field.value : @"";
     }
-    self.textField.textColor = (self.textField.text.length > 0) ? PPCardFormAccentColor() : PPCardFormPrimaryTextColor();
     [self applyDisabledState:field.disabled];
 }
 
 - (void)textFieldDidChange:(UITextField *)textField {
-    textField.textColor = (textField.text.length > 0) ? PPCardFormAccentColor() : PPCardFormPrimaryTextColor();
     if (self.onValueChanged) self.onValueChanged(textField.text);
 }
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
@@ -391,69 +382,10 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
 @end
 
 // =============================================================================
-#pragma mark - PPCardSwitchCell
-// =============================================================================
-
-@interface PPCardSwitchCell : PPCardBaseCell
-@property (nonatomic, strong) UILabel *fieldTitleLabel;
-@property (nonatomic, strong) UISwitch *toggleSwitch;
-@property (nonatomic, copy) void(^onSwitchChanged)(BOOL isOn);
-@end
-
-@implementation PPCardSwitchCell
-- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (self) {
-        _fieldTitleLabel = [[UILabel alloc] init];
-        _fieldTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _fieldTitleLabel.font = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
-        _fieldTitleLabel.textColor = PPCardFormPrimaryTextColor();
-        _fieldTitleLabel.textAlignment = PPCardCurrentTextAlignment();
-        [self.contentView addSubview:_fieldTitleLabel];
-
-        _toggleSwitch = [[UISwitch alloc] init];
-        _toggleSwitch.translatesAutoresizingMaskIntoConstraints = NO;
-        _toggleSwitch.onTintColor = PPCardFormAccentColor();
-        [_toggleSwitch addTarget:self action:@selector(switchDidChange:) forControlEvents:UIControlEventValueChanged];
-        [self.contentView addSubview:_toggleSwitch];
-
-        [NSLayoutConstraint activateConstraints:@[
-            [_fieldTitleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-            [_toggleSwitch.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
-            [_toggleSwitch.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-            [_fieldTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_toggleSwitch.leadingAnchor constant:-12.0],
-            [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:56.0]
-        ]];
-    }
-    return self;
-}
-
-- (void)configureWithField:(PPCardFormField *)field {
-    self.semanticContentAttribute = PPCardCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPCardCurrentSemanticAttribute();
-    self.fieldTitleLabel.text = field.title;
-    self.fieldTitleLabel.textAlignment = PPCardCurrentTextAlignment();
-    BOOL isOn = NO;
-    if ([field.value respondsToSelector:@selector(boolValue)]) {
-        isOn = [field.value boolValue];
-    }
-    [self.toggleSwitch setOn:isOn animated:NO];
-    self.userInteractionEnabled = !field.disabled;
-    [self applyDisabledState:field.disabled];
-}
-
-- (void)switchDidChange:(UISwitch *)sender {
-    if (self.onSwitchChanged) self.onSwitchChanged(sender.isOn);
-}
-@end
-
-// =============================================================================
 #pragma mark - PPCardSegmentedCell
 // =============================================================================
 
 @interface PPCardSegmentedCell : PPCardBaseCell
-@property (nonatomic, strong) UILabel *fieldTitleLabel;
 @property (nonatomic, strong) PPModrenSegmrnted *segmentedControl;
 @property (nonatomic, copy) void(^onSegmentChanged)(NSInteger selectedIndex);
 @end
@@ -462,35 +394,19 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
-        _fieldTitleLabel = [[UILabel alloc] init];
-        _fieldTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _fieldTitleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-        _fieldTitleLabel.textColor = PPCardFormPrimaryTextColor();
-        _fieldTitleLabel.textAlignment = PPCardCurrentTextAlignment();
-        [self.contentView addSubview:_fieldTitleLabel];
-
         PPModrenSegmrntedItem *femaleItem = [PPModrenSegmrntedItem itemWithTitle:kLang(@"Female") iconName:nil selectedIconName:nil];
         PPModrenSegmrntedItem *maleItem   = [PPModrenSegmrntedItem itemWithTitle:kLang(@"Male") iconName:nil selectedIconName:nil];
         _segmentedControl = [[PPModrenSegmrnted alloc] initWithItems:@[femaleItem, maleItem]];
         _segmentedControl.translatesAutoresizingMaskIntoConstraints = NO;
         _segmentedControl.selectedIndex = -1;
-        _segmentedControl.selectedSegmentColor = PPCardFormAccentColor();
-        _segmentedControl.selectedTextColor = UIColor.whiteColor;
-        _segmentedControl.normalTextColor = PPCardFormPrimaryTextColor();
-        _segmentedControl.normalFont = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
-        _segmentedControl.selectedFont = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightBold];
         [_segmentedControl addTarget:self action:@selector(segmentDidChange:) forControlEvents:UIControlEventValueChanged];
         [self.contentView addSubview:_segmentedControl];
 
         [NSLayoutConstraint activateConstraints:@[
-            [_fieldTitleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:10.0],
-            [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
-            [_fieldTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-            [_segmentedControl.topAnchor constraintEqualToAnchor:_fieldTitleLabel.bottomAnchor constant:8.0],
+            [_segmentedControl.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:8.0],
             [_segmentedControl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
             [_segmentedControl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
-            [_segmentedControl.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-10.0],
-            [_segmentedControl.heightAnchor constraintEqualToConstant:44.0],
+            [_segmentedControl.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
             [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:80.0]
         ]];
     }
@@ -498,10 +414,6 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
 }
 
 - (void)configureWithField:(PPCardFormField *)field {
-    self.semanticContentAttribute = PPCardCurrentSemanticAttribute();
-    self.contentView.semanticContentAttribute = PPCardCurrentSemanticAttribute();
-    self.fieldTitleLabel.text = field.title;
-    self.fieldTitleLabel.textAlignment = PPCardCurrentTextAlignment();
     if ([field.value respondsToSelector:@selector(integerValue)]) {
         NSInteger sexual = [field.value integerValue];
         if (sexual == 1) [self.segmentedControl setSelectedIndex:1 animated:NO];
@@ -542,7 +454,7 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
         _thumbImageView.tintColor = PPCardFormAccentColor();
         _thumbImageView.contentMode = UIViewContentModeScaleAspectFill;
         _thumbImageView.clipsToBounds = YES;
-        _thumbImageView.layer.cornerRadius = 8.0;
+        _thumbImageView.layer.cornerRadius = 6.0;
         [self.contentView addSubview:_thumbImageView];
 
         _chevronView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:PPCardForwardSymbolName()]];
@@ -601,162 +513,6 @@ typedef NS_ENUM(NSInteger, PPCardFieldType) {
 @end
 
 // =============================================================================
-#pragma mark - PPParrotColorSuggestionsView
-// =============================================================================
-
-/// Modern horizontal scrolling color chip suggestions for the bird color input.
-/// Shows popular parrot color names as tappable capsules with a small color swatch.
-@interface PPParrotColorSuggestionsView : UIView
-@property (nonatomic, copy) void(^onColorSelected)(NSString *colorName);
-@end
-
-@implementation PPParrotColorSuggestionsView {
-    UIScrollView *_scrollView;
-}
-
-typedef struct { const char *name; CGFloat r; CGFloat g; CGFloat b; } PPParrotColorDef;
-
-static const PPParrotColorDef kParrotColors[] = {
-    { "Green",      0.18, 0.72, 0.30 },
-    { "Lutino",     0.98, 0.88, 0.22 },
-    { "Blue",       0.20, 0.52, 0.88 },
-    { "Albino",     0.92, 0.92, 0.92 },
-    { "Yellow",     0.99, 0.82, 0.08 },
-    { "Olive",      0.55, 0.60, 0.22 },
-    { "Cobalt",     0.16, 0.30, 0.72 },
-    { "Grey",       0.60, 0.62, 0.64 },
-    { "Cinnamon",   0.72, 0.48, 0.28 },
-    { "Violet",     0.52, 0.32, 0.78 },
-    { "Pied",       0.45, 0.75, 0.38 },
-    { "Turquoise",  0.18, 0.78, 0.76 },
-    { "Mauve",      0.60, 0.48, 0.72 },
-    { "White",      0.96, 0.96, 0.96 },
-    { "Red",        0.88, 0.20, 0.18 },
-    { "Orange",     0.95, 0.55, 0.15 },
-    { "Spangle",    0.42, 0.68, 0.35 },
-    { "Dark Green", 0.10, 0.50, 0.20 },
-    { "Clearwing",  0.65, 0.85, 0.40 },
-    { "Fallow",     0.78, 0.62, 0.42 },
-};
-static const NSUInteger kParrotColorsCount = sizeof(kParrotColors) / sizeof(kParrotColors[0]);
-
-- (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:CGRectMake(0, 0, UIScreen.mainScreen.bounds.size.width, 52)];
-    if (self) {
-        self.backgroundColor = PPCardFormCanvasColor();
-
-        // Thin separator line at top
-        UIView *sep = [[UIView alloc] init];
-        sep.translatesAutoresizingMaskIntoConstraints = NO;
-        sep.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.3];
-        [self addSubview:sep];
-
-        _scrollView = [[UIScrollView alloc] init];
-        _scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-        _scrollView.showsHorizontalScrollIndicator = NO;
-        _scrollView.alwaysBounceHorizontal = YES;
-        _scrollView.contentInset = UIEdgeInsetsMake(0, 14, 0, 14);
-        [self addSubview:_scrollView];
-
-        [NSLayoutConstraint activateConstraints:@[
-            [sep.topAnchor constraintEqualToAnchor:self.topAnchor],
-            [sep.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-            [sep.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-            [sep.heightAnchor constraintEqualToConstant:0.5],
-            [_scrollView.topAnchor constraintEqualToAnchor:sep.bottomAnchor constant:4],
-            [_scrollView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-            [_scrollView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-            [_scrollView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-4],
-        ]];
-
-        UIView *prevChip = nil;
-        for (NSUInteger i = 0; i < kParrotColorsCount; i++) {
-            PPParrotColorDef def = kParrotColors[i];
-            NSString *name = [NSString stringWithUTF8String:def.name];
-            UIColor *swatch = [UIColor colorWithRed:def.r green:def.g blue:def.b alpha:1.0];
-            UIView *chip = [self pp_buildChipWithName:name swatchColor:swatch index:i];
-            chip.translatesAutoresizingMaskIntoConstraints = NO;
-            [_scrollView addSubview:chip];
-
-            [NSLayoutConstraint activateConstraints:@[
-                [chip.centerYAnchor constraintEqualToAnchor:_scrollView.centerYAnchor],
-                [chip.heightAnchor constraintEqualToConstant:34],
-                prevChip
-                    ? [chip.leadingAnchor constraintEqualToAnchor:prevChip.trailingAnchor constant:8]
-                    : [chip.leadingAnchor constraintEqualToAnchor:_scrollView.contentLayoutGuide.leadingAnchor],
-            ]];
-            prevChip = chip;
-        }
-        if (prevChip) {
-            [prevChip.trailingAnchor constraintEqualToAnchor:_scrollView.contentLayoutGuide.trailingAnchor].active = YES;
-        }
-    }
-    return self;
-}
-
-- (UIView *)pp_buildChipWithName:(NSString *)name swatchColor:(UIColor *)color index:(NSUInteger)idx {
-    UIView *pill = [[UIView alloc] init];
-    pill.backgroundColor = [PPCardFormSurfaceColor() colorWithAlphaComponent:0.94];
-    pill.layer.cornerRadius = 17;
-    pill.layer.borderWidth = 1.0;
-    pill.layer.borderColor = PPCardFormBorderColor().CGColor;
-    pill.clipsToBounds = YES;
-    pill.tag = (NSInteger)idx;
-
-    UIView *dot = [[UIView alloc] init];
-    dot.translatesAutoresizingMaskIntoConstraints = NO;
-    dot.backgroundColor = color;
-    dot.layer.cornerRadius = 7;
-    dot.clipsToBounds = YES;
-    [pill addSubview:dot];
-
-    UILabel *lbl = [[UILabel alloc] init];
-    lbl.translatesAutoresizingMaskIntoConstraints = NO;
-    lbl.text = name;
-    lbl.font = [GM MidFontWithSize:13] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-    lbl.textColor = PPCardFormPrimaryTextColor();
-    [pill addSubview:lbl];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [dot.leadingAnchor constraintEqualToAnchor:pill.leadingAnchor constant:10],
-        [dot.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
-        [dot.widthAnchor constraintEqualToConstant:14],
-        [dot.heightAnchor constraintEqualToConstant:14],
-        [lbl.leadingAnchor constraintEqualToAnchor:dot.trailingAnchor constant:6],
-        [lbl.centerYAnchor constraintEqualToAnchor:pill.centerYAnchor],
-        [lbl.trailingAnchor constraintEqualToAnchor:pill.trailingAnchor constant:-12],
-    ]];
-
-    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_chipTapped:)];
-    [pill addGestureRecognizer:tap];
-    pill.userInteractionEnabled = YES;
-
-    return pill;
-}
-
-- (void)pp_chipTapped:(UITapGestureRecognizer *)gesture {
-    NSUInteger idx = (NSUInteger)gesture.view.tag;
-    if (idx >= kParrotColorsCount) return;
-    NSString *name = [NSString stringWithUTF8String:kParrotColors[idx].name];
-
-    // Subtle press feedback
-    UIView *chip = gesture.view;
-    [UIView animateWithDuration:0.08 animations:^{
-        chip.transform = CGAffineTransformMakeScale(0.93, 0.93);
-        chip.alpha = 0.7;
-    } completion:^(BOOL finished) {
-        [UIView animateWithDuration:0.12 animations:^{
-            chip.transform = CGAffineTransformIdentity;
-            chip.alpha = 1.0;
-        }];
-    }];
-
-    if (self.onColorSelected) self.onColorSelected(name);
-}
-
-@end
-
-// =============================================================================
 #pragma mark - PPCardMultiSelectViewController
 // =============================================================================
 
@@ -772,29 +528,21 @@ static const NSUInteger kParrotColorsCount = sizeof(kParrotColors) / sizeof(kPar
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.title = self.headerTitle ?: @"";
-    self.view.backgroundColor = PPCardFormCanvasColor();
-    self.tableView.backgroundColor = PPCardFormCanvasColor();
-    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    self.tableView.contentInset = UIEdgeInsetsMake(12, 0, 32, 0);
+    self.tableView.separatorInset = UIEdgeInsetsMake(0, 16, 0, 0);
     if (!self.selectedItems) self.selectedItems = [NSMutableArray array];
-
-    UIButton *saveBtn = [PPButtonHelper pp_buttonWithTitle:kLang(@"done")
-                                                      font:[GM fontWithSize:17]
-                                                 imageName:@""
-                                                    target:self
-                                                    config:[UIButtonConfiguration tintedButtonConfiguration]
-                                                    action:@selector(doneTapped)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveBtn];
+    self.navigationItem.rightBarButtonItem =
+        [[UIBarButtonItem alloc] initWithTitle:kLang(@"done")
+                                        style:UIBarButtonItemStyleDone
+                                       target:self
+                                       action:@selector(doneTapped)];
 }
 
 - (void)doneTapped {
     if (self.onDone) self.onDone([self.selectedItems copy]);
-    if (self.navigationController.presentingViewController) {
-        [self.navigationController dismissViewControllerAnimated:YES completion:nil];
-    } else if (self.presentingViewController) {
-        [self dismissViewControllerAnimated:YES completion:nil];
-    } else {
+    if (self.navigationController) {
         [self.navigationController popViewControllerAnimated:YES];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:nil];
     }
 }
 
@@ -802,46 +550,19 @@ static const NSUInteger kParrotColorsCount = sizeof(kParrotColors) / sizeof(kPar
     return self.allItems.count;
 }
 
-- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    return 60.0;
-}
-
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"cell"];
     if (!cell) cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"cell"];
     subKindItemsModel *item = self.allItems[indexPath.row];
     cell.textLabel.text = [item formDisplayText];
-    cell.textLabel.font = [GM MidFontWithSize:16] ?: [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
-    cell.textLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    cell.textLabel.textAlignment = PPCardCurrentTextAlignment();
-    cell.semanticContentAttribute = PPCardCurrentSemanticAttribute();
-    cell.contentView.semanticContentAttribute = PPCardCurrentSemanticAttribute();
-    cell.backgroundColor = PPCardFormSurfaceColor();
-    cell.contentView.backgroundColor = PPCardFormSurfaceColor();
-    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.textLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
     BOOL isSelected = NO;
     for (subKindItemsModel *sel in self.selectedItems) {
         if (sel.ID == item.ID) { isSelected = YES; break; }
     }
     cell.accessoryType = isSelected ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;
-    cell.tintColor = PPCardFormAccentColor();
+    cell.tintColor = [GM appPrimaryColor];
     return cell;
-}
-
-- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
-    cell.contentView.layer.cornerRadius = 16.0;
-    cell.contentView.layer.masksToBounds = YES;
-    cell.contentView.layer.borderWidth = 1.0;
-    cell.contentView.layer.borderColor = PPCardFormBorderColor().CGColor;
-    // Use consistent inset via setFrame pattern instead of fragile CGRectInset
-    CGRect f = cell.frame;
-    f.origin.x = 20.0;
-    f.size.width -= 40.0;
-    f.origin.y += 4.0;
-    f.size.height -= 8.0;
-    if (f.size.width > 0 && f.size.height > 0) {
-        cell.frame = f;
-    }
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -896,7 +617,7 @@ static const NSUInteger kParrotColorsCount = sizeof(kParrotColors) / sizeof(kPar
 @property (nonatomic, strong) UIActivityIndicatorView *uploadProgressV;
 @property (nonatomic, assign) NSInteger currentIndex;
 @property (nonatomic, strong) FIRStorageReference *storageRef;
-@property (nonatomic, strong) UIButton *saveButton;
+@property (nonatomic, strong) BKCircularLoadingButton *BKbutton;
 @property (nonatomic, strong) NSUserDefaults *prefs;
 @property (nonatomic, strong) NSString *alertTitleDone;
 @property (nonatomic, strong) NSString *alertSubtitleDone;
@@ -940,10 +661,12 @@ static const NSUInteger kParrotColorsCount = sizeof(kParrotColors) / sizeof(kPar
 // -- Table View --
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<NSMutableArray<PPCardFormField *> *> *formSections;
+@property (nonatomic, strong) NSArray<NSString *> *sectionTitles;
 
 // -- Selected state --
 @property (nonatomic, strong) NSDate *selectedBirthDate;
 @property (nonatomic, assign) BOOL isDateSelected;
+@property (nonatomic, assign) BOOL ageRowAdded;
 @property (nonatomic, strong) CardModel *selectedFather;
 @property (nonatomic, strong) CardModel *selectedMother;
 
@@ -977,257 +700,39 @@ UIBarButtonItem *addbutton;
     return (AppDelegate *)[[UIApplication sharedApplication] delegate];
 }
 
+@synthesize BKbutton = _BKbutton;
+
+- (BKCircularLoadingButton *)BKbutton {
+    if (_BKbutton) return _BKbutton;
+    _BKbutton = [BKCircularLoadingButton autolayoutView];
+    [_BKbutton setContentHuggingPriority:500 forAxis:UILayoutConstraintAxisHorizontal];
+    return _BKbutton;
+}
+
 // =============================================================================
 #pragma mark - Header Setup
 // =============================================================================
 
 - (void)setupHeaderViews {
-    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    CGFloat headerHeight = 56.0;
+    _topView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, CGRectGetWidth(self.view.bounds), headerHeight)];
+    _topView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    _topView.backgroundColor = AppClearClr;
+    [self.view addSubview:_topView];
 
-    // Root container — same pattern as ProfileVC.tableHeaderView
-    _topView = [[UIView alloc] init];
-    _topView.backgroundColor = UIColor.clearColor;
-
-    // --- Card view (frosted glass card) ---
-    UIView *cardView = [[UIView alloc] init];
-    cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    cardView.backgroundColor = PPCardFormSurfaceColor();
-    cardView.layer.cornerRadius = 28.0;
-    cardView.layer.masksToBounds = NO;
-    cardView.layer.borderWidth = 1.0;
-    cardView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.68].CGColor;
-    cardView.layer.shadowColor  = UIColor.blackColor.CGColor;
-    cardView.layer.shadowOpacity = 0.06;
-    cardView.layer.shadowRadius  = 20.0;
-    cardView.layer.shadowOffset  = CGSizeMake(0, 10.0);
-    [_topView addSubview:cardView];
-
-    // Warm tint overlay
-    UIView *tintView = [[UIView alloc] init];
-    tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
-    tintView.layer.cornerRadius = 28.0;
-    tintView.layer.masksToBounds = YES;
-    [cardView addSubview:tintView];
-
-    // Ambient glow (brand-colored orb, top-right)
-    UIView *ambientGlow = [[UIView alloc] init];
-    ambientGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    ambientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.14];
-    ambientGlow.userInteractionEnabled = NO;
-    ambientGlow.layer.cornerRadius = 72.0;
-    ambientGlow.layer.shadowColor   = [brandColor colorWithAlphaComponent:0.45].CGColor;
-    ambientGlow.layer.shadowOpacity = 0.14;
-    ambientGlow.layer.shadowRadius  = 36.0;
-    ambientGlow.layer.shadowOffset  = CGSizeZero;
-    [cardView addSubview:ambientGlow];
-
-    // Secondary glow (white orb, bottom-left)
-    UIView *secondaryGlow = [[UIView alloc] init];
-    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    secondaryGlow.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.38];
-    secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.layer.cornerRadius = 46.0;
-    secondaryGlow.layer.shadowColor   = [UIColor.whiteColor colorWithAlphaComponent:0.40].CGColor;
-    secondaryGlow.layer.shadowOpacity = 0.18;
-    secondaryGlow.layer.shadowRadius  = 18.0;
-    secondaryGlow.layer.shadowOffset  = CGSizeZero;
-    [cardView addSubview:secondaryGlow];
-
-    // Accent bar
-    UIView *accentBar = [[UIView alloc] init];
-    accentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    accentBar.backgroundColor = brandColor;
-    accentBar.layer.cornerRadius = 3.0;
-    [cardView addSubview:accentBar];
-
-    // Eyebrow pill — bird icon + text
-    UIView *eyebrowPill = [[UIView alloc] init];
-    eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.74];
-    eyebrowPill.layer.cornerRadius = 14.0;
-    eyebrowPill.layer.borderWidth = 1.0;
-    eyebrowPill.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
-    eyebrowPill.layer.masksToBounds = YES;
-    [cardView addSubview:eyebrowPill];
-
-    UIImageView *birdIcon = [[UIImageView alloc] init];
-    birdIcon.translatesAutoresizingMaskIntoConstraints = NO;
-    birdIcon.image = [UIImage systemImageNamed:@"bird.fill"
-                                withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightSemibold]];
-    birdIcon.tintColor = [brandColor colorWithAlphaComponent:0.92];
-    birdIcon.contentMode = UIViewContentModeScaleAspectFit;
-    [eyebrowPill addSubview:birdIcon];
-
-    UILabel *eyebrowLabel = [[UILabel alloc] init];
-    eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    eyebrowLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
-    eyebrowLabel.textAlignment = NSTextAlignmentCenter;
-    eyebrowLabel.text = self.serverCardClass ? kLang(@"editCard") : kLang(@"addNewCard");
-    [eyebrowPill addSubview:eyebrowLabel];
-
-    // Title — big bold label
     _topTitle = [[UILabel alloc] init];
     _topTitle.translatesAutoresizingMaskIntoConstraints = NO;
-    _topTitle.font = [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
-    _topTitle.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    _topTitle.textAlignment = PPCardCurrentTextAlignment();
-    _topTitle.numberOfLines = 2;
-    _topTitle.text = kLang(@"BirdsCard");
-    [cardView addSubview:_topTitle];
-
-    // --- Stat capsules row ---
-    UIView *statsRow = [[UIView alloc] init];
-    statsRow.translatesAutoresizingMaskIntoConstraints = NO;
-    [cardView addSubview:statsRow];
-
-    NSInteger myCardsCount = AppData.UserCardsDocs.count;
-    UIView *stat1 = [self _heroStatCapsuleWithIcon:@"doc.text.fill"
-                                             value:[NSString stringWithFormat:@"%ld", (long)myCardsCount]
-                                             label:kLang(@"myCards")];
-    stat1.translatesAutoresizingMaskIntoConstraints = NO;
-    [statsRow addSubview:stat1];
-
-    NSInteger totalCards = AppData.AllCardsDocs.count;
-    UIView *stat2 = [self _heroStatCapsuleWithIcon:@"square.grid.2x2.fill"
-                                             value:[NSString stringWithFormat:@"%ld", (long)totalCards]
-                                             label:kLang(@"totalCards")];
-    stat2.translatesAutoresizingMaskIntoConstraints = NO;
-    [statsRow addSubview:stat2];
-
-    NSInteger breedsCount = self.SubKindsArrayLocal.count;
-    UIView *stat3 = [self _heroStatCapsuleWithIcon:@"leaf.fill"
-                                             value:[NSString stringWithFormat:@"%ld", (long)breedsCount]
-                                             label:kLang(@"breeds")];
-    stat3.translatesAutoresizingMaskIntoConstraints = NO;
-    [statsRow addSubview:stat3];
+    _topTitle.textAlignment = NSTextAlignmentCenter;
+    _topTitle.textColor = [UIColor whiteColor];
+    _topTitle.font = [GM MidFontWithSize:17];
+    [_topView addSubview:_topTitle];
 
     [NSLayoutConstraint activateConstraints:@[
-        // Card inset from header root
-        [cardView.topAnchor constraintEqualToAnchor:_topView.topAnchor constant:8.0],
-        [cardView.leadingAnchor constraintEqualToAnchor:_topView.leadingAnchor constant:20.0],
-        [cardView.trailingAnchor constraintEqualToAnchor:_topView.trailingAnchor constant:-20.0],
-        [cardView.bottomAnchor constraintEqualToAnchor:_topView.bottomAnchor constant:-10.0],
-
-        // Tint overlay
-        [tintView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
-        [tintView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
-        [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
-        [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
-
-        // Ambient glow orb — top right
-        [ambientGlow.widthAnchor constraintEqualToConstant:144.0],
-        [ambientGlow.heightAnchor constraintEqualToConstant:144.0],
-        [ambientGlow.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-60.0],
-        [ambientGlow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:60.0],
-
-        // Secondary glow orb — bottom left
-        [secondaryGlow.widthAnchor constraintEqualToConstant:92.0],
-        [secondaryGlow.heightAnchor constraintEqualToConstant:92.0],
-        [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:30.0],
-        [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-26.0],
-
-        // Accent bar
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:20.0],
-        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:22.0],
-        [accentBar.widthAnchor constraintEqualToConstant:56.0],
-        [accentBar.heightAnchor constraintEqualToConstant:6.0],
-
-        // Eyebrow pill
-        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:12.0],
-        [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:22.0],
-        [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-22.0],
-        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
-
-        [birdIcon.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:10.0],
-        [birdIcon.centerYAnchor constraintEqualToAnchor:eyebrowPill.centerYAnchor],
-        [birdIcon.widthAnchor constraintEqualToConstant:16.0],
-        [birdIcon.heightAnchor constraintEqualToConstant:16.0],
-
-        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:birdIcon.trailingAnchor constant:6.0],
-        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowPill.trailingAnchor constant:-12.0],
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
-        [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
-
-        // Title
-        [_topTitle.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:12.0],
-        [_topTitle.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:22.0],
-        [_topTitle.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-22.0],
-
-        // Stats row
-        [statsRow.topAnchor constraintEqualToAnchor:_topTitle.bottomAnchor constant:14.0],
-        [statsRow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:14.0],
-        [statsRow.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-14.0],
-        [statsRow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-18.0],
-        [statsRow.heightAnchor constraintEqualToConstant:64.0],
-
-        // Stat capsules — equal width
-        [stat1.leadingAnchor constraintEqualToAnchor:statsRow.leadingAnchor],
-        [stat1.topAnchor constraintEqualToAnchor:statsRow.topAnchor],
-        [stat1.bottomAnchor constraintEqualToAnchor:statsRow.bottomAnchor],
-
-        [stat2.leadingAnchor constraintEqualToAnchor:stat1.trailingAnchor constant:8.0],
-        [stat2.topAnchor constraintEqualToAnchor:statsRow.topAnchor],
-        [stat2.bottomAnchor constraintEqualToAnchor:statsRow.bottomAnchor],
-        [stat2.widthAnchor constraintEqualToAnchor:stat1.widthAnchor],
-
-        [stat3.leadingAnchor constraintEqualToAnchor:stat2.trailingAnchor constant:8.0],
-        [stat3.topAnchor constraintEqualToAnchor:statsRow.topAnchor],
-        [stat3.bottomAnchor constraintEqualToAnchor:statsRow.bottomAnchor],
-        [stat3.trailingAnchor constraintEqualToAnchor:statsRow.trailingAnchor],
-        [stat3.widthAnchor constraintEqualToAnchor:stat1.widthAnchor],
+        [_topTitle.centerXAnchor constraintEqualToAnchor:_topView.centerXAnchor],
+        [_topTitle.bottomAnchor constraintEqualToAnchor:_topView.bottomAnchor constant:-8],
+        [_topTitle.leadingAnchor constraintGreaterThanOrEqualToAnchor:_topView.leadingAnchor constant:50],
+        [_topTitle.trailingAnchor constraintLessThanOrEqualToAnchor:_topView.trailingAnchor constant:-50],
     ]];
-
-    // Size the header to fit its content, assign as tableHeaderView
-    CGSize fittingSize = [_topView systemLayoutSizeFittingSize:
-        CGSizeMake(CGRectGetWidth(self.view.bounds), UILayoutFittingCompressedSize.height)
-                                withHorizontalFittingPriority:UILayoutPriorityRequired
-                                      verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    _topView.frame = CGRectMake(0, 0, CGRectGetWidth(self.view.bounds), fittingSize.height);
-}
-
-/// Stat capsule — brand-tinted frosted pill with value + label
-- (UIView *)_heroStatCapsuleWithIcon:(NSString *)iconName value:(NSString *)value label:(NSString *)label {
-    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-
-    UIView *capsule = [[UIView alloc] init];
-    capsule.backgroundColor = [brandColor colorWithAlphaComponent:0.08];
-    capsule.layer.cornerRadius = 16.0;
-    capsule.layer.borderWidth = 1.0;
-    capsule.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
-
-    UILabel *valueLabel = [[UILabel alloc] init];
-    valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    valueLabel.text = value;
-    valueLabel.font = [GM boldFontWithSize:20] ?: [UIFont monospacedDigitSystemFontOfSize:20 weight:UIFontWeightBold];
-    valueLabel.textColor = brandColor;
-    valueLabel.textAlignment = NSTextAlignmentCenter;
-    [capsule addSubview:valueLabel];
-
-    UILabel *labelView = [[UILabel alloc] init];
-    labelView.translatesAutoresizingMaskIntoConstraints = NO;
-    labelView.text = label;
-    labelView.font = [GM MidFontWithSize:10] ?: [UIFont systemFontOfSize:10 weight:UIFontWeightSemibold];
-    labelView.textColor = [brandColor colorWithAlphaComponent:0.68];
-    labelView.textAlignment = NSTextAlignmentCenter;
-    labelView.adjustsFontSizeToFitWidth = YES;
-    labelView.minimumScaleFactor = 0.7;
-    [capsule addSubview:labelView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [valueLabel.topAnchor constraintEqualToAnchor:capsule.topAnchor constant:12.0],
-        [valueLabel.centerXAnchor constraintEqualToAnchor:capsule.centerXAnchor],
-        [valueLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:capsule.leadingAnchor constant:4.0],
-        [valueLabel.trailingAnchor constraintLessThanOrEqualToAnchor:capsule.trailingAnchor constant:-4.0],
-        [labelView.topAnchor constraintEqualToAnchor:valueLabel.bottomAnchor constant:2.0],
-        [labelView.centerXAnchor constraintEqualToAnchor:capsule.centerXAnchor],
-        [labelView.leadingAnchor constraintGreaterThanOrEqualToAnchor:capsule.leadingAnchor constant:4.0],
-        [labelView.trailingAnchor constraintLessThanOrEqualToAnchor:capsule.trailingAnchor constant:-4.0],
-        [labelView.bottomAnchor constraintLessThanOrEqualToAnchor:capsule.bottomAnchor constant:-10.0],
-    ]];
-
-    return capsule;
 }
 
 // =============================================================================
@@ -1236,6 +741,7 @@ UIBarButtonItem *addbutton;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [self setupHeaderViews];
 
     self.storageRef     = [GM CardsImagesRefrence];
     self.uploadManager  = [[FileUploadManager alloc] init];
@@ -1246,6 +752,7 @@ UIBarButtonItem *addbutton;
     self.isSaving            = NO;
     self.isHydratingFormData = YES;
     self.hasUserModifiedForm = NO;
+    self.ageRowAdded         = NO;
     self.isDateSelected      = NO;
 
     self.view.backgroundColor = PPCardFormCanvasColor();
@@ -1259,16 +766,13 @@ UIBarButtonItem *addbutton;
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     topbarHeight = self.navigationController.navigationBar.hx_maxy;
-    if (topbarHeight < 44.0) topbarHeight = 44.0;
+    _topView.hx_h = topbarHeight;
     #pragma clang diagnostic pop
 
     self.modalInPresentation = YES;
 
     [self initializeFormData];
     [self setupTableView];
-    [self setupHeaderViews];
-    self.tableView.tableHeaderView = _topView;
-    self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0, 120, 0);
     [self rebuildFormSections];
     [self.tableView reloadData];
 
@@ -1295,6 +799,7 @@ UIBarButtonItem *addbutton;
     }
 
     [self setupImageCollection];
+    [self setupKeyboardHandling];
     [self restoreDraftIfNeeded];
     [self rebuildFormSections];
     [self.tableView reloadData];
@@ -1341,7 +846,7 @@ UIBarButtonItem *addbutton;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.cellLayoutMarginsFollowReadableWidth = NO;
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
-    self.tableView.estimatedRowHeight = 68.0;
+    self.tableView.estimatedRowHeight = 72.0;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.clipsToBounds = NO;
     if (@available(iOS 15.0, *)) {
@@ -1350,7 +855,6 @@ UIBarButtonItem *addbutton;
 
     [self.tableView registerClass:[PPCardTextFieldCell class] forCellReuseIdentifier:PPCardTextFieldCellID];
     [self.tableView registerClass:[PPCardSelectorCell class] forCellReuseIdentifier:PPCardSelectorCellID];
-    [self.tableView registerClass:[PPCardSwitchCell class] forCellReuseIdentifier:PPCardSwitchCellID];
     [self.tableView registerClass:[PPCardTextViewCell class] forCellReuseIdentifier:PPCardTextViewCellID];
     [self.tableView registerClass:[PPCardSegmentedCell class] forCellReuseIdentifier:PPCardSegmentedCellID];
     [self.tableView registerClass:[PPCardImageCell class] forCellReuseIdentifier:PPCardImageCellID];
@@ -1365,70 +869,12 @@ UIBarButtonItem *addbutton;
 }
 
 // =============================================================================
-#pragma mark - Animated Form Rebuild
-// =============================================================================
-
-- (void)animatedRebuildFormSections {
-    // Capture old row counts per section
-    NSMutableArray<NSNumber *> *oldCounts = [NSMutableArray array];
-    for (NSArray *section in self.formSections) {
-        [oldCounts addObject:@(section.count)];
-    }
-    NSInteger oldSectionCount = self.formSections.count;
-
-    // Rebuild
-    [self rebuildFormSections];
-
-    NSInteger newSectionCount = self.formSections.count;
-    NSMutableArray<NSNumber *> *newCounts = [NSMutableArray array];
-    for (NSArray *section in self.formSections) {
-        [newCounts addObject:@(section.count)];
-    }
-
-    // If section count changed, just do a smooth fade reload
-    if (oldSectionCount != newSectionCount) {
-        [UIView transitionWithView:self.tableView
-                          duration:0.3
-                           options:UIViewAnimationOptionTransitionCrossDissolve
-                        animations:^{
-            [self.tableView reloadData];
-        } completion:nil];
-        return;
-    }
-
-    // Same section count — animate row changes per section
-    [self.tableView beginUpdates];
-    for (NSInteger s = 0; s < newSectionCount; s++) {
-        NSInteger oldN = [oldCounts[s] integerValue];
-        NSInteger newN = [newCounts[s] integerValue];
-        if (newN > oldN) {
-            NSMutableArray<NSIndexPath *> *inserts = [NSMutableArray array];
-            for (NSInteger r = oldN; r < newN; r++) {
-                [inserts addObject:[NSIndexPath indexPathForRow:r inSection:s]];
-            }
-            [self.tableView insertRowsAtIndexPaths:inserts withRowAnimation:UITableViewRowAnimationFade];
-        } else if (newN < oldN) {
-            NSMutableArray<NSIndexPath *> *deletes = [NSMutableArray array];
-            for (NSInteger r = newN; r < oldN; r++) {
-                [deletes addObject:[NSIndexPath indexPathForRow:r inSection:s]];
-            }
-            [self.tableView deleteRowsAtIndexPaths:deletes withRowAnimation:UITableViewRowAnimationFade];
-        }
-    }
-    [self.tableView endUpdates];
-
-    // Reload visible rows to refresh content without animation
-    NSArray<NSIndexPath *> *visible = [self.tableView indexPathsForVisibleRows];
-    if (visible.count > 0) {
-        [self.tableView reloadRowsAtIndexPaths:visible withRowAnimation:UITableViewRowAnimationNone];
-    }
-}
-
-// =============================================================================
 #pragma mark - Rebuild Form Sections
 // =============================================================================
 
 - (void)rebuildFormSections {
+    self.sectionTitles = @[kLang(@"RingID"), kLang(@"BirthDatePlace"), kLang(@"SexualPlace")];
+
     NSMutableArray<PPCardFormField *> *identitySection = [NSMutableArray array];
     NSMutableArray<PPCardFormField *> *detailsSection = [NSMutableArray array];
     NSMutableArray<PPCardFormField *> *additionalSection = [NSMutableArray array];
@@ -1473,8 +919,8 @@ UIBarButtonItem *addbutton;
         [identitySection addObject:subSubField];
     }
 
-    // Attribute (dynamic - when have_subSub==1 AND SubKindID == 7)
-    if (self.selectedSubKindModel && self.selectedSubKindModel.have_subSub == 1 && self.selectedSubKindModel.ID == 7) {
+    // Attribute (dynamic - when SubKindID == 7)
+    if (self.selectedSubKindModel && self.selectedSubKindModel.ID == 7) {
         PPCardFormField *attrField = [PPCardFormField new];
         attrField.tag = @"attribute";
         attrField.title = kLang(@"attribute");
@@ -1508,14 +954,14 @@ UIBarButtonItem *addbutton;
         classField.fieldType = PPCardFieldTypeSelector;
         NSArray *selectedIDs = self.selectedItemsArray;
         if ([selectedIDs isKindOfClass:NSArray.class] && selectedIDs.count > 0) {
-            classField.value = [NSString stringWithFormat:@"%lu %@", (unsigned long)selectedIDs.count, selectedIDs.count > 1 ? kLang(@"items") : kLang(@"item")];
+            classField.value = [NSString stringWithFormat:@"%lu %@", (unsigned long)selectedIDs.count, selectedIDs.count > 1 ? @"Items" : @"Item"];
         }
         [identitySection addObject:classField];
     }
 
     // --- SECTION 1: Details ---
-    // Color (dynamic - when have_subSub==1 AND SubKindID == 7)
-    if (self.selectedSubKindModel && self.selectedSubKindModel.have_subSub == 1 && self.selectedSubKindModel.ID == 7) {
+    // Color (dynamic - when SubKindID == 7)
+    if (self.selectedSubKindModel && self.selectedSubKindModel.ID == 7) {
         PPCardFormField *colorField = [PPCardFormField new];
         colorField.tag = @"birdColor";
         colorField.title = kLang(@"Color");
@@ -1545,7 +991,7 @@ UIBarButtonItem *addbutton;
         PPCardFormField *ageField = [PPCardFormField new];
         ageField.tag = @"age";
         ageField.title = kLang(@"ageBird");
-        ageField.fieldType = PPCardFieldTypeSelector;
+        ageField.fieldType = PPCardFieldTypeDisplay;
         ageField.disabled = YES;
         NSDate *bd = self.selectedBirthDate ?: [NSDate date];
         ageField.value = [self ageFromBirthday:bd adultHood:self.currentAdultHood];
@@ -1605,7 +1051,7 @@ UIBarButtonItem *addbutton;
         classLoadedField.fieldType = PPCardFieldTypeSelector;
         NSArray *loadedIDs = self.selectedItemsLoadedArray;
         if ([loadedIDs isKindOfClass:NSArray.class] && loadedIDs.count > 0) {
-            classLoadedField.value = [NSString stringWithFormat:@"%lu %@", (unsigned long)loadedIDs.count, loadedIDs.count > 1 ? kLang(@"items") : kLang(@"item")];
+            classLoadedField.value = [NSString stringWithFormat:@"%lu %@", (unsigned long)loadedIDs.count, loadedIDs.count > 1 ? @"Items" : @"Item"];
         }
         [additionalSection addObject:classLoadedField];
     }
@@ -1661,37 +1107,18 @@ UIBarButtonItem *addbutton;
                     strongSelf->alertRingIDText = text;
                 }
             };
-            // Attach parrot color suggestions for the birdColor field
-            if ([field.tag isEqualToString:@"birdColor"]) {
-                PPParrotColorSuggestionsView *colorBar = [[PPParrotColorSuggestionsView alloc] initWithFrame:CGRectZero];
-                colorBar.onColorSelected = ^(NSString *colorName) {
-                    __strong typeof(weakSelf) strongSelf = weakSelf;
-                    if (!strongSelf) return;
-                    cell.textField.text = colorName;
-                    cell.textField.textColor = PPCardFormAccentColor();
-                    [strongSelf setformDataArray:colorName forKey:@"birdColor"];
-                };
-                cell.textField.inputAccessoryView = colorBar;
-            } else {
-                cell.textField.inputAccessoryView = nil;
-            }
             return cell;
         }
 
-        case PPCardFieldTypeSelector: {
+        case PPCardFieldTypeSelector:
+        case PPCardFieldTypeDisplay: {
             PPCardSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:PPCardSelectorCellID forIndexPath:indexPath];
             [cell configureWithField:field];
-            return cell;
-        }
-
-        case PPCardFieldTypeSwitch: {
-            PPCardSwitchCell *cell = [tableView dequeueReusableCellWithIdentifier:PPCardSwitchCellID forIndexPath:indexPath];
-            [cell configureWithField:field];
-            cell.onSwitchChanged = ^(BOOL isOn) {
-                __strong typeof(weakSelf) strongSelf = weakSelf;
-                if (!strongSelf) return;
-                [strongSelf setformDataArray:@(isOn) forKey:field.tag];
-            };
+            if (field.fieldType == PPCardFieldTypeDisplay) {
+                cell.chevronView.hidden = YES;
+            } else {
+                cell.chevronView.hidden = NO;
+            }
             return cell;
         }
 
@@ -1741,19 +1168,13 @@ UIBarButtonItem *addbutton;
     cell.contentView.layer.borderWidth = 1.0;
     cell.contentView.layer.borderColor = PPCardFormBorderColor().CGColor;
     cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cell.layer.shadowOpacity = 0.04;
-    cell.layer.shadowRadius = 8.0;
-    cell.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+    cell.layer.shadowOpacity = 0.05;
+    cell.layer.shadowRadius = 12.0;
+    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     cell.layer.masksToBounds = NO;
-    // Pre-set shadowPath to prevent shadow recalculation jumps
-    UIBezierPath *shadowBounds = [UIBezierPath bezierPathWithRoundedRect:cell.contentView.frame cornerRadius:20.0];
-    cell.layer.shadowPath = shadowBounds.CGPath;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
-    // Dismiss keyboard before presenting any sheet
-    [self.view endEditing:YES];
-
     PPCardFormField *field = self.formSections[indexPath.section][indexPath.row];
     if (field.disabled) return;
 
@@ -1779,11 +1200,6 @@ UIBarButtonItem *addbutton;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    if(indexPath.section < 2) return 83;
-    if(indexPath.section == 2 && indexPath.row == 0) return 104;
-    if(indexPath.section == 2 &&  indexPath.row == 1 ) return 83;
-    if(indexPath.section == 2 &&  indexPath.row == 2 ) return 64;
-
     return UITableViewAutomaticDimension;
 }
 
@@ -1792,14 +1208,12 @@ UIBarButtonItem *addbutton;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {
-    NSArray<NSString *> *content = [self pp_sectionHeaderContentForSection:section];
-    NSString *title = content.count > 0 ? content[0] : @"";
-    NSString *subtitle = content.count > 1 ? content[1] : @"";
-    return [self pp_sectionHeaderViewForTitle:title subtitle:subtitle];
+    NSString *title = (section < (NSInteger)self.sectionTitles.count) ? self.sectionTitles[section] : @"";
+    return [self pp_sectionHeaderViewForTitle:title subtitle:@""];
 }
 
 - (CGFloat)tableView:(UITableView *)tableView heightForFooterInSection:(NSInteger)section {
-    return section == 2 ? 12 : 0.000001;
+    return 0.000001;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForFooterInSection:(NSInteger)section {
@@ -1811,20 +1225,7 @@ UIBarButtonItem *addbutton;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForFooterInSection:(NSInteger)section {
-    return section == 2 ? 12 : 0.000001;
-}
-
-// =============================================================================
-#pragma mark - Section Header Content
-// =============================================================================
-
-- (NSArray<NSString *> *)pp_sectionHeaderContentForSection:(NSInteger)section {
-    switch (section) {
-        case 0: return @[kLang(@"RingID"), @""];
-        case 1: return @[kLang(@"BirthDatePlace"), @""];
-        case 2: return @[kLang(@"SexualPlace"), @""];
-        default: return @[@"", @""];
-    }
+    return 0.000001;
 }
 
 // =============================================================================
@@ -1963,7 +1364,8 @@ UIBarButtonItem *addbutton;
         [self.formDataArray removeObjectForKey:@"selectedItemsLoadedArray"];
     }
 
-    [self animatedRebuildFormSections];
+    [self rebuildFormSections];
+    [self.tableView reloadData];
 }
 
 - (void)subSubKindRowTapped {
@@ -1997,7 +1399,8 @@ UIBarButtonItem *addbutton;
                                             [NSPredicate predicateWithFormat:@"SELF.Female == 'yes'"]].mutableCopy;
     }
 
-    [self animatedRebuildFormSections];
+    [self rebuildFormSections];
+    [self.tableView reloadData];
 }
 
 - (void)attributeRowTapped {
@@ -2013,7 +1416,7 @@ UIBarButtonItem *addbutton;
         [strongSelf handleAttributeSelected:selectedObject];
     }];
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
-    [PPFunc presentSheetFrom:self sheetVC:nav detentStyle:PPSheetDetentStyle80];
+    [PPFunc presentSheetFrom:self sheetVC:nav detentStyle:PPSheetDetentStyleMediumAndLarge];
 }
 
 - (void)handleAttributeSelected:(NSString *)newValue {
@@ -2022,7 +1425,8 @@ UIBarButtonItem *addbutton;
     NSInteger selectedIndex = [self.attributeArrayLocat indexOfObject:newValue];
     [self setformDataArray:[NSString stringWithFormat:@"%ld", (long)(selectedIndex + 1)] forKey:@"attribute"];
 
-    [self animatedRebuildFormSections];
+    [self rebuildFormSections];
+    [self.tableView reloadData];
 }
 
 - (void)classificationRowTapped {
@@ -2058,7 +1462,8 @@ UIBarButtonItem *addbutton;
         [strongSelf setformDataArray:classification forKey:@"Classification"];
         [strongSelf setformDataArray:strongSelf.selectedItemsArray forKey:@"selectedItemsArray"];
 
-        [strongSelf animatedRebuildFormSections];
+        [strongSelf rebuildFormSections];
+        [strongSelf.tableView reloadData];
     };
 
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
@@ -2107,7 +1512,8 @@ UIBarButtonItem *addbutton;
         [strongSelf setformDataArray:classificationLoaded forKey:@"ClassificationLoaded"];
         [strongSelf setformDataArray:strongSelf.selectedItemsLoadedArray forKey:@"selectedItemsLoadedArray"];
 
-        [strongSelf animatedRebuildFormSections];
+        [strongSelf rebuildFormSections];
+        [strongSelf.tableView reloadData];
     };
 
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
@@ -2115,49 +1521,55 @@ UIBarButtonItem *addbutton;
 }
 
 - (void)birthDateRowTapped {
-    UIViewController *pickerVC = [[UIViewController alloc] init];
-    pickerVC.view.backgroundColor = [UIColor systemBackgroundColor];
-    pickerVC.title = kLang(@"BirthDatePlace");
+    __weak typeof(self) weakSelf = self;
+
+    UIViewController *sheetVC = [[UIViewController alloc] init];
+    sheetVC.view.backgroundColor = [UIColor systemBackgroundColor];
 
     UIDatePicker *picker = [[UIDatePicker alloc] init];
     picker.datePickerMode = UIDatePickerModeDate;
     picker.preferredDatePickerStyle = UIDatePickerStyleWheels;
     picker.maximumDate = [NSDate date];
     picker.translatesAutoresizingMaskIntoConstraints = NO;
-    if (self.selectedBirthDate) picker.date = self.selectedBirthDate;
-    [pickerVC.view addSubview:picker];
+
+    if (self.selectedBirthDate) {
+        picker.date = self.selectedBirthDate;
+    }
+
+    UIButton *doneBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [doneBtn setTitle:kLang(@"done") forState:UIControlStateNormal];
+    doneBtn.titleLabel.font = [GM boldFontWithSize:16];
+    doneBtn.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [sheetVC.view addSubview:picker];
+    [sheetVC.view addSubview:doneBtn];
 
     [NSLayoutConstraint activateConstraints:@[
-        [picker.topAnchor constraintEqualToAnchor:pickerVC.view.safeAreaLayoutGuide.topAnchor constant:24],
-        [picker.leadingAnchor constraintEqualToAnchor:pickerVC.view.leadingAnchor constant:16],
-        [picker.trailingAnchor constraintEqualToAnchor:pickerVC.view.trailingAnchor constant:-16],
-        [picker.bottomAnchor constraintLessThanOrEqualToAnchor:pickerVC.view.safeAreaLayoutGuide.bottomAnchor constant:-24],
+        [doneBtn.topAnchor constraintEqualToAnchor:sheetVC.view.safeAreaLayoutGuide.topAnchor constant:8],
+        [doneBtn.trailingAnchor constraintEqualToAnchor:sheetVC.view.trailingAnchor constant:-16],
+        [picker.topAnchor constraintEqualToAnchor:doneBtn.bottomAnchor constant:8],
+        [picker.leadingAnchor constraintEqualToAnchor:sheetVC.view.leadingAnchor],
+        [picker.trailingAnchor constraintEqualToAnchor:sheetVC.view.trailingAnchor],
+        [picker.bottomAnchor constraintLessThanOrEqualToAnchor:sheetVC.view.safeAreaLayoutGuide.bottomAnchor],
     ]];
 
-    __weak typeof(self) weakself = self;
-    UIButton *doneBtn = [PPButtonHelper pp_buttonWithTitle:kLang(@"done")
-                                                      font:[GM fontWithSize:17]
-                                                 imageName:@""
-                                                    target:nil
-                                                    config:[UIButtonConfiguration tintedButtonConfiguration]
-                                                    action:nil];
     [doneBtn addAction:[UIAction actionWithHandler:^(UIAction *action) {
-        __strong typeof(weakself) strongSelf = weakself;
+        __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         [strongSelf handleBirthDateSelected:picker.date];
         [strongSelf dismissViewControllerAnimated:YES completion:nil];
     }] forControlEvents:UIControlEventTouchUpInside];
-    pickerVC.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:doneBtn];
 
-    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:pickerVC];
-    [PPFunc presentSheetFrom:self sheetVC:nav detentStyle:PPSheetDetentStyleMediumAndLarge];
+    [PPFunc presentSheetFrom:self sheetVC:sheetVC detentStyle:PPSheetDetentStyleMediumOnly];
 }
 
 - (void)handleBirthDateSelected:(NSDate *)date {
     self.selectedBirthDate = date;
     self.isDateSelected = YES;
+    self.ageRowAdded = YES;
     [self setformDataArray:date forKey:@"BirthDate"];
-    [self animatedRebuildFormSections];
+    [self rebuildFormSections];
+    [self.tableView reloadData];
 }
 
 - (void)fatherRowTapped {
@@ -2175,7 +1587,8 @@ UIBarButtonItem *addbutton;
         CardModel *ca = (CardModel *)selectedObject;
         strongSelf.selectedFather = ca;
         [strongSelf setformDataArray:ca.ID forKey:@"FatherRingID"];
-        [strongSelf animatedRebuildFormSections];
+        [strongSelf rebuildFormSections];
+        [strongSelf.tableView reloadData];
     }];
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
     [PPFunc presentSheetFrom:self sheetVC:nav detentStyle:PPSheetDetentStyle80];
@@ -2196,7 +1609,8 @@ UIBarButtonItem *addbutton;
         CardModel *ca = (CardModel *)selectedObject;
         strongSelf.selectedMother = ca;
         [strongSelf setformDataArray:ca.ID forKey:@"MotherRingID"];
-        [strongSelf animatedRebuildFormSections];
+        [strongSelf rebuildFormSections];
+        [strongSelf.tableView reloadData];
     }];
     UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
     [PPFunc presentSheetFrom:self sheetVC:nav detentStyle:PPSheetDetentStyle80];
@@ -2208,7 +1622,8 @@ UIBarButtonItem *addbutton;
     } else {
         [self setformDataArray:@2 forKey:@"Sexual"];
     }
-    [self animatedRebuildFormSections];
+    [self rebuildFormSections];
+    [self.tableView reloadData];
 }
 
 - (void)dnaImageRowTapped {
@@ -2235,7 +1650,8 @@ UIBarButtonItem *addbutton;
     [self setformDataArray:dnaImage forKey:@"DNAImage"];
     [self setformDataArray:dnaImageName forKey:@"dnaImageName"];
 
-    [self animatedRebuildFormSections];
+    [self rebuildFormSections];
+    [self.tableView reloadData];
 }
 
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker {
@@ -2418,14 +1834,16 @@ UIBarButtonItem *addbutton;
                             __strong typeof(weakSelf) strongSelf = weakSelf;
                             if (!strongSelf || !image) return;
                             [strongSelf setformDataArray:image forKey:@"DNAImage"];
-                            [strongSelf animatedRebuildFormSections];
+                            [strongSelf rebuildFormSections];
+                            [strongSelf.tableView reloadData];
                         });
                     }];
                 }];
             }
         }
 
-        [self animatedRebuildFormSections];
+        [self rebuildFormSections];
+        [self.tableView reloadData];
     }
 }
 
@@ -2617,22 +2035,47 @@ UIBarButtonItem *addbutton;
 // =============================================================================
 
 - (void)setupImageCollection {
-    CGFloat horizontalPad = kPPCardCellHorizontalInset;
-    CGFloat availableWidth = self.view.bounds.size.width - horizontalPad * 2.0;
-    PPImageCollection *ic = [[PPImageCollection alloc] initWithFrame:CGRectMake(horizontalPad, 0, availableWidth, 200)];
+    PPImageCollection *ic = [[PPImageCollection alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 200)];
     ic.maxImageCount = 10;
     ic.delegate = self;
     self.imageCollection = ic;
-
-    // Wrap in a container to provide horizontal padding inside the table footer
-    UIView *footerContainer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width, 200)];
-    footerContainer.backgroundColor = UIColor.clearColor;
-    [footerContainer addSubview:ic];
-    self.tableView.tableFooterView = footerContainer;
+    self.tableView.tableHeaderView = ic;
 
     if ([self isEditingFlow]) {
         [self prefillPhotosForEdit];
     }
+}
+
+// =============================================================================
+#pragma mark - Keyboard Handling
+// =============================================================================
+
+- (void)setupKeyboardHandling {
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(keyboardWillShow:)
+                                                 name:UIKeyboardWillShowNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(keyboardWillHide:)
+                                                 name:UIKeyboardWillHideNotification
+                                               object:nil];
+}
+
+- (void)keyboardWillShow:(NSNotification *)notif {
+    CGRect keyboardFrame = [notif.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    NSTimeInterval duration = [notif.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    [UIView animateWithDuration:duration animations:^{
+        self.tableView.contentInset = UIEdgeInsetsMake(0, 0, keyboardFrame.size.height, 0);
+        self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
+    }];
+}
+
+- (void)keyboardWillHide:(NSNotification *)notif {
+    NSTimeInterval duration = [notif.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    [UIView animateWithDuration:duration animations:^{
+        self.tableView.contentInset = UIEdgeInsetsZero;
+        self.tableView.scrollIndicatorInsets = UIEdgeInsetsZero;
+    }];
 }
 
 - (void)dealloc {
@@ -3290,7 +2733,7 @@ UIBarButtonItem *addbutton;
             [weakself uploadFiles:Dic CardID:CardID];
         }
                                 cancelBlock:^{
-            [weakself restoreFormAfterUploadAttempt];
+            [self restoreFormAfterUploadAttempt];
         }];
     } else {
         self.currentIndex = 0;
@@ -3410,13 +2853,15 @@ UIBarButtonItem *addbutton;
     alertSubtitleLoad = @"تتم الان عملية انشاء البطاقة للطير";
     [PPHUD showLoading:alertTitleLoad subtitle:alertSubtitleLoad];
     [self.uploadProgressView startAnimating];
-    [self.saveButton setEnabled:NO];
+    [self.BKbutton startAnimation];
+    [self.BKbutton setEnabled:NO];
     [self.tableView setUserInteractionEnabled:NO];
 }
 
 - (void)restoreFormAfterUploadAttempt {
     self.isSaving = NO;
-    [self.saveButton setEnabled:YES];
+    [self.BKbutton stopAnimation];
+    [self.BKbutton setEnabled:YES];
     self.navigationItem.leftBarButtonItem.enabled = YES;
     [self.tableView setUserInteractionEnabled:YES];
     [self.uploadProgressView stopAnimating];
@@ -3634,13 +3079,15 @@ UIBarButtonItem *addbutton;
                                                                    action:@selector(closeForm:)];
     self.navigationItem.leftBarButtonItem = closebutton;
 
-    self.saveButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"save")
-                                                    font:[GM fontWithSize:17]
-                                               imageName:@""
-                                                  target:self
-                                                  config:[UIButtonConfiguration tintedButtonConfiguration]
-                                                  action:@selector(saveForm:)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:self.saveButton];
+    [self.BKbutton setTitle:kLang(@"save") forState:UIControlStateNormal];
+    [self.BKbutton setTitleColor:GM.appPrimaryColor forState:UIControlStateNormal];
+    [self.BKbutton setCircleColor:GM.appPrimaryColor];
+    [self.BKbutton.titleLabel setFont:[GM boldFontWithSize:16]];
+    [self.BKbutton setOriginalTitle:kLang(@"save")];
+    [self.BKbutton addTarget:self action:@selector(saveForm:) forControlEvents:UIControlEventTouchUpInside];
+
+    UIBarButtonItem *savebutton = [[UIBarButtonItem alloc] initWithCustomView:self.BKbutton];
+    self.navigationItem.rightBarButtonItem = savebutton;
 }
 
 - (void)closeForm:(UIBarButtonItem *)buttonItem {

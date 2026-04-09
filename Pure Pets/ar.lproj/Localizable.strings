@@ -505,6 +505,7 @@
 "titleStringChildDataNotSaved" = "لم تقم بحفظ بيانات الفرخ";
 "titleStringEditDidntSave" = "لم تقم بحفظ التعديلات علي البطاقة ";
  "topTitleCompleteChild" = "إكمال بيانات فرخ";
+"BirdsCard" = "بطاقة طير";
 "topTitleEditCard" = "تعديل بطاقة طير";
 "topViewLabel" = "تسجيل الدخول";
 "transferToBox" = "نقل الفرخ";

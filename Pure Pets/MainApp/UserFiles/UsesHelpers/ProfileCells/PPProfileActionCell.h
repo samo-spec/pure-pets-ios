@@ -5,7 +5,7 @@
 //  Created by Mohammed Ahmed on 4/9/26.
 //
 
-
+#import "PPProfileBaseCell.h"
 
 @interface PPProfileActionCell : PPProfileBaseCell
 @property (nonatomic, strong) UIImageView *iconView;

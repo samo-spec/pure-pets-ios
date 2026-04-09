@@ -1090,6 +1090,18 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 #pragma mark - Section Headers
 
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.row == 0 || indexPath.row == 1) {
+        return 74.0;
+    }
+    
+    return UITableViewAutomaticDimension;
+}
+
+
+
 - (CGFloat)tableView:(UITableView *)tv heightForHeaderInSection:(NSInteger)s { return 73.0; }
 - (CGFloat)tableView:(UITableView *)tv heightForFooterInSection:(NSInteger)s { return 0.000001; }
 - (UIView *)tableView:(UITableView *)tv viewForFooterInSection:(NSInteger)s { return [UIView new]; }

@@ -68,9 +68,7 @@ static inline UIColor *PPPetsUIShadowColor(void) {
 }
 
 static inline UISemanticContentAttribute PPPetsCurrentSemanticAttribute(void) {
-    return Language.isRTL
-        ? UISemanticContentAttributeForceRightToLeft
-        : UISemanticContentAttributeForceLeftToRight;
+    return Language.semanticAttributeForCurrentLanguage;
 }
 
 static inline NSString *PPPetsForwardChevronSymbolName(void) {

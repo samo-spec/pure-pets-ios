@@ -17,6 +17,55 @@
 @class UserModel;
 @class ChatThreadModel;
 
+// *****************************************************************************************************************************************************************
+
+// Add a new enumeration value for pets before PPProfileSectionCount
+typedef NS_ENUM(NSInteger, PPProfileSection) {
+    PPProfileSectionDetails = 0,
+    PPProfileSectionContact,
+    PPProfileSectionAddresses,
+    PPProfileSectionPets,       // NEW: Pet Profiles section
+    PPProfileSectionCount       // ensures the count is now 4 instead of 3
+};
+
+typedef NS_ENUM(NSInteger, PPProfileFieldKind) {
+    PPProfileFieldKindUserName = 1,
+    PPProfileFieldKindFirstName,
+    PPProfileFieldKindLastName,
+    PPProfileFieldKindMobile,
+    PPProfileFieldKindEmail,
+    PPProfileFieldKindAbout
+};
+
+typedef NS_ENUM(NSInteger, PPProfileDetailRow) {
+    PPProfileDetailRowUserName = 0,
+    PPProfileDetailRowFirstName,
+    PPProfileDetailRowLastName,
+    PPProfileDetailRowCount
+};
+
+typedef NS_ENUM(NSInteger, PPProfileContactRow) {
+    PPProfileContactRowCountry = 0,
+    PPProfileContactRowMobile,
+    PPProfileContactRowEmail,
+    PPProfileContactRowAbout,
+    PPProfileContactRowCount
+};
+
+static const CGFloat kPPProfileCellHorizontalInset = 20.0;
+static const CGFloat kPPProfileCellVerticalInset   = 10.0;
+
+static inline UISemanticContentAttribute PPProfileCurrentSemanticAttribute(void) {
+    return Language.isRTL
+        ? UISemanticContentAttributeForceRightToLeft
+        : UISemanticContentAttributeForceLeftToRight;
+}
+
+static inline NSString *PPProfileForwardChevronSymbolName(void) {
+    return Language.isRTL ? @"chevron.left" : @"chevron.right";
+}
+// *****************************************************************************************************************************************************************
+
 static NSString *const kSavedCartKey = @"savedCartItems";
 static NSString *const kCartUpdatedNotification = @"CartUpdated";
 static NSString *const kCartPricingConfigurationDidChangeNotification = @"CartPricingConfigurationDidChange";

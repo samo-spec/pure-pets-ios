@@ -720,6 +720,7 @@
 		F2EF8EE82F87760300A797B3 /* PPProfileSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE72F87760300A797B3 /* PPProfileSelectorCell.m */; };
 		F2EF8EEB2F87765600A797B3 /* PPProfileAddressCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EEA2F87765600A797B3 /* PPProfileAddressCell.m */; };
 		F2EF8EED2F87768700A797B3 /* PPProfileActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EEC2F87768700A797B3 /* PPProfileActionCell.m */; };
+		F2EF8EF12F8783AB00A797B3 /* PPProfileBaseCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EF02F8783AB00A797B3 /* PPProfileBaseCell.m */; };
 		F2F33FFB2D7912AC00BDBD25 /* ChildsDataManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F33FFA2D7912AC00BDBD25 /* ChildsDataManager.m */; };
 		F2F38FAE2EA68288004B148A /* PPUniversalCellHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */; settings = {COMPILER_FLAGS = "-w"; }; };
 		F2F465F22F3B8CCB00E5FB60 /* PPHomeHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */; };
@@ -2119,6 +2120,8 @@
 		F2EF8EEA2F87765600A797B3 /* PPProfileAddressCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileAddressCell.m; sourceTree = "<group>"; };
 		F2EF8EEC2F87768700A797B3 /* PPProfileActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileActionCell.m; sourceTree = "<group>"; };
 		F2EF8EEE2F87769100A797B3 /* PPProfileActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileActionCell.h; sourceTree = "<group>"; };
+		F2EF8EEF2F87839800A797B3 /* PPProfileBaseCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileBaseCell.h; sourceTree = "<group>"; };
+		F2EF8EF02F8783AB00A797B3 /* PPProfileBaseCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileBaseCell.m; sourceTree = "<group>"; };
 		F2F33FF92D79128500BDBD25 /* ChildsDataManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChildsDataManager.h; sourceTree = "<group>"; };
 		F2F33FFA2D7912AC00BDBD25 /* ChildsDataManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChildsDataManager.m; sourceTree = "<group>"; };
 		F2F38FAC2EA68288004B148A /* PPUniversalCellHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellHelper.h; sourceTree = "<group>"; };
@@ -4821,6 +4824,8 @@
 		F2EF8EDC2F87750700A797B3 /* ProfileCells */ = {
 			isa = PBXGroup;
 			children = (
+				F2EF8EEF2F87839800A797B3 /* PPProfileBaseCell.h */,
+				F2EF8EF02F8783AB00A797B3 /* PPProfileBaseCell.m */,
 				F2EF8EEE2F87769100A797B3 /* PPProfileActionCell.h */,
 				F2EF8EEC2F87768700A797B3 /* PPProfileActionCell.m */,
 				F2EF8EE92F87764B00A797B3 /* PPProfileAddressCell.h */,
@@ -5499,6 +5504,7 @@
 				F2A302F92EBA3EC8005E45F0 /* PaymentMethod.m in Sources */,
 				F24F36482D8977710094C6F2 /* SalesVCViewController.m in Sources */,
 				F20C62722F451AB200093332 /* PPCommerceFeedbackManager.m in Sources */,
+				F2EF8EF12F8783AB00A797B3 /* PPProfileBaseCell.m in Sources */,
 				F20CB1532EF59D5D00CDD5AD /* PPSalesPDFGenerator.m in Sources */,
 				F2F33FFB2D7912AC00BDBD25 /* ChildsDataManager.m in Sources */,
 				F28A0A082EE9C77600EE5055 /* EllipsePageControl.m in Sources */,
@@ -6071,8 +6077,6 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController/TZImagePickerController.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app needs to send Apple events for [explain purpose].";
-				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app uses Apple Music access to enhance your experience by integrating with your media library.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets needs access to your camera to take photos for pet ads, chat messages, and your profile picture.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
@@ -6087,7 +6091,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -6187,8 +6191,6 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController/TZImagePickerController.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app needs to send Apple events for [explain purpose].";
-				INFOPLIST_KEY_NSAppleMusicUsageDescription = "This app uses Apple Music access to enhance your experience by integrating with your media library.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets needs access to your camera to take photos for pet ads, chat messages, and your profile picture.";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
@@ -6203,7 +6205,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -6262,7 +6264,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -6280,7 +6282,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -6297,7 +6299,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -6314,7 +6316,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";

@@ -486,6 +486,23 @@
 
     }
 
+    // Handle CardModel (birds cards — father/mother selection)
+    else if ([option respondsToSelector:@selector(RingID)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        NSString *ringID = [option performSelector:@selector(RingID)];
+#pragma clang diagnostic pop
+        title = ringID ?: title;
+    }
+
+    // Handle any XLFormOptionObject conformant (subSubKindModel, subKindItemsModel, etc.)
+    else if ([option respondsToSelector:@selector(formDisplayText)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        title = [option performSelector:@selector(formDisplayText)] ?: title;
+#pragma clang diagnostic pop
+    }
+
     // ✅ Handle NSString option
     else if ([option isKindOfClass:[NSString class]]) {
         subtitle = @"";
@@ -624,6 +641,11 @@
     } else if ([option isKindOfClass:PPAddressModel.class]) {
         PPAddressModel *optionPP = (PPAddressModel *)option;
         return optionPP.displayText;
+    } else if ([option respondsToSelector:@selector(formDisplayText)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        return [option performSelector:@selector(formDisplayText)] ?: @"";
+#pragma clang diagnostic pop
     }
     // fallback
     return [option description] ?: @"";

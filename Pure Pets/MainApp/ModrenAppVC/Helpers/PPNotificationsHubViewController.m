@@ -17,7 +17,7 @@
 @import UserNotifications;
 
 static CGFloat const kPPHubTopBarHeight = 44.0;
-static CGFloat const kPPHubActionButtonSize = 40.0;
+static CGFloat const kPPHubActionButtonSize = 44.0;
 
 static NSString *PPHubTrimmedString(id value)
 {
@@ -132,7 +132,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     _selectionIndicator = [[UIView alloc] initWithFrame:CGRectZero];
     _selectionIndicator.translatesAutoresizingMaskIntoConstraints = NO;
     UIColor *brand = [GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemOrangeColor;
-    _selectionIndicator.backgroundColor = brand;
+    _selectionIndicator.backgroundColor = AppClearClr;// brand;
     _selectionIndicator.layer.cornerRadius = 22.0;
     _selectionIndicator.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -273,11 +273,11 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 - (void)pp_refreshButtonAppearance
 {
-    UIColor *inactiveColor = [UIColor secondaryLabelColor];
+    UIColor *inactiveColor = AppSecondaryTextClr;
     for (NSInteger index = 0; index < (NSInteger)self.tabButtons.count; index++) {
         BOOL isSelected = (index == self.selectedIndex);
         UIButton *button = self.tabButtons[index];
-        UIColor *titleColor = isSelected ? UIColor.whiteColor : inactiveColor;
+        UIColor *titleColor = isSelected ? AppPrimaryClr : inactiveColor;
         button.tintColor = titleColor;
         [button setTitleColor:titleColor forState:UIControlStateNormal];
         button.alpha = isSelected ? 1.0 : 0.92;
@@ -323,7 +323,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _cardView = [[UIView alloc] initWithFrame:CGRectZero];
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.80 : 0.96];
+    _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.0 : 0.96];
     _cardView.layer.cornerRadius = 24.0;
     _cardView.layer.masksToBounds = NO;
     _cardView.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.16].CGColor;
@@ -794,14 +794,28 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [self.tabsView.bottomAnchor constraintEqualToAnchor:self.topChromeContainerView.bottomAnchor],
     ]];
 
-    self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration glassButtonConfiguration];
+        
+        self.actionButton = [UIButton buttonWithConfiguration:config primaryAction:nil];
+    } else {
+        self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+   
+    }
+
+    
     self.actionButton.frame = CGRectMake(0.0, 0.0, kPPHubActionButtonSize, kPPHubActionButtonSize);
-    self.actionButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.86 : 0.96];
+    self.actionButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.0 : 0.96];
     self.actionButton.tintColor = [GM appPrimaryColor];
     self.actionButton.layer.cornerRadius = kPPHubActionButtonSize * 0.5;
     self.actionButton.clipsToBounds = NO;
     self.actionButton.layer.borderWidth = 1.0;
-    self.actionButton.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14].CGColor;
+    if(!PPIOS26())
+    {
+        self.actionButton.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14].CGColor;
+    }
+    
     self.actionButton.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.18].CGColor;
     self.actionButton.layer.shadowOpacity = 0.10;
     self.actionButton.layer.shadowRadius = 10.0;
@@ -943,6 +957,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.actionButton.accessibilityLabel = accessibilityLabel;
     self.actionButton.enabled = enabled;
     self.actionButton.alpha = enabled ? 1.0 : 0.45;
+    self.actionButton.backgroundColor = AppClearClr;
 }
 
 - (void)pp_handleActionButtonTapped

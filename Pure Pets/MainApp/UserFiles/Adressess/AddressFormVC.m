@@ -1194,6 +1194,9 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     NSString *screenTitle = self.address ? (kLang(@"EditAddress") ?: @"Edit address") : (kLang(@"AddAddress") ?: @"Add address");
     self.navigationItem.title = screenTitle;
 
+    NSDictionary *titleAttrs = @{ NSForegroundColorAttributeName: (AppPrimaryTextClr ?: UIColor.labelColor) };
+    self.navigationController.navigationBar.titleTextAttributes = titleAttrs;
+
     NSString *leadingImageName = self.addressFormPresent == AddressFormPresentSheet
         ? @"xmark"
         : (PPChevronName ?: @"chevron.backward");

@@ -2312,10 +2312,18 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     return [self pp_sectionHeaderViewForTitle:content.firstObject subtitle:content.lastObject];
 }
 
-- (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section
+ 
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    return section < (NSInteger)self.formSections.count ? 82.0 : 0.000001;
+    if (indexPath.row == 1 || indexPath.row == 2) {
+        return 74.0;
+    }
+    
+    return UITableViewAutomaticDimension;
 }
+
+
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForHeaderInSection:(NSInteger)section
 {
@@ -2543,7 +2551,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)initForm {
     
     __weak typeof(self) weakSelf = self;
-    CGFloat rowHeight = 58;
+    CGFloat rowHeight = 64;
 
     // Section 0: Basic Info
     NSMutableArray<PPAdFormField *> *basicSection = [NSMutableArray array];

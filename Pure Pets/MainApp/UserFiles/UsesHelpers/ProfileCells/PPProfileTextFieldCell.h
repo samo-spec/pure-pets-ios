@@ -6,7 +6,7 @@
 //
 
 
-
+#import "PPProfileBaseCell.h"
 @interface PPProfileTextFieldCell : PPProfileBaseCell
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextField *textField;

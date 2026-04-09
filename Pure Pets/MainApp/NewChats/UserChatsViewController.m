@@ -693,8 +693,8 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     // 🔥 Ensure unread UI sync after dismissing messaging screen
        [self handleUnreadUpdate];
     
-    UIButton *newChatButton = [self pp_ButtonWithSystemName:@"square.and.pencil" action:@selector(startNewChat)];
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:newChatButton title:nil showBack:NO];
+    //UIButton *newChatButton = [self pp_ButtonWithSystemName:@"square.and.pencil" action:@selector(startNewChat)];
+    //[self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:newChatButton title:nil showBack:NO];
     
    
     

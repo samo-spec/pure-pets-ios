@@ -23,6 +23,7 @@
 #import "PPProfileActionCell.h"
 
 
+
 // ...
 
 
@@ -32,68 +33,9 @@
 @import FirebaseStorage;
 @import PhotosUI;
 
-// Add a new enumeration value for pets before PPProfileSectionCount
-typedef NS_ENUM(NSInteger, PPProfileSection) {
-    PPProfileSectionDetails = 0,
-    PPProfileSectionContact,
-    PPProfileSectionAddresses,
-    PPProfileSectionPets,       // NEW: Pet Profiles section
-    PPProfileSectionCount       // ensures the count is now 4 instead of 3
-};
 
-typedef NS_ENUM(NSInteger, PPProfileFieldKind) {
-    PPProfileFieldKindUserName = 1,
-    PPProfileFieldKindFirstName,
-    PPProfileFieldKindLastName,
-    PPProfileFieldKindMobile,
-    PPProfileFieldKindEmail,
-    PPProfileFieldKindAbout
-};
 
-typedef NS_ENUM(NSInteger, PPProfileDetailRow) {
-    PPProfileDetailRowUserName = 0,
-    PPProfileDetailRowFirstName,
-    PPProfileDetailRowLastName,
-    PPProfileDetailRowCount
-};
 
-typedef NS_ENUM(NSInteger, PPProfileContactRow) {
-    PPProfileContactRowCountry = 0,
-    PPProfileContactRowMobile,
-    PPProfileContactRowEmail,
-    PPProfileContactRowAbout,
-    PPProfileContactRowCount
-};
-
-static const CGFloat kPPProfileCellHorizontalInset = 20.0;
-static const CGFloat kPPProfileCellVerticalInset   = 10.0;
-
-static inline UISemanticContentAttribute PPProfileCurrentSemanticAttribute(void) {
-    return Language.isRTL
-        ? UISemanticContentAttributeForceRightToLeft
-        : UISemanticContentAttributeForceLeftToRight;
-}
-
-static inline NSString *PPProfileForwardChevronSymbolName(void) {
-    return Language.isRTL ? @"chevron.left" : @"chevron.right";
-}
-
-@interface PPProfileBaseCell : UITableViewCell
-@end
-@implementation PPProfileBaseCell
-
-- (void)setFrame:(CGRect)frame
-{
-    frame.origin.x = kPPProfileCellHorizontalInset;
-    frame.size.width -= kPPProfileCellHorizontalInset * 2.0;
-    frame.origin.y += kPPProfileCellVerticalInset * 0.5;
-    frame.size.height -= kPPProfileCellVerticalInset;
-    if (frame.size.width  < 0.0) frame.size.width  = 0.0;
-    if (frame.size.height < 0.0) frame.size.height = 0.0;
-    [super setFrame:frame];
-}
-
-@end
 
 
 
@@ -1266,11 +1208,11 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
     if (indexPath.section == PPProfileSectionPets) {
-        return 60.0;
+        return 64.0;
     }
     
         else  if ([self pp_isAddressActionRow:indexPath]) {
-            return 60.0;
+            return 64.0;
         }
     
     return UITableViewAutomaticDimension;

@@ -444,7 +444,7 @@
     UIColor *orbColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.24];
     UIImage *avatarPlaceholder = nil;
 
-    self.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
     _cardView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
     _eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -4370,7 +4370,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
-    self.collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.collectionView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.collectionView.delegate = self;
     self.collectionView.prefetchingEnabled = YES;
     self.collectionView.prefetchDataSource = self;
@@ -7373,10 +7373,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     container.adjustsImageWhenHighlighted = NO;
     container.clipsToBounds = NO;
 
-    container.semanticContentAttribute =
-        Language.isRTL
-        ? UISemanticContentAttributeForceRightToLeft
-        : UISemanticContentAttributeForceLeftToRight;
+    container.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     // Menu + tap safely coexist — combined user + app actions
     UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
