@@ -1,0 +1,75 @@
+//
+//  PhotoTextCancelItemView.swift
+//  HXPhotoPicker
+//
+//  Created by Silence on 2023/10/22.
+//  Copyright © 2023 Silence. All rights reserved.
+//
+
+import UIKit
+
+public class PhotoTextCancelItemView: UIView, PhotoNavigationItem {
+    public weak var itemDelegate: PhotoNavigationItemDelegate?
+    public var itemType: PhotoNavigationItemType { .cancel }
+    
+    let config: PickerConfiguration
+    public required init(config: PickerConfiguration) {
+        self.config = config
+        super.init(frame: .zero)
+        initView()
+    }
+    
+    var button: UIButton!
+    func initView() {
+        button = UIButton(type: .system)
+        button.setTitle(.textManager.picker.navigationCancelTitle.text, for: .normal)
+        button.titleLabel?.font = .textManager.picker.navigationCancelTitleFont
+        if #available(iOS 15.0, *), !PhotoManager.isIos26Compatibility {
+            button.configuration = config.photoList.cancelButtonConfig
+        }
+        button.addTarget(self, action: #selector(didCancelClick), for: .touchUpInside)
+        addSubview(button)
+        
+        setColor()
+    }
+    
+    func setColor() {
+        guard let color = PhotoManager.isDark ? config.navigationDarkTintColor : config.navigationTintColor else {
+            return
+        }
+        button.setTitleColor(color, for: .normal)
+    }
+    
+    @objc
+    func didCancelClick() {
+        itemDelegate?.photoControllerDidCancel()
+    }
+    
+    public override func layoutSubviews() {
+        super.layoutSubviews()
+        let buttonSize = CGSize(width: width + 8, height: height + 10)
+        button.frame = CGRect(
+            x: (self.bounds.width - buttonSize.width) / 2,
+            y: (self.bounds.height - buttonSize.height) / 2,
+            width: buttonSize.width,
+            height: buttonSize.height
+        )
+    }
+    
+    public override func sizeThatFits(_ size: CGSize) -> CGSize {
+        return button.sizeThatFits(size)
+    }
+    
+    public override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if #available(iOS 13.0, *) {
+            if traitCollection.hasDifferentColorAppearance(comparedTo: previousTraitCollection) {
+                setColor()
+            }
+        }
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}

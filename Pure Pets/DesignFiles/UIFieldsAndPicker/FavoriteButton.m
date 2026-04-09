@@ -6,6 +6,7 @@
 //
 
 #import "FavoriteButton.h"
+@import FirebaseAuth;
 
 @implementation FavoriteFixedSizeButton
 

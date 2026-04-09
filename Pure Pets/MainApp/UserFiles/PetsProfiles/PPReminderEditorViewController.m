@@ -126,7 +126,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
         [_cellTitleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
         [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [_cellTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [_cellTextField.topAnchor      constraintEqualToAnchor:_cellTitleLabel.bottomAnchor constant:6.0],
         [_cellTextField.leadingAnchor  constraintEqualToAnchor:_cellTitleLabel.leadingAnchor],
         [_cellTextField.trailingAnchor constraintEqualToAnchor:_cellTitleLabel.trailingAnchor],
@@ -272,7 +272,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
         [_cellTitleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor     constant:14.0],
         [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [_cellTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:14.0],
         [_iconView.topAnchor    constraintEqualToAnchor:_cellTitleLabel.bottomAnchor constant:8.0],
         [_iconView.leadingAnchor constraintEqualToAnchor:_cellTitleLabel.leadingAnchor],
         [_iconView.widthAnchor  constraintEqualToConstant:22.0],
@@ -347,7 +347,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
         [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [_cellTitleLabel.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
         [_cellTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_pickerContainer.leadingAnchor constant:-8.0],
-
+        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [_pickerContainer.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
         [_pickerContainer.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
         [_pickerContainer.topAnchor      constraintGreaterThanOrEqualToAnchor:self.contentView.topAnchor    constant:8.0],
@@ -417,7 +417,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
         [_cellTitleLabel.leadingAnchor  constraintEqualToAnchor:_iconView.trailingAnchor constant:10.0],
         [_cellTitleLabel.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor],
         [_cellTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-60.0],
-
+        [_cellTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
     ]];
     return self;

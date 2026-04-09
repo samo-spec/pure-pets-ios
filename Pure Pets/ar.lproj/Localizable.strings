@@ -663,6 +663,8 @@
 "Days" = "يوم";
 "Add Item" = "أضف";
 "Add" = "أضف";
+"delete_account" = "حذف الحساب";
+"Logout" = "تسجيل خروج";
 "Tap to set" = "تعيين علي الخريطة";
 "unsaved_changes_title" = "تغييرات غير محفوظة" ;
 "leave_button" = "مغادرة" ;
@@ -1739,6 +1741,10 @@
 "orders_empty_filtered" = "لا توجد طلبات مطابقة.";
 "order_support_request_call" = "طلب اتصال";
 "order_support_button" = "التواصل مع الدعم";
+"order_history_hero_subtitle" = "تابع حالة الدفع والتوصيل والدعم من مكان واحد.";
+"order_history_metric_orders" = "الطلبات";
+"order_history_metric_spent" = "المنصرف";
+"order_history_metric_active" = "النشطة";
 "order_change_delivery_address" = "تغيير عنوان التوصيل";
 "order_cancel_button" = "إلغاء الطلب";
 "order_edit_location_pending_only" = "يمكن تعديل موقع التوصيل فقط عندما يكون الطلب قيد الانتظار.";
@@ -2256,6 +2262,12 @@
 "pet_vaccines_short" = "تطعيمات";
 "pet_reminders_tab" = "التذكيرات";
 "pet_chats_tab" = "الدردشات";
+"notifications_inbox_tab" = "الإشعارات";
+"notifications_inbox_empty_title" = "لا توجد إشعارات بعد";
+"notifications_inbox_empty_subtitle" = "ستظهر هنا تحديثات الطلبات وتنبيهات المحادثات.";
+"notifications_inbox_category_chat" = "الدردشات";
+"notifications_inbox_category_orders" = "الطلبات";
+"notifications_inbox_category_updates" = "التحديثات";
 "pet_reminder_add" = "إضافة تذكير";
 "pet_reminder_edit" = "تعديل التذكير";
 "pet_reminder_title" = "عنوان التذكير";
@@ -2386,3 +2398,7 @@
 /* ── Accessibility ── */
 "pet_reminder_toggle" = "تفعيل التذكير";
 "pet_profile_tap_hint" = "انقر مرتين لعرض ملف الحيوان الأليف";
+
+/* ── Adopt Pet Form Section Titles ── */
+"petInfo" = "معلومات الحيوان";
+"additionalInfo" = "تفاصيل إضافية";

@@ -21,7 +21,7 @@
 
 static NSString * const kOrderHistoryCellID = @"OrderCell";
 static NSInteger const kOrderHistoryPageSize = 12;
-static CGFloat const kOrderHistoryRowHeight = 120.0;
+static CGFloat const kOrderHistoryRowHeight = 128.0;
 static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
 
 static NSString * const kOrderHistoryFilterAll = @"all";
@@ -97,6 +97,18 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 @interface OrderHistoryViewController () <UITableViewDataSource, UITableViewDelegate, PPSDelegate, UIScrollViewDelegate>
 
+@property (nonatomic, strong) UIView *backgroundTopGlowView;
+@property (nonatomic, strong) UIView *backgroundBottomGlowView;
+@property (nonatomic, strong) UIView *headerContainer;
+@property (nonatomic, strong) UIView *heroCard;
+@property (nonatomic, strong) UILabel *heroTitleLabel;
+@property (nonatomic, strong) UILabel *heroSubtitleLabel;
+@property (nonatomic, strong) UIView *summaryPanel;
+@property (nonatomic, strong) UILabel *ordersMetricValueLabel;
+@property (nonatomic, strong) UILabel *ordersMetricCaptionLabel;
+@property (nonatomic, strong) UILabel *spentMetricValueLabel;
+@property (nonatomic, strong) UILabel *spentMetricCaptionLabel;
+@property (nonatomic, strong) UILabel *activeMetricLabel;
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UIView *searchContainer;
 @property (nonatomic, strong) PPS *searchView;
@@ -171,20 +183,21 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)setupNavigationBar
 {
-    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"OrderHistory") showBack:NO];
+    BOOL showBack = (self.navigationController.viewControllers.count > 1);
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"OrderHistory") showBack:showBack];
 
     UIButton *supportButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"headphones.dots" target:self action:@selector(contactSupportTapped)];
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:supportButton];
-
     UIButton *refreshButton = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"arrow.clockwise" target:self action:@selector(refreshOrders)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:refreshButton];
+    UIBarButtonItem *supportItem = [[UIBarButtonItem alloc] initWithCustomView:supportButton];
+    UIBarButtonItem *refreshItem = [[UIBarButtonItem alloc] initWithCustomView:refreshButton];
+    self.navigationItem.rightBarButtonItems = @[refreshItem, supportItem];
 }
 
 - (void)emptyViewConfiger
 {
     self.emptyStateConfig = [PPEmptyStateConfig new];
-    self.emptyStateConfig.animationName = @"Shopping Cart Empty.json";
-    self.emptyStateConfig.isNetworkFile = YES;
+    self.emptyStateConfig.animationName = @""; //Shopping Cart Empty.json
+    self.emptyStateConfig.isNetworkFile = NO;
     self.emptyStateConfig.buttonTitle = kLang(@"empty_retry_button");
     self.emptyStateConfig.target = self;
     self.emptyStateConfig.action = @selector(refreshOrders);
@@ -192,9 +205,46 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (void)setupViews
 {
+    [self setupBackdrop];
+
+    UITableViewStyle tableStyle = UITableViewStyleGrouped;
+    if (@available(iOS 13.0, *)) {
+        tableStyle = UITableViewStyleInsetGrouped;
+    }
+
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:tableStyle];
+    self.tableView.delegate = self;
+    self.tableView.dataSource = self;
+    self.tableView.backgroundColor = AppClearClr;
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.rowHeight = kOrderHistoryRowHeight;
+    self.tableView.showsVerticalScrollIndicator = NO;
+    self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.tableView.tableFooterView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, 96.0, 0.0);
+    if (@available(iOS 11.0, *)) {
+        self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
+    }
+    if (@available(iOS 15.0, *)) {
+        self.tableView.sectionHeaderTopPadding = 0.0;
+    }
+    [self.tableView registerClass:[OrderCell class] forCellReuseIdentifier:kOrderHistoryCellID];
+    [self.view addSubview:self.tableView];
+
+    [self setupHeroHeader];
+
     self.searchContainer = [[UIView alloc] initWithFrame:CGRectZero];
-    self.searchContainer.backgroundColor = UIColor.clearColor;
-    [self.view addSubview:self.searchContainer];
+    self.searchContainer.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.80 : 0.96];
+    self.searchContainer.layer.cornerRadius = 22.0;
+    self.searchContainer.layer.masksToBounds = NO;
+    self.searchContainer.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.14].CGColor;
+    self.searchContainer.layer.shadowOpacity = 0.08;
+    self.searchContainer.layer.shadowRadius = 14.0;
+    self.searchContainer.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    if (@available(iOS 13.0, *)) {
+        self.searchContainer.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.headerContainer addSubview:self.searchContainer];
 
     self.searchView = [[PPS alloc] initWithFrame:CGRectZero];
     self.searchView.delegate = self;
@@ -233,21 +283,6 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.filterSummaryLabel.textColor = UIColor.secondaryLabelColor;
     [self.searchContainer addSubview:self.filterSummaryLabel];
 
-    self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
-    self.tableView.delegate = self;
-    self.tableView.dataSource = self;
-    self.tableView.backgroundColor = AppClearClr;
-    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
-    self.tableView.rowHeight = kOrderHistoryRowHeight;
-    self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.tableView.tableFooterView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.tableView.contentInset = UIEdgeInsetsMake(12, 0, 86, 0);
-    if (@available(iOS 11.0, *)) {
-        self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
-    }
-    [self.tableView registerClass:[OrderCell class] forCellReuseIdentifier:kOrderHistoryCellID];
-    [self.view addSubview:self.tableView];
-
     self.refreshControl = [[UIRefreshControl alloc] init];
     [self.refreshControl addTarget:self action:@selector(refreshOrders) forControlEvents:UIControlEventValueChanged];
     [self.tableView addSubview:self.refreshControl];
@@ -262,35 +297,230 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.paginationLoader.hidesWhenStopped = YES;
 
     [self refreshStatusFilterMenu];
+    [self refreshHeroHeader];
 }
 
 - (void)layoutViews
 {
-    CGFloat topInset = self.view.safeAreaInsets.top;
-    CGFloat horizontalPadding = 14.0;
-    CGFloat searchHeight = 56.0;
-    CGFloat summaryHeight = 18.0;
+    CGFloat width = CGRectGetWidth(self.view.bounds);
+    CGFloat height = CGRectGetHeight(self.view.bounds);
+    CGFloat safeTop = self.view.safeAreaInsets.top;
+    CGFloat safeBottom = self.view.safeAreaInsets.bottom;
 
-    self.searchContainer.frame = CGRectMake(horizontalPadding,
-                                            topInset + 4.0,
-                                            self.view.bounds.size.width - (horizontalPadding * 2.0),
-                                            searchHeight + summaryHeight + 10.0);
-    self.searchView.frame = CGRectMake(0.0,
-                                       0.0,
-                                       self.searchContainer.bounds.size.width,
-                                       searchHeight);
-    self.filterSummaryLabel.frame = CGRectMake(6.0,
-                                               CGRectGetMaxY(self.searchView.frame) + 6.0,
-                                               self.searchContainer.bounds.size.width - 12.0,
-                                               summaryHeight);
+    self.backgroundTopGlowView.frame = CGRectMake(-72.0, safeTop - 36.0, width * 0.78, width * 0.78);
+    self.backgroundBottomGlowView.frame = CGRectMake(width - (width * 0.62) + 26.0,
+                                                     height - (width * 0.58) - safeBottom - 84.0,
+                                                     width * 0.62,
+                                                     width * 0.62);
+    self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
+    self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
 
-    CGFloat tableTop = CGRectGetMaxY(self.searchContainer.frame) + 8.0;
-    self.tableView.frame = CGRectMake(0,
-                                      tableTop,
-                                      self.view.bounds.size.width,
-                                      self.view.bounds.size.height - tableTop);
-
+    self.tableView.frame = self.view.bounds;
+    [self layoutHeroHeader];
     self.initialLoader.center = self.view.center;
+}
+
+- (void)setupBackdrop
+{
+    self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.backgroundTopGlowView.userInteractionEnabled = NO;
+    self.backgroundTopGlowView.backgroundColor = [[GM appPrimaryColor] colorWithAlphaComponent:0.10];
+    [self.view addSubview:self.backgroundTopGlowView];
+
+    self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.backgroundBottomGlowView.userInteractionEnabled = NO;
+    self.backgroundBottomGlowView.backgroundColor = [UIColor.systemOrangeColor colorWithAlphaComponent:0.05];
+    [self.view addSubview:self.backgroundBottomGlowView];
+}
+
+- (void)setupHeroHeader
+{
+    self.headerContainer = [[UIView alloc] initWithFrame:CGRectZero];
+    self.headerContainer.backgroundColor = UIColor.clearColor;
+
+    self.heroCard = [[UIView alloc] initWithFrame:CGRectZero];
+    self.heroCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
+    self.heroCard.layer.cornerRadius = 28.0;
+    self.heroCard.layer.masksToBounds = NO;
+    self.heroCard.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.18].CGColor;
+    self.heroCard.layer.shadowOpacity = 0.10;
+    self.heroCard.layer.shadowRadius = 18.0;
+    self.heroCard.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    if (@available(iOS 13.0, *)) {
+        self.heroCard.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.headerContainer addSubview:self.heroCard];
+
+    self.heroTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.heroTitleLabel.font = [GM boldFontWithSize:30.0];
+    self.heroTitleLabel.textColor = UIColor.labelColor;
+    self.heroTitleLabel.numberOfLines = 2;
+    [self.heroCard addSubview:self.heroTitleLabel];
+
+    self.heroSubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.heroSubtitleLabel.font = [GM MidFontWithSize:14.0];
+    self.heroSubtitleLabel.textColor = UIColor.secondaryLabelColor;
+    self.heroSubtitleLabel.numberOfLines = 2;
+    [self.heroCard addSubview:self.heroSubtitleLabel];
+
+    self.summaryPanel = [[UIView alloc] initWithFrame:CGRectZero];
+    self.summaryPanel.layer.cornerRadius = 22.0;
+    self.summaryPanel.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.summaryPanel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.heroCard addSubview:self.summaryPanel];
+
+    self.ordersMetricValueLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.ordersMetricValueLabel.font = [GM boldFontWithSize:34.0];
+    self.ordersMetricValueLabel.textColor = UIColor.labelColor;
+    self.ordersMetricValueLabel.adjustsFontSizeToFitWidth = YES;
+    self.ordersMetricValueLabel.minimumScaleFactor = 0.7;
+    [self.summaryPanel addSubview:self.ordersMetricValueLabel];
+
+    self.ordersMetricCaptionLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.ordersMetricCaptionLabel.font = [GM MidFontWithSize:13.0];
+    self.ordersMetricCaptionLabel.textColor = UIColor.secondaryLabelColor;
+    [self.summaryPanel addSubview:self.ordersMetricCaptionLabel];
+
+    self.spentMetricValueLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.spentMetricValueLabel.font = [GM boldFontWithSize:24.0];
+    self.spentMetricValueLabel.textColor = UIColor.labelColor;
+    self.spentMetricValueLabel.adjustsFontSizeToFitWidth = YES;
+    self.spentMetricValueLabel.minimumScaleFactor = 0.66;
+    self.spentMetricValueLabel.textAlignment = NSTextAlignmentRight;
+    [self.summaryPanel addSubview:self.spentMetricValueLabel];
+
+    self.spentMetricCaptionLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.spentMetricCaptionLabel.font = [GM MidFontWithSize:13.0];
+    self.spentMetricCaptionLabel.textColor = UIColor.secondaryLabelColor;
+    self.spentMetricCaptionLabel.textAlignment = NSTextAlignmentRight;
+    [self.summaryPanel addSubview:self.spentMetricCaptionLabel];
+
+    self.activeMetricLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.activeMetricLabel.font = [GM boldFontWithSize:12.0];
+    self.activeMetricLabel.textAlignment = NSTextAlignmentCenter;
+    self.activeMetricLabel.layer.cornerRadius = 14.0;
+    self.activeMetricLabel.layer.masksToBounds = YES;
+    [self.heroCard addSubview:self.activeMetricLabel];
+
+    self.tableView.tableHeaderView = self.headerContainer;
+}
+
+- (void)layoutHeroHeader
+{
+    CGFloat width = CGRectGetWidth(self.view.bounds);
+    CGFloat cardX = 16.0;
+    CGFloat cardWidth = MAX(0.0, width - (cardX * 2.0));
+    CGFloat padding = 20.0;
+    CGFloat contentWidth = MAX(0.0, cardWidth - (padding * 2.0));
+
+    self.headerContainer.frame = CGRectMake(0.0, 0.0, width, 1.0);
+    self.heroCard.frame = CGRectMake(cardX, 8.0, cardWidth, 1.0);
+
+    CGSize titleSize = [self.heroTitleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)];
+    self.heroTitleLabel.frame = CGRectMake(padding, 20.0, contentWidth, MAX(38.0, ceil(titleSize.height)));
+
+    CGSize subtitleSize = [self.heroSubtitleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)];
+    self.heroSubtitleLabel.frame = CGRectMake(padding,
+                                              CGRectGetMaxY(self.heroTitleLabel.frame) + 8.0,
+                                              contentWidth,
+                                              MAX(20.0, ceil(subtitleSize.height)));
+
+    CGFloat summaryY = CGRectGetMaxY(self.heroSubtitleLabel.frame) + 18.0;
+    self.summaryPanel.frame = CGRectMake(padding, summaryY, contentWidth, 104.0);
+
+    CGFloat metricPadding = 16.0;
+    CGFloat metricGap = 14.0;
+    CGFloat metricColumnWidth = floor((contentWidth - (metricPadding * 2.0) - metricGap) * 0.5);
+
+    self.ordersMetricValueLabel.frame = CGRectMake(metricPadding, 14.0, metricColumnWidth, 42.0);
+    self.ordersMetricCaptionLabel.frame = CGRectMake(metricPadding,
+                                                     CGRectGetMaxY(self.ordersMetricValueLabel.frame) + 2.0,
+                                                     metricColumnWidth,
+                                                     18.0);
+
+    CGFloat trailingX = contentWidth - metricPadding - metricColumnWidth;
+    self.spentMetricValueLabel.frame = CGRectMake(trailingX, 18.0, metricColumnWidth, 34.0);
+    self.spentMetricCaptionLabel.frame = CGRectMake(trailingX,
+                                                    CGRectGetMaxY(self.spentMetricValueLabel.frame) + 4.0,
+                                                    metricColumnWidth,
+                                                    18.0);
+
+    [self.activeMetricLabel sizeToFit];
+    CGFloat badgeWidth = MAX(118.0, CGRectGetWidth(self.activeMetricLabel.bounds) + 18.0);
+    self.activeMetricLabel.frame = CGRectMake(padding,
+                                              CGRectGetMaxY(self.summaryPanel.frame) + 14.0,
+                                              badgeWidth,
+                                              28.0);
+
+    CGFloat finalHeroHeight = CGRectGetMaxY(self.activeMetricLabel.frame) + 20.0;
+    self.heroCard.frame = CGRectMake(cardX, 8.0, cardWidth, finalHeroHeight);
+
+    CGFloat searchContainerY = CGRectGetMaxY(self.heroCard.frame) + 12.0;
+    self.searchContainer.frame = CGRectMake(cardX, searchContainerY, cardWidth, 86.0);
+    self.searchView.frame = CGRectMake(10.0, 10.0, CGRectGetWidth(self.searchContainer.bounds) - 20.0, 52.0);
+    self.filterSummaryLabel.frame = CGRectMake(16.0,
+                                               CGRectGetMaxY(self.searchView.frame) + 6.0,
+                                               CGRectGetWidth(self.searchContainer.bounds) - 32.0,
+                                               16.0);
+
+    self.headerContainer.frame = CGRectMake(0.0,
+                                            0.0,
+                                            width,
+                                            CGRectGetMaxY(self.searchContainer.frame) + 10.0);
+    self.heroCard.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroCard.bounds
+                                                                cornerRadius:self.heroCard.layer.cornerRadius].CGPath;
+    self.searchContainer.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.searchContainer.bounds
+                                                                       cornerRadius:self.searchContainer.layer.cornerRadius].CGPath;
+    self.tableView.tableHeaderView = self.headerContainer;
+}
+
+- (void)refreshHeroHeader
+{
+    BOOL isRTL = ([Language languageVal] == 1);
+    NSTextAlignment leadingAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    NSTextAlignment trailingAlignment = isRTL ? NSTextAlignmentLeft : NSTextAlignmentRight;
+
+    self.heroTitleLabel.textAlignment = leadingAlignment;
+    self.heroSubtitleLabel.textAlignment = leadingAlignment;
+    self.ordersMetricValueLabel.textAlignment = leadingAlignment;
+    self.ordersMetricCaptionLabel.textAlignment = leadingAlignment;
+    self.spentMetricValueLabel.textAlignment = trailingAlignment;
+    self.spentMetricCaptionLabel.textAlignment = trailingAlignment;
+
+    self.heroTitleLabel.text = kLang(@"OrderHistory");
+    self.heroSubtitleLabel.text = kLang(@"order_history_hero_subtitle") ?: @"Track payment, delivery, and support progress in one place.";
+
+    NSArray<PPOrder *> *summaryOrders = [self pp_hasSearchOrFilter] ? self.displayedOrders : self.orders;
+    NSInteger visibleCount = summaryOrders.count;
+    NSInteger activeCount = [self activeOrdersCountForOrders:summaryOrders];
+    double totalSpent = [self totalSpentForOrders:summaryOrders];
+    NSString *currencyCode = [self preferredCurrencyCodeForOrders:summaryOrders];
+
+    self.ordersMetricValueLabel.text = [NSString stringWithFormat:@"%ld", (long)visibleCount];
+    self.ordersMetricCaptionLabel.text = kLang(@"order_history_metric_orders") ?: @"Orders";
+    self.spentMetricValueLabel.text = [self formattedSummaryAmount:totalSpent currency:currencyCode];
+    self.spentMetricCaptionLabel.text = kLang(@"order_history_metric_spent") ?: @"Spent";
+
+    UIColor *accent = [self.selectedStatusFilterKey isEqualToString:kOrderHistoryFilterAll]
+    ? ([GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemOrangeColor)
+    : [self colorForStatusFilterKey:self.selectedStatusFilterKey];
+
+    self.summaryPanel.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.10];
+    self.activeMetricLabel.backgroundColor = [accent colorWithAlphaComponent:0.14];
+    self.activeMetricLabel.textColor = accent;
+    self.activeMetricLabel.text = [NSString stringWithFormat:@"%@ • %ld",
+                                   (kLang(@"order_history_metric_active") ?: @"Active"),
+                                   (long)activeCount];
+
+    [self layoutHeroHeader];
+}
+
+- (BOOL)pp_hasSearchOrFilter
+{
+    NSString *trimmedSearch = [self.searchText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return trimmedSearch.length > 0 || ![self.selectedStatusFilterKey isEqualToString:kOrderHistoryFilterAll];
 }
 
 #pragma mark - Data
@@ -558,6 +788,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     self.displayedOrders = results.copy;
     [self refreshStatusFilterMenu];
+    [self refreshHeroHeader];
     [self updateEmptyState];
     [self.tableView reloadData];
 }
@@ -674,7 +905,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
         }
         subTitle = hasSearchOrFilter ? (kLang(@"orders_empty_filtered") ?: @"") : @"";
         buttonTitle = kLang(@"empty_retry_button") ?: @"";
-        self.emptyStateConfig.animationName = @"Shopping Cart Empty.json";
+        self.emptyStateConfig.animationName = @"";//Shopping Cart Empty.json
         self.emptyStateConfig.isNetworkFile = YES;
     }
 
@@ -716,29 +947,33 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     cell.backgroundColor = UIColor.clearColor;
-    cell.nameLabel.text = [self formattedAmountForOrder:order];
-
     NSString *statusText = [self displayTitleForOrder:order];
     UIColor *statusColor = [self statusColorForOrder:order];
-    NSString *statusDisplay = [NSString stringWithFormat:@"● %@", statusText ?: @""];
+    cell.nameLabel.text = [order displayOrderReference];
+    cell.quantityLabel.text = [self primaryDescriptionForOrder:order];
+    cell.priceLabel.text = [self formattedAmountForOrder:order];
+    cell.priceLabel.textColor = UIColor.labelColor;
+
+    NSString *statusDisplay = [NSString stringWithFormat:@"● %@  %@", statusText ?: @"", [self formattedDate:order.createdAt] ?: @""];
     NSMutableAttributedString *statusAttr = [[NSMutableAttributedString alloc] initWithString:statusDisplay];
     if (statusDisplay.length > 0) {
         [statusAttr addAttributes:@{
             NSForegroundColorAttributeName: statusColor,
-            NSFontAttributeName: [GM boldFontWithSize:13]
+            NSFontAttributeName: [GM boldFontWithSize:13.0]
         } range:NSMakeRange(0, 1)];
     }
     if (statusDisplay.length > 1) {
         [statusAttr addAttributes:@{
             NSForegroundColorAttributeName: UIColor.secondaryLabelColor,
-            NSFontAttributeName: [GM MidFontWithSize:14]
+            NSFontAttributeName: [GM MidFontWithSize:13.0]
         } range:NSMakeRange(1, statusDisplay.length - 1)];
     }
-    cell.priceLabel.attributedText = statusAttr;
+    cell.dateLabel.attributedText = statusAttr;
 
     NSInteger quantity = [self totalQuantityForOrder:order];
-    cell.quantityLabel.text = [NSString stringWithFormat:@"%@: %ld", kLang(@"QuantityLabel"), (long)quantity];
-    cell.dateLabel.text = [self formattedDate:order.createdAt];
+    if (quantity > 0 && cell.quantityLabel.text.length == 0) {
+        cell.quantityLabel.text = [NSString stringWithFormat:@"%@: %ld", kLang(@"QuantityLabel"), (long)quantity];
+    }
     cell.itemImageView.image = [UIImage imageNamed:@"placeholder"];
 
     NSString *embeddedImageURL = [self firstEmbeddedImageURLForOrder:order];
@@ -936,6 +1171,11 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 - (UIColor *)statusColorForOrder:(PPOrder *)order
 {
     NSString *filterKey = [self canonicalStatusFilterKeyForOrder:order];
+    return [self colorForStatusFilterKey:filterKey];
+}
+
+- (UIColor *)colorForStatusFilterKey:(NSString *)filterKey
+{
     if ([filterKey isEqualToString:kOrderHistoryFilterPending]) {
         return UIColor.systemOrangeColor;
     }
@@ -1071,7 +1311,41 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     NSString *currency = PPOrderHistoryTrimmedString(order.currency);
     if (currency.length == 0) currency = PPOrderHistoryTrimmedString([CountryModel safeCurrentCurrencyCode]);
     if (currency.length == 0) currency = @"QAR";
+    return [NSString stringWithFormat:@"%.2f %@", [self displayAmountValueForOrder:order], currency];
+}
 
+- (NSString *)formattedDate:(NSDate *)date
+{
+    if (![date isKindOfClass:NSDate.class]) return @"";
+    return [self.orderDateFormatter stringFromDate:date];
+}
+
+- (NSString *)formattedSummaryAmount:(double)amount currency:(NSString *)currency
+{
+    NSString *resolvedCurrency = PPOrderHistoryTrimmedString(currency);
+    if (resolvedCurrency.length == 0) {
+        resolvedCurrency = PPOrderHistoryTrimmedString([CountryModel safeCurrentCurrencyCode]);
+    }
+    if (resolvedCurrency.length == 0) {
+        resolvedCurrency = @"QAR";
+    }
+    return [NSString stringWithFormat:@"%.2f %@", MAX(0.0, amount), resolvedCurrency];
+}
+
+- (NSString *)preferredCurrencyCodeForOrders:(NSArray<PPOrder *> *)orders
+{
+    for (PPOrder *order in orders ?: @[]) {
+        NSString *currency = PPOrderHistoryTrimmedString(order.currency);
+        if (currency.length > 0) {
+            return currency;
+        }
+    }
+    NSString *fallback = PPOrderHistoryTrimmedString([CountryModel safeCurrentCurrencyCode]);
+    return fallback.length > 0 ? fallback : @"QAR";
+}
+
+- (double)displayAmountValueForOrder:(PPOrder *)order
+{
     double totalAmount = order.totalAmount;
     double effectiveShippingFee = MAX(0.0, order.shippingFee);
     if (effectiveShippingFee <= 0.0 &&
@@ -1086,15 +1360,56 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     if (totalAmount <= 0.0) {
         totalAmount = order.amount;
     }
-    totalAmount = MAX(0.0, totalAmount);
-
-    return [NSString stringWithFormat:@"%.2f %@", totalAmount, currency];
+    return MAX(0.0, totalAmount);
 }
 
-- (NSString *)formattedDate:(NSDate *)date
+- (double)totalSpentForOrders:(NSArray<PPOrder *> *)orders
 {
-    if (![date isKindOfClass:NSDate.class]) return @"";
-    return [self.orderDateFormatter stringFromDate:date];
+    double total = 0.0;
+    for (PPOrder *order in orders ?: @[]) {
+        total += [self displayAmountValueForOrder:order];
+    }
+    return total;
+}
+
+- (NSInteger)activeOrdersCountForOrders:(NSArray<PPOrder *> *)orders
+{
+    NSInteger count = 0;
+    for (PPOrder *order in orders ?: @[]) {
+        NSString *statusKey = [self canonicalStatusFilterKeyForOrder:order];
+        BOOL isActive = ![statusKey isEqualToString:kOrderHistoryFilterDelivered] &&
+        ![statusKey isEqualToString:kOrderHistoryFilterCancelled] &&
+        ![statusKey isEqualToString:kOrderHistoryFilterFailed];
+        if (isActive) {
+            count += 1;
+        }
+    }
+    return count;
+}
+
+- (NSString *)primaryDescriptionForOrder:(PPOrder *)order
+{
+    NSString *firstItemName = @"";
+    for (id item in order.items ?: @[]) {
+        if (![item isKindOfClass:NSDictionary.class]) continue;
+        NSDictionary *itemDict = (NSDictionary *)item;
+        firstItemName = PPOrderHistoryTrimmedString(itemDict[@"name"] ?: itemDict[@"title"]);
+        if (firstItemName.length > 0) {
+            break;
+        }
+    }
+
+    NSInteger quantity = [self totalQuantityForOrder:order];
+    if (firstItemName.length > 0 && quantity > 0) {
+        return [NSString stringWithFormat:@"%@ • %@: %ld", firstItemName, kLang(@"QuantityLabel"), (long)quantity];
+    }
+    if (firstItemName.length > 0) {
+        return firstItemName;
+    }
+    if (quantity > 0) {
+        return [NSString stringWithFormat:@"%@: %ld", kLang(@"QuantityLabel"), (long)quantity];
+    }
+    return @"";
 }
 
 - (NSInteger)totalQuantityForOrder:(PPOrder *)order

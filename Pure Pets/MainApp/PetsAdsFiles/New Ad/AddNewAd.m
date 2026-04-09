@@ -178,7 +178,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             [_titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:10.0],
             [_titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
             [_titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+            [_titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
             [_textField.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:8.0],
             [_textField.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
             [_textField.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
@@ -196,6 +196,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     self.titleLabel.textAlignment = PPAdCurrentTextAlignment();
     self.textField.textAlignment = PPAdCurrentTextAlignment();
     self.textField.semanticContentAttribute = PPAdCurrentSemanticAttribute();
+    
     UIColor *placeholderColor = [UIColor.placeholderTextColor colorWithAlphaComponent:0.75];
     self.textField.attributedPlaceholder = field.placeholder.length
         ? [[NSAttributedString alloc] initWithString:field.placeholder
@@ -262,7 +263,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             [_fieldTitleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
             [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
             [_fieldTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+            [_fieldTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
             [_chevronView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:10.0],
             [_chevronView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
             [_chevronView.widthAnchor constraintEqualToConstant:14.0],
@@ -338,6 +339,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         [NSLayoutConstraint activateConstraints:@[
             [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
             [_fieldTitleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+            [_fieldTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
+            
             [_toggleSwitch.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
             [_toggleSwitch.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
             [_fieldTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_toggleSwitch.leadingAnchor constant:-12.0],
@@ -406,7 +409,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
             [_fieldTitleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
             [_fieldTitleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
             [_fieldTitleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+            [_fieldTitleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
+            
             [_textView.topAnchor constraintEqualToAnchor:_fieldTitleLabel.bottomAnchor constant:8.0],
             [_textView.leadingAnchor constraintEqualToAnchor:_fieldTitleLabel.leadingAnchor],
             [_textView.trailingAnchor constraintEqualToAnchor:_fieldTitleLabel.trailingAnchor],
@@ -2539,7 +2543,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)initForm {
     
     __weak typeof(self) weakSelf = self;
-    CGFloat rowHeight = 52;
+    CGFloat rowHeight = 58;
 
     // Section 0: Basic Info
     NSMutableArray<PPAdFormField *> *basicSection = [NSMutableArray array];
@@ -2695,7 +2699,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.tableView.estimatedSectionFooterHeight = 0.000001;
     self.tableView.sectionFooterHeight = 0.000001;
     self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 64.0;
+    self.tableView.estimatedRowHeight = 68.0;
 }
 
 

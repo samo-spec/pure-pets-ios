@@ -521,7 +521,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     avatarHalo.translatesAutoresizingMaskIntoConstraints = NO;
     avatarHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
     avatarHalo.layer.cornerRadius = 62.0;
-    avatarHalo.layer.borderWidth = 1.0;
+    avatarHalo.layer.borderWidth = 0.0;
     avatarHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     avatarHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
     avatarHalo.layer.shadowOpacity = 0.12;

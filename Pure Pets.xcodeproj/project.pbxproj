@@ -11,9 +11,13 @@
 		2262AF912E74B76A005C8EF0 /* PPBottomBar.m in Sources */ = {isa = PBXBuildFile; fileRef = 2262AF902E74B74B005C8EF0 /* PPBottomBar.m */; };
 		22E169D82E75E75A00F50C9E /* PPFunc.m in Sources */ = {isa = PBXBuildFile; fileRef = 22E169D72E75E75A00F50C9E /* PPFunc.m */; };
 		32EB72B8657EBD39543086FC /* PPSectionHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = 3C32792C5C5015883E126EAA /* PPSectionHeader.m */; };
+		369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */; };
+		4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */; };
 		59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 425167313B2C23734EA30648 /* PPPermissionHelper.m */; };
 		681F854AFE262E5D016D4061 /* PPOfflineBannerView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */; };
+		6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */; };
 		7487A7B746BA7354A187635D /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */; };
+		7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */ = {isa = PBXBuildFile; fileRef = A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */; };
 		8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
@@ -585,7 +589,6 @@
 		F2AEC1572D6EBA6900B55427 /* LUNSegmentedControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */; };
 		F2AEC1582D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */; };
 		F2AEC1592D6EBA6900B55427 /* LUNGradientView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AEC1512D6EBA6900B55427 /* LUNGradientView.m */; };
-		F2AED6692F84E4AD00CCD6A4 /* purepets_logo_premium.json in Resources */ = {isa = PBXBuildFile; fileRef = F2AED6682F84E4AD00CCD6A4 /* purepets_logo_premium.json */; };
 		F2B02B172EF6CCD0001A7B19 /* PPCageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B162EF6CCC2001A7B19 /* PPCageCell.m */; };
 		F2B02B1A2EF6CF4C001A7B19 /* PPBirdCardView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B192EF6CDB3001A7B19 /* PPBirdCardView.m */; };
 		F2B02B212EF86462001A7B19 /* PPTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B02B202EF86462001A7B19 /* PPTextField.m */; };
@@ -598,7 +601,6 @@
 		F2B1172B2CEB399A00D4F847 /* ACSimulatorRemoteNotificationsService.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B117262CEB399A00D4F847 /* ACSimulatorRemoteNotificationsService.m */; };
 		F2B1172C2CEB399A00D4F847 /* UIApplication+SimulatorRemoteNotifications.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B117292CEB399A00D4F847 /* UIApplication+SimulatorRemoteNotifications.m */; };
 		F2B1417B2DA3812900F6853E /* ReminderManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B1417A2DA3812900F6853E /* ReminderManager.m */; };
-		6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */; };
 		F2B1A6432E70344B0019FC7C /* PPColorUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B1A6422E70344B0019FC7C /* PPColorUtils.m */; };
 		F2B5B1962CC753AA00ABAC04 /* StoriesReusableView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B5B1952CC753AA00ABAC04 /* StoriesReusableView.m */; };
 		F2B5B9592E1E54B7003F463C /* DeliverySwitchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B5B9582E1E54B7003F463C /* DeliverySwitchCell.m */; };
@@ -720,7 +722,6 @@
 		F2F6C8B32E8D7B430092D85D /* SplashViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F6C8B22E8D7A730092D85D /* SplashViewController.m */; };
 		F2F750CB2E7C605E00BACFA8 /* PPS.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F750CA2E7C605E00BACFA8 /* PPS.m */; };
 		F2F750CE2E7C82EA00BACFA8 /* PPGradientView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F750CD2E7C82EA00BACFA8 /* PPGradientView.m */; };
-		F2F750D12E7CA97200BACFA8 /* AddUserIconAnimation.json in Resources */ = {isa = PBXBuildFile; fileRef = F2F750D02E7CA97200BACFA8 /* AddUserIconAnimation.json */; };
 		F2F807C82E8BEBE90034FF2D /* MainBannerModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807BC2E8BEBE90034FF2D /* MainBannerModel.m */; };
 		F2F807C92E8BEBE90034FF2D /* PPBannerCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807BE2E8BEBE90034FF2D /* PPBannerCell.m */; };
 		F2F807CA2E8BEBE90034FF2D /* PPBannerViewModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807C62E8BEBE90034FF2D /* PPBannerViewModel.m */; };
@@ -777,21 +778,29 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
+		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
+		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
 		1BE69E138E85D5FDB3F3E6F6 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pure_Pets.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOfflineBannerView.m; sourceTree = "<group>"; };
 		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
+		34EB94CDEF4BA97E5841D65E /* PPPetProfileManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPPetProfileManager.h; sourceTree = "<group>"; };
 		389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSectionHeader.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
 		471B98E18FD0A42C1B1F054F /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
+		47BCF0A8B4C22E6EED3D854F /* PPUserPermissionsManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserPermissionsManager.h; sourceTree = "<group>"; };
 		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPRatingView.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m"; sourceTree = SOURCE_ROOT; };
 		78BDBCFB11D05E53A115F3C0 /* PPVaccinationEditorSheet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVaccinationEditorSheet.h; sourceTree = "<group>"; };
+		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
+		7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserPermissionsManager.m; sourceTree = "<group>"; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
 		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
+		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageUploadValidator.m; sourceTree = "<group>"; };
 		B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageUploadValidator.h; sourceTree = "<group>"; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
@@ -1854,7 +1863,6 @@
 		F2AEC1532D6EBA6900B55427 /* LUNSegmentedControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LUNSegmentedControl.m; sourceTree = "<group>"; };
 		F2AEC1542D6EBA6900B55427 /* UIView+LUNRemoveConstraints.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+LUNRemoveConstraints.h"; sourceTree = "<group>"; };
 		F2AEC1552D6EBA6900B55427 /* UIView+LUNRemoveConstraints.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+LUNRemoveConstraints.m"; sourceTree = "<group>"; };
-		F2AED6682F84E4AD00CCD6A4 /* purepets_logo_premium.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = purepets_logo_premium.json; sourceTree = "<group>"; };
 		F2B02B142EF6CA3E001A7B19 /* PPCageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCageCell.h; sourceTree = "<group>"; };
 		F2B02B162EF6CCC2001A7B19 /* PPCageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCageCell.m; sourceTree = "<group>"; };
 		F2B02B182EF6CD67001A7B19 /* PPBirdCardView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBirdCardView.h; sourceTree = "<group>"; };
@@ -1880,8 +1888,6 @@
 		F2B117292CEB399A00D4F847 /* UIApplication+SimulatorRemoteNotifications.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIApplication+SimulatorRemoteNotifications.m"; sourceTree = "<group>"; };
 		F2B141792DA3811A00F6853E /* ReminderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ReminderManager.h; sourceTree = "<group>"; };
 		F2B1417A2DA3812900F6853E /* ReminderManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ReminderManager.m; sourceTree = "<group>"; };
-		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
-		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
 		F2B1A6412E70343E0019FC7C /* PPColorUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPColorUtils.h; sourceTree = "<group>"; };
 		F2B1A6422E70344B0019FC7C /* PPColorUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPColorUtils.m; sourceTree = "<group>"; };
 		F2B5B1942CC753AA00ABAC04 /* StoriesReusableView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StoriesReusableView.h; sourceTree = "<group>"; };
@@ -2108,7 +2114,6 @@
 		F2F750CA2E7C605E00BACFA8 /* PPS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPS.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPS.m"; sourceTree = SOURCE_ROOT; };
 		F2F750CC2E7C82E000BACFA8 /* PPGradientView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPGradientView.h; sourceTree = "<group>"; };
 		F2F750CD2E7C82EA00BACFA8 /* PPGradientView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPGradientView.m; sourceTree = "<group>"; };
-		F2F750D02E7CA97200BACFA8 /* AddUserIconAnimation.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = AddUserIconAnimation.json; sourceTree = "<group>"; };
 		F2F807BB2E8BEBE90034FF2D /* MainBannerModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainBannerModel.h; sourceTree = "<group>"; };
 		F2F807BC2E8BEBE90034FF2D /* MainBannerModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainBannerModel.m; sourceTree = "<group>"; };
 		F2F807BD2E8BEBE90034FF2D /* PPBannerCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannerCell.h; sourceTree = "<group>"; };
@@ -3517,6 +3522,12 @@
 				F2E0E8762E7A3ABF00F0C084 /* PPRolePermission.m */,
 				F2E0E8722E7A3A3E00F0C084 /* UserModel.h */,
 				F2E0E8732E7A3A3E00F0C084 /* UserModel.m */,
+				34EB94CDEF4BA97E5841D65E /* PPPetProfileManager.h */,
+				0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */,
+				0907EA88970486AF72D13359 /* PPUserModelCache.h */,
+				A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */,
+				47BCF0A8B4C22E6EED3D854F /* PPUserPermissionsManager.h */,
+				7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */,
 			);
 			path = UsesHelpers;
 			sourceTree = "<group>";
@@ -4837,9 +4848,7 @@
 			isa = PBXGroup;
 			children = (
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
-				F2AED6682F84E4AD00CCD6A4 /* purepets_logo_premium.json */,
 				F2D44D1F2F3D611200999337 /* map_dark_style.json */,
-				F2F750D02E7CA97200BACFA8 /* AddUserIconAnimation.json */,
 				F2C6385F2E5132A3007E4CE4 /* cities.json */,
 				F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */,
 				F2916F092D54A3E400FF0394 /* Beiruti-Medium.ttf */,
@@ -4968,7 +4977,6 @@
 				F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */,
 				F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */,
 				F25100992F73C4D6008F6AFE /* GoogleService-Info.plist in Resources */,
-				F2AED6692F84E4AD00CCD6A4 /* purepets_logo_premium.json in Resources */,
 				F20E9D6E2CF3193B00B810EB /* button_background_icloud_normal@2x.png in Resources */,
 				F20E9D6F2CF3193B00B810EB /* button_background_icloud_highlight@2x.png in Resources */,
 				F20E9D702CF3193B00B810EB /* placeholder_vesper@2x.png in Resources */,
@@ -4980,7 +4988,6 @@
 				F2AB48D12C72D43D00D88603 /* Image.bundle in Resources */,
 				F2C5F7722CA00D3300D7897A /* AAicon_check@2x.png in Resources */,
 				F2C5F7732CA00D3300D7897A /* AAicon_check@3x.png in Resources */,
-				F2F750D12E7CA97200BACFA8 /* AddUserIconAnimation.json in Resources */,
 				F2CEC1002CB4682300E3B181 /* cross.png in Resources */,
 				F2CEC1012CB4682300E3B181 /* tick.png in Resources */,
 				F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */,
@@ -5772,6 +5779,9 @@
 				A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */,
 				8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */,
 				E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */,
+				4C154A5BA40CB4EAE4FD8045 /* PPPetProfileManager.m in Sources */,
+				7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */,
+				369C86ED34FCC4DE81484BB8 /* PPUserPermissionsManager.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

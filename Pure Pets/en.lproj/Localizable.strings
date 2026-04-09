@@ -1780,6 +1780,10 @@
 "orders_empty_filtered" = "No matching orders found.";
 "order_support_request_call" = "Request Call";
 "order_support_button" = "Contact Support";
+"order_history_hero_subtitle" = "Track payment, delivery, and support progress in one place.";
+"order_history_metric_orders" = "Orders";
+"order_history_metric_spent" = "Spent";
+"order_history_metric_active" = "Active";
 "order_change_delivery_address" = "Change Delivery Address";
 "order_cancel_button" = "Cancel Order";
 "order_edit_location_pending_only" = "Delivery location can only be edited while the order is pending.";
@@ -2248,7 +2252,8 @@
 "location_invalid"          = "Please choose a valid location from the map.";
 "Loading"                   = "Loading";
 
-
+"delete_account" = "Delete Account";
+"Logout" = "Logout";
 "Add" = "Add";
 "pet_profiles_title" = "Pet Profiles";
 "pet_profiles_subtitle" = "Manage your pets, vaccines, and defaults";
@@ -2269,6 +2274,12 @@
 "pet_vaccines_short" = "vaccines";
 "pet_reminders_tab" = "Reminders";
 "pet_chats_tab" = "Chats";
+"notifications_inbox_tab" = "Notifications";
+"notifications_inbox_empty_title" = "No notifications yet";
+"notifications_inbox_empty_subtitle" = "Order updates and chat alerts will show up here.";
+"notifications_inbox_category_chat" = "Chats";
+"notifications_inbox_category_orders" = "Orders";
+"notifications_inbox_category_updates" = "Updates";
 "pet_reminder_add" = "Add Reminder";
 "pet_reminder_edit" = "Edit Reminder";
 "pet_reminder_title" = "Reminder title";
@@ -2399,3 +2410,7 @@
 /* ── Accessibility ── */
 "pet_reminder_toggle" = "Enable reminder";
 "pet_profile_tap_hint" = "Double tap to view pet profile";
+
+/* ── Adopt Pet Form Section Titles ── */
+"petInfo" = "Pet Information";
+"additionalInfo" = "Additional Details";

@@ -223,31 +223,28 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 -(void)viewWillAppear:(BOOL)animated
 {
     [CartManager.sharedManager refreshPricingConfiguration];
-  
-    if(PPIOS26())
-    {
-        [super viewWillAppear:animated];
-        [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"cartTitle") showBack:NO];
-         self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"xmark") style:UIBarButtonItemStylePlain target:self action:@selector(onDissmiss)];
-        self.navigationItem.leftBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_close_cart", @"Close cart");
-        
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"headphones.dots") style:UIBarButtonItemStylePlain target:self action:@selector(startEditingCartItems)];
-        self.navigationItem.rightBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
-        self.navigationItem.rightBarButtonItem.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
-        
-    }
-    else
-    {
-        [super viewWillAppear:animated];
-        [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"cartTitle") showBack:YES];
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"headphones.dots")
-                                                                                    style:UIBarButtonItemStylePlain
-                                                                                   target:self
-                                                                                   action:@selector(startEditingCartItems)];
-        self.navigationItem.rightBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
-        self.navigationItem.rightBarButtonItem.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
+    [super viewWillAppear:animated];
 
-    }
+    [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"cartTitle") showBack:NO];
+
+    NSString *leadingSymbol = [self pp_cartCanNavigateBackInStack] ? PPChevronName : @"house.fill";
+    self.navigationItem.leftBarButtonItem =
+    [[UIBarButtonItem alloc] initWithImage:PPSYSImage(leadingSymbol)
+                                     style:UIBarButtonItemStylePlain
+                                    target:self
+                                    action:@selector(pp_handleLeadingCartNavigation)];
+    self.navigationItem.leftBarButtonItem.accessibilityLabel =
+    [self pp_cartCanNavigateBackInStack]
+    ? NSLocalizedString(@"Back", @"Navigate back")
+    : NSLocalizedString(@"Home", @"Navigate home");
+
+    self.navigationItem.rightBarButtonItem =
+    [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"headphones.dots")
+                                     style:UIBarButtonItemStylePlain
+                                    target:self
+                                    action:@selector(startEditingCartItems)];
+    self.navigationItem.rightBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
+    self.navigationItem.rightBarButtonItem.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
 
     [self.summaryView setCheckoutLoading:NO];
     
@@ -262,6 +259,45 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     [_summaryView layoutSubviews];
 }
 
+- (BOOL)pp_cartCanNavigateBackInStack
+{
+    UINavigationController *navigationController = self.navigationController;
+    if (![navigationController isKindOfClass:UINavigationController.class]) {
+        return NO;
+    }
+    return navigationController.viewControllers.count > 1 &&
+    navigationController.viewControllers.lastObject == self;
+}
+
+- (void)pp_handleLeadingCartNavigation
+{
+    if ([self pp_cartCanNavigateBackInStack]) {
+        [self.navigationController popViewControllerAnimated:YES];
+        return;
+    }
+
+    UITabBarController *tabBarController = self.tabBarController;
+    if (tabBarController.viewControllers.count > 0) {
+        UIViewController *homeController = tabBarController.viewControllers.firstObject;
+        if ([homeController isKindOfClass:UINavigationController.class]) {
+            UINavigationController *homeNavigationController = (UINavigationController *)homeController;
+            BOOL isCurrentNavigation = (homeNavigationController == self.navigationController);
+            [homeNavigationController popToRootViewControllerAnimated:isCurrentNavigation];
+            tabBarController.selectedIndex = 0;
+            return;
+        }
+        tabBarController.selectedIndex = 0;
+        return;
+    }
+
+    if (self.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
+        return;
+    }
+
+    [self.navigationController popToRootViewControllerAnimated:YES];
+}
+
 -(void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
@@ -272,7 +308,7 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 
 - (void)continueShopping
 {
-   // [[NSNotificationCenter defaultCenter] tionName:PPRouteToSearchAccessoriesNotificationKey  object:nil];
+    [self pp_handleLeadingCartNavigation];
 }
 
 
@@ -350,7 +386,7 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     actionButton.layer.cornerRadius = 14;
     actionButton.contentEdgeInsets = UIEdgeInsetsMake(12, 24, 12, 24);
     [actionButton addTarget:self
-                     action:@selector(onDissmiss)
+                     action:@selector(continueShopping)
            forControlEvents:UIControlEventTouchUpInside];
 
     // Assemble

@@ -144,6 +144,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
 
         [textField.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
         [textField.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
@@ -273,7 +274,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [rowStack.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
         [rowStack.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [rowStack.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
@@ -387,7 +388,8 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
+        
         [textView.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
         [textView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [textView.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
@@ -497,7 +499,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
-
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [chevronView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:10.0],
         [chevronView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
         [chevronView.widthAnchor constraintEqualToConstant:14.0],
@@ -598,7 +600,8 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:badgeLabel.leadingAnchor constant:-8.0],
-
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
+        
         [badgeLabel.centerYAnchor constraintEqualToAnchor:titleLabel.centerYAnchor],
         [badgeLabel.trailingAnchor constraintEqualToAnchor:chevronView.leadingAnchor constant:-10.0],
         [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:54.0],
@@ -884,6 +887,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     self.headerRoot.frame = frame;
     self.tableView.tableHeaderView = self.headerRoot;
     [Styling addLiquidGlassBorderToView:self.avatarIMV cornerRadius:54.0];
+    
 }
 
 - (void)viewDidLayoutSubviews
@@ -1247,7 +1251,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
     tintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.60];
+            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.50];
         }
         return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
     }];
@@ -1314,7 +1318,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     avatarHalo.translatesAutoresizingMaskIntoConstraints = NO;
     avatarHalo.backgroundColor = [brandColor colorWithAlphaComponent:0.12];
     avatarHalo.layer.cornerRadius = 62.0;
-    avatarHalo.layer.borderWidth = 1.0;
+    avatarHalo.layer.borderWidth = 0.0;
     UIColor *avatarHaloBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.48 * 0.18 : 0.48;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];

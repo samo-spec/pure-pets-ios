@@ -19,8 +19,8 @@ static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
 static NSString *const kSettingsNotificationsKey   = @"notificationsSet";
 
 // MARK: Legal URLs — update these to the production website URLs when available.
-static NSString *const kPPPrivacyPolicyURL   = @"https://purepetsapp.com/privacy-policy";
-static NSString *const kPPTermsOfServiceURL  = @"https://purepetsapp.com/terms-of-service";
+static NSString *const kPPPrivacyPolicyURL   = @"https://pure-pets.net/privacy";
+static NSString *const kPPTermsOfServiceURL  = @"https://pure-pets.net";
 
 #pragma mark - PPSettingsRowModel
 
@@ -97,7 +97,10 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
     [self pp_setupTableView];
     [self pp_buildSections];
     [self pp_setupNotificationObservers];
-}
+    
+    self.view.semanticContentAttribute = GM.setSemantic;
+    self.tableView.semanticContentAttribute = GM.setSemantic;
+ }
 
 - (void)viewWillAppear:(BOOL)animated
 {
@@ -467,10 +470,6 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
     cell.backgroundColor = AppForgroundColr;
     cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
 
-    // Remove any previous language container (cell reuse)
-    UIView *existingContainer = [cell.contentView viewWithTag:7710];
-    [existingContainer removeFromSuperview];
-
     BOOL isArabicActive = (row.languageIndex == 0);
 
     NSString *arabicTitle = @"العربية";
@@ -534,21 +533,22 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
     }
     [englishBtn addTarget:self action:@selector(pp_languageButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
 
-    // Container stack
+    // Container stack — use accessoryView so UIKit clips textLabel automatically
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[arabicBtn, englishBtn]];
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     stack.axis = UILayoutConstraintAxisHorizontal;
     stack.spacing = 8.0;
     stack.distribution = UIStackViewDistributionFillEqually;
-    stack.tag = 7710;
 
-    [cell.contentView addSubview:stack];
+    UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 168, 32)];
+    [container addSubview:stack];
     [NSLayoutConstraint activateConstraints:@[
-        [stack.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-16.0],
-        [stack.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
-        [stack.widthAnchor constraintEqualToConstant:168.0],
-        [stack.heightAnchor constraintEqualToConstant:32.0]
+        [stack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [stack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [stack.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [stack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
     ]];
+    cell.accessoryView = container;
 
     return cell;
 }

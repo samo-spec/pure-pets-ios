@@ -50,13 +50,13 @@
         }];
         [self.stackView addArrangedSubview:self.animationView];
     } else {
-        LOTAnimationView *localAnim = [LOTAnimationView animationNamed:animationName];
+        /*LOTAnimationView *localAnim = [LOTAnimationView animationNamed:animationName];
         localAnim.loopAnimation = YES;
         localAnim.animationSpeed = 0.7;
         localAnim.contentMode = UIViewContentModeScaleAspectFit;
         [self.animationView removeFromSuperview];
         self.animationView = localAnim;
-        [self.stackView addArrangedSubview:self.animationView];
+        [self.stackView addArrangedSubview:self.animationView];*/
     }
     self.animationView.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
@@ -122,7 +122,7 @@
     
     self.stackView.bounds = (CGRect){CGPointZero, fittingSize};
     CGRect frame2  = self.stackView.frame;
-    frame2.size.width = 180;
+    frame2.size.width = 280;
     self.stackView.frame = frame2;
     self.stackView.center = CGPointMake(CGRectGetMidX(self.bounds),
                                         CGRectGetMidY(self.bounds));

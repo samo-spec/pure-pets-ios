@@ -8,6 +8,8 @@
 
 #import "XLFormPhoneCodeCell.h"
 #import "CountryCodeModel.h"
+@import FirebaseAuth;
+
 
 @interface XLFormPhoneCodeCell ()
 @property (nonatomic, assign) BOOL didSetupViews;
@@ -81,7 +83,7 @@
         [Styling addLiquidGlassBorderToView:self.countryButton cornerRadius:20];
     }
     
-    //[self applyPhoneLockState:hasPhone];
+    [self applyPhoneLockState:hasPhone];
 }
 
 - (void)showPickerSheetWithData:(NSMutableArray *)data {
@@ -143,7 +145,12 @@
 }
 
 - (BOOL)currentUserHasPhoneProvider {
-    for (id<FIRUserInfo> provider in [FIRAuth auth].currentUser.providerData) {
+    FIRUser *authUser = [FIRAuth auth].currentUser;
+    if (!authUser) {
+        return NO;
+    }
+
+    for (id<FIRUserInfo> provider in authUser.providerData) {
         if ([provider.providerID isEqualToString:@"phone"]) {
             return YES;
         }

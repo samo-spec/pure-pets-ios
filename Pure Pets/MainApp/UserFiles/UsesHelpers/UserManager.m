@@ -7,6 +7,7 @@
 #import "ChManager.h"
 #import "PPPetProfile.h"
 #import "PPPetReminder.h"
+#import "PPPetProfileManager.h"
 
 
 @import FirebaseAuth;
@@ -17,9 +18,6 @@
 @import FirebaseMessaging;
 @import UIKit;
 NSString * const LanguageDidChangeNotification = @"LanguageDidChangeNotification";
-
-static NSString * const kPPPetProfilesCollection = @"petProfiles";
-static NSString * const kPPPetRemindersCollection = @"petReminders";
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -69,195 +67,44 @@ NSString *const PPUserManagerBlockedStateUserInfoKey = @"isBlocked";
     return [[[FIRFirestore firestore] collectionWithPath:@"UsersCol"] documentWithPath:uid];
 }
 
-- (void)fetchPetProfilesForCurrentUserWithCompletion:(void (^)(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error))completion
-{
-    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
-    if (!userRef) {
-        if (completion) completion(@[], [NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
-        return;
-    }
+#pragma mark - ═══ Pet Profiles & Reminders (delegated → PPPetProfileManager) ═══
 
-    [[[userRef collectionWithPath:kPPPetProfilesCollection] queryOrderedByField:@"createdAt" descending:NO]
-     getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        NSMutableArray<PPPetProfile *> *items = [NSMutableArray array];
-        for (FIRDocumentSnapshot *doc in snapshot.documents) {
-            PPPetProfile *pet = [[PPPetProfile alloc] initWithSnapshot:doc];
-            if (pet) [items addObject:pet];
-        }
-        if (completion) completion(items.copy, error);
-    }];
+- (void)fetchPetProfilesForCurrentUserWithCompletion:(void (^)(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] fetchPetProfilesForCurrentUserWithCompletion:completion];
 }
 
-- (void)savePetProfile:(PPPetProfile *)pet completion:(void (^)(NSError * _Nullable error))completion
-{
-    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
-    if (!userRef) {
-        if (completion) completion([NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
-        return;
-    }
-
-    NSString *petID = pet.petID.length ? pet.petID : [NSUUID UUID].UUIDString;
-    pet.petID = petID;
-    pet.updatedAt = [NSDate date];
-    if (!pet.createdAt) pet.createdAt = pet.updatedAt;
-
-    FIRDocumentReference *petRef = [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:petID];
-    NSDictionary *data = [pet toDictionary];
-    [[FIRFirestore firestore] runTransactionWithBlock:^id _Nullable(FIRTransaction * _Nonnull transaction,
-                                                                    NSError *__autoreleasing  _Nullable * _Nullable errorPointer) {
-
-        FIRDocumentSnapshot *userSnap = [transaction getDocument:userRef error:errorPointer];
-        if (*errorPointer) {
-            return nil;
-        }
-
-        NSString *oldDefaultPetID = [userSnap.data[@"defaultPetProfileID"] isKindOfClass:NSString.class]
-            ? userSnap.data[@"defaultPetProfileID"]
-            : nil;
-
-        if (pet.isDefaultPet) {
-            if (oldDefaultPetID.length && ![oldDefaultPetID isEqualToString:petID]) {
-                FIRDocumentReference *oldPetRef =
-                    [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:oldDefaultPetID];
-
-                FIRDocumentSnapshot *oldPetSnap = [transaction getDocument:oldPetRef error:errorPointer];
-                if (*errorPointer) return nil;
-
-                if (oldPetSnap.exists) {
-                    PPPetProfile *oldPet = [[PPPetProfile alloc] initWithSnapshot:oldPetSnap];
-                    oldPet.isDefaultPet = NO;
-                    [transaction setData:[oldPet toDictionary] forDocument:oldPetRef merge:YES];
-                }
-            }
-
-            [transaction setData:@{
-                @"defaultPetProfileID": petID,
-                @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
-            } forDocument:userRef merge:YES];
-        }
-
-        [transaction setData:data forDocument:petRef merge:YES];
-        return nil;
-
-    } completion:^(id _Nullable result, NSError * _Nullable error) {
-        if (completion) completion(error);
-    }];
+- (void)savePetProfile:(PPPetProfile *)pet completion:(void (^)(NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] savePetProfile:pet completion:completion];
 }
 
-- (void)deletePetProfileWithID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion
-{
-    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
-    if (!userRef || petID.length == 0) {
-        if (completion) completion([NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid pet id"}]);
-        return;
-    }
-
-    [[[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:petID] deleteDocumentWithCompletion:completion];
+- (void)deletePetProfileWithID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] deletePetProfileWithID:petID completion:completion];
 }
 
-- (void)setDefaultPetProfileID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion
-{
-    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
-    if (!userRef || petID.length == 0) {
-        if (completion) completion([NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid pet id"}]);
-        return;
-    }
-
-    [self fetchPetProfilesForCurrentUserWithCompletion:^(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error) {
-        if (error) { if (completion) completion(error); return; }
-
-        FIRWriteBatch *batch = [[FIRFirestore firestore] batch];
-        for (PPPetProfile *pet in pets) {
-            FIRDocumentReference *ref = [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:pet.petID];
-            pet.isDefaultPet = [pet.petID isEqualToString:petID];
-            [batch setData:[pet toDictionary] forDocument:ref merge:YES];
-        }
-        [batch setData:@{ @"defaultPetProfileID": petID,
-                          @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp] }
-           forDocument:userRef
-                merge:YES];
-        [batch commitWithCompletion:completion];
-    }];
+- (void)setDefaultPetProfileID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] setDefaultPetProfileID:petID completion:completion];
 }
 
-- (void)uploadPetImage:(UIImage *)image petID:(NSString *)petID completion:(void (^)(NSString * _Nullable imageURL, NSError * _Nullable error))completion
-{
-    NSString *uid = [FIRAuth auth].currentUser.uid ?: self.currentUser.ID;
-    if (uid.length == 0 || petID.length == 0 || !image) {
-        if (completion) completion(nil, [NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Missing pet image data"}]);
-        return;
-    }
-
-    NSData *data = [GM compressImageToMaxSize:image maxSizeKB:600] ?: UIImageJPEGRepresentation(image, 0.82);
-    FIRStorageReference *ref = [[[[[FIRStorage storage] reference] child:@"users"] child:uid] child:[NSString stringWithFormat:@"pets/%@/avatar.jpg", petID]];
-
-    FIRStorageMetadata *meta = [FIRStorageMetadata new];
-    meta.contentType = @"image/jpeg";
-
-    [ref putData:data metadata:meta completion:^(FIRStorageMetadata * _Nullable metadata, NSError * _Nullable error) {
-        if (error) {
-            if (completion) completion(nil, error);
-            return;
-        }
-        [ref downloadURLWithCompletion:^(NSURL * _Nullable URL, NSError * _Nullable error) {
-            if (completion) completion(URL.absoluteString, error);
-        }];
-    }];
+- (void)uploadPetImage:(UIImage *)image petID:(NSString *)petID completion:(void (^)(NSString * _Nullable imageURL, NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] uploadPetImage:image petID:petID completion:completion];
 }
 
-- (void)fetchPetRemindersForCurrentUserWithCompletion:(void (^)(NSArray<PPPetReminder *> * _Nullable reminders, NSError * _Nullable error))completion
-{
-    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
-    if (!userRef) {
-        if (completion) completion(@[], [NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
-        return;
-    }
-
-    [[[userRef collectionWithPath:kPPPetRemindersCollection] queryOrderedByField:@"fireDate" descending:NO]
-     getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        NSMutableArray<PPPetReminder *> *items = [NSMutableArray array];
-        for (FIRDocumentSnapshot *doc in snapshot.documents) {
-            PPPetReminder *reminder = [[PPPetReminder alloc] initWithSnapshot:doc];
-            if (reminder) [items addObject:reminder];
-        }
-        if (completion) completion(items.copy, error);
-    }];
+- (void)fetchPetRemindersForCurrentUserWithCompletion:(void (^)(NSArray<PPPetReminder *> * _Nullable reminders, NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] fetchPetRemindersForCurrentUserWithCompletion:completion];
 }
 
-- (void)savePetReminder:(PPPetReminder *)reminder completion:(void (^)(NSError * _Nullable error))completion
-{
-    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
-    if (!userRef) {
-        if (completion) completion([NSError errorWithDomain:@"UserManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user"}]);
-        return;
-    }
-
-    NSString *identifier = reminder.reminderID.length ? reminder.reminderID : [NSUUID UUID].UUIDString;
-    reminder.reminderID = identifier;
-    reminder.updatedAt = [NSDate date];
-    if (!reminder.createdAt) reminder.createdAt = reminder.updatedAt;
-
-    FIRDocumentReference *ref = [[userRef collectionWithPath:kPPPetRemindersCollection] documentWithPath:identifier];
-    [ref setData:[reminder toDictionary] merge:YES completion:completion];
+- (void)savePetReminder:(PPPetReminder *)reminder completion:(void (^)(NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] savePetReminder:reminder completion:completion];
 }
 
-- (void)deletePetReminderWithID:(NSString *)reminderID completion:(void (^)(NSError * _Nullable error))completion
-{
-    FIRDocumentReference *userRef = [self pp_currentUserDocumentReference];
-    if (!userRef || reminderID.length == 0) {
-        if (completion) completion([NSError errorWithDomain:@"UserManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid reminder id"}]);
-        return;
-    }
-
-    [[[userRef collectionWithPath:kPPPetRemindersCollection] documentWithPath:reminderID] deleteDocumentWithCompletion:completion];
+- (void)deletePetReminderWithID:(NSString *)reminderID completion:(void (^)(NSError * _Nullable error))completion {
+    [[PPPetProfileManager sharedManager] deletePetReminderWithID:reminderID completion:completion];
 }
 
 
 /*******************************************************************************************************************************************************************************************/
 
-
-
-
+#pragma mark - ═══ Private Helpers (future: shared across extracted managers) ═══
 
 static NSString *PPUserManagerTrimmedString(id value)
 {
@@ -321,6 +168,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
 }
 
 // MARK: - Singleton
+#pragma mark - ═══ Singleton & Init ═══
 + (instancetype)sharedManager {
     static UserManager *shared;
     static dispatch_once_t onceToken;
@@ -598,6 +446,14 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     return [FIRAuth auth].currentUser;
 }
 
+// MARK: - Current User setter (syncs UID to sub-managers)
+- (void)setCurrentUser:(UserModel * _Nullable)currentUser {
+    _currentUser = currentUser;
+    // Keep PPPetProfileManager's UID in sync so it can resolve its own Firestore paths.
+    [PPPetProfileManager sharedManager].currentUserUID = currentUser.ID;
+}
+
+#pragma mark - ═══ Authentication (future: PPAuthenticationManager) ═══
 #pragma mark - Auth State Monitoring
 
 - (BOOL)pp_isAuthSessionFatalErrorCode:(NSInteger)code
@@ -655,7 +511,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     [self stopListeningCurrentUserBlockedState];
     self.currentToken = nil;
     [self clearUserDefaults];
-    _currentUser = nil;
+    self.currentUser = nil;
 }
 
 - (BOOL)pp_beginSignOutIfNeeded
@@ -1240,6 +1096,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     }];
 }
 
+#pragma mark - ═══ Profile Management (future: PPUserProfileManager) ═══
 #pragma mark - User Profile Updates
 
 - (BOOL)pp_requiresRecentLoginForSensitiveChange:(FIRUser *)authUser
@@ -2288,6 +2145,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     [self fetchUsersWithQuery:query completion:completion];
 }
 
+#pragma mark - ═══ Permissions & Blocked State ═══
 #pragma mark - Permissions & Roles
 
 - (void)updatePermission:(UserPermission)flag
@@ -2500,6 +2358,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     }];
 }
 
+#pragma mark - ═══ Analytics ═══
 #pragma mark - Analytics & Monitoring
 
 - (void)logUserActivity:(NSString *)activity parameters:(NSDictionary *)parameters {
@@ -2517,6 +2376,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     }
 }
 
+#pragma mark - ═══ Session Caching ═══
 #pragma mark - User Session Caching
 
 - (void)cacheUser:(UserModel *)user {
@@ -2546,7 +2406,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
         if (authUser.uid && [authUser.uid isEqualToString:uid]) {
             UserModel *cached = [UserModel loadSavedUserWithUID:uid];
             if (cached) {
-                _currentUser = cached;
+                self.currentUser = cached;
                 NSLog(@"[UserManager] Loaded cached user %@ (%@) from disk.", cached.UserName ?: cached.UserEmail, uid);
             }
         }
@@ -2595,11 +2455,12 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     [[ChManager sharedManager] stopListening];
     [[ChManager sharedManager] stopAllThreadMessageListeners];
     [CartManager.sharedManager clearCart];
-    _currentUser = nil;
+    self.currentUser = nil;
     PPCurrentUser = nil;
     NSLog(@"[UserManager] Logged out and cleared all user data.");
 }
 
+#pragma mark - ═══ User ID ↔ UID Mapping ═══
 #pragma mark - User ID <-> UID Mapping
 
 // In-memory cache dictionaries
@@ -2674,6 +2535,8 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     return user ? user.ID : nil;
 }
 
+
+#pragma mark - ═══ UI Utilities ═══
 
 + (BOOL)isLoginOnStack:(UINavigationController *)nav {
     for (UIViewController *vc in nav.viewControllers) {
@@ -2786,6 +2649,7 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
 
 
 
+#pragma mark - ═══ User CRUD & Token Sync (future: PPUserProfileManager) ═══
 #pragma mark - Get User by ID
 
 // Fetch user once by UID
@@ -3199,7 +3063,6 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
     // Update Firestore: UsersCol/<uid>
     NSDictionary *fields = @{
         @"PPUserTokenID"       : trim,
-        @"PPAdminTokenID"      : trim,
         @"loginSource" : @(UserLoginSourcePPUsers),
         @"updatedAt"   : [NSDate date]
     };
@@ -3212,11 +3075,10 @@ static NSMutableDictionary<NSString*, UserModel*> *userCacheByUID;
             return;
         }
 
-        NSLog(@"[UserManager] ✅ PPUserTokenID/PPAdminTokenID synced to Firestore for UID=%@", authUser.uid);
+        NSLog(@"[UserManager] ✅ PPUserTokenID synced to Firestore for UID=%@", authUser.uid);
 
         if (strongSelf.currentUser) {
             strongSelf.currentUser.PPUserTokenID = trim;
-            strongSelf.currentUser.PPAdminTokenID = trim;
             [strongSelf cacheUser:strongSelf.currentUser];
         }
     }];

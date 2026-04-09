@@ -64,6 +64,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
 @property(nonatomic,strong) UIView *bottomActionTintView;
 @property(nonatomic,strong) UILabel *bottomTitleLabel;
 @property(nonatomic,strong) UILabel *bottomSubtitleLabel;
+@property(nonatomic,assign) BOOL chromeHiddenForDrag;
 
 @end
 /*
@@ -125,13 +126,13 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     panel.translatesAutoresizingMaskIntoConstraints = NO;
     panel.layer.cornerRadius = cornerRadius;
     panel.layer.cornerCurve = kCACornerCurveContinuous;
-    panel.layer.borderWidth = 1.0;
+    panel.layer.borderWidth = 0.0;
     panel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.34].CGColor;
     panel.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
     panel.layer.shadowOpacity = 0.12;
     panel.layer.shadowRadius = 22.0;
     panel.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    panel.clipsToBounds = NO;
+    panel.clipsToBounds = YES;
     panel.contentView.clipsToBounds = YES;
     panel.contentView.layer.cornerRadius = cornerRadius;
     panel.contentView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -148,7 +149,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     button.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.84];
     button.layer.cornerRadius = 22.0;
     button.layer.cornerCurve = kCACornerCurveContinuous;
-    button.layer.borderWidth = 1.0;
+    button.layer.borderWidth = 0.0;
     button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.52].CGColor;
     button.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
     button.layer.shadowOpacity = 0.10;
@@ -748,6 +749,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
 #pragma mark – Map Events
 
 - (void)mapView:(GMSMapView *)mapView willMove:(BOOL)gesture {
+    // Pin lift animation
     [UIView animateWithDuration:0.15 animations:^{
         self.centerPinImageView.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0, -15), CGAffineTransformMakeScale(1.04, 1.04));
         self.pinHaloView.transform = CGAffineTransformMakeScale(1.06, 1.06);
@@ -758,9 +760,15 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     self.selectionHintLabel.text = [self pp_localizedStringForKey:nil
                                                  fallbackEnglish:@"Release the map to lock the closest place."
                                                           arabic:@"اترك الخريطة لتثبيت أقرب موقع."];
+
+    // Expand visible map area by sliding chrome off-screen
+    if (gesture && !self.chromeHiddenForDrag) {
+        [self pp_setChromeHiddenForDrag:YES];
+    }
 }
 
 - (void)mapView:(GMSMapView *)mapView idleAtCameraPosition:(GMSCameraPosition *)position {
+    // Pin settle animation
     [UIView animateWithDuration:0.2 delay:0 usingSpringWithDamping:0.6 initialSpringVelocity:0.8 options:0 animations:^{
         self.centerPinImageView.transform = CGAffineTransformIdentity;
         self.pinHaloView.transform = CGAffineTransformIdentity;
@@ -769,6 +777,70 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     self.lastKnownCoordinate = position.target;
     [self pp_updateMapCardWithFallbackCoordinate:position.target];
     [self startReverseGeocodeForPosition:position];
+
+    // Restore chrome panels
+    if (self.chromeHiddenForDrag) {
+        [self pp_setChromeHiddenForDrag:NO];
+    }
+}
+
+#pragma mark - Drag Chrome Animation
+
+- (void)pp_setChromeHiddenForDrag:(BOOL)hidden
+{
+    self.chromeHiddenForDrag = hidden;
+
+    CGFloat topShift  = -(CGRectGetMaxY(self.selectionChromeView.frame) + 20.0);
+    CGFloat screenH   = CGRectGetHeight(self.view.bounds);
+    CGFloat bottomShift = screenH - CGRectGetMinY(self.bottomActionChromeView.frame) + 20.0;
+
+    CGAffineTransform topTarget    = hidden ? CGAffineTransformMakeTranslation(0, topShift)    : CGAffineTransformIdentity;
+    CGAffineTransform bottomTarget = hidden ? CGAffineTransformMakeTranslation(0, bottomShift) : CGAffineTransformIdentity;
+
+    if (hidden) {
+        // Hide: smooth ease-in — chrome accelerates away naturally
+        [UIView animateWithDuration:0.5
+                              delay:0.06
+                            options:UIViewAnimationOptionCurveEaseIn
+                                    | UIViewAnimationOptionBeginFromCurrentState
+                                    | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.heroChromeView.transform      = topTarget;
+            self.selectionChromeView.transform  = topTarget;
+            self.topScrimView.alpha             = 0.0;
+
+            self.bottomActionChromeView.transform = bottomTarget;
+            self.recenterButton.transform         = bottomTarget;
+            self.bottomScrimView.alpha            = 0.0;
+
+            self.navigationController.navigationBar.alpha = 0.0;
+        } completion:nil];
+
+        self.mapView.padding = UIEdgeInsetsZero;
+    } else {
+        // Show: spring settle — bouncy return feels natural
+        [UIView animateWithDuration:0.45
+                              delay:0.05
+             usingSpringWithDamping:0.78
+              initialSpringVelocity:0.4
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                                    | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.heroChromeView.transform      = topTarget;
+            self.selectionChromeView.transform  = topTarget;
+            self.topScrimView.alpha             = 1.0;
+
+            self.bottomActionChromeView.transform = bottomTarget;
+            self.recenterButton.transform         = bottomTarget;
+            self.bottomScrimView.alpha            = 1.0;
+
+            self.navigationController.navigationBar.alpha = 1.0;
+        } completion:^(BOOL finished) {
+            if (finished) {
+                [self pp_updateMapInsetsForOverlayChrome];
+            }
+        }];
+    }
 }
 
 - (void)startReverseGeocodeForPosition:(GMSCameraPosition *)position {

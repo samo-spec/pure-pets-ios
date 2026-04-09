@@ -693,18 +693,10 @@ didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     // 🔥 Ensure unread UI sync after dismissing messaging screen
        [self handleUnreadUpdate];
     
-    UIButton *newChatButton = [PPButtonHelper buttonWithTitle:nil imageName:@"square.and.pencil" style:PPButtonTitleStylePrimary target:self action:@selector(startNewChat)];
+    UIButton *newChatButton = [self pp_ButtonWithSystemName:@"square.and.pencil" action:@selector(startNewChat)];
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:newChatButton title:nil showBack:NO];
     
-    PPNavBarTitleView *v =
-    [[PPNavBarTitleView alloc] initWithTitle:kLang(@"headerTitle")
-                                     subtitle:nil
-                                         icon:[UIImage systemImageNamed:@"ellipsis.message.fill"]
-                               ppIconPostion:PPTitleViewIconPostionLead];
-
- 
-    
-    [self pp_navBarSetTitleViewOnLeft:v replace:YES];
+   
     
 }
 

@@ -115,7 +115,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         [titleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor      constant:12.0],
         [titleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor   constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor  constant:-18.0],
-
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [textField.topAnchor      constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
         [textField.leadingAnchor  constraintEqualToAnchor:titleLabel.leadingAnchor],
         [textField.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
@@ -202,7 +202,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         [titleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor      constant:14.0],
         [titleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor   constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor  constant:-18.0],
-
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [chevronView.centerYAnchor  constraintEqualToAnchor:self.contentView.centerYAnchor constant:10.0],
         [chevronView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
         [chevronView.widthAnchor    constraintEqualToConstant:14.0],
@@ -293,7 +293,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         [titleLabel.topAnchor      constraintEqualToAnchor:self.contentView.topAnchor      constant:14.0],
         [titleLabel.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor   constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor  constant:-18.0],
-
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
         [textView.topAnchor      constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
         [textView.leadingAnchor  constraintEqualToAnchor:titleLabel.leadingAnchor],
         [textView.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
@@ -1184,6 +1184,15 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForHeaderInSection:(NSInteger)section {
     return 48.0;
+}
+
+
+- (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(nonnull NSIndexPath *)indexPath{
+    if(indexPath.row == 0)
+        if(indexPath.row == 1 || indexPath.row == 2 || indexPath.row == 1 || indexPath.row == 1) return 64;
+    if(indexPath.row == 1)
+        if(indexPath.row == 0 || indexPath.row == 1) return 64;
+    return UITableViewAutomaticDimension;
 }
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section {

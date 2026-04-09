@@ -73,6 +73,7 @@
 // Firebase / Google
 // =====================================================
 @import FirebaseCore;
+@import FirebaseAuth;
 @import FirebaseFirestore;
 #import <FirebaseAnalytics/FIRAnalytics.h>
 @import GoogleSignIn;

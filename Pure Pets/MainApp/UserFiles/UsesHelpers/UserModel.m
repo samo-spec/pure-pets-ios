@@ -7,6 +7,20 @@
 //
 
 #import "UserModel.h"
+#import "PPUserPermissionsManager.h"
+#import "PPUserModelCache.h"
+@import FirebaseAuth;
+@import FirebaseFirestore;
+#import <os/log.h>
+
+static os_log_t PPUserModelLog(void) {
+    static os_log_t log;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        log = os_log_create("com.purepets.ios", "UserModel");
+    });
+    return log;
+}
 
 static NSString *const PPUserModelErrorDomain = @"UserModel";
 
@@ -28,7 +42,6 @@ static NSString *const kUserKeyLoginDate = @"loginDate";
 static NSString *const kUserKeyUpdatedAt = @"updatedAt";
 static NSString *const kUserKeyCountryID = @"CountryID";
 static NSString *const kUserKeyPPUserTokenID = @"PPUserTokenID";
-static NSString *const kUserKeyPPAdminTokenID = @"PPAdminTokenID";
 static NSString *const kUserKeyRole = @"role";
 static NSString *const kUserKeyRoleValue = @"roleValue";
 static NSString *const kUserKeyRoleName = @"roleName";
@@ -45,7 +58,6 @@ static NSString *const kUserKeyOnlineStatus = @"onlineStatus";
 static NSString *const kUserKeyIsOnline = @"isOnline";
 static NSString *const kUserKeyLastSeen = @"lastSeen";
 static NSString *const kUserKeyPermissions = @"permissions";
-static NSString *const kUserPermissionAllowedKey = @"allowed";
 
 static inline BOOL PPUserBoolValue(id _Nullable value) {
     return [value respondsToSelector:@selector(boolValue)] ? [value boolValue] : NO;
@@ -116,42 +128,6 @@ static BOOL PPUserResolvedBoolFromProfileAndClaims(NSDictionary *profile,
     return defaultValue;
 }
 
-static NSString *PPCanonicalPermissionName(NSString *rawName) {
-    NSString *name = [PPSafeString(rawName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (name.length == 0) return @"";
-    NSString *canonical = nil;
-    if ([name isEqualToString:@"ManageUsers"]) canonical = kPermAdoption;
-    else if ([name isEqualToString:@"ManageNotificatiuons"] || [name isEqualToString:@"ManageNotifications"]) canonical = kPermModeration;
-    else if ([name isEqualToString:@"ManageBanners"]) canonical = kPermPostAds;
-    else if ([name isEqualToString:@"Prodection"]) canonical = kPermProduction;
-    if (canonical) {
-        NSLog(@"[Permissions] Canonicalized legacy name '%@' → '%@'", name, canonical);
-        return canonical;
-    }
-    return name;
-}
-
-static NSString *PPLegacyPermissionName(NSString *canonicalName) {
-    NSString *name = [PPSafeString(canonicalName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (name.length == 0) return @"";
-    if ([name isEqualToString:kPermAdoption]) return @"ManageUsers";
-    if ([name isEqualToString:kPermModeration]) return @"ManageNotificatiuons";
-    if ([name isEqualToString:kPermPostAds]) return @"ManageBanners";
-    if ([name isEqualToString:kPermProduction]) return @"Prodection";
-    return name;
-}
-
-static NSArray<NSString *> *PPLegacyPermissionNames(NSString *canonicalName) {
-    NSString *primary = PPLegacyPermissionName(canonicalName);
-    if (primary.length == 0) {
-        return @[];
-    }
-    if ([canonicalName isEqualToString:kPermModeration]) {
-        return @[primary, @"ManageNotifications"];
-    }
-    return @[primary];
-}
-
 static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     if ([value isKindOfClass:[NSDate class]]) {
         return (NSDate *)value;
@@ -162,61 +138,20 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     return nil;
 }
 
-static NSString *PPUserSanitizedCacheID(NSString *identifier) {
-    if (identifier.length == 0) {
-        return @"";
-    }
-
-    NSCharacterSet *invalid = [NSCharacterSet characterSetWithCharactersInString:@"/:?%*|\"<>"];
-    NSArray<NSString *> *parts = [identifier componentsSeparatedByCharactersInSet:invalid];
-    NSString *sanitized = [parts componentsJoinedByString:@"_"];
-    return sanitized.length ? sanitized : identifier;
-}
-
 @interface UserModel ()
 - (void)pp_applyDefaults;
 - (void)pp_applyDictionary:(NSDictionary *)dict;
 - (void)pp_applyDictionary:(NSDictionary *)dict fallbackDocumentID:(nullable NSString *)fallbackDocumentID;
 - (void)pp_normalizeIdentityFields;
 - (NSString *)pp_documentID;
-- (NSString *)pp_cacheIdentifier;
-- (nullable FIRCollectionReference *)pp_permissionsCollection;
-- (nullable FIRCollectionReference *)pp_legacyPermissionsCollection;
-- (nullable FIRCollectionReference *)pp_legacyPermissionsCollectionAlt;
 + (NSError *)pp_errorWithCode:(NSInteger)code key:(NSString *)localizedKey;
-+ (NSMutableDictionary<NSString *, NSNumber *> *)pp_sanitizedPermissionsDictionary:(NSDictionary *)permissions;
-+ (NSMutableDictionary<NSString *, NSNumber *> *)pp_permissionsDictionaryFromDocuments:(NSArray<FIRDocumentSnapshot *> *)documents;
 + (void)pp_dispatchLoadCompletion:(void(^)(UserModel * _Nullable user, NSError * _Nullable error))completion
                             user:(UserModel * _Nullable)user
                            error:(NSError * _Nullable)error;
 @end
 
-@interface PPCompositeListenerRegistration : NSObject <FIRListenerRegistration>
-@property (nonatomic, strong) NSArray<id<FIRListenerRegistration>> *registrations;
-- (instancetype)initWithRegistrations:(NSArray<id<FIRListenerRegistration>> *)registrations;
-@end
-
-@implementation PPCompositeListenerRegistration
-
-- (instancetype)initWithRegistrations:(NSArray<id<FIRListenerRegistration>> *)registrations {
-    self = [super init];
-    if (self) {
-        _registrations = registrations ?: @[];
-    }
-    return self;
-}
-
-- (void)remove {
-    for (id<FIRListenerRegistration> registration in self.registrations) {
-        [registration remove];
-    }
-    self.registrations = @[];
-}
-
-@end
-
 @implementation UserModel {
-    NSDate *_lastPermissionWriteDate;
+    PPUserPermissionsManager *_permissionsManager;
 }
 
 #pragma mark - Lifecycle
@@ -273,8 +208,7 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     self.UserName = @"";
     self.UserEmail = @"";
     self.PPUserTokenID = @"";
-    self.PPAdminTokenID = @"";
-    self.permissions = [NSMutableDictionary dictionary];
+    self.permissions = @{};
     self.Addresses = [NSMutableArray array];
     self.onlineStatus = OnlineStatusOffline;
     self.loginSource = UserLoginSourceUnknown;
@@ -309,7 +243,6 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     self.UserAbout = [about isEqualToString:@"no_value"] ? @"" : about;
 
     self.UserImageName = PPSafeString(safeDict[kUserKeyUserImageName]);
-    self.PPAdminTokenID = PPSafeString(safeDict[kUserKeyPPAdminTokenID]);
     self.PPUserTokenID = PPSafeString(safeDict[kUserKeyPPUserTokenID]);
 
     NSString *imageURLString = PPSafeString(safeDict[kUserKeyUserImageURL]);
@@ -388,7 +321,7 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     self.lastSeen = PPUserDateFromValue(safeDict[kUserKeyLastSeen]);
 
     NSDictionary *permDict = PPSafeDict(safeDict[kUserKeyPermissions]);
-    self.permissions = [UserModel pp_sanitizedPermissionsDictionary:permDict];
+    self.permissions = [[PPUserPermissionsManager sanitizedPermissionsDictionary:permDict] copy];
 
     [self pp_normalizeIdentityFields];
 }
@@ -403,7 +336,7 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     }
 
     if (!self.permissions) {
-        self.permissions = [NSMutableDictionary dictionary];
+        self.permissions = @{};
     }
     if (!self.Addresses) {
         self.Addresses = [NSMutableArray array];
@@ -447,7 +380,7 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     return dict;
 }
 
-- (void)SYNC:(void(^)(NSError * _Nullable error))completion {
+- (void)syncToFirestoreWithCompletion:(void(^)(NSError * _Nullable error))completion {
     NSString *documentID = [self pp_documentID];
     if (!documentID.length) {
         if (completion) {
@@ -471,257 +404,48 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     }];
 }
 
-#pragma mark - Permissions
+- (void)SYNC:(void(^)(NSError * _Nullable error))completion {
+    [self syncToFirestoreWithCompletion:completion];
+}
+
+#pragma mark - Permissions (delegates to PPUserPermissionsManager)
+
+- (PPUserPermissionsManager *)pp_permissionsManager {
+    if (!_permissionsManager) {
+        _permissionsManager = [[PPUserPermissionsManager alloc] init];
+    }
+    return _permissionsManager;
+}
 
 - (void)fetchPermissionsWithCompletion:(void (^)(NSDictionary<NSString *, NSNumber *> *, NSError * _Nullable))completion {
-    FIRCollectionReference *canonicalCollection = [self pp_permissionsCollection];
-    if (!canonicalCollection) {
-        if (completion) {
-            completion(@{}, [UserModel pp_errorWithCode:404 key:@"error_missing_uid"]);
-        }
-        return;
-    }
-    FIRCollectionReference *legacyCollection = [self pp_legacyPermissionsCollection];
-    FIRCollectionReference *legacyCollectionAlt = [self pp_legacyPermissionsCollectionAlt];
-
-    dispatch_group_t group = dispatch_group_create();
-    __block NSArray<FIRDocumentSnapshot *> *canonicalDocs = @[];
-    __block NSArray<FIRDocumentSnapshot *> *legacyDocs = @[];
-    __block NSArray<FIRDocumentSnapshot *> *legacyAltDocs = @[];
-    __block NSError *canonicalError = nil;
-
-    dispatch_group_enter(group);
-    [canonicalCollection getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        canonicalError = error;
-        canonicalDocs = snapshot.documents ?: @[];
-        dispatch_group_leave(group);
-    }];
-
-    if (legacyCollection) {
-        dispatch_group_enter(group);
-        [legacyCollection getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-            if (!error) {
-                legacyDocs = snapshot.documents ?: @[];
-            }
-            dispatch_group_leave(group);
-        }];
-    }
-
-    if (legacyCollectionAlt) {
-        dispatch_group_enter(group);
-        [legacyCollectionAlt getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-            if (!error) {
-                legacyAltDocs = snapshot.documents ?: @[];
-            }
-            dispatch_group_leave(group);
-        }];
-    }
-
-    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        if (canonicalError) {
-            if (completion) completion(@{}, canonicalError);
-            return;
-        }
-
-        NSMutableDictionary<NSString *, NSNumber *> *perms = [UserModel pp_permissionsDictionaryFromDocuments:legacyDocs];
-        [perms addEntriesFromDictionary:[UserModel pp_permissionsDictionaryFromDocuments:legacyAltDocs]];
-        [perms addEntriesFromDictionary:[UserModel pp_permissionsDictionaryFromDocuments:canonicalDocs]];
-        self.permissions = perms;
-        if (completion) completion([perms copy], nil);
-    });
+    [[self pp_permissionsManager] fetchPermissionsForUser:self completion:completion];
 }
 
 - (void)startListeningPermissionsWithChange:(void (^)(NSDictionary<NSString *, NSNumber *> *))onChange {
-    [self stopListeningPermissions];
-
-    FIRCollectionReference *canonicalCollection = [self pp_permissionsCollection];
-    if (!canonicalCollection) {
-        return;
-    }
-    FIRCollectionReference *legacyCollection = [self pp_legacyPermissionsCollection];
-    FIRCollectionReference *legacyCollectionAlt = [self pp_legacyPermissionsCollectionAlt];
-
-    __weak typeof(self) weakSelf = self;
-    __block BOOL isRefreshing = NO;
-    __block BOOL needsRefresh = NO;
-    __block void (^refreshMergedPermissions)(void) = nil;
-    refreshMergedPermissions = ^{
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self) return;
-
-        if (isRefreshing) {
-            needsRefresh = YES;
-            return;
-        }
-
-        isRefreshing = YES;
-        [self fetchPermissionsWithCompletion:^(NSDictionary<NSString *,NSNumber *> * _Nonnull perms, NSError * _Nullable error) {
-            isRefreshing = NO;
-            if (!error && onChange) {
-                onChange(perms ?: @{});
-            }
-            if (needsRefresh) {
-                needsRefresh = NO;
-                refreshMergedPermissions();
-            }
-        }];
-    };
-
-    NSMutableArray<id<FIRListenerRegistration>> *listeners = [NSMutableArray array];
-    id<FIRListenerRegistration> canonicalListener =
-        [canonicalCollection addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-            if (error) return;
-            (void)snapshot;
-            refreshMergedPermissions();
-        }];
-    if (canonicalListener) {
-        [listeners addObject:canonicalListener];
-    }
-
-    if (legacyCollection) {
-        id<FIRListenerRegistration> legacyListener =
-            [legacyCollection addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-                if (error) return;
-                (void)snapshot;
-                refreshMergedPermissions();
-            }];
-        if (legacyListener) {
-            [listeners addObject:legacyListener];
-        }
-    }
-
-    if (legacyCollectionAlt) {
-        id<FIRListenerRegistration> legacyAltListener =
-            [legacyCollectionAlt addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-                if (error) return;
-                (void)snapshot;
-                refreshMergedPermissions();
-            }];
-        if (legacyAltListener) {
-            [listeners addObject:legacyAltListener];
-        }
-    }
-
-    self.permissionsListener = [[PPCompositeListenerRegistration alloc] initWithRegistrations:listeners];
-    refreshMergedPermissions();
+    [[self pp_permissionsManager] startListeningPermissionsForUser:self onChange:onChange];
 }
 
 - (void)stopListeningPermissions {
-    id<FIRListenerRegistration> listener = self.permissionsListener;
-    if (listener) {
-        [listener remove];
-    }
+    [_permissionsManager stopListening];
+    _permissionsManager = nil;
     self.permissionsListener = nil;
 }
 
 - (void)setPermissionNamed:(NSString *)permName
                    allowed:(BOOL)allowed
                 completion:(void (^)(NSError * _Nullable))completion {
-    // SECURITY: Debounce — reject writes less than 2 seconds apart
-    static const NSTimeInterval kMinPermissionWriteInterval = 2.0;
-    NSDate *now = [NSDate date];
-    if (_lastPermissionWriteDate &&
-        [now timeIntervalSinceDate:_lastPermissionWriteDate] < kMinPermissionWriteInterval) {
-        NSLog(@"[UserModel] ⚠️ setPermissionNamed: throttled — too frequent (%.1fs since last write).",
-              [now timeIntervalSinceDate:_lastPermissionWriteDate]);
-        if (completion) {
-            completion([UserModel pp_errorWithCode:429 key:@"error_permission_write_throttled"]);
-        }
-        return;
-    }
-    _lastPermissionWriteDate = now;
-
-    NSString *cleanPermission = [PPSafeString(permName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    NSString *canonicalPermission = PPCanonicalPermissionName(cleanPermission);
-    FIRCollectionReference *permissionsCollection = [self pp_permissionsCollection];
-    FIRCollectionReference *legacyCollection = [self pp_legacyPermissionsCollection];
-    FIRCollectionReference *legacyCollectionAlt = [self pp_legacyPermissionsCollectionAlt];
-
-    if (canonicalPermission.length == 0 || !permissionsCollection) {
-        if (completion) {
-            completion([UserModel pp_errorWithCode:404 key:@"error_missing_uid_or_perm"]);
-        }
-        return;
-    }
-
-    NSMutableDictionary *payload = [@{
-        kUserPermissionAllowedKey: @(allowed),
-        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
-    } mutableCopy];
-
-    FIRWriteBatch *batch = [[FIRFirestore firestore] batch];
-    [batch setData:payload
-       forDocument:[permissionsCollection documentWithPath:canonicalPermission]
-             merge:YES];
-
-    NSArray<NSString *> *legacyPermissionNames = PPLegacyPermissionNames(canonicalPermission);
-    NSMutableArray<FIRCollectionReference *> *legacyCollections = [NSMutableArray array];
-    if (legacyCollection) {
-        [legacyCollections addObject:legacyCollection];
-    }
-    if (legacyCollectionAlt) {
-        [legacyCollections addObject:legacyCollectionAlt];
-    }
-
-    for (FIRCollectionReference *collection in legacyCollections) {
-        for (NSString *legacyPermission in legacyPermissionNames) {
-            if (legacyPermission.length == 0) {
-                continue;
-            }
-            [batch setData:payload
-               forDocument:[collection documentWithPath:legacyPermission]
-                     merge:YES];
-        }
-    }
-
-    [batch commitWithCompletion:^(NSError * _Nullable error) {
-        if (!error) {
-            if (!self.permissions) {
-                self.permissions = [NSMutableDictionary dictionary];
-            }
-            self.permissions[canonicalPermission] = @(allowed);
-        }
-        if (completion) {
-            completion(error);
-        }
-    }];
+    [[self pp_permissionsManager] setPermissionNamed:permName
+                                             allowed:allowed
+                                             forUser:self
+                                          completion:completion];
 }
 
 - (BOOL)hasPermissionNamed:(NSString *)permName {
-    NSString *cleanPermission = PPCanonicalPermissionName(permName);
-    if (cleanPermission.length == 0) {
-        return NO;
-    }
-
-    NSDictionary<NSString *, id> *permissions =
-        [self.permissions isKindOfClass:NSDictionary.class] ? self.permissions : @{};
-
-    id explicitPermission = permissions[cleanPermission];
-    if ([explicitPermission respondsToSelector:@selector(boolValue)]) {
-        return [explicitPermission boolValue];
-    }
-
-    // AdminAll remains a global override only when explicitly set.
-    if (![cleanPermission isEqualToString:kPermAdminAll]) {
-        id adminAllPermission = permissions[kPermAdminAll];
-        if ([adminAllPermission respondsToSelector:@selector(boolValue)]) {
-            return [adminAllPermission boolValue];
-        }
-    }
-
-    // If we have explicit permission docs but this key is missing,
-    // fall back to role-based defaults rather than denying outright.
-    // This prevents lockouts from partial permission migration.
-    return [PPRolePermission role:self.role hasPermission:cleanPermission];
+    return [PPUserPermissionsManager user:self hasPermissionNamed:permName];
 }
 
 - (BOOL)hasAnyPermissionInKeys:(NSArray<NSString *> *)permNames {
-    for (NSString *name in permNames ?: @[]) {
-        if ([self hasPermissionNamed:name]) {
-            return YES;
-        }
-    }
-    return NO;
+    return [PPUserPermissionsManager user:self hasAnyPermissionInKeys:permNames];
 }
 
 #pragma mark - Convenience Getters
@@ -743,80 +467,18 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
 - (BOOL)isOwner        { return self.role == UserRoleOwner; }
 - (BOOL)isVet          { return self.role == UserRoleVet; }
 
-#pragma mark - Cache Helpers
+#pragma mark - Cache Helpers (delegates to PPUserModelCache)
 
 + (nullable instancetype)loadSavedUserWithUID:(NSString *)uid {
-    NSString *path = [self cachePathForUID:uid];
-    if (path.length == 0) {
-        return nil;
-    }
-
-    NSData *data = [NSData dataWithContentsOfFile:path];
-    if (data.length == 0) {
-        return nil;
-    }
-
-    UserModel *user = [NSKeyedUnarchiver unarchivedObjectOfClass:UserModel.class fromData:data error:nil];
-    if (user) {
-        // SECURITY: Zero out privilege-granting flags from disk cache.
-        // A jailbroken device could tamper with the .dat file to elevate privileges.
-        // The server re-fetch that immediately follows sign-in will restore correct values.
-        // Note: isBlocked is intentionally preserved — a tampered cache setting it to NO
-        // is harmless because Firestore rules enforce isRequesterBlocked() on all writes.
-        user.role = UserRoleUser;
-        user.isAdmin = NO;
-        user.isSuperAdmin = NO;
-    }
-    return user;
+    return [PPUserModelCache loadUserWithUID:uid];
 }
 
 - (void)saveToDisk {
-    NSString *identifier = [self pp_cacheIdentifier];
-    if (identifier.length == 0) {
-        return;
-    }
-
-    NSString *path = [[self class] cachePathForUID:identifier];
-    if (path.length == 0) {
-        return;
-    }
-
-    NSData *data = [NSKeyedArchiver archivedDataWithRootObject:self
-                                         requiringSecureCoding:YES
-                                                         error:nil];
-    if (data.length == 0) {
-        return;
-    }
-
-    [data writeToFile:path atomically:YES];
+    [PPUserModelCache saveUser:self];
 }
 
 + (void)clearCachedUserWithUID:(NSString *)uid {
-    NSString *path = [self cachePathForUID:uid];
-    if (path.length == 0) {
-        return;
-    }
-    [[NSFileManager defaultManager] removeItemAtPath:path error:nil];
-}
-
-+ (NSString *)cachePathForUID:(NSString *)uid {
-    NSString *safeUID = PPUserSanitizedCacheID(PPSafeString(uid));
-    if (safeUID.length == 0) {
-        return @"";
-    }
-
-    NSString *dir = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES).firstObject;
-    return [dir stringByAppendingPathComponent:[NSString stringWithFormat:@"UserModel_%@.dat", safeUID]];
-}
-
-#pragma mark - XLFormOptionObject
-
-- (nonnull NSString *)formDisplayText {
-    return [self PPBestDisplayName];
-}
-
-- (nonnull id)formValue {
-    return self;
+    [PPUserModelCache clearUserWithUID:uid];
 }
 
 #pragma mark - NSSecureCoding
@@ -846,7 +508,6 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     [coder encodeBool:self.verified forKey:kUserKeyVerified];
     [coder encodeObject:self.plan forKey:kUserKeyPlan];
     [coder encodeInteger:self.loginSource forKey:kUserKeyLoginSource];
-    [coder encodeObject:self.PPAdminTokenID forKey:kUserKeyPPAdminTokenID];
     [coder encodeInteger:self.onlineStatus forKey:kUserKeyOnlineStatus];
     [coder encodeBool:self.isOnline forKey:kUserKeyIsOnline];
     [coder encodeObject:self.lastSeen forKey:kUserKeyLastSeen];
@@ -895,7 +556,6 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     self.verified = [coder decodeBoolForKey:kUserKeyVerified];
     self.plan = PPSafeString([coder decodeObjectOfClass:NSString.class forKey:kUserKeyPlan]);
     self.loginSource = [coder decodeIntegerForKey:kUserKeyLoginSource];
-    self.PPAdminTokenID = PPSafeString([coder decodeObjectOfClass:NSString.class forKey:kUserKeyPPAdminTokenID]);
 
     if ([coder containsValueForKey:kUserKeyOnlineStatus]) {
         NSInteger statusValue = [coder decodeIntegerForKey:kUserKeyOnlineStatus];
@@ -909,7 +569,7 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
 
     NSSet *permissionClasses = [NSSet setWithObjects:NSDictionary.class, NSString.class, NSNumber.class, nil];
     NSDictionary *decodedPermissions = [coder decodeObjectOfClasses:permissionClasses forKey:kUserKeyPermissions];
-    self.permissions = [UserModel pp_sanitizedPermissionsDictionary:PPSafeDict(decodedPermissions)];
+    self.permissions = [[PPUserPermissionsManager sanitizedPermissionsDictionary:PPSafeDict(decodedPermissions)] copy];
 
     [self pp_normalizeIdentityFields];
 
@@ -922,6 +582,11 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
                      rootDoc:(nullable NSDictionary *)root
                  permissions:(nullable NSDictionary<NSString *, NSNumber *> *)perms
                       claims:(nullable NSDictionary *)claims {
+    if (!auth) {
+        NSLog(@"❌ [UserModel] fromAuthUser: called with nil FIRUser — returning nil");
+        return nil;
+    }
+
     NSMutableDictionary *dict = [NSMutableDictionary dictionary];
     if ([root isKindOfClass:[NSDictionary class]]) {
         [dict addEntriesFromDictionary:root];
@@ -952,7 +617,7 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     }
 
     if (perms.count > 0) {
-        dict[kUserKeyPermissions] = [UserModel pp_sanitizedPermissionsDictionary:perms];
+        dict[kUserKeyPermissions] = [PPUserPermissionsManager sanitizedPermissionsDictionary:perms];
     }
 
     NSDictionary *safeClaims = PPSafeDict(claims);
@@ -1058,9 +723,18 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
                     return;
                 }
 
-                NSMutableDictionary<NSString *, NSNumber *> *perms = [self pp_permissionsDictionaryFromDocuments:legacyDocs];
-                [perms addEntriesFromDictionary:[self pp_permissionsDictionaryFromDocuments:legacyAltDocs]];
-                [perms addEntriesFromDictionary:[self pp_permissionsDictionaryFromDocuments:canonicalDocs]];
+                if (legacyDocs.count > 0) {
+                    os_log_info(PPUserModelLog(), "Legacy PermisstionsCol returned %zu docs for user %{public}@",
+                                (unsigned long)legacyDocs.count, current.uid);
+                }
+                if (legacyAltDocs.count > 0) {
+                    os_log_info(PPUserModelLog(), "Legacy PermissionsCol returned %zu docs for user %{public}@",
+                                (unsigned long)legacyAltDocs.count, current.uid);
+                }
+
+                NSMutableDictionary<NSString *, NSNumber *> *perms = [PPUserPermissionsManager permissionsDictionaryFromDocuments:legacyDocs];
+                [perms addEntriesFromDictionary:[PPUserPermissionsManager permissionsDictionaryFromDocuments:legacyAltDocs]];
+                [perms addEntriesFromDictionary:[PPUserPermissionsManager permissionsDictionaryFromDocuments:canonicalDocs]];
 
                 UserModel *user = [UserModel fromAuthUser:current
                                                   rootDoc:root
@@ -1075,7 +749,7 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
 
 #pragma mark - Display Helpers
 
-- (NSString *)PPBestDisplayName {
+- (NSString *)bestDisplayName {
     if (self.UserName.length) {
         return self.UserName;
     }
@@ -1088,6 +762,25 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     return self.ID ?: @"";
 }
 
+- (NSString *)PPBestDisplayName {
+    return [self bestDisplayName];
+}
+
+#pragma mark - camelCase Aliases (forwarding getters)
+
+- (NSString *)userName          { return self.UserName; }
+- (NSString *)userEmail         { return self.UserEmail; }
+- (NSString *)firstName         { return self.FirstName; }
+- (NSString *)lastName          { return self.LastName; }
+- (NSString *)mobileNo          { return self.MobileNo; }
+- (NSString *)userAbout         { return self.UserAbout; }
+- (NSString *)userImageName     { return self.UserImageName; }
+- (NSURL *)userImageUrl         { return self.UserImageUrl; }
+- (NSInteger)countryID          { return self.CountryID; }
+- (NSString *)ppUserTokenID     { return self.PPUserTokenID; }
+- (NSMutableArray<PPAddressModel *> *)addresses { return self.Addresses; }
+- (UserPaymentInstrument *)selectedInstrument   { return self.SelectedInstrument; }
+
 #pragma mark - Private (Helpers)
 
 - (NSString *)pp_documentID {
@@ -1097,87 +790,10 @@ static NSString *PPUserSanitizedCacheID(NSString *identifier) {
     return @"";
 }
 
-- (NSString *)pp_cacheIdentifier {
-    NSString *documentID = [self pp_documentID];
-    return documentID.length ? documentID : @"";
-}
-
-- (nullable FIRCollectionReference *)pp_permissionsCollection {
-    NSString *documentID = [self pp_documentID];
-    if (documentID.length == 0) {
-        return nil;
-    }
-
-    FIRFirestore *db = [FIRFirestore firestore];
-    return [[[db collectionWithPath:kPPUsersCol] documentWithPath:documentID] collectionWithPath:kPPPermsSubCol];
-}
-
-- (nullable FIRCollectionReference *)pp_legacyPermissionsCollection {
-    NSString *documentID = [self pp_documentID];
-    if (documentID.length == 0) {
-        return nil;
-    }
-
-    FIRFirestore *db = [FIRFirestore firestore];
-    return [[[db collectionWithPath:kPPUsersCol] documentWithPath:documentID] collectionWithPath:kPPLegacyPermsSubCol];
-}
-
-- (nullable FIRCollectionReference *)pp_legacyPermissionsCollectionAlt {
-    NSString *documentID = [self pp_documentID];
-    if (documentID.length == 0) {
-        return nil;
-    }
-
-    FIRFirestore *db = [FIRFirestore firestore];
-    return [[[db collectionWithPath:kPPUsersCol] documentWithPath:documentID] collectionWithPath:kPPLegacyPermsSubColAlt];
-}
-
 + (NSError *)pp_errorWithCode:(NSInteger)code key:(NSString *)localizedKey {
     return [NSError errorWithDomain:PPUserModelErrorDomain
                                code:code
                            userInfo:@{NSLocalizedDescriptionKey: kLang(localizedKey)}];
-}
-
-+ (NSMutableDictionary<NSString *, NSNumber *> *)pp_sanitizedPermissionsDictionary:(NSDictionary *)permissions {
-    NSMutableDictionary<NSString *, NSNumber *> *sanitized = [NSMutableDictionary dictionary];
-    if (![permissions isKindOfClass:[NSDictionary class]] || permissions.count == 0) {
-        return sanitized;
-    }
-
-    [permissions enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-        NSString *permName = PPCanonicalPermissionName(PPSafeString(key));
-        if (permName.length == 0) {
-            return;
-        }
-
-        BOOL allowed = NO;
-        if ([obj isKindOfClass:NSDictionary.class]) {
-            NSDictionary *nested = PPSafeDict(obj);
-            allowed = PPUserBoolValue(nested[kUserPermissionAllowedKey]);
-        } else {
-            allowed = PPUserBoolValue(obj);
-        }
-        sanitized[permName] = @(allowed);
-    }];
-
-    return sanitized;
-}
-
-+ (NSMutableDictionary<NSString *, NSNumber *> *)pp_permissionsDictionaryFromDocuments:(NSArray<FIRDocumentSnapshot *> *)documents {
-    NSMutableDictionary<NSString *, NSNumber *> *perms = [NSMutableDictionary dictionary];
-
-    for (FIRDocumentSnapshot *doc in documents) {
-        NSString *permName = PPCanonicalPermissionName(PPSafeString(doc.documentID));
-        if (permName.length == 0) {
-            continue;
-        }
-
-        NSDictionary *docData = PPSafeDict(doc.data);
-        BOOL allowed = PPUserBoolValue(docData[kUserPermissionAllowedKey]);
-        perms[permName] = @(allowed);
-    }
-
-    return perms;
 }
 
 + (void)pp_dispatchLoadCompletion:(void(^)(UserModel * _Nullable user, NSError * _Nullable error))completion

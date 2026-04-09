@@ -54,6 +54,8 @@
  }
 
  */
+@import FirebaseAuth;
+@import FirebaseFirestore;
 #import "PPUserSigningController.h"
 #import "PPUserSigningManager.h"
 @class UserModel;
@@ -440,8 +442,6 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
-
-
 
 
 

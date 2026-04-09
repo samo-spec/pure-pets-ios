@@ -613,7 +613,6 @@ CGSize getImageSizeSafely(UIImage *image) {
     NSArray *userKeys = @[
         @"authVerificationID",
         @"PPUserTokenID",
-        @"PPAdminTokenID",
         @"UserEmail",
         @"UserName",
         @"FirstName",

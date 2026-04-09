@@ -298,7 +298,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     [self pp_updateBlockedOverlayTopInset];
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
-    [self pp_updateTabBarTopSeparatorIfNeeded];
+    
 }
 
 #pragma mark - Blocked Overlay
@@ -694,7 +694,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
         appearance.backgroundEffect =
             [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         appearance.backgroundColor =
-            [AppForgroundColr colorWithAlphaComponent:0.28];
+            [AppForgroundColr colorWithAlphaComponent:0.08];
     } else if (@available(iOS 13.0, *)) {
         [appearance configureWithDefaultBackground];
         appearance.backgroundEffect =
@@ -756,7 +756,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
             self.tabBar.scrollEdgeAppearance = appearance;
         }
         self.tabBar.layer.shadowColor = UIColor.blackColor.CGColor;
-        self.tabBar.layer.shadowOpacity = 0.08;
+        self.tabBar.layer.shadowOpacity = 0.12;
         self.tabBar.layer.shadowRadius = 18.0;
         self.tabBar.layer.shadowOffset = CGSizeMake(0.0, 10.0);
         self.tabBar.layer.masksToBounds = NO;
@@ -774,27 +774,6 @@ static NSInteger const PPRootTabIndexSettings = 4;
     }
 }
 
-- (void)pp_updateTabBarTopSeparatorIfNeeded
-{
-    if (!self.tabBar) {
-        return;
-    }
-
-    if (!self.tabBarTopSeparatorLayer) {
-        self.tabBarTopSeparatorLayer = [CALayer layer];
-        [self.tabBar.layer addSublayer:self.tabBarTopSeparatorLayer];
-    }
-
-    CGFloat scale = UIScreen.mainScreen.scale ?: 1.0;
-    CGFloat lineHeight = 1.0 / MAX(scale, 1.0);
-    CGFloat horizontalInset = 24.0;
-    CGFloat availableWidth = MAX(0.0, CGRectGetWidth(self.tabBar.bounds) - (horizontalInset * 2.0));
-    self.tabBarTopSeparatorLayer.frame = CGRectMake(horizontalInset, 0.0, availableWidth, lineHeight);
-    self.tabBarTopSeparatorLayer.backgroundColor =
-        [[UIColor labelColor] colorWithAlphaComponent:0.10].CGColor;
-    self.tabBarTopSeparatorLayer.hidden =
-        self.tabBar.hidden || self.tabBar.alpha < 0.01 || availableWidth <= 0.0;
-}
 
 - (void)pp_updateTabBarSelectionIndicatorIfNeeded
 {
@@ -886,7 +865,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
         cfg.attributedTitle =
         [[NSAttributedString alloc] initWithString:kLang(@"new") attributes:@{ NSFontAttributeName : [GM boldFontWithSize:13],  NSForegroundColorAttributeName : AppPrimaryTextClr }];
-        cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         cfg.background.cornerRadius = 14;
         cfg.image = icon;
         
@@ -919,9 +898,8 @@ static NSInteger const PPRootTabIndexSettings = 4;
         showAddMenuButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
         showAddMenuButton.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
         // Place image on top, title below, with spacing
-        CGFloat spacing = 5.0;
-        CGSize imageSize = showAddMenuButton.imageView.image.size;
-        CGSize titleSize = [showAddMenuButton.titleLabel.text sizeWithAttributes:@{NSFontAttributeName: showAddMenuButton.titleLabel.font}];
+       
+        
         //showAddMenuButton.titleEdgeInsets = UIEdgeInsetsMake(imageSize.height + spacing, -imageSize.width, 0, 0);
         //showAddMenuButton.imageEdgeInsets = UIEdgeInsetsMake(-titleSize.height - spacing, 0, 0, -titleSize.width);
         showAddMenuButton.layer.cornerRadius = 28;
@@ -957,9 +935,9 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.tabBar.centerXAnchor],
-        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-10],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:56],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:56]
+        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-20],
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:64],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:64]
     ]];
     
     // 🔒 Force DARK mode for glass button only
@@ -993,19 +971,19 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     OptionModel *newAd   = [OptionModel optionWithID:@"newAd"
                                                title:kLang(@"newAd")
-                                           imageName:@"new_ad"
+                                           imageName:@"new_adColor"
                                          systemImage:nil
                                                desc:kLang(@"newAd_desc")];
 
     OptionModel *addUsed = [OptionModel optionWithID:@"addUsedButton"
                                                title:kLang(@"addUsedButton")
-                                           imageName:@"Accessicon"
+                                           imageName:@"AccessiconColor"
                                          systemImage:nil
                                                desc:kLang(@"addUsedButton_desc")];
 
     OptionModel *adopt   = [OptionModel optionWithID:@"addPetForAdoption"
                                                title:kLang(@"addPetForAdoption")
-                                           imageName:@"adoption"
+                                           imageName:@"adoptionColor"
                                          systemImage:nil
                                                desc:kLang(@"addPetForAdoption_desc")];
 

@@ -32,7 +32,7 @@
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
    // self.surfaceView.layer.cornerRadius  = PPCornerCard;
     self.surfaceView.layer.cornerCurve   = kCACornerCurveContinuous;
-    self.surfaceView.layer.borderWidth = 0.75;
+    self.surfaceView.layer.borderWidth = 0.0;
     self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
    // self.surfaceView.clipsToBounds = YES;
     [self addSubview:self.surfaceView];
@@ -234,7 +234,7 @@
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     return isDark
         ? [UIColor colorWithWhite:1.0 alpha:0.04]
-        : [AppForgroundColr colorWithAlphaComponent:0.56];
+        : [AppForgroundColr colorWithAlphaComponent:0.86];
 }
 
 #pragma mark - Init
@@ -250,10 +250,10 @@
 - (UIButtonConfiguration *)pp_baseActionButtonConfiguration
 {
     UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 12.0, 8.0, 12.0);
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 3.0, 8.0, 3.0);
     cfg.imagePadding  = 6;
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
 
     UIImageSymbolConfiguration *symbolCfg =
         [UIImageSymbolConfiguration configurationWithPointSize:13
@@ -268,7 +268,7 @@
     }
     cfg.image = chevron;
     cfg.baseForegroundColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    cfg.baseBackgroundColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.10];
+    cfg.baseBackgroundColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.14];
 
     cfg.titleTextAttributesTransformer =
     ^NSDictionary<NSAttributedStringKey,id> *(NSDictionary<NSAttributedStringKey,id> *attrs) {
@@ -288,10 +288,10 @@
     // ── Glassmorphism surface ──
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    //self.surfaceView.layer.cornerRadius = 0;
+    self.surfaceView.layer.cornerRadius = 12;
     self.surfaceView.layer.cornerCurve  = kCACornerCurveContinuous;
-    self.surfaceView.layer.borderWidth = 0.75;
-    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
+   
+    
     //self.surfaceView.clipsToBounds = YES;
     [self addSubview:self.surfaceView];
     [self sendSubviewToBack:self.surfaceView];
@@ -332,7 +332,7 @@
     self.accentLine.cornerRadius = 1.5;
     self.accentLine.colors = @[
         (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.92].CGColor,
-        (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.16].CGColor,
+        (id)[(NewBgColor ?: UIColor.systemTealColor) colorWithAlphaComponent:0.66].CGColor,
     ];
     [self.surfaceView.layer addSublayer:self.accentLine];
 
@@ -413,7 +413,7 @@
     BOOL isRTL = (self.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft);
     CGFloat lineX = isRTL ? (CGRectGetWidth(bounds) - 2.5 - PPSpaceXS) : PPSpaceXS;
     self.accentLine.frame = CGRectMake(lineX, 10.0, 2.5, CGRectGetHeight(bounds) - 20.0);
-
+    
     CGFloat leadR = 16.0, trailR = 16.0;
     CGFloat topL = isRTL ? trailR : leadR;
     CGFloat topR = isRTL ? leadR  : trailR;
@@ -424,8 +424,8 @@
     mask.path = path.CGPath;
     self.surfaceView.layer.mask = mask;
     
-    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.06].CGColor;
-    self.surfaceView.layer.borderWidth = 0.75;
+    
+    
 }
 
 - (UIBezierPath *)pp_pathForRect:(CGRect)rect

@@ -140,6 +140,9 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [tl.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
         [tl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [tl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [tl.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
+        
+        
         [tf.topAnchor constraintEqualToAnchor:tl.bottomAnchor constant:6.0],
         [tf.leadingAnchor constraintEqualToAnchor:tl.leadingAnchor],
         [tf.trailingAnchor constraintEqualToAnchor:tl.trailingAnchor],
@@ -226,6 +229,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [tl.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
         [tl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [tl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [tl.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
+        
         [cv.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:10.0],
         [cv.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
         [cv.widthAnchor constraintEqualToConstant:14.0],
@@ -318,6 +323,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [tl.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:14.0],
         [tl.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [tl.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [tl.heightAnchor constraintGreaterThanOrEqualToConstant:12.0],
+        
         [tv.topAnchor constraintEqualToAnchor:tl.bottomAnchor constant:8.0],
         [tv.leadingAnchor constraintEqualToAnchor:tl.leadingAnchor],
         [tv.trailingAnchor constraintEqualToAnchor:tl.trailingAnchor],
@@ -1022,11 +1029,19 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 }
 
 - (NSString *)pp_displayNameForModel:(id)m {
+    if ([m isKindOfClass:[MainKindsModel class]]) {
+        NSString *n = ((MainKindsModel *)m).KindName;
+        if (n.length > 0) return n;
+    }
+    if ([m isKindOfClass:[SubKindModel class]]) {
+        NSString *n = ((SubKindModel *)m).SubKindName;
+        if (n.length > 0) return n;
+    }
     if ([m respondsToSelector:@selector(name)]) {
         NSString *n = [m performSelector:@selector(name)];
         if ([n isKindOfClass:NSString.class] && n.length > 0) return n;
     }
-    return [m respondsToSelector:@selector(description)] ? [m description] : @"";
+    return @"";
 }
 
 #pragma mark - UITableViewDelegate
@@ -1141,12 +1156,20 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
             if (![obj isKindOfClass:[MainKindsModel class]]) {
                 s.selectedKind = nil; s.draftMainKind = nil;
                 s.accessModel.petMainCategoryID = 0; s.accessModel.petSubCategoryID = 0; s.draftSubKind = nil;
-                [s.tableView reloadData]; return;
+            } else {
+                s.selectedKind = obj; s.draftMainKind = obj;
+                s.accessModel.petMainCategoryID = s.selectedKind.ID; s.accessModel.petSubCategoryID = 0; s.draftSubKind = nil;
+                if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
             }
-            s.selectedKind = obj; s.draftMainKind = obj;
-            s.accessModel.petMainCategoryID = s.selectedKind.ID; s.accessModel.petSubCategoryID = 0; s.draftSubKind = nil;
-            if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
-            [s.tableView reloadData];
+            CGPoint savedOffset = s.tableView.contentOffset;
+            [UIView performWithoutAnimation:^{
+                [s.tableView reloadRowsAtIndexPaths:@[
+                    [NSIndexPath indexPathForRow:PPAccessoryCategoryRowMain inSection:PPAccessoryFormSectionCategory],
+                    [NSIndexPath indexPathForRow:PPAccessoryCategoryRowSub  inSection:PPAccessoryFormSectionCategory]
+                ] withRowAnimation:UITableViewRowAnimationNone];
+            }];
+            [s.tableView layoutIfNeeded];
+            s.tableView.contentOffset = savedOffset;
         });
     }];
     [self presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];
@@ -1166,7 +1189,14 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
                 s.draftSubKind = obj; s.accessModel.petSubCategoryID = ((SubKindModel *)obj).ID;
             } else { s.draftSubKind = nil; s.accessModel.petSubCategoryID = 0; }
             if (!s.isHydratingFormData) s.hasUserModifiedForm = YES;
-            [s.tableView reloadData];
+            CGPoint savedOffset = s.tableView.contentOffset;
+            [UIView performWithoutAnimation:^{
+                [s.tableView reloadRowsAtIndexPaths:@[
+                    [NSIndexPath indexPathForRow:PPAccessoryCategoryRowSub inSection:PPAccessoryFormSectionCategory]
+                ] withRowAnimation:UITableViewRowAnimationNone];
+            }];
+            [s.tableView layoutIfNeeded];
+            s.tableView.contentOffset = savedOffset;
         });
     }];
     [self presentViewController:[[UINavigationController alloc] initWithRootViewController:vc] animated:YES completion:nil];

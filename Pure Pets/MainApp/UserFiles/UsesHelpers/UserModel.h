@@ -5,10 +5,12 @@
 //  Created by Mohammed Ahmed on 21/08/2025.
 //  Refactored for best practices
 //
-@import FirebaseAuth;
-@import FirebaseFirestore;
 #import <Foundation/Foundation.h>
 #import "PPRolePermission.h"
+
+@class FIRUser;
+@class FIRDocumentSnapshot;
+@protocol FIRListenerRegistration;
 @class PPAddressModel;
 @class UserPaymentInstrument;
 
@@ -27,18 +29,18 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
     OnlineStatusOnline
 };
 
-@interface UserModel : NSObject <XLFormOptionObject, NSSecureCoding>
-@property (nonatomic, strong, nullable) UserPaymentInstrument *SelectedInstrument;
+@interface UserModel : NSObject <NSSecureCoding>
+
 #pragma mark - Core Profile
 @property (nonatomic, assign) OnlineStatus onlineStatus;
 @property (nonatomic, strong, nullable) NSDate *lastSeen;
 
 #pragma mark - Identity
 @property (nonatomic, copy) NSString *ID;
-@property (nonatomic, copy) NSString *UserEmail;
 @property (nonatomic, copy) NSString *UserName;
+@property (nonatomic, copy) NSString *UserEmail;
 
-#pragma mark - From Server
+#pragma mark - Profile
 @property (nonatomic, copy, nullable) NSString *FirstName;
 @property (nonatomic, copy, nullable) NSString *LastName;
 @property (nonatomic, copy, nullable) NSString *MobileNo;
@@ -46,15 +48,14 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, copy, nullable) NSString *UserImageName;
 @property (nonatomic, strong, nullable) NSURL *UserImageUrl;
 
-#pragma mark - Presence Convenience
-@property (nonatomic, assign) BOOL isOnline; // -> onlineStatus
+#pragma mark - Presence
+@property (nonatomic, assign) BOOL isOnline;
 
 #pragma mark - Status & Meta
 @property (nonatomic, strong, nullable) NSDate *loginDate;
 @property (nonatomic, strong, nullable) NSDate *updatedAt;
 @property (nonatomic, assign) NSInteger CountryID;
 @property (nonatomic, copy) NSString *PPUserTokenID;
-@property (nonatomic, copy) NSString *PPAdminTokenID;
 
 #pragma mark - Roles
 @property (nonatomic, assign) UserRole role;
@@ -63,7 +64,7 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) BOOL isBlocked;
 
 #pragma mark - Permissions
-@property (nonatomic, strong) NSMutableDictionary<NSString *, NSNumber *> *permissions;
+@property (nonatomic, copy) NSDictionary<NSString *, NSNumber *> *permissions;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> permissionsListener;
 
 #pragma mark - Convenience Flags
@@ -94,12 +95,18 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 #pragma mark - Addresses
 @property (nonatomic, strong) NSMutableArray<PPAddressModel *> *Addresses;
 
+#pragma mark - Payment
+/// @note This property will move to PPPaymentManager in a future release.
+@property (nonatomic, strong, nullable) UserPaymentInstrument *SelectedInstrument;
+
 #pragma mark - Initializers
 - (instancetype)initWithDict:(NSDictionary *)dict;
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot;
 
 #pragma mark - Firestore Sync
 - (NSDictionary *)toDictionary;
+- (void)syncToFirestoreWithCompletion:(void(^)(NSError * _Nullable error))completion;
+/// @deprecated Use syncToFirestoreWithCompletion: instead.
 - (void)SYNC:(void(^)(NSError * _Nullable error))completion;
 
 #pragma mark - Permissions API
@@ -127,7 +134,27 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
                                                     NSError *_Nullable err))completion;
  
 #pragma mark - Display Helpers
+- (NSString *)bestDisplayName;
+/// @deprecated Use bestDisplayName instead.
 - (NSString *)PPBestDisplayName;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - camelCase Aliases (Preferred API — use these in new code)
+// These return the same backing data as the PascalCase properties above.
+// PascalCase setters work for both: user.UserName = @"x" == user.userName = @"x"
+// ─────────────────────────────────────────────────────────────────────────────
+- (NSString *)userName;
+- (NSString *)userEmail;
+- (nullable NSString *)firstName;
+- (nullable NSString *)lastName;
+- (nullable NSString *)mobileNo;
+- (nullable NSString *)userAbout;
+- (nullable NSString *)userImageName;
+- (nullable NSURL *)userImageUrl;
+- (NSInteger)countryID;
+- (NSString *)ppUserTokenID;
+- (NSMutableArray<PPAddressModel *> *)addresses;
+- (nullable UserPaymentInstrument *)selectedInstrument;
  
 @end
 /**************************************************************************************************************************************************************************************/

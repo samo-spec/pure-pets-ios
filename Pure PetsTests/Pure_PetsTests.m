@@ -352,7 +352,6 @@
     original.plan = @"pro";
     original.loginSource = UserLoginSourcePPUsers;
     original.PPUserTokenID = @"token_user";
-    original.PPAdminTokenID = @"token_admin";
     original.onlineStatus = OnlineStatusOnline;
     original.lastSeen = [NSDate dateWithTimeIntervalSince1970:1710000000];
     original.permissions = [@{@"postAds": @YES, @"moderate": @NO} mutableCopy];
