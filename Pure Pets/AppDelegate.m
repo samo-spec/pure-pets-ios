@@ -703,7 +703,10 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
  });
  
  
- [GMSServices provideAPIKey:@"AIzaSyBlVRMGGq60XRi0oVs2lSBub1Zb5K1gees"];
+ NSString *mapsKey = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"GMSApiKey"];
+ if (mapsKey) {
+     [GMSServices provideAPIKey:mapsKey];
+ }
  
  [[XLFormViewController cellClassesForRowDescriptorTypes] setObject:PPLeftRightCell.class forKey:XLFormRowDescriptorTypePPLeftRight];
  [[XLFormViewController cellClassesForRowDescriptorTypes] setObject:[XLFormRowFullWidthTextFieldCell class] forKey:XLFormRowDescriptorTypeFullWidthTextField];

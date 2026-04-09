@@ -714,6 +714,12 @@
 		F2EDCB272D6ED9DC00C83328 /* ArchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EDCB252D6ED9DC00C83328 /* ArchCell.m */; };
 		F2EDCB282D6ED9DC00C83328 /* ArchCell.xib in Resources */ = {isa = PBXBuildFile; fileRef = F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */; };
 		F2EE19992DDF2DC100C62390 /* PetAccessoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E1345C2DDC6E04006770E5 /* PetAccessoryManager.m */; };
+		F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */; };
+		F2EF8EE22F8775A300A797B3 /* PPProfilePhoneCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE12F8775A300A797B3 /* PPProfilePhoneCell.m */; };
+		F2EF8EE52F8775CA00A797B3 /* PPProfileTextViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE42F8775CA00A797B3 /* PPProfileTextViewCell.m */; };
+		F2EF8EE82F87760300A797B3 /* PPProfileSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EE72F87760300A797B3 /* PPProfileSelectorCell.m */; };
+		F2EF8EEB2F87765600A797B3 /* PPProfileAddressCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EEA2F87765600A797B3 /* PPProfileAddressCell.m */; };
+		F2EF8EED2F87768700A797B3 /* PPProfileActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EEC2F87768700A797B3 /* PPProfileActionCell.m */; };
 		F2F33FFB2D7912AC00BDBD25 /* ChildsDataManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F33FFA2D7912AC00BDBD25 /* ChildsDataManager.m */; };
 		F2F38FAE2EA68288004B148A /* PPUniversalCellHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */; settings = {COMPILER_FLAGS = "-w"; }; };
 		F2F465F22F3B8CCB00E5FB60 /* PPHomeHeroCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */; };
@@ -2101,6 +2107,18 @@
 		F2EDCB242D6ED9DC00C83328 /* ArchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ArchCell.h; sourceTree = "<group>"; };
 		F2EDCB252D6ED9DC00C83328 /* ArchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ArchCell.m; sourceTree = "<group>"; };
 		F2EDCB262D6ED9DC00C83328 /* ArchCell.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = ArchCell.xib; sourceTree = "<group>"; };
+		F2EF8EDD2F87752400A797B3 /* PPProfileTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileTextFieldCell.h; sourceTree = "<group>"; };
+		F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileTextFieldCell.m; sourceTree = "<group>"; };
+		F2EF8EE02F87757A00A797B3 /* PPProfilePhoneCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfilePhoneCell.h; sourceTree = "<group>"; };
+		F2EF8EE12F8775A300A797B3 /* PPProfilePhoneCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfilePhoneCell.m; sourceTree = "<group>"; };
+		F2EF8EE32F8775B500A797B3 /* PPProfileTextViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileTextViewCell.h; sourceTree = "<group>"; };
+		F2EF8EE42F8775CA00A797B3 /* PPProfileTextViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileTextViewCell.m; sourceTree = "<group>"; };
+		F2EF8EE62F8775EC00A797B3 /* PPProfileSelectorCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileSelectorCell.h; sourceTree = "<group>"; };
+		F2EF8EE72F87760300A797B3 /* PPProfileSelectorCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileSelectorCell.m; sourceTree = "<group>"; };
+		F2EF8EE92F87764B00A797B3 /* PPProfileAddressCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileAddressCell.h; sourceTree = "<group>"; };
+		F2EF8EEA2F87765600A797B3 /* PPProfileAddressCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileAddressCell.m; sourceTree = "<group>"; };
+		F2EF8EEC2F87768700A797B3 /* PPProfileActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileActionCell.m; sourceTree = "<group>"; };
+		F2EF8EEE2F87769100A797B3 /* PPProfileActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileActionCell.h; sourceTree = "<group>"; };
 		F2F33FF92D79128500BDBD25 /* ChildsDataManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChildsDataManager.h; sourceTree = "<group>"; };
 		F2F33FFA2D7912AC00BDBD25 /* ChildsDataManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChildsDataManager.m; sourceTree = "<group>"; };
 		F2F38FAC2EA68288004B148A /* PPUniversalCellHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellHelper.h; sourceTree = "<group>"; };
@@ -3512,6 +3530,7 @@
 		F27365F92F85D5AB000AB3DD /* UsesHelpers */ = {
 			isa = PBXGroup;
 			children = (
+				F2EF8EDC2F87750700A797B3 /* ProfileCells */,
 				F24D6EEA2EB9F00A009962D0 /* UserManager.h */,
 				F24D6EEB2EB9F00A009962D0 /* UserManager.m */,
 				F27365F62F8586E9000AB3DD /* PPModernAvatarRenderer.h */,
@@ -4799,6 +4818,25 @@
 			path = CartAndOrdersFiles;
 			sourceTree = "<group>";
 		};
+		F2EF8EDC2F87750700A797B3 /* ProfileCells */ = {
+			isa = PBXGroup;
+			children = (
+				F2EF8EEE2F87769100A797B3 /* PPProfileActionCell.h */,
+				F2EF8EEC2F87768700A797B3 /* PPProfileActionCell.m */,
+				F2EF8EE92F87764B00A797B3 /* PPProfileAddressCell.h */,
+				F2EF8EEA2F87765600A797B3 /* PPProfileAddressCell.m */,
+				F2EF8EE62F8775EC00A797B3 /* PPProfileSelectorCell.h */,
+				F2EF8EE72F87760300A797B3 /* PPProfileSelectorCell.m */,
+				F2EF8EE32F8775B500A797B3 /* PPProfileTextViewCell.h */,
+				F2EF8EE42F8775CA00A797B3 /* PPProfileTextViewCell.m */,
+				F2EF8EE02F87757A00A797B3 /* PPProfilePhoneCell.h */,
+				F2EF8EE12F8775A300A797B3 /* PPProfilePhoneCell.m */,
+				F2EF8EDD2F87752400A797B3 /* PPProfileTextFieldCell.h */,
+				F2EF8EDE2F87754B00A797B3 /* PPProfileTextFieldCell.m */,
+			);
+			path = ProfileCells;
+			sourceTree = "<group>";
+		};
 		F2F750CF2E7C82FC00BACFA8 /* PPStyles */ = {
 			isa = PBXGroup;
 			children = (
@@ -5363,6 +5401,7 @@
 				F20F31AC2D177602001D1D57 /* PGDatePicker+Common.m in Sources */,
 				F20F31AD2D177602001D1D57 /* PGDatePicker+Time.m in Sources */,
 				F2B09F9C2D1E22D300FB3B26 /* MYIntroductionView.m in Sources */,
+				F2EF8EEB2F87765600A797B3 /* PPProfileAddressCell.m in Sources */,
 				F2B09F9D2D1E22D300FB3B26 /* MYIntroductionPanel.m in Sources */,
 				F20956732F85677D007C4ABA /* PPPetProfile.m in Sources */,
 				F20F31AE2D177602001D1D57 /* UIColor+PGHex.m in Sources */,
@@ -5376,6 +5415,7 @@
 				F2B641C12F4A96180092C2BF /* PPStoryCollectionViewCell.m in Sources */,
 				F20F31B42D177602001D1D57 /* PGDatePicker+MinuteAndSecond.m in Sources */,
 				F20F31B52D177602001D1D57 /* PGPickerColumnView.m in Sources */,
+				F2EF8EE82F87760300A797B3 /* PPProfileSelectorCell.m in Sources */,
 				F20956852F85686F007C4ABA /* PPReminderEditorViewController.m in Sources */,
 				F20F31B62D177602001D1D57 /* NSDate+PGCategory.m in Sources */,
 				F2B790722DE5BD6000F8B03F /* DeepLinkRouter.m in Sources */,
@@ -5624,6 +5664,7 @@
 				F2D0C6122C4BEB610023CE53 /* CollectionViewCell.m in Sources */,
 				22E169D82E75E75A00F50C9E /* PPFunc.m in Sources */,
 				F279075C2C9AC7F300F2F07B /* trashChildCell.m in Sources */,
+				F2EF8EE52F8775CA00A797B3 /* PPProfileTextViewCell.m in Sources */,
 				F2CD36E02E901F350056F59C /* InstallationManager.m in Sources */,
 				F2C5F7782CA01C0500D7897A /* UIView+DCAnimationKit.m in Sources */,
 				F28DD5A22F049C2A00FF2671 /* PPDataViewVM.m in Sources */,
@@ -5665,6 +5706,8 @@
 				F2F807D12E8BEE5D0034FF2D /* PPBannerCollectionCell.m in Sources */,
 				F276E5CA2DE3363E00926D56 /* FavoriteButton.m in Sources */,
 				F2B6F7AF2E37CECE00AC0DAE /* ChatMessageCell.m in Sources */,
+				F2EF8EDF2F87754B00A797B3 /* PPProfileTextFieldCell.m in Sources */,
+				F2EF8EE22F8775A300A797B3 /* PPProfilePhoneCell.m in Sources */,
 				F2A0BBBE2F1F0B88003715F0 /* ChatImageMessageCell.m in Sources */,
 				F27A482E2EE080A40044040E /* PPEditorBridge.swift in Sources */,
 				F241C45B2E257A2B00CC9BE9 /* MyServicesViewController.m in Sources */,
@@ -5762,6 +5805,7 @@
 				F2CDBD222D1151D400FE7FA2 /* CageModel.m in Sources */,
 				F2A0BBB72F1EB01E003715F0 /* ChMessagingController+Record.m in Sources */,
 				F260D32D2C7B36EF0098C8F0 /* FORScrollViewEmptyAssistant.m in Sources */,
+				F2EF8EED2F87768700A797B3 /* PPProfileActionCell.m in Sources */,
 				F260D33C2C7C72F80098C8F0 /* selectChildCell.m in Sources */,
 				F241C4682E26A94500CC9BE9 /* VetManager.m in Sources */,
 				F2F465F22F3B8CCB00E5FB60 /* PPHomeHeroCell.m in Sources */,

@@ -513,7 +513,7 @@ static CGFloat const kPPChromeHorizontalInset = 16.0;
                                        arabic:@"جار حساب المسار..."]
             animated:YES];
 
-    NSString *apiKey = @"AIzaSyBlVRMGGq60XRi0oVs2lSBub1Zb5K1gees";
+    NSString *apiKey = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"GMSApiKey"];
     NSString *urlString = [NSString stringWithFormat:@"https://maps.googleapis.com/maps/api/directions/json?origin=%f,%f&destination=%f,%f&mode=driving&key=%@",
                            userLocation.coordinate.latitude,
                            userLocation.coordinate.longitude,
