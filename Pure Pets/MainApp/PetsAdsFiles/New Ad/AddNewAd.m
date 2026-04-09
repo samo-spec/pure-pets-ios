@@ -2367,9 +2367,12 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.formDisabled = NO;
     
     
-    // default is Create
+    // Auto-detect edit mode if editingAd was set but mode was not
+    if (self.editingAd && self.mode == AdEditorModeCreate) {
+        self.mode = AdEditorModeEdit;
+    }
+
     if (self.mode == AdEditorModeCreate) {
-        self.mode = AdEditorModeCreate;
         self.adModel = [PetAd new];
     } else {
         if (self.editingAd) {
@@ -2415,7 +2418,12 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_reloadFieldWithTag:(NSString *)tag {
     NSIndexPath *ip = [self indexPathForFieldTag:tag];
     if (ip) {
-        [self.tableView reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
+        CGPoint savedOffset = self.tableView.contentOffset;
+        [UIView performWithoutAnimation:^{
+            [self.tableView reloadRowsAtIndexPaths:@[ip] withRowAnimation:UITableViewRowAnimationNone];
+        }];
+        [self.tableView layoutIfNeeded];
+        self.tableView.contentOffset = savedOffset;
     }
 }
 
@@ -2734,6 +2742,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     [self fieldForTag:kprice].value  = self.adModel.price;
     [self fieldForTag:kdesc].value   = self.adModel.adDescription;
     [self fieldForTag:@"adTitle"].value   = self.adModel.adTitle;
+    [self fieldForTag:@"isFemale"].value  = @(self.adModel.isFemale);
     NSString *prefillLocation = self.adModel.locationName;
     if (prefillLocation.length == 0 && self.adModel.adLocation > 0) {
         prefillLocation = [CitiesManager.shared cityNameForID:self.adModel.adLocation];
@@ -2743,10 +2752,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     self.selectedAdCoordinate = CLLocationCoordinate2DMake(self.adModel.latitude, self.adModel.longitude);
     self.hasSelectedAdCoordinate = PPIsValidAdCoordinate(self.selectedAdCoordinate);
     
-    [self pp_reloadFieldWithTag:kpetAge];
-    [self pp_reloadFieldWithTag:kprice];
-    [self pp_reloadFieldWithTag:kdesc];
-    [self pp_reloadFieldWithTag:kadLocation];
+    [self.tableView reloadData];
     
     self.didMutateMediaAfterPrefill = NO;
     [self pp_setSubmitEnabled:NO];

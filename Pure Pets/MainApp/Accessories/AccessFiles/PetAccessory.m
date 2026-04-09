@@ -80,18 +80,18 @@ BOOL const isPPDebugMode = NO;
 - (NSNumber *)calculateFinalPrice {
     if (!self.price) return nil;
     
-    CGFloat basePrice = [self.price floatValue];
-    CGFloat finalPrice = basePrice;
+    double basePrice = [self.price doubleValue];
+    double finalPrice = basePrice;
     
     // Apply percentage discount first
-    if (self.discountPercent && [self.discountPercent floatValue] > 0) {
-        CGFloat discount = (basePrice * [self.discountPercent floatValue]) / 100.0;
+    if (self.discountPercent && [self.discountPercent doubleValue] > 0) {
+        double discount = (basePrice * [self.discountPercent doubleValue]) / 100.0;
         finalPrice = basePrice - discount;
     }
     
     // Apply absolute discount
-    if (self.discountAmount && [self.discountAmount floatValue] > 0) {
-        finalPrice = finalPrice - [self.discountAmount floatValue];
+    if (self.discountAmount && [self.discountAmount doubleValue] > 0) {
+        finalPrice = finalPrice - [self.discountAmount doubleValue];
     }
     
     // Ensure price doesn't go negative

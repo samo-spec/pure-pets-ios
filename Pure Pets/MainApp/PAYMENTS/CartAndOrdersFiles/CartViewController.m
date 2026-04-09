@@ -732,7 +732,7 @@ titleForDeleteConfirmationButtonForRowAtIndexPath:(NSIndexPath *)indexPath
     NSMutableDictionary *orderSummary = [NSMutableDictionary dictionary];
     NSMutableArray *itemData = [NSMutableArray array];
     NSInteger totalQty = 0;
-    float totalPrice = 0;
+    double totalPrice = 0;
 
     for (CartItem *item in items) {
         // U6: Validate each item before including in order
@@ -741,7 +741,7 @@ titleForDeleteConfirmationButtonForRowAtIndexPath:(NSIndexPath *)indexPath
             continue;
         }
         NSInteger safeQty = MAX(1, MIN(item.quantity, 9999));
-        float safePrice = MAX(0.0f, MIN(item.price, 999999.0f));
+        double safePrice = MAX(0.0, MIN(item.price, 999999.0));
         totalQty += safeQty;
         totalPrice += safePrice * safeQty;
         [itemData addObject:@{
@@ -1193,7 +1193,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath {
 
 // Remove notification observer on dealloc
 - (void)dealloc {
-   // [[NSNotificationCenter defaultCenter] removeObserverBlocks]; kCartUpdatedNotification
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 

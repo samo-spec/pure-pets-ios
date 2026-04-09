@@ -70,28 +70,27 @@
     [self pp_applyCurrentDirection];
 }
 
-- (void)layoutSubviews {
-    [super layoutSubviews];
+- (void)pp_refreshVisualGeometry {
+    CGRect cardBounds = self.cardSurfaceView.bounds;
+    if (CGRectIsEmpty(cardBounds)) {
+        return;
+    }
 
-    CGFloat corners = MIN(32.0, CGRectGetHeight(self.bounds) * 0.22);
+    CGFloat corners = 24.0f;
     self.cardSurfaceView.layer.cornerRadius = corners;
-    
-    _bgGradientLayer.frame = CGRectMake(0,
-                                        0,
-                                        self.contentView.hx_w,
-                                        self.contentView.hx_h);
 
-    
-    
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.bgGradientLayer.frame = cardBounds;
     self.bgGradientLayer.cornerRadius = corners;
-    self.shineOverlayView.layer.cornerRadius = corners;
-    
-    self.ContView.layer.cornerRadius = corners;
-    self.ContView.layer.cornerCurve = kCACornerCurveContinuous;
-    
-    
     self.shineGradientLayer.frame = self.shineOverlayView.bounds;
     self.ctaGradientLayer.frame = self.ctaPillView.bounds;
+    self.visualStageGradientLayer.frame = self.visualStageView.bounds;
+    [CATransaction commit];
+
+    self.shineOverlayView.layer.cornerRadius = corners;
+    self.ContView.layer.cornerRadius = corners;
+    self.ContView.layer.cornerCurve = kCACornerCurveContinuous;
 
     self.badgePillView.layer.cornerRadius = CGRectGetHeight(self.badgePillView.bounds) * 0.5;
     self.ctaPillView.layer.cornerRadius = CGRectGetHeight(self.ctaPillView.bounds) * 0.5;
@@ -103,17 +102,32 @@
     self.accentDotView.layer.cornerRadius = CGRectGetWidth(self.accentDotView.bounds) * 0.5;
     self.visualHaloView.layer.cornerRadius = CGRectGetWidth(self.visualHaloView.bounds) * 0.5;
     self.visualHaloSecondaryView.layer.cornerRadius = CGRectGetWidth(self.visualHaloSecondaryView.bounds) * 0.5;
-
     self.visualStageView.layer.cornerRadius = MIN(30.0, CGRectGetHeight(self.visualStageView.bounds) * 0.24);
-    self.visualStageGradientLayer.frame = self.visualStageView.bounds;
-
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:corners].CGPath;
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    [self pp_refreshVisualGeometry];
 
     if (!self.idleAnimationStarted && CGRectGetWidth(self.cardSurfaceView.bounds) > 0.0) {
         self.idleAnimationStarted = YES;
         [self pp_startIdleFloatAnimation];
     }
+}
+
+- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes {
+    [super applyLayoutAttributes:layoutAttributes];
+    [self setNeedsLayout];
+    [self.contentView setNeedsLayout];
+    [self layoutIfNeeded];
+    [self pp_refreshVisualGeometry];
+}
+
+- (void)setBounds:(CGRect)bounds {
+    [super setBounds:bounds];
+    [self pp_refreshVisualGeometry];
 }
 
 #pragma mark - Public
@@ -138,6 +152,14 @@
                                    self.titleLabel.text ?: @"",
                                    self.subtitleLabel.text ?: @""];
     self.ContView.accessibilityHint = self.ctaLabel.text;
+
+    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self setNeedsLayout];
+    [self.contentView setNeedsLayout];
+    if (!CGRectIsEmpty(self.cardSurfaceView.bounds)) {
+        [self layoutIfNeeded];
+        [self pp_refreshVisualGeometry];
+    }
 }
 
 #pragma mark - Actions
@@ -176,7 +198,7 @@
 
     self.layer.shadowColor = [UIColor colorWithRed:0.11 green:0.17 blue:0.22 alpha:1.0].CGColor;
     self.layer.shadowOpacity = 0.16f;
-    self.layer.shadowRadius = 24.0f;
+    self.layer.shadowRadius = 28.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     self.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.6].CGColor;
     self.layer.borderWidth = 0.9;
@@ -691,31 +713,7 @@
 #pragma mark - Press Animation
 
 - (void)pp_updatePressedState:(BOOL)isPressed animated:(BOOL)animated {
-    CGAffineTransform transform = isPressed
-        ? CGAffineTransformMakeScale(0.985, 0.985)
-        : CGAffineTransformIdentity;
-    CGFloat opacity = isPressed ? 0.12f : 0.16f;
-    CGFloat radius = isPressed ? 18.0f : 24.0f;
-    CGSize offset = isPressed ? CGSizeMake(0.0, 8.0) : CGSizeMake(0.0, 14.0);
-
-    void (^changes)(void) = ^{
-        self.transform = transform;
-        self.layer.shadowOpacity = opacity;
-        self.layer.shadowRadius = radius;
-        self.layer.shadowOffset = offset;
-    };
-
-    if (animated) {
-        [UIView animateWithDuration:0.24
-                              delay:0.0
-             usingSpringWithDamping:0.82
-              initialSpringVelocity:0.3
-                            options:UIViewAnimationOptionBeginFromCurrentState
-                         animations:changes
-                         completion:nil];
-    } else {
-        changes();
-    }
+    // Tap animation disabled — keep cell visually static on press
 }
 
 #pragma mark - Helpers

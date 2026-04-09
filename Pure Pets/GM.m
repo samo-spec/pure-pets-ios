@@ -22,6 +22,7 @@
 //64605 1621158
  
 #import <CoreTelephony/CTTelephonyNetworkInfo.h>
+@import FirebaseFunctions;
 
 NSString *const kUserNameRow = @"UserNameRow";
 NSString *const kMobileNoRow = @"MobileNoRow";
@@ -2090,72 +2091,38 @@ CGSize getImageSizeSafely(UIImage *image) {
     return (userID != nil && userID.length > 0);
 }
 
-// GEMINI AIzaSyAhMN0yFCCAJgcZ9jpPp5uLv3gpOBidbLI
+// MARK: - Gemini (via Cloud Function proxy)
 
 + (void)sendPromptToGemini:(NSString *)prompt
                 completion:(void (^)(NSString *responseText, NSError *error))completion {
 
-    NSString *apiKey = @"AIzaSyAhMN0yFCCAJgcZ9jpPp5uLv3gpOBidbLI";
-    NSString *urlString = [NSString stringWithFormat:
-        @"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=%@",
-        apiKey];
-
-    NSURL *url = [NSURL URLWithString:urlString];
-
-    NSDictionary *requestBody = @{
-        @"contents": @[
-            @{@"parts": @[@{@"text": prompt}]}
-        ]
-    };
-
-    NSError *jsonError = nil;
-    NSData *bodyData = [NSJSONSerialization dataWithJSONObject:requestBody options:0 error:&jsonError];
-    if (jsonError) {
-        if (completion) completion(nil, jsonError);
+    if (!prompt.length) {
+        if (completion) completion(nil, [NSError errorWithDomain:@"GM" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Empty prompt"}]);
         return;
     }
 
-    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-    request.HTTPMethod = @"POST";
-    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-    request.HTTPBody = bodyData;
+    FIRFunctions *functions = [FIRFunctions functionsForRegion:@"us-central1"];
+    FIRHTTPSCallable *callable = [functions HTTPSCallableWithName:@"geminiProxy"];
 
-    NSURLSessionDataTask *task = [[NSURLSession sharedSession] dataTaskWithRequest:request
-                                                                 completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+    [callable callWithObject:@{@"prompt": prompt}
+                  completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
         if (error) {
-            //NSLog(@"❌ Network error: %@", error.localizedDescription);
+            NSLog(@"[GM] Gemini proxy error: %@", error);
             if (completion) completion(nil, error);
             return;
         }
 
-        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-        NSLog(@"🌐 HTTP Status Code: %ld", (long)httpResponse.statusCode);
-
-        NSString *rawResponse = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        NSLog(@"📩 Raw Response:\n%@", rawResponse);
-
-        NSError *parseError = nil;
-        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&parseError];
-        if (parseError) {
-            if (completion) completion(nil, parseError);
-            return;
+        NSString *responseText = nil;
+        if ([result.data isKindOfClass:[NSDictionary class]]) {
+            responseText = result.data[@"text"];
+        } else if ([result.data isKindOfClass:[NSString class]]) {
+            responseText = (NSString *)result.data;
         }
 
-        NSArray *candidates = json[@"candidates"];
-        if (candidates.count > 0) {
-            NSDictionary *firstCandidate = candidates[0];
-            NSDictionary *content = firstCandidate[@"content"];
-            NSArray *parts = content[@"parts"];
-            NSString *resultText = parts.firstObject[@"text"];
-            if (completion) completion(resultText, nil);
-        } else {
-            if (completion) completion(@"No response", nil);
-        }
+        if (completion) completion(responseText, nil);
     }];
-
-    [task resume];
-
 }
+
 
 + (void)goToRegistrationFromController:(UIViewController *)controller {
     FCAlertView *alert = [[FCAlertView alloc] init];

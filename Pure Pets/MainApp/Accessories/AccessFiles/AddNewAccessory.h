@@ -19,7 +19,7 @@ typedef NS_ENUM(NSInteger, AccessFormMode) {
     AccessFormModeEdit
 };
 
-@interface AddNewAccessory : XLFormViewController
+@interface AddNewAccessory : UIViewController
 
 @property (nonatomic, copy)   NSString *FromVC;
 

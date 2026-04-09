@@ -100,6 +100,7 @@ typedef NS_ENUM(NSInteger, PPHomeItemType) {
     PPHomeItemTypeCurrentOrder,        // Smart current order tracking card
     PPHomeItemTypeMainKinds,           // Main categories (grid / horizontal)
     PPHomeItemTypeAccessories,         // Accessories listing
+    PPHomeItemTypePetProfile,          // Default pet / pet profiles feature card
     PPHomeItemTypeAdopt,               // Adopt a pet (static card)
 
     PPHomeItemTypeAdsNearBy,            // Nearby ads
@@ -220,6 +221,7 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionMainKinds,
     PPHomeSectionSuggestions,
     PPHomeSectionAccessories,
+    PPHomeSectionPetProfile,
     PPHomeSectionAdsNearBy,
     PPHomeSectionAdopt, // legacy (not rendered on home in Pattern 1)
     PPHomeSectionBuyAgain,

@@ -27,22 +27,22 @@ typedef NS_ENUM(NSInteger, OrderStatus)
 @property (nonatomic, assign) NSInteger quantity;
 @property (nonatomic, assign) NSInteger stockQuantity; // NSNotFound when unknown
 /// The effective (charged) unit price — always use this for calculations.
-@property (nonatomic, assign) float price;
+@property (nonatomic, assign) double price;
 /// The original (pre-discount) unit price — display/reference only.
-@property (nonatomic, assign) float originalPrice;
+@property (nonatomic, assign) double originalPrice;
 @property (nonatomic, strong) NSString *imageURL;
 @property (nonatomic, strong) NSString *type;
 
 /// YES when originalPrice > price (a discount is active).
 @property (nonatomic, readonly) BOOL hasDiscount;
 /// The per-unit discount amount (originalPrice − price). Returns 0 if no discount.
-@property (nonatomic, readonly) float discountPerUnit;
+@property (nonatomic, readonly) double discountPerUnit;
 /// Line subtotal at effective price: price × quantity.
-@property (nonatomic, readonly) float lineSubtotal;
+@property (nonatomic, readonly) double lineSubtotal;
 /// Line subtotal at original price: originalPrice × quantity.
-@property (nonatomic, readonly) float lineSubtotalBeforeDiscount;
+@property (nonatomic, readonly) double lineSubtotalBeforeDiscount;
 /// Total line-level discount: (originalPrice − price) × quantity.
-@property (nonatomic, readonly) float lineDiscountTotal;
+@property (nonatomic, readonly) double lineDiscountTotal;
 
 - (NSDictionary *)firestoreDictionary;
 - (instancetype)initWithAccessory:(PetAccessory *)accessory quantity:(NSInteger)qty;

@@ -288,6 +288,19 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
     [self pp_updateLayerFrames];
 }
 
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    if (self.window) {
+        // Orthogonal scrolling sections may skip the initial layout pass for
+        // CALayer frames.  Schedule a deferred update so gradient layers render
+        // correctly the first time the cell appears on-screen.
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_updateLayerFrames];
+        });
+    }
+}
+
 - (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
 {
     [super applyLayoutAttributes:layoutAttributes];
@@ -305,13 +318,21 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
 - (void)pp_updateLayerFrames
 {
     CGRect surfaceBounds = self.surfaceView.bounds;
-    if (CGRectIsEmpty(surfaceBounds)) return;
+    if (CGRectIsEmpty(surfaceBounds)) {
+        // Force Auto Layout to resolve now so we get valid bounds.
+        [self.contentView layoutIfNeeded];
+        surfaceBounds = self.surfaceView.bounds;
+        if (CGRectIsEmpty(surfaceBounds)) return;
+    }
 
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     self.actionButton.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.actionButton.bounds cornerRadius:PPNewCorner].CGPath;
     self.surfaceGradientLayer.frame = surfaceBounds;
     self.surfaceShineLayer.frame = surfaceBounds;
     self.glowGradientLayer.frame = self.glowView.bounds;
+    [CATransaction commit];
 }
 
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
@@ -368,7 +389,7 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
     UIColor *surfaceColor = [AppForgroundColr colorWithAlphaComponent:0.96] ?: [UIColor secondarySystemBackgroundColor];
     UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *secondaryColor = [textColor colorWithAlphaComponent:0.72];
-    UIColor *warmHighlight = [UIColor colorWithWhite:1.0 alpha:0.82];
+    UIColor *warmHighlight = [AppForgroundColr colorWithAlphaComponent:0.82];
     UIColor *tintedSurfaceColor = PPQuickActionBlendColors(surfaceColor, resolvedAccent, 0.08);
 
     self.surfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.14].CGColor;

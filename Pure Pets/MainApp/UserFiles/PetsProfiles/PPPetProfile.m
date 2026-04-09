@@ -14,6 +14,7 @@ static NSDate * PPDateFromValue(id value) {
     return nil;
 }
 
+
 @implementation PPPetVaccinationRecord
 
 - (instancetype)init {
@@ -29,11 +30,12 @@ static NSDate * PPDateFromValue(id value) {
     self = [self init];
     if (!self) return nil;
 
-    _recordID = [dictionary[@"recordID"] ?: [NSUUID UUID].UUIDString copy];
-    _name = [dictionary[@"name"] ?: @"" copy];
+    _recordID = [PPSafeString(dictionary[@"recordID"]) copy];
+    if (_recordID.length == 0) _recordID = [NSUUID UUID].UUIDString;
+    _name = [PPSafeString(dictionary[@"name"]) copy];
     _appliedAt = PPDateFromValue(dictionary[@"appliedAt"]);
     _nextDueDate = PPDateFromValue(dictionary[@"nextDueDate"]);
-    _notes = [dictionary[@"notes"] copy];
+    _notes = [PPSafeString(dictionary[@"notes"]) copy];
     return self;
 }
 
@@ -66,12 +68,14 @@ static NSDate * PPDateFromValue(id value) {
     self = [self init];
     if (!self) return nil;
 
-    _petID = [dictionary[@"petID"] ?: @"" copy];
-    _name = [dictionary[@"name"] ?: @"" copy];
-    _breed = [dictionary[@"breed"] ?: @"" copy];
-    _ageInMonths = [dictionary[@"ageInMonths"] integerValue];
-    _imageURL = [dictionary[@"imageURL"] copy];
-    _isDefaultPet = [dictionary[@"isDefaultPet"] boolValue];
+    _petID = [PPSafeString(dictionary[@"petID"]) copy];
+    _name = [PPSafeString(dictionary[@"name"]) copy];
+    _breed = [PPSafeString(dictionary[@"breed"]) copy];
+    _ageInMonths = [dictionary[@"ageInMonths"] respondsToSelector:@selector(integerValue)]
+                   ? [dictionary[@"ageInMonths"] integerValue] : 0;
+    _imageURL = [PPSafeString(dictionary[@"imageURL"]) copy];
+    _isDefaultPet = [dictionary[@"isDefaultPet"] respondsToSelector:@selector(boolValue)]
+                    ? [dictionary[@"isDefaultPet"] boolValue] : NO;
     _createdAt = PPDateFromValue(dictionary[@"createdAt"]);
     _updatedAt = PPDateFromValue(dictionary[@"updatedAt"]);
 

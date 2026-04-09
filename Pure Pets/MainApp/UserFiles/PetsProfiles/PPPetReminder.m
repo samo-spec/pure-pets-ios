@@ -14,6 +14,10 @@ static NSDate * PPReminderDateFromValue(id value) {
     return nil;
 }
 
+static inline NSString * PPReminderSafeString(id value) {
+    return [value isKindOfClass:NSString.class] ? value : @"";
+}
+
 @implementation PPPetReminder
 
 - (instancetype)init {
@@ -32,13 +36,16 @@ static NSDate * PPReminderDateFromValue(id value) {
     self = [self init];
     if (!self) return nil;
 
-    _reminderID = [dictionary[@"reminderID"] ?: @"" copy];
-    _petID = [dictionary[@"petID"] ?: @"" copy];
-    _title = [dictionary[@"title"] ?: @"" copy];
-    _type = [dictionary[@"type"] integerValue];
+    _reminderID = [PPReminderSafeString(dictionary[@"reminderID"]) copy];
+    _petID = [PPReminderSafeString(dictionary[@"petID"]) copy];
+    _title = [PPReminderSafeString(dictionary[@"title"]) copy];
+    _type = [dictionary[@"type"] respondsToSelector:@selector(integerValue)]
+            ? [dictionary[@"type"] integerValue] : 0;
     _fireDate = PPReminderDateFromValue(dictionary[@"fireDate"]);
-    _repeatRule = [dictionary[@"repeatRule"] copy];
-    _enabled = dictionary[@"enabled"] ? [dictionary[@"enabled"] boolValue] : YES;
+    _repeatRule = [PPReminderSafeString(dictionary[@"repeatRule"]) copy];
+    _enabled = dictionary[@"enabled"] != nil
+               && [dictionary[@"enabled"] respondsToSelector:@selector(boolValue)]
+               ? [dictionary[@"enabled"] boolValue] : YES;
     _createdAt = PPReminderDateFromValue(dictionary[@"createdAt"]);
     _updatedAt = PPReminderDateFromValue(dictionary[@"updatedAt"]);
     return self;

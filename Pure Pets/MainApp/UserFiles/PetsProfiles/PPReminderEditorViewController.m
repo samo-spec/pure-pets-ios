@@ -14,6 +14,7 @@
 #import "Language.h"
 #import "GM.h"
 #import "PPPetProfilesUIStyle.h"
+#import "PPReminderNotificationManager.h"
 
 // ─── Constants (ProfileVC pattern) ────────────────────────
 
@@ -26,6 +27,22 @@ static NSString *const kPPRemEdSelectorCellID   = @"PPRemEdSelectorCell";
 static NSString *const kPPRemEdDatePickerCellID = @"PPRemEdDatePickerCell";
 static NSString *const kPPRemEdSwitchCellID     = @"PPRemEdSwitchCell";
 
+// Repeat-rule values stored in Firestore (must stay stable)
+static NSString *const kPPRepeatNone    = @"";
+static NSString *const kPPRepeatDaily   = @"daily";
+static NSString *const kPPRepeatWeekly  = @"weekly";
+static NSString *const kPPRepeatMonthly = @"monthly";
+static NSString *const kPPRepeatYearly  = @"yearly";
+
+/// Returns a localized display string for a repeat-rule value.
+static NSString * PPRepeatRuleDisplayText(NSString *rule) {
+    if ([rule isEqualToString:kPPRepeatDaily])   return kLang(@"pet_reminder_repeat_daily")   ?: @"Every Day";
+    if ([rule isEqualToString:kPPRepeatWeekly])  return kLang(@"pet_reminder_repeat_weekly")  ?: @"Every Week";
+    if ([rule isEqualToString:kPPRepeatMonthly]) return kLang(@"pet_reminder_repeat_monthly") ?: @"Every Month";
+    if ([rule isEqualToString:kPPRepeatYearly])  return kLang(@"pet_reminder_repeat_yearly")  ?: @"Every Year";
+    return kLang(@"pet_reminder_repeat_none") ?: @"Never";
+}
+
 static inline UISemanticContentAttribute PPRemEdSemanticAttr(void) {
     return PPPetsCurrentSemanticAttribute();
 }
@@ -37,8 +54,9 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     PPRemEdSectionType    = 1,
     PPRemEdSectionPet     = 2,
     PPRemEdSectionDate    = 3,
-    PPRemEdSectionToggle  = 4,
-    PPRemEdSectionCount   = 5
+    PPRemEdSectionRepeat  = 4,
+    PPRemEdSectionToggle  = 5,
+    PPRemEdSectionCount   = 6
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -432,6 +450,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 @property (nonatomic, strong) NSArray<PPPetProfile *> *pets;
 @property (nonatomic, assign) NSInteger selectedPetIndex;
 @property (nonatomic, assign) BOOL petsLoaded;
+@property (nonatomic, assign) BOOL isSaving;
 
 @property (nonatomic, strong) UITableView            *tableView;
 @property (nonatomic, strong) UITextField             *titleField;
@@ -574,12 +593,12 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
     UIView *containerView = self.view;
 
-    UIView *topGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12],
-                                          [UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0],
+    UIView *topGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.93, 0.80, 0.69, 0.12),
+                                          PPPetsGlowFill(0.98, 0.82, 0.60, 1.0),
                                           0.10,
                                           64.0);
-    UIView *bottomGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06],
-                                             [UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0],
+    UIView *bottomGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.72, 0.45, 0.42, 0.06),
+                                             PPPetsGlowFill(0.68, 0.27, 0.33, 1.0),
                                              0.08,
                                              72.0);
 
@@ -681,8 +700,8 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     ambientGlow.layer.cornerRadius = 94.0;
     [cardView addSubview:ambientGlow];
 
-    UIView *secondaryGlow = PPPetsBuildGlowView([[UIColor whiteColor] colorWithAlphaComponent:0.40],
-                                                [[UIColor whiteColor] colorWithAlphaComponent:0.45],
+    UIView *secondaryGlow = PPPetsBuildGlowView(PPPetsCardOverlay(0.40),
+                                                PPPetsCardOverlay(0.45),
                                                 0.20,
                                                 22.0);
     secondaryGlow.layer.cornerRadius = 58.0;
@@ -696,7 +715,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+    eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.borderWidth = 1.0;
     eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -716,7 +735,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     iconHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
     iconHalo.layer.cornerRadius = 62.0;
     iconHalo.layer.borderWidth = 1.0;
-    iconHalo.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.48].CGColor;
+    iconHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     iconHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
     iconHalo.layer.shadowOpacity = 0.12;
     iconHalo.layer.shadowRadius = 22.0;
@@ -727,7 +746,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     symbolView.translatesAutoresizingMaskIntoConstraints = NO;
     symbolView.contentMode = UIViewContentModeCenter;
     symbolView.tintColor = PPPetsUIBrandColor();
-    symbolView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.66];
+    symbolView.backgroundColor = PPPetsCardOverlay(0.66);
     symbolView.layer.cornerRadius = 54.0;
     symbolView.layer.masksToBounds = YES;
     [iconHalo addSubview:symbolView];
@@ -754,7 +773,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     metaLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
     metaLabel.textAlignment = NSTextAlignmentCenter;
     metaLabel.numberOfLines = 2;
-    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
     metaLabel.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -869,7 +888,8 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
     NSString *dateText = self.datePicker.date ? [GM formattedDate:self.datePicker.date] : (kLang(@"pet_reminder_no_date") ?: @"No date set");
     NSString *statusText = self.enableSwitch.isOn ? (kLang(@"pet_reminder_enable") ?: @"Enabled") : (kLang(@"pet_reminder_disable") ?: @"Disabled");
-    self.heroMetaLabel.text = [NSString stringWithFormat:@"%@ · %@", dateText, statusText];
+    NSString *repeatText = PPRepeatRuleDisplayText(self.reminder.repeatRule ?: @"");
+    self.heroMetaLabel.text = [NSString stringWithFormat:@"%@ · %@ · %@", dateText, repeatText, statusText];
 
     NSString *symbolName = @"bell.badge.fill";
     switch (currentType) {
@@ -936,8 +956,13 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
                 ws.selectedPetIndex = 0;
             }
             [ws pp_refreshHeroHeader];
-            [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionPet]
-                        withRowAnimation:UITableViewRowAnimationFade];
+            CGPoint savedOffset = ws.tableView.contentOffset;
+            [UIView performWithoutAnimation:^{
+                [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionPet]
+                            withRowAnimation:UITableViewRowAnimationNone];
+            }];
+            [ws.tableView layoutIfNeeded];
+            ws.tableView.contentOffset = savedOffset;
         });
     }];
 }
@@ -976,6 +1001,9 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
         case PPRemEdSectionDate:
             return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_date_section") ?: @"Date & Time")
                                          subtitle:(kLang(@"pet_reminder_date_hint") ?: @"Set the next moment this reminder should surface in the care flow.")];
+        case PPRemEdSectionRepeat:
+            return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_repeat_section") ?: @"Repeat")
+                                         subtitle:(kLang(@"pet_reminder_repeat_hint") ?: @"Choose how often this reminder should repeat after it fires.")];
         case PPRemEdSectionToggle:
             return [self pp_sectionHeaderWithTitle:(kLang(@"pet_reminder_toggle_section") ?: @"Status")
                                          subtitle:(kLang(@"pet_reminder_toggle_hint") ?: @"Keep it active now or save it disabled until the schedule is ready.")];
@@ -1006,11 +1034,13 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    if (indexPath.section == 1) {
+    if (indexPath.section == PPRemEdSectionType) {
         return 83.0;
     }
     
-    else  if (indexPath.section == 3 || indexPath.section == 4) {
+    else if (indexPath.section == PPRemEdSectionDate ||
+             indexPath.section == PPRemEdSectionToggle ||
+             indexPath.section == PPRemEdSectionRepeat) {
         return 60.0;
     }
     
@@ -1080,6 +1110,15 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
                        switchControl:self.enableSwitch];
             return cell;
         }
+        case PPRemEdSectionRepeat: {
+            PPRemEdSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSelectorCellID forIndexPath:indexPath];
+            NSString *ruleDisplay = PPRepeatRuleDisplayText(self.reminder.repeatRule ?: @"");
+            [cell configureWithTitle:(kLang(@"pet_reminder_repeat_label") ?: @"Repeat")
+                               value:ruleDisplay
+                            iconName:@"repeat"];
+            cell.valueLabel.textColor = (self.reminder.repeatRule.length > 0) ? PPPetsUIBrandColor() : PPPetsUIPrimaryTextColor();
+            return cell;
+        }
         default:
             return [UITableViewCell new];
     }
@@ -1092,6 +1131,8 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
     if (indexPath.section == PPRemEdSectionPet) {
         [self pp_showPetPicker];
+    } else if (indexPath.section == PPRemEdSectionRepeat) {
+        [self pp_showRepeatPicker];
     }
 }
 
@@ -1118,8 +1159,13 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
         NSString *name = pet.name.length ? pet.name : [NSString stringWithFormat:@"Pet %lu", (unsigned long)i + 1];
         UIAlertAction *act = [UIAlertAction actionWithTitle:name style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *a) {
             ws.selectedPetIndex = (NSInteger)i;
-            [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionPet]
-                        withRowAnimation:UITableViewRowAnimationFade];
+            CGPoint savedOffset = ws.tableView.contentOffset;
+            [UIView performWithoutAnimation:^{
+                [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionPet]
+                            withRowAnimation:UITableViewRowAnimationNone];
+            }];
+            [ws.tableView layoutIfNeeded];
+            ws.tableView.contentOffset = savedOffset;
             [ws pp_refreshHeroHeader];
         }];
         if ((NSInteger)i == self.selectedPetIndex) {
@@ -1136,6 +1182,60 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     [self presentViewController:sheet animated:YES completion:nil];
 }
 
+#pragma mark - Repeat Picker
+
+- (void)pp_showRepeatPicker {
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:(kLang(@"pet_reminder_repeat_label") ?: @"Repeat")
+                                                                   message:(kLang(@"pet_reminder_repeat_hint") ?: @"Choose how often this reminder should repeat.")
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+
+    NSArray<NSDictionary *> *options = @[
+        @{ @"key": kPPRepeatNone,    @"icon": @"xmark.circle",       @"label": kLang(@"pet_reminder_repeat_none")    ?: @"Never" },
+        @{ @"key": kPPRepeatDaily,   @"icon": @"sunrise.fill",       @"label": kLang(@"pet_reminder_repeat_daily")   ?: @"Every Day" },
+        @{ @"key": kPPRepeatWeekly,  @"icon": @"calendar.circle",    @"label": kLang(@"pet_reminder_repeat_weekly")  ?: @"Every Week" },
+        @{ @"key": kPPRepeatMonthly, @"icon": @"calendar.badge.plus",@"label": kLang(@"pet_reminder_repeat_monthly") ?: @"Every Month" },
+        @{ @"key": kPPRepeatYearly,  @"icon": @"gift.fill",          @"label": kLang(@"pet_reminder_repeat_yearly")  ?: @"Every Year" },
+    ];
+
+    NSString *currentRule = self.reminder.repeatRule ?: @"";
+    __weak typeof(self) ws = self;
+
+    for (NSDictionary *opt in options) {
+        NSString *key   = opt[@"key"];
+        NSString *label = opt[@"label"];
+        NSString *icon  = opt[@"icon"];
+        UIAlertAction *action = [UIAlertAction actionWithTitle:label
+                                                         style:UIAlertActionStyleDefault
+                                                       handler:^(__unused UIAlertAction *a) {
+            ws.reminder.repeatRule = key;
+            CGPoint savedOffset = ws.tableView.contentOffset;
+            [UIView performWithoutAnimation:^{
+                [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPRemEdSectionRepeat]
+                            withRowAnimation:UITableViewRowAnimationNone];
+            }];
+            [ws.tableView layoutIfNeeded];
+            ws.tableView.contentOffset = savedOffset;
+            [ws pp_refreshHeroHeader];
+        }];
+        [action setValue:[[UIImage systemImageNamed:icon] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forKey:@"image"];
+        if ([currentRule isEqualToString:key]) {
+            [action setValue:[UIImage systemImageNamed:@"checkmark.circle.fill"] forKey:@"image"];
+        }
+        [sheet addAction:action];
+    }
+
+    [sheet addAction:[UIAlertAction actionWithTitle:(kLang(@"Cancel") ?: @"Cancel")
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+
+    if (sheet.popoverPresentationController) {
+        sheet.popoverPresentationController.sourceView = self.view;
+        sheet.popoverPresentationController.sourceRect = CGRectMake(self.view.bounds.size.width / 2.0,
+                                                                    self.view.bounds.size.height / 2.0, 1, 1);
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
+}
+
 #pragma mark - Save
 
 - (void)pp_handleBack {
@@ -1147,6 +1247,8 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 }
 
 - (void)pp_save {
+    if (self.isSaving) return;
+
     NSString *title = [self.titleField.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (title.length == 0) {
         CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
@@ -1169,17 +1271,23 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     self.reminder.petID    = self.pets[self.selectedPetIndex].petID ?: @"";
     self.reminder.fireDate = self.datePicker.date;
     self.reminder.enabled  = self.enableSwitch.isOn;
+    // repeatRule is already set by the picker — no extra assignment needed
 
     [PPHUD showIndeterminateIn:self.view title:(kLang(@"please_wait") ?: @"Saving…") subtitle:nil];
     self.navigationItem.rightBarButtonItem.enabled = NO;
+    self.isSaving = YES;
 
     __weak typeof(self) ws = self;
     [[UserManager sharedManager] savePetReminder:self.reminder completion:^(NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
+            ws.isSaving = NO;
             ws.navigationItem.rightBarButtonItem.enabled = YES;
             if (error) {
                 [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:error.localizedDescription];
             } else {
+                // Schedule (or cancel) local notification
+                [[PPReminderNotificationManager sharedManager] scheduleNotificationForReminder:ws.reminder];
+
                 [PPHUD showSuccess:(kLang(@"Done") ?: @"Saved") subtitle:nil];
                 dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                     [ws.navigationController popViewControllerAnimated:YES];
@@ -1199,6 +1307,16 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
 
 - (void)pp_controlValueChanged:(id)sender {
     [self pp_refreshHeroHeader];
+}
+
+#pragma mark - Dark Mode
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplyCanvasBackground(self, self.tableView);
+        PPPetsRefreshDynamicLayerColors(self.tableView);
+    }
 }
 
 @end

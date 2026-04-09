@@ -301,6 +301,10 @@ self.window.semanticContentAttribute = attr;
 - (void)updateUserOnlineStatus:(BOOL)isOnline {
     FIRUser *authUser = [FIRAuth auth].currentUser;
     if (!authUser) return;
+    if (!authUser.uid.length) {
+        NSLog(@"[SceneDelegate] Skipping: missing UID for documentWithPath:");
+        return;
+    }
     
     FIRDocumentReference *userRef = [[[FIRFirestore firestore] collectionWithPath:@"UserPresence"]
                                      documentWithPath:authUser.uid];

@@ -192,7 +192,7 @@
     self.responseTextView.layer.borderColor = [UIColor systemGray4Color].CGColor;
     self.responseTextView.layer.borderWidth = 0.0;
     self.responseTextView.layer.cornerRadius = 25.0;
-    self.responseTextView.backgroundColor = UIColor.whiteColor;
+    self.responseTextView.backgroundColor = AppForgroundColr;
     self.responseTextView.textAlignment = [Language languageVal] == 0 ? NSTextAlignmentLeft : NSTextAlignmentRight;
     
     // ✨ Optional shadow
@@ -200,7 +200,7 @@
     self.responseTextView.layer.shadowOpacity = 0.1;
     self.responseTextView.layer.shadowOffset = CGSizeMake(0, 1);
     self.responseTextView.layer.shadowRadius = 3;
-    self.responseTextView.textColor = [UIColor darkGrayColor];
+    self.responseTextView.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     
     [self.view addSubview:self.responseTextView];
 

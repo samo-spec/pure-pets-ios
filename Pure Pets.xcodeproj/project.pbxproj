@@ -598,6 +598,7 @@
 		F2B1172B2CEB399A00D4F847 /* ACSimulatorRemoteNotificationsService.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B117262CEB399A00D4F847 /* ACSimulatorRemoteNotificationsService.m */; };
 		F2B1172C2CEB399A00D4F847 /* UIApplication+SimulatorRemoteNotifications.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B117292CEB399A00D4F847 /* UIApplication+SimulatorRemoteNotifications.m */; };
 		F2B1417B2DA3812900F6853E /* ReminderManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B1417A2DA3812900F6853E /* ReminderManager.m */; };
+		6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */; };
 		F2B1A6432E70344B0019FC7C /* PPColorUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B1A6422E70344B0019FC7C /* PPColorUtils.m */; };
 		F2B5B1962CC753AA00ABAC04 /* StoriesReusableView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B5B1952CC753AA00ABAC04 /* StoriesReusableView.m */; };
 		F2B5B9592E1E54B7003F463C /* DeliverySwitchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2B5B9582E1E54B7003F463C /* DeliverySwitchCell.m */; };
@@ -1879,6 +1880,8 @@
 		F2B117292CEB399A00D4F847 /* UIApplication+SimulatorRemoteNotifications.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIApplication+SimulatorRemoteNotifications.m"; sourceTree = "<group>"; };
 		F2B141792DA3811A00F6853E /* ReminderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ReminderManager.h; sourceTree = "<group>"; };
 		F2B1417A2DA3812900F6853E /* ReminderManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ReminderManager.m; sourceTree = "<group>"; };
+		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
+		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
 		F2B1A6412E70343E0019FC7C /* PPColorUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPColorUtils.h; sourceTree = "<group>"; };
 		F2B1A6422E70344B0019FC7C /* PPColorUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPColorUtils.m; sourceTree = "<group>"; };
 		F2B5B1942CC753AA00ABAC04 /* StoriesReusableView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = StoriesReusableView.h; sourceTree = "<group>"; };
@@ -2621,6 +2624,8 @@
 			children = (
 				F2B141792DA3811A00F6853E /* ReminderManager.h */,
 				F2B1417A2DA3812900F6853E /* ReminderManager.m */,
+				0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */,
+				7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */,
 				F2E7C8122D7D5592002383C2 /* ArchivesManager.h */,
 				F2E7C8102D7D5584002383C2 /* ArchivesManager.m */,
 				F2F33FF92D79128500BDBD25 /* ChildsDataManager.h */,
@@ -5196,6 +5201,7 @@
 				F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */,
 				F27146712CCE6B5300F7F3BA /* UIView+XLFormAdditions.m in Sources */,
 				F2B1417B2DA3812900F6853E /* ReminderManager.m in Sources */,
+				6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */,
 				F27146732CCE6B5300F7F3BA /* XLFormSectionDescriptor.m in Sources */,
 				F209567F2F856824007C4ABA /* PPPetProfileEditorViewController.m in Sources */,
 				F27146742CCE6B5300F7F3BA /* XLFormImageCell.m in Sources */,
@@ -5888,7 +5894,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++14";
@@ -5952,7 +5958,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++14";
@@ -6201,7 +6207,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
@@ -6219,7 +6225,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
@@ -6236,7 +6242,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";
@@ -6253,7 +6259,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Pure Pets uses your location to find nearby pet stores, branches, and delivery areas.";
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-BirdUITests";

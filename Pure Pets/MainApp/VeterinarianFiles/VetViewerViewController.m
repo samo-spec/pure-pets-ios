@@ -11,6 +11,14 @@
 #import "AppManager.h"
 #import "UserModel.h"
 
+@interface VetViewerViewController ()
+@property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, strong) UIView *topHeaderView;
+@property (nonatomic, strong) UILabel *topHeaderTitleLabel;
+@property (nonatomic, strong) UIImageView *headerImageView;
+@property (nonatomic, copy) NSArray<UIButton *> *actionButtons;
+@end
+
 @implementation VetViewerViewController
 
 - (void)viewDidLoad {
@@ -21,9 +29,24 @@
     self.view.clipsToBounds = YES;
 
     [self setupForm];
-    
+    [self buildCloseButton];
+    [self addTopHeader];
+    [self addBottomButtonsIfNeeded];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    [self pp_layoutChrome];
+}
+
+- (void)buildCloseButton
+{
+    if (self.closeButton) {
+        return;
+    }
+
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
-    btn.frame = CGRectMake(10, 10, 40, 40);
     btn.backgroundColor = UIColor.clearColor;
     btn.clipsToBounds = YES;
     [btn setImage:[UIImage imageNamed:@"pulldown"] forState:UIControlStateNormal];
@@ -31,38 +54,32 @@
     btn.imageEdgeInsets = UIEdgeInsetsMake(10, 10, 10, 10);
     [btn addTarget:self action:@selector(closeMe) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:btn];
-
-    [self addTopHeader];
+    self.closeButton = btn;
 }
 
 - (void)addTopHeader {
-    UIView *parentView = self.view;
-    CGFloat width = 200;
-    CGFloat height = 44;
-    CGFloat x = parentView.frame.size.width - width;
-    CGFloat y = 0;
+    if (self.topHeaderView) {
+        self.topHeaderTitleLabel.text = self.vet.title;
+        return;
+    }
 
-    UIView *customSubView = [[UIView alloc] initWithFrame:CGRectMake(x, y, width, height)];
+    UIView *customSubView = [[UIView alloc] initWithFrame:CGRectZero];
     customSubView.backgroundColor = GM.appPrimaryColor;
     customSubView.layer.cornerRadius = 22;
     customSubView.layer.maskedCorners = kCALayerMinXMaxYCorner;
     customSubView.clipsToBounds = YES;
 
-    UILabel *titleLabel = [[UILabel alloc] initWithFrame:customSubView.bounds];
+    UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     titleLabel.text = self.vet.title;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.font = [GM boldFontWithSize:18];
     titleLabel.textColor = UIColor.whiteColor;
 
     [customSubView addSubview:titleLabel];
-    [parentView addSubview:customSubView];
-}
+    [self.view addSubview:customSubView];
 
-- (void)viewWillLayoutSubviews {
-    [super viewWillLayoutSubviews];
-    [UIView animateWithDuration:0.3 animations:^{
-        [self addBottomButtonsIfNeeded];
-    }];
+    self.topHeaderView = customSubView;
+    self.topHeaderTitleLabel = titleLabel;
 }
 
 - (void)closeMe {
@@ -83,11 +100,11 @@
     self.form = form;
 
     if (self.vet.logoURL.length > 0) {
-        UIImageView *imageView = [[UIImageView alloc] initWithFrame:CGRectMake(16, 8, self.view.frame.size.width - 32, 250)];
-        imageView.contentMode = UIViewContentModeScaleAspectFill;
-        imageView.clipsToBounds = YES;
-        [GM setImageFromUrlString:self.vet.logoURL imageView:imageView phImage:@"placeholder"];
-        self.tableView.tableHeaderView = imageView;
+        self.headerImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
+        self.headerImageView.contentMode = UIViewContentModeScaleAspectFill;
+        self.headerImageView.clipsToBounds = YES;
+        [GM setImageFromUrlString:self.vet.logoURL imageView:self.headerImageView phImage:@"placeholder"];
+        self.tableView.tableHeaderView = self.headerImageView;
     }
 }
 
@@ -100,29 +117,24 @@
 #pragma mark - Buttons
 
 - (void)addBottomButtonsIfNeeded {
-    if (self.vet.type == 0) return;
-
-    CGFloat buttonSize = 60;
-    CGFloat spacing = 20;
-
-    CGFloat totalWidth = (buttonSize * 4) + (spacing * 3);
-    CGFloat startX = (self.view.bounds.size.width - totalWidth) / 2;
-    CGFloat yPosition = self.view.bounds.size.height - buttonSize - 40;
+    if (self.vet.type == 0 || self.actionButtons.count > 0) return;
 
     NSArray *icons = @[@"phone.fill", @"message.fill", @"location.fill", @"square.and.arrow.up"];
     NSArray *selectors = @[@"callTapped", @"whatsappTapped", @"locationTapped", @"shareTapped"];
+    NSMutableArray<UIButton *> *buttons = [NSMutableArray arrayWithCapacity:icons.count];
 
-    for (int i = 0; i < 4; i++) {
+    for (NSInteger i = 0; i < icons.count; i++) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
-        btn.frame = CGRectMake(startX + (i * (buttonSize + spacing)), yPosition, buttonSize, buttonSize);
         btn.backgroundColor = GM.appPrimaryColor;
-        btn.layer.cornerRadius = buttonSize / 2;
         btn.clipsToBounds = YES;
         [btn setImage:[UIImage systemImageNamed:icons[i]] forState:UIControlStateNormal];
         btn.tintColor = UIColor.whiteColor;
         [btn addTarget:self action:NSSelectorFromString(selectors[i]) forControlEvents:UIControlEventTouchUpInside];
         [self.view addSubview:btn];
+        [buttons addObject:btn];
     }
+
+    self.actionButtons = buttons.copy;
 }
 
 #pragma mark - Actions
@@ -157,10 +169,82 @@
         activityVC.popoverPresentationController.sourceView = self.view;
         activityVC.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
                                                                          CGRectGetMidY(self.view.bounds),
-                                                                         0, 0);
+                                                                         0,
+                                                                         0);
         activityVC.popoverPresentationController.permittedArrowDirections = 0;
     }
     [self presentViewController:activityVC animated:YES completion:nil];
+}
+
+#pragma mark - Private
+
+- (void)pp_layoutChrome
+{
+    UIEdgeInsets safeInsets = self.view.safeAreaInsets;
+    CGFloat viewWidth = CGRectGetWidth(self.view.bounds);
+    CGFloat viewHeight = CGRectGetHeight(self.view.bounds);
+
+    self.closeButton.frame = CGRectMake(12.0,
+                                        safeInsets.top + 8.0,
+                                        44.0,
+                                        44.0);
+
+    CGFloat headerWidth = MIN(MAX(viewWidth * 0.46, 180.0), 240.0);
+    self.topHeaderView.frame = CGRectMake(viewWidth - headerWidth,
+                                          safeInsets.top,
+                                          headerWidth,
+                                          46.0);
+    self.topHeaderTitleLabel.frame = self.topHeaderView.bounds;
+
+    [self pp_updateTableHeaderIfNeededForWidth:viewWidth];
+    [self pp_layoutBottomButtonsForWidth:viewWidth height:viewHeight safeInsets:safeInsets];
+}
+
+- (void)pp_updateTableHeaderIfNeededForWidth:(CGFloat)viewWidth
+{
+    if (!self.headerImageView) {
+        return;
+    }
+
+    CGFloat headerWidth = MAX(viewWidth - 32.0, 0.0);
+    CGFloat headerHeight = MIN(MAX(viewWidth * 0.56, 220.0), 320.0);
+    CGRect headerFrame = CGRectMake(16.0, 8.0, headerWidth, headerHeight);
+
+    if (!CGRectEqualToRect(self.headerImageView.frame, headerFrame)) {
+        self.headerImageView.frame = headerFrame;
+        self.tableView.tableHeaderView = self.headerImageView;
+    }
+}
+
+- (void)pp_layoutBottomButtonsForWidth:(CGFloat)viewWidth height:(CGFloat)viewHeight safeInsets:(UIEdgeInsets)safeInsets
+{
+    if (self.actionButtons.count == 0) {
+        self.tableView.contentInset = UIEdgeInsetsZero;
+        self.tableView.scrollIndicatorInsets = UIEdgeInsetsZero;
+        return;
+    }
+
+    NSInteger buttonsPerRow = viewWidth >= 420.0 ? 4 : 2;
+    CGFloat buttonSize = viewWidth >= 768.0 ? 66.0 : 58.0;
+    CGFloat spacing = viewWidth >= 768.0 ? 20.0 : 14.0;
+    NSInteger rows = (NSInteger)ceil((CGFloat)self.actionButtons.count / (CGFloat)buttonsPerRow);
+    CGFloat totalWidth = (buttonSize * buttonsPerRow) + (spacing * MAX(buttonsPerRow - 1, 0));
+    CGFloat startX = floor((viewWidth - totalWidth) * 0.5);
+    CGFloat totalHeight = (buttonSize * rows) + (spacing * MAX(rows - 1, 0));
+    CGFloat startY = viewHeight - safeInsets.bottom - 24.0 - totalHeight;
+
+    [self.actionButtons enumerateObjectsUsingBlock:^(UIButton * _Nonnull button, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSInteger row = (NSInteger)idx / buttonsPerRow;
+        NSInteger column = (NSInteger)idx % buttonsPerRow;
+        CGFloat x = startX + (column * (buttonSize + spacing));
+        CGFloat y = startY + (row * (buttonSize + spacing));
+        button.frame = CGRectMake(x, y, buttonSize, buttonSize);
+        button.layer.cornerRadius = buttonSize * 0.5;
+    }];
+
+    CGFloat bottomInset = totalHeight + 36.0 + safeInsets.bottom;
+    self.tableView.contentInset = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
+    self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
 }
 
 @end

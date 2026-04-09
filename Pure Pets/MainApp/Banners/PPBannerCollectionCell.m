@@ -406,11 +406,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _characterImageView.clipsToBounds = YES;
     [_cardSurface addSubview:_characterImageView];
 
-    UIButton *cardTapButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    cardTapButton.translatesAutoresizingMaskIntoConstraints = NO;
-    cardTapButton.backgroundColor = UIColor.clearColor;
-    [cardTapButton addTarget:self action:@selector(cardTapped:) forControlEvents:UIControlEventTouchUpInside];
-    [_cardSurface addSubview:cardTapButton];
+     
 
     _contentLeadingLTRConstraint = [self.contentPanelView.leadingAnchor constraintEqualToAnchor:_cardSurface.leadingAnchor constant:16.0];
     _contentTrailingRTLConstraint = [self.contentPanelView.trailingAnchor constraintEqualToAnchor:_cardSurface.trailingAnchor constant:-16.0];
@@ -440,10 +436,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [_backgroundTintView.topAnchor constraintEqualToAnchor:_cardSurface.topAnchor],
         [_backgroundTintView.bottomAnchor constraintEqualToAnchor:_cardSurface.bottomAnchor],
 
-        [cardTapButton.leadingAnchor constraintEqualToAnchor:_cardSurface.leadingAnchor],
-        [cardTapButton.trailingAnchor constraintEqualToAnchor:_cardSurface.trailingAnchor],
-        [cardTapButton.topAnchor constraintEqualToAnchor:_cardSurface.topAnchor],
-        [cardTapButton.bottomAnchor constraintEqualToAnchor:_cardSurface.bottomAnchor],
+       
 
         [_contentPanelView.topAnchor constraintEqualToAnchor:_cardSurface.topAnchor constant:12.0],
         [_contentPanelView.bottomAnchor constraintLessThanOrEqualToAnchor:_cardSurface.bottomAnchor constant:-12.0],
@@ -749,7 +742,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     }
 
     UIColor *primaryText = AppPrimaryTextClr ?: [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0];
-    UIColor *secondaryText = UIColor.whiteColor;
+    UIColor *secondaryText = AppForgroundColr;
     NSString *symbolName = PPPromoSymbolNameForTapAction(tapAction, isPrimary);
 
     UIImage *icon = nil;
@@ -783,10 +776,10 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         }];
 
         if (isPrimary) {
-            cfg.baseBackgroundColor = [UIColor colorWithWhite:1 alpha:0.97];
+            cfg.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.67];
             cfg.baseForegroundColor = primaryText;
         } else {
-            cfg.baseBackgroundColor = [UIColor colorWithWhite:1 alpha:0.14];
+            cfg.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.14];
             cfg.baseForegroundColor = secondaryText;
         }
 

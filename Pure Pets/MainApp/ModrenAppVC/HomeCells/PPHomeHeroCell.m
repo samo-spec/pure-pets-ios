@@ -34,12 +34,22 @@
 @property (nonatomic, strong) UIButton *actionButton;
 @property (nonatomic, strong) NSLayoutConstraint *actionButtonHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *actionButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *orbViewAWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *orbViewAHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *headlineTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *supportTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *supportMaxWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *lottieWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *lottieHeightConstraint;
 @property (nonatomic, copy) NSString *paletteLocationSeed;
 @property (nonatomic, strong) LOTAnimationView *lottieHeaderView;
 @property (nonatomic, copy) NSString *currentLottiePath;
 @property (nonatomic, assign) NSInteger lottieLoopToken;
 @property (nonatomic, assign) PPHomeHeroLocationState currentLocationState;
 @property (nonatomic, copy) NSString *lastAnimationSignature;
+@property (nonatomic, assign) CGFloat lastResolvedLayoutWidth;
+@property (nonatomic, copy) NSString *currentGreetingText;
+@property (nonatomic, copy) NSString *currentUserNameText;
 
 // Order peek strip (one-line banner below hero card)
 @property (nonatomic, strong) UIControl *orderPeekStrip;
@@ -123,6 +133,27 @@ static inline CGPoint PPLerpPoint(CGPoint start, CGPoint end, CGFloat progress)
 {
     return CGPointMake(PPLerpFloat(start.x, end.x, progress),
                        PPLerpFloat(start.y, end.y, progress));
+}
+
+static inline CGFloat PPHomeHeroResolvedWidth(CGFloat width)
+{
+    return width > 0.0 ? width : UIScreen.mainScreen.bounds.size.width;
+}
+
+static inline BOOL PPHomeHeroWidthIsTablet(CGFloat width)
+{
+    return PPHomeHeroResolvedWidth(width) >= 700.0;
+}
+
+static inline BOOL PPHomeHeroWidthIsWidePhone(CGFloat width)
+{
+    width = PPHomeHeroResolvedWidth(width);
+    return width >= 430.0 && width < 700.0;
+}
+
+static inline BOOL PPHomeHeroWidthIsCompact(CGFloat width)
+{
+    return PPHomeHeroResolvedWidth(width) < 350.0;
 }
 
 static NSArray<UIColor *> *PPInterpolatePaletteStops(NSArray<UIColor *> *fromColors,
@@ -252,7 +283,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.headlineLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.headlineLabel.font = [GM boldFontWithSize:32] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
     self.headlineLabel.textColor = UIColor.whiteColor;
-   // self.headlineLabel.backgroundColor = UIColor.redColor;
+    self.headlineLabel.adjustsFontSizeToFitWidth = YES;
+    self.headlineLabel.minimumScaleFactor = 0.76;
+    self.headlineLabel.allowsDefaultTighteningForTruncation = YES;
 
     [self.heroSurfaceView addSubview:self.headlineLabel];
 
@@ -262,6 +295,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.supportLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.supportLabel.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
     self.supportLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.78];
+    self.supportLabel.adjustsFontSizeToFitWidth = YES;
+    self.supportLabel.minimumScaleFactor = 0.84;
     [self.heroSurfaceView addSubview:self.supportLabel];
 
     self.locationControl = [[UIControl alloc] init];
@@ -407,6 +442,17 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     // ── Order Peek Strip (one-line banner below hero card) ──
     [self pp_buildOrderPeekStrip];
 
+    self.orbViewAWidthConstraint = [self.orbViewA.widthAnchor constraintEqualToConstant:168.0];
+    self.orbViewAHeightConstraint = [self.orbViewA.heightAnchor constraintEqualToConstant:168.0];
+    self.headlineTrailingConstraint =
+        [self.headlineLabel.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-168.0];
+    self.supportMaxWidthConstraint =
+        [self.supportLabel.widthAnchor constraintLessThanOrEqualToConstant:190.0];
+    self.supportTrailingConstraint =
+        [self.supportLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-126.0];
+    self.lottieWidthConstraint = [self.lottieHeaderView.widthAnchor constraintEqualToConstant:132.0];
+    self.lottieHeightConstraint = [self.lottieHeaderView.heightAnchor constraintEqualToConstant:132.0];
+
     [NSLayoutConstraint activateConstraints:@[
         [self.heroShadowView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [self.heroShadowView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -418,8 +464,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.heroSurfaceView.trailingAnchor constraintEqualToAnchor:self.heroShadowView.trailingAnchor],
         [self.heroSurfaceView.bottomAnchor constraintEqualToAnchor:self.heroShadowView.bottomAnchor],
 
-        [self.orbViewA.widthAnchor constraintEqualToConstant:168.0],
-        [self.orbViewA.heightAnchor constraintEqualToConstant:168.0],
+        self.orbViewAWidthConstraint,
+        self.orbViewAHeightConstraint,
         [self.orbViewA.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:28.0],
         [self.orbViewA.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-28.0],
 
@@ -447,12 +493,12 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
         [self.headlineLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
         [self.headlineLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:22.0],
-        [self.headlineLabel.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-168.0],
+        self.headlineTrailingConstraint,
 
         [self.supportLabel.leadingAnchor constraintEqualToAnchor:self.headlineLabel.leadingAnchor],
         [self.supportLabel.topAnchor constraintEqualToAnchor:self.headlineLabel.bottomAnchor constant:10.0],
-        [self.supportLabel.widthAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.widthAnchor multiplier:0.52],
-        [self.supportLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-126.0],
+        self.supportMaxWidthConstraint,
+        self.supportTrailingConstraint,
 
         [self.locationControl.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
         [self.locationControl.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
@@ -502,8 +548,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.actionButton.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
 
         [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12.0],
-        [self.lottieHeaderView.widthAnchor constraintEqualToConstant:132],
-        [self.lottieHeaderView.heightAnchor constraintEqualToConstant:132],
+        self.lottieWidthConstraint,
+        self.lottieHeightConstraint,
         [self.lottieHeaderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
      ]];
 
@@ -557,9 +603,62 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     return p;
 }
 
+- (void)pp_updateAdaptiveLayoutMetrics
+{
+    if (!self.headlineTrailingConstraint || !self.lottieWidthConstraint) {
+        return;
+    }
+
+    CGFloat width = CGRectGetWidth(self.contentView.bounds);
+    if (width <= 0.0) {
+        width = CGRectGetWidth(self.bounds);
+    }
+    width = PPHomeHeroResolvedWidth(width);
+
+    if (fabs(width - self.lastResolvedLayoutWidth) < 0.5) {
+        return;
+    }
+    self.lastResolvedLayoutWidth = width;
+
+    BOOL compact = PPHomeHeroWidthIsCompact(width);
+    BOOL widePhone = PPHomeHeroWidthIsWidePhone(width);
+    BOOL tablet = PPHomeHeroWidthIsTablet(width);
+
+    CGFloat lottieSize = tablet ? 164.0 : (widePhone ? 142.0 : (compact ? 104.0 : 128.0));
+    CGFloat orbSize = tablet ? 196.0 : (widePhone ? 176.0 : (compact ? 136.0 : 168.0));
+    CGFloat reservedTrailingWidth = lottieSize + (tablet ? 34.0 : (compact ? 16.0 : 24.0));
+    reservedTrailingWidth = MIN(reservedTrailingWidth, MAX(112.0, width - 140.0));
+    CGFloat supportWidth = tablet ? MIN(width * 0.42, 336.0) : (widePhone ? 230.0 : (compact ? 154.0 : 186.0));
+
+    self.orbViewAWidthConstraint.constant = orbSize;
+    self.orbViewAHeightConstraint.constant = orbSize;
+    self.lottieWidthConstraint.constant = lottieSize;
+    self.lottieHeightConstraint.constant = lottieSize;
+    self.headlineTrailingConstraint.constant = -reservedTrailingWidth;
+    self.supportTrailingConstraint.constant = -(MAX(92.0, reservedTrailingWidth - 28.0));
+    self.supportMaxWidthConstraint.constant = supportWidth;
+
+    CGFloat primaryHeadlineSize = tablet ? 36.0 : (widePhone ? 34.0 : (compact ? 27.0 : 32.0));
+    CGFloat supportFontSize = tablet ? 14.0 : (widePhone ? 13.0 : (compact ? 11.5 : 12.5));
+    CGFloat locationTitleSize = tablet ? 15.0 : (compact ? 13.0 : 14.0);
+    CGFloat locationStatusSize = tablet ? 12.0 : (compact ? 10.5 : 11.5);
+
+    self.supportLabel.font = [GM MidFontWithSize:supportFontSize] ?: [UIFont systemFontOfSize:supportFontSize weight:UIFontWeightMedium];
+    self.locationTitleLabel.font = [GM boldFontWithSize:locationTitleSize] ?: [UIFont systemFontOfSize:locationTitleSize weight:UIFontWeightSemibold];
+    self.locationStatusLabel.font = [GM boldFontWithSize:locationStatusSize] ?: [UIFont systemFontOfSize:locationStatusSize weight:UIFontWeightSemibold];
+    self.headlineLabel.font = [GM boldFontWithSize:primaryHeadlineSize] ?: [UIFont systemFontOfSize:primaryHeadlineSize weight:UIFontWeightBold];
+
+    if (self.currentGreetingText.length > 0 || self.currentUserNameText.length > 0) {
+        self.headlineLabel.attributedText =
+            [self pp_attributedHeadlineWithGreeting:self.currentGreetingText
+                                           userName:self.currentUserNameText];
+    }
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+    [self pp_updateAdaptiveLayoutMetrics];
 
    
     
@@ -586,6 +685,21 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.orderPeekStrip.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
 }
 
+- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    [super applyLayoutAttributes:layoutAttributes];
+    [self pp_updateAdaptiveLayoutMetrics];
+    [self setNeedsLayout];
+    [self.contentView setNeedsLayout];
+    [self layoutIfNeeded];
+}
+
+- (void)setBounds:(CGRect)bounds
+{
+    [super setBounds:bounds];
+    [self pp_updateAdaptiveLayoutMetrics];
+}
+
 - (void)prepareForReuse
 {
     [super prepareForReuse];
@@ -594,6 +708,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.onLocationActionTap = nil;
     self.onOrderPeekTap = nil;
     self.lastAnimationSignature = nil;
+    self.currentGreetingText = @"";
+    self.currentUserNameText = @"";
+    self.lastResolvedLayoutWidth = 0.0;
     self.paletteLocationSeed = @"";
     self.locationTitleLabel.text = @"";
     self.locationMetaLabel.text = @"";
@@ -646,6 +763,14 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     NSString *safeUserName = PPTrimHeroLine(userName);
     NSString *safeLocation = PPTrimHeroLine(location);
     NSString *resolvedActionTitle = PPSafeString(actionTitle);
+    UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
+
+    self.semanticContentAttribute = semantic;
+    self.contentView.semanticContentAttribute = semantic;
+    self.heroSurfaceView.semanticContentAttribute = semantic;
+    self.locationControl.semanticContentAttribute = semantic;
+    self.currentGreetingText = safeGreeting;
+    self.currentUserNameText = safeUserName;
 
     self.paletteLocationSeed = safeLocation;
     self.currentLocationState = locationState;
@@ -766,8 +891,15 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         secondLine = [tailLines componentsJoinedByString:@" "];
     }
 
-    UIFont *firstLineFont = [GM boldFontWithSize:32] ?: [UIFont systemFontOfSize:32.0 weight:UIFontWeightBold];
-    UIFont *secondLineFont = [GM boldFontWithSize:22] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightSemibold];
+    CGFloat width = PPHomeHeroResolvedWidth(CGRectGetWidth(self.contentView.bounds));
+    BOOL compact = PPHomeHeroWidthIsCompact(width);
+    BOOL widePhone = PPHomeHeroWidthIsWidePhone(width);
+    BOOL tablet = PPHomeHeroWidthIsTablet(width);
+    CGFloat firstLineSize = tablet ? 36.0 : (widePhone ? 34.0 : (compact ? 27.0 : 32.0));
+    CGFloat secondLineSize = tablet ? 24.0 : (widePhone ? 23.0 : (compact ? 19.0 : 22.0));
+
+    UIFont *firstLineFont = [GM boldFontWithSize:firstLineSize] ?: [UIFont systemFontOfSize:firstLineSize weight:UIFontWeightBold];
+    UIFont *secondLineFont = [GM boldFontWithSize:secondLineSize] ?: [UIFont systemFontOfSize:secondLineSize weight:UIFontWeightSemibold];
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
     paragraph.alignment = Language.alignmentForCurrentLanguage;
     paragraph.lineBreakMode = NSLineBreakByWordWrapping;
@@ -1573,7 +1705,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         return @"Man playing with a dog";
     }
     if (hour < 20) {
-        return @"Loader cat new";//Boy Giving Food To Rabbit New //Loader cat  //Loader cat new
+        return @"Womanlovingpetcats";//Boy Giving Food To Rabbit New //Loader cat  //Loader cat new
     }
     if (hour < 23) {
         return @"evening chair cat and girl";

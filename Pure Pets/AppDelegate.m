@@ -31,6 +31,8 @@
     [SDImageCache sharedImageCache].config.shouldUseWeakMemoryCache = NO;
     [SDImageCache sharedImageCache].config.maxDiskSize = 300 * 1024 * 1024; // 300 MB
     [SDImageCache sharedImageCache].config.maxMemoryCost = 200 * 1024 * 1024; // 200 MB
+    [SDImageCache sharedImageCache].config.shouldRemoveExpiredDataWhenEnterBackground = YES;
+    [SDImageCache sharedImageCache].config.shouldRemoveExpiredDataWhenTerminate = YES;
 
 
     [[UINavigationBar appearance] setBarTintColor:UIColor.clearColor];

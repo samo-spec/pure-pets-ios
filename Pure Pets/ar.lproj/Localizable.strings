@@ -662,6 +662,7 @@
 "PleaseFillFields" = "يرجى ملء جميع الحقول المطلوبة";
 "Days" = "يوم";
 "Add Item" = "أضف";
+"Add" = "أضف";
 "Tap to set" = "تعيين علي الخريطة";
 "unsaved_changes_title" = "تغييرات غير محفوظة" ;
 "leave_button" = "مغادرة" ;
@@ -1493,6 +1494,8 @@
 
 "home_search_placeholder"        = "ابحث عن حيوانات، إكسسوارات، طعام، خدمات";
 "home_search_placeholder_short"  = "ابحث في Pure Pets";
+"home_nav_search_base_placeholder"         = "ماذا يحتاج حيوانك الأليف اليوم؟";
+"home_nav_search_base_placeholder_compact" = "ابحث هنا";
 
 "home_search_hint"               = "ماذا تبحث عنه؟";
 "home_search_recent"             = "عمليات البحث الأخيرة";
@@ -1536,6 +1539,7 @@
 "ShowLess" = "عرض أقل";
 "Home_NearbyAds"        = "بالقرب منك";
 "Home_NearbyAds_Action"    = "";
+"Home_RecentlyAdded"    = "أُضيفت مؤخراً";
 "empty_no_results_title" = "لا توجد نتائج";
 "empty_no_results_subtitle" = "جرّب تغيير القسم أو تعديل عوامل التصفية.";
 "empty_retry_button" = "تحديث";
@@ -2319,6 +2323,22 @@
 "pet_companions" = "رفقاء";
 "pet_profiles_get_started" = "🐾 ابدأ الآن";
 "pet_profile_single" = "ملف";
+"pet_profiles_loading_home_subtitle" = "جارٍ مزامنة بطاقة رفيقك وتفاصيل الرعاية للشاشة الرئيسية.";
+"pet_profiles_home_ready" = "تفاصيل الرعاية جاهزة على الرئيسية";
+"home_pet_profile_meta_syncing" = "مزامنة مباشرة";
+"home_pet_profile_meta_health" = "تفاصيل صحية";
+"home_pet_profile_vaccine_prompt" = "افتح الملف لتحديث التطعيمات والملاحظات والتذكيرات.";
+"home_pet_profile_open_cta" = "فتح ملف الحيوان";
+"home_pet_profile_choose_default_title" = "اختر حيوانك الافتراضي";
+"home_pet_profile_choose_default_subtitle" = "ثبّت رفيقًا هنا للوصول السريع من الرئيسية إلى الرعاية والتطعيمات والتذكيرات.";
+"home_pet_profile_set_default_meta" = "انقر للتعيين كافتراضي";
+"home_pet_profile_open_editor_cta" = "فتح محرر الحيوانات";
+"home_pet_profile_empty_title" = "أنشئ ملف حيوانك الأليف";
+"home_pet_profile_empty_subtitle" = "حوّل البطاقة إلى لوحة للسلالة والتطعيمات والتذكيرات ورفيقك الافتراضي.";
+"home_pet_profile_meta_vaccines" = "التطعيمات";
+"home_pet_profile_meta_reminders" = "التذكيرات";
+"home_pet_profile_open_hint" = "يفتح محرر ملف الحيوان الأليف";
+"home_pet_profile_create_hint" = "يفتح ملفات الحيوانات لإضافة أول حيوان أليف";
 "ipad_promo_title" = "لماذا ملفات الحيوانات؟";
 "ipad_promo_body" = "🐾 احفظ كل تفاصيل حيوانك في مكان واحد\n💉 تتبع التطعيمات ومواعيد الجرعات القادمة\n⏰ ضع تذكيرات للطعام والزيارات البيطرية والعناية\n📋 وصول سريع للسلالة والعمر والملاحظات الصحية";
 "pet_breed_unknown" = "سلالة غير معروفة";
@@ -2334,7 +2354,35 @@
 "pet_reminder_toggle_hint" = "أبقِه نشطًا الآن أو احفظه معطلاً حتى يصبح الجدول جاهزًا.";
 "pet_reminder_type_hint" = "اختر سياق الرعاية ليكون التذكير سهل التصفح لاحقًا.";
 
+// تكرار التذكير
+"pet_reminder_repeat_section" = "التكرار";
+"pet_reminder_repeat_hint" = "اختر عدد المرات التي يجب أن يتكرر فيها هذا التذكير بعد انطلاقه.";
+"pet_reminder_repeat_label" = "التكرار";
+"pet_reminder_repeat_none" = "بدون تكرار";
+"pet_reminder_repeat_daily" = "كل يوم";
+"pet_reminder_repeat_weekly" = "كل أسبوع";
+"pet_reminder_repeat_monthly" = "كل شهر";
+"pet_reminder_repeat_yearly" = "كل سنة";
+
 // Pet editor section hints
 "pet_section_info_hint" = "الاسم والسلالة والعمر تجعل الملف يبدو مكتملًا بلمحة.";
 "pet_section_settings_hint" = "اختر ما إذا كان هذا الملف سيقود بقية تجربة الحيوان الأليف.";
 "pet_section_vaccinations_hint" = "احتفظ بملاحظات سريعة ليسهل مراجعة التذكيرات وقرارات الرعاية.";
+
+// MyItems hero header
+"myitems_hero_eyebrow_ads" = "إعلاناتي";
+"myitems_hero_eyebrow_fav" = "مفضلاتي";
+"myitems_hero_title_ads" = "إعلاناتك";
+"myitems_hero_title_fav" = "مفضلاتك";
+"myitems_hero_subtitle_ads" = "إدارة جميع إعلاناتك ومنتجاتك";
+"myitems_hero_subtitle_fav" = "كل ما قمت بحفظه";
+"myitems_hero_items" = "عنصر";
+
+/* ── MyServicesVC ── */
+"service_delete_title" = "حذف الخدمة";
+"service_delete_confirm_msg" = "هل أنت متأكد أنك تريد حذف هذه الخدمة؟";
+"service_delete_failed" = "فشل في حذف الخدمة";
+
+/* ── Accessibility ── */
+"pet_reminder_toggle" = "تفعيل التذكير";
+"pet_profile_tap_hint" = "انقر مرتين لعرض ملف الحيوان الأليف";

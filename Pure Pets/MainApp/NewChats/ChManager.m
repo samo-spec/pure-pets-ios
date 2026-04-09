@@ -1254,9 +1254,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     NSLog(@"📡 [ChManager] Observing chat threads (+ unread) requested=%@ resolved=%@", userID, resolvedUserID);
 
+    __weak typeof(self) weakSelf = self;
     id<FIRListenerRegistration> listener =
     [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot,
                                  NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
 
         if (error) {
             NSString *authUID = [FIRAuth auth].currentUser.uid ?: @"";
@@ -1265,13 +1268,13 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                   (long)error.code,
                   authUID,
                   userID ?: @"");
-            self.mutedThreadIDsStorage = [NSMutableSet set];
+            strongSelf.mutedThreadIDsStorage = [NSMutableSet set];
             if (completion) completion(nil, error);
             return;
         }
 
         if (!snapshot || snapshot.documents.count == 0) {
-            self.mutedThreadIDsStorage = [NSMutableSet set];
+            strongSelf.mutedThreadIDsStorage = [NSMutableSet set];
             if (completion) completion(@[], nil);
             return;
         }
@@ -1297,9 +1300,9 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 continue;
             }
 
-            thread.isMuted = [self pp_array:thread.mutedBy containsAnyIdentity:identityCandidates];
-            thread.isBinned = [self pp_array:thread.binnedBy containsAnyIdentity:identityCandidates];
-            thread.isReportedByMe = [self pp_array:thread.reportedBy containsAnyIdentity:identityCandidates];
+            thread.isMuted = [strongSelf pp_array:thread.mutedBy containsAnyIdentity:identityCandidates];
+            thread.isBinned = [strongSelf pp_array:thread.binnedBy containsAnyIdentity:identityCandidates];
+            thread.isReportedByMe = [strongSelf pp_array:thread.reportedBy containsAnyIdentity:identityCandidates];
 
             if (thread.isMuted) {
                 [mutedSet addObject:thread.ID];
@@ -1324,7 +1327,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             thread.unreadCount = count.integerValue;
         }
 
-            self.mutedThreadIDsStorage = mutedSet;
+            strongSelf.mutedThreadIDsStorage = mutedSet;
             if (completion) {
                 completion([threads copy], nil);
             }

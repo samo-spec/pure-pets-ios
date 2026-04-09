@@ -13,7 +13,6 @@
 #import "PPModernAvatarRenderer.h"
 #import "UserManager.h"
 #import "Language.h"
-#import "EmptyStateView.h"
 #import "PPPetProfilesUIStyle.h"
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -25,6 +24,18 @@ static NSCache<NSString *, UIImage *> *PPPetImageCache(void) {
     return cache;
 }
 
+static NSURLSession *PPPetURLSession(void) {
+    static NSURLSession *s;
+    static dispatch_once_t t;
+    dispatch_once(&t, ^{
+        NSURLSessionConfiguration *cfg = [NSURLSessionConfiguration defaultSessionConfiguration];
+        cfg.timeoutIntervalForRequest = 30;
+        cfg.timeoutIntervalForResource = 60;
+        s = [NSURLSession sessionWithConfiguration:cfg];
+    });
+    return s;
+}
+
 static void PPLoadPetImage(UIImageView *iv, NSString *url, UIImage *placeholder) {
     iv.image = placeholder;
     if (!url.length) return;
@@ -33,7 +44,7 @@ static void PPLoadPetImage(UIImageView *iv, NSString *url, UIImage *placeholder)
     NSURL *u = [NSURL URLWithString:url];
     if (!u) return;
     __weak UIImageView *wiv = iv;
-    [[[NSURLSession sharedSession] dataTaskWithURL:u completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
+    [[PPPetURLSession() dataTaskWithURL:u completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
         if (!d) return;
         UIImage *img = [UIImage imageWithData:d];
         if (!img) return;
@@ -271,6 +282,15 @@ static void PPLoadPetImage(UIImageView *iv, NSString *url, UIImage *placeholder)
     self.vaccineLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.chevronView.image = [UIImage systemImageNamed:PPPetsForwardChevronSymbolName()
                                      withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:PPFontFootnote weight:UIImageSymbolWeightMedium]];
+
+    // Accessibility
+    self.isAccessibilityElement = YES;
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@",
+        self.nameLabel.text ?: @"",
+        self.detailLabel.text ?: @"",
+        self.vaccineLabel.text ?: @""];
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+    self.accessibilityHint = kLang(@"pet_profile_tap_hint") ?: @"Double tap to view pet profile";
 }
 
 - (void)setHighlighted:(BOOL)highlighted animated:(BOOL)animated {
@@ -286,7 +306,6 @@ static void PPLoadPetImage(UIImageView *iv, NSString *url, UIImage *placeholder)
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSArray<PPPetProfile *> *pets;
 @property (nonatomic, assign) BOOL isLoading;
-//@property (nonatomic, strong) EmptyStateView *emptyView;
 @property (nonatomic, assign) BOOL hasAppearedOnce;
 @property (nonatomic, strong) UIView *backgroundGlowViewTop;
 @property (nonatomic, strong) UIView *backgroundGlowViewBottom;
@@ -317,6 +336,8 @@ static BOOL PPPetsIsIPad(void) {
 
 static NSString *const kCardCellID     = @"PPPetProfileCardCell";
 static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
+
+static NSString *const kEmptyCellID    = @"PPPetProfileEmptyCell";
 
 @implementation PPPetProfilesViewController
 
@@ -362,6 +383,7 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
     }
     [self.tableView registerClass:PPPetProfileCardCell.class     forCellReuseIdentifier:kCardCellID];
     [self.tableView registerClass:PPPetProfileSkeletonCell.class forCellReuseIdentifier:kSkeletonCellID];
+    [self.tableView registerClass:UITableViewCell.class          forCellReuseIdentifier:kEmptyCellID];
     [self.view addSubview:self.tableView];
 
     [self pp_setupBackdrop];
@@ -375,18 +397,6 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
     rc.tintColor = AppPrimaryClr;
     self.tableView.refreshControl = rc;
 
-    // Empty state
-   /* self.emptyView = [[EmptyStateView alloc]
-        initWithFrame:self.tableView.bounds
-        animationNamed:@"404.json"
-                 title:kLang(@"pet_profiles_empty_title") ?: @"No Pets Yet"
-              subTitle:kLang(@"pet_profiles_empty_subtitle") ?: @"Add your first pet profile to get started"
-           buttonTitle:kLang(@"pet_add_title") ?: @"Add Pet"
-                target:self
-         isNetworkFile:YES
-                action:@selector(pp_addPet)];
-
-    self.emptyView.layer.cornerRadius = 18; */
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -425,12 +435,12 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
         return;
     }
 
-    UIView *topGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12],
-                                          [UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0],
+    UIView *topGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.93, 0.80, 0.69, 0.12),
+                                          PPPetsGlowFill(0.98, 0.82, 0.60, 1.0),
                                           0.10,
                                           64.0);
-    UIView *bottomGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06],
-                                             [UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0],
+    UIView *bottomGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.72, 0.45, 0.42, 0.06),
+                                             PPPetsGlowFill(0.68, 0.27, 0.33, 1.0),
                                              0.08,
                                              72.0);
 
@@ -478,8 +488,8 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
     ambientGlow.layer.cornerRadius = 94.0;
     [cardView addSubview:ambientGlow];
 
-    UIView *secondaryGlow = PPPetsBuildGlowView([[UIColor whiteColor] colorWithAlphaComponent:0.40],
-                                                [[UIColor whiteColor] colorWithAlphaComponent:0.45],
+    UIView *secondaryGlow = PPPetsBuildGlowView(PPPetsCardOverlay(0.40),
+                                                PPPetsCardOverlay(0.45),
                                                 0.20,
                                                 22.0);
     secondaryGlow.layer.cornerRadius = 58.0;
@@ -493,7 +503,7 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+    eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.borderWidth = 1.0;
     eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -513,7 +523,7 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
     avatarHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
     avatarHalo.layer.cornerRadius = 62.0;
     avatarHalo.layer.borderWidth = 1.0;
-    avatarHalo.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.48].CGColor;
+    avatarHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     avatarHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
     avatarHalo.layer.shadowOpacity = 0.12;
     avatarHalo.layer.shadowRadius = 22.0;
@@ -526,8 +536,8 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
     headerAnimView.clipsToBounds = YES;
     headerAnimView.layer.cornerRadius = 54.0;
     headerAnimView.layer.borderWidth = 3.0;
-    headerAnimView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.86].CGColor;
-    headerAnimView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.60];
+    headerAnimView.layer.borderColor = [PPPetsCardOverlay(0.86) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    headerAnimView.backgroundColor = PPPetsCardOverlay(0.60);
     headerAnimView.loopAnimation = YES;
     headerAnimView.animationSpeed = 0.7;
     [avatarHalo addSubview:headerAnimView];
@@ -562,7 +572,7 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
     metaLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
     metaLabel.textAlignment = NSTextAlignmentCenter;
     metaLabel.numberOfLines = 2;
-    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
     metaLabel.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -957,8 +967,7 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
 - (void)pp_pullRefresh { [self pp_reload]; }
 
 - (void)pp_updateEmptyState {
-    BOOL showEmpty = (self.pets.count == 0 && !self.isLoading);
-    //self.tableView.backgroundView = showEmpty ? self.emptyView : nil;
+    // Empty state handled inline via table rows below hero
 }
 
 #pragma mark - Actions
@@ -1028,13 +1037,44 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return self.isLoading ? 5 : (NSInteger)self.pets.count;
+    if (self.isLoading) return 5;
+    return self.pets.count > 0 ? (NSInteger)self.pets.count : 1; // 1 = empty-message row
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     if (self.isLoading) {
         return [tableView dequeueReusableCellWithIdentifier:kSkeletonCellID forIndexPath:indexPath];
     }
+
+    // Empty-message row
+    if (self.pets.count == 0) {
+        UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:kEmptyCellID forIndexPath:indexPath];
+        cell.selectionStyle  = UITableViewCellSelectionStyleNone;
+        cell.backgroundColor = UIColor.clearColor;
+        cell.contentView.backgroundColor = UIColor.clearColor;
+
+        static NSInteger const kEmptyTag = 9920;
+        UILabel *lbl = [cell.contentView viewWithTag:kEmptyTag];
+        if (!lbl) {
+            lbl = [[UILabel alloc] init];
+            lbl.tag = kEmptyTag;
+            lbl.translatesAutoresizingMaskIntoConstraints = NO;
+            lbl.numberOfLines = 0;
+            lbl.textAlignment = NSTextAlignmentCenter;
+            lbl.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+            [cell.contentView addSubview:lbl];
+            [NSLayoutConstraint activateConstraints:@[
+                [lbl.topAnchor      constraintEqualToAnchor:cell.contentView.topAnchor      constant:32.0],
+                [lbl.leadingAnchor  constraintEqualToAnchor:cell.contentView.leadingAnchor  constant:32.0],
+                [lbl.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-32.0],
+                [lbl.bottomAnchor   constraintEqualToAnchor:cell.contentView.bottomAnchor   constant:-32.0],
+            ]];
+        }
+        lbl.textColor = PPPetsUISecondaryTextColor();
+        lbl.text = kLang(@"pet_profiles_empty_subtitle") ?: @"You haven't added any pets yet.\nTap + to create your first pet profile 🐾";
+        return cell;
+    }
+
     PPPetProfileCardCell *cell = [tableView dequeueReusableCellWithIdentifier:kCardCellID forIndexPath:indexPath];
     if (indexPath.row < (NSInteger)self.pets.count) {
         [cell configureWithPet:self.pets[indexPath.row]];
@@ -1060,7 +1100,7 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath API_AVAILABLE(ios(11.0)) {
-    if (self.isLoading) return nil;
+    if (self.isLoading || self.pets.count == 0) return nil;
 
     __weak typeof(self) ws = self;
     UIContextualAction *del = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
@@ -1139,6 +1179,16 @@ static NSString *const kSkeletonCellID = @"PPPetProfileSkeletonCell";
             ss.hasAppearedOnce = YES;
         }
     }];
+}
+
+#pragma mark - Dark Mode
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplyCanvasBackground(self, self.tableView);
+        PPPetsRefreshDynamicLayerColors(self.tableView);
+    }
 }
 
 @end

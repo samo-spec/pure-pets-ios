@@ -1543,6 +1543,8 @@
 
 "home_search_placeholder"        = "Search pets, accessories, food, services";
 "home_search_placeholder_short"  = "Search in Pure Pets";
+"home_nav_search_base_placeholder"         = "What does your pet need today?";
+"home_nav_search_base_placeholder_compact" = "Search here";
 
 "home_search_hint"               = "What are you looking for?";
 "home_search_recent"             = "Recent searches";
@@ -1588,6 +1590,7 @@
 "Home_NearbyAds"        = "Nearby";
 "Home_NearbyAds_Sub"    = "Ads close to you";
 "Home_NearbyAds_Action"    = "";
+"Home_RecentlyAdded"    = "Recently Added";
 
 "AllCategories" = "All Categories";
 
@@ -2246,7 +2249,7 @@
 "Loading"                   = "Loading";
 
 
-
+"Add" = "Add";
 "pet_profiles_title" = "Pet Profiles";
 "pet_profiles_subtitle" = "Manage your pets, vaccines, and defaults";
 "pet_profiles_manage" = "Manage pets";
@@ -2333,6 +2336,22 @@
 "pet_companions" = "companions";
 "pet_profiles_get_started" = "🐾 Get Started";
 "pet_profile_single" = "profile";
+"pet_profiles_loading_home_subtitle" = "Syncing your companion card and care details for the home feed.";
+"pet_profiles_home_ready" = "Care details ready on home";
+"home_pet_profile_meta_syncing" = "Live sync";
+"home_pet_profile_meta_health" = "Health details";
+"home_pet_profile_vaccine_prompt" = "Open the profile to update vaccines, notes, and reminders.";
+"home_pet_profile_open_cta" = "Open pet profile";
+"home_pet_profile_choose_default_title" = "Choose your default pet";
+"home_pet_profile_choose_default_subtitle" = "Pin one companion here for quick home access to care details, vaccines, and reminders.";
+"home_pet_profile_set_default_meta" = "Tap to set default";
+"home_pet_profile_open_editor_cta" = "Open pet editor";
+"home_pet_profile_empty_title" = "Create your pet profile";
+"home_pet_profile_empty_subtitle" = "Turn this card into a pet dashboard with breed, vaccines, reminders, and your default companion.";
+"home_pet_profile_meta_vaccines" = "Vaccines";
+"home_pet_profile_meta_reminders" = "Reminders";
+"home_pet_profile_open_hint" = "Opens the pet profile editor";
+"home_pet_profile_create_hint" = "Opens pet profiles so you can add your first pet";
 "ipad_promo_title" = "Why Pet Profiles?";
 "ipad_promo_body" = "🐾 Keep all your pet details in one place\n💉 Track vaccinations & next-due dates\n⏰ Set reminders for food, vet visits & grooming\n📋 Quick access to breed, age & health notes";
 "pet_breed_unknown" = "Unknown breed";
@@ -2348,8 +2367,35 @@
 "pet_reminder_toggle_hint" = "Keep it active now or save it disabled until the schedule is ready.";
 "pet_reminder_type_hint" = "Choose the care context so the reminder feels immediately scannable later.";
 
+// Repeat reminder
+"pet_reminder_repeat_section" = "Repeat";
+"pet_reminder_repeat_hint" = "Choose how often this reminder should repeat after it fires.";
+"pet_reminder_repeat_label" = "Repeat";
+"pet_reminder_repeat_none" = "Never";
+"pet_reminder_repeat_daily" = "Every Day";
+"pet_reminder_repeat_weekly" = "Every Week";
+"pet_reminder_repeat_monthly" = "Every Month";
+"pet_reminder_repeat_yearly" = "Every Year";
+
 // Pet editor section hints
 "pet_section_info_hint" = "Name, breed, and age help the profile feel complete at a glance.";
 "pet_section_settings_hint" = "Choose whether this profile should lead the rest of the pet experience.";
 "pet_section_vaccinations_hint" = "Keep quick history notes so reminders and care decisions stay easy to scan.";
 
+// MyItems hero header
+"myitems_hero_eyebrow_ads" = "MY LISTINGS";
+"myitems_hero_eyebrow_fav" = "MY FAVORITES";
+"myitems_hero_title_ads" = "Your Listings";
+"myitems_hero_title_fav" = "Your Favorites";
+"myitems_hero_subtitle_ads" = "Manage all your ads and products";
+"myitems_hero_subtitle_fav" = "Everything you've saved";
+"myitems_hero_items" = "items";
+
+/* ── MyServicesVC ── */
+"service_delete_title" = "Delete Service";
+"service_delete_confirm_msg" = "Are you sure you want to delete this service?";
+"service_delete_failed" = "Failed to delete service";
+
+/* ── Accessibility ── */
+"pet_reminder_toggle" = "Enable reminder";
+"pet_profile_tap_hint" = "Double tap to view pet profile";

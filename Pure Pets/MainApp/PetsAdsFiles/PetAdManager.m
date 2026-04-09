@@ -787,6 +787,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
     
     query = [query queryOrderedByField:@"postedDate" descending:NO];
 
+    __weak typeof(self) weakSelf = self;
     self.listener = [query addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
         if (error) {
             NSLog(@"❌ Firestore listener error: %@", error.localizedDescription);
@@ -812,7 +813,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
                         !(newAd.imageItems.firstObject.width > 0)) {
 
                         dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-                            [self updateImageMetadataForAdIfNeeded:newAd];
+                            [weakSelf updateImageMetadataForAdIfNeeded:newAd];
                         });
                     }
                     break;
@@ -1793,6 +1794,7 @@ if (completion) completion(ad, nil);
 
     query = [query queryOrderedByField:@"postedDate" descending:NO];
 
+    __weak typeof(self) weakSelf = self;
     self.listener =
     [query addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
@@ -1821,7 +1823,7 @@ if (completion) completion(ad, nil);
                     // auto-enrich metadata
                     if (ad.imageItems.count > 0 && !([ad.imageItems.firstObject width] > 0)) {
                         dispatch_async(dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0), ^{
-                            [self updateImageMetadataForAdIfNeeded:ad];
+                            [weakSelf updateImageMetadataForAdIfNeeded:ad];
                         });
                     }
                     break;

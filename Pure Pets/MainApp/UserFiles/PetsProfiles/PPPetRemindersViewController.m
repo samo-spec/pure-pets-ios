@@ -13,11 +13,20 @@
 #import "PPPetProfile.h"
 #import "UserManager.h"
 #import "Language.h"
-#import "EmptyStateView.h"
 #import "GM.h"
 #import "PPPetProfilesUIStyle.h"
+#import "PPReminderNotificationManager.h"
 
 // ─── Helpers ──────────────────────────────────────────────
+
+/// Returns a localized display string for a repeat-rule value.
+static NSString * PPRemRepeatDisplayText(NSString *rule) {
+    if ([rule isEqualToString:@"daily"])   return kLang(@"pet_reminder_repeat_daily")   ?: @"Every Day";
+    if ([rule isEqualToString:@"weekly"])  return kLang(@"pet_reminder_repeat_weekly")  ?: @"Every Week";
+    if ([rule isEqualToString:@"monthly"]) return kLang(@"pet_reminder_repeat_monthly") ?: @"Every Month";
+    if ([rule isEqualToString:@"yearly"])  return kLang(@"pet_reminder_repeat_yearly")  ?: @"Every Year";
+    return nil; // no repeat — return nil so caller can hide badge
+}
 
 // ─── Skeleton Cell ────────────────────────────────────────
 
@@ -103,6 +112,9 @@
 @property (nonatomic, strong) UILabel     *titleLabel;
 @property (nonatomic, strong) UILabel     *detailLabel;
 @property (nonatomic, strong) UILabel     *dateLabel;
+@property (nonatomic, strong) UIView      *repeatBadge;
+@property (nonatomic, strong) UIImageView *repeatIcon;
+@property (nonatomic, strong) UILabel     *repeatLabel;
 @property (nonatomic, strong) UISwitch    *enableSwitch;
 @property (nonatomic, copy)   void (^onToggle)(BOOL on);
 @end
@@ -150,6 +162,28 @@
     _dateLabel.textColor = PPPetsUIBrandColor();
     [_cardContainer addSubview:_dateLabel];
 
+    // Repeat badge (pill with icon + label)
+    _repeatBadge = [UIView new];
+    _repeatBadge.translatesAutoresizingMaskIntoConstraints = NO;
+    _repeatBadge.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10];
+    _repeatBadge.layer.cornerRadius = 10.0;
+    _repeatBadge.layer.masksToBounds = YES;
+    [_cardContainer addSubview:_repeatBadge];
+
+    _repeatIcon = [UIImageView new];
+    _repeatIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    _repeatIcon.contentMode = UIViewContentModeScaleAspectFit;
+    _repeatIcon.tintColor = PPPetsUIBrandColor();
+    _repeatIcon.image = [[UIImage systemImageNamed:@"repeat"]
+                          imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [_repeatBadge addSubview:_repeatIcon];
+
+    _repeatLabel = [UILabel new];
+    _repeatLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _repeatLabel.font = [UIFont systemFontOfSize:10.0 weight:UIFontWeightSemibold];
+    _repeatLabel.textColor = PPPetsUIBrandColor();
+    [_repeatBadge addSubview:_repeatLabel];
+
     _enableSwitch = [UISwitch new];
     _enableSwitch.translatesAutoresizingMaskIntoConstraints = NO;
     _enableSwitch.onTintColor = PPPetsUIBrandColor();
@@ -188,6 +222,21 @@
         [_dateLabel.topAnchor     constraintEqualToAnchor:_detailLabel.bottomAnchor constant:PPSpaceXXS],
         [_dateLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_dateLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
+
+        // Repeat badge (below dateLabel)
+        [_repeatBadge.topAnchor     constraintEqualToAnchor:_dateLabel.bottomAnchor constant:PPSpaceXXS],
+        [_repeatBadge.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_repeatBadge.heightAnchor  constraintEqualToConstant:20.0],
+        [_repeatBadge.bottomAnchor  constraintLessThanOrEqualToAnchor:_cardContainer.bottomAnchor constant:-PPSpaceMD],
+
+        [_repeatIcon.leadingAnchor constraintEqualToAnchor:_repeatBadge.leadingAnchor constant:6.0],
+        [_repeatIcon.centerYAnchor constraintEqualToAnchor:_repeatBadge.centerYAnchor],
+        [_repeatIcon.widthAnchor   constraintEqualToConstant:12.0],
+        [_repeatIcon.heightAnchor  constraintEqualToConstant:12.0],
+
+        [_repeatLabel.leadingAnchor  constraintEqualToAnchor:_repeatIcon.trailingAnchor constant:4.0],
+        [_repeatLabel.centerYAnchor  constraintEqualToAnchor:_repeatBadge.centerYAnchor],
+        [_repeatLabel.trailingAnchor constraintEqualToAnchor:_repeatBadge.trailingAnchor constant:-8.0],
     ]];
     return self;
 }
@@ -202,6 +251,15 @@
     self.dateLabel.text = rem.fireDate ? [GM formattedDate:rem.fireDate]
                                        : (kLang(@"pet_reminder_no_date") ?: @"No date set");
     self.enableSwitch.on = rem.enabled;
+
+    // Repeat badge
+    NSString *repeatText = PPRemRepeatDisplayText(rem.repeatRule);
+    if (repeatText.length > 0) {
+        self.repeatBadge.hidden = NO;
+        self.repeatLabel.text = repeatText;
+    } else {
+        self.repeatBadge.hidden = YES;
+    }
 
     UIColor *typeClr; NSString *iconName;
     switch (rem.type) {
@@ -227,6 +285,17 @@
     self.titleLabel.textAlignment  = Language.alignmentForCurrentLanguage;
     self.detailLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.dateLabel.textAlignment   = Language.alignmentForCurrentLanguage;
+
+    // Accessibility
+    self.isAccessibilityElement = NO;
+    self.accessibilityElements = @[self.cardContainer];
+    self.cardContainer.isAccessibilityElement = YES;
+    self.cardContainer.accessibilityLabel = [NSString stringWithFormat:@"%@, %@, %@",
+        self.titleLabel.text ?: @"",
+        self.detailLabel.text ?: @"",
+        self.dateLabel.text ?: @""];
+    self.cardContainer.accessibilityTraits = UIAccessibilityTraitButton;
+    self.enableSwitch.accessibilityLabel = kLang(@"pet_reminder_toggle") ?: @"Enable reminder";
 }
 
 - (void)pp_toggled { if (self.onToggle) self.onToggle(self.enableSwitch.isOn); }
@@ -245,7 +314,6 @@
 @property (nonatomic, strong) NSArray<PPPetReminder *> *reminders;
 @property (nonatomic, strong) NSDictionary<NSString *, PPPetProfile *> *petMap;
 @property (nonatomic, assign) BOOL isLoading;
-//@property (nonatomic, strong) EmptyStateView *emptyView;
 @property (nonatomic, assign) BOOL hasAppearedOnce;
 @property (nonatomic, strong) UIView *backgroundGlowViewTop;
 @property (nonatomic, strong) UIView *backgroundGlowViewBottom;
@@ -261,8 +329,9 @@
 @property (nonatomic, strong) UIButton *headerSecondaryButton;
 @end
 
-static NSString *const kRemCardID = @"PPReminderCardCell";
-static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
+static NSString *const kRemCardID  = @"PPReminderCardCell";
+static NSString *const kRemSkelID  = @"PPReminderSkeletonCell";
+static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
 
 @implementation PPPetRemindersViewController
 
@@ -301,8 +370,10 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
+    
     [self.tableView registerClass:PPReminderCardCell.class     forCellReuseIdentifier:kRemCardID];
     [self.tableView registerClass:PPReminderSkeletonCell.class forCellReuseIdentifier:kRemSkelID];
+    [self.tableView registerClass:UITableViewCell.class        forCellReuseIdentifier:kRemEmptyID];
     [self.view addSubview:self.tableView];
 
     [self pp_setupBackdrop];
@@ -314,18 +385,6 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
     [rc addTarget:self action:@selector(pp_pullRefresh) forControlEvents:UIControlEventValueChanged];
     rc.tintColor = AppPrimaryClr;
     self.tableView.refreshControl = rc;
-
-   /*
-    self.emptyView = [[EmptyStateView alloc]
-        initWithFrame:self.tableView.bounds
-        animationNamed:@"bell_empty"
-                 title:kLang(@"pet_reminders_empty_title") ?: @"No Reminders"
-              subTitle:kLang(@"pet_reminders_empty_subtitle") ?: @"Add reminders for vaccinations, food, and appointments"
-           buttonTitle:kLang(@"pet_reminder_add") ?: @"Add Reminder"
-                target:self
-         isNetworkFile:YES
-                action:@selector(pp_addReminder)];
-    */
 }
 
 - (void)viewWillAppear:(BOOL)animated {
@@ -364,12 +423,12 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
         return;
     }
 
-    UIView *topGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12],
-                                          [UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0],
+    UIView *topGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.93, 0.80, 0.69, 0.12),
+                                          PPPetsGlowFill(0.98, 0.82, 0.60, 1.0),
                                           0.10,
                                           64.0);
-    UIView *bottomGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06],
-                                             [UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0],
+    UIView *bottomGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.72, 0.45, 0.42, 0.06),
+                                             PPPetsGlowFill(0.68, 0.27, 0.33, 1.0),
                                              0.08,
                                              72.0);
 
@@ -417,8 +476,8 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
     ambientGlow.layer.cornerRadius = 94.0;
     [cardView addSubview:ambientGlow];
 
-    UIView *secondaryGlow = PPPetsBuildGlowView([[UIColor whiteColor] colorWithAlphaComponent:0.40],
-                                                [[UIColor whiteColor] colorWithAlphaComponent:0.45],
+    UIView *secondaryGlow = PPPetsBuildGlowView(PPPetsCardOverlay(0.40),
+                                                PPPetsCardOverlay(0.45),
                                                 0.20,
                                                 22.0);
     secondaryGlow.layer.cornerRadius = 58.0;
@@ -432,7 +491,7 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+    eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.borderWidth = 1.0;
     eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -452,7 +511,7 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
     iconHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
     iconHalo.layer.cornerRadius = 62.0;
     iconHalo.layer.borderWidth = 1.0;
-    iconHalo.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.48].CGColor;
+    iconHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     iconHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
     iconHalo.layer.shadowOpacity = 0.12;
     iconHalo.layer.shadowRadius = 22.0;
@@ -463,7 +522,7 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
     symbolView.translatesAutoresizingMaskIntoConstraints = NO;
     symbolView.contentMode = UIViewContentModeScaleAspectFit;
     symbolView.tintColor = PPPetsUIBrandColor();
-    symbolView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.66];
+    symbolView.backgroundColor = PPPetsCardOverlay(0.66);
     symbolView.layer.cornerRadius = 54.0;
     symbolView.layer.masksToBounds = YES;
     [iconHalo addSubview:symbolView];
@@ -490,7 +549,7 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
     metaLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
     metaLabel.textAlignment = NSTextAlignmentCenter;
     metaLabel.numberOfLines = 2;
-    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
     metaLabel.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -711,8 +770,7 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
 - (void)pp_pullRefresh { [self pp_reload]; }
 
 - (void)pp_updateEmptyState {
-    BOOL empty = (self.reminders.count == 0 && !self.isLoading);
-    //self.tableView.backgroundView = empty ? self.emptyView : nil;
+    // Empty state handled inline via table rows below hero
 }
 
 #pragma mark - Actions
@@ -753,6 +811,8 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
                 if (error) {
                     [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:error.localizedDescription];
                 } else {
+                    // Cancel pending local notification
+                    [[PPReminderNotificationManager sharedManager] cancelNotificationForReminderID:rem.reminderID];
                     [PPHUD showSuccess:(kLang(@"Done") ?: @"Deleted") subtitle:nil];
                     [ws pp_reload];
                 }
@@ -772,6 +832,9 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
             if (error) {
                 [PPHUD showError:(kLang(@"SomethingWentWrong") ?: @"Error") subtitle:error.localizedDescription];
                 [ws pp_reload];
+            } else {
+                // Schedule or cancel notification based on toggle state
+                [[PPReminderNotificationManager sharedManager] scheduleNotificationForReminder:rem];
             }
         });
     }];
@@ -780,13 +843,44 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
 #pragma mark - UITableViewDataSource
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
-    return self.isLoading ? 5 : (NSInteger)self.reminders.count;
+    if (self.isLoading) return 5;
+    return self.reminders.count > 0 ? (NSInteger)self.reminders.count : 1; // 1 = empty-message row
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     if (self.isLoading) {
         return [tableView dequeueReusableCellWithIdentifier:kRemSkelID forIndexPath:indexPath];
     }
+
+    // Empty-message row
+    if (self.reminders.count == 0) {
+        UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:kRemEmptyID forIndexPath:indexPath];
+        cell.selectionStyle  = UITableViewCellSelectionStyleNone;
+        cell.backgroundColor = UIColor.clearColor;
+        cell.contentView.backgroundColor = UIColor.clearColor;
+
+        static NSInteger const kEmptyTag = 9921;
+        UILabel *lbl = [cell.contentView viewWithTag:kEmptyTag];
+        if (!lbl) {
+            lbl = [[UILabel alloc] init];
+            lbl.tag = kEmptyTag;
+            lbl.translatesAutoresizingMaskIntoConstraints = NO;
+            lbl.numberOfLines = 0;
+            lbl.textAlignment = NSTextAlignmentCenter;
+            lbl.font = [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+            [cell.contentView addSubview:lbl];
+            [NSLayoutConstraint activateConstraints:@[
+                [lbl.topAnchor      constraintEqualToAnchor:cell.contentView.topAnchor      constant:32.0],
+                [lbl.leadingAnchor  constraintEqualToAnchor:cell.contentView.leadingAnchor  constant:32.0],
+                [lbl.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-32.0],
+                [lbl.bottomAnchor   constraintEqualToAnchor:cell.contentView.bottomAnchor   constant:-32.0],
+            ]];
+        }
+        lbl.textColor = PPPetsUISecondaryTextColor();
+        lbl.text = kLang(@"pet_reminders_empty_subtitle") ?: @"No reminders yet.\nTap + to set your first reminder 🔔";
+        return cell;
+    }
+
     PPReminderCardCell *cell = [tableView dequeueReusableCellWithIdentifier:kRemCardID forIndexPath:indexPath];
     if (indexPath.row < (NSInteger)self.reminders.count) {
         PPPetReminder *rem = self.reminders[indexPath.row];
@@ -802,11 +896,13 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
 #pragma mark - UITableViewDelegate
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    return self.isLoading ? 80.0 : UITableViewAutomaticDimension;
+    if (self.isLoading) return 93.0;
+    if (self.reminders.count == 0) return UITableViewAutomaticDimension;
+    return 96.0;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath {
-    return 80.0;
+    return 96.0;
 }
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -817,7 +913,7 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
 
 - (UISwipeActionsConfiguration *)tableView:(UITableView *)tableView
     trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath API_AVAILABLE(ios(11.0)) {
-    if (self.isLoading) return nil;
+    if (self.isLoading || self.reminders.count == 0) return nil;
 
     __weak typeof(self) ws = self;
     UIContextualAction *del = [UIContextualAction contextualActionWithStyle:UIContextualActionStyleDestructive
@@ -887,6 +983,16 @@ static NSString *const kRemSkelID = @"PPReminderSkeletonCell";
             ss.hasAppearedOnce = YES;
         }
     }];
+}
+
+#pragma mark - Dark Mode
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplyCanvasBackground(self, self.tableView);
+        PPPetsRefreshDynamicLayerColors(self.tableView);
+    }
 }
 
 @end

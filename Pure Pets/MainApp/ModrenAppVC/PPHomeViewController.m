@@ -13,6 +13,10 @@
 #import "PPSearchViewController.h"
 #import "PPDataViewInput.h"
 #import "PPDataViewVC.h"
+#import "PPPetProfile.h"
+#import "PPPetProfileEditorViewController.h"
+#import "PPPetProfilesUIStyle.h"
+#import "PPPetProfilesViewController.h"
 #import "PPVetLocator.h"
 #import "PPBrowseHistoryManager.h"
 #import "PPImageLoaderManager.h"
@@ -43,6 +47,581 @@
 #import <float.h>
 #import "PPHomeOrderStatusCell.h"
 #import "UIView+Badge.h"
+
+
+@interface PPHomeInsetLabel : UILabel
+@property (nonatomic, assign) UIEdgeInsets contentInsets;
+@end
+
+@implementation PPHomeInsetLabel
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        _contentInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
+    }
+    return self;
+}
+
+- (CGSize)intrinsicContentSize
+{
+    CGSize size = [super intrinsicContentSize];
+    size.width += self.contentInsets.left + self.contentInsets.right;
+    size.height += self.contentInsets.top + self.contentInsets.bottom;
+    return size;
+}
+
+- (CGRect)textRectForBounds:(CGRect)bounds limitedToNumberOfLines:(NSInteger)numberOfLines
+{
+    CGRect insetBounds = UIEdgeInsetsInsetRect(bounds, self.contentInsets);
+    CGRect textRect = [super textRectForBounds:insetBounds limitedToNumberOfLines:numberOfLines];
+    textRect.origin.x -= self.contentInsets.left;
+    textRect.origin.y -= self.contentInsets.top;
+    textRect.size.width += self.contentInsets.left + self.contentInsets.right;
+    textRect.size.height += self.contentInsets.top + self.contentInsets.bottom;
+    return textRect;
+}
+
+- (void)drawTextInRect:(CGRect)rect
+{
+    [super drawTextInRect:UIEdgeInsetsInsetRect(rect, self.contentInsets)];
+}
+
+@end
+
+@interface PPHomePetProfileCardCell : UICollectionViewCell
++ (NSString *)reuseIdentifier;
+- (void)configureWithDefaultPet:(nullable PPPetProfile *)defaultPet
+                       petCount:(NSInteger)petCount
+                      isLoading:(BOOL)isLoading;
+@end
+
+@implementation PPHomePetProfileCardCell {
+    UIView *_cardView;
+    UIView *_largeOrbView;
+    UIView *_smallOrbView;
+    UIView *_avatarShellView;
+    UIImageView *_avatarImageView;
+    PPInsetLabel *_eyebrowLabel;
+    UILabel *_titleLabel;
+    UILabel *_subtitleLabel;
+    UIStackView *_metaStackView;
+    PPHomeInsetLabel *_metaPrimaryLabel;
+    PPHomeInsetLabel *_metaSecondaryLabel;
+    UIView *_ctaView;
+    UILabel *_ctaLabel;
+    UIImageView *_ctaImageView;
+    CAGradientLayer *_gradientLayer;
+}
+
++ (NSString *)reuseIdentifier
+{
+    return @"PPHomePetProfileCardCell";
+}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) {
+        return nil;
+    }
+
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+    self.contentView.isAccessibilityElement = NO;
+
+    UIView *cardView = [[UIView alloc] init];
+    cardView.translatesAutoresizingMaskIntoConstraints = NO;
+    cardView.layer.cornerRadius = 30.0;
+    cardView.layer.borderWidth = 0.7;
+    cardView.layer.borderColor = [PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08].CGColor;
+    cardView.layer.shadowColor = UIColor.blackColor.CGColor;
+    cardView.layer.shadowOpacity = 0.10f;
+    cardView.layer.shadowRadius = 24.0f;
+    cardView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    if (@available(iOS 13.0, *)) {
+        cardView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.contentView addSubview:cardView];
+    _cardView = cardView;
+
+    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+    gradientLayer.startPoint = CGPointMake(0.0, 0.18);
+    gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    gradientLayer.cornerRadius = 30.0;
+    [cardView.layer insertSublayer:gradientLayer atIndex:0];
+    _gradientLayer = gradientLayer;
+
+    UIView *largeOrbView = [[UIView alloc] init];
+    largeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
+    largeOrbView.userInteractionEnabled = NO;
+    largeOrbView.layer.cornerRadius = 54.0;
+    [cardView addSubview:largeOrbView];
+    _largeOrbView = largeOrbView;
+
+    UIView *smallOrbView = [[UIView alloc] init];
+    smallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
+    smallOrbView.userInteractionEnabled = NO;
+    smallOrbView.layer.cornerRadius = 18.0;
+    [cardView addSubview:smallOrbView];
+    _smallOrbView = smallOrbView;
+
+    UIView *avatarShellView = [[UIView alloc] init];
+    avatarShellView.translatesAutoresizingMaskIntoConstraints = NO;
+    avatarShellView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    avatarShellView.layer.cornerRadius = 41.0;
+    avatarShellView.layer.borderWidth = 1.0;
+    avatarShellView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    avatarShellView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    avatarShellView.layer.shadowOpacity = 0.10f;
+    avatarShellView.layer.shadowRadius = 20.0f;
+    avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    if (@available(iOS 13.0, *)) {
+        avatarShellView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [cardView addSubview:avatarShellView];
+    _avatarShellView = avatarShellView;
+
+    UIImageView *avatarImageView = [[UIImageView alloc] init];
+    avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    avatarImageView.contentMode = UIViewContentModeScaleAspectFill;
+    avatarImageView.clipsToBounds = YES;
+    avatarImageView.layer.cornerRadius = 34.0;
+    avatarImageView.layer.borderWidth = 1.5;
+    avatarImageView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.35].CGColor;
+    if (@available(iOS 13.0, *)) {
+        avatarImageView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    avatarImageView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+    [avatarShellView addSubview:avatarImageView];
+    _avatarImageView = avatarImageView;
+
+    PPInsetLabel *eyebrowLabel = [[PPInsetLabel alloc] init];
+    eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    eyebrowLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.72];
+    eyebrowLabel.textColor = [UIColor colorWithRed:0.29 green:0.18 blue:0.10 alpha:1.0];
+    eyebrowLabel.layer.cornerRadius = 14.0;
+    eyebrowLabel.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        eyebrowLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    eyebrowLabel.numberOfLines = 1;
+    eyebrowLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    eyebrowLabel.textInsets = UIEdgeInsetsMake(4.0, 14.0, 4.0, 14.0);
+    [cardView addSubview:eyebrowLabel];
+    _eyebrowLabel = eyebrowLabel;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    titleLabel.textColor = [UIColor colorWithRed:0.23 green:0.13 blue:0.10 alpha:1.0];
+    titleLabel.numberOfLines = 1;
+    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.84;
+    titleLabel.allowsDefaultTighteningForTruncation = YES;
+    [cardView addSubview:titleLabel];
+    _titleLabel = titleLabel;
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.82];
+    subtitleLabel.numberOfLines = 2;
+    subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    [cardView addSubview:subtitleLabel];
+    _subtitleLabel = subtitleLabel;
+
+    UIStackView *metaStackView = [[UIStackView alloc] init];
+    metaStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    metaStackView.axis = UILayoutConstraintAxisHorizontal;
+    metaStackView.alignment = UIStackViewAlignmentLeading;
+    metaStackView.spacing = 8.0;
+    metaStackView.distribution = UIStackViewDistributionFillProportionally;
+    [cardView addSubview:metaStackView];
+    _metaStackView = metaStackView;
+
+    PPHomeInsetLabel *metaPrimaryLabel = [[PPHomeInsetLabel alloc] init];
+    metaPrimaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    metaPrimaryLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    metaPrimaryLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.94];
+    metaPrimaryLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.54];
+    metaPrimaryLabel.layer.cornerRadius = 13.0;
+    metaPrimaryLabel.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        metaPrimaryLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    metaPrimaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
+    [metaStackView addArrangedSubview:metaPrimaryLabel];
+    _metaPrimaryLabel = metaPrimaryLabel;
+
+    PPHomeInsetLabel *metaSecondaryLabel = [[PPHomeInsetLabel alloc] init];
+    metaSecondaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    metaSecondaryLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    metaSecondaryLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.94];
+    metaSecondaryLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.46];
+    metaSecondaryLabel.layer.cornerRadius = 13.0;
+    metaSecondaryLabel.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        metaSecondaryLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    metaSecondaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
+    [metaStackView addArrangedSubview:metaSecondaryLabel];
+    _metaSecondaryLabel = metaSecondaryLabel;
+
+    UIView *ctaView = [[UIView alloc] init];
+    ctaView.translatesAutoresizingMaskIntoConstraints = NO;
+    ctaView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.26];
+    ctaView.layer.cornerRadius = 18.0;
+    ctaView.layer.borderWidth = 1.0;
+    ctaView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    if (@available(iOS 13.0, *)) {
+        ctaView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [cardView addSubview:ctaView];
+    _ctaView = ctaView;
+
+    UILabel *ctaLabel = [[UILabel alloc] init];
+    ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    ctaLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    ctaLabel.textColor = [UIColor colorWithRed:0.22 green:0.13 blue:0.09 alpha:1.0];
+    [ctaView addSubview:ctaLabel];
+    _ctaLabel = ctaLabel;
+
+    UIImageView *ctaImageView = [[UIImageView alloc] init];
+    ctaImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    ctaImageView.contentMode = UIViewContentModeScaleAspectFit;
+    [ctaView addSubview:ctaImageView];
+    _ctaImageView = ctaImageView;
+
+    [eyebrowLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                 forAxis:UILayoutConstraintAxisVertical];
+    [eyebrowLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                    forAxis:UILayoutConstraintAxisVertical];
+    [titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisVertical];
+    [subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                   forAxis:UILayoutConstraintAxisVertical];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+
+        [largeOrbView.widthAnchor constraintEqualToConstant:108.0],
+        [largeOrbView.heightAnchor constraintEqualToConstant:108.0],
+        [largeOrbView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:28.0],
+        [largeOrbView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:-26.0],
+
+        [smallOrbView.widthAnchor constraintEqualToConstant:36.0],
+        [smallOrbView.heightAnchor constraintEqualToConstant:36.0],
+        [smallOrbView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
+        [smallOrbView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
+
+        [avatarShellView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
+        [avatarShellView.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
+        [avatarShellView.widthAnchor constraintEqualToConstant:82.0],
+        [avatarShellView.heightAnchor constraintEqualToConstant:82.0],
+
+        [avatarImageView.centerXAnchor constraintEqualToAnchor:avatarShellView.centerXAnchor],
+        [avatarImageView.centerYAnchor constraintEqualToAnchor:avatarShellView.centerYAnchor],
+        [avatarImageView.widthAnchor constraintEqualToConstant:68.0],
+        [avatarImageView.heightAnchor constraintEqualToConstant:68.0],
+
+        [eyebrowLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:18.0],
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:18.0],
+        [eyebrowLabel.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
+        [eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
+
+        [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:12.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:6.0],
+        [titleLabel.heightAnchor constraintGreaterThanOrEqualToConstant:30.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
+
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:8.0],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:avatarShellView.leadingAnchor constant:-14.0],
+
+        [metaStackView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [metaStackView.topAnchor constraintGreaterThanOrEqualToAnchor:subtitleLabel.bottomAnchor constant:12.0],
+        [metaStackView.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-18.0],
+
+        [ctaView.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [ctaView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-18.0],
+        [ctaView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-18.0],
+        [ctaView.heightAnchor constraintEqualToConstant:44.0],
+        [ctaView.topAnchor constraintEqualToAnchor:metaStackView.bottomAnchor constant:12.0],
+
+        [ctaLabel.leadingAnchor constraintEqualToAnchor:ctaView.leadingAnchor constant:14.0],
+        [ctaLabel.centerYAnchor constraintEqualToAnchor:ctaView.centerYAnchor],
+        [ctaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:ctaImageView.leadingAnchor constant:-10.0],
+
+        [ctaImageView.trailingAnchor constraintEqualToAnchor:ctaView.trailingAnchor constant:-14.0],
+        [ctaImageView.centerYAnchor constraintEqualToAnchor:ctaView.centerYAnchor],
+        [ctaImageView.widthAnchor constraintEqualToConstant:13.0],
+        [ctaImageView.heightAnchor constraintEqualToConstant:13.0],
+    ]];
+
+    return self;
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    [[PPImageLoaderManager shared] cancelImageLoadForImageView:_avatarImageView];
+    _avatarImageView.image = nil;
+
+    // Reset visual state to prevent stale gradient/text on cell reuse
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    _gradientLayer.colors = nil;
+    [CATransaction commit];
+
+    _eyebrowLabel.text = nil;
+    _titleLabel.text = nil;
+    _subtitleLabel.text = nil;
+    _metaPrimaryLabel.text = nil;
+    _metaSecondaryLabel.text = nil;
+    _ctaLabel.text = nil;
+}
+
+- (void)pp_refreshCardGeometry
+{
+    CGRect cardBounds = _cardView.bounds;
+    if (CGRectIsEmpty(cardBounds)) {
+        return;
+    }
+
+    // Keep decorative layers locked to the resolved card bounds on first render.
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    _gradientLayer.frame = cardBounds;
+    _gradientLayer.cornerRadius = _cardView.layer.cornerRadius;
+    [CATransaction commit];
+
+    _eyebrowLabel.layer.cornerRadius = CGRectGetHeight(_eyebrowLabel.bounds) * 0.5;
+    _cardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:cardBounds
+                                                            cornerRadius:_cardView.layer.cornerRadius].CGPath;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    [self pp_refreshCardGeometry];
+}
+
+- (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    [super applyLayoutAttributes:layoutAttributes];
+    [self setNeedsLayout];
+    [self.contentView setNeedsLayout];
+    [self layoutIfNeeded];
+    [self pp_refreshCardGeometry];
+}
+
+- (void)setBounds:(CGRect)bounds
+{
+    [super setBounds:bounds];
+    [self pp_refreshCardGeometry];
+}
+
+- (void)configureWithDefaultPet:(nullable PPPetProfile *)defaultPet
+                       petCount:(NSInteger)petCount
+                      isLoading:(BOOL)isLoading
+{
+    BOOL hasProfiles = (petCount > 0);
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    UIColor *textColor = isDark
+        ? [UIColor colorWithRed:0.95 green:0.90 blue:0.86 alpha:1.0]
+        : [UIColor colorWithRed:0.23 green:0.13 blue:0.10 alpha:1.0];
+    NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
+    NSArray<UIColor *> *gradientColors = nil;
+    UIColor *orbColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.24];
+    UIImage *avatarPlaceholder = nil;
+
+    self.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+    _cardView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
+    _eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    _subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    _metaPrimaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    _metaSecondaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    _ctaLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    if (isLoading) {
+        _eyebrowLabel.text = kLang(@"please_wait") ?: @"Loading";
+        _titleLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
+        _subtitleLabel.text = kLang(@"pet_profiles_loading_home_subtitle") ?: @"Syncing your companion card and care details for the home feed.";
+        _metaPrimaryLabel.text = kLang(@"home_pet_profile_meta_syncing") ?: @"Live sync";
+        _metaSecondaryLabel.text = kLang(@"home_pet_profile_meta_health") ?: @"Health details";
+        _ctaLabel.text = kLang(@"please_wait") ?: @"Please wait";
+        gradientColors = isDark
+            ? @[[UIColor colorWithRed:0.14 green:0.10 blue:0.08 alpha:1.0],
+                [UIColor colorWithRed:0.18 green:0.13 blue:0.10 alpha:1.0]]
+            : @[[UIColor colorWithRed:0.98 green:0.92 blue:0.82 alpha:1.0],
+                [UIColor colorWithRed:0.94 green:0.83 blue:0.71 alpha:1.0]];
+        avatarPlaceholder = [[UIImage systemImageNamed:@"hourglass.circle.fill"
+                                     withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:30.0
+                                                                                                    weight:UIImageSymbolWeightSemibold]] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        _avatarImageView.tintColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.85];
+    } else if (defaultPet) {
+        NSString *ageText = [defaultPet displayAgeText];
+        NSMutableArray<NSString *> *summaryParts = [NSMutableArray array];
+        if (defaultPet.breed.length > 0) {
+            [summaryParts addObject:defaultPet.breed];
+        }
+        if (ageText.length > 0) {
+            [summaryParts addObject:ageText];
+        }
+
+        _eyebrowLabel.text = defaultPet.isDefaultPet
+            ? (kLang(@"pet_default_action") ?: @"Default pet")
+            : (kLang(@"pet_profiles_title") ?: @"Pet Profiles");
+        _titleLabel.text = defaultPet.name.length > 0
+            ? defaultPet.name
+            : (kLang(@"pet_name_placeholder") ?: @"Your pet");
+
+        NSString *headline = summaryParts.count > 0
+            ? [summaryParts componentsJoinedByString:@" · "]
+            : (kLang(@"pet_profiles_home_ready") ?: @"Care details ready on home");
+        NSString *detailLine = defaultPet.vaccinations.count > 0
+            ? [NSString stringWithFormat:@"%ld %@ ready for quick access",
+               (long)defaultPet.vaccinations.count,
+               (kLang(@"pet_vaccines_short") ?: @"vaccines")]
+            : (kLang(@"home_pet_profile_vaccine_prompt") ?: @"Open the profile to update vaccines, notes, and reminders.");
+        _subtitleLabel.text = [NSString stringWithFormat:@"%@\n%@", headline, detailLine];
+        _metaPrimaryLabel.text = [NSString stringWithFormat:@"💉 %ld %@",
+                                  (long)defaultPet.vaccinations.count,
+                                  (kLang(@"pet_vaccines_short") ?: @"vaccines")];
+        _metaSecondaryLabel.text = [NSString stringWithFormat:@"%ld %@",
+                                    (long)petCount,
+                                    (petCount == 1
+                                     ? (kLang(@"pet_profile_single") ?: @"saved profile")
+                                     : (kLang(@"pet_profiles_title") ?: @"saved profiles"))];
+        _ctaLabel.text = kLang(@"home_pet_profile_open_cta") ?: @"Open pet profile";
+        gradientColors = isDark
+            ? @[[UIColor colorWithRed:0.16 green:0.10 blue:0.06 alpha:1.0],
+                [UIColor colorWithRed:0.22 green:0.12 blue:0.06 alpha:1.0]]
+            : @[[UIColor colorWithRed:0.99 green:0.88 blue:0.76 alpha:1.0],
+                [UIColor colorWithRed:0.96 green:0.65 blue:0.43 alpha:1.0]];
+        avatarPlaceholder = defaultPet.imageURL.length > 0
+            ? [[UIImage systemImageNamed:@"pawprint.circle.fill"
+                       withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:28.0
+                                                                                          weight:UIImageSymbolWeightSemibold]]
+                imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]
+            : [PPModernAvatarRenderer avatarImageForName:(defaultPet.name ?: @"") size:84.0];
+        _avatarImageView.tintColor = UIColor.whiteColor;
+    } else if (hasProfiles) {
+        _eyebrowLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
+        _titleLabel.text = kLang(@"home_pet_profile_choose_default_title") ?: @"Choose your default pet";
+        _subtitleLabel.text = kLang(@"home_pet_profile_choose_default_subtitle") ?: @"Pin one companion here for quick home access to care details, vaccines, and reminders.";
+        _metaPrimaryLabel.text = [NSString stringWithFormat:@"%ld %@",
+                                  (long)petCount,
+                                  (petCount == 1
+                                   ? (kLang(@"pet_profile_single") ?: @"saved profile")
+                                   : (kLang(@"pet_profiles_title") ?: @"saved profiles"))];
+        _metaSecondaryLabel.text = kLang(@"home_pet_profile_set_default_meta") ?: @"Tap to set default";
+        _ctaLabel.text = kLang(@"home_pet_profile_open_editor_cta") ?: @"Open pet editor";
+        gradientColors = isDark
+            ? @[[UIColor colorWithRed:0.15 green:0.10 blue:0.07 alpha:1.0],
+                [UIColor colorWithRed:0.20 green:0.12 blue:0.08 alpha:1.0]]
+            : @[[UIColor colorWithRed:0.99 green:0.91 blue:0.82 alpha:1.0],
+                [UIColor colorWithRed:0.96 green:0.75 blue:0.58 alpha:1.0]];
+        orbColor = isDark
+            ? [[UIColor colorWithRed:0.95 green:0.52 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.12]
+            : [[UIColor colorWithRed:0.95 green:0.52 blue:0.31 alpha:1.0] colorWithAlphaComponent:0.22];
+        avatarPlaceholder = [[UIImage systemImageNamed:@"pawprint.circle.fill"
+                                     withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:30.0
+                                                                                                    weight:UIImageSymbolWeightSemibold]]
+                              imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        _avatarImageView.tintColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.88];
+    } else {
+        _eyebrowLabel.text = kLang(@"pet_profiles_title") ?: @"Pet Profiles";
+        _titleLabel.text = kLang(@"home_pet_profile_empty_title") ?: @"Create your pet profile";
+        _subtitleLabel.text = kLang(@"home_pet_profile_empty_subtitle") ?: @"Turn this card into a pet dashboard with breed, vaccines, reminders, and your default companion.";
+        _metaPrimaryLabel.text = kLang(@"home_pet_profile_meta_vaccines") ?: @"Vaccines";
+        _metaSecondaryLabel.text = kLang(@"home_pet_profile_meta_reminders") ?: @"Reminders";
+        _ctaLabel.text = kLang(@"pet_profiles_add_first") ?: @"Add your first pet";
+        gradientColors = isDark
+            ? @[[UIColor colorWithRed:0.13 green:0.10 blue:0.07 alpha:1.0],
+                [UIColor colorWithRed:0.18 green:0.13 blue:0.09 alpha:1.0]]
+            : @[[UIColor colorWithRed:0.98 green:0.93 blue:0.86 alpha:1.0],
+                [UIColor colorWithRed:0.95 green:0.80 blue:0.63 alpha:1.0]];
+        orbColor = isDark
+            ? [[UIColor colorWithRed:0.93 green:0.58 blue:0.32 alpha:1.0] colorWithAlphaComponent:0.10]
+            : [[UIColor colorWithRed:0.93 green:0.58 blue:0.32 alpha:1.0] colorWithAlphaComponent:0.18];
+        avatarPlaceholder = [[UIImage systemImageNamed:@"sparkles"
+                                     withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:28.0
+                                                                                                    weight:UIImageSymbolWeightSemibold]]
+                              imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+        _avatarImageView.tintColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.84];
+    }
+
+    _gradientLayer.colors = @[(id)gradientColors.firstObject.CGColor,
+                              (id)gradientColors.lastObject.CGColor];
+    _largeOrbView.backgroundColor = orbColor;
+    _smallOrbView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.18 : 0.28)];
+    _titleLabel.textColor = textColor;
+    _ctaLabel.textColor = textColor;
+    _ctaImageView.tintColor = textColor;
+
+    UIColor *subtleText = isDark
+        ? [UIColor colorWithRed:0.85 green:0.78 blue:0.72 alpha:0.90]
+        : [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.82];
+    UIColor *tagText = isDark
+        ? [UIColor colorWithRed:0.88 green:0.82 blue:0.76 alpha:0.94]
+        : [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.94];
+    CGFloat pillAlpha = isDark ? 0.16 : 0.54;
+    _eyebrowLabel.textColor = isDark
+        ? [UIColor colorWithRed:0.90 green:0.82 blue:0.74 alpha:1.0]
+        : [UIColor colorWithRed:0.29 green:0.18 blue:0.10 alpha:1.0];
+    _eyebrowLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.24 : 0.72)];
+    _subtitleLabel.textColor = subtleText;
+    _metaPrimaryLabel.textColor = tagText;
+    _metaPrimaryLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:pillAlpha];
+    _metaSecondaryLabel.textColor = tagText;
+    _metaSecondaryLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.14 : 0.46)];
+    _ctaView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.16 : 0.26)];
+    _ctaView.layer.borderColor = [UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.12 : 0.24)].CGColor;
+    _avatarShellView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.12 : 0.18)];
+    _avatarShellView.layer.borderColor = [UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.10 : 0.24)].CGColor;
+    _cardView.layer.shadowOpacity = isDark ? 0.0f : 0.10f;
+    _ctaImageView.image = [UIImage systemImageNamed:forwardSymbol
+                                  withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                                                                 weight:UIImageSymbolWeightBold]];
+    _avatarImageView.image = avatarPlaceholder;
+
+    if (defaultPet.imageURL.length > 0) {
+        [[PPImageLoaderManager shared] setImageOnImageView:_avatarImageView
+                                                       url:defaultPet.imageURL
+                                               placeholder:avatarPlaceholder
+                                          transitionStyle:PPImageTransitionStyleNone
+                                                complation:nil];
+    }
+
+    NSString *accessibilityTitle = _titleLabel.text ?: @"";
+    NSString *accessibilitySubtitle = _subtitleLabel.text ?: @"";
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@", accessibilityTitle, accessibilitySubtitle];
+    self.accessibilityHint = (defaultPet || hasProfiles)
+        ? (kLang(@"home_pet_profile_open_hint") ?: @"Opens the pet profile editor")
+        : (kLang(@"home_pet_profile_create_hint") ?: @"Opens pet profiles so you can add your first pet");
+
+    // Configuration can land before the compositional layout settles.
+    [self setNeedsLayout];
+    [self.contentView setNeedsLayout];
+    if (!CGRectIsEmpty(_cardView.bounds)) {
+        [self layoutIfNeeded];
+        [self pp_refreshCardGeometry];
+    }
+}
+
+@end
 
 
 
@@ -1135,7 +1714,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) NSArray<PPCategoryItem *> *categories;
 @property (nonatomic, strong) NSArray<PetAccessory *> *accessories;
 @property (nonatomic, strong) NSArray<PetAccessory *> *buyAgainAccessories;
+@property (nonatomic, strong) NSArray<PPPetProfile *> *petProfiles;
 @property (nonatomic, strong) NSArray<PetAd *> *nearbyAds;
+@property (nonatomic, strong, nullable) PPPetProfile *defaultPetProfile;
 @property (nonatomic, strong) NSArray<PPOrder *> *currentOrders;
 @property (nonatomic, strong) NSArray<PPOrder *> *recentOrders;
 @property (nonatomic, strong) NSArray<PPCarouselItem *> *carouselItems;
@@ -1154,6 +1735,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) double nearbyRadiusKm;
 @property (nonatomic, strong) NSTimer *nearbyRefreshTimer;
 @property (nonatomic, assign) BOOL isUsingManualNearbySelection;
+@property (nonatomic, assign) BOOL nearbyShowingRecentlyAdded;
 @property (nonatomic, strong) UIView *pp_backgroundCanvasView;
 @property (nonatomic, strong) CAGradientLayer *pp_backgroundGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *pp_backgroundTopGlowLayer;
@@ -1163,9 +1745,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL pp_backgroundAnimationsConfigured;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
+@property (nonatomic, assign) BOOL petProfilesLoading;
+@property (nonatomic, assign) BOOL petProfilesLoaded;
 @property (nonatomic, assign) BOOL isCurrentOrdersExpanded;
 @property (nonatomic, assign) NSInteger currentOrdersRequestToken;
 @property (nonatomic, assign) NSInteger buyAgainRequestToken;
+@property (nonatomic, assign) NSInteger petProfilesRequestToken;
 @property (nonatomic, strong, nullable) NSDate *lastCurrentOrdersRefreshAt;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> currentOrdersQueryListener;
 @property (nonatomic, copy) NSString *currentOrdersListenerUserID;
@@ -1237,6 +1822,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (nullable PPOrder *)pp_featuredHomeOrder;
 - (NSArray<PPHomeItem *> *)pp_homeCurrentOrderItems;
 - (NSArray<PPHomeItem *> *)pp_homeBuyAgainItems;
+- (void)pp_refreshPetProfilesSection;
+- (nullable PPPetProfile *)pp_homeEntryPetProfile;
+- (void)pp_openPetProfilesEntryPoint;
 - (NSString *)pp_homeOrderItemIdentifier:(id)rawItem;
 - (NSArray<NSString *> *)pp_buyAgainAccessoryIDsFromOrders:(NSArray<PPOrder *> *)orders
                                                      limit:(NSInteger)limit;
@@ -1265,6 +1853,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) dispatch_queue_t blurHashQueue;
 @property (nonatomic, copy) NSString *lastHeroRenderSignature;
 @property (nonatomic, assign) BOOL heroRefreshScheduled;
+@property (nonatomic, assign) BOOL didStabilizeInitialHomeLayout;
+@property (nonatomic, assign) CGSize lastHomeLayoutBoundsSize;
+@property (nonatomic, assign) UIEdgeInsets lastHomeLayoutAdjustedInsets;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit;
 - (void)pp_asyncBlurHashImageForHash:(NSString *)hash
@@ -1290,7 +1881,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_updateHomeSmartSearchPlaceholderAnimated:(BOOL)animated;
 - (void)pp_startHomeSmartSearchTimerIfNeeded;
 - (void)pp_stopHomeSmartSearchTimer;
+- (void)pp_scheduleSmartSearchTimerWithInterval:(NSTimeInterval)interval;
 - (void)pp_advanceHomeSmartSearchPlaceholder;
+- (void)pp_stabilizeHomeCollectionLayoutIfNeeded;
+- (void)pp_refreshVisibleHomeCardsForSections:(NSArray<NSNumber *> *)sections;
 
 @end
 
@@ -1584,6 +2178,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
+        @(PPHomeSectionPetProfile),
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionAdopt),
     ]];
@@ -1647,6 +2242,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     [snapshot appendItemsWithIdentifiers:@[]
                intoSectionWithIdentifier:@(PPHomeSectionAccessories)];
+    PPHomeItem *petProfileItem =
+        [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
+    [snapshot appendItemsWithIdentifiers:@[petProfileItem]
+               intoSectionWithIdentifier:@(PPHomeSectionPetProfile)];
     [snapshot appendItemsWithIdentifiers:@[]
                intoSectionWithIdentifier:@(PPHomeSectionAdsNearBy)];
 
@@ -1664,6 +2263,17 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+
+    // Orthogonal scrolling sections (QuickActions) may not layout their cells
+    // correctly on the first pass.  Force a deferred invalidation so the
+    // internal scroll view triggers proper cell sizing.
+    __weak typeof(self) weakBase = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakBase) self = weakBase;
+        if (!self || !self.collectionView) return;
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView layoutIfNeeded];
+    });
 }
 
 - (void)pp_scheduleInitialMainKindsLayoutRefresh
@@ -1682,6 +2292,100 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [self.collectionView.collectionViewLayout invalidateLayout];
         [self.collectionView setNeedsLayout];
         [self.collectionView layoutIfNeeded];
+    });
+}
+
+- (void)pp_stabilizeHomeCollectionLayoutIfNeeded
+{
+    if (!self.isViewLoaded || !self.collectionView || !self.layoutManager || !self.dataSource) {
+        return;
+    }
+
+    CGSize boundsSize = self.collectionView.bounds.size;
+    if (boundsSize.width <= 1.0 || boundsSize.height <= 1.0) {
+        return;
+    }
+
+    UIEdgeInsets adjustedInsets = self.collectionView.adjustedContentInset;
+    BOOL needsInitialPass = !self.didStabilizeInitialHomeLayout;
+    BOOL widthChanged = fabs(boundsSize.width - self.lastHomeLayoutBoundsSize.width) > 0.5;
+    BOOL topInsetChanged = fabs(adjustedInsets.top - self.lastHomeLayoutAdjustedInsets.top) > 0.5;
+    BOOL bottomInsetChanged = fabs(adjustedInsets.bottom - self.lastHomeLayoutAdjustedInsets.bottom) > 0.5;
+
+    if (!needsInitialPass && !widthChanged && !topInsetChanged && !bottomInsetChanged) {
+        return;
+    }
+
+    self.didStabilizeInitialHomeLayout = YES;
+    self.lastHomeLayoutBoundsSize = boundsSize;
+    self.lastHomeLayoutAdjustedInsets = adjustedInsets;
+
+    CGPoint preservedOffset = self.collectionView.contentOffset;
+    UICollectionViewCompositionalLayout *stabilizedLayout = [self.layoutManager buildLayout];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [UIView performWithoutAnimation:^{
+        [self.collectionView setCollectionViewLayout:stabilizedLayout animated:NO];
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+    }];
+    [CATransaction commit];
+
+    CGFloat minOffsetY = -self.collectionView.adjustedContentInset.top;
+    CGFloat maxOffsetY = MAX(minOffsetY,
+                             self.collectionView.contentSize.height -
+                             CGRectGetHeight(self.collectionView.bounds) +
+                             self.collectionView.adjustedContentInset.bottom);
+    CGFloat targetOffsetY = MIN(MAX(preservedOffset.y, minOffsetY), maxOffsetY);
+    self.collectionView.contentOffset = CGPointMake(0.0, targetOffsetY);
+
+    [self refreshHeroSectionAppearance];
+    [self pp_refreshVisibleHomeCardsForSections:@[
+        @(PPHomeSectionPetProfile),
+        @(PPHomeSectionAdopt)
+    ]];
+}
+
+- (void)pp_refreshVisibleHomeCardsForSections:(NSArray<NSNumber *> *)sections
+{
+    if (sections.count == 0 || !self.isViewLoaded || !self.collectionView) {
+        return;
+    }
+
+    NSArray<NSNumber *> *sectionsToRefresh = sections.copy;
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.isViewLoaded || !self.collectionView) {
+            return;
+        }
+
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        [UIView performWithoutAnimation:^{
+            [self.collectionView setNeedsLayout];
+            [self.collectionView layoutIfNeeded];
+
+            for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+                NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
+                if (!indexPath) {
+                    continue;
+                }
+
+                NSNumber *sectionNumber = @([self sectionTypeForIndexPath:indexPath]);
+                if (![sectionsToRefresh containsObject:sectionNumber]) {
+                    continue;
+                }
+
+                [cell setNeedsLayout];
+                [cell.contentView setNeedsLayout];
+                [cell.contentView layoutIfNeeded];
+                [cell layoutIfNeeded];
+            }
+        }];
+        [CATransaction commit];
     });
 }
 
@@ -1728,6 +2432,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                 [newItems addObject:item];
             }
             break;
+
+        case PPHomeSectionPetProfile: {
+            PPHomeItem *item =
+                [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
+            [newItems addObject:item];
+            break;
+        }
 
         case PPHomeSectionAdsNearBy:
             if (self.nearbyLoading && self.nearbyAds.count == 0) {
@@ -1857,7 +2568,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     if (section == PPHomeSectionSuggestions ||
         section == PPHomeSectionAdsNearBy ||
-        section == PPHomeSectionCurrentOrders) {
+        section == PPHomeSectionCurrentOrders ||
+        section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionAdopt) {
         // 🔒 Prevent visual flicker on frequently refreshed sections.
         animate = NO;
         if (section == PPHomeSectionSuggestions) {
@@ -1869,6 +2582,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     if (section == PPHomeSectionCurrentOrders || section == PPHomeSectionBuyAgain) {
         [self invalidateHeaderForSection:section];
+    }
+
+    if (section == PPHomeSectionPetProfile || section == PPHomeSectionAdopt) {
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+        [self pp_refreshVisibleHomeCardsForSections:@[@(section)]];
     }
 
     // 🔒 Restore scroll position (Suggestions only)
@@ -1912,10 +2631,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.nearbyRadiusKm = PPNearbyDefaultRadiusKm;
     self.currentOrders = @[];
     self.recentOrders = @[];
+    self.petProfiles = @[];
+    self.defaultPetProfile = nil;
+    self.petProfilesLoading = YES;
+    self.petProfilesLoaded = NO;
     self.buyAgainAccessories = @[];
     self.isCurrentOrdersExpanded = NO;
     self.currentOrdersRequestToken = 0;
     self.buyAgainRequestToken = 0;
+    self.petProfilesRequestToken = 0;
     self.lastCurrentOrdersRefreshAt = nil;
     self.currentOrdersLoading = ([self pp_currentOrdersUserID].length > 0);
     self.currentOrdersLoaded = !self.currentOrdersLoading;
@@ -2026,6 +2750,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self pp_refreshNavigationMenusForCurrentUser];
     [self refreshHeroSectionAppearance];
     [self refreshCurrentOrdersForce:YES];
+    [self pp_refreshPetProfilesSection];
 }
 
 - (NSString *)pp_currentOrdersUserID
@@ -3409,6 +4134,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [self updateLocationStateForAuthorizationStatus:status];
     }
     [self refreshCurrentOrdersForce:YES];
+    [self pp_refreshPetProfilesSection];
     [self refreshNearbyAdsForce:YES reason:@"foreground"];
 }
 
@@ -3421,6 +4147,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 {
     [super viewDidAppear:animated];
     self.isHomeScreenVisible = YES;
+    [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     [self pp_startBackgroundAnimationsIfNeeded];
     [self pp_centerNearbySectionIfPossible];
     [self updateCartQuantityBadge];
@@ -3595,7 +4322,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
         case PPHomeSectionAdsNearBy: {
             cfg.hidden = NO;
-            cfg.title = kLang(@"Home_NearbyAds");
+            if (self.nearbyShowingRecentlyAdded) {
+                cfg.title = kLang(@"Home_RecentlyAdded") ?: @"Recently Added";
+            } else {
+                cfg.title = kLang(@"Home_NearbyAds");
+            }
            // cfg.actionTitle = kLang(@"ShowAll");
             cfg.iconName = arrowImage;
             break;
@@ -3639,6 +4370,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
+    self.collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.collectionView.delegate = self;
     self.collectionView.prefetchingEnabled = YES;
     self.collectionView.prefetchDataSource = self;
@@ -3667,6 +4399,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self.collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeCell.class forCellWithReuseIdentifier:@"PPHomeCell"];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
+    [self.collectionView registerClass:PPHomePetProfileCardCell.class
+            forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
     [self.collectionView registerClass:PPHomeServicesCell.class forCellWithReuseIdentifier:PPHomeServicesCell.reuseIdentifier];
@@ -3795,6 +4529,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                     [self pp_scrollCurrentOrdersSectionIntoViewAnimated:YES];
                 }
             };
+            return cell;
+        }
+
+        if (section == PPHomeSectionPetProfile) {
+            PPHomePetProfileCardCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier
+                                                          forIndexPath:indexPath];
+            [cell configureWithDefaultPet:strongSelf.defaultPetProfile
+                                 petCount:strongSelf.petProfiles.count
+                                isLoading:strongSelf.petProfilesLoading];
             return cell;
         }
 
@@ -4417,6 +5161,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         self.nearbyAds = @[];
         self.nearbyLoading = NO;
         self.nearbyLoaded = YES;
+        self.nearbyShowingRecentlyAdded = NO;
         [self reloadSection:PPHomeSectionAdsNearBy];
         [self reloadSection:PPHomeSectionSuggestions];
         [self tryApplySnapshot];
@@ -4473,14 +5218,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             if (dateOrder != NSOrderedSame) return dateOrder;
             return [a.adID compare:b.adID options:NSCaseInsensitiveSearch];
         }];
-        if (deduped.count == 0) {
-            // 🔁 Fallback: show latest 5 ads when no nearby ads found
-            [[PetAdManager sharedManager] fetchLatestAdsWithLimit:5
+        if (deduped.count < 3) {
+            // 🔁 Fallback: show latest 10 ads when fewer than 3 nearby ads found
+            [[PetAdManager sharedManager] fetchLatestAdsWithLimit:10
                                                        completion:^(NSArray<PetAd *> *latestAds) {
                 __strong typeof(weakSelf) self = weakSelf;
                 if (!self) return;
 
                 self.nearbyAds = latestAds ?: @[];
+                self.nearbyShowingRecentlyAdded = YES;
                 self.nearbyLoaded = YES;
                 self.nearbyLoading = NO;
                 self.lastNearbyRefreshAt = [NSDate date];
@@ -4495,6 +5241,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             return;
         } else {
             self.nearbyAds = deduped;
+            self.nearbyShowingRecentlyAdded = NO;
         }
         self.nearbyLoaded = YES;
         self.nearbyLoading = NO;
@@ -4806,42 +5553,56 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         visibleOrderCell = nil;
     }
 
+    // Update the flag — the existing section provider already reads it
+    // and returns the correct height on the next layout pass.
     self.layoutManager.isCurrentOrdersExpanded = expanded;
-    CGPoint savedOffset = self.collectionView.contentOffset;
-    UICollectionViewCompositionalLayout *newLayout = [self.layoutManager buildLayout];
     [self refreshHeroSectionAppearance];
+
     if (visibleOrderCell) {
         [visibleOrderCell setExpandedState:expanded animated:animated];
     }
 
+    // Invalidate the existing layout instead of rebuilding it entirely.
+    // The section provider re-fires and returns the correct section height.
+    // Spring animation produces a smooth, jump-free transition without
+    // the forced contentOffset restoration that caused the snap.
     __weak typeof(self) weakSelf = self;
-    [self.collectionView setCollectionViewLayout:newLayout
-                                        animated:animated
-                                      completion:^(__unused BOOL finished) {
+
+    void (^applyInvalidation)(void) = ^{
+        [weakSelf.collectionView.collectionViewLayout invalidateLayout];
+        [weakSelf.collectionView layoutIfNeeded];
+    };
+
+    void (^completionWork)(void) = ^{
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
-            return;
-        }
-
-        self.collectionView.contentOffset = savedOffset;
-
-        if (!currentOrderIndexPath) {
-            return;
-        }
+        if (!self || !currentOrderIndexPath) return;
 
         UICollectionViewCell *updatedCell =
             [self.collectionView cellForItemAtIndexPath:currentOrderIndexPath];
-        if (![updatedCell isKindOfClass:PPHomeOrderStatusCell.class]) {
-            return;
-        }
+        if (![updatedCell isKindOfClass:PPHomeOrderStatusCell.class]) return;
 
         PPHomeOrderStatusCell *updatedOrderCell = (PPHomeOrderStatusCell *)updatedCell;
         if (updatedOrderCell != visibleOrderCell) {
             [updatedOrderCell setExpandedState:expanded animated:NO];
         }
-
         [updatedOrderCell refreshDecorativeLayersForCurrentBounds];
-    }];
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.4
+                              delay:0.0
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionAllowUserInteraction |
+                                    UIViewAnimationOptionBeginFromCurrentState
+                         animations:applyInvalidation
+                         completion:^(__unused BOOL finished) {
+            completionWork();
+        }];
+    } else {
+        applyInvalidation();
+        completionWork();
+    }
 }
 
 - (void)pp_scrollCurrentOrdersSectionIntoViewAnimated:(BOOL)animated
@@ -5047,6 +5808,84 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     return items;
 }
 
+- (void)pp_refreshPetProfilesSection
+{
+    NSString *userID = [self pp_currentOrdersUserID];
+    if (userID.length == 0 || !UserManager.sharedManager.isUserLoggedIn) {
+        self.petProfiles = @[];
+        self.defaultPetProfile = nil;
+        self.petProfilesLoading = NO;
+        self.petProfilesLoaded = YES;
+        [self reloadSection:PPHomeSectionPetProfile];
+        return;
+    }
+
+    self.petProfilesRequestToken += 1;
+    NSInteger requestToken = self.petProfilesRequestToken;
+    self.petProfilesLoading = YES;
+    if (!self.petProfilesLoaded) {
+        [self reloadSection:PPHomeSectionPetProfile];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [[UserManager sharedManager] fetchPetProfilesForCurrentUserWithCompletion:^(NSArray<PPPetProfile *> * _Nullable pets, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || requestToken != self.petProfilesRequestToken) {
+                return;
+            }
+
+            if (!error) {
+                self.petProfiles = [pets isKindOfClass:NSArray.class] ? pets : @[];
+                PPPetProfile *resolvedDefaultPet = nil;
+                for (PPPetProfile *candidate in self.petProfiles) {
+                    if (candidate.isDefaultPet) {
+                        resolvedDefaultPet = candidate;
+                        break;
+                    }
+                }
+                self.defaultPetProfile = resolvedDefaultPet;
+            } else {
+                if (!self.petProfilesLoaded) {
+                    self.petProfiles = @[];
+                    self.defaultPetProfile = nil;
+                }
+                NSLog(@"[HomePetProfile] fetch failed: %@", error.localizedDescription);
+            }
+
+            self.petProfilesLoading = NO;
+            self.petProfilesLoaded = YES;
+            [self reloadSection:PPHomeSectionPetProfile];
+        });
+    }];
+}
+
+- (nullable PPPetProfile *)pp_homeEntryPetProfile
+{
+    if (self.defaultPetProfile) {
+        return self.defaultPetProfile;
+    }
+    return self.petProfiles.firstObject;
+}
+
+- (void)pp_openPetProfilesEntryPoint
+{
+    UIViewController *destination = nil;
+    PPPetProfile *entryPet = [self pp_homeEntryPetProfile];
+
+    if (entryPet) {
+        destination = [[PPPetProfileEditorViewController alloc] initWithPet:entryPet];
+    } else {
+        destination = [PPPetProfilesViewController new];
+    }
+
+    if (!destination) {
+        return;
+    }
+
+    [PPHomeHelper pushViewControllerSafely:destination from:self animated:YES];
+}
+
 - (void)openNearestVet {
     // push nearest vet map / list
     NSLog(@"PPHomeQuickActionNearestVet");
@@ -5175,10 +6014,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         }
 
         case PPHomeSectionAccessories:
+        case PPHomeSectionPetProfile:
         case PPHomeSectionBuyAgain:
         case PPHomeSectionAdsNearBy: {
             [self pp_emitSelectionHaptic];
-             PPUniversalCellViewModel *vm = item.universalViewModel;
+            if (section == PPHomeSectionPetProfile) {
+                [self pp_openPetProfilesEntryPoint];
+                return;
+            }
+
+            PPUniversalCellViewModel *vm = item.universalViewModel;
             id model = vm.ModelObject;
 
             NSLog(@"[Home][Tap][ResolvedModel] %@",
@@ -5208,6 +6053,24 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         default:
             break;
     }
+}
+
+- (void)collectionView:(UICollectionView *)collectionView
+       willDisplayCell:(UICollectionViewCell *)cell
+    forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    if (section != PPHomeSectionPetProfile && section != PPHomeSectionAdopt) {
+        return;
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [cell setNeedsLayout];
+    [cell.contentView setNeedsLayout];
+    [cell.contentView layoutIfNeeded];
+    [cell layoutIfNeeded];
+    [CATransaction commit];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -5852,6 +6715,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [super viewWillAppear:animated];
 
     [self configureNavigationBar];
+    [self pp_refreshPetProfilesSection];
     
     if (self.accessoriesLoaded || self.nearbyLoaded) {
         [self reloadSection:PPHomeSectionSuggestions];
@@ -6206,6 +7070,16 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     NSMutableArray<NSString *> *items = [NSMutableArray array];
     BOOL prefersExpandedExamples = [self pp_preferredNavigationSearchWidth] >= 232.0;
+
+    // Base placeholder at index 0 — stays visible longer than rotating examples
+    NSString *basePlaceholder = prefersExpandedExamples
+        ? (kLang(@"home_nav_search_base_placeholder")         ?: @"What does your pet need today?")
+        : (kLang(@"home_nav_search_base_placeholder_compact") ?: @"Search here");
+    NSString *safeBase = PPSafeString(basePlaceholder);
+    if (safeBase.length > 0) {
+        [items addObject:safeBase];
+    }
+
     NSArray<NSString *> *candidates = prefersExpandedExamples
         ? @[
             kLang(@"home_nav_search_example_cats")        ?: @"Cats for sale",
@@ -6283,20 +7157,29 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    NSTimer *timer =
-        [NSTimer timerWithTimeInterval:2.4
-                                target:self
-                              selector:@selector(pp_advanceHomeSmartSearchPlaceholder)
-                              userInfo:nil
-                               repeats:YES];
-    [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
-    self.homeSmartSearchTimer = timer;
+    // Base placeholder (index 0) stays visible longer than rotating examples
+    NSTimeInterval firstInterval =
+        (self.homeSmartSearchPlaceholderIndex == 0) ? 5.0 : 2.4;
+    [self pp_scheduleSmartSearchTimerWithInterval:firstInterval];
 }
 
 - (void)pp_stopHomeSmartSearchTimer
 {
     [self.homeSmartSearchTimer invalidate];
     self.homeSmartSearchTimer = nil;
+}
+
+- (void)pp_scheduleSmartSearchTimerWithInterval:(NSTimeInterval)interval
+{
+    [self.homeSmartSearchTimer invalidate];
+    NSTimer *timer =
+        [NSTimer timerWithTimeInterval:interval
+                                target:self
+                              selector:@selector(pp_advanceHomeSmartSearchPlaceholder)
+                              userInfo:nil
+                               repeats:NO];
+    [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+    self.homeSmartSearchTimer = timer;
 }
 
 - (void)pp_advanceHomeSmartSearchPlaceholder
@@ -6309,6 +7192,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeSmartSearchPlaceholderIndex =
         (self.homeSmartSearchPlaceholderIndex + 1) % placeholders.count;
     [self pp_updateHomeSmartSearchPlaceholderAnimated:YES];
+
+    // Base placeholder (index 0) lingers ~2× longer than category examples
+    NSTimeInterval nextInterval =
+        (self.homeSmartSearchPlaceholderIndex == 0) ? 5.0 : 2.4;
+    [self pp_scheduleSmartSearchTimerWithInterval:nextInterval];
 }
 
 #pragma mark - Navigation Logo Title View
@@ -7048,6 +7936,38 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         frame.size.height = 42.0;
         self.homeSmartSearchView.frame = frame;
     }
+
+    [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+}
+
+- (void)viewSafeAreaInsetsDidChange
+{
+    [super viewSafeAreaInsetsDidChange];
+    [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+}
+
+- (void)viewWillTransitionToSize:(CGSize)size
+       withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator
+{
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+
+    __weak typeof(self) weakSelf = self;
+    [coordinator animateAlongsideTransition:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        self.lastHomeLayoutBoundsSize = CGSizeZero;
+        [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+    } completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        self.lastHomeLayoutBoundsSize = CGSizeZero;
+        [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+        [self refreshHeroSectionAppearance];
+    }];
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection

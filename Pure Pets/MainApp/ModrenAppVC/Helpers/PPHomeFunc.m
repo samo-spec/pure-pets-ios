@@ -45,16 +45,229 @@ static const CGFloat kCardLarge   = 248.0;
 static const CGFloat kCurrentOrdersExpandedItemHeight = 236.0;
 static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
+static inline CGFloat PPHomeResolvedWidth(CGFloat width)
+{
+    return width > 0.0 ? width : UIScreen.mainScreen.bounds.size.width;
+}
+
+static inline BOOL PPHomeWidthIsTablet(CGFloat width)
+{
+    width = PPHomeResolvedWidth(width);
+    return width >= 700.0;
+}
+
+static inline BOOL PPHomeWidthIsWidePhone(CGFloat width)
+{
+    width = PPHomeResolvedWidth(width);
+    return width >= 430.0 && width < 700.0;
+}
+
+static inline BOOL PPHomeWidthIsCompactPhone(CGFloat width)
+{
+    width = PPHomeResolvedWidth(width);
+    return width < 375.0;
+}
+
+static inline CGFloat PPHomeHorizontalInset(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 28.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 20.0;
+    }
+    return 16.0;
+}
+
+static inline CGFloat PPHomeHeroHeight(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 280.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 248.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 224.0;
+    }
+    return (PPIOS26() ? 236.0 : 240.0);
+}
+
+static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)
+{
+    if (expanded) {
+        if (PPHomeWidthIsTablet(width)) {
+            return 264.0;
+        }
+        if (PPHomeWidthIsWidePhone(width)) {
+            return 248.0;
+        }
+        if (PPHomeWidthIsCompactPhone(width)) {
+            return 224.0;
+        }
+        return kCurrentOrdersExpandedItemHeight;
+    }
+
+    if (PPHomeWidthIsTablet(width)) {
+        return 96.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 88.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 80.0;
+    }
+    return kCurrentOrdersCollapsedItemHeight;
+}
+
+static inline CGFloat PPHomeMainKindsHorizontalItemWidth(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 132.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 112.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 94.0;
+    }
+    return 102.0;
+}
+
+static inline CGFloat PPHomeMainKindsHorizontalItemHeight(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 146.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 130.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 116.0;
+    }
+    return 122.0;
+}
+
+static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 228.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 204.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 170.0;
+    }
+    return kCardMedium;
+}
+
+static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 286.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 266.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 236.0;
+    }
+    return kCardLarge;
+}
+
+static inline CGFloat PPHomePetProfileHeight(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 264.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 252.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 228.0;
+    }
+    return 240.0;
+}
+
+static inline CGFloat PPHomeQuickActionWidth(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 214.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 188.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 152.0;
+    }
+    return 176.0;
+}
+
+static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 72.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 68.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 60.0;
+    }
+    return 64.0;
+}
+
+static inline CGFloat PPHomeAdoptHeight(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 208.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 188.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 166.0;
+    }
+    return 176.0;
+}
+
+static inline CGSize PPHomeNearbyCardSize(CGFloat width)
+{
+    width = PPHomeResolvedWidth(width);
+    if (PPHomeWidthIsTablet(width)) {
+        return CGSizeMake(MIN(width * 0.40, 336.0), 284.0);
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return CGSizeMake(MIN(width * 0.58, 304.0), 248.0);
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return CGSizeMake(MIN(width * 0.78, 258.0), 224.0);
+    }
+    return CGSizeMake(MIN(width * 0.68, 284.0), 234.0);
+}
+
+static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
+{
+    return PPHomeWidthIsTablet(width) ? 4 : 3;
+}
+
 #pragma mark - Public Sections
  
 
 + (NSCollectionLayoutSection *)heroSection
 {
+    return [self heroSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)heroSectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:(PPIOS26() ? 236.0 : 240.0)]];
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeHeroHeight(availableWidth)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -67,7 +280,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     [NSCollectionLayoutSection sectionWithGroup:group];
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(8.0, PPSize16, 16.0, PPSize16);
+    NSDirectionalEdgeInsetsMake(8.0, horizontalInset, 16.0, horizontalInset);
 
     return section;
 }
@@ -79,11 +292,19 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
 + (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded
 {
+    return [self currentOrdersSectionExpanded:expanded
+                                    forWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded
+                                                  forWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:(expanded ? kCurrentOrdersExpandedItemHeight : kCurrentOrdersCollapsedItemHeight)]];
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeCurrentOrdersHeight(expanded, availableWidth)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -99,7 +320,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(8.0, PPSize16, 16.0, PPSize16);
+    NSDirectionalEdgeInsetsMake(8.0, horizontalInset, 16.0, horizontalInset);
 
     return section;
 }
@@ -108,11 +329,17 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 // MARK: - Main Kinds Horizontal Section
 + (NSCollectionLayoutSection *)mainKindsHorizontalSection
 {
+    return [self mainKindsHorizontalSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)mainKindsHorizontalSectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension absoluteDimension:102]
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeMainKindsHorizontalItemWidth(availableWidth)]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:122]];
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeMainKindsHorizontalItemHeight(availableWidth)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -135,7 +362,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     section.interGroupSpacing = 0;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(kGapMedium , PPSize16, kGapLarge , PPSize16);
+    NSDirectionalEdgeInsetsMake(kGapMedium, horizontalInset, kGapLarge, horizontalInset);
 
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                   pinned:YES]];
@@ -148,11 +375,17 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 // MARK: - Accessories Section (and Ads, unified card logic)
 + (NSCollectionLayoutSection *)accessoriesSection
 {
+    return [self accessoriesSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)accessoriesSectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension absoluteDimension:kCardMedium]
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardWidth(availableWidth)]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:kCardLarge]];
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardHeight(availableWidth)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -175,7 +408,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     section.interGroupSpacing = 0;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(PPSize12, PPSize16, PPSize12, PPSize16);
+    NSDirectionalEdgeInsetsMake(PPSize12, horizontalInset, PPSize12, horizontalInset);
 
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin]];
 
@@ -184,16 +417,61 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
 + (NSCollectionLayoutSection *)buyAgainSection
 {
-    NSCollectionLayoutSection *section = [self accessoriesSection];
+    return [self buyAgainSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)buyAgainSectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+    NSCollectionLayoutSection *section = [self accessoriesSectionForWidth:availableWidth];
     section.contentInsets = NSDirectionalEdgeInsetsMake(PPSize12,
-                                                        PPSize16,
+                                                        horizontalInset,
                                                         PPSize12,
-                                                        PPSize16);
+                                                        horizontalInset);
     section.interGroupSpacing = 0;
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
     return section;
 }
+
++ (NSCollectionLayoutSection *)petProfileSection
+{
+    return [self petProfileSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)petProfileSectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+    NSCollectionLayoutSize *itemSize =
+    [NSCollectionLayoutSize sizeWithWidthDimension:
+     [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
+                                     heightDimension:
+     [NSCollectionLayoutDimension absoluteDimension:PPHomePetProfileHeight(availableWidth)]];
+
+    NSCollectionLayoutItem *item =
+    [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
+
+    NSCollectionLayoutGroup *group =
+    [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
+                                                  subitems:@[item]];
+
+    NSCollectionLayoutSection *section =
+    [NSCollectionLayoutSection sectionWithGroup:group];
+
+    section.orthogonalScrollingBehavior =
+    UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
+    section.interGroupSpacing = 0.0;
+    section.contentInsets =
+    NSDirectionalEdgeInsetsMake(10.0, horizontalInset, 10.0, horizontalInset);
+
+    return section;
+}
+
 + (NSCollectionLayoutSection *)adoptSection {
+   return [self adoptSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)adoptSectionForWidth:(CGFloat)availableWidth {
+   CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
    // =========================
    // Single full-width card
    // =========================
@@ -201,7 +479,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
    [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                     heightDimension:
-    [NSCollectionLayoutDimension absoluteDimension:176]];
+    [NSCollectionLayoutDimension absoluteDimension:PPHomeAdoptHeight(availableWidth)]];
 
    NSCollectionLayoutItem *item =
    [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -224,7 +502,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
    // 10pt margin on each side → width = view width - 20
    section.contentInsets =
-   NSDirectionalEdgeInsetsMake(2, PPSize16, PPSize16, PPSize16);
+   NSDirectionalEdgeInsetsMake(2, horizontalInset, PPSize16, horizontalInset);
 
    // ❌ No header
    // ❌ No orthogonal scrolling
@@ -246,11 +524,17 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 // MARK: - Suggestions Section (Premium carousel)
 + (NSCollectionLayoutSection *)suggestionsSection
 {
+    return [self suggestionsSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)suggestionsSectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension absoluteDimension:kAccessoriesItemWidth]
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardWidth(availableWidth)]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:kAccessoriesItemHeight]];
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardHeight(availableWidth)]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -268,7 +552,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(PPSize12, PPSize16, PPSize12, PPSize16);
+    NSDirectionalEdgeInsetsMake(PPSize12, horizontalInset, PPSize12, horizontalInset);
 
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
     return section;
@@ -304,11 +588,19 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 // MARK: - Main Kinds Grid Section
 + (NSCollectionLayoutSection *)mainKindsGridSection
 {
+    return [self mainKindsGridSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)mainKindsGridSectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+    NSInteger columnCount = PPHomeMainKindsGridColumnCount(availableWidth);
+    CGFloat itemFraction = 1.0 / MAX(1.0, (CGFloat)columnCount);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:1.0/3.0]
+     [NSCollectionLayoutDimension fractionalWidthDimension:itemFraction]
                                      heightDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:1.0/3.0]];
+     [NSCollectionLayoutDimension fractionalWidthDimension:itemFraction]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -318,19 +610,19 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                       heightDimension:
-      [NSCollectionLayoutDimension fractionalWidthDimension:1.0/3.0]]
+      [NSCollectionLayoutDimension fractionalWidthDimension:itemFraction]]
                                                   subitem:item
-                                                    count:3];
+                                                    count:columnCount];
 
     group.interItemSpacing =
-    [NSCollectionLayoutSpacing fixedSpacing:PPSize6];
+    [NSCollectionLayoutSpacing fixedSpacing:(PPHomeWidthIsTablet(availableWidth) ? 8.0 : PPSize6)];
 
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
 
-    section.interGroupSpacing = 6;
+    section.interGroupSpacing = PPHomeWidthIsTablet(availableWidth) ? 8.0 : 6.0;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(12, PPSize16, 12, PPSize16);
+    NSDirectionalEdgeInsetsMake(12, horizontalInset, 12, horizontalInset);
 
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                   pinned:YES]];
@@ -501,11 +793,18 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
 + (NSCollectionLayoutSection *)adsNearBySection
 {
+    return [self adsNearBySectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)adsNearBySectionForWidth:(CGFloat)availableWidth
+{
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+    CGSize cardSize = PPHomeNearbyCardSize(availableWidth);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:1]
+     [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension fractionalHeightDimension:1]];
+     [NSCollectionLayoutDimension fractionalHeightDimension:1.0]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -513,9 +812,9 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
     NSCollectionLayoutSize *groupSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:0.65]
+     [NSCollectionLayoutDimension absoluteDimension:cardSize.width]
                                      heightDimension:
-     [NSCollectionLayoutDimension fractionalWidthDimension:0.80]];
+     [NSCollectionLayoutDimension absoluteDimension:cardSize.height]];
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
@@ -531,7 +830,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
     UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(PPSize12, PPSize16, PPSize12, PPSize16);
+    NSDirectionalEdgeInsetsMake(PPSize12, horizontalInset, PPSize12, horizontalInset);
     section.interGroupSpacing = 0;
 
     NSCollectionLayoutSize *size =
@@ -550,12 +849,17 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
 
 + (NSCollectionLayoutSection *)quickActionsSection {
+   return [self quickActionsSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)quickActionsSectionForWidth:(CGFloat)availableWidth {
+   CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
 
    NSCollectionLayoutSize *itemSize =
    [NSCollectionLayoutSize sizeWithWidthDimension:
-    [NSCollectionLayoutDimension absoluteDimension:176.0]
+    [NSCollectionLayoutDimension absoluteDimension:PPHomeQuickActionWidth(availableWidth)]
                                     heightDimension:
-    [NSCollectionLayoutDimension absoluteDimension:64.0]];
+    [NSCollectionLayoutDimension absoluteDimension:PPHomeQuickActionHeight(availableWidth)]];
 
    NSCollectionLayoutItem *item =
    [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -571,14 +875,25 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
 
    section.orthogonalScrollingBehavior =
        UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-   section.interGroupSpacing = 12.0;
-   section.contentInsets = NSDirectionalEdgeInsetsMake(4.0, PPSize16, 12.0, PPSize16);
+   section.interGroupSpacing = PPHomeWidthIsTablet(availableWidth) ? 16.0 : 12.0;
+   section.contentInsets = NSDirectionalEdgeInsetsMake(4.0, horizontalInset, 12.0, horizontalInset);
 
    return section;
 }
 
 
 + (NSCollectionLayoutSection *)carouselSection {
+   return [self carouselSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)carouselSectionForWidth:(CGFloat)availableWidth {
+   CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+   CGFloat preferredHeight = [PPBannerCollectionCell preferredCarouselSectionHeight];
+   if (PPHomeWidthIsTablet(availableWidth)) {
+       preferredHeight += 18.0;
+   } else if (PPHomeWidthIsCompactPhone(availableWidth)) {
+       preferredHeight = MAX(214.0, preferredHeight - 10.0);
+   }
 
    // Item
    NSCollectionLayoutSize *itemSize =
@@ -595,7 +910,7 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
    [NSCollectionLayoutSize sizeWithWidthDimension:
     [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                   heightDimension:
-    [NSCollectionLayoutDimension absoluteDimension:[PPBannerCollectionCell preferredCarouselSectionHeight]]];
+    [NSCollectionLayoutDimension absoluteDimension:preferredHeight]];
 
    NSCollectionLayoutGroup *group =
    [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize
@@ -606,9 +921,9 @@ static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
    [NSCollectionLayoutSection sectionWithGroup:group];
    section.interGroupSpacing = 0;
    section.contentInsets = NSDirectionalEdgeInsetsMake([PPBannerCollectionCell preferredCarouselSectionTopInset],
-                                                       [PPBannerCollectionCell preferredCarouselSectionHorizontalInset],
+                                                       horizontalInset,
                                                        [PPBannerCollectionCell preferredCarouselSectionBottomInset],
-                                                       [PPBannerCollectionCell preferredCarouselSectionHorizontalInset]);
+                                                       horizontalInset);
 
 
    

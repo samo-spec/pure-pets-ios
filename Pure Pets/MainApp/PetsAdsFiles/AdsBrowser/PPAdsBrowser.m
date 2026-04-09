@@ -171,14 +171,14 @@
 {
     CGFloat width =  SCREEN_WIDTH/NUMBER_OF_VISIBLE_VIEWS - ICON_VIEW_PADDING * 2;
     UIView *view = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, 100)];
-    view.backgroundColor = [UIColor whiteColor];
+    view.backgroundColor = AppForgroundColr;
     view.layer.cornerRadius = 5;
     view.layer.masksToBounds = YES;
     
     CGFloat innerIconPadding = 5;
     CGFloat iconSize = width - innerIconPadding * 2;
     UIView *innerIcon = [[UIView alloc] initWithFrame:CGRectMake(innerIconPadding, innerIconPadding, iconSize, iconSize)];
-    innerIcon.backgroundColor = [UIColor darkGrayColor];
+    innerIcon.backgroundColor = UIColor.systemGray3Color;
     innerIcon.layer.cornerRadius = 5;
     innerIcon.layer.masksToBounds = YES;
     

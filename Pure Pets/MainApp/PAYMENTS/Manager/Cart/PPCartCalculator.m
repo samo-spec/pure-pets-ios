@@ -47,18 +47,18 @@
 
     for (CartItem *item in items) {
         NSInteger qty = MAX(item.quantity, 0);
-        float effective = item.price;
-        float original  = item.originalPrice > 0.0f ? item.originalPrice : effective;
+        double effective = item.price;
+        double original  = item.originalPrice > 0.0 ? item.originalPrice : effective;
 
         totalQty += qty;
-        subtotal += (double)(effective * (float)qty);
+        subtotal += effective * (double)qty;
 
-        double lineBefore = (double)(original * (float)qty);
+        double lineBefore = original * (double)qty;
         subtotalBefore += lineBefore;
 
         if (item.hasDiscount) {
             anyDiscount = YES;
-            discountTotal += (double)(item.discountPerUnit * (float)qty);
+            discountTotal += item.discountPerUnit * (double)qty;
         }
     }
 

@@ -222,6 +222,10 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
         NSLog(@"[Cart] Reject add: invalid requested quantity for itemID=%@", item.itemID);
         return NO;
     }
+    if (item.price < 0.01 || isnan(item.price)) {
+        NSLog(@"[Cart] Reject add: invalid price (%.4f) for itemID=%@", item.price, item.itemID);
+        return NO;
+    }
 
     @synchronized (self) {
         if (self.isLocked) {
@@ -342,11 +346,11 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
         } else {
             item.stockQuantity = NSNotFound;
         }
-        item.price = [dict[@"price"] floatValue];
+        item.price = [dict[@"price"] doubleValue];
         // Restore originalPrice; fallback to price for pre-migration data
-        if ([dict[@"originalPrice"] respondsToSelector:@selector(floatValue)]) {
-            float stored = [dict[@"originalPrice"] floatValue];
-            item.originalPrice = stored > 0.0f ? stored : item.price;
+        if ([dict[@"originalPrice"] respondsToSelector:@selector(doubleValue)]) {
+            double stored = [dict[@"originalPrice"] doubleValue];
+            item.originalPrice = stored > 0.0 ? stored : item.price;
         } else {
             item.originalPrice = item.price;
         }
@@ -455,18 +459,18 @@ static BOOL PPCartBoolOrDefault(id value, BOOL fallback)
                 continue;
             }
             item.itemID = itemID;
-            item.name = doc[@"name"];
+            item.name = [doc[@"name"] isKindOfClass:NSString.class] ? doc[@"name"] : @"";
             item.quantity = MAX(0, [doc[@"quantity"] integerValue]);
             if ([doc[@"stockQuantity"] respondsToSelector:@selector(integerValue)]) {
                 item.stockQuantity = MAX(0, [doc[@"stockQuantity"] integerValue]);
             } else {
                 item.stockQuantity = NSNotFound;
             }
-            item.price = [doc[@"price"] floatValue];
+            item.price = [doc[@"price"] doubleValue];
             // Restore originalPrice from remote; fallback to price
-            if ([doc[@"originalPrice"] respondsToSelector:@selector(floatValue)]) {
-                float remote = [doc[@"originalPrice"] floatValue];
-                item.originalPrice = remote > 0.0f ? remote : item.price;
+            if ([doc[@"originalPrice"] respondsToSelector:@selector(doubleValue)]) {
+                double remote = [doc[@"originalPrice"] doubleValue];
+                item.originalPrice = remote > 0.0 ? remote : item.price;
             } else {
                 item.originalPrice = item.price;
             }

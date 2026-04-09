@@ -191,7 +191,9 @@
     self.remindersVC = [PPPetRemindersViewController new];
     self.chatsVC = [UserChatsViewController new];
 
-    // Modern pill tab bar
+    // Modern pill tab bar — leading layout at 60% screen width
+    CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
+    CGFloat pillWidth = screenWidth * 0.60;
     PPHubPillTabBar *pills = [[PPHubPillTabBar alloc] initWithTitles:@[
         (kLang(@"pet_chats_tab") ?: @"Chats"),
         (kLang(@"pet_reminders_tab") ?: @"Reminders"),
@@ -201,9 +203,12 @@
     ]];
     self.pillTabBar = pills;
 
-    // Size for nav bar titleView
-    pills.frame = CGRectMake(0, 0, 320, 44);
-    self.navigationItem.titleView = pills;
+    // Place as leftBarButtonItem for leading alignment
+    pills.frame = CGRectMake(0, 0, pillWidth, 44);
+    UIBarButtonItem *pillItem = [[UIBarButtonItem alloc] initWithCustomView:pills];
+    self.navigationItem.leftBarButtonItem = pillItem;
+    self.navigationItem.titleView = nil;
+    self.title = nil;
 
     __weak typeof(self) ws = self;
     pills.onTabChanged = ^(NSInteger index) {

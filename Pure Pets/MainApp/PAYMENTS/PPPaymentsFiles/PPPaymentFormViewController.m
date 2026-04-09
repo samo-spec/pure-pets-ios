@@ -414,7 +414,7 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
     [row.cellConfigAtConfigure setObject:placeholder forKey:@"textField.placeholder"];
     [row.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"textLabel.font"];
     [row.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"detailTextLabel.font"];
-    [row.cellConfig setObject:UIColor.lightGrayColor forKey:@"detailTextLabel.textColor"];
+    [row.cellConfig setObject:UIColor.placeholderTextColor forKey:@"detailTextLabel.textColor"];
     [row.cellConfig setObject:AppSecondaryTextClr forKey:@"textField.textColor"];
     
     [row.cellConfig setObject:@(GM.setAligment) forKey:@"detailTextLabel.textAlignment"];

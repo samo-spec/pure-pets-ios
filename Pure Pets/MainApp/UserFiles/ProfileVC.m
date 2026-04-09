@@ -240,7 +240,10 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     [prefixLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     prefixLabel.layer.cornerRadius = 12.0;
     prefixLabel.layer.masksToBounds = YES;
-    prefixLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.46];
+    prefixLabel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.46 * 0.18 : 0.46;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
     self.prefixLabel = prefixLabel;
 
     UITextField *textField = [[UITextField alloc] init];
@@ -730,17 +733,32 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
 
 - (UIColor *)pp_profileCanvasColor
 {
-    return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
+        }
+        return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
+    }];
 }
 
 - (UIColor *)pp_profileSurfaceColor
 {
-    return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
+        }
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    }];
 }
 
 - (UIColor *)pp_profileSurfaceBorderColor
 {
-    return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.85 green:0.80 blue:0.78 alpha:0.10];
+        }
+        return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
+    }];
 }
 
 - (void)pp_applyProfileCanvasBackground
@@ -880,14 +898,28 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     [self.view sendSubviewToBack:self.backgroundGlowViewTop];
 
     self.avatarIMV.layer.borderWidth = 3.0;
-    self.avatarIMV.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.86].CGColor;
+    UIColor *avatarBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.86 * 0.18 : 0.86;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.avatarIMV.layer.borderColor = [avatarBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
 
     self.headerCardView.layer.borderWidth = 1.0;
-    self.headerCardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.68].CGColor;
+    UIColor *headerCardBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.headerCardView.layer.borderColor = [headerCardBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
 
-    self.addPhotoBtn.layer.borderColor = UIColor.whiteColor.CGColor;
+    UIColor *editBadgeBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:1.0];
+        }
+        return UIColor.whiteColor;
+    }];
+    self.addPhotoBtn.layer.borderColor = [editBadgeBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     self.addPhotoBtn.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    self.addPhotoBtn.layer.shadowOpacity = 0.18;
+    self.addPhotoBtn.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 : 0.18;
     self.addPhotoBtn.layer.shadowRadius = 6.0;
     self.addPhotoBtn.layer.shadowOffset = CGSizeMake(0.0, 2.0);
     self.tableView.backgroundView = nil;
@@ -1147,18 +1179,24 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12];
-    topGlow.layer.shadowColor = [UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0].CGColor;
-    topGlow.layer.shadowOpacity = 0.10;
+    topGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.12 * 0.40 : 0.12;
+        return [UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:a];
+    }];
+    topGlow.layer.shadowColor = [[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    topGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.10;
     topGlow.layer.shadowRadius = 64.0;
     topGlow.layer.shadowOffset = CGSizeZero;
 
     UIView *bottomGlow = [[UIView alloc] init];
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06];
-    bottomGlow.layer.shadowColor = [UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0].CGColor;
-    bottomGlow.layer.shadowOpacity = 0.08;
+    bottomGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 * 0.40 : 0.06;
+        return [UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:a];
+    }];
+    bottomGlow.layer.shadowColor = [[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    bottomGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     bottomGlow.layer.shadowRadius = 72.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
 
@@ -1194,16 +1232,25 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     cardView.layer.cornerRadius = 34.0;
     cardView.layer.masksToBounds = NO;
     cardView.layer.borderWidth = 1.0;
-    cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.68].CGColor;
+    UIColor *cardBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    cardView.layer.borderColor = [cardBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cardView.layer.shadowOpacity = 0.08;
+    cardView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     cardView.layer.shadowRadius = 24.0;
     cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     [self.headerRoot addSubview:cardView];
 
     UIView *tintView = [[UIView alloc] init];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    tintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.60];
+        }
+        return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    }];
     tintView.layer.cornerRadius = 34.0;
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
@@ -1221,11 +1268,18 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
 
     UIView *secondaryGlow = [[UIView alloc] init];
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.40];
+    secondaryGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.40 * 0.18 : 0.40;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
     secondaryGlow.userInteractionEnabled = NO;
     secondaryGlow.layer.cornerRadius = 58.0;
-    secondaryGlow.layer.shadowColor = [[UIColor whiteColor] colorWithAlphaComponent:0.45].CGColor;
-    secondaryGlow.layer.shadowOpacity = 0.20;
+    UIColor *secondaryGlowShadowColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    secondaryGlow.layer.shadowColor = [secondaryGlowShadowColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    secondaryGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.20;
     secondaryGlow.layer.shadowRadius = 22.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
     [cardView addSubview:secondaryGlow];
@@ -1238,7 +1292,10 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+    eyebrowPill.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.74 * 0.18 : 0.74;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.borderWidth = 1.0;
     eyebrowPill.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
@@ -1258,7 +1315,11 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     avatarHalo.backgroundColor = [brandColor colorWithAlphaComponent:0.12];
     avatarHalo.layer.cornerRadius = 62.0;
     avatarHalo.layer.borderWidth = 1.0;
-    avatarHalo.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.48].CGColor;
+    UIColor *avatarHaloBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.48 * 0.18 : 0.48;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    avatarHalo.layer.borderColor = [avatarHaloBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     avatarHalo.layer.shadowColor = [brandColor colorWithAlphaComponent:0.30].CGColor;
     avatarHalo.layer.shadowOpacity = 0.12;
     avatarHalo.layer.shadowRadius = 22.0;
@@ -1308,7 +1369,10 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     metaLabel.textColor = [brandColor colorWithAlphaComponent:0.92];
     metaLabel.textAlignment = NSTextAlignmentCenter;
     metaLabel.numberOfLines = 2;
-    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.78 * 0.18 : 0.78;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
     metaLabel.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
@@ -1325,9 +1389,14 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     editBadge.backgroundColor = brandColor;
     editBadge.layer.cornerRadius = 16.0;
     editBadge.layer.borderWidth = 2.5;
-    editBadge.layer.borderColor = UIColor.whiteColor.CGColor;
+    editBadge.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:1.0];
+        }
+        return UIColor.whiteColor;
+    }].CGColor;
     editBadge.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    editBadge.layer.shadowOpacity = 0.18;
+    editBadge.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 : 0.18;
     editBadge.layer.shadowRadius = 6.0;
     editBadge.layer.shadowOffset = CGSizeMake(0.0, 2.0);
     [editBadge addTarget:self action:@selector(didTapAddPhoto) forControlEvents:UIControlEventTouchUpInside];
@@ -1655,6 +1724,7 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
             : (kLang(@"pet_profiles_add_first") ?: @"Add your first pet");
         [cell configureWithTitle:title iconName:@"pawprint.circle.fill"];
         cell.accessibilityIdentifier = @"profile_pet_profiles_card";
+        cell.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
         return cell;
     }
 
@@ -1684,9 +1754,9 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
     cell.contentView.layer.cornerRadius = 20.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth = 1.0;
-    cell.contentView.layer.borderColor = [self pp_profileSurfaceBorderColor].CGColor;
+    cell.contentView.layer.borderColor = [[self pp_profileSurfaceBorderColor] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cell.layer.shadowOpacity = 0.05;
+    cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
     cell.layer.shadowRadius = 12.0;
     cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     cell.layer.masksToBounds = NO;
@@ -3059,6 +3129,50 @@ static inline NSString *PPProfileForwardChevronSymbolName(void) {
         }
     }
     return NO;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (![self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        return;
+    }
+
+    [self pp_applyProfileCanvasBackground];
+
+    UITraitCollection *tc = self.traitCollection;
+    BOOL isDark = (tc.userInterfaceStyle == UIUserInterfaceStyleDark);
+
+    // Avatar border
+    UIColor *avatarBorderDyn = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *t) {
+        CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.86 * 0.18 : 0.86;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.avatarIMV.layer.borderColor = [avatarBorderDyn resolvedColorWithTraitCollection:tc].CGColor;
+
+    // Header card border + shadow
+    UIColor *headerCardBorderDyn = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *t) {
+        CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.headerCardView.layer.borderColor = [headerCardBorderDyn resolvedColorWithTraitCollection:tc].CGColor;
+    self.headerCardView.layer.shadowOpacity = isDark ? 0.03 : 0.08;
+
+    // Add-photo button
+    UIColor *photoBorderDyn = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *t) {
+        CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.18 : 1.0;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.addPhotoBtn.layer.borderColor = [photoBorderDyn resolvedColorWithTraitCollection:tc].CGColor;
+
+    // Backdrop glows
+    self.backgroundGlowViewTop.layer.shadowColor = [[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0] resolvedColorWithTraitCollection:tc].CGColor;
+    self.backgroundGlowViewBottom.layer.shadowColor = [[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0] resolvedColorWithTraitCollection:tc].CGColor;
+
+    // Refresh cell layer CGColors
+    for (UITableViewCell *cell in self.tableView.visibleCells) {
+        cell.contentView.layer.borderColor = [[self pp_profileSurfaceBorderColor] resolvedColorWithTraitCollection:tc].CGColor;
+        cell.layer.shadowOpacity = isDark ? 0.02 : 0.05;
+    }
 }
 
 @end

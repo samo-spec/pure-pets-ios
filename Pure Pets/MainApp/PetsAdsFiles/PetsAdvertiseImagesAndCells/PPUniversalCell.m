@@ -108,10 +108,7 @@
     
     self.bottomOverlay =
     [[PPBottomOverlayBlur alloc] initWithHeight:62
-                                   cornerRadius:PPCornerMedium];
-    if (@available(iOS 13.0, *)) {
-        self.bottomOverlay.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+                                   cornerRadius:0];
     
     [self.imageView addSubview:self.bottomOverlay];
     
@@ -766,7 +763,7 @@
     
     if(vm.isOwner)
     {
-        self.moreOptionsButton.hidden = YES;
+        self.moreOptionsButton.hidden = NO;
     }
     else
     {

@@ -2204,6 +2204,12 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     
   
 #pragma mark - Latest Accessories Fetching
+
+- (void)dealloc {
+    [self.listener remove];
+    self.listener = nil;
+}
+
 @end
 
 

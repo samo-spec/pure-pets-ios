@@ -33,13 +33,12 @@
     //self.layer.cornerRadius = cornerRadius;
     
     
-    self.layer.borderWidth = 1.0;
-    self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.26].CGColor;
+    self.layer.borderWidth = 0.0;
+    self.layer.borderColor = UIColor.clearColor.CGColor;
     self.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [self applyCornerMaskToView:self tl:16 tr:16 bl:20 br:20];
 
     [self buildBlur];
     return self;
@@ -48,13 +47,6 @@
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-    [self applyCornerMaskToView:self tl:16 tr:16 bl:20 br:20];
-    
-    // 🔸 Store corner values for later re-masking on resize
-    self.layer.name = [NSString stringWithFormat:@"tl%.1f_tr%.1f_bl%.1f_br%.1f", 16, 16, 20, 20];
-
-    // Apply mask now
-    [self applyCornerMaskToView:self tl:16 tr:16 bl:20 br:20];
     
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;

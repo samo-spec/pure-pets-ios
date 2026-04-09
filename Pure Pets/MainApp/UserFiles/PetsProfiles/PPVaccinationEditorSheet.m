@@ -500,4 +500,17 @@ static const CGFloat kCorner      = 16.0;
     return YES;
 }
 
+#pragma mark - Dark Mode
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        CGColorRef borderCG = [PPPetsUISurfaceBorderColor() resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+        self.nameField.layer.borderColor       = borderCG;
+        self.notesField.layer.borderColor      = borderCG;
+        self.appliedDateRow.layer.borderColor   = borderCG;
+        self.nextDueDateRow.layer.borderColor   = borderCG;
+    }
+}
+
 @end

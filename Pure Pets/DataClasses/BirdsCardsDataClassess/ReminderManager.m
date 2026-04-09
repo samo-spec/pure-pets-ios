@@ -8,6 +8,7 @@
 
 // ReminderManager.m
 #import "ReminderManager.h"
+#import "PPReminderNotificationManager.h"
 #import <UserNotifications/UserNotifications.h>
 
 @implementation ReminderManager

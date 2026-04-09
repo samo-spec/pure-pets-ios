@@ -151,7 +151,7 @@
     self.previewImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.previewImageView.layer.cornerRadius = 12;
     self.previewImageView.layer.masksToBounds = YES;
-    self.previewImageView.backgroundColor = UIColor.whiteColor;
+    self.previewImageView.backgroundColor = AppForgroundColr;
     self.previewImageView.image = [UIImage imageNamed:@"grooming"];
     [self.view addSubview:self.previewImageView];
 

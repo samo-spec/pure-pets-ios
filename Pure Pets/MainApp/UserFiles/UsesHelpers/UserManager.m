@@ -120,10 +120,14 @@ NSString *const PPUserManagerBlockedStateUserInfoKey = @"isBlocked";
                 FIRDocumentReference *oldPetRef =
                     [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:oldDefaultPetID];
 
-                [transaction updateData:@{
-                    @"isDefaultPet": @NO,
-                    @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
-                } forDocument:oldPetRef];
+                FIRDocumentSnapshot *oldPetSnap = [transaction getDocument:oldPetRef error:errorPointer];
+                if (*errorPointer) return nil;
+
+                if (oldPetSnap.exists) {
+                    PPPetProfile *oldPet = [[PPPetProfile alloc] initWithSnapshot:oldPetSnap];
+                    oldPet.isDefaultPet = NO;
+                    [transaction setData:[oldPet toDictionary] forDocument:oldPetRef merge:YES];
+                }
             }
 
             [transaction setData:@{
@@ -165,9 +169,8 @@ NSString *const PPUserManagerBlockedStateUserInfoKey = @"isBlocked";
         FIRWriteBatch *batch = [[FIRFirestore firestore] batch];
         for (PPPetProfile *pet in pets) {
             FIRDocumentReference *ref = [[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:pet.petID];
-            [batch updateData:@{ @"isDefaultPet": @([pet.petID isEqualToString:petID]),
-                                 @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp] }
-                  forDocument:ref];
+            pet.isDefaultPet = [pet.petID isEqualToString:petID];
+            [batch setData:[pet toDictionary] forDocument:ref merge:YES];
         }
         [batch setData:@{ @"defaultPetProfileID": petID,
                           @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp] }
@@ -1953,7 +1956,7 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
                 }
                 // Update Firestore fields to remove references
                 [self updateUserDocumentForUID:authUser.uid
-                                        fields:@{@"UserImageUrl": [NSNull null]}
+                                        fields:@{@"UserImageUrl": [FIRFieldValue fieldValueForDelete]}
                                     completion:^(NSError * _Nullable error3) {
                     if (error3) {
                         NSLog(@"[UserManager] Warning: failed to clear photoURL in Firestore: %@", error3);

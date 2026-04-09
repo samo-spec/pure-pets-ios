@@ -787,7 +787,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     CGFloat scale = UIScreen.mainScreen.scale ?: 1.0;
     CGFloat lineHeight = 1.0 / MAX(scale, 1.0);
-    CGFloat horizontalInset = 14.0;
+    CGFloat horizontalInset = 24.0;
     CGFloat availableWidth = MAX(0.0, CGRectGetWidth(self.tabBar.bounds) - (horizontalInset * 2.0));
     self.tabBarTopSeparatorLayer.frame = CGRectMake(horizontalInset, 0.0, availableWidth, lineHeight);
     self.tabBarTopSeparatorLayer.backgroundColor =

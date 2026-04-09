@@ -182,7 +182,7 @@
         [[NSAttributedString alloc] initWithString:ph
                                         attributes:@{
             NSFontAttributeName : [GM fontWithSize:16],
-            NSForegroundColorAttributeName : [UIColor lightGrayColor]
+            NSForegroundColorAttributeName : UIColor.placeholderTextColor
         }];
 
     // LTR/RTL alignment

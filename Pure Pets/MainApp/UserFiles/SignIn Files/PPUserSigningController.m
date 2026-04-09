@@ -484,7 +484,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     textField.translatesAutoresizingMaskIntoConstraints = NO;
     textField.font = [GM boldFontWithSize:18];
     textField.textColor = [UIColor labelColor];
-    textField.backgroundColor = [UIColor whiteColor];
+    textField.backgroundColor = AppForgroundColr;
     textField.layer.cornerRadius = 18;
     textField.clipsToBounds = YES;
     textField.keyboardType =  UIKeyboardTypeASCIICapable;

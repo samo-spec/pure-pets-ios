@@ -2901,8 +2901,11 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     }
     
     cell.nameLabel.text = name;
-    cell.quantityLabel.text = [NSString stringWithFormat:@"%@: %ld", kLang(@"QuantityLabel"), (long)MAX(1, quantity)];
+    cell.quantityLabel.text = [NSString stringWithFormat:@"%@: %ld", kLang(@"QuantityLabel"), (long)quantity];
     
+    if (quantity <= 0) {
+        NSLog(@"[OrderDetails] Warning: order item '%@' has quantity %ld", itemID, (long)quantity);
+    }
     double lineTotal = MAX(0.0, unitPrice) * MAX(1, quantity);
     cell.priceLabel.text = [NSString stringWithFormat:@"%.2f %@", lineTotal, currency];
     

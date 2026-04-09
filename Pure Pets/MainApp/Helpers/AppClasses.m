@@ -550,7 +550,7 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     if ((self = [super initWithFrame:frame])) {
         
-        self.backgroundColor = UIColor.whiteColor;
+        self.backgroundColor = AppForgroundColr;
         self.layer.cornerRadius = PPCorners;
         self.layer.masksToBounds = YES;
         
@@ -560,7 +560,7 @@
         // Name
         _nameLabel = [[UILabel alloc] init];
         _nameLabel.font = [GM boldFontWithSize:16];
-        _nameLabel.textColor = UIColor.blackColor;
+        _nameLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
         _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
         
         _genderIcon = [[UIImageView alloc] init];
@@ -570,7 +570,7 @@
         // Breed
         _breedLabel = [[UILabel alloc] init];
         _breedLabel.font = [GM MidFontWithSize:14];
-        _breedLabel.textColor = UIColor.darkGrayColor;
+        _breedLabel.textColor = UIColor.secondaryLabelColor;
         _breedLabel.translatesAutoresizingMaskIntoConstraints = NO;
         
         // Age row

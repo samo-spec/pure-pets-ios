@@ -6,20 +6,44 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+// ─── Dynamic Colors ─────────────────────────────────────────────
+// Light mode returns the EXACT original values (unchanged).
+// Dark mode returns a cohesive warm-neutral dark theme.
+
 static inline UIColor *PPPetsUICanvasColor(void) {
-    return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
+        }
+        return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
+    }];
 }
 
 static inline UIColor *PPPetsUISurfaceColor(void) {
-    return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
+        }
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    }];
 }
 
 static inline UIColor *PPPetsUISurfaceTintColor(void) {
-    return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.60];
+        }
+        return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    }];
 }
 
 static inline UIColor *PPPetsUISurfaceBorderColor(void) {
-    return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.85 green:0.80 blue:0.78 alpha:0.10];
+        }
+        return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
+    }];
 }
 
 static inline UIColor *PPPetsUIBrandColor(void) {
@@ -34,6 +58,15 @@ static inline UIColor *PPPetsUISecondaryTextColor(void) {
     return [UIColor.secondaryLabelColor colorWithAlphaComponent:0.92];
 }
 
+static inline UIColor *PPPetsUIShadowColor(void) {
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithWhite:0.0 alpha:0.50];
+        }
+        return [UIColor colorWithWhite:0.0 alpha:1.0];
+    }];
+}
+
 static inline UISemanticContentAttribute PPPetsCurrentSemanticAttribute(void) {
     return Language.isRTL
         ? UISemanticContentAttributeForceRightToLeft
@@ -44,6 +77,26 @@ static inline NSString *PPPetsForwardChevronSymbolName(void) {
     return Language.isRTL ? @"chevron.left" : @"chevron.right";
 }
 
+// White overlay on card surface — light keeps original alpha, dark softens it
+static inline UIColor *PPPetsCardOverlay(CGFloat lightAlpha) {
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? lightAlpha * 0.18
+            : lightAlpha;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+}
+
+// Glow fill for backdrop orbs — warmer and subtler in dark mode
+static inline UIColor *PPPetsGlowFill(CGFloat r, CGFloat g, CGFloat b, CGFloat lightAlpha) {
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? lightAlpha * 0.40
+            : lightAlpha;
+        return [UIColor colorWithRed:r green:g blue:b alpha:a];
+    }];
+}
+
 static inline UIView *PPPetsBuildGlowView(UIColor *fillColor,
                                           UIColor *shadowColor,
                                           CGFloat shadowOpacity,
@@ -52,8 +105,10 @@ static inline UIView *PPPetsBuildGlowView(UIColor *fillColor,
     glow.translatesAutoresizingMaskIntoConstraints = NO;
     glow.userInteractionEnabled = NO;
     glow.backgroundColor = fillColor;
-    glow.layer.shadowColor = shadowColor.CGColor;
-    glow.layer.shadowOpacity = shadowOpacity;
+    UITraitCollection *tc = UITraitCollection.currentTraitCollection;
+    glow.layer.shadowColor = [shadowColor resolvedColorWithTraitCollection:tc].CGColor;
+    BOOL isDark = (tc.userInterfaceStyle == UIUserInterfaceStyleDark);
+    glow.layer.shadowOpacity = isDark ? shadowOpacity * 0.4 : shadowOpacity;
     glow.layer.shadowRadius = shadowRadius;
     glow.layer.shadowOffset = CGSizeZero;
     return glow;
@@ -90,11 +145,13 @@ static inline void PPPetsApplySurfaceStyle(UIView *view, CGFloat cornerRadius) {
         view.layer.cornerCurve = kCACornerCurveContinuous;
     }
     view.layer.borderWidth = 1.0;
-    view.layer.borderColor = PPPetsUISurfaceBorderColor().CGColor;
-    view.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    view.layer.shadowOpacity = 0.08;
-    view.layer.shadowRadius = 24.0;
-    view.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    UITraitCollection *tc = view.traitCollection ?: UITraitCollection.currentTraitCollection;
+    view.layer.borderColor = [PPPetsUISurfaceBorderColor() resolvedColorWithTraitCollection:tc].CGColor;
+    view.layer.shadowColor = [PPPetsUIShadowColor() resolvedColorWithTraitCollection:tc].CGColor;
+    BOOL isDark = (tc.userInterfaceStyle == UIUserInterfaceStyleDark);
+    view.layer.shadowOpacity = isDark ? 0.30f : 0.08f;
+    view.layer.shadowRadius = isDark ? 16.0 : 24.0;
+    view.layer.shadowOffset = isDark ? CGSizeMake(0.0, 8.0) : CGSizeMake(0.0, 14.0);
     view.layer.masksToBounds = NO;
 }
 
@@ -102,10 +159,12 @@ static inline void PPPetsApplySurfaceCellStyle(UITableViewCell *cell, CGFloat co
     cell.backgroundColor = UIColor.clearColor;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     cell.clipsToBounds = NO;
-    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
-    cell.layer.shadowOpacity = 0.05;
-    cell.layer.shadowRadius = 12.0;
-    cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    UITraitCollection *tc = cell.traitCollection ?: UITraitCollection.currentTraitCollection;
+    BOOL isDark = (tc.userInterfaceStyle == UIUserInterfaceStyleDark);
+    cell.layer.shadowColor = [PPPetsUIShadowColor() resolvedColorWithTraitCollection:tc].CGColor;
+    cell.layer.shadowOpacity = isDark ? 0.25f : 0.05f;
+    cell.layer.shadowRadius = isDark ? 8.0 : 12.0;
+    cell.layer.shadowOffset = isDark ? CGSizeMake(0.0, 3.0) : CGSizeMake(0.0, 6.0);
     cell.layer.masksToBounds = NO;
 
     cell.contentView.backgroundColor = PPPetsUISurfaceColor();
@@ -114,8 +173,16 @@ static inline void PPPetsApplySurfaceCellStyle(UITableViewCell *cell, CGFloat co
         cell.contentView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     cell.contentView.layer.borderWidth = 1.0;
-    cell.contentView.layer.borderColor = PPPetsUISurfaceBorderColor().CGColor;
+    cell.contentView.layer.borderColor = [PPPetsUISurfaceBorderColor() resolvedColorWithTraitCollection:tc].CGColor;
     cell.contentView.layer.masksToBounds = YES;
+}
+
+// Call from traitCollectionDidChange: to refresh CALayer CGColor properties
+static inline void PPPetsRefreshDynamicLayerColors(UITableView * _Nullable tableView) {
+    if (!tableView) return;
+    for (UITableViewCell *cell in tableView.visibleCells) {
+        PPPetsApplySurfaceCellStyle(cell, cell.contentView.layer.cornerRadius);
+    }
 }
 
 static inline UIView *PPPetsBuildSectionHeaderView(NSString * _Nullable title, NSString * _Nullable subtitle) {
@@ -168,7 +235,7 @@ static inline UIButton *PPPetsBuildHeroButton(NSString *title,
                                               NSString *systemImageName,
                                               BOOL filled) {
     UIColor *fg  = filled ? UIColor.whiteColor : PPPetsUIBrandColor();
-    UIColor *bg  = filled ? PPPetsUIBrandColor() : [[UIColor whiteColor] colorWithAlphaComponent:0.70];
+    UIColor *bg  = filled ? PPPetsUIBrandColor() : [AppPrimaryClr colorWithAlphaComponent:0.80];
 
     UIButtonConfiguration *config = filled
         ? [UIButtonConfiguration filledButtonConfiguration]
@@ -191,7 +258,8 @@ static inline UIButton *PPPetsBuildHeroButton(NSString *title,
     UIButton *button = [UIButton buttonWithConfiguration:config primaryAction:nil];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     if (!filled) {
-        button.layer.borderWidth = 1.0;
+        config.cornerStyle         = UIButtonConfigurationCornerStyleLarge;
+        button.layer.borderWidth = 0.0;
         button.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.16].CGColor;
     }
     if (@available(iOS 13.0, *)) {
@@ -215,6 +283,9 @@ static inline NSArray<UIView *> *PPPetsBuildFloatingCircles(UIView *parentView) 
     CGFloat w = MAX(parentView.bounds.size.width, UIScreen.mainScreen.bounds.size.width);
     CGFloat h = MAX(parentView.bounds.size.height, UIScreen.mainScreen.bounds.size.height);
 
+    BOOL isDark = (parentView.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    CGFloat alphaScale = isDark ? 0.35 : 1.0; // reduce circle prominence in dark mode
+
     struct { CGFloat rx, ry, d, r, g, b, a; } specs[] = {
         {0.14, 0.20,  56,  0.98, 0.84, 0.68, 0.07},   // warm peach
         {0.80, 0.30,  42,  0.80, 0.70, 0.93, 0.06},   // soft lavender
@@ -235,10 +306,10 @@ static inline NSArray<UIView *> *PPPetsBuildFloatingCircles(UIView *parentView) 
         c.backgroundColor = [UIColor colorWithRed:specs[i].r
                                             green:specs[i].g
                                              blue:specs[i].b
-                                            alpha:specs[i].a];
+                                            alpha:specs[i].a * alphaScale];
         c.layer.cornerRadius        = radius;
         c.userInteractionEnabled    = NO;
-        c.alpha                     = specs[i].a;
+        c.alpha                     = specs[i].a * alphaScale;
 
         // Colored glow halo
         c.layer.shadowColor   = [UIColor colorWithRed:specs[i].r green:specs[i].g blue:specs[i].b alpha:1.0].CGColor;

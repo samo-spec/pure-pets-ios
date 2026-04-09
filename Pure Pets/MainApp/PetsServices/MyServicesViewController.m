@@ -11,9 +11,29 @@
 #import "CategoryModel.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 
-@interface MyServicesViewController () <UICollectionViewDelegate, UICollectionViewDataSource, ServiceCollectionViewCellDelegate, UISearchBarDelegate>
+static inline BOOL PPServicesGridIsTablet(CGFloat width)
+{
+    return width >= 768.0;
+}
+
+static inline NSInteger PPServicesGridColumnCount(CGFloat width)
+{
+    if (width >= 1200.0) {
+        return 4;
+    }
+    if (width >= 820.0) {
+        return 3;
+    }
+    if (width <= 360.0) {
+        return 1;
+    }
+    return 2;
+}
+
+@interface MyServicesViewController () <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, ServiceCollectionViewCellDelegate, UISearchBarDelegate>
 
 @property (nonatomic, strong) UICollectionView *collectionView;
+@property (nonatomic, strong) UICollectionViewFlowLayout *collectionLayout;
 @property (nonatomic, strong) NSMutableArray<ServiceModel *> *services;
 @property (nonatomic, strong) NSMutableArray<ServiceModel *> *filteredServices;
 @property (nonatomic, strong) CCActivityHUD *activityHUD;
@@ -21,6 +41,7 @@
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) NSString *selectedCategoryID;
 @property (nonatomic, strong) NSDate *selectedDate;
+@property (nonatomic, assign) CGSize lastResolvedCollectionBoundsSize;
 
 @end
 
@@ -34,7 +55,13 @@
     [self setupActivityHUD];
     [self setupSearchBar];
     [self startListeningToServices];
-    self.navigationController.navigationBar.tintColor = [UIColor darkGrayColor];
+    self.navigationController.navigationBar.tintColor = UIColor.labelColor;
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    [self pp_applyCollectionLayoutMetricsIfNeeded];
 }
 
 - (void)setupActivityHUD {
@@ -53,14 +80,15 @@
 }
 
 - (void)setupCollectionView {
-    UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
-    layout.itemSize = CGSizeMake((self.view.bounds.size.width - 30) / 2, 250);
-    layout.minimumInteritemSpacing = 10;
-    layout.minimumLineSpacing = 10;
-    layout.sectionInset = UIEdgeInsetsMake(10, 10, 10, 10);
+    self.collectionLayout = [[UICollectionViewFlowLayout alloc] init];
+    self.collectionLayout.minimumInteritemSpacing = 12.0;
+    self.collectionLayout.minimumLineSpacing = 12.0;
+    self.collectionLayout.sectionInset = UIEdgeInsetsMake(12.0, 16.0, 24.0, 16.0);
 
-    self.collectionView = [[UICollectionView alloc] initWithFrame:self.view.bounds collectionViewLayout:layout];
+    self.collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:self.collectionLayout];
+    self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
+    self.collectionView.alwaysBounceVertical = YES;
     self.collectionView.delegate = self;
     self.collectionView.dataSource = self;
     [self.collectionView registerClass:[ServiceCollectionViewCell class] forCellWithReuseIdentifier:@"ServiceCell"];
@@ -70,6 +98,12 @@
     [self.collectionView addSubview:self.refreshControl];
 
     [self.view addSubview:self.collectionView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.collectionView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
 }
 
 - (void)refreshServices {
@@ -126,6 +160,23 @@
     return cell;
 }
 
+#pragma mark - UICollectionViewDelegateFlowLayout
+
+- (CGSize)collectionView:(UICollectionView *)collectionView
+                  layout:(UICollectionViewLayout *)collectionViewLayout
+  sizeForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    CGFloat availableWidth = CGRectGetWidth(collectionView.bounds);
+    UIEdgeInsets sectionInset = self.collectionLayout.sectionInset;
+    NSInteger columns = PPServicesGridColumnCount(availableWidth);
+    CGFloat totalSpacing = sectionInset.left + sectionInset.right + (self.collectionLayout.minimumInteritemSpacing * MAX(columns - 1, 0));
+    CGFloat itemWidth = floor((availableWidth - totalSpacing) / MAX(columns, 1));
+    CGFloat mediaHeight = (columns == 1)
+        ? MIN(MAX(itemWidth * 0.74, 240.0), 310.0)
+        : MIN(MAX(itemWidth * 1.06, 220.0), 290.0);
+    return CGSizeMake(itemWidth, mediaHeight);
+}
+
 #pragma mark - ServiceCollectionViewCellDelegate
 
 - (void)serviceCellDidTapEdit:(ServiceCollectionViewCell *)cell {
@@ -133,7 +184,7 @@
     if (!indexPath) { NSLog(@"❌ MyServicesVC: nil indexPath in didTapEdit"); return; }
     ServiceModel *service = self.filteredServices[indexPath.item];
 
-     
+
 }
 
 - (void)serviceCellDidTapDelete:(ServiceCollectionViewCell *)cell {
@@ -141,23 +192,28 @@
     if (!indexPath) { NSLog(@"❌ MyServicesVC: nil indexPath in didTapDelete"); return; }
     ServiceModel *service = self.filteredServices[indexPath.item];
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"حذف الخدمة"
-                                                                   message:@"هل أنت متأكد أنك تريد حذف هذه الخدمة؟"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:(kLang(@"service_delete_title") ?: @"Delete Service")
+                                                                   message:(kLang(@"service_delete_confirm_msg") ?: @"Are you sure you want to delete this service?")
                                                             preferredStyle:UIAlertControllerStyleAlert];
 
-    UIAlertAction *deleteAction = [UIAlertAction actionWithTitle:@"حذف" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
-        [self.activityHUD show];
+    __weak typeof(self) weakSelf = self;
+    UIAlertAction *deleteAction = [UIAlertAction actionWithTitle:(kLang(@"delete") ?: @"Delete") style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf.activityHUD show];
         [[ServicesManager sharedInstance] deleteService:service.serviceID completion:^(NSError *error) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                [self.activityHUD dismiss];
+                __strong typeof(weakSelf) ss = weakSelf;
+                if (!ss) return;
+                [ss.activityHUD dismiss];
                 if (error) {
-                    [self showAlert:@"فشل في حذف الخدمة"];
+                    [ss showAlert:(kLang(@"service_delete_failed") ?: @"Failed to delete service")];
                 }
             });
         }];
     }];
 
-    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:@"إلغاء" style:UIAlertActionStyleCancel handler:nil];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:(kLang(@"Cancel") ?: @"Cancel") style:UIAlertActionStyleCancel handler:nil];
     [alert addAction:cancelAction];
     [alert addAction:deleteAction];
     [self presentViewController:alert animated:YES completion:nil];
@@ -183,6 +239,29 @@
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"تنبيه" message:message preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:@"تم" style:UIAlertActionStyleDefault handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
+}
+
+#pragma mark - Private
+
+- (void)pp_applyCollectionLayoutMetricsIfNeeded
+{
+    CGSize boundsSize = self.collectionView.bounds.size;
+    if (boundsSize.width <= 0.0 || boundsSize.height <= 0.0 || CGSizeEqualToSize(boundsSize, self.lastResolvedCollectionBoundsSize)) {
+        return;
+    }
+
+    self.lastResolvedCollectionBoundsSize = boundsSize;
+
+    CGFloat width = CGRectGetWidth(self.view.bounds);
+    BOOL isTablet = PPServicesGridIsTablet(width);
+    CGFloat sideInset = isTablet ? 24.0 : 16.0;
+    CGFloat spacing = isTablet ? 16.0 : 12.0;
+
+    self.collectionLayout.minimumInteritemSpacing = spacing;
+    self.collectionLayout.minimumLineSpacing = spacing;
+    self.collectionLayout.sectionInset = UIEdgeInsetsMake(12.0, sideInset, 24.0, sideInset);
+
+    [self.collectionLayout invalidateLayout];
 }
 
 @end

@@ -26,6 +26,18 @@ static NSCache<NSString *, UIImage *> *PPEditorImgCache(void) {
     return c;
 }
 
+static NSURLSession *PPEditorURLSession(void) {
+    static NSURLSession *s;
+    static dispatch_once_t t;
+    dispatch_once(&t, ^{
+        NSURLSessionConfiguration *cfg = [NSURLSessionConfiguration defaultSessionConfiguration];
+        cfg.timeoutIntervalForRequest = 30;
+        cfg.timeoutIntervalForResource = 60;
+        s = [NSURLSession sessionWithConfiguration:cfg];
+    });
+    return s;
+}
+
 static void PPEditorLoadImage(UIImageView *iv, NSString *url, UIImage *ph) {
     iv.image = ph;
     if (!url.length) return;
@@ -34,7 +46,7 @@ static void PPEditorLoadImage(UIImageView *iv, NSString *url, UIImage *ph) {
     NSURL *u = [NSURL URLWithString:url];
     if (!u) return;
     __weak UIImageView *w = iv;
-    [[[NSURLSession sharedSession] dataTaskWithURL:u completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
+    [[PPEditorURLSession() dataTaskWithURL:u completionHandler:^(NSData *d, NSURLResponse *r, NSError *e) {
         if (!d) return;
         UIImage *img = [UIImage imageWithData:d];
         if (!img) return;
@@ -352,7 +364,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveButton];
 
     // Table
-    self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStyleInsetGrouped];
+    self.tableView = [[UITableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     self.tableView.autoresizingMask    = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     self.tableView.dataSource          = self;
     self.tableView.delegate            = self;
@@ -420,12 +432,12 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         return;
     }
 
-    UIView *topGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12],
-                                          [UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0],
+    UIView *topGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.93, 0.80, 0.69, 0.12),
+                                          PPPetsGlowFill(0.98, 0.82, 0.60, 1.0),
                                           0.10,
                                           64.0);
-    UIView *bottomGlow = PPPetsBuildGlowView([[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06],
-                                             [UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0],
+    UIView *bottomGlow = PPPetsBuildGlowView(PPPetsGlowFill(0.72, 0.45, 0.42, 0.06),
+                                             PPPetsGlowFill(0.68, 0.27, 0.33, 1.0),
                                              0.08,
                                              72.0);
 
@@ -475,8 +487,8 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     ambientGlow.layer.cornerRadius = 94.0;
     [cardView addSubview:ambientGlow];
 
-    UIView *secondaryGlow = PPPetsBuildGlowView([[UIColor whiteColor] colorWithAlphaComponent:0.40],
-                                                [[UIColor whiteColor] colorWithAlphaComponent:0.45],
+    UIView *secondaryGlow = PPPetsBuildGlowView(PPPetsCardOverlay(0.40),
+                                                PPPetsCardOverlay(0.45),
                                                 0.20,
                                                 22.0);
     secondaryGlow.layer.cornerRadius = 58.0;
@@ -490,7 +502,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowPill.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.74];
+    eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.borderWidth = 1.0;
     eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -510,7 +522,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     avatarHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
     avatarHalo.layer.cornerRadius = 62.0;
     avatarHalo.layer.borderWidth = 1.0;
-    avatarHalo.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.48].CGColor;
+    avatarHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     avatarHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
     avatarHalo.layer.shadowOpacity = 0.12;
     avatarHalo.layer.shadowRadius = 22.0;
@@ -523,7 +535,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     self.heroImageView.clipsToBounds = YES;
     self.heroImageView.layer.cornerRadius = 54.0;
     self.heroImageView.layer.borderWidth = 3.0;
-    self.heroImageView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.86].CGColor;
+    self.heroImageView.layer.borderColor = [PPPetsCardOverlay(0.86) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     self.heroImageView.backgroundColor = UIColor.clearColor;
     self.heroImageView.tintColor = PPPetsUIBrandColor();
     self.heroImageView.userInteractionEnabled = YES;
@@ -551,7 +563,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     metaLabel.textColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.92];
     metaLabel.textAlignment = NSTextAlignmentCenter;
     metaLabel.numberOfLines = 2;
-    metaLabel.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
     metaLabel.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
@@ -775,6 +787,9 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     if (indexPath.section == PPEditorSectionSettings || indexPath.section == PPEditorSectionVaccinations) {
             return 60.0;
     }
+    if (indexPath.section == PPEditorSectionInfo) {
+            return 96.0;
+    }
     return UITableViewAutomaticDimension;
 }
 
@@ -948,8 +963,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                                              completion:^(PPPetVaccinationRecord *rec, BOOL saved) {
         if (!saved || !rec) return;
         [ws.records addObject:rec];
-        [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
-                    withRowAnimation:UITableViewRowAnimationAutomatic];
+        CGPoint savedOffset = ws.tableView.contentOffset;
+        [UIView performWithoutAnimation:^{
+            [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
+                        withRowAnimation:UITableViewRowAnimationNone];
+        }];
+        [ws.tableView layoutIfNeeded];
+        ws.tableView.contentOffset = savedOffset;
         [ws pp_refreshHeroHeader];
     }];
 }
@@ -963,8 +983,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                                              withRecord:rec
                                              completion:^(PPPetVaccinationRecord *updatedRec, BOOL saved) {
         if (!saved) return;
-        [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
-                    withRowAnimation:UITableViewRowAnimationAutomatic];
+        CGPoint savedOffset = ws.tableView.contentOffset;
+        [UIView performWithoutAnimation:^{
+            [ws.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
+                        withRowAnimation:UITableViewRowAnimationNone];
+        }];
+        [ws.tableView layoutIfNeeded];
+        ws.tableView.contentOffset = savedOffset;
         [ws pp_refreshHeroHeader];
     }];
 }
@@ -972,8 +997,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 - (void)pp_deleteVaccineAtIndex:(NSInteger)idx {
     if (idx < 0 || idx >= (NSInteger)self.records.count) return;
     [self.records removeObjectAtIndex:idx];
-    [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
-                  withRowAnimation:UITableViewRowAnimationAutomatic];
+    CGPoint savedOffset = self.tableView.contentOffset;
+    [UIView performWithoutAnimation:^{
+        [self.tableView reloadSections:[NSIndexSet indexSetWithIndex:PPEditorSectionVaccinations]
+                      withRowAnimation:UITableViewRowAnimationNone];
+    }];
+    [self.tableView layoutIfNeeded];
+    self.tableView.contentOffset = savedOffset;
     [self pp_refreshHeroHeader];
 }
 
@@ -1060,6 +1090,16 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         self.tableView.contentInset          = UIEdgeInsetsMake(6.0, 0.0, MAX(24.0, bottomGap), 0.0);
         self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     }];
+}
+
+#pragma mark - Dark Mode
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        PPPetsApplyCanvasBackground(self, self.tableView);
+        PPPetsRefreshDynamicLayerColors(self.tableView);
+    }
 }
 
 @end

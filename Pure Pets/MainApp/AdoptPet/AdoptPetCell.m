@@ -158,6 +158,7 @@ static NSString *PPAdoptCellSafeString(id value)
     self.overlayPillView.userInteractionEnabled = NO;
     self.overlayPillView.alpha = 0.96;
     self.overlayPillView.layer.borderWidth = 0.0;
+    self.overlayPillView.layer.borderColor = UIColor.clearColor.CGColor;
 
     [self.imageOverlayView addSubview:self.overlayPillView];
 
@@ -253,7 +254,10 @@ static NSString *PPAdoptCellSafeString(id value)
     label.textInsets = UIEdgeInsetsMake(2, 7, 2, 7);
     label.font = [GM MidFontWithSize:10];
     label.textColor = UIColor.labelColor;
-    label.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.10];
+    label.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat alpha = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.18 : 0.10;
+        return [GM.appPrimaryColor colorWithAlphaComponent:alpha];
+    }];
     label.layer.cornerRadius = 10.0;
     label.layer.masksToBounds = YES;
     label.hidden = YES;
@@ -275,7 +279,7 @@ static NSString *PPAdoptCellSafeString(id value)
             cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
             cfg.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.74];
             cfg.baseForegroundColor = UIColor.labelColor;
-            cfg.background.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialLight];
+            cfg.background.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
             cfg.image = [UIImage systemImageNamed:systemName];
             cfg.contentInsets = NSDirectionalEdgeInsetsMake(5, 5, 5, 5);
             cfg.preferredSymbolConfigurationForImage =
@@ -298,7 +302,7 @@ static NSString *PPAdoptCellSafeString(id value)
             cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
             cfg.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.74];
             cfg.baseForegroundColor = GM.appPrimaryColor;
-            cfg.background.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialLight];
+            cfg.background.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
             cfg.contentInsets = NSDirectionalEdgeInsetsMake(5, 5, 5, 5);
             button.configuration = cfg;
         } else {
@@ -326,17 +330,44 @@ static NSString *PPAdoptCellSafeString(id value)
     if (@available(iOS 11.0, *)) {
         self.overlayPillView.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
     }
-    [self setupShadow];
+    [self pp_updateAppearanceForTraitCollection:self.traitCollection];
 }
 
 - (void)setupShadow {
+    BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     self.layer.cornerRadius = 18.0;
     self.layer.shadowColor = GM.AppShadowColor.CGColor;
-    self.layer.shadowOffset = CGSizeMake(0, 4);
-    self.layer.shadowRadius = 10;
-    self.layer.shadowOpacity = 0.12;
+    self.layer.shadowOffset = CGSizeMake(0, isDark ? 2 : 4);
+    self.layer.shadowRadius = isDark ? 6 : 10;
+    self.layer.shadowOpacity = isDark ? 0.30 : 0.12;
     self.layer.masksToBounds = NO;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.contentView.bounds cornerRadius:18.0].CGPath;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self pp_updateAppearanceForTraitCollection:self.traitCollection];
+    }
+}
+
+- (void)pp_updateAppearanceForTraitCollection:(UITraitCollection *)tc {
+    BOOL isDark = (tc.userInterfaceStyle == UIUserInterfaceStyleDark);
+
+    // Overlay pill border — subtle edge in dark, hidden in light
+    self.overlayPillView.layer.borderWidth = isDark ? 0.5 : 0.0;
+    self.overlayPillView.layer.borderColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.12].CGColor
+        : UIColor.clearColor.CGColor;
+
+    // Shadow adapts for dark mode
+    [self setupShadow];
+
+    // Tag chip backgrounds — slightly stronger in dark
+    CGFloat chipAlpha = isDark ? 0.18 : 0.10;
+    UIColor *chipBg = [GM.appPrimaryColor colorWithAlphaComponent:chipAlpha];
+    self.ageTagLabel.backgroundColor = chipBg;
+    self.genderTagLabel.backgroundColor = chipBg;
 }
 
 #pragma mark - Public Configure
@@ -386,7 +417,7 @@ static NSString *PPAdoptCellSafeString(id value)
     [self pp_updateTagsForModel:self.adoptModel];
 
     self.imageView.backgroundColor = GM.backOffwhileColor;
-    self.imageView.tintColor = UIColor.lightGrayColor;
+    self.imageView.tintColor = UIColor.tertiaryLabelColor;
     if (url.length > 0) {
         [GM setImageFromFirebaseURLString:url
                                 imageView:self.imageView

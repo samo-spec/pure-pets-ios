@@ -18,25 +18,25 @@
     return self.originalPrice > 0.0f && self.originalPrice > self.price + 0.009f;
 }
 
-- (float)discountPerUnit
+- (double)discountPerUnit
 {
-    return self.hasDiscount ? (self.originalPrice - self.price) : 0.0f;
+    return self.hasDiscount ? (self.originalPrice - self.price) : 0.0;
 }
 
-- (float)lineSubtotal
+- (double)lineSubtotal
 {
-    return self.price * (float)MAX(self.quantity, 0);
+    return self.price * (double)MAX(self.quantity, 0);
 }
 
-- (float)lineSubtotalBeforeDiscount
+- (double)lineSubtotalBeforeDiscount
 {
-    float base = self.hasDiscount ? self.originalPrice : self.price;
-    return base * (float)MAX(self.quantity, 0);
+    double base = self.hasDiscount ? self.originalPrice : self.price;
+    return base * (double)MAX(self.quantity, 0);
 }
 
-- (float)lineDiscountTotal
+- (double)lineDiscountTotal
 {
-    return self.hasDiscount ? (self.discountPerUnit * (float)MAX(self.quantity, 0)) : 0.0f;
+    return self.hasDiscount ? (self.discountPerUnit * (double)MAX(self.quantity, 0)) : 0.0;
 }
 
 #pragma mark - Init from Accessory
@@ -47,8 +47,8 @@
         _itemID = accessory.accessoryID ?: @"";
         _name = accessory.name ?: @"";
 
-        float basePrice = [accessory.price floatValue];
-        float finalPrice = [accessory.finalPrice floatValue];
+        double basePrice = [accessory.price doubleValue];
+        double finalPrice = [accessory.finalPrice doubleValue];
 
         // effectivePrice = finalPrice if a discount exists, otherwise basePrice
         if (finalPrice > 0.0f && finalPrice < basePrice - 0.009f) {
@@ -112,11 +112,11 @@
         } else {
             _stockQuantity = NSNotFound;
         }
-        _price = [dict[@"price"] floatValue];
+        _price = [dict[@"price"] doubleValue];
 
         // Restore originalPrice if present; fallback to price for pre-migration data
-        if ([dict[@"originalPrice"] respondsToSelector:@selector(floatValue)]) {
-            float stored = [dict[@"originalPrice"] floatValue];
+        if ([dict[@"originalPrice"] respondsToSelector:@selector(doubleValue)]) {
+            double stored = [dict[@"originalPrice"] doubleValue];
             _originalPrice = stored > 0.0f ? stored : _price;
         } else {
             _originalPrice = _price;

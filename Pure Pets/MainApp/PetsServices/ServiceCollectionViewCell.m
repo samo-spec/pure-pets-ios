@@ -13,6 +13,8 @@
 
 @interface ServiceCollectionViewCell ()
 @property (nonatomic, strong) UIButton *editButton;
+@property (nonatomic, strong) UIView *topGradientView;
+@property (nonatomic, strong) UIView *bottomGradientView;
 @end
 
 @implementation ServiceCollectionViewCell
@@ -20,68 +22,53 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        _imageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, frame.size.width)];
-        _imageView.contentMode = UIViewContentModeScaleAspectFill;
-        _imageView.clipsToBounds = YES;
-
-        _titleLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, frame.size.height - 40, frame.size.width - 32, 20)];
-        _titleLabel.font = [GM MidFontWithSize:17];
-        _titleLabel.textAlignment = [Language languageVal] == 0 ? NSTextAlignmentLeft : NSTextAlignmentRight;
-        _titleLabel.numberOfLines = 1;
-        _titleLabel.textColor = UIColor.whiteColor;
-
-        _priceLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, frame.size.height - 20, frame.size.width - 32, 15)];
-        _priceLabel.font = [GM MidFontWithSize:13];
-        _priceLabel.textAlignment = [Language languageVal] == 0 ? NSTextAlignmentLeft : NSTextAlignmentRight;
-        _priceLabel.numberOfLines = 1;
-        _priceLabel.textColor = UIColor.whiteColor;
-
+        self.backgroundColor = UIColor.clearColor;
         self.contentView.backgroundColor = [UIColor colorWithHexString:@"#FFFFFF"];
-        self.contentView.layer.cornerRadius = 25;
         self.contentView.clipsToBounds = YES;
 
+        _imageView = [[UIImageView alloc] initWithFrame:CGRectZero];
+        _imageView.contentMode = UIViewContentModeScaleAspectFill;
+        _imageView.clipsToBounds = YES;
         [self.contentView addSubview:_imageView];
-        
-        UIView *downView = [[UIView alloc] initWithFrame:CGRectMake(0, frame.size.height - 54, frame.size.width, 54)];
-        [AppClasses gardToView:downView colorOne:[UIColor hx_colorWithHexStr:@"#000" alpha:0.0] colorTwo:[UIColor hx_colorWithHexStr:@"#000" alpha:0.3] colorThree:[UIColor hx_colorWithHexStr:@"#000" alpha:0.7] rds:0];
-        [self.contentView addSubview:downView];
-        
+
+        _bottomGradientView = [[UIView alloc] initWithFrame:CGRectZero];
+        [AppClasses gardToView:_bottomGradientView
+                      colorOne:[UIColor hx_colorWithHexStr:@"#000" alpha:0.0]
+                      colorTwo:[UIColor hx_colorWithHexStr:@"#000" alpha:0.3]
+                    colorThree:[UIColor hx_colorWithHexStr:@"#000" alpha:0.7]
+                           rds:0];
+        [self.contentView addSubview:_bottomGradientView];
+
+        _topGradientView = [[UIView alloc] initWithFrame:CGRectZero];
+        [AppClasses gardToView:_topGradientView
+                      colorOne:[UIColor hx_colorWithHexStr:@"#000" alpha:0.7]
+                      colorTwo:[UIColor hx_colorWithHexStr:@"#000" alpha:0.3]
+                    colorThree:[UIColor hx_colorWithHexStr:@"#000" alpha:0.0]
+                           rds:0];
+        [self.contentView addSubview:_topGradientView];
+
+        _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _titleLabel.font = [GM MidFontWithSize:17];
+        _titleLabel.numberOfLines = 1;
+        _titleLabel.textColor = UIColor.whiteColor;
+        _titleLabel.adjustsFontSizeToFitWidth = YES;
+        _titleLabel.minimumScaleFactor = 0.82;
         [self.contentView addSubview:_titleLabel];
+
+        _priceLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _priceLabel.font = [GM MidFontWithSize:13];
+        _priceLabel.numberOfLines = 1;
+        _priceLabel.textColor = UIColor.whiteColor;
+        _priceLabel.adjustsFontSizeToFitWidth = YES;
+        _priceLabel.minimumScaleFactor = 0.88;
         [self.contentView addSubview:_priceLabel];
 
-        CGFloat buttonSize = 32;
-        CGFloat padding = 6;
-
-        UIView *downView2 = [[UIView alloc] initWithFrame:CGRectMake(0, frame.size.height - 54, frame.size.width, 54)];
-        [AppClasses gardToView:downView2 colorOne:[UIColor hx_colorWithHexStr:@"#000" alpha:0.7] colorTwo:[UIColor hx_colorWithHexStr:@"#000" alpha:0.3] colorThree:[UIColor hx_colorWithHexStr:@"#000" alpha:0] rds:0];
-        //[self.contentView addSubview:downView2];
-        
-        
-        UIView *upView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, frame.size.width, 54)];
-        [AppClasses gardToView:upView colorOne:[UIColor hx_colorWithHexStr:@"#000" alpha:0.7] colorTwo:[UIColor hx_colorWithHexStr:@"#000" alpha:0.3] colorThree:[UIColor hx_colorWithHexStr:@"#000" alpha:0] rds:0];
-        [self.contentView addSubview:upView];
-
-        _shareButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        _shareButton.frame = CGRectMake(padding, padding, buttonSize, buttonSize);
-        [_shareButton setImage:[UIImage systemImageNamed:@"square.and.arrow.up"] forState:UIControlStateNormal];
-        [_shareButton addTarget:self action:@selector(shareTapped) forControlEvents:UIControlEventTouchUpInside];
-        [_shareButton setTintColor:UIColor.whiteColor];
-
-        _favButton = [[FavoriteButton alloc] initWithFrame:CGRectMake(CGRectGetMaxX(_shareButton.frame) + padding, padding, buttonSize, buttonSize)];
+        _shareButton = [self pp_actionButtonWithSystemName:@"square.and.arrow.up" selector:@selector(shareTapped)];
+        _favButton = [[FavoriteButton alloc] initWithFrame:CGRectZero];
         [_favButton setTintColor:UIColor.whiteColor];
-
-        _deleteButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        _deleteButton.frame = CGRectMake(self.contentView.hx_w - padding - buttonSize, padding, buttonSize, buttonSize);
-        [_deleteButton setImage:[UIImage systemImageNamed:@"trash.fill"] forState:UIControlStateNormal];
-        [_deleteButton addTarget:self action:@selector(deleteTapped) forControlEvents:UIControlEventTouchUpInside];
-        [_deleteButton setTintColor:UIColor.whiteColor];
+        _deleteButton = [self pp_actionButtonWithSystemName:@"trash.fill" selector:@selector(deleteTapped)];
         _deleteButton.hidden = YES;
-
-        _editButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        _editButton.frame = CGRectMake(self.deleteButton.hx_x - padding - buttonSize, padding, buttonSize, buttonSize);
-        [_editButton setImage:[UIImage systemImageNamed:@"square.and.pencil"] forState:UIControlStateNormal];
-        [_editButton addTarget:self action:@selector(editTapped) forControlEvents:UIControlEventTouchUpInside];
-        [_editButton setTintColor:UIColor.whiteColor];
+        _editButton = [self pp_actionButtonWithSystemName:@"square.and.pencil" selector:@selector(editTapped)];
         _editButton.hidden = YES;
 
         [self.contentView addSubview:_shareButton];
@@ -94,42 +81,109 @@
     return self;
 }
 
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    CGFloat width = CGRectGetWidth(self.contentView.bounds);
+    CGFloat height = CGRectGetHeight(self.contentView.bounds);
+    if (width <= 0.0 || height <= 0.0) {
+        return;
+    }
+
+    BOOL isCompact = width <= 170.0;
+    BOOL isRTL = [Language languageVal] != 0;
+    CGFloat cornerRadius = width >= 220.0 ? 28.0 : 24.0;
+    CGFloat horizontalPadding = isCompact ? 12.0 : 16.0;
+    CGFloat buttonPadding = isCompact ? 8.0 : 10.0;
+    CGFloat buttonSize = isCompact ? 30.0 : 32.0;
+    CGFloat topChromeHeight = isCompact ? 50.0 : 54.0;
+    CGFloat bottomChromeHeight = isCompact ? 62.0 : 68.0;
+    CGFloat labelHeight = ceil(self.titleLabel.font.lineHeight);
+    CGFloat priceHeight = ceil(self.priceLabel.font.lineHeight);
+
+    self.contentView.layer.cornerRadius = cornerRadius;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:cornerRadius].CGPath;
+
+    self.imageView.frame = self.contentView.bounds;
+    self.topGradientView.frame = CGRectMake(0.0, 0.0, width, topChromeHeight);
+    self.bottomGradientView.frame = CGRectMake(0.0, height - bottomChromeHeight, width, bottomChromeHeight);
+
+    CGFloat leadingButtonX = horizontalPadding;
+    CGFloat trailingButtonX = width - horizontalPadding - buttonSize;
+
+    if (isRTL) {
+        self.shareButton.frame = CGRectMake(trailingButtonX, buttonPadding, buttonSize, buttonSize);
+        self.favButton.frame = CGRectMake(CGRectGetMinX(self.shareButton.frame) - buttonPadding - buttonSize, buttonPadding, buttonSize, buttonSize);
+        self.deleteButton.frame = CGRectMake(leadingButtonX, buttonPadding, buttonSize, buttonSize);
+        self.editButton.frame = CGRectMake(CGRectGetMaxX(self.deleteButton.frame) + buttonPadding, buttonPadding, buttonSize, buttonSize);
+    } else {
+        self.shareButton.frame = CGRectMake(leadingButtonX, buttonPadding, buttonSize, buttonSize);
+        self.favButton.frame = CGRectMake(CGRectGetMaxX(self.shareButton.frame) + buttonPadding, buttonPadding, buttonSize, buttonSize);
+        self.deleteButton.frame = CGRectMake(trailingButtonX, buttonPadding, buttonSize, buttonSize);
+        self.editButton.frame = CGRectMake(CGRectGetMinX(self.deleteButton.frame) - buttonPadding - buttonSize, buttonPadding, buttonSize, buttonSize);
+    }
+
+    self.titleLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    self.priceLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+
+    CGFloat titleY = height - horizontalPadding - priceHeight - 4.0 - labelHeight;
+    self.titleLabel.frame = CGRectMake(horizontalPadding,
+                                       titleY,
+                                       width - (horizontalPadding * 2.0),
+                                       labelHeight);
+    self.priceLabel.frame = CGRectMake(horizontalPadding,
+                                       CGRectGetMaxY(self.titleLabel.frame) + 4.0,
+                                       width - (horizontalPadding * 2.0),
+                                       priceHeight);
+}
+
+- (UIButton *)pp_actionButtonWithSystemName:(NSString *)systemName selector:(SEL)selector
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.frame = CGRectZero;
+    [button setImage:[UIImage systemImageNamed:systemName] forState:UIControlStateNormal];
+    [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
+    [button setTintColor:UIColor.whiteColor];
+    return button;
+}
+
 - (void)shareTapped {
-    
+
     if(!UserManager.sharedManager.isUserLoggedIn)
     {
         [UserManager showPromptOnTopController];
         return;
     }
-    
+
     if ([self.delegate respondsToSelector:@selector(serviceCellDidTapShare:)]) {
         [self.delegate serviceCellDidTapShare:self];
     }
 }
 
 - (void)deleteTapped {
-    
+
     if(!UserManager.sharedManager.isUserLoggedIn)
     {
         [UserManager showPromptOnTopController];
         return;
     }
-    
-    
+
+
     if ([self.delegate respondsToSelector:@selector(serviceCellDidTapDelete:)]) {
         [self.delegate serviceCellDidTapDelete:self];
     }
 }
 
 - (void)editTapped {
-    
+
     if(!UserManager.sharedManager.isUserLoggedIn)
     {
         [UserManager showPromptOnTopController];
         return;
     }
-    
-    
+
+
     if ([self.delegate respondsToSelector:@selector(serviceCellDidTapEdit:)]) {
         [self.delegate serviceCellDidTapEdit:self];
     }
@@ -144,7 +198,7 @@
     self.layer.shadowRadius = 6.0;
     self.layer.shadowOpacity = 0.15;
     self.layer.masksToBounds = NO;
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:8.0].CGPath;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:25.0].CGPath;
 }
 
 - (void)configureWithService:(ServiceModel *)service {
@@ -170,24 +224,8 @@
     self.shareButton.hidden = self.isOwnedByUser;
     self.favButton.hidden = self.isOwnedByUser;
     self.deleteButton.hidden = !self.isOwnedByUser;
-
-    // Create edit button if needed
-    if (self.isOwnedByUser && !_editButton) {
-        CGFloat padding = 6;
-        CGFloat buttonSize = 32;
-        _editButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        _editButton.frame = CGRectMake(CGRectGetMaxX(_deleteButton.frame) + padding, padding, buttonSize, buttonSize);
-        [_editButton setImage:[UIImage systemImageNamed:@"square.and.pencil"] forState:UIControlStateNormal];
-        [_editButton setTintColor:UIColor.whiteColor];
-        [_editButton addTarget:self action:@selector(editTapped) forControlEvents:UIControlEventTouchUpInside];
-        [self.contentView addSubview:_editButton];
-    }
-
-    if (_editButton) {
-        _editButton.hidden = !self.isOwnedByUser;
-    }
+    self.editButton.hidden = !self.isOwnedByUser;
 }
-
 
 
 

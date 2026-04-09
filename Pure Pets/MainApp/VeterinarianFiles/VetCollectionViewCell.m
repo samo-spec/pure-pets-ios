@@ -30,25 +30,25 @@
         _titleLabel.font = [GM boldFontWithSize:16];
         _titleLabel.textAlignment = [Language languageVal] == 0 ? NSTextAlignmentLeft : NSTextAlignmentRight;
         _titleLabel.numberOfLines = 1;
-        _titleLabel.textColor = UIColor.blackColor;
+        _titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
 
         _typeLabel = [[UILabel alloc] initWithFrame:CGRectMake(16, CGRectGetMaxY(_titleLabel.frame) + 2, frame.size.width - 32, 18)];
         _typeLabel.font = [GM MidFontWithSize:12];
         _typeLabel.textAlignment = [Language languageVal] == 0 ? NSTextAlignmentLeft : NSTextAlignmentRight;
         _typeLabel.numberOfLines = 1;
-        _typeLabel.textColor = UIColor.darkGrayColor;
+        _typeLabel.textColor = UIColor.secondaryLabelColor;
         
         [self.contentView addSubview:_logoImageView];
         
         UIView *upView = [[UIView alloc] initWithFrame:CGRectMake(0, self.contentView.hx_h - 45, self.contentView.hx_w, 45)];
-        upView.backgroundColor = [UIColor hx_colorWithHexStr:@"#FFFFFF" alpha:.7];
+        upView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.7];
         [self.contentView addSubview:upView];
         
       
         [self.contentView addSubview:_titleLabel];
         [self.contentView addSubview:_typeLabel];
 
-        self.contentView.backgroundColor = [UIColor whiteColor];
+        self.contentView.backgroundColor = AppForgroundColr;
         self.contentView.layer.cornerRadius = 25;
         self.contentView.clipsToBounds = YES;
 

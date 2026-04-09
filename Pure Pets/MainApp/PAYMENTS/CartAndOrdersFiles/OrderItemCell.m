@@ -139,7 +139,7 @@
 
     _nameLabel = [[UILabel alloc] initWithFrame:CGRectMake(86, 10, self.contentView.frame.size.width - 100, 22)];
     _nameLabel.font = [UIFont boldSystemFontOfSize:16];
-    _nameLabel.textColor = UIColor.blackColor;
+    _nameLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     [self.contentView addSubview:_nameLabel];
 
     _quantityLabel = [[UILabel alloc] initWithFrame:CGRectMake(86, 36, 100, 20)];
@@ -149,7 +149,7 @@
 
     _priceLabel = [[UILabel alloc] initWithFrame:CGRectMake(self.contentView.frame.size.width - 100, 36, 90, 20)];
     _priceLabel.font = [UIFont systemFontOfSize:14];
-    _priceLabel.textColor = UIColor.darkGrayColor;
+    _priceLabel.textColor = UIColor.secondaryLabelColor;
     _priceLabel.textAlignment = NSTextAlignmentRight;
     [self.contentView addSubview:_priceLabel];
 }

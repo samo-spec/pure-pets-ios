@@ -166,7 +166,7 @@
     // More details : https://github.com/iphone5solo/PYSearch/issues/108
     if (@available(iOS 11.0, *)) { // iOS 11
         if (self.searchViewControllerShowMode == PYSearchViewControllerShowModeModal) {
-            NSLayoutConstraint *leftLayoutConstraint = [searchBar.leftAnchor constraintEqualToAnchor:titleView.leftAnchor];
+            NSLayoutConstraint *leftLayoutConstraint = [searchBar.leadingAnchor constraintEqualToAnchor:titleView.leadingAnchor];
             if (navigationBarLayoutMargins.left > PYSEARCH_MARGIN) {
                 [leftLayoutConstraint setConstant:0];
             } else {
@@ -462,8 +462,8 @@
     if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 11.0) { // iOS 11
         [NSLayoutConstraint activateConstraints:@[
                                                   [searchBar.topAnchor constraintEqualToAnchor:titleView.topAnchor],
-                                                  [searchBar.leftAnchor constraintEqualToAnchor:titleView.leftAnchor],
-                                                  [searchBar.rightAnchor constraintEqualToAnchor:titleView.rightAnchor],
+                                                  [searchBar.leadingAnchor constraintEqualToAnchor:titleView.leadingAnchor],
+                                                  [searchBar.trailingAnchor constraintEqualToAnchor:titleView.trailingAnchor],
                                                   [searchBar.bottomAnchor constraintEqualToAnchor:titleView.bottomAnchor]
                                                   ]];
     } else {

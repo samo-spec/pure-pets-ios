@@ -30,7 +30,8 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
     PPSettingsRowTypeNavigation,
     PPSettingsRowTypeSegment,
     PPSettingsRowTypeDestructive,
-    PPSettingsRowTypeVersion
+    PPSettingsRowTypeVersion,
+    PPSettingsRowTypeLanguage
 };
 
 @interface PPSettingsRowModel : NSObject
@@ -46,6 +47,9 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 @property (nonatomic, copy, nullable) void (^onToggle)(BOOL isOn);
 @property (nonatomic, copy, nullable) void (^onTap)(void);
 @property (nonatomic, copy, nullable) void (^onSegmentChange)(NSInteger index);
+// Language dual-button
+@property (nonatomic, assign) NSInteger languageIndex; // 0=Arabic, 1=English
+@property (nonatomic, copy, nullable) void (^onLanguageTap)(NSInteger index);
 @end
 
 @implementation PPSettingsRowModel
@@ -67,6 +71,7 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 static NSString *const kSettingsCellID  = @"PPSettingsCell";
 static NSString *const kProfileCellID   = @"PPProfileCell";
 static NSString *const kVersionCellID   = @"PPVersionCell";
+static NSString *const kLanguageCellID  = @"PPLanguageCell";
 
 #pragma mark - SettingVC
 
@@ -182,15 +187,15 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     [appRows addObject:autoPlayRow];
 
     PPSettingsRowModel *langRow = [PPSettingsRowModel new];
-    langRow.type = PPSettingsRowTypeSegment;
+    langRow.type = PPSettingsRowTypeLanguage;
     langRow.title = kLang(@"Language") ?: @"Language";
     langRow.iconName = @"globe";
     langRow.iconTint = UIColor.whiteColor;
     langRow.iconBackground = [UIColor systemTealColor];
-    langRow.segmentTitles = @[kLang(@"Arabic") ?: @"العربية", kLang(@"English") ?: @"English"];
-    langRow.segmentIndex = Language.isRTL ? 0 : 1;
-    langRow.onSegmentChange = ^(NSInteger index) {
-        if (index == [Language languageVal]) return;
+    langRow.languageIndex = Language.isRTL ? 0 : 1;
+    langRow.onLanguageTap = ^(NSInteger index) {
+        NSInteger currentIndex = [Language languageVal] == 0 ? 1 : 0;
+        if (index == currentIndex) return;
         [weakSelf showLanguageSetupAlertFrom:weakSelf];
     };
     [appRows addObject:langRow];
@@ -270,6 +275,17 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     // Section: Account
     if (PPIsUserLoggedIn) {
         PPSettingsSectionModel *accountSection = [PPSettingsSectionModel new];
+        NSMutableArray<PPSettingsRowModel *> *accountRows = [NSMutableArray array];
+
+        PPSettingsRowModel *deleteAccountRow = [PPSettingsRowModel new];
+        deleteAccountRow.type = PPSettingsRowTypeDestructive;
+        deleteAccountRow.title = kLang(@"delete_account") ?: @"Delete Account";
+        deleteAccountRow.iconName = @"person.crop.circle.badge.minus";
+        deleteAccountRow.iconTint = UIColor.whiteColor;
+        deleteAccountRow.iconBackground = [UIColor systemRedColor];
+        deleteAccountRow.onTap = ^{ [weakSelf pp_confirmDeleteAccount]; };
+        [accountRows addObject:deleteAccountRow];
+
         PPSettingsRowModel *logoutRow = [PPSettingsRowModel new];
         logoutRow.type = PPSettingsRowTypeDestructive;
         logoutRow.title = kLang(@"Logout") ?: @"Logout";
@@ -277,7 +293,9 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
         logoutRow.iconTint = UIColor.whiteColor;
         logoutRow.iconBackground = [UIColor systemRedColor];
         logoutRow.onTap = ^{ [weakSelf pp_confirmLogout]; };
-        accountSection.rows = @[logoutRow];
+        [accountRows addObject:logoutRow];
+
+        accountSection.rows = [accountRows copy];
         [allSections addObject:accountSection];
     }
 
@@ -323,6 +341,8 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
             return [self pp_toggleCellForRow:row tableView:tableView indexPath:indexPath];
         case PPSettingsRowTypeSegment:
             return [self pp_segmentCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeLanguage:
+            return [self pp_languageCellForRow:row tableView:tableView];
         case PPSettingsRowTypeNavigation:
         case PPSettingsRowTypeDestructive:
             return [self pp_navigationCellForRow:row tableView:tableView];
@@ -437,6 +457,115 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     return cell;
 }
 
+- (UITableViewCell *)pp_languageCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
+{
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kLanguageCellID];
+    cell.textLabel.text = row.title;
+    cell.textLabel.font = [GM MidFontWithSize:15];
+    cell.textLabel.textColor = AppPrimaryTextClr;
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.backgroundColor = AppForgroundColr;
+    cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
+
+    // Remove any previous language container (cell reuse)
+    UIView *existingContainer = [cell.contentView viewWithTag:7710];
+    [existingContainer removeFromSuperview];
+
+    BOOL isArabicActive = (row.languageIndex == 0);
+
+    NSString *arabicTitle = @"العربية";
+    NSString *englishTitle = @"English";
+
+    UIColor *activeBg = AppPrimaryClr ?: [UIColor systemOrangeColor];
+    UIColor *activeFg = UIColor.whiteColor;
+    UIColor *inactiveBg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [[UIColor whiteColor] colorWithAlphaComponent:0.08]
+            : [[UIColor blackColor] colorWithAlphaComponent:0.05];
+    }];
+    UIColor *inactiveFg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [[UIColor whiteColor] colorWithAlphaComponent:0.6]
+            : [[UIColor blackColor] colorWithAlphaComponent:0.55];
+    }];
+    UIColor *inactiveBorder = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [[UIColor whiteColor] colorWithAlphaComponent:0.12]
+            : [[UIColor blackColor] colorWithAlphaComponent:0.1];
+    }];
+
+    // Arabic button
+    UIButton *arabicBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    arabicBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    arabicBtn.tag = 0;
+    [arabicBtn setTitle:arabicTitle forState:UIControlStateNormal];
+    arabicBtn.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    arabicBtn.layer.cornerRadius = 14.0;
+    arabicBtn.clipsToBounds = YES;
+    if (isArabicActive) {
+        arabicBtn.backgroundColor = activeBg;
+        [arabicBtn setTitleColor:activeFg forState:UIControlStateNormal];
+        arabicBtn.layer.borderWidth = 0;
+    } else {
+        arabicBtn.backgroundColor = inactiveBg;
+        [arabicBtn setTitleColor:inactiveFg forState:UIControlStateNormal];
+        arabicBtn.layer.borderWidth = 1.0;
+        arabicBtn.layer.borderColor = inactiveBorder.CGColor;
+    }
+    [arabicBtn addTarget:self action:@selector(pp_languageButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+
+    // English button
+    UIButton *englishBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    englishBtn.translatesAutoresizingMaskIntoConstraints = NO;
+    englishBtn.tag = 1;
+    [englishBtn setTitle:englishTitle forState:UIControlStateNormal];
+    englishBtn.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    englishBtn.layer.cornerRadius = 14.0;
+    englishBtn.clipsToBounds = YES;
+    if (!isArabicActive) {
+        englishBtn.backgroundColor = activeBg;
+        [englishBtn setTitleColor:activeFg forState:UIControlStateNormal];
+        englishBtn.layer.borderWidth = 0;
+    } else {
+        englishBtn.backgroundColor = inactiveBg;
+        [englishBtn setTitleColor:inactiveFg forState:UIControlStateNormal];
+        englishBtn.layer.borderWidth = 1.0;
+        englishBtn.layer.borderColor = inactiveBorder.CGColor;
+    }
+    [englishBtn addTarget:self action:@selector(pp_languageButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+
+    // Container stack
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[arabicBtn, englishBtn]];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.spacing = 8.0;
+    stack.distribution = UIStackViewDistributionFillEqually;
+    stack.tag = 7710;
+
+    [cell.contentView addSubview:stack];
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-16.0],
+        [stack.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+        [stack.widthAnchor constraintEqualToConstant:168.0],
+        [stack.heightAnchor constraintEqualToConstant:32.0]
+    ]];
+
+    return cell;
+}
+
+- (void)pp_languageButtonTapped:(UIButton *)sender
+{
+    NSInteger tappedIndex = sender.tag;
+    for (PPSettingsSectionModel *section in self.sections) {
+        for (PPSettingsRowModel *row in section.rows) {
+            if (row.type == PPSettingsRowTypeLanguage && row.onLanguageTap) {
+                row.onLanguageTap(tappedIndex);
+                return;
+            }
+        }
+    }
+}
+
 - (UITableViewCell *)pp_navigationCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
 {
     UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleValue1 reuseIdentifier:kSettingsCellID];
@@ -510,6 +639,7 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     PPSettingsRowModel *row = self.sections[indexPath.section].rows[indexPath.row];
     if (row.type == PPSettingsRowTypeProfile) return 72.0;
     if (row.type == PPSettingsRowTypeVersion) return 44.0;
+    if (row.type == PPSettingsRowTypeLanguage) return 60.0;
     return 52.0;
 }
 
@@ -742,6 +872,67 @@ static NSString *const kVersionCellID   = @"PPVersionCell";
     safariVC.preferredControlTintColor = AppPrimaryClr;
     safariVC.modalPresentationStyle = UIModalPresentationPageSheet;
     [self presentViewController:safariVC animated:YES completion:nil];
+}
+
+#pragma mark - Delete Account
+
+- (void)pp_confirmDeleteAccount
+{
+    NSString *title = kLang(@"delete_account") ?: @"Delete Account";
+    NSString *message = kLang(@"delete_account_warning") ?: @"This will permanently delete your account and all associated data. This action cannot be undone.";
+
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
+                                                                  message:message
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    [alert addAction:[UIAlertAction actionWithTitle:(kLang(@"Delete") ?: @"Delete")
+                                              style:UIAlertActionStyleDestructive
+                                            handler:^(UIAlertAction *action) {
+        [weakSelf pp_executeAccountDeletion];
+    }]];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel") ?: @"Cancel"
+                                              style:UIAlertActionStyleCancel
+                                            handler:nil]];
+
+    if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
+        alert.popoverPresentationController.sourceView = self.view;
+        alert.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                                                     CGRectGetMidY(self.view.bounds), 0, 0);
+        alert.popoverPresentationController.permittedArrowDirections = 0;
+    }
+
+    [self presentViewController:alert animated:YES completion:nil];
+}
+
+- (void)pp_executeAccountDeletion
+{
+    [PPHUD showIndeterminateIn:self.view
+                         title:(kLang(@"deleting_account") ?: @"Deleting account…")
+                      subtitle:nil];
+
+    FIRFunctions *functions = [FIRFunctions functionsForRegion:@"us-central1"];
+    __weak typeof(self) weakSelf = self;
+    [[functions HTTPSCallableWithName:@"deleteUserAccount"]
+     callWithObject:@{}
+     completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+
+            [PPHUD dismiss];
+
+            if (error) {
+                NSLog(@"[SettingVC] Delete account failed: %@", error.localizedDescription);
+                [PPHUD showError:(kLang(@"delete_account_failed") ?: @"Failed to delete account")
+                        subtitle:error.localizedDescription];
+                return;
+            }
+
+            [UserManager.sharedManager logoutAndClearAll];
+            [GM logoutFromConroller:strongSelf];
+            [PPHUD showSuccess:(kLang(@"account_deleted") ?: @"Account deleted")];
+        });
+    }];
 }
 
 #pragma mark - Logout
