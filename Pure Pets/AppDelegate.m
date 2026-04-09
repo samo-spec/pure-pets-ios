@@ -61,6 +61,9 @@
         NSForegroundColorAttributeName: UIColor.blackColor
     } forState:UIControlStateSelected];
 
+    // ATT NOTE: No tracking SDKs are used. PrivacyInfo.xcprivacy declares NSPrivacyTracking=false.
+    // If tracking SDKs are added in the future, implement ATTrackingManager prompt here.
+
     // ✅ Firebase setup`
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
