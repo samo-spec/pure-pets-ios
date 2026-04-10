@@ -370,6 +370,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 @property (nonatomic, strong) UIActivityIndicatorView *prefillLoadingSpinner;
 @property (nonatomic, strong) UILabel                *prefillLoadingLabel;
 @property (nonatomic, strong) UIBarButtonItem        *saveBarButton;
+@property (nonatomic, strong) UIButton               *saveButtonView;
 @property (nonatomic, strong) UIActivityIndicatorView *saveActivityIndicator;
 @property (nonatomic, assign) BOOL hasUserModifiedForm;
 @property (nonatomic, assign) BOOL isHydratingFormData;
@@ -695,17 +696,9 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 }
 
 - (void)setNavButtons {
-    self.saveBarButton = [[UIBarButtonItem alloc] initWithTitle:kLang(@"save")
-                                                          style:UIBarButtonItemStyleDone
-                                                         target:self
-                                                         action:@selector(saveTapped)];
+    self.saveButtonView = [PPButtonHelper pp_buttonWithTitle:kLang(@"save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveTapped)];
+    self.saveBarButton = [[UIBarButtonItem alloc] initWithCustomView:self.saveButtonView];
 
-    [self.saveBarButton setTitleTextAttributes:@{
-        NSFontAttributeName : [GM boldFontWithSize:16],
-        NSForegroundColorAttributeName : AppForgroundColr
-    } forState:UIControlStateNormal];
-
-    self.saveBarButton.tintColor = AppPrimaryClr;
     UIBarButtonItem *cancelBtn = [[UIBarButtonItem alloc] initWithTitle:kLang(@"cancel")
                                                                   style:UIBarButtonItemStylePlain
                                                                  target:self
@@ -908,7 +901,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)pp_resetSaveButton {
     self.saveBarButton.enabled    = YES;
-    self.saveBarButton.customView = nil;
+    self.saveBarButton.customView = self.saveButtonView;
     [self.saveActivityIndicator stopAnimating];
 }
 

@@ -466,13 +466,9 @@
 - (void)pp_showSaveButton
 {
     if (!self.saveDataBarButton) {
-        self.saveDataBarButton = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"checkmark"]
-                                                                  style:UIBarButtonItemStylePlain
-                                                                 target:self
-                                                                 action:@selector(updateUserData)];
+        UIButton *sav = [PPButtonHelper pp_buttonWithTitle:kLang(@"Save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(updateUserData)];
+        self.saveDataBarButton = [[UIBarButtonItem alloc] initWithCustomView:sav];
     }
-    self.saveDataBarButton.target = self;
-    self.saveDataBarButton.action = @selector(updateUserData);
     self.navigationItem.rightBarButtonItem = self.saveDataBarButton;
 
     UIButton *saveButton = [self pp_ButtonWithSystemName:@"checkmark" action:@selector(updateUserData)];
@@ -492,10 +488,8 @@
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"UserProfile") showBack:YES];
 
     if (!self.saveDataBarButton) {
-        self.saveDataBarButton = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"checkmark"]
-                                                                  style:UIBarButtonItemStylePlain
-                                                                 target:self
-                                                                 action:@selector(updateUserData)];
+        UIButton *sav = [PPButtonHelper pp_buttonWithTitle:kLang(@"Save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(updateUserData)];
+        self.saveDataBarButton = [[UIBarButtonItem alloc] initWithCustomView:sav];
     }
     [self pp_refreshRightNavSaveState];
 }

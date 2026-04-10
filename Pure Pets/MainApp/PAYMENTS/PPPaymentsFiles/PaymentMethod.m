@@ -42,13 +42,11 @@
 
 + (NSArray<PaymentMethod *> *)defaultMethods {
     NSArray *raw = @[
-        @{@"id": @"qib",        @"name": @"Credit / Debit Card",            @"icon": @"master",  @"desc": kLang(@"payment_qib_gateway_desc"),            @"type": @(PaymentMethodTypeQIB)},
-        //@{@"id": @"card",       @"name": @"Credit / Debit Card", @"icon": @"master",  @"desc": @"Visa, MasterCard, American Express",    @"type": @(PaymentMethodTypeCard)},
-        //@{@"id": @"ooredoo",    @"name": @"Ooredoo Money",       @"icon": @"ooredoo", @"desc": @"Pay directly with your Ooredoo wallet", @"type": @(PaymentMethodTypeOoredoo)},
-        //@{@"id": @"qnb",        @"name": @"QNB",                 @"icon": @"qnb",     @"desc": @"Qatar National Bank",                   @"type": @(PaymentMethodTypeQNB)},
-        //@{@"id": @"applepay",   @"name": @"Apple Pay",           @"icon": @"applepay",@"desc": @"Pay securely with Apple Pay",           @"type": @(PaymentMethodTypeApplePay)},
-        //@{@"id": @"fawry",      @"name": @"Fawry Qatar",         @"icon": @"fawry",   @"desc": @"Pay using Fawry Qatar service",         @"type": @(PaymentMethodTypeFawryQatar)},
-        @{@"id": @"cash",       @"name": @"Cash on Delivery",    @"icon": @"cash2",    @"desc": kLang(@"payment_cash_delivery_desc"),       @"type": @(PaymentMethodTypeCash)}
+        @{@"id": @"qib",        @"name": @"Credit / Debit Card",  @"icon": @"master",    @"desc": kLang(@"payment_qib_gateway_desc"),    @"type": @(PaymentMethodTypeQIB)},
+        @{@"id": @"applepay",   @"name": @"Apple Pay",            @"icon": @"applepay",  @"desc": kLang(@"payment_applepay_desc"),        @"type": @(PaymentMethodTypeApplePay)},
+        @{@"id": @"ooredoo",    @"name": @"Ooredoo Money",        @"icon": @"ooredoo",   @"desc": kLang(@"payment_ooredoo_desc"),         @"type": @(PaymentMethodTypeOoredoo)},
+        @{@"id": @"naps",       @"name": @"NAPS Debit",           @"icon": @"naps",      @"desc": kLang(@"payment_naps_desc"),            @"type": @(PaymentMethodTypeQNB)},
+        @{@"id": @"cash",       @"name": @"Cash on Delivery",     @"icon": @"cash2",     @"desc": kLang(@"payment_cash_delivery_desc"),   @"type": @(PaymentMethodTypeCash)}
     ];
     
     NSMutableArray *methods = [NSMutableArray array];
@@ -60,7 +58,7 @@
         m.methodDescription = d[@"desc"];
         m.type = [d[@"type"] integerValue];
         m.supportsMultipleAccounts = (m.type == PaymentMethodTypeCard ||
-                                      m.type == PaymentMethodTypeQNB ||
+                                      m.type == PaymentMethodTypeQNB  ||
                                       m.type == PaymentMethodTypeQIB);
         [methods addObject:m];
     }

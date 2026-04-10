@@ -1,0 +1,1241 @@
+//
+//  PPPaymentFormViewController.m
+//  Pure Pets
+//
+//  Created by Mohammed Ahmed on 02/11/2025.
+//  Refactored: Pure UIKit, no XLForm. Modern glass/gradient design.
+//
+
+#import "PPPaymentFormViewController.h"
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - PPFormFieldView (glass-card floating-label text field)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@interface PPFormFieldView : UIView
+@property (nonatomic, strong) UITextField *textField;
+@property (nonatomic, strong) UILabel     *floatingLabel;
+@property (nonatomic, strong) UIImageView *iconView;
+@property (nonatomic, copy)   NSString    *tag;
+- (instancetype)initWithTag:(NSString *)tag
+                placeholder:(NSString *)placeholder
+                       icon:(NSString *)sfSymbol
+               keyboardType:(UIKeyboardType)keyboard
+                   isSecure:(BOOL)secure;
+@end
+
+@implementation PPFormFieldView
+
+- (instancetype)initWithTag:(NSString *)aTag
+                placeholder:(NSString *)placeholder
+                       icon:(NSString *)sfSymbol
+               keyboardType:(UIKeyboardType)keyboard
+                   isSecure:(BOOL)secure {
+    self = [super initWithFrame:CGRectZero];
+    if (!self) return nil;
+    self.tag = 0;
+    _tag = [aTag copy];
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.85];
+    self.layer.cornerRadius = 16.0;
+    self.layer.cornerCurve  = kCACornerCurveContinuous;
+    self.layer.borderWidth  = 1.0;
+    self.layer.borderColor  = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+
+    // Icon
+    _iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:sfSymbol]];
+    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconView.tintColor   = AppPrimaryClr;
+    _iconView.contentMode = UIViewContentModeScaleAspectFit;
+    [self addSubview:_iconView];
+
+    // Floating label
+    _floatingLabel = [[UILabel alloc] init];
+    _floatingLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _floatingLabel.text      = placeholder;
+    _floatingLabel.font      = [GM MidFontWithSize:11];
+    _floatingLabel.textColor = AppSecondaryTextClr;
+    _floatingLabel.alpha     = 0.0;
+    [self addSubview:_floatingLabel];
+
+    // Text field
+    _textField = [[UITextField alloc] init];
+    _textField.translatesAutoresizingMaskIntoConstraints = NO;
+    _textField.placeholder    = placeholder;
+    _textField.font           = [GM MidFontWithSize:15];
+    _textField.textColor      = UIColor.labelColor;
+    _textField.keyboardType   = keyboard;
+    _textField.secureTextEntry = secure;
+    _textField.autocorrectionType   = UITextAutocorrectionTypeNo;
+    _textField.textAlignment  = (GM.setAligment == NSTextAlignmentRight)
+                                 ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    [self addSubview:_textField];
+
+    [_textField addTarget:self action:@selector(_editingChanged) forControlEvents:UIControlEventEditingChanged];
+    [_textField addTarget:self action:@selector(_editingBegan)   forControlEvents:UIControlEventEditingDidBegin];
+    [_textField addTarget:self action:@selector(_editingEnded)   forControlEvents:UIControlEventEditingDidEnd];
+
+    // Layout
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heightAnchor constraintEqualToConstant:60.0],
+
+        [_iconView.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor constant:14],
+        [_iconView.centerYAnchor  constraintEqualToAnchor:self.centerYAnchor],
+        [_iconView.widthAnchor    constraintEqualToConstant:22],
+        [_iconView.heightAnchor   constraintEqualToConstant:22],
+
+        [_floatingLabel.leadingAnchor  constraintEqualToAnchor:_iconView.trailingAnchor constant:10],
+        [_floatingLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
+        [_floatingLabel.topAnchor      constraintEqualToAnchor:self.topAnchor constant:8],
+
+        [_textField.leadingAnchor  constraintEqualToAnchor:_iconView.trailingAnchor constant:10],
+        [_textField.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
+        [_textField.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor constant:-8],
+        [_textField.topAnchor      constraintEqualToAnchor:_floatingLabel.bottomAnchor constant:2],
+    ]];
+
+    return self;
+}
+
+- (void)_editingBegan {
+    [self _showFloatingLabel:YES];
+    [UIView animateWithDuration:0.2 animations:^{
+        self.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.5].CGColor;
+    }];
+}
+
+- (void)_editingEnded {
+    if (self.textField.text.length == 0) [self _showFloatingLabel:NO];
+    [UIView animateWithDuration:0.2 animations:^{
+        self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    }];
+}
+
+- (void)_editingChanged {
+    [self _showFloatingLabel:self.textField.text.length > 0 || self.textField.isFirstResponder];
+}
+
+- (void)_showFloatingLabel:(BOOL)show {
+    [UIView animateWithDuration:0.22 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+        self.floatingLabel.alpha = show ? 1.0 : 0.0;
+    } completion:nil];
+}
+
+- (void)prefillValue:(NSString *)value {
+    self.textField.text = value;
+    if (value.length > 0) [self _showFloatingLabel:YES];
+}
+
+@end
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - PPMethodPickerCard (horizontal payment method picker)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@interface PPMethodPickerCard : UIView
+@property (nonatomic, strong) UIImageView *iconView;
+@property (nonatomic, strong) UILabel     *titleLabel;
+@property (nonatomic, strong) UILabel     *subtitleLabel;
+@property (nonatomic, strong) UIImageView *checkmarkView;
+@property (nonatomic, assign) BOOL        isSelectedMethod;
+@property (nonatomic, strong) PaymentMethod *method;
+- (instancetype)initWithMethod:(PaymentMethod *)method;
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated;
+@end
+
+@implementation PPMethodPickerCard
+
+- (instancetype)initWithMethod:(PaymentMethod *)method {
+    self = [super initWithFrame:CGRectZero];
+    if (!self) return nil;
+    _method = method;
+    _isSelectedMethod = NO;
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.backgroundColor   = [AppForgroundColr colorWithAlphaComponent:0.85];
+    self.layer.cornerRadius = 20.0;
+    self.layer.cornerCurve  = kCACornerCurveContinuous;
+    self.layer.borderWidth  = 1.5;
+    self.layer.borderColor  = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+
+    // Icon
+    UIImage *icon = [UIImage imageNamed:method.iconName]
+                    ?: [UIImage systemImageNamed:@"creditcard.fill"];
+    _iconView = [[UIImageView alloc] initWithImage:icon];
+    _iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconView.contentMode = UIViewContentModeScaleAspectFit;
+    _iconView.tintColor   = AppPrimaryClr;
+    [self addSubview:_iconView];
+
+    _titleLabel = [[UILabel alloc] init];
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _titleLabel.text  = method.displayName;
+    _titleLabel.font  = [GM boldFontWithSize:13];
+    _titleLabel.textColor = UIColor.labelColor;
+    _titleLabel.numberOfLines = 2;
+    [self addSubview:_titleLabel];
+
+    _subtitleLabel = [[UILabel alloc] init];
+    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _subtitleLabel.text  = method.methodDescription ?: @"";
+    _subtitleLabel.font  = [GM MidFontWithSize:10];
+    _subtitleLabel.textColor = UIColor.secondaryLabelColor;
+    _subtitleLabel.numberOfLines = 2;
+    [self addSubview:_subtitleLabel];
+
+    _checkmarkView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"checkmark.circle.fill"]];
+    _checkmarkView.translatesAutoresizingMaskIntoConstraints = NO;
+    _checkmarkView.tintColor = AppPrimaryClr;
+    _checkmarkView.alpha = 0.0;
+    [self addSubview:_checkmarkView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.widthAnchor  constraintEqualToConstant:140],
+        [self.heightAnchor constraintEqualToConstant:130],
+
+        [_iconView.topAnchor      constraintEqualToAnchor:self.topAnchor constant:14],
+        [_iconView.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor constant:14],
+        [_iconView.widthAnchor    constraintEqualToConstant:32],
+        [_iconView.heightAnchor   constraintEqualToConstant:32],
+
+        [_checkmarkView.topAnchor     constraintEqualToAnchor:self.topAnchor constant:12],
+        [_checkmarkView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12],
+        [_checkmarkView.widthAnchor   constraintEqualToConstant:20],
+        [_checkmarkView.heightAnchor  constraintEqualToConstant:20],
+
+        [_titleLabel.topAnchor      constraintEqualToAnchor:_iconView.bottomAnchor constant:10],
+        [_titleLabel.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor constant:14],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
+
+        [_subtitleLabel.topAnchor      constraintEqualToAnchor:_titleLabel.bottomAnchor constant:4],
+        [_subtitleLabel.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor constant:14],
+        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14],
+    ]];
+
+    return self;
+}
+
+- (void)setSelected:(BOOL)selected animated:(BOOL)animated {
+    _isSelectedMethod = selected;
+    void (^changes)(void) = ^{
+        self.layer.borderColor = selected
+            ? [AppPrimaryClr colorWithAlphaComponent:0.7].CGColor
+            : [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+        self.layer.borderWidth = selected ? 2.0 : 1.5;
+        self.checkmarkView.alpha = selected ? 1.0 : 0.0;
+        self.transform = selected ? CGAffineTransformMakeScale(1.03, 1.03) : CGAffineTransformIdentity;
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.45
+                              delay:0
+             usingSpringWithDamping:0.70
+              initialSpringVelocity:0.3
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
+}
+
+@end
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - PPPaymentFormViewController (Main controller)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@interface PPPaymentFormViewController () <UITextFieldDelegate>
+
+@property (nonatomic, strong) UIScrollView  *scrollView;
+@property (nonatomic, strong) UIStackView   *mainStack;
+
+// Hero card
+@property (nonatomic, strong) UIView          *heroCardView;
+@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
+
+// Method picker (Add mode only)
+@property (nonatomic, strong) UIScrollView  *methodScroll;
+@property (nonatomic, strong) UIStackView   *methodStack;
+@property (nonatomic, strong) NSMutableArray<PPMethodPickerCard *> *methodCards;
+
+// Form container
+@property (nonatomic, strong) UIView       *formContainerView;
+@property (nonatomic, strong) UIStackView  *formFieldsStack;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, UITextField *> *fieldsByTag;
+@property (nonatomic, strong) UILabel      *applePayInfoLabel;
+
+// Save button
+@property (nonatomic, strong) UIButton *saveButton;
+
+// State
+@property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
+@property (nonatomic, strong) NSArray<PaymentMethod *> *availableMethods;
+@property (nonatomic, strong) PaymentMethod *selectedMethod;
+@property (nonatomic, assign) BOOL expanded;
+@property (nonatomic, weak)   id<PaymentHeightDelegate> delegate;
+
+@end
+
+@implementation PPPaymentFormViewController
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Static helpers (preserved exactly from original)
+// ─────────────────────────────────────────────────────────────────────────────
+
+static NSString *PPPaymentFormTrimmedString(id value) {
+    if (![value isKindOfClass:NSString.class]) return @"";
+    return [(NSString *)value stringByTrimmingCharactersInSet:
+            [NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSString *PPPaymentFormNormalizedMethodID(NSString *methodID) {
+    NSString *normalized = [PPPaymentFormTrimmedString(methodID).lowercaseString copy];
+    if ([normalized isEqualToString:@"card"]) return @"qib";
+    return normalized;
+}
+
+static BOOL PPPaymentFormUsesCardFields(NSString *methodID) {
+    NSString *normalized = PPPaymentFormNormalizedMethodID(methodID);
+    return [normalized isEqualToString:@"qib"];
+}
+
+static NSString *PPPaymentFormDigitsOnly(NSString *value) {
+    NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+    NSArray<NSString *> *parts = [PPPaymentFormTrimmedString(value)
+                                  componentsSeparatedByCharactersInSet:nonDigits];
+    return [parts componentsJoinedByString:@""];
+}
+
+static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSString *rawExpiry) {
+    NSString *trimmed = PPPaymentFormTrimmedString(rawExpiry);
+    if (trimmed.length == 0) return @{};
+
+    NSString *month = @"";
+    NSString *year  = @"";
+    NSArray<NSString *> *slashParts = [trimmed componentsSeparatedByString:@"/"];
+    if (slashParts.count >= 2) {
+        month = PPPaymentFormDigitsOnly(slashParts.firstObject);
+        year  = PPPaymentFormDigitsOnly(slashParts[1]);
+    } else {
+        NSString *digits = PPPaymentFormDigitsOnly(trimmed);
+        if (digits.length == 4) {
+            month = [digits substringToIndex:2];
+            year  = [digits substringFromIndex:2];
+        } else if (digits.length == 6) {
+            month = [digits substringToIndex:2];
+            year  = [digits substringFromIndex:2];
+        }
+    }
+
+    NSInteger monthValue = [month integerValue];
+    if (monthValue < 1 || monthValue > 12) return @{};
+    if (year.length == 2) year = [@"20" stringByAppendingString:year];
+    if (year.length < 4) return @{};
+
+    return @{
+        @"month": [NSString stringWithFormat:@"%02ld", (long)monthValue],
+        @"year" : year
+    };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Init
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _fieldsByTag   = [NSMutableDictionary dictionary];
+        _methodCards   = [NSMutableArray array];
+    }
+    return self;
+}
+
+- (instancetype)initForAddingMethod:(PaymentMethod * _Nullable)method {
+    self = [self init];
+    if (self) {
+        _isEditingExisting = NO;
+        _mode = PPPaymentFormModeAdd;
+        _selectedMethod = method;
+    }
+    return self;
+}
+
+- (instancetype)initForEditingInstrument:(UserPaymentInstrument *)instrument {
+    self = [self init];
+    if (self) {
+        _isEditingExisting = YES;
+        _mode = PPPaymentFormModeEdit;
+        _editingInstrument = instrument;
+        _selectedMethod = instrument.method;
+    }
+    return self;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Lifecycle
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    _expanded = NO;
+    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.instrumentManager = [UserPaymentInstrumentManager sharedManager];
+    self.availableMethods  = [PaymentMethod defaultMethods];
+
+    [self pp_buildUI];
+    [self pp_registerKeyboardNotifications];
+    [self pp_configureNavBar];
+
+    if (self.mode == PPPaymentFormModeEdit && self.editingInstrument) {
+        [self pp_preselectMethodForInstrument:self.editingInstrument];
+        [self pp_buildFieldsForMethod:self.selectedMethod];
+        [self pp_prefillFieldsWithInstrument:self.editingInstrument];
+    } else if (self.selectedMethod) {
+        [self pp_selectMethod:self.selectedMethod animated:NO];
+    }
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    self.heroGradientLayer.frame = self.heroCardView.bounds;
+    if (!CGRectIsEmpty(self.heroCardView.bounds)) {
+        self.heroCardView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.heroCardView.bounds
+                                       cornerRadius:self.heroCardView.layer.cornerRadius].CGPath;
+    }
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+
+    NSString *saveTitle = (self.mode == PPPaymentFormModeEdit)
+        ? kLang(@"Update") : kLang(@"Save");
+
+    UIButton *barSave = [PPButtonHelper pp_buttonWithTitleForBar:saveTitle
+                                                      imageName:@"checkmark.circle"
+                                                         target:self
+                                                         action:@selector(saveButtonPressed)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:barSave];
+    self.navigationItem.leftBarButtonItem  =
+        [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName)
+                                         style:UIBarButtonItemStylePlain
+                                        target:self
+                                        action:@selector(pp_onBack)];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Navigation
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_onBack {
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+- (void)pp_configureNavBar {
+    NSString *headerTitle = (self.mode == PPPaymentFormModeEdit)
+        ? kLang(@"EditPaymentTitle")
+        : kLang(@"SelectPaymentMethod");
+    self.title = headerTitle;
+    self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Build UI
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_buildUI {
+    // ScrollView
+    _scrollView = [[UIScrollView alloc] init];
+    _scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    _scrollView.showsVerticalScrollIndicator   = NO;
+    _scrollView.showsHorizontalScrollIndicator = NO;
+    _scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    _scrollView.alwaysBounceVertical = YES;
+    [self.view addSubview:_scrollView];
+
+    // Main stack
+    _mainStack = [[UIStackView alloc] init];
+    _mainStack.translatesAutoresizingMaskIntoConstraints = NO;
+    _mainStack.axis    = UILayoutConstraintAxisVertical;
+    _mainStack.spacing = 20;
+    _mainStack.alignment = UIStackViewAlignmentFill;
+    [_scrollView addSubview:_mainStack];
+
+    CGFloat pad = 16.0;
+    [NSLayoutConstraint activateConstraints:@[
+        [_scrollView.topAnchor      constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [_scrollView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
+        [_scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [_scrollView.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [_mainStack.topAnchor      constraintEqualToAnchor:_scrollView.topAnchor constant:pad],
+        [_mainStack.leadingAnchor  constraintEqualToAnchor:_scrollView.leadingAnchor constant:pad],
+        [_mainStack.trailingAnchor constraintEqualToAnchor:_scrollView.trailingAnchor constant:-pad],
+        [_mainStack.bottomAnchor   constraintEqualToAnchor:_scrollView.bottomAnchor constant:-100],
+        [_mainStack.widthAnchor    constraintEqualToAnchor:_scrollView.widthAnchor constant:-(pad * 2)],
+    ]];
+
+    [self pp_buildHeroCard];
+
+    if (self.mode == PPPaymentFormModeAdd) {
+        [self pp_buildMethodPicker];
+    }
+
+    [self pp_buildFormContainer];
+    [self pp_buildSaveButton];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Hero Card
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_buildHeroCard {
+    _heroCardView = [[UIView alloc] init];
+    _heroCardView.translatesAutoresizingMaskIntoConstraints = NO;
+    _heroCardView.layer.cornerRadius = 30.0;
+    _heroCardView.layer.cornerCurve  = kCACornerCurveContinuous;
+    _heroCardView.layer.borderWidth  = 1.0;
+    _heroCardView.layer.borderColor  = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    _heroCardView.layer.shadowColor   = UIColor.blackColor.CGColor;
+    _heroCardView.layer.shadowOpacity = 0.08;
+    _heroCardView.layer.shadowRadius  = 18.0;
+    _heroCardView.layer.shadowOffset  = CGSizeMake(0, 12);
+    _heroCardView.clipsToBounds = NO;
+
+    _heroGradientLayer = [CAGradientLayer layer];
+    _heroGradientLayer.colors = @[
+        (id)[AppPrimaryClr   colorWithAlphaComponent:0.16].CGColor,
+        (id)[AppForgroundColr colorWithAlphaComponent:0.98].CGColor,
+        (id)[AppForgroundColr colorWithAlphaComponent:1.0].CGColor
+    ];
+    _heroGradientLayer.locations  = @[@0.0, @0.45, @1.0];
+    _heroGradientLayer.startPoint = CGPointMake(0, 0);
+    _heroGradientLayer.endPoint   = CGPointMake(1, 1);
+    _heroGradientLayer.cornerRadius = 30.0;
+    [_heroCardView.layer insertSublayer:_heroGradientLayer atIndex:0];
+
+    // Eyebrow pill
+    UIView *eyebrowContainer = [[UIView alloc] init];
+    eyebrowContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    eyebrowContainer.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+    eyebrowContainer.layer.cornerRadius = 14.0;
+    eyebrowContainer.layer.cornerCurve  = kCACornerCurveContinuous;
+    [_heroCardView addSubview:eyebrowContainer];
+
+    UILabel *eyebrowLabel = [[UILabel alloc] init];
+    eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    eyebrowLabel.font      = [GM MidFontWithSize:12];
+    eyebrowLabel.textColor = AppPrimaryClr;
+    eyebrowLabel.text = (self.mode == PPPaymentFormModeEdit)
+        ? kLang(@"EditPaymentTitle") : kLang(@"payment_form_eyebrow");
+    [eyebrowContainer addSubview:eyebrowLabel];
+
+    // Icon surface
+    UIView *iconSurface = [[UIView alloc] init];
+    iconSurface.translatesAutoresizingMaskIntoConstraints = NO;
+    iconSurface.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.75];
+    iconSurface.layer.cornerRadius = 22.0;
+    iconSurface.layer.cornerCurve  = kCACornerCurveContinuous;
+    [_heroCardView addSubview:iconSurface];
+
+    NSString *heroSF = (self.mode == PPPaymentFormModeEdit) ? @"pencil.circle" : @"creditcard.fill";
+    UIImageView *heroIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:heroSF]];
+    heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    heroIconView.tintColor   = AppPrimaryClr;
+    heroIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [iconSurface addSubview:heroIconView];
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:24];
+    titleLabel.textColor = UIColor.labelColor;
+    titleLabel.numberOfLines = 2;
+    titleLabel.text = (self.mode == PPPaymentFormModeEdit)
+        ? kLang(@"EditPaymentTitle")
+        : kLang(@"AddPaymentTitle");
+    [_heroCardView addSubview:titleLabel];
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:14];
+    subtitleLabel.textColor = UIColor.secondaryLabelColor;
+    subtitleLabel.numberOfLines = 0;
+    subtitleLabel.text = (self.mode == PPPaymentFormModeEdit)
+        ? kLang(@"EditPaymentSubtitle")
+        : kLang(@"AddPaymentSubtitle");
+    [_heroCardView addSubview:subtitleLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [eyebrowContainer.topAnchor     constraintEqualToAnchor:_heroCardView.topAnchor constant:20],
+        [eyebrowContainer.leadingAnchor constraintEqualToAnchor:_heroCardView.leadingAnchor constant:20],
+
+        [eyebrowLabel.topAnchor      constraintEqualToAnchor:eyebrowContainer.topAnchor constant:7],
+        [eyebrowLabel.bottomAnchor   constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:-7],
+        [eyebrowLabel.leadingAnchor  constraintEqualToAnchor:eyebrowContainer.leadingAnchor constant:12],
+        [eyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowContainer.trailingAnchor constant:-12],
+
+        [iconSurface.trailingAnchor constraintEqualToAnchor:_heroCardView.trailingAnchor constant:-20],
+        [iconSurface.centerYAnchor  constraintEqualToAnchor:eyebrowContainer.centerYAnchor],
+        [iconSurface.widthAnchor    constraintEqualToConstant:44],
+        [iconSurface.heightAnchor   constraintEqualToConstant:44],
+
+        [heroIconView.centerXAnchor constraintEqualToAnchor:iconSurface.centerXAnchor],
+        [heroIconView.centerYAnchor constraintEqualToAnchor:iconSurface.centerYAnchor],
+        [heroIconView.widthAnchor   constraintEqualToConstant:22],
+        [heroIconView.heightAnchor  constraintEqualToConstant:22],
+
+        [titleLabel.topAnchor      constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:14],
+        [titleLabel.leadingAnchor  constraintEqualToAnchor:_heroCardView.leadingAnchor constant:20],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:_heroCardView.trailingAnchor constant:-20],
+
+        [subtitleLabel.topAnchor      constraintEqualToAnchor:titleLabel.bottomAnchor constant:8],
+        [subtitleLabel.leadingAnchor  constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [subtitleLabel.bottomAnchor   constraintEqualToAnchor:_heroCardView.bottomAnchor constant:-20],
+    ]];
+
+    [_mainStack addArrangedSubview:_heroCardView];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Method Picker (Add mode)
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_buildMethodPicker {
+    // Section label
+    UILabel *sectionLabel = [[UILabel alloc] init];
+    sectionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    sectionLabel.text = kLang(@"PaymentMethodTitle");
+    sectionLabel.font = [GM boldFontWithSize:17];
+    sectionLabel.textColor = UIColor.labelColor;
+    [_mainStack addArrangedSubview:sectionLabel];
+
+    // Horizontal scroll of method cards
+    _methodScroll = [[UIScrollView alloc] init];
+    _methodScroll.translatesAutoresizingMaskIntoConstraints = NO;
+    _methodScroll.showsHorizontalScrollIndicator = NO;
+    _methodScroll.clipsToBounds = NO;
+    [_methodScroll.heightAnchor constraintEqualToConstant:140].active = YES;
+
+    _methodStack = [[UIStackView alloc] init];
+    _methodStack.translatesAutoresizingMaskIntoConstraints = NO;
+    _methodStack.axis = UILayoutConstraintAxisHorizontal;
+    _methodStack.spacing = 12;
+    _methodStack.alignment = UIStackViewAlignmentFill;
+    [_methodScroll addSubview:_methodStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_methodStack.topAnchor      constraintEqualToAnchor:_methodScroll.topAnchor],
+        [_methodStack.leadingAnchor  constraintEqualToAnchor:_methodScroll.leadingAnchor],
+        [_methodStack.trailingAnchor constraintEqualToAnchor:_methodScroll.trailingAnchor],
+        [_methodStack.bottomAnchor   constraintEqualToAnchor:_methodScroll.bottomAnchor],
+        [_methodStack.heightAnchor   constraintEqualToAnchor:_methodScroll.heightAnchor],
+    ]];
+
+    for (PaymentMethod *method in self.availableMethods) {
+        PPMethodPickerCard *card = [[PPMethodPickerCard alloc] initWithMethod:method];
+        UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self
+                                                                              action:@selector(pp_methodCardTapped:)];
+        [card addGestureRecognizer:tap];
+        [_methodStack addArrangedSubview:card];
+        [_methodCards addObject:card];
+    }
+
+    [_mainStack addArrangedSubview:_methodScroll];
+}
+
+- (void)pp_methodCardTapped:(UITapGestureRecognizer *)gesture {
+    PPMethodPickerCard *tapped = (PPMethodPickerCard *)gesture.view;
+    if (!tapped || ![tapped isKindOfClass:[PPMethodPickerCard class]]) return;
+    [self pp_selectMethod:tapped.method animated:YES];
+}
+
+- (void)pp_selectMethod:(PaymentMethod *)method animated:(BOOL)animated {
+    self.selectedMethod = method;
+    _expanded = YES;
+
+    // Update picker highlights
+    for (PPMethodPickerCard *card in _methodCards) {
+        BOOL match = [card.method.methodID isEqualToString:method.methodID];
+        [card setSelected:match animated:animated];
+    }
+
+    [self pp_buildFieldsForMethod:method];
+    [self.delegate expandToLargeDetent:_expanded];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Form Container
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_buildFormContainer {
+    _formContainerView = [[UIView alloc] init];
+    _formContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    _formContainerView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+    _formContainerView.layer.cornerRadius = 24;
+    _formContainerView.layer.cornerCurve  = kCACornerCurveContinuous;
+    _formContainerView.layer.borderWidth  = 1.0;
+    _formContainerView.layer.borderColor  = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+
+    _formFieldsStack = [[UIStackView alloc] init];
+    _formFieldsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    _formFieldsStack.axis    = UILayoutConstraintAxisVertical;
+    _formFieldsStack.spacing = 12;
+    _formFieldsStack.alignment = UIStackViewAlignmentFill;
+    [_formContainerView addSubview:_formFieldsStack];
+
+    _applePayInfoLabel = [[UILabel alloc] init];
+    _applePayInfoLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _applePayInfoLabel.text = kLang(@"payment_applepay_redirect_info");
+    _applePayInfoLabel.font = [GM MidFontWithSize:14];
+    _applePayInfoLabel.textColor = UIColor.secondaryLabelColor;
+    _applePayInfoLabel.textAlignment = NSTextAlignmentCenter;
+    _applePayInfoLabel.numberOfLines = 0;
+    _applePayInfoLabel.hidden = YES;
+    [_formContainerView addSubview:_applePayInfoLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_formFieldsStack.topAnchor      constraintEqualToAnchor:_formContainerView.topAnchor constant:16],
+        [_formFieldsStack.leadingAnchor  constraintEqualToAnchor:_formContainerView.leadingAnchor constant:16],
+        [_formFieldsStack.trailingAnchor constraintEqualToAnchor:_formContainerView.trailingAnchor constant:-16],
+        [_formFieldsStack.bottomAnchor   constraintEqualToAnchor:_formContainerView.bottomAnchor constant:-16],
+
+        [_applePayInfoLabel.topAnchor      constraintEqualToAnchor:_formContainerView.topAnchor constant:30],
+        [_applePayInfoLabel.leadingAnchor  constraintEqualToAnchor:_formContainerView.leadingAnchor constant:20],
+        [_applePayInfoLabel.trailingAnchor constraintEqualToAnchor:_formContainerView.trailingAnchor constant:-20],
+        [_applePayInfoLabel.bottomAnchor   constraintEqualToAnchor:_formContainerView.bottomAnchor constant:-30],
+    ]];
+
+    [_mainStack addArrangedSubview:_formContainerView];
+    _formContainerView.hidden = YES; // shown when method is picked
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Build Fields For Method
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_buildFieldsForMethod:(PaymentMethod *)method {
+    // Clear existing
+    for (UIView *v in _formFieldsStack.arrangedSubviews) {
+        [v removeFromSuperview];
+    }
+    [_fieldsByTag removeAllObjects];
+    _applePayInfoLabel.hidden = YES;
+    _formFieldsStack.hidden   = NO;
+    _formContainerView.hidden = NO;
+
+    NSString *mid = PPPaymentFormNormalizedMethodID(method.methodID);
+
+    if (PPPaymentFormUsesCardFields(mid)) {
+        // Credit/Debit Card (QIB)
+        [self pp_addField:@"cardNumber" placeholder:kLang(@"CardNumberPlaceholder")
+                     icon:@"creditcard" keyboard:UIKeyboardTypeNumberPad secure:NO];
+        [self pp_addField:@"expiry" placeholder:kLang(@"ExpiryDatePlaceholder")
+                     icon:@"calendar" keyboard:UIKeyboardTypeNumbersAndPunctuation secure:NO];
+        [self pp_addField:@"cvv" placeholder:kLang(@"CVVPlaceholder")
+                     icon:@"lock.fill" keyboard:UIKeyboardTypeNumberPad secure:YES];
+
+    } else if ([mid isEqualToString:@"applepay"]) {
+        // Apple Pay — no form fields
+        _formFieldsStack.hidden   = YES;
+        _applePayInfoLabel.hidden = NO;
+
+    } else if ([mid isEqualToString:@"ooredoo"]) {
+        [self pp_addField:@"ooredooNumber" placeholder:kLang(@"OoredooWalletNumberPlaceholder")
+                     icon:@"phone.fill" keyboard:UIKeyboardTypePhonePad secure:NO];
+
+    } else if ([mid isEqualToString:@"naps"] || [mid isEqualToString:@"qnb"]) {
+        [self pp_addField:@"qnbAccount" placeholder:kLang(@"QNBAccountPlaceholder")
+                     icon:@"banknote.fill" keyboard:UIKeyboardTypeNumberPad secure:NO];
+        [self pp_addField:@"qnbOtp" placeholder:kLang(@"QNBOTPPlaceholder")
+                     icon:@"key.fill" keyboard:UIKeyboardTypeNumberPad secure:YES];
+
+    } else if ([mid isEqualToString:@"cash"]) {
+        [self pp_addField:@"cashNote" placeholder:kLang(@"DeliveryNotePlaceholder")
+                     icon:@"note.text" keyboard:UIKeyboardTypeDefault secure:NO];
+    }
+
+    // Animate in
+    _formContainerView.alpha     = 0.0;
+    _formContainerView.transform = CGAffineTransformMakeTranslation(0, 16);
+    [UIView animateWithDuration:0.4
+                          delay:0.05
+         usingSpringWithDamping:0.85
+          initialSpringVelocity:0.2
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.formContainerView.alpha     = 1.0;
+        self.formContainerView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_addField:(NSString *)tag
+        placeholder:(NSString *)placeholder
+               icon:(NSString *)sfSymbol
+           keyboard:(UIKeyboardType)keyboard
+             secure:(BOOL)secure {
+
+    PPFormFieldView *field = [[PPFormFieldView alloc] initWithTag:tag
+                                                      placeholder:placeholder
+                                                             icon:sfSymbol
+                                                     keyboardType:keyboard
+                                                         isSecure:secure];
+    field.textField.delegate = self;
+    [_formFieldsStack addArrangedSubview:field];
+    _fieldsByTag[tag] = field.textField;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Save Button (pinned bottom)
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_buildSaveButton {
+    NSString *title = (self.mode == PPPaymentFormModeEdit) ? kLang(@"Update") : kLang(@"Save");
+
+    _saveButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    _saveButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _saveButton.backgroundColor = AppPrimaryClr;
+    _saveButton.layer.cornerRadius = 28;
+    _saveButton.layer.cornerCurve  = kCACornerCurveContinuous;
+    [_saveButton setTitle:title forState:UIControlStateNormal];
+    [_saveButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    _saveButton.titleLabel.font = [GM boldFontWithSize:17];
+    [_saveButton addTarget:self action:@selector(pp_saveButtonTouchDown)
+          forControlEvents:UIControlEventTouchDown];
+    [_saveButton addTarget:self action:@selector(saveButtonPressed)
+          forControlEvents:UIControlEventTouchUpInside];
+    [_saveButton addTarget:self action:@selector(pp_saveButtonTouchCancel)
+          forControlEvents:UIControlEventTouchUpOutside];
+    [_saveButton addTarget:self action:@selector(pp_saveButtonTouchCancel)
+          forControlEvents:UIControlEventTouchCancel];
+
+    [self.view addSubview:_saveButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_saveButton.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor constant:16],
+        [_saveButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
+        [_saveButton.heightAnchor   constraintEqualToConstant:56],
+        [_saveButton.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-10],
+    ]];
+}
+
+- (void)pp_saveButtonTouchDown {
+    [UIView animateWithDuration:0.12 animations:^{
+        self.saveButton.transform = CGAffineTransformMakeScale(0.96, 0.96);
+    }];
+}
+
+- (void)pp_saveButtonTouchCancel {
+    [UIView animateWithDuration:0.3
+                          delay:0
+         usingSpringWithDamping:0.6
+          initialSpringVelocity:0.3
+                        options:0
+                     animations:^{
+        self.saveButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Collect Form Values
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (NSDictionary *)collectFormValues {
+    NSMutableDictionary *values = [NSMutableDictionary dictionary];
+    for (NSString *tag in self.fieldsByTag) {
+        UITextField *tf = self.fieldsByTag[tag];
+        if (tf.text.length > 0) {
+            values[tag] = tf.text;
+        }
+    }
+    return values;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Card Issuer Detection (preserved)
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (NSString *)detectCardIssuerFromNumber:(NSString *)cardNumber {
+    if ([cardNumber hasPrefix:@"4"]) return @"Visa";
+    if ([cardNumber hasPrefix:@"5"]) return @"MasterCard";
+    if ([cardNumber hasPrefix:@"34"] || [cardNumber hasPrefix:@"37"]) return @"American Express";
+    if ([cardNumber hasPrefix:@"6"]) return @"Discover";
+    return kLang(@"Unknown");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Save Logic (preserved exactly from original)
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)saveButtonPressed {
+    // Spring bounce reset
+    [UIView animateWithDuration:0.35 delay:0
+         usingSpringWithDamping:0.5 initialSpringVelocity:0.4
+                        options:0 animations:^{
+        self.saveButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    NSDictionary *values = [self collectFormValues];
+
+    if (!self.selectedMethod && self.editingInstrument.methodID.length > 0) {
+        self.selectedMethod = [PaymentMethod methodForID:
+            PPPaymentFormNormalizedMethodID(self.editingInstrument.methodID)];
+    }
+
+    if (!self.selectedMethod) {
+        [PPHUD showError:kLang(@"PleaseSelectPaymentMethod")];
+        return;
+    }
+
+    // Apple Pay has no form fields — just save directly
+    if (self.selectedMethod.type == PaymentMethodTypeApplePay) {
+        [self pp_saveApplePayInstrument];
+        return;
+    }
+
+    if (values.count == 0) {
+        [PPHUD showError:kLang(@"PleaseCompleteFields")];
+        return;
+    }
+
+    // Create or update instrument
+    UserPaymentInstrument *instrument = (self.mode == PPPaymentFormModeEdit && self.editingInstrument)
+        ? self.editingInstrument
+        : [[UserPaymentInstrument alloc] init];
+
+    instrument.userID   = PPCurrentUser.ID;
+    instrument.methodID = PPPaymentFormNormalizedMethodID(self.selectedMethod.methodID);
+    instrument.method   = self.selectedMethod;
+    if (!instrument.createdAt) instrument.createdAt = [NSDate date];
+    instrument.updatedAt = [NSDate date];
+
+    NSMutableDictionary *original = [NSMutableDictionary dictionary];
+    NSMutableDictionary *meta     = [NSMutableDictionary dictionary];
+    NSString *masked = @"";
+
+    switch (self.selectedMethod.type) {
+        case PaymentMethodTypeQIB:
+        case PaymentMethodTypeCard: {
+            NSString *cardNumber = PPPaymentFormDigitsOnly(values[@"cardNumber"]);
+            NSString *expiry     = PPPaymentFormTrimmedString(values[@"expiry"]);
+            if (cardNumber.length < 12 || expiry.length == 0) {
+                [PPHUD showError:kLang(@"PleaseFillCardDetails")];
+                return;
+            }
+            NSDictionary<NSString *, NSString *> *expiryParts = PPPaymentFormExpiryComponents(expiry);
+            if (expiryParts.count == 0) {
+                [PPHUD showError:kLang(@"ExpiryDatePlaceholder")];
+                return;
+            }
+            NSString *last4 = [cardNumber substringFromIndex:MAX(0, cardNumber.length - 4)];
+            masked = [NSString stringWithFormat:@"•••• %@", last4];
+            meta[@"issuer"]      = [instrument detectCardIssuerFromNumber:cardNumber];
+            meta[@"maskedCard"]  = masked;
+            meta[@"last4"]       = last4;
+            meta[@"expiryMonth"] = expiryParts[@"month"] ?: @"";
+            meta[@"expiryYear"]  = expiryParts[@"year"]  ?: @"";
+            break;
+        }
+
+        case PaymentMethodTypeQNB: {
+            NSString *account = values[@"qnbAccount"];
+            if (account.length == 0) {
+                [PPHUD showError:kLang(@"PleaseEnterQNBAccount")];
+                return;
+            }
+            original[@"qnbAccount"] = account;
+            masked = [instrument maskString:account];
+            meta[@"bank"]          = @"QNB";
+            meta[@"maskedAccount"] = masked;
+            break;
+        }
+
+        case PaymentMethodTypeOoredoo: {
+            NSString *number = values[@"ooredooNumber"];
+            if (number.length == 0) {
+                [PPHUD showError:kLang(@"PleaseEnterOoredooNumber")];
+                return;
+            }
+            original[@"ooredooNumber"] = number;
+            masked = [instrument maskString:number];
+            meta[@"provider"]      = @"Ooredoo Money";
+            meta[@"maskedWallet"]  = masked;
+            break;
+        }
+
+        case PaymentMethodTypeFawryQatar: {
+            NSString *customer  = values[@"customerName"];
+            NSString *mobile    = values[@"mobileNumber"];
+            NSString *email     = values[@"email"] ?: @"";
+            NSString *reference = values[@"referenceCode"] ?: @"";
+            if (mobile.length == 0 || customer.length == 0) {
+                [PPHUD showError:kLang(@"PleaseCompleteFawryDetails")];
+                return;
+            }
+            original[@"customerName"]  = customer;
+            original[@"mobileNumber"]  = mobile;
+            original[@"email"]         = email;
+            original[@"referenceCode"] = reference;
+            masked = [instrument maskString:mobile];
+            meta[@"provider"]      = @"Fawry Qatar";
+            meta[@"maskedMobile"]  = masked;
+            break;
+        }
+
+        case PaymentMethodTypeCash:
+            masked = kLang(@"CashPayment");
+            meta[@"type"] = @"Cash";
+            break;
+
+        default:
+            masked = @"••••••";
+            break;
+    }
+
+    instrument.originalData  = original;
+    instrument.metaData      = meta;
+    instrument.maskedDetails = masked;
+
+    [self pp_persistInstrument:instrument];
+}
+
+- (void)pp_saveApplePayInstrument {
+    UserPaymentInstrument *instrument = (self.mode == PPPaymentFormModeEdit && self.editingInstrument)
+        ? self.editingInstrument
+        : [[UserPaymentInstrument alloc] init];
+
+    instrument.userID   = PPCurrentUser.ID;
+    instrument.methodID = @"applepay";
+    instrument.method   = self.selectedMethod;
+    if (!instrument.createdAt) instrument.createdAt = [NSDate date];
+    instrument.updatedAt = [NSDate date];
+    instrument.originalData  = @{};
+    instrument.metaData      = @{@"provider": @"Apple Pay"};
+    instrument.maskedDetails = @"Apple Pay";
+
+    [self pp_persistInstrument:instrument];
+}
+
+- (void)pp_persistInstrument:(UserPaymentInstrument *)instrument {
+    __weak typeof(self) weakSelf = self;
+
+    if (self.mode == PPPaymentFormModeEdit) {
+        [self.instrumentManager updateInstrument:instrument
+                                         forUser:PPCurrentUser.ID
+                                      completion:^(BOOL success, NSError * _Nullable error) {
+            if (success) {
+                [PPHUD showSuccess:kLang(@"PaymentMethodUpdated")
+                          subtitle:kLang(@"PaymentUpdatedSubtitle")];
+                [weakSelf.navigationController popViewControllerAnimated:YES];
+            } else {
+                [PPHUD showError:kLang(@"FailedToUpdatePaymentMethod")];
+            }
+        }];
+    } else {
+        [self.instrumentManager addInstrument:instrument
+                                      forUser:PPCurrentUser.ID
+                                   completion:^(BOOL success, NSError * _Nullable error) {
+            if (success) {
+                [PPHUD showSuccess:kLang(@"PaymentMethodSaved")
+                          subtitle:kLang(@"PaymentSavedSubtitle")];
+                [weakSelf.navigationController popViewControllerAnimated:YES];
+            } else {
+                [PPHUD showError:kLang(@"FailedToSavePaymentMethod")];
+            }
+        }];
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Edit Mode Prefill
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_preselectMethodForInstrument:(UserPaymentInstrument *)instrument {
+    NSString *normalizedID = PPPaymentFormNormalizedMethodID(instrument.methodID);
+    self.selectedMethod = instrument.method ?: [PaymentMethod methodForID:normalizedID];
+
+    for (PPMethodPickerCard *card in _methodCards) {
+        BOOL match = [card.method.methodID isEqualToString:normalizedID];
+        [card setSelected:match animated:NO];
+    }
+}
+
+- (void)pp_prefillFieldsWithInstrument:(UserPaymentInstrument *)instrument {
+    NSDictionary *original = instrument.originalData ?: @{};
+    for (NSString *key in original) {
+        UITextField *tf = self.fieldsByTag[key];
+        if (tf) {
+            tf.text = original[key];
+            // Trigger floating label
+            PPFormFieldView *field = (PPFormFieldView *)tf.superview;
+            if ([field isKindOfClass:[PPFormFieldView class]]) {
+                [field prefillValue:original[key]];
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - Keyboard Handling
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (void)pp_registerKeyboardNotifications {
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillShow:)
+                                                 name:UIKeyboardWillShowNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillHide:)
+                                                 name:UIKeyboardWillHideNotification
+                                               object:nil];
+}
+
+- (void)pp_keyboardWillShow:(NSNotification *)note {
+    CGRect kbFrame = [note.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGFloat kbH    = kbFrame.size.height;
+    NSTimeInterval dur = [note.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationCurve curve = [note.userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
+
+    [UIView animateWithDuration:dur delay:0 options:(curve << 16) animations:^{
+        self.scrollView.contentInset = UIEdgeInsetsMake(0, 0, kbH + 20, 0);
+        self.scrollView.scrollIndicatorInsets = self.scrollView.contentInset;
+    } completion:nil];
+
+    // Auto-scroll to the active field
+    UIView *active = [self pp_findFirstResponderIn:self.formFieldsStack];
+    if (active) {
+        CGRect rect = [active convertRect:active.bounds toView:self.scrollView];
+        rect = CGRectInset(rect, 0, -30);
+        [self.scrollView scrollRectToVisible:rect animated:YES];
+    }
+}
+
+- (void)pp_keyboardWillHide:(NSNotification *)note {
+    NSTimeInterval dur = [note.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIViewAnimationCurve curve = [note.userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
+
+    [UIView animateWithDuration:dur delay:0 options:(curve << 16) animations:^{
+        self.scrollView.contentInset = UIEdgeInsetsZero;
+        self.scrollView.scrollIndicatorInsets = UIEdgeInsetsZero;
+    } completion:nil];
+}
+
+- (UIView *)pp_findFirstResponderIn:(UIView *)view {
+    if ([view isFirstResponder]) return view;
+    for (UIView *sub in view.subviews) {
+        UIView *found = [self pp_findFirstResponderIn:sub];
+        if (found) return found;
+    }
+    return nil;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - UITextFieldDelegate
+// ─────────────────────────────────────────────────────────────────────────────
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    // Move to next field or dismiss
+    NSArray<NSString *> *orderedTags = self.fieldsByTag.allKeys;
+    NSInteger idx = NSNotFound;
+    for (NSInteger i = 0; i < orderedTags.count; i++) {
+        if (self.fieldsByTag[orderedTags[i]] == textField) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx != NSNotFound && idx + 1 < (NSInteger)orderedTags.count) {
+        [self.fieldsByTag[orderedTags[idx + 1]] becomeFirstResponder];
+    } else {
+        [textField resignFirstResponder];
+    }
+    return YES;
+}
+
+@end
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - PPGlassHeaderView (kept exactly as-is)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@interface PPGlassHeaderView ()
+@property (nonatomic, copy) void (^cancelHandler)(void);
+@end
+
+@implementation PPGlassHeaderView
+
+- (instancetype)initWithTitle:(NSString *)title
+                cancelHandler:(void (^)(void))handler {
+    self = [super initWithFrame:CGRectZero];
+    if (self) {
+        self.translatesAutoresizingMaskIntoConstraints = NO;
+        self.cancelHandler = handler;
+        [self setupUIWithTitle:title];
+    }
+    return self;
+}
+
+- (void)setupUIWithTitle:(NSString *)title {
+    self.backgroundColor = UIColor.clearColor;
+
+    _titleLabel = [[UILabel alloc] init];
+    _titleLabel.text = title;
+    _titleLabel.font = [GM boldFontWithSize:18];
+    _titleLabel.textColor = UIColor.labelColor;
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+
+    UIButtonConfiguration *config;
+    if (@available(iOS 16.0, *)) {
+        if (@available(iOS 26.0, *))
+            config = [UIButtonConfiguration glassButtonConfiguration];
+        else
+            config = [UIButtonConfiguration filledButtonConfiguration];
+
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.buttonSize  = UIButtonConfigurationSizeMedium;
+        config.baseForegroundColor = UIColor.labelColor;
+
+        _cancelButton = [UIButton buttonWithConfiguration:config primaryAction:nil];
+        [_cancelButton setImage:PPSYSImage(@"multiply") forState:UIControlStateNormal];
+    } else {
+        _cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [_cancelButton setImage:PPSYSImage(@"multiply") forState:UIControlStateNormal];
+        _cancelButton.backgroundColor    = [UIColor colorWithWhite:0.9 alpha:0.4];
+        _cancelButton.layer.cornerRadius = 8;
+    }
+
+    [_cancelButton addTarget:self action:@selector(cancelTapped)
+            forControlEvents:UIControlEventTouchUpInside];
+    _cancelButton.translatesAutoresizingMaskIntoConstraints = NO;
+
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[_titleLabel, _cancelButton]];
+    stack.axis         = UILayoutConstraintAxisHorizontal;
+    stack.alignment    = UIStackViewAlignmentCenter;
+    stack.distribution = UIStackViewDistributionFill;
+    stack.spacing      = 8;
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self addSubview:stack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor      constraintEqualToAnchor:self.topAnchor constant:8],
+        [stack.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor constant:26],
+        [stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
+        [stack.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor constant:-8],
+
+        [_cancelButton.widthAnchor  constraintEqualToConstant:40],
+        [_cancelButton.heightAnchor constraintEqualToConstant:40]
+    ]];
+}
+
+- (void)cancelTapped {
+    if (self.cancelHandler) {
+        self.cancelHandler();
+    }
+}
+
+@end

@@ -3567,14 +3567,11 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 -(void)ios26Bar
 {
-    //NSString *buttonTitle = (self.mode == AdEditorModeEdit) ? kLang(@"saveChanges") : kLang(@"postAd");
-    //UIButton *saveBTN = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:@"checkmark" target:self action:@selector(saveFormData:)];
-    UIBarButtonItem *saveBarButton = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"checkmark") style:UIBarButtonItemStylePlain target:self action:@selector(saveFormData:)];
-    self.navigationItem.rightBarButtonItem = saveBarButton;
-    
-    //UIButton *backBTN = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:PPChevronName target:self action:@selector(onBack:)];
-    UIBarButtonItem *backBarButton = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName) style:UIBarButtonItemStylePlain target:self action:@selector(onBack:)];
-    self.navigationItem.leftBarButtonItem = backBarButton;
+    NSString *buttonTitle = (self.mode == AdEditorModeEdit) ? kLang(@"saveChanges") : kLang(@"postAd");
+    UIButton *savBtn = [PPButtonHelper pp_buttonWithTitle:buttonTitle font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveFormData:)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:savBtn];
+
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName) style:UIBarButtonItemStylePlain target:self action:@selector(onBack:)];
     [self pp_setSubmitEnabled:!self.isSubmittingAd && !self.isPrefillInProgress];
 }
 

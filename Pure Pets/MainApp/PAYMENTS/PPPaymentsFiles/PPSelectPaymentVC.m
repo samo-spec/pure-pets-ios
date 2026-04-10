@@ -186,6 +186,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroEyebrowLabel.font = [GM MidFontWithSize:12.0];
     self.heroEyebrowLabel.textColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.heroEyebrowLabel.textAlignment = NSTextAlignmentNatural;
     self.heroEyebrowLabel.text = kLang(@"payment_screen_eyebrow");
     [eyebrowContainer addSubview:self.heroEyebrowLabel];
 
@@ -207,6 +208,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroTitleLabel.font = [GM boldFontWithSize:28.0];
     self.heroTitleLabel.textColor = UIColor.labelColor;
     self.heroTitleLabel.numberOfLines = 2;
+    self.heroTitleLabel.textAlignment = NSTextAlignmentNatural;
     self.heroTitleLabel.text = kLang(@"payment_screen_title");
     [self.heroCardView addSubview:self.heroTitleLabel];
 
@@ -215,6 +217,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroSubtitleLabel.font = [GM MidFontWithSize:14.0];
     self.heroSubtitleLabel.textColor = UIColor.secondaryLabelColor;
     self.heroSubtitleLabel.numberOfLines = 0;
+    self.heroSubtitleLabel.textAlignment = NSTextAlignmentNatural;
     self.heroSubtitleLabel.text = kLang(@"payment_screen_subtitle");
     [self.heroCardView addSubview:self.heroSubtitleLabel];
 
@@ -222,6 +225,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     deliveryLabel.translatesAutoresizingMaskIntoConstraints = NO;
     deliveryLabel.font = [GM boldFontWithSize:16.0];
     deliveryLabel.textColor = UIColor.labelColor;
+    deliveryLabel.textAlignment = NSTextAlignmentNatural;
     deliveryLabel.text = kLang(@"payment_section_delivery");
     [self.heroCardView addSubview:deliveryLabel];
 
@@ -230,6 +234,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     deliverySubtitleLabel.font = [GM MidFontWithSize:13.0];
     deliverySubtitleLabel.textColor = UIColor.secondaryLabelColor;
     deliverySubtitleLabel.numberOfLines = 2;
+    deliverySubtitleLabel.textAlignment = NSTextAlignmentNatural;
     deliverySubtitleLabel.text = kLang(@"payment_section_delivery_subtitle");
     [self.heroCardView addSubview:deliverySubtitleLabel];
 

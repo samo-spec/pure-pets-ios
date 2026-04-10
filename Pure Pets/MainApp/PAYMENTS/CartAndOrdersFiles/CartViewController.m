@@ -13,8 +13,11 @@
 #import "ChManager.h"
 #import "AppClasses.h"
 #import "PPCommerceFeedbackManager.h"
+#import "PPChatsFunc.h"
 
 static NSString *const kCartSupportPhoneNumber = @"+97459997720";
+static CGFloat const kCartScreenHorizontalInset = 16.0;
+static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 
 @interface CustomTextViewCell : XLFormTextViewCell @end
 
@@ -27,12 +30,56 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 }
 
 @end
+/*
+@interface PPInsetLabel : UILabel
+@property (nonatomic, assign) UIEdgeInsets textInsets;
+@end
 
+@implementation PPInsetLabel
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _textInsets = UIEdgeInsetsMake(12.0, 14.0, 12.0, 14.0);
+    }
+    return self;
+}
+
+- (CGRect)textRectForBounds:(CGRect)bounds limitedToNumberOfLines:(NSInteger)numberOfLines
+{
+    CGRect insetBounds = UIEdgeInsetsInsetRect(bounds, self.textInsets);
+    CGRect textRect = [super textRectForBounds:insetBounds limitedToNumberOfLines:numberOfLines];
+    textRect.origin.x -= self.textInsets.left;
+    textRect.origin.y -= self.textInsets.top;
+    textRect.size.width += (self.textInsets.left + self.textInsets.right);
+    textRect.size.height += (self.textInsets.top + self.textInsets.bottom);
+    return textRect;
+}
+
+- (void)drawTextInRect:(CGRect)rect
+{
+    [super drawTextInRect:UIEdgeInsetsInsetRect(rect, self.textInsets)];
+}
+
+@end
+*/
 @interface CartViewController ()
 @property (nonatomic, strong) PPSPinnerView *spinner;
 
 @property (nonatomic, strong) UITableView *cartTableView;
 @property (nonatomic, strong) BBCheckoutSummaryView *summaryView;
+@property (nonatomic, strong) UIView *topGlowView;
+@property (nonatomic, strong) UIView *bottomGlowView;
+@property (nonatomic, strong) UIVisualEffectView *headerChromeView;
+@property (nonatomic, strong) UIView *headerIconContainerView;
+@property (nonatomic, strong) UIImageView *headerIconView;
+@property (nonatomic, strong) UILabel *headerTitleLabel;
+@property (nonatomic, strong) UILabel *headerSubtitleLabel;
+@property (nonatomic, strong) UIButton *headerSupportButton;
+@property (nonatomic, strong) UILabel *itemsMetricLabel;
+@property (nonatomic, strong) UILabel *subtotalMetricLabel;
+@property (nonatomic, strong) UILabel *shippingMetricLabel;
 @property (nonatomic, strong) UIView *undoContainerView;
 @property (nonatomic, strong) UILabel *undoLabel;
 @property (nonatomic, strong) UIButton *undoButton;
@@ -45,6 +92,7 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
            nullable) NSLayoutConstraint *tableBottomConstraint;
 @property (nonatomic, strong, readonly) PPEmptyStateConfig *config;
 @property (nonatomic, assign) BOOL isPerformingTableMutation;
+@property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @end
 
 @implementation CartViewController
@@ -53,37 +101,42 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     [super viewDidLoad];
 
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    [self pp_buildBackgroundDecor];
+    [self pp_buildHeaderChrome];
 
-    // Table
     self.cartTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.cartTableView.dataSource = self;
     self.cartTableView.delegate = self;
     self.cartTableView.backgroundColor = UIColor.clearColor;
+    self.cartTableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.cartTableView.separatorColor = UIColor.clearColor;
     self.cartTableView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cartTableView.showsHorizontalScrollIndicator = NO;
     self.cartTableView.showsVerticalScrollIndicator = NO;
+    self.cartTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
+    self.cartTableView.contentInset = UIEdgeInsetsMake(14, 0, 26, 0);
+    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, 26, 0);
+    self.cartTableView.estimatedRowHeight = 120.0;
+    if (@available(iOS 15.0, *)) {
+        self.cartTableView.sectionHeaderTopPadding = 0.0;
+    }
 
     [self.cartTableView registerClass:[CartTableViewCell class] forCellReuseIdentifier:@"CartTableViewCell"];
     [self.cartTableView registerClass:[PPCartTableCell class] forCellReuseIdentifier:@"PPCartTableCell"];
 
     [self.view addSubview:self.cartTableView];
-    self.cartTableView.contentInset = UIEdgeInsetsMake(16, 0,16, 0);
-        
-    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
 
-    // Ensure summary view exists before using it
     [self setSummuryViewAtBottom];
     [self pp_setupUndoBarIfNeeded];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.cartTableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.cartTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.cartTableView.topAnchor constraintEqualToAnchor:safe.topAnchor]
+        [self.cartTableView.topAnchor constraintEqualToAnchor:self.headerChromeView.bottomAnchor constant:18.0]
     ]];
-
-    // Set the bottom constraint ONCE, after summaryView is present
-  
+    self.tableBottomConstraint =
+    [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-16.0];
+    self.tableBottomConstraint.active = YES;
 
     // Empty state config (reused)
     [self emptyViewConfiger];
@@ -98,67 +151,47 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     [self setupFormFooterFrom:@"LOAD"];
     [self updateTotalLabel];
     [self pp_applyEmptyStateIfNeeded];
-    
-    self.cartTableView.layer.cornerRadius = 32;
-    self.cartTableView.clipsToBounds = YES;
-    
-    self.cartTableView.layer.maskedCorners  = kCALayerMinXMinYCorner|kCALayerMaxXMinYCorner
-    ;}
+}
+
 - (void)setSummuryViewAtBottom
 {
     self.summaryView = [[BBCheckoutSummaryView alloc] init];
     
     [self.view addSubview:self.summaryView];
-     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
-    [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
-    [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-kCartFloatingSummaryBottomInset].active = YES;
+    [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kCartScreenHorizontalInset].active = YES;
+    [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kCartScreenHorizontalInset].active = YES;
 
     __weak typeof(self) weakSelf = self;
-     self.summaryView.onTapCheckOut = ^{
-         NSLog(@"🛒 Checkout tapped on CART      +Helper");
+    self.summaryView.onTapCheckOut = ^{
+        NSLog(@"🛒 Checkout tapped on CART      +Helper");
         [weakSelf checkoutTapped];
     };
-    // Update summary with cart data via centralized calculator
+
     PPCartSummary *initSummary = [PPCartCalculator currentSummary];
     [self.summaryView updateTotalsWithItems:initSummary.subtotal shipping:initSummary.shippingFee showTitle:YES];
-    self.summaryView.showDetails =YES;
+    self.summaryView.showDetails = YES;
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
-    self.summaryView.showsItemsPreview =  NO;
+    self.summaryView.showsItemsPreview = NO;
     [self.summaryView setCardBackgroundImage:PPImage(@"4444")];
     [self.summaryView setCheckoutBTNTitle:kLang(@"Checkout") image: [UIImage pp_symbolNamed:Language.isRTL ? @"arrow.left" : @"arrow.right" pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
-
-
-    
-    
 }
 
-
-
-
-// Constraint flow: anchor tableView.bottom to summaryView.top after summaryView is laid out
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    [_summaryView layoutIfNeeded];
-    [_summaryView setNeedsLayout];
+    [self.summaryView layoutIfNeeded];
 
-    // Anchor tableView AFTER summaryView has final frame
-    if (!self.tableBottomConstraint &&
-        self.summaryView.bounds.size.height > 0) {
-
-        self.tableBottomConstraint =
-        [self.cartTableView.bottomAnchor
-         constraintEqualToAnchor:self.summaryView.topAnchor
-                         constant:-0];
-
-        self.tableBottomConstraint.active = YES;
-    }
-
-    // L-03: Refresh undo container shadowPath after layout resolves bounds
     if (self.undoContainerView && !CGRectIsEmpty(self.undoContainerView.bounds)) {
         self.undoContainerView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.undoContainerView.bounds
                                       cornerRadius:self.undoContainerView.layer.cornerRadius].CGPath;
+    }
+
+    if (self.headerChromeView && !CGRectIsEmpty(self.headerChromeView.bounds)) {
+        self.headerChromeView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.headerChromeView.bounds
+                                      cornerRadius:self.headerChromeView.layer.cornerRadius].CGPath;
     }
 }
 
@@ -247,16 +280,14 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     self.navigationItem.rightBarButtonItem.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
 
     [self.summaryView setCheckoutLoading:NO];
-    
-    if ([CartManager sharedManager].cartItems.count > 0) {
-        _summaryView.alpha = 1;
-    } else {
-        _summaryView.alpha = 0;
-    }
-   //
-    
-    
-    [_summaryView layoutSubviews];
+    [self updateTotalLabel];
+    [self.summaryView layoutIfNeeded];
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self pp_runEntranceAnimationIfNeeded];
 }
 
 - (BOOL)pp_cartCanNavigateBackInStack
@@ -311,6 +342,380 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     [self pp_handleLeadingCartNavigation];
 }
 
+- (void)pp_buildBackgroundDecor
+{
+    if (self.topGlowView || self.bottomGlowView) return;
+
+    UIView *topGlow = [[UIView alloc] init];
+    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    topGlow.userInteractionEnabled = NO;
+    topGlow.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.12];
+    topGlow.layer.cornerRadius = 120.0;
+    topGlow.alpha = 0.9;
+
+    UIView *bottomGlow = [[UIView alloc] init];
+    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomGlow.userInteractionEnabled = NO;
+    bottomGlow.backgroundColor = [[UIColor systemOrangeColor] colorWithAlphaComponent:0.08];
+    bottomGlow.layer.cornerRadius = 140.0;
+
+    [self.view addSubview:topGlow];
+    [self.view addSubview:bottomGlow];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [topGlow.widthAnchor constraintEqualToConstant:240.0],
+        [topGlow.heightAnchor constraintEqualToConstant:240.0],
+        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-54.0],
+        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:78.0],
+
+        [bottomGlow.widthAnchor constraintEqualToConstant:280.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:280.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:92.0],
+        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-104.0]
+    ]];
+
+    self.topGlowView = topGlow;
+    self.bottomGlowView = bottomGlow;
+}
+
+- (UILabel *)pp_buildMetricLabel
+{
+    PPInsetLabel *label = [[PPInsetLabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.numberOfLines = 0;
+    label.textAlignment = Language.alignmentForCurrentLanguage;
+    label.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    label.layer.cornerRadius = 20.0;
+    label.layer.masksToBounds = YES;
+    label.layer.borderWidth = 1.0;
+    label.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+    label.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.035];
+    return label;
+}
+
+- (void)pp_applyMetricLabel:(UILabel *)label
+                      title:(NSString *)title
+                      value:(NSString *)value
+                 valueColor:(UIColor *)valueColor
+{
+    if (!label) return;
+
+    NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
+    paragraphStyle.alignment = Language.alignmentForCurrentLanguage;
+    paragraphStyle.lineSpacing = 2.0;
+
+    NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:title ?: @""
+                                                                             attributes:@{
+        NSFontAttributeName: [GM MidFontWithSize:11],
+        NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.55],
+        NSParagraphStyleAttributeName: paragraphStyle
+    }];
+
+    NSString *valueLine = value.length > 0 ? [NSString stringWithFormat:@"\n%@", value] : @"";
+    [text appendAttributedString:[[NSAttributedString alloc] initWithString:valueLine
+                                                                  attributes:@{
+        NSFontAttributeName: [GM boldFontWithSize:16],
+        NSForegroundColorAttributeName: valueColor ?: UIColor.labelColor,
+        NSParagraphStyleAttributeName: paragraphStyle
+    }]];
+
+    label.attributedText = text;
+}
+
+- (void)pp_styleHeaderSupportButton:(UIButton *)button
+{
+    if (!button) return;
+
+    UIImage *supportImage = [UIImage pp_symbolNamed:@"headphones.dots"
+                                          pointSize:14
+                                             weight:UIImageSymbolWeightSemibold
+                                              scale:UIImageSymbolScaleMedium
+                                            palette:@[AppPrimaryTextClr ?: UIColor.labelColor,
+                                                      AppPrimaryTextClr ?: UIColor.labelColor]
+                                       makeTemplate:YES];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.image = supportImage;
+        config.imagePlacement = NSDirectionalRectEdgeLeading;
+        config.imagePadding = 6.0;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 12.0, 10.0, 12.0);
+        config.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
+        config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
+        config.background.strokeColor = [UIColor.labelColor colorWithAlphaComponent:0.06];
+        config.background.strokeWidth = 1.0;
+        config.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(@"Support")
+                                                                  attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:13],
+            NSForegroundColorAttributeName: AppPrimaryTextClr ?: UIColor.labelColor
+        }];
+        button.configuration = config;
+    } else {
+        [button setTitle:kLang(@"Support") forState:UIControlStateNormal];
+        [button setImage:supportImage forState:UIControlStateNormal];
+        [button setTitleColor:AppPrimaryTextClr ?: UIColor.labelColor forState:UIControlStateNormal];
+        button.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
+        button.titleLabel.font = [GM boldFontWithSize:13];
+        button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
+        button.layer.cornerRadius = 19.0;
+        button.layer.borderWidth = 1.0;
+        button.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+        button.contentEdgeInsets = UIEdgeInsetsMake(10.0, 12.0, 10.0, 12.0);
+    }
+
+    button.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
+    button.accessibilityHint = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
+}
+
+- (void)pp_setUndoButtonTitle:(NSString *)title
+{
+    NSString *resolvedTitle = title ?: kLang(@"cart_undo_action");
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.undoButton.configuration;
+        config.attributedTitle = [[NSAttributedString alloc] initWithString:resolvedTitle
+                                                                  attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:14],
+            NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.labelColor
+        }];
+        self.undoButton.configuration = config;
+    } else {
+        [self.undoButton setTitle:resolvedTitle forState:UIControlStateNormal];
+    }
+}
+
+- (void)pp_buildHeaderChrome
+{
+    if (self.headerChromeView) return;
+
+    UIBlurEffect *effect = nil;
+    if (@available(iOS 13.0, *)) {
+        effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    }
+
+    UIVisualEffectView *chromeView = [[UIVisualEffectView alloc] initWithEffect:effect];
+    chromeView.translatesAutoresizingMaskIntoConstraints = NO;
+    chromeView.layer.cornerRadius = 30.0;
+    chromeView.clipsToBounds = NO;
+    chromeView.layer.borderWidth = 1.0;
+    chromeView.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+    chromeView.layer.shadowColor = UIColor.blackColor.CGColor;
+    chromeView.layer.shadowOpacity = 0.08;
+    chromeView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    chromeView.layer.shadowRadius = 28.0;
+    chromeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.54];
+    chromeView.contentView.layer.cornerRadius = 30.0;
+    chromeView.contentView.clipsToBounds = YES;
+
+    UIView *tintOverlay = [[UIView alloc] init];
+    tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    tintOverlay.userInteractionEnabled = NO;
+    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.58];
+
+    UIView *iconContainer = [[UIView alloc] init];
+    iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    iconContainer.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.12];
+    iconContainer.layer.cornerRadius = 24.0;
+
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"bag.fill"
+                                                                              pointSize:20
+                                                                                 weight:UIImageSymbolWeightSemibold
+                                                                                  scale:UIImageSymbolScaleLarge
+                                                                                palette:@[AppPrimaryClr ?: UIColor.labelColor,
+                                                                                          AppPrimaryClr ?: UIColor.labelColor]
+                                                                           makeTemplate:YES]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = AppPrimaryClr ?: UIColor.labelColor;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:28];
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    titleLabel.text = kLang(@"cartTitle");
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.numberOfLines = 0;
+    subtitleLabel.font = [GM MidFontWithSize:14];
+    subtitleLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.62];
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    UIButton *supportButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    supportButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self pp_styleHeaderSupportButton:supportButton];
+    [supportButton addTarget:self action:@selector(startEditingCartItems) forControlEvents:UIControlEventTouchUpInside];
+
+    UILabel *itemsMetricLabel = [self pp_buildMetricLabel];
+    UILabel *subtotalMetricLabel = [self pp_buildMetricLabel];
+    UILabel *shippingMetricLabel = [self pp_buildMetricLabel];
+
+    UIStackView *metricsStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        itemsMetricLabel,
+        subtotalMetricLabel,
+        shippingMetricLabel
+    ]];
+    metricsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    metricsStack.axis = UILayoutConstraintAxisHorizontal;
+    metricsStack.alignment = UIStackViewAlignmentFill;
+    metricsStack.distribution = UIStackViewDistributionFillEqually;
+    metricsStack.spacing = 10.0;
+
+    UIView *spacer = [[UIView alloc] init];
+    spacer.translatesAutoresizingMaskIntoConstraints = NO;
+    [spacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [spacer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+
+    UIStackView *topRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        iconContainer,
+        spacer,
+        supportButton
+    ]];
+    topRow.translatesAutoresizingMaskIntoConstraints = NO;
+    topRow.axis = UILayoutConstraintAxisHorizontal;
+    topRow.alignment = UIStackViewAlignmentCenter;
+    topRow.spacing = 12.0;
+
+    [self.view addSubview:chromeView];
+    [chromeView.contentView addSubview:tintOverlay];
+    [chromeView.contentView addSubview:topRow];
+    [chromeView.contentView addSubview:titleLabel];
+    [chromeView.contentView addSubview:subtitleLabel];
+    [chromeView.contentView addSubview:metricsStack];
+    [iconContainer addSubview:iconView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [chromeView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
+        [chromeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kCartScreenHorizontalInset],
+        [chromeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kCartScreenHorizontalInset],
+
+        [tintOverlay.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor],
+        [tintOverlay.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor],
+        [tintOverlay.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor],
+        [tintOverlay.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor],
+
+        [topRow.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:16.0],
+        [topRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:16.0],
+        [topRow.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-16.0],
+
+        [iconContainer.widthAnchor constraintEqualToConstant:48.0],
+        [iconContainer.heightAnchor constraintEqualToConstant:48.0],
+        [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
+
+        [supportButton.heightAnchor constraintEqualToConstant:38.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:topRow.bottomAnchor constant:16.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:16.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-16.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+
+        [metricsStack.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
+        [metricsStack.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [metricsStack.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [metricsStack.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor constant:-16.0],
+
+        [itemsMetricLabel.heightAnchor constraintGreaterThanOrEqualToConstant:68.0]
+    ]];
+
+    self.headerChromeView = chromeView;
+    self.headerIconContainerView = iconContainer;
+    self.headerIconView = iconView;
+    self.headerTitleLabel = titleLabel;
+    self.headerSubtitleLabel = subtitleLabel;
+    self.headerSupportButton = supportButton;
+    self.itemsMetricLabel = itemsMetricLabel;
+    self.subtotalMetricLabel = subtotalMetricLabel;
+    self.shippingMetricLabel = shippingMetricLabel;
+}
+
+- (NSString *)pp_shippingMetricValueForSummary:(PPCartSummary *)summary
+{
+    if (!summary || summary.shippingFee <= 0.009) {
+        return kLang(@"Free");
+    }
+    return [PPChatsFunc formattedCurrency:summary.shippingFee];
+}
+
+- (void)pp_refreshHeaderChromeWithSummary:(PPCartSummary *)summary
+{
+    NSInteger itemsCount = summary.totalQuantity;
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.labelColor;
+
+    self.headerTitleLabel.text = kLang(@"cartTitle");
+    self.headerSubtitleLabel.text = itemsCount > 0 ? kLang(@"Securecheckout") : kLang(@"empty_cart_subtitle");
+    self.headerIconContainerView.backgroundColor =
+        [accentColor colorWithAlphaComponent:itemsCount > 0 ? 0.14 : 0.08];
+
+    [self pp_applyMetricLabel:self.itemsMetricLabel
+                        title:kLang(@"Selected Items")
+                        value:[NSString stringWithFormat:@"%ld", (long)itemsCount]
+                   valueColor:AppPrimaryTextClr ?: UIColor.labelColor];
+
+    [self pp_applyMetricLabel:self.subtotalMetricLabel
+                        title:kLang(@"Subtotal")
+                        value:[PPChatsFunc formattedCurrency:summary.subtotal]
+                   valueColor:AppPrimaryTextClr ?: UIColor.labelColor];
+
+    [self pp_applyMetricLabel:self.shippingMetricLabel
+                        title:kLang(@"Shipping Fee")
+                        value:[self pp_shippingMetricValueForSummary:summary]
+                   valueColor:summary.shippingFee <= 0.009 ? accentColor : (AppPrimaryTextClr ?: UIColor.labelColor)];
+}
+
+- (void)pp_runEntranceAnimationIfNeeded
+{
+    if (self.didRunEntranceAnimation) return;
+    self.didRunEntranceAnimation = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    BOOL shouldShowSummary = self.summaryView.alpha > 0.01;
+    self.headerChromeView.alpha = 0.0;
+    self.cartTableView.alpha = 0.0;
+    self.summaryView.alpha = shouldShowSummary ? 0.0 : self.summaryView.alpha;
+
+    self.headerChromeView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
+    self.cartTableView.transform = CGAffineTransformMakeTranslation(0.0, 32.0);
+    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 26.0);
+
+    [UIView animateWithDuration:0.62
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.headerChromeView.alpha = 1.0;
+        self.headerChromeView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.62
+                          delay:0.04
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.cartTableView.alpha = 1.0;
+        self.cartTableView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.58
+                          delay:0.08
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.summaryView.alpha = shouldShowSummary ? 1.0 : self.summaryView.alpha;
+        self.summaryView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
 
 - (void)emptyViewConfiger {
 
@@ -334,78 +739,107 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 
 - (void)pp_applyEmptyStateIfNeeded
 {
-    // Guard: tableView must exist
     if (!self.cartTableView) return;
 
     NSInteger itemsCount = [CartManager sharedManager].cartItems.count;
-
-    // If has data → remove empty state
     if (itemsCount > 0) {
         self.cartTableView.backgroundView = nil;
         return;
     }
 
-    // -------- Empty State View --------
     UIView *container = [[UIView alloc] initWithFrame:self.cartTableView.bounds];
     container.backgroundColor = UIColor.clearColor;
+    container.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+
+    UIView *orbView = [[UIView alloc] init];
+    orbView.translatesAutoresizingMaskIntoConstraints = NO;
+    orbView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+    orbView.layer.cornerRadius = 42.0;
+
+    UIImageView *icon = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"bag"
+                                                                         pointSize:34
+                                                                            weight:UIImageSymbolWeightMedium
+                                                                             scale:UIImageSymbolScaleLarge
+                                                                           palette:@[AppPrimaryClr ?: UIColor.labelColor,
+                                                                                     AppPrimaryClr ?: UIColor.labelColor]
+                                                                      makeTemplate:YES]];
+    icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.tintColor = AppPrimaryClr ?: UIColor.labelColor;
+    icon.contentMode = UIViewContentModeScaleAspectFit;
 
     UIStackView *stack = [[UIStackView alloc] init];
     stack.axis = UILayoutConstraintAxisVertical;
     stack.alignment = UIStackViewAlignmentCenter;
-    stack.spacing = 12;
+    stack.spacing = 14;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
 
-    // Icon / animation placeholder
-    UIImageView *icon = [[UIImageView alloc] initWithImage:
-                          [UIImage systemImageNamed:@"cart"]];
-    icon.tintColor = UIColor.secondaryLabelColor;
-    icon.contentMode = UIViewContentModeScaleAspectFit;
-    icon.translatesAutoresizingMaskIntoConstraints = NO;
-
-    // Title
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = kLang(@"empty_cart_title");
-    titleLabel.font = [GM boldFontWithSize:20];
-    titleLabel.textColor = UIColor.labelColor;
+    titleLabel.font = [GM boldFontWithSize:24];
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     titleLabel.textAlignment = NSTextAlignmentCenter;
 
-    // Subtitle
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.text = kLang(@"empty_cart_subtitle");
     subtitleLabel.font = [GM MidFontWithSize:15];
-    subtitleLabel.textColor = UIColor.secondaryLabelColor;
+    subtitleLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.62];
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     subtitleLabel.numberOfLines = 0;
 
-    // Action button
     UIButton *actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    [actionButton setTitle:kLang(@"continue_shopping") forState:UIControlStateNormal];
-    actionButton.titleLabel.font = [GM boldFontWithSize:16];
-    actionButton.tintColor = UIColor.whiteColor;
-    actionButton.backgroundColor = AppPrimaryClr;
-    actionButton.layer.cornerRadius = 14;
-    actionButton.contentEdgeInsets = UIEdgeInsetsMake(12, 24, 12, 24);
+    [self pp_styleHeaderSupportButton:actionButton];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = actionButton.configuration;
+        config.image = [UIImage pp_symbolNamed:Language.isRTL ? @"arrow.left" : @"arrow.right"
+                                     pointSize:14
+                                        weight:UIImageSymbolWeightSemibold
+                                         scale:UIImageSymbolScaleMedium
+                                       palette:@[AppForgroundColr ?: UIColor.whiteColor,
+                                                 AppForgroundColr ?: UIColor.whiteColor]
+                                  makeTemplate:YES];
+        config.baseForegroundColor = AppForgroundColr ?: UIColor.whiteColor;
+        config.background.backgroundColor = AppPrimaryClr ?: UIColor.labelColor;
+        config.background.strokeWidth = 0.0;
+        config.imagePlacement = NSDirectionalRectEdgeTrailing;
+        config.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(@"continue_shopping")
+                                                                  attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:15],
+            NSForegroundColorAttributeName: AppForgroundColr ?: UIColor.whiteColor
+        }];
+        actionButton.configuration = config;
+    } else {
+        [actionButton setTitle:kLang(@"continue_shopping") forState:UIControlStateNormal];
+        [actionButton setTitleColor:AppForgroundColr ?: UIColor.whiteColor forState:UIControlStateNormal];
+        actionButton.backgroundColor = AppPrimaryClr ?: UIColor.labelColor;
+        actionButton.layer.borderWidth = 0.0;
+    }
     [actionButton addTarget:self
                      action:@selector(continueShopping)
            forControlEvents:UIControlEventTouchUpInside];
+    actionButton.accessibilityLabel = kLang(@"continue_shopping");
+    actionButton.accessibilityHint = nil;
 
-    // Assemble
-    [stack addArrangedSubview:icon];
+    [orbView addSubview:icon];
     [stack addArrangedSubview:titleLabel];
     [stack addArrangedSubview:subtitleLabel];
     [stack addArrangedSubview:actionButton];
 
     [container addSubview:stack];
+    [container addSubview:orbView];
 
-    // Constraints
     [NSLayoutConstraint activateConstraints:@[
         [stack.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
-        [stack.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
+        [stack.centerYAnchor constraintEqualToAnchor:container.centerYAnchor constant:18.0],
         [stack.leadingAnchor constraintGreaterThanOrEqualToAnchor:container.leadingAnchor constant:24],
         [stack.trailingAnchor constraintLessThanOrEqualToAnchor:container.trailingAnchor constant:-24],
 
-        [icon.widthAnchor constraintEqualToConstant:56],
-        [icon.heightAnchor constraintEqualToConstant:56]
+        [orbView.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
+        [orbView.bottomAnchor constraintEqualToAnchor:stack.topAnchor constant:-18.0],
+        [orbView.widthAnchor constraintEqualToConstant:84.0],
+        [orbView.heightAnchor constraintEqualToConstant:84.0],
+
+        [icon.centerXAnchor constraintEqualToAnchor:orbView.centerXAnchor],
+        [icon.centerYAnchor constraintEqualToAnchor:orbView.centerYAnchor]
     ]];
 
     self.cartTableView.backgroundView = container;
@@ -421,13 +855,17 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 - (void)updateTotalLabel {
     PPCartSummary *summary = [PPCartCalculator currentSummary];
 
-    // Keep summary in sync
     [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:YES];
+    [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
+    [self pp_refreshHeaderChromeWithSummary:summary];
 
-    // Show/hide summary
     self.summaryView.alpha = (summary.uniqueItems > 0) ? 1.0 : 0.0;
+    if (summary.uniqueItems > 0) {
+        [self.summaryView pp_startTrustBannerShimmer];
+    } else {
+        [self.summaryView pp_stopTrustBannerShimmer];
+    }
 
-    // Empty state
     [self pp_applyEmptyStateIfNeeded];
 }
 
@@ -472,29 +910,48 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
-    container.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.96];
-    container.layer.cornerRadius = 14.0;
+    container.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.94];
+    container.layer.cornerRadius = 20.0;
+    container.layer.borderWidth = 1.0;
+    container.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
     container.layer.shadowColor = UIColor.blackColor.CGColor;
-    container.layer.shadowOpacity = 0.12;
-    container.layer.shadowOffset = CGSizeMake(0, 4);
-    container.layer.shadowRadius = 8;
+    container.layer.shadowOpacity = 0.10;
+    container.layer.shadowOffset = CGSizeMake(0, 10);
+    container.layer.shadowRadius = 18;
     container.layer.masksToBounds = NO;
     container.alpha = 0.0;
     container.hidden = YES;
 
     UILabel *label = [[UILabel alloc] init];
     label.translatesAutoresizingMaskIntoConstraints = NO;
-    label.font = [GM MidFontWithSize:14];
-    label.textColor = AppPrimaryTextClr;
+    label.font = [GM MidFontWithSize:15];
+    label.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     label.numberOfLines = 2;
     label.text = kLang(@"cart_undo_message");
     label.textAlignment = Language.alignmentForCurrentLanguage;
 
     UIButton *undoButton = [UIButton buttonWithType:UIButtonTypeSystem];
     undoButton.translatesAutoresizingMaskIntoConstraints = NO;
-    undoButton.titleLabel.font = [GM boldFontWithSize:14];
-    [undoButton setTitle:kLang(@"cart_undo_action") forState:UIControlStateNormal];
-    [undoButton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    [self pp_styleHeaderSupportButton:undoButton];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = undoButton.configuration;
+        config.baseForegroundColor = AppPrimaryClr ?: UIColor.labelColor;
+        config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+        config.background.strokeWidth = 0.0;
+        config.image = nil;
+        config.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(@"cart_undo_action")
+                                                                  attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:14],
+            NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.labelColor
+        }];
+        undoButton.configuration = config;
+    } else {
+        undoButton.titleLabel.font = [GM boldFontWithSize:14];
+        [undoButton setTitle:kLang(@"cart_undo_action") forState:UIControlStateNormal];
+        [undoButton setTitleColor:AppPrimaryClr ?: UIColor.labelColor forState:UIControlStateNormal];
+        undoButton.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+        undoButton.layer.borderWidth = 0.0;
+    }
     [undoButton addTarget:self action:@selector(pp_undoLastRemovalTapped) forControlEvents:UIControlEventTouchUpInside];
     undoButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_undo_remove", @"Undo remove");
     undoButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_undo_remove_hint", @"Double-tap to restore the removed item");
@@ -504,16 +961,16 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     [self.view addSubview:container];
 
     [NSLayoutConstraint activateConstraints:@[
-        [container.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-        [container.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [container.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-12],
-        [container.heightAnchor constraintGreaterThanOrEqualToConstant:52],
+        [container.leadingAnchor constraintEqualToAnchor:self.summaryView.leadingAnchor],
+        [container.trailingAnchor constraintEqualToAnchor:self.summaryView.trailingAnchor],
+        [container.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-14],
+        [container.heightAnchor constraintGreaterThanOrEqualToConstant:58],
 
-        [label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:14],
+        [label.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16],
         [label.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
-        [label.trailingAnchor constraintLessThanOrEqualToAnchor:undoButton.leadingAnchor constant:-10],
+        [label.trailingAnchor constraintLessThanOrEqualToAnchor:undoButton.leadingAnchor constant:-12],
 
-        [undoButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-12],
+        [undoButton.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-14],
         [undoButton.centerYAnchor constraintEqualToAnchor:container.centerYAnchor]
     ]];
 
@@ -521,6 +978,7 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     self.undoLabel = label;
     self.undoButton = undoButton;
     self.lastRemovedCartIndex = NSNotFound;
+    [self pp_setUndoButtonTitle:kLang(@"cart_undo_action")];
 }
 
 - (void)pp_presentUndoForItem:(CartItem *)item originalIndex:(NSInteger)index
@@ -528,7 +986,7 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
     self.lastRemovedCartItem = [self pp_cloneCartItem:item];
     self.lastRemovedCartIndex = index;
     self.undoLabel.text = kLang(@"cart_undo_message");
-    [self.undoButton setTitle:kLang(@"cart_undo_action") forState:UIControlStateNormal];
+    [self pp_setUndoButtonTitle:kLang(@"cart_undo_action")];
 
     self.undoPresentationToken += 1;
     NSUInteger token = self.undoPresentationToken;
@@ -689,7 +1147,9 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 
 - (CGFloat)tableView:(UITableView *)tableView heightForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    return 104;
+    (void)tableView;
+    (void)indexPath;
+    return 118.0;
 }
 
 // Enable swipe-to-delete (SAFE)
@@ -823,34 +1283,26 @@ titleForDeleteConfirmationButtonForRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell
 forRowAtIndexPath:(NSIndexPath *)indexPath {
-    NSInteger section = indexPath.section;
-    NSInteger row = indexPath.row;
-    NSInteger rows = [tableView numberOfRowsInSection:section];
+    (void)tableView;
+    (void)indexPath;
 
-    UIBezierPath *maskPath;
-    CAShapeLayer *maskLayer = [[CAShapeLayer alloc] init];
-    CGRect bounds = cell.bounds;
+    cell.layer.mask = nil;
+    cell.contentView.layer.mask = nil;
 
-    if (row == 0 && row == rows - 1) {
-        // Single cell
-        maskPath = [UIBezierPath bezierPathWithRoundedRect:bounds cornerRadius:12];
-    } else if (row == 0) {
-        // First cell
-        maskPath = [UIBezierPath bezierPathWithRoundedRect:bounds
-                                         byRoundingCorners:(UIRectCornerTopLeft | UIRectCornerTopRight)
-                                               cornerRadii:CGSizeMake(20, 20)];
-    } else if (row == rows - 1) {
-        // Last cell
-        maskPath = [UIBezierPath bezierPathWithRoundedRect:bounds
-                                         byRoundingCorners:(UIRectCornerBottomLeft | UIRectCornerBottomRight)
-                                               cornerRadii:CGSizeMake(20, 20)];
-    } else {
-        // Middle cell
-        maskPath = [UIBezierPath bezierPathWithRect:bounds];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
     }
 
-    maskLayer.path = maskPath.CGPath;
-    cell.layer.mask = maskLayer;
+    cell.alpha = 0.0;
+    cell.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+
+    [UIView animateWithDuration:0.34
+                          delay:0.02
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 @end

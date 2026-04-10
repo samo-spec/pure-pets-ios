@@ -802,9 +802,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     NSString *bt = (self.formMode == AccessFormModeEdit)
         ? [self pp_localizedStringForKey:@"saveChanges" fallback:@"Save"]
         : [self pp_localizedStringForKey:@"postAd" fallback:@"Post"];
-    self.saveButton = [PPButtonHelper pp_buttonWithTitleForBar:bt imageName:@"checkmark" target:self action:@selector(uploadAd)];
-    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"checkmark") style:UIBarButtonItemStylePlain target:self action:@selector(uploadAd)];
-    [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:PPChevronName target:self action:@selector(onBack:)];
+    self.saveButton = [PPButtonHelper pp_buttonWithTitle:bt font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(uploadAd)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:self.saveButton];
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName) style:UIBarButtonItemStylePlain target:self action:@selector(onBack)];
     [self pp_setSubmitEnabled:!self.isSubmittingAccessory];
 }

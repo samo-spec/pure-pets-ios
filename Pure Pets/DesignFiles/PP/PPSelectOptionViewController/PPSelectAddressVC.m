@@ -11,7 +11,7 @@
 @import FirebaseAuth;
 #import <math.h>
 
-static const CGFloat PPAddressCellHeight = 86.0;
+static const CGFloat PPAddressCellHeight = 110.0;
 static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
 @interface PPSelectAddressVC () <CLLocationManagerDelegate, AddressFormVCDelegate, UIGestureRecognizerDelegate>

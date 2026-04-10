@@ -1,62 +1,44 @@
-
-
-
 //
 //  PPPaymentFormViewController.m
 //  Pure Pets
 //
 //  Created by Mohammed Ahmed on 02/11/2025.
+//  Refactored: Removed XLForm, pure UIKit + modern design.
 //
 
 #import "PPPaymentFormViewController.h"
-#import "XLFormRowFullWidthTextFieldCell.h"
- 
-@interface PPPaymentFormViewController ()
-@property (nonatomic, strong, readonly) UIButton *SaveUIButton;
- @property (nonatomic, strong) PPGlassHeaderView *header;
 
-@property (nonatomic, nullable,strong) XLFormSectionDescriptor *saveSection ;
- 
-@property (nonatomic, nullable,strong) XLFormBaseCell *lastSelectedCell;
-@property (nonatomic, strong) UIStackView *stack;
-@property (nonatomic, assign) BOOL expanded;
+static CGFloat const kPPFieldHeight      = 70.0;
+static CGFloat const kPPOptionHeight     = 64.0;
+static CGFloat const kPPCornerRadius     = 16.0;
+static CGFloat const kPPPad              = 20.0;
+static CGFloat const kPPSectionGap       = 24.0;
+static CGFloat const kPPFieldGap         = 12.0;
+static NSInteger const kPPCheckmarkTag   = 8899;
 
-@property (nonatomic, strong) UIButton *saveBTN;
-@property (nonatomic, strong) UIButton *cancelBTN;
-@property (nonatomic, strong) UILabel *titleLabel;
-@property (nonatomic, weak) id <PaymentHeightDelegate> delegate;
-
-
- 
-@property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
-@property (nonatomic, strong) NSArray<PaymentMethod *> *availableMethods;
-@property (nonatomic, strong) PaymentMethod *selectedMethod;
-
-@end
-@implementation PPPaymentFormViewController
+#pragma mark - Static Helpers
 
 static NSString *PPPaymentFormTrimmedString(id value) {
     if (![value isKindOfClass:NSString.class]) return @"";
-    return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return [(NSString *)value stringByTrimmingCharactersInSet:
+            [NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
 
 static NSString *PPPaymentFormNormalizedMethodID(NSString *methodID) {
     NSString *normalized = [PPPaymentFormTrimmedString(methodID).lowercaseString copy];
-    if ([normalized isEqualToString:@"card"]) {
-        return @"qib";
-    }
+    if ([normalized isEqualToString:@"card"]) return @"qib";
     return normalized;
 }
 
 static BOOL PPPaymentFormUsesCardFields(NSString *methodID) {
-    NSString *normalized = PPPaymentFormNormalizedMethodID(methodID);
-    return [normalized isEqualToString:@"qib"];
+    return [PPPaymentFormNormalizedMethodID(methodID) isEqualToString:@"qib"];
 }
 
 static NSString *PPPaymentFormDigitsOnly(NSString *value) {
     NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
-    NSArray<NSString *> *parts = [PPPaymentFormTrimmedString(value) componentsSeparatedByCharactersInSet:nonDigits];
-    return [parts componentsJoinedByString:@""];
+    return [[PPPaymentFormTrimmedString(value)
+             componentsSeparatedByCharactersInSet:nonDigits]
+            componentsJoinedByString:@""];
 }
 
 static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSString *rawExpiry) {
@@ -64,176 +46,764 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
     if (trimmed.length == 0) return @{};
 
     NSString *month = @"";
-    NSString *year = @"";
+    NSString *year  = @"";
     NSArray<NSString *> *slashParts = [trimmed componentsSeparatedByString:@"/"];
     if (slashParts.count >= 2) {
         month = PPPaymentFormDigitsOnly(slashParts.firstObject);
-        year = PPPaymentFormDigitsOnly(slashParts[1]);
+        year  = PPPaymentFormDigitsOnly(slashParts[1]);
     } else {
         NSString *digits = PPPaymentFormDigitsOnly(trimmed);
         if (digits.length == 4) {
             month = [digits substringToIndex:2];
-            year = [digits substringFromIndex:2];
+            year  = [digits substringFromIndex:2];
         } else if (digits.length == 6) {
             month = [digits substringToIndex:2];
-            year = [digits substringFromIndex:2];
+            year  = [digits substringFromIndex:2];
         }
     }
 
     NSInteger monthValue = [month integerValue];
     if (monthValue < 1 || monthValue > 12) return @{};
-    if (year.length == 2) {
-        year = [@"20" stringByAppendingString:year];
-    }
+    if (year.length == 2) year = [@"20" stringByAppendingString:year];
     if (year.length < 4) return @{};
 
     return @{
         @"month": [NSString stringWithFormat:@"%02ld", (long)monthValue],
-        @"year": year
+        @"year" : year
     };
 }
 
+#pragma mark - Private Interface
+
+@interface PPPaymentFormViewController () <UITextFieldDelegate>
+@property (nonatomic, strong) UIScrollView *scrollView;
+@property (nonatomic, strong) UIStackView  *contentStack;
+@property (nonatomic, strong) UIStackView  *optionsStack;
+@property (nonatomic, strong) UIView       *fieldsContainer;
+@property (nonatomic, strong) UIStackView  *fieldsStack;
+@property (nonatomic, strong) UIView       *saveContainer;
+@property (nonatomic, strong) UIButton     *saveActionButton;
+@property (nonatomic, strong) NSMutableDictionary<NSString *, UITextField *> *fieldsByTag;
+@property (nonatomic, strong) UIView       *selectedOptionCard;
+@property (nonatomic, assign) BOOL expanded;
+@property (nonatomic, weak) id<PaymentHeightDelegate> delegate;
+@property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
+@property (nonatomic, strong) NSArray<PaymentMethod *>     *availableMethods;
+@property (nonatomic, strong) PaymentMethod                *selectedMethod;
+@end
+
+@implementation PPPaymentFormViewController
+
+#pragma mark - Init
 
 - (instancetype)init {
     self = [super init];
     if (self) {
-        [self initializeForm];
+        _fieldsByTag = [NSMutableDictionary dictionary];
     }
     return self;
 }
 
-
-
-- (instancetype)initForAddingMethod:(PaymentMethod * _Nullable)method {
-    self = [super init];
+- (instancetype)initForAddingMethod:(PaymentMethod *)method {
+    self = [self init];
     if (self) {
+        _mode = PPPaymentFormModeAdd;
         _isEditingExisting = NO;
-        [self initializeForm];
     }
     return self;
 }
 
 - (instancetype)initForEditingInstrument:(UserPaymentInstrument *)instrument {
-    self = [super init];
+    self = [self init];
     if (self) {
+        _mode = PPPaymentFormModeEdit;
         _isEditingExisting = YES;
         _editingInstrument = instrument;
         _selectedMethod = instrument.method;
-        [self initializeForm];
     }
     return self;
 }
 
-
-
-
-
+#pragma mark - Lifecycle
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    _expanded = NO;
- 
+
+    self.expanded = NO;
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
     self.instrumentManager = [UserPaymentInstrumentManager sharedManager];
-    self.availableMethods = [PaymentMethod defaultMethods];
-    [self addCustomNavBar];
-    
-    if (self.mode == PPPaymentFormModeEdit && self.editingInstrument) {
-        [self prefillFormWithInstrument:self.editingInstrument];
+    self.availableMethods  = [PaymentMethod defaultMethods];
+
+    [self pp_buildScrollView];
+    [self pp_buildPaymentOptions];
+    [self pp_buildFieldsContainer];
+    [self pp_buildSaveButton];
+
+    if (self.isEditingExisting && self.editingInstrument) {
+        [self pp_prefillForInstrument:self.editingInstrument];
     }
 
-    
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillShow:)
+                                                 name:UIKeyboardWillShowNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_keyboardWillHide:)
+                                                 name:UIKeyboardWillHideNotification
+                                               object:nil];
 }
 
-- (void)prefillFormWithInstrument:(UserPaymentInstrument *)instrument {
-    NSDictionary *original = instrument.originalData ?: @{};
-    NSString *normalizedMethodID = PPPaymentFormNormalizedMethodID(instrument.methodID);
-    
-    // Pre-select method section
-    self.selectedMethod = instrument.method ?: [PaymentMethod methodForID:normalizedMethodID];
-    [self remveSections];
-    
-    XLFormSectionDescriptor *section = nil;
-    if (PPPaymentFormUsesCardFields(normalizedMethodID)) {
-        section = [self buildCardSection];
-    } else if ([normalizedMethodID isEqualToString:@"ooredoo"]) {
-        section = [self buildOoredooSection];
-    } else if ([normalizedMethodID isEqualToString:@"qnb"]) {
-        section = [self buildQNBSection];
-    } else if ([normalizedMethodID isEqualToString:@"fawry"]) {
-        section = [self buildFawrySection];
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+
+    NSString *saveTitle = (self.mode == PPPaymentFormModeEdit)
+        ? kLang(@"Update") : kLang(@"Save");
+
+    UIButton *saveBTN = [PPButtonHelper pp_buttonWithTitleForBar:saveTitle
+                                                      imageName:@"checkmark.circle"
+                                                         target:self
+                                                         action:@selector(saveButtonPressed)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveBTN];
+
+    self.navigationItem.leftBarButtonItem =
+        [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName)
+                                         style:UIBarButtonItemStylePlain
+                                        target:self
+                                        action:@selector(onBack)];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - Keyboard
+
+- (void)pp_keyboardWillShow:(NSNotification *)note {
+    CGRect kbFrame = [note.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    CGFloat duration = [note.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    UIEdgeInsets insets = self.scrollView.contentInset;
+    insets.bottom = kbFrame.size.height;
+    [UIView animateWithDuration:duration animations:^{
+        self.scrollView.contentInset = insets;
+        self.scrollView.scrollIndicatorInsets = insets;
+    }];
+}
+
+- (void)pp_keyboardWillHide:(NSNotification *)note {
+    CGFloat duration = [note.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+    [UIView animateWithDuration:duration animations:^{
+        self.scrollView.contentInset = UIEdgeInsetsZero;
+        self.scrollView.scrollIndicatorInsets = UIEdgeInsetsZero;
+    }];
+}
+
+#pragma mark - Scroll & Stack
+
+- (void)pp_buildScrollView {
+    self.scrollView = [[UIScrollView alloc] init];
+    self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.scrollView.alwaysBounceVertical = YES;
+    self.scrollView.showsVerticalScrollIndicator = NO;
+    [self.view addSubview:self.scrollView];
+
+    self.contentStack = [[UIStackView alloc] init];
+    self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.contentStack.axis      = UILayoutConstraintAxisVertical;
+    self.contentStack.spacing   = kPPSectionGap;
+    self.contentStack.alignment = UIStackViewAlignmentFill;
+    [self.scrollView addSubview:self.contentStack];
+
+    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    [NSLayoutConstraint activateConstraints:@[
+        [self.scrollView.topAnchor      constraintEqualToAnchor:safe.topAnchor],
+        [self.scrollView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [self.contentStack.topAnchor      constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor      constant:kPPPad],
+        [self.contentStack.leadingAnchor  constraintEqualToAnchor:self.scrollView.frameLayoutGuide.leadingAnchor    constant:kPPPad],
+        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.trailingAnchor   constant:-kPPPad],
+        [self.contentStack.bottomAnchor   constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor   constant:-kPPPad],
+    ]];
+}
+
+#pragma mark - Payment Options
+
+- (void)pp_buildPaymentOptions {
+    if (self.isEditingExisting) return;
+
+    UILabel *sectionTitle = [self pp_makeSectionTitle:kLang(@"PaymentMethodTitle")];
+    [self.contentStack addArrangedSubview:sectionTitle];
+
+    self.optionsStack = [[UIStackView alloc] init];
+    self.optionsStack.axis      = UILayoutConstraintAxisVertical;
+    self.optionsStack.spacing   = 10.0;
+    self.optionsStack.alignment = UIStackViewAlignmentFill;
+    [self.contentStack addArrangedSubview:self.optionsStack];
+
+    [self.optionsStack addArrangedSubview:
+     [self pp_makeOptionCardWithTitle:kLang(@"PaymentOptionCard")
+                             subtitle:kLang(@"PaymentOptionCardSubtitle")
+                             iconName:@"card1"
+                                  tag:@"qib"]];
+
+    [self.optionsStack addArrangedSubview:
+     [self pp_makeOptionCardWithTitle:kLang(@"Cash on Delivery")
+                             subtitle:kLang(@"PaymentOptionCashSubtitle")
+                             iconName:@"cash2"
+                                  tag:@"cash"]];
+}
+
+- (UIView *)pp_makeOptionCardWithTitle:(NSString *)title
+                              subtitle:(NSString *)subtitle
+                              iconName:(NSString *)iconName
+                                   tag:(NSString *)tag
+{
+    UIView *card = [[UIView alloc] init];
+    card.translatesAutoresizingMaskIntoConstraints = NO;
+    card.backgroundColor = AppForgroundColr;
+    card.layer.cornerRadius  = kPPCornerRadius;
+    card.layer.cornerCurve   = kCACornerCurveContinuous;
+    card.accessibilityIdentifier = tag;
+
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:iconName]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.tintColor   = AppPrimaryClr;
+    [card addSubview:iconView];
+
+    UILabel *titleLbl = [[UILabel alloc] init];
+    titleLbl.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLbl.text          = title;
+    titleLbl.font          = [GM boldFontWithSize:15.0];
+    titleLbl.textColor     = UIColor.labelColor;
+    titleLbl.textAlignment = NSTextAlignmentNatural;
+    [card addSubview:titleLbl];
+
+    UILabel *subLbl = [[UILabel alloc] init];
+    subLbl.translatesAutoresizingMaskIntoConstraints = NO;
+    subLbl.text          = subtitle;
+    subLbl.font          = [GM MidFontWithSize:12.0];
+    subLbl.textColor     = UIColor.secondaryLabelColor;
+    subLbl.textAlignment = NSTextAlignmentNatural;
+    [card addSubview:subLbl];
+
+    UIImageView *check = [[UIImageView alloc] initWithImage:
+                          [UIImage systemImageNamed:@"checkmark.circle.fill"]];
+    check.translatesAutoresizingMaskIntoConstraints = NO;
+    check.tintColor = AppPrimaryClr;
+    check.alpha     = 0.0;
+    check.tag       = kPPCheckmarkTag;
+    [card addSubview:check];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [card.heightAnchor constraintEqualToConstant:kPPOptionHeight],
+
+        [iconView.leadingAnchor  constraintEqualToAnchor:card.leadingAnchor constant:16],
+        [iconView.centerYAnchor  constraintEqualToAnchor:card.centerYAnchor],
+        [iconView.widthAnchor    constraintEqualToConstant:32],
+        [iconView.heightAnchor   constraintEqualToConstant:32],
+
+        [titleLbl.topAnchor      constraintEqualToAnchor:card.topAnchor constant:12],
+        [titleLbl.leadingAnchor  constraintEqualToAnchor:iconView.trailingAnchor constant:14],
+        [titleLbl.trailingAnchor constraintEqualToAnchor:check.leadingAnchor constant:-10],
+
+        [subLbl.topAnchor        constraintEqualToAnchor:titleLbl.bottomAnchor constant:2],
+        [subLbl.leadingAnchor    constraintEqualToAnchor:titleLbl.leadingAnchor],
+        [subLbl.trailingAnchor   constraintEqualToAnchor:titleLbl.trailingAnchor],
+
+        [check.trailingAnchor    constraintEqualToAnchor:card.trailingAnchor constant:-16],
+        [check.centerYAnchor     constraintEqualToAnchor:card.centerYAnchor],
+        [check.widthAnchor       constraintEqualToConstant:22],
+        [check.heightAnchor      constraintEqualToConstant:22],
+    ]];
+
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]
+                                   initWithTarget:self
+                                   action:@selector(pp_optionTapped:)];
+    [card addGestureRecognizer:tap];
+    return card;
+}
+
+#pragma mark - Fields Container
+
+- (void)pp_buildFieldsContainer {
+    self.fieldsContainer = [[UIView alloc] init];
+    self.fieldsContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    self.fieldsContainer.alpha  = 0.0;
+    self.fieldsContainer.hidden = YES;
+
+    self.fieldsStack = [[UIStackView alloc] init];
+    self.fieldsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.fieldsStack.axis      = UILayoutConstraintAxisVertical;
+    self.fieldsStack.spacing   = kPPFieldGap;
+    self.fieldsStack.alignment = UIStackViewAlignmentFill;
+    [self.fieldsContainer addSubview:self.fieldsStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.fieldsStack.topAnchor      constraintEqualToAnchor:self.fieldsContainer.topAnchor],
+        [self.fieldsStack.leadingAnchor  constraintEqualToAnchor:self.fieldsContainer.leadingAnchor],
+        [self.fieldsStack.trailingAnchor constraintEqualToAnchor:self.fieldsContainer.trailingAnchor],
+        [self.fieldsStack.bottomAnchor   constraintEqualToAnchor:self.fieldsContainer.bottomAnchor],
+    ]];
+
+    [self.contentStack addArrangedSubview:self.fieldsContainer];
+}
+
+#pragma mark - Save Button
+
+- (void)pp_buildSaveButton {
+    self.saveContainer = [[UIView alloc] init];
+    self.saveContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    self.saveContainer.alpha  = 0.0;
+    self.saveContainer.hidden = YES;
+
+    NSString *title = (self.mode == PPPaymentFormModeEdit) ? kLang(@"Update") : kLang(@"Save");
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = [UIButtonConfiguration filledButtonConfiguration];
+        cfg.cornerStyle          = UIButtonConfigurationCornerStyleLarge;
+        cfg.baseBackgroundColor  = AppPrimaryClr;
+        cfg.baseForegroundColor  = UIColor.whiteColor;
+        cfg.image                = [UIImage systemImageNamed:@"checkmark.circle.fill"];
+        cfg.imagePadding         = 8.0;
+        cfg.contentInsets        = NSDirectionalEdgeInsetsMake(16, 24, 16, 24);
+
+        NSMutableAttributedString *attrTitle =
+            [[NSMutableAttributedString alloc] initWithString:title
+                attributes:@{NSFontAttributeName: [GM boldFontWithSize:17.0]}];
+        cfg.attributedTitle = attrTitle;
+        self.saveActionButton = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
     } else {
-        section = [self buildCashSection];
-    }
-    
-    [self.form addFormSection:section];
-    [self.form addFormSection:[self buildSaveSection]];
-
-    // Pre-fill values
-    for (NSString *key in original) {
-        XLFormRowDescriptor *row = [self.form formRowWithTag:key];
-        if (row) row.value = original[key];
+        self.saveActionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        [self.saveActionButton setTitle:title forState:UIControlStateNormal];
+        [self.saveActionButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        self.saveActionButton.backgroundColor    = AppPrimaryClr;
+        self.saveActionButton.titleLabel.font    = [GM boldFontWithSize:17.0];
+        self.saveActionButton.layer.cornerRadius = 14.0;
     }
 
-    [self.tableView reloadData];
+    self.saveActionButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.saveActionButton addTarget:self
+                              action:@selector(saveButtonPressed)
+                    forControlEvents:UIControlEventTouchUpInside];
+    [self.saveContainer addSubview:self.saveActionButton];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.saveActionButton.topAnchor      constraintEqualToAnchor:self.saveContainer.topAnchor],
+        [self.saveActionButton.leadingAnchor  constraintEqualToAnchor:self.saveContainer.leadingAnchor],
+        [self.saveActionButton.trailingAnchor constraintEqualToAnchor:self.saveContainer.trailingAnchor],
+        [self.saveActionButton.bottomAnchor   constraintEqualToAnchor:self.saveContainer.bottomAnchor],
+        [self.saveActionButton.heightAnchor   constraintEqualToConstant:56.0],
+    ]];
+
+    [self.contentStack addArrangedSubview:self.saveContainer];
 }
- 
+
+#pragma mark - Option Selection
+
+- (void)pp_optionTapped:(UITapGestureRecognizer *)gesture {
+    UIView *card = gesture.view;
+    NSString *tag = card.accessibilityIdentifier;
+    if (!tag) return;
+
+    NSString *normalizedID = PPPaymentFormNormalizedMethodID(tag);
+    PaymentMethod *method  = [PaymentMethod methodForID:normalizedID];
+    if (!method) {
+        [PPHUD showError:kLang(@"PleaseSelectPaymentMethod")];
+        return;
+    }
+
+    if (self.selectedOptionCard) {
+        [self pp_deselectCard:self.selectedOptionCard];
+    }
+
+    self.selectedMethod     = method;
+    self.selectedOptionCard = card;
+    [self pp_selectCard:card];
+
+    [self pp_showFieldsForMethodID:normalizedID values:nil];
+
+    self.expanded = YES;
+    [self.delegate expandToLargeDetent:YES];
+}
+
+- (void)pp_selectCard:(UIView *)card {
+    UIImageView *check = [card viewWithTag:kPPCheckmarkTag];
+    card.transform = CGAffineTransformMakeScale(0.96, 0.96);
+    card.alpha = 0.8;
+
+    [UIView animateWithDuration:0.35
+                          delay:0
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.20
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        card.transform          = CGAffineTransformIdentity;
+        card.alpha              = 1.0;
+        card.layer.borderWidth  = 2.0;
+        card.layer.borderColor  = AppPrimaryClr.CGColor;
+        check.alpha             = 1.0;
+    } completion:nil];
+}
+
+- (void)pp_deselectCard:(UIView *)card {
+    UIImageView *check = [card viewWithTag:kPPCheckmarkTag];
+    [UIView animateWithDuration:0.2 animations:^{
+        card.layer.borderWidth = 0.0;
+        card.layer.borderColor = UIColor.clearColor.CGColor;
+        check.alpha = 0.0;
+    }];
+}
+
+#pragma mark - Dynamic Field Building
+
+- (void)pp_showFieldsForMethodID:(NSString *)methodID values:(NSDictionary *)values {
+    for (UIView *v in self.fieldsStack.arrangedSubviews.copy) {
+        [self.fieldsStack removeArrangedSubview:v];
+        [v removeFromSuperview];
+    }
+    [self.fieldsByTag removeAllObjects];
+
+    NSString *norm = PPPaymentFormNormalizedMethodID(methodID);
+
+    if (PPPaymentFormUsesCardFields(norm))               [self pp_buildCardFields];
+    else if ([norm isEqualToString:@"ooredoo"])           [self pp_buildOoredooFields];
+    else if ([norm isEqualToString:@"qnb"])               [self pp_buildQNBFields];
+    else if ([norm isEqualToString:@"fawry"])              [self pp_buildFawryFields];
+    else if ([norm isEqualToString:@"cash"])               [self pp_buildCashFields];
+
+    if (values.count > 0) {
+        for (NSString *key in values) {
+            UITextField *f = self.fieldsByTag[key];
+            if (f) f.text = PPPaymentFormTrimmedString(values[key]);
+        }
+    }
+
+    self.fieldsContainer.hidden = NO;
+    self.saveContainer.hidden   = NO;
+
+    [UIView animateWithDuration:0.4
+                          delay:0.05
+         usingSpringWithDamping:0.85
+          initialSpringVelocity:0.15
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.fieldsContainer.alpha = 1.0;
+        self.saveContainer.alpha   = 1.0;
+    } completion:nil];
+}
+
+#pragma mark - Card Fields
+
+- (void)pp_buildCardFields {
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionTitle:kLang(@"PaymentMethodCardTitle")]];
+
+    [self pp_addFieldWithTitle:kLang(@"CardNumberTitle")
+                   placeholder:kLang(@"CardNumberPlaceholder")
+                           tag:@"cardNumber"
+                  keyboardType:UIKeyboardTypeNumberPad
+                      isSecure:NO];
+
+    [self pp_addFieldWithTitle:kLang(@"ExpiryDateTitle")
+                   placeholder:kLang(@"ExpiryDatePlaceholder")
+                           tag:@"expiry"
+                  keyboardType:UIKeyboardTypeNumbersAndPunctuation
+                      isSecure:NO];
+
+    [self pp_addFieldWithTitle:kLang(@"CVVTitle")
+                   placeholder:kLang(@"CVVPlaceholder")
+                           tag:@"cvv"
+                  keyboardType:UIKeyboardTypeNumberPad
+                      isSecure:YES];
+
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionFooter:kLang(@"PaymentMethodCardFooter")]];
+}
+
+#pragma mark - Ooredoo Fields
+
+- (void)pp_buildOoredooFields {
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionTitle:kLang(@"PaymentMethodOoredooTitle")]];
+
+    [self pp_addFieldWithTitle:kLang(@"OoredooWalletNumberTitle")
+                   placeholder:kLang(@"OoredooWalletNumberPlaceholder")
+                           tag:@"ooredooNumber"
+                  keyboardType:UIKeyboardTypePhonePad
+                      isSecure:NO];
+
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionFooter:kLang(@"PaymentMethodOoredooFooter")]];
+}
+
+#pragma mark - QNB Fields
+
+- (void)pp_buildQNBFields {
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionTitle:kLang(@"PaymentMethodQNBTitle")]];
+
+    [self pp_addFieldWithTitle:kLang(@"QNBAccountTitle")
+                   placeholder:kLang(@"QNBAccountPlaceholder")
+                           tag:@"qnbAccount"
+                  keyboardType:UIKeyboardTypeDefault
+                      isSecure:NO];
+
+    [self pp_addFieldWithTitle:kLang(@"QNBOTPTitle")
+                   placeholder:kLang(@"QNBOTPPlaceholder")
+                           tag:@"qnbOtp"
+                  keyboardType:UIKeyboardTypeNumberPad
+                      isSecure:YES];
+
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionFooter:kLang(@"PaymentMethodQNBFooter")]];
+}
+
+#pragma mark - Fawry Fields
+
+- (void)pp_buildFawryFields {
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionTitle:kLang(@"PaymentMethodFawryTitle")]];
+
+    [self pp_addFieldWithTitle:kLang(@"FawryCustomerNameTitle")
+                   placeholder:kLang(@"FawryCustomerNamePlaceholder")
+                           tag:@"customerName"
+                  keyboardType:UIKeyboardTypeDefault
+                      isSecure:NO];
+
+    [self pp_addFieldWithTitle:kLang(@"FawryMobileTitle")
+                   placeholder:kLang(@"FawryMobilePlaceholder")
+                           tag:@"mobileNumber"
+                  keyboardType:UIKeyboardTypePhonePad
+                      isSecure:NO];
+
+    [self pp_addFieldWithTitle:kLang(@"FawryEmailTitle")
+                   placeholder:kLang(@"FawryEmailPlaceholder")
+                           tag:@"email"
+                  keyboardType:UIKeyboardTypeEmailAddress
+                      isSecure:NO];
+
+    [self pp_addFieldWithTitle:kLang(@"FawryReferenceTitle")
+                   placeholder:kLang(@"FawryReferencePlaceholder")
+                           tag:@"referenceCode"
+                  keyboardType:UIKeyboardTypeDefault
+                      isSecure:NO];
+    UITextField *refField = self.fieldsByTag[@"referenceCode"];
+    refField.enabled = NO;
+    refField.alpha   = 0.6;
+
+    UIButton *genBtn = [self pp_makeSecondaryButtonWithTitle:kLang(@"GenerateFawryReferenceButton")
+                                                     action:@selector(pp_generateFawryReference)];
+    [self.fieldsStack addArrangedSubview:genBtn];
+
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionFooter:kLang(@"PaymentMethodFawryFooter")]];
+}
+
+#pragma mark - Cash Fields
+
+- (void)pp_buildCashFields {
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionTitle:kLang(@"PaymentMethodCashTitle")]];
+
+    [self pp_addFieldWithTitle:kLang(@"DeliveryNoteTitle")
+                   placeholder:kLang(@"DeliveryNotePlaceholder")
+                           tag:@"cashNote"
+                  keyboardType:UIKeyboardTypeDefault
+                      isSecure:NO];
+
+    [self.fieldsStack addArrangedSubview:[self pp_makeSectionFooter:kLang(@"PaymentMethodCashFooter")]];
+}
+
+#pragma mark - Form Field Factory
+
+- (void)pp_addFieldWithTitle:(NSString *)title
+                 placeholder:(NSString *)placeholder
+                         tag:(NSString *)tag
+                keyboardType:(UIKeyboardType)kbType
+                    isSecure:(BOOL)isSecure
+{
+    UIView *container = [[UIView alloc] init];
+    container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.backgroundColor    = AppForgroundColr;
+    container.layer.cornerRadius = 14.0;
+    container.layer.cornerCurve  = kCACornerCurveContinuous;
+
+    UILabel *lbl = [[UILabel alloc] init];
+    lbl.translatesAutoresizingMaskIntoConstraints = NO;
+    lbl.text          = title;
+    lbl.font          = [GM MidFontWithSize:12.0];
+    lbl.textColor     = UIColor.secondaryLabelColor;
+    lbl.textAlignment = NSTextAlignmentNatural;
+    [container addSubview:lbl];
+
+    UITextField *tf = [[UITextField alloc] init];
+    tf.translatesAutoresizingMaskIntoConstraints = NO;
+    tf.placeholder        = placeholder;
+    tf.font               = [GM MidFontWithSize:15.0];
+    tf.textColor          = UIColor.labelColor;
+    tf.keyboardType       = kbType;
+    tf.secureTextEntry    = isSecure;
+    tf.textAlignment      = NSTextAlignmentNatural;
+    tf.autocorrectionType = UITextAutocorrectionTypeNo;
+    tf.delegate           = self;
+    tf.accessibilityIdentifier = tag;
+    [container addSubview:tf];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [container.heightAnchor constraintEqualToConstant:kPPFieldHeight],
+
+        [lbl.topAnchor      constraintEqualToAnchor:container.topAnchor      constant:12],
+        [lbl.leadingAnchor  constraintEqualToAnchor:container.leadingAnchor  constant:16],
+        [lbl.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16],
+
+        [tf.topAnchor       constraintEqualToAnchor:lbl.bottomAnchor         constant:4],
+        [tf.leadingAnchor   constraintEqualToAnchor:container.leadingAnchor  constant:16],
+        [tf.trailingAnchor  constraintEqualToAnchor:container.trailingAnchor constant:-16],
+        [tf.bottomAnchor    constraintEqualToAnchor:container.bottomAnchor   constant:-12],
+    ]];
+
+    self.fieldsByTag[tag] = tf;
+    [self.fieldsStack addArrangedSubview:container];
+}
+
+- (UIButton *)pp_makeSecondaryButtonWithTitle:(NSString *)title action:(SEL)action {
+    UIButton *btn;
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = [UIButtonConfiguration tintedButtonConfiguration];
+        cfg.title               = title;
+        cfg.cornerStyle         = UIButtonConfigurationCornerStyleLarge;
+        cfg.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.12];
+        cfg.baseForegroundColor = AppPrimaryClr;
+        cfg.contentInsets       = NSDirectionalEdgeInsetsMake(14, 20, 14, 20);
+        btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+    } else {
+        btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [btn setTitle:title forState:UIControlStateNormal];
+        btn.backgroundColor    = [AppPrimaryClr colorWithAlphaComponent:0.12];
+        [btn setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+        btn.titleLabel.font    = [GM boldFontWithSize:15.0];
+        btn.layer.cornerRadius = 14.0;
+    }
+    btn.translatesAutoresizingMaskIntoConstraints = NO;
+    [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    [btn.heightAnchor constraintEqualToConstant:50.0].active = YES;
+    return btn;
+}
+
+- (UILabel *)pp_makeSectionTitle:(NSString *)text {
+    UILabel *lbl = [[UILabel alloc] init];
+    lbl.translatesAutoresizingMaskIntoConstraints = NO;
+    lbl.text          = text;
+    lbl.font          = [GM boldFontWithSize:16.0];
+    lbl.textColor     = UIColor.labelColor;
+    lbl.textAlignment = NSTextAlignmentNatural;
+    return lbl;
+}
+
+- (UILabel *)pp_makeSectionFooter:(NSString *)text {
+    UILabel *lbl = [[UILabel alloc] init];
+    lbl.translatesAutoresizingMaskIntoConstraints = NO;
+    lbl.text          = text;
+    lbl.font          = [GM MidFontWithSize:12.0];
+    lbl.textColor     = UIColor.tertiaryLabelColor;
+    lbl.numberOfLines = 0;
+    lbl.textAlignment = NSTextAlignmentNatural;
+    return lbl;
+}
+
+#pragma mark - Value Collection
+
+- (NSDictionary<NSString *, NSString *> *)pp_collectFormValues {
+    NSMutableDictionary *values = [NSMutableDictionary dictionary];
+    for (NSString *tag in self.fieldsByTag) {
+        values[tag] = PPPaymentFormTrimmedString(self.fieldsByTag[tag].text);
+    }
+    return [values copy];
+}
+
+#pragma mark - Prefill (Edit Mode)
+
+- (void)pp_prefillForInstrument:(UserPaymentInstrument *)instrument {
+    NSDictionary *original = instrument.originalData ?: @{};
+    NSString *methodID = instrument.methodID.length > 0
+        ? instrument.methodID
+        : instrument.method.methodID;
+
+    self.selectedMethod = instrument.method
+        ?: [PaymentMethod methodForID:PPPaymentFormNormalizedMethodID(methodID)];
+
+    [self pp_showFieldsForMethodID:methodID values:original];
+}
+
+#pragma mark - Fawry Reference
+
+- (void)pp_generateFawryReference {
+    UITextField *ref = self.fieldsByTag[@"referenceCode"];
+    ref.text    = nil;
+    ref.enabled = NO;
+    ref.alpha   = 0.6;
+    [PPHUD showError:kLang(@"FawryReferenceError")];
+}
+
+#pragma mark - Card Issuer Detection
+
+- (NSString *)detectCardIssuerFromNumber:(NSString *)cardNumber {
+    if ([cardNumber hasPrefix:@"4"])                             return @"Visa";
+    if ([cardNumber hasPrefix:@"5"])                             return @"MasterCard";
+    if ([cardNumber hasPrefix:@"34"] || [cardNumber hasPrefix:@"37"]) return @"American Express";
+    if ([cardNumber hasPrefix:@"6"])                             return @"Discover";
+    return kLang(@"Unknown");
+}
+
+#pragma mark - Save
+
 - (void)saveButtonPressed {
-    NSDictionary *values = [self.form formValues];
+    NSDictionary *values = [self pp_collectFormValues];
 
     if (!self.selectedMethod && self.editingInstrument.methodID.length > 0) {
-        self.selectedMethod = [PaymentMethod methodForID:PPPaymentFormNormalizedMethodID(self.editingInstrument.methodID)];
+        self.selectedMethod = [PaymentMethod methodForID:
+                               PPPaymentFormNormalizedMethodID(self.editingInstrument.methodID)];
     }
 
     if (!self.selectedMethod) {
         [PPHUD showError:kLang(@"PleaseSelectPaymentMethod")];
         return;
     }
-
     if (values.count == 0) {
         [PPHUD showError:kLang(@"PleaseCompleteFields")];
         return;
     }
 
- 
-    // 🪪 Create or update instrument
-    UserPaymentInstrument *instrument = self.mode == PPPaymentFormModeEdit && self.editingInstrument
-        ? self.editingInstrument
-        : [[UserPaymentInstrument alloc] init];
-    
-    instrument.userID = PPCurrentUser.ID;
+    UserPaymentInstrument *instrument =
+        (self.mode == PPPaymentFormModeEdit && self.editingInstrument)
+            ? self.editingInstrument
+            : [[UserPaymentInstrument alloc] init];
+
+    instrument.userID   = PPCurrentUser.ID;
     instrument.methodID = PPPaymentFormNormalizedMethodID(self.selectedMethod.methodID);
-    instrument.method = self.selectedMethod;
+    instrument.method   = self.selectedMethod;
     if (!instrument.createdAt) instrument.createdAt = [NSDate date];
     instrument.updatedAt = [NSDate date];
-    instrument.isDefault = instrument.isDefault;
 
     NSMutableDictionary *original = [NSMutableDictionary dictionary];
-    NSMutableDictionary *meta = [NSMutableDictionary dictionary];
+    NSMutableDictionary *meta     = [NSMutableDictionary dictionary];
     NSString *masked = @"";
 
     switch (self.selectedMethod.type) {
         case PaymentMethodTypeQIB:
         case PaymentMethodTypeCard: {
             NSString *cardNumber = PPPaymentFormDigitsOnly(values[@"cardNumber"]);
-            NSString *expiry = PPPaymentFormTrimmedString(values[@"expiry"]);
+            NSString *expiry     = PPPaymentFormTrimmedString(values[@"expiry"]);
             if (cardNumber.length < 12 || expiry.length == 0) {
                 [PPHUD showError:kLang(@"PleaseFillCardDetails")];
                 return;
             }
-            NSDictionary<NSString *, NSString *> *expiryParts = PPPaymentFormExpiryComponents(expiry);
+            NSDictionary *expiryParts = PPPaymentFormExpiryComponents(expiry);
             if (expiryParts.count == 0) {
                 [PPHUD showError:kLang(@"ExpiryDatePlaceholder")];
                 return;
             }
-
             NSString *last4 = [cardNumber substringFromIndex:MAX(0, cardNumber.length - 4)];
-            masked = [NSString stringWithFormat:@"•••• %@", last4];
-            meta[@"issuer"] = [instrument detectCardIssuerFromNumber:cardNumber];
-            meta[@"maskedCard"] = masked;
-            meta[@"last4"] = last4;
+            masked = [NSString stringWithFormat:@"\u2022\u2022\u2022\u2022 %@", last4];
+            meta[@"issuer"]      = [instrument detectCardIssuerFromNumber:cardNumber];
+            meta[@"maskedCard"]  = masked;
+            meta[@"last4"]       = last4;
             meta[@"expiryMonth"] = expiryParts[@"month"] ?: @"";
-            meta[@"expiryYear"] = expiryParts[@"year"] ?: @"";
+            meta[@"expiryYear"]  = expiryParts[@"year"]  ?: @"";
             break;
         }
 
@@ -243,10 +813,10 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
                 [PPHUD showError:kLang(@"PleaseEnterQNBAccount")];
                 return;
             }
-            original[@"qnbAccount"] = account;
+            original[@"qnbAccount"]   = account;
             masked = [instrument maskString:account];
-            meta[@"bank"] = @"QNB";
-            meta[@"maskedAccount"] = masked;
+            meta[@"bank"]           = @"QNB";
+            meta[@"maskedAccount"]  = masked;
             break;
         }
 
@@ -258,27 +828,27 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
             }
             original[@"ooredooNumber"] = number;
             masked = [instrument maskString:number];
-            meta[@"provider"] = @"Ooredoo Money";
-            meta[@"maskedWallet"] = masked;
+            meta[@"provider"]      = @"Ooredoo Money";
+            meta[@"maskedWallet"]  = masked;
             break;
         }
 
         case PaymentMethodTypeFawryQatar: {
-            NSString *customer = values[@"customerName"];
-            NSString *mobile = values[@"mobileNumber"];
-            NSString *email = values[@"email"] ?: @"";
+            NSString *customer  = values[@"customerName"];
+            NSString *mobile    = values[@"mobileNumber"];
+            NSString *email     = values[@"email"]         ?: @"";
             NSString *reference = values[@"referenceCode"] ?: @"";
             if (mobile.length == 0 || customer.length == 0) {
                 [PPHUD showError:kLang(@"PleaseCompleteFawryDetails")];
                 return;
             }
-            original[@"customerName"] = customer;
-            original[@"mobileNumber"] = mobile;
-            original[@"email"] = email;
+            original[@"customerName"]  = customer;
+            original[@"mobileNumber"]  = mobile;
+            original[@"email"]         = email;
             original[@"referenceCode"] = reference;
             masked = [instrument maskString:mobile];
-            meta[@"provider"] = @"Fawry Qatar";
-            meta[@"maskedMobile"] = masked;
+            meta[@"provider"]      = @"Fawry Qatar";
+            meta[@"maskedMobile"]  = masked;
             break;
         }
 
@@ -288,21 +858,20 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
             break;
 
         default:
-            masked = @"••••••";
+            masked = @"\u2022\u2022\u2022\u2022\u2022\u2022";
             break;
     }
 
-
-    instrument.originalData = original;
-    instrument.metaData = meta;
+    instrument.originalData  = original;
+    instrument.metaData      = meta;
     instrument.maskedDetails = masked;
 
     __weak typeof(self) weakSelf = self;
 
     if (self.mode == PPPaymentFormModeEdit) {
         [self.instrumentManager updateInstrument:instrument
-                                          forUser:PPCurrentUser.ID
-                                       completion:^(BOOL success, NSError * _Nullable error) {
+                                         forUser:PPCurrentUser.ID
+                                      completion:^(BOOL success, NSError * _Nullable error) {
             if (success) {
                 [PPHUD showSuccess:kLang(@"PaymentMethodUpdated")
                           subtitle:kLang(@"PaymentUpdatedSubtitle")];
@@ -324,697 +893,19 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
             }
         }];
     }
-
 }
 
+#pragma mark - UITextFieldDelegate
 
-
-- (NSString *)detectCardIssuerFromNumber:(NSString *)cardNumber {
-    if ([cardNumber hasPrefix:@"4"]) return @"Visa";
-    if ([cardNumber hasPrefix:@"5"]) return @"MasterCard";
-    if ([cardNumber hasPrefix:@"34"] || [cardNumber hasPrefix:@"37"]) return @"American Express";
-    if ([cardNumber hasPrefix:@"6"]) return @"Discover";
-    return kLang(@"Unknown");
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    [textField resignFirstResponder];
+    return YES;
 }
 
--(void)addCustomNavBar
-{
-    NSString *headerTitle = (self.mode == PPPaymentFormModeEdit)
-        ? kLang(@"EditPaymentTitle")
-        : kLang(@"SelectPaymentMethod");
-
-
-    self.header = [[PPGlassHeaderView alloc] initWithTitle:headerTitle  cancelHandler:^{
-         [super onBack];
-        [self.navigationController popViewControllerAnimated:YES];
-    }];
-    
-   // [self.view addSubview:self.header];
-    
-    
-    self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        
-        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:65],
-        [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:0],
-        [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:0],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
-        
-    ]];
-    
-    self.tableView.contentInset = UIEdgeInsetsMake(0, 0, 0, 0);
-    self.tableView.showsVerticalScrollIndicator = NO;
-    self.tableView.showsHorizontalScrollIndicator = NO;
-}
-
-
--(void)viewWillAppear:(BOOL)animated
-{
-    [super viewWillAppear:YES];
-    UIButton *saveBTN;
-    UIButton *backBTN;
-    
- 
-    NSString *saveTitle = (self.mode == PPPaymentFormModeEdit)
-        ? kLang(@"Update")
-        : kLang(@"Save");
-
-    saveBTN = [PPButtonHelper pp_buttonWithTitleForBar:saveTitle
-                                             imageName:@"checkmark.circle"
-                                                target:self
-                                                action:@selector(saveButtonPressed)];
-
-    UIBarButtonItem *saveBarButton =
-        [[UIBarButtonItem alloc] initWithCustomView:saveBTN];
-    self.navigationItem.rightBarButtonItem = saveBarButton;
-
-    // Back button (RTL aware)
-  
-   
-    self.navigationItem.leftBarButtonItem =  [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName) style:UIBarButtonItemStylePlain target:self action:@selector(onBack)];
-    // Ensure header and placeholders are on top
- 
-    //[self.view bringSubviewToFront:_emptyCard];
-    
-    
-}
-
-
-- (XLFormRowDescriptor *)generateRawWithType:(NSString *)rowType
-                                   inputType:(XLFormFullWidthTextFieldType)inputType
-                                         tag:(NSString *)tag
-                                       title:(NSString *)title
-                                 placeholder:(NSString *)placeholder
-                                    required:(BOOL)required
-                                       value:(id)value
-{
-    XLFormRowDescriptor *row = [XLFormRowDescriptor formRowDescriptorWithTag:tag
-                                                                     rowType:rowType
-                                                                       title:title];
-    [row.cellConfigAtConfigure setObject:placeholder forKey:@"textField.placeholder"];
-    [row.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"textLabel.font"];
-    [row.cellConfig setObject:[GM MidFontWithSize:14] forKey:@"detailTextLabel.font"];
-    [row.cellConfig setObject:UIColor.placeholderTextColor forKey:@"detailTextLabel.textColor"];
-    [row.cellConfig setObject:AppSecondaryTextClr forKey:@"textField.textColor"];
-    
-    [row.cellConfig setObject:@(GM.setAligment) forKey:@"detailTextLabel.textAlignment"];
-    row.cellConfig[@"inputType"] = @(inputType);
-    row.cellConfig[@"titlePosition"] = inputType == XLFormFullWidthTextFieldTypeButton ? @(XLFormFullWidthTextFieldTitlePosCenter) : @(XLFormFullWidthTextFieldTitlePosTop);
-    
-    row.required = required;
-    if (value) row.value = value;
-    row.height = 70;
-    return row;
-}
-
-- (XLFormRowDescriptor *)PaymentRowWithTag:(NSString *)tag
-                                     title:(NSString *)title
-                                  subtitle:(NSString * _Nullable)subtitle
-                                      icon:(NSString * _Nullable)icon inSection:(XLFormSectionDescriptor *)section
-{
-    
-    
-    XLFormRowDescriptor *row = [XLFormRowDescriptor formRowDescriptorWithTag:tag
-                                                                     rowType:XLFormRowFullWidthTitleSubtitleAndImage
-                                                                       title:title];
-    row.height = 64;
-    row.cellConfig[@"subtitle"] = subtitle; // "Visa, MasterCard, American Express"
-    row.cellConfig[@"icon"] = icon;
-    [section addFormRow:row];
-    
-    return row;
-}
-
--(void)remveSections
-{
-    // Assuming you already have your XLFormDescriptor instance, for example:
-    XLFormDescriptor *form = self.form;
-    
-    // Keep only section 0
-    if (form.formSections.count > 1) {
-        // Get the first section
-        XLFormSectionDescriptor *firstSection = form.formSections.firstObject;
-        
-        // Remove all sections
-        [form.formSections removeAllObjects];
-        
-        // Add back only section 0
-        [form.formSections addObject:firstSection];
-        
-        // Reload the form view
-        [self.tableView reloadData];
-    }
-    
-    
-}
-/*
- 
- #pragma mark - XLForm Setup
- - (void)initializeForm {
-     XLFormDescriptor *form = [XLFormDescriptor formDescriptorWithTitle:kLang(@"AddPaymentTitle")];
-     
-     // SECTION 1 - Payment Method
- #pragma mark - Payment Options Section
-     
-     XLFormSectionDescriptor *paymentSection = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodTitle")];
-     [self setupPaymentSection:paymentSection];
-     [form addFormSection:paymentSection];
-     
-     self.cardSection = [self buildCardSection];
-     self.ooredooSection = [self buildOoredooSection];
-     self.QNBSection = [self buildQNBSection];
-     self.cashSection = [self buildCashSection];
-     
-     // Build modular sections
-     
-     self.form = form;
- }
- */
-
-#pragma mark - 🧾 Initialize Form
-
-- (void)initializeForm {
-    NSString *title = self.isEditingExisting
-        ? kLang(@"EditPaymentTitle")   // تعديل وسيلة الدفع
-        : kLang(@"AddPaymentTitle");   // إضافة وسيلة دفع جديدة
-    
-    XLFormDescriptor *form = [XLFormDescriptor formDescriptorWithTitle:title];
-    
-    if (self.isEditingExisting && self.editingInstrument) {
-        // Build the form directly for this instrument
-        NSString *methodID = self.editingInstrument.methodID.length > 0
-            ? self.editingInstrument.methodID
-            : self.editingInstrument.method.methodID;
-        [self buildFormForMethodID:methodID
-                    prefilledValues:self.editingInstrument.originalData ?: @{}];
-        return;
-    } else {
-        // Show method selector first
-        XLFormSectionDescriptor *paymentSection =
-            [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodTitle")];
-        
-        [self setupPaymentSection:paymentSection];
-        [form addFormSection:paymentSection];
-    }
-
-    self.form = form;
-}
-
-
-#pragma mark - 🧱 Build Form For Selected Method
-
-- (void)buildFormForMethodID:(NSString *)methodID prefilledValues:(NSDictionary *)values {
-    NSString *title = self.isEditingExisting
-        ? kLang(@"EditPaymentTitle")
-        : kLang(@"AddPaymentTitle");
-
-    XLFormDescriptor *form = [XLFormDescriptor formDescriptorWithTitle:title];
-    NSString *normalizedMethodID = PPPaymentFormNormalizedMethodID(methodID);
-    self.selectedMethod = [PaymentMethod methodForID:normalizedMethodID];
-    
-    XLFormSectionDescriptor *section = nil;
-
-    if (PPPaymentFormUsesCardFields(normalizedMethodID)) {
-        section = [self buildCardSection];
-    } else if ([normalizedMethodID isEqualToString:@"ooredoo"]) {
-        section = [self buildOoredooSection];
-    } else if ([normalizedMethodID isEqualToString:@"qnb"]) {
-        section = [self buildQNBSection];
-    } else if ([normalizedMethodID isEqualToString:@"fawry"]) {
-        section = [self buildFawrySection];
-    } else if ([normalizedMethodID isEqualToString:@"cash"]) {
-        section = [self buildCashSection];
-    }
-    if (!section) {
-        section = [self buildCashSection];
-    }
-
-    // Prefill values if available
-    for (XLFormRowDescriptor *row in section.formRows) {
-        NSString *tag = row.tagM;
-        if (values[tag]) {
-            row.value = values[tag];
-        }
-    }
-
-    [form addFormSection:section];
-    [form addFormSection:[self buildSaveSection]];
-    self.form = form;
-}
-
-
-#pragma mark - ⚙️ Dynamic Payment Section Builder
-
-- (void)buildFormWithAvailableMethods {
-    XLFormDescriptor *form = [XLFormDescriptor formDescriptorWithTitle:kLang(@"AddPaymentTitle")];
-    
-    // 💳 Payment Options Section
-    XLFormSectionDescriptor *paymentSection =
-        [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodTitle")];
-    
-    [form addFormSection:paymentSection];
-    
-    for (PaymentMethod *method in self.availableMethods) {
-        XLFormRowDescriptor *row = [self PaymentRowWithTag:method.methodID
-                                                     title:method.displayName
-                                                  subtitle:method.methodDescription ?: @""
-                                                      icon:method.iconName
-                                                 inSection:paymentSection];
-        
-        row.onChangeBlock = ^(id oldValue, id newValue, XLFormRowDescriptor *row) {
-            // You can handle selection here if needed
-            // [weakSelf handlePaymentSelection:method];
-        };
-    }
-    
-    self.form = form;
-}
-
-
-#pragma mark - 🧾 Setup Payment Section
-
-- (void)setupPaymentSection:(XLFormSectionDescriptor *)paymentSection {
-    // ====== Credit / Debit Card ======
-    [self PaymentRowWithTag:@"qib"
-                      title:kLang(@"PaymentOptionCard")
-                   subtitle:kLang(@"PaymentOptionCardSubtitle")
-                       icon:@"card1"
-                  inSection:paymentSection];
-    
-    /* ====== Ooredoo Money ======
-    [self PaymentRowWithTag:@"ooredoo"
-                      title:kLang(@"Ooredoo Money")
-                   subtitle:kLang(@"PaymentOptionOoredooSubtitle")
-                       icon:@"ooredoo"
-                  inSection:paymentSection];
-    
-    // ====== QNB ======
-    [self PaymentRowWithTag:@"qnb"
-                      title:kLang(@"PaymentMethodQNBTitle")
-                   subtitle:kLang(@"Qatar National Bank")
-                       icon:@"qnb"
-                  inSection:paymentSection];
-    
-    // ====== Fawry Qatar ======
-    [self PaymentRowWithTag:@"fawry"
-                      title:kLang(@"Fawry Qatar")
-                   subtitle:kLang(@"PaymentOptionFawrySubtitle")
-                       icon:@"fawry"
-                  inSection:paymentSection];
-    
-    */// ====== Cash on Delivery ======
-    [self PaymentRowWithTag:@"cash"
-                      title:kLang(@"Cash on Delivery")
-                   subtitle:kLang(@"PaymentOptionCashSubtitle")
-                       icon:@"cash2"
-                  inSection:paymentSection];
-}
-
-
-#pragma mark - 🪄 Handle Selection
-
-- (void)didSelectFormRow:(XLFormRowDescriptor *)formRow {
-    if ([self.form indexPathOfFormRow:formRow].section == 0) {
-        
-        if (self.mode == PPPaymentFormModeEdit) {
-            [PPHUD showInfo:kLang(@"EditingModeActive")
-                   subtitle:kLang(@"YouCanEditFieldsBelow")];
-            return;
-        }
-
-        NSString *normalizedMethodID = PPPaymentFormNormalizedMethodID(formRow.tagM);
-        self.selectedMethod = [PaymentMethod methodForID:normalizedMethodID];
-        if (!self.selectedMethod) {
-            [PPHUD showError:kLang(@"PleaseSelectPaymentMethod")];
-            return;
-        }
-        
-        if (self.lastSelectedCell)
-            [self deSelectCell:self.lastSelectedCell];
-        
-        if (self.lastSelectedSection)
-            [self remveSections];
-        
-        _expanded = !_expanded;
-        
-        NSIndexPath *selectedIndexPath = [self.form indexPathOfFormRow:formRow];
-        self.lastSelectedCell = [self.tableView cellForRowAtIndexPath:selectedIndexPath];
-        [self selectCell:self.lastSelectedCell];
-        
-        // Prebuild all form sections
-        self.cardSection    = [self buildCardSection];
-        self.ooredooSection = [self buildOoredooSection];
-        self.QNBSection     = [self buildQNBSection];
-        self.fawrySection   = [self buildFawrySection];
-        self.cashSection    = [self buildCashSection];
-        self.saveSection    = [self buildSaveSection];
-        
-        // Add the selected one dynamically
-        NSString *selectedMethodID = PPPaymentFormNormalizedMethodID(self.selectedMethod.methodID);
-        if ([selectedMethodID isEqualToString:@"fawry"]) {
-            self.lastSelectedSection = self.fawrySection;
-        } else if (PPPaymentFormUsesCardFields(selectedMethodID)) {
-            self.lastSelectedSection = self.cardSection;
-        } else if ([selectedMethodID isEqualToString:@"ooredoo"]) {
-            self.lastSelectedSection = self.ooredooSection;
-        } else if ([selectedMethodID isEqualToString:@"qnb"]) {
-            self.lastSelectedSection = self.QNBSection;
-        } else if ([selectedMethodID isEqualToString:@"cash"]) {
-            self.lastSelectedSection = self.cashSection;
-        }
-        
-        if (self.lastSelectedSection) {
-            [self.form addFormSection:self.lastSelectedSection];
-            [self.form addFormSection:self.saveSection];
-        }
-        
-        [self selectCell:self.lastSelectedCell];
-        [self.tableView reloadData];
-        
-    } else {
-        if ([formRow.tagM isEqualToString:@"generateFawryRef"]) {
-            [self generateFawryReferencePressed:formRow];
-        }
-    }
-    
-    NSLog(@"didSelectFormRow %@", self.selectedMethod);
-}
-
-
--(void)selectCell:(UITableViewCell *)cell{
-     
-    cell.alpha = 0.0;
-    cell.transform = CGAffineTransformMakeScale(0.96, 0.96);
-
-     
-
-    // Fade + gentle pop-in
-    [UIView animateWithDuration:0.35
-                          delay:0
-         usingSpringWithDamping:0.90
-          initialSpringVelocity:0.20
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        cell.alpha = 1.0;
-        cell.accessoryType = UITableViewCellAccessoryCheckmark;
-        cell.tintColor = [AppPrimaryClr colorWithAlphaComponent:1.2];
-        cell.transform = CGAffineTransformIdentity;
-                     }
-                     completion:^(BOOL finished) {
-        [self.delegate expandToLargeDetent:self.expanded];
-    }];
-    
-    
-    
-    
-}
-
--(void)deSelectCell:(UITableViewCell *)cell{
-    
-    cell.accessoryType = UITableViewCellAccessoryNone;
-    
-    [UIView animateWithDuration:0.15 animations:^{
-        cell.accessoryType = UITableViewCellAccessoryNone;
-        cell.selectedBackgroundView = ({
-            UIView *bg = [UIView new];
-            bg.backgroundColor = AppForgroundColr;
-            bg;
-        });
-        cell.backgroundColor= AppForgroundColr;
-        
-        cell.tintColor = AppClearClr;
-        cell.transform = CGAffineTransformIdentity;
-    }];
-    
-}
-
-#pragma mark - 🧾 Build Fawry Payment Section
-
-- (XLFormSectionDescriptor *)buildFawrySection {
-    XLFormSectionDescriptor *section =
-        [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodFawryTitle")];
-    section.footerTitle = kLang(@"PaymentMethodFawryFooter");
-    
-    // 🔹 Customer Name
-    XLFormRowDescriptor *customerName =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"customerName"
-                                              rowType:XLFormRowDescriptorTypeText
-                                                title:kLang(@"FawryCustomerNameTitle")];
-    customerName.required = YES;
-    customerName.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"FawryCustomerNamePlaceholder");
-    customerName.height = 54;
-    [section addFormRow:customerName];
-    
-    // 🔹 Customer Mobile Number
-    XLFormRowDescriptor *mobileNumber =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"mobileNumber"
-                                              rowType:XLFormRowDescriptorTypePhone
-                                                title:kLang(@"FawryMobileTitle")];
-    mobileNumber.required = YES;
-    mobileNumber.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"FawryMobilePlaceholder");
-    mobileNumber.height = 54;
-    [section addFormRow:mobileNumber];
-    
-    // 🔹 Email (optional)
-    XLFormRowDescriptor *email =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"email"
-                                              rowType:XLFormRowDescriptorTypeEmail
-                                                title:kLang(@"FawryEmailTitle")];
-    email.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"FawryEmailPlaceholder");
-    email.height = 54;
-    [section addFormRow:email];
-    
-    // 🔹 Reference Code (disabled until generated)
-    XLFormRowDescriptor *referenceCode =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"referenceCode"
-                                              rowType:XLFormRowDescriptorTypeText
-                                                title:kLang(@"FawryReferenceTitle")];
-    referenceCode.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"FawryReferencePlaceholder");
-    referenceCode.disabled = @YES;
-    referenceCode.height = 54;
-    [section addFormRow:referenceCode];
-    
-    // 🔹 Inline loading indicator (hidden initially)
-    XLFormRowDescriptor *loadingRow =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"fawryLoading"
-                                              rowType:XLFormRowDescriptorTypeInfo
-                                                title:kLang(@"FawryLoadingTitle")];
-    loadingRow.cellConfig[@"detailTextLabel.textColor"] = AppSecondaryTextClr;
-    loadingRow.hidden = @YES;
-    [section addFormRow:loadingRow];
-    
-    // 🔹 Generate Reference Button
-    XLFormRowDescriptor *generateButton =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"generateFawryRef"
-                                              rowType:XLFormRowDescriptorTypeButton
-                                                title:kLang(@"GenerateFawryReferenceButton")];
-    generateButton.action.formSelector = @selector(generateFawryReferencePressed:);
-    generateButton.cellConfigAtConfigure[@"backgroundColor"] = AppPrimaryClr;
-    generateButton.cellConfigAtConfigure[@"textLabel.textColor"] = UIColor.whiteColor;
-    generateButton.height = 54;
-    [section addFormRow:generateButton];
-    
-    return section;
-}
-
-
-#pragma mark - ⚙️ Generate Fawry Reference
-
-- (void)generateFawryReferencePressed:(XLFormRowDescriptor *)sender {
-    XLFormRowDescriptor *loadingRow   = [self.form formRowWithTag:@"fawryLoading"];
-    XLFormRowDescriptor *referenceRow = [self.form formRowWithTag:@"referenceCode"];
-    
-    // 1️⃣ Show loading row
-    loadingRow.hidden = @NO;
-    loadingRow.title  = kLang(@"FawryLoadingTitle");
-    [self updateFormRow:loadingRow];
-    
-    // 2️⃣ Disable button during request
-    sender.disabled = @YES;
-    [self updateFormRow:sender];
-    
-    // 3️⃣ Production-safe behavior: no local simulation.
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)),
-                   dispatch_get_main_queue(), ^{
-    loadingRow.hidden = @YES;
-    [self updateFormRow:loadingRow];
-
-    referenceRow.value = nil;
-    [self updateFormRow:referenceRow];
-
-    sender.disabled = @NO;
-    [self updateFormRow:sender];
-
-    [PPHUD showError:kLang(@"FawryReferenceError")];
-    });
-}
-
-#pragma mark - 💳 Card Section
-
-- (XLFormSectionDescriptor *)buildCardSection {
-    XLFormSectionDescriptor *section =
-        [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodCardTitle")];
-    section.footerTitle = kLang(@"PaymentMethodCardFooter");
-    
-    XLFormRowDescriptor *cardNumber =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"cardNumber"
-                                              rowType:XLFormRowDescriptorTypeText
-                                                title:kLang(@"CardNumberTitle")];
-    cardNumber.required = YES;
-    cardNumber.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"CardNumberPlaceholder");
-    cardNumber.height = 54;
-    [section addFormRow:cardNumber];
-    
-    XLFormRowDescriptor *expiry =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"expiry"
-                                              rowType:XLFormRowDescriptorTypeText
-                                                title:kLang(@"ExpiryDateTitle")];
-    expiry.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"ExpiryDatePlaceholder");
-    expiry.height = 54;
-    [section addFormRow:expiry];
-    
-    XLFormRowDescriptor *cvv =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"cvv"
-                                              rowType:XLFormRowDescriptorTypePassword
-                                                title:kLang(@"CVVTitle")];
-    cvv.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"CVVPlaceholder");
-    cvv.height = 54;
-    [section addFormRow:cvv];
-    
-    return section;
-}
-
-#pragma mark - 🇴🇴 Ooredoo Section
-
-- (XLFormSectionDescriptor *)buildOoredooSection {
-    XLFormSectionDescriptor *section =
-        [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodOoredooTitle")];
-    section.footerTitle = kLang(@"PaymentMethodOoredooFooter");
-    
-    XLFormRowDescriptor *phoneRow =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"ooredooNumber"
-                                              rowType:XLFormRowDescriptorTypePhone
-                                                title:kLang(@"OoredooWalletNumberTitle")];
-    phoneRow.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"OoredooWalletNumberPlaceholder");
-    phoneRow.height = 54;
-    [section addFormRow:phoneRow];
-    
-    return section;
-}
-
-#pragma mark - 💰 PayPal Section
-
-- (XLFormSectionDescriptor *)buildPayPalSection {
-    XLFormSectionDescriptor *section =
-        [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodPayPalTitle")];
-    section.footerTitle = kLang(@"PaymentMethodPayPalFooter");
-    
-    XLFormRowDescriptor *emailRow =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"paypalEmail"
-                                              rowType:XLFormRowDescriptorTypeEmail
-                                                title:kLang(@"PayPalEmailTitle")];
-    emailRow.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"PayPalEmailPlaceholder");
-    emailRow.height = 54;
-    [section addFormRow:emailRow];
-    
-    return section;
-}
-
-#pragma mark - 🏦 QNB Section
-
-- (XLFormSectionDescriptor *)buildQNBSection {
-    XLFormSectionDescriptor *section =
-        [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodQNBTitle")];
-    section.footerTitle = kLang(@"PaymentMethodQNBFooter");
-    
-    XLFormRowDescriptor *accountRow =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"qnbAccount"
-                                              rowType:XLFormRowDescriptorTypeText
-                                                title:kLang(@"QNBAccountTitle")];
-    accountRow.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"QNBAccountPlaceholder");
-    accountRow.height = 54;
-    [section addFormRow:accountRow];
-    
-    XLFormRowDescriptor *otpRow =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"qnbOtp"
-                                              rowType:XLFormRowDescriptorTypePassword
-                                                title:kLang(@"QNBOTPTitle")];
-    otpRow.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"QNBOTPPlaceholder");
-    otpRow.height = 54;
-    [section addFormRow:otpRow];
-    
-    return section;
-}
-
-#pragma mark - 💵 Cash Section
-
-- (XLFormSectionDescriptor *)buildCashSection {
-    XLFormSectionDescriptor *section =
-        [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodCashTitle")];
-    section.footerTitle = kLang(@"PaymentMethodCashFooter");
-    
-    XLFormRowDescriptor *noteRow =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"cashNote"
-                                              rowType:XLFormRowDescriptorTypeTextView
-                                                title:kLang(@"DeliveryNoteTitle")];
-    noteRow.cellConfigAtConfigure[@"textView.placeholder"] = kLang(@"DeliveryNotePlaceholder");
-    noteRow.height = 80;
-    [section addFormRow:noteRow];
-    
-    return section;
-}
-
-#pragma mark - 💾 Save Section
-
-- (XLFormSectionDescriptor *)buildSaveSection {
-    XLFormSectionDescriptor *section = [XLFormSectionDescriptor formSection];
-    
-    NSString *saveTitle =
-        (self.mode == PPPaymentFormModeEdit) ? kLang(@"Update") : kLang(@"Save");
-    
-    XLFormRowDescriptor *saveRow =
-        [XLFormRowDescriptor formRowDescriptorWithTag:@"saveRow"
-                                              rowType:XLFormRowButtonKey
-                                                title:saveTitle];
-    
-    saveRow.action.formSelector = @selector(saveButtonPressed);
-    saveRow.height = 90;
-    saveRow.cellConfig[@"icon"] = @"plus";
-    //[section addFormRow:saveRow];
-    
-     
-    return section;
-}
-
-
-//[_checkoutButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:pad],
-//[_checkoutButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-pad],
-//[_checkoutButton.heightAnchor constraintEqualToConstant:60],
-//[_checkoutButton.bottomAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor constant:-10]
 @end
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#pragma mark - PPGlassHeaderView
 
 @interface PPGlassHeaderView ()
 @property (nonatomic, copy) void (^cancelHandler)(void);
@@ -1034,27 +925,25 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
 }
 
 - (void)setupUIWithTitle:(NSString *)title {
-    // 🧱 Background (transparent by default)
     self.backgroundColor = UIColor.clearColor;
-    
-    // Title Label
+
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.text = title;
     _titleLabel.font = [GM boldFontWithSize:18];
     _titleLabel.textColor = UIColor.labelColor;
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+
     UIButtonConfiguration *config;
-    // Cancel Button
     if (@available(iOS 16.0, *)) {
         if (@available(iOS 26.0, *))
             config = [UIButtonConfiguration glassButtonConfiguration];
         else
             config = [UIButtonConfiguration filledButtonConfiguration];
-        
+
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        config.buttonSize = UIButtonConfigurationSizeMedium;
+        config.buttonSize  = UIButtonConfigurationSizeMedium;
         config.baseForegroundColor = UIColor.labelColor;
-        
+
         _cancelButton = [UIButton buttonWithConfiguration:config primaryAction:nil];
         [_cancelButton setImage:PPSYSImage(@"multiply") forState:UIControlStateNormal];
     } else {
@@ -1063,28 +952,27 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
         _cancelButton.backgroundColor = [UIColor colorWithWhite:0.9 alpha:0.4];
         _cancelButton.layer.cornerRadius = 8;
     }
-    
-    //_cancelButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightMedium];
-    [_cancelButton addTarget:self action:@selector(cancelTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    [_cancelButton addTarget:self
+                      action:@selector(cancelTapped)
+            forControlEvents:UIControlEventTouchUpInside];
     _cancelButton.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    // Stack container
+
     UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:@[_titleLabel, _cancelButton]];
-    stack.axis = UILayoutConstraintAxisHorizontal;
-    stack.alignment = UIStackViewAlignmentCenter;
+    stack.axis         = UILayoutConstraintAxisHorizontal;
+    stack.alignment    = UIStackViewAlignmentCenter;
     stack.distribution = UIStackViewDistributionFill;
-    stack.spacing = 8;
+    stack.spacing      = 8;
     stack.translatesAutoresizingMaskIntoConstraints = NO;
     [self addSubview:stack];
-    
-    // Constraints
+
     [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:self.topAnchor constant:8],
-        [stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:26],
+        [stack.topAnchor      constraintEqualToAnchor:self.topAnchor      constant:8],
+        [stack.leadingAnchor  constraintEqualToAnchor:self.leadingAnchor  constant:26],
         [stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-16],
-        [stack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-8],
-        
-        [_cancelButton.widthAnchor constraintEqualToConstant:40],
+        [stack.bottomAnchor   constraintEqualToAnchor:self.bottomAnchor   constant:-8],
+
+        [_cancelButton.widthAnchor  constraintEqualToConstant:40],
         [_cancelButton.heightAnchor constraintEqualToConstant:40]
     ]];
 }
@@ -1095,69 +983,4 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
     }
 }
 
-
-
-
-
-
 @end
-/*
- 
- // SECTION 1 - Payment Method
- #pragma mark - Payment Options Section
- 
- XLFormSectionDescriptor *paymentSection = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"PaymentMethodTitle")];
- [self setupPaymentSection:paymentSection];
- [form addFormSection:paymentSection];
- 
- 
- // SECTION 2 - Card Info
- XLFormSectionDescriptor *cardSection = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"cardInformationTitle")];
- //[form addFormSection:cardSection];
- 
- XLFormRowDescriptor *cardNumber = [XLFormRowDescriptor formRowDescriptorWithTag:@"cardNumber"
- rowType:XLFormRowDescriptorTypeText
- title:kLang(@"CardNumberLabel")];
- cardNumber.required = YES;
- cardNumber.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"FieldRequiredPlaceholder");
- [cardSection addFormRow:cardNumber];
- 
- XLFormRowDescriptor *expiry = [XLFormRowDescriptor formRowDescriptorWithTag:@"expiry"
- rowType:XLFormRowDescriptorTypeText
- title:kLang(@"CardExpiryLabel")];
- expiry.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"CardExpiryPlaceholder");
- [cardSection addFormRow:expiry];
- 
- XLFormRowDescriptor *cvv = [XLFormRowDescriptor formRowDescriptorWithTag:@"cvv"
- rowType:XLFormRowDescriptorTypePassword
- title:kLang(@"CardCVVLabel")];
- cvv.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"CardCVVPlaceholder");
- [cardSection addFormRow:cvv];
- 
- // SECTION 3 - Billing Name
- XLFormSectionDescriptor *nameSection = [XLFormSectionDescriptor formSectionWithTitle:kLang(@"BillingNameTitle")];
- //[form addFormSection:nameSection];
- 
- XLFormRowDescriptor *firstName = [XLFormRowDescriptor formRowDescriptorWithTag:@"firstName"
- rowType:XLFormRowDescriptorTypeText
- title:kLang(@"FirstNameLabel")];
- firstName.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"FieldRequiredPlaceholder");
- [nameSection addFormRow:firstName];
- 
- XLFormRowDescriptor *lastName = [XLFormRowDescriptor formRowDescriptorWithTag:@"lastName"
- rowType:XLFormRowDescriptorTypeText
- title:kLang(@"LastNameLabel")];
- lastName.cellConfigAtConfigure[@"textField.placeholder"] = kLang(@"FieldRequiredPlaceholder");
- [nameSection addFormRow:lastName];
- 
- 
- 
- // Done Button
- XLFormSectionDescriptor *doneSection = [XLFormSectionDescriptor formSectionWithTitle:@" "];
- XLFormRowDescriptor *doneRow = [XLFormRowDescriptor formRowDescriptorWithTag:@"done"
- rowType:XLFormRowDescriptorTypeButton
- title:kLang(@"DoneButtonTitle")];
- doneRow.action.formSelector = @selector(submitForm);
- [form addFormSection:doneSection];
- //[doneSection addFormRow:doneRow];
- */

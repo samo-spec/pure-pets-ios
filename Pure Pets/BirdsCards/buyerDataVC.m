@@ -1087,23 +1087,8 @@ commitEditingStyle:(UITableViewCellEditingStyle)editingStyle
     UIBarButtonItem *closebutton = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"multiply"] style:UIBarButtonItemStylePlain target:self action:@selector(closeForm:)];
     self.navigationItem.leftBarButtonItem = closebutton;
 
-    [self.BKbutton setTitle:kLang(@"save")  forState:UIControlStateNormal];
-    [self.BKbutton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
-    [self.BKbutton setCircleColor:[AppPrimaryClr colorWithAlphaComponent:1.1]];
-    [self.BKbutton.titleLabel setFont:[GM MidFontWithSize:16]];
-    [self.BKbutton setOriginalTitle:kLang(@"save")];
-    [self.BKbutton addTarget:self action:@selector(saveForm:) forControlEvents:UIControlEventTouchUpInside];
-
-    UIBarButtonItem *savebutton = [[UIBarButtonItem alloc] initWithTitle:@"save" style:UIBarButtonItemStylePlain target:self action:@selector(saveForm:)];
-    savebutton = [[UIBarButtonItem alloc] initWithCustomView:self.BKbutton];
-
-
-    NSDictionary *barButtonAppearanceDict = @{
-            NSFontAttributeName: [GM MidFontWithSize:15], NSForegroundColorAttributeName: [GM appPrimaryColor]
-    };
-    [[UIBarButtonItem appearance] setTitleTextAttributes:barButtonAppearanceDict forState:UIControlStateNormal];
-
-    self.navigationItem.rightBarButtonItem = savebutton;
+    UIButton *savBtn = [PPButtonHelper pp_buttonWithTitle:kLang(@"save") font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveForm:)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:savBtn];
 }
 
 
