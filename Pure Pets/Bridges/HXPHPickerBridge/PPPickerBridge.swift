@@ -237,6 +237,10 @@ public extension Notification.Name {
         config.navigationTitleColor = .label
         config.navigationTitleDarkColor = .label
 
+        // Hide the "Original" button on the bottom toolbar
+        config.photoList.bottomView.isHiddenOriginalButton = true
+        config.previewView.bottomView.isHiddenOriginalButton = true
+
         return config
     }
 
