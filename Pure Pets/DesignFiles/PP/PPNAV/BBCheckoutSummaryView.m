@@ -124,6 +124,12 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+- (void)skipCardEntranceAnimation
+{
+    self.didRunCardEntranceAnimation = YES;
+    self.cardView.alpha = 1.0;
+    self.cardView.transform = CGAffineTransformIdentity;
+}
 
 -(void)layoutSubviews
 {

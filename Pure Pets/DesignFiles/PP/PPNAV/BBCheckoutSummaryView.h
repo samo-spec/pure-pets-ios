@@ -26,6 +26,11 @@
 - (void)setCheckoutLoading:(BOOL)loading;
 
 
+/// Call before the first layout pass when the parent view controller handles
+/// the entrance animation itself (e.g. PPSelectPaymentVC). This prevents the
+/// internal cardView entrance animation from conflicting with the outer one.
+- (void)skipCardEntranceAnimation;
+
 - (void)pp_stopTrustBannerShimmer;
 - (void)pp_startTrustBannerShimmer;
 

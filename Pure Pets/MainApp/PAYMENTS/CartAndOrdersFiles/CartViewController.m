@@ -78,6 +78,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 @property (nonatomic, strong) BBCheckoutSummaryView *summaryView;
 @property (nonatomic, strong) UIView *topGlowView;
 @property (nonatomic, strong) UIView *bottomGlowView;
+@property (nonatomic, strong) UIView *headerChromeContainerView;
 @property (nonatomic, strong) UIVisualEffectView *headerChromeView;
 @property (nonatomic, strong) UIView *headerTintOverlayView;
 @property (nonatomic, strong) UIView *headerPrimaryOrbView;
@@ -162,7 +163,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-16.0];
     self.tableBottomConstraint.active = YES;
 
-    [self.view bringSubviewToFront:self.headerChromeView];
+    [self.view bringSubviewToFront:self.headerChromeContainerView ?: self.headerChromeView];
     [self.view bringSubviewToFront:self.summaryView];
     if (self.undoContainerView) {
         [self.view bringSubviewToFront:self.undoContainerView];
@@ -190,8 +191,8 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     
     [self.view addSubview:self.summaryView];
     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
-    [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kCartScreenHorizontalInset].active = YES;
-    [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kCartScreenHorizontalInset].active = YES;
+    [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
+    [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
     __weak typeof(self) weakSelf = self;
     self.summaryView.onTapCheckOut = ^{
@@ -219,10 +220,10 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
                                       cornerRadius:self.undoContainerView.layer.cornerRadius].CGPath;
     }
 
-    if (self.headerChromeView && !CGRectIsEmpty(self.headerChromeView.bounds)) {
-        self.headerChromeView.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:self.headerChromeView.bounds
-                                      cornerRadius:self.headerChromeView.layer.cornerRadius].CGPath;
+    if (self.headerChromeContainerView && !CGRectIsEmpty(self.headerChromeContainerView.bounds)) {
+        self.headerChromeContainerView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.headerChromeContainerView.bounds
+                                      cornerRadius:self.headerChromeContainerView.layer.cornerRadius].CGPath;
     }
 
     if (self.headerTintOverlayView && !CGRectIsEmpty(self.headerTintOverlayView.bounds)) {
@@ -535,7 +536,20 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
 - (void)pp_buildHeaderChrome
 {
-    if (self.headerChromeView) return;
+    if (self.headerChromeContainerView || self.headerChromeView) return;
+
+    UIView *containerView = [[UIView alloc] init];
+    containerView.translatesAutoresizingMaskIntoConstraints = NO;
+    containerView.backgroundColor = UIColor.clearColor;
+    containerView.layer.cornerRadius = 34.0;
+    containerView.layer.shadowColor = UIColor.blackColor.CGColor;
+    containerView.layer.shadowOpacity = 0.11;
+    containerView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    containerView.layer.shadowRadius = 34.0;
+    containerView.layer.masksToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        containerView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 
     UIBlurEffect *effect = nil;
     if (@available(iOS 13.0, *)) {
@@ -545,23 +559,27 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     UIVisualEffectView *chromeView = [[UIVisualEffectView alloc] initWithEffect:effect];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
     chromeView.layer.cornerRadius = 34.0;
-    chromeView.clipsToBounds = NO;
+    chromeView.clipsToBounds = YES;
+    chromeView.layer.masksToBounds = YES;
     chromeView.layer.borderWidth = 0.8;
     chromeView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
-    chromeView.layer.shadowColor = UIColor.blackColor.CGColor;
-    chromeView.layer.shadowOpacity = 0.11;
-    chromeView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
-    chromeView.layer.shadowRadius = 34.0;
-    chromeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
+    chromeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
     chromeView.contentView.layer.cornerRadius = 34.0;
     chromeView.contentView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        chromeView.layer.cornerCurve = kCACornerCurveContinuous;
+        chromeView.contentView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 
     UIView *tintOverlay = [[UIView alloc] init];
     tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
     tintOverlay.userInteractionEnabled = NO;
-    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.28];
+    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.36];
     tintOverlay.layer.cornerRadius = 34.0;
     tintOverlay.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        tintOverlay.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 
     CAGradientLayer *gradientLayer = [CAGradientLayer layer];
     gradientLayer.startPoint = CGPointMake(0.0, 0.0);
@@ -622,7 +640,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     badgeLabel.textInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
     badgeLabel.text = @"PURE PETS";
     badgeLabel.font = [GM MidFontWithSize:11];
-    badgeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.94];
+    badgeLabel.textColor = AppPrimaryClr;
     badgeLabel.textAlignment = NSTextAlignmentCenter;
     badgeLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.13];
     badgeLabel.layer.cornerRadius = 14.0;
@@ -635,15 +653,25 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     titleLabel.font = [GM boldFontWithSize:30];
     titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    titleLabel.numberOfLines = 2;
+    titleLabel.numberOfLines = 1;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.82;
+    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     titleLabel.text = kLang(@"cartTitle");
+    [titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisVertical];
+    [titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                forAxis:UILayoutConstraintAxisHorizontal];
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.numberOfLines = 0;
+    subtitleLabel.numberOfLines = 1;
     subtitleLabel.font = [GM MidFontWithSize:14];
     subtitleLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.60];
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                   forAxis:UILayoutConstraintAxisVertical];
 
     PPInsetLabel *compactSummaryLabel = [[PPInsetLabel alloc] init];
     compactSummaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -653,7 +681,16 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     compactSummaryLabel.layer.masksToBounds = YES;
     compactSummaryLabel.layer.borderWidth = 0.8;
     compactSummaryLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    compactSummaryLabel.numberOfLines = 1;
+    compactSummaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    compactSummaryLabel.textAlignment = NSTextAlignmentCenter;
+    compactSummaryLabel.adjustsFontSizeToFitWidth = YES;
+    compactSummaryLabel.minimumScaleFactor = 0.84;
     compactSummaryLabel.alpha = 0.0;
+    [compactSummaryLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [compactSummaryLabel setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                           forAxis:UILayoutConstraintAxisHorizontal];
 
     UIButton *supportButton = [UIButton buttonWithType:UIButtonTypeSystem];
     supportButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -695,7 +732,6 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     [titleCluster addSubview:titleLabel];
     [titleCluster addSubview:subtitleLabel];
-    [titleCluster addSubview:compactSummaryLabel];
 
     [NSLayoutConstraint activateConstraints:@[
         [titleLabel.topAnchor constraintEqualToAnchor:titleCluster.topAnchor],
@@ -705,11 +741,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleCluster.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleCluster.trailingAnchor],
-
-        [compactSummaryLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:10.0],
-        [compactSummaryLabel.leadingAnchor constraintEqualToAnchor:titleCluster.leadingAnchor],
-        [compactSummaryLabel.heightAnchor constraintEqualToConstant:30.0],
-        [compactSummaryLabel.bottomAnchor constraintEqualToAnchor:titleCluster.bottomAnchor]
+        [subtitleLabel.bottomAnchor constraintEqualToAnchor:titleCluster.bottomAnchor]
     ]];
 
     UIStackView *heroRow = [[UIStackView alloc] initWithArrangedSubviews:@[
@@ -721,21 +753,28 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     heroRow.alignment = UIStackViewAlignmentTop;
     heroRow.spacing = 14.0;
 
-    [self.view addSubview:chromeView];
+    [self.view addSubview:containerView];
+    [containerView addSubview:chromeView];
     [chromeView.contentView addSubview:tintOverlay];
     [chromeView.contentView addSubview:primaryOrb];
     [chromeView.contentView addSubview:secondaryOrb];
     [chromeView.contentView addSubview:topRow];
+    [chromeView.contentView addSubview:compactSummaryLabel];
     [chromeView.contentView addSubview:heroRow];
     [chromeView.contentView addSubview:metricsStack];
     [iconContainer addSubview:iconView];
 
-    NSLayoutConstraint *heightConstraint = [chromeView.heightAnchor constraintEqualToConstant:kCartHeaderExpandedHeight];
+    NSLayoutConstraint *heightConstraint = [containerView.heightAnchor constraintEqualToConstant:kCartHeaderExpandedHeight];
     [NSLayoutConstraint activateConstraints:@[
-        [chromeView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:kCartHeaderTopInset],
-        [chromeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kCartScreenHorizontalInset],
-        [chromeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kCartScreenHorizontalInset],
+        [containerView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:kCartHeaderTopInset],
+        [containerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kCartScreenHorizontalInset],
+        [containerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kCartScreenHorizontalInset],
         heightConstraint,
+
+        [chromeView.topAnchor constraintEqualToAnchor:containerView.topAnchor],
+        [chromeView.leadingAnchor constraintEqualToAnchor:containerView.leadingAnchor],
+        [chromeView.trailingAnchor constraintEqualToAnchor:containerView.trailingAnchor],
+        [chromeView.bottomAnchor constraintEqualToAnchor:containerView.bottomAnchor],
 
         [tintOverlay.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor],
         [tintOverlay.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor],
@@ -756,6 +795,13 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [topRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:18.0],
         [topRow.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-18.0],
 
+        [compactSummaryLabel.centerXAnchor constraintEqualToAnchor:chromeView.contentView.centerXAnchor],
+        [compactSummaryLabel.centerYAnchor constraintEqualToAnchor:supportButton.centerYAnchor],
+        [compactSummaryLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:badgeLabel.trailingAnchor constant:10.0],
+        [compactSummaryLabel.trailingAnchor constraintLessThanOrEqualToAnchor:supportButton.leadingAnchor constant:-10.0],
+        [compactSummaryLabel.widthAnchor constraintLessThanOrEqualToAnchor:chromeView.contentView.widthAnchor multiplier:0.42],
+        [compactSummaryLabel.heightAnchor constraintEqualToConstant:30.0],
+
         [iconContainer.widthAnchor constraintEqualToConstant:60.0],
         [iconContainer.heightAnchor constraintEqualToConstant:60.0],
         [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
@@ -770,11 +816,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [metricsStack.topAnchor constraintEqualToAnchor:heroRow.bottomAnchor constant:18.0],
         [metricsStack.leadingAnchor constraintEqualToAnchor:heroRow.leadingAnchor],
         [metricsStack.trailingAnchor constraintEqualToAnchor:heroRow.trailingAnchor],
-        [metricsStack.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor constant:-18.0],
+        [metricsStack.heightAnchor constraintEqualToConstant:78.0],
 
         [itemsMetricLabel.heightAnchor constraintGreaterThanOrEqualToConstant:78.0]
     ]];
 
+    self.headerChromeContainerView = containerView;
     self.headerChromeView = chromeView;
     self.headerTintOverlayView = tintOverlay;
     self.headerGradientLayer = gradientLayer;
@@ -824,7 +871,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
 - (void)pp_updateHeaderChromeForScrollOffset:(CGFloat)offsetY
 {
-    if (!self.headerHeightConstraint || !self.headerChromeView) {
+    if (!self.headerHeightConstraint || !(self.headerChromeContainerView ?: self.headerChromeView)) {
         return;
     }
 
@@ -855,10 +902,16 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     self.headerCollapseProgress = progress;
 
     CGFloat cornerRadius = 34.0 - (6.0 * progress) + (stretchAmount * 0.12);
+    self.headerChromeContainerView.layer.cornerRadius = cornerRadius;
     self.headerChromeView.layer.cornerRadius = cornerRadius;
     self.headerChromeView.contentView.layer.cornerRadius = cornerRadius;
     self.headerTintOverlayView.layer.cornerRadius = cornerRadius;
-    self.headerChromeView.layer.shadowOpacity = 0.11 - (0.04 * progress);
+    self.headerChromeContainerView.layer.shadowOpacity = 0.11 - (0.04 * progress);
+    if (self.headerChromeContainerView && !CGRectIsEmpty(self.headerChromeContainerView.bounds)) {
+        self.headerChromeContainerView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.headerChromeContainerView.bounds
+                                      cornerRadius:cornerRadius].CGPath;
+    }
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.headerBadgeLabel.alpha = 1.0;
@@ -879,24 +932,24 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     }
 
     CGFloat iconScale = (1.0 - (0.14 * progress)) + (stretchAmount / 220.0);
-    CGFloat titleScale = (1.0 - (0.10 * progress)) + (stretchAmount / 280.0);
-    CGFloat subtitleAlpha = MAX(0.0, 1.0 - (1.45 * progress));
-    CGFloat compactAlpha = MIN(1.0, MAX(0.0, (progress - 0.18) / 0.42));
-    CGFloat metricsAlpha = MAX(0.0, 1.0 - (1.7 * progress));
+    CGFloat titleScale = (1.0 - (0.06 * progress)) + (stretchAmount / 300.0);
+    CGFloat subtitleAlpha = MAX(0.0, 1.0 - (1.9 * progress));
+    CGFloat compactAlpha = MIN(1.0, MAX(0.0, (progress - 0.48) / 0.30));
+    CGFloat metricsAlpha = MAX(0.0, 1.0 - (2.0 * progress));
 
     self.headerIconContainerView.transform =
         CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 4.0 * progress),
                                 CGAffineTransformMakeScale(iconScale, iconScale));
 
     self.headerTitleLabel.transform =
-        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -8.0 * progress),
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -4.0 * progress),
                                 CGAffineTransformMakeScale(titleScale, titleScale));
 
     self.headerSubtitleLabel.alpha = subtitleAlpha;
-    self.headerSubtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, -10.0 * progress);
+    self.headerSubtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, -6.0 * progress);
 
     self.headerCompactSummaryLabel.alpha = compactAlpha;
-    self.headerCompactSummaryLabel.transform = CGAffineTransformMakeTranslation(0.0, 10.0 * (1.0 - compactAlpha));
+    self.headerCompactSummaryLabel.transform = CGAffineTransformMakeTranslation(0.0, 6.0 * (1.0 - compactAlpha));
 
     self.headerMetricsStack.alpha = metricsAlpha;
     self.headerMetricsStack.transform =
@@ -962,11 +1015,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     }
 
     BOOL shouldShowSummary = self.summaryView.alpha > 0.01;
-    self.headerChromeView.alpha = 0.0;
+    UIView *headerEntranceView = self.headerChromeContainerView ?: self.headerChromeView;
+    headerEntranceView.alpha = 0.0;
     self.cartTableView.alpha = 0.0;
     self.summaryView.alpha = shouldShowSummary ? 0.0 : self.summaryView.alpha;
 
-    self.headerChromeView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
+    headerEntranceView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
     self.cartTableView.transform = CGAffineTransformMakeTranslation(0.0, 32.0);
     self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 26.0);
 
@@ -976,8 +1030,8 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
           initialSpringVelocity:0.0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        self.headerChromeView.alpha = 1.0;
-        self.headerChromeView.transform = CGAffineTransformIdentity;
+        headerEntranceView.alpha = 1.0;
+        headerEntranceView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [UIView animateWithDuration:0.62

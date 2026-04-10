@@ -115,6 +115,16 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
+
+    // Suppress the internal cardView entrance animation — this VC handles
+    // the entrance on the whole summaryView itself (see animation below).
+    // Without this, two overlapping animations cause a visible jump.
+    [self.summaryView skipCardEntranceAnimation];
+
+    // Start hidden; the outer spring animation below reveals it smoothly.
+    self.summaryView.alpha = 0.0;
+    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
+
     __weak typeof(self) weakSelf = self;
     self.summaryView.onTapCheckOut = ^{
         NSLog(@"🛒 Checkout tapped on PPSelectPaymentVC+Helper");
@@ -134,6 +144,19 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     if ([CartManager sharedManager].cartItems.count > 0) {
         [_summaryView pp_startTrustBannerShimmer];
     }
+
+    // Smooth entrance after layout settles
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.45
+                              delay:0.08
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            weakSelf.summaryView.alpha = 1.0;
+            weakSelf.summaryView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    });
 }
 
 - (void)setlocViewViewAtTop
