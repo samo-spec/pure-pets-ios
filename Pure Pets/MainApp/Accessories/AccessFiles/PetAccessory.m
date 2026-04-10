@@ -203,7 +203,14 @@ BOOL const isPPDebugMode = NO;
         _imageMeta  = dict[@"imageMeta"] ?: nil;
         _petMainCategoryID = [dict[@"petMainCategoryID"] integerValue];
         _petSubCategoryID = [dict[@"petSubCategoryID"] integerValue];
-        _createdAt = dict[@"createdAt"] ?: [NSDate date];
+        id createdVal = dict[@"createdAt"];
+        if ([createdVal isKindOfClass:[FIRTimestamp class]]) {
+            _createdAt = [(FIRTimestamp *)createdVal dateValue];
+        } else if ([createdVal isKindOfClass:[NSDate class]]) {
+            _createdAt = (NSDate *)createdVal;
+        } else {
+            _createdAt = [NSDate date];
+        }
 
         // Expiry date — nil if missing/null (not all items expire)
         id expiryVal = dict[@"expiryDate"];
