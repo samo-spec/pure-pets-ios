@@ -14,10 +14,17 @@
 #import "AppClasses.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPChatsFunc.h"
+#import <QuartzCore/QuartzCore.h>
 
 static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 static CGFloat const kCartScreenHorizontalInset = 16.0;
 static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
+static CGFloat const kCartHeaderExpandedHeight = 232.0;
+static CGFloat const kCartHeaderCollapsedHeight = 112.0;
+static CGFloat const kCartHeaderTopInset = 8.0;
+static CGFloat const kCartHeaderTableSpacing = 18.0;
+static CGFloat const kCartTableBottomInset = 26.0;
+static CGFloat const kCartHeaderStretchLimit = 34.0;
 
 @interface CustomTextViewCell : XLFormTextViewCell @end
 
@@ -72,14 +79,23 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 @property (nonatomic, strong) UIView *topGlowView;
 @property (nonatomic, strong) UIView *bottomGlowView;
 @property (nonatomic, strong) UIVisualEffectView *headerChromeView;
+@property (nonatomic, strong) UIView *headerTintOverlayView;
+@property (nonatomic, strong) UIView *headerPrimaryOrbView;
+@property (nonatomic, strong) UIView *headerSecondaryOrbView;
 @property (nonatomic, strong) UIView *headerIconContainerView;
 @property (nonatomic, strong) UIImageView *headerIconView;
+@property (nonatomic, strong) UILabel *headerBadgeLabel;
 @property (nonatomic, strong) UILabel *headerTitleLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
+@property (nonatomic, strong) UILabel *headerCompactSummaryLabel;
 @property (nonatomic, strong) UIButton *headerSupportButton;
+@property (nonatomic, strong) UIStackView *headerMetricsStack;
 @property (nonatomic, strong) UILabel *itemsMetricLabel;
 @property (nonatomic, strong) UILabel *subtotalMetricLabel;
 @property (nonatomic, strong) UILabel *shippingMetricLabel;
+@property (nonatomic, strong) CAGradientLayer *headerGradientLayer;
+@property (nonatomic, strong) CAGradientLayer *headerShineLayer;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *headerHeightConstraint;
 @property (nonatomic, strong) UIView *undoContainerView;
 @property (nonatomic, strong) UILabel *undoLabel;
 @property (nonatomic, strong) UIButton *undoButton;
@@ -93,6 +109,8 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 @property (nonatomic, strong, readonly) PPEmptyStateConfig *config;
 @property (nonatomic, assign) BOOL isPerformingTableMutation;
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
+@property (nonatomic, assign) BOOL didPrimeInitialCartScrollPosition;
+@property (nonatomic, assign) CGFloat headerCollapseProgress;
 @end
 
 @implementation CartViewController
@@ -114,8 +132,14 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     self.cartTableView.showsHorizontalScrollIndicator = NO;
     self.cartTableView.showsVerticalScrollIndicator = NO;
     self.cartTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.cartTableView.contentInset = UIEdgeInsetsMake(14, 0, 26, 0);
-    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(0, 0, 26, 0);
+    self.cartTableView.contentInset = UIEdgeInsetsMake(kCartHeaderExpandedHeight + kCartHeaderTableSpacing,
+                                                       0.0,
+                                                       kCartTableBottomInset,
+                                                       0.0);
+    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(kCartHeaderCollapsedHeight + 12.0,
+                                                                0.0,
+                                                                kCartTableBottomInset,
+                                                                0.0);
     self.cartTableView.estimatedRowHeight = 120.0;
     if (@available(iOS 15.0, *)) {
         self.cartTableView.sectionHeaderTopPadding = 0.0;
@@ -132,11 +156,17 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     [NSLayoutConstraint activateConstraints:@[
         [self.cartTableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.cartTableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.cartTableView.topAnchor constraintEqualToAnchor:self.headerChromeView.bottomAnchor constant:18.0]
+        [self.cartTableView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor]
     ]];
     self.tableBottomConstraint =
     [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-16.0];
     self.tableBottomConstraint.active = YES;
+
+    [self.view bringSubviewToFront:self.headerChromeView];
+    [self.view bringSubviewToFront:self.summaryView];
+    if (self.undoContainerView) {
+        [self.view bringSubviewToFront:self.undoContainerView];
+    }
 
     // Empty state config (reused)
     [self emptyViewConfiger];
@@ -151,6 +181,7 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     [self setupFormFooterFrom:@"LOAD"];
     [self updateTotalLabel];
     [self pp_applyEmptyStateIfNeeded];
+    [self pp_updateHeaderChromeForScrollOffset:self.cartTableView.contentOffset.y];
 }
 
 - (void)setSummuryViewAtBottom
@@ -158,7 +189,7 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     self.summaryView = [[BBCheckoutSummaryView alloc] init];
     
     [self.view addSubview:self.summaryView];
-    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-kCartFloatingSummaryBottomInset].active = YES;
+    [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kCartScreenHorizontalInset].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kCartScreenHorizontalInset].active = YES;
 
@@ -193,6 +224,22 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
             [UIBezierPath bezierPathWithRoundedRect:self.headerChromeView.bounds
                                       cornerRadius:self.headerChromeView.layer.cornerRadius].CGPath;
     }
+
+    if (self.headerTintOverlayView && !CGRectIsEmpty(self.headerTintOverlayView.bounds)) {
+        CGRect bounds = self.headerTintOverlayView.bounds;
+        self.headerGradientLayer.frame = bounds;
+        self.headerGradientLayer.cornerRadius = self.headerTintOverlayView.layer.cornerRadius;
+        self.headerShineLayer.frame = bounds;
+        self.headerShineLayer.cornerRadius = self.headerTintOverlayView.layer.cornerRadius;
+    }
+
+    if (!self.didPrimeInitialCartScrollPosition && self.cartTableView) {
+        CGFloat restingOffsetY = -self.cartTableView.adjustedContentInset.top;
+        self.cartTableView.contentOffset = CGPointMake(0.0, restingOffsetY);
+        self.didPrimeInitialCartScrollPosition = YES;
+    }
+
+    [self pp_updateHeaderChromeForScrollOffset:self.cartTableView.contentOffset.y];
 }
 
 - (void)reloadFormData {
@@ -349,29 +396,30 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.12];
-    topGlow.layer.cornerRadius = 120.0;
-    topGlow.alpha = 0.9;
+    topGlow.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
+    topGlow.layer.cornerRadius = 110.0;
+    topGlow.alpha = 0.42;
 
     UIView *bottomGlow = [[UIView alloc] init];
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [[UIColor systemOrangeColor] colorWithAlphaComponent:0.08];
-    bottomGlow.layer.cornerRadius = 140.0;
+    bottomGlow.backgroundColor = [[UIColor systemOrangeColor] colorWithAlphaComponent:0.05];
+    bottomGlow.layer.cornerRadius = 130.0;
+    bottomGlow.alpha = 0.38;
 
     [self.view addSubview:topGlow];
     [self.view addSubview:bottomGlow];
 
     [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:240.0],
-        [topGlow.heightAnchor constraintEqualToConstant:240.0],
-        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-54.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:78.0],
+        [topGlow.widthAnchor constraintEqualToConstant:220.0],
+        [topGlow.heightAnchor constraintEqualToConstant:220.0],
+        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-76.0],
+        [topGlow.rightAnchor constraintEqualToAnchor:self.view.rightAnchor constant:96.0],
 
-        [bottomGlow.widthAnchor constraintEqualToConstant:280.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:280.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:92.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-104.0]
+        [bottomGlow.widthAnchor constraintEqualToConstant:260.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:260.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:106.0],
+        [bottomGlow.leftAnchor constraintEqualToAnchor:self.view.leftAnchor constant:-118.0]
     ]];
 
     self.topGlowView = topGlow;
@@ -382,14 +430,15 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 {
     PPInsetLabel *label = [[PPInsetLabel alloc] init];
     label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.textInsets = UIEdgeInsetsMake(14.0, 14.0, 14.0, 14.0);
     label.numberOfLines = 0;
     label.textAlignment = Language.alignmentForCurrentLanguage;
     label.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    label.layer.cornerRadius = 20.0;
+    label.layer.cornerRadius = 24.0;
     label.layer.masksToBounds = YES;
-    label.layer.borderWidth = 1.0;
-    label.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
-    label.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.035];
+    label.layer.borderWidth = 0.8;
+    label.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    label.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.11];
     return label;
 }
 
@@ -406,15 +455,15 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 
     NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:title ?: @""
                                                                              attributes:@{
-        NSFontAttributeName: [GM MidFontWithSize:11],
-        NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.55],
+        NSFontAttributeName: [GM MidFontWithSize:10.5],
+        NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.56],
         NSParagraphStyleAttributeName: paragraphStyle
     }];
 
     NSString *valueLine = value.length > 0 ? [NSString stringWithFormat:@"\n%@", value] : @"";
     [text appendAttributedString:[[NSAttributedString alloc] initWithString:valueLine
                                                                   attributes:@{
-        NSFontAttributeName: [GM boldFontWithSize:16],
+        NSFontAttributeName: [GM boldFontWithSize:17],
         NSForegroundColorAttributeName: valueColor ?: UIColor.labelColor,
         NSParagraphStyleAttributeName: paragraphStyle
     }]];
@@ -440,11 +489,11 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
         config.image = supportImage;
         config.imagePlacement = NSDirectionalRectEdgeLeading;
         config.imagePadding = 6.0;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 12.0, 10.0, 12.0);
+        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
         config.baseForegroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
-        config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
-        config.background.strokeColor = [UIColor.labelColor colorWithAlphaComponent:0.06];
-        config.background.strokeWidth = 1.0;
+        config.background.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
+        config.background.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.10];
+        config.background.strokeWidth = 0.8;
         config.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(@"Support")
                                                                   attributes:@{
             NSFontAttributeName: [GM boldFontWithSize:13],
@@ -457,11 +506,11 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
         [button setTitleColor:AppPrimaryTextClr ?: UIColor.labelColor forState:UIControlStateNormal];
         button.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
         button.titleLabel.font = [GM boldFontWithSize:13];
-        button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
+        button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
         button.layer.cornerRadius = 19.0;
-        button.layer.borderWidth = 1.0;
-        button.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
-        button.contentEdgeInsets = UIEdgeInsetsMake(10.0, 12.0, 10.0, 12.0);
+        button.layer.borderWidth = 0.8;
+        button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+        button.contentEdgeInsets = UIEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
     }
 
     button.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
@@ -495,30 +544,70 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 
     UIVisualEffectView *chromeView = [[UIVisualEffectView alloc] initWithEffect:effect];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
-    chromeView.layer.cornerRadius = 30.0;
+    chromeView.layer.cornerRadius = 34.0;
     chromeView.clipsToBounds = NO;
-    chromeView.layer.borderWidth = 1.0;
-    chromeView.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+    chromeView.layer.borderWidth = 0.8;
+    chromeView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
     chromeView.layer.shadowColor = UIColor.blackColor.CGColor;
-    chromeView.layer.shadowOpacity = 0.08;
+    chromeView.layer.shadowOpacity = 0.11;
     chromeView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
-    chromeView.layer.shadowRadius = 28.0;
-    chromeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.54];
-    chromeView.contentView.layer.cornerRadius = 30.0;
+    chromeView.layer.shadowRadius = 34.0;
+    chromeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
+    chromeView.contentView.layer.cornerRadius = 34.0;
     chromeView.contentView.clipsToBounds = YES;
 
     UIView *tintOverlay = [[UIView alloc] init];
     tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
     tintOverlay.userInteractionEnabled = NO;
-    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.58];
+    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.28];
+    tintOverlay.layer.cornerRadius = 34.0;
+    tintOverlay.clipsToBounds = YES;
+
+    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
+    gradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    gradientLayer.colors = @[
+        (__bridge id)[[AppForgroundColr ?: UIColor.whiteColor colorWithAlphaComponent:0.98] CGColor],
+        (__bridge id)[[AppPrimaryClr ?: UIColor.systemBlueColor colorWithAlphaComponent:0.13] CGColor],
+        (__bridge id)[[UIColor colorWithWhite:1.0 alpha:0.10] CGColor]
+    ];
+    gradientLayer.locations = @[@0.0, @0.48, @1.0];
+    [tintOverlay.layer addSublayer:gradientLayer];
+
+    CAGradientLayer *shineLayer = [CAGradientLayer layer];
+    shineLayer.startPoint = CGPointMake(0.1, 0.0);
+    shineLayer.endPoint = CGPointMake(0.9, 1.0);
+    shineLayer.colors = @[
+        (__bridge id)UIColor.clearColor.CGColor,
+        (__bridge id)[[UIColor colorWithWhite:1.0 alpha:0.18] CGColor],
+        (__bridge id)UIColor.clearColor.CGColor
+    ];
+    shineLayer.locations = @[@0.0, @0.52, @1.0];
+    [tintOverlay.layer addSublayer:shineLayer];
+
+    UIView *primaryOrb = [[UIView alloc] init];
+    primaryOrb.translatesAutoresizingMaskIntoConstraints = NO;
+    primaryOrb.userInteractionEnabled = NO;
+    primaryOrb.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.18];
+    primaryOrb.layer.cornerRadius = 88.0;
+    primaryOrb.alpha = 0.92;
+
+    UIView *secondaryOrb = [[UIView alloc] init];
+    secondaryOrb.translatesAutoresizingMaskIntoConstraints = NO;
+    secondaryOrb.userInteractionEnabled = NO;
+    secondaryOrb.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
+    secondaryOrb.layer.cornerRadius = 66.0;
+    secondaryOrb.alpha = 0.84;
 
     UIView *iconContainer = [[UIView alloc] init];
     iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    iconContainer.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.12];
-    iconContainer.layer.cornerRadius = 24.0;
+    iconContainer.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+    iconContainer.layer.cornerRadius = 30.0;
+    iconContainer.layer.borderWidth = 0.8;
+    iconContainer.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"bag.fill"
-                                                                              pointSize:20
+                                                                              pointSize:24
                                                                                  weight:UIImageSymbolWeightSemibold
                                                                                   scale:UIImageSymbolScaleLarge
                                                                                 palette:@[AppPrimaryClr ?: UIColor.labelColor,
@@ -528,19 +617,43 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     iconView.tintColor = AppPrimaryClr ?: UIColor.labelColor;
     iconView.contentMode = UIViewContentModeScaleAspectFit;
 
+    PPInsetLabel *badgeLabel = [[PPInsetLabel alloc] init];
+    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeLabel.textInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
+    badgeLabel.text = @"PURE PETS";
+    badgeLabel.font = [GM MidFontWithSize:11];
+    badgeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.94];
+    badgeLabel.textAlignment = NSTextAlignmentCenter;
+    badgeLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.13];
+    badgeLabel.layer.cornerRadius = 14.0;
+    badgeLabel.layer.masksToBounds = YES;
+    badgeLabel.layer.borderWidth = 0.8;
+    badgeLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:28];
+    titleLabel.font = [GM boldFontWithSize:30];
     titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    titleLabel.numberOfLines = 2;
     titleLabel.text = kLang(@"cartTitle");
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.numberOfLines = 0;
     subtitleLabel.font = [GM MidFontWithSize:14];
-    subtitleLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.62];
+    subtitleLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.60];
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    PPInsetLabel *compactSummaryLabel = [[PPInsetLabel alloc] init];
+    compactSummaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    compactSummaryLabel.textInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
+    compactSummaryLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+    compactSummaryLabel.layer.cornerRadius = 14.0;
+    compactSummaryLabel.layer.masksToBounds = YES;
+    compactSummaryLabel.layer.borderWidth = 0.8;
+    compactSummaryLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    compactSummaryLabel.alpha = 0.0;
 
     UIButton *supportButton = [UIButton buttonWithType:UIButtonTypeSystem];
     supportButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -560,7 +673,7 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     metricsStack.axis = UILayoutConstraintAxisHorizontal;
     metricsStack.alignment = UIStackViewAlignmentFill;
     metricsStack.distribution = UIStackViewDistributionFillEqually;
-    metricsStack.spacing = 10.0;
+    metricsStack.spacing = 12.0;
 
     UIView *spacer = [[UIView alloc] init];
     spacer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -568,7 +681,7 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     [spacer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
 
     UIStackView *topRow = [[UIStackView alloc] initWithArrangedSubviews:@[
-        iconContainer,
+        badgeLabel,
         spacer,
         supportButton
     ]];
@@ -577,60 +690,109 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     topRow.alignment = UIStackViewAlignmentCenter;
     topRow.spacing = 12.0;
 
+    UIView *titleCluster = [[UIView alloc] init];
+    titleCluster.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [titleCluster addSubview:titleLabel];
+    [titleCluster addSubview:subtitleLabel];
+    [titleCluster addSubview:compactSummaryLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [titleLabel.topAnchor constraintEqualToAnchor:titleCluster.topAnchor],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:titleCluster.leadingAnchor],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:titleCluster.trailingAnchor],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleCluster.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleCluster.trailingAnchor],
+
+        [compactSummaryLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:10.0],
+        [compactSummaryLabel.leadingAnchor constraintEqualToAnchor:titleCluster.leadingAnchor],
+        [compactSummaryLabel.heightAnchor constraintEqualToConstant:30.0],
+        [compactSummaryLabel.bottomAnchor constraintEqualToAnchor:titleCluster.bottomAnchor]
+    ]];
+
+    UIStackView *heroRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        iconContainer,
+        titleCluster
+    ]];
+    heroRow.translatesAutoresizingMaskIntoConstraints = NO;
+    heroRow.axis = UILayoutConstraintAxisHorizontal;
+    heroRow.alignment = UIStackViewAlignmentTop;
+    heroRow.spacing = 14.0;
+
     [self.view addSubview:chromeView];
     [chromeView.contentView addSubview:tintOverlay];
+    [chromeView.contentView addSubview:primaryOrb];
+    [chromeView.contentView addSubview:secondaryOrb];
     [chromeView.contentView addSubview:topRow];
-    [chromeView.contentView addSubview:titleLabel];
-    [chromeView.contentView addSubview:subtitleLabel];
+    [chromeView.contentView addSubview:heroRow];
     [chromeView.contentView addSubview:metricsStack];
     [iconContainer addSubview:iconView];
 
+    NSLayoutConstraint *heightConstraint = [chromeView.heightAnchor constraintEqualToConstant:kCartHeaderExpandedHeight];
     [NSLayoutConstraint activateConstraints:@[
-        [chromeView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
+        [chromeView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:kCartHeaderTopInset],
         [chromeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:kCartScreenHorizontalInset],
         [chromeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-kCartScreenHorizontalInset],
+        heightConstraint,
 
         [tintOverlay.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor],
         [tintOverlay.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor],
         [tintOverlay.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor],
         [tintOverlay.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor],
 
-        [topRow.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:16.0],
-        [topRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:16.0],
-        [topRow.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-16.0],
+        [primaryOrb.widthAnchor constraintEqualToConstant:176.0],
+        [primaryOrb.heightAnchor constraintEqualToConstant:176.0],
+        [primaryOrb.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:-54.0],
+        [primaryOrb.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:46.0],
 
-        [iconContainer.widthAnchor constraintEqualToConstant:48.0],
-        [iconContainer.heightAnchor constraintEqualToConstant:48.0],
+        [secondaryOrb.widthAnchor constraintEqualToConstant:132.0],
+        [secondaryOrb.heightAnchor constraintEqualToConstant:132.0],
+        [secondaryOrb.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor constant:58.0],
+        [secondaryOrb.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:-26.0],
+
+        [topRow.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:18.0],
+        [topRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:18.0],
+        [topRow.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-18.0],
+
+        [iconContainer.widthAnchor constraintEqualToConstant:60.0],
+        [iconContainer.heightAnchor constraintEqualToConstant:60.0],
         [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
 
-        [supportButton.heightAnchor constraintEqualToConstant:38.0],
+        [supportButton.heightAnchor constraintEqualToConstant:40.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:topRow.bottomAnchor constant:16.0],
-        [titleLabel.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:16.0],
-        [titleLabel.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-16.0],
+        [heroRow.topAnchor constraintEqualToAnchor:topRow.bottomAnchor constant:18.0],
+        [heroRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:18.0],
+        [heroRow.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-18.0],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
-        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
+        [metricsStack.topAnchor constraintEqualToAnchor:heroRow.bottomAnchor constant:18.0],
+        [metricsStack.leadingAnchor constraintEqualToAnchor:heroRow.leadingAnchor],
+        [metricsStack.trailingAnchor constraintEqualToAnchor:heroRow.trailingAnchor],
+        [metricsStack.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor constant:-18.0],
 
-        [metricsStack.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
-        [metricsStack.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
-        [metricsStack.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-        [metricsStack.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor constant:-16.0],
-
-        [itemsMetricLabel.heightAnchor constraintGreaterThanOrEqualToConstant:68.0]
+        [itemsMetricLabel.heightAnchor constraintGreaterThanOrEqualToConstant:78.0]
     ]];
 
     self.headerChromeView = chromeView;
+    self.headerTintOverlayView = tintOverlay;
+    self.headerGradientLayer = gradientLayer;
+    self.headerShineLayer = shineLayer;
+    self.headerPrimaryOrbView = primaryOrb;
+    self.headerSecondaryOrbView = secondaryOrb;
     self.headerIconContainerView = iconContainer;
     self.headerIconView = iconView;
+    self.headerBadgeLabel = badgeLabel;
     self.headerTitleLabel = titleLabel;
     self.headerSubtitleLabel = subtitleLabel;
+    self.headerCompactSummaryLabel = compactSummaryLabel;
     self.headerSupportButton = supportButton;
+    self.headerMetricsStack = metricsStack;
     self.itemsMetricLabel = itemsMetricLabel;
     self.subtotalMetricLabel = subtotalMetricLabel;
     self.shippingMetricLabel = shippingMetricLabel;
+    self.headerHeightConstraint = heightConstraint;
 }
 
 - (NSString *)pp_shippingMetricValueForSummary:(PPCartSummary *)summary
@@ -641,6 +803,125 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     return [PPChatsFunc formattedCurrency:summary.shippingFee];
 }
 
+- (NSAttributedString *)pp_compactHeaderSummaryTextForSummary:(PPCartSummary *)summary
+{
+    PPCartSummary *resolvedSummary = summary ?: [PPCartCalculator currentSummary];
+    NSString *valueText = [PPChatsFunc formattedCurrency:resolvedSummary.subtotal];
+    NSString *titleText = resolvedSummary.totalQuantity > 0 ? kLang(@"Subtotal") : kLang(@"empty_cart_title");
+
+    NSMutableAttributedString *text = [[NSMutableAttributedString alloc] initWithString:[NSString stringWithFormat:@"%@  ", titleText]
+                                                                             attributes:@{
+        NSFontAttributeName: [GM MidFontWithSize:11.0],
+        NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.60]
+    }];
+    [text appendAttributedString:[[NSAttributedString alloc] initWithString:valueText
+                                                                  attributes:@{
+        NSFontAttributeName: [GM boldFontWithSize:13.0],
+        NSForegroundColorAttributeName: AppPrimaryTextClr ?: UIColor.labelColor
+    }]];
+    return text;
+}
+
+- (void)pp_updateHeaderChromeForScrollOffset:(CGFloat)offsetY
+{
+    if (!self.headerHeightConstraint || !self.headerChromeView) {
+        return;
+    }
+
+    CGFloat restingOffsetY = -self.cartTableView.adjustedContentInset.top;
+    CGFloat normalizedOffset = offsetY - restingOffsetY;
+    CGFloat collapseRange = MAX(1.0, kCartHeaderExpandedHeight - kCartHeaderCollapsedHeight);
+    CGFloat collapseProgress = MIN(1.0, MAX(0.0, normalizedOffset) / collapseRange);
+    CGFloat stretchAmount = 0.0;
+    CGFloat headerHeight = kCartHeaderExpandedHeight - (collapseRange * collapseProgress);
+
+    if (normalizedOffset < 0.0) {
+        stretchAmount = MIN(kCartHeaderStretchLimit, fabs(normalizedOffset) * 0.35);
+        headerHeight = kCartHeaderExpandedHeight + stretchAmount;
+    }
+
+    self.headerHeightConstraint.constant = headerHeight;
+    [self pp_applyHeaderCollapseProgress:collapseProgress stretchAmount:stretchAmount];
+
+    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(headerHeight + 10.0,
+                                                                0.0,
+                                                                kCartTableBottomInset,
+                                                                0.0);
+}
+
+- (void)pp_applyHeaderCollapseProgress:(CGFloat)progress stretchAmount:(CGFloat)stretchAmount
+{
+    progress = MIN(1.0, MAX(0.0, progress));
+    self.headerCollapseProgress = progress;
+
+    CGFloat cornerRadius = 34.0 - (6.0 * progress) + (stretchAmount * 0.12);
+    self.headerChromeView.layer.cornerRadius = cornerRadius;
+    self.headerChromeView.contentView.layer.cornerRadius = cornerRadius;
+    self.headerTintOverlayView.layer.cornerRadius = cornerRadius;
+    self.headerChromeView.layer.shadowOpacity = 0.11 - (0.04 * progress);
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.headerBadgeLabel.alpha = 1.0;
+        self.headerSubtitleLabel.alpha = progress >= 0.55 ? 0.0 : 1.0;
+        self.headerCompactSummaryLabel.alpha = progress >= 0.55 ? 1.0 : 0.0;
+        self.headerMetricsStack.alpha = progress >= 0.45 ? 0.0 : 1.0;
+        self.headerTitleLabel.transform = CGAffineTransformIdentity;
+        self.headerSubtitleLabel.transform = CGAffineTransformIdentity;
+        self.headerCompactSummaryLabel.transform = CGAffineTransformIdentity;
+        self.headerIconContainerView.transform = CGAffineTransformIdentity;
+        self.headerSupportButton.transform = CGAffineTransformIdentity;
+        self.headerBadgeLabel.transform = CGAffineTransformIdentity;
+        self.headerPrimaryOrbView.transform = CGAffineTransformIdentity;
+        self.headerSecondaryOrbView.transform = CGAffineTransformIdentity;
+        self.headerGradientLayer.opacity = 1.0;
+        self.headerShineLayer.opacity = 0.92;
+        return;
+    }
+
+    CGFloat iconScale = (1.0 - (0.14 * progress)) + (stretchAmount / 220.0);
+    CGFloat titleScale = (1.0 - (0.10 * progress)) + (stretchAmount / 280.0);
+    CGFloat subtitleAlpha = MAX(0.0, 1.0 - (1.45 * progress));
+    CGFloat compactAlpha = MIN(1.0, MAX(0.0, (progress - 0.18) / 0.42));
+    CGFloat metricsAlpha = MAX(0.0, 1.0 - (1.7 * progress));
+
+    self.headerIconContainerView.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 4.0 * progress),
+                                CGAffineTransformMakeScale(iconScale, iconScale));
+
+    self.headerTitleLabel.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -8.0 * progress),
+                                CGAffineTransformMakeScale(titleScale, titleScale));
+
+    self.headerSubtitleLabel.alpha = subtitleAlpha;
+    self.headerSubtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, -10.0 * progress);
+
+    self.headerCompactSummaryLabel.alpha = compactAlpha;
+    self.headerCompactSummaryLabel.transform = CGAffineTransformMakeTranslation(0.0, 10.0 * (1.0 - compactAlpha));
+
+    self.headerMetricsStack.alpha = metricsAlpha;
+    self.headerMetricsStack.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 16.0 * progress),
+                                CGAffineTransformMakeScale(1.0 - (0.08 * progress),
+                                                           1.0 - (0.08 * progress)));
+
+    self.headerSupportButton.transform = CGAffineTransformMakeScale(1.0 - (0.05 * progress),
+                                                                    1.0 - (0.05 * progress));
+    self.headerBadgeLabel.transform = CGAffineTransformMakeTranslation(0.0, -4.0 * progress);
+    self.headerBadgeLabel.alpha = 1.0 - (0.18 * progress);
+
+    self.headerPrimaryOrbView.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(20.0 * progress, -14.0 * progress),
+                                CGAffineTransformMakeScale(1.0 + (stretchAmount / 180.0),
+                                                           1.0 + (stretchAmount / 180.0)));
+    self.headerSecondaryOrbView.transform =
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(-18.0 * progress, 12.0 * progress),
+                                CGAffineTransformMakeScale(1.0 + (stretchAmount / 220.0),
+                                                           1.0 + (stretchAmount / 220.0)));
+
+    self.headerGradientLayer.opacity = 1.0 - (0.08 * progress);
+    self.headerShineLayer.opacity = 0.92 - (0.35 * progress);
+}
+
 - (void)pp_refreshHeaderChromeWithSummary:(PPCartSummary *)summary
 {
     NSInteger itemsCount = summary.totalQuantity;
@@ -648,8 +929,10 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 
     self.headerTitleLabel.text = kLang(@"cartTitle");
     self.headerSubtitleLabel.text = itemsCount > 0 ? kLang(@"Securecheckout") : kLang(@"empty_cart_subtitle");
+    self.headerCompactSummaryLabel.attributedText = [self pp_compactHeaderSummaryTextForSummary:summary];
     self.headerIconContainerView.backgroundColor =
-        [accentColor colorWithAlphaComponent:itemsCount > 0 ? 0.14 : 0.08];
+        [UIColor colorWithWhite:1.0 alpha:itemsCount > 0 ? 0.13 : 0.10];
+    self.headerBadgeLabel.text = @"PURE PETS";
 
     [self pp_applyMetricLabel:self.itemsMetricLabel
                         title:kLang(@"Selected Items")
@@ -665,6 +948,8 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
                         title:kLang(@"Shipping Fee")
                         value:[self pp_shippingMetricValueForSummary:summary]
                    valueColor:summary.shippingFee <= 0.009 ? accentColor : (AppPrimaryTextClr ?: UIColor.labelColor)];
+
+    [self pp_updateHeaderChromeForScrollOffset:self.cartTableView.contentOffset.y];
 }
 
 - (void)pp_runEntranceAnimationIfNeeded
@@ -867,6 +1152,7 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     }
 
     [self pp_applyEmptyStateIfNeeded];
+    [self pp_updateHeaderChromeForScrollOffset:self.cartTableView.contentOffset.y];
 }
 
 // Guard: Only reload if not mutating table (prevents reload/deleteRows conflict)
@@ -912,7 +1198,7 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.94];
     container.layer.cornerRadius = 20.0;
-    container.layer.borderWidth = 1.0;
+    container.layer.borderWidth = 0.0;
     container.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
     container.layer.shadowColor = UIColor.blackColor.CGColor;
     container.layer.shadowOpacity = 0.10;
@@ -1150,6 +1436,14 @@ static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
     (void)tableView;
     (void)indexPath;
     return 118.0;
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    if (scrollView != self.cartTableView) {
+        return;
+    }
+    [self pp_updateHeaderChromeForScrollOffset:scrollView.contentOffset.y];
 }
 
 // Enable swipe-to-delete (SAFE)
