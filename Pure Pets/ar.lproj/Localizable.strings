@@ -966,6 +966,9 @@
 "leftInStock" = "فقط";
 "in stock" = "متوفر";
 "inStock" = "متوفر";
+"InCart" = "في السلة";
+"ItemAddedToCart" = "تمت إضافة المنتج إلى السلة";
+"SaveAmountPrefix" = "وفر";
 
 "Rials" = "ر.ق";
 "Discount" = "خصم";
@@ -1789,6 +1792,19 @@
 "payment_qib_gateway_desc" = "ادفع بشكل آمن عبر بوابة QIB";
 "payment_cash_delivery_desc" = "ادفع عند استلام طلبك";
 "payment_header_pay_through" = "الدفع من خلال";
+"payment_screen_eyebrow" = "دفع آمن";
+"payment_screen_title" = "اختر طريقة الدفع المناسبة";
+"payment_screen_subtitle" = "راجع عنوان التوصيل، واختر وسيلة الدفع الأنسب لك، وأكمل الطلب بثقة.";
+"payment_section_delivery" = "عنوان التوصيل";
+"payment_section_delivery_subtitle" = "سيتم استخدام هذا العنوان للشحن والتحقق من بيانات الطلب.";
+"payment_section_methods_title" = "خيارات الدفع";
+"payment_section_methods_subtitle" = "طرق الدفع المحفوظة وخيارات الدفع المدمجة";
+"payment_add_method" = "إضافة طريقة";
+"payment_add_method_subtitle" = "احفظ بطاقة جديدة لتجربة دفع أسرع في المرات القادمة.";
+"payment_add_method_badge" = "دفع أسرع";
+"payment_method_selected_badge" = "محدد";
+"payment_method_builtin_badge" = "مدمجة";
+"payment_method_saved_badge" = "طريقة محفوظة";
 "payment_builtin_remove_blocked" = "طريقة الدفع هذه مدمجة ولا يمكن حذفها.";
 "payment_builtin_edit_blocked" = "طريقة الدفع هذه مدمجة ولا تحتاج إلى تعديل.";
 "payment_confirm_title" = "تأكيد الدفع";
@@ -1828,6 +1844,8 @@
 "payment_qib_sdk_init_failed" = "تعذر تهيئة جلسة QIB SDK.";
 "payment_qib_sdk_error" = "واجهت بوابة الدفع خطأ. يرجى المحاولة مرة أخرى.";
 "payment_cancelled_by_user" = "تم إلغاء الدفع.";
+"payment_cancelled_title" = "تم إلغاء الدفع";
+"payment_cancelled_message" = "تم إلغاء عملية الدفع. إذا كنت لا تزال ترغب بإتمام عملية الشراء، يرجى اختيار طريقة دفع أخرى.";
 "payment_create_session_failed" = "فشل إنشاء جلسة الدفع.";
 "checkout_payment_verification_pending" = "جاري التحقق من عملية الدفع. يرجى مراجعة حالة الطلب بعد قليل.";
 "cart_undo_action" = "تراجع";

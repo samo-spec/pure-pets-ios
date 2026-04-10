@@ -131,7 +131,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _selectionIndicator = [[UIView alloc] initWithFrame:CGRectZero];
     _selectionIndicator.translatesAutoresizingMaskIntoConstraints = NO;
-    UIColor *brand = [GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemOrangeColor;
+
     _selectionIndicator.backgroundColor = AppClearClr;// brand;
     _selectionIndicator.layer.cornerRadius = 22.0;
     _selectionIndicator.layer.masksToBounds = YES;
@@ -825,6 +825,8 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.actionButton addTarget:self action:@selector(pp_handleActionButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    
+    self.actionButton = [self pp_ButtonWithSystemName:@"square.and.pencil" action:@selector(pp_handleActionButtonTapped)];
     [self pp_applyNavigationItems];
 }
 
@@ -841,17 +843,19 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     if (!self.topChromeContainerView || !self.actionButton) return;
 
     UIBarButtonItem *tabsItem = [[UIBarButtonItem alloc] initWithCustomView:self.topChromeContainerView];
-    UIView *actionContainer = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, kPPHubActionButtonSize, kPPHubActionButtonSize)];
-    actionContainer.backgroundColor = UIColor.clearColor;
-    self.actionButton.center = CGPointMake(CGRectGetMidX(actionContainer.bounds), CGRectGetMidY(actionContainer.bounds));
-    if (self.actionButton.superview != actionContainer) {
-        [self.actionButton removeFromSuperview];
-        [actionContainer addSubview:self.actionButton];
-    }
-    UIBarButtonItem *actionItem = [[UIBarButtonItem alloc] initWithCustomView:actionContainer];
+      
+    UIBarButtonItem *actionItem = [[UIBarButtonItem alloc] initWithCustomView:self.actionButton];
 
-    self.navigationItem.leftBarButtonItem = tabsItem;
-    self.navigationItem.rightBarButtonItem = actionItem;
+    if(!Language.isRTL)
+    {
+        self.navigationItem.rightBarButtonItem = tabsItem;
+        self.navigationItem.leftBarButtonItem = actionItem;
+    }
+    else
+    {
+        self.navigationItem.leftBarButtonItem = tabsItem;
+        self.navigationItem.rightBarButtonItem = actionItem;
+    }
 }
 
 #pragma mark - Child Flow
@@ -946,18 +950,32 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
             break;
     }
 
-    UIImage *image = nil;
-    if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:18.0 weight:UIImageSymbolWeightSemibold];
-        image = [UIImage systemImageNamed:symbolName withConfiguration:config];
+    UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightSemibold];
+    UIImage *image = [UIImage systemImageNamed:symbolName withConfiguration:symCfg];
+
+    if (@available(iOS 26.0, *)) {
+        // Update the existing glass configuration in-place — no button recreation
+        UIButtonConfiguration *btnCfg = self.actionButton.configuration;
+        if (!btnCfg) {
+            btnCfg = [UIButtonConfiguration glassButtonConfiguration];
+        }
+        btnCfg.image = image;
+        self.actionButton.configuration = btnCfg;
+    } else if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *btnCfg = self.actionButton.configuration;
+        if (btnCfg) {
+            btnCfg.image = image;
+            self.actionButton.configuration = btnCfg;
+        } else {
+            [self.actionButton setImage:image forState:UIControlStateNormal];
+        }
     } else {
-        image = [UIImage imageNamed:symbolName];
+        [self.actionButton setImage:image forState:UIControlStateNormal];
     }
-    [self.actionButton setImage:image forState:UIControlStateNormal];
+
     self.actionButton.accessibilityLabel = accessibilityLabel;
     self.actionButton.enabled = enabled;
     self.actionButton.alpha = enabled ? 1.0 : 0.45;
-    self.actionButton.backgroundColor = AppClearClr;
 }
 
 - (void)pp_handleActionButtonTapped

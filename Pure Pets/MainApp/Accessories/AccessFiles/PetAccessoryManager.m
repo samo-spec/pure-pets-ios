@@ -15,6 +15,7 @@
 #import "UserModel.h"
 #import "PPRolePermission.h"
 #import "PPFirestoreErrorNotifier.h"
+#import "PPFunc.h"
 
 @interface PetAccessoryManager ()
 @property (nonatomic, strong) FIRFirestore *firestore;
@@ -650,6 +651,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     
     NSLog(@"🆕 Creating accessory '%@' with %ld images", accessory.name, (long)images.count);
     
+    // 🗑️ Capture old image URLs before overwriting (edit reuse path)
+    NSArray<NSString *> *previousImageURLs = [accessory.imageURLsArray copy] ?: @[];
+    
     // Upload images in parallel
     dispatch_group_t uploadGroup = dispatch_group_create();
     NSMutableArray<NSString *> *downloadURLs = [NSMutableArray array];
@@ -682,9 +686,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 // Optimize image for upload
                 UIImage *optimizedImage = [self optimizeImageForUpload:image];
                 
-                // Compress to JPEG
-                CGFloat compressionQuality = 0.8; // Good balance of quality vs size
-                NSData *imageData = UIImageJPEGRepresentation(optimizedImage, compressionQuality);
+                // Encode as PNG (lossless)
+                NSData *imageData = UIImagePNGRepresentation(optimizedImage);
                 
                 if (!imageData || imageData.length == 0) {
                     NSLog(@"❌ Failed to compress image at index %ld", (long)i);
@@ -703,42 +706,36 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 }
                 
                 // Check file size (optional limit)
-                NSUInteger maxFileSize = 5 * 1024 * 1024; // 5MB
+                NSUInteger maxFileSize = 10 * 1024 * 1024; // 10MB for PNG
                 if (imageData.length > maxFileSize) {
-                    // Recompress with lower quality
-                    compressionQuality = 0.6;
-                    imageData = UIImageJPEGRepresentation(optimizedImage, compressionQuality);
+                    NSLog(@"❌ Image at index %ld is too large (%lu bytes)", (long)i, (unsigned long)imageData.length);
                     
-                    if (!imageData || imageData.length > maxFileSize) {
-                        NSLog(@"❌ Image at index %ld is too large after compression", (long)i);
-                        
-                        [arrayLock lock];
-                        [uploadErrors addObject:
-                         [NSError errorWithDomain:@"PetAccessoryManager"
-                                             code:-4
-                                         userInfo:@{NSLocalizedDescriptionKey: @"Image file too large",
-                                                    @"index": @(i),
-                                                    @"maxSize": @(maxFileSize)}]];
-                        [arrayLock unlock];
-                        
-                        dispatch_group_leave(uploadGroup);
-                        return;
-                    }
+                    [arrayLock lock];
+                    [uploadErrors addObject:
+                     [NSError errorWithDomain:@"PetAccessoryManager"
+                                         code:-4
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Image file too large",
+                                                @"index": @(i),
+                                                @"maxSize": @(maxFileSize)}]];
+                    [arrayLock unlock];
+                    
+                    dispatch_group_leave(uploadGroup);
+                    return;
                 }
                 
                 // Create filename with accessory ID and index
-                NSString *fileName = [NSString stringWithFormat:@"%@_%ld_%@.jpg",
+                NSString *fileName = [NSString stringWithFormat:@"%@_%ld_%@.png",
                                       accessory.accessoryID,
                                       (long)i,
                                       @((NSInteger)[[NSDate date] timeIntervalSince1970])];
                 
                 // Upload to Firebase Storage
-                NSString *storagePath = [NSString stringWithFormat:@"accessories/%@", fileName];
+                NSString *storagePath = [NSString stringWithFormat:@"petAccessories/%@", fileName];
                 FIRStorageReference *storageRef = [[FIRStorage storage].reference child:storagePath];
                 
                 // Prepare metadata
                 FIRStorageMetadata *firebaseMetadata = [[FIRStorageMetadata alloc] init];
-                firebaseMetadata.contentType = @"image/jpeg";
+                firebaseMetadata.contentType = @"image/png";
                 firebaseMetadata.customMetadata = @{
                     @"uploaded_by": accessory.ownerID,
                     @"accessory_id": accessory.accessoryID,
@@ -747,8 +744,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     @"image_width": @(image.size.width).stringValue,
                     @"image_height": @(image.size.height).stringValue,
                     @"file_size": @(imageData.length).stringValue,
-                    @"compression_quality": @(compressionQuality).stringValue,
-                    @"is_primary": (i == 0) ? @"true" : @"false" // Mark first image as primary
+                    @"is_primary": (i == 0) ? @"true" : @"false"
                 };
                 
                 // Upload with progress tracking (optional)
@@ -824,6 +820,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                   imageMetadata:imageMetadata
                                    uploadErrors:uploadErrors
                                 totalImageCount:images.count
+                              previousImageURLs:previousImageURLs
                                      completion:completion];
     });
 }
@@ -864,6 +861,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                             imageMetadata:(NSArray<NSDictionary *> *)imageMetadata
                              uploadErrors:(NSArray<NSError *> *)uploadErrors
                           totalImageCount:(NSInteger)totalImageCount
+                        previousImageURLs:(NSArray<NSString *> *)previousImageURLs
                                completion:(void (^)(NSError * _Nullable error))completion {
     
     // Calculate final price if needed
@@ -917,6 +915,10 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         } else {
             NSLog(@"✅ Successfully created accessory '%@' with %ld images",
                   accessory.name, (long)downloadURLs.count);
+            
+            // 🗑️ Clean up old images from Storage (for edit reuse path)
+            [PPFunc pp_deleteRemovedStorageImagesFromOldURLs:previousImageURLs
+                                                    newURLs:accessory.imageURLsArray];
             
             if (completion) {
                 completion(nil);
@@ -1156,9 +1158,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             // Perform upload on background queue
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 @autoreleasepool {
-                    // Compress image
-                    CGFloat compressionQuality = 0.8; // Adjust as needed
-                    NSData *imageData = UIImageJPEGRepresentation(image, compressionQuality);
+                    // Encode as PNG
+                    NSData *imageData = UIImagePNGRepresentation(image);
                     
                     if (!imageData || imageData.length == 0) {
                         NSLog(@"❌ Failed to compress image at index %ld", (long)i);
@@ -1176,7 +1177,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     }
                     
                     // Create filename
-                    NSString *fileName = [NSString stringWithFormat:@"%@_%ld_%@.jpg",
+                    NSString *fileName = [NSString stringWithFormat:@"%@_%ld_%@.png",
                                           accessory.accessoryID,
                                           (long)i,
                                           @((NSInteger)[[NSDate date] timeIntervalSince1970])];
@@ -1186,7 +1187,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     FIRStorageReference *storageRef = [[FIRStorage storage].reference child:storagePath];
                     
                     FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
-                    metadata.contentType = @"image/jpeg";
+                    metadata.contentType = @"image/png";
                     metadata.customMetadata = @{
                         @"uploaded_by": UserManager.sharedManager.currentUser.ID ?: @"unknown",
                         @"accessory_id": accessory.accessoryID,
@@ -1313,12 +1314,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     images:(NSArray<UIImage *> *)images
     completion:(void (^)(NSError * _Nullable error))completion {
         
-        // Early exit: if no new images, just update the accessory
-        if (images.count == 0) {
-            [self updateAccessoryInDatabase:accessory completion:completion];
-            return;
-        }
-        
         // Validate accessory
         if (!accessory || !accessory.accessoryID) {
             if (completion) {
@@ -1326,6 +1321,21 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                                code:-1
                                            userInfo:@{NSLocalizedDescriptionKey: @"Invalid accessory or missing ID"}]);
             }
+            return;
+        }
+        
+        // 🗑️ Fetch original image URLs from Firestore BEFORE uploading
+        [self pp_fetchImageURLsForAccessoryID:accessory.accessoryID completion:^(NSArray<NSString *> *originalURLsFromDB) {
+        
+        // Early exit: if no new images, just update the accessory
+        if (images.count == 0) {
+            [self updateAccessoryInDatabase:accessory completion:^(NSError * _Nullable error) {
+                if (!error) {
+                    [PPFunc pp_deleteRemovedStorageImagesFromOldURLs:originalURLsFromDB
+                                                            newURLs:accessory.imageURLsArray];
+                }
+                if (completion) completion(error);
+            }];
             return;
         }
         
@@ -1355,8 +1365,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             // Upload on background queue
             dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
                 @autoreleasepool {
-                    // Compress image
-                    NSData *imageData = UIImageJPEGRepresentation(image, 0.8);
+                    // Encode as PNG
+                    NSData *imageData = UIImagePNGRepresentation(image);
                     if (!imageData || imageData.length == 0) {
                         NSLog(@"❌ Failed to compress new image at index %ld", (long)i);
                         
@@ -1373,7 +1383,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     }
                     
                     // Create filename with timestamp to avoid collisions
-                    NSString *fileName = [NSString stringWithFormat:@"%@_new_%ld_%@.jpg",
+                    NSString *fileName = [NSString stringWithFormat:@"%@_new_%ld_%@.png",
                                           accessory.accessoryID,
                                           (long)i,
                                           @((NSInteger)[[NSDate date] timeIntervalSince1970])];
@@ -1383,7 +1393,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     FIRStorageReference *storageRef = [[FIRStorage storage].reference child:storagePath];
                     
                     FIRStorageMetadata *metadata = [[FIRStorageMetadata alloc] init];
-                    metadata.contentType = @"image/jpeg";
+                    metadata.contentType = @"image/png";
                     metadata.customMetadata = @{
                         @"uploaded_by": UserManager.sharedManager.currentUser.ID ?: @"unknown",
                         @"accessory_id": accessory.accessoryID,
@@ -1440,8 +1450,16 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                                      newDownloadURLs:newDownloadURLs
                                         uploadErrors:uploadErrors
                                       totalNewImages:images.count
-                                          completion:completion];
+                                          completion:^(NSError * _Nullable error) {
+                // 🗑️ Clean up orphaned images after successful DB save
+                if (!error || error.code == 1 /* warning-only */) {
+                    [PPFunc pp_deleteRemovedStorageImagesFromOldURLs:originalURLsFromDB
+                                                            newURLs:accessory.imageURLsArray];
+                }
+                if (completion) completion(error);
+            }];
         });
+        }]; // end pp_fetchImageURLsForAccessoryID block
     }
     
 #pragma mark - Helper Methods for Update
@@ -1635,7 +1653,37 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     }
     
     - (void)deleteAccessory:(NSString *)accessoryID completion:(void (^)(NSError * _Nullable error))completion {
-        [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:accessoryID] deleteDocumentWithCompletion:completion];
+        // 🗑️ Fetch image URLs before deleting the document so we can clean up Storage
+        [self pp_fetchImageURLsForAccessoryID:accessoryID completion:^(NSArray<NSString *> *imageURLs) {
+            [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:accessoryID]
+             deleteDocumentWithCompletion:^(NSError * _Nullable error) {
+                if (!error && imageURLs.count > 0) {
+                    [PPFunc pp_deleteStorageImagesForURLs:imageURLs];
+                }
+                if (completion) completion(error);
+            }];
+        }];
+    }
+    
+#pragma mark - 🗑️ Storage Cleanup Helpers
+    
+    - (void)pp_fetchImageURLsForAccessoryID:(NSString *)accessoryID
+                                completion:(void (^)(NSArray<NSString *> *urls))completion {
+        if (!accessoryID || accessoryID.length == 0) {
+            if (completion) completion(@[]);
+            return;
+        }
+        [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:accessoryID]
+         getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (error || !snapshot.exists) {
+                if (completion) completion(@[]);
+                return;
+            }
+            NSDictionary *data = snapshot.data;
+            NSArray *urls = data[@"imageURLsArray"];
+            if (![urls isKindOfClass:NSArray.class]) urls = @[];
+            if (completion) completion(urls);
+        }];
     }
     
     - (NSArray<PetAccessory *> *)filterByMainCategory:(NSInteger)mainCatID subCategory:(NSInteger)subCatID {

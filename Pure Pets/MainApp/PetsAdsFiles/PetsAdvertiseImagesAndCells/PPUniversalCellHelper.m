@@ -447,6 +447,7 @@ NS_ASSUME_NONNULL_BEGIN
     imageView.layer.masksToBounds = YES;
     imageView.contentMode = UIViewContentModeScaleAspectFill;
     imageView.clipsToBounds = YES;
+    imageView.backgroundColor = UIColor.secondarySystemBackgroundColor;
     return imageView;
 }
 
@@ -454,7 +455,7 @@ NS_ASSUME_NONNULL_BEGIN
 {
     UILabel *priceLabel = [UILabel new];
     priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    priceLabel.font = [GM boldFontWithSize:20];
+    priceLabel.font = [GM boldFontWithSize:18];
     priceLabel.textColor = UIColor.labelColor;
     return priceLabel;
 }
@@ -516,16 +517,16 @@ NS_ASSUME_NONNULL_BEGIN
 - (UILabel *)createDiscountValueLabel
 {
     PPInsetLabel *discountValueLabel = [PPInsetLabel new];
-    discountValueLabel.textInsets = UIEdgeInsetsMake(4, 8, 4, 8);
+    discountValueLabel.textInsets = UIEdgeInsetsMake(4, 7, 4, 7);
     discountValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    discountValueLabel.font = [GM boldFontWithSize:11];
+    discountValueLabel.font = [GM boldFontWithSize:10.5];
     discountValueLabel.textColor =[UIColor whiteColor];
     discountValueLabel.backgroundColor = AppPrimaryClr;
-    discountValueLabel.layer.cornerRadius = 12;
+    discountValueLabel.layer.cornerRadius = 10;
     discountValueLabel.layer.masksToBounds = YES;
     discountValueLabel.textAlignment = NSTextAlignmentCenter;
     NSLayoutConstraint *h =
-    [discountValueLabel.heightAnchor constraintEqualToConstant:24.0];
+    [discountValueLabel.heightAnchor constraintEqualToConstant:22.0];
     h.priority = UILayoutPriorityDefaultHigh;
     h.active = YES;
     [discountValueLabel sizeToFit];
@@ -537,7 +538,7 @@ NS_ASSUME_NONNULL_BEGIN
     PPInsetLabel *discountLabel = [PPInsetLabel new];
     discountLabel.textInsets = UIEdgeInsetsMake(1, 2, 1, 2);
     discountLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    discountLabel.font = [GM MidFontWithSize:13];
+    discountLabel.font = [GM MidFontWithSize:12];
     discountLabel.textColor =  UIColor.secondaryLabelColor;
     discountLabel.backgroundColor = [UIColor clearColor];
     discountLabel.layer.cornerRadius = 14;
@@ -589,16 +590,16 @@ NS_ASSUME_NONNULL_BEGIN
     qtyLabel.font = [GM boldFontWithSize:11];
     qtyLabel.textAlignment = NSTextAlignmentCenter;
     qtyLabel.textColor = UIColor.labelColor;
-    qtyLabel.textInsets = UIEdgeInsetsMake(4, 8, 4, 8);
-    qtyLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.88];
+    qtyLabel.textInsets = UIEdgeInsetsMake(3, 7, 3, 7);
+    qtyLabel.backgroundColor = UIColor.secondarySystemBackgroundColor;
     NSLayoutConstraint *h =
-    [qtyLabel.heightAnchor constraintEqualToConstant:24];
+    [qtyLabel.heightAnchor constraintEqualToConstant:22];
     h.priority = UILayoutPriorityDefaultHigh;
     h.active = YES;
-    qtyLabel.layer.cornerRadius = 12;
+    qtyLabel.layer.cornerRadius = 10;
     qtyLabel.layer.masksToBounds = YES;
-    qtyLabel.layer.borderWidth = 1.0;
-    qtyLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
+    qtyLabel.layer.borderWidth = 0.8;
+    qtyLabel.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
     return qtyLabel ;
 }
 
@@ -620,11 +621,11 @@ NS_ASSUME_NONNULL_BEGIN
 {
     UIView *stepperView = [UIView new];
     stepperView.translatesAutoresizingMaskIntoConstraints = NO;
-    stepperView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    stepperView.backgroundColor = UIColor.secondarySystemBackgroundColor;
     stepperView.layer.cornerRadius = 18;
     stepperView.layer.masksToBounds = YES;
     stepperView.layer.borderWidth = 1.0;
-    stepperView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
+    stepperView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.16].CGColor;
     stepperView.alpha = 0.0;
     stepperView.hidden = YES;
     return stepperView;

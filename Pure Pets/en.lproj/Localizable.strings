@@ -995,6 +995,9 @@
 "in stock" = "in stock";
 "leftInStock" = "left in stock"; // for consistency if you reference this key
 "inStock" = "in stock";
+"InCart" = "In cart";
+"ItemAddedToCart" = "Item added to cart";
+"SaveAmountPrefix" = "Save";
 
 "Rials" = "QAR"; // adjust currency symbol as needed
 "Discount" = "Discount";
@@ -1828,6 +1831,19 @@
 "payment_qib_gateway_desc" = "Pay securely via QIB gateway";
 "payment_cash_delivery_desc" = "Pay when you receive your order";
 "payment_header_pay_through" = "Pay through";
+"payment_screen_eyebrow" = "Secure checkout";
+"payment_screen_title" = "Choose your payment method";
+"payment_screen_subtitle" = "Review your delivery address, pick the payment option that fits you, and finish checkout with confidence.";
+"payment_section_delivery" = "Delivery address";
+"payment_section_delivery_subtitle" = "This address will be used for shipping and checkout validation.";
+"payment_section_methods_title" = "Payment options";
+"payment_section_methods_subtitle" = "Saved methods and built-in checkout options";
+"payment_add_method" = "Add method";
+"payment_add_method_subtitle" = "Save a new card for faster checkout next time.";
+"payment_add_method_badge" = "Faster checkout";
+"payment_method_selected_badge" = "Selected";
+"payment_method_builtin_badge" = "Built in";
+"payment_method_saved_badge" = "Saved method";
 "payment_builtin_remove_blocked" = "This payment method is built in and cannot be removed.";
 "payment_builtin_edit_blocked" = "This payment method is provided by default and does not require editing.";
 "payment_confirm_title" = "Confirm Payment";
@@ -1867,6 +1883,8 @@
 "payment_qib_sdk_init_failed" = "Unable to initialize QIB SDK session.";
 "payment_qib_sdk_error" = "Payment gateway encountered an error. Please try again.";
 "payment_cancelled_by_user" = "Payment cancelled.";
+"payment_cancelled_title" = "Payment Cancelled";
+"payment_cancelled_message" = "Your payment was cancelled. If you still want to complete your purchase, please choose another payment method.";
 "payment_create_session_failed" = "Failed to create payment session.";
 "payment_load_methods_failed" = "Failed to load payment methods.";
 "auth_register_required_subtitle" = "You need to register to continue.";

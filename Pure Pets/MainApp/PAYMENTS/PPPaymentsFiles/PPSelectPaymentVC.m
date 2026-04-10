@@ -32,52 +32,41 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 #pragma mark - ViewController
 
 @interface PPSelectPaymentVC ()
-@property (nonatomic, strong,nullable) UIVisualEffectView *dimOverlay;
-@property (nonatomic, strong) UIStackView *stackView;
+@property (nonatomic, strong, nullable) UIVisualEffectView *dimOverlay;
 @property (nonatomic, strong) UILabel *collectionHintLabel;
 @property (nonatomic, strong) NSArray<PPAddressModel *> *Addresses;
 @property (nonatomic, strong) PPAddressModel *selectedAddress;
 @property (nonatomic, strong) PPCheckoutCoordinator *checkoutCoordinator;
 @property (nonatomic, assign) BOOL isCheckoutInProgress;
 @property (nonatomic, strong) id<FIRListenerRegistration> addressesListener;
-@property (nonatomic, strong) PPAddressPickerView *locView;;
+@property (nonatomic, strong) PPAddressPickerView *locView;
+@property (nonatomic, strong) UIView *heroCardView;
+@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
+@property (nonatomic, strong) UILabel *heroEyebrowLabel;
+@property (nonatomic, strong) UILabel *heroTitleLabel;
+@property (nonatomic, strong) UILabel *heroSubtitleLabel;
 @end
 
 @implementation PPSelectPaymentVC
-- (void)setPaymentFormVC:(PPPaymentFormViewController *)paymentFormVC
-{
-    PPPaymentFormViewController *paymentFormVCC = [PPPaymentFormViewController new]  ;
-    paymentFormVCC.mode = PPPaymentFormModeAdd;
-    paymentFormVCC.isEditingExisting = NO;
-    [PPFunc presentSheetFrom:paymentFormVC sheetVC:self detentStyle:PPSheetDetentStyleSemiLargAndLarge];
-}
+
 - (void)viewDidLoad {
     [super viewDidLoad];
-    // @property (nonatomic, strong, nullable) PPPaymentFormViewController *paymentFormVC;
-    
+
     self.instrumentManager = [UserPaymentInstrumentManager sharedManager];
     self.availableMethods = [PaymentMethod defaultMethods];
-    
-    NSLog(@" self.availableMethod %@" , self.availableMethods);
     self.userInstruments = @[];
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
-    
     self.title = kLang(@"SelectPaymentMethod");
-    
-    self.instrumentManager = [UserPaymentInstrumentManager sharedManager];
-    self.userInstruments = @[];
-    
+    self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
+
+    [self pp_configureNavigationChrome];
     [self setlocViewViewAtTop];
+    [self pp_setupHeroSection];
     [self setSummuryViewAtBottom];
-    
-    
     [self setupPaymentCollection];
     [self pp_applyDefaultSelectionIfNeeded];
     [self pp_refreshCheckoutCallToAction];
     [self fetchUserPaymentInstruments];
-    
-    
-    [self setupHint];
     [self pp_refreshLatestAddressesForCheckout:nil];
 
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -96,14 +85,33 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
                                              selector:@selector(pp_handlePricingConfigurationDidChangeNotification:)
                                                  name:kCartPricingConfigurationDidChangeNotification
                                                object:nil];
-    
 }
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+
+    self.heroGradientLayer.frame = self.heroCardView.bounds;
+    if (!CGRectIsEmpty(self.heroCardView.bounds)) {
+        self.heroCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroCardView.bounds
+                                                                        cornerRadius:self.heroCardView.layer.cornerRadius].CGPath;
+    }
+}
+
+- (void)pp_configureNavigationChrome
+{
+    UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil
+                                                          imageName:PPChevronName
+                                                             target:self
+                                                             action:@selector(onBack:)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
+}
+
 - (void)setSummuryViewAtBottom
 {
     self.summaryView = [[BBCheckoutSummaryView alloc] init];
-    
     [self.view addSubview:self.summaryView];
-    //[self.summaryView.heightAnchor constraintGreaterThanOrEqualToConstant:200].active = YES;
+    self.summaryView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
@@ -120,11 +128,9 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.summaryView.showDetails = !showShowCollectionPreview ;
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
     self.summaryView.showsItemsPreview = showShowCollectionPreview;
-    //[self.summaryView setCardBackgroundImage:PPImage(@"5555")];
     [self.summaryView setCheckoutBTNTitle:kLang(@"payment_pay_now") image:[UIImage pp_symbolNamed:@"creditcard.fill" pointSize:18  //.fill.and.123
                                                                                    weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
-    
-    
+
     if ([CartManager sharedManager].cartItems.count > 0) {
         [_summaryView pp_startTrustBannerShimmer];
     }
@@ -132,31 +138,141 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
 - (void)setlocViewViewAtTop
 {
-    
-    UILabel *locationHeaderLabel = [[UILabel alloc]init];
-    locationHeaderLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    locationHeaderLabel.text = kLang(@"");
-    locationHeaderLabel.font = [GM MidFontWithSize:14.0];
-    locationHeaderLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    [self.view addSubview:locationHeaderLabel];
-    
-    [locationHeaderLabel sizeToFit];
-    
     self.locView = [PPAddressPickerView showInViewController:self width:self.view.hx_w - 32];
     [self.locView setAddressText:kLang(@"PleaseSelectDeliveryLocation")];
     __weak typeof(self) weakSelf = self;
     self.locView.onPickAddress = ^{
         [weakSelf pp_presentAddressPickerOrPrompt];
     };
-    
-    [NSLayoutConstraint activateConstraints:@[
-        [locationHeaderLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-        [locationHeaderLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [locationHeaderLabel.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:16],
-    ]];
     [self.locView expandAndLock];
     [self pp_setupInitialAddressState];
-    
+}
+
+- (void)pp_setupHeroSection
+{
+    self.heroCardView = [[UIView alloc] init];
+    self.heroCardView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroCardView.layer.cornerRadius = 30.0;
+    self.heroCardView.layer.cornerCurve = kCACornerCurveContinuous;
+    self.heroCardView.layer.borderWidth = 1.0;
+    self.heroCardView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    self.heroCardView.layer.shadowColor = [UIColor blackColor].CGColor;
+    self.heroCardView.layer.shadowOpacity = 0.08;
+    self.heroCardView.layer.shadowRadius = 18.0;
+    self.heroCardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    self.heroCardView.clipsToBounds = NO;
+    [self.view addSubview:self.heroCardView];
+
+    self.heroGradientLayer = [CAGradientLayer layer];
+    self.heroGradientLayer.colors = @[
+        (id)[AppPrimaryClr   colorWithAlphaComponent:0.16].CGColor,
+        (id)[AppForgroundColr   colorWithAlphaComponent:0.98].CGColor,
+        (id)[AppForgroundColr   colorWithAlphaComponent:1.0].CGColor
+    ];
+    self.heroGradientLayer.locations = @[@0.0, @0.45, @1.0];
+    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.heroGradientLayer.cornerRadius = 30.0;
+    [self.heroCardView.layer insertSublayer:self.heroGradientLayer atIndex:0];
+
+    UIView *eyebrowContainer = [[UIView alloc] init];
+    eyebrowContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    eyebrowContainer.backgroundColor = [AppPrimaryClr ?: UIColor.brownColor colorWithAlphaComponent:0.10];
+    eyebrowContainer.layer.cornerRadius = 14.0;
+    eyebrowContainer.layer.cornerCurve = kCACornerCurveContinuous;
+    [self.heroCardView addSubview:eyebrowContainer];
+
+    self.heroEyebrowLabel = [[UILabel alloc] init];
+    self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroEyebrowLabel.font = [GM MidFontWithSize:12.0];
+    self.heroEyebrowLabel.textColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.heroEyebrowLabel.text = kLang(@"payment_screen_eyebrow");
+    [eyebrowContainer addSubview:self.heroEyebrowLabel];
+
+    UIView *iconSurface = [[UIView alloc] init];
+    iconSurface.translatesAutoresizingMaskIntoConstraints = NO;
+    iconSurface.backgroundColor = [AppForgroundColr ?: UIColor.whiteColor colorWithAlphaComponent:0.75];
+    iconSurface.layer.cornerRadius = 22.0;
+    iconSurface.layer.cornerCurve = kCACornerCurveContinuous;
+    [self.heroCardView addSubview:iconSurface];
+
+    UIImageView *heroIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"creditcard.and.123"]];
+    heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    heroIconView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    heroIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [iconSurface addSubview:heroIconView];
+
+    self.heroTitleLabel = [[UILabel alloc] init];
+    self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTitleLabel.font = [GM boldFontWithSize:28.0];
+    self.heroTitleLabel.textColor = UIColor.labelColor;
+    self.heroTitleLabel.numberOfLines = 2;
+    self.heroTitleLabel.text = kLang(@"payment_screen_title");
+    [self.heroCardView addSubview:self.heroTitleLabel];
+
+    self.heroSubtitleLabel = [[UILabel alloc] init];
+    self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSubtitleLabel.font = [GM MidFontWithSize:14.0];
+    self.heroSubtitleLabel.textColor = UIColor.secondaryLabelColor;
+    self.heroSubtitleLabel.numberOfLines = 0;
+    self.heroSubtitleLabel.text = kLang(@"payment_screen_subtitle");
+    [self.heroCardView addSubview:self.heroSubtitleLabel];
+
+    UILabel *deliveryLabel = [[UILabel alloc] init];
+    deliveryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    deliveryLabel.font = [GM boldFontWithSize:16.0];
+    deliveryLabel.textColor = UIColor.labelColor;
+    deliveryLabel.text = kLang(@"payment_section_delivery");
+    [self.heroCardView addSubview:deliveryLabel];
+
+    UILabel *deliverySubtitleLabel = [[UILabel alloc] init];
+    deliverySubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    deliverySubtitleLabel.font = [GM MidFontWithSize:13.0];
+    deliverySubtitleLabel.textColor = UIColor.secondaryLabelColor;
+    deliverySubtitleLabel.numberOfLines = 2;
+    deliverySubtitleLabel.text = kLang(@"payment_section_delivery_subtitle");
+    [self.heroCardView addSubview:deliverySubtitleLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heroCardView.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:18.0],
+        [self.heroCardView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
+        [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
+
+        [eyebrowContainer.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:20.0],
+        [eyebrowContainer.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
+
+        [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.topAnchor constant:7.0],
+        [self.heroEyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:-7.0],
+        [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowContainer.leadingAnchor constant:12.0],
+        [self.heroEyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowContainer.trailingAnchor constant:-12.0],
+
+        [iconSurface.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
+        [iconSurface.centerYAnchor constraintEqualToAnchor:eyebrowContainer.centerYAnchor],
+        [iconSurface.widthAnchor constraintEqualToConstant:44.0],
+        [iconSurface.heightAnchor constraintEqualToConstant:44.0],
+
+        [heroIconView.centerXAnchor constraintEqualToAnchor:iconSurface.centerXAnchor],
+        [heroIconView.centerYAnchor constraintEqualToAnchor:iconSurface.centerYAnchor],
+        [heroIconView.widthAnchor constraintEqualToConstant:22.0],
+        [heroIconView.heightAnchor constraintEqualToConstant:22.0],
+
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:16.0],
+        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
+        [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
+
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:10.0],
+        [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
+        [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroTitleLabel.trailingAnchor],
+
+        [deliveryLabel.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:18.0],
+        [deliveryLabel.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
+        [deliveryLabel.trailingAnchor constraintEqualToAnchor:self.heroTitleLabel.trailingAnchor],
+
+        [deliverySubtitleLabel.topAnchor constraintEqualToAnchor:deliveryLabel.bottomAnchor constant:6.0],
+        [deliverySubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
+        [deliverySubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroTitleLabel.trailingAnchor],
+        [deliverySubtitleLabel.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:-20.0],
+    ]];
 }
 
 - (NSString *)pp_trimmedAddressString:(id)value
@@ -362,9 +478,9 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionVertical;
-    layout.minimumInteritemSpacing = 16;
-    layout.minimumLineSpacing = 16;
-    layout.sectionInset = UIEdgeInsetsMake(16, 16, 16, 16);
+    layout.minimumInteritemSpacing = 0.0;
+    layout.minimumLineSpacing = 14.0;
+    layout.sectionInset = UIEdgeInsetsMake(12.0, 0.0, 24.0, 0.0);
     layout.estimatedItemSize = CGSizeZero;
     
     self.paymentCollection = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
@@ -372,6 +488,8 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.paymentCollection.delegate = self;
     self.paymentCollection.dataSource = self;
     self.paymentCollection.backgroundColor = UIColor.clearColor;
+    self.paymentCollection.alwaysBounceVertical = YES;
+    self.paymentCollection.showsVerticalScrollIndicator = NO;
     [self.paymentCollection registerClass:[PPPaymentMethodCell class] forCellWithReuseIdentifier:@"PaymentMethodCell"];
     [self.paymentCollection registerClass:[PPPaymentSectionHeaderView class]
                forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
@@ -385,10 +503,10 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     [self.view addSubview:self.paymentCollection];
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:16],
+        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:18.0],
         [self.paymentCollection.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.paymentCollection.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.paymentCollection.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-200]
+        [self.paymentCollection.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-10.0]
     ]];
     
     [self.locView attachToScrollView:self.paymentCollection];
@@ -429,37 +547,22 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
 -(void)showPaymentSheetFull:(BOOL)showFull
 {
-    
-    PPPaymentFormViewController *paymentFormVCC = [PPPaymentFormViewController new]  ;
-    paymentFormVCC.mode = PPPaymentFormModeAdd;
-    paymentFormVCC.isEditingExisting = NO;
-    //[PPFunc presentSheetFrom:paymentFormVCC sheetVC:self detentStyle:PPSheetDetentStyleSemiLargAndLarge];
-    NSLog(@"NavigationController pushViewController paymentFormVCC");
-    //[PPFunc presentSheetFrom:self.paymentFormVC sheetVC:self detentStyle:PPSheetDetentStyleSemiLargAndLarge];   //
-    [self.navigationController pushViewController:paymentFormVCC animated:YES];
+    (void)showFull;
+    PPPaymentFormViewController *paymentFormVC = [PPPaymentFormViewController new];
+    paymentFormVC.mode = PPPaymentFormModeAdd;
+    paymentFormVC.isEditingExisting = NO;
+    self.paymentFormVC = paymentFormVC;
+    [self.navigationController pushViewController:paymentFormVC animated:YES];
 }
 
 - (void)setupHint
 {
     self.collectionHintLabel = [[UILabel alloc] init];
-        self.collectionHintLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.collectionHintLabel.font = [GM MidFontWithSize:14];
-        self.collectionHintLabel.textColor = UIColor.secondaryLabelColor;
-        self.collectionHintLabel.textAlignment = NSTextAlignmentCenter;
-        self.collectionHintLabel.numberOfLines = 2;
-        /*
-         [self.view addSubview:self.collectionHintLabel];
-         
-         // Layout below your paymentCollection
-         [NSLayoutConstraint activateConstraints:@[
-             [self.collectionHintLabel.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-8],
-             [self.collectionHintLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-             [self.collectionHintLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-             [self.collectionHintLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-8]
-         ]];
-         
-         [self updateCollectionHintText];
-         */
+    self.collectionHintLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.collectionHintLabel.font = [GM MidFontWithSize:14];
+    self.collectionHintLabel.textColor = UIColor.secondaryLabelColor;
+    self.collectionHintLabel.textAlignment = NSTextAlignmentCenter;
+    self.collectionHintLabel.numberOfLines = 2;
 }
 - (void)updateCollectionHintText {
     if (self.userInstruments.count == 0) {
@@ -739,7 +842,9 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     } else if (result == PPCheckoutResultCancelled) {
         PPORDERLog(@"Payment cancelled by user | orderId=%@", order.orderId ?: @"");
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
-        [PPHUD showInfo:kLang(@"payment_cancelled_by_user")];
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"payment_cancelled_title")
+                         subtitle:kLang(@"payment_cancelled_message")];
 
     } else {
         // PPCheckoutResultFailed
@@ -794,6 +899,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_configureNavigationChrome];
     [[CartManager sharedManager] refreshPricingConfiguration];
     [self.summaryView setCheckoutLoading:self.isCheckoutInProgress];
     [_summaryView pp_startTrustBannerShimmer];

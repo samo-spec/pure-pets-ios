@@ -519,8 +519,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (NSString *)writeDraftImage:(UIImage *)image named:(NSString *)fileName directory:(NSString *)directory {
     if (!image || fileName.length == 0 || directory.length == 0) return nil;
-    NSData *data = UIImageJPEGRepresentation(image, 0.88);
-    if (!data) data = UIImagePNGRepresentation(image);
+    NSData *data = UIImagePNGRepresentation(image);
     if (!data) return nil;
     NSString *path = [directory stringByAppendingPathComponent:fileName];
     return [data writeToFile:path atomically:YES] ? path : nil;
@@ -531,7 +530,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     NSMutableArray<NSString *> *paths = [NSMutableArray array];
     [images enumerateObjectsUsingBlock:^(UIImage *img, NSUInteger idx, BOOL *stop) {
         (void)stop;
-        NSString *fn = [NSString stringWithFormat:@"%@_%lu.jpg", prefix, (unsigned long)idx];
+        NSString *fn = [NSString stringWithFormat:@"%@_%lu.png", prefix, (unsigned long)idx];
         NSString *p = [self writeDraftImage:img named:fn directory:directory];
         if (p.length) [paths addObject:p];
     }];

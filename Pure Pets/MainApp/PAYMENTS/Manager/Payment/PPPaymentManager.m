@@ -712,11 +712,21 @@ static void PPQIBTryLoadFrameworkBundle(void)
     }
 
     NSDictionary *safeResponse = [response isKindOfClass:NSDictionary.class] ? response : @{};
-    if (!PPPaymentResponseHasTerminalResult(safeResponse)) {
-        PPORDERLog(@"Ignoring non-terminal QIB callback | status=%@ | keys=%@",
-                   PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"",
+
+    // When the QIB SDK returns a non-terminal response (empty dict, no
+    // recognizable status, no transactionId) it almost always means the user
+    // tapped "Cancel" inside the SDK UI and the SDK dismissed itself without
+    // setting a proper cancel status.  Treat this as a user cancellation
+    // instead of silently ignoring it (which would leave the app stuck in a
+    // loading state until the checkout timeout fires).
+    BOOL isTerminal = PPPaymentResponseHasTerminalResult(safeResponse);
+    BOOL looksLikeCancellation = PPPaymentResponseIsCancellation(safeResponse);
+
+    if (!isTerminal && !looksLikeCancellation) {
+        PPORDERLog(@"QIB returned non-terminal response — treating as user cancellation | status=%@ | keys=%@",
+                   PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"(empty)",
                    safeResponse.allKeys ?: @[]);
-        return;
+        looksLikeCancellation = YES;
     }
 
     // Capture completion and reset BEFORE invoking the callback.
@@ -724,9 +734,9 @@ static void PPQIBTryLoadFrameworkBundle(void)
     PPPaymentCompletion capturedCompletion = self.completion;
     [self reset];
 
-    if (PPPaymentResponseIsCancellation(safeResponse)) {
+    if (looksLikeCancellation) {
         PPORDERLog(@"QIB payment cancelled by user | status=%@",
-                   PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"");
+                   PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"(empty)");
         NSError *cancelError =
         [NSError errorWithDomain:NSCocoaErrorDomain
                             code:NSUserCancelledError

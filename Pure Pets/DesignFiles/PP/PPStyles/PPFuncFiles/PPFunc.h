@@ -56,8 +56,17 @@ NS_ASSUME_NONNULL_BEGIN
                             inNavItem:(UINavigationItem *)navItem
                inNavigationController:(UINavigationController *)navController
                             animated:(BOOL)animated;
+#pragma mark - 🗑️ Firebase Storage Cleanup
+
+/// Deletes images from Firebase Storage given their download URLs.
+/// Best-effort: failures are logged but never propagated.
++ (void)pp_deleteStorageImagesForURLs:(NSArray<NSString *> *)urls;
+
+/// Computes the set difference (oldURLs − newURLs) and deletes removed images.
++ (void)pp_deleteRemovedStorageImagesFromOldURLs:(NSArray<NSString *> *)oldURLs
+                                         newURLs:(NSArray<NSString *> *)newURLs;
+
 @end
-// ==================== END: PPFunc ======================
 
 
 

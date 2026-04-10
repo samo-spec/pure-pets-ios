@@ -239,8 +239,11 @@ BOOL const isPPDebugMode = NO;
 // PetAccessory.m
 + (instancetype)deepCopyFrom:(PetAccessory *)source {
     PetAccessory *copy = [[PetAccessory alloc] init];
+    copy.accessoryID = [source.accessoryID copy];
     copy.name = [source.name copy];
     copy.price = [source.price copy];
+    copy.discountPercent = [source.discountPercent copy];
+    copy.discountAmount = [source.discountAmount copy];
     copy.desc = [source.desc copy];
     copy.blurHash = [source.blurHash copy];
     copy.petMainCategoryID = source.petMainCategoryID;
@@ -252,6 +255,9 @@ BOOL const isPPDebugMode = NO;
     copy.ownerID = [source.ownerID copy];
     copy.createdAt = [source.createdAt copy];
     copy.expiryDate = [source.expiryDate copy];
+    copy.quantity = source.quantity;
+    copy.isNew = source.isNew;
+    copy.hasOffer = source.hasOffer;
     return copy;
 }
 

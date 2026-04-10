@@ -6,6 +6,7 @@
 #import "AdoptPetManager.h"
 #import "AdoptPetModel.h"
 #import "PPImageUploadValidator.h"
+#import "PPFunc.h"
 @import Firebase;
 @import FirebaseStorage;
 
@@ -217,11 +218,20 @@ static NSInteger const kFirestoreInQueryLimit = 10;
         return;
     }
 
+    // 🗑️ Fetch image URLs before deleting so we can clean up Storage
     [[[self petsCollection] documentWithPath:documentID]
-     deleteDocumentWithCompletion:^(NSError * _Nullable error) {
-        if (completion) {
-            completion(error == nil, error);
-        }
+     getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSArray *imageURLs = snapshot.data[@"imageURLs"];
+        
+        [[[self petsCollection] documentWithPath:documentID]
+         deleteDocumentWithCompletion:^(NSError * _Nullable deleteError) {
+            if (!deleteError && [imageURLs isKindOfClass:NSArray.class] && imageURLs.count > 0) {
+                [PPFunc pp_deleteStorageImagesForURLs:imageURLs];
+            }
+            if (completion) {
+                completion(deleteError == nil, deleteError);
+            }
+        }];
     }];
 }
 
@@ -278,6 +288,9 @@ static NSInteger const kFirestoreInQueryLimit = 10;
         }
     }
 
+    // 🗑️ Capture old image URLs before uploading new ones
+    NSArray<NSString *> *previousImageURLs = [model.imageURLs copy] ?: @[];
+    
     __weak typeof(self) weakSelf = self;
     [self pp_uploadImages:(images ?: @[]) forDocumentID:documentID completion:^(NSArray<NSString *> * _Nullable urls, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf ?: self;
@@ -297,6 +310,11 @@ static NSInteger const kFirestoreInQueryLimit = 10;
          setData:[model toFirestoreDictionary]
          merge:YES
          completion:^(NSError * _Nullable setError) {
+            if (!setError) {
+                // 🗑️ Clean up old images that were replaced
+                [PPFunc pp_deleteRemovedStorageImagesFromOldURLs:previousImageURLs
+                                                        newURLs:model.imageURLs];
+            }
             if (completion) {
                 completion(setError == nil, setError);
             }

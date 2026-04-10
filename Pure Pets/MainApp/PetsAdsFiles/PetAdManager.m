@@ -12,6 +12,7 @@
 #import <CoreLocation/CoreLocation.h>
 #import <math.h>
 #import <float.h>
+#import "PPFunc.h"
 
 static NSString * const PPAdManagerErrorDomain = @"PetAdManagerError";
 static NSString * const PPGeoHashAlphabet = @"0123456789bcdefghjkmnpqrstuvwxyz";
@@ -997,8 +998,17 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
         return;
     }
     
+    // 🗑️ Capture image URLs before deleting so we can clean up Storage
+    NSMutableArray<NSString *> *imageURLs = [NSMutableArray array];
+    for (PetImageItem *item in ad.imageItems) {
+        if (item.url.length > 0) [imageURLs addObject:item.url];
+    }
+    
     [[[self.db collectionWithPath:kPetAdsCollection] documentWithPath:ad.adID]
      deleteDocumentWithCompletion:^(NSError *error) {
+        if (!error && imageURLs.count > 0) {
+            [PPFunc pp_deleteStorageImagesForURLs:imageURLs];
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(error);
         });

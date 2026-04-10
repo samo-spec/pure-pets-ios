@@ -197,50 +197,18 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 - (UICollectionReusableView *)collectionView:(UICollectionView *)collectionView
            viewForSupplementaryElementOfKind:(NSString *)kind
                                  atIndexPath:(NSIndexPath *)indexPath {
-    
-    if (kind == UICollectionElementKindSectionFooter) {
-        UICollectionReusableView *footer = [collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                                                              withReuseIdentifier:@"FooterView"
-                                                                                     forIndexPath:indexPath];
-        for (UIView *v in footer.subviews) [v removeFromSuperview];
-        
-        UILabel *label = [[UILabel alloc] init];
-        label.translatesAutoresizingMaskIntoConstraints = NO;
-        label.font = [GM MidFontWithSize:14];
-        label.textColor = UIColor.secondaryLabelColor;
-        label.textAlignment = NSTextAlignmentCenter;
-        label.numberOfLines = 2;
-        label.text = (self.userInstruments.count == 0)
-        ? kLang(@"PaymentHintAddNew")
-        : kLang(@"PaymentHintMoreOptions");
-        
-        [footer addSubview:label];
-        [NSLayoutConstraint activateConstraints:@[
-            [label.leadingAnchor constraintEqualToAnchor:footer.leadingAnchor constant:18],
-            [label.trailingAnchor constraintEqualToAnchor:footer.trailingAnchor constant:-18],
-            [label.topAnchor constraintEqualToAnchor:footer.topAnchor constant:4],
-            [label.bottomAnchor constraintEqualToAnchor:footer.bottomAnchor constant:-4],
-        ]];
-        
-        if (@available(iOS 18.0, *)) {
-            label.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.8];
-            label.layer.cornerRadius = 12;
-            label.layer.masksToBounds = YES;
-            
-            
-        }
-        
-        
-        return footer;
-    }
-    
-    if (kind == UICollectionElementKindSectionHeader) {
+    if ([kind isEqualToString:UICollectionElementKindSectionHeader]) {
         PPPaymentSectionHeaderView *header =
         [collectionView dequeueReusableSupplementaryViewOfKind:kind
                                            withReuseIdentifier:@"PPPaymentSectionHeaderView"
                                                   forIndexPath:indexPath];
-        
-        [header configureWithTitle:kLang(@"payment_header_pay_through")];
+        [header configureWithTitle:kLang(@"payment_section_methods_title")
+                          subtitle:kLang(@"payment_section_methods_subtitle")
+                       actionTitle:kLang(@"payment_add_method")];
+        __weak typeof(self) weakSelf = self;
+        header.actionHandler = ^{
+            [weakSelf showPaymentSheetFull:YES];
+        };
         return header;
     }
     
@@ -250,7 +218,9 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
 - (CGSize)collectionView:(UICollectionView *)collectionView
                   layout:(UICollectionViewLayout *)collectionViewLayout
 referenceSizeForFooterInSection:(NSInteger)section {
-    return CGSizeMake(collectionView.bounds.size.width, 40);
+    (void)collectionViewLayout;
+    (void)section;
+    return CGSizeZero;
 }
 
 #pragma mark - Section Header
@@ -258,28 +228,33 @@ referenceSizeForFooterInSection:(NSInteger)section {
 - (CGSize)collectionView:(UICollectionView *)collectionView
                   layout:(UICollectionViewLayout *)collectionViewLayout
 referenceSizeForHeaderInSection:(NSInteger)section {
-    return CGSizeMake(collectionView.bounds.size.width, 44);
+    (void)collectionViewLayout;
+    (void)section;
+    return CGSizeMake(collectionView.bounds.size.width, 78.0);
 }
 
 #pragma mark - CollectionView Data Source
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    // TEMPORARILY HIDDEN: "Add New Payment Method" cell
-    // Was: ...count + 1;
-    return [self pp_displayedInstruments].count; // TEMP: was count + 1
+    (void)collectionView;
+    (void)section;
+    return [self pp_displayedInstruments].count + 1;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     PPPaymentMethodCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PaymentMethodCell" forIndexPath:indexPath];
     cell.delegate = self;
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
+    NSInteger addNewIndex = displayed.count;
 
-    // TEMPORARILY HIDDEN: "Add New" cell branch removed (was at addNewIndex = displayed.count)
+    if (indexPath.item == addNewIndex) {
+        [cell configureAsAddNewIndexPath:indexPath];
+        return cell;
+    }
 
     NSInteger modelIndex = indexPath.item;
     if (modelIndex < 0 || modelIndex >= (NSInteger)displayed.count) {
         [cell configureAsAddNewIndexPath:indexPath];
-        [cell updateSelectionState:NO animated:NO];
         return cell;
     }
     UserPaymentInstrument *instrument = displayed[modelIndex];
@@ -294,7 +269,6 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     }
     if (!method) {
         [cell configureAsAddNewIndexPath:indexPath];
-        [cell updateSelectionState:NO animated:NO];
         return cell;
     }
     [cell configureWithInstrument:instrument method:method indexPath:indexPath];
@@ -321,9 +295,11 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 #pragma mark - CollectionView Delegate
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
-
-    // TEMPORARILY HIDDEN: "Add New" tap handler
-    // Was: if (indexPath.item == addNewIndex) { [self showPaymentSheetFull:YES]; }
+    NSInteger addNewIndex = displayed.count;
+    if (indexPath.item == addNewIndex) {
+        [self showPaymentSheetFull:YES];
+        return;
+    }
 
     NSInteger modelIndex = indexPath.item;
     if (modelIndex < 0 || modelIndex >= (NSInteger)displayed.count) {
@@ -346,10 +322,11 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)collectionViewLayout
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     (void)collectionViewLayout;
-    CGFloat totalPadding = 16 * 3; // 16 left + 16 right + 16 between columns
-    CGFloat availableWidth = collectionView.bounds.size.width - totalPadding;
-    CGFloat itemWidth = availableWidth / 2.0;
-    return CGSizeMake(MAX(0.0, itemWidth), 110.0);
+    CGFloat availableWidth = collectionView.bounds.size.width;
+    NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
+    BOOL isAddNewRow = (indexPath.item == displayed.count);
+    CGFloat itemHeight = isAddNewRow ? 92.0 : 116.0;
+    return CGSizeMake(MAX(0.0, availableWidth), itemHeight);
 }
 
 
@@ -398,6 +375,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                                 instrument:(UserPaymentInstrument *)instrument
                                     method:(PaymentMethod *)method
 {
+    (void)cell;
     if (!instrument || !instrument.instrumentID) {
         [PPHUD showError:kLang(@"UnableToSetDefaultMethod")];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
@@ -409,6 +387,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     if ([self pp_isBuiltInInstrument:instrument]) {
         PPCurrentUser.SelectedInstrument = instrument;
         [self pp_updateVisibleSelectionForInstrumentID:instrument.instrumentID animated:YES];
+        [self pp_refreshCheckoutCallToAction];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
         return;
     }
@@ -417,6 +396,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     
     PPCurrentUser.SelectedInstrument = instrument;
     [self pp_updateVisibleSelectionForInstrumentID:instrument.instrumentID animated:YES];
+    [self pp_refreshCheckoutCallToAction];
     
     __weak typeof(self) weakSelf = self;
     [[UserPaymentInstrumentManager sharedManager] setDefaultInstrument:instrument
@@ -428,12 +408,14 @@ referenceSizeForHeaderInSection:(NSInteger)section {
                     model.isDefault = [model.instrumentID isEqualToString:instrument.instrumentID];
                 }
                 [weakSelf pp_updateVisibleSelectionForInstrumentID:instrument.instrumentID animated:NO];
+                [weakSelf pp_refreshCheckoutCallToAction];
                 [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
             } else {
                 [PPHUD showError:kLang(@"FailedToUpdateDefault")];
                 [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
                 DLog(@"❌ Failed to set default: %@", error);
                 [weakSelf.paymentCollection reloadData];
+                [weakSelf pp_refreshCheckoutCallToAction];
             }
             
         });
@@ -444,17 +426,20 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 
 -(void)paymentMethodCellDidRequestEdit:(PPPaymentMethodCell *)cell instrument:(UserPaymentInstrument *)instrument method:(PaymentMethod *)method
 {
+    (void)cell;
+    (void)method;
     if ([self pp_isBuiltInInstrument:instrument]) {
         [PPHUD showInfo:kLang(@"payment_builtin_edit_blocked")];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
         return;
     }
 
-    //self.paymentFormVC = [[PPPaymentFormViewController alloc] initForEditingInstrument:instrument];
-    //self.paymentFormVC.mode = PPPaymentFormModeEdit;
-    //self.paymentFormVC.isEditingExisting = YES;
-    //self.paymentFormVC.editingInstrument = instrument;
-    [self showPaymentSheetFull:YES];
+    PPPaymentFormViewController *paymentFormVC = [[PPPaymentFormViewController alloc] initForEditingInstrument:instrument];
+    paymentFormVC.mode = PPPaymentFormModeEdit;
+    paymentFormVC.isEditingExisting = YES;
+    paymentFormVC.editingInstrument = instrument;
+    self.paymentFormVC = paymentFormVC;
+    [self.navigationController pushViewController:paymentFormVC animated:YES];
 }
 
 
@@ -657,25 +642,6 @@ didChangeSelectedDetentIdentifier:(UISheetPresentationControllerDetentIdentifier
 - (void)toggleEditing {
     
 }
-
-#pragma mark - UI Setup
--(void)viewWillAppear:(BOOL)animated
-{
-    [super viewWillAppear:animated];
-    
-    UIButton *backBTN = [PPButtonHelper pp_buttonWithTitleForBar:nil imageName:PPChevronName target:self action:@selector(onBack:)];
-    UIBarButtonItem *backBarButton = [[UIBarButtonItem alloc] initWithCustomView:backBTN];
-    self.navigationItem.leftBarButtonItem = backBarButton;
-    
-    self.navigationItem.rightBarButtonItems = @[
-        // [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(showAddPayments)],
-        // [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemEdit target:self action:@selector(toggleEditing)]
-    ];
-    
-    
-}
-
-
 #pragma mark - Action
 
 - (void)onSelectPayment:(UIButton *)sender {
@@ -756,35 +722,86 @@ didChangeSelectedDetentIdentifier:(UISheetPresentationControllerDetentIdentifier
  }
  };
  */
+@interface PPPaymentSectionHeaderView ()
 
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UIButton *actionButton;
 
-
-
+@end
 
 @implementation PPPaymentSectionHeaderView
 
-- (instancetype)initWithFrame:(CGRect)frame {
+- (instancetype)initWithFrame:(CGRect)frame
+{
     if (self = [super initWithFrame:frame]) {
         self.backgroundColor = UIColor.clearColor;
-        
-        _titleLabel = [[UILabel alloc] init];
-        _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        _titleLabel.font = [GM boldFontWithSize:18];
-        _titleLabel.textColor = UIColor.labelColor;
-        _titleLabel.numberOfLines = 2;
-        
-        [self addSubview:_titleLabel];
-        
+
+        self.titleLabel = [[UILabel alloc] init];
+        self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        self.titleLabel.font = [GM boldFontWithSize:20.0];
+        self.titleLabel.textColor = UIColor.labelColor;
+
+        self.subtitleLabel = [[UILabel alloc] init];
+        self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        self.subtitleLabel.font = [GM MidFontWithSize:13.0];
+        self.subtitleLabel.textColor = UIColor.secondaryLabelColor;
+        self.subtitleLabel.numberOfLines = 2;
+
+        self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
+        self.actionButton.titleLabel.font = [GM MidFontWithSize:13.0];
+        self.actionButton.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+        self.actionButton.backgroundColor = [AppPrimaryClr ?: UIColor.systemBlueColor colorWithAlphaComponent:0.10];
+        self.actionButton.layer.cornerRadius = 18.0;
+        self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
+        self.actionButton.contentEdgeInsets = UIEdgeInsetsMake(9.0, 12.0, 9.0, 12.0);
+        [self.actionButton addTarget:self action:@selector(pp_didTapAction) forControlEvents:UIControlEventTouchUpInside];
+
+        [self addSubview:self.titleLabel];
+        [self addSubview:self.subtitleLabel];
+        [self addSubview:self.actionButton];
+
         [NSLayoutConstraint activateConstraints:@[
-            [_titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:22],
-            [_titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-22],
-            [_titleLabel.centerYAnchor constraintEqualToAnchor:self.centerYAnchor]
+            [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:20.0],
+            [self.titleLabel.topAnchor constraintEqualToAnchor:self.topAnchor constant:6.0],
+            [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
+
+            [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
+            [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
+            [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.actionButton.leadingAnchor constant:-12.0],
+            [self.subtitleLabel.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-8.0],
+
+            [self.actionButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-20.0],
+            [self.actionButton.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
+            [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:36.0],
         ]];
     }
     return self;
 }
 
-- (void)configureWithTitle:(NSString *)title {
-    _titleLabel.text = title;
+- (void)configureWithTitle:(NSString *)title
+                  subtitle:(NSString *)subtitle
+               actionTitle:(NSString *)actionTitle
+{
+    self.titleLabel.text = title;
+    self.subtitleLabel.text = subtitle;
+
+    BOOL hasAction = actionTitle.length > 0;
+    self.actionButton.hidden = !hasAction;
+    if (hasAction) {
+        UIImage *plusIcon = [UIImage systemImageNamed:@"plus"];
+        [self.actionButton setTitle:actionTitle forState:UIControlStateNormal];
+        [self.actionButton setImage:plusIcon forState:UIControlStateNormal];
+        self.actionButton.imageEdgeInsets = UIEdgeInsetsMake(0.0, 0.0, 0.0, 6.0);
+    }
 }
+
+- (void)pp_didTapAction
+{
+    if (self.actionHandler) {
+        self.actionHandler();
+    }
+}
+
 @end

@@ -851,24 +851,11 @@ static NSInteger const PPRootTabIndexSettings = 4;
         
         UIButtonConfiguration *cfg;
         cfg = [UIButtonConfiguration glassButtonConfiguration];
-        
-        cfg.imagePlacement = NSDirectionalRectEdgeTop;
-
-        // 🔒 FIXED spacing (Apple HIG default)
-        cfg.imagePadding = 2;
-        cfg.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
-
-        // 🔒 Normalize internal layout
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(16, 8, 14, 8);
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(14, 14, 14, 14);
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.22];
-
-        cfg.attributedTitle =
-        [[NSAttributedString alloc] initWithString:kLang(@"new") attributes:@{ NSFontAttributeName : [GM boldFontWithSize:13],  NSForegroundColorAttributeName : AppPrimaryTextClr }];
-        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.background.cornerRadius = 14;
+        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.18];
+        cfg.background.cornerRadius = 18;
         cfg.image = icon;
-        
         cfg.baseForegroundColor = AppForgroundColr;
 
         showAddMenuButton.configuration = cfg;
@@ -893,7 +880,6 @@ static NSInteger const PPRootTabIndexSettings = 4;
         
         // Legacy APIs for iOS < 18
         [showAddMenuButton setImage:icon forState:UIControlStateNormal];
-         showAddMenuButton.titleLabel.font = [GM MidFontWithSize:11];
         showAddMenuButton.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
         showAddMenuButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
         showAddMenuButton.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
@@ -902,7 +888,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
         
         //showAddMenuButton.titleEdgeInsets = UIEdgeInsetsMake(imageSize.height + spacing, -imageSize.width, 0, 0);
         //showAddMenuButton.imageEdgeInsets = UIEdgeInsetsMake(-titleSize.height - spacing, 0, 0, -titleSize.width);
-        showAddMenuButton.layer.cornerRadius = 28;
+        showAddMenuButton.layer.cornerRadius = 26;
         showAddMenuButton.clipsToBounds = YES;
     }
 
@@ -935,9 +921,9 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.tabBar.centerXAnchor],
-        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-20],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:64],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:64]
+        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-16],
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:56],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:56]
     ]];
     
     // 🔒 Force DARK mode for glass button only

@@ -9,6 +9,7 @@
 #import "PPAdSubmitCoordinator.h"
 #import "PetAdManager.h"
 #import "PPImageUploadValidator.h"
+#import "PPFunc.h"
  
 
 @interface PPAdSubmitCoordinator ()
@@ -79,7 +80,7 @@
             return;
         }
 
-        [self uploadImagesThenUpdate];
+        [self uploadImagesThenUpdateWithPreviousURLs:@[]];
     }];
 }
 
@@ -87,6 +88,12 @@
 
 - (void)updateFlow
 {
+    // 🗑️ Capture old image URLs before they get replaced
+    NSMutableArray<NSString *> *previousImageURLs = [NSMutableArray array];
+    for (PetImageItem *item in self.ad.imageItems) {
+        if (item.url.length > 0) [previousImageURLs addObject:item.url];
+    }
+    
     if (self.images.count == 0) {
         [[PetAdManager sharedManager] updatePetAd:self.ad completion:^(NSError *error) {
             error ? self.onFailure(error) : self.onSuccess(self.ad);
@@ -94,12 +101,12 @@
         return;
     }
 
-    [self uploadImagesThenUpdate];
+    [self uploadImagesThenUpdateWithPreviousURLs:previousImageURLs];
 }
 
 #pragma mark - SHARED IMAGE PIPELINE
 
-- (void)uploadImagesThenUpdate
+- (void)uploadImagesThenUpdateWithPreviousURLs:(NSArray<NSString *> *)previousURLs
 {
     [self uploadUIImages:self.images forAd:self.ad completion:^(PetAd * _Nullable updatedAd, NSError * _Nullable error) {
         
@@ -112,6 +119,15 @@
          updatePetAd:updatedAd
          completion:^(NSError *error)
          {
+            if (!error) {
+                // 🗑️ Clean up old images that were replaced
+                NSMutableArray<NSString *> *newURLs = [NSMutableArray array];
+                for (PetImageItem *item in updatedAd.imageItems) {
+                    if (item.url.length > 0) [newURLs addObject:item.url];
+                }
+                [PPFunc pp_deleteRemovedStorageImagesFromOldURLs:previousURLs
+                                                        newURLs:newURLs];
+            }
             error ? self.onFailure(error) : self.onSuccess(updatedAd);
          }];
      }];

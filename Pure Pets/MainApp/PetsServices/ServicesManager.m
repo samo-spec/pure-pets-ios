@@ -11,6 +11,7 @@
 #import "UserManager.h"
 #import "UserModel.h"
 #import "PPRolePermission.h"
+#import "PPFunc.h"
 @import FirebaseFirestore;
 @import FirebaseStorage;
 
@@ -93,7 +94,19 @@ static NSError *PPServiceCreatePermissionError(NSString *message) {
 
 - (void)deleteService:(NSString *)documentID completion:(void (^)(NSError * _Nullable))completion {
     FIRFirestore *db = [FIRFirestore firestore];
-    [[[db collectionWithPath:@"serviceOffers"] documentWithPath:documentID] deleteDocumentWithCompletion:completion];
+    FIRDocumentReference *docRef = [[db collectionWithPath:@"serviceOffers"] documentWithPath:documentID];
+    
+    // 🗑️ Fetch image URL before deleting so we can clean up Storage
+    [docRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSString *imageURL = snapshot.data[@"imageURL"];
+        
+        [docRef deleteDocumentWithCompletion:^(NSError * _Nullable deleteError) {
+            if (!deleteError && [imageURL isKindOfClass:NSString.class] && imageURL.length > 0) {
+                [PPFunc pp_deleteStorageImagesForURLs:@[imageURL]];
+            }
+            if (completion) completion(deleteError);
+        }];
+    }];
 }
 
 #pragma mark - Listener: All Services

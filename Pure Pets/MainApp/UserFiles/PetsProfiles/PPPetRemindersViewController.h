@@ -9,4 +9,5 @@
 #import <UIKit/UIKit.h>
 
 @interface PPPetRemindersViewController : UIViewController
+- (void)pp_addReminder;
 @end

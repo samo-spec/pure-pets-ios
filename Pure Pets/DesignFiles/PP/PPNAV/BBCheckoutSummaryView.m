@@ -11,12 +11,13 @@
 #import "PPCartCalculator.h"
 
 
-@interface BBCheckoutSummaryView () <UICollectionViewDataSource, UICollectionViewDelegate>
+@interface BBCheckoutSummaryView () <UICollectionViewDataSource, UICollectionViewDelegate, UICollectionViewDelegateFlowLayout>
 @property (nonatomic, strong) UIView *animationContainerView;
 @property (nonatomic, copy) void (^onRemovePreviewItem)(CartItem *item);
 @property (nonatomic, strong) LOTAnimationView *animationView;
  
 @property (nonatomic, strong) UIButton *cardView;
+@property (nonatomic, strong) CAGradientLayer *cardGradientLayer;
 @property (nonatomic, strong) UIStackView *pricingStack;
  @property (nonatomic, strong) UILabel *itemsLabel;
 @property (nonatomic, strong) UILabel *itemsValueLabel;
@@ -36,6 +37,7 @@
 @property (nonatomic, strong) UICollectionView *itemsPreviewCollection;
 @property (nonatomic, strong) NSArray<CartItem *> *previewItems;
 @property (nonatomic, assign) BOOL showsItemsPreview;
+@property (nonatomic, strong) NSLayoutConstraint *itemsPreviewHeightConstraint;
 
 @property (nonatomic, strong) UIStackView *itemsRow;
 @property (nonatomic, strong) UIStackView *shippingRow;
@@ -56,6 +58,14 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     if ([formattedPrice rangeOfString:@"٫"].location != NSNotFound) return @"٫";
     if ([formattedPrice rangeOfString:@"."].location != NSNotFound) return @".";
     return [NSLocale currentLocale].decimalSeparator ?: @".";
+}
+
+static CGFloat PPCheckoutCardCornerRadius(void) {
+    return 28.0;
+}
+
+static CGFloat PPCheckoutButtonCornerRadius(void) {
+    return 22.0;
 }
 
 #pragma mark - Init
@@ -97,6 +107,13 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
 
     self.itemsPreviewCollection.hidden = !shouldShowPreview;
     self.itemsPreviewCollection.alpha = shouldShowPreview ? 1.0 : 0.0;
+    self.itemsPreviewCollection.transform = shouldShowPreview ? CGAffineTransformIdentity : CGAffineTransformMakeTranslation(0.0, 10.0);
+    self.itemsRow.hidden = shouldShowPreview;
+    self.shippingRow.hidden = shouldShowPreview;
+    self.itemsRow.alpha = shouldShowPreview ? 0.0 : 1.0;
+    self.shippingRow.alpha = shouldShowPreview ? 0.0 : 1.0;
+    self.itemsRow.transform = CGAffineTransformIdentity;
+    self.shippingRow.transform = CGAffineTransformIdentity;
 
     [self.itemsPreviewCollection reloadData];
 }
@@ -111,42 +128,40 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-  
-   
-    
+
     self.userInteractionEnabled = YES;
     self.cardView.userInteractionEnabled = YES;
     self.checkoutBTN.userInteractionEnabled = YES;
-   
-    //self.backgroundColor = AppBackgroundClrDarker;
+
     [self.cardView bringSubviewToFront:self.pricingStack];
     [self.cardView bringSubviewToFront:self.checkoutBTN];
-    
+
+    self.cardGradientLayer.frame = self.cardView.bounds;
+    self.cardGradientLayer.cornerRadius = self.cardView.layer.cornerRadius;
+    self.cardView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.cardView.bounds
+                                  cornerRadius:self.cardView.layer.cornerRadius].CGPath;
+    self.checkoutBTN.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.checkoutBTN.bounds
+                                  cornerRadius:self.checkoutBTN.layer.cornerRadius].CGPath;
+
     if (self.trustBannerShimmerLayer) {
         self.trustBannerShimmerLayer.frame = self.trustBannerView.bounds;
     }
-    if(!self.shadowSetted)
-    {
-        //[self setBlackShadowOffset:CGSizeMake(0, -3) radius:10 alpha:0.08];
-        self.shadowSetted = YES;
-    }
-    
- 
-   
+
     if (!self.didRunCardEntranceAnimation &&
         self.cardView.bounds.size.height > 0) {
 
         self.didRunCardEntranceAnimation = YES;
 
-        // Initial state: wide + down + faded
         self.cardView.alpha = 0.0;
         self.cardView.transform =
             CGAffineTransformConcat(
-                CGAffineTransformMakeTranslation(0, 28),   // from bottom
-                CGAffineTransformMakeScale(1.05, 0.96)     // slightly wide
+                CGAffineTransformMakeTranslation(0, 22),
+                CGAffineTransformMakeScale(0.985, 0.985)
             );
 
-        [UIView animateWithDuration:0.45
+        [UIView animateWithDuration:0.5
                               delay:0.06
                             options:UIViewAnimationOptionCurveEaseOut
                          animations:^{
@@ -155,9 +170,7 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
         } completion:nil];
     }
     [self bringSubviewToFront:self.animationContainerView];
-    
-     
- }
+}
 
 
 
@@ -212,14 +225,89 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     [self.trustBannerShimmerLayer removeAnimationForKey:@"pp_trust_banner_shimmer"];
 }
 
- 
+- (UIImage *)pp_defaultCheckoutImage
+{
+    return [UIImage pp_symbolNamed:PPIsRL ? @"arrow.left" : @"arrow.right"
+                         pointSize:18
+                            weight:UIImageSymbolWeightSemibold
+                             scale:UIImageSymbolScaleLarge
+                           palette:@[AppForgroundColr, AppForgroundColr]
+                      makeTemplate:NO];
+}
+
+- (void)pp_applyCheckoutButtonStyleWithTitle:(NSString *)title image:(UIImage *)image
+{
+    UIImage *resolvedImage = image ?: [self pp_defaultCheckoutImage];
+    self.checkoutButtonImageForIdle = resolvedImage;
+
+    self.checkoutBTN.layer.cornerRadius = PPCheckoutButtonCornerRadius();
+    self.checkoutBTN.layer.masksToBounds = NO;
+    self.checkoutBTN.layer.shadowColor = (AppPrimaryClr ?: UIColor.blackColor).CGColor;
+    self.checkoutBTN.layer.shadowOpacity = 0.18f;
+    self.checkoutBTN.layer.shadowRadius = 16.0f;
+    self.checkoutBTN.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    if (@available(iOS 13.0, *)) {
+        self.checkoutBTN.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.checkoutBTN.configuration ?: [UIButtonConfiguration filledButtonConfiguration];
+        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        config.background.cornerRadius = PPCheckoutButtonCornerRadius();
+        config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
+        config.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
+        config.baseForegroundColor = AppForgroundColr;
+        config.image = self.isCheckoutLoading ? nil : resolvedImage;
+        config.imagePlacement = NSDirectionalRectEdgeTrailing;
+        config.imagePadding = (self.isCheckoutLoading || resolvedImage == nil) ? 0.0 : 8.0;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(14, 18, 14, 18);
+        config.preferredSymbolConfigurationForImage =
+            [UIImageSymbolConfiguration configurationWithPointSize:16
+                                                            weight:UIImageSymbolWeightSemibold];
+
+        NSMutableAttributedString *attrTitle =
+            [[NSMutableAttributedString alloc] initWithString:title ?: kLang(@"Checkout")
+                                                   attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:17],
+            NSForegroundColorAttributeName: AppForgroundColr
+        }];
+        config.attributedTitle = attrTitle;
+
+        if (@available(iOS 15.0, *)) {
+            config.showsActivityIndicator = self.isCheckoutLoading;
+        }
+
+        self.checkoutBTN.configuration = config;
+        self.checkoutBTN.tintColor = AppForgroundColr;
+    } else {
+        self.checkoutBTN.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
+        [self.checkoutBTN setTitle:title ?: kLang(@"Checkout") forState:UIControlStateNormal];
+        [self.checkoutBTN setTitleColor:AppForgroundColr forState:UIControlStateNormal];
+        [self.checkoutBTN setImage:self.isCheckoutLoading ? nil : resolvedImage forState:UIControlStateNormal];
+        self.checkoutBTN.titleEdgeInsets = UIEdgeInsetsMake(0, 0, 0, 8);
+        self.checkoutBTN.contentEdgeInsets = UIEdgeInsetsMake(14, 18, 14, 18);
+    }
+}
+
+- (void)pp_styleInfoRow:(UIStackView *)row
+{
+    row.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.035];
+    row.layer.cornerRadius = 18.0;
+    row.layer.borderWidth = 1.0;
+    row.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+    if (@available(iOS 13.0, *)) {
+        row.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+}
+
 
 #pragma mark - UI
 
 - (void)buildUI {
-    self.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.8];
+    self.backgroundColor = UIColor.clearColor;
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.userInteractionEnabled = YES;
+    self.semanticContentAttribute = GM.setSemantic;
      
     
     // --- Animation View ---
@@ -242,8 +330,7 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
                 }
             });
         }];
-    _animationView.layer.cornerRadius = 22.0;
-    
+    _animationView.layer.cornerRadius = 18.0;
     _animationView.backgroundColor = [AppPrimaryClrDarker colorWithAlphaComponent:0.00];
  
     self.animationContainerView = [[UIView alloc] initWithFrame:CGRectZero];
@@ -261,27 +348,51 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     self.cardView =
     [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge configType:PPButtonConfigrationGlass];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.cardView.layer.cornerRadius = 22.0;
-     self.cardView.userInteractionEnabled = YES;
+    self.cardView.layer.cornerRadius = PPCheckoutCardCornerRadius();
+    self.cardView.userInteractionEnabled = YES;
+    self.cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92];
+    self.cardView.layer.masksToBounds = NO;
+    self.cardView.layer.borderWidth = 1.0;
+    self.cardView.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.08].CGColor;
+    self.cardView.layer.shadowColor = (AppShadowClr ?: UIColor.blackColor).CGColor;
+    self.cardView.layer.shadowOpacity = 0.14f;
+    self.cardView.layer.shadowRadius = 24.0f;
+    self.cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    if (@available(iOS 13.0, *)) {
+        self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     
     UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
     cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-    cfg.background.cornerRadius = 16;
+    cfg.background.cornerRadius = PPCheckoutCardCornerRadius();
+    cfg.background.backgroundColor = UIColor.clearColor;
+    cfg.baseBackgroundColor = UIColor.clearColor;
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(0, 0, 0, 0);
     self.cardView.configuration = cfg;
-    // Card View
  
     [self addSubview:self.cardView];
 
-    self.layer.cornerRadius = 22.0;
+    self.cardGradientLayer = [CAGradientLayer layer];
+    self.cardGradientLayer.colors = @[
+        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.22].CGColor,
+        (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.06].CGColor,
+        (__bridge id)[UIColor.clearColor CGColor]
+    ];
+    self.cardGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.cardGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.cardGradientLayer.locations = @[@0.0, @0.42, @1.0];
+    [self.cardView.layer insertSublayer:self.cardGradientLayer atIndex:0];
+
+    self.layer.cornerRadius = PPCheckoutCardCornerRadius();
     self.clipsToBounds = NO;
     
     
     // Items Preview Collection
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-    layout.minimumLineSpacing = 4;
-    layout.sectionInset = UIEdgeInsetsMake(4, 4, 0, 4);
-    layout.itemSize = CGSizeMake(64, 78);
+    layout.minimumLineSpacing = 10.0;
+    layout.sectionInset = UIEdgeInsetsMake(2, 0, 0, 0);
+    layout.itemSize = CGSizeMake(82, 98);
 
     self.itemsPreviewCollection =
     [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
@@ -291,6 +402,8 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     self.itemsPreviewCollection.dataSource = self;
     self.itemsPreviewCollection.delegate = self;
     self.itemsPreviewCollection.hidden = NO;
+    self.itemsPreviewCollection.clipsToBounds = NO;
+    self.itemsPreviewCollection.contentInset = UIEdgeInsetsMake(0, 0, 0, 0);
 
     [self.itemsPreviewCollection registerClass:[UICollectionViewCell class]
                     forCellWithReuseIdentifier:@"CheckoutPreviewCell"];
@@ -298,9 +411,9 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     [self.cardView addSubview:self.itemsPreviewCollection];
     
     // Labels and Values
-    UIFont *labelFont =  [GM MidFontWithSize:15];
-    UIColor *labelColor = UIColor.secondaryLabelColor;
-    UIColor *valueColor = [UIColor.labelColor colorWithAlphaComponent:0.95];
+    UIFont *labelFont =  [GM MidFontWithSize:13];
+    UIColor *labelColor = [UIColor.labelColor colorWithAlphaComponent:0.58];
+    UIColor *valueColor = [UIColor.labelColor colorWithAlphaComponent:0.92];
     
     self.itemsLabel = [[UILabel alloc] init];
     self.itemsLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -310,8 +423,10 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
      
     self.itemsValueLabel = [[UILabel alloc] init];
     self.itemsValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.itemsValueLabel.font = [GM MidFontWithSize:15];
+    self.itemsValueLabel.font = [GM boldFontWithSize:14];
     self.itemsValueLabel.textColor = valueColor;
+    self.itemsValueLabel.adjustsFontSizeToFitWidth = YES;
+    self.itemsValueLabel.minimumScaleFactor = 0.72;
 
     
     self.shippingLabel = [[UILabel alloc] init];
@@ -322,20 +437,22 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     
     self.shippingValueLabel = [[UILabel alloc] init];
     self.shippingValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.shippingValueLabel.font = [GM MidFontWithSize:15];
+    self.shippingValueLabel.font = [GM boldFontWithSize:14];
     self.shippingValueLabel.textColor = valueColor;
     self.shippingValueLabel.textAlignment = NSTextAlignmentNatural;
+    self.shippingValueLabel.adjustsFontSizeToFitWidth = YES;
+    self.shippingValueLabel.minimumScaleFactor = 0.72;
      
     // Separator
     self.separator = [[UIView alloc] init];
     self.separator.translatesAutoresizingMaskIntoConstraints = NO;
-    self.separator.backgroundColor = [UIColor separatorColor];
+    self.separator.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.08];
     
     // Subtotal
     self.subtotalAttributedLabel = [[UILabel alloc] init];
     self.subtotalAttributedLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.subtotalAttributedLabel.numberOfLines = 0;
-    self.subtotalAttributedLabel.textAlignment = GM.setAligment;
+    self.subtotalAttributedLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.subtotalAttributedLabel.semanticContentAttribute =GM.setSemantic;
     
     [self.subtotalAttributedLabel setContentHuggingPriority:UILayoutPriorityDefaultLow
@@ -355,105 +472,26 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     self.shippingValueLabel.textAlignment = NSTextAlignmentNatural;
     self.shippingLabel.textAlignment = NSTextAlignmentNatural;
 
-    self.subtotalAttributedLabel.textAlignment = NSTextAlignmentNatural;
     // Pricing Stack
     self.pricingStack = [[UIStackView alloc] init];
     self.pricingStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.pricingStack.axis = UILayoutConstraintAxisVertical;
-    self.pricingStack.spacing = 12.0;
+    self.pricingStack.spacing = 14.0;
     [self.cardView addSubview:self.pricingStack];
     
     
-    self.pricingStackBottomAnchor = [self.pricingStack.bottomAnchor constraintEqualToAnchor:self.safeAreaLayoutGuide.bottomAnchor constant:-16];
+    self.pricingStackBottomAnchor = [self.pricingStack.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-18];
    //shoppingCart
    
     // Checkout Button
     self.checkoutBTN = [UIButton buttonWithType:UIButtonTypeSystem];
     self.checkoutBTN.translatesAutoresizingMaskIntoConstraints = NO;
-    self.checkoutBTN.layer.cornerRadius = 22.0;
-    //self.checkoutBTN.clipsToBounds = YES;
-    //[self.checkoutBTN setTitle:kLang(@"Checkout") forState:UIControlStateNormal];
-    self.checkoutBTN.titleLabel.font = [GM boldFontWithSize:16];
+    self.checkoutBTN.layer.cornerRadius = PPCheckoutButtonCornerRadius();
+    self.checkoutBTN.titleLabel.font = [GM boldFontWithSize:17];
     self.checkoutBTN.accessibilityLabel = NSLocalizedString(@"a11y_btn_checkout", @"Checkout");
     self.checkoutBTN.accessibilityHint  = NSLocalizedString(@"a11y_btn_checkout_hint", @"Double-tap to proceed to checkout");
     [self.checkoutBTN addTarget:self action:@selector(didTapCheckout) forControlEvents:UIControlEventTouchUpInside];
-
-    // Glass / frosted configuration for iOS 16+, fallback for older
-    if (@available(iOS 16.0, *)) {
-        UIButtonConfiguration *config;
-        if (@available(iOS 26.0, *)) {
-            config = [UIButtonConfiguration glassButtonConfiguration];
-        } else {
-            config = [UIButtonConfiguration filledButtonConfiguration];
-        }
-        // Attributed title & shopping cart image
-        NSString *title = kLang(@"Checkout");
-        NSMutableAttributedString *attrTitle =
-        [[NSMutableAttributedString alloc] initWithString:title
-                                               attributes:@{
-            NSFontAttributeName: [GM boldFontWithSize:16],
-            NSForegroundColorAttributeName: AppForgroundColr
-        }];
-        config.attributedTitle = attrTitle;
-        // Shopping cart image (SF Symbol or asset named "shoppingCart")
-        UIImage *cartImage =
-        [UIImage systemImageNamed:PPIsRL ? @"arrow.left" : @"arrow.right"]; // fallback-safe
-        if (cartImage) {
-    
-            config.image = cartImage;
-            //config.image = [UIImage pp_symbolNamed:@"shopping" pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:YES];
-            config.imagePlacement = NSDirectionalRectEdgeTrailing;
-            config.imagePadding =0.0;
-            config.preferredSymbolConfigurationForImage =
-            [UIImageSymbolConfiguration configurationWithPointSize:16
-                                                             weight:UIImageSymbolWeightSemibold];
-        }
-        // Glass / frosted effect
-        config.background.cornerRadius = 22.0;
-        config.baseForegroundColor = AppForgroundColr;
-        
-        config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
-        config.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
-
-        
-        // Subtle stroke for definition
-        
-        // Padding
-        config.contentInsets = NSDirectionalEdgeInsetsMake(6, 16, 6, 1);
-        
-        // Image
-        config.image = [UIImage pp_symbolNamed:PPIsRL ? @"arrow.left" : @"arrow.right" pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO];
-        self.checkoutButtonImageForIdle = config.image;
-        config.imagePlacement = NSDirectionalRectEdgeTrailing;
-        config.imagePadding = 6.0;
-
-        // Symbol size & weight
-        config.preferredSymbolConfigurationForImage =
-        [UIImageSymbolConfiguration configurationWithPointSize:16
-                                                         weight:UIImageSymbolWeightSemibold];
-
-        // ✅ Tint BOTH text & icon
-        config.baseForegroundColor = AppForgroundColr;
-
-    // Keep subtotal aligned to the trailing edge in both RTL/LTR
-        self.subtotalAttributedLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.subtotalAttributedLabel.numberOfLines = 1;
-        
-        self.checkoutBTN.configuration = config;
-        self.checkoutBTN.tintColor = AppForgroundColr;
-        if (@available(iOS 18.0, *)) {
-            [self.checkoutBTN.imageView addSymbolEffect: [[NSSymbolWiggleEffect effect] effectWithByLayer] options: [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:2.0]]];
-        } else {
-            // Fallback on earlier versions
-        }
-    }
-    else {
-        // Fallback for older iOS
-        self.checkoutBTN.backgroundColor =
-            [AppForgroundColr colorWithAlphaComponent:0.95];
-        [self.checkoutBTN setTitleColor:AppPrimaryClr
-                               forState:UIControlStateNormal];
-    }
+    [self pp_applyCheckoutButtonStyleWithTitle:kLang(@"Checkout") image:nil];
     [self.checkoutBTN setContentHuggingPriority:UILayoutPriorityRequired
                                         forAxis:UILayoutConstraintAxisHorizontal];
 
@@ -483,28 +521,28 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     // Trust banner (between table and summary)
     self.trustBannerView = [[UIView alloc] initWithFrame:CGRectZero];
     self.trustBannerView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.trustBannerView.layer.cornerRadius =16.0;
+    self.trustBannerView.layer.cornerRadius =18.0;
     self.trustBannerView.layer.masksToBounds = YES;
-     self.trustBannerView.layer.borderWidth = 1.0;
+    self.trustBannerView.layer.borderWidth = 1.0;
     self.trustBannerView.layer.borderColor = [[UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.22] CGColor];
     [self.trustBannerView setBackgroundColor:[UIColor hx_colorWithHexStr:@"#FABB00" alpha:0.05]];
+    if (@available(iOS 13.0, *)) {
+        self.trustBannerView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     self.trustBannerLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.trustBannerLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.trustBannerLabel.numberOfLines = 1;
-    self.trustBannerLabel.font = [GM MidFontWithSize:13];
-    self.trustBannerLabel.textColor = UIColor.secondaryLabelColor;
-    self.trustBannerLabel.textAlignment = Language.alignmentForCurrentLanguage;;
+    self.trustBannerLabel.font = [GM MidFontWithSize:12];
+    self.trustBannerLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.66];
+    self.trustBannerLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.trustBannerLabel.text =  kLang(@"Securecheckout");
- //   "Securecheckout" ="🔒 Secure checkout — your data is protected";
     [self.trustBannerView addSubview:self.trustBannerLabel];
 
-    // Banner height
-    [self.trustBannerView.heightAnchor constraintEqualToConstant:34.0].active = YES;
+    [self.trustBannerView.heightAnchor constraintEqualToConstant:42.0].active = YES;
 
-    // Label padding inside banner
     [NSLayoutConstraint activateConstraints:@[
-        [self.trustBannerLabel.leadingAnchor constraintEqualToAnchor:self.trustBannerView.leadingAnchor constant:12.0],
-        [self.trustBannerLabel.trailingAnchor constraintEqualToAnchor:self.trustBannerView.trailingAnchor constant:-12.0],
+        [self.trustBannerLabel.leadingAnchor constraintEqualToAnchor:self.trustBannerView.leadingAnchor constant:14.0],
+        [self.trustBannerLabel.trailingAnchor constraintEqualToAnchor:self.trustBannerView.trailingAnchor constant:-52.0],
         [self.trustBannerLabel.topAnchor constraintEqualToAnchor:self.trustBannerView.topAnchor constant:0.0],
         [self.trustBannerLabel.bottomAnchor constraintEqualToAnchor:self.trustBannerView.bottomAnchor constant:0.0]
     ]];
@@ -518,9 +556,8 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     subtotalRow.axis = UILayoutConstraintAxisHorizontal;
     subtotalRow.alignment = UIStackViewAlignmentCenter;
     subtotalRow.distribution = UIStackViewDistributionFill;
-    subtotalRow.spacing = 12.0;
+    subtotalRow.spacing = 16.0;
 
-    // Let spacer expand
     [subtotalSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow
                                      forAxis:UILayoutConstraintAxisHorizontal];
     [subtotalSpacer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
@@ -540,16 +577,16 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     
     self.itemsPreviewCollection.alpha = 0.0;
     self.itemsPreviewCollection.hidden = YES;
-    [self.itemsPreviewCollection.heightAnchor constraintEqualToConstant:74].active = YES;
+    self.itemsPreviewHeightConstraint =
+        [self.itemsPreviewCollection.heightAnchor constraintEqualToConstant:98.0];
+    self.itemsPreviewHeightConstraint.active = YES;
     
+    [self.pricingStack addArrangedSubview:subtotalRow];
+    [self.pricingStack addArrangedSubview:self.separator];
     [self.pricingStack addArrangedSubview:self.itemsRow];
     [self.pricingStack addArrangedSubview:self.shippingRow];
     [self.pricingStack addArrangedSubview:self.itemsPreviewCollection];
     [self.pricingStack addArrangedSubview:self.trustBannerView];
-    [self.pricingStack addArrangedSubview:self.separator];
-    
-    [self.pricingStack addArrangedSubview:subtotalRow];
-   
     
     
     if(Language.isRTL)
@@ -569,81 +606,12 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
         self.shippingLabel.textAlignment = NSTextAlignmentLeft;
         self.shippingValueLabel.textAlignment = NSTextAlignmentRight;
     }
-   // self.cardView.layer.borderWidth = 0.5;
-   // self.cardView.layer.borderColor =
-   // [[UIColor secondaryLabelColor] colorWithAlphaComponent:0.15].CGColor;
-    
-    
-    
-    
+
 }
 //kLang(@"Checkout")
 -(void)setCheckoutBTNTitle:(NSString *)title image:(UIImage *)image
 {
-    self.checkoutButtonImageForIdle = image;
-
-    if (@available(iOS 16.0, *)) {
-        UIButtonConfiguration *config = self.checkoutBTN.configuration;
-        
-         NSMutableAttributedString *attrTitle =
-        [[NSMutableAttributedString alloc] initWithString:title
-                                               attributes:@{
-            NSFontAttributeName: [GM boldFontWithSize:16],
-            NSForegroundColorAttributeName: AppForgroundColr
-        }];
-        config.attributedTitle = attrTitle;
-        // Shopping cart image (SF Symbol or asset named "shoppingCart")
-       
-        if (image) {
-    
-            config.image = image;
-            //config.image = [UIImage pp_symbolNamed:@"shopping" pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:YES];
-            config.imagePlacement = NSDirectionalRectEdgeTrailing;
-            config.imagePadding =0.0;
-            config.preferredSymbolConfigurationForImage =
-            [UIImageSymbolConfiguration configurationWithPointSize:16
-                                                             weight:UIImageSymbolWeightSemibold];
-        }
-        // Glass / frosted effect
-        config.background.cornerRadius = 22.0;
-        config.baseForegroundColor = AppForgroundColr;
-        
-        config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
-        config.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
- 
-        config.contentInsets = NSDirectionalEdgeInsetsMake(6, 12, 6, 12);
-        
-        // Image
-        config.image = self.isCheckoutLoading ? nil : image;
-        config.imagePlacement = NSDirectionalRectEdgeTrailing;
-        config.imagePadding = (self.isCheckoutLoading || image == nil) ? 0.0 : 6.0;
-
-        // Symbol size & weight
-        config.preferredSymbolConfigurationForImage =
-        [UIImageSymbolConfiguration configurationWithPointSize:16
-                                                         weight:UIImageSymbolWeightSemibold];
-
-        // ✅ Tint BOTH text & icon
-        config.baseForegroundColor = AppForgroundColr;
-
-    // Keep subtotal aligned to the trailing edge in both RTL/LTR
-        self.subtotalAttributedLabel.textAlignment = NSTextAlignmentCenter;
-    self.subtotalAttributedLabel.numberOfLines = 2;
-        
-        if (@available(iOS 15.0, *)) {
-            config.showsActivityIndicator = self.isCheckoutLoading;
-        }
-        self.checkoutBTN.configuration = config;
-        self.checkoutBTN.tintColor = AppForgroundColr;
-        if (@available(iOS 18.0, *)) {
-            [self.checkoutBTN.imageView addSymbolEffect: [[NSSymbolWiggleEffect effect] effectWithByLayer] options: [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:2.0]]];
-        } else {
-            // Fallback on earlier versions
-        }
-    } else {
-        [self.checkoutBTN setTitle:title forState:UIControlStateNormal];
-        [self.checkoutBTN setImage:image forState:UIControlStateNormal];
-    }
+    [self pp_applyCheckoutButtonStyleWithTitle:title ?: kLang(@"Checkout") image:image];
 }
 
 - (void)setCheckoutLoading:(BOOL)loading
@@ -660,6 +628,7 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
 
     self.checkoutBTN.enabled = !loading;
     self.checkoutBTN.userInteractionEnabled = !loading;
+    self.checkoutBTN.alpha = loading ? 0.9 : 1.0;
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = self.checkoutBTN.configuration;
@@ -683,22 +652,35 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
 }
 
 - (UIStackView *)horizontalRowWithLabel:(UILabel *)label value:(UILabel *)value button:(nullable UIButton *)button{
-    UIStackView *row;
-    if(button)
-       row = [[UIStackView alloc] initWithArrangedSubviews:@[label, value,button]];
-    else
-        row = [[UIStackView alloc] initWithArrangedSubviews:@[label, value]];
+    UIView *spacer = [[UIView alloc] initWithFrame:CGRectZero];
+    spacer.translatesAutoresizingMaskIntoConstraints = NO;
+
+    NSMutableArray<UIView *> *arrangedSubviews = [NSMutableArray arrayWithObjects:label, spacer, value, nil];
+    if (button) {
+        [arrangedSubviews addObject:button];
+    }
+
+    UIStackView *row = [[UIStackView alloc] initWithArrangedSubviews:arrangedSubviews];
     row.axis = UILayoutConstraintAxisHorizontal;
-    row.spacing = 8.0;
-    row.alignment = UIStackViewAlignmentLeading;
-    row.distribution = UIStackViewDistributionFillEqually;
+    row.spacing = 10.0;
+    row.alignment = UIStackViewAlignmentCenter;
+    row.distribution = UIStackViewDistributionFill;
+    row.semanticContentAttribute = GM.setSemantic;
+    row.layoutMarginsRelativeArrangement = YES;
+    row.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(12, 14, 12, 14);
+    [self pp_styleInfoRow:row];
 
     [label setContentHuggingPriority:UILayoutPriorityDefaultHigh
                              forAxis:UILayoutConstraintAxisHorizontal];
     [label setContentCompressionResistancePriority:UILayoutPriorityRequired
                                            forAxis:UILayoutConstraintAxisHorizontal];
 
-    [value setContentHuggingPriority:UILayoutPriorityDefaultLow
+    [spacer setContentHuggingPriority:UILayoutPriorityDefaultLow
+                              forAxis:UILayoutConstraintAxisHorizontal];
+    [spacer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                            forAxis:UILayoutConstraintAxisHorizontal];
+
+    [value setContentHuggingPriority:UILayoutPriorityRequired
                               forAxis:UILayoutConstraintAxisHorizontal];
     [value setContentCompressionResistancePriority:UILayoutPriorityRequired
                                             forAxis:UILayoutConstraintAxisHorizontal];
@@ -709,40 +691,29 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
 #pragma mark - Layout
 
 - (void)buildLayout {
-    CGFloat padding = 16.0;
-    // Card background image view constraints (same size as cardView)
+    CGFloat padding = 18.0;
   
     [NSLayoutConstraint activateConstraints:@[
-        [self.checkoutBTN.heightAnchor constraintEqualToConstant:48],
-        [self.cardView.topAnchor constraintEqualToAnchor:self.topAnchor constant:0],
-
-        [self.cardView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-0],
-        [self.cardView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:-1],
-        [self.cardView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:1],
+        [self.checkoutBTN.heightAnchor constraintEqualToConstant:54.0],
+        [self.cardView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.cardView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        [self.cardView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.cardView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
  
-        [self.pricingStack.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:12],
+        [self.pricingStack.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:18.0],
         [self.pricingStack.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:padding],
         [self.pricingStack.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-padding],
 
-        // Separator height fixed
-        [self.separator.heightAnchor constraintEqualToConstant:1.2],
+        [self.separator.heightAnchor constraintEqualToConstant:1.0],
         self.pricingStackBottomAnchor,
-        // Subtotal row bottom spacing to card bottom
      ]];
-    
-    [self.itemsPreviewCollection.heightAnchor constraintEqualToConstant:74].active = YES;
 
-   
-    
-    
     self.animationView.translatesAutoresizingMaskIntoConstraints = NO;
-    // Container — same size & position as old animationView
-    [self.animationContainerView.heightAnchor constraintEqualToConstant:40].active = YES;
-    [self.animationContainerView.widthAnchor constraintEqualToConstant:40].active = YES;
+    [self.animationContainerView.heightAnchor constraintEqualToConstant:34.0].active = YES;
+    [self.animationContainerView.widthAnchor constraintEqualToConstant:34.0].active = YES;
     [self.animationContainerView.centerYAnchor constraintEqualToAnchor:self.trustBannerView.centerYAnchor].active = YES;
-    [self.animationContainerView.trailingAnchor constraintEqualToAnchor:self.trustBannerView.trailingAnchor  constant:-2.0].active = YES;
+    [self.animationContainerView.trailingAnchor constraintEqualToAnchor:self.trustBannerView.trailingAnchor constant:-8.0].active = YES;
 
-    // AnimationView fills container
     [NSLayoutConstraint activateConstraints:@[
         [self.animationView.topAnchor constraintEqualToAnchor:self.animationContainerView.topAnchor],
         [self.animationView.bottomAnchor constraintEqualToAnchor:self.animationContainerView.bottomAnchor],
@@ -802,49 +773,45 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     NSMutableAttributedString *attr =
     [[NSMutableAttributedString alloc] initWithString:fullText];
 
-    // Title styling (only if shown)
-   // if (showTitle) {
-        NSRange titleRange = [fullText rangeOfString:title];
-        if (titleRange.location != NSNotFound) {
-            [attr addAttributes:@{
-                NSFontAttributeName: [GM MidFontWithSize:11],
-                NSForegroundColorAttributeName: UIColor.secondaryLabelColor
-            } range:titleRange];
-        }
-    //}
+    NSRange titleRange = [fullText rangeOfString:title];
+    if (titleRange.location != NSNotFound) {
+        [attr addAttributes:@{
+            NSFontAttributeName: [GM MidFontWithSize:11],
+            NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.52],
+            NSKernAttributeName: @(0.4)
+        } range:titleRange];
+    }
 
-    // Integer (main amount)
     NSRange integerRange =
     [fullText rangeOfString:integerPart options:NSBackwardsSearch];
 
     [attr addAttributes:@{
-        NSFontAttributeName: [GM boldFontWithSize:PPIsRL ? 32 : 26],
-        NSForegroundColorAttributeName: AppPrimaryClr
+        NSFontAttributeName: [GM boldFontWithSize:PPIsRL ? 34 : 30],
+        NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.96]
     } range:integerRange];
 
-    // Fraction (.00) — SMALL + TOP-ALIGNED
     if (fractionPart) {
         NSRange fractionRange =
         [fullText rangeOfString:fractionPart options:NSBackwardsSearch];
 
         if (fractionRange.location != NSNotFound) {
             [attr addAttributes:@{
-                NSFontAttributeName: [GM boldFontWithSize:12],
-                NSForegroundColorAttributeName: AppSecondaryTextClr,
-                NSBaselineOffsetAttributeName: @(8)
+                NSFontAttributeName: [GM boldFontWithSize:14],
+                NSForegroundColorAttributeName: [AppPrimaryClr colorWithAlphaComponent:0.92],
+                NSBaselineOffsetAttributeName: @(9)
             } range:fractionRange];
         }
     }
 
-    // Paragraph style
     NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
-    style.lineSpacing = showTitle ? 0.0 : 0.0;
-    style.alignment = GM.setAligment;
+    style.lineSpacing = showTitle ? 3.0 : 0.0;
+    style.alignment = Language.alignmentForCurrentLanguage;
 
     [attr addAttribute:NSParagraphStyleAttributeName
                  value:style
                  range:NSMakeRange(0, attr.length)];
 
+    self.subtotalAttributedLabel.numberOfLines = showTitle ? 2 : 1;
     self.subtotalAttributedLabel.attributedText = attr;
 }
 
@@ -866,46 +833,48 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     if (_showsItemsPreview == showsItemsPreview) return;
     _showsItemsPreview = showsItemsPreview;
 
-    // Prepare for show
     if (showsItemsPreview) {
         self.itemsPreviewCollection.hidden = NO;
         self.itemsPreviewCollection.alpha = 0.0;
-
-        // IMPORTANT: keep rows visible during animation
+        self.itemsPreviewCollection.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
         self.itemsRow.hidden = NO;
         self.shippingRow.hidden = NO;
     }
-    
-    //self.shippingRow.hidden = NO;
-    //self.itemsPreviewCollection.alpha = 0.0;
-    
-    self.pricingStackBottomAnchor.constant = showsItemsPreview ? 0 : 0;
-    [UIView animateWithDuration:0.25
+
+    self.pricingStackBottomAnchor.constant = -18.0;
+    [UIView animateWithDuration:0.3
                           delay:0
                         options:UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
         self.itemsPreviewCollection.alpha = showsItemsPreview ? 1.0 : 0.0;
+        self.itemsPreviewCollection.transform = showsItemsPreview ? CGAffineTransformIdentity : CGAffineTransformMakeTranslation(0.0, 10.0);
         self.itemsRow.alpha = showsItemsPreview ? 0.0 : 1.0;
+        self.itemsRow.transform = showsItemsPreview ? CGAffineTransformMakeTranslation(0.0, -6.0) : CGAffineTransformIdentity;
         self.shippingRow.alpha = showsItemsPreview ? 0.0 : 1.0;
+        self.shippingRow.transform = showsItemsPreview ? CGAffineTransformMakeTranslation(0.0, -6.0) : CGAffineTransformIdentity;
     } completion:^(BOOL finished) {
 
-        [UIView animateWithDuration:0.25 animations:^{
-            // NOW change visibility (after animation)
-            self.itemsRow.hidden = showsItemsPreview;
-            self.shippingRow.hidden = showsItemsPreview;
-
-            if (!showsItemsPreview) {
-                self.itemsPreviewCollection.hidden = YES;
-            }
-        }];
+        self.itemsRow.hidden = showsItemsPreview;
+        self.shippingRow.hidden = showsItemsPreview;
+        if (!showsItemsPreview) {
+            self.itemsPreviewCollection.hidden = YES;
+        }
     }];
 }
 
 - (void)updatePreviewItems:(NSArray<CartItem *> *)items
 {
     self.previewItems = items ?: @[];
-    self.itemsPreviewCollection.hidden =
-        !self.showsItemsPreview || self.previewItems.count == 0;
+    BOOL shouldShowPreview = self.showsItemsPreview && self.previewItems.count > 0;
+    self.itemsPreviewCollection.hidden = !shouldShowPreview;
+    self.itemsPreviewCollection.alpha = shouldShowPreview ? 1.0 : 0.0;
+    self.itemsPreviewCollection.transform = shouldShowPreview ? CGAffineTransformIdentity : CGAffineTransformMakeTranslation(0.0, 10.0);
+    self.itemsRow.hidden = shouldShowPreview;
+    self.shippingRow.hidden = shouldShowPreview;
+    self.itemsRow.alpha = shouldShowPreview ? 0.0 : 1.0;
+    self.shippingRow.alpha = shouldShowPreview ? 0.0 : 1.0;
+    self.itemsRow.transform = CGAffineTransformIdentity;
+    self.shippingRow.transform = CGAffineTransformIdentity;
     [self.itemsPreviewCollection reloadData];
      
 }
@@ -936,28 +905,48 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
         img.translatesAutoresizingMaskIntoConstraints = NO;
         img.contentMode = UIViewContentModeScaleAspectFill;
         img.clipsToBounds = YES;
-        img.layer.cornerRadius = 6;
+        img.layer.cornerRadius = 14.0;
+        img.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.05];
+        if (@available(iOS 13.0, *)) {
+            img.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        cell.contentView.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.035];
+        cell.contentView.layer.cornerRadius = 20.0;
+        cell.contentView.layer.borderWidth = 1.0;
+        cell.contentView.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+        cell.contentView.layer.masksToBounds = YES;
+        if (@available(iOS 13.0, *)) {
+            cell.contentView.layer.cornerCurve = kCACornerCurveContinuous;
+        }
         [cell.contentView addSubview:img];
 
         price = [[UILabel alloc] init];
         price.tag = 12;
         price.translatesAutoresizingMaskIntoConstraints = NO;
-        price.font = [GM MidFontWithSize:11];
+        price.font = [GM boldFontWithSize:11];
         price.textAlignment = NSTextAlignmentCenter;
-        price.textColor = UIColor.secondaryLabelColor;
+        price.textColor = [UIColor.labelColor colorWithAlphaComponent:0.72];
+        price.adjustsFontSizeToFitWidth = YES;
+        price.minimumScaleFactor = 0.7;
+        price.numberOfLines = 1;
         [cell.contentView addSubview:price];
 
         UIButton *removeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         removeBtn.tag = 13;
         removeBtn.translatesAutoresizingMaskIntoConstraints = NO;
-        removeBtn.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.6];
-        removeBtn.layer.cornerRadius = 9;
+        removeBtn.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.92];
+        removeBtn.layer.cornerRadius = 11.0;
         removeBtn.clipsToBounds = YES;
+        removeBtn.layer.borderWidth = 1.0;
+        removeBtn.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+        if (@available(iOS 13.0, *)) {
+            removeBtn.layer.cornerCurve = kCACornerCurveContinuous;
+        }
 
         [removeBtn setImage:[UIImage systemImageNamed:@"xmark"]
                    forState:UIControlStateNormal];
-        removeBtn.tintColor = UIColor.whiteColor;
-        removeBtn.contentEdgeInsets = UIEdgeInsetsMake(2, 2, 2, 2);
+        removeBtn.tintColor = [UIColor.labelColor colorWithAlphaComponent:0.78];
+        removeBtn.contentEdgeInsets = UIEdgeInsetsMake(3, 3, 3, 3);
 
         [removeBtn addTarget:self
                       action:@selector(didTapRemovePreviewItem:)
@@ -966,19 +955,20 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
         [cell.contentView addSubview:removeBtn];
 
         [NSLayoutConstraint activateConstraints:@[
-            [img.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor],
+            [img.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:10.0],
             [img.centerXAnchor constraintEqualToAnchor:cell.contentView.centerXAnchor],
-            [img.widthAnchor constraintEqualToConstant:48],
-            [img.heightAnchor constraintEqualToConstant:48],
+            [img.widthAnchor constraintEqualToConstant:56.0],
+            [img.heightAnchor constraintEqualToConstant:56.0],
 
-            [price.topAnchor constraintEqualToAnchor:img.bottomAnchor constant:4],
-            [price.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor],
-            [price.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor],
+            [price.topAnchor constraintEqualToAnchor:img.bottomAnchor constant:8.0],
+            [price.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:6.0],
+            [price.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-6.0],
+            [price.bottomAnchor constraintLessThanOrEqualToAnchor:cell.contentView.bottomAnchor constant:-8.0],
 
-            [removeBtn.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:2],
-            [removeBtn.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-2],
-            [removeBtn.widthAnchor constraintEqualToConstant:18],
-            [removeBtn.heightAnchor constraintEqualToConstant:18],
+            [removeBtn.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:6.0],
+            [removeBtn.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-6.0],
+            [removeBtn.widthAnchor constraintEqualToConstant:22.0],
+            [removeBtn.heightAnchor constraintEqualToConstant:22.0],
         ]];
     }
 
@@ -990,10 +980,11 @@ static NSString *PPCheckoutDecimalSeparatorFromFormattedPrice(NSString *formatte
     NSString *url = item.imageURL;
     if (url.length > 0) {
         [img sd_setImageWithURL:[NSURL URLWithString:url]];
+    } else {
+        img.image = nil;
     }
 
-    price.text = [NSString stringWithFormat:@"%.2f",
-                  item.price];
+    price.text = [PPChatsFunc formattedCurrency:item.price];
 
     return cell;
 }

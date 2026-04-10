@@ -20,7 +20,7 @@
 #endif
 
 static const CGFloat kPPSectionsTabBarHeight = 64.0;
-static const CGFloat kPPAccessoryFilterHeight = 44.0;
+static const CGFloat kPPAccessoryFilterHeight = 38.0;
 
 static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
@@ -64,21 +64,14 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.showsMenuAsPrimaryAction = YES;
-    self.layer.cornerRadius = 14.0;
+    self.layer.cornerRadius = 12.0;
     self.layer.masksToBounds = YES;
-    self.layer.borderWidth = 1.0;
+    self.layer.borderWidth = 0.9;
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    
-    if (!PPIOS26()) {
-        self.layer.shadowColor = UIColor.blackColor.CGColor;
-        self.layer.shadowOpacity = 0.08;
-        self.layer.shadowRadius = 3;
-        self.layer.shadowOffset = CGSizeMake(0, 1);
-    }
 
-    [self.heightAnchor constraintEqualToConstant:34.0].active = YES;
+    [self.heightAnchor constraintEqualToConstant:32.0].active = YES;
     return self;
 }
 
@@ -91,28 +84,28 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
         cfg = [UIButtonConfiguration plainButtonConfiguration];
     }
 
-    UIColor *foreground = active ? AppPrimaryClr : UIColor.labelColor;
+    UIColor *foreground = active ? AppPrimaryClr : UIColor.secondaryLabelColor;
     cfg.image = [UIImage systemImageNamed:@"chevron.down"];
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-    cfg.imagePadding = 6.0;
+    cfg.imagePadding = 5.0;
     cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 12.0, 6.0, 12.0);
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
     cfg.baseForegroundColor = foreground;
-    cfg.baseBackgroundColor = [UIColor colorWithWhite:1.0 alpha:active ? 0.22 : 0.14];
-    cfg.background.backgroundColor = [UIColor colorWithWhite:1.0 alpha:active ? 0.22 : 0.14];
-    cfg.background.strokeColor = [UIColor colorWithWhite:1.0 alpha:active ? 0.28 : 0.20];
-    cfg.background.strokeWidth = 1.0;
+    cfg.baseBackgroundColor = active ? [AppPrimaryClr colorWithAlphaComponent:0.12] : UIColor.secondarySystemBackgroundColor;
+    cfg.background.backgroundColor = active ? [AppPrimaryClr colorWithAlphaComponent:0.12] : UIColor.secondarySystemBackgroundColor;
+    cfg.background.strokeColor = active ? [AppPrimaryClr colorWithAlphaComponent:0.16] : [UIColor.separatorColor colorWithAlphaComponent:0.16];
+    cfg.background.strokeWidth = 0.8;
     cfg.attributedTitle =
     [[NSAttributedString alloc] initWithString:title
                                     attributes:@{
-        NSFontAttributeName : active ? [GM boldFontWithSize:14] : [GM MidFontWithSize:14],
+        NSFontAttributeName : active ? [GM boldFontWithSize:13] : [GM MidFontWithSize:13],
         NSForegroundColorAttributeName : foreground
     }];
 
     self.configuration = cfg;
     self.tintColor = foreground;
     self.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
-    self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:active ? 0.28 : 0.20].CGColor;
+    self.layer.borderColor = (active ? [AppPrimaryClr colorWithAlphaComponent:0.16] : [UIColor.separatorColor colorWithAlphaComponent:0.16]).CGColor;
 }
 
 @end
@@ -1306,7 +1299,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     ? (kLang(@"Price") ?: @"Price")
     : [self priceFilterOptionTitle:self.accessoryPriceFilter];
     NSString *sortTitle = (self.accessorySortOption == PPDataAccessorySortOptionRecommended)
-    ? PPDataAccessoryFallbackString(@"Sort", @"الترتيب")
+    ? (kLang(@"SortTitle") ?: @"Sort")
     : [self sortOptionTitle:self.accessorySortOption];
 
     [self.conditionFilterChip pp_applyChipTitle:conditionTitle
@@ -1339,11 +1332,22 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 - (NSString *)iconForSection:(PPDataSection)section
 {
     switch (section) {
-        case PPDataSectionAds:         return @"megaphoneIcon";
-        case PPDataSectionAccessories: return @"AccessIconNew";
-        case PPDataSectionFood:        return @"FoodIcon";
-        case PPDataSectionServices:    return @"blindColor";
+        case PPDataSectionAds:         return @"megaphone";
+        case PPDataSectionAccessories: return @"bag";
+        case PPDataSectionFood:        return @"cart";
+        case PPDataSectionServices:    return @"cross.case";
         default:                       return @"";
+    }
+}
+
+- (NSString *)selectedIconForSection:(PPDataSection)section
+{
+    switch (section) {
+        case PPDataSectionAds:         return @"megaphone.fill";
+        case PPDataSectionAccessories: return @"bag.fill";
+        case PPDataSectionFood:        return @"cart.fill";
+        case PPDataSectionServices:    return @"cross.case.fill";
+        default:                       return [self iconForSection:section];
     }
 }
 
@@ -1361,7 +1365,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                makeTemplate:YES];
 
     UIImage *selectedIcon =
-    [UIImage pp_symbolNamed:[NSString stringWithFormat:@"%@.selected",iconName]
+    [UIImage pp_symbolNamed:[self selectedIconForSection:section]
                   pointSize:19
                      weight:UIImageSymbolWeightBold
                       scale:UIImageSymbolScaleMedium
@@ -2183,6 +2187,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         CartManager *cart = [CartManager sharedManager];
         CartItem *existing = [cart getCartItemForItemID:accessory.accessoryID];
         CartItem *item = [[CartItem alloc] initWithAccessory:accessory quantity:safeQuantity];
+        BOOL didAddNewItem = NO;
 
         if (existing) {
             [cart updateQuantity:safeQuantity forItem:item completion:nil];
@@ -2190,12 +2195,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             BOOL didAdd = [cart addItem:item];
             if (!didAdd) {
                 [PPHUD showError:kLang(@"Out of stock")];
+            } else {
+                didAddNewItem = YES;
             }
         }
         
         if (safeQuantity == 1) {
             // First add
             [PPFunc triggerLightHaptic];
+            if (didAddNewItem) {
+                [PPHUD showSuccess:(kLang(@"ItemAddedToCart") ?: @"Item added to cart")];
+            }
         }
         else {
             // Increment / decrement
@@ -2448,16 +2458,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     NSArray<PPModrenSegmrntedItem *> *sectionItems = @[
         [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionAds]
                                     iconName:[self iconForSection:PPDataSectionAds]
-                            selectedIconName:[NSString stringWithFormat:@"%@.selected", [self iconForSection:PPDataSectionAds]]],
+                            selectedIconName:[self selectedIconForSection:PPDataSectionAds]],
         [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionAccessories]
                                     iconName:[self iconForSection:PPDataSectionAccessories]
-                            selectedIconName:[NSString stringWithFormat:@"%@.selected", [self iconForSection:PPDataSectionAccessories]]],
+                            selectedIconName:[self selectedIconForSection:PPDataSectionAccessories]],
         [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionFood]
                                     iconName:[self iconForSection:PPDataSectionFood]
-                            selectedIconName:[NSString stringWithFormat:@"%@.selected", [self iconForSection:PPDataSectionFood]]],
+                            selectedIconName:[self selectedIconForSection:PPDataSectionFood]],
         [PPModrenSegmrntedItem itemWithTitle:[self titleForSection:PPDataSectionServices]
                                     iconName:[self iconForSection:PPDataSectionServices]
-                            selectedIconName:[NSString stringWithFormat:@"%@.selected", [self iconForSection:PPDataSectionServices]]]
+                            selectedIconName:[self selectedIconForSection:PPDataSectionServices]]
     ];
     PPModrenSegmrnted *sectionsControl = [[PPModrenSegmrnted alloc] initWithItems:sectionItems];
     sectionsControl.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2514,7 +2524,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.accessoryFilterHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:10.0],
+        [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:8.0],
         [filterContainer.leadingAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.leadingAnchor],
         [filterContainer.trailingAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.trailingAnchor]
     ]];
@@ -2536,7 +2546,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
     chipsStack.alignment = UIStackViewAlignmentFill;
     chipsStack.distribution = UIStackViewDistributionFillEqually;
-    chipsStack.spacing = 8.0;
+    chipsStack.spacing = 6.0;
     chipsStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.accessoryFilterChipsStackView = chipsStack;
     [filterContainer addSubview:chipsStack];

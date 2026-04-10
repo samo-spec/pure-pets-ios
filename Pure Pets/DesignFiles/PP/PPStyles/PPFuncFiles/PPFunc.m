@@ -8,6 +8,7 @@
 #import "PPFunc.h"
 #import "UserManager.h"
 #import "PPRolePermission.h"
+@import FirebaseStorage;
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -933,6 +934,50 @@ NS_ASSUME_NONNULL_BEGIN
     
     return cardView;
 }
+
+#pragma mark - 🗑️ Firebase Storage Cleanup
+
++ (void)pp_deleteStorageImagesForURLs:(NSArray<NSString *> *)urls {
+    if (!urls || urls.count == 0) return;
+
+    FIRStorage *storage = [FIRStorage storage];
+    for (NSString *urlString in urls) {
+        if (![urlString isKindOfClass:NSString.class] || urlString.length == 0) continue;
+        @try {
+            FIRStorageReference *ref = [storage referenceForURL:urlString];
+            [ref deleteWithCompletion:^(NSError * _Nullable error) {
+                if (error) {
+                    NSLog(@"⚠️ [StorageCleanup] Failed to delete: %@ — %@",
+                          ref.fullPath, error.localizedDescription);
+                } else {
+                    NSLog(@"🗑️ [StorageCleanup] Deleted: %@", ref.fullPath);
+                }
+            }];
+        } @catch (NSException *exception) {
+            NSLog(@"⚠️ [StorageCleanup] Invalid URL, skipping: %@", urlString);
+        }
+    }
+}
+
++ (void)pp_deleteRemovedStorageImagesFromOldURLs:(NSArray<NSString *> *)oldURLs
+                                         newURLs:(NSArray<NSString *> *)newURLs {
+    if (!oldURLs || oldURLs.count == 0) return;
+
+    NSSet<NSString *> *keepSet = [NSSet setWithArray:newURLs ?: @[]];
+    NSMutableArray<NSString *> *toDelete = [NSMutableArray array];
+    for (NSString *url in oldURLs) {
+        if (![keepSet containsObject:url]) {
+            [toDelete addObject:url];
+        }
+    }
+
+    if (toDelete.count > 0) {
+        NSLog(@"🗑️ [StorageCleanup] Deleting %lu orphaned image(s)…",
+              (unsigned long)toDelete.count);
+        [self pp_deleteStorageImagesForURLs:toDelete];
+    }
+}
+
 @end
 
 NS_ASSUME_NONNULL_END

@@ -6,6 +6,8 @@
 
 #import "PPCollectionLayoutManager.h"
 #import <UIKit/UIKit.h>
+#import "PPUniversalCellViewModel.h"
+#import "PetAccessory.h"
 
 @interface PPCollectionLayoutManager ()
 // No private properties needed for now.
@@ -19,6 +21,21 @@
 #define FRAC_HEIGHT(x) [NSCollectionLayoutDimension fractionalHeightDimension:x]
 #define ABSOLUTE(x) [NSCollectionLayoutDimension absoluteDimension:x]
 #define ESTIMATED(x) [NSCollectionLayoutDimension estimatedDimension:x]
+
+- (BOOL)pp_usesMarketCardSizing
+{
+    id firstItem = self.items.firstObject;
+    if ([firstItem isKindOfClass:[PPUniversalCellViewModel class]]) {
+        PPUniversalCellViewModel *vm = (PPUniversalCellViewModel *)firstItem;
+        return vm.modelContext == PPCellForMarket || [vm.ModelObject isKindOfClass:[PetAccessory class]];
+    }
+    return NO;
+}
+
+- (CGFloat)pp_marketCardHeightForWidth:(CGFloat)width
+{
+    return (width * 0.68) + 128.0;
+}
 
 #pragma mark - Public API
 
@@ -44,7 +61,9 @@
                 CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
                 // Full-width cell: use a standard aspect ratio (e.g., 16:9) for height.
                 CGFloat itemWidth = screenWidth - 32.0;
-                CGFloat itemHeight = (screenWidth * 0.5625)+52; // 16:9 aspect ratio height as default.
+                CGFloat itemHeight = [self pp_usesMarketCardSizing]
+                ? [self pp_marketCardHeightForWidth:itemWidth]
+                : (screenWidth * 0.5625)+52; // 16:9 aspect ratio height as default.
                 flow.itemSize = CGSizeMake(itemWidth, itemHeight);
                 flow.minimumLineSpacing = verticalSpacing;
                 flow.minimumInteritemSpacing = horizontalSpacing;
@@ -69,7 +88,10 @@
                     contentWidth -= (columns - 1) * horizontalSpacing;
                 }
                 CGFloat itemWidth = floor(contentWidth / columns);
-                flow.itemSize = CGSizeMake(itemWidth, itemWidth); // square
+                CGFloat itemHeight = [self pp_usesMarketCardSizing]
+                ? [self pp_marketCardHeightForWidth:itemWidth]
+                : itemWidth;
+                flow.itemSize = CGSizeMake(itemWidth, itemHeight);
                 flow.minimumInteritemSpacing = horizontalSpacing;
                 flow.minimumLineSpacing = verticalSpacing;
                 flow.sectionInset = insets;
@@ -89,7 +111,9 @@
                     contentWidth -= (columns - 1) * horizontalSpacing;
                 }
                 CGFloat itemWidth = floor(contentWidth / columns);
-                CGFloat itemHeight = itemWidth * 1.5; // e.g., 2:3 aspect ratio (vertical rectangle)
+                CGFloat itemHeight = [self pp_usesMarketCardSizing]
+                ? [self pp_marketCardHeightForWidth:itemWidth]
+                : itemWidth * 1.5; // e.g., 2:3 aspect ratio (vertical rectangle)
                 flow.itemSize = CGSizeMake(itemWidth, itemHeight);
                 flow.minimumInteritemSpacing = horizontalSpacing;
                 flow.minimumLineSpacing = verticalSpacing;
@@ -375,6 +399,10 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     if ([obj isKindOfClass:[PPUniversalCellViewModel class]]) {
         PPUniversalCellViewModel *vm = (PPUniversalCellViewModel *)obj;
+
+        if (vm.modelContext == PPCellForMarket || [vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+            return [self pp_marketCardHeightForWidth:width];
+        }
 
         if (!CGSizeEqualToSize(vm.imageSize, CGSizeZero)) {
             CGFloat ratio = vm.imageSize.height / MAX(vm.imageSize.width, 1);
