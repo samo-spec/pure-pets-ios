@@ -1,6 +1,7 @@
 
 
 #import "MainBannerModel.h"
+#import "PPChatsFunc.h"
 #import "PetAdoptCollectionViewCell.h"
 #import "PPBannerCollectionCell.h"
 #import "PPBannersCollection.h"
@@ -2980,11 +2981,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     formatter.currencyCode = order.currency.length > 0 ? order.currency : @"QAR";
     formatter.maximumFractionDigits = 2;
     formatter.minimumFractionDigits = 0;
-    formatter.locale = Language.isRTL
-        ? [NSLocale localeWithLocaleIdentifier:@"ar"]
-        : [NSLocale localeWithLocaleIdentifier:@"en"];
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en"];
 
-    NSString *formattedAmount = [formatter stringFromNumber:@(total)];
+    NSString *formattedAmount = [PPChatsFunc pp_forceLatinDigits:[formatter stringFromNumber:@(total)] ?: @""];
     if (formattedAmount.length > 0) {
         return formattedAmount;
     }

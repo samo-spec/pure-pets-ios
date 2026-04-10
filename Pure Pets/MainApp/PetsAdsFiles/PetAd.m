@@ -317,11 +317,12 @@ fromViewController:(UIViewController *)vc
     
     NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
     formatter.numberStyle = NSNumberFormatterCurrencyStyle;
-    formatter.currencyCode = @"USD"; // Change based on your locale
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_QA"];
+    formatter.currencyCode = @"QAR";
     formatter.maximumFractionDigits = 2;
     formatter.minimumFractionDigits = 0;
     
-    return [formatter stringFromNumber:amount];
+    return [formatter stringFromNumber:amount] ?: @"";
 }
 
 + (NSString *)formattedAge:(NSNumber *)ageInMonths {

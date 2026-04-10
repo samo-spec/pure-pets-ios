@@ -41,7 +41,10 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 @property (nonatomic, strong) id<FIRListenerRegistration> addressesListener;
 @property (nonatomic, strong) PPAddressPickerView *locView;
 @property (nonatomic, strong) UIView *heroCardView;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
+@property (nonatomic, strong) UIView *heroTintView;
+@property (nonatomic, strong) UIView *heroAmbientGlow;
+@property (nonatomic, strong) UIView *heroSecondaryGlow;
+@property (nonatomic, strong) UIView *heroAccentBar;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -91,7 +94,15 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 {
     [super viewDidLayoutSubviews];
 
-    self.heroGradientLayer.frame = self.heroCardView.bounds;
+    if (self.heroCardView) {
+        UIColor *heroBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
+            return [[UIColor whiteColor] colorWithAlphaComponent:a];
+        }];
+        self.heroCardView.layer.borderColor = [heroBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+        self.heroCardView.layer.shadowOpacity =
+            (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
+    }
     if (!CGRectIsEmpty(self.heroCardView.bounds)) {
         self.heroCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroCardView.bounds
                                                                         cornerRadius:self.heroCardView.layer.cornerRadius].CGPath;
@@ -187,34 +198,89 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 {
     self.heroCardView = [[UIView alloc] init];
     self.heroCardView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroCardView.layer.cornerRadius = 30.0;
+    UIColor *heroSurfaceColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
+        }
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    }];
+    self.heroCardView.backgroundColor = heroSurfaceColor;
+    self.heroCardView.layer.cornerRadius = 34.0;
     self.heroCardView.layer.cornerCurve = kCACornerCurveContinuous;
     self.heroCardView.layer.borderWidth = 1.0;
-    self.heroCardView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    UIColor *heroBorderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.heroCardView.layer.borderColor = [heroBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     self.heroCardView.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.heroCardView.layer.shadowOpacity = 0.08;
-    self.heroCardView.layer.shadowRadius = 18.0;
-    self.heroCardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-    self.heroCardView.clipsToBounds = NO;
+    self.heroCardView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
+    self.heroCardView.layer.shadowRadius = 24.0;
+    self.heroCardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.heroCardView.layer.masksToBounds = NO;
     [self.view addSubview:self.heroCardView];
 
-    self.heroGradientLayer = [CAGradientLayer layer];
-    self.heroGradientLayer.colors = @[
-        (id)[AppPrimaryClr   colorWithAlphaComponent:0.16].CGColor,
-        (id)[AppForgroundColr   colorWithAlphaComponent:0.98].CGColor,
-        (id)[AppForgroundColr   colorWithAlphaComponent:1.0].CGColor
-    ];
-    self.heroGradientLayer.locations = @[@0.0, @0.45, @1.0];
-    self.heroGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    self.heroGradientLayer.cornerRadius = 30.0;
-    [self.heroCardView.layer insertSublayer:self.heroGradientLayer atIndex:0];
+    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+
+    self.heroTintView = [[UIView alloc] init];
+    self.heroTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.50];
+        }
+        return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    }];
+    self.heroTintView.layer.cornerRadius = 34.0;
+    self.heroTintView.layer.masksToBounds = YES;
+    self.heroTintView.userInteractionEnabled = NO;
+    [self.heroCardView addSubview:self.heroTintView];
+
+    self.heroAmbientGlow = [[UIView alloc] init];
+    self.heroAmbientGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroAmbientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.16];
+    self.heroAmbientGlow.userInteractionEnabled = NO;
+    self.heroAmbientGlow.layer.cornerRadius = 94.0;
+    self.heroAmbientGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.50].CGColor;
+    self.heroAmbientGlow.layer.shadowOpacity = 0.16;
+    self.heroAmbientGlow.layer.shadowRadius = 42.0;
+    self.heroAmbientGlow.layer.shadowOffset = CGSizeZero;
+    [self.heroCardView addSubview:self.heroAmbientGlow];
+
+    self.heroSecondaryGlow = [[UIView alloc] init];
+    self.heroSecondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSecondaryGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.40 * 0.18 : 0.40;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.heroSecondaryGlow.userInteractionEnabled = NO;
+    self.heroSecondaryGlow.layer.cornerRadius = 58.0;
+    UIColor *secGlowShadow = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    self.heroSecondaryGlow.layer.shadowColor = [secGlowShadow resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    self.heroSecondaryGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.20;
+    self.heroSecondaryGlow.layer.shadowRadius = 22.0;
+    self.heroSecondaryGlow.layer.shadowOffset = CGSizeZero;
+    [self.heroCardView addSubview:self.heroSecondaryGlow];
+
+    self.heroAccentBar = [[UIView alloc] init];
+    self.heroAccentBar.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroAccentBar.backgroundColor = brandColor;
+    self.heroAccentBar.layer.cornerRadius = 3.0;
+    [self.heroCardView addSubview:self.heroAccentBar];
 
     UIView *eyebrowContainer = [[UIView alloc] init];
     eyebrowContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    eyebrowContainer.backgroundColor = [AppPrimaryClr ?: UIColor.brownColor colorWithAlphaComponent:0.10];
+    eyebrowContainer.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.74 * 0.18 : 0.74;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
     eyebrowContainer.layer.cornerRadius = 14.0;
     eyebrowContainer.layer.cornerCurve = kCACornerCurveContinuous;
+    eyebrowContainer.layer.borderWidth = 1.0;
+    eyebrowContainer.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
+    eyebrowContainer.layer.masksToBounds = YES;
     [self.heroCardView addSubview:eyebrowContainer];
 
     self.heroEyebrowLabel = [[UILabel alloc] init];
@@ -278,7 +344,27 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         [self.heroCardView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
 
-        [eyebrowContainer.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:20.0],
+        [self.heroTintView.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor],
+        [self.heroTintView.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor],
+        [self.heroTintView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor],
+        [self.heroTintView.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor],
+
+        [self.heroAmbientGlow.widthAnchor constraintEqualToConstant:188.0],
+        [self.heroAmbientGlow.heightAnchor constraintEqualToConstant:188.0],
+        [self.heroAmbientGlow.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:-82.0],
+        [self.heroAmbientGlow.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:82.0],
+
+        [self.heroSecondaryGlow.widthAnchor constraintEqualToConstant:116.0],
+        [self.heroSecondaryGlow.heightAnchor constraintEqualToConstant:116.0],
+        [self.heroSecondaryGlow.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:42.0],
+        [self.heroSecondaryGlow.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:-34.0],
+
+        [self.heroAccentBar.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:14.0],
+        [self.heroAccentBar.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
+        [self.heroAccentBar.widthAnchor constraintEqualToConstant:72.0],
+        [self.heroAccentBar.heightAnchor constraintEqualToConstant:6.0],
+
+        [eyebrowContainer.topAnchor constraintEqualToAnchor:self.heroAccentBar.bottomAnchor constant:14.0],
         [eyebrowContainer.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
 
         [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.topAnchor constant:7.0],

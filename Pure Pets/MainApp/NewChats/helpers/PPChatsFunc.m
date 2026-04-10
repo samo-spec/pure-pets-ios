@@ -18,13 +18,11 @@
 // Helper to format currency using locale-aware NSNumberFormatter
 + (NSString *)formattedCurrency:(CGFloat)value
 {
-    // TEMP: Force Qatar formatting for cart/payment prices.
+    // Always use en_QA so digits are Latin (0-9) while keeping QAR symbol (ر.ق).
+    // Arabic-Indic digits (٠-٩) must never appear in prices.
     NSString *countryISO = @"QA";
-
-    NSString *localeID = [NSString stringWithFormat:@"%@_%@",
-                          (PPIsRL ? @"ar" : @"en"),
-                          countryISO];
-    NSLocale *formatterLocale = [[NSLocale alloc] initWithLocaleIdentifier:localeID];
+    NSLocale *formatterLocale = [[NSLocale alloc] initWithLocaleIdentifier:
+                                 [NSString stringWithFormat:@"en_%@", countryISO]];
 
     NSString *currencyCode = @"QAR";
 
@@ -38,22 +36,43 @@
 
     NSString *formatted = [formatter stringFromNumber:@(value)];
     if (formatted.length > 0 && [formatted rangeOfString:@"¤"].location == NSNotFound) {
-        return formatted;
+        return [self pp_forceLatinDigits:formatted];
     }
 
     // Fallback (never show generic currency sign)
     NSNumberFormatter *decimalFormatter = [[NSNumberFormatter alloc] init];
     decimalFormatter.numberStyle = NSNumberFormatterDecimalStyle;
-    decimalFormatter.locale = formatter.locale;
+    decimalFormatter.locale = formatterLocale;
     decimalFormatter.maximumFractionDigits = 2;
     decimalFormatter.minimumFractionDigits = 2;
     decimalFormatter.roundingMode = NSNumberFormatterRoundHalfUp;
 
     NSString *amount = [decimalFormatter stringFromNumber:@(value)] ?: @"0.00";
-    NSString *currencyText = currencyCode;
-    return PPIsRL
-        ? [NSString stringWithFormat:@"%@ %@", amount, currencyText]
-        : [NSString stringWithFormat:@"%@ %@", currencyText, amount];
+    return [self pp_forceLatinDigits:
+            [NSString stringWithFormat:@"%@ %@", amount, @"ر.ق"]];
+}
+
+#pragma mark - Latin Digit Enforcement
+
++ (NSString *)pp_forceLatinDigits:(NSString *)input
+{
+    if (!input.length) return input;
+    NSMutableString *result = [input mutableCopy];
+    // Arabic-Indic digits ٠١٢٣٤٥٦٧٨٩ → 0123456789
+    NSDictionary *map = @{
+        @"٠": @"0", @"١": @"1", @"٢": @"2", @"٣": @"3", @"٤": @"4",
+        @"٥": @"5", @"٦": @"6", @"٧": @"7", @"٨": @"8", @"٩": @"9",
+        // Extended Arabic-Indic (Farsi/Urdu) ۰۱۲۳۴۵۶۷۸۹
+        @"۰": @"0", @"۱": @"1", @"۲": @"2", @"۳": @"3", @"۴": @"4",
+        @"۵": @"5", @"۶": @"6", @"۷": @"7", @"۸": @"8", @"۹": @"9"
+    };
+    for (NSString *key in map) {
+        [result replaceOccurrencesOfString:key
+                                withString:map[key]
+                                   options:0
+                                     range:NSMakeRange(0, result.length)];
+    }
+    return [result copy];
 }
 
 /*

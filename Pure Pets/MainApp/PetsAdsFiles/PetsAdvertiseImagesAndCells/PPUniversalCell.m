@@ -1486,7 +1486,7 @@
         config.contentInsets = NSDirectionalEdgeInsetsMake(11.0, 14.0, 11.0, 14.0);
         config.baseBackgroundColor = backgroundColor;
         config.baseForegroundColor = foregroundColor;
-        config.background.cornerRadius = 12;
+        config.background.cornerRadius = 16;
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
             NSMutableDictionary *attrs = [incoming mutableCopy];

@@ -39,8 +39,9 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         return @"-";
     }
     NSDateFormatter *formatter = [NSDateFormatter new];
-    NSString *localeID = ([Language languageVal] == 1) ? @"ar_QA" : NSLocale.currentLocale.localeIdentifier;
-    formatter.locale = [NSLocale localeWithLocaleIdentifier:localeID.length > 0 ? localeID : @"en_US"];
+    // Force en locale so dates show Latin digits (0-9)
+    NSString *localeID = @"en_QA";
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:localeID];
     [formatter setLocalizedDateFormatFromTemplate:@"d MMM yyyy h:mm a"];
     return [formatter stringFromDate:date] ?: @"-";
 }

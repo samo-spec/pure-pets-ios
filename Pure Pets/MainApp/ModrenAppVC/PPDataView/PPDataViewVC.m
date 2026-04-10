@@ -20,7 +20,7 @@
 #endif
 
 static const CGFloat kPPSectionsTabBarHeight = 64.0;
-static const CGFloat kPPAccessoryFilterHeight = 38.0;
+static const CGFloat kPPAccessoryFilterHeight = 42.0;
 
 static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
@@ -47,9 +47,8 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 }
 
 @interface PPDropdownFilterChipButton : UIButton
-
+@property (nonatomic, copy) NSString *chipIconName;
 - (void)pp_applyChipTitle:(NSString *)title active:(BOOL)active;
-
 @end
 
 @implementation PPDropdownFilterChipButton
@@ -57,55 +56,85 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
-    if (!self) {
-        return nil;
-    }
+    if (!self) return nil;
 
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.showsMenuAsPrimaryAction = YES;
-    self.layer.cornerRadius = 12.0;
-    self.layer.masksToBounds = YES;
-    self.layer.borderWidth = 0.9;
-    if (@available(iOS 13.0, *)) {
-        self.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    self.layer.masksToBounds = NO;
 
-    [self.heightAnchor constraintEqualToConstant:32.0].active = YES;
+    [self.heightAnchor constraintEqualToConstant:36.0].active = YES;
     return self;
 }
 
 - (void)pp_applyChipTitle:(NSString *)title active:(BOOL)active
 {
-    UIButtonConfiguration *cfg;
-    if (@available(iOS 26.0, *)) {
-        cfg = [UIButtonConfiguration glassButtonConfiguration];
-    } else {
-        cfg = [UIButtonConfiguration plainButtonConfiguration];
+    UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    UIColor *fg = active ? brand : UIColor.secondaryLabelColor;
+    UIFont *font = active ? [GM boldFontWithSize:13] : [GM MidFontWithSize:13];
+    NSDictionary *textAttrs = @{
+        NSFontAttributeName            : font,
+        NSForegroundColorAttributeName : fg
+    };
+
+    // --- Attributed title: [icon] text ---
+    NSMutableAttributedString *attrTitle = [[NSMutableAttributedString alloc] init];
+
+    if (self.chipIconName.length > 0) {
+        UIImageSymbolConfiguration *iconCfg =
+            [UIImageSymbolConfiguration configurationWithPointSize:11
+                                                            weight:UIImageSymbolWeightMedium];
+        UIImage *icon = [[UIImage systemImageNamed:self.chipIconName
+                                 withConfiguration:iconCfg]
+                         imageWithTintColor:fg
+                              renderingMode:UIImageRenderingModeAlwaysOriginal];
+        if (icon) {
+            NSTextAttachment *att = [[NSTextAttachment alloc] init];
+            att.image = icon;
+            att.bounds = CGRectMake(0, -1.5, 14, 14);
+            [attrTitle appendAttributedString:
+             [NSAttributedString attributedStringWithAttachment:att]];
+            [attrTitle appendAttributedString:
+             [[NSAttributedString alloc] initWithString:@" " attributes:textAttrs]];
+        }
     }
 
-    UIColor *foreground = active ? AppPrimaryClr : UIColor.secondaryLabelColor;
-    cfg.image = [UIImage systemImageNamed:@"chevron.down"];
+    [attrTitle appendAttributedString:
+     [[NSAttributedString alloc] initWithString:title attributes:textAttrs]];
+
+    // --- Configuration ---
+    UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
+    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 14, 6, 11);
+    cfg.baseForegroundColor = fg;
+    cfg.attributedTitle = attrTitle;
+
+    // Trailing chevron
+    UIImageSymbolConfiguration *chevCfg =
+        [UIImageSymbolConfiguration configurationWithPointSize:9
+                                                        weight:UIImageSymbolWeightSemibold];
+    cfg.image = [UIImage systemImageNamed:@"chevron.down" withConfiguration:chevCfg];
     cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
     cfg.imagePadding = 5.0;
-    cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-    cfg.contentInsets = NSDirectionalEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
-    cfg.baseForegroundColor = foreground;
-    cfg.baseBackgroundColor = active ? [AppPrimaryClr colorWithAlphaComponent:0.12] : UIColor.secondarySystemBackgroundColor;
-    cfg.background.backgroundColor = active ? [AppPrimaryClr colorWithAlphaComponent:0.12] : UIColor.secondarySystemBackgroundColor;
-    cfg.background.strokeColor = active ? [AppPrimaryClr colorWithAlphaComponent:0.16] : [UIColor.separatorColor colorWithAlphaComponent:0.16];
-    cfg.background.strokeWidth = 0.8;
-    cfg.attributedTitle =
-    [[NSAttributedString alloc] initWithString:title
-                                    attributes:@{
-        NSFontAttributeName : active ? [GM boldFontWithSize:13] : [GM MidFontWithSize:13],
-        NSForegroundColorAttributeName : foreground
-    }];
+
+    // Surface & border
+    cfg.background.backgroundColor = active
+        ? [brand colorWithAlphaComponent:0.12]
+        : UIColor.tertiarySystemFillColor;
+    cfg.background.strokeColor = active
+        ? [brand colorWithAlphaComponent:0.24]
+        : [UIColor.separatorColor colorWithAlphaComponent:0.30];
+    cfg.background.strokeWidth = active ? 1.0 : 0.6;
 
     self.configuration = cfg;
-    self.tintColor = foreground;
-    self.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
-    self.layer.borderColor = (active ? [AppPrimaryClr colorWithAlphaComponent:0.16] : [UIColor.separatorColor colorWithAlphaComponent:0.16]).CGColor;
+    self.tintColor = fg;
+    self.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+
+    // Active state: brand-glow shadow
+    self.layer.shadowColor  = [brand colorWithAlphaComponent:0.50].CGColor;
+    self.layer.shadowOpacity = active ? 0.22 : 0.0;
+    self.layer.shadowRadius  = active ? 8.0  : 0.0;
+    self.layer.shadowOffset  = active ? CGSizeMake(0, 3) : CGSizeZero;
 }
 
 @end
@@ -2532,6 +2561,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     PPDropdownFilterChipButton *conditionChip = [[PPDropdownFilterChipButton alloc] init];
     PPDropdownFilterChipButton *priceChip = [[PPDropdownFilterChipButton alloc] init];
     PPDropdownFilterChipButton *sortChip = [[PPDropdownFilterChipButton alloc] init];
+    conditionChip.chipIconName = @"checkmark.seal";
+    priceChip.chipIconName = @"tag";
+    sortChip.chipIconName = @"arrow.up.arrow.down";
     self.conditionFilterChip = conditionChip;
     self.priceFilterChip = priceChip;
     self.sortFilterChip = sortChip;
@@ -2544,9 +2576,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     ]];
     chipsStack.translatesAutoresizingMaskIntoConstraints = NO;
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
-    chipsStack.alignment = UIStackViewAlignmentFill;
+    chipsStack.alignment = UIStackViewAlignmentCenter;
     chipsStack.distribution = UIStackViewDistributionFillEqually;
-    chipsStack.spacing = 6.0;
+    chipsStack.spacing = 8.0;
     chipsStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.accessoryFilterChipsStackView = chipsStack;
     [filterContainer addSubview:chipsStack];

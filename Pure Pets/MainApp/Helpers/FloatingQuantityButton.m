@@ -58,6 +58,7 @@
     [self.singleButton addTarget:self action:@selector(showStepper) forControlEvents:UIControlEventTouchUpInside];
     self.singleButton.frame = CGRectMake(self.bounds.size.width - BTNHeight - 10, self.bounds.size.height - BTNHeight, BTNHeight, BTNHeight);
     [self.singleButton setTitle:@"+" forState:UIControlStateNormal];
+    [self.singleButton setTitleColor:AppPrimaryTextClr forState:UIControlStateNormal];
     self.singleButton.titleLabel.font = [GM boldFontWithSize:18];;
     [self addSubview:self.singleButton];
     

@@ -25,6 +25,8 @@ NS_ASSUME_NONNULL_BEGIN
  
 @interface PPChatsFunc : NSObject
 + (NSString *)formattedCurrency:(CGFloat)value;
+/// Replaces Arabic-Indic digits (٠-٩) with Latin digits (0-9).
++ (NSString *)pp_forceLatinDigits:(NSString *)input;
 + (void)applyGlowIfNeededToBubble:(UIView *)bubble
                              path:(UIBezierPath *)path
                          showGlow:(BOOL)showGlow

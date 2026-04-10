@@ -94,8 +94,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 @property (nonatomic, strong) UILabel *itemsMetricLabel;
 @property (nonatomic, strong) UILabel *subtotalMetricLabel;
 @property (nonatomic, strong) UILabel *shippingMetricLabel;
-@property (nonatomic, strong) CAGradientLayer *headerGradientLayer;
-@property (nonatomic, strong) CAGradientLayer *headerShineLayer;
+@property (nonatomic, strong) UIView *headerAccentBarView;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *headerHeightConstraint;
 @property (nonatomic, strong) UIView *undoContainerView;
 @property (nonatomic, strong) UILabel *undoLabel;
@@ -206,7 +205,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
     self.summaryView.showsItemsPreview = NO;
     [self.summaryView setCardBackgroundImage:PPImage(@"4444")];
-    [self.summaryView setCheckoutBTNTitle:kLang(@"Checkout") image: [UIImage pp_symbolNamed:Language.isRTL ? @"arrow.left" : @"arrow.right" pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
+    [self.summaryView setCheckoutBTNTitle:kLang(@"Checkout") image: [UIImage pp_symbolNamed:Language.isRTL ? @"arrow.right" : @"arrow.right" pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
 }
 
 - (void)viewDidLayoutSubviews {
@@ -226,12 +225,14 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
                                       cornerRadius:self.headerChromeContainerView.layer.cornerRadius].CGPath;
     }
 
-    if (self.headerTintOverlayView && !CGRectIsEmpty(self.headerTintOverlayView.bounds)) {
-        CGRect bounds = self.headerTintOverlayView.bounds;
-        self.headerGradientLayer.frame = bounds;
-        self.headerGradientLayer.cornerRadius = self.headerTintOverlayView.layer.cornerRadius;
-        self.headerShineLayer.frame = bounds;
-        self.headerShineLayer.cornerRadius = self.headerTintOverlayView.layer.cornerRadius;
+    if (self.headerChromeView) {
+        UIColor *borderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
+            return [[UIColor whiteColor] colorWithAlphaComponent:a];
+        }];
+        self.headerChromeView.layer.borderColor = [borderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+        self.headerChromeContainerView.layer.shadowOpacity =
+            (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     }
 
     if (!self.didPrimeInitialCartScrollPosition && self.cartTableView) {
@@ -543,9 +544,9 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     containerView.backgroundColor = UIColor.clearColor;
     containerView.layer.cornerRadius = 34.0;
     containerView.layer.shadowColor = UIColor.blackColor.CGColor;
-    containerView.layer.shadowOpacity = 0.11;
-    containerView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
-    containerView.layer.shadowRadius = 34.0;
+    containerView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
+    containerView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    containerView.layer.shadowRadius = 24.0;
     containerView.layer.masksToBounds = NO;
     if (@available(iOS 13.0, *)) {
         containerView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -561,9 +562,19 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     chromeView.layer.cornerRadius = 34.0;
     chromeView.clipsToBounds = YES;
     chromeView.layer.masksToBounds = YES;
-    chromeView.layer.borderWidth = 0.8;
-    chromeView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
-    chromeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.82];
+    chromeView.layer.borderWidth = 1.0;
+    UIColor *chromeBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    chromeView.layer.borderColor = [chromeBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    UIColor *chromeSurfaceColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
+        }
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+    }];
+    chromeView.backgroundColor = chromeSurfaceColor;
     chromeView.contentView.layer.cornerRadius = 34.0;
     chromeView.contentView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -574,48 +585,51 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     UIView *tintOverlay = [[UIView alloc] init];
     tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
     tintOverlay.userInteractionEnabled = NO;
-    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.36];
+    tintOverlay.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.50];
+        }
+        return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+    }];
     tintOverlay.layer.cornerRadius = 34.0;
     tintOverlay.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         tintOverlay.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    CAGradientLayer *gradientLayer = [CAGradientLayer layer];
-    gradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    gradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    gradientLayer.colors = @[
-        (__bridge id)[[AppForgroundColr ?: UIColor.whiteColor colorWithAlphaComponent:0.98] CGColor],
-        (__bridge id)[[AppPrimaryClr ?: UIColor.systemBlueColor colorWithAlphaComponent:0.13] CGColor],
-        (__bridge id)[[UIColor colorWithWhite:1.0 alpha:0.10] CGColor]
-    ];
-    gradientLayer.locations = @[@0.0, @0.48, @1.0];
-    [tintOverlay.layer addSublayer:gradientLayer];
-
-    CAGradientLayer *shineLayer = [CAGradientLayer layer];
-    shineLayer.startPoint = CGPointMake(0.1, 0.0);
-    shineLayer.endPoint = CGPointMake(0.9, 1.0);
-    shineLayer.colors = @[
-        (__bridge id)UIColor.clearColor.CGColor,
-        (__bridge id)[[UIColor colorWithWhite:1.0 alpha:0.18] CGColor],
-        (__bridge id)UIColor.clearColor.CGColor
-    ];
-    shineLayer.locations = @[@0.0, @0.52, @1.0];
-    [tintOverlay.layer addSublayer:shineLayer];
+    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
 
     UIView *primaryOrb = [[UIView alloc] init];
     primaryOrb.translatesAutoresizingMaskIntoConstraints = NO;
     primaryOrb.userInteractionEnabled = NO;
-    primaryOrb.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.18];
-    primaryOrb.layer.cornerRadius = 88.0;
-    primaryOrb.alpha = 0.92;
+    primaryOrb.backgroundColor = [brandColor colorWithAlphaComponent:0.16];
+    primaryOrb.layer.cornerRadius = 94.0;
+    primaryOrb.layer.shadowColor = [brandColor colorWithAlphaComponent:0.50].CGColor;
+    primaryOrb.layer.shadowOpacity = 0.16;
+    primaryOrb.layer.shadowRadius = 42.0;
+    primaryOrb.layer.shadowOffset = CGSizeZero;
 
     UIView *secondaryOrb = [[UIView alloc] init];
     secondaryOrb.translatesAutoresizingMaskIntoConstraints = NO;
     secondaryOrb.userInteractionEnabled = NO;
-    secondaryOrb.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
-    secondaryOrb.layer.cornerRadius = 66.0;
-    secondaryOrb.alpha = 0.84;
+    secondaryOrb.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.40 * 0.18 : 0.40;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    secondaryOrb.layer.cornerRadius = 58.0;
+    UIColor *secGlowShadowColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
+        return [[UIColor whiteColor] colorWithAlphaComponent:a];
+    }];
+    secondaryOrb.layer.shadowColor = [secGlowShadowColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    secondaryOrb.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.20;
+    secondaryOrb.layer.shadowRadius = 22.0;
+    secondaryOrb.layer.shadowOffset = CGSizeZero;
+
+    UIView *accentBar = [[UIView alloc] init];
+    accentBar.translatesAutoresizingMaskIntoConstraints = NO;
+    accentBar.backgroundColor = brandColor;
+    accentBar.layer.cornerRadius = 3.0;
 
     UIView *iconContainer = [[UIView alloc] init];
     iconContainer.translatesAutoresizingMaskIntoConstraints = NO;
@@ -758,6 +772,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [chromeView.contentView addSubview:tintOverlay];
     [chromeView.contentView addSubview:primaryOrb];
     [chromeView.contentView addSubview:secondaryOrb];
+    [chromeView.contentView addSubview:accentBar];
     [chromeView.contentView addSubview:topRow];
     [chromeView.contentView addSubview:compactSummaryLabel];
     [chromeView.contentView addSubview:heroRow];
@@ -781,15 +796,20 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [tintOverlay.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor],
         [tintOverlay.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor],
 
-        [primaryOrb.widthAnchor constraintEqualToConstant:176.0],
-        [primaryOrb.heightAnchor constraintEqualToConstant:176.0],
-        [primaryOrb.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:-54.0],
-        [primaryOrb.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:46.0],
+        [primaryOrb.widthAnchor constraintEqualToConstant:188.0],
+        [primaryOrb.heightAnchor constraintEqualToConstant:188.0],
+        [primaryOrb.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:-82.0],
+        [primaryOrb.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:82.0],
 
-        [secondaryOrb.widthAnchor constraintEqualToConstant:132.0],
-        [secondaryOrb.heightAnchor constraintEqualToConstant:132.0],
-        [secondaryOrb.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor constant:58.0],
-        [secondaryOrb.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:-26.0],
+        [secondaryOrb.widthAnchor constraintEqualToConstant:116.0],
+        [secondaryOrb.heightAnchor constraintEqualToConstant:116.0],
+        [secondaryOrb.bottomAnchor constraintEqualToAnchor:chromeView.contentView.bottomAnchor constant:42.0],
+        [secondaryOrb.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:-34.0],
+
+        [accentBar.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:14.0],
+        [accentBar.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:18.0],
+        [accentBar.widthAnchor constraintEqualToConstant:72.0],
+        [accentBar.heightAnchor constraintEqualToConstant:6.0],
 
         [topRow.topAnchor constraintEqualToAnchor:chromeView.contentView.topAnchor constant:18.0],
         [topRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:18.0],
@@ -824,8 +844,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     self.headerChromeContainerView = containerView;
     self.headerChromeView = chromeView;
     self.headerTintOverlayView = tintOverlay;
-    self.headerGradientLayer = gradientLayer;
-    self.headerShineLayer = shineLayer;
+    self.headerAccentBarView = accentBar;
     self.headerPrimaryOrbView = primaryOrb;
     self.headerSecondaryOrbView = secondaryOrb;
     self.headerIconContainerView = iconContainer;
@@ -906,7 +925,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     self.headerChromeView.layer.cornerRadius = cornerRadius;
     self.headerChromeView.contentView.layer.cornerRadius = cornerRadius;
     self.headerTintOverlayView.layer.cornerRadius = cornerRadius;
-    self.headerChromeContainerView.layer.shadowOpacity = 0.11 - (0.04 * progress);
+    self.headerChromeContainerView.layer.shadowOpacity = 0.08 - (0.03 * progress);
     if (self.headerChromeContainerView && !CGRectIsEmpty(self.headerChromeContainerView.bounds)) {
         self.headerChromeContainerView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.headerChromeContainerView.bounds
@@ -928,8 +947,8 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         self.headerBadgeLabel.transform = CGAffineTransformIdentity;
         self.headerPrimaryOrbView.transform = CGAffineTransformIdentity;
         self.headerSecondaryOrbView.transform = CGAffineTransformIdentity;
-        self.headerGradientLayer.opacity = 1.0;
-        self.headerShineLayer.opacity = 0.92;
+        self.headerTintOverlayView.alpha = 1.0;
+        self.headerAccentBarView.alpha = 1.0;
         return;
     }
 
@@ -977,8 +996,8 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
                                 CGAffineTransformMakeScale(1.0 + (stretchAmount / 220.0),
                                                            1.0 + (stretchAmount / 220.0)));
 
-    self.headerGradientLayer.opacity = 1.0 - (0.08 * progress);
-    self.headerShineLayer.opacity = 0.92 - (0.35 * progress);
+    self.headerTintOverlayView.alpha = 1.0 - (0.06 * progress);
+    self.headerAccentBarView.alpha = 1.0 - (0.50 * progress);
 }
 
 - (void)pp_refreshHeaderChromeWithSummary:(PPCartSummary *)summary
@@ -1174,7 +1193,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     [NSLayoutConstraint activateConstraints:@[
         [stack.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
-        [stack.centerYAnchor constraintEqualToAnchor:container.centerYAnchor constant:18.0],
+        [stack.centerYAnchor constraintEqualToAnchor:container.centerYAnchor constant:120.0],
         [stack.leadingAnchor constraintGreaterThanOrEqualToAnchor:container.leadingAnchor constant:24],
         [stack.trailingAnchor constraintLessThanOrEqualToAnchor:container.trailingAnchor constant:-24],
 
@@ -1203,6 +1222,19 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:YES];
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
     [self pp_refreshHeaderChromeWithSummary:summary];
+
+    // Checkout button: "Checkout • 50.00 ر.ق"
+    NSString *totalFormatted = [PPChatsFunc formattedCurrency:summary.subtotal + summary.shippingFee];
+    NSString *btnTitle = (summary.uniqueItems > 0)
+        ? [NSString stringWithFormat:@"%@ • %@", kLang(@"Checkout"), totalFormatted]
+        : kLang(@"Checkout");
+    [self.summaryView setCheckoutBTNTitle:btnTitle
+                                    image:[UIImage pp_symbolNamed:@"arrow.right"
+                                                        pointSize:18
+                                                           weight:UIImageSymbolWeightSemibold
+                                                            scale:UIImageSymbolScaleLarge
+                                                          palette:@[AppForgroundColr, AppForgroundColr]
+                                                     makeTemplate:NO]];
 
     self.summaryView.alpha = (summary.uniqueItems > 0) ? 1.0 : 0.0;
     if (summary.uniqueItems > 0) {
@@ -1458,8 +1490,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     PPCartTableCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPCartTableCell"];
         if (!cell) cell = [[PPCartTableCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPCartTableCell"];
-        
-        CartItem *item = [CartManager sharedManager].cartItems[indexPath.row];
+
+        NSArray<CartItem *> *items = [CartManager sharedManager].cartItems;
+        if (indexPath.row >= (NSInteger)items.count) {
+            return cell;
+        }
+        CartItem *item = items[indexPath.row];
         [cell configureWithItem:item];
     __weak typeof(cell) weakCell = cell;
     cell.onAction = ^(CartItem *item, NSString *action) {

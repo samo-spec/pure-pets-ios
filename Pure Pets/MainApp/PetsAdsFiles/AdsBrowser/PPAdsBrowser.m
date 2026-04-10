@@ -23,6 +23,7 @@
 @property (nonatomic, strong) NSLayoutConstraint *categoriesHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *adsTopConstraint;
 @property (strong, nonatomic) LTInfiniteScrollView *scrollView;
+@property (nonatomic, assign) BOOL didReceiveInitialData;
 
 @end
 
@@ -93,6 +94,7 @@
     _adsCollectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:pLayout];
     _adsCollectionView.translatesAutoresizingMaskIntoConstraints = NO;
     _adsCollectionView.backgroundColor = UIColor.clearColor;
+    _adsCollectionView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     [_adsCollectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:@"PPUniversalCell"];
     _adsCollectionView.delegate = self;
     [self addSubview:_adsCollectionView];
@@ -378,11 +380,20 @@
             if (self.ads.count == 0) {
                 [PPHUD dismiss];
                 [strongSelf applyEmptySnapshot];
+                strongSelf.didReceiveInitialData = YES;
                 return;
             }
             
+            BOOL isInitial = !strongSelf.didReceiveInitialData;
+            strongSelf.didReceiveInitialData = YES;
+            
             NSArray<PPUniversalCellViewModel *> *vms = [strongSelf buildViewModelsFromAds:self.ads];
-            [strongSelf applySnapshotWithViewModels:vms animate:YES ];
+            [strongSelf applySnapshotWithViewModels:vms animate:!isInitial];
+            
+            // Prevent auto-scroll on initial load — keep filter visible
+            if (isInitial) {
+                [strongSelf.adsCollectionView setContentOffset:CGPointZero animated:NO];
+            }
             
             [PPHUD dismiss];
         });
@@ -495,18 +506,14 @@
     return leftPadding + iconWidth + iconTextSpacing + textSize.width + rightPadding+20;
 }
 - (void)selectorDidSelectIndex:(NSInteger)index item:(MainKindsModel *)item {
-    // Good pattern:
-    // - Update selected category
-    // - Trigger Firestore listener ONCE
-    // - Apply diffable snapshot (animatingDifferences:NO if heavy)
-
     self.selectedCategoryID = item.ID;;
 
     [self.adManager listenForCategory:self.selectedCategoryID onChange:^(NSArray<PetAd *> * _Nonnull updatedAds) {
          
         dispatch_async(dispatch_get_main_queue(), ^{
             NSArray *vms = [self buildViewModelsFromAds:updatedAds];
-            [self applySnapshotWithViewModels:vms animate:NO]; // try NO to reduce jank
+            [self applySnapshotWithViewModels:vms animate:NO];
+            [self.adsCollectionView setContentOffset:CGPointZero animated:NO];
         });
     }];
 }

@@ -13,6 +13,7 @@
 
 #import <Foundation/Foundation.h>
 #import <CommonCrypto/CommonCrypto.h>
+#import "PPChatsFunc.h"
 #import "YYWebImageManager.h"
 #import "YYImageCache.h"
 #import "YYWebImageOperation.h"
@@ -2399,8 +2400,8 @@ CGSize getImageSizeSafely(UIImage *image) {
     NSNumberFormatter *fmt = [NSNumberFormatter new];
     fmt.numberStyle = NSNumberFormatterCurrencyStyle;
 
-    // Locale by app language (Arabic vs device default)
-    NSString *localeID = ([Language languageVal] == 1) ? @"ar_QA" : NSLocale.currentLocale.localeIdentifier;
+    // Always force Latin digits — use en_QA (not ar_QA) so prices show 0-9
+    NSString *localeID = @"en_QA";
     fmt.locale = [NSLocale localeWithLocaleIdentifier:localeID];
 
     if (currencyCode.length) {
@@ -2413,7 +2414,8 @@ CGSize getImageSizeSafely(UIImage *image) {
     fmt.minimumFractionDigits = hasCents ? 2 : 0;
     fmt.maximumFractionDigits = 2;
 
-    return [fmt stringFromNumber:number] ?: @"";
+    NSString *result = [fmt stringFromNumber:number] ?: @"";
+    return [PPChatsFunc pp_forceLatinDigits:result];
 }
 
 // Helpers
