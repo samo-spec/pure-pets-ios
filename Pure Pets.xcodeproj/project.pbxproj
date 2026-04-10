@@ -548,6 +548,13 @@
 		F2A302F72EBA3D0B005E45F0 /* UserPaymentInstrument.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302F62EBA3D0B005E45F0 /* UserPaymentInstrument.m */; };
 		F2A302F92EBA3EC8005E45F0 /* PaymentMethod.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302F82EBA3EC8005E45F0 /* PaymentMethod.m */; };
 		F2A302FC2EBA41BB005E45F0 /* UserPaymentInstrumentManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302FB2EBA3F4E005E45F0 /* UserPaymentInstrumentManager.m */; };
+		F2A83AD12F88781C00930857 /* BBCheckoutSummaryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC32F88781B00930857 /* BBCheckoutSummaryView.m */; };
+		F2A83AD22F88781C00930857 /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC92F88781B00930857 /* PPNavBarTitleView.m */; };
+		F2A83AD32F88781C00930857 /* PPBottomBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC52F88781B00930857 /* PPBottomBar.m */; };
+		F2A83AD42F88781C00930857 /* UIViewController+PPNavBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACF2F88781B00930857 /* UIViewController+PPNavBar.m */; };
+		F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACB2F88781B00930857 /* PPNavigationController.m */; };
+		F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC72F88781B00930857 /* PPBottomBarManager.m */; };
+		F2A83AD72F88781C00930857 /* UITabBarItem+PPAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */; };
 		F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */; };
 		F2AAEDA92EF9E249006E0A6F /* UITabBarItem+PPAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */; };
 		F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB487F2C72CF3C00D88603 /* JGProgressHUD.m */; };
@@ -1785,6 +1792,20 @@
 		F2A302F82EBA3EC8005E45F0 /* PaymentMethod.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PaymentMethod.m; sourceTree = "<group>"; };
 		F2A302FA2EBA3F08005E45F0 /* UserPaymentInstrumentManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserPaymentInstrumentManager.h; sourceTree = "<group>"; };
 		F2A302FB2EBA3F4E005E45F0 /* UserPaymentInstrumentManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserPaymentInstrumentManager.m; sourceTree = "<group>"; };
+		F2A83AC22F88781B00930857 /* BBCheckoutSummaryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BBCheckoutSummaryView.h; sourceTree = "<group>"; };
+		F2A83AC32F88781B00930857 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BBCheckoutSummaryView.m; sourceTree = "<group>"; };
+		F2A83AC42F88781B00930857 /* PPBottomBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBottomBar.h; sourceTree = "<group>"; };
+		F2A83AC52F88781B00930857 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomBar.m; sourceTree = "<group>"; };
+		F2A83AC62F88781B00930857 /* PPBottomBarManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBottomBarManager.h; sourceTree = "<group>"; };
+		F2A83AC72F88781B00930857 /* PPBottomBarManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBottomBarManager.m; sourceTree = "<group>"; };
+		F2A83AC82F88781B00930857 /* PPNavBarTitleView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNavBarTitleView.h; sourceTree = "<group>"; };
+		F2A83AC92F88781B00930857 /* PPNavBarTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNavBarTitleView.m; sourceTree = "<group>"; };
+		F2A83ACA2F88781B00930857 /* PPNavigationController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNavigationController.h; sourceTree = "<group>"; };
+		F2A83ACB2F88781B00930857 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNavigationController.m; sourceTree = "<group>"; };
+		F2A83ACC2F88781B00930857 /* UITabBarItem+PPAdditions.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UITabBarItem+PPAdditions.h"; sourceTree = "<group>"; };
+		F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPAdditions.m"; sourceTree = "<group>"; };
+		F2A83ACE2F88781B00930857 /* UIViewController+PPNavBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPNavBar.h"; sourceTree = "<group>"; };
+		F2A83ACF2F88781B00930857 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPNavBar.m"; sourceTree = "<group>"; };
 		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPFactory.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m"; sourceTree = SOURCE_ROOT; };
 		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPAdditions.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m"; sourceTree = SOURCE_ROOT; };
 		F2AB48702C72CF3C00D88603 /* JGProgressHUD-Defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "JGProgressHUD-Defines.h"; sourceTree = "<group>"; };
@@ -4051,6 +4072,27 @@
 			path = Adressess;
 			sourceTree = "<group>";
 		};
+		F2A83AD02F88781B00930857 /* PPNAV */ = {
+			isa = PBXGroup;
+			children = (
+				F2A83AC22F88781B00930857 /* BBCheckoutSummaryView.h */,
+				F2A83AC32F88781B00930857 /* BBCheckoutSummaryView.m */,
+				F2A83AC42F88781B00930857 /* PPBottomBar.h */,
+				F2A83AC52F88781B00930857 /* PPBottomBar.m */,
+				F2A83AC62F88781B00930857 /* PPBottomBarManager.h */,
+				F2A83AC72F88781B00930857 /* PPBottomBarManager.m */,
+				F2A83AC82F88781B00930857 /* PPNavBarTitleView.h */,
+				F2A83AC92F88781B00930857 /* PPNavBarTitleView.m */,
+				F2A83ACA2F88781B00930857 /* PPNavigationController.h */,
+				F2A83ACB2F88781B00930857 /* PPNavigationController.m */,
+				F2A83ACC2F88781B00930857 /* UITabBarItem+PPAdditions.h */,
+				F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */,
+				F2A83ACE2F88781B00930857 /* UIViewController+PPNavBar.h */,
+				F2A83ACF2F88781B00930857 /* UIViewController+PPNavBar.m */,
+			);
+			path = PPNAV;
+			sourceTree = "<group>";
+		};
 		F2A8E30D2EAA5B250075F53D /* VVSpringCollectionViewFlowLayout */ = {
 			isa = PBXGroup;
 			children = (
@@ -4334,6 +4376,7 @@
 		F2B1A62C2E6EA63F0019FC7C /* PP */ = {
 			isa = PBXGroup;
 			children = (
+				F2A83AD02F88781B00930857 /* PPNAV */,
 				F29952652F2DB8D300F50031 /* ZYCircleProgressView */,
 				F28A09FD2EE772E900EE5055 /* ScaledCenterCarousel */,
 				F27714A92ED775A700B1D062 /* PPImagePicker+Viewer */,
@@ -5532,6 +5575,13 @@
 				F241C4522E254D3A00CC9BE9 /* ServiceModel.m in Sources */,
 				F2449C402D0DBACA00DB6BBC /* AppManager.m in Sources */,
 				F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */,
+				F2A83AD12F88781C00930857 /* BBCheckoutSummaryView.m in Sources */,
+				F2A83AD22F88781C00930857 /* PPNavBarTitleView.m in Sources */,
+				F2A83AD32F88781C00930857 /* PPBottomBar.m in Sources */,
+				F2A83AD42F88781C00930857 /* UIViewController+PPNavBar.m in Sources */,
+				F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */,
+				F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */,
+				F2A83AD72F88781C00930857 /* UITabBarItem+PPAdditions.m in Sources */,
 				F2AB48D62C72D43D00D88603 /* KafkaArrowHeader.m in Sources */,
 				F27314922F31995A00FFA0B8 /* PPPaymentMethodCell.m in Sources */,
 				F2AB48922C72CF3C00D88603 /* JGProgressHUDIndeterminateIndicatorView.m in Sources */,
