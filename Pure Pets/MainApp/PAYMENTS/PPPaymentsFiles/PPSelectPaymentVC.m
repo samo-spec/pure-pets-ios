@@ -98,6 +98,25 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     }
 }
 
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+
+    // Reveal the summary view after the push transition and Auto Layout
+    // have fully settled, so there is no layout-driven jump.
+    if (self.summaryView && self.summaryView.alpha < 1.0) {
+        [UIView animateWithDuration:0.45
+                              delay:0.0
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.summaryView.alpha = 1.0;
+            self.summaryView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
+}
+
 - (void)pp_configureNavigationChrome
 {
     UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil
@@ -116,47 +135,40 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
-    // Suppress the internal cardView entrance animation — this VC handles
-    // the entrance on the whole summaryView itself (see animation below).
-    // Without this, two overlapping animations cause a visible jump.
+    // Suppress the internal cardView entrance animation; this VC uses
+    // its own entrance in viewDidAppear: instead.
     [self.summaryView skipCardEntranceAnimation];
-
-    // Start hidden; the outer spring animation below reveals it smoothly.
-    self.summaryView.alpha = 0.0;
-    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
 
     __weak typeof(self) weakSelf = self;
     self.summaryView.onTapCheckOut = ^{
-        NSLog(@"🛒 Checkout tapped on PPSelectPaymentVC+Helper");
+        NSLog(@"Checkout tapped on PPSelectPaymentVC+Helper");
         [weakSelf finishPayments];
     };
-    // Update summary with cart data via centralized calculator
-    PPCartSummary *summary = [PPCartCalculator currentSummary];
 
+    // Configure all data inside performWithoutAnimation so internal
+    // setters (e.g. setShowsItemsPreview:) don't fire their own
+    // UIView animations that conflict with the entrance reveal.
+    PPCartSummary *summary = [PPCartCalculator currentSummary];
     BOOL showShowCollectionPreview = CartManager.sharedManager.cartItems.count > 3;
-    [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
-    self.summaryView.showDetails = !showShowCollectionPreview ;
-    [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
-    self.summaryView.showsItemsPreview = showShowCollectionPreview;
-    [self.summaryView setCheckoutBTNTitle:kLang(@"payment_pay_now") image:[UIImage pp_symbolNamed:@"creditcard.fill" pointSize:18  //.fill.and.123
-                                                                                   weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
+
+    [UIView performWithoutAnimation:^{
+        [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
+        self.summaryView.showDetails = !showShowCollectionPreview;
+        [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
+        self.summaryView.showsItemsPreview = showShowCollectionPreview;
+        [self.summaryView setCheckoutBTNTitle:kLang(@"payment_pay_now") image:[UIImage pp_symbolNamed:@"creditcard.fill" pointSize:18
+                                                                                        weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
+        [self.summaryView layoutIfNeeded];
+    }];
 
     if ([CartManager sharedManager].cartItems.count > 0) {
         [_summaryView pp_startTrustBannerShimmer];
     }
 
-    // Smooth entrance after layout settles
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [UIView animateWithDuration:0.45
-                              delay:0.08
-             usingSpringWithDamping:0.88
-              initialSpringVelocity:0.0
-                            options:UIViewAnimationOptionCurveEaseOut
-                         animations:^{
-            weakSelf.summaryView.alpha = 1.0;
-            weakSelf.summaryView.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    });
+    // Start fully hidden. viewDidAppear: will reveal with a spring
+    // animation after the push transition and Auto Layout have settled.
+    self.summaryView.alpha = 0.0;
+    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
 }
 
 - (void)setlocViewViewAtTop

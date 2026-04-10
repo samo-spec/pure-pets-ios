@@ -20,7 +20,7 @@ static NSString *const kCartSupportPhoneNumber = @"+97459997720";
 static CGFloat const kCartScreenHorizontalInset = 16.0;
 static CGFloat const kCartFloatingSummaryBottomInset = 12.0;
 static CGFloat const kCartHeaderExpandedHeight = 232.0;
-static CGFloat const kCartHeaderCollapsedHeight = 112.0;
+static CGFloat const kCartHeaderCollapsedHeight = 76.0;
 static CGFloat const kCartHeaderTopInset = 8.0;
 static CGFloat const kCartHeaderTableSpacing = 18.0;
 static CGFloat const kCartTableBottomInset = 26.0;
@@ -639,7 +639,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     badgeLabel.textInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
     badgeLabel.text = @"PURE PETS";
-    badgeLabel.font = [GM MidFontWithSize:11];
+    badgeLabel.font = [GM boldFontWithSize:11];
     badgeLabel.textColor = AppPrimaryClr;
     badgeLabel.textAlignment = NSTextAlignmentCenter;
     badgeLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.13];
@@ -813,12 +813,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [heroRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:18.0],
         [heroRow.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-18.0],
 
-        [metricsStack.topAnchor constraintEqualToAnchor:heroRow.bottomAnchor constant:18.0],
+        [metricsStack.topAnchor constraintEqualToAnchor:heroRow.bottomAnchor constant:8.0],
         [metricsStack.leadingAnchor constraintEqualToAnchor:heroRow.leadingAnchor],
         [metricsStack.trailingAnchor constraintEqualToAnchor:heroRow.trailingAnchor],
-        [metricsStack.heightAnchor constraintEqualToConstant:78.0],
+        [metricsStack.heightAnchor constraintEqualToConstant:68.0],
 
-        [itemsMetricLabel.heightAnchor constraintGreaterThanOrEqualToConstant:78.0]
+        [itemsMetricLabel.heightAnchor constraintGreaterThanOrEqualToConstant:68.0]
     ]];
 
     self.headerChromeContainerView = containerView;
@@ -915,9 +915,11 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.headerBadgeLabel.alpha = 1.0;
-        self.headerSubtitleLabel.alpha = progress >= 0.55 ? 0.0 : 1.0;
-        self.headerCompactSummaryLabel.alpha = progress >= 0.55 ? 1.0 : 0.0;
-        self.headerMetricsStack.alpha = progress >= 0.45 ? 0.0 : 1.0;
+        self.headerIconContainerView.alpha = progress >= 0.40 ? 0.0 : 1.0;
+        self.headerTitleLabel.alpha = progress >= 0.40 ? 0.0 : 1.0;
+        self.headerSubtitleLabel.alpha = progress >= 0.35 ? 0.0 : 1.0;
+        self.headerCompactSummaryLabel.alpha = progress >= 0.40 ? 1.0 : 0.0;
+        self.headerMetricsStack.alpha = progress >= 0.35 ? 0.0 : 1.0;
         self.headerTitleLabel.transform = CGAffineTransformIdentity;
         self.headerSubtitleLabel.transform = CGAffineTransformIdentity;
         self.headerCompactSummaryLabel.transform = CGAffineTransformIdentity;
@@ -931,34 +933,38 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         return;
     }
 
-    CGFloat iconScale = (1.0 - (0.14 * progress)) + (stretchAmount / 220.0);
-    CGFloat titleScale = (1.0 - (0.06 * progress)) + (stretchAmount / 300.0);
-    CGFloat subtitleAlpha = MAX(0.0, 1.0 - (1.9 * progress));
-    CGFloat compactAlpha = MIN(1.0, MAX(0.0, (progress - 0.48) / 0.30));
-    CGFloat metricsAlpha = MAX(0.0, 1.0 - (2.0 * progress));
+    CGFloat iconScale = (1.0 - (0.28 * progress)) + (stretchAmount / 220.0);
+    CGFloat iconAlpha = MAX(0.0, 1.0 - (2.8 * progress));
+    CGFloat titleScale = (1.0 - (0.10 * progress)) + (stretchAmount / 300.0);
+    CGFloat titleAlpha = MAX(0.0, 1.0 - (2.8 * progress));
+    CGFloat subtitleAlpha = MAX(0.0, 1.0 - (3.2 * progress));
+    CGFloat compactAlpha = MIN(1.0, MAX(0.0, (progress - 0.30) / 0.28));
+    CGFloat metricsAlpha = MAX(0.0, 1.0 - (3.4 * progress));
 
+    self.headerIconContainerView.alpha = iconAlpha;
     self.headerIconContainerView.transform =
-        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 4.0 * progress),
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -10.0 * progress),
                                 CGAffineTransformMakeScale(iconScale, iconScale));
 
+    self.headerTitleLabel.alpha = titleAlpha;
     self.headerTitleLabel.transform =
-        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -4.0 * progress),
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -12.0 * progress),
                                 CGAffineTransformMakeScale(titleScale, titleScale));
 
     self.headerSubtitleLabel.alpha = subtitleAlpha;
-    self.headerSubtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, -6.0 * progress);
+    self.headerSubtitleLabel.transform = CGAffineTransformMakeTranslation(0.0, -10.0 * progress);
 
     self.headerCompactSummaryLabel.alpha = compactAlpha;
     self.headerCompactSummaryLabel.transform = CGAffineTransformMakeTranslation(0.0, 6.0 * (1.0 - compactAlpha));
 
     self.headerMetricsStack.alpha = metricsAlpha;
     self.headerMetricsStack.transform =
-        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 16.0 * progress),
-                                CGAffineTransformMakeScale(1.0 - (0.08 * progress),
-                                                           1.0 - (0.08 * progress)));
+        CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -14.0 * progress),
+                                CGAffineTransformMakeScale(1.0 - (0.10 * progress),
+                                                           1.0 - (0.10 * progress)));
 
     self.headerSupportButton.transform = CGAffineTransformMakeScale(1.0 - (0.05 * progress),
-                                                                    1.0 - (0.05 * progress));
+                                                                     1.0 - (0.05 * progress));
     self.headerBadgeLabel.transform = CGAffineTransformMakeTranslation(0.0, -4.0 * progress);
     self.headerBadgeLabel.alpha = 1.0 - (0.18 * progress);
 
