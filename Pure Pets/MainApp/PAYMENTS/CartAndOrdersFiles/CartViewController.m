@@ -526,7 +526,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         config.attributedTitle = [[NSAttributedString alloc] initWithString:resolvedTitle
                                                                   attributes:@{
             NSFontAttributeName: [GM boldFontWithSize:14],
-            NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.labelColor
+            NSForegroundColorAttributeName: UIColor.whiteColor
         }];
         self.undoButton.configuration = config;
     } else {
@@ -1256,7 +1256,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
-    container.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.94];
+    container.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.94];
     container.layer.cornerRadius = 20.0;
     container.layer.borderWidth = 0.0;
     container.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
@@ -1271,7 +1271,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     UILabel *label = [[UILabel alloc] init];
     label.translatesAutoresizingMaskIntoConstraints = NO;
     label.font = [GM MidFontWithSize:15];
-    label.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    label.textColor = UIColor.whiteColor;
     label.numberOfLines = 2;
     label.text = kLang(@"cart_undo_message");
     label.textAlignment = Language.alignmentForCurrentLanguage;
@@ -1281,21 +1281,21 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self pp_styleHeaderSupportButton:undoButton];
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = undoButton.configuration;
-        config.baseForegroundColor = AppPrimaryClr ?: UIColor.labelColor;
-        config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+        config.baseForegroundColor = UIColor.whiteColor;
+        config.background.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.22];
         config.background.strokeWidth = 0.0;
         config.image = nil;
         config.attributedTitle = [[NSAttributedString alloc] initWithString:kLang(@"cart_undo_action")
                                                                   attributes:@{
             NSFontAttributeName: [GM boldFontWithSize:14],
-            NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.labelColor
+            NSForegroundColorAttributeName: UIColor.whiteColor
         }];
         undoButton.configuration = config;
     } else {
         undoButton.titleLabel.font = [GM boldFontWithSize:14];
         [undoButton setTitle:kLang(@"cart_undo_action") forState:UIControlStateNormal];
-        [undoButton setTitleColor:AppPrimaryClr ?: UIColor.labelColor forState:UIControlStateNormal];
-        undoButton.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.10];
+        [undoButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+        undoButton.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.22];
         undoButton.layer.borderWidth = 0.0;
     }
     [undoButton addTarget:self action:@selector(pp_undoLastRemovalTapped) forControlEvents:UIControlEventTouchUpInside];
@@ -1307,8 +1307,8 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self.view addSubview:container];
 
     [NSLayoutConstraint activateConstraints:@[
-        [container.leadingAnchor constraintEqualToAnchor:self.summaryView.leadingAnchor],
-        [container.trailingAnchor constraintEqualToAnchor:self.summaryView.trailingAnchor],
+        [container.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
+        [container.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
         [container.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-14],
         [container.heightAnchor constraintGreaterThanOrEqualToConstant:58],
 
