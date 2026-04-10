@@ -48,12 +48,15 @@ typedef NS_ENUM(NSUInteger, PPAddressPickerState) {
     NSLayoutConstraint *trailing =
     [view.trailingAnchor constraintEqualToAnchor:controller.view.trailingAnchor constant:-16.0];
     
+    NSLayoutConstraint *top =
+    [view.topAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.topAnchor constant:12.0];
+
     [NSLayoutConstraint activateConstraints:@[
         trailing,
-        [view.topAnchor constraintEqualToAnchor:controller.view.safeAreaLayoutGuide.topAnchor constant:12.0],
+        top,
         height,
-        
     ]];
+    view.topConstraint = top;
     
     view.widthConstraintCircle = [view.widthAnchor constraintEqualToConstant:56.0];
     view.widthConstraintFull = [view.widthAnchor constraintEqualToConstant:width];
@@ -90,14 +93,19 @@ typedef NS_ENUM(NSUInteger, PPAddressPickerState) {
     self.blurView.layer.cornerRadius = 28;
     self.blurView.layer.cornerCurve = kCACornerCurveContinuous;
     self.blurView.clipsToBounds = YES;
-    
+    self.blurView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.22 green:0.22 blue:0.24 alpha:0.80];
+        }
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.88];
+    }];
     // Soft glass-like shadow on the container layer
     self.layer.shadowColor = [UIColor blackColor].CGColor;
-    self.layer.shadowOpacity = 0.12;
-    self.layer.shadowRadius = 16.0;
+    self.layer.shadowOpacity = 0.09;
+    self.layer.shadowRadius = 14.0;
     self.layer.shadowOffset = CGSizeMake(0, 6);
     self.layer.masksToBounds = NO;
-    
+   
     [self addSubview:self.blurView];
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
@@ -222,8 +230,8 @@ typedef NS_ENUM(NSUInteger, PPAddressPickerState) {
     self.widthConstraintFull.active = YES;
     
     self.blurView.layer.cornerRadius = 18.0;
-    self.layer.shadowRadius = 20.0;
-    self.layer.shadowOpacity = 0.16;
+    self.layer.shadowRadius = 18.0;
+    self.layer.shadowOpacity = 0.11;
     [Styling addLiquidGlassBorderToView:self cornerRadius:18];
     self.hintLabel.hidden = NO;
     self.addressLabel.hidden = NO;
@@ -272,7 +280,7 @@ typedef NS_ENUM(NSUInteger, PPAddressPickerState) {
     self.widthConstraintFull.active =NO;
     self.blurView.layer.cornerRadius = 28.0;
     self.layer.shadowRadius = 14.0;
-    self.layer.shadowOpacity = 0.12;
+    self.layer.shadowOpacity = 0.09;
     [Styling addLiquidGlassBorderToView:self cornerRadius:28];
     [UIView animateWithDuration:0.25 animations:^{
         [self.superview layoutIfNeeded];

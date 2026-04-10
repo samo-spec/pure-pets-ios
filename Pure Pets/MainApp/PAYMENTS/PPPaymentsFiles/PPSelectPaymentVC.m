@@ -63,8 +63,8 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
 
     [self pp_configureNavigationChrome];
-    [self setlocViewViewAtTop];
     [self pp_setupHeroSection];
+    [self setlocViewViewAtTop];
     [self setSummuryViewAtBottom];
     [self setupPaymentCollection];
     [self pp_applyDefaultSelectionIfNeeded];
@@ -191,6 +191,12 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         [weakSelf pp_presentAddressPickerOrPrompt];
     };
     [self.locView expandAndLock];
+
+    // Re-anchor the address picker below the hero card instead of safe-area top
+    self.locView.topConstraint.active = NO;
+    self.locView.topConstraint = [self.locView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:14.0];
+    self.locView.topConstraint.active = YES;
+
     [self pp_setupInitialAddressState];
 }
 
@@ -200,9 +206,9 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroCardView.translatesAutoresizingMaskIntoConstraints = NO;
     UIColor *heroSurfaceColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
+            return [UIColor colorWithRed:0.19 green:0.19 blue:0.21 alpha:0.88];
         }
-        return [[UIColor whiteColor] colorWithAlphaComponent:0.82];
+        return [[UIColor whiteColor] colorWithAlphaComponent:0.88];
     }];
     self.heroCardView.backgroundColor = heroSurfaceColor;
     self.heroCardView.layer.cornerRadius = 34.0;
@@ -226,9 +232,9 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroTintView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroTintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.50];
+            return [UIColor colorWithRed:0.25 green:0.22 blue:0.20 alpha:0.38];
         }
-        return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+        return [[UIColor colorWithRed:0.99 green:0.97 blue:0.95 alpha:1.0] colorWithAlphaComponent:0.58];
     }];
     self.heroTintView.layer.cornerRadius = 34.0;
     self.heroTintView.layer.masksToBounds = YES;
@@ -237,7 +243,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
     self.heroAmbientGlow = [[UIView alloc] init];
     self.heroAmbientGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroAmbientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.16];
+    self.heroAmbientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.10];
     self.heroAmbientGlow.userInteractionEnabled = NO;
     self.heroAmbientGlow.layer.cornerRadius = 94.0;
     self.heroAmbientGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.50].CGColor;
@@ -249,7 +255,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroSecondaryGlow = [[UIView alloc] init];
     self.heroSecondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroSecondaryGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.40 * 0.18 : 0.40;
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.34 * 0.18 : 0.28;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
     self.heroSecondaryGlow.userInteractionEnabled = NO;
@@ -287,7 +293,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroEyebrowLabel.font = [GM MidFontWithSize:12.0];
     self.heroEyebrowLabel.textColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-    self.heroEyebrowLabel.textAlignment = NSTextAlignmentNatural;
+    self.heroEyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroEyebrowLabel.text = kLang(@"payment_screen_eyebrow");
     [eyebrowContainer addSubview:self.heroEyebrowLabel];
 
@@ -306,19 +312,19 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
     self.heroTitleLabel = [[UILabel alloc] init];
     self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroTitleLabel.font = [GM boldFontWithSize:28.0];
+    self.heroTitleLabel.font = [GM boldFontWithSize:24.0];
     self.heroTitleLabel.textColor = UIColor.labelColor;
     self.heroTitleLabel.numberOfLines = 2;
-    self.heroTitleLabel.textAlignment = NSTextAlignmentNatural;
+    self.heroTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroTitleLabel.text = kLang(@"payment_screen_title");
     [self.heroCardView addSubview:self.heroTitleLabel];
 
     self.heroSubtitleLabel = [[UILabel alloc] init];
     self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroSubtitleLabel.font = [GM MidFontWithSize:14.0];
+    self.heroSubtitleLabel.font = [GM MidFontWithSize:13.0];
     self.heroSubtitleLabel.textColor = UIColor.secondaryLabelColor;
     self.heroSubtitleLabel.numberOfLines = 0;
-    self.heroSubtitleLabel.textAlignment = NSTextAlignmentNatural;
+    self.heroSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.heroSubtitleLabel.text = kLang(@"payment_screen_subtitle");
     [self.heroCardView addSubview:self.heroSubtitleLabel];
 
@@ -326,7 +332,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     deliveryLabel.translatesAutoresizingMaskIntoConstraints = NO;
     deliveryLabel.font = [GM boldFontWithSize:16.0];
     deliveryLabel.textColor = UIColor.labelColor;
-    deliveryLabel.textAlignment = NSTextAlignmentNatural;
+    deliveryLabel.textAlignment = Language.alignmentForCurrentLanguage;
     deliveryLabel.text = kLang(@"payment_section_delivery");
     [self.heroCardView addSubview:deliveryLabel];
 
@@ -335,12 +341,12 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     deliverySubtitleLabel.font = [GM MidFontWithSize:13.0];
     deliverySubtitleLabel.textColor = UIColor.secondaryLabelColor;
     deliverySubtitleLabel.numberOfLines = 2;
-    deliverySubtitleLabel.textAlignment = NSTextAlignmentNatural;
+    deliverySubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     deliverySubtitleLabel.text = kLang(@"payment_section_delivery_subtitle");
     [self.heroCardView addSubview:deliverySubtitleLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroCardView.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:18.0],
+        [self.heroCardView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
         [self.heroCardView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
 
@@ -349,22 +355,22 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         [self.heroTintView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor],
         [self.heroTintView.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor],
 
-        [self.heroAmbientGlow.widthAnchor constraintEqualToConstant:188.0],
-        [self.heroAmbientGlow.heightAnchor constraintEqualToConstant:188.0],
-        [self.heroAmbientGlow.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:-82.0],
-        [self.heroAmbientGlow.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:82.0],
+        [self.heroAmbientGlow.widthAnchor constraintEqualToConstant:174.0],
+        [self.heroAmbientGlow.heightAnchor constraintEqualToConstant:174.0],
+        [self.heroAmbientGlow.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:-74.0],
+        [self.heroAmbientGlow.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:74.0],
 
-        [self.heroSecondaryGlow.widthAnchor constraintEqualToConstant:116.0],
-        [self.heroSecondaryGlow.heightAnchor constraintEqualToConstant:116.0],
-        [self.heroSecondaryGlow.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:42.0],
-        [self.heroSecondaryGlow.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:-34.0],
+        [self.heroSecondaryGlow.widthAnchor constraintEqualToConstant:104.0],
+        [self.heroSecondaryGlow.heightAnchor constraintEqualToConstant:104.0],
+        [self.heroSecondaryGlow.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:34.0],
+        [self.heroSecondaryGlow.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:-26.0],
 
-        [self.heroAccentBar.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:14.0],
+        [self.heroAccentBar.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:12.0],
         [self.heroAccentBar.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
-        [self.heroAccentBar.widthAnchor constraintEqualToConstant:72.0],
-        [self.heroAccentBar.heightAnchor constraintEqualToConstant:6.0],
+        [self.heroAccentBar.widthAnchor constraintEqualToConstant:56.0],
+        [self.heroAccentBar.heightAnchor constraintEqualToConstant:5.0],
 
-        [eyebrowContainer.topAnchor constraintEqualToAnchor:self.heroAccentBar.bottomAnchor constant:14.0],
+        [eyebrowContainer.topAnchor constraintEqualToAnchor:self.heroAccentBar.bottomAnchor constant:12.0],
         [eyebrowContainer.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
 
         [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.topAnchor constant:7.0],
@@ -374,30 +380,30 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
         [iconSurface.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
         [iconSurface.centerYAnchor constraintEqualToAnchor:eyebrowContainer.centerYAnchor],
-        [iconSurface.widthAnchor constraintEqualToConstant:44.0],
-        [iconSurface.heightAnchor constraintEqualToConstant:44.0],
+        [iconSurface.widthAnchor constraintEqualToConstant:40.0],
+        [iconSurface.heightAnchor constraintEqualToConstant:40.0],
 
         [heroIconView.centerXAnchor constraintEqualToAnchor:iconSurface.centerXAnchor],
         [heroIconView.centerYAnchor constraintEqualToAnchor:iconSurface.centerYAnchor],
-        [heroIconView.widthAnchor constraintEqualToConstant:22.0],
-        [heroIconView.heightAnchor constraintEqualToConstant:22.0],
+        [heroIconView.widthAnchor constraintEqualToConstant:20.0],
+        [heroIconView.heightAnchor constraintEqualToConstant:20.0],
 
-        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:16.0],
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:12.0],
         [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
         [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
 
-        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:10.0],
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:8.0],
         [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
         [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroTitleLabel.trailingAnchor],
 
-        [deliveryLabel.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:18.0],
+        [deliveryLabel.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:14.0],
         [deliveryLabel.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
         [deliveryLabel.trailingAnchor constraintEqualToAnchor:self.heroTitleLabel.trailingAnchor],
 
-        [deliverySubtitleLabel.topAnchor constraintEqualToAnchor:deliveryLabel.bottomAnchor constant:6.0],
+        [deliverySubtitleLabel.topAnchor constraintEqualToAnchor:deliveryLabel.bottomAnchor constant:5.0],
         [deliverySubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroTitleLabel.leadingAnchor],
         [deliverySubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroTitleLabel.trailingAnchor],
-        [deliverySubtitleLabel.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:-20.0],
+        [deliverySubtitleLabel.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:-16.0],
     ]];
 }
 
@@ -629,7 +635,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     [self.view addSubview:self.paymentCollection];
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:18.0],
+        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:14.0],
         [self.paymentCollection.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.paymentCollection.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.paymentCollection.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-10.0]

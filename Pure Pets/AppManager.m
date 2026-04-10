@@ -153,6 +153,21 @@ static NSInteger loadingCardFlag = 0;
     if (self != nil) {
         dF = [AppManager pp_configuredFirestoreInstance];
         
+        // --- U10: Migrate cachedUsers from NSUserDefaults to File System if needed ---
+        NSArray *legacyCachedUsers = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedUsersKey];
+        if (legacyCachedUsers) {
+            //NSLog(@"[Cache] 🚚 Migrating legacy users from NSUserDefaults to file system...");
+            if (!self.usersArray) self.usersArray = [NSMutableArray array];
+            for (NSDictionary *d in legacyCachedUsers) {
+                UserModel *u = [[UserModel alloc] initWithDict:d];
+                if (u) [self.usersArray addObject:u];
+            }
+            [self saveUsersToCache]; // Save to file
+            [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedUsersKey];
+            [[NSUserDefaults standardUserDefaults] synchronize];
+        }
+        // -----------------------------------------------------------------------------
+
         // [self  deleteMyDataFromFirestore];
         //[self  compressImagesInFirebaseStorageFolder:@"/CardsImages"];
         
@@ -466,6 +481,12 @@ static NSString * const kCachedUsersKey              = @"cachedUsers";
 static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
 
 // MARK: - Users cache
+
+- (NSURL *)_usersCacheURL {
+    NSURL *cacheDir = [[[NSFileManager defaultManager] URLsForDirectory:NSCachesDirectory inDomains:NSUserDomainMask] firstObject];
+    return [cacheDir URLByAppendingPathComponent:@"pp_users_v1.json"];
+}
+
 - (void)saveUsersToCache {
     NSMutableArray *arr = [NSMutableArray array];
     for (UserModel *u in self.usersArray) {
@@ -473,21 +494,37 @@ static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
             [arr addObject:[u toDictionary]];
         }
     }
-    [[NSUserDefaults standardUserDefaults] setObject:arr forKey:kCachedUsersKey];
-    [[NSUserDefaults standardUserDefaults] synchronize];
-    ////NSLog(@"[Cache] 💾 Saved %lu users.", (unsigned long)arr.count);
+    
+    // U10: Move from NSUserDefaults to atomic file write
+    NSError *error = nil;
+    NSData *data = [NSJSONSerialization dataWithJSONObject:arr options:0 error:&error];
+    if (data && !error) {
+        [data writeToURL:[self _usersCacheURL] options:NSDataWritingAtomic error:&error];
+        if (error) {
+            NSLog(@"[Cache] ❌ Failed to write users to file: %@", error.localizedDescription);
+        }
+    } else {
+        NSLog(@"[Cache] ❌ Failed to serialize users: %@", error.localizedDescription);
+    }
 }
 
 - (NSArray<UserModel *> *)loadUsersFromCache {
-    NSArray *raw = [[NSUserDefaults standardUserDefaults] objectForKey:kCachedUsersKey];
-    if (![raw isKindOfClass:NSArray.class]) return @[];
+    // U10: Read from file system instead of NSUserDefaults
+    NSData *data = [NSData dataWithContentsOfURL:[self _usersCacheURL]];
+    if (!data) return @[];
+    
+    NSError *error = nil;
+    NSArray *raw = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+    if (error || ![raw isKindOfClass:NSArray.class]) {
+        NSLog(@"[Cache] ⚠️ Failed to parse users cache file: %@", error.localizedDescription);
+        return @[];
+    }
+    
     NSMutableArray *out = [NSMutableArray arrayWithCapacity:raw.count];
     for (NSDictionary *d in raw) {
         UserModel *u = [[UserModel alloc] initWithDict:d];
         if (u) [out addObject:u];
-        //NSLog(@"[Cache] Added 📥 %@.", u.ID);
     }
-    //NSLog(@"[Cache] 📥 Loaded %lu users from cache.", (unsigned long)out.count);
     return out;
 }
  
@@ -497,8 +534,12 @@ static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedUsersKey];
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kCachedAddressesByUserKey];
     [[NSUserDefaults standardUserDefaults] synchronize];
+    
+    // U10: Also clear the cache file
+    [[NSFileManager defaultManager] removeItemAtURL:[self _usersCacheURL] error:nil];
     //NSLog(@"[Cache] 🧹 Cleared users + addresses cache.");
 }
+
 
 
 

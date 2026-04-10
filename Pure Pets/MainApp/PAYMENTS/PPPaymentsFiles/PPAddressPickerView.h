@@ -18,6 +18,10 @@ NS_ASSUME_NONNULL_BEGIN
 /// Default address text (optional)
 @property (nonatomic, copy, nullable) NSString *addressText;
 
+/// The top-anchor constraint created by showInViewController:
+/// Re-assign or deactivate to reposition the picker vertically.
+@property (nonatomic, strong, nullable) NSLayoutConstraint *topConstraint;
+
 /// Called when user taps expanded picker
 @property (nonatomic, copy, nullable) void (^onPickAddress)(void);
 

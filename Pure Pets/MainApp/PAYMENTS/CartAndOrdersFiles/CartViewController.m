@@ -120,7 +120,6 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
     [self pp_buildBackgroundDecor];
-    [self pp_buildHeaderChrome];
 
     self.cartTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.cartTableView.dataSource = self;
@@ -132,22 +131,17 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     self.cartTableView.showsHorizontalScrollIndicator = NO;
     self.cartTableView.showsVerticalScrollIndicator = NO;
     self.cartTableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
-    self.cartTableView.contentInset = UIEdgeInsetsMake(kCartHeaderExpandedHeight + kCartHeaderTableSpacing,
-                                                       0.0,
-                                                       kCartTableBottomInset,
-                                                       0.0);
-    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(kCartHeaderCollapsedHeight + 12.0,
-                                                                0.0,
-                                                                kCartTableBottomInset,
-                                                                0.0);
-    self.cartTableView.estimatedRowHeight = 120.0;
+    self.cartTableView.contentInset = UIEdgeInsetsMake(12.0, 0.0, kCartTableBottomInset, 0.0);
+    self.cartTableView.scrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, kCartTableBottomInset, 0.0);
+    self.cartTableView.estimatedRowHeight = 144.0;
     if (@available(iOS 15.0, *)) {
         self.cartTableView.sectionHeaderTopPadding = 0.0;
     }
 
-    [self.cartTableView registerClass:[CartTableViewCell class] forCellReuseIdentifier:@"CartTableViewCell"];
-    [self.cartTableView registerClass:[PPCartTableCell class] forCellReuseIdentifier:@"PPCartTableCell"];
+     [self.cartTableView registerClass:[PPCartTableCell class] forCellReuseIdentifier:@"PPCartTableCell"];
 
+    // Start hidden — pp_runEntranceAnimationIfNeeded reveals with spring animation.
+    self.cartTableView.alpha = 0.0;
     [self.view addSubview:self.cartTableView];
 
     [self setSummuryViewAtBottom];
@@ -162,7 +156,6 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self.cartTableView.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-16.0];
     self.tableBottomConstraint.active = YES;
 
-    [self.view bringSubviewToFront:self.headerChromeContainerView ?: self.headerChromeView];
     [self.view bringSubviewToFront:self.summaryView];
     if (self.undoContainerView) {
         [self.view bringSubviewToFront:self.undoContainerView];
@@ -181,7 +174,6 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self setupFormFooterFrom:@"LOAD"];
     [self updateTotalLabel];
     [self pp_applyEmptyStateIfNeeded];
-    [self pp_updateHeaderChromeForScrollOffset:self.cartTableView.contentOffset.y];
 }
 
 - (void)setSummuryViewAtBottom
@@ -193,6 +185,10 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self.summaryView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor].active = YES;
     [self.summaryView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor].active = YES;
 
+    // Suppress the internal cardView entrance animation; this VC uses
+    // its own entrance in pp_runEntranceAnimationIfNeeded instead.
+    [self.summaryView skipCardEntranceAnimation];
+
     __weak typeof(self) weakSelf = self;
     self.summaryView.onTapCheckOut = ^{
         NSLog(@"🛒 Checkout tapped on CART      +Helper");
@@ -200,12 +196,28 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     };
 
     PPCartSummary *initSummary = [PPCartCalculator currentSummary];
-    [self.summaryView updateTotalsWithItems:initSummary.subtotal shipping:initSummary.shippingFee showTitle:YES];
-    self.summaryView.showDetails = YES;
-    [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
-    self.summaryView.showsItemsPreview = NO;
-    [self.summaryView setCardBackgroundImage:PPImage(@"4444")];
-    [self.summaryView setCheckoutBTNTitle:kLang(@"Checkout") image: [UIImage pp_symbolNamed:Language.isRTL ? @"arrow.right" : @"arrow.right" pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:NO]];
+
+    [UIView performWithoutAnimation:^{
+        [self.summaryView updateTotalsWithItems:initSummary.subtotal shipping:initSummary.shippingFee showTitle:NO];
+        self.summaryView.showDetails = NO;
+        [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
+        self.summaryView.showsItemsPreview = NO;
+        [self.summaryView setCheckoutBTNTitle:kLang(@"Checkout")
+                                        image:[UIImage pp_symbolNamed:Language.isRTL ? @"arrow.left" : @"arrow.right"
+                                                            pointSize:18
+                                                               weight:UIImageSymbolWeightSemibold
+                                                                scale:UIImageSymbolScaleLarge
+                                                              palette:@[AppForgroundColr, AppForgroundColr]
+                                                         makeTemplate:NO]];
+        [self.summaryView layoutIfNeeded];
+    }];
+
+    if ([CartManager sharedManager].cartItems.count > 0) {
+        [self.summaryView pp_startTrustBannerShimmer];
+    }
+
+    self.summaryView.alpha = 0.0;
+    self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
 }
 
 - (void)viewDidLayoutSubviews {
@@ -219,29 +231,11 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
                                       cornerRadius:self.undoContainerView.layer.cornerRadius].CGPath;
     }
 
-    if (self.headerChromeContainerView && !CGRectIsEmpty(self.headerChromeContainerView.bounds)) {
-        self.headerChromeContainerView.layer.shadowPath =
-            [UIBezierPath bezierPathWithRoundedRect:self.headerChromeContainerView.bounds
-                                      cornerRadius:self.headerChromeContainerView.layer.cornerRadius].CGPath;
-    }
-
-    if (self.headerChromeView) {
-        UIColor *borderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-            CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
-            return [[UIColor whiteColor] colorWithAlphaComponent:a];
-        }];
-        self.headerChromeView.layer.borderColor = [borderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-        self.headerChromeContainerView.layer.shadowOpacity =
-            (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
-    }
-
     if (!self.didPrimeInitialCartScrollPosition && self.cartTableView) {
         CGFloat restingOffsetY = -self.cartTableView.adjustedContentInset.top;
         self.cartTableView.contentOffset = CGPointMake(0.0, restingOffsetY);
         self.didPrimeInitialCartScrollPosition = YES;
     }
-
-    [self pp_updateHeaderChromeForScrollOffset:self.cartTableView.contentOffset.y];
 }
 
 - (void)reloadFormData {
@@ -1039,28 +1033,13 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         return;
     }
 
-    BOOL shouldShowSummary = self.summaryView.alpha > 0.01;
-    UIView *headerEntranceView = self.headerChromeContainerView ?: self.headerChromeView;
-    headerEntranceView.alpha = 0.0;
+    BOOL shouldShowSummary = ([CartManager sharedManager].cartItems.count > 0);
     self.cartTableView.alpha = 0.0;
-    self.summaryView.alpha = shouldShowSummary ? 0.0 : self.summaryView.alpha;
-
-    headerEntranceView.transform = CGAffineTransformMakeTranslation(0.0, 20.0);
     self.cartTableView.transform = CGAffineTransformMakeTranslation(0.0, 32.0);
     self.summaryView.transform = CGAffineTransformMakeTranslation(0.0, 26.0);
 
     [UIView animateWithDuration:0.62
                           delay:0.0
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.0
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        headerEntranceView.alpha = 1.0;
-        headerEntranceView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [UIView animateWithDuration:0.62
-                          delay:0.04
          usingSpringWithDamping:0.90
           initialSpringVelocity:0.0
                         options:UIViewAnimationOptionCurveEaseOut
@@ -1070,12 +1049,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     } completion:nil];
 
     [UIView animateWithDuration:0.58
-                          delay:0.08
+                          delay:0.06
          usingSpringWithDamping:0.92
           initialSpringVelocity:0.0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        self.summaryView.alpha = shouldShowSummary ? 1.0 : self.summaryView.alpha;
+        self.summaryView.alpha = shouldShowSummary ? 1.0 : 0.0;
         self.summaryView.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
@@ -1219,17 +1198,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 - (void)updateTotalLabel {
     PPCartSummary *summary = [PPCartCalculator currentSummary];
 
-    [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:YES];
+    [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
-    [self pp_refreshHeaderChromeWithSummary:summary];
 
-    // Checkout button: "Checkout • 50.00 ر.ق"
-    NSString *totalFormatted = [PPChatsFunc formattedCurrency:summary.subtotal + summary.shippingFee];
-    NSString *btnTitle = (summary.uniqueItems > 0)
-        ? [NSString stringWithFormat:@"%@ • %@", kLang(@"Checkout"), totalFormatted]
-        : kLang(@"Checkout");
-    [self.summaryView setCheckoutBTNTitle:btnTitle
-                                    image:[UIImage pp_symbolNamed:@"arrow.right"
+    // Button: "Continue to Checkout" (localized) with navigation arrow
+    [self.summaryView setCheckoutBTNTitle:kLang(@"Checkout")
+                                    image:[UIImage pp_symbolNamed:Language.isRTL ? @"arrow.left" : @"arrow.right"
                                                         pointSize:18
                                                            weight:UIImageSymbolWeightSemibold
                                                             scale:UIImageSymbolScaleLarge
@@ -1244,7 +1218,6 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     }
 
     [self pp_applyEmptyStateIfNeeded];
-    [self pp_updateHeaderChromeForScrollOffset:self.cartTableView.contentOffset.y];
 }
 
 // Guard: Only reload if not mutating table (prevents reload/deleteRows conflict)
@@ -1531,15 +1504,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 {
     (void)tableView;
     (void)indexPath;
-    return 118.0;
+    return 144.0;
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    if (scrollView != self.cartTableView) {
-        return;
-    }
-    [self pp_updateHeaderChromeForScrollOffset:scrollView.contentOffset.y];
+    (void)scrollView;
 }
 
 // Enable swipe-to-delete (SAFE)

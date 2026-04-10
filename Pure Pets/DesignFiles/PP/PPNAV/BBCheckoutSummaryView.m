@@ -19,11 +19,11 @@
 @property (nonatomic, strong) UIButton *cardView;
 @property (nonatomic, strong) CAGradientLayer *cardGradientLayer;
 @property (nonatomic, strong) UIStackView *pricingStack;
- @property (nonatomic, strong) UILabel *itemsLabel;
-@property (nonatomic, strong) UILabel *itemsValueLabel;
+@property (nonatomic, strong) PPInsetLabel *itemsLabel;
+@property (nonatomic, strong) PPInsetLabel *itemsValueLabel;
 @property (nonatomic, assign) BOOL didRunCardEntranceAnimation;
-@property (nonatomic, strong) UILabel *shippingLabel;
-@property (nonatomic, strong) UILabel *shippingValueLabel;
+@property (nonatomic, strong) PPInsetLabel *shippingLabel;
+@property (nonatomic, strong) PPInsetLabel *shippingValueLabel;
  
 @property (nonatomic, strong) UIView *separator;
 
@@ -197,7 +197,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
 
         // Gold shimmer (visible)
         UIColor *c0 = [UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.00];
-        UIColor *c1 = [UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.38];
+        UIColor *c1 = [UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.48];
         UIColor *c2 = [UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.00];
 
         g.colors = @[(id)c0.CGColor, (id)c1.CGColor, (id)c2.CGColor];
@@ -233,7 +233,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
 
 - (UIImage *)pp_defaultCheckoutImage
 {
-    return [UIImage pp_symbolNamed:PPIsRL ? @"arrow.left" : @"arrow.right"
+    return [UIImage pp_symbolNamed:PPIsRL ? @"arrow.right" : @"arrow.left"
                          pointSize:18
                             weight:UIImageSymbolWeightSemibold
                              scale:UIImageSymbolScaleLarge
@@ -421,13 +421,14 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     UIColor *labelColor = [UIColor.labelColor colorWithAlphaComponent:0.58];
     UIColor *valueColor = [UIColor.labelColor colorWithAlphaComponent:0.92];
     
-    self.itemsLabel = [[UILabel alloc] init];
+    self.itemsLabel = [[PPInsetLabel alloc] init];
     self.itemsLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.itemsLabel.font = labelFont;
     self.itemsLabel.textColor = labelColor;
     self.itemsLabel.text = kLang(@"Selected Items" );
-     
-    self.itemsValueLabel = [[UILabel alloc] init];
+    self.itemsLabel.textInsets = UIEdgeInsetsMake(1, 6, 1, 6);
+
+    self.itemsValueLabel = [[PPInsetLabel alloc] init];
     self.itemsValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.itemsValueLabel.font = [GM boldFontWithSize:14];
     self.itemsValueLabel.textColor = valueColor;
@@ -435,21 +436,21 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     self.itemsValueLabel.minimumScaleFactor = 0.72;
 
     
-    self.shippingLabel = [[UILabel alloc] init];
+    self.shippingLabel = [[PPInsetLabel alloc] init];
     self.shippingLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.shippingLabel.font = labelFont;
     self.shippingLabel.textColor = labelColor;
     self.shippingLabel.text = kLang(@"Shipping Fee");
-    
-    self.shippingValueLabel = [[UILabel alloc] init];
+    self.shippingLabel.textInsets = UIEdgeInsetsMake(1, 6, 1, 6);
+
+    self.shippingValueLabel = [[PPInsetLabel alloc] init];
     self.shippingValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.shippingValueLabel.font = [GM boldFontWithSize:14];
     self.shippingValueLabel.textColor = valueColor;
     self.shippingValueLabel.textAlignment = NSTextAlignmentNatural;
     self.shippingValueLabel.adjustsFontSizeToFitWidth = YES;
     self.shippingValueLabel.minimumScaleFactor = 0.72;
-     
-    // Separator
+     // Separator
     self.separator = [[UIView alloc] init];
     self.separator.translatesAutoresizingMaskIntoConstraints = NO;
     self.separator.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.08];
@@ -482,7 +483,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     self.pricingStack = [[UIStackView alloc] init];
     self.pricingStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.pricingStack.axis = UILayoutConstraintAxisVertical;
-    self.pricingStack.spacing = 14.0;
+    self.pricingStack.spacing = 12.0;
     [self.cardView addSubview:self.pricingStack];
     
     
@@ -527,10 +528,10 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     // Trust banner (between table and summary)
     self.trustBannerView = [[UIView alloc] initWithFrame:CGRectZero];
     self.trustBannerView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.trustBannerView.layer.cornerRadius =18.0;
+    self.trustBannerView.layer.cornerRadius =16.0;
     self.trustBannerView.layer.masksToBounds = YES;
     self.trustBannerView.layer.borderWidth = 1.0;
-    self.trustBannerView.layer.borderColor = [[UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.22] CGColor];
+    self.trustBannerView.layer.borderColor = [[UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.12] CGColor];
     [self.trustBannerView setBackgroundColor:[UIColor hx_colorWithHexStr:@"#FABB00" alpha:0.05]];
     if (@available(iOS 13.0, *)) {
         self.trustBannerView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -544,7 +545,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     self.trustBannerLabel.text =  kLang(@"Securecheckout");
     [self.trustBannerView addSubview:self.trustBannerLabel];
 
-    [self.trustBannerView.heightAnchor constraintEqualToConstant:42.0].active = YES;
+    [self.trustBannerView.heightAnchor constraintEqualToConstant:34.0].active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [self.trustBannerLabel.leadingAnchor constraintEqualToAnchor:self.trustBannerView.leadingAnchor constant:14.0],
@@ -715,7 +716,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
      ]];
 
     self.animationView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.animationContainerView.heightAnchor constraintEqualToConstant:34.0].active = YES;
+    [self.animationContainerView.heightAnchor constraintEqualToConstant:28.0].active = YES;
     [self.animationContainerView.widthAnchor constraintEqualToConstant:34.0].active = YES;
     [self.animationContainerView.centerYAnchor constraintEqualToAnchor:self.trustBannerView.centerYAnchor].active = YES;
     [self.animationContainerView.trailingAnchor constraintEqualToAnchor:self.trustBannerView.trailingAnchor constant:-8.0].active = YES;

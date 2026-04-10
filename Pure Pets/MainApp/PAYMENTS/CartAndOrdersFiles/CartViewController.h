@@ -74,8 +74,7 @@ NS_ASSUME_NONNULL_END
 //
 
 #import <UIKit/UIKit.h>
-#import "CartTableViewCell.h"
-NS_ASSUME_NONNULL_BEGIN
+ NS_ASSUME_NONNULL_BEGIN
 
 typedef void(^PPBottomAlertActionBlock)(void);
 

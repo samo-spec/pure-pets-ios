@@ -128,7 +128,6 @@
 		F2201FE82E11D7CA005DBD9F /* CartItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FE72E11D7C9005DBD9F /* CartItem.m */; };
 		F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEC2E11DB7E005DBD9F /* CartViewController.m */; };
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
-		F2201FF52E121C46005DBD9F /* CartTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF42E121C46005DBD9F /* CartTableViewCell.m */; };
 		F2201FF82E12C893005DBD9F /* FloatingQuantityButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
 		F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */; };
@@ -999,8 +998,6 @@
 		F2201FEC2E11DB7E005DBD9F /* CartViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartViewController.m; sourceTree = "<group>"; };
 		F2201FEE2E11F3D1005DBD9F /* OrderHistoryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderHistoryViewController.h; sourceTree = "<group>"; };
 		F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderHistoryViewController.m; sourceTree = "<group>"; };
-		F2201FF32E121C46005DBD9F /* CartTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CartTableViewCell.h; sourceTree = "<group>"; };
-		F2201FF42E121C46005DBD9F /* CartTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartTableViewCell.m; sourceTree = "<group>"; };
 		F2201FF62E12C893005DBD9F /* FloatingQuantityButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingQuantityButton.h; sourceTree = "<group>"; };
 		F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingQuantityButton.m; sourceTree = "<group>"; };
 		F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessViewerVC.h; sourceTree = "<group>"; };
@@ -4844,8 +4841,6 @@
 			children = (
 				F26024842EB60B75006534B4 /* PPCartTableCell.h */,
 				F26024852EB60B95006534B4 /* PPCartTableCell.m */,
-				F2201FF32E121C46005DBD9F /* CartTableViewCell.h */,
-				F2201FF42E121C46005DBD9F /* CartTableViewCell.m */,
 				F25B38822E17404E0066D504 /* OrderItemCell.h */,
 				F28D583F2E1958F00055DAED /* OrderItemCell.m */,
 				F28D583E2E1958F00055DAED /* OrderCell.h */,
@@ -5716,7 +5711,6 @@
 				F28A0A142EEA497300EE5055 /* TrashModel.m in Sources */,
 				F260D3392C7C6F6C0098C8F0 /* selectChildViewController.m in Sources */,
 				F2201FF82E12C893005DBD9F /* FloatingQuantityButton.m in Sources */,
-				F2201FF52E121C46005DBD9F /* CartTableViewCell.m in Sources */,
 				F2D0C6122C4BEB610023CE53 /* CollectionViewCell.m in Sources */,
 				22E169D82E75E75A00F50C9E /* PPFunc.m in Sources */,
 				F279075C2C9AC7F300F2F07B /* trashChildCell.m in Sources */,
