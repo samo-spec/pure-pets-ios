@@ -376,7 +376,9 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     segmentsStackView.alignment = UIStackViewAlignmentFill;
     segmentsStackView.distribution = UIStackViewDistributionFillEqually;
     segmentsStackView.spacing = 0.0;
-    segmentsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    // Keep the visual rail in the same logical order as the caller's items array.
+    // Each segment still respects app language for its own content.
+    segmentsStackView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     self.segmentsStackView = segmentsStackView;
     [self addSubview:segmentsStackView];
 
