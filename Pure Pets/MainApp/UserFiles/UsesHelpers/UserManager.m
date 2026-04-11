@@ -2334,7 +2334,8 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
                 @"uid": uid ?: @"",
                 @"accountStatus": accountStatus,
                 @"prodectionStatus": prodectionStatus,
-                @"effectivelyBlocked": @(effectivelyBlocked)
+                @"effectivelyBlocked": @(effectivelyBlocked),
+                @"verified": @(newVerified)
             }];
         });
     }];
