@@ -59,6 +59,13 @@ static NSString *const kUserKeyIsOnline = @"isOnline";
 static NSString *const kUserKeyLastSeen = @"lastSeen";
 static NSString *const kUserKeyPermissions = @"permissions";
 
+// User Access Model keys (Console-managed)
+static NSString *const kUserKeyAccountStatus = @"accountStatus";
+static NSString *const kUserKeyProdectionStatus = @"prodectionStatus";
+static NSString *const kUserKeyFeatures = @"features";
+static NSString *const kUserKeyRestrictions = @"restrictions";
+static NSString *const kUserKeySubscription = @"subscription";
+
 static inline BOOL PPUserBoolValue(id _Nullable value) {
     return [value respondsToSelector:@selector(boolValue)] ? [value boolValue] : NO;
 }
@@ -212,6 +219,24 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     self.Addresses = [NSMutableArray array];
     self.onlineStatus = OnlineStatusOffline;
     self.loginSource = UserLoginSourceUnknown;
+
+    // User Access Model defaults
+    self.accountStatus = @"active";
+    self.prodectionStatus = @"active";
+    self.canPostPetAdsFeature = YES;
+    self.canPostAdoptionFeature = YES;
+    self.canSellAccessoriesFeature = YES;
+    self.canOfferServicesFeature = NO;
+    self.canUseStoriesFeature = YES;
+    self.canUseChatFeature = YES;
+    self.canAccessPremiumMarketplaceFeature = NO;
+    self.subscriptionPlan = @"free";
+    self.subscriptionStatus = @"active";
+    self.subscriptionSource = @"manual";
+    self.postingBlocked = NO;
+    self.chatBlocked = NO;
+    self.purchaseBlocked = NO;
+    self.withdrawalBlocked = NO;
 }
 
 - (void)pp_applyDictionary:(NSDictionary *)dict {
@@ -308,6 +333,54 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     self.verified = PPUserBoolValue(safeDict[kUserKeyVerified]);
     self.plan = PPSafeString(safeDict[kUserKeyPlan]);
     self.loginSource = PPSafeIntegerUniversal(safeDict[kUserKeyLoginSource]);
+
+    // ── User Access Model (Console-managed) ──
+    self.accountStatus = PPSafeString(safeDict[kUserKeyAccountStatus]);
+    if (self.accountStatus.length == 0) self.accountStatus = @"active";
+
+    self.prodectionStatus = PPSafeString(safeDict[kUserKeyProdectionStatus]);
+    if (self.prodectionStatus.length == 0) self.prodectionStatus = @"active";
+
+    // Features
+    NSDictionary *featuresDict = PPSafeDict(safeDict[kUserKeyFeatures]);
+    if (featuresDict.count > 0) {
+        self.canPostPetAdsFeature = PPUserBoolValue(featuresDict[@"canPostPetAds"]);
+        self.canPostAdoptionFeature = PPUserBoolValue(featuresDict[@"canPostAdoption"]);
+        self.canSellAccessoriesFeature = PPUserBoolValue(featuresDict[@"canSellAccessories"]);
+        self.canOfferServicesFeature = PPUserBoolValue(featuresDict[@"canOfferServices"]);
+        self.canUseStoriesFeature = PPUserBoolValue(featuresDict[@"canUseStories"]);
+        self.canUseChatFeature = PPUserBoolValue(featuresDict[@"canUseChat"]);
+        self.canAccessPremiumMarketplaceFeature = PPUserBoolValue(featuresDict[@"canAccessPremiumMarketplace"]);
+    } else {
+        // Default all features for users without the features dict yet
+        self.canPostPetAdsFeature = YES;
+        self.canPostAdoptionFeature = YES;
+        self.canSellAccessoriesFeature = YES;
+        self.canOfferServicesFeature = NO;
+        self.canUseStoriesFeature = YES;
+        self.canUseChatFeature = YES;
+        self.canAccessPremiumMarketplaceFeature = NO;
+    }
+
+    // Subscription
+    NSDictionary *subDict = PPSafeDict(safeDict[kUserKeySubscription]);
+    if (subDict.count > 0) {
+        self.subscriptionPlan = PPSafeString(subDict[@"plan"]) ?: @"free";
+        self.subscriptionStatus = PPSafeString(subDict[@"status"]) ?: @"active";
+        self.subscriptionSource = PPSafeString(subDict[@"source"]) ?: @"manual";
+        if (self.subscriptionPlan.length == 0) self.subscriptionPlan = @"free";
+        if (self.subscriptionStatus.length == 0) self.subscriptionStatus = @"active";
+        if (self.subscriptionSource.length == 0) self.subscriptionSource = @"manual";
+    }
+
+    // Restrictions
+    NSDictionary *restrictionsDict = PPSafeDict(safeDict[kUserKeyRestrictions]);
+    if (restrictionsDict.count > 0) {
+        self.postingBlocked = PPUserBoolValue(restrictionsDict[@"postingBlocked"]);
+        self.chatBlocked = PPUserBoolValue(restrictionsDict[@"chatBlocked"]);
+        self.purchaseBlocked = PPUserBoolValue(restrictionsDict[@"purchaseBlocked"]);
+        self.withdrawalBlocked = PPUserBoolValue(restrictionsDict[@"withdrawalBlocked"]);
+    }
 
     BOOL onlineStatusKeyExists = safeDict[kUserKeyOnlineStatus] != nil;
     if (onlineStatusKeyExists) {
@@ -467,6 +540,36 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
 - (BOOL)isOwner        { return self.role == UserRoleOwner; }
 - (BOOL)isVet          { return self.role == UserRoleVet; }
 
+#pragma mark - User Access Computed Properties
+
+- (BOOL)isEffectivelyBlocked {
+    // User is blocked if:
+    // 1. Legacy isBlocked flag is YES
+    // 2. OR accountStatus is "blocked" or "disabled"
+    if (self.isBlocked) return YES;
+    if ([self.accountStatus isEqualToString:@"blocked"]) return YES;
+    if ([self.accountStatus isEqualToString:@"disabled"]) return YES;
+    return NO;
+}
+
+- (BOOL)isPostingEffectivelyBlocked {
+    if (self.isEffectivelyBlocked) return YES;
+    if (self.postingBlocked) return YES;
+    return NO;
+}
+
+- (BOOL)isChatEffectivelyBlocked {
+    if (self.isEffectivelyBlocked) return YES;
+    if (self.chatBlocked) return YES;
+    return NO;
+}
+
+- (BOOL)isPurchaseEffectivelyBlocked {
+    if (self.isEffectivelyBlocked) return YES;
+    if (self.purchaseBlocked) return YES;
+    return NO;
+}
+
 #pragma mark - Cache Helpers (delegates to PPUserModelCache)
 
 + (nullable instancetype)loadSavedUserWithUID:(NSString *)uid {
@@ -512,6 +615,24 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     [coder encodeBool:self.isOnline forKey:kUserKeyIsOnline];
     [coder encodeObject:self.lastSeen forKey:kUserKeyLastSeen];
     [coder encodeObject:self.permissions forKey:kUserKeyPermissions];
+
+    // User Access Model (Console-managed)
+    [coder encodeObject:self.accountStatus forKey:kUserKeyAccountStatus];
+    [coder encodeObject:self.prodectionStatus forKey:kUserKeyProdectionStatus];
+    [coder encodeBool:self.canPostPetAdsFeature forKey:@"canPostPetAdsFeature"];
+    [coder encodeBool:self.canPostAdoptionFeature forKey:@"canPostAdoptionFeature"];
+    [coder encodeBool:self.canSellAccessoriesFeature forKey:@"canSellAccessoriesFeature"];
+    [coder encodeBool:self.canOfferServicesFeature forKey:@"canOfferServicesFeature"];
+    [coder encodeBool:self.canUseStoriesFeature forKey:@"canUseStoriesFeature"];
+    [coder encodeBool:self.canUseChatFeature forKey:@"canUseChatFeature"];
+    [coder encodeBool:self.canAccessPremiumMarketplaceFeature forKey:@"canAccessPremiumMarketplaceFeature"];
+    [coder encodeObject:self.subscriptionPlan forKey:@"subscriptionPlan"];
+    [coder encodeObject:self.subscriptionStatus forKey:@"subscriptionStatus"];
+    [coder encodeObject:self.subscriptionSource forKey:@"subscriptionSource"];
+    [coder encodeBool:self.postingBlocked forKey:@"postingBlocked"];
+    [coder encodeBool:self.chatBlocked forKey:@"chatBlocked"];
+    [coder encodeBool:self.purchaseBlocked forKey:@"purchaseBlocked"];
+    [coder encodeBool:self.withdrawalBlocked forKey:@"withdrawalBlocked"];
 }
 
 - (instancetype)initWithCoder:(NSCoder *)coder {
@@ -570,6 +691,24 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     NSSet *permissionClasses = [NSSet setWithObjects:NSDictionary.class, NSString.class, NSNumber.class, nil];
     NSDictionary *decodedPermissions = [coder decodeObjectOfClasses:permissionClasses forKey:kUserKeyPermissions];
     self.permissions = [[PPUserPermissionsManager sanitizedPermissionsDictionary:PPSafeDict(decodedPermissions)] copy];
+
+    // User Access Model (Console-managed)
+    self.accountStatus = [coder decodeObjectOfClass:[NSString class] forKey:kUserKeyAccountStatus] ?: @"active";
+    self.prodectionStatus = [coder decodeObjectOfClass:[NSString class] forKey:kUserKeyProdectionStatus] ?: @"active";
+    self.canPostPetAdsFeature = [coder decodeBoolForKey:@"canPostPetAdsFeature"];
+    self.canPostAdoptionFeature = [coder decodeBoolForKey:@"canPostAdoptionFeature"];
+    self.canSellAccessoriesFeature = [coder decodeBoolForKey:@"canSellAccessoriesFeature"];
+    self.canOfferServicesFeature = [coder decodeBoolForKey:@"canOfferServicesFeature"];
+    self.canUseStoriesFeature = [coder decodeBoolForKey:@"canUseStoriesFeature"];
+    self.canUseChatFeature = [coder decodeBoolForKey:@"canUseChatFeature"];
+    self.canAccessPremiumMarketplaceFeature = [coder decodeBoolForKey:@"canAccessPremiumMarketplaceFeature"];
+    self.subscriptionPlan = [coder decodeObjectOfClass:[NSString class] forKey:@"subscriptionPlan"] ?: @"free";
+    self.subscriptionStatus = [coder decodeObjectOfClass:[NSString class] forKey:@"subscriptionStatus"] ?: @"active";
+    self.subscriptionSource = [coder decodeObjectOfClass:[NSString class] forKey:@"subscriptionSource"] ?: @"manual";
+    self.postingBlocked = [coder decodeBoolForKey:@"postingBlocked"];
+    self.chatBlocked = [coder decodeBoolForKey:@"chatBlocked"];
+    self.purchaseBlocked = [coder decodeBoolForKey:@"purchaseBlocked"];
+    self.withdrawalBlocked = [coder decodeBoolForKey:@"withdrawalBlocked"];
 
     [self pp_normalizeIdentityFields];
 

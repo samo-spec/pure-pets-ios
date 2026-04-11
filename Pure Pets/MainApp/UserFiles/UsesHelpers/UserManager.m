@@ -52,6 +52,7 @@ NSString *const PPUserManagerDidSyncCurrentUserNotification = @"PPUserManagerDid
 NSString *const PPUserManagerDidSignOutNotification = @"PPUserManagerDidSignOutNotification";
 NSString *const PPUserManagerDidUpdateBlockedStateNotification = @"PPUserManagerDidUpdateBlockedStateNotification";
 NSString *const PPUserManagerBlockedStateUserInfoKey = @"isBlocked";
+NSString *const PPUserManagerDidUpdateUserAccessNotification = @"PPUserManagerDidUpdateUserAccessNotification";
 
 
 
@@ -2227,6 +2228,10 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
     return self.currentUser.isBlocked;
 }
 
+- (BOOL)isCurrentUserEffectivelyBlocked {
+    return self.currentUser.isEffectivelyBlocked;
+}
+
 - (void)startListeningCurrentUserBlockedState {
     [self stopListeningCurrentUserBlockedState];
 
@@ -2253,8 +2258,57 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
             return;
         }
 
-        BOOL isBlocked = [snapshot.data[@"isBlocked"] boolValue];
-        BOOL didChange = (strongSelf.currentUser.isBlocked != isBlocked);
+        NSDictionary *data = snapshot.data;
+        BOOL isBlocked = [data[@"isBlocked"] boolValue];
+
+        // ── Parse new User Access Model fields from the same snapshot ──
+        NSString *accountStatus = PPSafeString(data[@"accountStatus"]);
+        if (accountStatus.length == 0) accountStatus = @"active";
+        NSString *prodectionStatus = PPSafeString(data[@"prodectionStatus"]);
+        if (prodectionStatus.length == 0) prodectionStatus = @"active";
+
+        // Features
+        NSDictionary *featuresDict = [data[@"features"] isKindOfClass:NSDictionary.class] ? data[@"features"] : nil;
+        if (featuresDict) {
+            strongSelf.currentUser.canPostPetAdsFeature = [featuresDict[@"canPostPetAds"] boolValue];
+            strongSelf.currentUser.canPostAdoptionFeature = [featuresDict[@"canPostAdoption"] boolValue];
+            strongSelf.currentUser.canSellAccessoriesFeature = [featuresDict[@"canSellAccessories"] boolValue];
+            strongSelf.currentUser.canOfferServicesFeature = [featuresDict[@"canOfferServices"] boolValue];
+            strongSelf.currentUser.canUseStoriesFeature = [featuresDict[@"canUseStories"] boolValue];
+            strongSelf.currentUser.canUseChatFeature = [featuresDict[@"canUseChat"] boolValue];
+            strongSelf.currentUser.canAccessPremiumMarketplaceFeature = [featuresDict[@"canAccessPremiumMarketplace"] boolValue];
+        }
+
+        // Restrictions
+        NSDictionary *restrictionsDict = [data[@"restrictions"] isKindOfClass:NSDictionary.class] ? data[@"restrictions"] : nil;
+        if (restrictionsDict) {
+            strongSelf.currentUser.postingBlocked = [restrictionsDict[@"postingBlocked"] boolValue];
+            strongSelf.currentUser.chatBlocked = [restrictionsDict[@"chatBlocked"] boolValue];
+            strongSelf.currentUser.purchaseBlocked = [restrictionsDict[@"purchaseBlocked"] boolValue];
+            strongSelf.currentUser.withdrawalBlocked = [restrictionsDict[@"withdrawalBlocked"] boolValue];
+        }
+
+        // Subscription
+        NSDictionary *subDict = [data[@"subscription"] isKindOfClass:NSDictionary.class] ? data[@"subscription"] : nil;
+        if (subDict) {
+            NSString *plan = PPSafeString(subDict[@"plan"]);
+            NSString *subStatus = PPSafeString(subDict[@"status"]);
+            NSString *source = PPSafeString(subDict[@"source"]);
+            strongSelf.currentUser.subscriptionPlan = plan.length ? plan : @"free";
+            strongSelf.currentUser.subscriptionStatus = subStatus.length ? subStatus : @"active";
+            strongSelf.currentUser.subscriptionSource = source.length ? source : @"manual";
+        }
+
+        // Account & prodection status
+        BOOL accountStatusChanged = ![strongSelf.currentUser.accountStatus isEqualToString:accountStatus];
+        BOOL prodectionChanged = ![strongSelf.currentUser.prodectionStatus isEqualToString:prodectionStatus];
+        strongSelf.currentUser.accountStatus = accountStatus;
+        strongSelf.currentUser.prodectionStatus = prodectionStatus;
+
+        // Combine blocked check: legacy isBlocked OR accountStatus == "blocked"/"disabled"
+        BOOL effectivelyBlocked = isBlocked || [accountStatus isEqualToString:@"blocked"] || [accountStatus isEqualToString:@"disabled"];
+
+        BOOL didChange = (strongSelf.currentUser.isBlocked != isBlocked) || accountStatusChanged || prodectionChanged;
         strongSelf.currentUser.isBlocked = isBlocked;
 
         if (didChange && strongSelf.currentUser.ID.length > 0) {
@@ -2265,10 +2319,18 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
             [[NSNotificationCenter defaultCenter] postNotificationName:PPUserManagerDidUpdateBlockedStateNotification
                                                                 object:strongSelf
                                                               userInfo:@{
-                PPUserManagerBlockedStateUserInfoKey: @(isBlocked),
+                PPUserManagerBlockedStateUserInfoKey: @(effectivelyBlocked),
                 @"uid": uid ?: @""
             }];
 
+            [[NSNotificationCenter defaultCenter] postNotificationName:PPUserManagerDidUpdateUserAccessNotification
+                                                                object:strongSelf
+                                                              userInfo:@{
+                @"uid": uid ?: @"",
+                @"accountStatus": accountStatus,
+                @"prodectionStatus": prodectionStatus,
+                @"effectivelyBlocked": @(effectivelyBlocked)
+            }];
         });
     }];
 }

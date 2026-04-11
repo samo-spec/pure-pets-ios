@@ -35,7 +35,7 @@
     
     self.layer.borderWidth = 0.0;
     self.layer.borderColor = UIColor.clearColor.CGColor;
-    self.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    self.backgroundColor = UIColor.clearColor;
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -51,19 +51,25 @@
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
+
+    for (CALayer *sublayer in self.layer.sublayers) {
+        if ([sublayer isKindOfClass:[CAGradientLayer class]]) {
+            sublayer.frame = self.bounds;
+        }
+    }
     
 }
 
 - (void)buildBlur
 {
-    if (@available(iOS 16.0, *)) {
+    if (@available(iOS 13.0, *)) {
         UIBlurEffect *effect =
-        [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
 
         UIVisualEffectView *blur =
         [[UIVisualEffectView alloc] initWithEffect:effect];
         blur.translatesAutoresizingMaskIntoConstraints = NO;
-        blur.alpha = 0.9;
+        blur.alpha = 0.82;
 
         [self addSubview:blur];
         [NSLayoutConstraint activateConstraints:@[
@@ -76,7 +82,7 @@
  
         UIView *tintView = [[UIView alloc] init];
         tintView.translatesAutoresizingMaskIntoConstraints = NO;
-        tintView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+        tintView.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.08];
         tintView.userInteractionEnabled = NO;
         [self addSubview:tintView];
         [NSLayoutConstraint activateConstraints:@[
@@ -85,17 +91,43 @@
             [tintView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
             [tintView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         ]];
+
+        CAGradientLayer *gradient = [CAGradientLayer layer];
+        gradient.colors = @[
+            (id)[UIColor colorWithWhite:0.0 alpha:0.00].CGColor,
+            (id)[UIColor colorWithWhite:0.0 alpha:0.06].CGColor,
+            (id)[UIColor colorWithWhite:0.0 alpha:0.22].CGColor
+        ];
+        gradient.locations = @[@0.0, @0.35, @1.0];
+        gradient.startPoint = CGPointMake(0.5, 0.0);
+        gradient.endPoint = CGPointMake(0.5, 1.0);
+        gradient.frame = self.bounds;
+        gradient.needsDisplayOnBoundsChange = YES;
+        [self.layer insertSublayer:gradient atIndex:0];
+
+        UIView *topHairline = [[UIView alloc] init];
+        topHairline.translatesAutoresizingMaskIntoConstraints = NO;
+        topHairline.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+        topHairline.userInteractionEnabled = NO;
+        [self addSubview:topHairline];
+        [NSLayoutConstraint activateConstraints:@[
+            [topHairline.topAnchor constraintEqualToAnchor:self.topAnchor],
+            [topHairline.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14.0],
+            [topHairline.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14.0],
+            [topHairline.heightAnchor constraintEqualToConstant:0.8]
+        ]];
         
     } else {
         
         // Fallback gradient (older iOS)
         CAGradientLayer *g = [CAGradientLayer layer];
         g.colors = @[
-            (id)[UIColor colorWithWhite:1.0 alpha:0.18].CGColor,
-            (id)[UIColor colorWithWhite:1.0 alpha:0.08].CGColor
+            (id)[UIColor colorWithWhite:0.0 alpha:0.04].CGColor,
+            (id)[UIColor colorWithWhite:0.0 alpha:0.12].CGColor,
+            (id)[UIColor colorWithWhite:0.0 alpha:0.24].CGColor
         ];
-        g.startPoint = CGPointMake(0.5, 1.0);
-        g.endPoint   = CGPointMake(0.5, 0.0);
+        g.startPoint = CGPointMake(0.5, 0.0);
+        g.endPoint   = CGPointMake(0.5, 1.0);
         g.frame = self.bounds;
         g.needsDisplayOnBoundsChange = YES;
         [self.layer insertSublayer:g atIndex:0];

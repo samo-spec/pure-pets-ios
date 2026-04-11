@@ -2550,8 +2550,6 @@ static char kUIViewTapActionKey;
     NSMutableArray<UIAction *> *horses  = [NSMutableArray array];
     NSMutableArray<UIAction *> *fish    = [NSMutableArray array];
 
-    UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleMedium];
-
     // =========================
     // Build actions
     // =========================
@@ -2879,20 +2877,18 @@ static char kUIViewTapActionKey;
     NSMutableArray<UIAction *> *actions = [NSMutableArray array];
 
     UserModel *currentUser = UserManager.sharedManager.currentUser;
-    BOOL canShowProductionAction = currentUser ? [currentUser hasPermissionNamed:kPermProduction] : NO;
+    BOOL canShowProductionAction = [currentUser.prodectionStatus isEqualToString:@"active"];
 
     if (canShowProductionAction) {
         [actions addObject:[PPActionButton showProtectionActionWithHandler:^(UIAction *action) {
-            UIStoryboard *sb = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
-            MainController *vc =
+             MainController *vc =
             [MainController new];
             [weakSuperVC.navigationController pushViewController:vc animated:YES];
         }]];
     }
 
     [actions addObject:[PPActionButton settingsActionWithHandler:^(UIAction *action) {
-        UIStoryboard *sb = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
-        SettingVC *vc =
+         SettingVC *vc =
         (SettingVC *)[SettingVC new];
         [PPFunc presentSheetFrom:weakSuperVC sheetVC:vc detentStyle:PPSheetDetentStyle70];
     }]];
@@ -3076,7 +3072,7 @@ static char kUIViewTapActionKey;
     
     NSMutableArray *servicesGroup = [NSMutableArray array];
     UserModel *currentUser = UserManager.sharedManager.currentUser;
-    if (currentUser && [currentUser hasPermissionNamed:kPermProduction]) {
+    if (currentUser && [currentUser.prodectionStatus isEqualToString:@"active"]) {
         [servicesGroup addObject:[PPActionButton showProtectionActionWithHandler:^(UIAction *action) {
             MainController *controller = [MainController new];
             [weakSelf.navigationController pushViewController:controller animated:YES];

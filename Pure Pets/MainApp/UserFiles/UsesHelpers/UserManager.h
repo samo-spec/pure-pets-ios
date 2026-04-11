@@ -98,6 +98,7 @@ extern NSString *const PPUserManagerDidSyncCurrentUserNotification;
 extern NSString *const PPUserManagerDidSignOutNotification;
 extern NSString *const PPUserManagerDidUpdateBlockedStateNotification;
 extern NSString *const PPUserManagerBlockedStateUserInfoKey;
+extern NSString *const PPUserManagerDidUpdateUserAccessNotification;
 
 /// Custom error codes for UserManager operations
 typedef NS_ENUM(NSInteger, FUErrorCode) {
@@ -328,6 +329,8 @@ static inline NSString * _Nullable PPPermNameFor(UserPermission flag) {
 - (void)stopListeningCurrentUserBlockedState;
 /// Fast check against locally cached current user model.
 - (BOOL)isCurrentUserBlocked;
+/// Whether the current user is effectively blocked (isBlocked OR accountStatus is blocked/disabled)
+- (BOOL)isCurrentUserEffectivelyBlocked;
 
 #pragma mark - Security & Reauthentication
 

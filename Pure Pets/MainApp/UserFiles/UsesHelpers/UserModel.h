@@ -63,6 +63,45 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) BOOL isSuperAdmin;
 @property (nonatomic, assign) BOOL isBlocked;
 
+#pragma mark - User Access Model (Console-managed)
+// These fields are managed by the Console Users Management page.
+// They are read from UsersCol/{uid} via real-time Firestore listener.
+// The iOS app NEVER writes to these fields — they are server/console managed.
+
+/// Account status set by Console admin
+@property (nonatomic, copy) NSString *accountStatus;    // "active" | "blocked" | "disabled" | "pending_review"
+/// Production/protection status — intentional spelling
+@property (nonatomic, copy) NSString *prodectionStatus;  // "active" | "inactive"
+
+/// Feature flags — what the user can do in the app
+@property (nonatomic, assign) BOOL canPostPetAdsFeature;
+@property (nonatomic, assign) BOOL canPostAdoptionFeature;
+@property (nonatomic, assign) BOOL canSellAccessoriesFeature;
+@property (nonatomic, assign) BOOL canOfferServicesFeature;
+@property (nonatomic, assign) BOOL canUseStoriesFeature;
+@property (nonatomic, assign) BOOL canUseChatFeature;
+@property (nonatomic, assign) BOOL canAccessPremiumMarketplaceFeature;
+
+/// Subscription info
+@property (nonatomic, copy) NSString *subscriptionPlan;    // "free" | "pro" | "business"
+@property (nonatomic, copy) NSString *subscriptionStatus;  // "active" | "inactive" | "past_due" | "canceled" | "trial"
+@property (nonatomic, copy) NSString *subscriptionSource;  // "manual" | "app_store" | "play_store" | "internal"
+
+/// Restrictions — what's blocked for this user
+@property (nonatomic, assign) BOOL postingBlocked;
+@property (nonatomic, assign) BOOL chatBlocked;
+@property (nonatomic, assign) BOOL purchaseBlocked;
+@property (nonatomic, assign) BOOL withdrawalBlocked;
+
+/// Computed: is this user effectively blocked by any mechanism?
+@property (nonatomic, readonly) BOOL isEffectivelyBlocked;
+/// Computed: is posting blocked by any mechanism?
+@property (nonatomic, readonly) BOOL isPostingEffectivelyBlocked;
+/// Computed: is chat blocked?
+@property (nonatomic, readonly) BOOL isChatEffectivelyBlocked;
+/// Computed: is purchasing blocked?
+@property (nonatomic, readonly) BOOL isPurchaseEffectivelyBlocked;
+
 #pragma mark - Permissions
 @property (nonatomic, copy) NSDictionary<NSString *, NSNumber *> *permissions;
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> permissionsListener;
