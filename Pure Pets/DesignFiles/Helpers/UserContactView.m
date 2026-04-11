@@ -12,6 +12,7 @@
 
 @property (nonatomic, copy) dispatch_block_t chatBlock;
 @property (nonatomic, copy) dispatch_block_t callBlock;
+@property (nonatomic, strong) UIImageView *verifiedBadgeView;
 
 @end
 
@@ -80,6 +81,14 @@
     self.nameLabel.text = kLang(@"Contact Advertiser");
     [blurView.contentView addSubview:self.nameLabel];
 
+    // ---- Verified Badge ----
+    self.verifiedBadgeView = [[UIImageView alloc] init];
+    self.verifiedBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.verifiedBadgeView.image = [UIImage imageNamed:@"verify_icon_colored"];
+    self.verifiedBadgeView.contentMode = UIViewContentModeScaleAspectFit;
+    self.verifiedBadgeView.hidden = YES;
+    [blurView.contentView addSubview:self.verifiedBadgeView];
+
     // ---- Call Button ----
     self.callButton = [self actionButtonWithSymbol:@"phone.fill"];
     self.callButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_call_advertiser", @"Call advertiser");
@@ -112,6 +121,12 @@
 
         [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:12],
         [self.nameLabel.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],
+
+        [self.verifiedBadgeView.leadingAnchor constraintEqualToAnchor:self.nameLabel.trailingAnchor constant:4],
+        [self.verifiedBadgeView.centerYAnchor constraintEqualToAnchor:self.nameLabel.centerYAnchor],
+        [self.verifiedBadgeView.widthAnchor constraintEqualToConstant:18],
+        [self.verifiedBadgeView.heightAnchor constraintEqualToConstant:18],
+        [self.verifiedBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:self.callButton.leadingAnchor constant:-8],
 
         [self.chatButton.trailingAnchor constraintEqualToAnchor:blurView.contentView.trailingAnchor constant:-14],
         [self.chatButton.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],
@@ -158,6 +173,7 @@
     self.callBlock = callBlock;
 
     self.nameLabel.text = user.PPBestDisplayName ?: user.UserName ?: kLang(@"Contact Advertiser");
+    self.verifiedBadgeView.hidden = !user.isVerified;
 
     BOOL canContact = ![user.ID isEqualToString:PPCurrentUser.ID];
     self.callButton.enabled = canContact;

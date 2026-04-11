@@ -142,6 +142,10 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     if ([value isKindOfClass:[FIRTimestamp class]]) {
         return ((FIRTimestamp *)value).dateValue;
     }
+    // Support epoch seconds from JSON cache round-trip
+    if ([value isKindOfClass:[NSNumber class]]) {
+        return [NSDate dateWithTimeIntervalSince1970:[value doubleValue]];
+    }
     return nil;
 }
 

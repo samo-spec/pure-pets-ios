@@ -486,13 +486,13 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
     accentBar.backgroundColor = PPPetsUIBrandColor();
-    accentBar.layer.cornerRadius = 3.0;
+    accentBar.layer.cornerRadius = 2.0;
     [cardView addSubview:accentBar];
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
-    eyebrowPill.layer.cornerRadius = 14.0;
+    eyebrowPill.layer.cornerRadius = 13.0;
     eyebrowPill.layer.borderWidth = 1.0;
     eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
     eyebrowPill.layer.masksToBounds = YES;
@@ -509,13 +509,13 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     UIView *iconHalo = [[UIView alloc] init];
     iconHalo.translatesAutoresizingMaskIntoConstraints = NO;
     iconHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
-    iconHalo.layer.cornerRadius = 62.0;
+    iconHalo.layer.cornerRadius = 32.0;
     iconHalo.layer.borderWidth = 1.0;
     iconHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     iconHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
     iconHalo.layer.shadowOpacity = 0.12;
-    iconHalo.layer.shadowRadius = 22.0;
-    iconHalo.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    iconHalo.layer.shadowRadius = 12.0;
+    iconHalo.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [cardView addSubview:iconHalo];
 
     UIImageView *symbolView = [[UIImageView alloc] init];
@@ -523,13 +523,13 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     symbolView.contentMode = UIViewContentModeScaleAspectFit;
     symbolView.tintColor = PPPetsUIBrandColor();
     symbolView.backgroundColor = PPPetsCardOverlay(0.66);
-    symbolView.layer.cornerRadius = 54.0;
+    symbolView.layer.cornerRadius = 26.0;
     symbolView.layer.masksToBounds = YES;
     [iconHalo addSubview:symbolView];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
+    titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     titleLabel.textColor = PPPetsUIPrimaryTextColor();
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
@@ -590,15 +590,15 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
         [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:42.0],
         [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-34.0],
 
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:22.0],
+        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:14.0],
         [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [accentBar.widthAnchor constraintEqualToConstant:72.0],
-        [accentBar.heightAnchor constraintEqualToConstant:6.0],
+        [accentBar.widthAnchor constraintEqualToConstant:56.0],
+        [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
-        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
+        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:10.0],
         [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
+        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
 
         [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:12.0],
@@ -606,32 +606,32 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
         [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
 
         [iconHalo.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [iconHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:20.0],
-        [iconHalo.widthAnchor constraintEqualToConstant:124.0],
-        [iconHalo.heightAnchor constraintEqualToConstant:124.0],
+        [iconHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:12.0],
+        [iconHalo.widthAnchor constraintEqualToConstant:64.0],
+        [iconHalo.heightAnchor constraintEqualToConstant:64.0],
 
         [symbolView.centerXAnchor constraintEqualToAnchor:iconHalo.centerXAnchor],
         [symbolView.centerYAnchor constraintEqualToAnchor:iconHalo.centerYAnchor],
-        [symbolView.widthAnchor constraintEqualToConstant:108.0],
-        [symbolView.heightAnchor constraintEqualToConstant:108.0],
+        [symbolView.widthAnchor constraintEqualToConstant:52.0],
+        [symbolView.heightAnchor constraintEqualToConstant:52.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:iconHalo.bottomAnchor constant:22.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:iconHalo.bottomAnchor constant:12.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:10.0],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:14.0],
+        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:10.0],
         [metaLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:cardView.leadingAnchor constant:34.0],
         [metaLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
         [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
 
-        [primaryButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:24.0],
+        [primaryButton.topAnchor constraintEqualToAnchor:metaLabel.bottomAnchor constant:14.0],
         [primaryButton.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [primaryButton.trailingAnchor constraintEqualToAnchor:cardView.centerXAnchor constant:-6.0],
-        [primaryButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
+        [primaryButton.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-16.0],
 
         [secondaryButton.topAnchor constraintEqualToAnchor:primaryButton.topAnchor],
         [secondaryButton.leadingAnchor constraintEqualToAnchor:cardView.centerXAnchor constant:6.0],
@@ -689,7 +689,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
             : (kLang(@"pet_profiles_empty_title") ?: @"No pet profiles yet");
     }
 
-    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:44.0 weight:UIImageSymbolWeightMedium];
+    UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:28.0 weight:UIImageSymbolWeightMedium];
     NSString *symbolName = nextReminder.enabled ? @"bell.badge.fill" : @"bell.fill";
     self.headerSymbolView.image = [UIImage systemImageNamed:symbolName withConfiguration:config];
     self.headerSymbolView.contentMode = UIViewContentModeCenter;

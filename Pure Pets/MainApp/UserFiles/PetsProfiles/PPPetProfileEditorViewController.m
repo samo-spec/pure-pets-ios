@@ -497,13 +497,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
     accentBar.backgroundColor = PPPetsUIBrandColor();
-    accentBar.layer.cornerRadius = 3.0;
+    accentBar.layer.cornerRadius = 2.0;
     [cardView addSubview:accentBar];
 
     UIView *eyebrowPill = [[UIView alloc] init];
     eyebrowPill.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
-    eyebrowPill.layer.cornerRadius = 14.0;
+    eyebrowPill.layer.cornerRadius = 13.0;
     eyebrowPill.layer.borderWidth = 1.0;
     eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
     eyebrowPill.layer.masksToBounds = YES;
@@ -520,20 +520,20 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     UIView *avatarHalo = [[UIView alloc] init];
     avatarHalo.translatesAutoresizingMaskIntoConstraints = NO;
     avatarHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
-    avatarHalo.layer.cornerRadius = 62.0;
+    avatarHalo.layer.cornerRadius = 32.0;
     avatarHalo.layer.borderWidth = 0.0;
     avatarHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     avatarHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
     avatarHalo.layer.shadowOpacity = 0.12;
-    avatarHalo.layer.shadowRadius = 22.0;
-    avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    avatarHalo.layer.shadowRadius = 12.0;
+    avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [cardView addSubview:avatarHalo];
 
     self.heroImageView = [[UIImageView alloc] init];
     self.heroImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.heroImageView.clipsToBounds = YES;
-    self.heroImageView.layer.cornerRadius = 54.0;
+    self.heroImageView.layer.cornerRadius = 26.0;
     self.heroImageView.layer.borderWidth = 3.0;
     self.heroImageView.layer.borderColor = [PPPetsCardOverlay(0.86) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
     self.heroImageView.backgroundColor = UIColor.clearColor;
@@ -543,7 +543,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
+    titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     titleLabel.textColor = PPPetsUIPrimaryTextColor();
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
@@ -574,11 +574,11 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     // Pencil edit badge on avatar corner
     UIButton *photoButton = [UIButton buttonWithType:UIButtonTypeSystem];
     photoButton.translatesAutoresizingMaskIntoConstraints = NO;
-    UIImageSymbolConfiguration *pencilCfg = [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+    UIImageSymbolConfiguration *pencilCfg = [UIImageSymbolConfiguration configurationWithPointSize:11.0 weight:UIImageSymbolWeightSemibold];
     [photoButton setImage:[[UIImage systemImageNamed:@"pencil" withConfiguration:pencilCfg] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
     photoButton.tintColor = UIColor.whiteColor;
     photoButton.backgroundColor = PPPetsUIBrandColor();
-    photoButton.layer.cornerRadius = 16.0;
+    photoButton.layer.cornerRadius = 12.0;
     photoButton.layer.borderWidth = 2.5;
     photoButton.layer.borderColor = UIColor.whiteColor.CGColor;
     photoButton.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
@@ -609,15 +609,15 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         [secondaryGlow.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:42.0],
         [secondaryGlow.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:-34.0],
 
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:22.0],
+        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:14.0],
         [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [accentBar.widthAnchor constraintEqualToConstant:72.0],
-        [accentBar.heightAnchor constraintEqualToConstant:6.0],
+        [accentBar.widthAnchor constraintEqualToConstant:56.0],
+        [accentBar.heightAnchor constraintEqualToConstant:4.0],
 
-        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
+        [eyebrowPill.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:10.0],
         [eyebrowPill.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [eyebrowPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-24.0],
-        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:28.0],
+        [eyebrowPill.heightAnchor constraintGreaterThanOrEqualToConstant:26.0],
 
         [eyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowPill.topAnchor constant:6.0],
         [eyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowPill.leadingAnchor constant:12.0],
@@ -625,31 +625,31 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
         [eyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:-6.0],
 
         [avatarHalo.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [avatarHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:20.0],
-        [avatarHalo.widthAnchor constraintEqualToConstant:124.0],
-        [avatarHalo.heightAnchor constraintEqualToConstant:124.0],
+        [avatarHalo.topAnchor constraintEqualToAnchor:eyebrowPill.bottomAnchor constant:12.0],
+        [avatarHalo.widthAnchor constraintEqualToConstant:64.0],
+        [avatarHalo.heightAnchor constraintEqualToConstant:64.0],
 
         [self.heroImageView.centerXAnchor constraintEqualToAnchor:avatarHalo.centerXAnchor],
         [self.heroImageView.centerYAnchor constraintEqualToAnchor:avatarHalo.centerYAnchor],
-        [self.heroImageView.widthAnchor constraintEqualToConstant:108.0],
-        [self.heroImageView.heightAnchor constraintEqualToConstant:108.0],
+        [self.heroImageView.widthAnchor constraintEqualToConstant:52.0],
+        [self.heroImageView.heightAnchor constraintEqualToConstant:52.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:22.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:12.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:10.0],
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:6.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
 
-        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:14.0],
+        [metaLabel.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:10.0],
         [metaLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:cardView.leadingAnchor constant:34.0],
         [metaLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
         [metaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-34.0],
-        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
+        [metaLabel.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-16.0],
 
-        [photoButton.widthAnchor constraintEqualToConstant:32.0],
-        [photoButton.heightAnchor constraintEqualToConstant:32.0],
+        [photoButton.widthAnchor constraintEqualToConstant:24.0],
+        [photoButton.heightAnchor constraintEqualToConstant:24.0],
         [photoButton.trailingAnchor constraintEqualToAnchor:avatarHalo.trailingAnchor constant:-2.0],
         [photoButton.bottomAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:-2.0],
     ]];
@@ -703,7 +703,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                                (kLang(@"pet_vaccines_short") ?: @"vaccines"),
                                defaultText];
 
-    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:(name ?: @"") size:108];
+    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:(name ?: @"") size:52];
     if (self.selectedImage) {
         self.heroImageView.image = self.selectedImage;
     } else {

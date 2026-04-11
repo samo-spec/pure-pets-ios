@@ -3,24 +3,24 @@
 //  Pure Pets
 //
 //  Created by Mohammed Ahmed on 31/12/2025.
+//  Refactored: Data-driven filter sheet powered by PPFilterModels.
 //
 
-
 #import <UIKit/UIKit.h>
-#import "EnumValues.h"
+#import "PPFilterModels.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PPFilterSheetVC : UIViewController
 
-@property (nonatomic, assign) PPDataSection currentSection;
-@property (nonatomic, assign) PPFilterAccessoryType accessoryFilter;
-@property (nonatomic, assign) PPFilterServiceType serviceFilter;
+/// The filter state to display. Set before presentation.
+@property (nonatomic, strong) PPFilterState *filterState;
 
-@property (nonatomic, copy, nullable) void (^onApply)(
-    PPFilterAccessoryType accessory,
-    PPFilterServiceType service
-);
+/// Section label shown as subtitle.
+@property (nonatomic, assign) PPDataSection currentSection;
+
+/// Called when the user taps "Apply" — returns the modified PPFilterState.
+@property (nonatomic, copy, nullable) void (^onApply)(PPFilterState *state);
 
 @end
 

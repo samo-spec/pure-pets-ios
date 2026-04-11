@@ -491,7 +491,23 @@ static NSString * const kCachedAddressesByUserKey    = @"cachedAddressesByUser";
     NSMutableArray *arr = [NSMutableArray array];
     for (UserModel *u in self.usersArray) {
         if ([u respondsToSelector:@selector(toDictionary)]) {
-            [arr addObject:[u toDictionary]];
+            NSDictionary *raw = [u toDictionary];
+            NSMutableDictionary *safe = [NSMutableDictionary dictionaryWithCapacity:raw.count];
+            for (NSString *key in raw) {
+                id val = raw[key];
+                if ([val isKindOfClass:[NSDate class]]) {
+                    safe[key] = @([(NSDate *)val timeIntervalSince1970]);
+                } else if ([val isKindOfClass:[NSNumber class]] ||
+                           [val isKindOfClass:[NSString class]] ||
+                           [val isKindOfClass:[NSArray class]] ||
+                           [val isKindOfClass:[NSDictionary class]]) {
+                    safe[key] = val;
+                } else if ([val isKindOfClass:[NSNull class]]) {
+                    safe[key] = val;
+                }
+                // Skip any other non-JSON-serializable types (FIRTimestamp, etc.)
+            }
+            [arr addObject:safe];
         }
     }
     
