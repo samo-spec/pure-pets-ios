@@ -1863,6 +1863,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                                 size:(CGSize)size
                           completion:(void (^)(UIImage * _Nullable image))completion;
 - (void)handleUserProfileSyncNotification:(NSNotification *)notification;
+- (void)handleUserAccessUpdateNotification:(NSNotification *)notification;
 - (void)pp_handlePromoCardTap:(PPHomePromoCarouselCard *)card interaction:(NSString *)interaction;
 - (void)pp_handleCarouselTapAction:(PPBannerOnTapAction)action
                              value:(NSString *)value
@@ -2715,6 +2716,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                name:PPUserManagerDidSignOutNotification
              object:nil];
 
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(handleUserAccessUpdateNotification:)
+               name:PPUserManagerDidUpdateUserAccessNotification
+              object:nil];
+
 
 }
 
@@ -2752,6 +2759,17 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self refreshHeroSectionAppearance];
     [self refreshCurrentOrdersForce:YES];
     [self pp_refreshPetProfilesSection];
+}
+
+- (void)handleUserAccessUpdateNotification:(NSNotification *)notification
+{
+    (void)notification;
+    UIBarButtonItem *profileItem = [self pp_buildProfileBarButtonItem];
+    self.homeProfileItem = profileItem;
+    NSUInteger cartCount = UserManager.sharedManager.currentUser.cartItemsCount;
+    self.navigationItem.leftBarButtonItems  = @[profileItem];
+    [self refreshNavigationRightItemsForCartCount:cartCount];
+    [self pp_refreshNavigationMenusForCurrentUser];
 }
 
 - (NSString *)pp_currentOrdersUserID
@@ -6933,6 +6951,29 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             avatar.tintColor = nil;
             avatar.contentMode = UIViewContentModeScaleAspectFill;
         }];
+    }
+
+    // ── Verified badge overlay ──
+    if (PPCurrentUser.isVerified) {
+        static const CGFloat kBadgeSize = 14.0;
+        UIImageView *verifiedBadge = [[UIImageView alloc] init];
+        verifiedBadge.translatesAutoresizingMaskIntoConstraints = NO;
+        if (@available(iOS 13.0, *)) {
+            UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:kBadgeSize weight:UIImageSymbolWeightMedium];
+            verifiedBadge.image = [UIImage systemImageNamed:@"checkmark.seal.fill" withConfiguration:config];
+            verifiedBadge.tintColor = [UIColor systemBlueColor];
+        }
+        verifiedBadge.contentMode = UIViewContentModeScaleAspectFit;
+        verifiedBadge.backgroundColor = [UIColor whiteColor];
+        verifiedBadge.layer.cornerRadius = kBadgeSize * 0.5;
+        verifiedBadge.clipsToBounds = YES;
+        [button addSubview:verifiedBadge];
+        [NSLayoutConstraint activateConstraints:@[
+            [verifiedBadge.widthAnchor constraintEqualToConstant:kBadgeSize],
+            [verifiedBadge.heightAnchor constraintEqualToConstant:kBadgeSize],
+            [verifiedBadge.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:1.0],
+            [verifiedBadge.bottomAnchor constraintEqualToAnchor:button.bottomAnchor constant:1.0]
+        ]];
     }
 
     if (@available(iOS 14.0, *)) {
