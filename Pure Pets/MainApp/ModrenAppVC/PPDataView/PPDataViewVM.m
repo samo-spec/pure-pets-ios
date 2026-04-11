@@ -22,6 +22,7 @@
 
 // Storage
 @property (nonatomic, strong) NSMutableArray<PPUniversalCellViewModel *> *mutableItems;
+@property (nonatomic, copy) NSArray *latestRawResults;
 @property (nonatomic, assign) NSUInteger requestVersion;
 
 @end
@@ -138,6 +139,7 @@
 
     // Reset data
     [self.mutableItems removeAllObjects];
+    self.latestRawResults = @[];
     self.currentPage = 0;
     self.hasMore = YES;
     self.isLoading = NO;
@@ -335,6 +337,17 @@
     [self refreshCurrentSection];
 }
 
+- (NSInteger)previewResultCountForFilterState:(PPFilterState *)state
+{
+    NSArray *sourceResults = self.latestRawResults;
+    if (sourceResults.count == 0) {
+        return self.mutableItems.count;
+    }
+
+    NSArray *filtered = [self pp_applyFiltersToResults:sourceResults filterState:state];
+    return filtered.count;
+}
+
 #pragma mark - Data Flow
 
 - (void)fetchInitialData
@@ -383,6 +396,7 @@
             }
 
             NSArray *safeResults = [results isKindOfClass:[NSArray class]] ? results : @[];
+            weakSelf.latestRawResults = safeResults;
             NSArray *filtered = [weakSelf applyFiltersToResults:safeResults];
             NSArray *viewModels = [weakSelf buildViewModelsFromModels:filtered];
 
@@ -556,7 +570,11 @@
 
 - (NSArray *)applyFiltersToResults:(NSArray *)results
 {
-    PPFilterState *state = self.filterState;
+    return [self pp_applyFiltersToResults:results filterState:self.filterState];
+}
+
+- (NSArray *)pp_applyFiltersToResults:(NSArray *)results filterState:(PPFilterState *)state
+{
     if (!state || !state.hasActiveFilters) {
         return results;
     }
@@ -786,6 +804,7 @@
             }
 
             NSArray *safeResults = [results isKindOfClass:[NSArray class]] ? results : @[];
+            weakSelf.latestRawResults = safeResults;
             NSArray *filtered = [weakSelf applyFiltersToResults:safeResults];
             NSArray *viewModels = [weakSelf buildViewModelsFromModels:filtered];
 

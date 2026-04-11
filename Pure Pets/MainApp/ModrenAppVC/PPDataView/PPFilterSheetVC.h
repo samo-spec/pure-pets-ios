@@ -19,6 +19,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Section label shown as subtitle.
 @property (nonatomic, assign) PPDataSection currentSection;
 
+/// Optional live provider used to preview how many results match the in-sheet state.
+@property (nonatomic, copy, nullable) NSInteger (^resultCountProvider)(PPFilterState *state);
+
 /// Called when the user taps "Apply" — returns the modified PPFilterState.
 @property (nonatomic, copy, nullable) void (^onApply)(PPFilterState *state);
 

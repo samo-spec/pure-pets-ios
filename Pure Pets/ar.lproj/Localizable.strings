@@ -2419,6 +2419,12 @@
 "pet_reminder_toggle" = "تفعيل التذكير";
 "pet_profile_tap_hint" = "انقر مرتين لعرض ملف الحيوان الأليف";
 
+/* ── Search Empty State ── */
+"SearchStartTitle" = "ابدأ البحث";
+"SearchStartSubtitle" = "اكتب أعلاه للعثور على الحيوانات والإكسسوارات والخدمات";
+"SearchNoResultsTitle" = "لا توجد نتائج";
+"SearchNoResultsMessage_fmt" = "لم يتم العثور على نتائج لـ \"%@\"";
+
 /* ── Adopt Pet Form Section Titles ── */
 "petInfo" = "معلومات الحيوان";
 "additionalInfo" = "تفاصيل إضافية";

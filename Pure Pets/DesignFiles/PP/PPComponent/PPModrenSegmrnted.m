@@ -376,13 +376,14 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     segmentsStackView.alignment = UIStackViewAlignmentFill;
     segmentsStackView.distribution = UIStackViewDistributionFillEqually;
     segmentsStackView.spacing = 0.0;
-    // Keep the visual rail in the same logical order as the caller's items array.
-    // Each segment still respects app language for its own content.
-    segmentsStackView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    segmentsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.segmentsStackView = segmentsStackView;
     [self addSubview:segmentsStackView];
 
-    self.selectionIndicatorLeadingConstraint = [selectionIndicatorView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPModrenSegmrntedRailInset];
+    // Use physical left/right anchors here because segment frames are measured in
+    // UIKit's left-based coordinate space. Semantic leading/trailing anchors mirror
+    // in RTL and would place the active capsule under the wrong segment.
+    self.selectionIndicatorLeadingConstraint = [selectionIndicatorView.leftAnchor constraintEqualToAnchor:self.leftAnchor constant:PPModrenSegmrntedRailInset];
     self.selectionIndicatorWidthConstraint = [selectionIndicatorView.widthAnchor constraintEqualToConstant:0.0];
 
     [NSLayoutConstraint activateConstraints:@[

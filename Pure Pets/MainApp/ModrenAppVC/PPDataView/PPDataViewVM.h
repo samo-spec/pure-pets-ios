@@ -34,6 +34,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Filters — data-driven
 - (void)applyFilterState:(PPFilterState *)state;
+- (NSInteger)previewResultCountForFilterState:(PPFilterState *)state;
 
 - (NSString *)subKindKeyForMainKind:(MainKindsModel *)mainKind;
 // Cell access

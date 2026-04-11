@@ -2431,6 +2431,12 @@
 "pet_reminder_toggle" = "Enable reminder";
 "pet_profile_tap_hint" = "Double tap to view pet profile";
 
+/* ── Search Empty State ── */
+"SearchStartTitle" = "Start Searching";
+"SearchStartSubtitle" = "Type above to find pets, accessories, and services";
+"SearchNoResultsTitle" = "No Results Found";
+"SearchNoResultsMessage_fmt" = "No results found for \"%@\"";
+
 /* ── Adopt Pet Form Section Titles ── */
 "petInfo" = "Pet Information";
 "additionalInfo" = "Additional Details";

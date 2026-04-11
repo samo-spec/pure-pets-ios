@@ -280,7 +280,7 @@ NS_ASSUME_NONNULL_BEGIN
         }];
         
         customMedium80 = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"customMedium80"  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-            return height * 0.95; // your custom medium height
+            return height * 0.85; // your custom medium height
         }];
         
         adsViewDent = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"adsViewDent"  resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {

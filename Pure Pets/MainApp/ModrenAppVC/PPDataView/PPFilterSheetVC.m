@@ -31,7 +31,7 @@ static UIColor *PPFilterSheetAccentColor(void)
 
 static UIColor *PPFilterSheetCanvasColor(void)
 {
-    return PPBackgroundColorForIOS26(AppBackgroundClrLigter ?: UIColor.systemGroupedBackgroundColor);
+    return AppBackgroundClrLigter;
 }
 
 static CGFloat PPFilterSheetHairline(void)
@@ -151,7 +151,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 
     UIColor *surfaceColor = selected
         ? accent
-        : [UIColor secondarySystemBackgroundColor];
+        : AppBackgroundClrLigter;
     UIColor *foregroundColor = selected
         ? UIColor.whiteColor
         : UIColor.labelColor;
@@ -199,11 +199,14 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         self.titleEdgeInsets = icon ? UIEdgeInsetsMake(0.0, 6.0, 0.0, -6.0) : UIEdgeInsetsZero;
         self.imageEdgeInsets = UIEdgeInsetsZero;
     }
+
     self.layer.masksToBounds = NO;
     self.layer.shadowColor = accent.CGColor;
     self.layer.shadowOpacity = selected ? 0.20f : 0.0f;
     self.layer.shadowRadius = selected ? 16.0f : 0.0f;
     self.layer.shadowOffset = selected ? CGSizeMake(0.0, 10.0) : CGSizeZero;
+    [self invalidateIntrinsicContentSize];
+    [self setNeedsLayout];
 }
 
 @end
@@ -395,7 +398,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 
     UIView *surfaceView = [[UIView alloc] init];
     surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    surfaceView.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    surfaceView.backgroundColor = AppBackgroundClrLigter;
     surfaceView.layer.cornerRadius = 28.0;
     surfaceView.layer.borderWidth = PPFilterSheetHairline();
     surfaceView.layer.borderColor = [accent colorWithAlphaComponent:0.10].CGColor;
@@ -538,6 +541,12 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 
     self.iconChipView.backgroundColor = [accent colorWithAlphaComponent:isActive ? 0.20 : 0.12];
     self.surfaceView.layer.borderColor = [accent colorWithAlphaComponent:isActive ? 0.22 : 0.10].CGColor;
+
+    for (PPFilterOptionPill *pill in self.pills) {
+        [pill pp_applySelected:(pill.optionValue == self.group.selectedValue) accentColor:accent];
+    }
+    [self.wrapView invalidateIntrinsicContentSize];
+    [self.wrapView setNeedsLayout];
 }
 
 @end
@@ -557,6 +566,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 @property (nonatomic, strong) CAGradientLayer *heroShineLayer;
 @property (nonatomic, strong) PPFilterCapsuleLabel *sectionCapsuleLabel;
 @property (nonatomic, strong) PPFilterCapsuleLabel *activeCountCapsuleLabel;
+@property (nonatomic, strong) PPFilterCapsuleLabel *resultCountCapsuleLabel;
 @property (nonatomic, strong) UILabel *heroStatusLabel;
 @property (nonatomic, strong) UILabel *footerSummaryLabel;
 @property (nonatomic, strong) UIButton *resetButton;
@@ -566,6 +576,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 @property (nonatomic, strong) NSMutableDictionary<NSString *, PPFilterSectionView *> *sectionViewsByGroupID;
 @property (nonatomic, copy) NSArray<UIView *> *entranceViews;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
+@property (nonatomic, assign) BOOL didPrepareEntranceState;
 @end
 
 @implementation PPFilterSheetVC
@@ -576,7 +587,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 {
     [super viewDidLoad];
 
-    self.view.backgroundColor = PPFilterSheetCanvasColor();
+    self.view.backgroundColor = AppBackgroundClr;
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.pillsByGroupID = [NSMutableDictionary dictionary];
     self.sectionViewsByGroupID = [NSMutableDictionary dictionary];
@@ -585,10 +596,15 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         self.filterState = [PPFilterState stateWithGroups:@[]];
     }
 
+    if (@available(iOS 15.0, *)) {
+        self.sheetPresentationController.prefersGrabberVisible = YES;
+    }
+
     [self pp_buildUI];
-    [self pp_updateCanvasColors];
+    //[self pp_updateCanvasColors];
     [self pp_updateHeroGradientColors];
     [self pp_updateActiveStateAnimated:NO];
+    [self pp_prepareEntranceStateIfNeeded];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -622,11 +638,16 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 
     [self pp_buildBackdropCanvas];
 
-    UIView *handle = [[UIView alloc] init];
-    handle.translatesAutoresizingMaskIntoConstraints = NO;
-    handle.backgroundColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.22];
-    handle.layer.cornerRadius = 2.5;
-    [self.view addSubview:handle];
+    UIView *handle = nil;
+    if (@available(iOS 15.0, *)) {
+        handle = nil;
+    } else {
+        handle = [[UIView alloc] init];
+        handle.translatesAutoresizingMaskIntoConstraints = NO;
+        handle.backgroundColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.22];
+        handle.layer.cornerRadius = 2.5;
+        [self.view addSubview:handle];
+    }
 
     UIScrollView *scrollView = [[UIScrollView alloc] init];
     scrollView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -673,17 +694,11 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     [entranceViews addObject:footerShell];
     self.entranceViews = [entranceViews copy];
 
-    [NSLayoutConstraint activateConstraints:@[
-        [handle.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:10.0],
-        [handle.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
-        [handle.widthAnchor constraintEqualToConstant:42.0],
-        [handle.heightAnchor constraintEqualToConstant:5.0],
-
+    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
         [footerShell.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [footerShell.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
         [footerShell.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0],
 
-        [scrollView.topAnchor constraintEqualToAnchor:handle.bottomAnchor constant:16.0],
         [scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [scrollView.bottomAnchor constraintEqualToAnchor:footerShell.topAnchor constant:-14.0],
@@ -693,6 +708,20 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         [contentStack.trailingAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.trailingAnchor constant:-16.0],
         [contentStack.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor constant:-24.0]
     ]];
+
+    if (handle) {
+        [constraints addObjectsFromArray:@[
+            [handle.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:10.0],
+            [handle.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+            [handle.widthAnchor constraintEqualToConstant:42.0],
+            [handle.heightAnchor constraintEqualToConstant:5.0],
+            [scrollView.topAnchor constraintEqualToAnchor:handle.bottomAnchor constant:16.0]
+        ]];
+    } else {
+        [constraints addObject:[scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0]];
+    }
+
+    [NSLayoutConstraint activateConstraints:constraints];
 }
 
 - (void)pp_buildBackdropCanvas
@@ -757,6 +786,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     gradient.startPoint = CGPointMake(0.0, 0.15);
     gradient.endPoint = CGPointMake(1.0, 1.0);
     gradient.locations = @[@0.0, @0.36, @1.0];
+    gradient.opacity = 1;
     [heroCard.layer insertSublayer:gradient atIndex:0];
     self.heroGradientLayer = gradient;
 
@@ -764,6 +794,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     mesh.startPoint = CGPointMake(1.0, 0.0);
     mesh.endPoint = CGPointMake(0.0, 1.0);
     mesh.locations = @[@0.0, @0.28, @0.72, @1.0];
+    mesh.opacity = 1;
     [heroCard.layer insertSublayer:mesh above:gradient];
     self.heroMeshLayer = mesh;
 
@@ -771,6 +802,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     shine.startPoint = CGPointMake(0.0, 0.0);
     shine.endPoint = CGPointMake(0.0, 1.0);
     shine.locations = @[@0.0, @0.12, @0.32];
+    shine.opacity = 1;
     [heroCard.layer insertSublayer:shine above:mesh];
     self.heroShineLayer = shine;
 
@@ -852,6 +884,17 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     [metaStack addArrangedSubview:activeLabel];
     self.activeCountCapsuleLabel = activeLabel;
 
+    PPFilterCapsuleLabel *resultLabel = [[PPFilterCapsuleLabel alloc] init];
+    resultLabel.font = PPFilterSheetBold(12.0);
+    resultLabel.textAlignment = NSTextAlignmentCenter;
+    resultLabel.textColor = UIColor.whiteColor;
+    resultLabel.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.14];
+    resultLabel.contentInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
+    resultLabel.layer.cornerRadius = 15.0;
+    resultLabel.clipsToBounds = YES;
+    [metaStack addArrangedSubview:resultLabel];
+    self.resultCountCapsuleLabel = resultLabel;
+
     UILabel *statusLabel = [[UILabel alloc] init];
     statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
     statusLabel.font = PPFilterSheetMedium(12.0);
@@ -908,7 +951,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 
     UIView *surfaceView = [[UIView alloc] init];
     surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    surfaceView.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    surfaceView.backgroundColor = AppBackgroundClrLigter;
     surfaceView.layer.cornerRadius = 28.0;
     surfaceView.layer.borderWidth = PPFilterSheetHairline();
     surfaceView.layer.borderColor = [accent colorWithAlphaComponent:0.10].CGColor;
@@ -979,7 +1022,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 {
     UIView *shellView = [[UIView alloc] init];
     shellView.translatesAutoresizingMaskIntoConstraints = NO;
-    shellView.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.96];
+    shellView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.96];
     shellView.layer.cornerRadius = 28.0;
     shellView.layer.borderWidth = PPFilterSheetHairline();
     shellView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.12].CGColor;
@@ -1028,7 +1071,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         [summaryLabel.leadingAnchor constraintEqualToAnchor:shellView.leadingAnchor constant:16.0],
         [summaryLabel.trailingAnchor constraintEqualToAnchor:shellView.trailingAnchor constant:-16.0],
 
-        [buttonStack.topAnchor constraintEqualToAnchor:summaryLabel.bottomAnchor constant:14.0],
+        [buttonStack.topAnchor constraintEqualToAnchor:summaryLabel.bottomAnchor constant:0.0],
         [buttonStack.leadingAnchor constraintEqualToAnchor:shellView.leadingAnchor constant:16.0],
         [buttonStack.trailingAnchor constraintEqualToAnchor:shellView.trailingAnchor constant:-16.0],
         [buttonStack.bottomAnchor constraintEqualToAnchor:shellView.bottomAnchor constant:-16.0]
@@ -1094,6 +1137,20 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 - (NSString *)pp_activeBadgeTextForCount:(NSInteger)count
 {
     return [NSString stringWithFormat:@"%ld %@", (long)count, PPFilterSheetL(@"active", @"مفعلة")];
+}
+
+- (NSString *)pp_resultBadgeTextForCount:(NSInteger)count
+{
+    NSString *noun = PPFilterSheetL(@"results", @"نتيجة");
+    return [NSString stringWithFormat:@"%ld %@", (long)count, noun];
+}
+
+- (NSInteger)pp_previewResultCount
+{
+    if (self.resultCountProvider) {
+        return MAX(0, self.resultCountProvider(self.filterState));
+    }
+    return 0;
 }
 
 - (NSString *)pp_activeSummaryTextForCount:(NSInteger)count
@@ -1163,9 +1220,6 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 
     void (^updates)(void) = ^{
         [sectionView pp_applyGroupStateWithAccentColor:accent];
-        for (PPFilterOptionPill *optionPill in pills) {
-            [optionPill pp_applySelected:(optionPill.optionValue == group.selectedValue) accentColor:accent];
-        }
     };
 
     if (animated) {
@@ -1194,6 +1248,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
 - (void)pp_updateActiveStateAnimated:(BOOL)animated
 {
     NSInteger count = self.filterState.activeFilterCount;
+    NSInteger resultCount = [self pp_previewResultCount];
     NSString *summaryText = [self pp_activeSummaryTextForCount:count];
     BOOL showCount = count > 0;
 
@@ -1202,6 +1257,8 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         self.footerSummaryLabel.text = summaryText;
         self.activeCountCapsuleLabel.hidden = !showCount;
         self.activeCountCapsuleLabel.text = showCount ? [self pp_activeBadgeTextForCount:count] : @"";
+        self.resultCountCapsuleLabel.text = [self pp_resultBadgeTextForCount:resultCount];
+        self.resultCountCapsuleLabel.hidden = NO;
         [self pp_applyFooterButtonStylesForActiveCount:count];
     };
 
@@ -1341,12 +1398,10 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     }
 
     self.didAnimateEntrance = YES;
+    [self pp_prepareEntranceStateIfNeeded];
 
     NSTimeInterval delay = 0.0;
     for (UIView *view in self.entranceViews) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
-
         [UIView animateWithDuration:0.72
                               delay:delay
              usingSpringWithDamping:0.86
@@ -1358,6 +1413,19 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         } completion:nil];
 
         delay += 0.055;
+    }
+}
+
+- (void)pp_prepareEntranceStateIfNeeded
+{
+    if (self.didPrepareEntranceState || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    self.didPrepareEntranceState = YES;
+    for (UIView *view in self.entranceViews) {
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
     }
 }
 

@@ -6413,39 +6413,33 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (UIView *)pp_buildProfileVerificationBadgeView
 {
     static const CGFloat kBadgeSize = 18.0;
-    static const CGFloat kIconSize  = 16.0;
+    
 
-    // Outer ring — visible white circle so badge floats above the avatar
     UIView *badgeView = [[UIView alloc] init];
     badgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeView.backgroundColor = AppClearClr;
+    badgeView.clipsToBounds = YES;
     badgeView.userInteractionEnabled = NO;
     badgeView.isAccessibilityElement = NO;
-    badgeView.backgroundColor = [UIColor systemBackgroundColor];
-    badgeView.layer.cornerRadius = kBadgeSize / 2.0;
-    badgeView.clipsToBounds = YES;
+ 
 
-    // Force .alwaysOriginal rendering — the asset catalog marks this
-    // image as "template", which strips the colors and applies tintColor.
-    // We need the actual colored icon.
-    UIImage *rawIcon = [UIImage imageNamed:@"verify_icon_colored"];
-    UIImage *coloredIcon = [rawIcon imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-
+    
     UIImageView *iconView = [[UIImageView alloc] init];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    iconView.image = coloredIcon;
+    iconView.contentMode = UIViewContentModeScaleToFill;
+    iconView.image = [UIImage imageNamed:@"verify_icon_colored"];
     [badgeView addSubview:iconView];
 
     [NSLayoutConstraint activateConstraints:@[
         [badgeView.widthAnchor constraintEqualToConstant:kBadgeSize],
         [badgeView.heightAnchor constraintEqualToConstant:kBadgeSize],
+   
         [iconView.centerXAnchor constraintEqualToAnchor:badgeView.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:badgeView.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:kIconSize],
-        [iconView.heightAnchor constraintEqualToConstant:kIconSize],
+        [iconView.widthAnchor constraintEqualToConstant:16],
+        [iconView.heightAnchor  constraintEqualToConstant:16],
     ]];
 
-    // Spring entrance animation
     badgeView.alpha = 0.0;
     badgeView.transform = CGAffineTransformMakeScale(0.82, 0.82);
     dispatch_async(dispatch_get_main_queue(), ^{

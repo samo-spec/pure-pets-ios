@@ -116,7 +116,7 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     self.overlayView = [[UIView alloc] init];
     self.overlayView.translatesAutoresizingMaskIntoConstraints = NO;
     self.overlayView.userInteractionEnabled = NO;
-    self.overlayView.backgroundColor = UIColor.clearColor;
+    self.overlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.85];
     self.overlayView.layer.masksToBounds = YES;
     [self.surfaceView addSubview:self.overlayView];
 

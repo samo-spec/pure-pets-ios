@@ -831,8 +831,10 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     BOOL isAds = (self.context == PPCellForAds);
     self.bottomOverlay.hidden = isMarket;
     self.imageScrimView.hidden = isMarket || !isAds;
-    self.imageView.backgroundColor = isMarket ? UIColor.secondarySystemBackgroundColor : UIColor.clearColor;
+    self.imageView.backgroundColor = isMarket ? AppBackgroundClr : UIColor.clearColor;
     self.imageView.layer.cornerRadius = isMarket ? 18.0 : PPCornerCard;
+    self.imageView.layer.borderColor = isMarket ? AppBackgroundClr.CGColor : UIColor.clearColor.CGColor;
+    self.imageView.layer.borderWidth = 1.0;
     self.imageView.contentMode = isMarket ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
     self.bottomOverlay.backgroundColor = (isAds && !isMarket)
         ? [UIColor colorWithWhite:1.0 alpha:0.04]

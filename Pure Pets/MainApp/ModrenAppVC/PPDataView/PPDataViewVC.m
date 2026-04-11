@@ -988,10 +988,16 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     }
 
     PPFilterSheetVC *vc = [PPFilterSheetVC new];
-    vc.modalPresentationStyle = UIModalPresentationPageSheet;
-    vc.currentSection = self.viewModel.currentSection;
+     vc.currentSection = self.viewModel.currentSection;
     vc.filterState = [[self pp_currentFilterState] copy];
     __weak typeof(self) weakSelf = self;
+    vc.resultCountProvider = ^NSInteger(PPFilterState *state) {
+        PPDataViewVC *strongSelf = weakSelf;
+        if (!strongSelf) {
+            return 0;
+        }
+        return [strongSelf.viewModel previewResultCountForFilterState:state];
+    };
     vc.onApply = ^(PPFilterState *applied) {
 
         PPDataViewVC *strongSelf = weakSelf;
@@ -1003,7 +1009,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         [strongSelf refreshPresentedItemsAnimated:YES scrollToTop:YES];
 
     };
-    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle70 ];
+    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle80 ];
 
 }
  
@@ -2435,10 +2441,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     sectionsControl.translatesAutoresizingMaskIntoConstraints = NO;
     sectionsControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     sectionsControl.accessibilityIdentifier = @"pp.data.sectionsTabBar";
-    sectionsControl.containerBackgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    sectionsControl.containerBackgroundColor = [AppBackgroundClrDarker colorWithAlphaComponent:0.16];
     sectionsControl.normalTextColor = UIColor.secondaryLabelColor;
-    sectionsControl.selectedTextColor = AppPrimaryClr;
-    sectionsControl.selectedSegmentColor = [UIColor colorWithWhite:1.0 alpha:0.94];
+    sectionsControl.selectedTextColor = [UIColor colorWithWhite:1.0 alpha:0.94];
+    sectionsControl.selectedSegmentColor = AppPrimaryClr;
     sectionsControl.normalFont = [GM MidFontWithSize:13];
     sectionsControl.selectedFont = [GM boldFontWithSize:13];
     sectionsControl.layer.cornerRadius = 17.0;

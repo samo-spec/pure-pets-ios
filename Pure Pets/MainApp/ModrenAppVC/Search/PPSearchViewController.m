@@ -148,6 +148,9 @@ PPUniversalCellDelegate>
     UITapGestureRecognizer *dismissTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
     dismissTap.cancelsTouchesInView = NO;
     [self.view addGestureRecognizer:dismissTap];
+
+    // Auto-focus the search field when the screen loads
+    self.pendingSearchFieldFocus = YES;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -292,9 +295,9 @@ PPUniversalCellDelegate>
             [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
         UIImage *xImage = [UIImage systemImageNamed:@"xmark" withConfiguration:cfg];
         UIButton *dismissBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        dismissBtn.tintColor = AppForgroundColr;
+        dismissBtn.tintColor = AppSecondaryTextClr;
         [dismissBtn setImage:xImage forState:UIControlStateNormal];
-        dismissBtn.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.08];
+        dismissBtn.backgroundColor = PPIOS26() ? AppClearClr : AppForgroundColr;
         dismissBtn.layer.cornerRadius = 16.0;
         if (@available(iOS 13.0, *)) {
             dismissBtn.layer.cornerCurve = kCACornerCurveContinuous;
@@ -349,9 +352,9 @@ PPUniversalCellDelegate>
     chromeView.layer.cornerRadius = 20.0;
     chromeView.layer.masksToBounds = NO;
     chromeView.layer.borderWidth = 1.0;
-    chromeView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.04].CGColor;
+    chromeView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.14].CGColor;
     chromeView.layer.shadowColor = [UIColor colorWithWhite:0.09 alpha:1.0].CGColor;
-    chromeView.layer.shadowOpacity = 0.08f;
+    chromeView.layer.shadowOpacity = 0.12f;
     chromeView.layer.shadowRadius = 18.0f;
     chromeView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     if (@available(iOS 13.0, *)) {
@@ -1393,8 +1396,8 @@ PPUniversalCellDelegate>
         // Start searching prompt
         self.emptyStateIconView.image = [UIImage systemImageNamed:@"text.magnifyingglass"];
         self.emptyStateIconView.tintColor = [[UIColor colorWithRed:0.72 green:0.76 blue:0.82 alpha:1.0] colorWithAlphaComponent:0.68];
-        self.emptyTitleLabel.text = kLang(@"SearchStartTitle") ?: @"Start Searching";
-        self.emptySubtitleLabel.text = kLang(@"SearchStartSubtitle") ?: @"Type above to find pets, services, and accessories";
+        self.emptyTitleLabel.text = kLang(@"SearchStartTitle");
+        self.emptySubtitleLabel.text = kLang(@"SearchStartSubtitle");
     }
 
     // Hide collection view when showing empty/idle, show when we have results
