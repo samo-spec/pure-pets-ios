@@ -2181,6 +2181,7 @@
 /* Navigation Buttons – أزرار التنقل */
 "a11y_btn_cart" = "سلة التسوق";
 "a11y_btn_cart_hint" = "انقر مرتين لفتح السلة";
+"a11y_profile_verified_value" = "حساب موثق";
 "a11y_btn_add_new" = "إضافة إعلان جديد";
 "a11y_btn_add_new_hint" = "إنشاء إعلان حيوان أليف أو إكسسوار أو تبني";
 "a11y_btn_close_cart" = "إغلاق السلة";

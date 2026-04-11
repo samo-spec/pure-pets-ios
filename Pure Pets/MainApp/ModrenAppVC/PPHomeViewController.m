@@ -2766,7 +2766,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     (void)notification;
     UIBarButtonItem *profileItem = [self pp_buildProfileBarButtonItem];
     self.homeProfileItem = profileItem;
-    NSUInteger cartCount = UserManager.sharedManager.currentUser.cartItemsCount;
+    NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
     self.navigationItem.leftBarButtonItems  = @[profileItem];
     [self refreshNavigationRightItemsForCartCount:cartCount];
     [self pp_refreshNavigationMenusForCurrentUser];
@@ -6883,6 +6883,148 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return [[UIBarButtonItem alloc] initWithCustomView:self.homeCartButton];
 }
 
+- (UIColor *)pp_profileVerificationBadgeAccentColor
+{
+    return AppPrimaryClr ?: AppPrimaryClrShiner ?: [UIColor colorWithRed:0.17 green:0.56 blue:0.97 alpha:1.0];
+}
+
+- (UIColor *)pp_profileVerificationBadgeSurfaceColor
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull trait) {
+            if (trait.userInterfaceStyle == UIUserInterfaceStyleDark) {
+                return [UIColor colorWithRed:0.08 green:0.11 blue:0.17 alpha:0.96];
+            }
+            return [UIColor colorWithWhite:1.0 alpha:0.98];
+        }];
+    }
+    return [UIColor colorWithWhite:1.0 alpha:0.98];
+}
+
+- (UIColor *)pp_profileVerificationBadgeBorderColor
+{
+    UIColor *accentColor = [self pp_profileVerificationBadgeAccentColor];
+    return [accentColor colorWithAlphaComponent:0.28];
+}
+
+- (UIView *)pp_buildProfileVerificationBadgeView
+{
+    static const CGFloat kBadgeSize = 18.0;
+    static const CGFloat kGlowSize = 15.0;
+    static const CGFloat kInnerSize = 13.0;
+
+    UIView *badgeView = [[UIView alloc] init];
+    badgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeView.backgroundColor = UIColor.clearColor;
+    badgeView.clipsToBounds = NO;
+    badgeView.userInteractionEnabled = NO;
+    badgeView.isAccessibilityElement = NO;
+
+    UIView *shellView = [[UIView alloc] init];
+    shellView.translatesAutoresizingMaskIntoConstraints = NO;
+    shellView.backgroundColor = [self pp_profileVerificationBadgeSurfaceColor];
+    shellView.layer.cornerRadius = kBadgeSize * 0.5;
+    shellView.layer.borderWidth = 1.0;
+    shellView.layer.borderColor = [self pp_profileVerificationBadgeBorderColor].CGColor;
+    shellView.layer.shadowColor = UIColor.blackColor.CGColor;
+    shellView.layer.shadowOpacity = 0.15f;
+    shellView.layer.shadowRadius = 10.0f;
+    shellView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    if (@available(iOS 13.0, *)) {
+        shellView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [badgeView addSubview:shellView];
+
+    UIView *glowView = [[UIView alloc] init];
+    glowView.translatesAutoresizingMaskIntoConstraints = NO;
+    glowView.backgroundColor = [[self pp_profileVerificationBadgeAccentColor] colorWithAlphaComponent:0.24];
+    glowView.layer.cornerRadius = kGlowSize * 0.5;
+    glowView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        glowView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [shellView addSubview:glowView];
+
+    UIView *accentView = [[UIView alloc] init];
+    accentView.translatesAutoresizingMaskIntoConstraints = NO;
+    accentView.backgroundColor = [self pp_profileVerificationBadgeAccentColor];
+    accentView.layer.cornerRadius = kInnerSize * 0.5;
+    accentView.layer.shadowColor = [self pp_profileVerificationBadgeAccentColor].CGColor;
+    accentView.layer.shadowOpacity = 0.24f;
+    accentView.layer.shadowRadius = 6.0f;
+    accentView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    if (@available(iOS 13.0, *)) {
+        accentView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [shellView addSubview:accentView];
+
+    UIView *highlightView = [[UIView alloc] init];
+    highlightView.translatesAutoresizingMaskIntoConstraints = NO;
+    highlightView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.28];
+    highlightView.layer.cornerRadius = 3.0;
+    highlightView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        highlightView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [accentView addSubview:highlightView];
+
+    UIImageView *iconView = [[UIImageView alloc] init];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.tintColor = UIColor.whiteColor;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:8.0 weight:UIImageSymbolWeightBlack];
+        iconView.image = [UIImage systemImageNamed:@"checkmark" withConfiguration:iconConfig];
+    }
+    [accentView addSubview:iconView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [badgeView.widthAnchor constraintEqualToConstant:kBadgeSize],
+        [badgeView.heightAnchor constraintEqualToConstant:kBadgeSize],
+
+        [shellView.topAnchor constraintEqualToAnchor:badgeView.topAnchor],
+        [shellView.leadingAnchor constraintEqualToAnchor:badgeView.leadingAnchor],
+        [shellView.trailingAnchor constraintEqualToAnchor:badgeView.trailingAnchor],
+        [shellView.bottomAnchor constraintEqualToAnchor:badgeView.bottomAnchor],
+
+        [glowView.centerXAnchor constraintEqualToAnchor:shellView.centerXAnchor],
+        [glowView.centerYAnchor constraintEqualToAnchor:shellView.centerYAnchor],
+        [glowView.widthAnchor constraintEqualToConstant:kGlowSize],
+        [glowView.heightAnchor constraintEqualToConstant:kGlowSize],
+
+        [accentView.centerXAnchor constraintEqualToAnchor:shellView.centerXAnchor],
+        [accentView.centerYAnchor constraintEqualToAnchor:shellView.centerYAnchor],
+        [accentView.widthAnchor constraintEqualToConstant:kInnerSize],
+        [accentView.heightAnchor constraintEqualToConstant:kInnerSize],
+
+        [highlightView.topAnchor constraintEqualToAnchor:accentView.topAnchor constant:2.0],
+        [highlightView.leadingAnchor constraintEqualToAnchor:accentView.leadingAnchor constant:2.0],
+        [highlightView.widthAnchor constraintEqualToConstant:6.0],
+        [highlightView.heightAnchor constraintEqualToConstant:6.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:accentView.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:accentView.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:7.0],
+        [iconView.heightAnchor constraintEqualToConstant:7.0]
+    ]];
+
+    badgeView.alpha = 0.0;
+    badgeView.transform = CGAffineTransformMakeScale(0.82, 0.82);
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [UIView animateWithDuration:0.36
+                              delay:0.04
+             usingSpringWithDamping:0.72
+              initialSpringVelocity:0.28
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            badgeView.alpha = 1.0;
+            badgeView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    });
+
+    return badgeView;
+}
+
 - (UIBarButtonItem *)pp_buildProfileBarButtonItem
 {
     static const CGFloat kSize = 36.0;
@@ -6902,6 +7044,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     button.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     button.adjustsImageWhenHighlighted = NO;
     button.accessibilityLabel = kLang(@"Profile") ?: @"Profile";
+    button.accessibilityValue = PPCurrentUser.isVerified ? (kLang(@"a11y_profile_verified_value") ?: @"Verified account") : nil;
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -6955,24 +7098,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     // ── Verified badge overlay ──
     if (PPCurrentUser.isVerified) {
-        static const CGFloat kBadgeSize = 14.0;
-        UIImageView *verifiedBadge = [[UIImageView alloc] init];
-        verifiedBadge.translatesAutoresizingMaskIntoConstraints = NO;
-        if (@available(iOS 13.0, *)) {
-            UIImageSymbolConfiguration *config = [UIImageSymbolConfiguration configurationWithPointSize:kBadgeSize weight:UIImageSymbolWeightMedium];
-            verifiedBadge.image = [UIImage systemImageNamed:@"checkmark.seal.fill" withConfiguration:config];
-            verifiedBadge.tintColor = [UIColor systemBlueColor];
-        }
-        verifiedBadge.contentMode = UIViewContentModeScaleAspectFit;
-        verifiedBadge.backgroundColor = [UIColor whiteColor];
-        verifiedBadge.layer.cornerRadius = kBadgeSize * 0.5;
-        verifiedBadge.clipsToBounds = YES;
+        UIView *verifiedBadge = [self pp_buildProfileVerificationBadgeView];
         [button addSubview:verifiedBadge];
         [NSLayoutConstraint activateConstraints:@[
-            [verifiedBadge.widthAnchor constraintEqualToConstant:kBadgeSize],
-            [verifiedBadge.heightAnchor constraintEqualToConstant:kBadgeSize],
-            [verifiedBadge.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:1.0],
-            [verifiedBadge.bottomAnchor constraintEqualToAnchor:button.bottomAnchor constant:1.0]
+            [verifiedBadge.trailingAnchor constraintEqualToAnchor:button.trailingAnchor constant:2.0],
+            [verifiedBadge.bottomAnchor constraintEqualToAnchor:button.bottomAnchor constant:2.0]
         ]];
     }
 

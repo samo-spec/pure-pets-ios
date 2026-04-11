@@ -2191,6 +2191,7 @@
 /* Navigation Buttons */
 "a11y_btn_cart" = "Shopping cart";
 "a11y_btn_cart_hint" = "Double-tap to open your cart";
+"a11y_profile_verified_value" = "Verified account";
 "a11y_btn_add_new" = "Add new post";
 "a11y_btn_add_new_hint" = "Create a new pet ad, accessory listing, or adoption post";
 "a11y_btn_close_cart" = "Close cart";
