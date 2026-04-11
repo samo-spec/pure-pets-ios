@@ -265,7 +265,7 @@ static const CGFloat PPChatStoriesHeaderVisibleHeight = 156.0;
     header.backgroundColor = UIColor.clearColor;
     self.storiesHeaderContainer = header;
     self.tableView.tableHeaderView = header;
-
+    self.storiesHeaderContainer.backgroundColor = AppBackgroundClrDarker;
     PPStoriesViewController *storiesVC = [PPStoriesViewController new];
     storiesVC.sectionTitleLocalizationKey = @"chat_stories_title";
     __weak typeof(self) weakSelf = self;
