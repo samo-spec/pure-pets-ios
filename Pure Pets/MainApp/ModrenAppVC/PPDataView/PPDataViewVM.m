@@ -15,9 +15,8 @@
 @property (nonatomic, assign) NSInteger currentPage;
 @property (nonatomic, assign) BOOL isLoading;
 @property (nonatomic, assign) BOOL hasMore;
-// Filters
-@property (nonatomic, assign) PPFilterAccessoryType accessoryFilter;
-@property (nonatomic, assign) PPFilterServiceType serviceFilter;
+// Filters — data-driven
+@property (nonatomic, strong, nullable) PPFilterState *filterState;
 // Section
 //@property (nonatomic, assign) PPDataSection currentSection;
 
@@ -66,9 +65,6 @@
     _currentPage = 1;
     _hasMore = YES;
     _isLoading = NO;
-
-    _accessoryFilter = PPFilterAccessoryAll;
-    _serviceFilter   = PPFilterServiceAll;
 
     _currentDeepLinkTarget = sourceTarget;
 
@@ -276,8 +272,7 @@
     self.isLoading = NO;
 
     // Reset filters
-    self.accessoryFilter = PPFilterAccessoryAll;
-    self.serviceFilter   = PPFilterServiceAll;
+    self.filterState = nil;
 
     // Clear current items
     [self.mutableItems removeAllObjects];
@@ -333,13 +328,10 @@
 
 #pragma mark - Filters
 
-- (void)applyAccessoryFilter:(PPFilterAccessoryType)accessory
-               serviceFilter:(PPFilterServiceType)service
+- (void)applyFilterState:(PPFilterState *)state
 {
-    self.accessoryFilter = accessory;
-    self.serviceFilter   = service;
+    self.filterState = state;
     [self pp_beginRequest];
-
     [self refreshCurrentSection];
 }
 
@@ -564,40 +556,114 @@
 
 - (NSArray *)applyFiltersToResults:(NSArray *)results
 {
-    NSArray *filtered = results;
-
-    if (self.currentSection == PPDataSectionAccessories &&
-        self.accessoryFilter != PPFilterAccessoryAll) {
-
-        BOOL wantNew = (self.accessoryFilter == PPFilterAccessoryNew);
-
-        filtered =
-        [filtered filteredArrayUsingPredicate:
-         [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
-            return [obj respondsToSelector:@selector(isNew)]
-            && ([obj isNew] == wantNew);
-        }]];
+    PPFilterState *state = self.filterState;
+    if (!state || !state.hasActiveFilters) {
+        return results;
     }
 
-    if (self.currentSection == PPDataSectionServices &&
-        self.serviceFilter != PPFilterServiceAll) {
+    NSArray *filtered = results;
 
-        filtered =
-        [filtered filteredArrayUsingPredicate:
-         [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
+    // ── Condition filter (Accessories / Food) ──
+    NSInteger condVal = [state valueForFilterID:PPFilterIDCondition];
+    if (condVal != 0) { // 0 = All
+        BOOL wantNew = (condVal == PPFilterAccessoryNew);
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
+                return [obj respondsToSelector:@selector(isNew)] && ([obj isNew] == wantNew);
+            }]];
+    }
 
-            if (![obj isKindOfClass:[ServiceModel class]]) {
-                return NO;
+    // ── Gender filter (Ads) ──
+    NSInteger genderVal = [state valueForFilterID:PPFilterIDGender];
+    if (genderVal != PPFilterGenderAll) {
+        BOOL wantFemale = (genderVal == PPFilterGenderFemale);
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
+                return [obj respondsToSelector:@selector(isFemale)] && ([obj isFemale] == wantFemale);
+            }]];
+    }
+
+    // ── Service type filter ──
+    NSInteger svcVal = [state valueForFilterID:PPFilterIDServiceType];
+    if (svcVal != PPFilterServiceAll) {
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
+                if (![obj isKindOfClass:[ServiceModel class]]) return NO;
+                ServiceModel *svc = (ServiceModel *)obj;
+                if (svcVal == PPFilterServiceGrooming) return svc.type == ServiceTypeGrooming;
+                return svc.type == ServiceTypeTraining;
+            }]];
+    }
+
+    // ── HasOffer filter (Accessories / Food) ──
+    NSInteger offerVal = [state valueForFilterID:PPFilterIDHasOffer];
+    if (offerVal == PPFilterHasOfferYes) {
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
+                return [obj respondsToSelector:@selector(hasOffer)] && [obj hasOffer];
+            }]];
+    }
+
+    // ── Price filter ──
+    NSInteger priceVal = [state valueForFilterID:PPFilterIDPrice];
+    if (priceVal != PPFilterPriceAll) {
+        // Determine thresholds based on current section
+        double lowCeiling = 0, midFloor = 0, midCeiling = 0;
+        switch (self.currentSection) {
+            case PPDataSectionAds:
+                lowCeiling = 500; midFloor = 500; midCeiling = 2000; break;
+            case PPDataSectionServices:
+                lowCeiling = 100; midFloor = 100; midCeiling = 500; break;
+            default: // Accessories, Food
+                lowCeiling = 250; midFloor = 250; midCeiling = 750; break;
+        }
+
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
+                double p = 0;
+                if ([obj respondsToSelector:@selector(price)]) p = [[obj valueForKey:@"price"] doubleValue];
+                switch (priceVal) {
+                    case PPFilterPriceTier1: return p < lowCeiling;
+                    case PPFilterPriceTier2: return p >= midFloor && p <= midCeiling;
+                    case PPFilterPriceTier3: return p > midCeiling;
+                    default: return YES;
+                }
+            }]];
+    }
+
+    // ── Sort ──
+    NSInteger sortVal = [state valueForFilterID:PPFilterIDSort];
+    if (sortVal != PPFilterSortRecommended) {
+        filtered = [filtered sortedArrayUsingComparator:^NSComparisonResult(id a, id b) {
+            switch (sortVal) {
+                case PPFilterSortPriceLowToHigh: {
+                    double pa = [a respondsToSelector:@selector(price)] ? [[a valueForKey:@"price"] doubleValue] : 0;
+                    double pb = [b respondsToSelector:@selector(price)] ? [[b valueForKey:@"price"] doubleValue] : 0;
+                    return pa < pb ? NSOrderedAscending : (pa > pb ? NSOrderedDescending : NSOrderedSame);
+                }
+                case PPFilterSortPriceHighToLow: {
+                    double pa = [a respondsToSelector:@selector(price)] ? [[a valueForKey:@"price"] doubleValue] : 0;
+                    double pb = [b respondsToSelector:@selector(price)] ? [[b valueForKey:@"price"] doubleValue] : 0;
+                    return pb < pa ? NSOrderedAscending : (pb > pa ? NSOrderedDescending : NSOrderedSame);
+                }
+                case PPFilterSortNameAZ: {
+                    NSString *na = [a respondsToSelector:@selector(title)] ? [a title] : @"";
+                    NSString *nb = [b respondsToSelector:@selector(title)] ? [b title] : @"";
+                    if (!na) na = @""; if (!nb) nb = @"";
+                    return [na localizedCaseInsensitiveCompare:nb];
+                }
+                case PPFilterSortNewest: {
+                    // Use createdAt if available — descending
+                    NSDate *da = [a respondsToSelector:@selector(createdAt)] ? [a createdAt] : nil;
+                    NSDate *db = [b respondsToSelector:@selector(createdAt)] ? [b createdAt] : nil;
+                    if (!da && !db) return NSOrderedSame;
+                    if (!da) return NSOrderedDescending;
+                    if (!db) return NSOrderedAscending;
+                    return [db compare:da]; // newest first
+                }
+                default: return NSOrderedSame;
             }
-
-            ServiceModel *service = (ServiceModel *)obj;
-
-            if (self.serviceFilter == PPFilterServiceGrooming) {
-                return service.type == ServiceTypeGrooming;
-            }
-
-            return service.type == ServiceTypeTraining;
-         }]];
+        }];
     }
 
     return filtered;

@@ -8,7 +8,6 @@
 
 #import "PPChatHeaderView.h"
 #import "PPModernAvatarRenderer.h"
-#import "PPVerifiedBadgeHelper.h"
 
 static NSString * const PPChatHeaderSupportAvatarToken = @"purepets://support-logo";
 
@@ -30,7 +29,6 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
 @property (nonatomic, strong) UIStackView *labelsStack;
 
 @property (nonatomic, strong) UIView *onlineDotView;
-@property (nonatomic, strong) UIImageView *verifiedBadgeView;
 @property (nonatomic, strong) UserModel *currentUser;
 @property (nonatomic, strong) _Nullable id<FIRListenerRegistration> presenceListener;
 
@@ -90,11 +88,6 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
     self.onlineDotView.hidden = YES;
 
     [self addSubview:self.onlineDotView];
-
-    // Verified badge on avatar corner (14pt for 44pt avatar)
-    self.verifiedBadgeView = [PPVerifiedBadgeHelper addBadgeToAvatarView:self.avatarView
-                                                            inSuperview:self
-                                                              badgeSize:14];
 
     self.nameLabel = [[UILabel alloc] init];
     self.nameLabel.font = [GM boldFontWithSize:16];
@@ -157,7 +150,6 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
 - (void)configureWithUser:(UserModel *)user
 {
     self.currentUser = user;
-    self.verifiedBadgeView.hidden = !user.isVerified;
 
     self.nameLabel.text = [user PPBestDisplayName];
 

@@ -143,11 +143,20 @@ PPUniversalCellDelegate>
     [self setupEmptyState];
     [self warmUpSearchCacheIfNeeded];
     [self updateHeaderStateAnimated:NO];
+    [self updateEmptyState];
+
+    UITapGestureRecognizer *dismissTap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_dismissKeyboard)];
+    dismissTap.cancelsTouchesInView = NO;
+    [self.view addGestureRecognizer:dismissTap];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    // Force gradient relayout on first appear — heroCardView now has correct bounds
+    [self.heroCardView setNeedsLayout];
+    [self.heroCardView layoutIfNeeded];
+    [self.view setNeedsLayout];
     [self animateHeroIfNeeded];
     [self pp_activatePendingSearchFieldFocusIfPossible];
 }
@@ -171,9 +180,13 @@ PPUniversalCellDelegate>
     [super viewDidLayoutSubviews];
 
     CGRect heroBounds = self.heroCardView.bounds;
-    // Fixed gradient height prevents visual compression during collapse animation
+    // Use screen-based fallback if hero hasn't been laid out yet (first pass)
+    CGFloat gradientW = heroBounds.size.width;
+    if (gradientW < 1.0) {
+        gradientW = UIScreen.mainScreen.bounds.size.width - (PPScreenMargin * 2);
+    }
     CGFloat fixedGradientH = MAX(heroBounds.size.height, 300.0);
-    CGRect gradientRect = CGRectMake(0, 0, heroBounds.size.width, fixedGradientH);
+    CGRect gradientRect = CGRectMake(0, 0, gradientW, fixedGradientH);
     self.heroGradientLayer.frame = gradientRect;
     self.heroMeshLayer.frame = gradientRect;
     self.heroShineLayer.frame = gradientRect;
@@ -222,9 +235,9 @@ PPUniversalCellDelegate>
     UIView *primaryGlow = [UIView new];
     primaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     primaryGlow.userInteractionEnabled = NO;
-    primaryGlow.backgroundColor = [[UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.18];
+    primaryGlow.backgroundColor = [[UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.26];
     primaryGlow.layer.shadowColor = [UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0].CGColor;
-    primaryGlow.layer.shadowOpacity = 0.24;
+    primaryGlow.layer.shadowOpacity = 0.30;
     primaryGlow.layer.shadowRadius = 120.0;
     primaryGlow.layer.shadowOffset = CGSizeZero;
     primaryGlow.layer.cornerRadius = 50.0;
@@ -232,9 +245,9 @@ PPUniversalCellDelegate>
     UIView *secondaryGlow = [UIView new];
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     secondaryGlow.userInteractionEnabled = NO;
-    secondaryGlow.backgroundColor = [[UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0] colorWithAlphaComponent:0.10];
+    secondaryGlow.backgroundColor = [[UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0] colorWithAlphaComponent:0.16];
     secondaryGlow.layer.shadowColor = [UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0].CGColor;
-    secondaryGlow.layer.shadowOpacity = 0.18;
+    secondaryGlow.layer.shadowOpacity = 0.22;
     secondaryGlow.layer.shadowRadius = 96.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
     secondaryGlow.layer.cornerRadius = 45.0;
@@ -267,6 +280,47 @@ PPUniversalCellDelegate>
 
     BBNavigationBar *bar = [BBNavigationBar new];
     [bar attachTo:self];
+
+    // Add dismiss button when presented modally (not pushed)
+    BOOL isModal = (self.navigationController.viewControllers.firstObject == self &&
+                    self.navigationController.presentingViewController != nil);
+    if (!isModal && self.presentingViewController != nil && self.navigationController == nil) {
+        isModal = YES;
+    }
+    if (isModal) {
+        UIImageSymbolConfiguration *cfg =
+            [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
+        UIImage *xImage = [UIImage systemImageNamed:@"xmark" withConfiguration:cfg];
+        UIButton *dismissBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        dismissBtn.tintColor = AppForgroundColr;
+        [dismissBtn setImage:xImage forState:UIControlStateNormal];
+        dismissBtn.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.08];
+        dismissBtn.layer.cornerRadius = 16.0;
+        if (@available(iOS 13.0, *)) {
+            dismissBtn.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        [dismissBtn addTarget:self action:@selector(pp_dismissTapped) forControlEvents:UIControlEventTouchUpInside];
+        [NSLayoutConstraint activateConstraints:@[
+            [dismissBtn.widthAnchor constraintEqualToConstant:32.0],
+            [dismissBtn.heightAnchor constraintEqualToConstant:32.0]
+        ]];
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:dismissBtn];
+    }
+}
+
+- (void)pp_dismissTapped
+{
+    [self.view endEditing:YES];
+    if (self.navigationController.presentingViewController) {
+        [self.navigationController dismissViewControllerAnimated:YES completion:nil];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
+}
+
+- (void)pp_dismissKeyboard
+{
+    [self.view endEditing:YES];
 }
 
 - (void)setupSearch
@@ -1324,12 +1378,27 @@ PPUniversalCellDelegate>
 - (void)updateEmptyState
 {
     BOOL hasValidQuery = self.lastQuery.length >= kPPSearchMinimumQueryLength;
-    BOOL shouldShow = hasValidQuery && !self.isSearching && self.results.count == 0;
+    BOOL noResults = hasValidQuery && !self.isSearching && self.results.count == 0;
+    BOOL idleState = !hasValidQuery && !self.isSearching;
 
-    if (shouldShow) {
+    BOOL shouldShow = noResults || idleState;
+
+    if (noResults) {
+        // No results found
+        self.emptyStateIconView.image = [UIImage systemImageNamed:@"sparkle.magnifyingglass"];
+        self.emptyStateIconView.tintColor = [[UIColor colorWithRed:0.98 green:0.80 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.92];
         self.emptyTitleLabel.text = kLang(@"SearchNoResultsTitle");
         self.emptySubtitleLabel.text = [NSString stringWithFormat:kLang(@"SearchNoResultsMessage_fmt"), self.lastQuery ?: @""];
+    } else if (idleState) {
+        // Start searching prompt
+        self.emptyStateIconView.image = [UIImage systemImageNamed:@"text.magnifyingglass"];
+        self.emptyStateIconView.tintColor = [[UIColor colorWithRed:0.72 green:0.76 blue:0.82 alpha:1.0] colorWithAlphaComponent:0.68];
+        self.emptyTitleLabel.text = kLang(@"SearchStartTitle") ?: @"Start Searching";
+        self.emptySubtitleLabel.text = kLang(@"SearchStartSubtitle") ?: @"Type above to find pets, services, and accessories";
     }
+
+    // Hide collection view when showing empty/idle, show when we have results
+    self.collectionView.hidden = shouldShow;
 
     [self setEmptyStateVisible:shouldShow animated:YES];
 }

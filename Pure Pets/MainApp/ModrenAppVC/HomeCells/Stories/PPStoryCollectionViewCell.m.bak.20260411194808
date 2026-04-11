@@ -10,9 +10,6 @@
 #import "PPImageLoaderManager.h"
 #import "GM.h"
 #import "PPModernAvatarRenderer.h"
-#import "PPVerifiedBadgeHelper.h"
-#import "UserManager.h"
-#import "UserModel.h"
 
 static const CGFloat PPStoryRingHostSize   = 78.0;
 static const CGFloat PPStoryAvatarSize     = 64.0;
@@ -26,7 +23,6 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 @property (nonatomic, strong) UIView *glowView;
 @property (nonatomic, strong) CAShapeLayer *dashedRingLayer;
 @property (nonatomic, assign) BOOL isConfiguredUnseen;
-@property (nonatomic, strong) UIImageView *verifiedBadgeView;
 @end
 
 @implementation PPStoryCollectionViewCell
@@ -163,11 +159,6 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
             [_addBadgeButton.bottomAnchor constraintEqualToAnchor:_ringHostView.bottomAnchor constant:2.0]
         ]];
 
-        // Verified badge on avatar corner (18pt for 64pt avatar)
-        _verifiedBadgeView = [PPVerifiedBadgeHelper addBadgeToAvatarView:_imageView
-                                                             inSuperview:self.contentView
-                                                               badgeSize:18];
-
         self.isAccessibilityElement = YES;
         self.accessibilityTraits = UIAccessibilityTraitButton;
     }
@@ -190,7 +181,6 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
     self.accessibilityLabel = @"";
     self.onAddBadgeTapped = nil;
     self.addBadgeButton.hidden = YES;
-    self.verifiedBadgeView.hidden = YES;
     self.glowView.alpha = 0.0;
     self.dashedRingLayer.hidden = YES;
     self.isConfiguredUnseen = NO;
@@ -229,10 +219,6 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
     self.nameLabel.textAlignment = NSTextAlignmentCenter;
     self.nameLabel.font = isCurrentUserEntry ? [GM MidFontWithSize:11.5] : [GM MidFontWithSize:11.0];
     self.addBadgeButton.hidden = !showAddBadge;
-
-    // Show verified badge if this user is verified (lookup from cache)
-    UserModel *storyUser = [UserManager userModelForID:story.userID];
-    self.verifiedBadgeView.hidden = !(storyUser.isVerified);
 
     UIColor *primaryColor = [self pp_appPrimaryColor];
     UIColor *warmOrange   = [UIColor colorWithRed:0.99 green:0.55 blue:0.12 alpha:1.0];

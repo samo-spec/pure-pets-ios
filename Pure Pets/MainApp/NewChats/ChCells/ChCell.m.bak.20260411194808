@@ -10,8 +10,6 @@
 #import "ChatPresenceManager.h"
 #import "PPImageLoaderManager.h"
 #import "PPModernAvatarRenderer.h"
-#import "PPVerifiedBadgeHelper.h"
-#import "UserModel.h"
 
 static NSString * const PPChCellSupportAvatarToken = @"purepets://support-logo";
 
@@ -38,7 +36,6 @@ static UIImage *PPChCellSupportLogoImage(void) {
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) UILabel *unreadBadge;
 @property (nonatomic, strong) UILabel *lastSeenLabel;
-@property (nonatomic, strong) UIImageView *verifiedBadgeView;
 @end
 
 @implementation ChCell
@@ -120,11 +117,6 @@ static UIImage *PPChCellSupportLogoImage(void) {
     _onlineDot = [UIView new];
     _onlineDot.translatesAutoresizingMaskIntoConstraints = NO;
     [_containerView addSubview:_onlineDot];
-
-    // Verified badge on avatar corner (16pt for 52pt avatar)
-    _verifiedBadgeView = [PPVerifiedBadgeHelper addBadgeToAvatarView:_avatarView
-                                                         inSuperview:_containerView
-                                                           badgeSize:16];
 
     _nameLabel = [UILabel new];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -267,7 +259,6 @@ static UIImage *PPChCellSupportLogoImage(void) {
 
     self.nameLabel.text = user.UserName ?: @"";
     self.messageLabel.text = thread.lastMessage ?: @"";
-    self.verifiedBadgeView.hidden = !user.isVerified;
 
     NSString *userID = user.ID ?: @"";
     NSString *avatarURL = user.UserImageUrl.absoluteString ?: @"";
@@ -465,7 +456,6 @@ static UIImage *PPChCellSupportLogoImage(void) {
  @property (nonatomic, strong) RoundedImageViewWithShadow *avatarView;
  @property (nonatomic, strong) UIView *onlineDot;
  @property (nonatomic, strong) UIImageView *bgView;
- @property (nonatomic, strong) UIImageView *verifiedBadgeView;
 
  @property (nonatomic, strong) UILabel *nameLabel;
  @property (nonatomic, strong) UILabel *messageLabel;
@@ -598,11 +588,6 @@ static UIImage *PPChCellSupportLogoImage(void) {
      _onlineDot.translatesAutoresizingMaskIntoConstraints = NO;
      _onlineDot.hidden = YES;
      [self.cardView addSubview:_onlineDot];
-
-     // Verified badge on avatar corner (18pt for 58pt avatar)
-     _verifiedBadgeView = [PPVerifiedBadgeHelper addBadgeToAvatarView:_avatarView
-                                                          inSuperview:self.cardView
-                                                            badgeSize:18];
 
      _nameLabel = [UILabel new];
      _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -779,7 +764,6 @@ static UIImage *PPChCellSupportLogoImage(void) {
 
      self.nameLabel.text = otherUser.UserName ?: @"";
      self.messageLabel.text = thread.lastMessage ?: @"";
-     self.verifiedBadgeView.hidden = !otherUser.isVerified;
      NSString *avatarURL = otherUser.UserImageUrl.absoluteString ?: @"";
      BOOL isSupportAvatar = PPChCellIsSupportAvatarURL(avatarURL);
 

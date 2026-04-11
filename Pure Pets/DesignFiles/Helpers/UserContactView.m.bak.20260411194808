@@ -8,7 +8,6 @@
 #import "PPImageLoaderManager.h"
 #import "UserModel.h"
 #import "PPModernAvatarRenderer.h"
-#import "PPVerifiedBadgeHelper.h"
 @interface UserContactView ()
 
 @property (nonatomic, copy) dispatch_block_t chatBlock;
@@ -82,10 +81,13 @@
     self.nameLabel.text = kLang(@"Contact Advertiser");
     [blurView.contentView addSubview:self.nameLabel];
 
-    // ---- Verified Badge (on avatar corner) ----
-    self.verifiedBadgeView = [PPVerifiedBadgeHelper addBadgeToAvatarView:self.avatarImageView
-                                                            inSuperview:blurView.contentView
-                                                              badgeSize:16];
+    // ---- Verified Badge ----
+    self.verifiedBadgeView = [[UIImageView alloc] init];
+    self.verifiedBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.verifiedBadgeView.image = [UIImage imageNamed:@"verify_icon_colored"];
+    self.verifiedBadgeView.contentMode = UIViewContentModeScaleAspectFit;
+    self.verifiedBadgeView.hidden = YES;
+    [blurView.contentView addSubview:self.verifiedBadgeView];
 
     // ---- Call Button ----
     self.callButton = [self actionButtonWithSymbol:@"phone.fill"];
@@ -120,7 +122,11 @@
         [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:12],
         [self.nameLabel.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],
 
-
+        [self.verifiedBadgeView.leadingAnchor constraintEqualToAnchor:self.nameLabel.trailingAnchor constant:4],
+        [self.verifiedBadgeView.centerYAnchor constraintEqualToAnchor:self.nameLabel.centerYAnchor],
+        [self.verifiedBadgeView.widthAnchor constraintEqualToConstant:18],
+        [self.verifiedBadgeView.heightAnchor constraintEqualToConstant:18],
+        [self.verifiedBadgeView.trailingAnchor constraintLessThanOrEqualToAnchor:self.callButton.leadingAnchor constant:-8],
 
         [self.chatButton.trailingAnchor constraintEqualToAnchor:blurView.contentView.trailingAnchor constant:-14],
         [self.chatButton.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],

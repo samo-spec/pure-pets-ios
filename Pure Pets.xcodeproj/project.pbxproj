@@ -228,6 +228,8 @@
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
 		F23DDE602F8AB36F0020D4F4 /* PPHomeLocationSheetViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F23DDE5F2F8AB36F0020D4F4 /* PPHomeLocationSheetViewController.m */; };
+		F23DDE632F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F23DDE622F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m */; };
+		F23DDE662F8AC9AC0020D4F4 /* PPFilterModels.m in Sources */ = {isa = PBXBuildFile; fileRef = F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */; };
 		F240BD442D74D237004DDA6A /* BarcodeGenerator.m in Sources */ = {isa = PBXBuildFile; fileRef = F240BD432D74D237004DDA6A /* BarcodeGenerator.m */; };
 		F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C44D2E25354600CC9BE9 /* ServicesManager.m */; };
 		F241C44F2E25355400CC9BE9 /* AddPetServiceOfferViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F241C44B2E25351800CC9BE9 /* AddPetServiceOfferViewController.m */; };
@@ -1197,6 +1199,10 @@
 		F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CompanyLocationVC.m; sourceTree = "<group>"; };
 		F23DDE5E2F8AB3320020D4F4 /* PPHomeLocationSheetViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeLocationSheetViewController.h; sourceTree = "<group>"; };
 		F23DDE5F2F8AB36F0020D4F4 /* PPHomeLocationSheetViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeLocationSheetViewController.m; sourceTree = "<group>"; };
+		F23DDE612F8AC1160020D4F4 /* PPVerifiedBadgeHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVerifiedBadgeHelper.h; sourceTree = "<group>"; };
+		F23DDE622F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVerifiedBadgeHelper.m; sourceTree = "<group>"; };
+		F23DDE642F8AC9AC0020D4F4 /* PPFilterModels.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFilterModels.h; sourceTree = "<group>"; };
+		F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFilterModels.m; sourceTree = "<group>"; };
 		F240BD422D74D237004DDA6A /* BarcodeGenerator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = BarcodeGenerator.h; sourceTree = "<group>"; };
 		F240BD432D74D237004DDA6A /* BarcodeGenerator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = BarcodeGenerator.m; sourceTree = "<group>"; };
 		F241C44A2E25350400CC9BE9 /* AddPetServiceOfferViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AddPetServiceOfferViewController.h; sourceTree = "<group>"; };
@@ -2612,6 +2618,8 @@
 		F21E094F2E4547B200690BC5 /* Helpers */ = {
 			isa = PBXGroup;
 			children = (
+				F23DDE612F8AC1160020D4F4 /* PPVerifiedBadgeHelper.h */,
+				F23DDE622F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m */,
 				F27818562F7B5C8B00BCE07F /* UISearchBar+FMAdd.h */,
 				F27818572F7B5C8B00BCE07F /* UISearchBar+FMAdd.m */,
 				F21843A92E8B9ED700D8BF46 /* PPCollection.h */,
@@ -3864,6 +3872,8 @@
 		F28DD5992F049B7900FF2671 /* PPDataView */ = {
 			isa = PBXGroup;
 			children = (
+				F23DDE642F8AC9AC0020D4F4 /* PPFilterModels.h */,
+				F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */,
 				F28DD5AA2F04EE2C00FF2671 /* PPFilterSheetVC.h */,
 				F28DD5AF2F04EE6500FF2671 /* PPFilterSheetVC.m */,
 				F28DD5A72F04D7FE00FF2671 /* PPDataViewVC.h */,
@@ -5350,6 +5360,7 @@
 				F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */,
 				F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */,
 				F27146882CCE6B5300F7F3BA /* XLFormValidationStatus.m in Sources */,
+				F23DDE632F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m in Sources */,
 				F2C223C62F061DD4006DB76A /* PPHomeFunc.m in Sources */,
 				F27146892CCE6B5300F7F3BA /* XLFormValidator.m in Sources */,
 				F28A1CC92E07186E00D1E187 /* StepperFormCell.m in Sources */,
@@ -5610,6 +5621,7 @@
 				F22C078B2EF66C2F00C00EAC /* UIButton+YYWebImage.m in Sources */,
 				F22C078C2EF66C2F00C00EAC /* YYWebImageManager.m in Sources */,
 				F22C078D2EF66C2F00C00EAC /* _YYWebImageSetter.m in Sources */,
+				F23DDE662F8AC9AC0020D4F4 /* PPFilterModels.m in Sources */,
 				F22C078E2EF66C2F00C00EAC /* NSAttributedString+YYText.m in Sources */,
 				F22C078F2EF66C2F00C00EAC /* YYTextUtilities.m in Sources */,
 				F286BA902F21611D0069CD5C /* ChTypingController.m in Sources */,

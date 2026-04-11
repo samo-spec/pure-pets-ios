@@ -1,6 +1,7 @@
 #import "PPDataViewVC.h"
 #import "PPDataViewInput.h"
 #import "PPDataViewVM.h"
+#import "PPFilterModels.h"
 
 #import "PPUniversalCell.h"
 #import "PPCollectionLayoutManager.h"
@@ -11,6 +12,7 @@
 #import "CartViewController.h"
 #import "PPModrenSegmrnted.h"
 #import "PPNavigationController.h"
+#import "PPSearchViewController.h"
 #import "PPHUD.h"
 
 #if DEBUG
@@ -27,24 +29,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     return kPPSectionsTabBarHeight;
 }
 
-typedef NS_ENUM(NSInteger, PPDataAccessoryPriceFilter) {
-    PPDataAccessoryPriceFilterAll = 0,
-    PPDataAccessoryPriceFilterUnder250,
-    PPDataAccessoryPriceFilter250To750,
-    PPDataAccessoryPriceFilterAbove750,
-};
-
-typedef NS_ENUM(NSInteger, PPDataAccessorySortOption) {
-    PPDataAccessorySortOptionRecommended = 0,
-    PPDataAccessorySortOptionPriceLowToHigh,
-    PPDataAccessorySortOptionPriceHighToLow,
-    PPDataAccessorySortOptionNameAZ,
-};
-
-static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arabic)
-{
-    return Language.isRTL ? arabic : english;
-}
 
 @interface PPDropdownFilterChipButton : UIButton
 @property (nonatomic, copy) NSString *chipIconName;
@@ -148,15 +132,10 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 @property (nonatomic, assign) PPManagerCellLayoutMode cellLayoutMode;
 @property (nonatomic, strong) UICollectionView *collectionView;
 @property (nonatomic, strong) PPCollectionLayoutManager *layoutManager;
-@property (nonatomic, strong) UIView *accessoryFilterContainer;
-@property (nonatomic, strong) UIButton *accessoryFilterButton;
-@property (nonatomic, strong) UILabel *accessoryFilterTitleLabel;
-@property (nonatomic, strong) UILabel *accessoryFilterCountLabel;
-@property (nonatomic, strong) UIImageView *accessoryFilterChevronView;
-@property (nonatomic, strong) UIStackView *accessoryFilterChipsStackView;
-@property (nonatomic, strong) PPDropdownFilterChipButton *conditionFilterChip;
-@property (nonatomic, strong) PPDropdownFilterChipButton *priceFilterChip;
-@property (nonatomic, strong) PPDropdownFilterChipButton *sortFilterChip;
+@property (nonatomic, strong) UIView *filterChipContainer;
+@property (nonatomic, strong) UIStackView *filterChipStackView;
+@property (nonatomic, strong) NSMutableArray<PPDropdownFilterChipButton *> *filterChips;
+@property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStates;
 // Scroll restore
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSValue *> *scrollOffsetsBySection;
 @property (nonatomic, strong) id imageLoader;
@@ -175,7 +154,7 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 @property (nonatomic, strong) NSLayoutConstraint *mainKindsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsTabBarHeightConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *accessoryFilterHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *filterChipHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cartButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToContainerConstraint;
@@ -193,8 +172,6 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 @property (nonatomic, copy) NSString *lastSubKindsTitle;
 @property (nonatomic, assign) CGSize lastSectionsIndicatorSize;
 @property (nonatomic, copy) NSArray<PPUniversalCellViewModel *> *presentedItems;
-@property (nonatomic, assign) PPDataAccessoryPriceFilter accessoryPriceFilter;
-@property (nonatomic, assign) PPDataAccessorySortOption accessorySortOption;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit;
 - (void)updateSectionsTabBarSelectionIndicatorIfNeeded;
@@ -210,20 +187,14 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 - (void)persistSectionSelection:(PPDataSection)section;
 - (void)updateSectionsTabBarSelectionForSection:(PPDataSection)section;
 - (void)activateSection:(PPDataSection)section userInitiated:(BOOL)userInitiated;
-- (BOOL)shouldShowAccessoryFilterForSection:(PPDataSection)section;
-- (void)syncAccessoryFilterControlSelection;
-- (void)updateAccessoryFilterVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
-- (NSString *)accessoryFilterOptionTitleForIndex:(NSInteger)index;
-- (UIMenu *)accessoryFilterMenu;
-- (UIMenu *)priceFilterMenu;
-- (UIMenu *)sortFilterMenu;
-- (void)accessoryPriceFilterChanged:(PPDataAccessoryPriceFilter)filter;
-- (void)accessorySortOptionChanged:(PPDataAccessorySortOption)option;
+- (BOOL)shouldShowFilterChipBarForSection:(PPDataSection)section;
+- (void)syncFilterChipsForCurrentSection;
+- (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
 - (void)refreshFilterChipTitles;
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender;
 - (void)onCartTapped;
-@end
+- (PPFilterState *)pp_currentFilterState;@end
 @implementation PPDataViewVC
 -(void)viewWillLayoutSubviews
 {
@@ -270,7 +241,7 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 {
     [super viewDidAppear:animated];
     [self.view bringSubviewToFront:self.sectionsSegmentedControl];
-    [self.view bringSubviewToFront:self.accessoryFilterContainer];
+    [self.view bringSubviewToFront:self.filterChipContainer];
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -380,8 +351,6 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
     dispatch_queue_create("com.purepets.blurhash.decode", DISPATCH_QUEUE_CONCURRENT);
     self.isPerformingCrossFade = NO;
     self.presentedItems = @[];
-    self.accessoryPriceFilter = PPDataAccessoryPriceFilterAll;
-    self.accessorySortOption = PPDataAccessorySortOptionRecommended;
     self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);
     [self emptyStateInit];
     [self setupSectionsTabBar];
@@ -700,8 +669,8 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
                                      scrollToTop:NO];
         weakSelf.didApplyInitialSnapshot = YES;
         [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection];
-        [weakSelf updateAccessoryFilterVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
-        [weakSelf syncAccessoryFilterControlSelection];
+        [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
+        [weakSelf syncFilterChipsForCurrentSection];
         // ✅ THIS IS THE FIX
           [weakSelf persistCurrentSection];
         
@@ -744,7 +713,7 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 
         [weakSelf refreshPresentedItemsAnimated:YES scrollToTop:NO];
         [weakSelf updateEmptyState];
-        [weakSelf syncAccessoryFilterControlSelection];
+        [weakSelf syncFilterChipsForCurrentSection];
         //[weakSelf updateNavSectionTitle];
         
         [weakSelf refreshsubKindsMenu];
@@ -769,7 +738,7 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
     if (!self.collectionView) { return; }
 
     CGFloat targetTopInset =
-    [self shouldShowAccessoryFilterForSection:self.viewModel.currentSection]
+    [self shouldShowFilterChipBarForSection:self.viewModel.currentSection]
     ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + 18.0)
     : (PPCurrentSectionsTabBarHeight() + 12.0);
     CGRect sectionsFrame = self.sectionsSegmentedControl.frame;
@@ -779,11 +748,11 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
         CGFloat maxVisibleY = CGRectGetMaxY(sectionsFrame);
 
         // If filter segmented is visible, push content below it
-        if (self.accessoryFilterContainer &&
-            !self.accessoryFilterContainer.hidden &&
-            self.accessoryFilterContainer.alpha > 0.01) {
+        if (self.filterChipContainer &&
+            !self.filterChipContainer.hidden &&
+            self.filterChipContainer.alpha > 0.01) {
 
-            CGRect filterFrame = self.accessoryFilterContainer.frame;
+            CGRect filterFrame = self.filterChipContainer.frame;
 
             if (!CGRectIsEmpty(filterFrame)) {
                 maxVisibleY = CGRectGetMaxY(filterFrame);
@@ -904,13 +873,12 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
 
 - (void)updateCartBadge
 {
-    if (!self.cartBadgeLabel || !self.cartButton) {
+    if (!self.cartBadgeLabel) {
         return;
     }
 
     NSInteger count = [self currentCartItemCount];
-    BOOL cartVisible = self.isCartButtonVisible && self.cartButtonWidthConstraint.constant > 0.0;
-    BOOL shouldShowBadge = cartVisible && count > 0;
+    BOOL shouldShowBadge = count > 0;
 
     NSString *text = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)MAX(count, 0)];
     self.cartBadgeLabel.text = text;
@@ -1022,14 +990,18 @@ static NSString *PPDataAccessoryFallbackString(NSString *english, NSString *arab
     PPFilterSheetVC *vc = [PPFilterSheetVC new];
     vc.modalPresentationStyle = UIModalPresentationPageSheet;
     vc.currentSection = self.viewModel.currentSection;
-    vc.accessoryFilter = self.viewModel.accessoryFilter;
-    vc.serviceFilter = self.viewModel.serviceFilter;
+    vc.filterState = [[self pp_currentFilterState] copy];
     __weak typeof(self) weakSelf = self;
-    vc.onApply = ^(PPFilterAccessoryType accessory,
-                   PPFilterServiceType service) {
+    vc.onApply = ^(PPFilterState *applied) {
 
-        [weakSelf.viewModel applyAccessoryFilter:accessory
-                                   serviceFilter:service];
+        PPDataViewVC *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf.filterStates[@(strongSelf.viewModel.currentSection)] = applied;
+        [strongSelf.viewModel applyFilterState:applied];
+        [strongSelf syncFilterChipsForCurrentSection];
+        [strongSelf refreshFilterChipTitles];
+        [strongSelf refreshPresentedItemsAnimated:YES scrollToTop:YES];
+
     };
     [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle70 ];
 
@@ -1229,75 +1201,12 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     return MAX(0.0, price.doubleValue);
 }
 
-- (NSString *)priceFilterOptionTitle:(PPDataAccessoryPriceFilter)filter
-{
-    switch (filter) {
-        case PPDataAccessoryPriceFilterUnder250:
-            return PPDataAccessoryFallbackString(@"Under 250", @"اقل من 250");
-        case PPDataAccessoryPriceFilter250To750:
-            return PPDataAccessoryFallbackString(@"250 - 750", @"250 - 750");
-        case PPDataAccessoryPriceFilterAbove750:
-            return PPDataAccessoryFallbackString(@"750+", @"750+");
-        case PPDataAccessoryPriceFilterAll:
-        default:
-            return PPDataAccessoryFallbackString(@"All prices", @"كل الاسعار");
-    }
-}
-
-- (NSString *)sortOptionTitle:(PPDataAccessorySortOption)option
-{
-    switch (option) {
-        case PPDataAccessorySortOptionPriceLowToHigh:
-            return PPDataAccessoryFallbackString(@"Price low to high", @"السعر من الاقل للاعلى");
-        case PPDataAccessorySortOptionPriceHighToLow:
-            return PPDataAccessoryFallbackString(@"Price high to low", @"السعر من الاعلى للاقل");
-        case PPDataAccessorySortOptionNameAZ:
-            return PPDataAccessoryFallbackString(@"Name A-Z", @"الاسم من الالف للياء");
-        case PPDataAccessorySortOptionRecommended:
-        default:
-            return PPDataAccessoryFallbackString(@"Recommended", @"الافتراضي");
-    }
-}
-
 - (NSArray<PPUniversalCellViewModel *> *)filteredPresentedItemsFromSourceItems:(NSArray<PPUniversalCellViewModel *> *)sourceItems
 {
-    if (self.viewModel.currentSection != PPDataSectionAccessories || sourceItems.count == 0) {
-        return sourceItems ?: @[];
-    }
-
-    NSPredicate *pricePredicate = [NSPredicate predicateWithBlock:^BOOL(PPUniversalCellViewModel *vm, __unused NSDictionary<NSString *,id> *bindings) {
-        double price = [self resolvedPriceForViewModel:vm];
-        switch (self.accessoryPriceFilter) {
-            case PPDataAccessoryPriceFilterUnder250:
-                return price < 250.0;
-            case PPDataAccessoryPriceFilter250To750:
-                return price >= 250.0 && price <= 750.0;
-            case PPDataAccessoryPriceFilterAbove750:
-                return price > 750.0;
-            case PPDataAccessoryPriceFilterAll:
-            default:
-                return YES;
-        }
-    }];
-
-    NSArray<PPUniversalCellViewModel *> *filteredItems = [sourceItems filteredArrayUsingPredicate:pricePredicate];
-    switch (self.accessorySortOption) {
-        case PPDataAccessorySortOptionPriceLowToHigh:
-            return [filteredItems sortedArrayUsingComparator:^NSComparisonResult(PPUniversalCellViewModel *a, PPUniversalCellViewModel *b) {
-                return [@([self resolvedPriceForViewModel:a]) compare:@([self resolvedPriceForViewModel:b])];
-            }];
-        case PPDataAccessorySortOptionPriceHighToLow:
-            return [filteredItems sortedArrayUsingComparator:^NSComparisonResult(PPUniversalCellViewModel *a, PPUniversalCellViewModel *b) {
-                return [@([self resolvedPriceForViewModel:b]) compare:@([self resolvedPriceForViewModel:a])];
-            }];
-        case PPDataAccessorySortOptionNameAZ:
-            return [filteredItems sortedArrayUsingComparator:^NSComparisonResult(PPUniversalCellViewModel *a, PPUniversalCellViewModel *b) {
-                return [a.title localizedCaseInsensitiveCompare:b.title];
-            }];
-        case PPDataAccessorySortOptionRecommended:
-        default:
-            return filteredItems;
-    }
+    // The VM now applies all data-model-level filters (condition, gender, service type,
+    // hasOffer, price, sort).  The VC simply passes items through — this method is kept
+    // as an integration point for any future presentation-only transforms.
+    return sourceItems ?: @[];
 }
 
 - (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop
@@ -1318,33 +1227,24 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 - (void)refreshFilterChipTitles
 {
     UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
-    self.accessoryFilterContainer.semanticContentAttribute = semantic;
-    self.accessoryFilterChipsStackView.semanticContentAttribute = semantic;
+    self.filterChipContainer.semanticContentAttribute = semantic;
+    self.filterChipStackView.semanticContentAttribute = semantic;
 
-    NSString *conditionTitle = (self.viewModel.accessoryFilter == PPFilterAccessoryAll)
-    ? (kLang(@"Condition") ?: @"Condition")
-    : [self accessoryFilterOptionTitleForIndex:self.viewModel.accessoryFilter];
-    NSString *priceTitle = (self.accessoryPriceFilter == PPDataAccessoryPriceFilterAll)
-    ? (kLang(@"Price") ?: @"Price")
-    : [self priceFilterOptionTitle:self.accessoryPriceFilter];
-    NSString *sortTitle = (self.accessorySortOption == PPDataAccessorySortOptionRecommended)
-    ? (kLang(@"SortTitle") ?: @"Sort")
-    : [self sortOptionTitle:self.accessorySortOption];
+    PPFilterState *state = [self pp_currentFilterState];
+    NSArray<PPFilterGroup *> *groups = state.groups;
 
-    [self.conditionFilterChip pp_applyChipTitle:conditionTitle
-                                         active:(self.viewModel.accessoryFilter != PPFilterAccessoryAll)];
-    [self.priceFilterChip pp_applyChipTitle:priceTitle
-                                     active:(self.accessoryPriceFilter != PPDataAccessoryPriceFilterAll)];
-    [self.sortFilterChip pp_applyChipTitle:sortTitle
-                                    active:(self.accessorySortOption != PPDataAccessorySortOptionRecommended)];
-
-    self.conditionFilterChip.menu = [self accessoryFilterMenu];
-    self.priceFilterChip.menu = [self priceFilterMenu];
-    self.sortFilterChip.menu = [self sortFilterMenu];
-    self.conditionFilterChip.accessibilityValue = [self accessoryFilterOptionTitleForIndex:self.viewModel.accessoryFilter];
-    self.priceFilterChip.accessibilityValue = [self priceFilterOptionTitle:self.accessoryPriceFilter];
-    self.sortFilterChip.accessibilityValue = [self sortOptionTitle:self.accessorySortOption];
+    for (NSInteger i = 0; i < (NSInteger)self.filterChips.count && i < (NSInteger)groups.count; i++) {
+        PPDropdownFilterChipButton *chip = self.filterChips[i];
+        PPFilterGroup *group = groups[i];
+        NSString *title = group.isActive ? group.selectedTitle : group.title;
+        [chip pp_applyChipTitle:title active:group.isActive];
+        chip.menu = [self pp_menuForFilterGroup:group chipIndex:i];
+        chip.accessibilityValue = group.selectedTitle;
+    }
 }
+
+
+
 
 
 - (NSString *)titleForSection:(PPDataSection)section
@@ -1357,6 +1257,32 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         default:                       return @"";
     }
 }
+
+
+
+
+
+
+
+                                          
+
+
+                                      
+
+
+                                     
+
+
+
+
+
+
+
+
+
+
+
+
 
 - (NSString *)iconForSection:(PPDataSection)section
 {
@@ -1518,42 +1444,59 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     [self persistSectionSelection:section];
     [self updateCartButtonVisibilityForSection:section animated:userInitiated];
-    [self updateAccessoryFilterVisibilityForSection:section animated:userInitiated];
+    [self updateFilterChipVisibilityForSection:section animated:userInitiated];
     [self.viewModel switchToSection:section];
 }
 
-- (BOOL)shouldShowAccessoryFilterForSection:(PPDataSection)section
+- (BOOL)shouldShowFilterChipBarForSection:(PPDataSection)section
 {
-    return section == PPDataSectionAccessories;
+    return NO; // Temporarily hidden
 }
 
-- (void)syncAccessoryFilterControlSelection
+- (void)syncFilterChipsForCurrentSection
 {
-    if (!self.conditionFilterChip || !self.priceFilterChip || !self.sortFilterChip) {
-        return;
+    PPFilterState *state = [self pp_currentFilterState];
+    NSArray<PPFilterGroup *> *groups = state.groups;
+
+    // Remove existing chips
+    for (PPDropdownFilterChipButton *chip in self.filterChips) {
+        [chip removeFromSuperview];
     }
+    [self.filterChips removeAllObjects];
+
+    // Create chips dynamically from filter groups
+    for (NSInteger i = 0; i < (NSInteger)groups.count; i++) {
+        PPFilterGroup *group = groups[i];
+        PPDropdownFilterChipButton *chip = [[PPDropdownFilterChipButton alloc] init];
+        chip.chipIconName = group.chipIconName;
+        chip.tag = i;
+        chip.showsMenuAsPrimaryAction = YES;
+        [self.filterChips addObject:chip];
+        [self.filterChipStackView addArrangedSubview:chip];
+    }
+
     [self refreshFilterChipTitles];
 }
 
-- (void)updateAccessoryFilterVisibilityForSection:(PPDataSection)section animated:(BOOL)animated
+- (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated
 {
-    if (!self.accessoryFilterContainer || !self.accessoryFilterHeightConstraint) {
+    if (!self.filterChipContainer || !self.filterChipHeightConstraint) {
         return;
     }
 
-    BOOL shouldShow = [self shouldShowAccessoryFilterForSection:section];
-    [self syncAccessoryFilterControlSelection];
+    BOOL shouldShow = [self shouldShowFilterChipBarForSection:section];
+    [self syncFilterChipsForCurrentSection];
 
-    self.accessoryFilterContainer.hidden = NO;
+    self.filterChipContainer.hidden = NO;
     void (^layoutChanges)(void) = ^{
-        self.accessoryFilterHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
-        self.accessoryFilterContainer.alpha = shouldShow ? 1.0 : 0.0;
+        self.filterChipHeightConstraint.constant = shouldShow ? kPPAccessoryFilterHeight : 0.0;
+        self.filterChipContainer.alpha = shouldShow ? 1.0 : 0.0;
         [self.view layoutIfNeeded];
     };
 
     if (!animated || self.view.window == nil) {
         layoutChanges();
-        self.accessoryFilterContainer.hidden = !shouldShow;
+        self.filterChipContainer.hidden = !shouldShow;
         [self updateCollectionContentInset];
         return;
     }
@@ -1563,91 +1506,56 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                         options:UIViewAnimationOptionCurveEaseInOut
                      animations:layoutChanges
                      completion:^(__unused BOOL finished) {
-        self.accessoryFilterContainer.hidden = !shouldShow;
+        self.filterChipContainer.hidden = !shouldShow;
         [self updateCollectionContentInset];
     }];
 }
 
-- (NSString *)accessoryFilterOptionTitleForIndex:(NSInteger)index
-{
-    switch (index) {
-        case PPFilterAccessoryNew:
-            return kLang(@"New");
-        case PPFilterAccessoryUsed:
-            return kLang(@"Used");
-        case PPFilterAccessoryAll:
-        default:
-            return kLang(@"All");
-    }
-}
+// ---------- Dynamic filter menu builder ----------
 
-- (UIMenu *)accessoryFilterMenu
+- (UIMenu *)pp_menuForFilterGroup:(PPFilterGroup *)group chipIndex:(NSInteger)chipIndex
 {
     __weak typeof(self) weakSelf = self;
     NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
-
-    NSArray<NSNumber *> *options = @[
-        @(PPFilterAccessoryAll),
-        @(PPFilterAccessoryNew),
-        @(PPFilterAccessoryUsed)
-    ];
-
-    for (NSNumber *option in options) {
-        NSInteger index = option.integerValue;
+    for (PPFilterOption *opt in group.options) {
         UIAction *action =
-        [UIAction actionWithTitle:[self accessoryFilterOptionTitleForIndex:index]
-                            image:nil
+        [UIAction actionWithTitle:opt.title
+                            image:opt.iconName ? [UIImage systemImageNamed:opt.iconName] : nil
                        identifier:nil
                           handler:^(__kindof UIAction * _Nonnull act) {
-            [weakSelf accessoryFilterChangedIndex:index];
+            [weakSelf pp_filterGroupChangedToValue:opt.value forGroupAtIndex:chipIndex];
         }];
-        action.state = (self.viewModel.accessoryFilter == index)
-        ? UIMenuElementStateOn
-        : UIMenuElementStateOff;
+        action.state = (group.selectedValue == opt.value) ? UIMenuElementStateOn : UIMenuElementStateOff;
         [actions addObject:action];
     }
-
     return [UIMenu menuWithTitle:@"" children:actions];
 }
 
-- (UIMenu *)priceFilterMenu
+- (void)pp_filterGroupChangedToValue:(NSInteger)value forGroupAtIndex:(NSInteger)chipIndex
 {
-    __weak typeof(self) weakSelf = self;
-    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
+    PPFilterState *state = [self pp_currentFilterState];
+    if (chipIndex < 0 || chipIndex >= (NSInteger)state.groups.count) return;
 
-    for (NSInteger option = PPDataAccessoryPriceFilterAll; option <= PPDataAccessoryPriceFilterAbove750; option++) {
-        UIAction *action =
-        [UIAction actionWithTitle:[self priceFilterOptionTitle:(PPDataAccessoryPriceFilter)option]
-                            image:nil
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull act) {
-            [weakSelf accessoryPriceFilterChanged:(PPDataAccessoryPriceFilter)option];
-        }];
-        action.state = (self.accessoryPriceFilter == option) ? UIMenuElementStateOn : UIMenuElementStateOff;
-        [actions addObject:action];
-    }
+    PPFilterGroup *group = state.groups[chipIndex];
+    group.selectedValue = value;
 
-    return [UIMenu menuWithTitle:@"" children:actions];
+    [PPFunc triggerLightHaptic];
+    [self.viewModel applyFilterState:state];
+    [self refreshPresentedItemsAnimated:YES scrollToTop:YES];
+    [self pp_prefetchTopImagesWithLimit:12];
+    [self updateEmptyState];
 }
 
-- (UIMenu *)sortFilterMenu
+- (PPFilterState *)pp_currentFilterState
 {
-    __weak typeof(self) weakSelf = self;
-    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
-
-    for (NSInteger option = PPDataAccessorySortOptionRecommended; option <= PPDataAccessorySortOptionNameAZ; option++) {
-        UIAction *action =
-        [UIAction actionWithTitle:[self sortOptionTitle:(PPDataAccessorySortOption)option]
-                            image:nil
-                       identifier:nil
-                          handler:^(__kindof UIAction * _Nonnull act) {
-            [weakSelf accessorySortOptionChanged:(PPDataAccessorySortOption)option];
-        }];
-        action.state = (self.accessorySortOption == option) ? UIMenuElementStateOn : UIMenuElementStateOff;
-        [actions addObject:action];
+    PPDataSection section = self.viewModel.currentSection;
+    NSNumber *key = @(section);
+    PPFilterState *state = self.filterStates[key];
+    if (!state) {
+        state = [PPFilterConfigProvider defaultFilterStateForSection:section];
+        self.filterStates[key] = state;
     }
-
-    return [UIMenu menuWithTitle:@"" children:actions];
+    return state;
 }
 
 #pragma mark - Custom Navigation Center View
@@ -1882,11 +1790,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     self.subKindsButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.cartButton = [self pp_ZeroButtonWithSystemName:@"cart.fill"
-                                                  action:@selector(onCartTapped)];
+    self.cartButton = [self pp_ZeroButtonWithSystemName:@"magnifyingglass"
+                                                  action:nil];
     self.cartButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.cartButton.hidden = YES;
-    self.cartButton.alpha = 0.0;
+    self.cartButton.showsMenuAsPrimaryAction = YES;
+    self.cartButton.menu = [self actionsArrayFrom:self collectionView:nil];
+    self.cartButton.hidden = NO;
+    self.cartButton.alpha = 1.0;
 
     self.mainKindsWidthConstraint =
     [self.KindsButton.widthAnchor constraintEqualToConstant:36];
@@ -1905,26 +1815,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.navContainerView addSubview:self.subKindsButton];
     [self.navContainerView addSubview:self.cartButton];
 
-    UILabel *badge = [[UILabel alloc] init];
-    badge.translatesAutoresizingMaskIntoConstraints = NO;
-    badge.textAlignment = NSTextAlignmentCenter;
-    badge.font = [GM boldFontWithSize:11];
-    badge.textColor = UIColor.whiteColor;
-    badge.backgroundColor = [UIColor systemRedColor];
-    badge.layer.cornerRadius = 8.0;
-    badge.layer.masksToBounds = YES;
-    badge.hidden = YES;
-    badge.alpha = 0.0;
-    [self.cartButton addSubview:badge];
-    self.cartBadgeLabel = badge;
-    self.cartBadgeMinWidthConstraint =
-    [badge.widthAnchor constraintGreaterThanOrEqualToConstant:16.0];
-    self.cartBadgeMinWidthConstraint.active = YES;
-    [NSLayoutConstraint activateConstraints:@[
-        [badge.heightAnchor constraintEqualToConstant:16.0],
-        [badge.topAnchor constraintEqualToAnchor:self.cartButton.topAnchor constant:-4.0],
-        [badge.trailingAnchor constraintEqualToAnchor:self.cartButton.trailingAnchor constant:4.0]
-    ]];
+    // Cart badge moved to rightBarButtonItem — see setupNavigation
  
     
     float inset = 4;
@@ -1953,10 +1844,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     ]];
     
 
-    NSLayoutConstraint *maxWidthConstraint =
-    [self.navContainerView.widthAnchor constraintLessThanOrEqualToConstant:300];
-    maxWidthConstraint.priority = UILayoutPriorityRequired;
-    maxWidthConstraint.active = YES;
+    // No max-width cap — navContainerView stretches to fill available nav bar space
    
     
     // Remove forced intrinsic layout for KindsButton (do not call setNeedsLayout/layoutIfNeeded here)
@@ -1998,7 +1886,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     CGFloat mainWidth = h;
 
     CGFloat sectionWidth =
-    MIN(150, MAX(140, self.subKindsButton.intrinsicContentSize.width + 24));
+    MIN(220, MAX(140, self.subKindsButton.intrinsicContentSize.width + 24));
 
     self.mainKindsWidthConstraint.constant = mainWidth;
     self.sectionsWidthConstraint.constant = sectionWidth;
@@ -2292,25 +2180,67 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self setupKindsView];
     self.navigationItem.titleView = self.navContainerView;
 
-    // 3️⃣ Right filter button (unchanged)
+    // 3️⃣ Right cart button (swapped — cart moved here, filter moved to center nav)
     if (!PPIOS26()) {
-        UIButton *filterBtn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [filterBtn setImage:[UIImage systemImageNamed:@"line.3.horizontal.decrease"] forState:UIControlStateNormal];
-        filterBtn.backgroundColor = AppForgroundColr;
-        filterBtn.layer.cornerRadius = 20;
-        filterBtn.clipsToBounds = YES;
-        filterBtn.showsMenuAsPrimaryAction = YES;
-        filterBtn.menu = [self actionsArrayFrom:self collectionView:self.collectionView];
-        [filterBtn.widthAnchor constraintEqualToConstant:40].active = YES;
-        [filterBtn.heightAnchor constraintEqualToConstant:40].active = YES;
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:filterBtn];
-    } else {
-        UIBarButtonItem *filterItem =
-        [[UIBarButtonItem alloc]
-         initWithImage:[UIImage systemImageNamed:@"line.3.horizontal.decrease"]
-                  menu:[self actionsArrayFrom:self collectionView:self.collectionView]];
+        UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
+        cartNavBtn.backgroundColor = AppForgroundColr;
+        cartNavBtn.layer.cornerRadius = 20;
+        cartNavBtn.clipsToBounds = NO;
+        [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
+        [cartNavBtn.widthAnchor constraintEqualToConstant:40].active = YES;
+        [cartNavBtn.heightAnchor constraintEqualToConstant:40].active = YES;
 
-        self.navigationItem.rightBarButtonItem = filterItem;
+        // Cart badge on rightBarButtonItem
+        UILabel *badge = [[UILabel alloc] init];
+        badge.translatesAutoresizingMaskIntoConstraints = NO;
+        badge.textAlignment = NSTextAlignmentCenter;
+        badge.font = [GM boldFontWithSize:11];
+        badge.textColor = UIColor.whiteColor;
+        badge.backgroundColor = [UIColor systemRedColor];
+        badge.layer.cornerRadius = 8.0;
+        badge.layer.masksToBounds = YES;
+        badge.hidden = YES;
+        badge.alpha = 0.0;
+        [cartNavBtn addSubview:badge];
+        self.cartBadgeLabel = badge;
+        self.cartBadgeMinWidthConstraint =
+        [badge.widthAnchor constraintGreaterThanOrEqualToConstant:16.0];
+        self.cartBadgeMinWidthConstraint.active = YES;
+        [NSLayoutConstraint activateConstraints:@[
+            [badge.heightAnchor constraintEqualToConstant:16.0],
+            [badge.topAnchor constraintEqualToAnchor:cartNavBtn.topAnchor constant:-4.0],
+            [badge.trailingAnchor constraintEqualToAnchor:cartNavBtn.trailingAnchor constant:4.0]
+        ]];
+
+        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartNavBtn];
+    } else {
+        UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+        [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
+        [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
+
+        UILabel *badge = [[UILabel alloc] init];
+        badge.translatesAutoresizingMaskIntoConstraints = NO;
+        badge.textAlignment = NSTextAlignmentCenter;
+        badge.font = [GM boldFontWithSize:11];
+        badge.textColor = UIColor.whiteColor;
+        badge.backgroundColor = [UIColor systemRedColor];
+        badge.layer.cornerRadius = 8.0;
+        badge.layer.masksToBounds = YES;
+        badge.hidden = YES;
+        badge.alpha = 0.0;
+        [cartNavBtn addSubview:badge];
+        self.cartBadgeLabel = badge;
+        self.cartBadgeMinWidthConstraint =
+        [badge.widthAnchor constraintGreaterThanOrEqualToConstant:16.0];
+        self.cartBadgeMinWidthConstraint.active = YES;
+        [NSLayoutConstraint activateConstraints:@[
+            [badge.heightAnchor constraintEqualToConstant:16.0],
+            [badge.topAnchor constraintEqualToAnchor:cartNavBtn.topAnchor constant:-4.0],
+            [badge.trailingAnchor constraintEqualToAnchor:cartNavBtn.trailingAnchor constant:4.0]
+        ]];
+
+        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartNavBtn];
     }
 }
 
@@ -2322,15 +2252,18 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     NSMutableArray *searchGroup = [NSMutableArray array];
     NSMutableArray *filterGroup = [NSMutableArray array];
     NSMutableArray *layoutGroup = [NSMutableArray array];
-  /*
+    // Search action — opens PPSearchViewController
    UIAction *searchPPAction = [PPActionButton actionWithTitle:kLang(@"searchOnly")
                                               systemImageName:@"magnifyingglass"
                                                          font:[GM MidFontWithSize:16]
                                                         color:AppSecondaryTextClr
-       //                                               handler:^(UIAction * _Nonnull action) {
-      // [self searchTappedFrom:controller];
-   }];
-   */
+                                                        handler:^(UIAction * _Nonnull action){
+        PPSearchViewController *searchVC = [[PPSearchViewController alloc] init];
+        PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:searchVC];
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [PPHomeHelper presentViewControllerSafely:nav from:self animated:YES completion:nil];
+    }];
+    [searchGroup addObject:searchPPAction];
     
     
     
@@ -2544,13 +2477,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     filterContainer.hidden = YES;
     filterContainer.alpha = 0.0;
 
-    self.accessoryFilterContainer = filterContainer;
+    self.filterChipContainer = filterContainer;
 
     [self.view addSubview:filterContainer];
 
-    self.accessoryFilterHeightConstraint =
+    self.filterChipHeightConstraint =
     [filterContainer.heightAnchor constraintEqualToConstant:0.0];
-    self.accessoryFilterHeightConstraint.active = YES;
+    self.filterChipHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:8.0],
@@ -2558,29 +2491,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [filterContainer.trailingAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.trailingAnchor]
     ]];
 
-    PPDropdownFilterChipButton *conditionChip = [[PPDropdownFilterChipButton alloc] init];
-    PPDropdownFilterChipButton *priceChip = [[PPDropdownFilterChipButton alloc] init];
-    PPDropdownFilterChipButton *sortChip = [[PPDropdownFilterChipButton alloc] init];
-    conditionChip.chipIconName = @"checkmark.seal";
-    priceChip.chipIconName = @"tag";
-    sortChip.chipIconName = @"arrow.up.arrow.down";
-    self.conditionFilterChip = conditionChip;
-    self.priceFilterChip = priceChip;
-    self.sortFilterChip = sortChip;
-    self.accessoryFilterButton = conditionChip;
-
-    UIStackView *chipsStack = [[UIStackView alloc] initWithArrangedSubviews:@[
-        conditionChip,
-        priceChip,
-        sortChip
-    ]];
+    // Dynamic filter chips — created from PPFilterState for the initial section
+    self.filterChips = [NSMutableArray array];
+    UIStackView *chipsStack = [[UIStackView alloc] init];
     chipsStack.translatesAutoresizingMaskIntoConstraints = NO;
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
     chipsStack.alignment = UIStackViewAlignmentCenter;
     chipsStack.distribution = UIStackViewDistributionFillEqually;
     chipsStack.spacing = 8.0;
     chipsStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.accessoryFilterChipsStackView = chipsStack;
+    self.filterChipStackView = chipsStack;
     [filterContainer addSubview:chipsStack];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -2590,38 +2510,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [chipsStack.bottomAnchor constraintEqualToAnchor:filterContainer.bottomAnchor],
     ]];
 
-    [self syncAccessoryFilterControlSelection];
-}
+    // Initialize per-section filter state dictionary
+    self.filterStates = [NSMutableDictionary dictionary];
 
-// Shared helper for filter row menu actions.
-- (void)accessoryFilterChangedIndex:(NSInteger)index
-{
-    if (index < PPFilterAccessoryAll || index > PPFilterAccessoryUsed) {
-        index = PPFilterAccessoryAll;
-    }
-
-    [PPFunc triggerLightHaptic];
-    [self.viewModel applyAccessoryFilter:(PPFilterAccessoryType)index
-                           serviceFilter:self.viewModel.serviceFilter];
-    [self syncAccessoryFilterControlSelection];
-}
-
-- (void)accessoryPriceFilterChanged:(PPDataAccessoryPriceFilter)filter
-{
-    self.accessoryPriceFilter = filter;
-    [PPFunc triggerLightHaptic];
-    [self refreshPresentedItemsAnimated:YES scrollToTop:YES];
-    [self pp_prefetchTopImagesWithLimit:12];
-    [self updateEmptyState];
-}
-
-- (void)accessorySortOptionChanged:(PPDataAccessorySortOption)option
-{
-    self.accessorySortOption = option;
-    [PPFunc triggerLightHaptic];
-    [self refreshPresentedItemsAnimated:YES scrollToTop:YES];
-    [self pp_prefetchTopImagesWithLimit:12];
-    [self updateEmptyState];
+    [self syncFilterChipsForCurrentSection];
 }
 
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender

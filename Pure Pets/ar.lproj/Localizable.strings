@@ -701,7 +701,7 @@
 "barcode" = "إنشاء الباركود";
 "barcodeReader" = "قارئ الباركود";
 "adLocation" = "موقع الاعلان";
-"filterPPAction" = "تصفية بالسلالة";
+"filterPPAction" = "تصفية";
 "PPCellLayoutFullWidth" = "العرض الكامل";
 "PPCellLayoutSquare" = "مربع";
 "PPCellLayoutVertical" = "عموديًا";

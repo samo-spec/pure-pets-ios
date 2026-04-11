@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import "PPFilterModels.h"
 
 @class MainKindsModel;
 @class PPUniversalCellViewModel;
@@ -17,8 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) NSInteger currentSubKindID;
 @property (nonatomic, assign) PPDataSection pendingRestoreSection;
 @property (nonatomic, assign) PPDeepLinkTarget currentDeepLinkTarget;
-@property (nonatomic, assign, readonly) PPFilterAccessoryType accessoryFilter;
-@property (nonatomic, assign, readonly) PPFilterServiceType serviceFilter;
+
 // Data access
 @property (nonatomic, strong, readonly) NSArray<PPUniversalCellViewModel *> *items;
 @property (nonatomic, assign, readonly) NSInteger itemCount;
@@ -32,9 +32,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)fetchNextPage;
 - (void)switchToSection:(PPDataSection)section;
 
-// Filters
-- (void)applyAccessoryFilter:(PPFilterAccessoryType)accessory
-               serviceFilter:(PPFilterServiceType)service;
+// Filters — data-driven
+- (void)applyFilterState:(PPFilterState *)state;
+
 - (NSString *)subKindKeyForMainKind:(MainKindsModel *)mainKind;
 // Cell access
 - (PPUniversalCellViewModel *)viewModelAtIndex:(NSInteger)index;

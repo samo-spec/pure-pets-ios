@@ -1,5 +1,34 @@
 #import "PPModrenSegmrnted.h"
-#import "PPNavigationController.h"
+
+static const NSInteger PPModrenSegmrntedNoSelection = -1;
+static const CGFloat PPModrenSegmrntedRailInset = 4.0;
+static const CGFloat PPModrenSegmrntedCornerRadius = 22.0;
+static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.34;
+
+static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
+{
+    return AppForgroundColr ?: [UIColor colorWithWhite:1.0 alpha:0.12];
+}
+
+static inline UIColor *PPModrenSegmrntedTrackStrokeColor(void)
+{
+    return [UIColor colorWithWhite:1.0 alpha:0.10];
+}
+
+static inline UIColor *PPModrenSegmrntedTrackSheenColor(void)
+{
+    return [UIColor colorWithWhite:1.0 alpha:0.12];
+}
+
+static inline UIColor *PPModrenSegmrntedIndicatorBorderColor(void)
+{
+    return [UIColor colorWithWhite:1.0 alpha:0.28];
+}
+
+static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
+{
+    return AppShadowClr ?: UIColor.blackColor;
+}
 
 @interface PPModrenSegmrntedItem ()
 
@@ -37,7 +66,6 @@
 
 @interface _PPModrenSegmrntedSegmentView : UIControl
 
-@property (nonatomic, strong) UIView *selectionBackgroundView;
 @property (nonatomic, strong) UIStackView *contentStackView;
 @property (nonatomic, strong) UIImageView *iconView;
 @property (nonatomic, strong) UILabel *titleLabel;
@@ -45,6 +73,10 @@
 @property (nonatomic, strong) NSLayoutConstraint *iconHeightConstraint;
 @property (nonatomic, strong) PPModrenSegmrntedItem *item;
 @property (nonatomic, assign, getter=isSegmentSelected) BOOL segmentSelected;
+@property (nonatomic, strong) UIColor *cachedNormalTextColor;
+@property (nonatomic, strong) UIColor *cachedSelectedTextColor;
+@property (nonatomic, strong) UIFont *cachedNormalFont;
+@property (nonatomic, strong) UIFont *cachedSelectedFont;
 
 - (void)configureWithItem:(PPModrenSegmrntedItem *)item;
 - (void)applySelectionState:(BOOL)selected
@@ -52,8 +84,7 @@
             normalTextColor:(UIColor *)normalTextColor
           selectedTextColor:(UIColor *)selectedTextColor
                  normalFont:(UIFont *)normalFont
-               selectedFont:(UIFont *)selectedFont
-           selectedFillColor:(UIColor *)selectedFillColor;
+               selectedFont:(UIFont *)selectedFont;
 
 @end
 
@@ -71,38 +102,17 @@
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.exclusiveTouch = YES;
 
-    UIButton *selectionBackgroundView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
-    selectionBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
-    selectionBackgroundView.alpha = 0.0;
-    
-    UIButtonConfiguration *config = selectionBackgroundView.configuration;
-    config.background.cornerRadius = 18.0;
-    
-    selectionBackgroundView.configuration = config;
-    selectionBackgroundView.userInteractionEnabled = NO;
-    if(!PPIOS26()) selectionBackgroundView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
-    if(!PPIOS26()) selectionBackgroundView.layer.borderWidth = 1.0;
-    if(!PPIOS26()) selectionBackgroundView.layer.borderColor = [AppBackgroundClr colorWithAlphaComponent:0.0].CGColor;
-    if(!PPIOS26()) selectionBackgroundView.layer.shadowColor = AppShadowClr.CGColor;
-    if(!PPIOS26()) selectionBackgroundView.layer.shadowOpacity = 0.12;
-    if(!PPIOS26()) selectionBackgroundView.layer.shadowRadius = 10.0;
-    if(!PPIOS26()) selectionBackgroundView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
-    if (@available(iOS 13.0, *)) {
-        selectionBackgroundView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    self.selectionBackgroundView = selectionBackgroundView;
-    [self addSubview:selectionBackgroundView];
-
     UIImageView *iconView = [[UIImageView alloc] init];
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.contentMode = UIViewContentModeScaleAspectFill;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.userInteractionEnabled = NO;
     self.iconView = iconView;
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.numberOfLines = 1;
     titleLabel.adjustsFontSizeToFitWidth = YES;
-    titleLabel.minimumScaleFactor = 0.78;
+    titleLabel.minimumScaleFactor = 0.72;
     titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
@@ -113,40 +123,28 @@
     contentStackView.axis = UILayoutConstraintAxisVertical;
     contentStackView.alignment = UIStackViewAlignmentCenter;
     contentStackView.distribution = UIStackViewDistributionFill;
-    contentStackView.spacing = 2.0;
+    contentStackView.spacing = 1.5;
     contentStackView.userInteractionEnabled = NO;
     contentStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentStackView = contentStackView;
     [self addSubview:contentStackView];
 
-    self.iconWidthConstraint = [iconView.widthAnchor constraintEqualToConstant:22.0];
-    self.iconHeightConstraint = [iconView.heightAnchor constraintEqualToConstant:22.0];
+    self.iconWidthConstraint = [iconView.widthAnchor constraintEqualToConstant:16.0];
+    self.iconHeightConstraint = [iconView.heightAnchor constraintEqualToConstant:16.0];
 
     [NSLayoutConstraint activateConstraints:@[
-        [selectionBackgroundView.topAnchor constraintEqualToAnchor:self.topAnchor constant:2.0],
-        [selectionBackgroundView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:2.0],
-        [selectionBackgroundView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-2.0],
-        [selectionBackgroundView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2.0],
-
         [contentStackView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.leadingAnchor constant:6.0],
         [contentStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-6.0],
-        [contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.topAnchor constant:3.0],
-        [contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-3.0],
+        [contentStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.topAnchor constant:2.0],
+        [contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-2.0],
         [contentStackView.centerXAnchor constraintEqualToAnchor:self.centerXAnchor],
         [contentStackView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
-
         self.iconWidthConstraint,
         self.iconHeightConstraint
     ]];
 
+    self.accessibilityTraits = UIAccessibilityTraitButton;
     return self;
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    CGFloat radius = 22;
-    if(!PPIOS26()) self.selectionBackgroundView.layer.cornerRadius = radius;
 }
 
 - (void)configureWithItem:(PPModrenSegmrntedItem *)item
@@ -154,10 +152,14 @@
     self.item = item;
     self.titleLabel.text = item.title;
 
-    BOOL hasIcon = item.iconName.length > 0;
+    BOOL hasIcon = item.iconName.length > 0 || item.selectedIconName.length > 0;
     self.iconView.hidden = !hasIcon;
-    self.iconWidthConstraint.constant = hasIcon ? 18.0 : 0.0;
-    self.iconHeightConstraint.constant = hasIcon ? 18.0 : 0.0;
+    self.iconWidthConstraint.constant = hasIcon ? 16.0 : 0.0;
+    self.iconHeightConstraint.constant = hasIcon ? 16.0 : 0.0;
+    self.contentStackView.axis = hasIcon ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    self.contentStackView.spacing = hasIcon ? 1.5 : 0.0;
+
+    [self pp_applyCurrentStateAnimated:NO];
 }
 
 - (UIImage *)segmentImageForSelectionState:(BOOL)selected tintColor:(UIColor *)tintColor
@@ -168,7 +170,7 @@
     }
 
     return [UIImage pp_symbolNamed:iconName
-                         pointSize:selected ? 18.0 : 18.0
+                         pointSize:selected ? 17.0 : 16.0
                             weight:selected ? UIImageSymbolWeightSemibold : UIImageSymbolWeightMedium
                              scale:UIImageSymbolScaleMedium
                            palette:@[tintColor]
@@ -181,28 +183,63 @@
           selectedTextColor:(UIColor *)selectedTextColor
                  normalFont:(UIFont *)normalFont
                selectedFont:(UIFont *)selectedFont
-           selectedFillColor:(UIColor *)selectedFillColor
 {
     self.segmentSelected = selected;
+    self.cachedNormalTextColor = normalTextColor ?: UIColor.secondaryLabelColor;
+    self.cachedSelectedTextColor = selectedTextColor ?: UIColor.whiteColor;
+    self.cachedNormalFont = normalFont ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    self.cachedSelectedFont = selectedFont ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    [self pp_applyCurrentStateAnimated:animated];
+}
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    [super setHighlighted:highlighted];
+    [self pp_applyCurrentStateAnimated:YES];
+}
+
+- (void)setEnabled:(BOOL)enabled
+{
+    [super setEnabled:enabled];
+    [self pp_applyCurrentStateAnimated:NO];
+}
+
+- (void)pp_applyCurrentStateAnimated:(BOOL)animated
+{
+    UIColor *normalTextColor = self.cachedNormalTextColor ?: UIColor.secondaryLabelColor;
+    UIColor *selectedTextColor = self.cachedSelectedTextColor ?: UIColor.whiteColor;
+    UIFont *normalFont = self.cachedNormalFont ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    UIFont *selectedFont = self.cachedSelectedFont ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+
+    BOOL selected = self.segmentSelected;
+    BOOL highlighted = self.highlighted;
+    BOOL enabled = self.enabled;
 
     UIColor *targetTextColor = selected ? selectedTextColor : normalTextColor;
     UIFont *targetFont = selected ? selectedFont : normalFont;
     UIImage *targetImage = [self segmentImageForSelectionState:selected tintColor:targetTextColor];
 
+    CGFloat restingAlpha = selected ? 1.0 : 0.76;
+    CGFloat targetAlpha = enabled ? (highlighted ? 0.92 : restingAlpha) : 0.42;
+    CGFloat iconAlpha = enabled ? (selected ? 1.0 : 0.84) : 0.42;
+    CGFloat scale = highlighted ? (selected ? 0.985 : 0.965) : 1.0;
+    CGAffineTransform targetTransform = CGAffineTransformMakeScale(scale, scale);
+
     void (^updates)(void) = ^{
-        self.selectionBackgroundView.alpha = selected ? 1.0 : 0.0;
-        if(!PPIOS26()) self.selectionBackgroundView.backgroundColor = selectedFillColor;
-        if(!PPIOS26()) self.selectionBackgroundView.layer.shadowOpacity = selected ? 0.14 : 0.0;
         self.titleLabel.textColor = targetTextColor;
         self.titleLabel.font = targetFont;
+        self.titleLabel.alpha = targetAlpha;
         self.iconView.image = targetImage;
         self.iconView.tintColor = targetTextColor;
+        self.iconView.alpha = iconAlpha;
+        self.contentStackView.transform = targetTransform;
     };
 
-    if (animated) {
-        [UIView animateWithDuration:0.22
+    BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
+    if (shouldAnimate) {
+        [UIView animateWithDuration:0.18
                               delay:0.0
-                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                          animations:updates
                          completion:nil];
     } else {
@@ -222,9 +259,13 @@
 @interface PPModrenSegmrnted ()
 
 @property (nonatomic, strong) UIView *containerFillView;
-@property (nonatomic, strong, nullable) UIButton *glassContainerButton;
+@property (nonatomic, strong) UIView *selectionIndicatorView;
 @property (nonatomic, strong) UIStackView *segmentsStackView;
 @property (nonatomic, copy) NSArray<_PPModrenSegmrntedSegmentView *> *segmentViews;
+@property (nonatomic, strong) NSLayoutConstraint *selectionIndicatorLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *selectionIndicatorWidthConstraint;
+@property (nonatomic, strong) CAGradientLayer *containerSheenLayer;
+@property (nonatomic, strong) CAGradientLayer *selectionGradientLayer;
 
 @end
 
@@ -271,47 +312,76 @@
     self.clipsToBounds = NO;
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.exclusiveTouch = YES;
-    
-    if(!PPIOS26()) _containerBackgroundColor = AppForgroundColr;
-    _selectedSegmentColor = AppPrimaryClr;
+
+    _containerBackgroundColor = PPModrenSegmrntedDefaultContainerColor();
+    _selectedSegmentColor = AppPrimaryClr ?: UIColor.systemBlueColor;
     _normalTextColor = UIColor.secondaryLabelColor;
     _selectedTextColor = UIColor.whiteColor;
-    _normalFont = [GM MidFontWithSize:13];
-    _selectedFont = [GM boldFontWithSize:13];
-    _selectedIndex = NSNotFound;
+    _normalFont = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _selectedFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    _selectedIndex = PPModrenSegmrntedNoSelection;
 
     UIView *containerFillView = [[UIView alloc] init];
     containerFillView.translatesAutoresizingMaskIntoConstraints = NO;
     containerFillView.backgroundColor = _containerBackgroundColor;
-    if(!PPIOS26()) containerFillView.layer.borderWidth = 1.0;
-    if(!PPIOS26()) containerFillView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    containerFillView.userInteractionEnabled = NO;
+    containerFillView.layer.borderWidth = 0.0;
+    containerFillView.layer.borderColor = PPModrenSegmrntedTrackStrokeColor().CGColor;
+    containerFillView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         containerFillView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     self.containerFillView = containerFillView;
     [self addSubview:containerFillView];
 
-    if (@available(iOS 26.0, *)) {
-        UIButton *glassContainerButton = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
-        glassContainerButton.userInteractionEnabled = NO;
-        glassContainerButton.backgroundColor = UIColor.clearColor;
-        glassContainerButton.translatesAutoresizingMaskIntoConstraints = NO;
-        UIButtonConfiguration *config = glassContainerButton.configuration;
-        config.background.cornerRadius = 22.0;
-        glassContainerButton.configuration = config;
-        self.glassContainerButton = glassContainerButton;
-        [self addSubview:glassContainerButton];
+    CAGradientLayer *containerSheenLayer = [CAGradientLayer layer];
+    containerSheenLayer.startPoint = CGPointMake(0.5, 0.0);
+    containerSheenLayer.endPoint = CGPointMake(0.5, 1.0);
+    containerSheenLayer.locations = @[@0.0, @0.30, @1.0];
+    containerSheenLayer.colors = @[
+        (id)PPModrenSegmrntedTrackSheenColor().CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.03].CGColor,
+        (id)UIColor.clearColor.CGColor
+    ];
+    [containerFillView.layer addSublayer:containerSheenLayer];
+    self.containerSheenLayer = containerSheenLayer;
+
+    UIView *selectionIndicatorView = [[UIView alloc] init];
+    selectionIndicatorView.translatesAutoresizingMaskIntoConstraints = NO;
+    selectionIndicatorView.userInteractionEnabled = NO;
+    selectionIndicatorView.backgroundColor = _selectedSegmentColor;
+    selectionIndicatorView.alpha = 0.0;
+    selectionIndicatorView.layer.borderWidth = 0.5;
+    selectionIndicatorView.layer.borderColor = PPModrenSegmrntedIndicatorBorderColor().CGColor;
+    selectionIndicatorView.layer.shadowColor = PPModrenSegmrntedIndicatorShadowColor().CGColor;
+    selectionIndicatorView.layer.shadowOpacity = 0.14;
+    selectionIndicatorView.layer.shadowRadius = 12.0;
+    selectionIndicatorView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    if (@available(iOS 13.0, *)) {
+        selectionIndicatorView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    self.selectionIndicatorView = selectionIndicatorView;
+    [self addSubview:selectionIndicatorView];
+
+    CAGradientLayer *selectionGradientLayer = [CAGradientLayer layer];
+    selectionGradientLayer.startPoint = CGPointMake(0.15, 0.0);
+    selectionGradientLayer.endPoint = CGPointMake(0.85, 1.0);
+    selectionGradientLayer.locations = @[@0.0, @1.0];
+    [selectionIndicatorView.layer insertSublayer:selectionGradientLayer atIndex:0];
+    self.selectionGradientLayer = selectionGradientLayer;
 
     UIStackView *segmentsStackView = [[UIStackView alloc] init];
     segmentsStackView.translatesAutoresizingMaskIntoConstraints = NO;
     segmentsStackView.axis = UILayoutConstraintAxisHorizontal;
     segmentsStackView.alignment = UIStackViewAlignmentFill;
     segmentsStackView.distribution = UIStackViewDistributionFillEqually;
-    segmentsStackView.spacing = 4.0;
+    segmentsStackView.spacing = 0.0;
     segmentsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.segmentsStackView = segmentsStackView;
     [self addSubview:segmentsStackView];
+
+    self.selectionIndicatorLeadingConstraint = [selectionIndicatorView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPModrenSegmrntedRailInset];
+    self.selectionIndicatorWidthConstraint = [selectionIndicatorView.widthAnchor constraintEqualToConstant:0.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [containerFillView.topAnchor constraintEqualToAnchor:self.topAnchor],
@@ -319,20 +389,18 @@
         [containerFillView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [containerFillView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
 
-        [segmentsStackView.topAnchor constraintEqualToAnchor:self.topAnchor constant:3.0],
-        [segmentsStackView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:3.0],
-        [segmentsStackView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-3.0],
-        [segmentsStackView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-3.0]
+        [selectionIndicatorView.topAnchor constraintEqualToAnchor:self.topAnchor constant:PPModrenSegmrntedRailInset],
+        [selectionIndicatorView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPModrenSegmrntedRailInset],
+        self.selectionIndicatorLeadingConstraint,
+        self.selectionIndicatorWidthConstraint,
+
+        [segmentsStackView.topAnchor constraintEqualToAnchor:self.topAnchor constant:PPModrenSegmrntedRailInset],
+        [segmentsStackView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPModrenSegmrntedRailInset],
+        [segmentsStackView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPModrenSegmrntedRailInset],
+        [segmentsStackView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPModrenSegmrntedRailInset]
     ]];
 
-    if (self.glassContainerButton) {
-        [NSLayoutConstraint activateConstraints:@[
-            [self.glassContainerButton.topAnchor constraintEqualToAnchor:self.topAnchor],
-            [self.glassContainerButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-            [self.glassContainerButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-            [self.glassContainerButton.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
-        ]];
-    }
+    [self pp_updateSelectionIndicatorColors];
 }
 
 - (CGSize)intrinsicContentSize
@@ -343,9 +411,21 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    CGFloat radius = 22.0;;
-    self.containerFillView.layer.cornerRadius = radius;
-    self.glassContainerButton.layer.cornerRadius = radius;
+
+    CGFloat controlRadius = MIN(PPModrenSegmrntedCornerRadius, CGRectGetHeight(self.bounds) * 0.5);
+    self.containerFillView.layer.cornerRadius = controlRadius;
+
+    CGFloat indicatorHeight = MAX(0.0, CGRectGetHeight(self.bounds) - (PPModrenSegmrntedRailInset * 2.0));
+    CGFloat indicatorRadius = MIN(MAX(16.0, indicatorHeight * 0.5), controlRadius - 2.0);
+    self.selectionIndicatorView.layer.cornerRadius = indicatorRadius;
+
+    self.containerSheenLayer.frame = self.containerFillView.bounds;
+    self.containerSheenLayer.cornerRadius = controlRadius;
+    self.selectionGradientLayer.frame = self.selectionIndicatorView.bounds;
+    self.selectionGradientLayer.cornerRadius = indicatorRadius;
+    self.selectionIndicatorView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.selectionIndicatorView.bounds cornerRadius:indicatorRadius].CGPath;
+
+    [self pp_updateSelectionIndicatorMetrics];
 }
 
 - (NSInteger)numberOfSegments
@@ -356,6 +436,13 @@
 - (void)setItems:(NSArray<PPModrenSegmrntedItem *> *)items
 {
     _items = [items copy] ?: @[];
+
+    if (_items.count == 0) {
+        _selectedIndex = PPModrenSegmrntedNoSelection;
+    } else if (_selectedIndex >= _items.count) {
+        _selectedIndex = _items.count - 1;
+    }
+
     [self pp_rebuildSegments];
 }
 
@@ -366,59 +453,60 @@
 
 - (void)setSelectedIndex:(NSInteger)selectedIndex animated:(BOOL)animated
 {
-    if (self.items.count == 0) {
-        _selectedIndex = NSNotFound;
-        return;
+    NSInteger resolvedIndex = PPModrenSegmrntedNoSelection;
+    if (self.items.count > 0 && selectedIndex >= 0) {
+        resolvedIndex = MAX(0, MIN(selectedIndex, self.items.count - 1));
     }
 
-    NSInteger clampedIndex = MAX(0, MIN(selectedIndex, self.items.count - 1));
-    _selectedIndex = clampedIndex;
-
-    [self.segmentViews enumerateObjectsUsingBlock:^(_PPModrenSegmrntedSegmentView * _Nonnull segmentView, NSUInteger idx, BOOL * _Nonnull stop) {
-        [segmentView applySelectionState:(idx == (NSUInteger)clampedIndex)
-                                animated:animated
-                         normalTextColor:self.normalTextColor
-                       selectedTextColor:self.selectedTextColor
-                              normalFont:self.normalFont
-                            selectedFont:self.selectedFont
-                        selectedFillColor:self.selectedSegmentColor];
-    }];
+    _selectedIndex = resolvedIndex;
+    [self pp_refreshAppearanceAnimated:animated];
 }
 
 - (void)setContainerBackgroundColor:(UIColor *)containerBackgroundColor
 {
-    _containerBackgroundColor = containerBackgroundColor ?: AppForgroundColr;
+    _containerBackgroundColor = containerBackgroundColor ?: PPModrenSegmrntedDefaultContainerColor();
     self.containerFillView.backgroundColor = _containerBackgroundColor;
 }
 
 - (void)setSelectedSegmentColor:(UIColor *)selectedSegmentColor
 {
-    _selectedSegmentColor = selectedSegmentColor ?: AppPrimaryClr;
-    [self setSelectedIndex:self.selectedIndex animated:NO];
+    _selectedSegmentColor = selectedSegmentColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
+    [self pp_updateSelectionIndicatorColors];
+    [self pp_refreshAppearanceAnimated:NO];
 }
 
 - (void)setNormalTextColor:(UIColor *)normalTextColor
 {
     _normalTextColor = normalTextColor ?: UIColor.secondaryLabelColor;
-    [self setSelectedIndex:self.selectedIndex animated:NO];
+    [self pp_refreshAppearanceAnimated:NO];
 }
 
 - (void)setSelectedTextColor:(UIColor *)selectedTextColor
 {
     _selectedTextColor = selectedTextColor ?: UIColor.whiteColor;
-    [self setSelectedIndex:self.selectedIndex animated:NO];
+    [self pp_refreshAppearanceAnimated:NO];
 }
 
 - (void)setNormalFont:(UIFont *)normalFont
 {
-    _normalFont = normalFont ?: [GM MidFontWithSize:15];
-    [self setSelectedIndex:self.selectedIndex animated:NO];
+    _normalFont = normalFont ?: [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    [self pp_refreshAppearanceAnimated:NO];
 }
 
 - (void)setSelectedFont:(UIFont *)selectedFont
 {
-    _selectedFont = selectedFont ?: [GM boldFontWithSize:15];
-    [self setSelectedIndex:self.selectedIndex animated:NO];
+    _selectedFont = selectedFont ?: [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    [self pp_refreshAppearanceAnimated:NO];
+}
+
+- (void)pp_updateSelectionIndicatorColors
+{
+    UIColor *baseColor = self.selectedSegmentColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.selectionIndicatorView.backgroundColor = baseColor;
+    self.selectionGradientLayer.colors = @[
+        (id)[baseColor colorWithAlphaComponent:1.0].CGColor,
+        (id)[baseColor colorWithAlphaComponent:0.88].CGColor
+    ];
 }
 
 - (void)pp_rebuildSegments
@@ -438,14 +526,69 @@
         [segmentViews addObject:segmentView];
     }];
 
-    self.segmentViews = segmentViews;
+    self.segmentViews = [segmentViews copy];
+    [self pp_refreshAppearanceAnimated:NO];
+}
 
-    NSInteger targetIndex = self.selectedIndex == NSNotFound ? 0 : self.selectedIndex;
-    [self setSelectedIndex:targetIndex animated:NO];
+- (void)pp_refreshAppearanceAnimated:(BOOL)animated
+{
+    BOOL hasSelection = self.selectedIndex >= 0 && self.selectedIndex < (NSInteger)self.segmentViews.count;
+
+    [self.segmentViews enumerateObjectsUsingBlock:^(_PPModrenSegmrntedSegmentView * _Nonnull segmentView, NSUInteger idx, BOOL * _Nonnull stop) {
+        [segmentView applySelectionState:(hasSelection && idx == (NSUInteger)self.selectedIndex)
+                                animated:animated
+                         normalTextColor:self.normalTextColor
+                       selectedTextColor:self.selectedTextColor
+                              normalFont:self.normalFont
+                            selectedFont:self.selectedFont];
+    }];
+
+    [self pp_updateSelectionIndicatorMetrics];
+
+    NSString *selectedTitle = hasSelection ? self.items[self.selectedIndex].title : nil;
+    self.accessibilityValue = selectedTitle;
+
+    void (^layoutChanges)(void) = ^{
+        self.selectionIndicatorView.alpha = hasSelection ? 1.0 : 0.0;
+        self.selectionIndicatorView.transform = hasSelection ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.88, 0.88);
+        [self layoutIfNeeded];
+    };
+
+    BOOL shouldAnimate = animated && self.window != nil && !UIAccessibilityIsReduceMotionEnabled();
+    if (shouldAnimate) {
+        [UIView animateWithDuration:PPModrenSegmrntedAnimationDuration
+                              delay:0.0
+             usingSpringWithDamping:0.78
+              initialSpringVelocity:0.15
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                         animations:layoutChanges
+                         completion:nil];
+    } else {
+        layoutChanges();
+    }
+}
+
+- (void)pp_updateSelectionIndicatorMetrics
+{
+    BOOL hasSelection = self.selectedIndex >= 0 && self.selectedIndex < (NSInteger)self.segmentViews.count;
+    if (!hasSelection) {
+        self.selectionIndicatorLeadingConstraint.constant = CGRectGetMidX(self.bounds);
+        self.selectionIndicatorWidthConstraint.constant = 0.0;
+        return;
+    }
+
+    _PPModrenSegmrntedSegmentView *selectedSegment = self.segmentViews[self.selectedIndex];
+    CGRect selectedFrame = [self convertRect:selectedSegment.frame fromView:self.segmentsStackView];
+    self.selectionIndicatorLeadingConstraint.constant = CGRectGetMinX(selectedFrame);
+    self.selectionIndicatorWidthConstraint.constant = CGRectGetWidth(selectedFrame);
 }
 
 - (void)pp_segmentTapped:(_PPModrenSegmrntedSegmentView *)sender
 {
+    if (!self.enabled) {
+        return;
+    }
+
     NSInteger tappedIndex = sender.tag;
     if (tappedIndex == self.selectedIndex) {
         return;
