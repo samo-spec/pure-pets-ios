@@ -2305,10 +2305,15 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
         strongSelf.currentUser.accountStatus = accountStatus;
         strongSelf.currentUser.prodectionStatus = prodectionStatus;
 
+        // Verified status
+        BOOL newVerified = [data[@"verified"] boolValue];
+        BOOL verifiedChanged = (strongSelf.currentUser.verified != newVerified);
+        strongSelf.currentUser.verified = newVerified;
+
         // Combine blocked check: legacy isBlocked OR accountStatus == "blocked"/"disabled"
         BOOL effectivelyBlocked = isBlocked || [accountStatus isEqualToString:@"blocked"] || [accountStatus isEqualToString:@"disabled"];
 
-        BOOL didChange = (strongSelf.currentUser.isBlocked != isBlocked) || accountStatusChanged || prodectionChanged;
+        BOOL didChange = (strongSelf.currentUser.isBlocked != isBlocked) || accountStatusChanged || prodectionChanged || verifiedChanged;
         strongSelf.currentUser.isBlocked = isBlocked;
 
         if (didChange && strongSelf.currentUser.ID.length > 0) {
