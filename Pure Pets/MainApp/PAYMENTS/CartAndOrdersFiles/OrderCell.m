@@ -26,6 +26,8 @@
     self.selectionStyle = UITableViewCellSelectionStyleNone;
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
+    self.preservesSuperviewLayoutMargins = NO;
+    self.contentView.preservesSuperviewLayoutMargins = NO;
 
     // Card container
     _cardView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge configType:PPButtonConfigrationGlass];
@@ -33,9 +35,9 @@
     _cardView.backgroundColor = GM.AppForegroundColor;
  
     _cardView.layer.shadowColor = GM.AppShadowColor.CGColor;
-    _cardView.layer.shadowOpacity = 0.10;
-    _cardView.layer.shadowOffset = CGSizeMake(0, 2);
-    _cardView.layer.shadowRadius = 8;
+    _cardView.layer.shadowOpacity = 0.06;
+    _cardView.layer.shadowOffset = CGSizeMake(0, 1.0);
+    _cardView.layer.shadowRadius = 5.0;
     _cardView.layer.masksToBounds = NO;
     _cardView.userInteractionEnabled=NO;
     [self.contentView addSubview:_cardView];
@@ -110,17 +112,18 @@
 
     UIView *margins = self.contentView;
 
-    CGFloat outerPadding = 16;
-    CGFloat innerPadding = 12;
+    CGFloat horizontalPadding = 12.0;
+    CGFloat verticalPadding = 8.0;
+    CGFloat innerPadding = 12.0;
  
-    self.contentView.layoutMargins = UIEdgeInsetsMake(outerPadding, outerPadding, outerPadding, outerPadding);
+    self.contentView.layoutMargins = UIEdgeInsetsMake(verticalPadding, horizontalPadding, verticalPadding, horizontalPadding);
 
     [NSLayoutConstraint activateConstraints:@[
         // Card
-        [_cardView.leadingAnchor constraintEqualToAnchor:margins.leadingAnchor constant:outerPadding],
-        [_cardView.trailingAnchor constraintEqualToAnchor:margins.trailingAnchor constant:-outerPadding],
-        [_cardView.topAnchor constraintEqualToAnchor:margins.topAnchor constant:8],
-        [_cardView.bottomAnchor constraintEqualToAnchor:margins.bottomAnchor constant:-8],
+        [_cardView.leadingAnchor constraintEqualToAnchor:margins.leadingAnchor constant:horizontalPadding],
+        [_cardView.trailingAnchor constraintEqualToAnchor:margins.trailingAnchor constant:-horizontalPadding],
+        [_cardView.topAnchor constraintEqualToAnchor:margins.topAnchor constant:verticalPadding],
+        [_cardView.bottomAnchor constraintEqualToAnchor:margins.bottomAnchor constant:-verticalPadding],
 
         // Row
         [_rowStack.leadingAnchor constraintEqualToAnchor:_cardView.leadingAnchor constant:innerPadding],
@@ -199,6 +202,5 @@
 }
 
 @end
-
 
 

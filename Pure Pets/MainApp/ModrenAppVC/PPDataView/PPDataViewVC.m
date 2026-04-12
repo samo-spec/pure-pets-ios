@@ -156,6 +156,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) NSLayoutConstraint *sectionsTabBarHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *filterChipHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cartButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *navContainerWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToContainerConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *cartBadgeMinWidthConstraint;
@@ -194,6 +195,8 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)refreshFilterChipTitles;
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender;
 - (void)onCartTapped;
+- (CGFloat)preferredNavigationCenterViewWidth;
+- (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
 - (PPFilterState *)pp_currentFilterState;@end
 @implementation PPDataViewVC
 -(void)viewWillLayoutSubviews
@@ -605,6 +608,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [super viewDidLayoutSubviews];
     [self updateCollectionContentInset];
     [self updateSectionsTabBarSelectionIndicatorIfNeeded];
+    [self reloadNavigationCenterViewLayout];
 }
 
 - (void)viewSafeAreaInsetsDidChange
@@ -1810,12 +1814,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.subKindsButton.widthAnchor constraintEqualToConstant:140];
     self.cartButtonWidthConstraint =
     [self.cartButton.widthAnchor constraintEqualToConstant:0];
+    self.navContainerWidthConstraint =
+    [self.navContainerView.widthAnchor constraintEqualToConstant:220];
     self.mainKindsWidthConstraint.priority = UILayoutPriorityRequired;
     self.sectionsWidthConstraint.priority = UILayoutPriorityRequired;
     self.cartButtonWidthConstraint.priority = UILayoutPriorityRequired;
+    self.navContainerWidthConstraint.priority = UILayoutPriorityRequired;
     self.mainKindsWidthConstraint.active = YES;
     self.sectionsWidthConstraint.active = YES;
     self.cartButtonWidthConstraint.active = YES;
+    self.navContainerWidthConstraint.active = YES;
 
     [self.navContainerView addSubview:self.KindsButton];
     [self.navContainerView addSubview:self.subKindsButton];
@@ -1880,6 +1888,19 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)reloadNavigationCenterViewLayout
 {
+    if (!self.navContainerView) {
+        return;
+    }
+
+    CGFloat targetWidth = [self preferredNavigationCenterViewWidth];
+    if (targetWidth > 0.0) {
+        self.navContainerWidthConstraint.constant = targetWidth;
+        CGRect frame = self.navContainerView.frame;
+        frame.size = CGSizeMake(targetWidth, 44.0);
+        self.navContainerView.frame = frame;
+        self.navContainerView.bounds = (CGRect){CGPointZero, frame.size};
+    }
+
     // ✅ FORCE layout pass FIRST (fixes AllKinds → first switch)
     [self.navContainerView layoutIfNeeded];
 
@@ -1888,11 +1909,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.cartButton invalidateIntrinsicContentSize];
 
     // 🔒 Icon-only main kind button → square
-    CGFloat h = self.navContainerView.bounds.size.height;
-    CGFloat mainWidth = h;
-
-    CGFloat sectionWidth =
-    MIN(220, MAX(140, self.subKindsButton.intrinsicContentSize.width + 24));
+    CGFloat h = CGRectGetHeight(self.navContainerView.bounds) > 0.0 ? CGRectGetHeight(self.navContainerView.bounds) : 44.0;
+    CGFloat inset = 4.0;
+    CGFloat mainWidth = MAX(36.0, h - (inset * 2.0));
+    CGFloat cartWidth = self.isCartButtonVisible ? 36.0 : 0.0;
+    CGFloat chromeWidth = self.isCartButtonVisible
+        ? ((inset * 4.0) + mainWidth + cartWidth)
+        : ((inset * 3.0) + mainWidth);
+    CGFloat availableSectionWidth = MAX(124.0, self.navContainerWidthConstraint.constant - chromeWidth);
+    CGFloat sectionWidth = availableSectionWidth;
 
     self.mainKindsWidthConstraint.constant = mainWidth;
     self.sectionsWidthConstraint.constant = sectionWidth;
@@ -1900,6 +1925,57 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self.navContainerView setNeedsLayout];
     [self.navContainerView layoutIfNeeded];
 
+}
+
+- (CGFloat)preferredNavigationCenterViewWidth
+{
+    UINavigationBar *navigationBar = self.navigationController.navigationBar;
+    if (!navigationBar) {
+        return 220.0;
+    }
+
+    CGFloat navBarWidth = CGRectGetWidth(navigationBar.bounds);
+    if (navBarWidth <= 0.0) {
+        return self.navContainerWidthConstraint.constant > 0.0 ? self.navContainerWidthConstraint.constant : 220.0;
+    }
+
+    CGFloat leftWidth = [self pp_widthForBarButtonItem:self.navigationItem.leftBarButtonItem fallback:40.0];
+    CGFloat rightWidth = [self pp_widthForBarButtonItem:self.navigationItem.rightBarButtonItem fallback:40.0];
+    UIEdgeInsets layoutMargins = navigationBar.layoutMargins;
+    CGFloat sideMargins = layoutMargins.left + layoutMargins.right;
+    CGFloat breathingRoom = 20.0;
+
+    CGFloat availableWidth = navBarWidth - sideMargins - leftWidth - rightWidth - breathingRoom;
+    if (availableWidth <= 0.0) {
+        return self.navContainerWidthConstraint.constant > 0.0 ? self.navContainerWidthConstraint.constant : 220.0;
+    }
+
+    return floor(availableWidth);
+}
+
+- (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback
+{
+    if (!item) {
+        return fallback;
+    }
+
+    UIView *customView = item.customView;
+    if (customView) {
+        CGFloat width = CGRectGetWidth(customView.bounds);
+        if (width <= 0.0) {
+            CGSize fittingSize = [customView systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
+            width = fittingSize.width;
+        }
+        if (width > 0.0) {
+            return ceil(width);
+        }
+    }
+
+    if (item.width > 0.0) {
+        return item.width;
+    }
+
+    return fallback;
 }
 - (UIButton *)glassButtonWithTitle:(NSString *)title menu:(UIMenu *)menu iconNamed:(NSString *)icon dataViewNavBarButtonKind:(PPDataViewNavBarButtonKind)buttonKind
 {

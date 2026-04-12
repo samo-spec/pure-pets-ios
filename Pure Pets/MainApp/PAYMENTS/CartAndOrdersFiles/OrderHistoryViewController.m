@@ -221,9 +221,13 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.tableView.tableFooterView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.tableView.layoutMargins = UIEdgeInsetsZero;
+    self.tableView.separatorInset = UIEdgeInsetsZero;
+    self.tableView.cellLayoutMarginsFollowReadableWidth = NO;
     self.tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, 96.0, 0.0);
     if (@available(iOS 11.0, *)) {
         self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
+        self.tableView.insetsContentViewsToSafeArea = NO;
     }
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
@@ -947,6 +951,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     cell.backgroundColor = UIColor.clearColor;
+    cell.preservesSuperviewLayoutMargins = NO;
+    cell.layoutMargins = UIEdgeInsetsZero;
     NSString *statusText = [self displayTitleForOrder:order];
     UIColor *statusColor = [self statusColorForOrder:order];
     cell.nameLabel.text = [order displayOrderReference];

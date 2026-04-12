@@ -2449,7 +2449,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         return UIColor.systemBlueColor;
     }
     if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-        return UIColor.systemOrangeColor;
+        if (@available(iOS 13.0, *)) {
+            return UIColor.systemIndigoColor;
+        }
+        return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
     }
     if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
         return [GM appPrimaryColor];

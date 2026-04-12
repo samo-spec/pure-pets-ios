@@ -1,6 +1,7 @@
 #import "PPDataViewVM.h"
 
 #import "MainKindsModel.h"
+#import "ServiceModel.h"
  
 #import "PetAdManager.h"
 #import "PetAccessoryManager.h"
@@ -601,15 +602,51 @@
             }]];
     }
 
-    // ── Service type filter ──
+    // ── Service type filter (uses category string — covers Training/Grooming/Walking) ──
     NSInteger svcVal = [state valueForFilterID:PPFilterIDServiceType];
     if (svcVal != PPFilterServiceAll) {
         filtered = [filtered filteredArrayUsingPredicate:
             [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
                 if (![obj isKindOfClass:[ServiceModel class]]) return NO;
                 ServiceModel *svc = (ServiceModel *)obj;
-                if (svcVal == PPFilterServiceGrooming) return svc.type == ServiceTypeGrooming;
-                return svc.type == ServiceTypeTraining;
+                NSString *cat = svc.category ?: @"";
+                NSString *catID = svc.categoryID ?: @"";
+                switch (svcVal) {
+                    case PPFilterServiceTraining:
+                        return [catID isEqualToString:@"2"]
+                            || [cat localizedCaseInsensitiveContainsString:@"train"]
+                            || [cat localizedCaseInsensitiveContainsString:@"تدريب"]
+                            || svc.type == ServiceTypeTraining;
+                    case PPFilterServiceGrooming:
+                        return [catID isEqualToString:@"1"]
+                            || [cat localizedCaseInsensitiveContainsString:@"groom"]
+                            || [cat localizedCaseInsensitiveContainsString:@"عناية"]
+                            || svc.type == ServiceTypeGrooming;
+                    case PPFilterServiceWalking:
+                        return [catID isEqualToString:@"3"]
+                            || [cat localizedCaseInsensitiveContainsString:@"walk"]
+                            || [cat localizedCaseInsensitiveContainsString:@"تمشية"];
+                    default: return YES;
+                }
+            }]];
+    }
+
+    // ── Availability filter (Services — based on availableDate) ──
+    NSInteger availVal = [state valueForFilterID:PPFilterIDAvailability];
+    if (availVal != PPFilterAvailabilityAll) {
+        NSDate *today = [NSDate date];
+        filtered = [filtered filteredArrayUsingPredicate:
+            [NSPredicate predicateWithBlock:^BOOL(id obj, NSDictionary *_) {
+                if (![obj isKindOfClass:[ServiceModel class]]) return YES;
+                ServiceModel *svc = (ServiceModel *)obj;
+                NSDate *avail = svc.availableDate;
+                if (!avail) {
+                    return (availVal == PPFilterAvailabilityNow);
+                }
+                if (availVal == PPFilterAvailabilityNow) {
+                    return [avail compare:today] != NSOrderedDescending;
+                }
+                return [avail compare:today] == NSOrderedDescending;
             }]];
     }
 

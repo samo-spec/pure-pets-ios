@@ -56,6 +56,75 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     return [resolved colorWithAlphaComponent:alpha];
 }
 
+static BOOL PPHomeOrderStatusTextContainsAnyKeyword(NSString *text, NSArray<NSString *> *keywords)
+{
+    NSString *normalizedText = [[text ?: @"" lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (normalizedText.length == 0 || keywords.count == 0) {
+        return NO;
+    }
+
+    for (NSString *keyword in keywords) {
+        NSString *candidate = [[keyword ?: @"" lowercaseString] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (candidate.length == 0) {
+            continue;
+        }
+        if ([normalizedText containsString:candidate]) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+static UIColor *PPHomeOrderProcessingAccentColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return UIColor.systemIndigoColor;
+    }
+    return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
+}
+
+static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
+                                               NSString *statusTitle,
+                                               NSString *statusHint,
+                                               NSString *statusIconName)
+{
+    NSString *iconName = [[statusIconName ?: @"" lowercaseString] copy];
+    NSString *combinedText = [NSString stringWithFormat:@"%@ %@", statusTitle ?: @"", statusHint ?: @""];
+
+    if ([iconName containsString:@"xmark"] ||
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"failed", @"cancel", @"declined", @"rejected", @"voided", @"ملغي", @"مرفوض", @"فشل"])) {
+        return UIColor.systemRedColor;
+    }
+
+    if ([iconName containsString:@"checkmark"] ||
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"delivered", @"completed", @"fulfilled", @"تم التسليم", @"مكتمل"])) {
+        return UIColor.systemGreenColor;
+    }
+
+    if ([iconName containsString:@"shippedtruck"] ||
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"shipped", @"shipping", @"transit", @"out for delivery", @"out_for_delivery", @"في الطريق", @"تم الشحن"])) {
+        return UIColor.systemBlueColor;
+    }
+
+    if ([iconName containsString:@"shippingbox"] ||
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"processing", @"preparing", @"packed", @"confirmed", @"قيد المعالجة", @"التجهيز", @"جاري تجهيز", @"تم التأكيد"])) {
+        return PPHomeOrderProcessingAccentColor();
+    }
+
+    if ([iconName containsString:@"creditcard"] ||
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"paid", @"payment", @"approved", @"captured", @"authorized", @"مدفوع", @"تم الدفع"])) {
+        return fallbackColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
+    }
+
+    if ([iconName containsString:@"clock"] ||
+        PPHomeOrderStatusTextContainsAnyKeyword(combinedText, @[@"pending", @"waiting", @"بانتظار", @"قيد الانتظار"])) {
+        return UIColor.systemOrangeColor;
+    }
+
+    return fallbackColor ?: UIColor.systemBlueColor;
+}
+
 
 @implementation PPHomeOrderStatusCell
 
@@ -624,7 +693,12 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     self.collapsedIconView.image = [UIImage systemImageNamed:(statusIconName.length > 0 ? statusIconName : @"shippingbox.circle.fill")];
     self.collapsedChevronView.image = [UIImage systemImageNamed:@"chevron.down"];
 
-    [self pp_applyStatusColor:statusColor ?: UIColor.systemBlueColor];
+    UIColor *resolvedStatusColor = PPHomeOrderResolvedStatusColor(statusColor,
+                                                                  statusTitle,
+                                                                  statusHint,
+                                                                  statusIconName);
+
+    [self pp_applyStatusColor:resolvedStatusColor];
     [self pp_applyPreviewImageURLs:previewImageURLs];
     [self pp_setShowsExpandedState:expanded];
 
@@ -640,12 +714,12 @@ static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallba
     [self pp_configureActionButton:self.trackButton
                              title:resolvedActionTitle
                           iconName:@"location.fill"
-                       statusColor:statusColor
+                       statusColor:resolvedStatusColor
                          isPrimary:YES];
     [self pp_configureActionButton:self.historyButton
                              title:historyActionTitle
                           iconName:@"clock.fill"
-                       statusColor:statusColor
+                       statusColor:resolvedStatusColor
                          isPrimary:NO];
 
     [self setNeedsLayout];

@@ -24,8 +24,9 @@ typedef NS_ENUM(NSInteger, PPProfileSection) {
     PPProfileSectionDetails = 0,
     PPProfileSectionContact,
     PPProfileSectionAddresses,
-    PPProfileSectionPets,       // NEW: Pet Profiles section
-    PPProfileSectionCount       // ensures the count is now 4 instead of 3
+    PPProfileSectionPets,
+    PPProfileSectionLogout,
+    PPProfileSectionCount
 };
 
 typedef NS_ENUM(NSInteger, PPProfileFieldKind) {
@@ -294,7 +295,8 @@ typedef NS_ENUM(NSInteger, PPFilterAccessoryType) {
 typedef NS_ENUM(NSInteger, PPFilterServiceType) {
     PPFilterServiceAll = 0,
     PPFilterServiceTraining,
-    PPFilterServiceGrooming
+    PPFilterServiceGrooming,
+    PPFilterServiceWalking
 };
 
 typedef NS_ENUM(NSInteger, PPSection) {

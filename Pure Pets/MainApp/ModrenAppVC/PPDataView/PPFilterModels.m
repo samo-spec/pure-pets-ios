@@ -14,6 +14,7 @@ NSString * const PPFilterIDServiceType = @"serviceType";
 NSString * const PPFilterIDPrice       = @"price";
 NSString * const PPFilterIDSort        = @"sort";
 NSString * const PPFilterIDHasOffer    = @"hasOffer";
+NSString * const PPFilterIDAvailability = @"availability";
 
 static NSString *PPFilterL(NSString *english, NSString *arabic) {
     return Language.isRTL ? arabic : english;
@@ -273,14 +274,13 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
 
 + (PPFilterState *)pp_foodFilterState
 {
-    PPFilterGroup *condition = [PPFilterGroup
-        groupWithID:PPFilterIDCondition
-              title:PPFilterL(@"Condition", @"الحالة")
-           chipIcon:@"checkmark.seal"
+    PPFilterGroup *offer = [PPFilterGroup
+        groupWithID:PPFilterIDHasOffer
+              title:PPFilterL(@"Offers", @"العروض")
+           chipIcon:@"percent"
             options:@[
-                [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterAccessoryAll],
-                [PPFilterOption optionWithTitle:PPFilterL(@"New", @"جديد") value:PPFilterAccessoryNew],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Used", @"مستعمل") value:PPFilterAccessoryUsed],
+                [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterHasOfferAll],
+                [PPFilterOption optionWithTitle:PPFilterL(@"On Sale", @"عروض فقط") value:PPFilterHasOfferYes icon:@"flame.fill"],
             ]];
 
     PPFilterGroup *price = [PPFilterGroup
@@ -305,7 +305,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
                 [PPFilterOption optionWithTitle:PPFilterL(@"Name A-Z", @"الاسم من الالف للياء") value:PPFilterSortNameAZ],
             ]];
 
-    return [PPFilterState stateWithGroups:@[condition, price, sort]];
+    return [PPFilterState stateWithGroups:@[offer, price, sort]];
 }
 
 #pragma mark — Services
@@ -318,8 +318,19 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
            chipIcon:@"list.bullet"
             options:@[
                 [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterServiceAll],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Training", @"تدريب") value:PPFilterServiceTraining],
-                [PPFilterOption optionWithTitle:PPFilterL(@"Grooming", @"عناية") value:PPFilterServiceGrooming],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Training", @"تدريب") value:PPFilterServiceTraining icon:@"figure.run"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Grooming", @"عناية") value:PPFilterServiceGrooming icon:@"scissors"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Walking", @"تمشية") value:PPFilterServiceWalking icon:@"figure.walk"],
+            ]];
+
+    PPFilterGroup *availability = [PPFilterGroup
+        groupWithID:PPFilterIDAvailability
+              title:PPFilterL(@"Availability", @"التوفر")
+           chipIcon:@"calendar.badge.clock"
+            options:@[
+                [PPFilterOption optionWithTitle:PPFilterL(@"All", @"الكل") value:PPFilterAvailabilityAll],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Available Now", @"متوفر الآن") value:PPFilterAvailabilityNow icon:@"checkmark.circle.fill"],
+                [PPFilterOption optionWithTitle:PPFilterL(@"Upcoming", @"قادم") value:PPFilterAvailabilityUpcoming icon:@"clock.arrow.circlepath"],
             ]];
 
     PPFilterGroup *price = [PPFilterGroup
@@ -344,7 +355,7 @@ static NSString *PPFilterL(NSString *english, NSString *arabic) {
                 [PPFilterOption optionWithTitle:PPFilterL(@"Newest", @"الاحدث") value:PPFilterSortNewest],
             ]];
 
-    return [PPFilterState stateWithGroups:@[type, price, sort]];
+    return [PPFilterState stateWithGroups:@[type, availability, price, sort]];
 }
 
 @end

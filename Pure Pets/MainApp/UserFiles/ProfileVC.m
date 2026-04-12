@@ -177,6 +177,7 @@
 
     [self BellowIos26Buttons];
     [self pp_applyProfileCanvasBackground];
+    [self pp_refreshAvatarImageView];
     [self.tableView reloadData];
 
     __weak typeof(self) weakSelf = self;
@@ -379,9 +380,27 @@
     [self pp_captureProfileDraftBaseline];
     self.pendingAvatarImage = nil;
     self.suppressEditTracking = NO;
+    [self pp_refreshAvatarImageView];
     [self.tableView reloadData];
     [self pp_refreshProfileHeaderContent];
     [self pp_refreshRightNavSaveState];
+}
+
+- (void)pp_refreshAvatarImageView
+{
+    if (self.pendingAvatarImage) {
+        self.avatarIMV.imageView.image = self.pendingAvatarImage;
+        return;
+    }
+    NSURL *avatarURL = PPCurrentUser.UserImageUrl;
+    if (avatarURL.absoluteString.length > 0) {
+        [GM setImageFromUrlString:PPSafeString(avatarURL.absoluteString)
+                        imageView:self.avatarIMV.imageView
+                          phImage:@"person.crop.circle.fill"];
+    } else {
+        self.avatarIMV.imageView.image =
+            [PPModernAvatarRenderer avatarImageForName:PPCurrentUser.UserName size:72];
+    }
 }
 
 #pragma mark - Draft / Dirty State
@@ -425,7 +444,9 @@
     if (hasChanges) {
         [self pp_showSaveButton];
     } else {
-        [self pp_showLogoutButton];
+        [self pp_navBarRemoveButtonForKey:@"saveOrLogout"];
+        [self pp_navBarHideButtonForKey:@"saveOrLogout" hidden:YES animated:NO];
+        //[self pp_navBarHideButtonForKey:@"saveOrLogout"];
     }
 }
 
@@ -952,6 +973,8 @@
             return self.addresses.count + 1;
         case PPProfileSectionPets:
             return 1;
+        case PPProfileSectionLogout:
+            return 1;
         default:
             return 0;
     }
@@ -1072,6 +1095,16 @@
         return cell;
     }
 
+    if (indexPath.section == PPProfileSectionLogout) {
+        PPProfileActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileActionCell" forIndexPath:indexPath];
+        [cell configureWithTitle:(kLang(@"logout") ?: @"Log Out") iconName:@"rectangle.portrait.and.arrow.right"];
+        cell.titleLabel.textColor = UIColor.systemRedColor;
+        cell.iconView.tintColor = UIColor.systemRedColor;
+        cell.accessibilityIdentifier = @"profile_logout_button";
+        cell.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+        return cell;
+    }
+
     if ([self pp_isAddressActionRow:indexPath]) {
         PPProfileActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileActionCell" forIndexPath:indexPath];
         [cell configureWithTitle:kLang(@"Add New Address") iconName:@"plus"];
@@ -1114,6 +1147,9 @@
     if (indexPath.section == PPProfileSectionPets) {
         return YES;
     }
+    if (indexPath.section == PPProfileSectionLogout) {
+        return YES;
+    }
     return [self pp_isAddressRow:indexPath] || [self pp_isAddressActionRow:indexPath];
 }
 
@@ -1129,6 +1165,12 @@
     if (indexPath.section == PPProfileSectionPets) {
         PPPetProfilesViewController *petsVC = [PPPetProfilesViewController new];
         [self.navigationController pushViewController:petsVC animated:YES];
+        return;
+    }
+
+    if (indexPath.section == PPProfileSectionLogout) {
+        [PPFunc triggerLightHaptic];
+        [self logoutTapped];
         return;
     }
 
@@ -1179,6 +1221,8 @@
         case PPProfileSectionAddresses:
         case PPProfileSectionPets:
             return 73.0;
+        case PPProfileSectionLogout:
+            return 24.0;
         default:
             return 0.000001;
     }
@@ -1204,7 +1248,9 @@
     if (indexPath.section == PPProfileSectionPets) {
         return 64.0;
     }
-    
+    if (indexPath.section == PPProfileSectionLogout) {
+        return 56.0;
+    }
         else  if ([self pp_isAddressActionRow:indexPath]) {
             return 64.0;
         }
@@ -1306,7 +1352,7 @@
 
 - (UIView *)tableView:(UITableView *)tableView viewForHeaderInSection:(NSInteger)section
 {
-    if (section >= PPProfileSectionCount) {
+    if (section == PPProfileSectionLogout || section >= PPProfileSectionCount) {
         return [UIView new];
     }
     NSArray<NSString *> *content = [self pp_sectionHeaderContentForSection:section];
