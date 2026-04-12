@@ -32,7 +32,6 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIImageView *heroImageView;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) UILabel *heroCategoryBadgeLabel;
 @property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
 @property (nonatomic, strong) PPPetsTitleView *titleView;
@@ -224,9 +223,6 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 
     self.closeButton = [self pp_topChromeButtonWithSystemName:@"xmark" selector:@selector(closeTapped)];
 
-    self.heroCategoryBadgeLabel = [self pp_badgeLabelWithBackgroundColor:[UIColor colorWithWhite:1.0 alpha:0.86]
-                                                               textColor:AppPrimaryTextClr ?: UIColor.labelColor];
-
     self.titleView = [[PPPetsTitleView alloc] init];
     self.titleView.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleView.backgroundColor = PPBackgroundColorForIOS26([AppForgroundColr colorWithAlphaComponent:0.96]);
@@ -245,7 +241,6 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self.heroContainerView addSubview:self.heroImageView];
     [self.heroContainerView.layer addSublayer:self.heroGradientLayer];
     [self.heroContainerView addSubview:self.closeButton];
-    [self.heroContainerView addSubview:self.heroCategoryBadgeLabel];
     [self.heroContainerView addSubview:self.titleView];
 
     self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:[self pp_heroHeight]];
@@ -264,9 +259,6 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
         [self.closeButton.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor constant:18.0],
         [self.closeButton.widthAnchor constraintEqualToConstant:40.0],
         [self.closeButton.heightAnchor constraintEqualToConstant:40.0],
-
-        [self.heroCategoryBadgeLabel.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor constant:PPServiceViewerSideInset],
-        [self.heroCategoryBadgeLabel.topAnchor constraintEqualToAnchor:self.closeButton.bottomAnchor constant:16.0],
 
         [self.titleView.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor constant:PPServiceViewerSideInset],
         [self.titleView.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor constant:-PPServiceViewerSideInset],
@@ -442,8 +434,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     NSString *priceText = [self pp_priceText];
     NSString *categoryText = [self pp_categoryText];
 
-    self.heroCategoryBadgeLabel.text = [NSString stringWithFormat:@"  %@  ", categoryText];
-    [self.titleView configureWithTitle:title location:providerName price:priceText];
+    [self.titleView configureWithTitle:title location:providerName price:priceText category:categoryText];
     [self.titleView updateMetaPillsWithItems:[self pp_summaryPills]];
 
     self.descriptionBodyLabel.text = self.service.desc.length > 0 ? self.service.desc : kLang(@"service_view_no_description");

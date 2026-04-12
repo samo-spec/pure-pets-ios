@@ -12,8 +12,10 @@
 @interface PPPetsTitleView ()
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *locationLabel;
+@property (nonatomic, strong) UILabel *categoryLabel;
 @property (nonatomic, strong) UIStackView *textStack;
 @property (nonatomic, strong) UIStackView *metaPillsStack;
+@property (nonatomic, strong) UIStackView *trailingStack;
 
 @property (nonatomic, strong) UIView *priceView;
 @property (nonatomic, assign) BOOL isFavorite;
@@ -73,6 +75,16 @@
     [self.titleLabel.heightAnchor constraintEqualToConstant:22].active = YES;
     [self.locationLabel.heightAnchor constraintEqualToConstant:22].active = YES;
 
+    self.categoryLabel = [[UILabel alloc] init];
+    self.categoryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.categoryLabel.font = [GM boldFontWithSize:11.5];
+    self.categoryLabel.textColor = [AppPrimaryClr colorWithAlphaComponent:0.9];
+    self.categoryLabel.textAlignment = NSTextAlignmentCenter;
+    self.categoryLabel.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
+    self.categoryLabel.layer.cornerRadius = 10;
+    self.categoryLabel.layer.masksToBounds = YES;
+    self.categoryLabel.hidden = YES;
+
     self.metaPillsStack = [[UIStackView alloc] init];
     self.metaPillsStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.metaPillsStack.axis = UILayoutConstraintAxisHorizontal;
@@ -94,15 +106,28 @@
 
     [self addSubview:self.textStack];
 
+    self.trailingStack = [[UIStackView alloc] init];
+    self.trailingStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.trailingStack.axis = UILayoutConstraintAxisVertical;
+    self.trailingStack.spacing = 6;
+    self.trailingStack.alignment = UIStackViewAlignmentCenter;
+    self.trailingStack.distribution = UIStackViewDistributionFill;
+    [self addSubview:self.trailingStack];
+
     self.textTrailingConstraint =
-        [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingAnchor constant:-16];
+        [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingStack.leadingAnchor constant:-12];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.textStack.topAnchor constraintEqualToAnchor:self.topAnchor constant:10],
         [self.textStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16],
         self.textTrailingConstraint,
         [self.textStack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-10],
-        [self.metaPillsStack.heightAnchor constraintGreaterThanOrEqualToConstant:24]
+        [self.metaPillsStack.heightAnchor constraintGreaterThanOrEqualToConstant:24],
+
+        [self.trailingStack.topAnchor constraintEqualToAnchor:self.topAnchor constant:6],
+        [self.trailingStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-4],
+        [self.trailingStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-6],
+        [self.trailingStack.widthAnchor constraintEqualToConstant:120]
     ]];
 }
 
@@ -118,24 +143,42 @@
                   location:(nullable NSString *)location
                      price:(nullable NSString *)price
 {
+    [self configureWithTitle:title location:location price:price category:nil];
+}
+
+- (void)configureWithTitle:(NSString *)title
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price
+                  category:(nullable NSString *)category
+{
     self.title = title;
     self.location = location;
     self.price = price;
 
-    [self.priceView removeFromSuperview];
+    for (UIView *v in self.trailingStack.arrangedSubviews) {
+        [self.trailingStack removeArrangedSubview:v];
+        [v removeFromSuperview];
+    }
+
     self.priceView = [self pillViewForItem:[PPInfoPill itemWithIcon:nil text:price ?: @""]];
-    [self addSubview:self.priceView];
+    [self.trailingStack addArrangedSubview:self.priceView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.priceView.topAnchor constraintEqualToAnchor:self.topAnchor constant:6],
-        [self.priceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-6],
-        [self.priceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-4],
-        [self.priceView.widthAnchor constraintEqualToConstant:120]
+        [self.priceView.widthAnchor constraintEqualToConstant:120],
+        [self.priceView.heightAnchor constraintGreaterThanOrEqualToConstant:50]
     ]];
 
-    self.textTrailingConstraint.active = NO;
-    self.textTrailingConstraint =
-        [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.priceView.leadingAnchor constant:-12];
+    if (category.length > 0) {
+        self.categoryLabel.text = [NSString stringWithFormat:@"  %@  ", category];
+        self.categoryLabel.hidden = NO;
+        [self.trailingStack addArrangedSubview:self.categoryLabel];
+        [NSLayoutConstraint activateConstraints:@[
+            [self.categoryLabel.heightAnchor constraintEqualToConstant:24]
+        ]];
+    } else {
+        self.categoryLabel.hidden = YES;
+    }
+
     self.textTrailingConstraint.active = YES;
 }
 

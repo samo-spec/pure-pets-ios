@@ -28,6 +28,11 @@ NS_ASSUME_NONNULL_BEGIN
                   location:(nullable NSString *)location
                      price:(nullable NSString *)price;
 
+- (void)configureWithTitle:(NSString *)title
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price
+                  category:(nullable NSString *)category;
+
 - (void)updateMetaPillsWithItems:(NSArray<PPInfoPill *> *)items;
 
 @end

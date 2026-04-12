@@ -536,9 +536,9 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
 - (void)pp_setBadgeVisible:(BOOL)visible
 {
-    self.badgeContainer.hidden = !visible;
-    self.badgeLabel.hidden = !visible;
-    self.badgeContainerHeightConstraint.constant = visible ? 30.0 : 0.0;
+    self.badgeContainer.hidden = YES;
+    self.badgeLabel.hidden = YES;
+    self.badgeContainerHeightConstraint.constant = 0.0;
 }
 
 - (void)pp_updateSemanticLayout:(BOOL)isRTL
@@ -768,15 +768,15 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         : [UIButtonConfiguration tintedButtonConfiguration];
 
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(10, 16, 10, 16);
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(8, 12, 8, 12); // 🎯 Reduced insets
         cfg.image = icon;
-        cfg.imagePadding = 6;
+        cfg.imagePadding = 4; // 🎯 Reduced padding
         cfg.imagePlacement = Language.isRTL ? NSDirectionalRectEdgeTrailing : NSDirectionalRectEdgeLeading;
         cfg.titleLineBreakMode = NSLineBreakByTruncatingTail;
 
         cfg.attributedTitle = [[NSAttributedString alloc] initWithString:safeTitle
                                                               attributes:@{
-            NSFontAttributeName : (isPrimary ? [GM boldFontWithSize:14] : [GM MidFontWithSize:13]),
+            NSFontAttributeName : (isPrimary ? [GM boldFontWithSize:13] : [GM MidFontWithSize:12]), // 🎯 Smaller font
             NSForegroundColorAttributeName : (isPrimary ? primaryText : secondaryText)
         }];
 
@@ -798,7 +798,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
         [button setTitle:safeTitle forState:UIControlStateNormal];
         [button setTitleColor:(isPrimary ? primaryText : secondaryText) forState:UIControlStateNormal];
-        button.titleLabel.font = isPrimary ? [GM boldFontWithSize:14] : [GM MidFontWithSize:13];
+        button.titleLabel.font = isPrimary ? [GM boldFontWithSize:13] : [GM MidFontWithSize:12]; // 🎯 Smaller font
         [button setImage:icon forState:UIControlStateNormal];
         button.tintColor = isPrimary ? primaryText : secondaryText;
 
@@ -810,11 +810,11 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         ? [UIColor colorWithWhite:1 alpha:0.97]
         : [UIColor colorWithWhite:1 alpha:0.14];
 
-        button.layer.cornerRadius = 20.0;
+        button.layer.cornerRadius = 17.0; // 🎯 Adjusted for 34 height
         button.layer.borderWidth = isPrimary ? 0.0 : 1.0;
         button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.16].CGColor;
         button.layer.masksToBounds = NO;
-        button.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
+        button.contentEdgeInsets = UIEdgeInsetsMake(8, 12, 8, 12); // 🎯 Reduced insets
     }
 
     if (@available(iOS 13.0, *)) {
