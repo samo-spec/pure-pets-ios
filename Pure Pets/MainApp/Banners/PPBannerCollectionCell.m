@@ -338,7 +338,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _badgeLabel.font = [GM boldFontWithSize:12];
     _badgeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.98];
     [_badgeContainer addSubview:_badgeLabel];
-    [_contentStack addArrangedSubview:_badgeContainer];
+    // [_contentStack addArrangedSubview:_badgeContainer]; // 🎯 Removed badge from stack to give text more space
     _badgeContainer.hidden = YES;
     _badgeLabel.hidden = YES;
     _titleLabel = [UILabel new];
@@ -373,23 +373,23 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _primaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _primaryButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _primaryButton.titleLabel.font = [GM boldFontWithSize:14];
+    _primaryButton.titleLabel.font = [GM boldFontWithSize:13]; // 🎯 Slightly smaller font
     [_primaryButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_primaryButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_primaryButton addTarget:self action:@selector(primaryButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [_buttonsRow addArrangedSubview:_primaryButton];
-    [_primaryButton.heightAnchor constraintEqualToConstant:40.0].active = YES;
-    [_primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:48.0].active = YES;
+    [_primaryButton.heightAnchor constraintEqualToConstant:34.0].active = YES; // 🎯 Decreased size
+    [_primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:44.0].active = YES;
 
     _secondaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _secondaryButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _secondaryButton.titleLabel.font = [GM MidFontWithSize:13];
+    _secondaryButton.titleLabel.font = [GM MidFontWithSize:12]; // 🎯 Slightly smaller font
     [_secondaryButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_secondaryButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_secondaryButton addTarget:self action:@selector(secondaryButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [_buttonsRow addArrangedSubview:_secondaryButton];
-    [_secondaryButton.heightAnchor constraintEqualToConstant:40.0].active = YES;
-    [_secondaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:48.0].active = YES;
+    [_secondaryButton.heightAnchor constraintEqualToConstant:34.0].active = YES; // 🎯 Decreased size
+    [_secondaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:44.0].active = YES;
 
     _characterGlowView = [UIView new];
     _characterGlowView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -460,10 +460,10 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [_badgeLabel.topAnchor constraintEqualToAnchor:_badgeContainer.topAnchor constant:6.0],
         [_badgeLabel.bottomAnchor constraintEqualToAnchor:_badgeContainer.bottomAnchor constant:-6.0],
 
-        [_buttonsRow.leadingAnchor constraintEqualToAnchor:_buttonsContainer.leadingAnchor],
+        [_buttonsRow.trailingAnchor constraintEqualToAnchor:_buttonsContainer.trailingAnchor], // 🎯 Moved to trail
         [_buttonsRow.topAnchor constraintEqualToAnchor:_buttonsContainer.topAnchor],
         [_buttonsRow.bottomAnchor constraintEqualToAnchor:_buttonsContainer.bottomAnchor],
-        [_buttonsRow.trailingAnchor constraintLessThanOrEqualToAnchor:_buttonsContainer.trailingAnchor],
+        [_buttonsRow.leadingAnchor constraintGreaterThanOrEqualToAnchor:_buttonsContainer.leadingAnchor], // 🎯 Flexible leading to stick to trail
 
         [_characterGlowView.centerYAnchor constraintEqualToAnchor:_cardSurface.centerYAnchor constant:4.0],
         [_characterGlowView.widthAnchor constraintEqualToConstant:112.0],
