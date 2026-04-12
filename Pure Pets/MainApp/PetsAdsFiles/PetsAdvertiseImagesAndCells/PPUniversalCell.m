@@ -1663,7 +1663,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     for (NSLayoutConstraint *c in self.serviceConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.carouselConstraints) c.active = NO;
 
-    
+    self.reasonBadgeServiceCenterYConstraint.active = NO;
+    self.reasonBadgeServiceTrailingConstraint.active = NO;
 
     self.layoutMode = mode;
     [self.discountValueLabel sizeToFit];
