@@ -148,7 +148,6 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 @property (nonatomic, strong) UIStackView *contentStack;
 @property (nonatomic, strong) UIView *badgeContainer;
 @property (nonatomic, strong) UILabel *badgeLabel;
-@property (nonatomic, strong) NSLayoutConstraint *badgeContainerHeightConstraint;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UIView *buttonsContainer;
@@ -453,7 +452,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [_contentStack.topAnchor constraintEqualToAnchor:_contentPanelView.topAnchor constant:14.0],
         [_contentStack.bottomAnchor constraintEqualToAnchor:_contentPanelView.bottomAnchor constant:-14.0],
 
-        self.badgeContainerHeightConstraint = [_badgeContainer.heightAnchor constraintEqualToConstant:0.0],
+        [_badgeContainer.heightAnchor constraintEqualToConstant:0.0],
 
         [_badgeLabel.leadingAnchor constraintEqualToAnchor:_badgeContainer.leadingAnchor constant:12.0],
         [_badgeLabel.trailingAnchor constraintEqualToAnchor:_badgeContainer.trailingAnchor constant:-12.0],
@@ -537,8 +536,6 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 - (void)pp_setBadgeVisible:(BOOL)visible
 {
     self.badgeContainer.hidden = !visible;
-    self.badgeLabel.hidden = !visible;
-    self.badgeContainerHeightConstraint.constant = visible ? 30.0 : 0.0;
 }
 
 - (void)pp_updateSemanticLayout:(BOOL)isRTL

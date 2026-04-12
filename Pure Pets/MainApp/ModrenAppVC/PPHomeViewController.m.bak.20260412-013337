@@ -6406,30 +6406,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeCartButton = [self pp_ButtonWithSystemName:@"cart" action:@selector(cartClick)];
     self.homeCartButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart", @"Shopping cart");
     self.homeCartButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_hint", @"Double-tap to open your cart");
-
-    BOOL didNormalizeCartButtonSize = NO;
-    for (NSLayoutConstraint *constraint in self.homeCartButton.constraints) {
-        if (constraint.firstItem == self.homeCartButton &&
-            (constraint.firstAttribute == NSLayoutAttributeWidth ||
-             constraint.firstAttribute == NSLayoutAttributeHeight) &&
-            constraint.constant == 44.0) {
-            constraint.constant = 36.0;
-            didNormalizeCartButtonSize = YES;
-        }
-    }
-
-    if (didNormalizeCartButtonSize) {
-        if (@available(iOS 15.0, *)) {
-            UIButtonConfiguration *configuration = self.homeCartButton.configuration;
-            if (configuration) {
-                configuration.background.cornerRadius = 18.0;
-                self.homeCartButton.configuration = configuration;
-            }
-        } else {
-            self.homeCartButton.layer.cornerRadius = 18.0;
-        }
-    }
-
     return [[UIBarButtonItem alloc] initWithCustomView:self.homeCartButton];
 }
 

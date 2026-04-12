@@ -2441,14 +2441,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     sectionsControl.translatesAutoresizingMaskIntoConstraints = NO;
     sectionsControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     sectionsControl.accessibilityIdentifier = @"pp.data.sectionsTabBar";
-    sectionsControl.containerBackgroundColor = [AppBackgroundClrDarker colorWithAlphaComponent:0.16];
+    sectionsControl.containerBackgroundColor = [AppBackgroundClrLigter colorWithAlphaComponent:0.86];
     sectionsControl.normalTextColor = UIColor.secondaryLabelColor;
     sectionsControl.selectedTextColor = [UIColor colorWithWhite:1.0 alpha:0.94];
     sectionsControl.selectedSegmentColor = AppPrimaryClr;
     sectionsControl.normalFont = [GM MidFontWithSize:13];
     sectionsControl.selectedFont = [GM boldFontWithSize:13];
     sectionsControl.layer.cornerRadius = 17.0;
-    sectionsControl.layer.borderWidth = 1.0;
+    sectionsControl.layer.borderWidth = 0.0;
     sectionsControl.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
     if (@available(iOS 13.0, *)) {
         sectionsControl.layer.cornerCurve = kCACornerCurveContinuous;

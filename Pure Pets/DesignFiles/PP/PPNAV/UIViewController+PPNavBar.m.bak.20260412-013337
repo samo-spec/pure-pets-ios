@@ -1464,9 +1464,8 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 {
     
     // --- 2️⃣ Animation (if not logged in)
-        LOTAnimationView *animationView = nil;
-    if (!PPCurrentFIRAuthUser &&
-        [[NSBundle mainBundle] pathForResource:@"AddUserIconAnimation" ofType:@"json"].length > 0) {
+    LOTAnimationView *animationView = nil;
+    if (!PPCurrentFIRAuthUser) {
         animationView = [LOTAnimationView animationNamed:@"AddUserIconAnimation"];
         animationView.translatesAutoresizingMaskIntoConstraints = NO;
         animationView.loopAnimation = YES;

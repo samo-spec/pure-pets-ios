@@ -427,7 +427,7 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     self.selectionGradientLayer.frame = self.selectionIndicatorView.bounds;
     self.selectionGradientLayer.cornerRadius = indicatorRadius;
     self.selectionIndicatorView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.selectionIndicatorView.bounds cornerRadius:indicatorRadius].CGPath;
-
+    [Styling addLiquidGlassBorderToView:self.containerFillView];
     [self pp_updateSelectionIndicatorMetrics];
 }
 
@@ -469,6 +469,7 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
 {
     _containerBackgroundColor = containerBackgroundColor ?: PPModrenSegmrntedDefaultContainerColor();
     self.containerFillView.backgroundColor = _containerBackgroundColor;
+   
 }
 
 - (void)setSelectedSegmentColor:(UIColor *)selectedSegmentColor

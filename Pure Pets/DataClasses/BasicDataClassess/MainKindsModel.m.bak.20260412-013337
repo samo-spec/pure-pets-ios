@@ -82,7 +82,7 @@
         self.PetColor = dictionary[@"PetColor"];
         self.KindImageNamed = dictionary[@"KindImageNamed"];
         self.KindIconName = dictionary[@"KindIconName"];
-        self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
+        self.KindImageFile = [UIImage imageNamed:self.KindImageNamed];
         self.KindImageUrl = dictionary[@"KindImageUrl"];
         self.SubKindsArray = [[NSMutableArray<SubKindModel *> alloc] init];
         NSMutableDictionary *dic =dictionary[@"SubKindsArray"];
@@ -108,7 +108,7 @@
         self.KindImageNamed = snapshot.data[@"KindImageNamed"];
         self.KindImageUrl = snapshot.data[@"KindImageUrl"];
         self.KindIconName = snapshot.data[@"KindIconName"];
-        self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
+        self.KindImageFile = [UIImage imageNamed:self.KindImageNamed];
         //NSLog(@"[ImageLoader] KindImageUrl %@", self.KindImageUrl);
         
         // ✅ Correct type conversion
@@ -140,7 +140,7 @@
         self.KindImageNamed = data[@"KindImageNamed"];
         self.KindIconName = data[@"KindIconName"];
         self.KindImageUrl = data[@"KindImageUrl"];
-        self.KindImageFile = (self.KindImageNamed.length > 0) ? [UIImage imageNamed:self.KindImageNamed] : nil;
+        self.KindImageFile = [UIImage imageNamed:self.KindImageNamed];
         //NSLog(@"[ImageLoader] KindImageUrl %@", self.KindImageUrl);
         
         // ✅ Correct type conversion

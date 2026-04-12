@@ -52,7 +52,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     _glassBackdrop.layer.cornerRadius = 20.0;
     _glassBackdrop.layer.masksToBounds = YES;
     _glassBackdrop.layer.borderWidth = 0.5;
-    _glassBackdrop.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    _glassBackdrop.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.88].CGColor;
     [self.view addSubview:_glassBackdrop];
 
     _sectionTitleLabel = [UILabel new];

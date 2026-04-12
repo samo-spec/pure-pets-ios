@@ -642,7 +642,7 @@ NS_ASSUME_NONNULL_BEGIN
     qtyLabel.text = @"0";
     qtyLabel.font = [GM boldFontWithSize:16];
     qtyLabel.textAlignment = NSTextAlignmentCenter;
-    qtyLabel.textColor = AppForgroundColr;
+    qtyLabel.textColor = AppPrimaryClr;
     NSLayoutConstraint *w =
     [qtyLabel.widthAnchor constraintGreaterThanOrEqualToConstant:36];
     w.priority = UILayoutPriorityDefaultHigh;

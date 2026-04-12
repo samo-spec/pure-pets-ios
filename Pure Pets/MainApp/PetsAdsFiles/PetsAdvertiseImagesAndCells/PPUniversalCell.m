@@ -563,7 +563,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.qtyLabel = [self createQtyLabel];
     self.stepperView = [self createStepperView];
 
-    UIStackView *stepperStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.minusBtn, self.qtyLabel, self.plusBtn]];
+    UIStackView *stepperStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.plusBtn, self.qtyLabel,self.minusBtn]];
     stepperStack.translatesAutoresizingMaskIntoConstraints = NO;
     stepperStack.axis = UILayoutConstraintAxisHorizontal;
     stepperStack.alignment = UIStackViewAlignmentCenter;
