@@ -56,7 +56,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 @property (nonatomic, strong) UILabel *actionsTitleLabel;
 @property (nonatomic, strong) UIStackView *actionsStackView;
 @property (nonatomic, strong) UIButton *shareActionButton;
-@property (nonatomic, strong) UIButton *copyNumberActionButton;
+@property (nonatomic, strong) UIButton *PhoneActionButton;
 @property (nonatomic, strong, nullable) UIButton *reportActionButton;
 
 @property (nonatomic, strong) UserModel *ownerModel;
@@ -534,13 +534,13 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
                                                            title:kLang(@"Share")
                                                             tint:AppPrimaryClr ?: UIColor.systemBlueColor
                                                          selector:@selector(shareTapped)];
-    self.copyNumberActionButton = [self pp_actionTileButtonWithSymbol:@"doc.on.doc"
-                                                                title:kLang(@"service_view_copy_number")
-                                                                 tint:[UIColor colorWithRed:0.20 green:0.62 blue:0.58 alpha:1.0]
-                                                              selector:@selector(copyNumberTapped)];
+    self.PhoneActionButton = [self pp_actionTileButtonWithSymbol:@"doc.on.doc"
+                                                               title:kLang(@"service_view_copy_number")
+                                                                tint:[UIColor colorWithRed:0.20 green:0.62 blue:0.58 alpha:1.0]
+                                                             selector:@selector(copyNumberTapped)];
 
     [self.actionsStackView addArrangedSubview:self.shareActionButton];
-    [self.actionsStackView addArrangedSubview:self.copyNumberActionButton];
+    [self.actionsStackView addArrangedSubview:self.PhoneActionButton];
 
     if (![self pp_isOwnedByCurrentUser]) {
         self.reportActionButton = [self pp_actionTileButtonWithSymbol:@"flag.fill"
@@ -697,8 +697,8 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 
 - (void)pp_updateActionAvailability {
     BOOL canCopyNumber = self.ownerModel.MobileNo.length > 0;
-    self.copyNumberActionButton.enabled = canCopyNumber;
-    self.copyNumberActionButton.alpha = canCopyNumber ? 1.0 : 0.58;
+    self.PhoneActionButton.enabled = canCopyNumber;
+    self.PhoneActionButton.alpha = canCopyNumber ? 1.0 : 0.58;
 }
 
 #pragma mark - Motion

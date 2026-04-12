@@ -1793,29 +1793,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
-
-    // Orthogonal scrolling sections (QuickActions) may not layout their cells
-    // correctly on the first pass.  Force a deferred invalidation so the
-    // internal scroll view triggers proper cell sizing.
-    __weak typeof(self) weakBase = self;
-    dispatch_async(dispatch_get_main_queue(), ^{
-        __strong typeof(weakBase) self = weakBase;
-        if (!self || !self.collectionView) return;
-        [self.collectionView.collectionViewLayout invalidateLayout];
-        [self.collectionView layoutIfNeeded];
-    });
 }
 
 - (void)pp_scheduleInitialMainKindsLayoutRefresh
 {
+    // Single deferred layout pass for orthogonal QuickActions + MainKinds sizing.
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || !self.collectionView) {
-            return;
-        }
-
-        if ([self sectionIndexForType:PPHomeSectionMainKinds] == NSNotFound) {
             return;
         }
 
@@ -2100,8 +2086,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         section == PPHomeSectionAdsNearBy ||
         section == PPHomeSectionCurrentOrders ||
         section == PPHomeSectionPetProfile ||
-        section == PPHomeSectionAdopt) {
-        // 🔒 Prevent visual flicker on frequently refreshed sections.
+        section == PPHomeSectionAdopt ||
+        section == PPHomeSectionAccessories ||
+        section == PPHomeSectionMainKinds) {
+        // 🔒 Prevent visual jumping on sections that fill from empty.
         animate = NO;
         if (section == PPHomeSectionSuggestions) {
             self.didFillSuggestionsOnce = YES;
@@ -3992,6 +3980,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 
 
+
+
 #pragma mark - DataSource
 - (void)configureDataSource {
     __weak typeof(self) weakSelf = self;
@@ -4698,9 +4688,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             self.accessories = sorted;
             self.accessoriesLoaded = YES;
             [self pp_refreshBuyAgainSection];
+
+            // Batch all section reloads into a single layout pass
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
             [self reloadSection:PPHomeSectionCurrentOrders];
             [self reloadSection:PPHomeSectionAccessories];
             [self reloadSection:PPHomeSectionSuggestions];
+            [CATransaction commit];
+
             [self tryApplySnapshot];
             [self pp_prefetchTopImagesWithLimit:20];
         });
@@ -6948,55 +6944,89 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return sorted.firstObject;
 }
 
-
-
 - (void)fillCarouselBanner
 {
+    if (!self.dataSource) return;
+
     NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
-
-    NSArray *items =
+    NSArray *carouselItems =
         [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionCarousel)];
-    if (items.count == 0) return;
+    if (carouselItems.count == 0) return;
 
-    PPHomeItem *item = items.firstObject;
-
+    // Resolve promo cards: Firestore → legacy banners → fallback
     NSArray<PPHomePromoCarouselCard *> *promoCards = self.promoCarouselCards;
-    if (promoCards.count > 0) {
-        item.payload = promoCards;
-        [snapshot reloadItemsWithIdentifiers:@[item]];
-        [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
-        return;
-    }
-
-    MainBannerModel *homeTop = [self pp_homeTopCarouselBannerGroup];
-
-    NSArray<PPHomePromoCarouselCard *> *legacyPromoCards = [self pp_promoCardsFromLegacyBannerGroup:homeTop];
-    if (legacyPromoCards.count > 0) {
-        item.payload = legacyPromoCards;
-        [snapshot reloadItemsWithIdentifiers:@[item]];
-        [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
-        return;
-    }
-
-    if (!homeTop || homeTop.childBanners.count == 0) {
-        NSArray<PPHomePromoCarouselCard *> *fallbackCards = [self pp_homePromoFallbackCards];
-        if (fallbackCards.count > 0) {
-            item.payload = fallbackCards;
-            [snapshot reloadItemsWithIdentifiers:@[item]];
-            [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
-            return;
+    if (promoCards.count == 0) {
+        MainBannerModel *legacyGroup = [self pp_homeTopCarouselBannerGroup];
+        if (legacyGroup && legacyGroup.childBanners.count > 0) {
+            promoCards = [self pp_promoCardsFromLegacyBannerGroup:legacyGroup];
         }
-        item.payload = [NSNull null];
-        [snapshot reloadItemsWithIdentifiers:@[item]];
-        [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
-        return;
+    }
+    if (promoCards.count == 0) {
+        promoCards = [self pp_homePromoFallbackCards];
     }
 
-    item.payload = homeTop;
+    // Replace existing carousel item(s) with a single item carrying promo cards
+    [snapshot deleteItemsWithIdentifiers:carouselItems];
 
-    [snapshot reloadItemsWithIdentifiers:@[item]];
+    PPHomeItem *carouselItem = [PPHomeItem new];
+    carouselItem.payload = promoCards;
+    [snapshot appendItemsWithIdentifiers:@[carouselItem]
+               intoSectionWithIdentifier:@(PPHomeSectionCarousel)];
+
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
 }
+
+/*
+ - (void)fillCarouselBanner
+ {
+     NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+
+     NSArray *items =
+         [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionCarousel)];
+     if (items.count == 0) return;
+
+     PPHomeItem *item = items.firstObject;
+
+     NSArray<PPHomePromoCarouselCard *> *promoCards = self.promoCarouselCards;
+     if (promoCards.count > 0) {
+         item.payload = promoCards;
+         [snapshot reloadItemsWithIdentifiers:@[item]];
+         [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+         return;
+     }
+
+     MainBannerModel *homeTop = [self pp_homeTopCarouselBannerGroup];
+
+     NSArray<PPHomePromoCarouselCard *> *legacyPromoCards = [self pp_promoCardsFromLegacyBannerGroup:homeTop];
+     if (legacyPromoCards.count > 0) {
+         item.payload = legacyPromoCards;
+         [snapshot reloadItemsWithIdentifiers:@[item]];
+         [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+         return;
+     }
+
+     if (!homeTop || homeTop.childBanners.count == 0) {
+         NSArray<PPHomePromoCarouselCard *> *fallbackCards = [self pp_homePromoFallbackCards];
+         if (fallbackCards.count > 0) {
+             item.payload = fallbackCards;
+             [snapshot reloadItemsWithIdentifiers:@[item]];
+             [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+             return;
+         }
+         item.payload = [NSNull null];
+         [snapshot reloadItemsWithIdentifiers:@[item]];
+         [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+         return;
+     }
+
+     item.payload = homeTop;
+
+     [snapshot reloadItemsWithIdentifiers:@[item]];
+     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+ }
+ */
+
+
 
 
 - (UIView *)pp_profileViewWithImage:(UIImage *_Nullable)image

@@ -814,7 +814,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension absoluteDimension:cardSize.width]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:cardSize.height]];
+     [NSCollectionLayoutDimension absoluteDimension:cardSize.height * 1.2]];
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:groupSize

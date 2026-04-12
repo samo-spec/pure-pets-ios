@@ -241,7 +241,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _cardSurface = [UIView new];
     _cardSurface.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardSurface.layer.cornerRadius = PPNewCorner;
+    _cardSurface.layer.cornerRadius = 26.0;
     _cardSurface.layer.masksToBounds = YES;
     _cardSurface.backgroundColor = UIColor.systemOrangeColor;
     if (@available(iOS 13.0, *)) {
@@ -1395,7 +1395,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 {
     [super layoutSubviews];
     self.shadowContainer.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.shadowContainer.bounds cornerRadius:PPNewCorner].CGPath;
+        [UIBezierPath bezierPathWithRoundedRect:self.shadowContainer.bounds cornerRadius:26.0].CGPath;
 }
 
 - (void)prepareForReuse
