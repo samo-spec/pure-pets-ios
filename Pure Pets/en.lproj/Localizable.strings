@@ -1262,6 +1262,7 @@
 "New" = "New";
 "Used" = "Used";
 "Not specified" = "Not specified";
+"not available" = "not available";
 "Accessory" = "Accessory";
 "Food" = "Food";
 "Unknown" = "Unknown";

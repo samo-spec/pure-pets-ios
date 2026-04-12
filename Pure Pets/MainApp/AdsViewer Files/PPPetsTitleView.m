@@ -17,6 +17,7 @@
 @property (nonatomic, strong) UIStackView *metaPillsStack;
 @property (nonatomic, strong) UIStackView *trailingStack;
 
+@property (nonatomic, strong) UIVisualEffectView *blurView;
 @property (nonatomic, strong) UIView *priceView;
 @property (nonatomic, assign) BOOL isFavorite;
 
@@ -173,7 +174,8 @@
         self.categoryLabel.hidden = NO;
         [self.trailingStack addArrangedSubview:self.categoryLabel];
         [NSLayoutConstraint activateConstraints:@[
-            [self.categoryLabel.heightAnchor constraintEqualToConstant:24]
+            [self.categoryLabel.heightAnchor constraintEqualToConstant:24],
+            [self.categoryLabel.widthAnchor constraintEqualToConstant:120]
         ]];
     } else {
         self.categoryLabel.hidden = YES;
@@ -206,6 +208,32 @@
     }
 
     [self animatePillsIn];
+}
+
+- (void)enableBlurBackgroundWithStyle:(UIBlurEffectStyle)style {
+    if (self.blurView) {
+        [self.blurView removeFromSuperview];
+    }
+    
+    UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:style];
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.blurView.layer.cornerRadius = self.layer.cornerRadius;
+    self.blurView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.blurView.layer.cornerCurve = self.layer.cornerCurve;
+    }
+    
+    [self insertSubview:self.blurView atIndex:0];
+    
+    [NSLayoutConstraint activateConstraints:@[
+        [self.blurView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.blurView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+    ]];
+    
+    self.backgroundColor = UIColor.clearColor;
 }
 
 - (void)didMoveToWindow

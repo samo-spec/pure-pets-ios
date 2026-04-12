@@ -465,12 +465,12 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [_buttonsRow.bottomAnchor constraintEqualToAnchor:_buttonsContainer.bottomAnchor],
         [_buttonsRow.leadingAnchor constraintGreaterThanOrEqualToAnchor:_buttonsContainer.leadingAnchor], // 🎯 Flexible leading to stick to trail
 
-        [_characterGlowView.centerYAnchor constraintEqualToAnchor:_cardSurface.centerYAnchor constant:4.0],
+        [_characterGlowView.centerYAnchor constraintEqualToAnchor:_cardSurface.centerYAnchor],
         [_characterGlowView.widthAnchor constraintEqualToConstant:112.0],
         [_characterGlowView.heightAnchor constraintEqualToConstant:112.0],
 
         [_characterImageView.centerXAnchor constraintEqualToAnchor:_characterGlowView.centerXAnchor],
-        [_characterImageView.centerYAnchor constraintEqualToAnchor:_characterGlowView.centerYAnchor constant:4.0],
+        [_characterImageView.centerYAnchor constraintEqualToAnchor:_characterGlowView.centerYAnchor],
         [_characterImageView.widthAnchor constraintEqualToConstant:122.0],
         [_characterImageView.heightAnchor constraintEqualToConstant:122.0],
     ]];

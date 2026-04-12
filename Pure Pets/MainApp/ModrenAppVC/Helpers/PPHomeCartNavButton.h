@@ -8,4 +8,5 @@
 
 @interface PPHomeCartNavButton : UIControl
 - (void)updateCount:(NSInteger)count animated:(BOOL)animated;
+- (void)setIconName:(NSString *)iconName;
 @end

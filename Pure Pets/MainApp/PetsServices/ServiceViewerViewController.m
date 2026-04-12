@@ -225,8 +225,8 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 
     self.titleView = [[PPPetsTitleView alloc] init];
     self.titleView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleView.backgroundColor = PPBackgroundColorForIOS26([AppForgroundColr colorWithAlphaComponent:0.96]);
     self.titleView.layer.cornerRadius = 28.0;
+    [self.titleView enableBlurBackgroundWithStyle:UIBlurEffectStyleExtraLight];
     self.titleView.layer.borderWidth = 1.0;
     self.titleView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.16].CGColor;
     self.titleView.layer.shadowColor = UIColor.blackColor.CGColor;
@@ -574,7 +574,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 }
 
 - (NSString *)pp_categoryText {
-    return self.service.category.length > 0 ? self.service.category : kLang(@"Not specified");
+    return self.service.category.length > 0 ? self.service.category : kLang(@"not available");
 }
 
 - (NSString *)pp_petKindText {

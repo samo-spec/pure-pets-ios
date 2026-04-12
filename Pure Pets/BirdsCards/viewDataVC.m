@@ -7,6 +7,8 @@
 
 #import "viewDataVC.h"
 #import "AppDelegate.h"
+#import "PPHomeCartNavButton.h"
+#import "CartManager.h"
 
 
 typedef enum : NSUInteger {
@@ -35,6 +37,8 @@ typedef enum : NSUInteger {
 @property (nonatomic, assign) BOOL didSetupTableConstraints;
 @property (nonatomic, assign) CGSize lastEmptyCardGradientSize;
 @property (nonatomic, assign) CGSize lastBottomActionsGradientSize;
+@property (nonatomic, strong) PPHomeCartNavButton *cartNavButton;
+@property (nonatomic, strong) PPHomeCartNavButton *dismissNavButton;
 
  @end
 
@@ -143,6 +147,11 @@ typedef enum : NSUInteger {
     
     [self initializeForm];
         
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_cartDidUpdate)
+                                                 name:kCartUpdatedNotification
+                                               object:nil];
+
     self.tableView.layer.cornerRadius = 0;
     self.tableView.separatorInset = UIEdgeInsetsMake(0, 25, 0, 25);
     self.tableView.backgroundColor = UIColor.clearColor;
@@ -709,17 +718,41 @@ else if(indexPath.row == 5){
     [super viewWillAppear:animated];
     
     UIButton *titleView = (UIButton *)[self pp_viewWithTitle:[NSString stringWithFormat:@"%@ (%@)",PPSafeString(self.cardModel.subKindString),PPSafeString(self.cardModel.RingID)] Subtitle:self.cardModel.CardTitle Image:nil showBackround:YES];
-    //titleView.backgroundColor = AppClearClr;
     [self addBlurToView:titleView style:UIBlurEffectStyleSystemChromeMaterial cornerRadius:22];
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title: _cardModel.CardTitle showBack:NO];
     
-    UIBarButtonItem *editBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"pencil.and.scribble"]  style:UIBarButtonItemStylePlain target:self action:@selector(editTapped:)];
-    self.navigationItem.rightBarButtonItems = @[editBarButtonItem];
+    // 1. Setup Cart Button
+    self.cartNavButton = [[PPHomeCartNavButton alloc] init];
+    [self.cartNavButton addTarget:self action:@selector(pp_openCart) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *cartItem = [[UIBarButtonItem alloc] initWithCustomView:self.cartNavButton];
     
-    UIBarButtonItem *dismiss = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"multiply"] style:UIBarButtonItemStylePlain target:self action:@selector(dismiss)];
-    self.navigationItem.leftBarButtonItem = dismiss;
+    // 2. Setup Edit Button
+    UIBarButtonItem *editBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"pencil.and.scribble"]  style:UIBarButtonItemStylePlain target:self action:@selector(editTapped:)];
+    
+    self.navigationItem.rightBarButtonItems = @[cartItem, editBarButtonItem];
+    
+    // 3. Setup Dismiss Button (using PPHomeCartNavButton for the "badge bellow" requirement)
+    self.dismissNavButton = [[PPHomeCartNavButton alloc] init];
+    [self.dismissNavButton setIconName:@"multiply"];
+    [self.dismissNavButton addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
+    UIBarButtonItem *dismissItem = [[UIBarButtonItem alloc] initWithCustomView:self.dismissNavButton];
+    self.navigationItem.leftBarButtonItem = dismissItem;
     
     [self pp_navBarSetTitleViewCentered:titleView];
+    [self pp_cartDidUpdate];
+}
+
+- (void)pp_cartDidUpdate {
+    NSInteger count = [[CartManager sharedManager] totalItemsCount];
+    [self.cartNavButton updateCount:count animated:YES];
+}
+
+- (void)pp_openCart {
+    // Open cart view controller
+    UIViewController *cartVC = [[NSClassFromString(@"CartViewController") alloc] init];
+    if (cartVC) {
+        [self.navigationController pushViewController:cartVC animated:YES];
+    }
 }
 
 -(void)dismiss
@@ -908,6 +941,11 @@ else if(indexPath.row == 5){
 {
     return 0.00001;
 }
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
 @end
 
 

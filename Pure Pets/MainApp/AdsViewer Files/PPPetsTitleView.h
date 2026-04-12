@@ -35,6 +35,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)updateMetaPillsWithItems:(NSArray<PPInfoPill *> *)items;
 
+- (void)enableBlurBackgroundWithStyle:(UIBlurEffectStyle)style;
+
 @end
 
 NS_ASSUME_NONNULL_END

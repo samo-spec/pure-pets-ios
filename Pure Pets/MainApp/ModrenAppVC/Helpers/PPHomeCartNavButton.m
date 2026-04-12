@@ -109,12 +109,21 @@
     _badgeMinWidthConstraint.active = YES;
     [NSLayoutConstraint activateConstraints:@[
         [badgeLabel.heightAnchor constraintEqualToConstant:17.0],
-        [badgeLabel.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:1.0],
-        [badgeLabel.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-1.0]
+        [badgeLabel.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:3.0], // Positioned "bellow"
+        [badgeLabel.centerXAnchor constraintEqualToAnchor:surfaceView.centerXAnchor] // Centered below icon
     ]];
 
     [self pp_applyPalette];
     return self;
+}
+
+- (void)setIconName:(NSString *)iconName {
+    _iconView.image = [UIImage pp_symbolNamed:iconName
+                                    pointSize:18
+                                       weight:UIImageSymbolWeightSemibold
+                                        scale:UIImageSymbolScaleMedium
+                                      palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
+                                 makeTemplate:YES];
 }
 
 - (void)layoutSubviews
