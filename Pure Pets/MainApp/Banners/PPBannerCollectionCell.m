@@ -409,11 +409,11 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
      
 
-    _contentLeadingLTRConstraint = [self.contentPanelView.leadingAnchor constraintEqualToAnchor:_cardSurface.leadingAnchor constant:16.0];
-    _contentTrailingRTLConstraint = [self.contentPanelView.trailingAnchor constraintEqualToAnchor:_cardSurface.trailingAnchor constant:-16.0];
-    _contentTrailingToImageLTRConstraint = [self.contentPanelView.trailingAnchor constraintLessThanOrEqualToAnchor:_characterGlowView.leadingAnchor constant:-18.0];
-    _contentLeadingToImageRTLConstraint = [self.contentPanelView.leadingAnchor constraintGreaterThanOrEqualToAnchor:_characterGlowView.trailingAnchor constant:18.0];
-    _imageTrailingLTRConstraint = [_characterGlowView.trailingAnchor constraintEqualToAnchor:_cardSurface.trailingAnchor constant:-12.0];
+    _contentLeadingLTRConstraint = [self.contentPanelView.leadingAnchor constraintEqualToAnchor:_characterGlowView.trailingAnchor constant:12.0];
+    _contentTrailingRTLConstraint = [self.contentPanelView.trailingAnchor constraintEqualToAnchor:_cardSurface.trailingAnchor constant:-12.0];
+    _contentTrailingToImageLTRConstraint = [self.contentPanelView.trailingAnchor constraintEqualToAnchor:_cardSurface.trailingAnchor constant:-12.0];
+    _contentLeadingToImageRTLConstraint = [self.contentPanelView.leadingAnchor constraintEqualToAnchor:_characterGlowView.trailingAnchor constant:12.0];
+    _imageTrailingLTRConstraint = [_characterGlowView.leadingAnchor constraintEqualToAnchor:_cardSurface.leadingAnchor constant:12.0];
     _imageLeadingRTLConstraint = [_characterGlowView.leadingAnchor constraintEqualToAnchor:_cardSurface.leadingAnchor constant:12.0];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -441,7 +441,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
         [_contentPanelView.topAnchor constraintEqualToAnchor:_cardSurface.topAnchor constant:12.0],
         [_contentPanelView.bottomAnchor constraintLessThanOrEqualToAnchor:_cardSurface.bottomAnchor constant:-12.0],
-        [_contentPanelView.widthAnchor constraintLessThanOrEqualToAnchor:_cardSurface.widthAnchor multiplier:0.82],
+        // [_contentPanelView.widthAnchor constraintLessThanOrEqualToAnchor:_cardSurface.widthAnchor multiplier:0.82], // Removed to allow leading/trailing to define width
 
         [panelTapButton.leadingAnchor constraintEqualToAnchor:_contentPanelView.leadingAnchor],
         [panelTapButton.trailingAnchor constraintEqualToAnchor:_contentPanelView.trailingAnchor],
@@ -571,14 +571,16 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.imageTrailingLTRConstraint.active = NO;
     self.imageLeadingRTLConstraint.active = NO;
 
+    // 🎯 Unified layout: [Leading Edge] --12-- [Image] --12-- [Content] --12-- [Trailing Edge]
+    // Since we're using leading/trailing anchors, the system handles the flip automatically.
     if (isRTL) {
-        self.contentTrailingRTLConstraint.active = YES;
-        self.contentLeadingToImageRTLConstraint.active = YES;
         self.imageLeadingRTLConstraint.active = YES;
+        self.contentLeadingToImageRTLConstraint.active = YES;
+        self.contentTrailingRTLConstraint.active = YES;
     } else {
+        self.imageTrailingLTRConstraint.active = YES;
         self.contentLeadingLTRConstraint.active = YES;
         self.contentTrailingToImageLTRConstraint.active = YES;
-        self.imageTrailingLTRConstraint.active = YES;
     }
 }
 

@@ -235,7 +235,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     [removeButton addTarget:self action:@selector(didTapRemove) forControlEvents:UIControlEventTouchUpInside];
     [self pp_applyPressTargetsToButton:removeButton];
     self.removeButton = removeButton;
-
+    self.removeButton.alpha = 0;
     UIView *headerSpacer = [[UIView alloc] initWithFrame:CGRectZero];
     headerSpacer.translatesAutoresizingMaskIntoConstraints = NO;
     [headerSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];

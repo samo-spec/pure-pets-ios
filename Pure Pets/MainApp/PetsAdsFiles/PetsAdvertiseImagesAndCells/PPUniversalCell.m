@@ -160,6 +160,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 @property (nonatomic, strong) NSLayoutConstraint *actionBarRightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *actionBarBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *actionBarTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *reasonBadgeServiceCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *reasonBadgeServiceTrailingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *marketImageHeightConstraint;
 @property (nonatomic, strong) UIView *card;
 // Data
@@ -846,6 +848,14 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self.stepperView.trailingAnchor constraintEqualToAnchor:self.textStack.trailingAnchor];
 
     // =========================
+    // Service-Mode specific reasonBadge
+    // =========================
+    self.reasonBadgeServiceCenterYConstraint =
+    [self.reasonBadgeStack.centerYAnchor constraintEqualToAnchor:self.favButton.centerYAnchor];
+    self.reasonBadgeServiceTrailingConstraint =
+    [self.reasonBadgeStack.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-12.0];
+
+    // =========================
     // Badges
     // =========================
     [NSLayoutConstraint activateConstraints:@[
@@ -997,8 +1007,21 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         return;
     }
 
+    if (isService) {
+        if (self.reasonBadgeStack.superview == self.topMetaRow) {
+            [self.topMetaRow removeArrangedSubview:self.reasonBadgeStack];
+        }
+        if (self.reasonBadgeStack.superview != self.card) {
+            [self.card addSubview:self.reasonBadgeStack];
+        }
+    } else {
+        if (self.reasonBadgeStack.superview != self.topMetaRow) {
+            [self.topMetaRow insertArrangedSubview:self.reasonBadgeStack atIndex:0]; // Standard order
+        }
+    }
+
     NSArray<UIView *> *desiredOrder = isService
-        ? @[self.reasonBadgeStack, self.topMetaSpacer, self.locationStack]
+        ? @[self.topMetaSpacer, self.locationStack]
         : @[self.locationStack, self.topMetaSpacer, self.reasonBadgeStack];
 
     if ([self.topMetaRow.arrangedSubviews isEqualToArray:desiredOrder]) {
@@ -1008,7 +1031,6 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     NSArray<UIView *> *currentSubviews = self.topMetaRow.arrangedSubviews.copy;
     for (UIView *subview in currentSubviews) {
         [self.topMetaRow removeArrangedSubview:subview];
-        [subview removeFromSuperview];
     }
 
     for (UIView *subview in desiredOrder) {
@@ -1685,6 +1707,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     else if (isService)
     {
         for (NSLayoutConstraint *c in self.serviceConstraints) c.active = YES;
+        self.reasonBadgeServiceCenterYConstraint.active = YES;
+        self.reasonBadgeServiceTrailingConstraint.active = YES;
         
         self.titleLabel.hidden = NO;
         self.subtitleLabel.hidden = NO;
@@ -1831,7 +1855,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         NSMutableParagraphStyle *subtitleStyle = [[NSMutableParagraphStyle alloc] init];
         subtitleStyle.lineSpacing = 2.0;
         subtitleStyle.lineBreakMode = NSLineBreakByTruncatingTail;
-        subtitleStyle.alignment = NSTextAlignmentNatural;
+        subtitleStyle.alignment = GM.setAligment;
         self.subtitleLabel.attributedText =
         [[NSAttributedString alloc] initWithString:resolvedSubtitle
                                         attributes:@{
@@ -1842,7 +1866,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     } else if (isAds && resolvedSubtitle.length > 0) {
         NSMutableParagraphStyle *adsSubStyle = [[NSMutableParagraphStyle alloc] init];
         adsSubStyle.lineBreakMode = NSLineBreakByTruncatingTail;
-        adsSubStyle.alignment = NSTextAlignmentNatural;
+        adsSubStyle.alignment = GM.setAligment;
         self.subtitleLabel.attributedText =
         [[NSAttributedString alloc] initWithString:resolvedSubtitle
                                         attributes:@{
@@ -1853,6 +1877,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     } else {
         self.subtitleLabel.attributedText = nil;
     }
+    self.subtitleLabel.textAlignment = GM.setAligment;
+    self.subtitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     // Show subtitle for Ads and Services; hide only for Market/Food or when empty
     self.subtitleLabel.hidden = (isMarket || isFood) || (resolvedSubtitle.length == 0);
 

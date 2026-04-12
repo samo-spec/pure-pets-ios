@@ -17,6 +17,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL isMainKindsExpanded;
 @property (nonatomic, assign) BOOL isCurrentOrdersExpanded;
 
+/// Resolves the section type for a given index.
+/// This allows the layout to stay in sync with the data source's snapshot.
+typedef PPHomeSection (^PPHomeSectionIdentifierProvider)(NSInteger sectionIndex);
+@property (nonatomic, copy, nullable) PPHomeSectionIdentifierProvider sectionIdentifierProvider;
+
+/// Returns the number of items in a section.
+typedef NSInteger (^PPHomeSectionItemCountProvider)(NSInteger sectionIndex);
+@property (nonatomic, copy, nullable) PPHomeSectionItemCountProvider itemCountProvider;
+
 /// Designated initializer
 - (instancetype)initWithMainKindsExpanded:(BOOL)isMainKindsExpanded;
 

@@ -66,7 +66,6 @@
     self.onTap = nil;
     self.seedImageView.image = nil;
     self.seedImageView.hidden = YES;
-    [self pp_updatePressedState:NO animated:NO];
     [self pp_applyCurrentDirection];
 }
 
@@ -165,24 +164,8 @@
 #pragma mark - Actions
 
 - (void)handleTap {
-    [self pp_updatePressedState:NO animated:YES];
     if (self.onTap) {
         self.onTap();
-    }
-}
-
-- (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
-    switch (gesture.state) {
-        case UIGestureRecognizerStateBegan:
-            [self pp_updatePressedState:YES animated:YES];
-            break;
-        case UIGestureRecognizerStateEnded:
-        case UIGestureRecognizerStateCancelled:
-        case UIGestureRecognizerStateFailed:
-            [self pp_updatePressedState:NO animated:YES];
-            break;
-        default:
-            break;
     }
 }
 
@@ -217,11 +200,6 @@
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTap)];
     [_ContView addGestureRecognizer:tap];
-
-    UILongPressGestureRecognizer *press = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
-    press.minimumPressDuration = 0.0;
-    press.cancelsTouchesInView = NO;
-    [_ContView addGestureRecognizer:press];
 
     [self.contentView addSubview:_ContView];
 
@@ -708,12 +686,6 @@
         self.visualStageView.transform = CGAffineTransformMakeTranslation(0.0, -2.5);
         self.lottieHeaderView.transform = CGAffineTransformMakeTranslation(0.0, -2.5);
     } completion:nil];
-}
-
-#pragma mark - Press Animation
-
-- (void)pp_updatePressedState:(BOOL)isPressed animated:(BOOL)animated {
-    // Tap animation disabled — keep cell visually static on press
 }
 
 #pragma mark - Helpers

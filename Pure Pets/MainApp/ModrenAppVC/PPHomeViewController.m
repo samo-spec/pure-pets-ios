@@ -1835,10 +1835,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     UIEdgeInsets adjustedInsets = self.collectionView.adjustedContentInset;
     BOOL needsInitialPass = !self.didStabilizeInitialHomeLayout;
     BOOL widthChanged = fabs(boundsSize.width - self.lastHomeLayoutBoundsSize.width) > 0.5;
-    BOOL topInsetChanged = fabs(adjustedInsets.top - self.lastHomeLayoutAdjustedInsets.top) > 0.5;
-    BOOL bottomInsetChanged = fabs(adjustedInsets.bottom - self.lastHomeLayoutAdjustedInsets.bottom) > 0.5;
 
-    if (!needsInitialPass && !widthChanged && !topInsetChanged && !bottomInsetChanged) {
+    // 🔒 We only trigger stabilization if it's the first time or if the width/safe area significantly changed.
+    if (!needsInitialPass && !widthChanged) {
         return;
     }
 
@@ -1847,12 +1846,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.lastHomeLayoutAdjustedInsets = adjustedInsets;
 
     CGPoint preservedOffset = self.collectionView.contentOffset;
-    UICollectionViewCompositionalLayout *stabilizedLayout = [self.layoutManager buildLayout];
 
+    // 🎯 Smooth invalidation: Since our layout provider block captures self/layoutManager,
+    // a simple invalidation will use the latest properties without flickering the whole screen.
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     [UIView performWithoutAnimation:^{
-        [self.collectionView setCollectionViewLayout:stabilizedLayout animated:NO];
         [self.collectionView.collectionViewLayout invalidateLayout];
         [self.collectionView setNeedsLayout];
         [self.collectionView layoutIfNeeded];
@@ -2064,7 +2063,6 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         existingItem.universalViewModel = replacementItem.universalViewModel;
         [snapshot reloadItemsWithIdentifiers:@[existingItem]];
         [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
-        [self invalidateHeaderForSection:section];
         return;
     }
 
@@ -2107,10 +2105,6 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     [self.dataSource applySnapshot:snapshot animatingDifferences:animate];
-
-    if (section == PPHomeSectionCurrentOrders || section == PPHomeSectionBuyAgain) {
-        [self invalidateHeaderForSection:section];
-    }
 
     if (section == PPHomeSectionPetProfile || section == PPHomeSectionAdopt) {
         [self.collectionView setNeedsLayout];
@@ -2180,7 +2174,6 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self setupCollectionView];
     [self configureDataSource];
     [self applyBaseSnapshot];   // 🔥 NEW
-    [self pp_scheduleInitialMainKindsLayoutRefresh];
     [self refreshHeroSectionAppearance];
 
     __weak typeof(self) weakSelf = self;
@@ -2254,8 +2247,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (void)handleBrowseHistoryUpdate
 {
-    // Update layout so header is re-requested
-    [self invalidateHeaderForSection:PPHomeSectionSuggestions];
+    [self reloadSection:PPHomeSectionSuggestions];
 }
 
 - (void)pp_refreshNavigationMenusForCurrentUser {
@@ -3915,6 +3907,27 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [[PPHomeLayoutManager alloc] initWithMainKindsExpanded:self.isMainKindsExpanded];
     self.layoutManager.isCurrentOrdersExpanded = self.isCurrentOrdersExpanded;
 
+    __weak typeof(self) weakSelf = self;
+    self.layoutManager.sectionIdentifierProvider = ^PPHomeSection(NSInteger sectionIndex) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.dataSource) return PPHomeSectionHero;
+        NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+        if (sectionIndex >= 0 && sectionIndex < snapshot.sectionIdentifiers.count) {
+            return (PPHomeSection)[snapshot.sectionIdentifiers[sectionIndex] integerValue];
+        }
+        return PPHomeSectionHero;
+    };
+
+    self.layoutManager.itemCountProvider = ^NSInteger(NSInteger sectionIndex) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.dataSource) return 0;
+        NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+        if (sectionIndex >= 0 && sectionIndex < snapshot.sectionIdentifiers.count) {
+            NSNumber *sectionID = snapshot.sectionIdentifiers[sectionIndex];
+            return [snapshot numberOfItemsInSection:sectionID];
+        }
+        return 0;
+    };
 
     UICollectionViewCompositionalLayout *layout =
         [self.layoutManager buildLayout];
@@ -4065,6 +4078,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                                statusIconName:[strongSelf pp_homeOrderStatusIconName:order]
                                   actionTitle:(kLang(@"order_action_track") ?: @"Track order")
                                      expanded:expanded];
+
+            // 🎯 Ensure gradient layers are matched to final bounds on first load/re-config
+            [cell refreshDecorativeLayersForCurrentBounds];
 
             __weak typeof(strongSelf) weakHome = strongSelf;
             cell.onTrackTap = ^{

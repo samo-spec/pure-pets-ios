@@ -1040,11 +1040,18 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedChevronContainerView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.14) CGColor];
     self.collapsedChevronTintView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.10);
     self.collapsedChevronView.tintColor = resolved;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     self.overlayGradientLayer.colors = @[
         (id)softOverlay.CGColor,
         (id)[PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.03) CGColor],
         (id)[UIColor clearColor].CGColor
     ];
+    [self.overlayGradientLayer setNeedsDisplay];
+    [CATransaction commit];
+
+    [self setNeedsLayout];
 }
 
 - (void)pp_handleTrackTap

@@ -21,33 +21,56 @@
 - (UICollectionViewCompositionalLayout *)buildLayout {
 
     __weak typeof(self) weakSelf = self;
-    NSArray<NSNumber *> *renderOrder = @[
-        @(PPHomeSectionHero),
-        @(PPHomeSectionQuickActions),
-       // @(PPHomeSectionServices),
-        @(PPHomeSectionCurrentOrders),
-        @(PPHomeSectionCarousel),
-        @(PPHomeSectionMainKinds),
-        @(PPHomeSectionSuggestions),
-        @(PPHomeSectionAccessories),
-        @(PPHomeSectionPetProfile),
-        @(PPHomeSectionAdsNearBy),
-        @(PPHomeSectionAdopt),
-        @(PPHomeSectionBuyAgain),
-    ];
 
     UICollectionViewCompositionalLayout *layout =
     [[UICollectionViewCompositionalLayout alloc]
      initWithSectionProvider:^NSCollectionLayoutSection * _Nullable
      (NSInteger sectionIndex, id<NSCollectionLayoutEnvironment> env) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return [PPHomeFunc emptySection];
+
         CGFloat availableWidth = env.container.effectiveContentSize.width;
         if (availableWidth <= 0.0) {
             availableWidth = UIScreen.mainScreen.bounds.size.width;
         }
 
+        // 🎯 Resolve actual section type from data source (avoids jumping/mismatches)
         PPHomeSection sectionType = PPHomeSectionHero;
-        if (sectionIndex >= 0 && sectionIndex < renderOrder.count) {
-            sectionType = (PPHomeSection)renderOrder[sectionIndex].integerValue;
+        if (self.sectionIdentifierProvider) {
+            sectionType = self.sectionIdentifierProvider(sectionIndex);
+        } else {
+            // Fallback to old behavior if provider not set (should not happen)
+            NSArray<NSNumber *> *renderOrder = @[
+                @(PPHomeSectionHero),
+                @(PPHomeSectionQuickActions),
+                @(PPHomeSectionCurrentOrders),
+                @(PPHomeSectionCarousel),
+                @(PPHomeSectionMainKinds),
+                @(PPHomeSectionSuggestions),
+                @(PPHomeSectionAccessories),
+                @(PPHomeSectionPetProfile),
+                @(PPHomeSectionAdsNearBy),
+                @(PPHomeSectionAdopt),
+                @(PPHomeSectionBuyAgain),
+            ];
+            if (sectionIndex >= 0 && sectionIndex < renderOrder.count) {
+                sectionType = (PPHomeSection)renderOrder[sectionIndex].integerValue;
+            }
+        }
+
+        // 🔒 Robust Check: If section is empty and dynamic, return empty layout to prevent "jumping" headers
+        NSInteger itemCount = 0;
+        if (self.itemCountProvider) {
+            itemCount = self.itemCountProvider(sectionIndex);
+        }
+
+        BOOL isDynamicSection = (sectionType == PPHomeSectionSuggestions ||
+                                 sectionType == PPHomeSectionAdsNearBy ||
+                                 sectionType == PPHomeSectionAccessories ||
+                                 sectionType == PPHomeSectionBuyAgain);
+
+        if (isDynamicSection && itemCount == 0) {
+            return [PPHomeFunc emptySection];
         }
 
         switch (sectionType) {
@@ -58,18 +81,18 @@
             case PPHomeSectionQuickActions:
                 return [PPHomeFunc quickActionsSectionForWidth:availableWidth];
 
-            //case PPHomeSectionServices:
-                //return [PPHomeFunc servicesSection];
+            case PPHomeSectionServices:
+                return [PPHomeFunc servicesSection];
 
             case PPHomeSectionCurrentOrders:
-                return [PPHomeFunc currentOrdersSectionExpanded:weakSelf.isCurrentOrdersExpanded
+                return [PPHomeFunc currentOrdersSectionExpanded:self.isCurrentOrdersExpanded
                                                       forWidth:availableWidth];
 
             case PPHomeSectionCarousel:
                 return [PPHomeFunc carouselSectionForWidth:availableWidth];
 
             case PPHomeSectionMainKinds:
-                return weakSelf.isMainKindsExpanded
+                return self.isMainKindsExpanded
                 ? [PPHomeFunc mainKindsGridSectionForWidth:availableWidth]
                 : [PPHomeFunc mainKindsHorizontalSectionForWidth:availableWidth];
 
@@ -90,9 +113,6 @@
 
             case PPHomeSectionBuyAgain:
                 return [PPHomeFunc buyAgainSectionForWidth:availableWidth];
-
-            //case PPHomeSectionCategoriesItems:
-            //    return nil; //[PPHomeFunc categoriesItemsSection];
 
             default:
                 return [PPHomeFunc emptySection];
