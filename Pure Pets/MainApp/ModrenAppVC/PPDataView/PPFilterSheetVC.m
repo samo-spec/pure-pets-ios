@@ -230,6 +230,12 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         self.backgroundColor = UIColor.clearColor;
         self.pillViews = pillViews ?: @[];
         for (PPFilterOptionPill *pill in self.pillViews) {
+            // Pills are positioned manually via frame in layoutSubviews.
+            // Deactivate any Auto Layout constraints (e.g. the 44pt height)
+            // then switch to frame-based positioning.
+            [NSLayoutConstraint deactivateConstraints:pill.constraints];
+            pill.translatesAutoresizingMaskIntoConstraints = YES;
+            pill.autoresizingMask = UIViewAutoresizingNone;
             [self addSubview:pill];
         }
     }
@@ -1048,6 +1054,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     buttonStack.axis = UILayoutConstraintAxisHorizontal;
     buttonStack.spacing = 10.0;
     buttonStack.alignment = UIStackViewAlignmentFill;
+    buttonStack.distribution = UIStackViewDistributionFill;
     buttonStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     [shellView addSubview:buttonStack];
 
@@ -1056,6 +1063,8 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     [resetButton addTarget:self action:@selector(pp_resetTapped) forControlEvents:UIControlEventTouchUpInside];
     [resetButton.heightAnchor constraintEqualToConstant:54.0].active = YES;
     [resetButton.widthAnchor constraintEqualToConstant:118.0].active = YES;
+    [resetButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [resetButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [buttonStack addArrangedSubview:resetButton];
     self.resetButton = resetButton;
 
@@ -1063,6 +1072,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     applyButton.translatesAutoresizingMaskIntoConstraints = NO;
     [applyButton addTarget:self action:@selector(pp_applyTapped) forControlEvents:UIControlEventTouchUpInside];
     [applyButton.heightAnchor constraintEqualToConstant:54.0].active = YES;
+    [applyButton setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [buttonStack addArrangedSubview:applyButton];
     self.applyButton = applyButton;
 
@@ -1071,7 +1081,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         [summaryLabel.leadingAnchor constraintEqualToAnchor:shellView.leadingAnchor constant:16.0],
         [summaryLabel.trailingAnchor constraintEqualToAnchor:shellView.trailingAnchor constant:-16.0],
 
-        [buttonStack.topAnchor constraintEqualToAnchor:summaryLabel.bottomAnchor constant:0.0],
+        [buttonStack.topAnchor constraintEqualToAnchor:summaryLabel.bottomAnchor constant:12.0],
         [buttonStack.leadingAnchor constraintEqualToAnchor:shellView.leadingAnchor constant:16.0],
         [buttonStack.trailingAnchor constraintEqualToAnchor:shellView.trailingAnchor constant:-16.0],
         [buttonStack.bottomAnchor constraintEqualToAnchor:shellView.bottomAnchor constant:-16.0]

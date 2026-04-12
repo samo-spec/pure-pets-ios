@@ -1046,7 +1046,7 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     [self pp_updateLoadingPhase:PPSplashLoadingPhaseReady detail:completionDetail];
 
     NSTimeInterval elapsed = self.launchBeganAt ? [[NSDate date] timeIntervalSinceDate:self.launchBeganAt] : 0.0;
-    NSTimeInterval remainingDelay = MAX(0.0, 1.0 - elapsed);
+    NSTimeInterval remainingDelay = MAX(0.0, 2.5 - elapsed);
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(remainingDelay * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{

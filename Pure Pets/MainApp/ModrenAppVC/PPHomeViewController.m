@@ -1748,11 +1748,21 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [snapshot appendItemsWithIdentifiers:currentOrderItems
                intoSectionWithIdentifier:@(PPHomeSectionCurrentOrders)];
 
-    // ✅ Carousel placeholder (always present)
-    PPHomeItem *carouselPlaceholder = [PPHomeItem new];
-    carouselPlaceholder.payload = [NSNull null];
+    // ✅ Carousel — pre-fill with best available content to avoid placeholder→content jump
+    PPHomeItem *carouselItem = [PPHomeItem new];
+    NSArray<PPHomePromoCarouselCard *> *initialPromoCards = self.promoCarouselCards;
+    if (initialPromoCards.count == 0) {
+        MainBannerModel *legacyGroup = [self pp_homeTopCarouselBannerGroup];
+        if (legacyGroup && legacyGroup.childBanners.count > 0) {
+            initialPromoCards = [self pp_promoCardsFromLegacyBannerGroup:legacyGroup];
+        }
+    }
+    if (initialPromoCards.count == 0) {
+        initialPromoCards = [self pp_homePromoFallbackCards];
+    }
+    carouselItem.payload = initialPromoCards.count > 0 ? initialPromoCards : (id)[NSNull null];
 
-    [snapshot appendItemsWithIdentifiers:@[carouselPlaceholder]
+    [snapshot appendItemsWithIdentifiers:@[carouselItem]
                intoSectionWithIdentifier:@(PPHomeSectionCarousel)];
 
     // ✅ MainKinds (static)
@@ -6953,6 +6963,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionCarousel)];
     if (carouselItems.count == 0) return;
 
+    PPHomeItem *existing = carouselItems.firstObject;
+
     // Resolve promo cards: Firestore → legacy banners → fallback
     NSArray<PPHomePromoCarouselCard *> *promoCards = self.promoCarouselCards;
     if (promoCards.count == 0) {
@@ -6964,15 +6976,14 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (promoCards.count == 0) {
         promoCards = [self pp_homePromoFallbackCards];
     }
+    if (promoCards.count == 0) return;
 
-    // Replace existing carousel item(s) with a single item carrying promo cards
-    [snapshot deleteItemsWithIdentifiers:carouselItems];
+    // Skip if the payload is already the same array (pointer equality)
+    if (existing.payload == (id)promoCards) return;
 
-    PPHomeItem *carouselItem = [PPHomeItem new];
-    carouselItem.payload = promoCards;
-    [snapshot appendItemsWithIdentifiers:@[carouselItem]
-               intoSectionWithIdentifier:@(PPHomeSectionCarousel)];
-
+    // Update payload in-place and reload — NO insert/delete, NO layout shift
+    existing.payload = promoCards;
+    [snapshot reloadItemsWithIdentifiers:@[existing]];
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
 }
 
