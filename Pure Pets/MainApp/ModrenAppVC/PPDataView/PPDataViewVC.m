@@ -142,6 +142,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 @property (nonatomic, strong) PPModrenSegmrnted *sectionsSegmentedControl;
 
+
 @property (nonatomic, assign) CGFloat lastContentOffsetY;
 @property (nonatomic, assign) BOOL isRestoringScrollOffset;
 // Custom navigation bar center view
@@ -652,7 +653,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 - (void)refreshsubKindsMenu
 {
-    if (!self.subKindsButton || !self.input.mainKind) {
+    if (!self.subKindsButton) {
         return;
     }
     self.subKindsButton.menu = [self subKindsMenu];
@@ -1614,6 +1615,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
          // 🔥 Exit AllCategories mode once user selects a real kind
          if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
              self.input.sourceTarget = PPDeepLinkTargetNone;
+             [self pp_setSubKindsChevronHidden:NO];
          }
          self.viewModel.currentDeepLinkTarget = self.input.sourceTarget;
          
@@ -1713,6 +1715,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
          // 🔥 Exit AllCategories mode once user selects a real kind
          if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
              self.input.sourceTarget = PPDeepLinkTargetNone;
+             [self pp_setSubKindsChevronHidden:NO];
          }
          self.viewModel.currentDeepLinkTarget = self.input.sourceTarget;
          
@@ -1879,7 +1882,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         self.viewModel.currentSubKindID = 0; // All
         [self updateSubKindsButtonTitle:self.input.mainKind.KindName];
     }
-    
+
+    // AllCategories mode: show the section header title & hide chevron until user picks a kind
+    if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {
+        NSString *headerTitle = (self.input.title.length > 0) ? self.input.title : kLang(@"All");
+        [self updateSubKindsButtonTitle:headerTitle];
+        [self pp_setSubKindsChevronHidden:YES];
+    }
+
     sectionsBtn.menu = [self subKindsMenu];
     [self updateCartButtonVisibility];
 }
@@ -2077,6 +2087,28 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
     
     
+}
+
+/// Shows or hides the chevron-down image on the subKindsButton.
+- (void)pp_setSubKindsChevronHidden:(BOOL)hidden
+{
+    if (!self.subKindsButton) return;
+    UIButtonConfiguration *cfg = self.subKindsButton.configuration;
+    if (hidden) {
+        cfg.image = nil;
+        cfg.imagePadding = 0;
+    } else {
+        UIImage *chevron =
+        [UIImage pp_symbolNamed:@"chevron.down"
+                      pointSize:16
+                         weight:UIImageSymbolWeightSemibold
+                          scale:UIImageSymbolScaleDefault
+                        palette:@[AppPrimaryClr]
+                   makeTemplate:NO];
+        cfg.image = chevron;
+        cfg.imagePadding = 6;
+    }
+    self.subKindsButton.configuration = cfg;
 }
 
 
@@ -2648,6 +2680,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 }
 
 // Synchronous version of subKindsMenu: builds all actions immediately, uses placeholder icons synchronously.
+// When no mainKind is selected, returns the main kinds menu so the user picks a kind first.
 - (UIMenu *)subKindsMenu
 {
     
@@ -2659,7 +2692,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     MainKindsModel *mainKind = self.input.mainKind;
     if (!mainKind || mainKind.SubKindsArray.count == 0) {
-        return [UIMenu menuWithTitle:@"" children:@[]];
+        // No main kind selected → show main kinds menu so user picks one first
+        return [self mainMenu];
     }
 
     for (SubKindModel *subKind in mainKind.SubKindsArray) {

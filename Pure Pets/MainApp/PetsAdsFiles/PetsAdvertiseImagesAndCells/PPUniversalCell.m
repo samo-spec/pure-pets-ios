@@ -142,6 +142,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *pintrestConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *squareConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *marketConstraints;
+@property (nonatomic, strong) NSArray<NSLayoutConstraint *> *serviceConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *carouselConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *verticalConstraints;
 @property (nonatomic, strong) NSLayoutConstraint *bottomOverlayLeadingConstraint;
@@ -772,6 +773,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
     NSLayoutConstraint *marketTxtTrailing =
     [self.textStack.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12.0];
+    NSLayoutConstraint *serviceTxtBottom =
+    [self.textStack.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-12.0];
 
     self.discountValueTrailingConstraint =
     [self.discountValueLabel.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-PPAdsCellSideInset];
@@ -888,6 +891,13 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         marketStockTop, marketStockLeading, marketStockBottom
     ];
 
+    self.serviceConstraints = @[
+        marketImgTop, marketImgLeading, marketImgTrailing, self.marketImageHeightConstraint,
+        marketTxtTop, marketTxtLeading, marketTxtTrailing,
+        marketActionTop, marketActionTrailing,
+        serviceTxtBottom
+    ];
+
     self.carouselConstraints = @[
         imgTop, imgLeading, imgTrailing, imgBottom
     ];
@@ -975,17 +985,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 {
     CAGradientLayer *gradientLayer = (CAGradientLayer *)self.imageScrimView.layer;
     if ([self pp_isServiceContext]) {
-        UIColor *accentColor = [self pp_serviceAccentColorForViewModel:vm];
-        self.imageScrimView.hidden = NO;
-        gradientLayer.colors = @[
-            (id)[UIColor colorWithWhite:1.0 alpha:0.00].CGColor,
-            (id)[UIColor colorWithWhite:1.0 alpha:0.03].CGColor,
-            (id)[UIColor colorWithWhite:0.0 alpha:0.06].CGColor,
-            (id)[accentColor colorWithAlphaComponent:0.18].CGColor
-        ];
-        gradientLayer.locations = @[@0.0, @0.42, @0.72, @1.0];
-        gradientLayer.startPoint = CGPointMake(0.5, 0.0);
-        gradientLayer.endPoint = CGPointMake(0.5, 1.0);
+        self.imageScrimView.hidden = YES;
         return;
     }
 
@@ -1076,37 +1076,40 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 {
     BOOL isAds = (self.context == PPCellForAds);
     BOOL isService = [self pp_isServiceContext];
-    self.bottomOverlay.hidden = isMarket;
-    self.imageView.backgroundColor = isMarket
-        ? AppBackgroundClr
-        : (isService ? [UIColor colorWithWhite:0.96 alpha:1.0] : UIColor.clearColor);
-    self.imageView.layer.cornerRadius = isMarket ? 18.0 : PPCornerCard;
-    self.imageView.layer.borderColor = isMarket ? AppBackgroundClr.CGColor : UIColor.clearColor.CGColor;
+    BOOL usesCatalogCardLayout = isMarket || isService;
+    self.bottomOverlay.hidden = usesCatalogCardLayout;
+    self.imageView.backgroundColor = usesCatalogCardLayout
+        ? (AppBackgroundClr ?: UIColor.secondarySystemBackgroundColor)
+        : UIColor.clearColor;
+    self.imageView.layer.cornerRadius = usesCatalogCardLayout ? 18.0 : PPCornerCard;
+    self.imageView.layer.borderColor = usesCatalogCardLayout
+        ? [[UIColor labelColor] colorWithAlphaComponent:0.03].CGColor
+        : UIColor.clearColor.CGColor;
     self.imageView.layer.borderWidth = 1.0;
     self.imageView.contentMode = isMarket ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
     [self pp_updateServiceLayoutMetrics];
     [self pp_updateImageScrimAppearanceForViewModel:self.vm];
     [self pp_updateBottomOverlayMaterialForViewModel:self.vm];
     self.bottomOverlay.backgroundColor = isService
-        ? [UIColor colorWithWhite:1.0 alpha:0.22]
+        ? UIColor.clearColor
         : ((isAds && !isMarket)
            ? [UIColor colorWithWhite:1.0 alpha:0.04]
            : UIColor.clearColor);
-    self.textStack.spacing = isMarket ? 8.0 : (isService ? 0.0 : (isAds ? 6.0 : 5.0));
-    self.titleLabel.numberOfLines = isService ? 1 : 2;
+    self.textStack.spacing = isMarket ? 8.0 : (isService ? 8.0 : (isAds ? 6.0 : 5.0));
+    self.titleLabel.numberOfLines = 2;
     self.subtitleLabel.numberOfLines = 1;
-    self.actionBar.axis = isMarket ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.actionBar.spacing = isMarket ? 8.0 : (isService ? 6.0 : (isAds ? 9.0 : 10.0));
-    self.priceStack.spacing = isService ? 4.0 : 8.0;
+    self.actionBar.axis = usesCatalogCardLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
+    self.actionBar.spacing = usesCatalogCardLayout ? 8.0 : (isAds ? 9.0 : 10.0);
+    self.priceStack.spacing = isService ? 6.0 : 8.0;
     self.priceStack.distribution = UIStackViewDistributionFill;
-    self.priceStack.alignment = isService ? UIStackViewAlignmentCenter : UIStackViewAlignmentFirstBaseline;
+    self.priceStack.alignment = UIStackViewAlignmentFirstBaseline;
     self.subtitleLabel.font = isMarket
         ? [GM MidFontWithSize:14.0]
-        : (isService ? [GM MidFontWithSize:11.5] : (isAds ? [GM MidFontWithSize:12.5] : [GM MidFontWithSize:16.0]));
+        : (isService ? [GM MidFontWithSize:13.0] : (isAds ? [GM MidFontWithSize:12.5] : [GM MidFontWithSize:16.0]));
     if (@available(iOS 11.0, *)) {
         if (isService) {
             [self.textStack setCustomSpacing:6.0 afterView:self.titleLabel];
-            [self.textStack setCustomSpacing:10.0 afterView:self.priceStack];
+            [self.textStack setCustomSpacing:12.0 afterView:self.priceStack];
         } else {
             [self.textStack setCustomSpacing:(isMarket ? 6.0 : 4.0) afterView:self.titleLabel];
             [self.textStack setCustomSpacing:(isMarket ? 8.0 : 6.0) afterView:self.subtitleLabel];
@@ -1114,13 +1117,12 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         }
     }
     self.addButtonWidthConstraint.active = !isMarket;
-    self.card.layer.borderWidth = isService ? 0.9 : (isMarket ? 0.75 : (isAds ? 1.0 : 0.75));
+    self.card.layer.borderWidth = (isMarket || isService) ? 0.75 : (isAds ? 1.0 : 0.75);
     if (isMarket) {
         self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
         self.card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor;
     } else if (isService) {
-        UIColor *accentColor = [self pp_serviceAccentColorForViewModel:self.vm];
-        self.card.layer.borderColor = [accentColor colorWithAlphaComponent:0.12].CGColor;
+        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
         self.card.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.98];
     } else if (isAds) {
         self.card.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor;
@@ -1207,7 +1209,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         return [GM boldFontWithSize:15.0];
     }
     if ([self pp_isServiceContext]) {
-        return [GM boldFontWithSize:17.0];
+        return [GM boldFontWithSize:15.5];
     }
     return [GM boldFontWithSize:16.0];
 }
@@ -1528,47 +1530,50 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     BOOL hasImageSource = vm.imageURL.length > 0 || vm.image != nil;
     UIColor *accentColor = [self pp_serviceAccentColorForViewModel:vm];
 
-    self.card.layer.borderWidth = 1.0;
-    self.card.layer.borderColor = [accentColor colorWithAlphaComponent:0.14].CGColor;
+    self.card.layer.borderWidth = 0.75;
+    self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
     self.imageView.alpha = 1.0;
     self.imageScrimView.alpha = 1.0;
     self.bottomOverlay.alpha = 1.0;
     self.actionBar.alpha = isSkeleton ? 0.0 : 1.0;
     self.reasonBadgeStack.alpha = isSkeleton ? 0.0 : 1.0;
     self.serviceDetailsButton.alpha = isSkeleton ? 0.0 : 1.0;
+    self.reasonBadgeStack.layer.shadowOpacity = 0.06;
+    self.reasonBadgeStack.layer.shadowRadius = 6.0;
+    self.reasonBadgeStack.layer.shadowOffset = CGSizeMake(0, 3.0);
 
-    self.favButton.layer.borderWidth = 1.0;
-    self.favButton.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.72].CGColor;
-    self.favButton.layer.shadowOpacity = 0.14;
-    self.favButton.layer.shadowRadius = 10.0;
-    self.favButton.layer.shadowOffset = CGSizeMake(0, 6.0);
+    self.favButton.layer.borderWidth = 0.0;
+    self.favButton.layer.borderColor = UIColor.clearColor.CGColor;
+    self.favButton.layer.shadowOpacity = 0.08;
+    self.favButton.layer.shadowRadius = 6.0;
+    self.favButton.layer.shadowOffset = CGSizeMake(0, 3.0);
 
     NSArray<UIButton *> *serviceButtons = @[self.moreOptionsButton, self.shareButton];
     for (UIButton *button in serviceButtons) {
-        button.layer.borderWidth = 1.0;
-        button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.72].CGColor;
-        button.layer.shadowOpacity = 0.10;
-        button.layer.shadowRadius = 10.0;
-        button.layer.shadowOffset = CGSizeMake(0, 5.0);
+        button.layer.borderWidth = 0.0;
+        button.layer.borderColor = UIColor.clearColor.CGColor;
+        button.layer.shadowOpacity = 0.08;
+        button.layer.shadowRadius = 6.0;
+        button.layer.shadowOffset = CGSizeMake(0, 3.0);
         if (@available(iOS 15.0, *)) {
             UIButtonConfiguration *config = button.configuration ?: [UIButtonConfiguration filledButtonConfiguration];
-            config.baseBackgroundColor = [UIColor colorWithWhite:1.0 alpha:0.84];
+            config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.72];
             config.baseForegroundColor = UIColor.labelColor;
             config.background.cornerRadius = 19.0;
             config.preferredSymbolConfigurationForImage =
-            [UIImageSymbolConfiguration configurationWithPointSize:13.0
-                                                            weight:UIImageSymbolWeightSemibold
+            [UIImageSymbolConfiguration configurationWithPointSize:14.0
+                                                            weight:UIImageSymbolWeightMedium
                                                              scale:UIImageSymbolScaleMedium];
             button.configuration = config;
         } else {
-            button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.84];
+            button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.72];
             button.tintColor = UIColor.labelColor;
         }
     }
 
     if (!hasImageSource) {
-        self.imageView.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1.0];
-        self.imageView.tintColor = [accentColor colorWithAlphaComponent:0.24];
+        self.imageView.backgroundColor = AppBackgroundClr ?: [UIColor secondarySystemBackgroundColor];
+        self.imageView.tintColor = [accentColor colorWithAlphaComponent:0.18];
         self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     }
 }
@@ -1597,6 +1602,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     for (NSLayoutConstraint *c in self.squareConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.pintrestConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.marketConstraints) c.active = NO;
+    for (NSLayoutConstraint *c in self.serviceConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.carouselConstraints) c.active = NO;
 
     
@@ -1632,6 +1638,10 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     {
         for (NSLayoutConstraint *c in self.marketConstraints) c.active = YES;
     }
+    else if (isService)
+    {
+        for (NSLayoutConstraint *c in self.serviceConstraints) c.active = YES;
+    }
     else
     {
         switch (mode) {
@@ -1658,6 +1668,12 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         }
     }
     [self pp_updateServiceLayoutMetrics];
+    if (isService) {
+        self.actionBarBottomConstraint.active = NO;
+        self.actionBarTopConstraint.active = NO;
+        self.actionBarTrailingConstraint.active = NO;
+        self.actionBarRightConstraint.active = NO;
+    }
     [self pp_updateServiceOverlayMaskIfNeeded];
    // [self setNeedsUpdateConstraints];
    // [self layoutIfNeeded];
@@ -1753,7 +1769,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         resolvedSubtitle = @" ";
     }
     self.subtitleLabel.text = resolvedSubtitle;
-    self.titleLabel.numberOfLines = isService ? 1 : 2;
+    self.titleLabel.numberOfLines = 2;
     self.subtitleLabel.numberOfLines = 1;
     self.subtitleLabel.textColor = [self pp_secondaryTextColorForCurrentContext];
     if (isService && resolvedSubtitle.length > 0) {
@@ -1956,7 +1972,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     if (isMarket) {
         [self applyDefaultShadow];
     } else if (isService) {
-        [self pp_applyServiceShadow];
+        [self applyDefaultShadow];
     } else {
         [self applyHomeAdShadow];
     }
