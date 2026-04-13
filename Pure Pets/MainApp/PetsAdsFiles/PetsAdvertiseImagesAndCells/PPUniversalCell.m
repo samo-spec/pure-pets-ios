@@ -743,13 +743,13 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-14.0];
 
     self.marketImageHeightConstraint =
-    [self.imageView.heightAnchor constraintEqualToAnchor:self.imageView.widthAnchor multiplier:0.72];
+    [self.imageView.heightAnchor constraintEqualToAnchor:self.imageView.widthAnchor multiplier:0.82];
 
     // =========================
     // Bottom Overlay (already created)
     // =========================
     NSLayoutConstraint *minHeight =
-    [self.bottomOverlay.heightAnchor constraintGreaterThanOrEqualToConstant:72];
+    [self.bottomOverlay.heightAnchor constraintGreaterThanOrEqualToConstant:84];
     minHeight.priority = UILayoutPriorityRequired;
     minHeight.active = YES;
 
@@ -1305,13 +1305,13 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 {
     switch (layoutMode) {
         case PPCellLayoutModeFullWidth:
-            return 134.0;
+            return 146.0;
         case PPCellLayoutModeVertical:
         case PPCellLayoutModePinterest:
-            return 130.0;
+            return 142.0;
         case PPCellLayoutModeSquare:
         default:
-            return 128.0;
+            return 140.0;
     }
 }
 
@@ -1711,7 +1711,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self pp_applyLayoutAppearanceForMarket:isMarket];
     self.bottomOverlayHeightConstraint.constant = (self.context == PPCellForAds)
         ? [self pp_bottomOverlayHeightForLayoutMode:mode]
-        : (isService ? [self pp_bottomOverlayHeightForServiceLayoutMode:mode] : 74.0);
+        : (isService ? [self pp_bottomOverlayHeightForServiceLayoutMode:mode] : 86.0);
 
     if(isMarket)
     {

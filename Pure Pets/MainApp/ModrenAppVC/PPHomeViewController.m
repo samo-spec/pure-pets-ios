@@ -1168,6 +1168,14 @@
     [self pp_updateInteractiveStateAnimated:NO];
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self pp_applyPalette];
+    }
+}
+
 @end
 
 
@@ -1264,6 +1272,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) CAGradientLayer *pp_backgroundBottomGlowLayer;
 @property (nonatomic, strong) CAGradientLayer *pp_backgroundShineLayer;
 @property (nonatomic, assign) BOOL pp_backgroundAnimationsConfigured;
+@property (nonatomic, strong) UIView *pp_backgroundGlowViewTop;
+@property (nonatomic, strong) UIView *pp_backgroundGlowViewBottom;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL petProfilesLoading;
@@ -1395,6 +1405,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_layoutBackgroundLayers;
 - (void)pp_startBackgroundAnimationsIfNeeded;
 - (void)pp_stopBackgroundAnimations;
+- (void)pp_setupBackgroundGlowOrbs;
+- (void)pp_layoutBackgroundGlowOrbs;
 - (CGFloat)pp_preferredNavigationSearchWidth;
 - (UIView *)pp_navigationSmartSearchTitleView;
 - (void)pp_openSmartSearch;
@@ -2128,7 +2140,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.chatsListenerStarted = NO;
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
 
-    //[self pp_installBackgroundGradient];
+    [self pp_setupBackgroundGlowOrbs];
 
     self.mainKinds = PPMainKindsArray;
     self.selectedCategory = nil; // nil == "All"
@@ -7619,6 +7631,70 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.pp_backgroundAnimationsConfigured = NO;
 }
 
+#pragma mark - Background Glow Orbs (ProfileVC-style)
+
+- (void)pp_setupBackgroundGlowOrbs
+{
+    if (self.pp_backgroundGlowViewTop || self.pp_backgroundGlowViewBottom) {
+        return;
+    }
+
+    UIView *topGlow = [[UIView alloc] init];
+    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    topGlow.userInteractionEnabled = NO;
+    topGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.12 * 0.40 : 0.12;
+        return [UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:a];
+    }];
+    topGlow.layer.shadowColor = [[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0]
+                                  resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    topGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.10;
+    topGlow.layer.shadowRadius = 64.0;
+    topGlow.layer.shadowOffset = CGSizeZero;
+
+    UIView *bottomGlow = [[UIView alloc] init];
+    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomGlow.userInteractionEnabled = NO;
+    bottomGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 * 0.40 : 0.06;
+        return [UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:a];
+    }];
+    bottomGlow.layer.shadowColor = [[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0]
+                                     resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    bottomGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
+    bottomGlow.layer.shadowRadius = 72.0;
+    bottomGlow.layer.shadowOffset = CGSizeZero;
+
+    [self.view insertSubview:topGlow atIndex:0];
+    [self.view insertSubview:bottomGlow atIndex:0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [topGlow.widthAnchor constraintEqualToConstant:220.0],
+        [topGlow.heightAnchor constraintEqualToConstant:220.0],
+        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-72.0],
+        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:84.0],
+
+        [bottomGlow.widthAnchor constraintEqualToConstant:200.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:200.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:48.0],
+        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-64.0]
+    ]];
+
+    self.pp_backgroundGlowViewTop = topGlow;
+    self.pp_backgroundGlowViewBottom = bottomGlow;
+}
+
+- (void)pp_layoutBackgroundGlowOrbs
+{
+    if (!self.pp_backgroundGlowViewTop) return;
+    self.pp_backgroundGlowViewTop.layer.cornerRadius =
+        CGRectGetWidth(self.pp_backgroundGlowViewTop.bounds) * 0.5;
+    self.pp_backgroundGlowViewBottom.layer.cornerRadius =
+        CGRectGetWidth(self.pp_backgroundGlowViewBottom.bounds) * 0.5;
+    [self.view sendSubviewToBack:self.pp_backgroundGlowViewBottom];
+    [self.view sendSubviewToBack:self.pp_backgroundGlowViewTop];
+}
+
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
@@ -7626,6 +7702,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         !CGRectEqualToRect(self.pp_backgroundCanvasView.bounds, CGRectZero)) {
         //[self pp_layoutBackgroundLayers];
     }
+
+    [self pp_layoutBackgroundGlowOrbs];
 
     if (self.homeSmartSearchView) {
         CGRect frame = self.homeSmartSearchView.frame;
@@ -7673,18 +7751,17 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
         self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
         [self pp_updateBackgroundGradientColors];
-        [self pp_applyPalette];
         [self configureNavigationBar];
         [self refreshHeroSectionAppearance];
         [self setNeedsStatusBarAppearanceUpdate];
 
-        // Force immediate full visual refresh of all visible cells
-        [self.collectionView.collectionViewLayout invalidateLayout];
-        NSInteger sectionCount = [self.collectionView numberOfSections];
-        if (sectionCount > 0) {
-            [self.collectionView reloadSections:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, sectionCount)]];
+        // Force visual refresh via diffable data source (direct mutation APIs are forbidden)
+        if (self.dataSource) {
+            NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+            [snapshot reconfigureItemsWithIdentifiers:snapshot.itemIdentifiers];
+            [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
         }
-        [self.collectionView layoutIfNeeded];
+        [self.collectionView.collectionViewLayout invalidateLayout];
     }
 }
 
