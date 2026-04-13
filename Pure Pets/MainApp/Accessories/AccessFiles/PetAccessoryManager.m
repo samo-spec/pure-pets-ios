@@ -17,6 +17,31 @@
 #import "PPFirestoreErrorNotifier.h"
 #import "PPFunc.h"
 
+#pragma mark - Hidden-Category Filtering (Accessories)
+
+/// Returns the set of currently visible main-kind IDs (for accessories).
+static NSSet<NSNumber *> *PPVisibleMainKindIDsForAccessories(void) {
+    NSMutableSet<NSNumber *> *ids = [NSMutableSet set];
+    for (MainKindsModel *kind in PPMainKindsArray) {
+        if (kind.ID > 0) {
+            [ids addObject:@(kind.ID)];
+        }
+    }
+    return ids;
+}
+
+/// Filters out accessories whose main category belongs to a hidden main kind.
+static NSArray<PetAccessory *> *PPFilterAccessoriesByVisibleCategories(NSArray<PetAccessory *> *accessories) {
+    NSSet<NSNumber *> *visibleIDs = PPVisibleMainKindIDsForAccessories();
+    if (visibleIDs.count == 0) return accessories; // Categories not loaded yet — don't filter
+
+    return [accessories filteredArrayUsingPredicate:
+        [NSPredicate predicateWithBlock:^BOOL(PetAccessory *acc, NSDictionary *bindings) {
+            if (acc.petMainCategoryID <= 0) return YES; // General/no-category items pass through
+            return [visibleIDs containsObject:@(acc.petMainCategoryID)];
+        }]];
+}
+
 @interface PetAccessoryManager ()
 @property (nonatomic, strong) FIRFirestore *firestore;
 @property (nonatomic, strong) id<FIRListenerRegistration> listener;
@@ -241,6 +266,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        visible = PPFilterAccessoriesByVisibleCategories(visible);
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible);
         });
@@ -301,6 +327,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        visible = PPFilterAccessoriesByVisibleCategories(visible);
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible);
         });
@@ -364,6 +391,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
 
             NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+            visible = PPFilterAccessoriesByVisibleCategories(visible);
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(visible);
             });
@@ -417,6 +445,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        visible = PPFilterAccessoriesByVisibleCategories(visible);
         // ✅ Always return on main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(visible);
@@ -478,6 +507,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        visible = PPFilterAccessoriesByVisibleCategories(visible);
         dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"✅ Accessories matched = %lu", (unsigned long)visible.count);
             if (completion) completion(visible);
@@ -529,6 +559,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        visible = PPFilterAccessoriesByVisibleCategories(visible);
         // Always return on main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible, nil);
@@ -569,6 +600,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        visible = PPFilterAccessoriesByVisibleCategories(visible);
         if (completion) {
             completion(visible, nil);
         }

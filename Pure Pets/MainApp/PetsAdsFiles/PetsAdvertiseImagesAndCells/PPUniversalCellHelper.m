@@ -482,7 +482,7 @@ NS_ASSUME_NONNULL_BEGIN
     label.font = [GM boldFontWithSize:15];
     label.numberOfLines = 2;
     label.lineBreakMode = NSLineBreakByTruncatingTail;
-    label.textAlignment = Language.isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    label.textAlignment = Language.alignmentForCurrentLanguage;
     label.textColor = UIColor.labelColor;
     label.adjustsFontForContentSizeCategory = NO;
 
@@ -500,7 +500,7 @@ NS_ASSUME_NONNULL_BEGIN
     lb.font = [GM MidFontWithSize:13];
     lb.textColor = UIColor.secondaryLabelColor;
     lb.numberOfLines = 1;
-    lb.textAlignment = Language.isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    lb.textAlignment = Language.alignmentForCurrentLanguage;
     return lb;
 }
 

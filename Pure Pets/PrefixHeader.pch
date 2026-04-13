@@ -415,6 +415,18 @@ static inline BOOL PPIOS26(void) {
     return NO;
 }
 
+static inline UIColor *AppBageColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
+        }
+        return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
+    }];
+}
+
+
+
 static inline UIColor *PPBackgroundColorForIOS26(UIColor *fallbackColor) {
     UIColor *ios26Color = [AppBackgroundClr colorWithAlphaComponent:1.0];
     return PPIOS26() ? ios26Color : (fallbackColor ?: ios26Color);

@@ -65,7 +65,7 @@ static char * const kUIViewBadgePropertyKey =  "badgeLayer";
     if (content != nil) {
         circleLayer.masksToBounds = YES;
         circleLayer.cornerRadius = circleLayer.bounds.size.height / 2;
-        circleLayer.borderColor =  GM.AppForegroundColor.CGColor;
+        circleLayer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.26].CGColor;
         CATextLayer *textLayer = [CATextLayer layer];
         textLayer.foregroundColor = contentColor.CGColor;
         textLayer.alignmentMode = kCAAlignmentCenter;
@@ -115,7 +115,7 @@ static char * const kUIViewBadgePropertyKey =  "badgeLayer";
     UIFont *font = [GM boldFontWithSize:10];
     [self addBadgeWithContent:content
                   contentFont:font
-                 contentColor:AppForgroundColr
+                 contentColor:[UIColor whiteColor]
                    badgeColor:color
                        offset:offset
                   badgeRadius:badgeRadius];

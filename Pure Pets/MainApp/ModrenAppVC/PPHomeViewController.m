@@ -1243,6 +1243,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) NSArray<PPCategoryItem *> *categories;
 @property (nonatomic, strong) NSArray<PetAccessory *> *accessories;
 @property (nonatomic, strong) NSArray<PetAccessory *> *buyAgainAccessories;
+@property (nonatomic, strong) NSArray<PetAccessory *> *lastFoodAccessories;
 @property (nonatomic, strong) NSArray<PPPetProfile *> *petProfiles;
 @property (nonatomic, strong) NSArray<PetAd *> *nearbyAds;
 @property (nonatomic, strong, nullable) PPPetProfile *defaultPetProfile;
@@ -1713,6 +1714,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionPetProfile),
+        @(PPHomeSectionLastFood),
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionAdopt),
     ]];
@@ -1790,6 +1792,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
     [snapshot appendItemsWithIdentifiers:@[petProfileItem]
                intoSectionWithIdentifier:@(PPHomeSectionPetProfile)];
+    [snapshot appendItemsWithIdentifiers:@[]
+               intoSectionWithIdentifier:@(PPHomeSectionLastFood)];
     [snapshot appendItemsWithIdentifiers:@[]
                intoSectionWithIdentifier:@(PPHomeSectionAdsNearBy)];
 
@@ -1969,6 +1973,19 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             break;
         }
 
+        case PPHomeSectionLastFood: {
+            for (PetAccessory *food in self.lastFoodAccessories) {
+                PPHomeItem *item = [PPHomeItem new];
+                PPUniversalCellViewModel *vm =
+                    [[PPUniversalCellViewModel alloc] initWithModel:food
+                                                            context:PPCellForMarket];
+                vm.ModelObject = food;
+                item.universalViewModel = vm;
+                [newItems addObject:item];
+            }
+            break;
+        }
+
         case PPHomeSectionAdsNearBy:
             if (self.nearbyLoading && self.nearbyAds.count == 0) {
                 NSInteger skeletonCount = 3;
@@ -2013,7 +2030,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                 PPHomeItem *item = [PPHomeItem new];
                 PPUniversalCellViewModel *vm =
                     [[PPUniversalCellViewModel alloc] initWithModel:ad
-                                                            context:PPCellForHomeAds];
+                                                            context:PPCellForAds];
                 vm.ModelObject = ad;
                 NSDictionary<NSString *, NSString *> *reason =
                     [self pp_suggestionReasonForModel:ad
@@ -2100,6 +2117,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         section == PPHomeSectionPetProfile ||
         section == PPHomeSectionAdopt ||
         section == PPHomeSectionAccessories ||
+        section == PPHomeSectionLastFood ||
         section == PPHomeSectionMainKinds) {
         // 🔒 Prevent visual jumping on sections that fill from empty.
         animate = NO;
@@ -2138,7 +2156,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.hideServiceSection = YES;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBageColor();
 
     [self pp_setupBackgroundGlowOrbs];
 
@@ -2162,6 +2180,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.petProfilesLoading = YES;
     self.petProfilesLoaded = NO;
     self.buyAgainAccessories = @[];
+    self.lastFoodAccessories = @[];
     self.isCurrentOrdersExpanded = NO;
     self.currentOrdersRequestToken = 0;
     self.buyAgainRequestToken = 0;
@@ -2949,6 +2968,35 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     return items.copy;
+}
+
+static NSInteger const PPLastFoodVisibleLimit = 10;
+
+- (void)pp_refreshLastFoodSection
+{
+    NSMutableArray<PetAccessory *> *foodItems = [NSMutableArray array];
+    for (PetAccessory *accessory in self.accessories ?: @[]) {
+        if (![accessory isKindOfClass:PetAccessory.class]) continue;
+        if (accessory.accessKindType == AccessTypeFood) {
+            [foodItems addObject:accessory];
+        }
+    }
+
+    // Sort by createdAt descending (newest first)
+    [foodItems sortUsingComparator:^NSComparisonResult(PetAccessory *a, PetAccessory *b) {
+        NSDate *aDate = a.createdAt ?: [NSDate distantPast];
+        NSDate *bDate = b.createdAt ?: [NSDate distantPast];
+        return [bDate compare:aDate];
+    }];
+
+    // Limit to visible count
+    if (foodItems.count > PPLastFoodVisibleLimit) {
+        [foodItems removeObjectsInRange:NSMakeRange(PPLastFoodVisibleLimit,
+                                                     foodItems.count - PPLastFoodVisibleLimit)];
+    }
+
+    self.lastFoodAccessories = foodItems.copy;
+    [self reloadSection:PPHomeSectionLastFood];
 }
 
 - (NSString *)pp_homeOrderItemIdentifier:(id)rawItem
@@ -3883,6 +3931,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             break;
         }
 
+        case PPHomeSectionLastFood: {
+            cfg.hidden = self.lastFoodAccessories.count == 0;
+            cfg.title = kLang(@"Home_LastFoodAdded") ?: @"Last Food Added";
+            cfg.subtitle = kLang(@"Home_LastFoodSubtitle") ?: @"Recently added pet food";
+            cfg.iconName = arrowImage;
+            break;
+        }
+
         case PPHomeSectionBuyAgain: {
             cfg.hidden = self.buyAgainAccessories.count == 0;
             cfg.title = kLang(@"Home_BuyAgainTitle");
@@ -4718,6 +4774,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             self.accessories = sorted;
             self.accessoriesLoaded = YES;
             [self pp_refreshBuyAgainSection];
+            [self pp_refreshLastFoodSection];
 
             // Batch all section reloads into a single layout pass
             [CATransaction begin];
@@ -4725,6 +4782,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             [self reloadSection:PPHomeSectionCurrentOrders];
             [self reloadSection:PPHomeSectionAccessories];
             [self reloadSection:PPHomeSectionSuggestions];
+            [self reloadSection:PPHomeSectionLastFood];
             [CATransaction commit];
 
             [self tryApplySnapshot];
@@ -5097,6 +5155,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
         case PPHomeSectionBuyAgain:
             [self handleDeepLinkWithTarget:PPDeepLinkTargetAccessories
+                                  mainKind:nil
+                                    source:PPInputSourceHomeAccessoriesSection];
+            break;
+
+        case PPHomeSectionLastFood:
+            [self handleDeepLinkWithTarget:PPDeepLinkTargetFood
                                   mainKind:nil
                                     source:PPInputSourceHomeAccessoriesSection];
             break;
@@ -5599,6 +5663,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         case PPHomeSectionAccessories:
         case PPHomeSectionPetProfile:
         case PPHomeSectionBuyAgain:
+        case PPHomeSectionLastFood:
         case PPHomeSectionAdsNearBy: {
             [self pp_emitSelectionHaptic];
             if (section == PPHomeSectionPetProfile) {
@@ -7390,7 +7455,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.pp_backgroundCanvasView) {
         return;
     }
-
+    return;
     UIView *canvas = [[UIView alloc] init];
     canvas.translatesAutoresizingMaskIntoConstraints = NO;
     canvas.backgroundColor = UIColor.clearColor;
@@ -7638,7 +7703,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.pp_backgroundGlowViewTop || self.pp_backgroundGlowViewBottom) {
         return;
     }
-
+    return;
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
@@ -7749,7 +7814,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+        //self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
         [self pp_updateBackgroundGradientColors];
         [self configureNavigationBar];
         [self refreshHeroSectionAppearance];
@@ -7762,6 +7827,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
         }
         [self.collectionView.collectionViewLayout invalidateLayout];
+
+        // Re-apply cart badge so CALayer colors match the new appearance
+        NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
+        [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
     }
 }
 

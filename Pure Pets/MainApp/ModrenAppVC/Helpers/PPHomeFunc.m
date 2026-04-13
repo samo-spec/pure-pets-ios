@@ -466,6 +466,22 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     return section;
 }
 
++ (NSCollectionLayoutSection *)lastFoodSection {
+    return [self lastFoodSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+}
+
++ (NSCollectionLayoutSection *)lastFoodSectionForWidth:(CGFloat)availableWidth {
+    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+    NSCollectionLayoutSection *section = [self accessoriesSectionForWidth:availableWidth];
+    section.contentInsets = NSDirectionalEdgeInsetsMake(PPSize12,
+                                                        horizontalInset,
+                                                        PPSize12,
+                                                        horizontalInset);
+    section.interGroupSpacing = 0;
+    section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
+    return section;
+}
+
 + (NSCollectionLayoutSection *)adoptSection {
    return [self adoptSectionForWidth:UIScreen.mainScreen.bounds.size.width];
 }

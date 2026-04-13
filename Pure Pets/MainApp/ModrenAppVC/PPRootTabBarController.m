@@ -72,7 +72,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppClearClr;
     self.delegate = self;
     // Home
     UINavigationController *homeNav =

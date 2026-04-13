@@ -251,8 +251,12 @@
         iconColor = UIColor.secondaryLabelColor;
     }
 
-    self.backgroundColor = bgColor;
+    self.backgroundColor = self.hidesBackground ? UIColor.clearColor : bgColor;
     self.tintColor = iconColor;
+    
+    if (self.hidesBackground) {
+        self.layer.shadowOpacity = 0.0;
+    }
 
     // ── Accessibility: Update label based on favorite state ──
     self.accessibilityLabel = self.isFavorite

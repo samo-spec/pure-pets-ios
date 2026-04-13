@@ -1620,6 +1620,8 @@
 "Home_LastOrderSubtitle" = "Track the latest update and open your full order history.";
 "Home_BuyAgainTitle" = "Buy Again";
 "Home_BuyAgainSubtitle" = "Quick picks from items you ordered before.";
+"Home_LastFoodAdded" = "Last Food Added";
+"Home_LastFoodSubtitle" = "Recently added pet food";
 "Home_CurrentOrdersPendingHint" = "Waiting for store confirmation.";
 "Home_CurrentOrdersPaidHint" = "Payment confirmed and queued for fulfillment.";
 "Home_CurrentOrdersProcessingHint" = "Your items are being prepared now.";
@@ -2457,3 +2459,9 @@
 /* ── Adopt Pet Form Section Titles ── */
 "petInfo" = "Pet Information";
 "additionalInfo" = "Additional Details";
+
+/* ── Appearance / Dark Mode Section ── */
+"Appearance" = "Appearance";
+"LightMode" = "Light";
+"DarkMode" = "Dark";
+"SystemMode" = "System";

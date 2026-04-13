@@ -18,20 +18,78 @@
 static CGFloat const PPAdsCellTopInset = 14.0;
 static CGFloat const PPAdsCellSideInset = 14.0;
 static CGFloat const PPAdsCellBottomInset = 10.0;
-static CGFloat const PPAdsCellOverlayBottomInset = 12.0;
-static CGFloat const PPAdsCellOverlayHeightSquare = 92.0;
-static CGFloat const PPAdsCellOverlayHeightRegular = 96.0;
-static CGFloat const PPAdsCellOverlayHeightFullWidth = 100.0;
+static CGFloat const PPAdsMockCardCornerRadius = 22.0;
+static CGFloat const PPAdsMockImageCornerRadius = 18.0;
+static CGFloat const PPAdsMockImageTopInset = 16.0;
+static CGFloat const PPAdsMockImageSideInset = 16.0;
+static CGFloat const PPAdsMockImageMinimumHeightRatio = 0.85;
+static CGFloat const PPAdsMockBodyTopSpacing = 16.0;
+static CGFloat const PPAdsMockBodySideInset = 18.0;
+static CGFloat const PPAdsMockBodyBottomInset = 20.0;
+static CGFloat const PPAdsMockBodySpacing = 9.0;
+static CGFloat const PPAdsCellOverlayBottomInset = 10.0;
+static CGFloat const PPAdsCellOverlayHeightSquare = 108.0;
+static CGFloat const PPAdsCellOverlayHeightRegular = 130.0;
+static CGFloat const PPAdsCellOverlayHeightFullWidth = 120.0;
+static CGFloat const PPAdsGlassInset = 8.0;
+static CGFloat const PPAdsOverlayCornerRadius = 22.0;
+static CGFloat const PPAdsOverlayBorderWidth = 0.85;
+static CGFloat const PPAdsOverlayTitleSpacing = 5.0;
+static CGFloat const PPAdsOverlaySubtitleSpacing = 8.0;
+static CGFloat const PPAdsOverlayHorizontalPadding = 16.0;
+static CGFloat const PPAdsOverlayTopPadding = 16.0;
+static CGFloat const PPAdsOverlayBottomPadding = 14.0;
+static CGFloat const PPAdsTopMetaCornerRadius = 14.0;
+static CGFloat const PPAdsTopMetaHorizontalPadding = 11.0;
+static CGFloat const PPAdsTopMetaVerticalPadding = 7.0;
 static CGFloat const PPServiceOverlayFloatingInset = 4.0;
 static CGFloat const PPServiceOverlayCornerRadius = 24.0;
 static CGFloat const PPServiceTextInset = 12.0;
 static CGFloat const PPServiceBottomTextInset = 12.0;
 static CGFloat const PPServiceButtonHeight = 40.0;
+static CGFloat const PPCatalogCardInset = 14.0;
+static CGFloat const PPCatalogImageTopInset = 14.0;
+static CGFloat const PPCatalogImageSideInset = 14.0;
+static CGFloat const PPCatalogImageHeightRatio = 0.62;
+static CGFloat const PPCatalogTextTopSpacing = 10.0;
+static CGFloat const PPCatalogButtonTopSpacing = 10.0;
+static CGFloat const PPCatalogStockTopSpacing = 8.0;
+static CGFloat const PPCatalogBottomInset = 14.0;
+static CGFloat const PPCatalogImageCornerRadius = 18.0;
+static CGFloat const PPCatalogCardCornerRadius = 22.0;
+static CGFloat const PPCatalogBadgeCornerRadius = 10.0;
+static CGFloat const PPCatalogDiscountBadgeHeight = 20.0;
+static CGFloat const PPCatalogStockBadgeHeight = 26.0;
+static CGFloat const PPCatalogButtonHeight = 34.0;
 
 static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 {
     NSString *value = kLang(key);
     return value.length > 0 ? value : fallback;
+}
+
+static BOOL PPStringContainsArabic(NSString *text)
+{
+    if (text.length == 0) return NO;
+    for (NSUInteger idx = 0; idx < text.length; idx++) {
+        unichar ch = [text characterAtIndex:idx];
+        if ((ch >= 0x0600 && ch <= 0x06FF) ||
+            (ch >= 0x0750 && ch <= 0x077F) ||
+            (ch >= 0x08A0 && ch <= 0x08FF) ||
+            (ch >= 0xFB50 && ch <= 0xFDFF) ||
+            (ch >= 0xFE70 && ch <= 0xFEFF)) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static BOOL PPStringContainsLatinOrDigits(NSString *text)
+{
+    if (text.length == 0) return NO;
+    NSCharacterSet *latinDigits = [NSCharacterSet characterSetWithCharactersInString:
+                                   @"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"];
+    return [text rangeOfCharacterFromSet:latinDigits].location != NSNotFound;
 }
 
 #pragma mark - PPUniversalCell
@@ -89,6 +147,16 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 @property (nonatomic, strong) UIStackView *reasonBadgeStack;
 @property (nonatomic, strong) UIImageView *reasonBadgeIconView;
 @property (nonatomic, strong) UILabel *reasonBadgeLabel;
+@property (nonatomic, strong) UIStackView *adsBodyStack;
+@property (nonatomic, strong) UIStackView *adsTitleRow;
+@property (nonatomic, strong) UIView *adsTitleSpacer;
+@property (nonatomic, strong) UILabel *adsTitleLabel;
+@property (nonatomic, strong) UIStackView *adsLocationRow;
+@property (nonatomic, strong) UIImageView *adsLocationGlyphView;
+@property (nonatomic, strong) UILabel *adsLocationValueLabel;
+@property (nonatomic, strong) UIStackView *adsInfoRow;
+@property (nonatomic, strong) UIImageView *adsInfoGlyphView;
+@property (nonatomic, strong) UILabel *adsInfoLabel;
 ///@property (nonatomic, strong) NSLayoutConstraint *actionBarBottomToCardConstraint;
 //@property (nonatomic, strong) NSLayoutConstraint *actionBarbuttomToAddButtonConstraint;
 //@property (nonatomic, strong) NSLayoutConstraint *actionBarYConstraint;
@@ -142,6 +210,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *fullWidthConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *pintrestConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *squareConstraints;
+@property (nonatomic, strong) NSArray<NSLayoutConstraint *> *adsConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *marketConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *serviceConstraints;
 @property (nonatomic, strong) NSArray<NSLayoutConstraint *> *carouselConstraints;
@@ -171,7 +240,9 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (void)pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:(BOOL)isVisible;
 - (void)pp_applyLayoutAppearanceForMarket:(BOOL)isMarket;
+- (BOOL)pp_isAdsContext;
 - (BOOL)pp_isServiceContext;
+- (BOOL)pp_isCatalogCommerceContext;
 - (UIColor *)pp_serviceAccentColorForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_serviceSymbolNameForViewModel:(PPUniversalCellViewModel *)vm;
 - (void)pp_updateServiceLayoutMetrics;
@@ -192,7 +263,10 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 - (nullable PetAd *)pp_resolvedPetAdFromViewModel:(PPUniversalCellViewModel *)vm;
 - (nullable ServiceModel *)pp_resolvedServiceFromViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_shortAgeTextFromMonths:(NSNumber *)months;
+- (NSString *)pp_preciseAgeTextFromMonths:(NSNumber *)months;
 - (NSString *)pp_adsSubtitleTextForViewModel:(PPUniversalCellViewModel *)vm;
+- (NSString *)pp_adsPrimaryDetailTextForViewModel:(PPUniversalCellViewModel *)vm;
+- (NSString *)pp_adsPrimaryDetailSymbolNameForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_serviceSubtitleTextForViewModel:(PPUniversalCellViewModel *)vm;
 - (void)pp_configureServiceBadgeForViewModel:(PPUniversalCellViewModel *)vm;
 - (void)pp_applyServiceStateForViewModel:(PPUniversalCellViewModel *)vm;
@@ -204,6 +278,17 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 - (BOOL)pp_isTrendingAd:(nullable PetAd *)ad;
 - (void)pp_configureAdsStatusBadgeForViewModel:(PPUniversalCellViewModel *)vm;
 - (void)pp_applyAdsStateForViewModel:(PPUniversalCellViewModel *)vm;
+- (void)pp_applyAdsLoadingState:(BOOL)isLoading;
+- (void)pp_applyCatalogLoadingState:(BOOL)isLoading;
+- (void)pp_updateCommerceAvailabilityForStockQuantity:(NSInteger)stockQty;
+- (CGFloat)pp_preferredCatalogHeightForWidth:(CGFloat)width;
+- (void)pp_updateAdsAccessoryPlacementForAdsContext:(BOOL)isAds;
+- (void)pp_applyAdsFavoriteVisualStyle;
+- (void)pp_scheduleAdsFavoriteVisualRefresh;
+- (NSWritingDirection)pp_writingDirectionForText:(NSString *)text;
+- (UISemanticContentAttribute)pp_semanticForText:(NSString *)text;
+- (NSMutableParagraphStyle *)pp_paragraphStyleForText:(NSString *)text;
+- (void)pp_applyDirectionToLabel:(UILabel *)label usingText:(NSString *)text;
 
 @end
 
@@ -248,9 +333,9 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         self.contentView.clipsToBounds = NO;
         self.clipsToBounds = NO;
         self.layer.shadowColor = AppShadowClr.CGColor;
-        self.layer.shadowOpacity = 0.08;
-        self.layer.shadowRadius = 14.0;
-        self.layer.shadowOffset = CGSizeMake(0, 8.0);
+        self.layer.shadowOpacity = 0.06;
+        self.layer.shadowRadius = 12.0;
+        self.layer.shadowOffset = CGSizeMake(0, 7.0);
         self.layer.backgroundColor = AppClearClr.CGColor;
         self.contentView.backgroundColor = AppClearClr;
         self.backgroundColor = AppClearClr;
@@ -308,6 +393,20 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.reasonBadgeStack.layer.shadowOpacity = 0.0;
     self.reasonBadgeStack.layer.shadowRadius = 0.0;
     self.reasonBadgeStack.layer.shadowOffset = CGSizeZero;
+    self.reasonBadgeStack.layer.masksToBounds = YES;
+    self.reasonBadgeStack.clipsToBounds = YES;
+    self.adsBodyStack.hidden = YES;
+    self.adsTitleLabel.text = @"";
+    self.adsLocationValueLabel.text = @"";
+    self.adsInfoLabel.attributedText = nil;
+    self.adsInfoLabel.text = @"";
+    self.adsLocationRow.hidden = YES;
+    self.adsInfoRow.hidden = YES;
+    self.locationStack.layer.shadowOpacity = 0.0;
+    self.locationStack.layer.shadowRadius = 0.0;
+    self.locationStack.layer.shadowOffset = CGSizeZero;
+    self.locationStack.layer.masksToBounds = YES;
+    self.locationStack.clipsToBounds = YES;
     [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
     self.bottomOverlay.hidden = NO;
     self.actionBar.hidden = NO;
@@ -322,6 +421,9 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.didLayout = NO;
     self.serviceDetailsButton.hidden = YES;
     self.serviceDetailsButton.alpha = 1.0;
+    [self pp_updateAdsAccessoryPlacementForAdsContext:NO];
+    [self pp_applyAdsLoadingState:NO];
+    [self pp_applyCatalogLoadingState:NO];
   
  }
 
@@ -341,6 +443,20 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     }
 }
 
+- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    UICollectionViewLayoutAttributes *attributes = [layoutAttributes copy];
+    if ([self pp_isCatalogCommerceContext] || [self pp_isServiceContext]) {
+        CGRect frame = attributes.frame;
+        CGFloat preferredHeight = [self pp_preferredCatalogHeightForWidth:CGRectGetWidth(frame)];
+        if (preferredHeight > CGRectGetHeight(frame)) {
+            frame.size.height = preferredHeight;
+            attributes.frame = frame;
+        }
+    }
+    return attributes;
+}
+
 
 
 - (void)buildUI {
@@ -354,7 +470,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
     self.card.clipsToBounds = YES;
     
-    CGFloat radius = PPCornerCard;
+    CGFloat radius = PPCatalogCardCornerRadius;
 
     self.card.layer.cornerRadius = radius;
     
@@ -381,7 +497,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         [self.imageScrimView.bottomAnchor constraintEqualToAnchor:self.imageView.bottomAnchor]
     ]];
     self.card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor;
-    self.card.layer.borderWidth = 0.75;
+    self.card.layer.borderWidth = 0.8;
     self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
     self.imageView.clipsToBounds = YES;
      //self.overlay = [PPNavigationController  setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge];
@@ -392,7 +508,26 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.discountLabel = [self createDiscountLabel];
     self.discountValueLabel = [self createDiscountValueLabel];
     self.discountValueLabel.hidden = YES;
+    self.discountValueLabel.textInsets = UIEdgeInsetsMake(3.5, 8.0, 3.5, 8.0);
+    self.discountValueLabel.font = [GM boldFontWithSize:10.5];
+    self.discountValueLabel.layer.cornerRadius = PPCatalogBadgeCornerRadius;
+    if (@available(iOS 13.0, *)) {
+        self.discountValueLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    self.discountValueLabel.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.discountValueLabel.layer.shadowOpacity = 0.06;
+    self.discountValueLabel.layer.shadowRadius = 6.0;
+    self.discountValueLabel.layer.shadowOffset = CGSizeMake(0.0, 3.0);
+    [self.discountValueLabel.heightAnchor constraintEqualToConstant:PPCatalogDiscountBadgeHeight].active = YES;
     self.stockQtyLabel = [self createStockQtyLabel];
+    self.stockQtyLabel.font = [GM boldFontWithSize:11.0];
+    self.stockQtyLabel.textInsets = UIEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
+    self.stockQtyLabel.textAlignment = NSTextAlignmentCenter;
+    self.stockQtyLabel.layer.cornerRadius = PPCatalogBadgeCornerRadius;
+    if (@available(iOS 13.0, *)) {
+        self.stockQtyLabel.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.stockQtyLabel.widthAnchor constraintGreaterThanOrEqualToConstant:78.0].active = YES;
 
     // Only priceLabel and discountLabel in priceStack
     self.priceStack = [self createPriceStackWithSubviews:@[self.priceLabel, self.discountLabel]];
@@ -427,7 +562,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.adLocationLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.9];
     self.adLocationLabel.numberOfLines = 1;
     self.adLocationLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.adLocationLabel.textAlignment = GM.setAligment;
+    self.adLocationLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.adLocationLabel.hidden = YES;
 
     // Subtle contrast shadow (glass-friendly)
@@ -486,7 +621,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.reasonBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.reasonBadgeLabel.font = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
     self.reasonBadgeLabel.textColor = UIColor.whiteColor;
-    self.reasonBadgeLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.reasonBadgeLabel.textAlignment = Language.alignmentForCurrentLanguage;;
     self.reasonBadgeLabel.numberOfLines = 1;
     self.reasonBadgeLabel.lineBreakMode = NSLineBreakByTruncatingTail;
 
@@ -553,7 +688,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         self.priceStack
     ]];
     [self.textStack addArrangedSubview:self.serviceDetailsButton];
-    self.textStack.spacing = 4.0;
+    self.textStack.spacing = 6.0;
     self.textStack.alignment = UIStackViewAlignmentFill;
     self.textStack.distribution = UIStackViewDistributionFill;
     self.priceStack.alignment = UIStackViewAlignmentFirstBaseline;
@@ -572,6 +707,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self.card addSubview:self.offerBadge];
  
     self.favButton = [[FavoriteFloatingButton alloc] init];
+    self.favButton.hidesBackground = YES;
     self.favButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
     self.favButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_favorite_hint", @"Double-tap to add or remove from favorites");
 
@@ -619,10 +755,128 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.actionBar.alignment = UIStackViewAlignmentCenter;
 
     [self.card addSubview:self.actionBar];
+    [self.favButton addTarget:self
+                       action:@selector(pp_scheduleAdsFavoriteVisualRefresh)
+             forControlEvents:UIControlEventTouchUpInside];
+
+    self.adsTitleLabel = [[UILabel alloc] init];
+    self.adsTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsTitleLabel.numberOfLines = 2;
+    self.adsTitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.adsTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.adsTitleLabel.textColor = [UIColor colorWithRed:0.33 green:0.35 blue:0.40 alpha:1.0];
+    self.adsTitleLabel.font = [GM boldFontWithSize:17.5] ?: [UIFont systemFontOfSize:17.5 weight:UIFontWeightSemibold];
+    self.adsTitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    self.adsTitleSpacer = [[UIView alloc] init];
+    self.adsTitleSpacer.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.adsTitleSpacer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [self.adsTitleSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                           forAxis:UILayoutConstraintAxisHorizontal];
+
+    self.adsTitleRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.adsTitleLabel,
+        self.adsTitleSpacer
+    ]];
+    self.adsTitleRow.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsTitleRow.axis = UILayoutConstraintAxisHorizontal;
+    self.adsTitleRow.alignment = UIStackViewAlignmentCenter;
+    self.adsTitleRow.spacing = 10.0;
+    self.adsTitleRow.semanticContentAttribute = UISemanticContentAttributeUnspecified;
+    self.adsTitleRow.userInteractionEnabled = YES;
+    [self.adsTitleRow setContentHuggingPriority:UILayoutPriorityRequired
+                                        forAxis:UILayoutConstraintAxisVertical];
+    [self.adsTitleRow setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                      forAxis:UILayoutConstraintAxisVertical];
+
+    self.adsLocationGlyphView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"mappin.circle.fill"]];
+    self.adsLocationGlyphView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsLocationGlyphView.contentMode = UIViewContentModeScaleAspectFit;
+    self.adsLocationGlyphView.tintColor = [UIColor colorWithRed:0.49 green:0.50 blue:0.55 alpha:1.0];
+
+    self.adsLocationValueLabel = [[UILabel alloc] init];
+    self.adsLocationValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsLocationValueLabel.numberOfLines = 1;
+    self.adsLocationValueLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.adsLocationValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.adsLocationValueLabel.textColor = [UIColor colorWithRed:0.43 green:0.45 blue:0.50 alpha:1.0];
+    self.adsLocationValueLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightRegular];
+    self.adsLocationValueLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    self.adsLocationRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.adsLocationGlyphView,
+        self.adsLocationValueLabel
+    ]];
+    self.adsLocationRow.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsLocationRow.axis = UILayoutConstraintAxisHorizontal;
+    self.adsLocationRow.alignment = UIStackViewAlignmentCenter;
+    self.adsLocationRow.spacing = 8.0;
+    self.adsLocationRow.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.adsLocationRow setContentHuggingPriority:UILayoutPriorityRequired
+                                           forAxis:UILayoutConstraintAxisVertical];
+    [self.adsLocationRow setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisVertical];
+
+    self.adsInfoGlyphView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"calendar"]];
+    self.adsInfoGlyphView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsInfoGlyphView.contentMode = UIViewContentModeScaleAspectFit;
+    self.adsInfoGlyphView.tintColor = [UIColor colorWithRed:0.49 green:0.50 blue:0.55 alpha:1.0];
+
+    self.adsInfoLabel = [[UILabel alloc] init];
+    self.adsInfoLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsInfoLabel.numberOfLines = 1;
+    self.adsInfoLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.adsInfoLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.adsInfoLabel.textColor = [UIColor colorWithRed:0.43 green:0.45 blue:0.50 alpha:1.0];
+    self.adsInfoLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightRegular];
+    self.adsInfoLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    self.adsInfoRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.adsInfoGlyphView,
+        self.adsInfoLabel
+    ]];
+    self.adsInfoRow.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsInfoRow.axis = UILayoutConstraintAxisHorizontal;
+    self.adsInfoRow.alignment = UIStackViewAlignmentCenter;
+    self.adsInfoRow.spacing = 8.0;
+    self.adsInfoRow.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.adsInfoRow setContentHuggingPriority:UILayoutPriorityRequired
+                                       forAxis:UILayoutConstraintAxisVertical];
+    [self.adsInfoRow setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                     forAxis:UILayoutConstraintAxisVertical];
+
+    self.adsBodyStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.adsTitleRow,
+        self.adsLocationRow,
+        self.adsInfoRow
+    ]];
+    self.adsBodyStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.adsBodyStack.axis = UILayoutConstraintAxisVertical;
+    self.adsBodyStack.alignment = UIStackViewAlignmentFill;
+    self.adsBodyStack.distribution = UIStackViewDistributionFill;
+    self.adsBodyStack.spacing = PPAdsMockBodySpacing;
+    self.adsBodyStack.hidden = YES;
+    [self.adsBodyStack setContentHuggingPriority:UILayoutPriorityRequired
+                                         forAxis:UILayoutConstraintAxisVertical];
+    [self.adsBodyStack setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                       forAxis:UILayoutConstraintAxisVertical];
+    [self.card addSubview:self.adsBodyStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.adsLocationGlyphView.widthAnchor constraintEqualToConstant:18.0],
+        [self.adsLocationGlyphView.heightAnchor constraintEqualToConstant:18.0],
+        [self.adsInfoGlyphView.widthAnchor constraintEqualToConstant:18.0],
+        [self.adsInfoGlyphView.heightAnchor constraintEqualToConstant:18.0]
+    ]];
+    if (@available(iOS 11.0, *)) {
+        [self.adsBodyStack setCustomSpacing:10.0 afterView:self.adsTitleRow];
+        [self.adsBodyStack setCustomSpacing:8.0 afterView:self.adsLocationRow];
+    }
 
     self.addButton = [self iconButton:@"+"
                            buttonKind:ButtonKindText
-                                 size:38.0
+                                 size:40.0
                         baseForground:UIColor.whiteColor
                        baseBackground:AppPrimaryClr];
     self.addButton.titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -662,11 +916,11 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         [self.minusBtn.heightAnchor constraintEqualToConstant:34.0],
         [self.plusBtn.widthAnchor constraintEqualToConstant:34.0],
         [self.plusBtn.heightAnchor constraintEqualToConstant:34.0],
-        [self.stepperView.heightAnchor constraintEqualToConstant:38.0]
+        [self.stepperView.heightAnchor constraintEqualToConstant:PPCatalogButtonHeight]
     ]];
     self.addButtonWidthConstraint = [self.addButton.widthAnchor constraintEqualToConstant:38.0];
     self.addButtonWidthConstraint.active = YES;
-    [self.addButton.heightAnchor constraintEqualToConstant:38.0].active = YES;
+    [self.addButton.heightAnchor constraintEqualToConstant:PPCatalogButtonHeight].active = YES;
 
     // Taps
     // Add dedicated tap gesture recognizer for card tap (custom, does not interfere with controls)
@@ -734,16 +988,41 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self.imageView.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:0];
 
     NSLayoutConstraint *marketImgTop =
-    [self.imageView.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:14.0];
+    [self.imageView.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:PPCatalogImageTopInset];
 
     NSLayoutConstraint *marketImgLeading =
-    [self.imageView.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:14.0];
+    [self.imageView.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:PPCatalogImageSideInset];
 
     NSLayoutConstraint *marketImgTrailing =
-    [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-14.0];
+    [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-PPCatalogImageSideInset];
 
     self.marketImageHeightConstraint =
-    [self.imageView.heightAnchor constraintEqualToAnchor:self.imageView.widthAnchor multiplier:0.82];
+    [self.imageView.heightAnchor constraintEqualToAnchor:self.imageView.widthAnchor multiplier:PPCatalogImageHeightRatio];
+
+    NSLayoutConstraint *adsImgTop =
+    [self.imageView.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:PPAdsMockImageTopInset];
+
+    NSLayoutConstraint *adsImgLeading =
+    [self.imageView.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:PPAdsMockImageSideInset];
+
+    NSLayoutConstraint *adsImgTrailing =
+    [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-PPAdsMockImageSideInset];
+
+    NSLayoutConstraint *adsBodyTop =
+    [self.adsBodyStack.topAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:PPAdsMockBodyTopSpacing];
+
+    NSLayoutConstraint *adsBodyLeading =
+    [self.adsBodyStack.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:PPAdsMockBodySideInset];
+
+    NSLayoutConstraint *adsBodyTrailing =
+    [self.adsBodyStack.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-PPAdsMockBodySideInset];
+
+    NSLayoutConstraint *adsBodyBottom =
+    [self.adsBodyStack.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-PPAdsMockBodyBottomInset];
+
+    NSLayoutConstraint *adsImageMinimumHeight =
+    [self.imageView.heightAnchor constraintGreaterThanOrEqualToAnchor:self.imageView.widthAnchor multiplier:PPAdsMockImageMinimumHeightRatio];
+    adsImageMinimumHeight.priority = UILayoutPriorityDefaultLow;
 
     // =========================
     // Bottom Overlay (already created)
@@ -773,15 +1052,15 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.discountValueLabel.leadingAnchor constant:-12];
 
     NSLayoutConstraint *marketTxtTop =
-    [self.textStack.topAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:16.0];
+    [self.textStack.topAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:PPCatalogTextTopSpacing];
 
     NSLayoutConstraint *marketTxtLeading =
-    [self.textStack.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:16.0];
+    [self.textStack.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:PPCatalogCardInset];
 
     NSLayoutConstraint *marketTxtTrailing =
-    [self.textStack.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-16.0];
+    [self.textStack.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-PPCatalogCardInset];
     NSLayoutConstraint *serviceTxtBottom =
-    [self.textStack.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-16.0];
+    [self.textStack.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-PPCatalogBottomInset];
 
     self.discountValueTrailingConstraint =
     [self.discountValueLabel.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-16.0];
@@ -792,10 +1071,10 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
 
     NSLayoutConstraint *marketDiscountTop =
-    [self.discountValueLabel.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:12.0];
+    [self.discountValueLabel.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:10.0];
 
     NSLayoutConstraint *marketDiscountLeading =
-    [self.discountValueLabel.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:12.0];
+    [self.discountValueLabel.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:10.0];
 
     // =========================
     // Floating actions
@@ -814,13 +1093,13 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.actionBarTrailingConstraint.active = YES;
 
     NSLayoutConstraint *marketActionTop =
-    [self.actionBar.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:12.0];
+    [self.actionBar.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:10.0];
  
     NSLayoutConstraint *marketActionTrailing =
-    [self.actionBar.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-12.0];
+    [self.actionBar.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-10.0];
 
     NSLayoutConstraint *serviceActionLeading =
-    [self.actionBar.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:12.0];
+    [self.actionBar.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:10.0];
 
     // =========================
     // Add / Stepper footer
@@ -835,13 +1114,13 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self.stepperView.bottomAnchor constraintEqualToAnchor:self.addButton.bottomAnchor];
 
     NSLayoutConstraint *marketAddTop =
-    [self.addButton.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:16.0];
+    [self.addButton.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:PPCatalogButtonTopSpacing];
     NSLayoutConstraint *marketAddLeading =
     [self.addButton.leadingAnchor constraintEqualToAnchor:self.textStack.leadingAnchor];
     NSLayoutConstraint *marketAddTrailing =
     [self.addButton.trailingAnchor constraintEqualToAnchor:self.textStack.trailingAnchor];
     NSLayoutConstraint *marketStepperTop =
-    [self.stepperView.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:16.0];
+    [self.stepperView.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:PPCatalogButtonTopSpacing];
     NSLayoutConstraint *marketStepperLeading =
     [self.stepperView.leadingAnchor constraintEqualToAnchor:self.textStack.leadingAnchor];
     NSLayoutConstraint *marketStepperTrailing =
@@ -853,7 +1132,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.reasonBadgeServiceCenterYConstraint =
     [self.reasonBadgeStack.centerYAnchor constraintEqualToAnchor:self.favButton.centerYAnchor];
     self.reasonBadgeServiceTrailingConstraint =
-    [self.reasonBadgeStack.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-14.0];
+    [self.reasonBadgeStack.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-10.0];
 
     // =========================
     // Badges
@@ -873,12 +1152,13 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     NSLayoutConstraint *stockHeight =
     [self.stockQtyLabel.heightAnchor constraintEqualToConstant:24.0];
     NSLayoutConstraint *marketStockTop =
-    [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.addButton.bottomAnchor constant:14.0];
+    [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.addButton.bottomAnchor constant:PPCatalogStockTopSpacing];
     NSLayoutConstraint *marketStockLeading =
     [self.stockQtyLabel.leadingAnchor constraintEqualToAnchor:self.textStack.leadingAnchor];
     NSLayoutConstraint *marketStockBottom =
-    [self.stockQtyLabel.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-16.0];
+    [self.stockQtyLabel.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-PPCatalogBottomInset];
 
+    stockHeight.constant = PPCatalogStockBadgeHeight;
     stockHeight.active = YES;
 
     // =========================
@@ -898,6 +1178,11 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.pintrestConstraints =
     self.verticalConstraints =
     self.fullWidthConstraints;
+
+    self.adsConstraints = @[
+        adsImgTop, adsImgLeading, adsImgTrailing, adsImageMinimumHeight,
+        adsBodyTop, adsBodyLeading, adsBodyTrailing, adsBodyBottom
+    ];
 
     self.marketConstraints = @[
         marketImgTop, marketImgLeading, marketImgTrailing, self.marketImageHeightConstraint,
@@ -933,6 +1218,54 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 - (BOOL)pp_isServiceContext
 {
     return self.context == PPCellForServices;
+}
+
+- (BOOL)pp_isAdsContext
+{
+    return self.context == PPCellForAds;
+}
+
+- (BOOL)pp_isCatalogCommerceContext
+{
+    return self.context == PPCellForMarket || self.context == PPCellForFood;
+}
+
+- (NSWritingDirection)pp_writingDirectionForText:(NSString *)text
+{
+    if (PPStringContainsArabic(text)) {
+        return NSWritingDirectionRightToLeft;
+    }
+    if (PPStringContainsLatinOrDigits(text)) {
+        return NSWritingDirectionLeftToRight;
+    }
+    return Language.isRTL ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
+}
+
+- (UISemanticContentAttribute)pp_semanticForText:(NSString *)text
+{
+    if (PPStringContainsArabic(text)) {
+        return UISemanticContentAttributeForceRightToLeft;
+    }
+    if (PPStringContainsLatinOrDigits(text)) {
+        return UISemanticContentAttributeForceLeftToRight;
+    }
+    return Language.semanticAttributeForCurrentLanguage;
+}
+
+- (NSMutableParagraphStyle *)pp_paragraphStyleForText:(NSString *)text
+{
+    NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
+    style.alignment = Language.alignmentForCurrentLanguage;
+    style.baseWritingDirection = [self pp_writingDirectionForText:text];
+    style.lineBreakMode = NSLineBreakByTruncatingTail;
+    return style;
+}
+
+- (void)pp_applyDirectionToLabel:(UILabel *)label usingText:(NSString *)text
+{
+    if (!label) return;
+    label.textAlignment =Language.alignmentForCurrentLanguage;
+    label.semanticContentAttribute = [self pp_semanticForText:text];
 }
 
 - (UIColor *)pp_serviceAccentColorForViewModel:(PPUniversalCellViewModel *)vm
@@ -974,18 +1307,19 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 - (void)pp_updateServiceLayoutMetrics
 {
     BOOL isService = [self pp_isServiceContext];
-    self.bottomOverlayLeadingConstraint.constant = isService ? PPServiceOverlayFloatingInset : 0.0;
-    self.bottomOverlayTrailingConstraint.constant = isService ? -PPServiceOverlayFloatingInset : 0.0;
-    self.bottomOverlayBottomConstraint.constant = isService ? -PPServiceOverlayFloatingInset : 0.0;
+    BOOL isAds = [self pp_isAdsContext];
+    self.bottomOverlayLeadingConstraint.constant = isService ? PPServiceOverlayFloatingInset : (isAds ? PPAdsGlassInset : 0.0);
+    self.bottomOverlayTrailingConstraint.constant = isService ? -PPServiceOverlayFloatingInset : (isAds ? -PPAdsGlassInset : 0.0);
+    self.bottomOverlayBottomConstraint.constant = isService ? -PPServiceOverlayFloatingInset : (isAds ? -PPAdsCellOverlayBottomInset : 0.0);
 
-    self.textStackTopConstraint.constant = isService ? PPServiceTextInset : 12.0;
-    self.textStackBottomConstraint.constant = isService ? -PPServiceBottomTextInset : -PPAdsCellBottomInset;
+    self.textStackTopConstraint.constant = isService ? PPServiceTextInset : (isAds ? PPAdsOverlayTopPadding : 12.0);
+    self.textStackBottomConstraint.constant = isService ? -PPServiceBottomTextInset : (isAds ? -PPAdsOverlayBottomPadding : -PPAdsCellBottomInset);
     self.textStackBottomConstraint.priority = isService ? UILayoutPriorityRequired : UILayoutPriorityDefaultLow;
-    self.textStackLeadingConstraint.constant = isService ? PPServiceTextInset : PPAdsCellSideInset;
-    self.textStackTrailingToEdgeConstraint.constant = isService ? -PPServiceTextInset : -PPAdsCellSideInset;
-    self.textStackTrailingToDiscountConstraint.constant = isService ? -12.0 : -10.0;
-    self.discountValueTopConstraint.constant = isService ? 14.0 : 12.0;
-    self.discountValueTrailingConstraint.constant = isService ? -PPServiceTextInset : -PPAdsCellSideInset;
+    self.textStackLeadingConstraint.constant = isService ? PPServiceTextInset : (isAds ? PPAdsOverlayHorizontalPadding : PPAdsCellSideInset);
+    self.textStackTrailingToEdgeConstraint.constant = isService ? -PPServiceTextInset : (isAds ? -PPAdsOverlayHorizontalPadding : -PPAdsCellSideInset);
+    self.textStackTrailingToDiscountConstraint.constant = isService ? -12.0 : (isAds ? -14.0 : -10.0);
+    self.discountValueTopConstraint.constant = isService ? 14.0 : (isAds ? 14.0 : 12.0);
+    self.discountValueTrailingConstraint.constant = isService ? -PPServiceTextInset : (isAds ? -14.0 : -PPAdsCellSideInset);
 
     self.actionBarBottomConstraint.active = !isService;
     self.actionBarTopConstraint.active = isService;
@@ -993,12 +1327,15 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.actionBarRightConstraint.active = isService;
     [self pp_updateTopMetaRowArrangementForService:isService];
     self.topMetaRow.semanticContentAttribute = UISemanticContentAttributeUnspecified;
-    self.topMetaRow.spacing = isService ? 8.0 : 10.0;
+    self.topMetaRow.spacing = isService ? 8.0 : (isAds ? 8.0 : 10.0);
 
-    self.bottomOverlay.layer.cornerRadius = isService ? PPServiceOverlayCornerRadius : 0.0;
-    self.bottomOverlay.layer.borderWidth = isService ? 1.0 : 0.0;
+    self.bottomOverlay.layer.cornerRadius = isService ? PPServiceOverlayCornerRadius : (isAds ? PPAdsOverlayCornerRadius : 0.0);
+    self.bottomOverlay.layer.borderWidth = isService ? 1.0 : (isAds ? PPAdsOverlayBorderWidth : 0.0);
     self.bottomOverlay.layer.borderColor = UIColor.clearColor.CGColor;
     self.bottomOverlay.layer.masksToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        self.bottomOverlay.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 }
 
 - (void)pp_updateTopMetaRowArrangementForService:(BOOL)isService
@@ -1041,20 +1378,22 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 - (void)pp_updateImageScrimAppearanceForViewModel:(PPUniversalCellViewModel *)vm
 {
     CAGradientLayer *gradientLayer = (CAGradientLayer *)self.imageScrimView.layer;
-    if ([self pp_isServiceContext]) {
+    if ([self pp_isServiceContext] || [self pp_isAdsContext]) {
         self.imageScrimView.hidden = YES;
         return;
     }
 
     BOOL isAds = (self.context == PPCellForAds);
     self.imageScrimView.hidden = !isAds;
+    PetAd *ad = [self pp_resolvedPetAdFromViewModel:vm];
+    BOOL isSold = ad.isSold || ad.status == PetAdStatusSold;
     gradientLayer.colors = @[
-        (id)[UIColor colorWithWhite:0.0 alpha:0.26].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.06].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.20].CGColor,
-        (id)[UIColor colorWithWhite:0.0 alpha:0.66].CGColor
+        (id)[UIColor colorWithWhite:0.0 alpha:(isSold ? 0.12 : 0.18)].CGColor,
+        (id)[UIColor colorWithWhite:0.0 alpha:0.03].CGColor,
+        (id)[UIColor colorWithWhite:0.0 alpha:(isSold ? 0.16 : 0.10)].CGColor,
+        (id)[UIColor colorWithWhite:0.0 alpha:(isSold ? 0.42 : 0.54)].CGColor
     ];
-    gradientLayer.locations = @[@0.0, @0.18, @0.56, @1.0];
+    gradientLayer.locations = @[@0.0, @0.24, @0.60, @1.0];
     gradientLayer.startPoint = CGPointMake(0.5, 0.0);
     gradientLayer.endPoint = CGPointMake(0.5, 1.0);
 }
@@ -1062,6 +1401,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 - (void)pp_updateBottomOverlayMaterialForViewModel:(PPUniversalCellViewModel *)vm
 {
     BOOL isService = [self pp_isServiceContext];
+    BOOL isAds = [self pp_isAdsContext];
     UIColor *accentColor = [self pp_serviceAccentColorForViewModel:vm];
     NSMutableArray<UIView *> *plainViews = [NSMutableArray array];
     UIVisualEffectView *blurView = nil;
@@ -1075,22 +1415,28 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     }
 
     if (@available(iOS 13.0, *)) {
-        blurView.effect = [UIBlurEffect effectWithStyle:(isService ? UIBlurEffectStyleSystemThinMaterialLight
-                                                                   : UIBlurEffectStyleSystemUltraThinMaterialDark)];
-        blurView.alpha = isService ? 0.97 : 0.82;
+        UIBlurEffectStyle style = isService
+            ? UIBlurEffectStyleSystemThinMaterialLight
+            : (isAds ? UIBlurEffectStyleSystemMaterialDark : UIBlurEffectStyleSystemUltraThinMaterialDark);
+        blurView.effect = [UIBlurEffect effectWithStyle:style];
+        blurView.alpha = isService ? 0.97 : (isAds ? 0.96 : 0.82);
     }
 
     UIView *tintView = plainViews.count > 0 ? plainViews.firstObject : nil;
     UIView *hairlineView = plainViews.count > 1 ? plainViews.lastObject : nil;
     tintView.backgroundColor = isService
         ? [UIColor colorWithWhite:1.0 alpha:0.88]
-        : [UIColor colorWithWhite:0.0 alpha:0.08];
+        : (isAds ? [UIColor colorWithWhite:1.0 alpha:0.08] : [UIColor colorWithWhite:0.0 alpha:0.08]);
     hairlineView.backgroundColor = isService
         ? [accentColor colorWithAlphaComponent:0.30]
-        : [UIColor colorWithWhite:1.0 alpha:0.08];
+        : (isAds ? [UIColor colorWithWhite:1.0 alpha:0.16] : [UIColor colorWithWhite:1.0 alpha:0.08]);
     self.bottomOverlay.layer.borderColor = isService
         ? [accentColor colorWithAlphaComponent:0.18].CGColor
-        : UIColor.clearColor.CGColor;
+        : (isAds ? [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor : UIColor.clearColor.CGColor);
+    self.bottomOverlay.layer.shadowColor = isAds ? UIColor.blackColor.CGColor : UIColor.clearColor.CGColor;
+    self.bottomOverlay.layer.shadowOpacity = isAds ? 0.12 : 0.0;
+    self.bottomOverlay.layer.shadowRadius = isAds ? 20.0 : 0.0;
+    self.bottomOverlay.layer.shadowOffset = isAds ? CGSizeMake(0, 10.0) : CGSizeZero;
 
     CAGradientLayer *gradientLayer = nil;
     for (CALayer *sublayer in self.bottomOverlay.layer.sublayers) {
@@ -1105,12 +1451,16 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
             (id)[UIColor colorWithWhite:1.0 alpha:0.02].CGColor,
             (id)[UIColor colorWithWhite:1.0 alpha:0.20].CGColor,
             (id)[accentColor colorWithAlphaComponent:0.12].CGColor
+        ] : (isAds ? @[
+            (id)[UIColor colorWithWhite:1.0 alpha:0.02].CGColor,
+            (id)[UIColor colorWithWhite:1.0 alpha:0.07].CGColor,
+            (id)[UIColor colorWithWhite:0.0 alpha:0.12].CGColor
         ] : @[
             (id)[UIColor colorWithWhite:0.0 alpha:0.00].CGColor,
             (id)[UIColor colorWithWhite:0.0 alpha:0.06].CGColor,
             (id)[UIColor colorWithWhite:0.0 alpha:0.22].CGColor
-        ];
-        gradientLayer.locations = isService ? @[@0.0, @0.52, @1.0] : @[@0.0, @0.35, @1.0];
+        ]);
+        gradientLayer.locations = isService ? @[@0.0, @0.52, @1.0] : (isAds ? @[@0.0, @0.46, @1.0] : @[@0.0, @0.35, @1.0]);
         gradientLayer.startPoint = CGPointMake(0.5, 0.0);
         gradientLayer.endPoint = CGPointMake(0.5, 1.0);
     }
@@ -1134,75 +1484,101 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     BOOL isAds = (self.context == PPCellForAds);
     BOOL isService = [self pp_isServiceContext];
     BOOL usesCatalogCardLayout = isMarket || isService;
-    
-    self.bottomOverlay.hidden = usesCatalogCardLayout;
-    
-    self.imageView.backgroundColor = usesCatalogCardLayout
-        ? [UIColor colorWithWhite:0.97 alpha:1.0]
+
+    [self pp_updateAdsAccessoryPlacementForAdsContext:isAds];
+    self.bottomOverlay.hidden = usesCatalogCardLayout || isAds;
+    self.textStack.hidden = isAds;
+    self.adsBodyStack.hidden = !isAds;
+    self.topMetaRow.hidden = isAds;
+    self.reasonBadgeStack.hidden = isAds ? YES : self.reasonBadgeStack.hidden;
+    self.locationStack.hidden = isAds ? YES : self.locationStack.hidden;
+
+    self.imageView.backgroundColor = (usesCatalogCardLayout || isAds)
+        ? [UIColor colorWithWhite:(isAds ? 0.965 : 0.965) alpha:1.0]
         : UIColor.clearColor;
-    
-    self.imageView.layer.cornerRadius = usesCatalogCardLayout ? 16.0 : PPCornerCard;
-    self.imageView.layer.borderColor = usesCatalogCardLayout
-        ? [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor
+
+    self.imageView.layer.cornerRadius = usesCatalogCardLayout
+        ? PPCatalogImageCornerRadius
+        : (isAds ? PPAdsMockImageCornerRadius : PPCornerCard);
+    self.imageView.layer.borderColor = (usesCatalogCardLayout || isAds)
+        ? [[UIColor labelColor] colorWithAlphaComponent:(isAds ? 0.020 : 0.035)].CGColor
         : UIColor.clearColor.CGColor;
-    self.imageView.layer.borderWidth = 1.0;
-    self.imageView.contentMode = isMarket ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
-    
+    self.imageView.layer.borderWidth = isAds ? 0.8 : 1.0;
+    self.imageView.contentMode = isAds
+        ? UIViewContentModeScaleAspectFill
+        : (isMarket ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill);
+
     [self pp_updateServiceLayoutMetrics];
     [self pp_updateImageScrimAppearanceForViewModel:self.vm];
     [self pp_updateBottomOverlayMaterialForViewModel:self.vm];
-    
+
     self.bottomOverlay.backgroundColor = isService
         ? UIColor.clearColor
         : ((isAds && !isMarket)
            ? [UIColor colorWithWhite:1.0 alpha:0.04]
            : UIColor.clearColor);
     
-    self.textStack.spacing = isMarket ? 10.0 : (isService ? 10.0 : (isAds ? 4.0 : 6.0));
-    self.titleLabel.numberOfLines = (isAds ? 1 : 2);
-    self.subtitleLabel.numberOfLines = isService ? 2 : 1;
+    self.textStack.spacing = isMarket ? 6.0 : (isService ? 8.0 : (isAds ? 5.0 : 6.0));
+    self.titleLabel.numberOfLines = 2;
+    self.subtitleLabel.numberOfLines = isService ? 2 : (isAds ? 2 : 1);
     
     self.actionBar.axis = usesCatalogCardLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.actionBar.spacing = usesCatalogCardLayout ? 10.0 : (isAds ? 9.0 : 10.0);
+    self.actionBar.spacing = usesCatalogCardLayout ? 10.0 : (isAds ? 8.0 : 10.0);
     
-    self.priceStack.spacing = isService ? 8.0 : 10.0;
+    self.priceStack.spacing = isService ? 8.0 : (isAds ? 6.0 : 5.0);
     self.priceStack.distribution = UIStackViewDistributionFill;
     self.priceStack.alignment = UIStackViewAlignmentFirstBaseline;
     
     self.titleLabel.font = [self pp_titleFontForCurrentContext];
     self.subtitleLabel.font = isMarket
         ? [GM MidFontWithSize:13.0]
-        : (isService ? [GM MidFontWithSize:13.0] : (isAds ? [GM MidFontWithSize:12.5] : [GM MidFontWithSize:15.0]));
+        : (isService ? [GM MidFontWithSize:13.0] : (isAds ? [GM MidFontWithSize:12.0] : [GM MidFontWithSize:15.0]));
         
     if (@available(iOS 11.0, *)) {
         if (isService) {
             [self.textStack setCustomSpacing:6.0 afterView:self.titleLabel];
             [self.textStack setCustomSpacing:12.0 afterView:self.subtitleLabel];
             [self.textStack setCustomSpacing:14.0 afterView:self.priceStack];
+        } else if (isAds) {
+            [self.textStack setCustomSpacing:PPAdsOverlayTitleSpacing afterView:self.titleLabel];
+            [self.textStack setCustomSpacing:PPAdsOverlaySubtitleSpacing afterView:self.subtitleLabel];
+            [self.textStack setCustomSpacing:0.0 afterView:self.priceStack];
         } else {
-            [self.textStack setCustomSpacing:(isMarket ? 8.0 : (isAds ? 2.0 : 4.0)) afterView:self.titleLabel];
-            [self.textStack setCustomSpacing:(isMarket ? 10.0 : (isAds ? 2.0 : 6.0)) afterView:self.subtitleLabel];
+            [self.textStack setCustomSpacing:(isMarket ? 6.0 : (isAds ? 2.0 : 4.0)) afterView:self.titleLabel];
+            [self.textStack setCustomSpacing:(isMarket ? 6.0 : (isAds ? 2.0 : 6.0)) afterView:self.subtitleLabel];
             [self.textStack setCustomSpacing:0.0 afterView:self.priceStack];
         }
     }
     
-    self.addButtonWidthConstraint.active = !isMarket;
-    self.card.layer.borderWidth = (isMarket || isService) ? 0.8 : (isAds ? 1.0 : 0.75);
+    self.addButtonWidthConstraint.active = ![self pp_isCatalogCommerceContext];
     
-    if (isMarket) {
-        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.05].CGColor;
-        self.card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor;
-    } else if (isService) {
-        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.05].CGColor;
-        self.card.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.98];
-    } else if (isAds) {
-        self.card.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor;
-        self.card.backgroundColor = UIColor.secondarySystemBackgroundColor;
-    } else {
-        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
-        self.card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor;
+    // 🎨 Unified Styling (Ads Mode Style)
+    self.card.layer.borderWidth  = 0.0;
+    self.card.layer.cornerRadius = isAds ? PPAdsMockCardCornerRadius : PPCornerCard;
+    self.card.clipsToBounds      = NO;
+    self.card.layer.masksToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        self.card.layer.cornerCurve = kCACornerCurveContinuous;
+        self.imageView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    
+
+    self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.05].CGColor;
+    self.card.backgroundColor = AppForgroundColr;
+
+    // Fix text direction and alignment for all modes
+    self.textStack.semanticContentAttribute = UISemanticContentAttributeUnspecified;
+    self.priceStack.semanticContentAttribute = UISemanticContentAttributeUnspecified;
+    self.adsBodyStack.semanticContentAttribute = UISemanticContentAttributeUnspecified;
+    self.titleLabel.textAlignment =Language.alignmentForCurrentLanguage;
+    self.subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.priceLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.discountLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    // Remove shadows for a clean ads-like look in all modes
+    self.card.layer.shadowOpacity = 0.0;
+    self.card.layer.shadowRadius  = 0.0;
+    self.card.layer.shadowOffset  = CGSizeZero;
+
     if (!isService) {
         self.reasonBadgeStack.layer.shadowOpacity = 0.0;
         self.reasonBadgeStack.layer.shadowRadius = 0.0;
@@ -1210,9 +1586,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
         self.favButton.layer.borderWidth = 0.0;
         self.favButton.layer.borderColor = UIColor.clearColor.CGColor;
-        self.favButton.layer.shadowOpacity = 0.06;
-        self.favButton.layer.shadowRadius = 8.0;
-        self.favButton.layer.shadowOffset = CGSizeMake(0, 4.0);
+        self.favButton.layer.shadowOpacity = 0.0;
 
         NSArray<UIButton *> *sharedButtons = @[self.moreOptionsButton, self.shareButton];
         for (UIButton *button in sharedButtons) {
@@ -1224,7 +1598,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
             
             if (@available(iOS 15.0, *)) {
                 UIButtonConfiguration *config = button.configuration ?: [UIButtonConfiguration filledButtonConfiguration];
-                config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.8];
+                config.baseBackgroundColor = [UIColor colorWithWhite:1.0 alpha:0.90];
                 config.baseForegroundColor = UIColor.labelColor;
                 config.background.cornerRadius = 19.0;
                 config.preferredSymbolConfigurationForImage =
@@ -1243,7 +1617,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (UIColor *)pp_primaryTitleColorForCurrentContext
 {
-    if (self.context == PPCellForMarket || [self pp_isServiceContext]) {
+    if ([self pp_isCatalogCommerceContext] || [self pp_isServiceContext]) {
         return UIColor.labelColor;
     }
     return [UIColor colorWithWhite:1.0 alpha:0.98];
@@ -1251,7 +1625,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (UIColor *)pp_secondaryTextColorForCurrentContext
 {
-    if (self.context == PPCellForMarket || [self pp_isServiceContext]) {
+    if ([self pp_isCatalogCommerceContext] || [self pp_isServiceContext]) {
         return UIColor.secondaryLabelColor;
     }
     return [UIColor colorWithWhite:1.0 alpha:0.72];
@@ -1259,7 +1633,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (UIColor *)pp_primaryPriceColorForCurrentContext
 {
-    if (self.context == PPCellForMarket) {
+    if ([self pp_isCatalogCommerceContext]) {
         return UIColor.labelColor;
     }
     if ([self pp_isServiceContext]) {
@@ -1270,7 +1644,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (UIColor *)pp_mutedPriceColorForCurrentContext
 {
-    if (self.context == PPCellForMarket || [self pp_isServiceContext]) {
+    if ([self pp_isCatalogCommerceContext] || [self pp_isServiceContext]) {
         return [UIColor.secondaryLabelColor colorWithAlphaComponent:0.85];
     }
     return [UIColor colorWithWhite:1.0 alpha:0.64];
@@ -1278,11 +1652,14 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (UIFont *)pp_titleFontForCurrentContext
 {
-    if (self.context == PPCellForMarket) {
-        return [GM boldFontWithSize:15.0];
+    if ([self pp_isCatalogCommerceContext]) {
+        return [GM boldFontWithSize:14.5];
     }
     if ([self pp_isServiceContext]) {
         return [GM boldFontWithSize:15.5];
+    }
+    if ([self pp_isAdsContext]) {
+        return [GM boldFontWithSize:16.5];
     }
     return [GM boldFontWithSize:16.0];
 }
@@ -1357,6 +1734,39 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     return [NSString stringWithFormat:@"%ld %@", (long)totalMonths, monthsUnit];
 }
 
+- (NSString *)pp_preciseAgeTextFromMonths:(NSNumber *)months
+{
+    NSInteger totalMonths = MAX(months.integerValue, 0);
+    if (totalMonths <= 0) {
+        return @"";
+    }
+
+    if (totalMonths < 12) {
+        NSString *monthUnit = PPAdsLocalizedString(@"month", @"month");
+        NSString *monthsUnit = PPAdsLocalizedString(@"months", @"months");
+        NSString *unit = (totalMonths == 1) ? monthUnit : monthsUnit;
+        if (Language.isRTL) {
+            return [NSString stringWithFormat:@"%@ %ld", unit, (long)totalMonths];
+        }
+        return [NSString stringWithFormat:@"%ld %@", (long)totalMonths, unit];
+    }
+
+    double yearsValue = totalMonths / 12.0;
+    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+    formatter.locale = NSLocale.currentLocale;
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    formatter.minimumFractionDigits = fmod(yearsValue, 1.0) < 0.001 ? 0 : 1;
+    formatter.maximumFractionDigits = 1;
+    NSString *valueText = [formatter stringFromNumber:@(yearsValue)] ?: [NSString stringWithFormat:@"%.1f", yearsValue];
+    NSString *yearUnit = yearsValue > 1.001
+        ? PPAdsLocalizedString(@"years", @"years")
+        : PPAdsLocalizedString(@"year", @"year");
+    if (Language.isRTL) {
+        return [NSString stringWithFormat:@"%@ %@", yearUnit, valueText];
+    }
+    return [NSString stringWithFormat:@"%@ %@", valueText, yearUnit];
+}
+
 - (NSString *)pp_adsSubtitleTextForViewModel:(PPUniversalCellViewModel *)vm
 {
     PetAd *ad = [self pp_resolvedPetAdFromViewModel:vm];
@@ -1392,6 +1802,39 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         return PPSafeString(vm.subtitle);
     }
     return [parts componentsJoinedByString:@" • "];
+}
+
+- (NSString *)pp_adsPrimaryDetailTextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    PetAd *ad = [self pp_resolvedPetAdFromViewModel:vm];
+    BOOL isSold = ad.isSold || ad.status == PetAdStatusSold;
+    if (isSold) {
+        return PPAdsLocalizedString(@"Sold", @"Sold");
+    }
+
+    NSString *ageText = [self pp_preciseAgeTextFromMonths:ad.petAgeMonths];
+    if (ageText.length > 0) {
+        return ageText;
+    }
+
+    NSString *fallbackSubtitle = [self pp_adsSubtitleTextForViewModel:vm];
+    if (fallbackSubtitle.length > 0) {
+        return fallbackSubtitle;
+    }
+
+    return PPSafeString(vm.priceText);
+}
+
+- (NSString *)pp_adsPrimaryDetailSymbolNameForViewModel:(PPUniversalCellViewModel *)vm
+{
+    PetAd *ad = [self pp_resolvedPetAdFromViewModel:vm];
+    if (ad.isSold || ad.status == PetAdStatusSold) {
+        return @"checkmark.seal.fill";
+    }
+    if ([self pp_preciseAgeTextFromMonths:ad.petAgeMonths].length > 0) {
+        return @"calendar";
+    }
+    return @"sparkles";
 }
 
 - (NSString *)pp_serviceSubtitleTextForViewModel:(PPUniversalCellViewModel *)vm
@@ -1446,70 +1889,97 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     ad.favoritesCount.integerValue >= 4;
 }
 
-- (void)pp_configureAdsStatusBadgeForViewModel:(PPUniversalCellViewModel *)vm
+- (void)pp_applyCatalogLoadingState:(BOOL)isLoading
 {
-    if (self.context != PPCellForAds || [self pp_isSkeletonViewModel:vm]) {
-        self.reasonBadgeStack.hidden = YES;
-        self.reasonBadgeLabel.text = @"";
-        self.reasonBadgeIconView.image = nil;
+    NSArray<UIView *> *shimmerViews = @[
+        self.imageView ?: UIView.new,
+        self.titleLabel ?: UIView.new,
+        self.priceLabel ?: UIView.new,
+        self.addButton ?: UIView.new,
+        self.stockQtyLabel ?: UIView.new
+    ];
+
+    for (UIView *view in shimmerViews) {
+        if (isLoading) {
+            [GM pp_addShimmerToView:view];
+        } else {
+            [GM pp_removeShimmerFromView:view];
+        }
+    }
+
+    self.actionBar.alpha = isLoading ? 0.0 : 1.0;
+    self.addButton.enabled = !isLoading;
+    self.plusBtn.enabled = !isLoading;
+    self.minusBtn.enabled = !isLoading;
+}
+
+- (void)pp_applyAdsLoadingState:(BOOL)isLoading
+{
+    if (![self pp_isAdsContext]) {
         return;
     }
 
-    PetAd *ad = [self pp_resolvedPetAdFromViewModel:vm];
-    NSString *badgeText = @"";
-    NSString *iconName = @"";
-    UIColor *backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.34];
-    UIColor *borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14];
-    UIColor *textColor = UIColor.whiteColor;
+    NSArray<UIView *> *shimmerViews = @[
+        self.imageView ?: UIView.new,
+        self.adsTitleLabel ?: UIView.new,
+        self.adsLocationValueLabel ?: UIView.new,
+        self.adsInfoLabel ?: UIView.new
+    ];
 
-    BOOL isSold = ad.isSold || ad.status == PetAdStatusSold;
-    if (isSold) {
-        badgeText = PPAdsLocalizedString(@"Sold", @"Sold");
-        iconName = @"checkmark.seal.fill";
-        backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.48];
-        borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
-    } else if (PPSafeString(vm.contextualReasonText).length > 0) {
-        badgeText = PPSafeString(vm.contextualReasonText);
-        iconName = PPSafeString(vm.contextualReasonIconName);
-        if (iconName.length == 0) {
-            iconName = [badgeText isEqualToString:PPAdsLocalizedString(@"home_suggestion_reason_nearby", @"Near you")]
-                ? @"location.fill"
-                : @"sparkles";
+    for (UIView *view in shimmerViews) {
+        if (isLoading) {
+            [GM pp_addShimmerToView:view];
+        } else {
+            [GM pp_removeShimmerFromView:view];
         }
-        if ([badgeText isEqualToString:PPAdsLocalizedString(@"home_suggestion_reason_nearby", @"Near you")]) {
-            backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.92];
-            borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18];
-        }
-    } else if ([self pp_isFeaturedAd:ad]) {
-        badgeText = PPAdsLocalizedString(@"home_nav_search_trending", @"Trending");
-        iconName = @"sparkles";
-        backgroundColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.92];
-        borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.20];
-    } else if ([self pp_isTrendingAd:ad]) {
-        badgeText = PPAdsLocalizedString(@"home_nav_search_trending", @"Trending");
-        iconName = @"chart.line.uptrend.xyaxis";
-    } else if (ad.isNew) {
-        badgeText = PPAdsLocalizedString(@"New", @"New");
-        iconName = @"clock.badge.checkmark";
     }
 
-    self.reasonBadgeLabel.text = badgeText;
-    self.reasonBadgeLabel.textColor = textColor;
-    self.reasonBadgeStack.backgroundColor = backgroundColor;
-    self.reasonBadgeStack.layer.borderColor = borderColor.CGColor;
-    self.reasonBadgeStack.hidden = (badgeText.length == 0);
+    self.adsTitleRow.alpha = 1.0;
+    self.adsLocationRow.alpha = 1.0;
+    self.adsInfoRow.alpha = 1.0;
+    self.favButton.alpha = isLoading ? 0.0 : 1.0;
+}
 
-    if (badgeText.length > 0) {
-        self.reasonBadgeIconView.image =
-        [UIImage pp_symbolNamed:iconName
-                      pointSize:11
-                         weight:UIImageSymbolWeightBold
-                          scale:UIImageSymbolScaleSmall
-                        palette:@[textColor]
-                   makeTemplate:YES];
-    } else {
-        self.reasonBadgeIconView.image = nil;
+- (void)pp_updateCommerceAvailabilityForStockQuantity:(NSInteger)stockQty
+{
+    if (![self pp_isCatalogCommerceContext]) {
+        self.addButton.enabled = YES;
+        self.plusBtn.enabled = YES;
+        self.minusBtn.enabled = YES;
+        self.addButton.alpha = 1.0;
+        return;
     }
+
+    BOOL isOutOfStock = stockQty <= 0;
+    BOOL canIncrease = !isOutOfStock && self.quantity < stockQty;
+    BOOL canDecrease = self.quantity > 0;
+
+    self.addButton.enabled = !isOutOfStock;
+    self.addButton.alpha = 1.0;
+    self.plusBtn.enabled = canIncrease;
+    self.plusBtn.alpha = canIncrease ? 1.0 : 0.48;
+    self.minusBtn.enabled = canDecrease;
+    self.minusBtn.alpha = canDecrease ? 1.0 : 0.48;
+}
+
+- (CGFloat)pp_preferredCatalogHeightForWidth:(CGFloat)width
+{
+    CGFloat contentWidth = MAX(width - (PPCatalogImageSideInset * 2.0), 96.0);
+    if ([self pp_isServiceContext]) {
+        CGFloat imageHeight = contentWidth * 0.84;
+        return ceil(PPCatalogImageTopInset + imageHeight + PPCatalogTextTopSpacing + 124.0 + PPCatalogBottomInset);
+    }
+
+    CGFloat imageHeight = contentWidth * PPCatalogImageHeightRatio;
+    return ceil(PPCatalogImageTopInset + imageHeight + PPCatalogTextTopSpacing + 74.0 + PPCatalogButtonTopSpacing + PPCatalogButtonHeight + PPCatalogStockTopSpacing + PPCatalogStockBadgeHeight + PPCatalogBottomInset);
+}
+
+- (void)pp_configureAdsStatusBadgeForViewModel:(PPUniversalCellViewModel *)vm
+{
+    (void)vm;
+    self.reasonBadgeStack.hidden = YES;
+    self.reasonBadgeLabel.text = @"";
+    self.reasonBadgeIconView.image = nil;
 }
 
 - (void)pp_applyAdsStateForViewModel:(PPUniversalCellViewModel *)vm
@@ -1523,36 +1993,113 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     BOOL isSold = ad.isSold || ad.status == PetAdStatusSold;
     BOOL isFeatured = [self pp_isFeaturedAd:ad];
     BOOL hasImageSource = vm.imageURL.length > 0 || vm.image != nil;
-    UIColor *baseBorder = [[UIColor whiteColor] colorWithAlphaComponent:0.08];
-    UIColor *featuredBorder = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.24];
-    UIColor *favoritedBorder = [[UIColor systemPinkColor] colorWithAlphaComponent:0.20];
+    UIColor *shadowColor = isFeatured ? [UIColor colorWithRed:0.77 green:0.65 blue:0.72 alpha:1.0] : UIColor.blackColor;
 
-    self.card.layer.borderWidth = isFeatured ? 1.15 : 1.0;
-    self.card.layer.borderColor = (isFeatured
-                                   ? featuredBorder
-                                   : (ad.isFavorite ? favoritedBorder : baseBorder)).CGColor;
-    self.layer.shadowColor = (isFeatured ? (AppPrimaryClr ?: UIColor.systemOrangeColor) : UIColor.blackColor).CGColor;
-    self.layer.shadowOpacity = isFeatured ? 0.18 : (isSold ? 0.08 : 0.12);
-    self.layer.shadowRadius = isFeatured ? 22.0 : 18.0;
-    self.layer.shadowOffset = CGSizeMake(0, isFeatured ? 12.0 : 10.0);
+    self.card.layer.borderWidth = 0.0;
+    self.card.layer.borderColor = UIColor.clearColor.CGColor;
+    self.layer.shadowColor = shadowColor.CGColor;
+    self.layer.shadowOpacity = isFeatured ? 0.14 : (isSold ? 0.08 : 0.10);
+    self.layer.shadowRadius = isFeatured ? 26.0 : 18.0;
+    self.layer.shadowOffset = CGSizeMake(0, isFeatured ? 16.0 : 10.0);
+
     self.imageView.alpha = isSold ? 0.92 : 1.0;
-    self.imageScrimView.alpha = isSkeleton ? 0.76 : 1.0;
-    self.bottomOverlay.alpha = isSold ? 0.98 : 1.0;
-    self.actionBar.alpha = isSkeleton ? 0.0 : 1.0;
+    self.imageView.backgroundColor = [UIColor colorWithWhite:0.965 alpha:1.0];
+    self.imageView.tintColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.18];
+    self.imageScrimView.alpha = 0.0;
+    self.bottomOverlay.alpha = 0.0;
+    self.bottomOverlay.hidden = YES;
+    self.topMetaRow.hidden = NO;
+    self.textStack.hidden = YES;
+    self.adsBodyStack.hidden = NO;
+    self.actionBar.hidden = YES;
+
+    // Show location and reason badge on top of image
+    self.reasonBadgeStack.hidden = NO;
+    self.locationStack.hidden = NO;
+
+    self.adsTitleLabel.alpha = 1.0;
+    self.adsLocationRow.alpha = 1.0;
+    self.adsInfoRow.alpha = 1.0;
+
+    UIColor *primaryColor = AppPrimaryTextClr;
+    if (isSold) {
+        primaryColor = [UIColor colorWithRed:0.74 green:0.47 blue:0.49 alpha:1.0];
+    }
+    self.adsTitleLabel.textColor = primaryColor;
+    self.priceStack.hidden = YES;
+    [self pp_applyDirectionToLabel:self.adsTitleLabel usingText:self.adsTitleLabel.text];
+    [self pp_applyDirectionToLabel:self.adsLocationValueLabel usingText:self.adsLocationValueLabel.text];
+    [self pp_applyDirectionToLabel:self.adsInfoLabel usingText:(self.adsInfoLabel.attributedText.string ?: self.adsInfoLabel.text)];
 
     if (!hasImageSource) {
-        self.imageView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
-        self.imageScrimView.alpha = 0.82;
+        self.imageView.contentMode = UIViewContentModeScaleAspectFit;
     }
 
-    if (isSold) {
-        [self pp_setPriceText:PPAdsLocalizedString(@"Sold", @"Sold")
-                        color:[UIColor colorWithWhite:1.0 alpha:0.96]
-                         font:[GM boldFontWithSize:17.0]];
-        self.discountValueLabel.hidden = YES;
-        self.discountLabel.hidden = YES;
-        [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
+    self.discountValueLabel.hidden = YES;
+    self.discountLabel.hidden = YES;
+    [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
+    [self pp_applyAdsFavoriteVisualStyle];
+}
+
+- (void)pp_updateAdsAccessoryPlacementForAdsContext:(BOOL)isAds
+{
+    UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
+    if (isAds) {
+        if (self.favButton.superview == self.actionBar) {
+            [self.actionBar removeArrangedSubview:self.favButton];
+            [self.favButton removeFromSuperview];
+        }
+        if (self.favButton.superview != self.adsTitleRow) {
+            [self.adsTitleRow addArrangedSubview:self.favButton];
+        }
+        self.adsTitleRow.semanticContentAttribute = semantic;
+    } else {
+        if (self.favButton.superview == self.adsTitleRow) {
+            [self.adsTitleRow removeArrangedSubview:self.favButton];
+            [self.favButton removeFromSuperview];
+        }
+        if (self.favButton.superview != self.actionBar) {
+            [self.actionBar insertArrangedSubview:self.favButton atIndex:0];
+        }
     }
+}
+
+- (void)pp_applyAdsFavoriteVisualStyle
+{
+    if (![self pp_isAdsContext]) {
+        return;
+    }
+
+    UIColor *inactiveTint = [UIColor colorWithRed:0.93 green:0.69 blue:0.75 alpha:1.0];
+    UIColor *activeTint = [UIColor colorWithRed:0.92 green:0.56 blue:0.67 alpha:1.0];
+    UIColor *resolvedTint = self.favButton.isFavorite ? activeTint : inactiveTint;
+    UIImage *heartImage = [UIImage systemImageNamed:@"heart.fill"];
+
+    self.favButton.backgroundColor = UIColor.clearColor;
+    self.favButton.layer.shadowOpacity = 0.0;
+    self.favButton.layer.shadowRadius = 0.0;
+    self.favButton.layer.shadowOffset = CGSizeZero;
+    self.favButton.layer.borderWidth = 0.0;
+    self.favButton.layer.borderColor = UIColor.clearColor.CGColor;
+    self.favButton.tintColor = resolvedTint;
+    [self.favButton setImage:heartImage forState:UIControlStateNormal];
+
+    if (@available(iOS 15.0, *)) {
+        UIImageSymbolConfiguration *config =
+        [UIImageSymbolConfiguration configurationWithPointSize:18.0
+                                                        weight:UIImageSymbolWeightMedium
+                                                         scale:UIImageSymbolScaleLarge];
+        config = [config configurationByApplyingConfiguration:
+                  [UIImageSymbolConfiguration configurationWithHierarchicalColor:resolvedTint]];
+        [self.favButton setPreferredSymbolConfiguration:config forImageInState:UIControlStateNormal];
+    }
+}
+
+- (void)pp_scheduleAdsFavoriteVisualRefresh
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_applyAdsFavoriteVisualStyle];
+    });
 }
 
 - (void)pp_configureServiceBadgeForViewModel:(PPUniversalCellViewModel *)vm
@@ -1577,6 +2124,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.reasonBadgeLabel.font = [GM boldFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
     self.reasonBadgeLabel.text = badgeText;
     self.reasonBadgeLabel.textColor = tintColor;
+    [self pp_applyDirectionToLabel:self.reasonBadgeLabel usingText:badgeText];
     self.reasonBadgeStack.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.86];
     self.reasonBadgeStack.layer.borderColor = [tintColor colorWithAlphaComponent:0.18].CGColor;
     self.reasonBadgeStack.layer.shadowColor = tintColor.CGColor;
@@ -1617,9 +2165,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
     self.favButton.layer.borderWidth = 0.0;
     self.favButton.layer.borderColor = UIColor.clearColor.CGColor;
-    self.favButton.layer.shadowOpacity = 0.08;
-    self.favButton.layer.shadowRadius = 6.0;
-    self.favButton.layer.shadowOffset = CGSizeMake(0, 3.0);
+    self.favButton.layer.shadowOpacity = 0.0;
 
     NSArray<UIButton *> *serviceButtons = @[self.moreOptionsButton, self.shareButton];
     for (UIButton *button in serviceButtons) {
@@ -1674,6 +2220,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     for (NSLayoutConstraint *c in self.verticalConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.squareConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.pintrestConstraints) c.active = NO;
+    for (NSLayoutConstraint *c in self.adsConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.marketConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.serviceConstraints) c.active = NO;
     for (NSLayoutConstraint *c in self.carouselConstraints) c.active = NO;
@@ -1704,8 +2251,9 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
      }
      */
     
-    BOOL isMarket = (self.context == PPCellForMarket || self.context == PPCellForFood);
+    BOOL isMarket = [self pp_isCatalogCommerceContext];
     BOOL isService = [self pp_isServiceContext];
+    BOOL isAds = [self pp_isAdsContext];
     
     
     [self pp_applyLayoutAppearanceForMarket:isMarket];
@@ -1717,7 +2265,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     {
         for (NSLayoutConstraint *c in self.marketConstraints) c.active = YES;
         
-        self.titleLabel.hidden = YES;
+        self.titleLabel.hidden = NO;
+        self.subtitleLabel.hidden = YES;
         self.priceLabel.hidden = NO;
     }
     else if (isService)
@@ -1729,6 +2278,13 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         self.titleLabel.hidden = NO;
         self.subtitleLabel.hidden = NO;
         self.priceLabel.hidden = NO;
+    }
+    else if (isAds)
+    {
+        for (NSLayoutConstraint *c in self.adsConstraints) c.active = YES;
+        self.titleLabel.hidden = YES;
+        self.subtitleLabel.hidden = YES;
+        self.priceLabel.hidden = YES;
     }
     else
     {
@@ -1766,6 +2322,9 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         self.actionBarTrailingConstraint.active = NO;
         self.actionBarRightConstraint.active = NO;
     }
+    if (isAds) {
+        self.actionBar.hidden = YES;
+    }
     [self pp_updateServiceOverlayMaskIfNeeded];
    // [self setNeedsUpdateConstraints];
    // [self layoutIfNeeded];
@@ -1798,6 +2357,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     }
     BOOL isMarket = (context == PPCellForMarket);
     BOOL isFood   = (context == PPCellForFood);
+    BOOL isCatalogCommerce = isMarket || isFood;
     BOOL isAds = (context == PPCellForAds);
     BOOL isService = (context == PPCellForServices);
     UIColor *primaryPriceColor = isService
@@ -1805,8 +2365,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         : [self pp_primaryPriceColorForCurrentContext];
     self.priceLabel.textColor = primaryPriceColor;
     self.serviceDetailsButton.hidden = !isService;
-    self.priceLabel.adjustsFontSizeToFitWidth = isService;
-    self.priceLabel.minimumScaleFactor = isService ? 0.76 : 1.0;
+    self.priceLabel.adjustsFontSizeToFitWidth = isService || isCatalogCommerce || isAds;
+    self.priceLabel.minimumScaleFactor = isService ? 0.76 : (isCatalogCommerce ? 0.84 : (isAds ? 0.78 : 1.0));
     self.priceLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [self.priceLabel setContentCompressionResistancePriority:(isService ? UILayoutPriorityDefaultLow : UILayoutPriorityRequired)
                                                      forAxis:UILayoutConstraintAxisHorizontal];
@@ -1836,6 +2396,9 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     {
         self.moreOptionsButton.hidden = YES;
     }
+    if (isAds) {
+        self.moreOptionsButton.hidden = YES;
+    }
     // Texts
     NSString *titleText = PPSafeString(vm.title);
     if (isSkeleton && titleText.length == 0) {
@@ -1843,9 +2406,9 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     }
     self.titleLabel.font = [self pp_titleFontForCurrentContext];
     self.titleLabel.text = titleText;
-    NSMutableParagraphStyle *p = [NSMutableParagraphStyle new];
-    p.lineHeightMultiple = isService ? 0.96 : 0.92;
-    p.maximumLineHeight = self.titleLabel.font.lineHeight * (isService ? 1.08 : 1.04);
+    NSMutableParagraphStyle *p = [self pp_paragraphStyleForText:titleText];
+    p.lineHeightMultiple = isService ? 0.96 : (isAds ? 0.94 : 0.92);
+    p.maximumLineHeight = self.titleLabel.font.lineHeight * (isService ? 1.08 : (isAds ? 1.06 : 1.04));
 
     self.titleLabel.attributedText =
     [[NSAttributedString alloc] initWithString:self.titleLabel.text
@@ -1854,8 +2417,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         NSFontAttributeName : self.titleLabel.font,
         NSForegroundColorAttributeName : [self pp_primaryTitleColorForCurrentContext]
     }];
-    self.titleLabel.textAlignment = GM.setAligment;
-    self.subtitleLabel.textAlignment = GM.setAligment;
+    [self pp_applyDirectionToLabel:self.titleLabel usingText:titleText];
+    self.subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
     NSString *resolvedSubtitle = isAds
         ? [self pp_adsSubtitleTextForViewModel:vm]
@@ -1865,13 +2428,11 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     }
     self.subtitleLabel.text = resolvedSubtitle;
     self.titleLabel.numberOfLines = 2;
-    self.subtitleLabel.numberOfLines = 1;
+    self.subtitleLabel.numberOfLines = isAds ? ((layout == PPCellLayoutModeFullWidth) ? 2 : 1) : 1;
     self.subtitleLabel.textColor = [self pp_secondaryTextColorForCurrentContext];
     if (isService && resolvedSubtitle.length > 0) {
-        NSMutableParagraphStyle *subtitleStyle = [[NSMutableParagraphStyle alloc] init];
+        NSMutableParagraphStyle *subtitleStyle = [self pp_paragraphStyleForText:resolvedSubtitle];
         subtitleStyle.lineSpacing = 2.0;
-        subtitleStyle.lineBreakMode = NSLineBreakByTruncatingTail;
-        subtitleStyle.alignment = GM.setAligment;
         self.subtitleLabel.attributedText =
         [[NSAttributedString alloc] initWithString:resolvedSubtitle
                                         attributes:@{
@@ -1880,9 +2441,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
             NSForegroundColorAttributeName : self.subtitleLabel.textColor
         }];
     } else if (isAds && resolvedSubtitle.length > 0) {
-        NSMutableParagraphStyle *adsSubStyle = [[NSMutableParagraphStyle alloc] init];
-        adsSubStyle.lineBreakMode = NSLineBreakByTruncatingTail;
-        adsSubStyle.alignment = GM.setAligment;
+        NSMutableParagraphStyle *adsSubStyle = [self pp_paragraphStyleForText:resolvedSubtitle];
+        adsSubStyle.lineSpacing = 1.0;
         self.subtitleLabel.attributedText =
         [[NSAttributedString alloc] initWithString:resolvedSubtitle
                                         attributes:@{
@@ -1893,10 +2453,52 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     } else {
         self.subtitleLabel.attributedText = nil;
     }
-    self.subtitleLabel.textAlignment = GM.setAligment;
-    self.subtitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    // Show subtitle for Ads and Services; hide only for Market/Food or when empty
-    self.subtitleLabel.hidden = (isMarket || isFood) || (resolvedSubtitle.length == 0);
+    [self pp_applyDirectionToLabel:self.subtitleLabel usingText:resolvedSubtitle];
+    // Hide subtitle for Ads (temporary), Market, Food, or when empty
+    self.subtitleLabel.hidden = (isAds || isMarket || isFood) || (resolvedSubtitle.length == 0);
+
+    // Location row → "subKind • age • gender"
+    NSString *adsTraitsText = isAds ? [self pp_adsSubtitleTextForViewModel:vm] : @"";
+    // Info row → formatted price "QAR 454.00"
+    NSAttributedString *adsPriceAttr = nil;
+    if (isAds) {
+        NSNumber *resolvedAdsPrice = vm.finalPrice ?: vm.price ?: [self pp_resolvedPetAdFromViewModel:vm].price;
+        if (resolvedAdsPrice.doubleValue > 0.0) {
+            UIColor *priceColor = self.adsInfoLabel.textColor ?: [UIColor colorWithRed:0.43 green:0.45 blue:0.50 alpha:1.0];
+            [self setPriceToLabel:self.priceLabel
+                            price:resolvedAdsPrice
+                         currency:kLang(@"Rials")
+                       priceColor:priceColor];
+            adsPriceAttr = self.priceLabel.attributedText;
+        } else {
+            NSString *fallbackPriceText = PPSafeString(vm.priceText);
+            if (fallbackPriceText.length > 0 && ![fallbackPriceText isEqualToString:@"0"]) {
+                NSMutableParagraphStyle *priceStyle = [self pp_paragraphStyleForText:fallbackPriceText];
+                adsPriceAttr = [[NSAttributedString alloc] initWithString:fallbackPriceText
+                                                               attributes:@{
+                    NSParagraphStyleAttributeName : priceStyle,
+                    NSFontAttributeName : [GM boldFontWithSize:14.5] ?: [UIFont systemFontOfSize:14.5 weight:UIFontWeightSemibold],
+                    NSForegroundColorAttributeName : (self.adsInfoLabel.textColor ?: [UIColor colorWithRed:0.43 green:0.45 blue:0.50 alpha:1.0])
+                }];
+            }
+        }
+    }
+    self.adsTitleLabel.text = titleText;
+    self.adsLocationValueLabel.text = adsTraitsText;
+    if (adsPriceAttr) {
+        self.adsInfoLabel.attributedText = adsPriceAttr;
+    } else {
+        self.adsInfoLabel.attributedText = nil;
+        self.adsInfoLabel.text = @"";
+    }
+    self.adsTitleLabel.hidden = !isAds;
+    self.adsLocationRow.hidden = YES;
+    self.adsInfoRow.hidden = !isAds || adsPriceAttr == nil;
+    self.adsLocationGlyphView.image = [UIImage systemImageNamed:@"pawprint.fill"];
+    self.adsInfoGlyphView.image = [UIImage systemImageNamed:@"banknote"];
+    [self pp_applyDirectionToLabel:self.adsTitleLabel usingText:titleText];
+    [self pp_applyDirectionToLabel:self.adsLocationValueLabel usingText:adsTraitsText];
+    [self pp_applyDirectionToLabel:self.adsInfoLabel usingText:(adsPriceAttr.string ?: self.adsInfoLabel.text)];
 
     if (isService) {
         NSString *detailsText = kLang(@"Details");
@@ -1933,7 +2535,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         self.serviceDetailsButton.configuration = nil;
         self.serviceDetailsButton.backgroundColor = UIColor.clearColor;
     }
-    self.priceStack.hidden = isService;
+    self.priceStack.hidden = isService || isAds;
 
     self.reasonBadgeStack.hidden = YES;
     self.reasonBadgeLabel.text = @"";
@@ -1941,6 +2543,14 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
  
     // 4️⃣ Async load real image
     UIImage *fallbackImage = vm.image ?: vm.placeholder ?: [UIImage imageNamed:@"placeholder"];
+    [self.imageView.layer removeAnimationForKey:@"pp.catalog.image.fade"];
+    if (!isSkeleton) {
+        CATransition *fadeTransition = [CATransition animation];
+        fadeTransition.type = kCATransitionFade;
+        fadeTransition.duration = 0.22;
+        fadeTransition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.imageView.layer addAnimation:fadeTransition forKey:@"pp.catalog.image.fade"];
+    }
     self.imageView.image = fallbackImage;
     if (isAds) {
         self.imageView.contentMode = (vm.image != nil || vm.imageURL.length > 0)
@@ -1953,7 +2563,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
             : UIViewContentModeScaleAspectFit;
         self.imageView.tintColor = [primaryPriceColor colorWithAlphaComponent:0.22];
     } else {
-        self.imageView.contentMode = UIViewContentModeScaleAspectFill;
+        self.imageView.contentMode = isCatalogCommerce ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
         self.imageView.tintColor = nil;
     }
     if (vm.imageURL.length > 0 && loader) {
@@ -1969,8 +2579,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.offerBadge.hidden = YES;
 
     
-    BOOL showAdd = isMarket;
-    if (layout == PPCellLayoutModeFullWidth && context == PPCellForMarket) {
+    BOOL showAdd = isCatalogCommerce;
+    if (layout == PPCellLayoutModeFullWidth && isCatalogCommerce) {
         [self setQuantityToLabel:self.stockQtyLabel qty:stockQty];
         [self collapseStepper:NO];
         
@@ -1979,7 +2589,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         [self setQuantity:displayCartQty animated:NO];
         
     }
-    else if (layout != PPCellLayoutModeFullWidth && context == PPCellForMarket) {
+    else if (layout != PPCellLayoutModeFullWidth && isCatalogCommerce) {
         [self setQuantityToLabel:self.stockQtyLabel qty:stockQty];
         [self collapseStepper:NO];
         
@@ -2043,7 +2653,12 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         self.moreOptionsButton.hidden = YES;
     }
     self.actionBar.hidden = showAdd ? self.moreOptionsButton.hidden : (self.favButton.hidden && self.moreOptionsButton.hidden);
+    if (isAds) {
+        self.shareButton.hidden = YES;
+        self.actionBar.hidden = YES;
+    }
     [self updateAddButton];
+    [self pp_updateCommerceAvailabilityForStockQuantity:stockQty];
     
     if(!self.favButton.hidden)
     {
@@ -2055,6 +2670,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     
     NSString *locationText = vm.location ?: @"";
     self.adLocationLabel.text = locationText;
+    [self pp_applyDirectionToLabel:self.adLocationLabel usingText:locationText];
 
     BOOL hasLocation = (!isMarket && !isService && !isSkeleton && locationText.length > 0);
     self.adLocationLabel.hidden = !hasLocation;
@@ -2093,6 +2709,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     } else if (isService) {
         [self pp_applyServiceStateForViewModel:vm];
     }
+    [self pp_applyAdsLoadingState:isSkeleton && isAds];
+    [self pp_applyCatalogLoadingState:isSkeleton && (isCatalogCommerce || isService)];
     self.userInteractionEnabled = YES;
     self.contentView.userInteractionEnabled = YES;
     
@@ -2202,10 +2820,16 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         [parts addObject:[NSString stringWithFormat:discountFormat, discountText]];
     }
 
-    // Location
-    NSString *location = PPSafeString(self.vm.location);
-    if (!self.locationStack.hidden && location.length > 0) {
-        [parts addObject:location];
+    // Traits (subKind • age • gender) or location
+    NSString *traitsOrLoc = PPSafeString(self.adsLocationValueLabel.text);
+    if (traitsOrLoc.length == 0) traitsOrLoc = PPSafeString(self.vm.location);
+    if (((!self.locationStack.hidden || !self.adsLocationRow.hidden)) && traitsOrLoc.length > 0) {
+        [parts addObject:traitsOrLoc];
+    }
+
+    NSString *adsDetail = self.adsInfoLabel.attributedText.string ?: PPSafeString(self.adsInfoLabel.text);
+    if (!self.adsInfoRow.hidden && adsDetail.length > 0) {
+        [parts addObject:adsDetail];
     }
 
     // Stock status
@@ -2215,7 +2839,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     }
 
     // Cart quantity
-    if (self.context == PPCellForMarket && self.quantity > 0) {
+    if ([self pp_isCatalogCommerceContext] && self.quantity > 0) {
         NSString *qtyFormat = NSLocalizedString(@"a11y_cell_qty_in_cart_format", @"%ld in cart");
         [parts addObject:[NSString stringWithFormat:qtyFormat, (long)self.quantity]];
     }
@@ -2236,18 +2860,18 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.layer.masksToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.layer.shadowOpacity = 0.11;
-    self.layer.shadowRadius = 18.0;
-    self.layer.shadowOffset = CGSizeMake(0, 10.0);
+    self.layer.shadowOpacity = 0.10;
+    self.layer.shadowRadius = 22.0;
+    self.layer.shadowOffset = CGSizeMake(0, 14.0);
 }
 
 - (void)applyDefaultShadow {
     self.layer.masksToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.shadowColor = AppShadowClr.CGColor;
-    self.layer.shadowOpacity = 0.06;
-    self.layer.shadowRadius = 12.0;
-    self.layer.shadowOffset = CGSizeMake(0, 7.0);
+    self.layer.shadowOpacity = 0.05;
+    self.layer.shadowRadius = 10.0;
+    self.layer.shadowOffset = CGSizeMake(0, 6.0);
 }
 
 - (void)setQuantityToLabel:(PPInsetLabel *)label qty:(NSInteger)qty {
@@ -2261,7 +2885,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         text = kLang(@"Out of stock") ?: @"Out of stock";
         fgColor = [UIColor systemRedColor];
         bgColor = [fgColor colorWithAlphaComponent:0.08];
-        borderColor = [fgColor colorWithAlphaComponent:0.12];
+        borderColor = [fgColor colorWithAlphaComponent:0.16];
     }
     else if (qty < 5) {
         // State: Low Stock
@@ -2272,24 +2896,20 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         }
         fgColor = [UIColor systemOrangeColor];
         bgColor = [fgColor colorWithAlphaComponent:0.08];
-        borderColor = [fgColor colorWithAlphaComponent:0.12];
+        borderColor = [fgColor colorWithAlphaComponent:0.16];
     }
     else {
         // State: Available
         NSString *availableText = kLang(@"Available") ?: @"Available";
-        if (Language.isRTL) {
-            text = [NSString stringWithFormat:@"%@ %ld", availableText, (long)qty];
-        } else {
-            text = [NSString stringWithFormat:@"%ld %@", (long)qty, availableText];
-        }
+        text = availableText;
         fgColor = [UIColor systemGreenColor];
         bgColor = [fgColor colorWithAlphaComponent:0.08];
-        borderColor = [fgColor colorWithAlphaComponent:0.12];
+        borderColor = [fgColor colorWithAlphaComponent:0.16];
     }
     
     NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:text];
-    UIFont *baseFont = [GM MidFontWithSize:10.5];
-    UIFont *boldFont = [GM boldFontWithSize:11.0];
+    UIFont *baseFont = [GM MidFontWithSize:11.0];
+    UIFont *boldFont = [GM boldFontWithSize:11.5];
     
     [attr addAttributes:@{
         NSFontAttributeName : baseFont,
@@ -2307,8 +2927,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     label.backgroundColor = bgColor;
     label.layer.borderWidth = 1.0;
     label.layer.borderColor = borderColor.CGColor;
-    label.layer.cornerRadius = 8.0;
-    label.textInsets = UIEdgeInsetsMake(4, 10, 4, 10);
+    label.layer.cornerRadius = PPCatalogBadgeCornerRadius;
+    label.textInsets = UIEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
     label.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         label.layer.cornerCurve = kCACornerCurveContinuous;
@@ -2371,19 +2991,25 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
             oldPriceString = [NSString stringWithFormat:@"%@ %@", @(originalPrice), kLang(@"Rials")];
         }
 
-        NSMutableAttributedString *attr =
-        [[NSMutableAttributedString alloc] initWithString:oldPriceString];
+    NSMutableAttributedString *attr =
+    [[NSMutableAttributedString alloc] initWithString:oldPriceString];
 
         [attr addAttribute:NSStrikethroughStyleAttributeName
                      value:@(NSUnderlineStyleSingle)
                      range:NSMakeRange(0, oldPriceString.length)];
 
-        [attr addAttribute:NSForegroundColorAttributeName
-                     value:mutedPriceColor
-                     range:NSMakeRange(0, oldPriceString.length)];
+        NSMutableParagraphStyle *style = [self pp_paragraphStyleForText:oldPriceString];
+
+        [attr addAttributes:@{
+            NSForegroundColorAttributeName : mutedPriceColor,
+            NSFontAttributeName : [GM MidFontWithSize:([self pp_isCatalogCommerceContext] ? 11.5 : 12.0)],
+            NSParagraphStyleAttributeName : style,
+            NSBaselineOffsetAttributeName : @1.0
+        } range:NSMakeRange(0, oldPriceString.length)];
 
         self.discountLabel.attributedText = attr;
         self.discountLabel.hidden = NO;
+        [self pp_applyDirectionToLabel:self.discountLabel usingText:oldPriceString];
         
     }
     // 🔹 No discount
@@ -2407,7 +3033,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     CGAffineTransform imageTransform = highlighted ? CGAffineTransformMakeScale(1.035, 1.035) : CGAffineTransformIdentity;
     CGFloat shadowOpacity = highlighted
         ? 0.18
-        : ((self.context == PPCellForMarket) ? 0.06 : ([self pp_isServiceContext] ? 0.10 : 0.14));
+        : (([self pp_isCatalogCommerceContext]) ? 0.06 : ([self pp_isServiceContext] ? 0.10 : 0.14));
     CGFloat overlayAlpha = highlighted ? 0.94 : 1.0;
 
     [UIView animateWithDuration:0.22
@@ -2435,10 +3061,11 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         fullText = [NSString stringWithFormat:@"%@ %@", priceText, (currency ?: @"QAR")];
     }
 
-    CGFloat priceFontSize = [self pp_isServiceContext] ? 17.0 : PPFontTitle2;
-    CGFloat currencyFontSize = [self pp_isServiceContext] ? MAX(PPFontCaption1, 11.0) : PPFontCaption1;
+    CGFloat priceFontSize = [self pp_isServiceContext] ? 17.0 : ([self pp_isCatalogCommerceContext] ? 16.5 : ([self pp_isAdsContext] ? 18.0 : PPFontTitle2));
+    CGFloat currencyFontSize = [self pp_isServiceContext] ? MAX(PPFontCaption1, 11.0) : ([self pp_isCatalogCommerceContext] ? 11.0 : ([self pp_isAdsContext] ? 11.5 : PPFontCaption1));
     UIFont *priceFont    = [GM boldFontWithSize:priceFontSize];
     UIFont *currencyFont = [GM MidFontWithSize:currencyFontSize];
+    NSMutableParagraphStyle *style = [self pp_paragraphStyleForText:fullText];
 
     NSMutableAttributedString *attr =
     [[NSMutableAttributedString alloc] initWithString:fullText];
@@ -2446,7 +3073,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     // Default style for the whole formatted price (locale-aware + QAR-forced via PPChatsFunc).
     [attr addAttributes:@{
         NSFontAttributeName : priceFont,
-        NSForegroundColorAttributeName : priceColor
+        NSForegroundColorAttributeName : priceColor,
+        NSParagraphStyleAttributeName : style
     } range:NSMakeRange(0, fullText.length)];
 
     // When the formatter returns a visible currency token (e.g. QAR), render it slightly smaller.
@@ -2461,12 +3089,14 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         if (currencyRange.location == NSNotFound) continue;
         [attr addAttributes:@{
             NSFontAttributeName : currencyFont,
-            NSForegroundColorAttributeName : [priceColor colorWithAlphaComponent:0.65]
+            NSForegroundColorAttributeName : [priceColor colorWithAlphaComponent:0.64],
+            NSBaselineOffsetAttributeName : @1.0
         } range:currencyRange];
         break;
     }
 
     label.attributedText = attr;
+    [self pp_applyDirectionToLabel:label usingText:fullText];
 }
 
 
@@ -2497,7 +3127,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 }
 
 - (void)showDiscountBadgeAnimated {
-    if (self.context != PPCellForMarket) {
+    if (![self pp_isCatalogCommerceContext]) {
         [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:YES];
     }
     if (!self.discountValueLabel.hidden) return;
@@ -2505,7 +3135,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.discountValueLabel.hidden = NO;
     self.discountValueLabel.alpha = 0.0;
     self.discountValueLabel.transform = CGAffineTransformMakeScale(0.85, 0.85);
-    UIView *layoutHost = (self.context == PPCellForMarket) ? self.card : self.bottomOverlay;
+    UIView *layoutHost = [self pp_isCatalogCommerceContext] ? self.card : self.bottomOverlay;
     [layoutHost layoutIfNeeded];
 
     [UIView animateWithDuration:0.22
@@ -2520,16 +3150,16 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (void)hideDiscountBadgeAnimated {
     if (self.discountValueLabel.hidden) {
-        if (self.context != PPCellForMarket) {
+        if (![self pp_isCatalogCommerceContext]) {
             [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
         }
         return;
     }
 
-    if (self.context != PPCellForMarket) {
+    if (![self pp_isCatalogCommerceContext]) {
         [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
     }
-    UIView *layoutHost = (self.context == PPCellForMarket) ? self.card : self.bottomOverlay;
+    UIView *layoutHost = [self pp_isCatalogCommerceContext] ? self.card : self.bottomOverlay;
 
     [UIView animateWithDuration:0.18
                           delay:0
@@ -2628,30 +3258,45 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (void)updateAddButton
 {
-    BOOL isMarket = (self.context == PPCellForMarket || self.context == PPCellForFood);
+    BOOL isMarket = [self pp_isCatalogCommerceContext];
     BOOL showsCount = self.quantity > 0;
+    NSInteger stockLimit = [self pp_stockLimitForCurrentItem];
+    BOOL isOutOfStock = isMarket && stockLimit <= 0;
+    BOOL isLowStock = isMarket && stockLimit > 0 && stockLimit < 5;
     UIButtonConfiguration *config = self.addButton.configuration ?: [UIButtonConfiguration filledButtonConfiguration];
     
     if (isMarket) {
-        NSString *title = showsCount
-        ? [NSString stringWithFormat:@"%@ • %ld", (kLang(@"InCart") ?: @"In cart"), (long)self.quantity]
-        : (kLang(@"addToCart") ?: @"Add to Cart");
+        NSString *title = isOutOfStock
+            ? (kLang(@"Out of stock") ?: @"Out of stock")
+            : (showsCount
+               ? [NSString stringWithFormat:@"%@ • %ld", (kLang(@"InCart") ?: @"In cart"), (long)self.quantity]
+               : (kLang(@"addToCart") ?: @"Add to Cart"));
         
-        UIFont *titleFont = [GM boldFontWithSize:showsCount ? 13.5 : 14.5];
-        UIColor *foregroundColor = showsCount ? AppPrimaryClr : UIColor.whiteColor;
-        UIColor *backgroundColor = showsCount ? [AppPrimaryClr colorWithAlphaComponent:0.08] : AppPrimaryClr;
-        UIColor *borderColor = showsCount ? [AppPrimaryClr colorWithAlphaComponent:0.15] : UIColor.clearColor;
+        UIFont *titleFont = [GM boldFontWithSize:(showsCount ? 13.0 : 14.0)];
+        UIColor *foregroundColor = isOutOfStock
+            ? [UIColor systemRedColor]
+            : (showsCount ? AppPrimaryClr : UIColor.whiteColor);
+        UIColor *backgroundColor = isOutOfStock
+            ? [[UIColor systemRedColor] colorWithAlphaComponent:0.10]
+            : (showsCount ? [AppPrimaryClr colorWithAlphaComponent:0.08] : AppPrimaryClr);
+        UIColor *borderColor = isOutOfStock
+            ? [[UIColor systemRedColor] colorWithAlphaComponent:0.16]
+            : (showsCount
+               ? [AppPrimaryClr colorWithAlphaComponent:0.15]
+               : (isLowStock ? [[UIColor systemOrangeColor] colorWithAlphaComponent:0.20] : UIColor.clearColor));
 
         config.title = title;
-        config.image = [UIImage systemImageNamed:(showsCount ? @"cart.fill.badge.plus" : @"plus.cart.fill")];
+        config.image = [UIImage systemImageNamed:(isOutOfStock
+                                                  ? @"exclamationmark.circle.fill"
+                                                  : (showsCount ? @"cart.fill.badge.plus" : @"plus.cart.fill"))];
         config.imagePlacement = NSDirectionalRectEdgeLeading;
-        config.imagePadding = 8.0;
+        config.imagePadding = 7.0;
         config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
+        config.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 14.0, 8.0, 14.0);
         config.baseBackgroundColor = backgroundColor;
         config.baseForegroundColor = foregroundColor;
-        config.background.cornerRadius = 14.0;
-        config.background.strokeWidth = showsCount ? 1.0 : 0.0;
+        config.background.cornerRadius = 15.0;
+        config.background.strokeWidth = (showsCount || isOutOfStock || isLowStock) ? 1.0 : 0.0;
         config.background.strokeColor = borderColor;
         
         config.titleTextAttributesTransformer =
@@ -2663,9 +3308,10 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         };
         
         self.addButton.layer.shadowColor = AppPrimaryClr.CGColor;
-        self.addButton.layer.shadowOpacity = showsCount ? 0.0 : 0.12;
-        self.addButton.layer.shadowRadius = 10.0;
+        self.addButton.layer.shadowOpacity = (showsCount || isOutOfStock) ? 0.0 : 0.10;
+        self.addButton.layer.shadowRadius = 8.0;
         self.addButton.layer.shadowOffset = CGSizeMake(0, 4.0);
+        self.addButton.enabled = !isOutOfStock;
     } else {
         NSString *title = showsCount
         ? [NSString stringWithFormat:@"%ld", (long)self.quantity]

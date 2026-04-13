@@ -26,6 +26,7 @@
 - (void)initValue;
 @property (nonatomic, strong) NSString *adID;
 @property (nonatomic, assign) BOOL isFavorite;
+@property (nonatomic, assign) BOOL hidesBackground;
 - (void)toggleFavorite;
 @property (strong, nonatomic) NSString *collection;
 @end

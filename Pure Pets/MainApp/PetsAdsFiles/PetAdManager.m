@@ -106,6 +106,31 @@ static NSString *PPSubcollectionForInteraction(PPItemInteractionType interaction
     return nil;
 }
 
+#pragma mark - Hidden-Category Filtering
+
+/// Returns the set of currently visible main-kind IDs.
+static NSSet<NSNumber *> *PPVisibleMainKindIDs(void) {
+    NSMutableSet<NSNumber *> *ids = [NSMutableSet set];
+    for (MainKindsModel *kind in PPMainKindsArray) {
+        if (kind.ID > 0) {
+            [ids addObject:@(kind.ID)];
+        }
+    }
+    return ids;
+}
+
+/// Filters out ads whose category belongs to a hidden main kind.
+static NSArray<PetAd *> *PPFilterAdsByVisibleCategories(NSArray<PetAd *> *ads) {
+    NSSet<NSNumber *> *visibleIDs = PPVisibleMainKindIDs();
+    if (visibleIDs.count == 0) return ads; // Categories not loaded yet — don't filter
+
+    return [ads filteredArrayUsingPredicate:
+        [NSPredicate predicateWithBlock:^BOOL(PetAd *ad, NSDictionary *bindings) {
+            if (ad.category <= 0) return YES; // General/no-category items pass through
+            return [visibleIDs containsObject:@(ad.category)];
+        }]];
+}
+
 static NSString *PPItemCollectionPathForFavoritesCollection(NSString *favoritesCollection) {
     NSString *canonical = PPCanonicalFavoritesCollection(favoritesCollection);
     if (canonical.length == 0) return nil;
@@ -332,7 +357,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(ads.copy);
+                if (completion) completion(PPFilterAdsByVisibleCategories(ads));
             });
         });
     }];
@@ -368,7 +393,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(ads.copy);
+                if (completion) completion(PPFilterAdsByVisibleCategories(ads));
             });
         });
     }];
@@ -410,7 +435,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             if (ad.expiresAt && [ad.expiresAt compare:[NSDate date]] != NSOrderedDescending) continue;
             [ads addObject:ad];
         }
-        if (completion) completion(ads.copy);
+        if (completion) completion(PPFilterAdsByVisibleCategories(ads));
     }];
 }
 
@@ -521,8 +546,9 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             ? [sorted subarrayWithRange:NSMakeRange(0, (NSUInteger)limit)]
             : sorted;
 
+        NSArray<PetAd *> *filtered = PPFilterAdsByVisibleCategories(limited ?: @[]);
         dispatch_async(dispatch_get_main_queue(), ^{
-            if (completion) completion(limited ?: @[]);
+            if (completion) completion(filtered);
         });
     });
 }
@@ -566,7 +592,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(ads.copy);
+                if (completion) completion(PPFilterAdsByVisibleCategories(ads));
             });
         });
     }];
@@ -633,7 +659,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             NSLog(@"✅ Ads matched = %lu results %@",
                   (unsigned long)results.count,
                   [results valueForKey:@"adTitle"]);
-            if (completion) completion(results.copy);
+            if (completion) completion(PPFilterAdsByVisibleCategories(results));
         });
     }];
 }
@@ -1354,7 +1380,7 @@ if (completion) completion(ad, nil);
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(results.copy);
+                if (completion) completion(PPFilterAdsByVisibleCategories(results));
             });
         });
     }];

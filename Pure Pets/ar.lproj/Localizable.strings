@@ -1568,6 +1568,8 @@
 "Home_LastOrderSubtitle" = "تابع أحدث حالة وافتح سجل الطلبات الكامل.";
 "Home_BuyAgainTitle" = "اشترِ مرة أخرى";
 "Home_BuyAgainSubtitle" = "اختيارات سريعة من المنتجات التي طلبتها من قبل.";
+"Home_LastFoodAdded" = "آخر طعام مضاف";
+"Home_LastFoodSubtitle" = "أحدث أطعمة الحيوانات الأليفة المضافة";
 "Home_CurrentOrdersPendingHint" = "بانتظار تأكيد المتجر.";
 "Home_CurrentOrdersPaidHint" = "تم تأكيد الدفع وجارٍ تجهيز الطلب.";
 "Home_CurrentOrdersProcessingHint" = "يتم تجهيز منتجاتك الآن.";
@@ -2445,3 +2447,9 @@
 /* ── Adopt Pet Form Section Titles ── */
 "petInfo" = "معلومات الحيوان";
 "additionalInfo" = "تفاصيل إضافية";
+
+/* ── Appearance / Dark Mode Section ── */
+"Appearance" = "المظهر";
+"LightMode" = "فاتح";
+"DarkMode" = "داكن";
+"SystemMode" = "النظام";

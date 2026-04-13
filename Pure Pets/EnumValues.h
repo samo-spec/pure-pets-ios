@@ -162,7 +162,8 @@ typedef NS_ENUM(NSInteger, PPHomeItemType) {
 
     PPHomeItemTypeQuickActions,        // (currently disabled)
     PPHomeItemTypeEmpty,               // Fallback / safety
-    PPHomeItemTypeBuyAgain             // Repeat-purchase accessory rail
+    PPHomeItemTypeBuyAgain,            // Repeat-purchase accessory rail
+    PPHomeItemTypeLastFood             // Last food added smart section
 };
 
 
@@ -272,6 +273,7 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionSuggestions,
     PPHomeSectionAccessories,
     PPHomeSectionPetProfile,
+    PPHomeSectionLastFood,
     PPHomeSectionAdsNearBy,
     PPHomeSectionAdopt, // legacy (not rendered on home in Pattern 1)
     PPHomeSectionBuyAgain,

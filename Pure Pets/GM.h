@@ -235,6 +235,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (UIImage *)cachedImageForURL:(NSURL *)url;
 
 + (void)clearImagesDiskCache ;
+
++ (void)pp_addShimmerToView:(UIView *)view;
++ (void)pp_removeShimmerFromView:(UIView *)view;
 @end
 
 NS_ASSUME_NONNULL_END
