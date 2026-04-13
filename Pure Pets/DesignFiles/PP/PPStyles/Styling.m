@@ -1129,7 +1129,6 @@
 
 
 
-static UIUserInterfaceStyle const PPForcedUserInterfaceStyle = UIUserInterfaceStyleDark;
 static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
 
 @implementation PPThemeManager
@@ -1146,41 +1145,51 @@ static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
 #pragma mark - Save / Load
 
 - (void)saveUserInterfaceStyle:(UIUserInterfaceStyle)style {
-    (void)style;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setInteger:PPForcedUserInterfaceStyle forKey:kUserInterfaceStyleKey];
-    [defaults setObject:@"dark" forKey:PPLegacyThemePreferenceKey];
-    NSLog(@"💾 Saved interface style: Dark");
+    [defaults setInteger:style forKey:kUserInterfaceStyleKey];
+    NSString *legacy;
+    if (style == UIUserInterfaceStyleDark) {
+        legacy = @"dark";
+    } else if (style == UIUserInterfaceStyleLight) {
+        legacy = @"light";
+    } else {
+        legacy = @"system";
+    }
+    [defaults setObject:legacy forKey:PPLegacyThemePreferenceKey];
+    NSLog(@"💾 Saved interface style: %@", legacy);
 }
 
 - (UIUserInterfaceStyle)loadUserInterfaceStyle {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    UIUserInterfaceStyle storedStyle = UIUserInterfaceStyleUnspecified;
+
     if ([defaults objectForKey:kUserInterfaceStyleKey] != nil) {
-        storedStyle = (UIUserInterfaceStyle)[defaults integerForKey:kUserInterfaceStyleKey];
-    } else {
-        NSString *legacyTheme = [defaults stringForKey:PPLegacyThemePreferenceKey];
-        if ([legacyTheme isEqualToString:@"dark"]) {
-            storedStyle = UIUserInterfaceStyleDark;
-        } else if ([legacyTheme isEqualToString:@"light"]) {
-            storedStyle = UIUserInterfaceStyleLight;
-        }
+        return (UIUserInterfaceStyle)[defaults integerForKey:kUserInterfaceStyleKey];
     }
 
-    if (storedStyle != PPForcedUserInterfaceStyle) {
-        [defaults setInteger:PPForcedUserInterfaceStyle forKey:kUserInterfaceStyleKey];
-        [defaults setObject:@"dark" forKey:PPLegacyThemePreferenceKey];
+    NSString *legacyTheme = [defaults stringForKey:PPLegacyThemePreferenceKey];
+    if ([legacyTheme isEqualToString:@"dark"]) {
+        return UIUserInterfaceStyleDark;
+    } else if ([legacyTheme isEqualToString:@"light"]) {
+        return UIUserInterfaceStyleLight;
+    } else if ([legacyTheme isEqualToString:@"system"]) {
+        return UIUserInterfaceStyleUnspecified;
     }
 
-    return PPForcedUserInterfaceStyle;
+    // Default to dark for first launch
+    UIUserInterfaceStyle fallback = UIUserInterfaceStyleDark;
+    [self saveUserInterfaceStyle:fallback];
+    return fallback;
 }
 
 #pragma mark - Apply
 
 - (void)applySavedInterfaceStyleToWindow:(UIWindow *)window {
     if (!window) return;
-    window.overrideUserInterfaceStyle = [self loadUserInterfaceStyle];
-    NSLog(@"🌗 Applied saved style: Dark");
+    UIUserInterfaceStyle style = [self loadUserInterfaceStyle];
+    window.overrideUserInterfaceStyle = style;
+    NSString *label = (style == UIUserInterfaceStyleDark) ? @"Dark"
+                    : (style == UIUserInterfaceStyleLight) ? @"Light" : @"System";
+    NSLog(@"🌗 Applied saved style: %@", label);
 }
 
 #pragma mark - Toggle
@@ -1188,10 +1197,14 @@ static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
 - (void)toggleUserInterfaceStyleForWindow:(UIWindow *)window {
     if (!window) return;
 
-    window.overrideUserInterfaceStyle = PPForcedUserInterfaceStyle;
-    [self saveUserInterfaceStyle:PPForcedUserInterfaceStyle];
-    
-    // 🎨 أنيميشن خفيفة لتبديل النمط
+    UIUserInterfaceStyle current = [self loadUserInterfaceStyle];
+    UIUserInterfaceStyle next = (current == UIUserInterfaceStyleDark)
+                                ? UIUserInterfaceStyleLight
+                                : UIUserInterfaceStyleDark;
+
+    window.overrideUserInterfaceStyle = next;
+    [self saveUserInterfaceStyle:next];
+
     [UIView transitionWithView:window
                       duration:0.35
                        options:UIViewAnimationOptionTransitionCrossDissolve

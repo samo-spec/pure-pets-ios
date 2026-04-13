@@ -2651,8 +2651,8 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         config.baseBackgroundColor = backgroundColor;
         config.baseForegroundColor = foregroundColor;
         config.background.cornerRadius = 14.0;
-        config.background.borderWidth = showsCount ? 1.0 : 0.0;
-        config.background.borderColor = borderColor;
+        config.background.strokeWidth = showsCount ? 1.0 : 0.0;
+        config.background.strokeColor = borderColor;
         
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {

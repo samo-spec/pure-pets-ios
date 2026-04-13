@@ -1078,14 +1078,6 @@
     }];
 }
 
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
-{
-    [super traitCollectionDidChange:previousTraitCollection];
-    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        [self pp_applyPalette];
-    }
-}
-
 - (void)tintColorDidChange
 {
     [super tintColorDidChange];
@@ -2134,7 +2126,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.hideServiceSection = YES;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
-    self.view.backgroundColor = AppBackgroundClr;
+    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
 
     //[self pp_installBackgroundGradient];
 
@@ -7679,7 +7671,20 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
         [self pp_updateBackgroundGradientColors];
+        [self pp_applyPalette];
+        [self configureNavigationBar];
+        [self refreshHeroSectionAppearance];
+        [self setNeedsStatusBarAppearanceUpdate];
+
+        // Force immediate full visual refresh of all visible cells
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        NSInteger sectionCount = [self.collectionView numberOfSections];
+        if (sectionCount > 0) {
+            [self.collectionView reloadSections:[NSIndexSet indexSetWithIndexesInRange:NSMakeRange(0, sectionCount)]];
+        }
+        [self.collectionView layoutIfNeeded];
     }
 }
 

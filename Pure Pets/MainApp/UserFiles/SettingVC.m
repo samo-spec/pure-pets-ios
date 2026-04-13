@@ -31,7 +31,8 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
     PPSettingsRowTypeSegment,
     PPSettingsRowTypeDestructive,
     PPSettingsRowTypeVersion,
-    PPSettingsRowTypeLanguage
+    PPSettingsRowTypeLanguage,
+    PPSettingsRowTypeThemePicker
 };
 
 @interface PPSettingsRowModel : NSObject
@@ -51,6 +52,9 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 // Language dual-button
 @property (nonatomic, assign) NSInteger languageIndex; // 0=Arabic, 1=English
 @property (nonatomic, copy, nullable) void (^onLanguageTap)(NSInteger index);
+// Theme picker: 0=Light, 1=Dark, 2=System
+@property (nonatomic, assign) NSInteger themeIndex;
+@property (nonatomic, copy, nullable) void (^onThemeTap)(NSInteger index);
 @end
 
 @implementation PPSettingsRowModel
@@ -83,6 +87,7 @@ static NSString *const kSettingsCellID  = @"PPSettingsCell";
 static NSString *const kProfileCellID   = @"PPProfileCell";
 static NSString *const kVersionCellID   = @"PPVersionCell";
 static NSString *const kLanguageCellID  = @"PPLanguageCell";
+static NSString *const kThemeCellID    = @"PPThemeCell";
 
 #pragma mark - SettingVC
 
@@ -175,21 +180,31 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
         [allSections addObject:profileSection];
     }
 
+    // Section: Appearance (separate section with 3-button theme picker)
+    PPSettingsSectionModel *appearanceSection = [PPSettingsSectionModel new];
+    appearanceSection.headerTitle = kLang(@"Appearance") ?: @"Appearance";
+    PPSettingsRowModel *themeRow = [PPSettingsRowModel new];
+    themeRow.type = PPSettingsRowTypeThemePicker;
+    themeRow.title = kLang(@"DarkSetPalce") ?: @"Appearance";
+    themeRow.iconName = @"moon.fill";
+    themeRow.iconTint = UIColor.whiteColor;
+    themeRow.iconBackground = [UIColor colorWithRed:0.38 green:0.22 blue:0.72 alpha:1.0];
+    UIUserInterfaceStyle currentStyle = [self loadUserInterfaceStyle];
+    if (currentStyle == UIUserInterfaceStyleLight) {
+        themeRow.themeIndex = 0;
+    } else if (currentStyle == UIUserInterfaceStyleDark) {
+        themeRow.themeIndex = 1;
+    } else {
+        themeRow.themeIndex = 2;
+    }
+    themeRow.onThemeTap = ^(NSInteger index) { [weakSelf pp_applyThemeAtIndex:index]; };
+    appearanceSection.rows = @[themeRow];
+    [allSections addObject:appearanceSection];
+
     // Section: App Settings
     PPSettingsSectionModel *appSection = [PPSettingsSectionModel new];
     appSection.headerTitle = kLang(@"AppSetting");
     NSMutableArray<PPSettingsRowModel *> *appRows = [NSMutableArray array];
-
-    PPSettingsRowModel *darkRow = [PPSettingsRowModel new];
-    darkRow.type = PPSettingsRowTypeToggle;
-    darkRow.title = kLang(@"DarkSetPalce") ?: @"Dark Mode";
-    darkRow.subtitle = kLang(@"dark_mode_always_on") ?: @"Always on across the app";
-    darkRow.iconName = @"moon.fill";
-    darkRow.iconTint = UIColor.whiteColor;
-    darkRow.iconBackground = [UIColor colorWithRed:0.38 green:0.22 blue:0.72 alpha:1.0];
-    darkRow.toggleValue = YES;
-    darkRow.toggleEnabled = NO;
-    [appRows addObject:darkRow];
 
     PPSettingsRowModel *autoPlayRow = [PPSettingsRowModel new];
     autoPlayRow.type = PPSettingsRowTypeToggle;
@@ -358,6 +373,8 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
             return [self pp_segmentCellForRow:row tableView:tableView];
         case PPSettingsRowTypeLanguage:
             return [self pp_languageCellForRow:row tableView:tableView];
+        case PPSettingsRowTypeThemePicker:
+            return [self pp_themeCellForRow:row tableView:tableView];
         case PPSettingsRowTypeNavigation:
         case PPSettingsRowTypeDestructive:
             return [self pp_navigationCellForRow:row tableView:tableView];
@@ -659,6 +676,7 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
     if (row.type == PPSettingsRowTypeProfile) return 72.0;
     if (row.type == PPSettingsRowTypeVersion) return 44.0;
     if (row.type == PPSettingsRowTypeLanguage) return 60.0;
+    if (row.type == PPSettingsRowTypeThemePicker) return 96.0;
     return 52.0;
 }
 
@@ -698,16 +716,138 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
 
 #pragma mark - Theme
 
-- (void)pp_applyThemeIsDark:(BOOL)isDark
+- (void)pp_applyThemeAtIndex:(NSInteger)index
 {
-    (void)isDark;
-    UIUserInterfaceStyle style = UIUserInterfaceStyleDark;
+    UIUserInterfaceStyle style;
+    NSString *legacyKey;
+    if (index == 0) {
+        style = UIUserInterfaceStyleLight;
+        legacyKey = @"light";
+    } else if (index == 1) {
+        style = UIUserInterfaceStyleDark;
+        legacyKey = @"dark";
+    } else {
+        style = UIUserInterfaceStyleUnspecified;
+        legacyKey = @"system";
+    }
     [self saveUserInterfaceStyle:style];
-    [self.prefs setObject:@"dark" forKey:@"themePreference"];
+    [self.prefs setObject:legacyKey forKey:@"themePreference"];
     UIWindow *window = [self pp_keyWindow];
-    if (window) { window.overrideUserInterfaceStyle = style; }
+    if (window) {
+        [UIView transitionWithView:window
+                          duration:0.35
+                           options:UIViewAnimationOptionTransitionCrossDissolve
+                        animations:^{
+            window.overrideUserInterfaceStyle = style;
+        } completion:nil];
+    }
     [self pp_buildSections];
     [self.tableView reloadData];
+}
+
+- (UITableViewCell *)pp_themeCellForRow:(PPSettingsRowModel *)row tableView:(UITableView *)tableView
+{
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kThemeCellID];
+    cell.selectionStyle = UITableViewCellSelectionStyleNone;
+    cell.backgroundColor = AppForgroundColr;
+
+    NSInteger activeIndex = row.themeIndex;
+
+    UIColor *activeBg = AppPrimaryClr ?: [UIColor systemOrangeColor];
+    UIColor *activeFg = UIColor.whiteColor;
+    UIColor *inactiveBg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [[UIColor whiteColor] colorWithAlphaComponent:0.08]
+            : [[UIColor blackColor] colorWithAlphaComponent:0.05];
+    }];
+    UIColor *inactiveFg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [[UIColor whiteColor] colorWithAlphaComponent:0.6]
+            : [[UIColor blackColor] colorWithAlphaComponent:0.55];
+    }];
+    UIColor *inactiveBorder = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return tc.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? [[UIColor whiteColor] colorWithAlphaComponent:0.12]
+            : [[UIColor blackColor] colorWithAlphaComponent:0.1];
+    }];
+
+    NSArray<NSDictionary *> *items = @[
+        @{ @"icon": @"sun.max.fill",          @"label": kLang(@"LightMode") ?: @"Light" },
+        @{ @"icon": @"moon.fill",             @"label": kLang(@"DarkMode") ?: @"Dark" },
+        @{ @"icon": @"iphone",                @"label": kLang(@"SystemMode") ?: @"System" },
+    ];
+
+    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
+    for (NSInteger i = 0; i < (NSInteger)items.count; i++) {
+        NSDictionary *item = items[i];
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
+        btn.translatesAutoresizingMaskIntoConstraints = NO;
+        btn.tag = i;
+        btn.layer.cornerRadius = 14.0;
+        btn.clipsToBounds = YES;
+
+        // Icon + label as attributed title
+        NSString *iconName = item[@"icon"];
+        NSString *label = item[@"label"];
+        UIImageSymbolConfiguration *symConf = [UIImageSymbolConfiguration configurationWithPointSize:13 weight:UIImageSymbolWeightMedium];
+        UIImage *icon = [UIImage systemImageNamed:iconName withConfiguration:symConf];
+
+        NSMutableAttributedString *attrTitle = [[NSMutableAttributedString alloc] init];
+        if (icon) {
+            NSTextAttachment *attach = [[NSTextAttachment alloc] init];
+            attach.image = [icon imageWithTintColor:(i == activeIndex ? activeFg : inactiveFg) renderingMode:UIImageRenderingModeAlwaysOriginal];
+            [attrTitle appendAttributedString:[NSAttributedString attributedStringWithAttachment:attach]];
+            [attrTitle appendAttributedString:[[NSAttributedString alloc] initWithString:@" "]];
+        }
+        NSDictionary *textAttrs = @{
+            NSFontAttributeName: [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold],
+            NSForegroundColorAttributeName: (i == activeIndex ? activeFg : inactiveFg),
+        };
+        [attrTitle appendAttributedString:[[NSAttributedString alloc] initWithString:label attributes:textAttrs]];
+        [btn setAttributedTitle:attrTitle forState:UIControlStateNormal];
+
+        if (i == activeIndex) {
+            btn.backgroundColor = activeBg;
+            btn.layer.borderWidth = 0;
+        } else {
+            btn.backgroundColor = inactiveBg;
+            btn.layer.borderWidth = 1.0;
+            btn.layer.borderColor = inactiveBorder.CGColor;
+        }
+
+        [btn addTarget:self action:@selector(pp_themeButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [buttons addObject:btn];
+    }
+
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:buttons];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.spacing = 10.0;
+    stack.distribution = UIStackViewDistributionFillEqually;
+
+    for (UIView *sub in cell.contentView.subviews) { [sub removeFromSuperview]; }
+    [cell.contentView addSubview:stack];
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:16.0],
+        [stack.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-16.0],
+        [stack.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+        [stack.heightAnchor constraintEqualToConstant:44.0],
+    ]];
+
+    return cell;
+}
+
+- (void)pp_themeButtonTapped:(UIButton *)sender
+{
+    NSInteger tappedIndex = sender.tag;
+    for (PPSettingsSectionModel *section in self.sections) {
+        for (PPSettingsRowModel *row in section.rows) {
+            if (row.type == PPSettingsRowTypeThemePicker && row.onThemeTap) {
+                row.onThemeTap(tappedIndex);
+                return;
+            }
+        }
+    }
 }
 
 - (void)saveUserInterfaceStyle:(UIUserInterfaceStyle)style
