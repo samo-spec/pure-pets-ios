@@ -6,7 +6,7 @@
 //
 
 #import "MainKindsArrayManager.h"
-static NSString * const kCachedMainKindsKey = @"cachedMainKinds";
+static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
 
 
 //NSArray<MainKindsModel *> *PPMainKinds      = nil;
@@ -32,7 +32,8 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds";
         self.mainKindsListener = nil;
     }
     
-    FIRQuery *query = [[[FIRFirestore firestore] collectionWithPath:@"MainKindsCollection"]
+    FIRQuery *query = [[[[FIRFirestore firestore] collectionWithPath:@"MainKindsCollection"]
+                        queryWhereField:@"is_visible_in_user_app" isEqualTo:@YES]
                        queryOrderedByField:@"sortingKey" descending:NO];
     
     __weak typeof(self) weakSelf = self;
@@ -340,7 +341,9 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds";
     self.didSeedMainKinds = hasCache;
     
     // Build the Firestore query (sorted by ID ascending)
-    FIRQuery *query = [[[FIRFirestore firestore] collectionWithPath:@"MainKindsCollection"] queryOrderedByField:@"sortingKey" descending:NO];
+    FIRQuery *query = [[[[FIRFirestore firestore] collectionWithPath:@"MainKindsCollection"]
+                        queryWhereField:@"is_visible_in_user_app" isEqualTo:@YES]
+                       queryOrderedByField:@"sortingKey" descending:NO];
     
     // Use weakSelf in the block to avoid retain cycles
     __weak typeof(self) weakSelf = self;

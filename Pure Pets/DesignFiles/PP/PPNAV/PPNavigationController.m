@@ -202,8 +202,8 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
     [super viewDidLoad];
     
     self.navigationBar.translucent = YES;
-    self.navigationBar.barStyle = UIBarStyleDefault;
-    self.navigationBar.tintColor = UIColor.clearColor;
+    self.navigationBar.barStyle = UIBarStyleBlack;
+    self.navigationBar.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
     self.navigationBar.backgroundColor = UIColor.clearColor;
     
     if (@available(iOS 15.0, *)) {
@@ -215,7 +215,7 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
             NSForegroundColorAttributeName: AppPrimaryTextClr,
             NSFontAttributeName: [GM boldFontWithSize:18]
         };
-        appearance.largeTitleTextAttributes = @{ NSForegroundColorAttributeName: UIColor.blackColor };
+        appearance.largeTitleTextAttributes = @{ NSForegroundColorAttributeName: AppPrimaryTextClr ?: UIColor.labelColor };
         
         self.navigationBar.standardAppearance = appearance;
         self.navigationBar.scrollEdgeAppearance = appearance;
@@ -223,7 +223,7 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
         self.navigationBar.prefersLargeTitles = NO;
         
         NSDictionary *titleAttributes = @{
-            NSForegroundColorAttributeName: [UIColor labelColor],
+            NSForegroundColorAttributeName: AppPrimaryTextClr ?: UIColor.labelColor,
             // title color
             NSFontAttributeName: [GM boldFontWithSize:18]  // title font
         };
@@ -241,7 +241,7 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
 // ✅ Prevent iOS from “borrowing” appearance from pushed VC
 - (void)pushViewController:(UIViewController *)viewController animated:(BOOL)animated {
     
-    self.navigationBar.tintColor = UIColor.blackColor; // reset before transition
+    self.navigationBar.tintColor = AppPrimaryTextClr ?: UIColor.labelColor; // reset before transition
     [super pushViewController:viewController animated:animated];
 }
 
@@ -250,7 +250,7 @@ static const CGFloat kPPModalNavBarHeight = 44.0;
     UIViewController *vc = [super popViewControllerAnimated:animated];
     // ensure style restored after pop
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.15 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        self.navigationBar.tintColor = UIColor.blackColor;
+        self.navigationBar.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
     });
     return vc;
 }
@@ -805,7 +805,6 @@ static void *kPPTransitionStyleKey = &kPPTransitionStyleKey;
 }
 
 @end
-
 
 
 

@@ -1,33 +1,33 @@
 #import "PPModrenSegmrnted.h"
 
 static const NSInteger PPModrenSegmrntedNoSelection = -1;
-static const CGFloat PPModrenSegmrntedRailInset = 4.0;
-static const CGFloat PPModrenSegmrntedCornerRadius = 22.0;
-static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.34;
+static const CGFloat PPModrenSegmrntedRailInset = 5.0;
+static const CGFloat PPModrenSegmrntedCornerRadius = 24.0;
+static const NSTimeInterval PPModrenSegmrntedAnimationDuration = 0.38;
 
 static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
 {
-    return AppForgroundColr ?: [UIColor colorWithWhite:1.0 alpha:0.12];
+    return [UIColor colorWithWhite:0.96 alpha:1.0];
 }
 
 static inline UIColor *PPModrenSegmrntedTrackStrokeColor(void)
 {
-    return [UIColor colorWithWhite:1.0 alpha:0.10];
+    return [[UIColor labelColor] colorWithAlphaComponent:0.04];
 }
 
 static inline UIColor *PPModrenSegmrntedTrackSheenColor(void)
 {
-    return [UIColor colorWithWhite:1.0 alpha:0.12];
+    return [UIColor colorWithWhite:1.0 alpha:0.4];
 }
 
 static inline UIColor *PPModrenSegmrntedIndicatorBorderColor(void)
 {
-    return [UIColor colorWithWhite:1.0 alpha:0.28];
+    return [UIColor colorWithWhite:1.0 alpha:0.12];
 }
 
 static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
 {
-    return AppShadowClr ?: UIColor.blackColor;
+    return [UIColor.blackColor colorWithAlphaComponent:0.12];
 }
 
 @interface PPModrenSegmrntedItem ()
@@ -208,10 +208,10 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
 {
     UIColor *normalTextColor = self.cachedNormalTextColor ?: UIColor.secondaryLabelColor;
     UIColor *selectedTextColor = self.cachedSelectedTextColor ?: UIColor.whiteColor;
-    UIFont *normalFont = self.cachedNormalFont ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    UIFont *selectedFont = self.cachedSelectedFont ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    UIFont *normalFont = self.cachedNormalFont ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightRegular];
+    UIFont *selectedFont = self.cachedSelectedFont ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
 
-    BOOL selected = self.segmentSelected;
+    BOOL selected = self.isSegmentSelected;
     BOOL highlighted = self.highlighted;
     BOOL enabled = self.enabled;
 
@@ -219,10 +219,10 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     UIFont *targetFont = selected ? selectedFont : normalFont;
     UIImage *targetImage = [self segmentImageForSelectionState:selected tintColor:targetTextColor];
 
-    CGFloat restingAlpha = selected ? 1.0 : 0.76;
-    CGFloat targetAlpha = enabled ? (highlighted ? 0.92 : restingAlpha) : 0.42;
-    CGFloat iconAlpha = enabled ? (selected ? 1.0 : 0.84) : 0.42;
-    CGFloat scale = highlighted ? (selected ? 0.985 : 0.965) : 1.0;
+    CGFloat restingAlpha = selected ? 1.0 : 0.82;
+    CGFloat targetAlpha = enabled ? (highlighted ? 0.94 : restingAlpha) : 0.42;
+    CGFloat iconAlpha = enabled ? (selected ? 1.0 : 0.88) : 0.42;
+    CGFloat scale = highlighted ? (selected ? 0.975 : 0.955) : 1.0;
     CGAffineTransform targetTransform = CGAffineTransformMakeScale(scale, scale);
 
     void (^updates)(void) = ^{
@@ -237,7 +237,7 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
 
     BOOL shouldAnimate = animated && !UIAccessibilityIsReduceMotionEnabled();
     if (shouldAnimate) {
-        [UIView animateWithDuration:0.18
+        [UIView animateWithDuration:0.22
                               delay:0.0
                             options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                          animations:updates
@@ -317,15 +317,15 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     _selectedSegmentColor = AppPrimaryClr ?: UIColor.systemBlueColor;
     _normalTextColor = UIColor.secondaryLabelColor;
     _selectedTextColor = UIColor.whiteColor;
-    _normalFont = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    _selectedFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    _normalFont = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightRegular];
+    _selectedFont = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
     _selectedIndex = PPModrenSegmrntedNoSelection;
 
     UIView *containerFillView = [[UIView alloc] init];
     containerFillView.translatesAutoresizingMaskIntoConstraints = NO;
     containerFillView.backgroundColor = _containerBackgroundColor;
     containerFillView.userInteractionEnabled = NO;
-    containerFillView.layer.borderWidth = 0.0;
+    containerFillView.layer.borderWidth = 1.0;
     containerFillView.layer.borderColor = PPModrenSegmrntedTrackStrokeColor().CGColor;
     containerFillView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -340,7 +340,7 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     containerSheenLayer.locations = @[@0.0, @0.30, @1.0];
     containerSheenLayer.colors = @[
         (id)PPModrenSegmrntedTrackSheenColor().CGColor,
-        (id)[UIColor colorWithWhite:1.0 alpha:0.03].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.02].CGColor,
         (id)UIColor.clearColor.CGColor
     ];
     [containerFillView.layer addSublayer:containerSheenLayer];
@@ -354,9 +354,9 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     selectionIndicatorView.layer.borderWidth = 0.5;
     selectionIndicatorView.layer.borderColor = PPModrenSegmrntedIndicatorBorderColor().CGColor;
     selectionIndicatorView.layer.shadowColor = PPModrenSegmrntedIndicatorShadowColor().CGColor;
-    selectionIndicatorView.layer.shadowOpacity = 0.14;
-    selectionIndicatorView.layer.shadowRadius = 12.0;
-    selectionIndicatorView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    selectionIndicatorView.layer.shadowOpacity = 0.18;
+    selectionIndicatorView.layer.shadowRadius = 10.0;
+    selectionIndicatorView.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     if (@available(iOS 13.0, *)) {
         selectionIndicatorView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -364,8 +364,8 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     [self addSubview:selectionIndicatorView];
 
     CAGradientLayer *selectionGradientLayer = [CAGradientLayer layer];
-    selectionGradientLayer.startPoint = CGPointMake(0.15, 0.0);
-    selectionGradientLayer.endPoint = CGPointMake(0.85, 1.0);
+    selectionGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    selectionGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     selectionGradientLayer.locations = @[@0.0, @1.0];
     [selectionIndicatorView.layer insertSublayer:selectionGradientLayer atIndex:0];
     self.selectionGradientLayer = selectionGradientLayer;
@@ -375,7 +375,7 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     segmentsStackView.axis = UILayoutConstraintAxisHorizontal;
     segmentsStackView.alignment = UIStackViewAlignmentFill;
     segmentsStackView.distribution = UIStackViewDistributionFillEqually;
-    segmentsStackView.spacing = 0.0;
+    segmentsStackView.spacing = 8.0;
     segmentsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.segmentsStackView = segmentsStackView;
     [self addSubview:segmentsStackView];

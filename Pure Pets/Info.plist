@@ -58,6 +58,8 @@
 		<string>Beiruti-Bold.ttf</string>
 		<string>Beiruti-Regular.ttf</string>
 	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -243,28 +243,20 @@ NS_ASSUME_NONNULL_BEGIN
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     b.translatesAutoresizingMaskIntoConstraints = NO;
     
-    if (@available(iOS 26.0, *)) {
-        // 🔹 create a *glass-light* style configuration
+    if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
+        config.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
 
-        // base tint
         config.baseBackgroundColor = baseBackground;
         config.baseForegroundColor = baseForground;
 
         if (buttonKind == ButtonKindImage) {
-             config.image = [UIImage systemImageNamed:systemName];
-            UIImageSymbolConfiguration *symbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:14
-                                                                                                       weight:UIImageSymbolWeightMedium
-                                                                                                        scale:UIImageSymbolScaleDefault];
-
-            symbolConfig = [symbolConfig configurationByApplyingConfiguration:
-                            [UIImageSymbolConfiguration configurationPreferringMulticolor]];
-
-            config.preferredSymbolConfigurationForImage = symbolConfig;
-
-           
+            config.image = [UIImage systemImageNamed:systemName];
+            config.preferredSymbolConfigurationForImage = 
+                [UIImageSymbolConfiguration configurationWithPointSize:14
+                                                                weight:UIImageSymbolWeightMedium
+                                                                 scale:UIImageSymbolScaleMedium];
         } else if (buttonKind == ButtonKindText) {
             config.title = systemName;
             config.titleTextAttributesTransformer =
@@ -276,9 +268,15 @@ NS_ASSUME_NONNULL_BEGIN
         }
 
         b.configuration = config;
+        
+        b.configurationUpdateHandler = ^(UIButton *button) {
+            [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+                button.transform = button.isHighlighted ? CGAffineTransformMakeScale(0.92, 0.92) : CGAffineTransformIdentity;
+                button.alpha = button.isHighlighted ? 0.85 : 1.0;
+            } completion:nil];
+        };
 
     } else {
-        // 🔹 Fallback for iOS 15–25
         if (buttonKind == ButtonKindImage) {
             UIImage *icon = [UIImage pp_symbolNamed:systemName
                                           pointSize:size * 0.55
@@ -297,11 +295,11 @@ NS_ASSUME_NONNULL_BEGIN
                                      style:UIBlurEffectStyleSystemThinMaterialLight
                                tintOverlay:[UIColor colorWithWhite:1.0 alpha:0.1]];
     }
-    // Keep the glass affordance light so the card stays clean.
+    
     b.layer.shadowColor = UIColor.blackColor.CGColor;
-    b.layer.shadowOpacity = 0.08;
-    b.layer.shadowRadius = 6.0;
-    b.layer.shadowOffset = CGSizeMake(0, 3);
+    b.layer.shadowOpacity = 0.06;
+    b.layer.shadowRadius = 8.0;
+    b.layer.shadowOffset = CGSizeMake(0, 4);
     b.layer.masksToBounds = NO;
     b.clipsToBounds = NO;
     return b;
@@ -315,7 +313,6 @@ NS_ASSUME_NONNULL_BEGIN
     self.layer.masksToBounds = YES;
     self.backgroundColor = UIColor.clearColor;
     
-    // Remove existing blur/tint if reapplying
     for (UIView *sub in self.subviews) {
         if ([sub isKindOfClass:[UIVisualEffectView class]] || sub.tag == 9999) {
             [sub removeFromSuperview];
@@ -323,7 +320,6 @@ NS_ASSUME_NONNULL_BEGIN
     }
 
     if (@available(iOS 13.0, *)) {
-        // Create blur
         UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:style];
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
         blurView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -332,7 +328,6 @@ NS_ASSUME_NONNULL_BEGIN
         blurView.layer.masksToBounds = YES;
         [self insertSubview:blurView atIndex:0];
 
-        // Constrain blur to fill button
         [NSLayoutConstraint activateConstraints:@[
             [blurView.topAnchor constraintEqualToAnchor:self.topAnchor],
             [blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
@@ -340,7 +335,6 @@ NS_ASSUME_NONNULL_BEGIN
             [blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor]
         ]];
 
-        // Optional tint overlay (subtle highlight or darkening)
         if (tint) {
             UIView *overlay = [[UIView alloc] init];
             overlay.translatesAutoresizingMaskIntoConstraints = NO;
@@ -360,7 +354,6 @@ NS_ASSUME_NONNULL_BEGIN
         }
 
     } else {
-        // Fallback for iOS 12 and earlier
         self.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.3];
     }
 }
@@ -370,20 +363,19 @@ NS_ASSUME_NONNULL_BEGIN
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     b.translatesAutoresizingMaskIntoConstraints = NO;
 
-    // ✅ iOS 18+ (or 26.0 in your code): Modern Glass Configuration
-    if (@available(iOS 26.0, *)) {
-        UIButtonConfiguration *config = [UIButtonConfiguration prominentGlassButtonConfiguration];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
         if (buttonKind == ButtonKindImage) {
             config.image = [UIImage systemImageNamed:systemName];
             config.preferredSymbolConfigurationForImage =
-                [UIImageSymbolConfiguration configurationWithPointSize:16
-                                                                weight:UIImageSymbolWeightRegular
+                [UIImageSymbolConfiguration configurationWithPointSize:15
+                                                                weight:UIImageSymbolWeightMedium
                                                                  scale:UIImageSymbolScaleDefault];
-            config.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
+            config.contentInsets = NSDirectionalEdgeInsetsMake(8, 8, 8, 8);
         } else if (buttonKind == ButtonKindText) {
-            config.title = systemName; // use the string as the label text
+            config.title = systemName;
             config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> *
                 (NSDictionary<NSAttributedStringKey,id> *incoming) {
                     NSMutableDictionary *attrs = [incoming mutableCopy];
@@ -391,29 +383,21 @@ NS_ASSUME_NONNULL_BEGIN
                     attrs[NSForegroundColorAttributeName] = AppPrimaryClr;
                      return attrs;
             };
-            float ins = -3;
-            config.contentInsets = NSDirectionalEdgeInsetsMake(ins, ins, ins, ins);  //top   //leading  //bottom //trailing
+            config.contentInsets = NSDirectionalEdgeInsetsMake(4, 16, 4, 16);
          }
 
-        
-        // 🎨 Color configuration
-        //config.baseForegroundColor = AppPrimaryClr;  // text or icon tint
-        config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
-
-        // Assign config
+        config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.8];
+        config.baseForegroundColor = AppPrimaryClr;
         b.configuration = config;
 
         b.configurationUpdateHandler = ^(UIButton *btn) {
-            if (btn.isHighlighted) {
-                btn.transform = CGAffineTransformMakeScale(0.92, 0.92);
-            } else {
-                btn.transform = CGAffineTransformIdentity;
-            }
+            [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+                btn.transform = btn.isHighlighted ? CGAffineTransformMakeScale(0.94, 0.92) : CGAffineTransformIdentity;
+                btn.alpha = btn.isHighlighted ? 0.9 : 1.0;
+            } completion:nil];
         };
-
         
     } else {
-        // ✅ iOS 13–17 fallback: Custom blur/tint simulation
         if (buttonKind == ButtonKindImage) {
             UIImage *icon = [UIImage pp_symbolNamed:systemName
                                           pointSize:14
@@ -429,19 +413,15 @@ NS_ASSUME_NONNULL_BEGIN
             b.contentEdgeInsets = UIEdgeInsetsMake(6, 16, 6, 16);
         }
 
-        // Apply custom "glass" look (your helper)
         [b applyGlassStyleWithCornerRadius:16
                                      style:UIBlurEffectStyleSystemThinMaterial
                                tintOverlay:[UIColor colorWithWhite:1.0 alpha:0.08]];
-
-        
     }
    
-    // ☁️ Drop shadow for depth
     b.layer.shadowColor = AppShadowClr.CGColor;
-    b.layer.shadowOpacity = 0.15;
-    b.layer.shadowRadius = 6;
-    b.layer.shadowOffset = CGSizeMake(0, 6);
+    b.layer.shadowOpacity = 0.12;
+    b.layer.shadowRadius = 8;
+    b.layer.shadowOffset = CGSizeMake(0, 4);
     b.layer.masksToBounds = NO;
 
     return b;
@@ -453,15 +433,18 @@ NS_ASSUME_NONNULL_BEGIN
 {
     UIView *card = [UIView new];
     card.translatesAutoresizingMaskIntoConstraints = NO;
-    card.backgroundColor = UIColor.clearColor;
-    card.layer.masksToBounds  = NO;
+    card.backgroundColor = AppForgroundColr;
+    card.layer.masksToBounds = NO;
     card.clipsToBounds = NO;
-    card.backgroundColor= AppForgroundColr;
+    card.layer.cornerRadius = PPCornerCard;
+    if (@available(iOS 13.0, *)) {
+        card.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     
-    card.layer.shadowColor = AppPrimaryClr.CGColor;
-    card.layer.shadowOpacity = 0.15;
-    card.layer.shadowRadius = 10;
-    card.layer.shadowOffset = CGSizeMake(0, 6);
+    card.layer.shadowColor = AppShadowClr.CGColor;
+    card.layer.shadowOpacity = 0.08;
+    card.layer.shadowRadius = 14;
+    card.layer.shadowOffset = CGSizeMake(0, 8);
     return card;
 }
 
@@ -470,16 +453,13 @@ NS_ASSUME_NONNULL_BEGIN
 {
     UIImageView *imageView = [UIImageView new];
     imageView.translatesAutoresizingMaskIntoConstraints = NO;
-    imageView.contentMode = UIViewContentModeTop;
+    imageView.contentMode = UIViewContentModeScaleAspectFill;
     imageView.clipsToBounds = YES;
-    imageView.layer.cornerRadius = 22;
+    imageView.layer.cornerRadius = 18.0; // Refined for inner image
     if (@available(iOS 13.0, *)) {
         imageView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    imageView.layer.masksToBounds = YES;
-    imageView.contentMode = UIViewContentModeScaleAspectFill;
-    imageView.clipsToBounds = YES;
-    imageView.backgroundColor = UIColor.secondarySystemBackgroundColor;
+    imageView.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1.0];
     return imageView;
 }
 
@@ -489,30 +469,27 @@ NS_ASSUME_NONNULL_BEGIN
     priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
     priceLabel.font = [GM boldFontWithSize:18];
     priceLabel.textColor = UIColor.labelColor;
+    priceLabel.adjustsFontSizeToFitWidth = YES;
+    priceLabel.minimumScaleFactor = 0.8;
     return priceLabel;
 }
 
 
 
 - (UILabel *)createTitleLabel {
-
     UILabel *label = [UILabel new];
     label.translatesAutoresizingMaskIntoConstraints = NO;
-
     label.font = [GM boldFontWithSize:15];
     label.numberOfLines = 2;
     label.lineBreakMode = NSLineBreakByTruncatingTail;
     label.textAlignment = Language.isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
-
-    // ✅ CRITICAL (missing)
+    label.textColor = UIColor.labelColor;
     label.adjustsFontForContentSizeCategory = NO;
 
     [label setContentCompressionResistancePriority:UILayoutPriorityRequired
                                             forAxis:UILayoutConstraintAxisVertical];
-
     [label setContentHuggingPriority:UILayoutPriorityRequired
                               forAxis:UILayoutConstraintAxisVertical];
-
     return label;
 }
 
@@ -520,11 +497,10 @@ NS_ASSUME_NONNULL_BEGIN
 {
     UILabel *lb = [UILabel new];
     lb.translatesAutoresizingMaskIntoConstraints = NO;
-    lb.font = [GM MidFontWithSize:16];
-    lb.textColor =  UIColor.secondaryLabelColor;
+    lb.font = [GM MidFontWithSize:13];
+    lb.textColor = UIColor.secondaryLabelColor;
     lb.numberOfLines = 1;
-    lb.textAlignment = GM.setAligment;
-    //lb.backgroundColor = UIColor.greenColor;
+    lb.textAlignment = Language.isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
     return lb;
 }
 
@@ -533,9 +509,9 @@ NS_ASSUME_NONNULL_BEGIN
     UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:elemnts];
     textStack.translatesAutoresizingMaskIntoConstraints = NO;
     textStack.axis = UILayoutConstraintAxisVertical;
-    textStack.spacing = 4;
-    textStack.semanticContentAttribute = GM.setSemantic;
-    // Relax child vertical priorities for stack flexibility
+    textStack.spacing = 6; // Increased for better readability
+    textStack.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+    
     for (UIView *v in elemnts) {
         [v setContentHuggingPriority:UILayoutPriorityDefaultLow
                              forAxis:UILayoutConstraintAxisVertical];
@@ -549,19 +525,16 @@ NS_ASSUME_NONNULL_BEGIN
 - (UILabel *)createDiscountValueLabel
 {
     PPInsetLabel *discountValueLabel = [PPInsetLabel new];
-    discountValueLabel.textInsets = UIEdgeInsetsMake(4, 7, 4, 7);
+    discountValueLabel.textInsets = UIEdgeInsetsMake(4, 8, 4, 8);
     discountValueLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    discountValueLabel.font = [GM boldFontWithSize:10.5];
-    discountValueLabel.textColor =[UIColor whiteColor];
-    discountValueLabel.backgroundColor = AppPrimaryClr;
-    discountValueLabel.layer.cornerRadius = 10;
+    discountValueLabel.font = [GM boldFontWithSize:11];
+    discountValueLabel.textColor = [UIColor whiteColor];
+    discountValueLabel.backgroundColor = [UIColor systemRedColor];
+    discountValueLabel.layer.cornerRadius = 8;
     discountValueLabel.layer.masksToBounds = YES;
     discountValueLabel.textAlignment = NSTextAlignmentCenter;
-    NSLayoutConstraint *h =
-    [discountValueLabel.heightAnchor constraintEqualToConstant:22.0];
-    h.priority = UILayoutPriorityDefaultHigh;
-    h.active = YES;
-    [discountValueLabel sizeToFit];
+    
+    [discountValueLabel.heightAnchor constraintEqualToConstant:24.0].active = YES;
     return discountValueLabel;
 }
 
@@ -570,17 +543,10 @@ NS_ASSUME_NONNULL_BEGIN
     PPInsetLabel *discountLabel = [PPInsetLabel new];
     discountLabel.textInsets = UIEdgeInsetsMake(1, 2, 1, 2);
     discountLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    discountLabel.font = [GM MidFontWithSize:12];
-    discountLabel.textColor =  UIColor.secondaryLabelColor;
+    discountLabel.font = [GM MidFontWithSize:13];
+    discountLabel.textColor = UIColor.secondaryLabelColor;
     discountLabel.backgroundColor = [UIColor clearColor];
-    discountLabel.layer.cornerRadius = 14;
-    discountLabel.layer.masksToBounds = YES;
     discountLabel.textAlignment = NSTextAlignmentCenter;
-    //[discountLabel.widthAnchor constraintGreaterThanOrEqualToConstant:36].active = YES;
-    NSLayoutConstraint *h =
-    [discountLabel.heightAnchor constraintEqualToConstant:28.0];
-    h.priority = UILayoutPriorityDefaultHigh;
-    h.active = YES;
     return discountLabel;
 }
 
@@ -590,27 +556,25 @@ NS_ASSUME_NONNULL_BEGIN
     UIStackView *priceStack = [[UIStackView alloc] initWithArrangedSubviews:elemnts];
     priceStack.translatesAutoresizingMaskIntoConstraints = NO;
     priceStack.axis = UILayoutConstraintAxisHorizontal;
-    priceStack.alignment = UIStackViewAlignmentCenter;
-    priceStack.spacing = 6;
+    priceStack.alignment = UIStackViewAlignmentFirstBaseline; // Better for price/discount alignment
+    priceStack.spacing = 8;
     return priceStack;
 }
 
 #pragma mark - Build UI
 
 - (UILabel *)badgeWithText:(NSString *)text bg:(UIColor *)bg {
-    UILabel *l = [UILabel new];
+    PPInsetLabel *l = [PPInsetLabel new];
+    l.textInsets = UIEdgeInsetsMake(4, 8, 4, 8);
     l.translatesAutoresizingMaskIntoConstraints = NO;
     l.text = text;
-    l.font = [UIFont boldSystemFontOfSize:12];
-    l.textColor = AppForgroundColr;
-    l.backgroundColor = [bg colorWithAlphaComponent:0.88];
+    l.font = [GM boldFontWithSize:10.5];
+    l.textColor = [UIColor whiteColor];
+    l.backgroundColor = [bg colorWithAlphaComponent:0.9];
     l.textAlignment = NSTextAlignmentCenter;
-    l.layer.cornerRadius = 12;
+    l.layer.cornerRadius = 6;
     l.layer.masksToBounds = YES;
-    NSLayoutConstraint *h =
-    [l.heightAnchor constraintEqualToConstant:28.0];
-    h.priority = UILayoutPriorityDefaultHigh;
-    h.active = YES;
+    [l.heightAnchor constraintEqualToConstant:22.0].active = YES;
     return l;
 }
 
@@ -622,17 +586,14 @@ NS_ASSUME_NONNULL_BEGIN
     qtyLabel.font = [GM boldFontWithSize:11];
     qtyLabel.textAlignment = NSTextAlignmentCenter;
     qtyLabel.textColor = UIColor.labelColor;
-    qtyLabel.textInsets = UIEdgeInsetsMake(3, 7, 3, 7);
-    qtyLabel.backgroundColor = UIColor.secondarySystemBackgroundColor;
-    NSLayoutConstraint *h =
-    [qtyLabel.heightAnchor constraintEqualToConstant:22];
-    h.priority = UILayoutPriorityDefaultHigh;
-    h.active = YES;
-    qtyLabel.layer.cornerRadius = 10;
+    qtyLabel.textInsets = UIEdgeInsetsMake(4, 10, 4, 10);
+    qtyLabel.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1.0];
+    qtyLabel.layer.cornerRadius = 8;
     qtyLabel.layer.masksToBounds = YES;
-    qtyLabel.layer.borderWidth = 0.8;
-    qtyLabel.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
-    return qtyLabel ;
+    qtyLabel.layer.borderWidth = 1.0;
+    qtyLabel.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.06].CGColor;
+    [qtyLabel.heightAnchor constraintEqualToConstant:24].active = YES;
+    return qtyLabel;
 }
 
 - (UILabel *)createQtyLabel
@@ -643,21 +604,18 @@ NS_ASSUME_NONNULL_BEGIN
     qtyLabel.font = [GM boldFontWithSize:16];
     qtyLabel.textAlignment = NSTextAlignmentCenter;
     qtyLabel.textColor = AppPrimaryClr;
-    NSLayoutConstraint *w =
-    [qtyLabel.widthAnchor constraintGreaterThanOrEqualToConstant:36];
-    w.priority = UILayoutPriorityDefaultHigh;
-    w.active = YES;
+    [qtyLabel.widthAnchor constraintGreaterThanOrEqualToConstant:32].active = YES;
     return qtyLabel ;
 }
 - (UIView *)createStepperView
 {
     UIView *stepperView = [UIView new];
     stepperView.translatesAutoresizingMaskIntoConstraints = NO;
-    stepperView.backgroundColor = UIColor.secondarySystemBackgroundColor;
-    stepperView.layer.cornerRadius = 18;
+    stepperView.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1.0];
+    stepperView.layer.cornerRadius = 12;
     stepperView.layer.masksToBounds = YES;
     stepperView.layer.borderWidth = 1.0;
-    stepperView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.16].CGColor;
+    stepperView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.08].CGColor;
     stepperView.alpha = 0.0;
     stepperView.hidden = YES;
     return stepperView;

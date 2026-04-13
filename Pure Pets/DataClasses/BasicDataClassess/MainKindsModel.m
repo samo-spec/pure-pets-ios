@@ -70,10 +70,11 @@
 {
     self = [super init];
     if (self) {
-        
+        id visibleInUserApp = dictionary[@"is_visible_in_user_app"];
         self.documentID = dictionary[@"documentID"];
         self.ID = [mainKindID integerValue];
         self.sortingKey = [dictionary[@"sortingKey"]  integerValue];
+        self.isVisibleInUserApp = visibleInUserApp == nil ? YES : [visibleInUserApp boolValue];
         
         self.LightenAmount = [dictionary[@"LightenAmount"] floatValue];
         self.professionalAngle = [dictionary[@"professionalAngle"] floatValue];
@@ -99,8 +100,10 @@
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot {
     self = [super init];
     if (self) {
+        id visibleInUserApp = snapshot.data[@"is_visible_in_user_app"];
         self.ID = [snapshot.data[@"ID"] integerValue];
         self.sortingKey = [snapshot.data[@"sortingKey"] integerValue];
+        self.isVisibleInUserApp = visibleInUserApp == nil ? YES : [visibleInUserApp boolValue];
         self.KindNameAr = snapshot.data[@"KindNameAr"];
         self.documentID = snapshot.documentID;
         self.KindNameEn = snapshot.data[@"KindNameEn"];
@@ -131,8 +134,10 @@
 - (instancetype)initWithDict:(NSDictionary *)data {
     self = [super init];
     if (self) {
+        id visibleInUserApp = data[@"is_visible_in_user_app"];
         self.ID = [data[@"ID"] integerValue];
         self.sortingKey = [data[@"sortingKey"] integerValue];
+        self.isVisibleInUserApp = visibleInUserApp == nil ? YES : [visibleInUserApp boolValue];
         self.KindNameAr = data[@"KindNameAr"];
         self.documentID = [NSString stringWithFormat:@"%ld",[data[@"ID"] integerValue]];
         self.KindNameEn = data[@"KindNameEn"];
@@ -191,6 +196,7 @@
     dict[@"KindImageUrl"] = self.KindImageUrl ?: @"";
     dict[@"LightenAmount"] = @(self.LightenAmount);
     dict[@"professionalAngle"] = @(self.professionalAngle);
+    dict[@"is_visible_in_user_app"] = @(self.isVisibleInUserApp);
     
     // Convert SubKindsArray to an array of dictionaries
     NSMutableArray *subKindsData = [NSMutableArray array];
@@ -231,6 +237,7 @@
     model.KindNameEn = @"all";
     model.KindImageNamed = @"square-layout";
     model.KindIconName = @"square-layout";
+    model.isVisibleInUserApp = YES;
     model.KindImageFile = [UIImage imageNamed:@"square-layout"];
     model.SubKindsArray = [[NSMutableArray<SubKindModel *> alloc] init];
     return  model;
@@ -342,4 +349,3 @@
 @end
 
  
-

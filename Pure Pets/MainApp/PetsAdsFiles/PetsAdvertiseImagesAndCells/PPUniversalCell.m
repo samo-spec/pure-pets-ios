@@ -734,22 +734,22 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     [self.imageView.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:0];
 
     NSLayoutConstraint *marketImgTop =
-    [self.imageView.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:12.0];
+    [self.imageView.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:14.0];
 
     NSLayoutConstraint *marketImgLeading =
-    [self.imageView.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:12.0];
+    [self.imageView.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:14.0];
 
     NSLayoutConstraint *marketImgTrailing =
-    [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12.0];
+    [self.imageView.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-14.0];
 
     self.marketImageHeightConstraint =
-    [self.imageView.heightAnchor constraintEqualToAnchor:self.imageView.widthAnchor multiplier:0.68];
+    [self.imageView.heightAnchor constraintEqualToAnchor:self.imageView.widthAnchor multiplier:0.72];
 
     // =========================
     // Bottom Overlay (already created)
     // =========================
     NSLayoutConstraint *minHeight =
-    [self.bottomOverlay.heightAnchor constraintGreaterThanOrEqualToConstant:68];
+    [self.bottomOverlay.heightAnchor constraintGreaterThanOrEqualToConstant:72];
     minHeight.priority = UILayoutPriorityRequired;
     minHeight.active = YES;
 
@@ -759,89 +759,89 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     // TEXT STACK (CRITICAL FIX)
     // =========================
     self.textStackTopConstraint =
-    [self.textStack.topAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:12];
+    [self.textStack.topAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:14];
 
     self.textStackBottomConstraint =
-    [self.textStack.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.bottomAnchor constant:-PPAdsCellBottomInset];
+    [self.textStack.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.bottomAnchor constant:-12.0];
 
     self.textStackLeadingConstraint =
-    [self.textStack.leadingAnchor constraintEqualToAnchor:self.bottomOverlay.leadingAnchor constant:PPAdsCellSideInset];
+    [self.textStack.leadingAnchor constraintEqualToAnchor:self.bottomOverlay.leadingAnchor constant:16.0];
 
     self.textStackTrailingToEdgeConstraint =
-    [self.textStack.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-PPAdsCellSideInset];
+    [self.textStack.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-16.0];
     self.textStackTrailingToDiscountConstraint =
-    [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.discountValueLabel.leadingAnchor constant:-10];
+    [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.discountValueLabel.leadingAnchor constant:-12];
 
     NSLayoutConstraint *marketTxtTop =
-    [self.textStack.topAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:12.0];
+    [self.textStack.topAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:16.0];
 
     NSLayoutConstraint *marketTxtLeading =
-    [self.textStack.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:12.0];
+    [self.textStack.leadingAnchor constraintEqualToAnchor:self.card.leadingAnchor constant:16.0];
 
     NSLayoutConstraint *marketTxtTrailing =
-    [self.textStack.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12.0];
+    [self.textStack.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-16.0];
     NSLayoutConstraint *serviceTxtBottom =
-    [self.textStack.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-12.0];
+    [self.textStack.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-16.0];
 
     self.discountValueTrailingConstraint =
-    [self.discountValueLabel.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-PPAdsCellSideInset];
+    [self.discountValueLabel.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-16.0];
     self.discountValueTopConstraint =
-    [self.discountValueLabel.topAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:12];
+    [self.discountValueLabel.topAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:14];
     self.discountValueTrailingConstraint.active = YES;
     self.discountValueTopConstraint.active = YES;
     [self pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:NO];
 
     NSLayoutConstraint *marketDiscountTop =
-    [self.discountValueLabel.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:10.0];
+    [self.discountValueLabel.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:12.0];
 
     NSLayoutConstraint *marketDiscountLeading =
-    [self.discountValueLabel.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:10.0];
+    [self.discountValueLabel.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:12.0];
 
     // =========================
     // Floating actions
     // =========================
     self.actionBarTrailingConstraint =
-    [self.actionBar.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-PPAdsCellTopInset];
+    [self.actionBar.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-14.0];
     self.actionBarRightConstraint =
-    [self.actionBar.rightAnchor constraintEqualToAnchor:self.card.rightAnchor constant:-PPAdsCellTopInset];
+    [self.actionBar.rightAnchor constraintEqualToAnchor:self.card.rightAnchor constant:-14.0];
 
     self.actionBarBottomConstraint =
-    [self.actionBar.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-PPAdsCellOverlayBottomInset];
+    [self.actionBar.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-14.0];
     self.actionBarTopConstraint =
-    [self.actionBar.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:PPAdsCellTopInset];
+    [self.actionBar.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:14.0];
 
     self.actionBarBottomConstraint.active = YES;
     self.actionBarTrailingConstraint.active = YES;
 
     NSLayoutConstraint *marketActionTop =
-    [self.actionBar.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:10.0];
+    [self.actionBar.topAnchor constraintEqualToAnchor:self.imageView.topAnchor constant:12.0];
  
     NSLayoutConstraint *marketActionTrailing =
-    [self.actionBar.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-10.0];
+    [self.actionBar.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-12.0];
 
     NSLayoutConstraint *serviceActionLeading =
-    [self.actionBar.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:10.0];
+    [self.actionBar.leadingAnchor constraintEqualToAnchor:self.imageView.leadingAnchor constant:12.0];
 
     // =========================
     // Add / Stepper footer
     // =========================
     NSLayoutConstraint *addTrailing =
-    [self.addButton.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-8];
+    [self.addButton.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-10];
     NSLayoutConstraint *addBottom =
-    [self.addButton.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-8];
+    [self.addButton.bottomAnchor constraintEqualToAnchor:self.bottomOverlay.topAnchor constant:-10];
     NSLayoutConstraint *stepperTrailing =
     [self.stepperView.trailingAnchor constraintEqualToAnchor:self.addButton.trailingAnchor];
     NSLayoutConstraint *stepperBottom =
     [self.stepperView.bottomAnchor constraintEqualToAnchor:self.addButton.bottomAnchor];
 
     NSLayoutConstraint *marketAddTop =
-    [self.addButton.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:12.0];
+    [self.addButton.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:16.0];
     NSLayoutConstraint *marketAddLeading =
     [self.addButton.leadingAnchor constraintEqualToAnchor:self.textStack.leadingAnchor];
     NSLayoutConstraint *marketAddTrailing =
     [self.addButton.trailingAnchor constraintEqualToAnchor:self.textStack.trailingAnchor];
     NSLayoutConstraint *marketStepperTop =
-    [self.stepperView.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:12.0];
+    [self.stepperView.topAnchor constraintEqualToAnchor:self.textStack.bottomAnchor constant:16.0];
     NSLayoutConstraint *marketStepperLeading =
     [self.stepperView.leadingAnchor constraintEqualToAnchor:self.textStack.leadingAnchor];
     NSLayoutConstraint *marketStepperTrailing =
@@ -853,31 +853,31 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     self.reasonBadgeServiceCenterYConstraint =
     [self.reasonBadgeStack.centerYAnchor constraintEqualToAnchor:self.favButton.centerYAnchor];
     self.reasonBadgeServiceTrailingConstraint =
-    [self.reasonBadgeStack.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-12.0];
+    [self.reasonBadgeStack.trailingAnchor constraintEqualToAnchor:self.imageView.trailingAnchor constant:-14.0];
 
     // =========================
     // Badges
     // =========================
     [NSLayoutConstraint activateConstraints:@[
-        [self.freshBadge.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:10],
-        [self.freshBadge.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-10],
+        [self.freshBadge.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:12],
+        [self.freshBadge.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12],
 
-        [self.offerBadge.topAnchor constraintEqualToAnchor:self.freshBadge.bottomAnchor constant:6],
+        [self.offerBadge.topAnchor constraintEqualToAnchor:self.freshBadge.bottomAnchor constant:8],
         [self.offerBadge.trailingAnchor constraintEqualToAnchor:self.freshBadge.trailingAnchor],
     ]];
 
     NSLayoutConstraint *stockTop =
-    [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:10.0];
+    [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.card.topAnchor constant:12.0];
     NSLayoutConstraint *stockTrailing =
-    [self.stockQtyLabel.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-10.0];
+    [self.stockQtyLabel.trailingAnchor constraintEqualToAnchor:self.card.trailingAnchor constant:-12.0];
     NSLayoutConstraint *stockHeight =
-    [self.stockQtyLabel.heightAnchor constraintEqualToConstant:22.0];
+    [self.stockQtyLabel.heightAnchor constraintEqualToConstant:24.0];
     NSLayoutConstraint *marketStockTop =
-    [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.addButton.bottomAnchor constant:10.0];
+    [self.stockQtyLabel.topAnchor constraintEqualToAnchor:self.addButton.bottomAnchor constant:14.0];
     NSLayoutConstraint *marketStockLeading =
     [self.stockQtyLabel.leadingAnchor constraintEqualToAnchor:self.textStack.leadingAnchor];
     NSLayoutConstraint *marketStockBottom =
-    [self.stockQtyLabel.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-12.0];
+    [self.stockQtyLabel.bottomAnchor constraintEqualToAnchor:self.card.bottomAnchor constant:-16.0];
 
     stockHeight.active = YES;
 
@@ -1134,53 +1134,66 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     BOOL isAds = (self.context == PPCellForAds);
     BOOL isService = [self pp_isServiceContext];
     BOOL usesCatalogCardLayout = isMarket || isService;
+    
     self.bottomOverlay.hidden = usesCatalogCardLayout;
+    
     self.imageView.backgroundColor = usesCatalogCardLayout
-        ? (AppBackgroundClr ?: UIColor.secondarySystemBackgroundColor)
+        ? [UIColor colorWithWhite:0.97 alpha:1.0]
         : UIColor.clearColor;
-    self.imageView.layer.cornerRadius = usesCatalogCardLayout ? 18.0 : PPCornerCard;
+    
+    self.imageView.layer.cornerRadius = usesCatalogCardLayout ? 16.0 : PPCornerCard;
     self.imageView.layer.borderColor = usesCatalogCardLayout
-        ? [[UIColor labelColor] colorWithAlphaComponent:0.03].CGColor
+        ? [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor
         : UIColor.clearColor.CGColor;
     self.imageView.layer.borderWidth = 1.0;
     self.imageView.contentMode = isMarket ? UIViewContentModeScaleAspectFit : UIViewContentModeScaleAspectFill;
+    
     [self pp_updateServiceLayoutMetrics];
     [self pp_updateImageScrimAppearanceForViewModel:self.vm];
     [self pp_updateBottomOverlayMaterialForViewModel:self.vm];
+    
     self.bottomOverlay.backgroundColor = isService
         ? UIColor.clearColor
         : ((isAds && !isMarket)
            ? [UIColor colorWithWhite:1.0 alpha:0.04]
            : UIColor.clearColor);
-    self.textStack.spacing = isMarket ? 8.0 : (isService ? 8.0 : (isAds ? 4.0 : 5.0));
+    
+    self.textStack.spacing = isMarket ? 10.0 : (isService ? 10.0 : (isAds ? 4.0 : 6.0));
     self.titleLabel.numberOfLines = (isAds ? 1 : 2);
     self.subtitleLabel.numberOfLines = isService ? 2 : 1;
+    
     self.actionBar.axis = usesCatalogCardLayout ? UILayoutConstraintAxisVertical : UILayoutConstraintAxisHorizontal;
-    self.actionBar.spacing = usesCatalogCardLayout ? 8.0 : (isAds ? 9.0 : 10.0);
-    self.priceStack.spacing = isService ? 6.0 : 8.0;
+    self.actionBar.spacing = usesCatalogCardLayout ? 10.0 : (isAds ? 9.0 : 10.0);
+    
+    self.priceStack.spacing = isService ? 8.0 : 10.0;
     self.priceStack.distribution = UIStackViewDistributionFill;
     self.priceStack.alignment = UIStackViewAlignmentFirstBaseline;
+    
+    self.titleLabel.font = [self pp_titleFontForCurrentContext];
     self.subtitleLabel.font = isMarket
-        ? [GM MidFontWithSize:14.0]
-        : (isService ? [GM MidFontWithSize:13.0] : (isAds ? [GM MidFontWithSize:12.5] : [GM MidFontWithSize:16.0]));
+        ? [GM MidFontWithSize:13.0]
+        : (isService ? [GM MidFontWithSize:13.0] : (isAds ? [GM MidFontWithSize:12.5] : [GM MidFontWithSize:15.0]));
+        
     if (@available(iOS 11.0, *)) {
         if (isService) {
-            [self.textStack setCustomSpacing:4.0 afterView:self.titleLabel];
-            [self.textStack setCustomSpacing:10.0 afterView:self.subtitleLabel];
-            [self.textStack setCustomSpacing:12.0 afterView:self.priceStack];
+            [self.textStack setCustomSpacing:6.0 afterView:self.titleLabel];
+            [self.textStack setCustomSpacing:12.0 afterView:self.subtitleLabel];
+            [self.textStack setCustomSpacing:14.0 afterView:self.priceStack];
         } else {
-            [self.textStack setCustomSpacing:(isMarket ? 6.0 : (isAds ? 2.0 : 4.0)) afterView:self.titleLabel];
-            [self.textStack setCustomSpacing:(isMarket ? 8.0 : (isAds ? 2.0 : 6.0)) afterView:self.subtitleLabel];
+            [self.textStack setCustomSpacing:(isMarket ? 8.0 : (isAds ? 2.0 : 4.0)) afterView:self.titleLabel];
+            [self.textStack setCustomSpacing:(isMarket ? 10.0 : (isAds ? 2.0 : 6.0)) afterView:self.subtitleLabel];
             [self.textStack setCustomSpacing:0.0 afterView:self.priceStack];
         }
     }
+    
     self.addButtonWidthConstraint.active = !isMarket;
-    self.card.layer.borderWidth = (isMarket || isService) ? 0.75 : (isAds ? 1.0 : 0.75);
+    self.card.layer.borderWidth = (isMarket || isService) ? 0.8 : (isAds ? 1.0 : 0.75);
+    
     if (isMarket) {
-        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
+        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.05].CGColor;
         self.card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor;
     } else if (isService) {
-        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
+        self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.05].CGColor;
         self.card.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.98];
     } else if (isAds) {
         self.card.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.08].CGColor;
@@ -1189,6 +1202,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
         self.card.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
         self.card.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.whiteColor;
     }
+    
     if (!isService) {
         self.reasonBadgeStack.layer.shadowOpacity = 0.0;
         self.reasonBadgeStack.layer.shadowRadius = 0.0;
@@ -1196,20 +1210,21 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
         self.favButton.layer.borderWidth = 0.0;
         self.favButton.layer.borderColor = UIColor.clearColor.CGColor;
-        self.favButton.layer.shadowOpacity = 0.08;
-        self.favButton.layer.shadowRadius = 6.0;
-        self.favButton.layer.shadowOffset = CGSizeMake(0, 3.0);
+        self.favButton.layer.shadowOpacity = 0.06;
+        self.favButton.layer.shadowRadius = 8.0;
+        self.favButton.layer.shadowOffset = CGSizeMake(0, 4.0);
 
         NSArray<UIButton *> *sharedButtons = @[self.moreOptionsButton, self.shareButton];
         for (UIButton *button in sharedButtons) {
             button.layer.borderWidth = 0.0;
             button.layer.borderColor = UIColor.clearColor.CGColor;
-            button.layer.shadowOpacity = 0.08;
-            button.layer.shadowRadius = 6.0;
-            button.layer.shadowOffset = CGSizeMake(0, 3.0);
+            button.layer.shadowOpacity = 0.06;
+            button.layer.shadowRadius = 8.0;
+            button.layer.shadowOffset = CGSizeMake(0, 4.0);
+            
             if (@available(iOS 15.0, *)) {
                 UIButtonConfiguration *config = button.configuration ?: [UIButtonConfiguration filledButtonConfiguration];
-                config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.72];
+                config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.8];
                 config.baseForegroundColor = UIColor.labelColor;
                 config.background.cornerRadius = 19.0;
                 config.preferredSymbolConfigurationForImage =
@@ -1218,7 +1233,7 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
                                                                  scale:UIImageSymbolScaleMedium];
                 button.configuration = config;
             } else {
-                button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.72];
+                button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.8];
                 button.tintColor = UIColor.labelColor;
             }
         }
@@ -2240,64 +2255,66 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
     UIColor *bgColor = UIColor.clearColor;
     UIColor *fgColor = UIColor.labelColor;
     UIColor *borderColor = UIColor.clearColor;
-    NSString *availableText = kLang(@"Available") ?: @"Available";
     
     if (qty <= 0) {
-        text = kLang(@"Out of stock");
-        fgColor = [UIColor systemOrangeColor];
-        bgColor = [fgColor colorWithAlphaComponent:0.14];
-        borderColor = [fgColor colorWithAlphaComponent:0.18];
+        // State: Out of Stock
+        text = kLang(@"Out of stock") ?: @"Out of stock";
+        fgColor = [UIColor systemRedColor];
+        bgColor = [fgColor colorWithAlphaComponent:0.08];
+        borderColor = [fgColor colorWithAlphaComponent:0.12];
     }
     else if (qty < 5) {
+        // State: Low Stock
         if (Language.isRTL) {
             text = [NSString stringWithFormat:@"%@ %ld %@", kLang(@"Only"), (long)qty, kLang(@"leftInStock")];
         } else {
             text = [NSString stringWithFormat:@"%@ %ld %@", kLang(@"Only"), (long)qty, kLang(@"left in stock")];
         }
         fgColor = [UIColor systemOrangeColor];
-        bgColor = [fgColor colorWithAlphaComponent:0.14];
-        borderColor = [fgColor colorWithAlphaComponent:0.18];
+        bgColor = [fgColor colorWithAlphaComponent:0.08];
+        borderColor = [fgColor colorWithAlphaComponent:0.12];
     }
     else {
+        // State: Available
+        NSString *availableText = kLang(@"Available") ?: @"Available";
         if (Language.isRTL) {
             text = [NSString stringWithFormat:@"%@ %ld", availableText, (long)qty];
         } else {
             text = [NSString stringWithFormat:@"%ld %@", (long)qty, availableText];
         }
         fgColor = [UIColor systemGreenColor];
-        bgColor = [fgColor colorWithAlphaComponent:0.14];
-        borderColor = [fgColor colorWithAlphaComponent:0.18];
+        bgColor = [fgColor colorWithAlphaComponent:0.08];
+        borderColor = [fgColor colorWithAlphaComponent:0.12];
     }
     
     NSMutableAttributedString *attr = [[NSMutableAttributedString alloc] initWithString:text];
+    UIFont *baseFont = [GM MidFontWithSize:10.5];
+    UIFont *boldFont = [GM boldFontWithSize:11.0];
+    
+    [attr addAttributes:@{
+        NSFontAttributeName : baseFont,
+        NSForegroundColorAttributeName : fgColor
+    } range:NSMakeRange(0, text.length)];
+    
+    // Bold the number part if it exists
     NSString *numStr = [NSString stringWithFormat:@"%ld", (long)qty];
     NSRange numRange = [text rangeOfString:numStr];
-    UIFont *baseFont = [GM MidFontWithSize:11];
     if (numRange.location != NSNotFound) {
-        UIFont *boldFont = [GM boldFontWithSize:11.5];
         [attr addAttribute:NSFontAttributeName value:boldFont range:numRange];
-        [attr addAttribute:NSForegroundColorAttributeName value:fgColor range:numRange];
     }
-    [attr addAttribute:NSFontAttributeName value:baseFont range:NSMakeRange(0, text.length)];
-    [attr addAttribute:NSForegroundColorAttributeName value:fgColor range:NSMakeRange(0, text.length)];
 
-    label.font = baseFont;
-    label.textAlignment = NSTextAlignmentCenter;
-    label.textColor = fgColor;
     label.attributedText = attr;
     label.backgroundColor = bgColor;
-    label.layer.masksToBounds = YES;
-    label.layer.shadowOpacity = 0.0;
-    label.layer.borderWidth = 0.8;
+    label.layer.borderWidth = 1.0;
     label.layer.borderColor = borderColor.CGColor;
-    label.layer.cornerRadius = 10.0;
+    label.layer.cornerRadius = 8.0;
+    label.textInsets = UIEdgeInsetsMake(4, 10, 4, 10);
     label.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         label.layer.cornerCurve = kCACornerCurveContinuous;
     }
     
     label.hidden = NO;
-    
 }
 
 
@@ -2611,26 +2628,32 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
 
 - (void)updateAddButton
 {
-    BOOL isMarket = (self.context == PPCellForMarket);
+    BOOL isMarket = (self.context == PPCellForMarket || self.context == PPCellForFood);
     BOOL showsCount = self.quantity > 0;
     UIButtonConfiguration *config = self.addButton.configuration ?: [UIButtonConfiguration filledButtonConfiguration];
+    
     if (isMarket) {
         NSString *title = showsCount
         ? [NSString stringWithFormat:@"%@ • %ld", (kLang(@"InCart") ?: @"In cart"), (long)self.quantity]
         : (kLang(@"addToCart") ?: @"Add to Cart");
-        UIFont *titleFont = [GM boldFontWithSize:showsCount ? 14.0 : 15.0];
+        
+        UIFont *titleFont = [GM boldFontWithSize:showsCount ? 13.5 : 14.5];
         UIColor *foregroundColor = showsCount ? AppPrimaryClr : UIColor.whiteColor;
-        UIColor *backgroundColor = showsCount ? [AppPrimaryClr colorWithAlphaComponent:0.12] : AppPrimaryClr;
+        UIColor *backgroundColor = showsCount ? [AppPrimaryClr colorWithAlphaComponent:0.08] : AppPrimaryClr;
+        UIColor *borderColor = showsCount ? [AppPrimaryClr colorWithAlphaComponent:0.15] : UIColor.clearColor;
 
         config.title = title;
-        config.image = [UIImage systemImageNamed:(showsCount ? @"checkmark.circle.fill" : @"plus.circle.fill")];
+        config.image = [UIImage systemImageNamed:(showsCount ? @"cart.fill.badge.plus" : @"plus.cart.fill")];
         config.imagePlacement = NSDirectionalRectEdgeLeading;
         config.imagePadding = 8.0;
         config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(11.0, 14.0, 11.0, 14.0);
+        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
         config.baseBackgroundColor = backgroundColor;
         config.baseForegroundColor = foregroundColor;
-        config.background.cornerRadius = 18;
+        config.background.cornerRadius = 14.0;
+        config.background.borderWidth = showsCount ? 1.0 : 0.0;
+        config.background.borderColor = borderColor;
+        
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
             NSMutableDictionary *attrs = [incoming mutableCopy];
@@ -2638,14 +2661,16 @@ static NSString *PPAdsLocalizedString(NSString *key, NSString *fallback)
             attrs[NSForegroundColorAttributeName] = foregroundColor;
             return attrs;
         };
-        self.addButton.layer.shadowOpacity = 0.05;
-        self.addButton.layer.shadowRadius = 8.0;
+        
+        self.addButton.layer.shadowColor = AppPrimaryClr.CGColor;
+        self.addButton.layer.shadowOpacity = showsCount ? 0.0 : 0.12;
+        self.addButton.layer.shadowRadius = 10.0;
         self.addButton.layer.shadowOffset = CGSizeMake(0, 4.0);
     } else {
         NSString *title = showsCount
         ? [NSString stringWithFormat:@"%ld", (long)self.quantity]
         : @"+";
-        UIFont *titleFont = showsCount ? [GM boldFontWithSize:PPFontCallout] : [GM boldFontWithSize:PPFontTitle3];
+        UIFont *titleFont = showsCount ? [GM boldFontWithSize:15] : [GM boldFontWithSize:18];
 
         config.title = title;
         config.image = nil;

@@ -42,6 +42,7 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 @property (nonatomic, strong, nullable) UIColor *iconBackground;
 @property (nonatomic, assign) PPSettingsRowType type;
 @property (nonatomic, assign) BOOL toggleValue;
+@property (nonatomic, assign) BOOL toggleEnabled;
 @property (nonatomic, copy, nullable) NSArray<NSString *> *segmentTitles;
 @property (nonatomic, assign) NSInteger segmentIndex;
 @property (nonatomic, copy, nullable) void (^onToggle)(BOOL isOn);
@@ -53,6 +54,16 @@ typedef NS_ENUM(NSInteger, PPSettingsRowType) {
 @end
 
 @implementation PPSettingsRowModel
+
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _toggleEnabled = YES;
+    }
+    return self;
+}
+
 @end
 
 #pragma mark - PPSettingsSectionModel
@@ -172,11 +183,12 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
     PPSettingsRowModel *darkRow = [PPSettingsRowModel new];
     darkRow.type = PPSettingsRowTypeToggle;
     darkRow.title = kLang(@"DarkSetPalce") ?: @"Dark Mode";
+    darkRow.subtitle = kLang(@"dark_mode_always_on") ?: @"Always on across the app";
     darkRow.iconName = @"moon.fill";
     darkRow.iconTint = UIColor.whiteColor;
     darkRow.iconBackground = [UIColor colorWithRed:0.38 green:0.22 blue:0.72 alpha:1.0];
-    darkRow.toggleValue = ([self loadUserInterfaceStyle] == UIUserInterfaceStyleDark);
-    darkRow.onToggle = ^(BOOL isOn) { [weakSelf pp_applyThemeIsDark:isOn]; };
+    darkRow.toggleValue = YES;
+    darkRow.toggleEnabled = NO;
     [appRows addObject:darkRow];
 
     PPSettingsRowModel *autoPlayRow = [PPSettingsRowModel new];
@@ -424,17 +436,24 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
                                tableView:(UITableView *)tableView
                                indexPath:(NSIndexPath *)indexPath
 {
-    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:kSettingsCellID];
+    UITableViewCell *cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:kSettingsCellID];
     cell.textLabel.text = row.title;
     cell.textLabel.font = [GM MidFontWithSize:15];
     cell.textLabel.textColor = AppPrimaryTextClr;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
     cell.backgroundColor = AppForgroundColr;
+    cell.detailTextLabel.text = row.subtitle;
+    cell.detailTextLabel.font = [GM fontWithSize:12];
+    cell.detailTextLabel.textColor = AppSecondaryTextClr;
+    cell.detailTextLabel.numberOfLines = 2;
     cell.imageView.image = [self pp_iconImageForName:row.iconName tint:row.iconTint background:row.iconBackground];
 
     UISwitch *toggle = [[UISwitch alloc] init];
     toggle.on = row.toggleValue;
     toggle.onTintColor = AppPrimaryClr;
+    toggle.enabled = row.toggleEnabled;
+    toggle.userInteractionEnabled = row.toggleEnabled;
+    toggle.alpha = row.toggleEnabled ? 1.0 : 0.65;
     toggle.tag = indexPath.section * 100 + indexPath.row;
     [toggle addTarget:self action:@selector(pp_switchToggled:) forControlEvents:UIControlEventValueChanged];
     cell.accessoryView = toggle;
@@ -681,9 +700,10 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
 
 - (void)pp_applyThemeIsDark:(BOOL)isDark
 {
-    UIUserInterfaceStyle style = isDark ? UIUserInterfaceStyleDark : UIUserInterfaceStyleLight;
+    (void)isDark;
+    UIUserInterfaceStyle style = UIUserInterfaceStyleDark;
     [self saveUserInterfaceStyle:style];
-    [self.prefs setObject:(isDark ? @"dark" : @"light") forKey:@"themePreference"];
+    [self.prefs setObject:@"dark" forKey:@"themePreference"];
     UIWindow *window = [self pp_keyWindow];
     if (window) { window.overrideUserInterfaceStyle = style; }
     [self pp_buildSections];
@@ -692,19 +712,12 @@ static NSString *const kLanguageCellID  = @"PPLanguageCell";
 
 - (void)saveUserInterfaceStyle:(UIUserInterfaceStyle)style
 {
-    [[NSUserDefaults standardUserDefaults] setInteger:style forKey:kUserInterfaceStyleKey];
+    [[PPThemeManager sharedManager] saveUserInterfaceStyle:style];
 }
 
 - (UIUserInterfaceStyle)loadUserInterfaceStyle
 {
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if ([defaults objectForKey:kUserInterfaceStyleKey] != nil) {
-        return (UIUserInterfaceStyle)[defaults integerForKey:kUserInterfaceStyleKey];
-    }
-    NSString *legacyTheme = [defaults stringForKey:@"themePreference"];
-    if ([legacyTheme isEqualToString:@"dark"]) return UIUserInterfaceStyleDark;
-    if ([legacyTheme isEqualToString:@"light"]) return UIUserInterfaceStyleLight;
-    return UIUserInterfaceStyleUnspecified;
+    return [[PPThemeManager sharedManager] loadUserInterfaceStyle];
 }
 
 #pragma mark - Language

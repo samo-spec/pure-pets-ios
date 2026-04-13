@@ -94,11 +94,7 @@
 
 
 - (void)applySavedInterfaceStyleToWindow:(UIWindow *)window {
-    SettingVC *vc = [[SettingVC alloc]init];
-    UIUserInterfaceStyle savedStyle = [vc loadUserInterfaceStyle];
-    if (savedStyle != UIUserInterfaceStyleUnspecified) {
-        window.overrideUserInterfaceStyle = savedStyle;
-    }
+    [[PPThemeManager sharedManager] applySavedInterfaceStyleToWindow:window];
     
     NSLog(@"[AppDelegate] [Language languageVal] %ld",[Language languageVal]);
     if([Language languageVal] != 0 && [Language languageVal] != 1)

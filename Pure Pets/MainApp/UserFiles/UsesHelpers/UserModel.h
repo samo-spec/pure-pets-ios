@@ -83,7 +83,7 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) BOOL canAccessPremiumMarketplaceFeature;
 
 /// Subscription info
-@property (nonatomic, copy) NSString *subscriptionPlan;    // "free" | "pro" | "business"
+@property (nonatomic, copy) NSString *subscriptionPlan;    // "free" | "pro" | "business" | "production" | "service_provider"
 @property (nonatomic, copy) NSString *subscriptionStatus;  // "active" | "inactive" | "past_due" | "canceled" | "trial"
 @property (nonatomic, copy) NSString *subscriptionSource;  // "manual" | "app_store" | "play_store" | "internal"
 

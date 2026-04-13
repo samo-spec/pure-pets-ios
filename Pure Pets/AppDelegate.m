@@ -39,7 +39,7 @@
  
 
     [[UINavigationBar appearance] setTitleTextAttributes:@{
-        NSForegroundColorAttributeName: [UIColor labelColor],
+        NSForegroundColorAttributeName: AppPrimaryTextClr ?: UIColor.labelColor,
         NSFontAttributeName: [GM boldFontWithSize:18]
     }];
     
@@ -53,12 +53,12 @@
     UITabBarItem *itemAppearance = [UITabBarItem appearance];
     [itemAppearance setTitleTextAttributes:@{
         NSFontAttributeName: [GM fontWithSize:12],
-        NSForegroundColorAttributeName: UIColor.grayColor
+        NSForegroundColorAttributeName: [AppSecondaryTextClr colorWithAlphaComponent:0.82] ?: UIColor.secondaryLabelColor
     } forState:UIControlStateNormal];
 
     [itemAppearance setTitleTextAttributes:@{
         NSFontAttributeName: [GM boldFontWithSize:12],
-        NSForegroundColorAttributeName: UIColor.blackColor
+        NSForegroundColorAttributeName: AppPrimaryTextClr ?: UIColor.labelColor
     } forState:UIControlStateSelected];
 
     // ATT NOTE: No tracking SDKs are used. PrivacyInfo.xcprivacy declares NSPrivacyTracking=false.
@@ -152,9 +152,9 @@
     if (userID) {
         [[FIRCrashlytics crashlytics] setUserID:userID];
     }
-    [NewAppVC lockNavBarAppearanceWithTint:UIColor.blackColor
-                          titleColor:UIColor.blackColor
-                            statusStyle:UIStatusBarStyleBlackTranslucent];
+    [NewAppVC lockNavBarAppearanceWithTint:(AppPrimaryTextClr ?: UIColor.labelColor)
+                          titleColor:(AppPrimaryTextClr ?: UIColor.labelColor)
+                            statusStyle:UIStatusBarStyleLightContent];
     
     
 #if DEBUG
@@ -678,4 +678,3 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
 
 
 @end
-

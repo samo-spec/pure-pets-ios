@@ -22,6 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString *KindImageNamed;
 @property (nonatomic, strong) NSMutableArray<SubKindModel *> *SubKindsArray;
 @property (nonatomic, strong) NSString *KindName;
+@property (nonatomic, assign) BOOL isVisibleInUserApp;
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot;
 - (instancetype)initWithId:(NSString *)mainKindID dictionary:(NSDictionary *)dictionary;
 @property (nonatomic, strong, nullable) NSString *KindImageUrl;

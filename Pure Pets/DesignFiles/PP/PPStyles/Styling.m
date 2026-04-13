@@ -1129,6 +1129,9 @@
 
 
 
+static UIUserInterfaceStyle const PPForcedUserInterfaceStyle = UIUserInterfaceStyleDark;
+static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
+
 @implementation PPThemeManager
 
 + (instancetype)sharedManager {
@@ -1143,47 +1146,50 @@
 #pragma mark - Save / Load
 
 - (void)saveUserInterfaceStyle:(UIUserInterfaceStyle)style {
+    (void)style;
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    [defaults setInteger:style forKey:kUserInterfaceStyleKey];
-    NSLog(@"💾 Saved interface style: %@", style == UIUserInterfaceStyleDark ? @"Dark" :
-          style == UIUserInterfaceStyleLight ? @"Light" : @"Unspecified");
+    [defaults setInteger:PPForcedUserInterfaceStyle forKey:kUserInterfaceStyleKey];
+    [defaults setObject:@"dark" forKey:PPLegacyThemePreferenceKey];
+    NSLog(@"💾 Saved interface style: Dark");
 }
 
 - (UIUserInterfaceStyle)loadUserInterfaceStyle {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    if ([defaults objectForKey:kUserInterfaceStyleKey] == nil) {
-        return UIUserInterfaceStyleUnspecified;
+    UIUserInterfaceStyle storedStyle = UIUserInterfaceStyleUnspecified;
+    if ([defaults objectForKey:kUserInterfaceStyleKey] != nil) {
+        storedStyle = (UIUserInterfaceStyle)[defaults integerForKey:kUserInterfaceStyleKey];
+    } else {
+        NSString *legacyTheme = [defaults stringForKey:PPLegacyThemePreferenceKey];
+        if ([legacyTheme isEqualToString:@"dark"]) {
+            storedStyle = UIUserInterfaceStyleDark;
+        } else if ([legacyTheme isEqualToString:@"light"]) {
+            storedStyle = UIUserInterfaceStyleLight;
+        }
     }
-    return (UIUserInterfaceStyle)[defaults integerForKey:kUserInterfaceStyleKey];
+
+    if (storedStyle != PPForcedUserInterfaceStyle) {
+        [defaults setInteger:PPForcedUserInterfaceStyle forKey:kUserInterfaceStyleKey];
+        [defaults setObject:@"dark" forKey:PPLegacyThemePreferenceKey];
+    }
+
+    return PPForcedUserInterfaceStyle;
 }
 
 #pragma mark - Apply
 
 - (void)applySavedInterfaceStyleToWindow:(UIWindow *)window {
     if (!window) return;
-    UIUserInterfaceStyle savedStyle = [self loadUserInterfaceStyle];
-    if (savedStyle != UIUserInterfaceStyleUnspecified) {
-        window.overrideUserInterfaceStyle = savedStyle;
-        NSLog(@"🌗 Applied saved style: %@", savedStyle == UIUserInterfaceStyleDark ? @"Dark" : @"Light");
-    }
+    window.overrideUserInterfaceStyle = [self loadUserInterfaceStyle];
+    NSLog(@"🌗 Applied saved style: Dark");
 }
 
 #pragma mark - Toggle
 
 - (void)toggleUserInterfaceStyleForWindow:(UIWindow *)window {
     if (!window) return;
-    
-    UIUserInterfaceStyle current = window.overrideUserInterfaceStyle;
-    UIUserInterfaceStyle newStyle;
-    
-    if (current == UIUserInterfaceStyleDark) {
-        newStyle = UIUserInterfaceStyleLight;
-    } else {
-        newStyle = UIUserInterfaceStyleDark;
-    }
-    
-    window.overrideUserInterfaceStyle = newStyle;
-    [self saveUserInterfaceStyle:newStyle];
+
+    window.overrideUserInterfaceStyle = PPForcedUserInterfaceStyle;
+    [self saveUserInterfaceStyle:PPForcedUserInterfaceStyle];
     
     // 🎨 أنيميشن خفيفة لتبديل النمط
     [UIView transitionWithView:window
