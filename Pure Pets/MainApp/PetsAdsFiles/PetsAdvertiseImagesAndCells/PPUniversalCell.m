@@ -718,6 +718,8 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
 @property (nonatomic, strong) NSLayoutConstraint *serviceAccentBarrierTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *serviceAccentBarrierHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *serviceTextTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *catalogTitleHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *catalogTitleBottomToPriceConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *marketImageHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *topMetaRowTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *topMetaRowLeadingConstraint;
@@ -732,6 +734,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
 - (void)pp_updateBottomOverlayTextWidthForDiscountBadgeVisible:(BOOL)isVisible;
 - (void)pp_applyLayoutAppearanceForMarket:(BOOL)isMarket;
 - (BOOL)pp_isAdsContext;
+- (BOOL)pp_contextIsAds:(PPCellContext)context;
 - (BOOL)pp_isServiceContext;
 - (BOOL)pp_isCatalogCommerceContext;
 - (UIColor *)pp_serviceAccentColorForViewModel:(PPUniversalCellViewModel *)vm;
@@ -1755,6 +1758,10 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
     [self.textStack.trailingAnchor constraintEqualToAnchor:self.bottomOverlay.trailingAnchor constant:-16.0];
     self.textStackTrailingToDiscountConstraint =
     [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.discountValueLabel.leadingAnchor constant:-12];
+    self.catalogTitleHeightConstraint =
+    [self.titleLabel.heightAnchor constraintEqualToConstant:14.0];
+    self.catalogTitleBottomToPriceConstraint =
+    [self.priceStack.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:6.0];
 
     NSLayoutConstraint *marketTxtTop =
     [self.textStack.topAnchor constraintEqualToAnchor:self.imageView.bottomAnchor constant:PPCatalogCommerceTextTopSpacing];
@@ -1902,6 +1909,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
     self.marketConstraints = @[
         marketImgTop, marketImgLeading, marketImgTrailing, self.marketImageHeightConstraint,
         marketTxtTop, marketTxtLeading, marketTxtTrailing,
+        self.catalogTitleHeightConstraint, self.catalogTitleBottomToPriceConstraint,
         marketDiscountTop, marketDiscountLeading,
         marketActionTop, marketActionTrailing,
         marketAddTop, marketAddLeading, marketAddTrailing,
@@ -1913,6 +1921,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
         marketImgTop, marketImgLeading, marketImgTrailing, serviceImageHeightConstraint,
         self.serviceAccentBarrierTopConstraint, serviceAccentLeading, serviceAccentTrailing, self.serviceAccentBarrierHeightConstraint,
         self.serviceTextTopConstraint, marketTxtLeading, marketTxtTrailing,
+        self.catalogTitleHeightConstraint, self.catalogTitleBottomToPriceConstraint,
         marketActionTop, serviceActionLeading,
         serviceTxtBottom
     ];
@@ -1938,7 +1947,12 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
 
 - (BOOL)pp_isAdsContext
 {
-    return self.context == PPCellForAds;
+    return [self pp_contextIsAds:self.context];
+}
+
+- (BOOL)pp_contextIsAds:(PPCellContext)context
+{
+    return context == PPCellForAds || context == PPCellForHomeAds;
 }
 
 - (BOOL)pp_isCatalogCommerceContext
@@ -2163,7 +2177,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
         return;
     }
 
-    BOOL isAds = (self.context == PPCellForAds);
+    BOOL isAds = [self pp_isAdsContext];
     self.imageScrimView.hidden = !isAds;
     PetAd *ad = [self pp_resolvedPetAdFromViewModel:vm];
     BOOL isSold = ad.isSold || ad.status == PetAdStatusSold;
@@ -2261,7 +2275,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
 
 - (void)pp_applyLayoutAppearanceForMarket:(BOOL)isMarket
 {
-    BOOL isAds = (self.context == PPCellForAds);
+    BOOL isAds = [self pp_isAdsContext];
     BOOL isService = [self pp_isServiceContext];
     BOOL usesCatalogCardLayout = isMarket || isService;
 
@@ -2318,7 +2332,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
     self.priceStack.alignment = UIStackViewAlignmentFirstBaseline;
     self.priceStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     
-    self.titleLabel.font = [GM boldFontWithSize:([self pp_isCatalogCommerceContext] ? 16.5 : 17.5)];
+    self.titleLabel.font = [self pp_titleFontForCurrentContext];
     self.subtitleLabel.font = isMarket
         ? [GM MidFontWithSize:13.0]
         : (isService ? [GM MidFontWithSize:13.0] : (isAds ? [GM MidFontWithSize:12.0] : [GM MidFontWithSize:15.0]));
@@ -2336,7 +2350,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
             //[self.textStack setCustomSpacing:PPAdsOverlaySubtitleSpacing afterView:self.subtitleLabel];
             [self.textStack setCustomSpacing:0.0 afterView:self.priceStack];
         } else {
-            [self.textStack setCustomSpacing:(isMarket ? 4.0 : (isAds ? 2.0 : 4.0)) afterView:self.titleLabel];
+            [self.textStack setCustomSpacing:(isMarket ? 6.0 : (isAds ? 2.0 : 4.0)) afterView:self.titleLabel];
             //[self.textStack setCustomSpacing:(isMarket ? 4.0 : (isAds ? 2.0 : 6.0)) afterView:self.subtitleLabel];
             [self.textStack setCustomSpacing:0.0 afterView:self.priceStack];
         }
@@ -2445,13 +2459,13 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
 - (UIFont *)pp_titleFontForCurrentContext
 {
     if ([self pp_isCatalogCommerceContext]) {
-        return [GM boldFontWithSize:12.8];
+        return [GM boldFontWithSize:12.0];
     }
     if ([self pp_isServiceContext]) {
-        return [GM boldFontWithSize:12.8];
+        return [GM boldFontWithSize:12.0];
     }
     if ([self pp_isAdsContext]) {
-        return [GM boldFontWithSize:12.8];
+        return [GM boldFontWithSize:12.0];
     }
     return [GM boldFontWithSize:15.4];
 }
@@ -3255,7 +3269,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
 
 - (void)pp_applyAdsStateForViewModel:(PPUniversalCellViewModel *)vm
 {
-    if (self.context != PPCellForAds) {
+    if (![self pp_isAdsContext]) {
         return;
     }
 
@@ -3585,7 +3599,7 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
     self.priceLabel.hidden = NO;
     
     [self pp_applyLayoutAppearanceForMarket:isMarket];
-    self.bottomOverlayHeightConstraint.constant = (self.context == PPCellForAds)
+    self.bottomOverlayHeightConstraint.constant = ([self pp_isAdsContext])
         ? [self pp_bottomOverlayHeightForLayoutMode:mode]
         : (isService ? [self pp_bottomOverlayHeightForServiceLayoutMode:mode] : 86.0);
 
@@ -3597,6 +3611,18 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
         self.priceLabel.hidden = NO;
         self.subtitleLabel.hidden = YES;
         
+        // ── Fix: UIStackView priority resolution ──
+        // With .Fill distribution, when available height ≠ intrinsic content sum,
+        // Auto Layout needs ONE flexible view to absorb the difference.
+        // titleLabel absorbs excess/deficit; priceStack stays at intrinsic height.
+        [self.titleLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                           forAxis:UILayoutConstraintAxisVertical];
+        [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisVertical];
+        [self.priceStack setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisVertical];
+        [self.priceLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisVertical];
     }
     else if (isService)
     {
@@ -3607,6 +3633,12 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
         self.titleLabel.hidden = NO;
         self.subtitleLabel.hidden = YES;
         self.priceLabel.hidden = NO;
+        
+        // Reset titleLabel priorities (may have been lowered for market mode)
+        [self.titleLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                           forAxis:UILayoutConstraintAxisVertical];
+        [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisVertical];
     }
     else if (isAds)
     {
@@ -3614,6 +3646,12 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
         self.titleLabel.hidden = YES;
         self.subtitleLabel.hidden = YES;
         self.priceLabel.hidden = NO;
+        
+        // Reset titleLabel priorities (may have been lowered for market mode)
+        [self.titleLabel setContentHuggingPriority:UILayoutPriorityRequired
+                                           forAxis:UILayoutConstraintAxisVertical];
+        [self.titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisVertical];
     }
     else
     {
@@ -3679,16 +3717,16 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
     self.discountStyle = discountStyle;
     self.loader = loader;
     PetAd *petAd = [self pp_resolvedPetAdFromViewModel:vm];
-    if (context == PPCellForAds && petAd) {
+    BOOL isMarket = (context == PPCellForMarket);
+    BOOL isFood   = (context == PPCellForFood);
+    BOOL isCatalogCommerce = isMarket || isFood;
+    BOOL isAds = [self pp_contextIsAds:context];
+    BOOL isService = (context == PPCellForServices);
+    if (isAds && petAd) {
         self.vm.price = petAd.price;
         self.vm.finalPrice = petAd.price ?: petAd.price;
         self.vm.discountPercent = petAd.discountPercent;
     }
-    BOOL isMarket = (context == PPCellForMarket);
-    BOOL isFood   = (context == PPCellForFood);
-    BOOL isCatalogCommerce = isMarket || isFood;
-    BOOL isAds = (context == PPCellForAds);
-    BOOL isService = (context == PPCellForServices);
     if (isAds) {
         [self pp_attachPriceStackToAdsBodyStackIfNeeded];
     } else {
@@ -4011,7 +4049,11 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
     
     if(!self.favButton.hidden)
     {
-        NSString *FavCollection = context == PPCellForAds ? @"favoritesAds" : context == PPCellForMarket? @"favoritesAccessories" : context == PPCellForVets ? @"favoritesVets" : @"favoritesServices" ;
+        NSString *FavCollection = isAds
+            ? @"favoritesAds"
+            : ((context == PPCellForMarket || context == PPCellForFood)
+               ? @"favoritesAccessories"
+               : (context == PPCellForVets ? @"favoritesVets" : @"favoritesServices"));
         [self setFavForCollection:FavCollection andID:vm.ModelID andButton:self.favButton];
     }
     
@@ -4067,6 +4109,13 @@ typedef void (^PPServiceRatingSheetSubmitHandler)(NSInteger ratingValue, UIViewC
     [self pp_updateAccessibilityLabel];
     if (isService) {
         [self.contentView layoutIfNeeded];
+    }
+    if (isCatalogCommerce) {
+        [self.contentView setNeedsLayout];
+        [self.contentView layoutIfNeeded];
+        // Safety: ensure priceStack is visible after layout resolution
+        self.priceStack.hidden = NO;
+        self.priceLabel.hidden = NO;
     }
     
     

@@ -480,11 +480,13 @@ NS_ASSUME_NONNULL_BEGIN
     UILabel *label = [UILabel new];
     label.translatesAutoresizingMaskIntoConstraints = NO;
     label.font = [GM boldFontWithSize:15];
-    label.numberOfLines = 2;
+    label.numberOfLines = 1;
     label.lineBreakMode = NSLineBreakByTruncatingTail;
     label.textAlignment = Language.alignmentForCurrentLanguage;
     label.textColor = UIColor.labelColor;
     label.adjustsFontForContentSizeCategory = NO;
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.82;
 
     [label setContentCompressionResistancePriority:UILayoutPriorityRequired
                                             forAxis:UILayoutConstraintAxisVertical];

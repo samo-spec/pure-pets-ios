@@ -22,21 +22,96 @@
 #define ABSOLUTE(x) [NSCollectionLayoutDimension absoluteDimension:x]
 #define ESTIMATED(x) [NSCollectionLayoutDimension estimatedDimension:x]
 
-- (BOOL)pp_usesMarketCardSizing
+- (nullable PPUniversalCellViewModel *)pp_firstUniversalViewModel
 {
     id firstItem = self.items.firstObject;
     if ([firstItem isKindOfClass:[PPUniversalCellViewModel class]]) {
-        PPUniversalCellViewModel *vm = (PPUniversalCellViewModel *)firstItem;
-        return vm.modelContext == PPCellForMarket
-            || vm.modelContext == PPCellForServices
-            || [vm.ModelObject isKindOfClass:[PetAccessory class]];
+        return (PPUniversalCellViewModel *)firstItem;
     }
-    return NO;
+    return nil;
 }
 
-- (CGFloat)pp_marketCardHeightForWidth:(CGFloat)width
+- (BOOL)pp_isAdsContextForViewModel:(PPUniversalCellViewModel *)vm
 {
-    return (width * 0.72) + 128.0;
+    if (![vm isKindOfClass:[PPUniversalCellViewModel class]]) {
+        return NO;
+    }
+    return vm.modelContext == PPCellForAds || vm.modelContext == PPCellForHomeAds;
+}
+
+- (BOOL)pp_isCatalogCommerceContextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if (![vm isKindOfClass:[PPUniversalCellViewModel class]]) {
+        return NO;
+    }
+    return vm.modelContext == PPCellForMarket
+        || vm.modelContext == PPCellForFood
+        || [vm.ModelObject isKindOfClass:[PetAccessory class]];
+}
+
+- (BOOL)pp_isServiceContextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if (![vm isKindOfClass:[PPUniversalCellViewModel class]]) {
+        return NO;
+    }
+    return vm.modelContext == PPCellForServices;
+}
+
+- (CGFloat)pp_catalogCardHeightForWidth:(CGFloat)width
+{
+    CGFloat contentWidth = MAX(width - 28.0, 96.0);
+    CGFloat imageHeight = contentWidth * 0.70;
+    return ceil(14.0 + imageHeight + 8.0 + 58.0 + 8.0 + 34.0 + 6.0 + 26.0 + 14.0);
+}
+
+- (CGFloat)pp_serviceCardHeightForWidth:(CGFloat)width
+{
+    return ceil((width * 0.72) + 168.0);
+}
+
+- (CGFloat)pp_adsCardHeightForWidth:(CGFloat)width
+                          viewModel:(PPUniversalCellViewModel *)vm
+{
+    CGFloat ratio = 1.02;
+    if (!CGSizeEqualToSize(vm.imageSize, CGSizeZero) && vm.imageSize.width > 0.0) {
+        ratio = MAX(ratio, vm.imageSize.height / MAX(vm.imageSize.width, 1.0));
+    } else if (vm.preferredAspectRatio > 0.0) {
+        ratio = MAX(ratio, vm.preferredAspectRatio);
+    }
+    ratio = MIN(ratio, 1.35);
+    return ceil((width * ratio) + 102.0);
+}
+
+- (CGFloat)pp_preferredHeightForViewModel:(PPUniversalCellViewModel *)vm
+                                    width:(CGFloat)width
+                            defaultHeight:(CGFloat)defaultHeight
+{
+    if (![vm isKindOfClass:[PPUniversalCellViewModel class]]) {
+        return defaultHeight;
+    }
+
+    if ([self pp_isServiceContextForViewModel:vm]) {
+        return [self pp_serviceCardHeightForWidth:width];
+    }
+
+    if ([self pp_isCatalogCommerceContextForViewModel:vm]) {
+        return [self pp_catalogCardHeightForWidth:width];
+    }
+
+    if ([self pp_isAdsContextForViewModel:vm]) {
+        return [self pp_adsCardHeightForWidth:width viewModel:vm];
+    }
+
+    if (!CGSizeEqualToSize(vm.imageSize, CGSizeZero) && vm.imageSize.width > 0.0) {
+        CGFloat ratio = vm.imageSize.height / MAX(vm.imageSize.width, 1.0);
+        return width * ratio + 42.0;
+    }
+
+    if (vm.preferredAspectRatio > 0.0) {
+        return width * vm.preferredAspectRatio + 72.0;
+    }
+
+    return defaultHeight;
 }
 
 #pragma mark - Public API
@@ -63,9 +138,11 @@
                 CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
                 // Full-width cell: use a standard aspect ratio (e.g., 16:9) for height.
                 CGFloat itemWidth = screenWidth - 32.0;
-                CGFloat itemHeight = [self pp_usesMarketCardSizing]
-                ? [self pp_marketCardHeightForWidth:itemWidth]
-                : (screenWidth * 0.5625)+52; // 16:9 aspect ratio height as default.
+                PPUniversalCellViewModel *firstVM = [self pp_firstUniversalViewModel];
+                CGFloat defaultHeight = (screenWidth * 0.5625) + 52.0;
+                CGFloat itemHeight = [self pp_preferredHeightForViewModel:firstVM
+                                                                   width:itemWidth
+                                                           defaultHeight:defaultHeight];
                 flow.itemSize = CGSizeMake(itemWidth, itemHeight);
                 flow.minimumLineSpacing = verticalSpacing;
                 flow.minimumInteritemSpacing = horizontalSpacing;
@@ -90,9 +167,10 @@
                     contentWidth -= (columns - 1) * horizontalSpacing;
                 }
                 CGFloat itemWidth = floor(contentWidth / columns);
-                CGFloat itemHeight = [self pp_usesMarketCardSizing]
-                ? [self pp_marketCardHeightForWidth:itemWidth]
-                : itemWidth;
+                PPUniversalCellViewModel *firstVM = [self pp_firstUniversalViewModel];
+                CGFloat itemHeight = [self pp_preferredHeightForViewModel:firstVM
+                                                                   width:itemWidth
+                                                           defaultHeight:itemWidth];
                 flow.itemSize = CGSizeMake(itemWidth, itemHeight);
                 flow.minimumInteritemSpacing = horizontalSpacing;
                 flow.minimumLineSpacing = verticalSpacing;
@@ -113,9 +191,10 @@
                     contentWidth -= (columns - 1) * horizontalSpacing;
                 }
                 CGFloat itemWidth = floor(contentWidth / columns);
-                CGFloat itemHeight = [self pp_usesMarketCardSizing]
-                ? [self pp_marketCardHeightForWidth:itemWidth]
-                : itemWidth * 1.5; // e.g., 2:3 aspect ratio (vertical rectangle)
+                PPUniversalCellViewModel *firstVM = [self pp_firstUniversalViewModel];
+                CGFloat itemHeight = [self pp_preferredHeightForViewModel:firstVM
+                                                                   width:itemWidth
+                                                           defaultHeight:(itemWidth * 1.5)];
                 flow.itemSize = CGSizeMake(itemWidth, itemHeight);
                 flow.minimumInteritemSpacing = horizontalSpacing;
                 flow.minimumLineSpacing = verticalSpacing;
@@ -401,23 +480,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
 
     if ([obj isKindOfClass:[PPUniversalCellViewModel class]]) {
         PPUniversalCellViewModel *vm = (PPUniversalCellViewModel *)obj;
-
-        if (vm.modelContext == PPCellForMarket
-            || vm.modelContext == PPCellForServices
-            || [vm.ModelObject isKindOfClass:[PetAccessory class]]) {
-            return [self pp_marketCardHeightForWidth:width];
-        }
-
-        if (!CGSizeEqualToSize(vm.imageSize, CGSizeZero)) {
-            CGFloat ratio = vm.imageSize.height / MAX(vm.imageSize.width, 1);
-            return width * ratio + 42;
-        }
-
-        if (vm.preferredAspectRatio > 0) {
-            return width * vm.preferredAspectRatio + 72;
-        }
-
-        return width + 42;
+        return [self pp_preferredHeightForViewModel:vm
+                                              width:width
+                                      defaultHeight:(width + 42.0)];
     }
 
     return width;

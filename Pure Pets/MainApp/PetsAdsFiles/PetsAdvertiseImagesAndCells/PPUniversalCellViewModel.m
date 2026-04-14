@@ -85,6 +85,10 @@
             _cellSection = CellSectionAds;
             ppSection = PPSectionAds;
             break;
+        case PPCellForHomeAds:
+            _cellSection = CellSectionAds;
+            ppSection = PPSectionAds;
+            break;
         case PPCellForFood:
             _cellSection = CellSectionFood; // update if there is a specific CellSection for Food
             ppSection = PPSectionFood;

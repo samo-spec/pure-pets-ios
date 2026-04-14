@@ -14,6 +14,7 @@
 #import "PPNavigationController.h"
 #import "PPSearchViewController.h"
 #import "PPHUD.h"
+#import "UIView+Badge.h"
 
 #if DEBUG
 #define PPDataViewLog(...) NSLog(__VA_ARGS__)
@@ -150,7 +151,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) UIButton *KindsButton;
 @property (nonatomic, strong) UIButton *subKindsButton;
 @property (nonatomic, strong) UIButton *cartButton;
-@property (nonatomic, strong) UILabel *cartBadgeLabel;
+@property (nonatomic, strong, nullable) UIButton *navCartButton;
 @property (nonatomic, strong)  PPEmptyStateConfig *emptyStateConfig;
 @property (nonatomic, strong) NSLayoutConstraint *mainKindsWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *sectionsWidthConstraint;
@@ -160,7 +161,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) NSLayoutConstraint *navContainerWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToCartConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subKindsTrailingToContainerConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *cartBadgeMinWidthConstraint;
+
 @property (nonatomic, assign) BOOL isCartButtonVisible;
 // Skeleton loading stateAppForgroundColr
 @property (nonatomic, assign) BOOL isShowingSkeleton;
@@ -878,20 +879,42 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 - (void)updateCartBadge
 {
-    if (!self.cartBadgeLabel) {
+    if (!self.navCartButton) {
         return;
     }
 
+    UIButton *badgeHost = self.navCartButton;
+    [badgeHost removeBadge];
+
     NSInteger count = [self currentCartItemCount];
-    BOOL shouldShowBadge = count > 0;
+    if (count <= 0) {
+        return;
+    }
 
-    NSString *text = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)MAX(count, 0)];
-    self.cartBadgeLabel.text = text;
+    NSString *badgeText = (count > 99) ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count];
+    UIColor *badgeColor = AppPrimaryClr ?: UIColor.systemPinkColor;
 
-    CGFloat textWidth = ceil([text sizeWithAttributes:@{NSFontAttributeName : self.cartBadgeLabel.font}].width) + 8.0;
-    self.cartBadgeMinWidthConstraint.constant = MAX(16.0, textWidth);
-    self.cartBadgeLabel.hidden = !shouldShowBadge;
-    self.cartBadgeLabel.alpha = shouldShowBadge ? 1.0 : 0.0;
+    void (^applyBadge)(void) = ^{
+        UIButton *host = self.navCartButton;
+        if (!host) return;
+
+        [host layoutIfNeeded];
+        if (CGRectIsEmpty(host.bounds)) return;
+
+        [host removeBadge];
+        [host addBadgeWithContent:badgeText
+                       badgeColor:badgeColor
+                           offset:CGPointMake(-10, 10)
+                      badgeRadius:9.5];
+    };
+
+    applyBadge();
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.navigationController.navigationBar setNeedsLayout];
+        [self.navigationController.navigationBar layoutIfNeeded];
+        applyBadge();
+    });
 }
 
 #pragma mark - Actions
@@ -2305,57 +2328,18 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [cartNavBtn.widthAnchor constraintEqualToConstant:40].active = YES;
         [cartNavBtn.heightAnchor constraintEqualToConstant:40].active = YES;
 
-        // Cart badge on rightBarButtonItem
-        UILabel *badge = [[UILabel alloc] init];
-        badge.translatesAutoresizingMaskIntoConstraints = NO;
-        badge.textAlignment = NSTextAlignmentCenter;
-        badge.font = [GM boldFontWithSize:11];
-        badge.textColor = UIColor.whiteColor;
-        badge.backgroundColor = [UIColor systemRedColor];
-        badge.layer.cornerRadius = 8.0;
-        badge.layer.masksToBounds = YES;
-        badge.hidden = YES;
-        badge.alpha = 0.0;
-        [cartNavBtn addSubview:badge];
-        self.cartBadgeLabel = badge;
-        self.cartBadgeMinWidthConstraint =
-        [badge.widthAnchor constraintGreaterThanOrEqualToConstant:16.0];
-        self.cartBadgeMinWidthConstraint.active = YES;
-        [NSLayoutConstraint activateConstraints:@[
-            [badge.heightAnchor constraintEqualToConstant:16.0],
-            [badge.topAnchor constraintEqualToAnchor:cartNavBtn.topAnchor constant:-4.0],
-            [badge.trailingAnchor constraintEqualToAnchor:cartNavBtn.trailingAnchor constant:4.0]
-        ]];
-
+        self.navCartButton = cartNavBtn;
         self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartNavBtn];
     } else {
         UIButton *cartNavBtn = [UIButton buttonWithType:UIButtonTypeSystem];
         [cartNavBtn setImage:[UIImage systemImageNamed:@"cart.fill"] forState:UIControlStateNormal];
         [cartNavBtn addTarget:self action:@selector(onCartTapped) forControlEvents:UIControlEventTouchUpInside];
 
-        UILabel *badge = [[UILabel alloc] init];
-        badge.translatesAutoresizingMaskIntoConstraints = NO;
-        badge.textAlignment = NSTextAlignmentCenter;
-        badge.font = [GM boldFontWithSize:11];
-        badge.textColor = UIColor.whiteColor;
-        badge.backgroundColor = [UIColor systemRedColor];
-        badge.layer.cornerRadius = 8.0;
-        badge.layer.masksToBounds = YES;
-        badge.hidden = YES;
-        badge.alpha = 0.0;
-        [cartNavBtn addSubview:badge];
-        self.cartBadgeLabel = badge;
-        self.cartBadgeMinWidthConstraint =
-        [badge.widthAnchor constraintGreaterThanOrEqualToConstant:16.0];
-        self.cartBadgeMinWidthConstraint.active = YES;
-        [NSLayoutConstraint activateConstraints:@[
-            [badge.heightAnchor constraintEqualToConstant:16.0],
-            [badge.topAnchor constraintEqualToAnchor:cartNavBtn.topAnchor constant:-4.0],
-            [badge.trailingAnchor constraintEqualToAnchor:cartNavBtn.trailingAnchor constant:4.0]
-        ]];
-
+        self.navCartButton = cartNavBtn;
         self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:cartNavBtn];
     }
+
+    [self updateCartBadge];
 }
 
 - (UIMenu *)actionsArrayFrom:(UIViewController *)controller collectionView:(UICollectionView *)collectionView
