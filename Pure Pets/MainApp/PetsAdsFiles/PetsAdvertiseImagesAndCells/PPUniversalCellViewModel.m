@@ -1,291 +1,373 @@
-//
-//  PPUniversalCellViewModel.m
-//  Pure Pets
-//
-//  Created by Mohammed Ahmed on 01/01/2026.
-//
-
 #import "PPUniversalCellViewModel.h"
-@import QuartzCore;
-#pragma mark - ViewModel
+#import "PetAccessory.h"
+#import "PetAd.h"
+#import "ServiceModel.h"
+#import "VetModel.h"
+#import "CitiesManager.h"
+#import "MainKindsModel.h"
+
+static NSString *PPUniversalLocalizedString(NSString *key, NSString *fallback)
+{
+    NSString *value = kLang(key);
+    return value.length > 0 ? value : fallback;
+}
+
+static NSString *PPUniversalLocalizedPair(NSString *english, NSString *arabic)
+{
+    NSString *fallbackEnglish = english ?: @"";
+    NSString *fallbackArabic = arabic ?: fallbackEnglish;
+    return Language.isRTL ? fallbackArabic : fallbackEnglish;
+}
+
+static CGFloat PPUniversalClampedAspectRatio(CGSize size, CGFloat fallback)
+{
+    CGFloat ratio = fallback;
+    if (size.width > 0.0 && size.height > 0.0) {
+        ratio = size.height / size.width;
+    }
+    ratio = MAX(0.68, MIN(1.24, ratio));
+    return ratio > 0.0 ? ratio : fallback;
+}
+
+static NSString *PPUniversalShortAgeText(NSNumber * _Nullable ageInMonths)
+{
+    NSInteger months = MAX(ageInMonths.integerValue, 0);
+    if (months <= 0) {
+        return @"";
+    }
+
+    if (months < 12) {
+        NSString *monthLabel = months == 1
+            ? PPUniversalLocalizedPair(@"month", @"شهر")
+            : PPUniversalLocalizedPair(@"months", @"أشهر");
+        return [NSString stringWithFormat:@"%ld %@", (long)months, monthLabel];
+    }
+
+    NSInteger years = months / 12;
+    NSInteger remainingMonths = months % 12;
+    NSString *yearLabel = years == 1
+        ? PPUniversalLocalizedPair(@"year", @"سنة")
+        : PPUniversalLocalizedPair(@"years", @"سنوات");
+
+    if (remainingMonths == 0) {
+        return [NSString stringWithFormat:@"%ld %@", (long)years, yearLabel];
+    }
+
+    NSString *monthLabel = remainingMonths == 1
+        ? PPUniversalLocalizedPair(@"month", @"شهر")
+        : PPUniversalLocalizedPair(@"months", @"أشهر");
+    return [NSString stringWithFormat:@"%ld %@ · %ld %@",
+            (long)years,
+            yearLabel,
+            (long)remainingMonths,
+            monthLabel];
+}
+
+static NSString *PPUniversalAccessorySubtitle(PetAccessory *accessory)
+{
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+
+    NSString *typeText = [PetAccessory typeTextForAccessory:accessory];
+    if (typeText.length > 0) {
+        [parts addObject:typeText];
+    }
+
+    NSString *conditionText = [PetAccessory conditionTextForAccessory:accessory];
+    if (conditionText.length > 0 &&
+        ![conditionText isEqualToString:PPUniversalLocalizedString(@"Not specified", @"Not specified")]) {
+        [parts addObject:conditionText];
+    }
+
+    return [parts componentsJoinedByString:@" • "];
+}
+
+static NSString *PPUniversalAdBadgeText(PetAd *ad)
+{
+    NSString *kindName = [MainKindsModel kindNameForID:ad.category];
+    if (kindName.length > 0) {
+        return kindName;
+    }
+    return PPUniversalLocalizedString(@"Ads", PPUniversalLocalizedPair(@"Ad", @"إعلان"));
+}
+
+static NSString *PPUniversalAdSubtitle(PetAd *ad, NSString *locationText)
+{
+    if (locationText.length > 0) {
+        return locationText;
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    NSString *ageText = PPUniversalShortAgeText(ad.petAgeMonths);
+    if (ageText.length > 0) {
+        [parts addObject:ageText];
+    }
+
+    NSString *genderText = ad.isFemale
+        ? PPUniversalLocalizedString(@"Female", PPUniversalLocalizedPair(@"Female", @"أنثى"))
+        : PPUniversalLocalizedString(@"Male", PPUniversalLocalizedPair(@"Male", @"ذكر"));
+    if (genderText.length > 0) {
+        [parts addObject:genderText];
+    }
+
+    return [parts componentsJoinedByString:@" • "];
+}
+
+static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
+{
+    if (!ad.price) {
+        return nil;
+    }
+
+    if (!(ad.discountPercent.doubleValue > 0.0)) {
+        return ad.price;
+    }
+
+    NSDecimalNumber *base = [NSDecimalNumber decimalNumberWithDecimal:ad.price.decimalValue];
+    NSDecimalNumber *discount = [NSDecimalNumber decimalNumberWithDecimal:ad.discountPercent.decimalValue];
+    NSDecimalNumber *percentage = [discount decimalNumberByDividingBy:[NSDecimalNumber decimalNumberWithString:@"100"]];
+    NSDecimalNumber *result = [base decimalNumberByMultiplyingBy:[[NSDecimalNumber one] decimalNumberBySubtracting:percentage]];
+    return result;
+}
 
 @implementation PPUniversalCellViewModel
 
-
-
-- (instancetype)initWithModel:(id)model ppDataSection:(PPDataSection)ppDataSection
+- (instancetype)initWithModel:(id)model
+                ppDataSection:(PPDataSection)ppDataSection
 {
-    
     PPCellContext context = PPCellForAds;
-    if(ppDataSection == PPDataSectionAds) context = PPCellForAds;
-    else if(ppDataSection == PPDataSectionAccessories) context = PPCellForMarket;
-    else if(ppDataSection == PPDataSectionFood) context = PPCellForFood;
-    //else if(ppDataSection == PPDataSectionVets) context = PPCellForVets;
-    else if(ppDataSection == PPDataSectionServices) context = PPCellForServices;
-    
-    return  [self initWithModel:model context:context];
+    switch (ppDataSection) {
+        case PPDataSectionAccessories:
+            context = PPCellForMarket;
+            break;
+        case PPDataSectionFood:
+            context = PPCellForFood;
+            break;
+        case PPDataSectionServices:
+            context = PPCellForServices;
+            break;
+        case PPDataSectionAds:
+        default:
+            context = PPCellForAds;
+            break;
+    }
+    return [self initWithModel:model context:context];
 }
+
 - (instancetype)initWithModel:(id)model
                       context:(PPCellContext)context
 {
     self = [super init];
-    if (!self) return nil;
-
-    // ✅ Defaults
-    _placeholder = [UIImage imageNamed:@"placeholder"];
-    _isOwner = NO;
-    _hasOffer = NO;
-    _isNew = NO;
-    _imageSize = CGSizeZero;
-    _ModelID = [NSString stringWithFormat:@"%p", model];
-    _priceText = @"";
-    _subtitle = @"";
-    _imageURL = nil;
-    _modelContext = context;
-    _preferredAspectRatio = 0; // 0 = unspecified
-    _contextualReasonText = nil;
-    _contextualReasonIconName = nil;
-    
-    
-   // NSLog(@"modelPPPPP %p", model);
-    /*
-     typedef NS_ENUM(NSInteger, PPCellContext) {
-         PPCellForMarket = 0,
-         PPCellForAds,
-         PPCellForFood,
-         PPCellForVets,
-         PPCellForServices
-     };
-     
-     PPSectionAccess,
-     PPSectionAds,
-     PPSectionFood,
-     PPSectionVets,
-     PPSectionServices
-     
-     */
-    
-    
-    // ===============================
-    // Image size & aspect ratio
-    // ===============================
-    CGSize fallbackSize = CGSizeMake(1, 1); // safe default
- 
-    
-    // Map context to sections without mixing enum types
-    _cellSection = CellSectionAds; // default
-    PPSection ppSection = PPSectionAds;        // default
-
-    switch (context) {
-        case PPCellForMarket:
-            _cellSection = CellSectionAccessories;
-            ppSection = PPSectionAccess;
-            break;
-        case PPCellForAds:
-            _cellSection = CellSectionAds;
-            ppSection = PPSectionAds;
-            break;
-        case PPCellForHomeAds:
-            _cellSection = CellSectionAds;
-            ppSection = PPSectionAds;
-            break;
-        case PPCellForFood:
-            _cellSection = CellSectionFood; // update if there is a specific CellSection for Food
-            ppSection = PPSectionFood;
-            break;
-        case PPCellForVets:
-            _cellSection = CellSectionVet; // update if there is a specific CellSection for Vets
-            ppSection = PPSectionVets;
-            break;
-        case PPCellForServices:
-            _cellSection = CellSectionServices; // update if there is a specific CellSection for Services
-            ppSection = PPSectionServices;
-            break;
-        default:
-            break;
-    }
-    
-    
-   
-    // 🐾 PetAd
-    // 🐾 PetAd
-    if ([model isKindOfClass:[PetAd class]]) {
-        PetAd *ad = model;
-
-        _title   = ad.adTitle ?: kLang(@"UntitledAd");
-        _ModelID = ad.adID;
-
-        if (ad.imageItems.count > 0) {
-            PetImageItem *item = ad.imageItems.firstObject;
-            _imageURL  = item.url;
-            _blurHash = item.blurHash;
-            if (item.width > 0 && item.height > 0) {
-                _imageSize = CGSizeMake(item.width, item.height);
-            } else {
-                _imageSize = fallbackSize;
-            }
-        } else {
-            _imageSize = fallbackSize;
-        }
-
-        _priceText = ad.price
-            ? [NSString stringWithFormat:@"%@ %@", ad.price, kLang(@"Rials")]
-            : kLang(@"NoPrice");
-
-        _finalPrice = ad.price;
-        _isOwner = [PPCurrentUser.ID isEqualToString:ad.ownerID];
-        NSString *resolvedLocation = ad.locationName;
-        if (resolvedLocation.length == 0 && ad.adLocation > 0) {
-            resolvedLocation = [CitiesManager.shared cityNameForID:ad.adLocation];
-        }
-        _location = resolvedLocation ?: @"";
-       
-
-        _ModelObject = ad;
-        _cellSection = CellSectionAds;
-        _ppSection   = PPSectionAds;
+    if (!self) {
+        return nil;
     }
 
-    // 🧩 PetAccessory
-    else if ([model isKindOfClass:[PetAccessory class]]) {
-        PetAccessory *acc = model;
-
-        _title = acc.name ?: kLang(@"UntitledAccessory");
-        _ModelID = acc.accessoryID;
-        _imageURL = acc.imageURLsArray.firstObject;
-        _priceText = acc.price ? [NSString stringWithFormat:@"%@", acc.price] : kLang(@"NoPrice");
-
-        _price = acc.price;
-        _finalPrice = acc.finalPrice;
-        _discountPercent = acc.discountPercent;
-        _discountAmount = acc.discountAmount;
-        _stockStatusText = acc.stockStatusText;
-        _itemQuantitiy = acc.quantity;
-
-        _isOwner = NO;//[[PPCurrentUser ID] isEqualToString:acc.ownerID];
-        _hasOffer = acc.hasOffer;
-        _isNew = acc.isNew;
-
-        _ModelObject = acc;
-        _ppSection = ppSection;
-        _blurHash = acc.blurHash;
-        _imageSize = fallbackSize;
-
-    }
-
-    // 🧰 ServiceModel
-    else if ([model isKindOfClass:[ServiceModel class]]) {
-        ServiceModel *svc = model;
-
-        _title = svc.title ?: kLang(@"UntitledService");
-        _ModelID = svc.serviceID;
-        _imageURL = svc.imageURL;
-        _price = @(svc.price);
-        _finalPrice = @(svc.price);
-         _isOwner =  NO;//[[PPCurrentUser ID] isEqualToString:svc.serviceOwnerID];
-        _ModelObject = svc;
-        _cellSection = CellSectionServices;
-        _ppSection = PPSectionServices;
-        _blurHash = svc.blurHash;
-        _imageSize = fallbackSize;
-
-    }
-
-    // 🏥 VetModel
-    else if ([model isKindOfClass:[VetModel class]]) {
-        VetModel *vet = model;
-
-        _title = vet.title ?: kLang(@"VetClinic");
-        _ModelID = vet.vetID;
-        _imageURL = vet.logoURL;
-        _subtitle = vet.descriptionText ?: @"";
-
-        _price = @(vet.vetCost);
-        _finalPrice = @(vet.vetCost);
-        _isOwner =  NO;//[[PPCurrentUser ID] isEqualToString:vet.userID];
-
-        _ModelObject = vet;
-        _cellSection = CellSectionVet;
-        _ppSection = PPSectionVets;
-        _blurHash = vet.blurHash;
-
-        _imageSize = fallbackSize;
-
-    }
-
-    // ❌ Unknown
-    else {
-        _title = kLang(@"UnknownItem");
-        _ModelID = @"";
-    }
-    // Final safety
-    if (_imageSize.width <= 0 || _imageSize.height <= 0) {
-        _imageSize = fallbackSize;
-    }
-    
-    
-    // 🔒 Force sane aspect ratio (Pinterest-safe)
-    if (_imageSize.width > 0 && _imageSize.height > 0) {
-        _preferredAspectRatio = _imageSize.height / _imageSize.width;
-    }
-
-    // Clamp extreme ratios
-    if (_preferredAspectRatio < 0.75) _preferredAspectRatio = 0.75;
-    if (_preferredAspectRatio > 1.6)  _preferredAspectRatio = 1.6;
-
-    // Ultimate fallback
-    if (_preferredAspectRatio <= 0) {
-        _preferredAspectRatio = 1.15;
-    }
-
-    // 🔒 Max height safeguard (prevents ultra-tall cells)
-    CGFloat maxHeight = 180.0;
-    if (_imageSize.width > 0) {
-        CGFloat computedHeight = _imageSize.width * _preferredAspectRatio;
-        if (computedHeight > maxHeight) {
-            _preferredAspectRatio = maxHeight / _imageSize.width;
-        }
-    }
-    
-    return self;
-}
-
-
-- (instancetype)initSkeleton
-{
-    self = [super init];
-    if (!self) return nil;
-
-    // ===== Skeleton defaults =====
     _placeholder = [UIImage imageNamed:@"placeholder"];
     _title = @"";
     _subtitle = @"";
     _priceText = @"";
-    _imageURL = nil;
-    _imageSize = CGSizeMake(1, 1.2);
-    _preferredAspectRatio = 1.2;
-    _contextualReasonText = nil;
-    _contextualReasonIconName = nil;
+    _discountText = @"";
+    _blurHash = @"";
+    _currencyCode = PPUniversalLocalizedString(@"Rials", @"QAR");
+    _availabilityText = @"";
+    _badgeText = @"";
+    _stockStatusText = @"";
+    _location = @"";
+    _modelContext = context;
+    _ModelObject = model;
+    _ModelID = [NSString stringWithFormat:@"%p", model];
+    _modelType = NSStringFromClass([model class]);
+    _preferredAspectRatio = 0.90;
+    _imageSize = CGSizeMake(1.0, 1.0);
+    _itemQuantitiy = 0;
+    _skeleton = NO;
 
-    _isOwner = NO;
-    _hasOffer = NO;
-    _isNew = NO;
+    switch (context) {
+        case PPCellForMarket:
+        case PPCellForContextAccessory:
+            _cellSection = CellSectionAccessories;
+            _ppSection = PPSectionAccess;
+            break;
+        case PPCellForFood:
+            _cellSection = CellSectionFood;
+            _ppSection = PPSectionFood;
+            break;
+        case PPCellForServices:
+            _cellSection = CellSectionServices;
+            _ppSection = PPSectionServices;
+            break;
+        case PPCellForVets:
+            _cellSection = CellSectionVet;
+            _ppSection = PPSectionVets;
+            break;
+        case PPCellForHomeAds:
+        case PPCellForAds:
+        default:
+            _cellSection = CellSectionAds;
+            _ppSection = PPSectionAds;
+            break;
+    }
 
-    _ModelID = [NSUUID UUID].UUIDString;
-    _ModelObject = nil;
+    NSString *currentUserID = UserManager.sharedManager.currentUser.ID ?: @"";
 
-    // Skeleton is visually treated as Ads-style card
+    if ([model isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)model;
+        PetImageItem *firstImage = accessory.imageItems.firstObject;
+
+        _title = accessory.name ?: PPUniversalLocalizedString(@"UntitledAccessory", PPUniversalLocalizedPair(@"Untitled accessory", @"منتج بدون اسم"));
+        _subtitle = PPUniversalAccessorySubtitle(accessory);
+        _ModelID = accessory.accessoryID.length > 0 ? accessory.accessoryID : _ModelID;
+        _imageURL = accessory.imageURLsArray.firstObject;
+        _blurHash = accessory.blurHash ?: @"";
+        _price = accessory.price;
+        _finalPrice = accessory.finalPrice;
+        _discountPercent = accessory.discountPercent;
+        _discountAmount = accessory.discountAmount;
+        _itemQuantitiy = MAX(accessory.quantity, 0);
+        _stockStatusText = accessory.stockStatusText ?: @"";
+        if (accessory.quantity <= 0) {
+            _availabilityText = PPUniversalLocalizedString(@"Out of stock", PPUniversalLocalizedPair(@"Out of stock", @"غير متوفر"));
+        } else if (accessory.quantity < 5) {
+            _availabilityText = [NSString stringWithFormat:@"%@ %ld %@",
+                                 PPUniversalLocalizedString(@"Only", PPUniversalLocalizedPair(@"Only", @"متبقي")),
+                                 (long)accessory.quantity,
+                                 PPUniversalLocalizedString(@"left in stock", PPUniversalLocalizedPair(@"left in stock", @"في المخزون"))];
+        } else {
+            _availabilityText = _stockStatusText.length > 0
+                ? _stockStatusText
+                : PPUniversalLocalizedString(@"Available", PPUniversalLocalizedPair(@"Available", @"متوفر"));
+        }
+        _badgeText = [PetAccessory typeTextForAccessory:accessory] ?: @"";
+        _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:accessory.ownerID];
+        _hasOffer = accessory.hasOffer;
+        _isNew = accessory.isNew;
+        _contextualReasonText = accessory.isNew
+            ? PPUniversalLocalizedString(@"New", PPUniversalLocalizedPair(@"New", @"جديد"))
+            : @"";
+        _priceText = [GM formatPrice:(accessory.finalPrice ?: accessory.price)
+                        currencyCode:_currencyCode] ?: @"";
+        if (firstImage) {
+            _imageSize = CGSizeMake(MAX(firstImage.width, 1.0), MAX(firstImage.height, 1.0));
+        }
+        _preferredAspectRatio = PPUniversalClampedAspectRatio(_imageSize, 0.78);
+    } else if ([model isKindOfClass:[PetAd class]]) {
+        PetAd *ad = (PetAd *)model;
+        PetImageItem *firstImage = ad.imageItems.firstObject;
+
+        NSString *resolvedLocation = ad.locationName ?: @"";
+        if (resolvedLocation.length == 0 && ad.adLocation > 0) {
+            resolvedLocation = [CitiesManager.shared cityNameForID:ad.adLocation] ?: @"";
+        }
+
+        _title = ad.adTitle ?: PPUniversalLocalizedString(@"UntitledAd", PPUniversalLocalizedPair(@"Untitled ad", @"إعلان بدون عنوان"));
+        _ModelID = ad.adID.length > 0 ? ad.adID : _ModelID;
+        _imageURL = firstImage.url;
+        _blurHash = firstImage.blurHash ?: ad.blurHash ?: @"";
+        _imageSize = CGSizeMake(MAX(firstImage.width, 1.0), MAX(firstImage.height, 1.0));
+        _location = resolvedLocation;
+        _subtitle = PPUniversalAdSubtitle(ad, resolvedLocation);
+        _price = ad.price;
+        _finalPrice = PPUniversalPetAdFinalPrice(ad);
+        _discountPercent = ad.discountPercent;
+        _priceText = _finalPrice ? [GM formatPrice:_finalPrice currencyCode:_currencyCode] : @"";
+        _availabilityText = ad.isSold
+            ? PPUniversalLocalizedString(@"Sold", PPUniversalLocalizedPair(@"Sold", @"تم البيع"))
+            : PPUniversalLocalizedString(@"Available", PPUniversalLocalizedPair(@"Available", @"متوفر"));
+        _badgeText = PPUniversalAdBadgeText(ad);
+        _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:ad.ownerID];
+        _isNew = ad.isNew;
+        _hasOffer = ad.isDiscounted;
+        if (ad.priorityScore.doubleValue > 0.0 || context == PPCellForHomeAds) {
+            _contextualReasonText = PPUniversalLocalizedString(@"Promoted", PPUniversalLocalizedPair(@"Promoted", @"مميز"));
+        } else if (ad.isNew) {
+            _contextualReasonText = PPUniversalLocalizedString(@"New", PPUniversalLocalizedPair(@"New", @"جديد"));
+        }
+        _preferredAspectRatio = PPUniversalClampedAspectRatio(_imageSize, 0.98);
+    } else if ([model isKindOfClass:[ServiceModel class]]) {
+        ServiceModel *service = (ServiceModel *)model;
+
+        _title = service.title ?: PPUniversalLocalizedString(@"UntitledService", PPUniversalLocalizedPair(@"Untitled service", @"خدمة بدون اسم"));
+        _subtitle = service.category.length > 0 ? service.category : service.localizedTypeName;
+        _ModelID = service.serviceID.length > 0 ? service.serviceID : _ModelID;
+        _imageURL = service.imageURL;
+        _blurHash = service.blurHash ?: @"";
+        _price = @(MAX(service.price, 0.0));
+        _finalPrice = _price;
+        _currencyCode = service.currency.length > 0 ? service.currency : _currencyCode;
+        _priceText = [GM formatPrice:_finalPrice currencyCode:_currencyCode] ?: @"";
+        _availabilityText = service.localizedAvailabilityStatus.length > 0
+            ? service.localizedAvailabilityStatus
+            : (service.isAvailable
+               ? PPUniversalLocalizedString(@"Available", PPUniversalLocalizedPair(@"Available", @"متوفر"))
+               : PPUniversalLocalizedString(@"Unavailable", PPUniversalLocalizedPair(@"Unavailable", @"غير متوفر")));
+        _badgeText = service.localizedTypeName.length > 0
+            ? service.localizedTypeName
+            : PPUniversalLocalizedString(@"services", PPUniversalLocalizedPair(@"Service", @"خدمة"));
+        _preferredAspectRatio = 0.72;
+        _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:service.serviceOwnerID];
+    } else if ([model isKindOfClass:[VetModel class]]) {
+        VetModel *vet = (VetModel *)model;
+
+        _title = vet.title ?: PPUniversalLocalizedString(@"VetClinic", PPUniversalLocalizedPair(@"Veterinary clinic", @"عيادة بيطرية"));
+        _subtitle = vet.descriptionText ?: @"";
+        _ModelID = vet.vetID.length > 0 ? vet.vetID : _ModelID;
+        _imageURL = vet.logoURL;
+        _blurHash = vet.blurHash ?: @"";
+        _price = @(MAX(vet.vetCost, 0.0));
+        _finalPrice = _price;
+        _priceText = [GM formatPrice:_price currencyCode:_currencyCode] ?: @"";
+        _availabilityText = PPUniversalLocalizedString(@"Available", PPUniversalLocalizedPair(@"Available", @"متوفر"));
+        _badgeText = PPUniversalLocalizedPair(@"Clinic", @"عيادة");
+        _preferredAspectRatio = 0.72;
+        _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:vet.userID];
+    } else if (model != nil) {
+        _title = PPUniversalLocalizedString(@"UnknownItem", PPUniversalLocalizedPair(@"Unknown item", @"عنصر غير معروف"));
+    }
+
+    if (_priceText.length == 0 && _finalPrice != nil) {
+        _priceText = [GM formatPrice:_finalPrice currencyCode:_currencyCode] ?: @"";
+    }
+
+    if (_discountPercent.doubleValue > 0.0) {
+        _discountText = [NSString stringWithFormat:@"%@%%", _discountPercent];
+    } else if (_discountAmount.doubleValue > 0.0) {
+        NSString *formattedAmount = [GM formatPrice:_discountAmount currencyCode:_currencyCode] ?: _discountAmount.stringValue;
+        _discountText = [NSString stringWithFormat:@"%@ %@", PPUniversalLocalizedPair(@"Save", @"وفر"), formattedAmount];
+    }
+
+    if (_imageSize.width <= 0.0 || _imageSize.height <= 0.0) {
+        _imageSize = CGSizeMake(1.0, MAX(_preferredAspectRatio, 0.75));
+    }
+
+    return self;
+}
+
+- (instancetype)initSkeleton
+{
+    self = [super init];
+    if (!self) {
+        return nil;
+    }
+
+    _placeholder = [UIImage imageNamed:@"placeholder"];
+    _title = @"";
+    _subtitle = @"";
+    _priceText = @"";
+    _discountText = @"";
+    _blurHash = @"";
+    _currencyCode = PPUniversalLocalizedString(@"Rials", @"QAR");
+    _availabilityText = @"";
+    _badgeText = @"";
+    _stockStatusText = @"";
+    _location = @"";
     _modelContext = PPCellForAds;
     _cellSection = CellSectionAds;
     _ppSection = PPSectionAds;
-
-    // No discounts / stock info
-    _price = nil;
-    _finalPrice = nil;
-    _discountPercent = 0;
-    _discountAmount = 0;
-    _stockStatusText = nil;
+    _ModelID = [NSUUID UUID].UUIDString;
+    _modelType = @"Skeleton";
+    _preferredAspectRatio = 1.02;
+    _imageSize = CGSizeMake(1.0, 1.02);
     _itemQuantitiy = 0;
+    _skeleton = YES;
 
     return self;
 }

@@ -59,14 +59,20 @@
 
 - (CGFloat)pp_catalogCardHeightForWidth:(CGFloat)width
 {
+    if (width > 260.0) {
+        return 192.0;
+    }
     CGFloat contentWidth = MAX(width - 28.0, 96.0);
-    CGFloat imageHeight = contentWidth * 0.70;
-    return ceil(14.0 + imageHeight + 8.0 + 58.0 + 8.0 + 34.0 + 6.0 + 26.0 + 14.0);
+    CGFloat imageHeight = contentWidth * 0.78;
+    return ceil(14.0 + imageHeight + 12.0 + 66.0 + 10.0 + 44.0 + 10.0 + 28.0 + 16.0);
 }
 
 - (CGFloat)pp_serviceCardHeightForWidth:(CGFloat)width
 {
-    return ceil((width * 0.72) + 168.0);
+    if (width > 260.0) {
+        return 188.0;
+    }
+    return ceil((width * 0.74) + 170.0);
 }
 
 - (CGFloat)pp_adsCardHeightForWidth:(CGFloat)width
@@ -78,8 +84,11 @@
     } else if (vm.preferredAspectRatio > 0.0) {
         ratio = MAX(ratio, vm.preferredAspectRatio);
     }
-    ratio = MIN(ratio, 1.35);
-    return ceil((width * ratio) + 102.0);
+    ratio = MIN(ratio, 1.18);
+    if (width > 260.0) {
+        return 204.0;
+    }
+    return ceil((width * ratio) + 160.0);
 }
 
 - (CGFloat)pp_preferredHeightForViewModel:(PPUniversalCellViewModel *)vm
