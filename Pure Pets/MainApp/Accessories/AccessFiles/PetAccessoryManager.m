@@ -17,30 +17,10 @@
 #import "PPFirestoreErrorNotifier.h"
 #import "PPFunc.h"
 
-#pragma mark - Hidden-Category Filtering (Accessories)
-
-/// Returns the set of currently visible main-kind IDs (for accessories).
-static NSSet<NSNumber *> *PPVisibleMainKindIDsForAccessories(void) {
-    NSMutableSet<NSNumber *> *ids = [NSMutableSet set];
-    for (MainKindsModel *kind in PPMainKindsArray) {
-        if (kind.ID > 0) {
-            [ids addObject:@(kind.ID)];
-        }
-    }
-    return ids;
-}
-
-/// Filters out accessories whose main category belongs to a hidden main kind.
-static NSArray<PetAccessory *> *PPFilterAccessoriesByVisibleCategories(NSArray<PetAccessory *> *accessories) {
-    NSSet<NSNumber *> *visibleIDs = PPVisibleMainKindIDsForAccessories();
-    if (visibleIDs.count == 0) return accessories; // Categories not loaded yet — don't filter
-
-    return [accessories filteredArrayUsingPredicate:
-        [NSPredicate predicateWithBlock:^BOOL(PetAccessory *acc, NSDictionary *bindings) {
-            if (acc.petMainCategoryID <= 0) return YES; // General/no-category items pass through
-            return [visibleIDs containsObject:@(acc.petMainCategoryID)];
-        }]];
-}
+#pragma mark - Hidden-Category Filtering (Accessories) — REMOVED
+// Visibility filtering has been replaced by positive accessKindType == X
+// Firestore queries. The PPVisibleMainKindIDsForAccessories() and
+// PPFilterAccessoriesByVisibleCategories() functions have been removed.
 
 @interface PetAccessoryManager ()
 @property (nonatomic, strong) FIRFirestore *firestore;
@@ -193,6 +173,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     if (accessory.accessKindType == AccessTypeFood) {
         candidateKeys = @[kPermManageFood, kPermManageStore, kPermSellNew, kPermPostAds, kPermAdminAll];
         deniedMessage = @"You don't have permission to add food items.";
+    } else if (accessory.accessKindType == AccessTypeLivePet) {
+        candidateKeys = @[kPermManageStore, kPermSellNew, kPermPostAds, kPermAdminAll];
+        deniedMessage = @"You don't have permission to add live pets.";
     } else if (accessory.condition == AccessConditionsNew) {
         candidateKeys = @[kPermSellNew, kPermManageStore, kPermPostAds, kPermAdminAll];
         deniedMessage = @"You don't have permission to add new accessories.";
@@ -266,7 +249,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
-        visible = PPFilterAccessoriesByVisibleCategories(visible);
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible);
         });
@@ -327,15 +309,12 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
-        visible = PPFilterAccessoriesByVisibleCategories(visible);
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible);
         });
     }];
 }
 
-
-#pragma mark - SubKind-Aware Accessory Fetching
 /// Fetch accessories filtered by kind, main category, and subKind (if >0).
 - (void)fetchAccessoriesOfKind:(AccessKindType)kind
                   MainCategory:(NSInteger)mainCategoryID
@@ -391,7 +370,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
 
             NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
-            visible = PPFilterAccessoriesByVisibleCategories(visible);
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(visible);
             });
@@ -445,7 +423,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
-        visible = PPFilterAccessoriesByVisibleCategories(visible);
         // ✅ Always return on main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(visible);
@@ -507,7 +484,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
-        visible = PPFilterAccessoriesByVisibleCategories(visible);
         dispatch_async(dispatch_get_main_queue(), ^{
             NSLog(@"✅ Accessories matched = %lu", (unsigned long)visible.count);
             if (completion) completion(visible);
@@ -559,7 +535,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
-        visible = PPFilterAccessoriesByVisibleCategories(visible);
         // Always return on main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible, nil);
@@ -600,7 +575,6 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         }
 
         NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
-        visible = PPFilterAccessoriesByVisibleCategories(visible);
         if (completion) {
             completion(visible, nil);
         }
@@ -905,7 +879,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     // Log summary
     NSLog(@"📊 Creation Summary:");
     NSLog(@"  - Accessory: %@ (ID: %@)", accessory.name, accessory.accessoryID);
-    NSLog(@"  - Type: %@", accessory.accessKindType == AccessTypeFood ? @"Food" : @"Accessory");
+    NSLog(@"  - Type: %@", [PetAccessory typeTextForAccessory:accessory]);
     NSLog(@"  - Condition: %@", accessory.condition == AccessConditionsNew ? @"New" : @"Used");
     NSLog(@"  - Price: %@ (Final: %@)", accessory.price, accessory.finalPrice);
     NSLog(@"  - Images attempted: %ld", (long)totalImageCount);
@@ -1851,7 +1825,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                 item.accessoryID = doc.documentID;
-                item.accessKindType != accessKindType ?  : [accessories addObject:item];
+                if (item.accessKindType == accessKindType) {
+                    [accessories addObject:item];
+                }
                 
             }
             completion(accessories);
@@ -1905,7 +1881,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
                     
-                    if(item.accessKindType != AccessTypeFood)
+                    if(item.accessKindType == AccessTypeAccessory)
                         [results addObject:item];
                 }
                 dispatch_group_leave(group);

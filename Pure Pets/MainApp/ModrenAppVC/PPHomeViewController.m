@@ -1099,12 +1099,17 @@
     UIColor *surfaceColor = AppForgroundColr ?: [UIColor secondarySystemBackgroundColor];
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
 
-    // Modern glass: blur + subtle tint instead of opaque solid
+    // Modern glass: Force blur + subtle tint visibility
     _chromeView.backgroundColor = UIColor.clearColor;
-    _chromeBlurView.alpha = _showSmartPillBackground ? 1.0 : 0.0;
-    CGFloat tintAlpha = _showSmartPillBackground ? (isDark ? 0.32 : 0.28) : 0.0;
+    _chromeBlurView.alpha = 1.0;
+    
+    // Explicitly set blur style for light/dark modes
+    UIBlurEffectStyle blurStyle = isDark ? UIBlurEffectStyleSystemMaterialDark : UIBlurEffectStyleSystemMaterialLight;
+    _chromeBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+
+    CGFloat tintAlpha = isDark ? 0.32 : 0.28;
     _chromeTintOverlay.backgroundColor = [surfaceColor colorWithAlphaComponent:tintAlpha];
-    _chromeView.layer.borderWidth = _showSmartPillBackground ? 0.5f : 0.0f;
+    _chromeView.layer.borderWidth = 0.5f;
     _chromeView.layer.borderColor =
         [[textColor colorWithAlphaComponent:isDark ? 0.14 : 0.10] CGColor];
 
@@ -1125,7 +1130,7 @@
     _trailingOrbView.layer.borderColor =
         [[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06] CGColor];
     _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
-    self.layer.shadowOpacity = _showSmartPillBackground ? (isDark ? 0.16f : 0.08f) : 0.0f;
+    self.layer.shadowOpacity = isDark ? 0.16f : 0.08f;
 }
 
 - (void)pp_updateInteractiveStateAnimated:(BOOL)animated
@@ -1232,6 +1237,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL nearbyLoaded;
 @property (nonatomic, assign) BOOL nearbyLoading;
 @property (nonatomic, assign) BOOL hideServiceSection;
+@property (nonatomic, strong) NSArray<ServiceModel *> *nearbyServiceProviders;
+@property (nonatomic, assign) BOOL nearbyServicesLoaded;
+@property (nonatomic, assign) BOOL nearbyServicesLoading;
+@property (nonatomic, assign) BOOL nearbyServicesShowingLatest;
 @property (nonatomic, strong, nullable) MainKindsModel *selectedCategory;
 @property (nonatomic, strong) PPHomeLayoutManager *layoutManager;
 @property (nonatomic, strong) UICollectionView *collectionView;
@@ -1370,6 +1379,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count;
 @property (nonatomic, assign) BOOL isMainKindsExpanded;
 @property (nonatomic, assign) BOOL didAutoScrollSuggestions;
+@property (nonatomic, assign) BOOL didAutoScrollNearbyServices;
 @property (nonatomic, assign) BOOL didFillSuggestionsOnce;
 @property (nonatomic, strong) UIView *profileCard;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeProfileItem;
@@ -1715,6 +1725,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionAccessories),
         @(PPHomeSectionPetProfile),
         @(PPHomeSectionLastFood),
+        @(PPHomeSectionNearbyServices),
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionAdopt),
     ]];
@@ -1794,6 +1805,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                intoSectionWithIdentifier:@(PPHomeSectionPetProfile)];
     [snapshot appendItemsWithIdentifiers:@[]
                intoSectionWithIdentifier:@(PPHomeSectionLastFood)];
+    [snapshot appendItemsWithIdentifiers:@[]
+               intoSectionWithIdentifier:@(PPHomeSectionNearbyServices)];
     [snapshot appendItemsWithIdentifiers:@[]
                intoSectionWithIdentifier:@(PPHomeSectionAdsNearBy)];
 
@@ -2011,6 +2024,30 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             }
             break;
 
+        case PPHomeSectionNearbyServices:
+            if (self.nearbyServicesLoading && self.nearbyServiceProviders.count == 0) {
+                for (NSInteger i = 0; i < 3; i++) {
+                    PPHomeItem *item = [PPHomeItem new];
+                    item.universalViewModel = [[PPUniversalCellViewModel alloc] initSkeleton];
+                    [newItems addObject:item];
+                }
+            } else if (self.nearbyServiceProviders.count == 0) {
+                PPHomeItem *emptyItem = [PPHomeItem new];
+                emptyItem.payload = @"services-empty-state";
+                [newItems addObject:emptyItem];
+            } else {
+                for (ServiceModel *svc in self.nearbyServiceProviders) {
+                    PPHomeItem *item = [PPHomeItem new];
+                    PPUniversalCellViewModel *vm =
+                        [[PPUniversalCellViewModel alloc] initWithModel:svc
+                                                                context:PPCellForServices];
+                    vm.ModelObject = svc;
+                    item.universalViewModel = vm;
+                    [newItems addObject:item];
+                }
+            }
+            break;
+
         case PPHomeSectionSuggestions: {
             NSMutableSet<NSString *> *seenSuggestionIDs = [NSMutableSet set];
             NSDictionary *latestEvent =
@@ -2154,6 +2191,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     //[CartManager.sharedManager clearCart];
     self.isMainKindsExpanded = NO; // collapsed = horizontal
     self.hideServiceSection = YES;
+    self.nearbyServiceProviders = @[];
+    self.nearbyServicesLoaded = NO;
+    self.nearbyServicesLoading = NO;
+    self.nearbyServicesShowingLatest = NO;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
     self.view.backgroundColor = AppBageColor();
@@ -3931,6 +3972,18 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             break;
         }
 
+        case PPHomeSectionNearbyServices: {
+            cfg.hidden = (self.nearbyServiceProviders.count == 0 && !self.nearbyServicesLoading);
+            if (self.nearbyServicesShowingLatest) {
+                cfg.title = kLang(@"Home_ServiceProviders") ?: @"Service Providers";
+            } else {
+                cfg.title = kLang(@"Home_NearbyServiceProviders") ?: @"Nearby Service Providers";
+            }
+            cfg.subtitle = kLang(@"Home_ServiceProvidersSubtitle") ?: @"Find grooming, training & more";
+            cfg.iconName = arrowImage;
+            break;
+        }
+
         case PPHomeSectionLastFood: {
             cfg.hidden = self.lastFoodAccessories.count == 0;
             cfg.title = kLang(@"Home_LastFoodAdded") ?: @"Last Food Added";
@@ -4508,6 +4561,24 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return cell;
         }
 
+        if (section == PPHomeSectionNearbyServices &&
+            [item.payload isKindOfClass:NSString.class]) {
+            PPHomeActionCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeActionCell.reuseIdentifier
+                                                          forIndexPath:indexPath];
+            NSString *token = (NSString *)item.payload;
+            if ([token isEqualToString:@"services-empty-state"]) {
+                [cell configureWithTitle:kLang(@"Home_NoServicesAvailable") ?: @"No services available"
+                              systemIcon:@"wrench.and.screwdriver"];
+                cell.onTap = nil;
+            } else {
+                [cell configureWithTitle:kLang(@"Loading...")
+                              systemIcon:@"hourglass"];
+                cell.onTap = nil;
+            }
+            return cell;
+        }
+
 
             PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier forIndexPath:indexPath];
                 cell.delegate = strongSelf;
@@ -4793,6 +4864,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     [self refreshCurrentOrdersForce:YES];
     [self refreshNearbyAdsForce:YES reason:@"initial-load"];
+    [self refreshNearbyServicesForce:YES];
 }
 
 - (void)refreshNearbyAdsForce:(BOOL)force reason:(NSString *)reason
@@ -4903,6 +4975,73 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [self autoScrollIndextoIndex:2 inSection:PPHomeSectionSuggestions];
         }
     }];
+}
+
+#pragma mark - Nearby Services Providers (Smart Section)
+
+- (void)refreshNearbyServicesForce:(BOOL)force
+{
+    self.nearbyServicesLoading = YES;
+    if (self.nearbyServiceProviders.count == 0) {
+        [self reloadSection:PPHomeSectionNearbyServices];
+    }
+
+    __weak typeof(self) weakSelf = self;
+
+    // Smart logic: if user has a valid location, try nearby first
+    if (self.hasSelectedNearbyCoordinate &&
+        CLLocationCoordinate2DIsValid(self.selectedNearbyCoordinate)) {
+
+        // Services don't have geolocation yet — go straight to latest
+        [[ServicesManager sharedInstance]
+            fetchLatestServicesWithLimit:10
+                             completion:^(NSArray<ServiceModel *> *services,
+                                          NSError *error) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                NSArray *result = services ?: @[];
+                if (result.count < 3) {
+                    self.nearbyServiceProviders = result;
+                    self.nearbyServicesShowingLatest = YES;
+                } else {
+                    self.nearbyServiceProviders = result;
+                    self.nearbyServicesShowingLatest = NO;
+                }
+                self.nearbyServicesLoaded = YES;
+                self.nearbyServicesLoading = NO;
+                [self reloadSection:PPHomeSectionNearbyServices];
+                
+                if (!self.didAutoScrollNearbyServices && self.nearbyServiceProviders.count > 1) {
+                    self.didAutoScrollNearbyServices = YES;
+                    [self autoScrollIndextoIndex:1 inSection:PPHomeSectionNearbyServices];
+                }
+            });
+        }];
+    } else {
+        // No location → always show latest service providers
+        [[ServicesManager sharedInstance]
+            fetchLatestServicesWithLimit:10
+                             completion:^(NSArray<ServiceModel *> *services,
+                                          NSError *error) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) return;
+
+            dispatch_async(dispatch_get_main_queue(), ^{
+                self.nearbyServiceProviders = services ?: @[];
+                self.nearbyServicesShowingLatest = YES;
+                self.nearbyServicesLoaded = YES;
+                self.nearbyServicesLoading = NO;
+                [self reloadSection:PPHomeSectionNearbyServices];
+                
+                if (!self.didAutoScrollNearbyServices && self.nearbyServiceProviders.count > 1) {
+                    self.didAutoScrollNearbyServices = YES;
+                    [self autoScrollIndextoIndex:1 inSection:PPHomeSectionNearbyServices];
+                }
+            });
+        }];
+    }
 }
 
 - (void)tryApplySnapshot {
@@ -5145,6 +5284,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [self handleDeepLinkWithTarget:PPDeepLinkTargetNewByAds
                                   mainKind:nil
                                     source:PPInputSourceHomeNearBySection];
+            break;
+
+        case PPHomeSectionNearbyServices:
+            [self handleDeepLinkWithTarget:PPDeepLinkTargetServices
+                                  mainKind:nil
+                                    source:PPInputSourceHomeServicesSection];
             break;
 
         case PPHomeSectionSuggestions:
@@ -5664,7 +5809,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         case PPHomeSectionPetProfile:
         case PPHomeSectionBuyAgain:
         case PPHomeSectionLastFood:
-        case PPHomeSectionAdsNearBy: {
+        case PPHomeSectionAdsNearBy:
+        case PPHomeSectionNearbyServices: {
             [self pp_emitSelectionHaptic];
             if (section == PPHomeSectionPetProfile) {
                 [self pp_openPetProfilesEntryPoint];

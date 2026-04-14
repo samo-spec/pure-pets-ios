@@ -960,7 +960,7 @@
 "ShowAllCards_Ar" = "عرض كل البطاقات";
 
 
-"Out of stock" = "غير متوفر في المخزون";
+"Out of stock" = "صنف غير متوفر";
 "Only" = "متبقي";
 "left in stock" = "فقط";
 "leftInStock" = "فقط";
@@ -1882,6 +1882,18 @@
 "service_view_owner_pending" = "جاري تحميل مقدم الخدمة";
 "service_view_category" = "الفئة";
 "service_view_available_date" = "تاريخ التوفر";
+"service_card_available_now" = "متاح";
+"service_card_available_soon" = "متاح قريباً";
+"service_card_unavailable" = "غير متاح";
+"service_card_trending" = "رائج";
+"service_rate_sheet_title" = "قيّم هذه الخدمة";
+"service_rate_sheet_subtitle" = "اضغط على نجمة لمشاركة تجربتك.";
+"service_rate_sheet_current_format" = "التقييم الحالي %@";
+"service_rate_sheet_submit" = "إرسال التقييم";
+"service_rate_sheet_submitting" = "جارٍ الإرسال...";
+"service_rate_sheet_owner_block" = "لا يمكنك تقييم خدمتك الخاصة.";
+"service_rate_sheet_success" = "تم إرسال التقييم";
+"service_rate_sheet_failed" = "تعذر إرسال التقييم";
 "service_view_owner" = "مقدم الخدمة";
 "service_view_location_unavailable" = "الموقع غير متاح لهذه الخدمة حالياً.";
 "service_view_share_title" = "خدمة";
@@ -1901,6 +1913,13 @@
 "service_view_contact_ready" = "التواصل المباشر متاح";
 "service_view_contact_limited" = "بيانات التواصل محدودة حالياً";
 "service_view_provider_loading" = "جارِ تحميل بيانات مقدم الخدمة.";
+
+/* ── Service Viewer — New Model Fields ── */
+"service_view_availability" = "الإتاحة";
+"service_view_type" = "نوع الخدمة";
+"service_view_rating" = "التقييم";
+"service_view_no_reviews" = "لا توجد تقييمات بعد";
+"service_view_unavailable_banner" = "غير متاح حالياً";
 "Shop Now" = "تسوق الآن";
 "New Chat"= "دردشة جديدة" ;
 "profile_email_managed_by_provider" = "البريد الإلكتروني مُدار بواسطة مزود تسجيل الدخول.";
@@ -2453,3 +2472,21 @@
 "LightMode" = "فاتح";
 "DarkMode" = "داكن";
 "SystemMode" = "النظام";
+
+/* ── Nearby Service Providers Section ── */
+"Home_NearbyServiceProviders" = "مزودو الخدمات القريبون";
+"Home_ServiceProviders" = "مزودو الخدمات";
+"Home_ServiceProvidersSubtitle" = "تصفح خدمات العناية والتدريب والمزيد";
+"Home_NoServicesAvailable" = "لا توجد خدمات متاحة حالياً";
+
+/* ── Service Model Localized Helpers ── */
+"typeGrooming" = "عناية وتنظيف";
+"typeTraining" = "تدريب";
+"verifVerified" = "موثّق";
+"verifPending" = "قيد المراجعة";
+"verifRejected" = "مرفوض";
+"verifNotSet" = "غير محدد";
+"statusBlocked" = "محظور";
+"statusDisabled" = "معطّل";
+"Serv_Available" = "متاح";
+"Serv_Unavailable" = "غير متاح";

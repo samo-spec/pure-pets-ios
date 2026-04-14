@@ -57,6 +57,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 @property (nonatomic, strong) UIButton *shareActionButton;
 @property (nonatomic, strong) UIButton *PhoneActionButton;
 @property (nonatomic, strong, nullable) UIButton *reportActionButton;
+@property (nonatomic, strong, nullable) UIView *unavailableBannerView;
 
 @property (nonatomic, strong) UserModel *ownerModel;
 @property (nonatomic, assign) BOOL didTrackViewInteraction;
@@ -442,6 +443,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self pp_updateProviderSection];
     [self pp_reloadFacts];
     [self pp_updateActionAvailability];
+    [self pp_updateUnavailableBanner];
 }
 
 - (void)pp_updateProviderSection {
@@ -481,6 +483,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     UIColor *neutralAccent = [AppPrimaryTextClr colorWithAlphaComponent:0.68];
     NSString *providerCountryText = [self pp_providerCountryText];
 
+    // Row 1: Category + Pet Kind
     UIView *rowOne = [self pp_factRowWithViews:@[
         [self pp_factTileWithIcon:@"sparkles"
                             title:kLang(@"service_view_category")
@@ -492,10 +495,26 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
                            accent:[UIColor colorWithRed:0.32 green:0.66 blue:0.56 alpha:1.0]]
     ]];
 
+    // Row 2: Availability Status + Service Type
+    UIColor *availColor = self.service.isLive
+        ? [UIColor colorWithRed:0.20 green:0.63 blue:0.39 alpha:1.0]
+        : [UIColor colorWithRed:0.89 green:0.32 blue:0.36 alpha:1.0];
     UIView *rowTwo = [self pp_factRowWithViews:@[
-        [self pp_factTileWithIcon:@"calendar"
-                            title:kLang(@"service_view_available_date")
+        [self pp_factTileWithIcon:self.service.isLive ? @"checkmark.circle.fill" : @"exclamationmark.triangle.fill"
+                            title:kLang(@"service_view_availability")
                             value:[self pp_availableDateText]
+                           accent:availColor],
+        [self pp_factTileWithIcon:@"tag.fill"
+                            title:kLang(@"service_view_type")
+                            value:[self pp_serviceTypeName]
+                           accent:[UIColor colorWithRed:0.56 green:0.40 blue:0.80 alpha:1.0]]
+    ]];
+
+    // Row 3: Rating + Country
+    UIView *rowThree = [self pp_factRowWithViews:@[
+        [self pp_factTileWithIcon:@"star.fill"
+                            title:kLang(@"service_view_rating")
+                            value:[self pp_ratingText]
                            accent:[UIColor colorWithRed:0.95 green:0.63 blue:0.20 alpha:1.0]],
         [self pp_factTileWithIcon:@"globe"
                             title:kLang(@"Country")
@@ -503,7 +522,8 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
                            accent:[UIColor colorWithRed:0.34 green:0.55 blue:0.89 alpha:1.0]]
     ]];
 
-    UIView *rowThree = [self pp_factRowWithViews:@[
+    // Row 4: Posted date
+    UIView *rowFour = [self pp_factRowWithViews:@[
         [self pp_factTileWithIcon:@"clock"
                             title:kLang(@"service_view_posted_date")
                             value:[self pp_postedDateText]
@@ -513,6 +533,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self.factsStackView addArrangedSubview:rowOne];
     [self.factsStackView addArrangedSubview:rowTwo];
     [self.factsStackView addArrangedSubview:rowThree];
+    [self.factsStackView addArrangedSubview:rowFour];
 }
 
 - (void)pp_rebuildActions {
@@ -551,14 +572,28 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 - (NSArray<PPInfoPill *> *)pp_summaryPills {
     NSMutableArray<PPInfoPill *> *items = [NSMutableArray array];
 
+    // Availability status pill
+    NSString *availText = [self.service localizedAvailabilityStatus];
+    if (availText.length > 0) {
+        NSString *availIcon = self.service.isLive ? @"checkmark.circle.fill" : @"exclamationmark.triangle.fill";
+        [items addObject:[PPInfoPill itemWithIcon:availIcon text:availText]];
+    }
+
+    // Service type pill
+    NSString *typeName = [self.service localizedTypeName];
+    if (typeName.length > 0) {
+        [items addObject:[PPInfoPill itemWithIcon:@"tag.fill" text:typeName]];
+    }
+
     NSString *petKindText = [self pp_petKindText];
     if (petKindText.length > 0 && ![petKindText isEqualToString:kLang(@"Not specified")]) {
         [items addObject:[PPInfoPill itemWithIcon:@"pawprint.fill" text:petKindText]];
     }
 
-    NSString *availableDateText = [self pp_availableDateText];
-    if (availableDateText.length > 0 && ![availableDateText isEqualToString:kLang(@"Not specified")]) {
-        [items addObject:[PPInfoPill itemWithIcon:@"calendar" text:availableDateText]];
+    // Rating pill
+    if (self.service.ratingValue != nil && self.service.ratingValue.doubleValue > 0) {
+        NSString *ratingStr = [NSString stringWithFormat:@"%.1f ★", self.service.ratingValue.doubleValue];
+        [items addObject:[PPInfoPill itemWithIcon:@"star.fill" text:ratingStr]];
     }
 
     NSString *postedDateText = [self pp_postedDateText];
@@ -588,14 +623,29 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 }
 
 - (NSString *)pp_availableDateText {
-    if ([self.service.availableDate isKindOfClass:[NSDate class]]) {
-        return [GM formattedDate:self.service.availableDate];
+    // Prefer explicit availability status from the upgraded model
+    return [self.service localizedAvailabilityStatus];
+}
+
+- (NSString *)pp_serviceTypeName {
+    NSString *name = [self.service localizedTypeName];
+    return name.length > 0 ? name : kLang(@"Not specified");
+}
+
+- (NSString *)pp_ratingText {
+    if (self.service.ratingValue != nil && self.service.ratingValue.doubleValue > 0) {
+        if (self.service.reviewCount > 0) {
+            return [NSString stringWithFormat:@"%.1f (%ld)",
+                    self.service.ratingValue.doubleValue,
+                    (long)self.service.reviewCount];
+        }
+        return [NSString stringWithFormat:@"%.1f", self.service.ratingValue.doubleValue];
     }
-    return kLang(@"Not specified");
+    return kLang(@"service_view_no_reviews");
 }
 
 - (NSString *)pp_postedDateText {
-    NSDate *postedDate = self.service.timestamp ?: self.service.availableDate;
+    NSDate *postedDate = self.service.createdAt ?: self.service.timestamp ?: self.service.availableDate;
     if ([postedDate isKindOfClass:[NSDate class]]) {
         return [GM formattedDate:postedDate];
     }
@@ -671,11 +721,12 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 }
 
 - (NSString *)pp_priceText {
-    NSString *formattedPrice = [GM formatPrice:@(self.service.price) currencyCode:kLang(@"Rials")];
+    NSString *currencyCode = self.service.currency.length > 0 ? self.service.currency : kLang(@"Rials");
+    NSString *formattedPrice = [GM formatPrice:@(self.service.price) currencyCode:currencyCode];
     if (formattedPrice.length > 0) {
         return formattedPrice;
     }
-    return [NSString stringWithFormat:@"%.2f %@", self.service.price, kLang(@"Rials")];
+    return [NSString stringWithFormat:@"%.2f %@", self.service.price, currencyCode];
 }
 
 - (BOOL)pp_isOwnedByCurrentUser {
@@ -690,6 +741,64 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     BOOL canCopyNumber = self.ownerModel.MobileNo.length > 0;
     self.PhoneActionButton.enabled = canCopyNumber;
     self.PhoneActionButton.alpha = canCopyNumber ? 1.0 : 0.58;
+}
+
+- (void)pp_updateUnavailableBanner {
+    BOOL showBanner = !self.service.isLive;
+
+    if (!showBanner) {
+        [self.unavailableBannerView removeFromSuperview];
+        self.unavailableBannerView = nil;
+        return;
+    }
+
+    if (self.unavailableBannerView) return;
+
+    UIView *banner = [[UIView alloc] init];
+    banner.translatesAutoresizingMaskIntoConstraints = NO;
+    banner.backgroundColor = [[UIColor colorWithRed:0.89 green:0.32 blue:0.36 alpha:1.0] colorWithAlphaComponent:0.92];
+    banner.layer.cornerRadius = 14.0;
+    if (@available(iOS 13.0, *)) {
+        banner.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIImageView *warnIcon = [[UIImageView alloc] init];
+    warnIcon.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *cfg =
+        [UIImageSymbolConfiguration configurationWithPointSize:15 weight:UIImageSymbolWeightSemibold];
+    warnIcon.image = [[UIImage systemImageNamed:@"exclamationmark.triangle.fill"]
+                       imageByApplyingSymbolConfiguration:cfg];
+    warnIcon.tintColor = UIColor.whiteColor;
+    warnIcon.contentMode = UIViewContentModeScaleAspectFit;
+
+    UILabel *bannerLabel = [[UILabel alloc] init];
+    bannerLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    bannerLabel.font = [GM boldFontWithSize:14];
+    bannerLabel.textColor = UIColor.whiteColor;
+    bannerLabel.text = kLang(@"service_view_unavailable_banner");
+    bannerLabel.numberOfLines = 1;
+    bannerLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    [banner addSubview:warnIcon];
+    [banner addSubview:bannerLabel];
+    [self.heroContainerView addSubview:banner];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [banner.topAnchor constraintEqualToAnchor:self.heroContainerView.topAnchor constant:18.0],
+        [banner.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor constant:-18.0],
+        [banner.heightAnchor constraintEqualToConstant:36.0],
+
+        [warnIcon.leadingAnchor constraintEqualToAnchor:banner.leadingAnchor constant:10.0],
+        [warnIcon.centerYAnchor constraintEqualToAnchor:banner.centerYAnchor],
+        [warnIcon.widthAnchor constraintEqualToConstant:16.0],
+        [warnIcon.heightAnchor constraintEqualToConstant:16.0],
+
+        [bannerLabel.leadingAnchor constraintEqualToAnchor:warnIcon.trailingAnchor constant:6.0],
+        [bannerLabel.trailingAnchor constraintEqualToAnchor:banner.trailingAnchor constant:-12.0],
+        [bannerLabel.centerYAnchor constraintEqualToAnchor:banner.centerYAnchor]
+    ]];
+
+    self.unavailableBannerView = banner;
 }
 
 #pragma mark - Motion
@@ -761,12 +870,27 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [lines addObject:[NSString stringWithFormat:@"%@: %@",
                       kLang(@"service_view_category"),
                       [self pp_categoryText]]];
+
+    NSString *typeName = [self.service localizedTypeName];
+    if (typeName.length > 0) {
+        [lines addObject:[NSString stringWithFormat:@"%@: %@",
+                          kLang(@"service_view_type"),
+                          typeName]];
+    }
+
     [lines addObject:[NSString stringWithFormat:@"%@: %@",
                       kLang(@"service_view_owner"),
                       [self pp_providerDisplayName]]];
     [lines addObject:[NSString stringWithFormat:@"%@: %@",
                       kLang(@"Price"),
                       [self pp_priceText]]];
+
+    NSString *availStatus = [self.service localizedAvailabilityStatus];
+    if (availStatus.length > 0) {
+        [lines addObject:[NSString stringWithFormat:@"%@: %@",
+                          kLang(@"service_view_availability"),
+                          availStatus]];
+    }
 
     if (self.service.desc.length > 0) {
         [lines addObject:self.service.desc];

@@ -190,6 +190,14 @@ BOOL const isPPDebugMode = NO;
     return [self calculateFinalPrice];
 }
 
+- (BOOL)isLivePet {
+    return self.accessKindType == AccessTypeLivePet;
+}
+
+- (BOOL)isFood {
+    return self.accessKindType == AccessTypeFood;
+}
+
 - (instancetype)initWithDictionary:(NSDictionary *)dict documentID:(NSString *)docID {
     
     if (self = [super init]) {
@@ -224,7 +232,24 @@ BOOL const isPPDebugMode = NO;
 
         _ownerID = dict[@"ownerID"] ?: @"";
         _blurHash = dict[@"blurHash"] ?: @"";
-        _accessKindType = [dict[@"accessKindType"] integerValue] == 2 ? AccessTypeFood : AccessTypeAccessory;
+        _accessKindType = ({
+            NSInteger rawKind = [dict[@"accessKindType"] integerValue];
+            AccessKindType parsed;
+            switch (rawKind) {
+                case AccessTypeFood:     parsed = AccessTypeFood;     break;
+                case AccessTypeLivePet:  parsed = AccessTypeLivePet;  break;
+                default:                 parsed = AccessTypeAccessory; break;
+            }
+            // Backward compat: old docs with product_type == "live" but no accessKindType 3
+            if (parsed == AccessTypeAccessory) {
+                NSString *productType = dict[@"product_type"];
+                if ([productType isKindOfClass:[NSString class]] &&
+                    [productType caseInsensitiveCompare:@"live"] == NSOrderedSame) {
+                    parsed = AccessTypeLivePet;
+                }
+            }
+            parsed;
+        });
         _condition = [dict[@"condition"] integerValue];
         _isNew = [dict[@"isNew"] boolValue];
         _hasOffer = [dict[@"hasOffer"] boolValue];
@@ -422,6 +447,8 @@ BOOL const isPPDebugMode = NO;
             return kLang(@"Accessory");
         case AccessTypeFood:
             return kLang(@"Food");
+        case AccessTypeLivePet:
+            return kLang(@"Live Pet");
         default:
             return kLang(@"Unknown");
     }

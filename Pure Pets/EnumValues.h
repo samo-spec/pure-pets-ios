@@ -274,6 +274,7 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionAccessories,
     PPHomeSectionPetProfile,
     PPHomeSectionLastFood,
+    PPHomeSectionNearbyServices,
     PPHomeSectionAdsNearBy,
     PPHomeSectionAdopt, // legacy (not rendered on home in Pattern 1)
     PPHomeSectionBuyAgain,

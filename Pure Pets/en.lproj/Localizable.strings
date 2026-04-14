@@ -1926,6 +1926,18 @@
 "service_view_owner_pending" = "Loading owner";
 "service_view_category" = "Category";
 "service_view_available_date" = "Available date";
+"service_card_available_now" = "Available";
+"service_card_available_soon" = "Available soon";
+"service_card_unavailable" = "Unavailable";
+"service_card_trending" = "Trending";
+"service_rate_sheet_title" = "Rate this service";
+"service_rate_sheet_subtitle" = "Tap a star to share your experience.";
+"service_rate_sheet_current_format" = "Current rating %@";
+"service_rate_sheet_submit" = "Submit rating";
+"service_rate_sheet_submitting" = "Submitting...";
+"service_rate_sheet_owner_block" = "You can't rate your own service.";
+"service_rate_sheet_success" = "Rating submitted";
+"service_rate_sheet_failed" = "Couldn't submit rating";
 "service_view_owner" = "Provider";
 "service_view_location_unavailable" = "Location is not available for this service yet.";
 "service_view_share_title" = "Service";
@@ -1945,6 +1957,13 @@
 "service_view_contact_ready" = "Direct contact available";
 "service_view_contact_limited" = "Contact details are limited right now.";
 "service_view_provider_loading" = "Loading provider details.";
+
+/* ── Service Viewer — New Model Fields ── */
+"service_view_availability" = "Availability";
+"service_view_type" = "Service Type";
+"service_view_rating" = "Rating";
+"service_view_no_reviews" = "No reviews yet";
+"service_view_unavailable_banner" = "Currently unavailable";
 "Shop Now" = "Shop Now";
 "New Chat"= "New Chat" ;
 "profile_email_managed_by_provider" = "Email is managed by your login provider.";
@@ -2465,3 +2484,21 @@
 "LightMode" = "Light";
 "DarkMode" = "Dark";
 "SystemMode" = "System";
+
+/* ── Nearby Service Providers Section ── */
+"Home_NearbyServiceProviders" = "Nearby Service Providers";
+"Home_ServiceProviders" = "Service Providers";
+"Home_ServiceProvidersSubtitle" = "Find grooming, training & more";
+"Home_NoServicesAvailable" = "No services available yet";
+
+/* ── Service Model Localized Helpers ── */
+"typeGrooming" = "Grooming";
+"typeTraining" = "Training";
+"verifVerified" = "Verified";
+"verifPending" = "Pending Review";
+"verifRejected" = "Rejected";
+"verifNotSet" = "Not Set";
+"statusBlocked" = "Blocked";
+"statusDisabled" = "Disabled";
+"Serv_Available" = "Available";
+"Serv_Unavailable" = "Unavailable";

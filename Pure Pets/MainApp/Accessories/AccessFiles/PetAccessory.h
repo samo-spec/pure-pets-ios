@@ -10,7 +10,8 @@ typedef NS_ENUM(NSInteger, AccessConditions)
 typedef NS_ENUM(NSInteger, AccessKindType)
 {
     AccessTypeAccessory = 1,
-    AccessTypeFood = 2
+    AccessTypeFood = 2,
+    AccessTypeLivePet = 3
 };
 
 NS_ASSUME_NONNULL_BEGIN
@@ -47,6 +48,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)stockStatusText;
 @property (nonatomic, assign) BOOL isNew;
 @property (nonatomic, assign) BOOL hasOffer;
+
+// Computed type helpers
+@property (nonatomic, readonly) BOOL isLivePet;
+@property (nonatomic, readonly) BOOL isFood;
 
 // Firestore helpers
 - (instancetype)initWithDictionary:(NSDictionary *)dict documentID:(NSString *)docID;

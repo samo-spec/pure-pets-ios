@@ -153,7 +153,7 @@
             }
 
             // 🔒 Enforce minimum height
-            itemHeight = MAX(itemHeight, 200.0);
+            itemHeight = MAX(itemHeight, 220.0);
 
             // Create layout attributes and set frame
             UICollectionViewLayoutAttributes *attributes = [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];

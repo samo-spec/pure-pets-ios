@@ -41,6 +41,7 @@
 + (NSCollectionLayoutSection *)accessoriesSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)buyAgainSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)adsNearBySectionForWidth:(CGFloat)availableWidth;
++ (NSCollectionLayoutSection *)nearbyServicesSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)petProfileSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)lastFoodSection;
 + (NSCollectionLayoutSection *)lastFoodSectionForWidth:(CGFloat)availableWidth;

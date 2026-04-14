@@ -27,14 +27,16 @@
     id firstItem = self.items.firstObject;
     if ([firstItem isKindOfClass:[PPUniversalCellViewModel class]]) {
         PPUniversalCellViewModel *vm = (PPUniversalCellViewModel *)firstItem;
-        return vm.modelContext == PPCellForMarket || [vm.ModelObject isKindOfClass:[PetAccessory class]];
+        return vm.modelContext == PPCellForMarket
+            || vm.modelContext == PPCellForServices
+            || [vm.ModelObject isKindOfClass:[PetAccessory class]];
     }
     return NO;
 }
 
 - (CGFloat)pp_marketCardHeightForWidth:(CGFloat)width
 {
-    return (width * 0.68) + 128.0;
+    return (width * 0.72) + 128.0;
 }
 
 #pragma mark - Public API
@@ -400,7 +402,9 @@ heightForItemAtIndexPath:(NSIndexPath *)indexPath
     if ([obj isKindOfClass:[PPUniversalCellViewModel class]]) {
         PPUniversalCellViewModel *vm = (PPUniversalCellViewModel *)obj;
 
-        if (vm.modelContext == PPCellForMarket || [vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+        if (vm.modelContext == PPCellForMarket
+            || vm.modelContext == PPCellForServices
+            || [vm.ModelObject isKindOfClass:[PetAccessory class]]) {
             return [self pp_marketCardHeightForWidth:width];
         }
 
