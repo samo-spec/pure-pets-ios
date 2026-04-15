@@ -48,6 +48,7 @@
     }
 
     if (tintColor) {
+        
         if (!existingTint) {
             existingTint = [CALayer layer];
             existingTint.name = @"pp.cornerBlur.tint";

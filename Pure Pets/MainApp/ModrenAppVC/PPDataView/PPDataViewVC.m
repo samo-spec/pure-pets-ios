@@ -1068,6 +1068,10 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         cell.hidden = NO;
         vm.indexPath = indexPath;
 
+        BOOL isAdContext = (vm.modelContext == PPCellForAds || vm.modelContext == PPCellForHomeAds);
+        cell.hideTopBadge = isAdContext;
+        cell.showsSubtitle = YES;
+
         [cell applyViewModel:vm
                      context:vm.modelContext
                   layoutMode:weakSelf.layoutManager.currentLayoutMode
@@ -1128,6 +1132,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         }];
 
         cell.delegate = weakSelf;
+
         return cell;
     }];
 }

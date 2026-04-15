@@ -5,6 +5,7 @@
 #import "VetModel.h"
 #import "CitiesManager.h"
 #import "MainKindsModel.h"
+#import "SubKindModel.h"
 
 static NSString *PPUniversalLocalizedString(NSString *key, NSString *fallback)
 {
@@ -38,24 +39,24 @@ static NSString *PPUniversalShortAgeText(NSNumber * _Nullable ageInMonths)
 
     if (months < 12) {
         NSString *monthLabel = months == 1
-            ? PPUniversalLocalizedPair(@"month", @"شهر")
-            : PPUniversalLocalizedPair(@"months", @"أشهر");
+            ? PPUniversalLocalizedPair(@"m", @"ش")
+            : PPUniversalLocalizedPair(@"m", @"ش");
         return [NSString stringWithFormat:@"%ld %@", (long)months, monthLabel];
     }
 
     NSInteger years = months / 12;
     NSInteger remainingMonths = months % 12;
     NSString *yearLabel = years == 1
-        ? PPUniversalLocalizedPair(@"year", @"سنة")
-        : PPUniversalLocalizedPair(@"years", @"سنوات");
+        ? PPUniversalLocalizedPair(@"y", @"س")
+        : PPUniversalLocalizedPair(@"y", @"س");
 
     if (remainingMonths == 0) {
         return [NSString stringWithFormat:@"%ld %@", (long)years, yearLabel];
     }
 
     NSString *monthLabel = remainingMonths == 1
-        ? PPUniversalLocalizedPair(@"month", @"شهر")
-        : PPUniversalLocalizedPair(@"months", @"أشهر");
+        ? PPUniversalLocalizedPair(@"m", @"ش")
+        : PPUniversalLocalizedPair(@"m", @"ش");
     return [NSString stringWithFormat:@"%ld %@ · %ld %@",
             (long)years,
             yearLabel,
@@ -92,14 +93,14 @@ static NSString *PPUniversalAdBadgeText(PetAd *ad)
 
 static NSString *PPUniversalAdSubtitle(PetAd *ad, NSString *locationText)
 {
-    if (locationText.length > 0) {
-        return locationText;
-    }
-
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    NSString *ageText = PPUniversalShortAgeText(ad.petAgeMonths);
-    if (ageText.length > 0) {
-        [parts addObject:ageText];
+
+    MainKindsModel *kind = [MainKindsModel mainKindModelForID:ad.category];
+    if (kind && ad.subcategory > 0) {
+        NSString *breedName = [SubKindModel getSubKindName:ad.subcategory subKindsArrayLocal:kind.SubKindsArray];
+        if (breedName.length > 0) {
+            [parts addObject:breedName];
+        }
     }
 
     NSString *genderText = ad.isFemale
@@ -109,7 +110,16 @@ static NSString *PPUniversalAdSubtitle(PetAd *ad, NSString *locationText)
         [parts addObject:genderText];
     }
 
-    return [parts componentsJoinedByString:@" • "];
+    NSString *ageText = PPUniversalShortAgeText(ad.petAgeMonths);
+    if (ageText.length > 0) {
+        [parts addObject:ageText];
+    }
+
+    if (locationText.length > 0) {
+       // [parts addObject:locationText];
+    }
+
+    return [parts componentsJoinedByString:@" · "];
 }
 
 static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)

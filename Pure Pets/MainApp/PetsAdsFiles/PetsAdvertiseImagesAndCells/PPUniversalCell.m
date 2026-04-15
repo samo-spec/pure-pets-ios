@@ -25,14 +25,15 @@ static CGFloat const PPUniversalImageCornerRadius = 22.0;
 static CGFloat const PPUniversalOuterInset = 14.0;
 static CGFloat const PPUniversalInnerSpacing = 12.0;
 static CGFloat const PPUniversalButtonHeight = 34.0;
-static CGFloat const PPUniversalPillHeight = 26.0;
-static CGFloat const PPUniversalCompactTitleHeight = 16.0;
-static CGFloat const PPUniversalCompactPriceHeight = 22.0;
+static CGFloat const PPUniversalPillHeight = 34.0;
+static CGFloat const PPUniversalCompactTitleHeight = 24.0;
+static CGFloat const PPUniversalCompactPriceHeight = 26.0;
 static CGFloat const PPUniversalControlButtonSize = 38.0;
 static NSTimeInterval const PPUniversalStepperAutoCollapseDelay = 3.5;
-static BOOL const PPUniversalTemporarilyHideSubtitle = YES;
+static BOOL const PPUniversalTemporarilyHideSubtitle = NO;
 static BOOL const PPUniversalTemporarilyHideShareButton = YES;
 static BOOL const PPUniversalTemporarilyHideCategoryBadge = YES;
+static BOOL const PPUniversalTemporarilyHideMenuButton = YES;
 
 static NSString *PPUniversalCellLocalizedString(NSString *key, NSString *fallback)
 {
@@ -65,6 +66,36 @@ static UIFont *PPUniversalCellBoldFont(CGFloat size)
 static NSString *PPUniversalCellSafeString(NSString *value)
 {
     return value.length > 0 ? value : @"";
+}
+
+static NSString *PPUniversalCellFormattedPrice(NSNumber *amount, NSString *currencyCode)
+{
+    if (!amount) {
+        return @"";
+    }
+
+    NSNumberFormatter *formatter = [NSNumberFormatter new];
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_QA"];
+
+    double absoluteValue = fabs(amount.doubleValue);
+    BOOL hasCents = fmod(absoluteValue, 1.0) > 0.0001;
+    formatter.minimumFractionDigits = hasCents ? 2 : 0;
+    formatter.maximumFractionDigits = 2;
+
+    NSString *numberText = [formatter stringFromNumber:amount] ?: amount.stringValue;
+    NSString *resolvedCurrency = currencyCode.length > 0 ? currencyCode : @"QAR";
+    return Language.isRTL
+        ? [NSString stringWithFormat:@"%@ %@", numberText, resolvedCurrency]
+        : [NSString stringWithFormat:@"%@ %@", resolvedCurrency, numberText];
+}
+
+static BOOL PPUniversalCellReasonLooksNearby(NSString *text)
+{
+    NSString *lowerText = PPUniversalCellSafeString(text).lowercaseString;
+    return [lowerText containsString:@"near"] ||
+           [lowerText containsString:@"قريب"] ||
+           [lowerText containsString:@"بالقرب"];
 }
 
 static NSString *PPUniversalCellNormalizedCurrencyCode(NSString *currencyCode)
@@ -163,7 +194,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     }
 
     self.translatesAutoresizingMaskIntoConstraints = NO;
-    self.userInteractionEnabled = NO;
+    self.userInteractionEnabled = YES;
     self.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
@@ -173,37 +204,9 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 
 - (void)applyContextPaletteForContext:(PPCellContext)context
 {
-    NSArray<UIColor *> *colors = nil;
-    switch (context) {
-        case PPCellForServices:
-        case PPCellForVets:
-            colors = @[
-                [UIColor colorWithRed:0.89 green:0.97 blue:0.95 alpha:1.0],
-                [UIColor colorWithRed:0.95 green:0.99 blue:0.98 alpha:1.0]
-            ];
-            break;
-        case PPCellForMarket:
-        case PPCellForFood:
-        case PPCellForContextAccessory:
-            colors = @[
-                [UIColor colorWithRed:0.99 green:0.94 blue:0.95 alpha:1.0],
-                [UIColor colorWithRed:1.00 green:0.98 blue:0.94 alpha:1.0]
-            ];
-            break;
-        case PPCellForHomeAds:
-        case PPCellForAds:
-        default:
-            colors = @[
-                [UIColor colorWithRed:0.96 green:0.93 blue:0.91 alpha:1.0],
-                [UIColor colorWithRed:0.99 green:0.97 blue:0.96 alpha:1.0]
-            ];
-            break;
-    }
-
+    self.backgroundColor = [UIColor clearColor];
     CAGradientLayer *layer = (CAGradientLayer *)self.layer;
-    layer.startPoint = CGPointMake(0.0, 0.0);
-    layer.endPoint = CGPointMake(1.0, 1.0);
-    layer.colors = @[(id)colors.firstObject.CGColor, (id)colors.lastObject.CGColor];
+    layer.colors = @[(id)[UIColor clearColor].CGColor, (id)[UIColor clearColor].CGColor];
 }
 
 @end
@@ -363,10 +366,13 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 @property (nonatomic, strong) UILabel *quantityLabel;
 @property (nonatomic, strong) UIButton *plusButton;
 @property (nonatomic, strong) PPUniversalInsetLabel *availabilityLabel;
+@property (nonatomic, strong) PPUniversalInsetLabel *serviceMetaLabel;
 @property (nonatomic, strong) FavoriteFloatingButton *favoriteButton;
+@property (nonatomic, strong) FavoriteFloatingButton *bodyFavButton;
 @property (nonatomic, strong) UIButton *shareButton;
 @property (nonatomic, strong) UIButton *menuButton;
 @property (nonatomic, strong) PPUniversalSkeletonView *skeletonView;
+@property (nonatomic, strong) CAGradientLayer *cardGradientLayer;
 
 @property (nonatomic, strong) NSLayoutConstraint *imageAspectConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *fullWidthImageWidthConstraint;
@@ -374,10 +380,15 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 @property (nonatomic, strong) NSLayoutConstraint *priceTopToSubtitleConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subtitleHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *oldPriceCollapsedConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *availabilityLeadingToBodyConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *availabilityLeadingToMetaConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *serviceMetaCollapsedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *availabilityTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *titleHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *priceHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *availabilityHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *priceContainerTrailingToBodyConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *priceContainerTrailingToFavConstraint;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *compactLayoutConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *fullWidthLayoutConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *dynamicBadgeConstraints;
@@ -448,17 +459,42 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.oldPriceLabel.attributedText = nil;
     self.oldPriceCollapsedConstraint.active = YES;
     self.availabilityLabel.text = @"";
+    self.serviceMetaLabel.text = @"";
+    self.serviceMetaLabel.attributedText = nil;
+    self.serviceMetaLabel.hidden = YES;
+    self.availabilityLeadingToBodyConstraint.active = YES;
+    self.availabilityLeadingToMetaConstraint.active = NO;
+    self.serviceMetaCollapsedConstraint.active = YES;
     self.reasonBadgeLabel.hidden = YES;
+    self.hideTopBadge = NO;
+    self.showsSubtitle = NO;
     self.discountBadgeLabel.hidden = YES;
     self.categoryBadgeLabel.hidden = YES;
     self.shareButton.hidden = YES;
     self.menuButton.hidden = YES;
     self.favoriteButton.hidden = YES;
+    self.bodyFavButton.hidden = YES;
+    self.priceContainerTrailingToFavConstraint.active = NO;
+    self.priceContainerTrailingToBodyConstraint.active = YES;
     self.skeletonView.hidden = YES;
     [self.skeletonView stopAnimating];
     [NSLayoutConstraint deactivateConstraints:self.dynamicBadgeConstraints];
     self.dynamicBadgeConstraints = @[];
+    [self.cardGradientLayer removeFromSuperlayer];
+    self.cardGradientLayer = nil;
     [self collapseStepper:NO];
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    if (self.cardGradientLayer) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        self.cardGradientLayer.frame = self.cardView.bounds;
+        self.cardGradientLayer.cornerRadius = self.cardView.layer.cornerRadius;
+        [CATransaction commit];
+    }
 }
 
 #pragma mark - Setup
@@ -499,8 +535,11 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     [self.imageContainer addSubview:self.categoryBadgeLabel];
 
     self.favoriteButton = [[FavoriteFloatingButton alloc] init];
-    self.favoriteButton.hidesBackground = YES;
+    self.favoriteButton.hidesBackground = NO;
     self.favoriteButton.hidden = YES;
+    self.favoriteButton.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.35];
+    self.favoriteButton.layer.cornerRadius = PPUniversalControlButtonSize / 2.0;
+    self.favoriteButton.clipsToBounds = YES;
     [self.favoriteButton addTarget:self action:@selector(tapFavorite) forControlEvents:UIControlEventTouchUpInside];
     [self.imageContainer addSubview:self.favoriteButton];
 
@@ -550,8 +589,15 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.oldPriceLabel = [[UILabel alloc] init];
     self.oldPriceLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.oldPriceLabel.numberOfLines = 1;
+    self.oldPriceLabel.textAlignment = Language.isRTL ? NSTextAlignmentLeft :  NSTextAlignmentRight;
     [self.oldPriceLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.priceContainerView addSubview:self.oldPriceLabel];
+
+    self.bodyFavButton = [[FavoriteFloatingButton alloc] init];
+    self.bodyFavButton.hidesBackground = NO;
+    self.bodyFavButton.hidden = YES;
+    [self.bodyFavButton addTarget:self action:@selector(tapFavorite) forControlEvents:UIControlEventTouchUpInside];
+    [self.bodyContainer addSubview:self.bodyFavButton];
 
     self.actionHostView = [[UIView alloc] init];
     self.actionHostView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -594,6 +640,13 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     [self.availabilityLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     [self.bodyContainer addSubview:self.availabilityLabel];
 
+    self.serviceMetaLabel = [[PPUniversalInsetLabel alloc] init];
+    self.serviceMetaLabel.textAlignment = NSTextAlignmentCenter;
+    self.serviceMetaLabel.hidden = YES;
+    [self.serviceMetaLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.serviceMetaLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.bodyContainer addSubview:self.serviceMetaLabel];
+
     self.skeletonView = [[PPUniversalSkeletonView alloc] init];
     [self.cardView addSubview:self.skeletonView];
 
@@ -635,12 +688,14 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
 
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:2.0],
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
 
         [self.priceContainerView.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
-        [self.priceContainerView.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
+
+        [self.bodyFavButton.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
+        [self.bodyFavButton.centerYAnchor constraintEqualToAnchor:self.priceContainerView.topAnchor],
 
         [self.priceLabel.topAnchor constraintEqualToAnchor:self.priceContainerView.topAnchor],
         [self.priceLabel.leadingAnchor constraintEqualToAnchor:self.priceContainerView.leadingAnchor],
@@ -651,7 +706,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         [self.oldPriceLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.priceContainerView.trailingAnchor],
         [self.oldPriceLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.priceContainerView.bottomAnchor],
 
-        [self.actionHostView.topAnchor constraintEqualToAnchor:self.priceContainerView.bottomAnchor constant:12.0],
+        [self.actionHostView.topAnchor constraintEqualToAnchor:self.priceContainerView.bottomAnchor constant:6.0],
         [self.actionHostView.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
         [self.actionHostView.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
         [self.actionHostView.heightAnchor constraintEqualToConstant:PPUniversalButtonHeight],
@@ -666,12 +721,12 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         [self.stepperView.trailingAnchor constraintEqualToAnchor:self.actionHostView.trailingAnchor],
         [self.stepperView.bottomAnchor constraintEqualToAnchor:self.actionHostView.bottomAnchor],
 
-        [self.minusButton.leadingAnchor constraintEqualToAnchor:self.stepperView.leadingAnchor constant:12.0],
+        [self.minusButton.leadingAnchor constraintEqualToAnchor:self.stepperView.leadingAnchor constant:2.0],
         [self.minusButton.centerYAnchor constraintEqualToAnchor:self.stepperView.centerYAnchor],
         [self.minusButton.widthAnchor constraintEqualToConstant:30.0],
         [self.minusButton.heightAnchor constraintEqualToConstant:30.0],
 
-        [self.plusButton.trailingAnchor constraintEqualToAnchor:self.stepperView.trailingAnchor constant:-12.0],
+        [self.plusButton.trailingAnchor constraintEqualToAnchor:self.stepperView.trailingAnchor constant:-2.0],
         [self.plusButton.centerYAnchor constraintEqualToAnchor:self.stepperView.centerYAnchor],
         [self.plusButton.widthAnchor constraintEqualToConstant:30.0],
         [self.plusButton.heightAnchor constraintEqualToConstant:30.0],
@@ -681,9 +736,12 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         [self.quantityLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.minusButton.trailingAnchor constant:8.0],
         [self.plusButton.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.quantityLabel.trailingAnchor constant:8.0],
 
-        [self.availabilityLabel.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
         [self.availabilityLabel.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
         [self.availabilityLabel.bottomAnchor constraintEqualToAnchor:self.bodyContainer.bottomAnchor],
+
+        [self.serviceMetaLabel.topAnchor constraintEqualToAnchor:self.availabilityLabel.topAnchor],
+        [self.serviceMetaLabel.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
+        [self.serviceMetaLabel.bottomAnchor constraintEqualToAnchor:self.bodyContainer.bottomAnchor],
 
         [self.skeletonView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor],
         [self.skeletonView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor],
@@ -694,17 +752,25 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.imageAspectConstraint = [self.imageContainer.heightAnchor constraintEqualToAnchor:self.imageContainer.widthAnchor multiplier:0.82];
     self.imageAspectConstraint.active = YES;
     self.fullWidthImageWidthConstraint = [self.imageContainer.widthAnchor constraintEqualToConstant:136.0];
-    self.priceTopToTitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:0.0];
-    self.priceTopToSubtitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:0.0];
+    self.priceTopToTitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0];
+    self.priceTopToSubtitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:4.0];
     self.subtitleHeightConstraint = [self.subtitleLabel.heightAnchor constraintEqualToConstant:0.0];
     self.oldPriceCollapsedConstraint = [self.oldPriceLabel.widthAnchor constraintEqualToConstant:0.0];
+    self.availabilityLeadingToBodyConstraint = [self.availabilityLabel.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor];
+    self.availabilityLeadingToMetaConstraint = [self.availabilityLabel.leadingAnchor constraintEqualToAnchor:self.serviceMetaLabel.trailingAnchor constant:8.0];
+    self.serviceMetaCollapsedConstraint = [self.serviceMetaLabel.widthAnchor constraintEqualToConstant:0.0];
     self.availabilityTopConstraint = [self.availabilityLabel.topAnchor constraintEqualToAnchor:self.actionHostView.bottomAnchor constant:10.0];
     self.titleHeightConstraint = [self.titleLabel.heightAnchor constraintEqualToConstant:PPUniversalCompactTitleHeight];
     self.priceHeightConstraint = [self.priceContainerView.heightAnchor constraintEqualToConstant:PPUniversalCompactPriceHeight];
     self.availabilityHeightConstraint = [self.availabilityLabel.heightAnchor constraintEqualToConstant:PPUniversalPillHeight];
+    self.priceContainerTrailingToBodyConstraint = [self.priceContainerView.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor];
+    self.priceContainerTrailingToFavConstraint = [self.priceContainerView.trailingAnchor constraintEqualToAnchor:self.bodyFavButton.leadingAnchor constant:-10.0];
     self.priceTopToTitleConstraint.active = YES;
     self.subtitleHeightConstraint.active = YES;
     self.oldPriceCollapsedConstraint.active = YES;
+    self.availabilityLeadingToBodyConstraint.active = YES;
+    self.priceContainerTrailingToBodyConstraint.active = YES;
+    self.serviceMetaCollapsedConstraint.active = YES;
     self.availabilityTopConstraint.active = YES;
     self.imageAspectConstraint.priority = UILayoutPriorityDefaultHigh;
     self.titleHeightConstraint.active = YES;
@@ -715,7 +781,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         [self.imageContainer.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:PPUniversalOuterInset],
         [self.imageContainer.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:PPUniversalOuterInset],
         [self.imageContainer.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-PPUniversalOuterInset],
-        [self.bodyContainer.topAnchor constraintEqualToAnchor:self.imageContainer.bottomAnchor constant:PPUniversalInnerSpacing],
+        [self.bodyContainer.topAnchor constraintEqualToAnchor:self.imageContainer.bottomAnchor constant:PPUniversalInnerSpacing /2],
         [self.bodyContainer.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:PPUniversalOuterInset],
         [self.bodyContainer.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-PPUniversalOuterInset],
         [self.bodyContainer.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-PPUniversalOuterInset]
@@ -763,16 +829,16 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.imageContainer.layer.borderColor = PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
                                                                         [UIColor colorWithWhite:0.28 alpha:1.0]).CGColor;
 
-    self.titleLabel.font = PPUniversalCellBoldFont(13.0);
+    self.titleLabel.font = PPUniversalCellBoldFont(14.0);
     self.titleLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.15 alpha:1.0],
                                                             [UIColor colorWithWhite:0.95 alpha:1.0]);
-    self.subtitleLabel.font = PPUniversalCellMediumFont(13.0);
+    self.subtitleLabel.font = PPUniversalCellMediumFont(12.0);
     self.subtitleLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.43 green:0.45 blue:0.52 alpha:1.0],
                                                                [UIColor colorWithWhite:0.74 alpha:1.0]);
 
-    self.priceLabel.font = PPUniversalCellBoldFont(23.0);
+    self.priceLabel.font = PPUniversalCellBoldFont(26.0);
     self.priceLabel.textColor = AppPrimaryClr;
-    self.oldPriceLabel.font = PPUniversalCellMediumFont(13.0);
+    self.oldPriceLabel.font = PPUniversalCellMediumFont(12.0);
     self.oldPriceLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.57 green:0.59 blue:0.65 alpha:1.0],
                                                                [UIColor colorWithWhite:0.58 alpha:1.0]);
 
@@ -785,6 +851,12 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     if (@available(iOS 13.0, *)) {
         self.stepperView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+}
+
+- (void)pp_applyCardGradientForContext:(PPCellContext)ctx
+{
+    [self.cardGradientLayer removeFromSuperlayer];
+    self.cardGradientLayer = nil;
 }
 
 #pragma mark - Public API
@@ -803,6 +875,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 
     [self pp_applySemanticDirection];
     [self.imageContainer applyContextPaletteForContext:context];
+    [self pp_applyCardGradientForContext:context];
     [self pp_applyLayoutMode];
 
     BOOL isSkeleton = vm == nil || vm.isSkeleton;
@@ -853,6 +926,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.imageContainer.alpha = isSkeleton ? 0.0 : 1.0;
     self.bodyContainer.alpha = isSkeleton ? 0.0 : 1.0;
     self.favoriteButton.hidden = isSkeleton;
+    self.bodyFavButton.hidden = YES;
     self.shareButton.hidden = isSkeleton;
     self.menuButton.hidden = YES;
     self.reasonBadgeLabel.hidden = isSkeleton;
@@ -896,7 +970,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 {
     self.titleLabel.text = PPUniversalCellSafeString(vm.title);
     self.subtitleLabel.text = PPUniversalCellSafeString(vm.subtitle);
-    BOOL shouldHideSubtitle = PPUniversalTemporarilyHideSubtitle || self.subtitleLabel.text.length == 0;
+    BOOL shouldHideSubtitle = PPUniversalTemporarilyHideSubtitle || self.subtitleLabel.text.length == 0 || !self.showsSubtitle;
     if (shouldHideSubtitle) {
         self.subtitleLabel.text = @"";
     }
@@ -913,7 +987,8 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
                                  vm.finalPrice.doubleValue > 0.0 &&
                                  fabs(vm.price.doubleValue - vm.finalPrice.doubleValue) > 0.009);
     if (showsDiscountedPrice) {
-        NSString *original = [GM formatPrice:vm.price currencyCode:vm.currencyCode] ?: vm.price.stringValue;
+        NSString *original = PPUniversalCellFormattedPrice(vm.price,
+                                                           PPUniversalCellDisplayCurrencyCode(vm.currencyCode));
         NSDictionary *attrs = @{
             NSStrikethroughStyleAttributeName : @(NSUnderlineStyleSingle),
             NSForegroundColorAttributeName : self.oldPriceLabel.textColor,
@@ -929,26 +1004,37 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     }
 
     BOOL fullWidth = [self pp_isFullWidthLayout];
-    CGFloat compactPriceFontSize = [self pp_isServiceLikeContext] ? 18.0 : 21.0;
+    CGFloat compactPriceFontSize = [self pp_isServiceLikeContext] ? 21.0 : 23.0;
     self.titleLabel.font = fullWidth ? PPUniversalCellBoldFont(16.0) : PPUniversalCellBoldFont(13.0);
     self.subtitleLabel.font = fullWidth ? PPUniversalCellMediumFont(12.5) : PPUniversalCellMediumFont(13.0);
-    self.priceLabel.font = fullWidth ? PPUniversalCellBoldFont(18.0) : PPUniversalCellBoldFont(compactPriceFontSize);
+    self.priceLabel.font = fullWidth ? PPUniversalCellBoldFont(21.0) : PPUniversalCellBoldFont(compactPriceFontSize);
     if (hasPrice) {
         self.priceLabel.attributedText = [self pp_attributedPriceForViewModel:vm];
     }
+    //self.priceLabel.backgroundColor = UIColor.redColor;
+    //self.titleLabel.backgroundColor = UIColor.blueColor;
 }
 
 - (void)pp_configureBadgesWithViewModel:(PPUniversalCellViewModel *)vm
 {
-    NSString *reasonText = PPUniversalCellSafeString(vm.contextualReasonText);
+    NSString *reasonText = @"";
+    if ([self pp_isAdContext]) {
+        if (PPUniversalCellReasonLooksNearby(vm.contextualReasonText)) {
+            reasonText = PPUniversalCellLocalizedString(@"Home_NearbyAds", @"Nearby");
+        } else {
+            reasonText = PPUniversalCellSafeString(vm.location);
+        }
+    }
     NSString *badgeText = PPUniversalTemporarilyHideCategoryBadge ? @"" : PPUniversalCellSafeString(vm.badgeText);
     NSString *discountText = (self.discountStyle == PPDiscountStyleBadge) ? PPUniversalCellSafeString(vm.discountText) : @"";
 
+    self.reasonBadgeLabel.numberOfLines = 0;
+    self.reasonBadgeLabel.lineBreakMode = NSLineBreakByWordWrapping;
     [self pp_applyBadgeLabel:self.reasonBadgeLabel
                         text:reasonText
-                     bgColor:[AppPrimaryClr colorWithAlphaComponent:0.14]
-                   textColor:AppPrimaryClr
-                  borderColor:[AppPrimaryClr colorWithAlphaComponent:0.18]];
+                     bgColor:[AppForgroundColr colorWithAlphaComponent:0.34]
+                   textColor:AppPrimaryTextClr
+                  borderColor:[NewBgColor colorWithAlphaComponent:0.38]];
 
     [self pp_applyBadgeLabel:self.discountBadgeLabel
                         text:discountText
@@ -964,26 +1050,49 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
                   borderColor:[UIColor colorWithWhite:1.0 alpha:0.18]];
 
     [self pp_updateBadgeConstraints];
+
+    if (self.hideTopBadge) {
+        self.reasonBadgeLabel.hidden = YES;
+    }
 }
 
 - (void)pp_configureControlsWithViewModel:(PPUniversalCellViewModel *)vm
 {
     BOOL isOwner = vm.isOwner;
     BOOL hasID = vm.ModelID.length > 0;
+    BOOL showsFav = !isOwner && hasID;
+    BOOL isAd = [self pp_isAdContext];
 
     self.shareButton.hidden = PPUniversalTemporarilyHideShareButton;
     self.shareButton.alpha = self.shareButton.hidden ? 0.0 : 1.0;
-    self.favoriteButton.hidden = isOwner || !hasID;
-    self.favoriteButton.alpha = self.favoriteButton.hidden ? 0.0 : 1.0;
 
-    self.menuButton.hidden = !isOwner;
-    self.menuButton.alpha = isOwner ? 1.0 : 0.0;
-
-    if (!self.favoriteButton.hidden) {
+    if (isAd && showsFav) {
+        self.favoriteButton.hidden = NO;
+        self.favoriteButton.alpha = 1.0;
         self.favoriteButton.adID = vm.ModelID ?: @"";
         self.favoriteButton.collection = [self pp_favoritesCollectionForContext:self.context];
         [self.favoriteButton initValue];
+        self.bodyFavButton.hidden = YES;
+        self.bodyFavButton.alpha = 0.0;
+        self.priceContainerTrailingToFavConstraint.active = NO;
+        self.priceContainerTrailingToBodyConstraint.active = YES;
+    } else {
+        self.favoriteButton.hidden = !showsFav;
+        self.favoriteButton.alpha = showsFav ? 1.0 : 0.0;
+        if (showsFav) {
+            self.favoriteButton.adID = vm.ModelID ?: @"";
+            self.favoriteButton.collection = [self pp_favoritesCollectionForContext:self.context];
+            [self.favoriteButton initValue];
+        }
+        self.bodyFavButton.hidden = YES;
+        self.bodyFavButton.alpha = 0.0;
+        self.priceContainerTrailingToFavConstraint.active = NO;
+        self.priceContainerTrailingToBodyConstraint.active = YES;
     }
+
+    BOOL showMenu = isOwner && !PPUniversalTemporarilyHideMenuButton;
+    self.menuButton.hidden = !showMenu;
+    self.menuButton.alpha = showMenu ? 1.0 : 0.0;
 
     [self pp_configureOwnerMenuIfNeeded];
     [self pp_updateBadgeConstraints];
@@ -1051,6 +1160,57 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.availabilityLabel.hidden = shouldHideAvailability;
     self.availabilityTopConstraint.constant = shouldHideAvailability ? 0.0 : 10.0;
     self.availabilityHeightConstraint.constant = shouldHideAvailability ? 0.0 : PPUniversalPillHeight;
+
+    ServiceModel *service = [vm.ModelObject isKindOfClass:[ServiceModel class]]
+        ? (ServiceModel *)vm.ModelObject
+        : nil;
+    BOOL showsServiceMeta = [self pp_isServiceLikeContext];
+    if (showsServiceMeta) {
+        CGFloat rating = MAX(0.0, service.ratingValue.doubleValue);
+        NSMutableAttributedString *attrText = [[NSMutableAttributedString alloc] init];
+        UIColor *starColor = [UIColor colorWithRed:0.97 green:0.72 blue:0.20 alpha:1.0];
+        UIColor *valueColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.15 alpha:1.0],
+                                                          [UIColor colorWithWhite:0.96 alpha:1.0]);
+
+        [attrText appendAttributedString:[[NSAttributedString alloc]
+            initWithString:@"★"
+            attributes:@{
+                NSFontAttributeName: PPUniversalCellBoldFont(13.0),
+                NSForegroundColorAttributeName: starColor
+            }]];
+        [attrText appendAttributedString:[[NSAttributedString alloc]
+            initWithString:@"  "
+            attributes:@{
+                NSFontAttributeName: PPUniversalCellBoldFont(12.0),
+                NSForegroundColorAttributeName: valueColor
+            }]];
+        [attrText appendAttributedString:[[NSAttributedString alloc]
+            initWithString:[NSString stringWithFormat:@"%.1f", rating]
+            attributes:@{
+                NSFontAttributeName: PPUniversalCellBoldFont(12.5),
+                NSForegroundColorAttributeName: valueColor
+            }]];
+
+        self.serviceMetaLabel.attributedText = attrText;
+        self.serviceMetaLabel.font = PPUniversalCellBoldFont(12.0);
+        self.serviceMetaLabel.textInsets = UIEdgeInsetsMake(4.0, 12.0, 4.0, 12.0);
+        self.serviceMetaLabel.backgroundColor = PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.98],
+                                                                            [UIColor colorWithWhite:0.14 alpha:1.0]);
+        self.serviceMetaLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
+        self.serviceMetaLabel.layer.borderWidth = 1.0;
+        self.serviceMetaLabel.layer.borderColor = [UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0].CGColor;
+        self.serviceMetaLabel.hidden = NO;
+        self.serviceMetaCollapsedConstraint.active = NO;
+    } else {
+        self.serviceMetaLabel.text = @"";
+        self.serviceMetaLabel.attributedText = nil;
+        self.serviceMetaLabel.hidden = YES;
+        self.serviceMetaCollapsedConstraint.active = YES;
+    }
+
+    BOOL tieAvailabilityToServiceMeta = showsServiceMeta && !shouldHideAvailability;
+    self.availabilityLeadingToBodyConstraint.active = !tieAvailabilityToServiceMeta;
+    self.availabilityLeadingToMetaConstraint.active = tieAvailabilityToServiceMeta;
 }
 
 - (void)pp_configureQuantityStateWithViewModel:(PPUniversalCellViewModel *)vm
@@ -1083,6 +1243,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.subtitleLabel.textAlignment = alignment;
     self.priceLabel.textAlignment = alignment;
     self.oldPriceLabel.textAlignment = alignment;
+    self.serviceMetaLabel.textAlignment = NSTextAlignmentCenter;
     self.availabilityLabel.textAlignment = NSTextAlignmentCenter;
 }
 
@@ -1206,7 +1367,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         config.baseBackgroundColor = background;
         config.baseForegroundColor = foreground;
-        config.background.cornerRadius = 17.0;
+        config.background.cornerRadius = 14.0;
         config.background.strokeWidth = (usesQuantity && (isOutOfStock || isInCart)) ? 1.0 : 0.0;
         config.background.strokeColor = border;
         config.image = [UIImage systemImageNamed:imageName];
@@ -1263,7 +1424,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
             return nil;
         }
         return [[NSAttributedString alloc] initWithString:plainPrice attributes:@{
-            NSFontAttributeName : self.priceLabel.font ?: PPUniversalCellBoldFont(18.0),
+            NSFontAttributeName : self.priceLabel.font ?: PPUniversalCellBoldFont(21.0),
             NSForegroundColorAttributeName : self.priceLabel.textColor ?: AppPrimaryClr
         }];
     }
@@ -1273,7 +1434,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     NSArray<NSString *> *parts = [formattedAmount componentsSeparatedByString:@"."];
     NSString *integerPart = parts.firstObject.length > 0 ? parts.firstObject : @"0";
     NSString *fractionPart = parts.count > 1 ? parts.lastObject : @"00";
-    UIFont *integerFont = self.priceLabel.font ?: PPUniversalCellBoldFont(18.0);
+    UIFont *integerFont = self.priceLabel.font ?: PPUniversalCellBoldFont(21.0);
     CGFloat currencySize = MAX(9.0, floor(integerFont.pointSize * 0.40));
     CGFloat fractionSize = MAX(9.0, floor(integerFont.pointSize * 0.46));
     UIFont *currencyFont = PPUniversalCellBoldFont(currencySize);
@@ -1283,29 +1444,45 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     CGFloat fractionLift = MAX(5.0, round(integerFont.pointSize * 0.34));
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
     paragraph.alignment = self.priceLabel.textAlignment;
-    paragraph.baseWritingDirection = NSWritingDirectionLeftToRight;
+    paragraph.baseWritingDirection = Language.isRTL ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
 
     NSMutableAttributedString *result = [[NSMutableAttributedString alloc] init];
-    [result appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%@ ", displayCurrency]
-                                                                   attributes:@{
+    NSAttributedString *currencyString = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@" %@", displayCurrency]
+                                                                         attributes:@{
         NSFontAttributeName : currencyFont,
         NSForegroundColorAttributeName : priceColor,
         NSBaselineOffsetAttributeName : @(currencyLift),
         NSParagraphStyleAttributeName : paragraph
-    }]];
-    [result appendAttributedString:[[NSAttributedString alloc] initWithString:integerPart
-                                                                   attributes:@{
+    }];
+    NSAttributedString *integerString = [[NSAttributedString alloc] initWithString:integerPart
+                                                                         attributes:@{
         NSFontAttributeName : integerFont,
         NSForegroundColorAttributeName : priceColor,
         NSParagraphStyleAttributeName : paragraph
-    }]];
-    [result appendAttributedString:[[NSAttributedString alloc] initWithString:fractionPart
-                                                                   attributes:@{
+    }];
+    NSAttributedString *fractionString = [[NSAttributedString alloc] initWithString:fractionPart
+                                                                          attributes:@{
         NSFontAttributeName : fractionFont,
         NSForegroundColorAttributeName : priceColor,
         NSBaselineOffsetAttributeName : @(fractionLift),
         NSParagraphStyleAttributeName : paragraph
-    }]];
+    }];
+
+    if (Language.isRTL) {
+        [result appendAttributedString:integerString];
+        [result appendAttributedString:fractionString];
+        [result appendAttributedString:currencyString];
+    } else {
+        [result appendAttributedString:[[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"%@ ", displayCurrency]
+                                                                       attributes:@{
+            NSFontAttributeName : currencyFont,
+            NSForegroundColorAttributeName : priceColor,
+            NSBaselineOffsetAttributeName : @(currencyLift),
+            NSParagraphStyleAttributeName : paragraph
+        }]];
+        [result appendAttributedString:integerString];
+        [result appendAttributedString:fractionString];
+    }
     return result;
 }
 
@@ -1579,7 +1756,6 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     [NSLayoutConstraint deactivateConstraints:self.dynamicBadgeConstraints];
 
     NSArray<PPUniversalInsetLabel *> *orderedBadges = @[
-        self.categoryBadgeLabel,
         self.discountBadgeLabel,
         self.reasonBadgeLabel
     ];
@@ -1759,6 +1935,16 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 
 #pragma mark - Gesture Delegate
 
+- (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
+{
+    (void)gestureRecognizer;
+    // Only consume the tap when a handler is actually wired up.
+    // VCs that rely on collectionView:didSelectItemAtIndexPath: (e.g. Home)
+    // need the touch to fall through to the collection view.
+    return (self.onTap != nil ||
+            [self.delegate respondsToSelector:@selector(PPUniversalCell_tapCard:)]);
+}
+
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch
 {
     (void)gestureRecognizer;
@@ -1773,3 +1959,12 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 }
 
 @end
+
+
+
+
+
+
+
+
+

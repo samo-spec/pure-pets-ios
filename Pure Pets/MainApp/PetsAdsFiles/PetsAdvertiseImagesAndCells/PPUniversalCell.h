@@ -48,7 +48,11 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
           discountMode:(PPDiscountStyle)discountStyle
            imageLoader:(PPImageLoader)loader;
 
+/// Hides the top reason/location badge when set to YES.
+@property (nonatomic, assign) BOOL hideTopBadge;
 
+/// Shows the subtitle label when set to YES (default NO — subtitle hidden).
+@property (nonatomic, assign) BOOL showsSubtitle;
 
 @end
 
