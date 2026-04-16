@@ -26,6 +26,7 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 @property (nonatomic, assign) PPOrderStatus status;
 /// Original status value coming from Firestore (normalized, lowercase).
 @property (nonatomic, copy) NSString *rawStatus;
+@property (nonatomic, copy) NSString *deliveryStatus;
 
 @property (nonatomic, assign) double amount;
 @property (nonatomic, assign) double shippingFee;
@@ -46,8 +47,19 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 @property (nonatomic, strong, nullable) NSDate *statusUpdatedAt;
 @property (nonatomic, strong, nullable) NSDate *paidAt;
 @property (nonatomic, strong, nullable) NSDate *processedAt;
+@property (nonatomic, strong, nullable) NSDate *readyAt;
+@property (nonatomic, strong, nullable) NSDate *readyToShipAt;
+@property (nonatomic, strong, nullable) NSDate *deliveryRequestedAt;
+@property (nonatomic, strong, nullable) NSDate *deliveryAcceptedAt;
+@property (nonatomic, strong, nullable) NSDate *pickedUpAt;
+@property (nonatomic, strong, nullable) NSDate *inTransitAt;
 @property (nonatomic, strong, nullable) NSDate *shippedAt;
 @property (nonatomic, strong, nullable) NSDate *deliveredAt;
+@property (nonatomic, strong, nullable) NSDate *paymentPendingAt;
+@property (nonatomic, strong, nullable) NSDate *paymentConfirmedAt;
+@property (nonatomic, strong, nullable) NSDate *completedAt;
+@property (nonatomic, strong, nullable) NSDate *deliveryFailedAt;
+@property (nonatomic, strong, nullable) NSDate *returnedToStoreAt;
 @property (nonatomic, strong, nullable) NSDate *cancelledAt;
 @property (nonatomic, strong, nullable) NSDate *paymentCollectedAt;
 @property (nonatomic, strong, nullable) NSDate *estimatedDeliveryAt;
@@ -74,6 +86,9 @@ typedef NS_ENUM(NSInteger, PPOrderStatus) {
 
 - (BOOL)isCashOnDelivery;
 - (BOOL)hasCapturedPayment;
+- (BOOL)requiresPostDeliveryPaymentConfirmation;
+- (NSString *)effectiveDeliveryStatus;
+- (NSString *)customerVisibleStatusKey;
 - (NSString *)displayOrderReference;
 
 @end

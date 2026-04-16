@@ -78,6 +78,13 @@
 "DeleteCardReason" = "ملاحظة او اسبب الحذف";
 "DeletedSuccess" = "تم حذف  البيانات بنجاح";
 "Delivered" = "تم التسليم";
+"Preparing for Shipment" = "جارٍ تجهيز الطلب للشحن";
+"Ready for Delivery" = "جاهز للتوصيل";
+"Delivery Partner Assigned" = "تم تعيين مندوب التوصيل";
+"On the Way" = "في الطريق إليك";
+"Completed" = "مكتمل";
+"Delivery Cancelled" = "تم إلغاء التوصيل";
+"Delivery Delayed" = "التوصيل متأخر";
 "DeliveryLabel" = "التوصيل";
 "DeliveryLocation" = "موقع التسليم";
 "DeliveryLocationSub" = "يجب أن يسلم الطلب هنا";
@@ -1573,10 +1580,25 @@
 "Home_CurrentOrdersPendingHint" = "بانتظار تأكيد المتجر.";
 "Home_CurrentOrdersPaidHint" = "تم تأكيد الدفع وجارٍ تجهيز الطلب.";
 "Home_CurrentOrdersProcessingHint" = "يتم تجهيز منتجاتك الآن.";
+"Home_CurrentOrdersReadyHint" = "طلبك جاهز وينتظر مندوب التوصيل.";
+"Home_CurrentOrdersAssignedHint" = "تم تعيين مندوب توصيل وسيستلم طلبك قريباً.";
 "Home_CurrentOrdersShippedHint" = "مندوب التوصيل في الطريق إليك.";
+"Home_CurrentOrdersDeliveredHint" = "تم تسليم طلبك بنجاح.";
+"Home_CurrentOrdersCompletedHint" = "اكتمل طلبك بنجاح. شكراً لتسوقك مع بيور بيتس.";
+"Home_CurrentOrdersCancelledHint" = "تم إلغاء توصيل هذا الطلب. تواصل مع الدعم إذا كنت بحاجة إلى مساعدة.";
+"Home_CurrentOrdersDelayedHint" = "توصيل طلبك متأخر حالياً. سنشاركك التحديثات قريباً.";
 "Home_CurrentOrdersItemsFormat" = "%ld منتجات";
 "Home_CurrentOrdersExpectedPrefix" = "المتوقع";
 "Home_CurrentOrdersUpdatedPrefix" = "آخر تحديث";
+
+"order_delivery_hint_preparing" = "يجري تجهيز طلبك للشحن الآن.";
+"order_delivery_hint_ready" = "طلبك جاهز وينتظر تعيين مندوب توصيل.";
+"order_delivery_hint_assigned" = "تم تعيين مندوب توصيل وسيستلم طلبك قريباً.";
+"order_delivery_hint_on_the_way" = "تم استلام طلبك وهو الآن في الطريق إليك.";
+"order_delivery_hint_delivered" = "تم توصيل طلبك بنجاح.";
+"order_delivery_hint_completed" = "اكتمل طلبك. شكراً لتسوقك مع بيور بيتس.";
+"order_delivery_hint_cancelled" = "تم إلغاء توصيل هذا الطلب. تواصل مع الدعم إذا كنت بحاجة إلى مساعدة.";
+"order_delivery_hint_delayed" = "توصيل طلبك متأخر حالياً. سيقوم فريقنا بتحديثك قريباً.";
 
 "empty_cart_title" = "سلة التسوق فارغة";
 "empty_cart_subtitle" = "لم تقم بإضافة أي منتجات بعد. تصفح المتجر وأضف ما يعجبك.";

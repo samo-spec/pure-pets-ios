@@ -48,6 +48,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (NSString *)stockStatusText;
 @property (nonatomic, assign) BOOL isNew;
 @property (nonatomic, assign) BOOL hasOffer;
+@property (nonatomic, assign) BOOL showInAppMarket;
 
 // Computed type helpers
 @property (nonatomic, readonly) BOOL isLivePet;

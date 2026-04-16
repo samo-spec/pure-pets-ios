@@ -77,16 +77,16 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"cancelled", @"canceled"])) {
         return kOrderHistoryFilterCancelled;
     }
-    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"failed", @"rejected", @"declined", @"expired", @"error", @"voided"])) {
+    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"failed", @"rejected", @"declined", @"expired", @"error", @"voided", @"returned_to_store"])) {
         return kOrderHistoryFilterFailed;
     }
-    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"delivered", @"completed", @"fulfilled"])) {
+    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"delivered", @"completed", @"fulfilled", @"payment_pending", @"payment_confirmed"])) {
         return kOrderHistoryFilterDelivered;
     }
-    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"])) {
+    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"shipped", @"shipping", @"out_for_delivery", @"in_transit", @"picked_up"])) {
         return kOrderHistoryFilterShipped;
     }
-    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"processing", @"preparing", @"packed", @"confirmed"])) {
+    if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"processing", @"preparing", @"packed", @"confirmed", @"ready_to_ship", @"delivery_requested", @"delivery_assigned", @"awaiting_handover", @"delivery_reassigned"])) {
         return kOrderHistoryFilterProcessing;
     }
     if (PPOrderHistoryStatusMatchesAnyKeyword(normalized, @[@"paid", @"success", @"approved", @"verified", @"captured", @"authorized"])) {
@@ -1135,7 +1135,12 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (NSString *)normalizedStatusKeyForOrder:(PPOrder *)order
 {
-    NSString *status = PPOrderHistoryNormalizedStatus(order.rawStatus);
+    NSString *status = PPOrderHistoryNormalizedStatus([order effectiveDeliveryStatus]);
+    if (status.length > 0) {
+        return status;
+    }
+
+    status = PPOrderHistoryNormalizedStatus(order.rawStatus);
     if (status.length > 0) {
         return status;
     }
@@ -1156,6 +1161,28 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     return PPOrderHistoryCanonicalFilterKeyForStatus([self normalizedStatusKeyForOrder:order]);
 }
 
+- (NSString *)customerStatusKeyForOrder:(PPOrder *)order
+{
+    if (![order isKindOfClass:PPOrder.class]) {
+        return @"preparing_for_shipment";
+    }
+    NSString *statusKey = PPOrderHistoryNormalizedStatus([order customerVisibleStatusKey]);
+    return statusKey.length > 0 ? statusKey : @"preparing_for_shipment";
+}
+
+- (NSString *)displayTitleForCustomerStatusKey:(NSString *)statusKey
+{
+    NSString *key = PPOrderHistoryNormalizedStatus(statusKey);
+    if ([key isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
+    if ([key isEqualToString:@"delivery_partner_assigned"]) return kLang(@"Delivery Partner Assigned");
+    if ([key isEqualToString:@"on_the_way"]) return kLang(@"On the Way");
+    if ([key isEqualToString:@"delivered"]) return kLang(@"Delivered");
+    if ([key isEqualToString:@"completed"]) return kLang(@"Completed");
+    if ([key isEqualToString:@"delivery_cancelled"]) return kLang(@"Delivery Cancelled");
+    if ([key isEqualToString:@"delivery_delayed"]) return kLang(@"Delivery Delayed");
+    return kLang(@"Preparing for Shipment");
+}
+
 - (NSString *)displayTitleForStatusFilterKey:(NSString *)filterKey
 {
     NSString *key = PPOrderHistoryTrimmedString(filterKey);
@@ -1171,13 +1198,37 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
 
 - (NSString *)displayTitleForOrder:(PPOrder *)order
 {
-    return [self displayTitleForStatusFilterKey:[self canonicalStatusFilterKeyForOrder:order]];
+    return [self displayTitleForCustomerStatusKey:[self customerStatusKeyForOrder:order]];
 }
 
 - (UIColor *)statusColorForOrder:(PPOrder *)order
 {
-    NSString *filterKey = [self canonicalStatusFilterKeyForOrder:order];
-    return [self colorForStatusFilterKey:filterKey];
+    NSString *statusKey = [self customerStatusKeyForOrder:order];
+    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
+        return UIColor.systemRedColor;
+    }
+    if ([statusKey isEqualToString:@"delivery_delayed"]) {
+        return UIColor.systemOrangeColor;
+    }
+    if ([statusKey isEqualToString:@"completed"]) {
+        return [GM appPrimaryColor];
+    }
+    if ([statusKey isEqualToString:@"delivered"]) {
+        return UIColor.systemGreenColor;
+    }
+    if ([statusKey isEqualToString:@"on_the_way"]) {
+        return UIColor.systemBlueColor;
+    }
+    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
+        if (@available(iOS 13.0, *)) {
+            return UIColor.systemIndigoColor;
+        }
+        return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
+    }
+    if ([statusKey isEqualToString:@"ready_for_delivery"]) {
+        return [GM appPrimaryColor];
+    }
+    return UIColor.systemOrangeColor;
 }
 
 - (UIColor *)colorForStatusFilterKey:(NSString *)filterKey

@@ -79,6 +79,13 @@
 "DeleteCardReason" = "Note or reason for deletion";
 "DeletedSuccess" = "Data was deleted successfully";
 "Delivered" = "Delivered";
+"Preparing for Shipment" = "Preparing for Shipment";
+"Ready for Delivery" = "Ready for Delivery";
+"Delivery Partner Assigned" = "Delivery Partner Assigned";
+"On the Way" = "On the Way";
+"Completed" = "Completed";
+"Delivery Cancelled" = "Delivery Cancelled";
+"Delivery Delayed" = "Delivery Delayed";
 "DeliveryLabel" = "Delivery";
 "DeliveryLocation" = "Delivery Location";
 "DeliveryLocationSub" = "Order Should Deliver Here";
@@ -1625,10 +1632,25 @@
 "Home_CurrentOrdersPendingHint" = "Waiting for store confirmation.";
 "Home_CurrentOrdersPaidHint" = "Payment confirmed and queued for fulfillment.";
 "Home_CurrentOrdersProcessingHint" = "Your items are being prepared now.";
+"Home_CurrentOrdersReadyHint" = "Your order is ready and waiting for a delivery partner.";
+"Home_CurrentOrdersAssignedHint" = "A delivery partner has been assigned and will collect your order shortly.";
 "Home_CurrentOrdersShippedHint" = "Your courier is already on the way.";
+"Home_CurrentOrdersDeliveredHint" = "Your order has been delivered successfully.";
+"Home_CurrentOrdersCompletedHint" = "Your order is complete. Thank you for shopping with Pure Pets.";
+"Home_CurrentOrdersCancelledHint" = "The delivery for this order was cancelled. Please contact support if you need help.";
+"Home_CurrentOrdersDelayedHint" = "Your delivery is delayed. We will share another update shortly.";
 "Home_CurrentOrdersItemsFormat" = "%ld items";
 "Home_CurrentOrdersExpectedPrefix" = "Expected";
 "Home_CurrentOrdersUpdatedPrefix" = "Updated";
+
+"order_delivery_hint_preparing" = "Your order is being prepared for shipment.";
+"order_delivery_hint_ready" = "Your order is ready and waiting for a delivery partner.";
+"order_delivery_hint_assigned" = "A delivery partner has been assigned and will collect your order shortly.";
+"order_delivery_hint_on_the_way" = "Your order has been collected and is on the way to you.";
+"order_delivery_hint_delivered" = "Your order has been delivered successfully.";
+"order_delivery_hint_completed" = "Your order is complete. Thank you for shopping with Pure Pets.";
+"order_delivery_hint_cancelled" = "The delivery for this order was cancelled. Please contact support if you need help.";
+"order_delivery_hint_delayed" = "Your delivery is delayed. Our team will update you again shortly.";
 
 "empty_cart_title" = "Your cart is empty";
 "empty_cart_subtitle" = "Looks like you haven’t added anything yet. Start exploring and add items you love.";

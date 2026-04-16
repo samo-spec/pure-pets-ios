@@ -1103,15 +1103,17 @@
     _chromeView.backgroundColor = UIColor.clearColor;
     _chromeBlurView.alpha = 1.0;
     
-    // Explicitly set blur style for light/dark modes
-    UIBlurEffectStyle blurStyle = isDark ? UIBlurEffectStyleSystemMaterialDark : UIBlurEffectStyleSystemMaterialLight;
+    // Adaptive blur: thin material automatically adapts to light/dark
+    UIBlurEffectStyle blurStyle = isDark
+        ? UIBlurEffectStyleSystemThinMaterialDark
+        : UIBlurEffectStyleSystemThinMaterialLight;
     _chromeBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
 
-    CGFloat tintAlpha = isDark ? 0.32 : 0.28;
+    CGFloat tintAlpha = isDark ? 0.28 : 0.14;
     _chromeTintOverlay.backgroundColor = [surfaceColor colorWithAlphaComponent:tintAlpha];
-    _chromeView.layer.borderWidth = 0.5f;
+    _chromeView.layer.borderWidth = isDark ? 0.5f : 0.33f;
     _chromeView.layer.borderColor =
-        [[textColor colorWithAlphaComponent:isDark ? 0.14 : 0.10] CGColor];
+        [[textColor colorWithAlphaComponent:isDark ? 0.14 : 0.06] CGColor];
 
     _leadingChipView.backgroundColor =
         [accentColor colorWithAlphaComponent:isDark ? 0.24 : 0.12];
@@ -1130,7 +1132,7 @@
     _trailingOrbView.layer.borderColor =
         [[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06] CGColor];
     _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
-    self.layer.shadowOpacity = isDark ? 0.16f : 0.08f;
+    self.layer.shadowOpacity = isDark ? 0.16f : 0.04f;
 }
 
 - (void)pp_updateInteractiveStateAnimated:(BOOL)animated
@@ -2401,25 +2403,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (BOOL)pp_isFailureHomeOrderStatusKey:(NSString *)statusKey
 {
     return [self pp_homeStatusKey:statusKey
-                 matchesAnyKeywords:@[@"failed", @"rejected", @"cancelled", @"canceled", @"expired", @"voided", @"error"]];
+                 matchesAnyKeywords:@[@"delivery_cancelled", @"delivery_delayed", @"failed", @"rejected", @"cancelled", @"canceled", @"expired", @"voided", @"error"]];
 }
 
 - (NSString *)pp_homeOrderStatusKey:(PPOrder *)order
 {
-    NSString *statusKey = [PPOrder normalizedStatusFromRawValue:order.rawStatus];
-    if (statusKey.length > 0) {
-        return statusKey;
+    if (![order isKindOfClass:PPOrder.class]) {
+        return @"preparing_for_shipment";
     }
-
-    switch (order.status) {
-        case PPOrderStatusPaid:
-            return @"paid";
-        case PPOrderStatusFailed:
-            return @"failed";
-        case PPOrderStatusPending:
-        default:
-            return @"pending";
-    }
+    NSString *statusKey = [PPOrder normalizedStatusFromRawValue:[order customerVisibleStatusKey]];
+    return statusKey.length > 0 ? statusKey : @"preparing_for_shipment";
 }
 
 - (BOOL)pp_isActiveHomeOrder:(PPOrder *)order
@@ -2432,60 +2425,70 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if ([self pp_isFailureHomeOrderStatusKey:statusKey]) {
         return NO;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
+    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed"]]) {
         return NO;
     }
 
     return [self pp_homeStatusKey:statusKey
-                 matchesAnyKeywords:@[@"pending",
-                                      @"pending_collection",
-                                      @"paid",
-                                      @"success",
-                                      @"processing",
-                                      @"preparing",
-                                      @"packed",
-                                      @"confirmed",
-                                      @"shipped",
-                                      @"shipping",
-                                      @"out_for_delivery",
-                                      @"in_transit"]];
+                 matchesAnyKeywords:@[@"preparing_for_shipment",
+                                      @"ready_for_delivery",
+                                      @"delivery_partner_assigned",
+                                      @"on_the_way"]];
 }
 
 - (NSString *)pp_homeOrderStatusTitle:(PPOrder *)order
 {
     NSString *statusKey = [self pp_homeOrderStatusKey:order];
-    if ([self pp_isFailureHomeOrderStatusKey:statusKey]) {
-        if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"cancelled", @"canceled"]]) {
-            return kLang(@"Canceled");
-        }
-        return kLang(@"Failed");
+    if ([statusKey isEqualToString:@"ready_for_delivery"]) {
+        return kLang(@"Ready for Delivery");
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
+    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
+        return kLang(@"Delivery Partner Assigned");
+    }
+    if ([statusKey isEqualToString:@"on_the_way"]) {
+        return kLang(@"On the Way");
+    }
+    if ([statusKey isEqualToString:@"delivered"]) {
         return kLang(@"Delivered");
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
-        return kLang(@"Shipped");
+    if ([statusKey isEqualToString:@"completed"]) {
+        return kLang(@"Completed");
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-        return kLang(@"Processing");
+    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
+        return kLang(@"Delivery Cancelled");
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-        return kLang(@"Paid");
+    if ([statusKey isEqualToString:@"delivery_delayed"]) {
+        return kLang(@"Delivery Delayed");
     }
-    return kLang(@"Pending");
+    return kLang(@"Preparing for Shipment");
 }
 
 - (NSString *)pp_homeOrderStatusHint:(PPOrder *)order
 {
     NSString *statusKey = [self pp_homeOrderStatusKey:order];
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
+    if ([statusKey isEqualToString:@"ready_for_delivery"]) {
+        return kLang(@"Home_CurrentOrdersReadyHint") ?: (kLang(@"order_action_track_hint") ?: @"");
+    }
+    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
+        return kLang(@"Home_CurrentOrdersAssignedHint") ?: (kLang(@"order_action_track_hint") ?: @"");
+    }
+    if ([statusKey isEqualToString:@"on_the_way"]) {
         return kLang(@"Home_CurrentOrdersShippedHint") ?: (kLang(@"order_action_track_hint") ?: @"");
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-        return kLang(@"Home_CurrentOrdersProcessingHint") ?: (kLang(@"order_action_track_hint") ?: @"");
+    if ([statusKey isEqualToString:@"delivered"]) {
+        return kLang(@"Home_CurrentOrdersDeliveredHint") ?: (kLang(@"order_action_track_hint") ?: @"");
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-        return kLang(@"Home_CurrentOrdersPaidHint") ?: (kLang(@"order_action_track_hint") ?: @"");
+    if ([statusKey isEqualToString:@"completed"]) {
+        return kLang(@"Home_CurrentOrdersCompletedHint") ?: (kLang(@"order_action_track_hint") ?: @"");
+    }
+    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
+        return kLang(@"Home_CurrentOrdersCancelledHint") ?: (kLang(@"order_action_track_hint") ?: @"");
+    }
+    if ([statusKey isEqualToString:@"delivery_delayed"]) {
+        return kLang(@"Home_CurrentOrdersDelayedHint") ?: (kLang(@"order_action_track_hint") ?: @"");
+    }
+    if ([statusKey isEqualToString:@"preparing_for_shipment"]) {
+        return kLang(@"Home_CurrentOrdersProcessingHint") ?: (kLang(@"order_action_track_hint") ?: @"");
     }
     return kLang(@"Home_CurrentOrdersPendingHint") ?: (kLang(@"order_action_track_hint") ?: @"");
 }
@@ -2493,23 +2496,27 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (UIColor *)pp_homeOrderStatusColor:(PPOrder *)order
 {
     NSString *statusKey = [self pp_homeOrderStatusKey:order];
-    if ([self pp_isFailureHomeOrderStatusKey:statusKey]) {
+    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
         return UIColor.systemRedColor;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
+    if ([statusKey isEqualToString:@"delivery_delayed"]) {
+        return UIColor.systemOrangeColor;
+    }
+    if ([statusKey isEqualToString:@"completed"]) {
+        return [GM appPrimaryColor];
+    }
+    if ([statusKey isEqualToString:@"delivered"]) {
         return UIColor.systemGreenColor;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
+    if ([statusKey isEqualToString:@"on_the_way"]) {
         return UIColor.systemBlueColor;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
+    if ([statusKey isEqualToString:@"ready_for_delivery"] ||
+        [statusKey isEqualToString:@"delivery_partner_assigned"]) {
         if (@available(iOS 13.0, *)) {
             return UIColor.systemIndigoColor;
         }
         return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
-    }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-        return [GM appPrimaryColor];
     }
     return UIColor.systemOrangeColor;
 }
@@ -2517,20 +2524,29 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (NSString *)pp_homeOrderStatusIconName:(PPOrder *)order
 {
     NSString *statusKey = [self pp_homeOrderStatusKey:order];
-    if ([self pp_isFailureHomeOrderStatusKey:statusKey]) {
+    if ([statusKey isEqualToString:@"delivery_cancelled"]) {
         return @"xmark.circle.fill";
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
+    if ([statusKey isEqualToString:@"delivery_delayed"]) {
+        return @"exclamationmark.triangle.fill";
+    }
+    if ([statusKey isEqualToString:@"completed"]) {
         return @"checkmark.seal.fill";
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
+    if ([statusKey isEqualToString:@"delivered"]) {
+        return @"checkmark.circle.fill";
+    }
+    if ([statusKey isEqualToString:@"on_the_way"]) {
         return @"shippedtruck";
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-        return @"shippingbox.circle.fill";
+    if ([statusKey isEqualToString:@"ready_for_delivery"]) {
+        return @"shippingbox.fill";
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-        return @"creditcard.fill";
+    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
+        return @"person.crop.circle.fill";
+    }
+    if ([statusKey isEqualToString:@"preparing_for_shipment"]) {
+        return @"shippingbox.circle.fill";
     }
     return @"clock.fill";
 }
@@ -2541,20 +2557,23 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if ([self pp_isFailureHomeOrderStatusKey:statusKey]) {
         return 1.0;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
+    if ([statusKey isEqualToString:@"completed"]) {
         return 1.0;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
+    if ([statusKey isEqualToString:@"delivered"]) {
+        return 0.94;
+    }
+    if ([statusKey isEqualToString:@"on_the_way"]) {
         return 0.86;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-        return [order isCashOnDelivery] ? 0.56 : 0.68;
+    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
+        return 0.62;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-        return 0.38;
+    if ([statusKey isEqualToString:@"ready_for_delivery"]) {
+        return 0.46;
     }
-    if ([self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"pending_collection"]]) {
-        return 0.24;
+    if ([statusKey isEqualToString:@"preparing_for_shipment"]) {
+        return 0.28;
     }
     return 0.16;
 }
@@ -2885,7 +2904,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (BOOL)pp_isTerminalHomeOrderStatusKey:(NSString *)statusKey
 {
-    return [self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"success", @"paid"]]
+    return [self pp_homeStatusKey:statusKey matchesAnyKeywords:@[@"completed"]]
         || [self pp_isFailureHomeOrderStatusKey:statusKey];
 }
 

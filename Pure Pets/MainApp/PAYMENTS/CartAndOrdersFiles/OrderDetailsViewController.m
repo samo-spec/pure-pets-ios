@@ -48,6 +48,108 @@ static NSString *PPOrderStepperNormalizedKey(NSString *value)
     return key;
 }
 
+static NSString *PPOrderCustomerVisibleTimelineStatusKey(NSString *statusKey)
+{
+    NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if (normalized.length == 0) return @"preparing_for_shipment";
+    if ([normalized isEqualToString:@"delivery_cancelled"] ||
+        [normalized containsString:@"cancelled"] ||
+        [normalized containsString:@"canceled"]) {
+        return @"delivery_cancelled";
+    }
+    if ([normalized isEqualToString:@"delivery_failed"] ||
+        [normalized isEqualToString:@"returned_to_store"] ||
+        [normalized containsString:@"returned_to_store"] ||
+        [normalized containsString:@"failed"]) {
+        return @"delivery_delayed";
+    }
+    if ([normalized isEqualToString:@"completed"] ||
+        [normalized containsString:@"completed"] ||
+        [normalized containsString:@"fulfilled"]) {
+        return @"completed";
+    }
+    if ([normalized isEqualToString:@"delivered"] ||
+        [normalized isEqualToString:@"payment_pending"] ||
+        [normalized isEqualToString:@"payment_confirmed"] ||
+        [normalized containsString:@"delivered"]) {
+        return @"delivered";
+    }
+    if ([normalized isEqualToString:@"picked_up"] ||
+        [normalized isEqualToString:@"in_transit"] ||
+        [normalized containsString:@"shipped"] ||
+        [normalized containsString:@"shipping"] ||
+        [normalized containsString:@"out_for_delivery"] ||
+        [normalized containsString:@"in_transit"]) {
+        return @"on_the_way";
+    }
+    if ([normalized isEqualToString:@"delivery_assigned"] ||
+        [normalized isEqualToString:@"awaiting_handover"]) {
+        return @"delivery_partner_assigned";
+    }
+    if ([normalized isEqualToString:@"ready_to_ship"] ||
+        [normalized isEqualToString:@"delivery_requested"] ||
+        [normalized isEqualToString:@"delivery_reassigned"]) {
+        return @"ready_for_delivery";
+    }
+    return @"preparing_for_shipment";
+}
+
+static NSString *PPOrderCustomerVisibleStatusTitle(NSString *statusKey)
+{
+    NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"Ready for Delivery");
+    if ([normalized isEqualToString:@"delivery_partner_assigned"]) return kLang(@"Delivery Partner Assigned");
+    if ([normalized isEqualToString:@"on_the_way"]) return kLang(@"On the Way");
+    if ([normalized isEqualToString:@"delivered"]) return kLang(@"Delivered");
+    if ([normalized isEqualToString:@"completed"]) return kLang(@"Completed");
+    if ([normalized isEqualToString:@"delivery_cancelled"]) return kLang(@"Delivery Cancelled");
+    if ([normalized isEqualToString:@"delivery_delayed"]) return kLang(@"Delivery Delayed");
+    return kLang(@"Preparing for Shipment");
+}
+
+static NSString *PPOrderCustomerVisibleStatusHint(NSString *statusKey)
+{
+    NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"ready_for_delivery"]) return kLang(@"order_delivery_hint_ready");
+    if ([normalized isEqualToString:@"delivery_partner_assigned"]) return kLang(@"order_delivery_hint_assigned");
+    if ([normalized isEqualToString:@"on_the_way"]) return kLang(@"order_delivery_hint_on_the_way");
+    if ([normalized isEqualToString:@"delivered"]) return kLang(@"order_delivery_hint_delivered");
+    if ([normalized isEqualToString:@"completed"]) return kLang(@"order_delivery_hint_completed");
+    if ([normalized isEqualToString:@"delivery_cancelled"]) return kLang(@"order_delivery_hint_cancelled");
+    if ([normalized isEqualToString:@"delivery_delayed"]) return kLang(@"order_delivery_hint_delayed");
+    return kLang(@"order_delivery_hint_preparing");
+}
+
+static BOOL PPOrderTimelineUsesDeliveryPresentation(NSString *statusKey)
+{
+    NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if (normalized.length == 0) return NO;
+    NSArray<NSString *> *keywords = @[
+        @"ready_to_ship",
+        @"delivery_requested",
+        @"delivery_assigned",
+        @"awaiting_handover",
+        @"picked_up",
+        @"in_transit",
+        @"delivered",
+        @"payment_pending",
+        @"payment_confirmed",
+        @"completed",
+        @"delivery_cancelled",
+        @"delivery_failed",
+        @"returned_to_store",
+        @"delivery_reassigned"
+    ];
+    for (NSString *keyword in keywords) {
+        NSString *wrappedStatus = [NSString stringWithFormat:@"_%@_", normalized];
+        NSString *wrappedKeyword = [NSString stringWithFormat:@"_%@_", keyword];
+        if ([wrappedStatus containsString:wrappedKeyword]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 static NSString *PPOrderStepperSymbolForTitle(NSString *title, NSInteger index)
 {
     NSString *key = PPOrderStepperNormalizedKey(title);
@@ -68,11 +170,12 @@ static NSString *PPOrderStepperSymbolForTitle(NSString *title, NSInteger index)
     }
 
     switch (index) {
-        case 0: return @"clock.fill";
-        case 1: return @"creditcard.fill";
-        case 2: return @"shippingbox.fill";
+        case 0: return @"shippingbox.circle.fill";
+        case 1: return @"shippingbox.fill";
+        case 2: return @"person.crop.circle.fill";
         case 3: return @"shippedtruck";
-        case 4: return @"checkmark.seal.fill";
+        case 4: return @"checkmark.circle.fill";
+        case 5: return @"checkmark.seal.fill";
         default: break;
     }
     return @"circle";
@@ -135,9 +238,44 @@ static NSString *PPOrderTimelineTitle(PPOrderTimelineEvent *event)
     if ([type isEqualToString:@"fulfillment_shipped"]) return kLang(@"order_timeline_shipped_title");
     if ([type isEqualToString:@"fulfillment_delivered"]) return kLang(@"order_timeline_delivered_title");
     if ([type isEqualToString:@"order_cancelled"]) return kLang(@"order_timeline_cancelled_title");
+    if ([type isEqualToString:@"order_mark_ready"] ||
+        [type isEqualToString:@"ready_to_ship"] ||
+        [type isEqualToString:@"delivery_requested"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"ready_for_delivery");
+    }
+    if ([type isEqualToString:@"order_accept_delivery"] ||
+        [type isEqualToString:@"delivery_assigned"] ||
+        [type isEqualToString:@"awaiting_handover"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"delivery_partner_assigned");
+    }
+    if ([type isEqualToString:@"order_confirm_handover"] ||
+        [type isEqualToString:@"order_mark_shipped"] ||
+        [type isEqualToString:@"order_mark_in_transit"] ||
+        [type isEqualToString:@"picked_up"] ||
+        [type isEqualToString:@"in_transit"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"on_the_way");
+    }
+    if ([type isEqualToString:@"order_mark_delivered"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"delivered");
+    }
+    if ([type isEqualToString:@"order_mark_completed"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"completed");
+    }
+    if ([type isEqualToString:@"order_cancel_delivery"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"delivery_cancelled");
+    }
+    if ([type isEqualToString:@"order_mark_delivery_failed"] ||
+        [type isEqualToString:@"order_return_to_store"]) {
+        return PPOrderCustomerVisibleStatusTitle(@"delivery_delayed");
+    }
     if ([type isEqualToString:@"customer_request_created"]) return kLang(@"order_request_timeline_submitted");
     if ([type isEqualToString:@"request_submitted"]) return kLang(@"order_request_timeline_submitted");
     if ([type isEqualToString:@"request_status_updated"]) return kLang(@"order_request_timeline_updated");
+    NSString *eventStatus = PPOrderStepperNormalizedKey(event.status);
+    if (PPOrderTimelineUsesDeliveryPresentation(eventStatus)) {
+        NSString *statusTitle = PPOrderCustomerVisibleStatusTitle(PPOrderCustomerVisibleTimelineStatusKey(eventStatus));
+        return statusTitle;
+    }
     return event.summary.length > 0 ? event.summary : kLang(@"order_tracking_title");
 }
 
@@ -145,6 +283,10 @@ static NSString *PPOrderTimelineSubtitle(PPOrderTimelineEvent *event)
 {
     if (event.summary.length > 0) return event.summary;
     NSString *status = PPOrderStepperNormalizedKey(event.status);
+    if (PPOrderTimelineUsesDeliveryPresentation(status)) {
+        NSString *deliveryHint = PPOrderCustomerVisibleStatusHint(PPOrderCustomerVisibleTimelineStatusKey(status));
+        return deliveryHint;
+    }
     if ([status isEqualToString:@"paid"]) return kLang(@"Paid");
     if ([status isEqualToString:@"pending"]) return kLang(@"Pending");
     if ([status isEqualToString:@"pending_collection"]) return kLang(@"order_payment_status_pending_collection");
@@ -2231,7 +2373,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 - (void)refreshVisualTheme
 {
-    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self normalizedStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
+    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
     self.headerCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.97];
     self.deliveryMapCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.97];
     self.summaryPanel.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.10];
@@ -2400,7 +2542,12 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         self.totalPriceLabel.attributedText = [self stackedAttributedTextWithTitle:kLang(@"order_total_label") value:totalValue emphasis:YES alignment:leading];
         self.paymentProviderLabel.attributedText = [self stackedAttributedTextWithTitle:kLang(@"PaymentMethod") value:paymentValue emphasis:NO alignment:leading];
         self.deliveryAddressLabel.text = [NSString stringWithFormat:@"%@: --", kLang(@"DeliveryAddress")];
-        [self.statusStepperView configureWithSteps:@[kLang(@"Pending"), kLang(@"Paid"), kLang(@"Delivered")]
+        [self.statusStepperView configureWithSteps:@[kLang(@"Preparing for Shipment"),
+                                                     kLang(@"Ready for Delivery"),
+                                                     kLang(@"Delivery Partner Assigned"),
+                                                     kLang(@"On the Way"),
+                                                     kLang(@"Delivered"),
+                                                     kLang(@"Completed")]
                                       currentIndex:0
                                       showsFailure:NO
                                          tintColor:[UIColor systemOrangeColor]];
@@ -2440,7 +2587,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 - (void)updateStatusStyle
 {
-    NSString *statusKey = [self normalizedStatusKeyForOrder:self.order];
+    NSString *statusKey = [self customerDisplayStatusKeyForOrder:self.order];
     UIColor *accent = [self statusAccentColorForStatusKey:statusKey];
     UIColor *badge = [self statusBadgeColorForStatusKey:statusKey];
     NSString *iconName = [self statusIconNameForStatusKey:statusKey];
@@ -2454,26 +2601,39 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 - (UIColor *)stepperTintColorForOrder:(PPOrder *)order
 {
-    NSString *statusKey = [self normalizedStatusKeyForOrder:order];
+    NSString *statusKey = [self customerDisplayStatusKeyForOrder:order];
     return [self statusAccentColorForStatusKey:statusKey];
 }
 
 - (UIColor *)statusAccentColorForStatusKey:(NSString *)statusKey
 {
-    if ([self isFailureStatusKey:statusKey]) {
+    NSString *key = PPOrderStepperNormalizedKey(statusKey);
+    if ([key isEqualToString:@"delivery_cancelled"]) {
         return UIColor.systemRedColor;
     }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
-        return UIColor.systemGreenColor;
-    }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
-        return UIColor.systemBlueColor;
-    }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
+    if ([key isEqualToString:@"delivery_delayed"]) {
         return UIColor.systemOrangeColor;
     }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
+    if ([key isEqualToString:@"completed"]) {
         return [GM appPrimaryColor];
+    }
+    if ([key isEqualToString:@"delivered"]) {
+        return UIColor.systemGreenColor;
+    }
+    if ([key isEqualToString:@"on_the_way"]) {
+        return UIColor.systemBlueColor;
+    }
+    if ([key isEqualToString:@"delivery_partner_assigned"]) {
+        if (@available(iOS 13.0, *)) {
+            return UIColor.systemIndigoColor;
+        }
+        return [UIColor colorWithRed:0.35 green:0.45 blue:0.94 alpha:1.0];
+    }
+    if ([key isEqualToString:@"ready_for_delivery"]) {
+        return [GM appPrimaryColor];
+    }
+    if ([key isEqualToString:@"preparing_for_shipment"]) {
+        return UIColor.systemOrangeColor;
     }
     return UIColor.systemOrangeColor;
 }
@@ -2485,78 +2645,69 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 - (NSString *)statusIconNameForStatusKey:(NSString *)statusKey
 {
-    if ([self isFailureStatusKey:statusKey]) {
+    NSString *key = PPOrderStepperNormalizedKey(statusKey);
+    if ([key isEqualToString:@"delivery_cancelled"]) {
         return @"xmark.circle.fill";
     }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
+    if ([key isEqualToString:@"delivery_delayed"]) {
+        return @"exclamationmark.triangle.fill";
+    }
+    if ([key isEqualToString:@"completed"]) {
         return @"checkmark.seal.fill";
     }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
+    if ([key isEqualToString:@"delivered"]) {
+        return @"checkmark.circle.fill";
+    }
+    if ([key isEqualToString:@"on_the_way"]) {
         return @"shippingbox.fill";
     }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-        return @"shippingbox.circle.fill";
+    if ([key isEqualToString:@"delivery_partner_assigned"]) {
+        return @"person.crop.circle.fill";
     }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-        return @"checkmark.circle.fill";
+    if ([key isEqualToString:@"ready_for_delivery"]) {
+        return @"shippingbox.fill";
+    }
+    if ([key isEqualToString:@"preparing_for_shipment"]) {
+        return @"shippingbox.circle.fill";
     }
     return @"clock.fill";
 }
 
 - (void)updateStatusStepper
 {
-    NSString *statusKey = [self normalizedStatusKeyForOrder:self.order];
+    NSString *statusKey = [self customerDisplayStatusKeyForOrder:self.order];
     BOOL isFailure = [self isFailureStatusKey:statusKey];
     UIColor *stepperTintColor = [self stepperTintColorForOrder:self.order];
 
     if (isFailure) {
         NSString *failureTitle = [self failureStepTitleForStatusKey:statusKey];
-        [self.statusStepperView configureWithSteps:@[kLang(@"Pending"), failureTitle]
+        [self.statusStepperView configureWithSteps:@[kLang(@"Preparing for Shipment"), failureTitle]
                                       currentIndex:1
                                       showsFailure:YES
                                          tintColor:stepperTintColor];
         return;
     }
 
-    NSArray<NSString *> *steps = nil;
+    NSArray<NSString *> *steps = @[
+        kLang(@"Preparing for Shipment"),
+        kLang(@"Ready for Delivery"),
+        kLang(@"Delivery Partner Assigned"),
+        kLang(@"On the Way"),
+        kLang(@"Delivered"),
+        kLang(@"Completed")
+    ];
+
     NSInteger currentIndex = 0;
-    if ([self.order isCashOnDelivery]) {
-        steps = @[
-            kLang(@"Pending"),
-            kLang(@"Processing"),
-            kLang(@"Shipped"),
-            kLang(@"Delivered")
-        ];
-
-        if ([self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
-            currentIndex = 3;
-        } else if ([self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
-            currentIndex = 2;
-        } else if ([self statusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-            currentIndex = 1;
-        } else {
-            currentIndex = 0;
-        }
-    } else {
-        steps = @[
-            kLang(@"Pending"),
-            kLang(@"Paid"),
-            kLang(@"Processing"),
-            kLang(@"Shipped"),
-            kLang(@"Delivered")
-        ];
-
-        if ([self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
-            currentIndex = 4;
-        } else if ([self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
-            currentIndex = 3;
-        } else if ([self statusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-            currentIndex = 2;
-        } else if ([self statusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-            currentIndex = 1;
-        } else {
-            currentIndex = 0;
-        }
+    if ([statusKey isEqualToString:@"completed"]) {
+        currentIndex = 5;
+    } else if ([statusKey isEqualToString:@"delivered"]) {
+        currentIndex = 4;
+    } else if ([statusKey isEqualToString:@"on_the_way"]) {
+        currentIndex = 3;
+    } else if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
+        currentIndex = 2;
+    } else if ([statusKey isEqualToString:@"ready_for_delivery"]) {
+        currentIndex = 1;
     }
 
     [self.statusStepperView configureWithSteps:steps
@@ -2567,41 +2718,30 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 - (NSString *)displayStatusTitleForOrder:(PPOrder *)order
 {
-    NSString *statusKey = [self normalizedStatusKeyForOrder:order];
-    if ([self isFailureStatusKey:statusKey]) {
-        return [self failureStepTitleForStatusKey:statusKey];
-    }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]]) {
-        return kLang(@"Delivered");
-    }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"out_for_delivery", @"in_transit"]]) {
-        return kLang(@"Shipped");
-    }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"processing", @"preparing", @"packed", @"confirmed"]]) {
-        return kLang(@"Processing");
-    }
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"paid", @"success"]]) {
-        return kLang(@"Paid");
-    }
-    return kLang(@"Pending");
+    return PPOrderCustomerVisibleStatusTitle([self customerDisplayStatusKeyForOrder:order]);
 }
 
 - (NSString *)failureStepTitleForStatusKey:(NSString *)statusKey
 {
-    if ([self statusKey:statusKey matchesAnyKeywords:@[@"cancelled", @"canceled"]]) {
-        return kLang(@"Canceled");
+    NSString *key = PPOrderStepperNormalizedKey(statusKey);
+    if ([key isEqualToString:@"delivery_cancelled"] ||
+        [self statusKey:key matchesAnyKeywords:@[@"cancelled", @"canceled"]]) {
+        return kLang(@"Delivery Cancelled");
     }
-    return kLang(@"Failed");
+    return kLang(@"Delivery Delayed");
 }
 
 - (BOOL)isFailureStatusKey:(NSString *)statusKey
 {
-    return [self statusKey:statusKey matchesAnyKeywords:@[@"failed", @"rejected", @"cancelled", @"canceled", @"expired"]];
+    return [self statusKey:statusKey matchesAnyKeywords:@[@"failed", @"rejected", @"cancelled", @"canceled", @"expired", @"returned_to_store", @"delivery_delayed"]];
 }
 
 - (NSString *)normalizedStatusKeyForOrder:(PPOrder *)order
 {
-    NSString *status = [self safeString:order.rawStatus];
+    NSString *status = [self safeString:[order effectiveDeliveryStatus]];
+    if (status.length == 0) {
+        status = [self safeString:order.rawStatus];
+    }
     if (status.length == 0) {
         switch (order.status) {
             case PPOrderStatusPending: status = @"pending"; break;
@@ -2617,6 +2757,15 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         status = [status stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
     }
     return status;
+}
+
+- (NSString *)customerDisplayStatusKeyForOrder:(PPOrder *)order
+{
+    if (![order isKindOfClass:PPOrder.class]) {
+        return @"preparing_for_shipment";
+    }
+    NSString *statusKey = PPOrderStepperNormalizedKey([order customerVisibleStatusKey]);
+    return statusKey.length > 0 ? statusKey : @"preparing_for_shipment";
 }
 
 - (BOOL)statusKey:(NSString *)statusKey matchesAnyKeywords:(NSArray<NSString *> *)keywords
@@ -2643,8 +2792,8 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 {
     BOOL hasOrder = (self.order != nil);
     NSString *statusKey = [self normalizedStatusKeyForOrder:self.order];
-    BOOL deliveredLike = [self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled"]];
-    BOOL shippedLike = [self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"in_transit", @"out_for_delivery"]];
+    BOOL deliveredLike = [self statusKey:statusKey matchesAnyKeywords:@[@"delivered", @"completed", @"fulfilled", @"payment_pending", @"payment_confirmed"]];
+    BOOL shippedLike = [self statusKey:statusKey matchesAnyKeywords:@[@"shipped", @"shipping", @"in_transit", @"out_for_delivery", @"picked_up"]];
     BOOL cancelledLike = [self statusKey:statusKey matchesAnyKeywords:@[@"cancelled", @"canceled"]];
     BOOL chargeCapturedLike = hasOrder && [self.order hasCapturedPayment];
     BOOL issueRelevant = hasOrder;
@@ -2933,7 +3082,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
     CGFloat width = CGRectGetWidth(tableView.bounds);
     BOOL isRTL = [Language isRTL];
-    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self normalizedStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
+    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
 
     UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 54.0)];
     container.backgroundColor = UIColor.clearColor;

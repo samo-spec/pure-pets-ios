@@ -61,6 +61,7 @@ BOOL const isPPDebugMode = NO;
     dict[@"quantity"] = @(self.quantity);
     dict[@"isNew"] = @(self.isNew);
     dict[@"hasOffer"] = @(self.hasOffer);
+    dict[@"showInAppMarket"] = @(self.showInAppMarket);
     
     // Calculate and include final price
     NSNumber *finalPrice = [self calculateFinalPrice];
@@ -253,6 +254,7 @@ BOOL const isPPDebugMode = NO;
         _condition = [dict[@"condition"] integerValue];
         _isNew = [dict[@"isNew"] boolValue];
         _hasOffer = [dict[@"hasOffer"] boolValue];
+        _showInAppMarket = [dict[@"showInAppMarket"] boolValue];
         
         _quantity = [dict[@"quantity"] integerValue];
         _searchTitle = dict[@"searchTitle"];
@@ -290,6 +292,7 @@ BOOL const isPPDebugMode = NO;
     copy.quantity = source.quantity;
     copy.isNew = source.isNew;
     copy.hasOffer = source.hasOffer;
+    copy.showInAppMarket = source.showInAppMarket;
     return copy;
 }
 

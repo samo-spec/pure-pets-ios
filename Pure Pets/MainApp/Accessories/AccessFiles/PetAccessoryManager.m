@@ -58,6 +58,14 @@ static BOOL _pp_thresholdLoaded = NO;
     NSMutableArray<PetAccessory *> *filtered = [NSMutableArray arrayWithCapacity:items.count];
 
     for (PetAccessory *item in items) {
+        // Exclude live-pet items from user-facing lists
+        if (item.accessKindType == AccessTypeLivePet) {
+            continue;
+        }
+        // Exclude items not marked for app market visibility
+        if (!item.showInAppMarket) {
+            continue;
+        }
         // Keep items with no expiry date (nullable — not all items expire)
         if (!item.expiryDate) {
             [filtered addObject:item];
@@ -1021,6 +1029,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             PetAccessory *accessory =
                 [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+            if (accessory.accessKindType == AccessTypeLivePet) continue;
+            if (!accessory.showInAppMarket) continue;
             [strongSelf.accessoriesArray addObject:accessory];
             
             NSLog(@"listening for kind  %@",accessory.name);
@@ -1054,6 +1064,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [strongSelf.accessoriesArray removeAllObjects];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                if (accessory.accessKindType == AccessTypeLivePet) continue;
+                if (!accessory.showInAppMarket) continue;
                 [strongSelf.accessoriesArray addObject:accessory];
             }
             
@@ -1078,7 +1090,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [strongSelf.accessoriesArray removeAllObjects];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                if (accessory.accessKindType == AccessTypeLivePet) continue;
                 [strongSelf.accessoriesArray addObject:accessory];
+                if (!accessory.showInAppMarket) continue;
             }
             
             if (updateBlock) {
@@ -1105,7 +1119,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [self.accessoriesArray removeAllObjects];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                if (accessory.accessKindType == AccessTypeLivePet) continue;
                 [self.accessoriesArray addObject:accessory];
+                if (!accessory.showInAppMarket) continue;
             }
             
             if (updateBlock) {
@@ -2102,6 +2118,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             NSMutableArray *results = [NSMutableArray array];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                if (item.accessKindType == AccessTypeLivePet) continue;
+                if (!item.showInAppMarket) continue;
                 if(item.accessKindType == kind)
                     [results addObject:item];
             }
@@ -2144,7 +2162,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     [[PetAccessory alloc] initWithDictionary:doc.data
                                                   documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
-                    if (item) [results addObject:item];
+                    if (item && item.accessKindType != AccessTypeLivePet && item.showInAppMarket) [results addObject:item];
                 }
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
