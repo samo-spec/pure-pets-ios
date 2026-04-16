@@ -5,9 +5,6 @@
 //  Created by Mohammed Ahmed on 2/10/26.
 //
 
-#import <UIKit/UIKit.h>
-
-NS_ASSUME_NONNULL_BEGIN
 
 typedef NS_ENUM(NSInteger, PPHomeHeroLocationState) {
     PPHomeHeroLocationStateUnset = 0,
@@ -37,5 +34,3 @@ typedef NS_ENUM(NSInteger, PPHomeHeroLocationState) {
 @property (nonatomic, copy, nullable) void (^onLocationActionTap)(void);
 @property (nonatomic, copy, nullable) void (^onOrderPeekTap)(void);
 @end
-
-NS_ASSUME_NONNULL_END
