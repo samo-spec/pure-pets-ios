@@ -681,6 +681,7 @@
 
 @implementation PPHomeSmartSearchTitleView {
     UIView *_chromeView;
+    UIButton *_glassChromeButton;
     UIVisualEffectView *_chromeBlurView;
     UIView *_chromeTintOverlay;
     UIView *_leadingChipView;
@@ -697,6 +698,40 @@
 }
 
 @synthesize placeholderLabel = _placeholderLabel;
+
+- (BOOL)pp_usesSystemGlassChrome
+{
+    return _glassChromeButton != nil;
+}
+
+- (void)pp_configureSystemGlassChromeIfNeeded
+{
+    if (!_glassChromeButton) {
+        return;
+    }
+
+    if (@available(iOS 26.0, *)) {
+        BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        UIColor *liquidBorderColor = AppForgroundColr ?: UIColor.whiteColor;
+        UIButtonConfiguration *configuration =
+            [UIButtonConfiguration clearGlassButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.contentInsets = NSDirectionalEdgeInsetsZero;
+        configuration.baseForegroundColor = UIColor.clearColor;
+
+        UIBackgroundConfiguration *background =
+            configuration.background ?: [UIBackgroundConfiguration clearConfiguration];
+        background.backgroundInsets = NSDirectionalEdgeInsetsZero;
+        background.backgroundColor = UIColor.clearColor;
+        background.strokeColor = [liquidBorderColor colorWithAlphaComponent:isDark ? 0.34 : 0.68];
+        background.strokeWidth = 0.9;
+        background.visualEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
+        background.cornerRadius = CGRectGetHeight(self.bounds) > 0.0 ? CGRectGetHeight(self.bounds) * 0.5 : 21.0;
+        configuration.background = background;
+
+        _glassChromeButton.configuration = configuration;
+    }
+}
 
 - (CGSize)intrinsicContentSize
 {
@@ -728,7 +763,17 @@
     self.layer.shadowRadius = 14.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
 
-    UIView *chromeView = [[UIView alloc] initWithFrame:self.bounds];
+    UIView *chromeView = nil;
+    if (@available(iOS 26.0, *)) {
+        UIButton *glassButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        glassButton.backgroundColor = UIColor.clearColor;
+        glassButton.userInteractionEnabled = NO;
+        chromeView = glassButton;
+        _glassChromeButton = glassButton;
+        [self pp_configureSystemGlassChromeIfNeeded];
+    } else {
+        chromeView = [[UIView alloc] initWithFrame:self.bounds];
+    }
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
     chromeView.backgroundColor = UIColor.clearColor;
     chromeView.userInteractionEnabled = NO;
@@ -741,34 +786,35 @@
     _chromeView = chromeView;
     [chromeView.heightAnchor constraintEqualToConstant:44.0].active = YES;
 
-    // Glass blur layer — modern translucent frosted effect
-    UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.userInteractionEnabled = NO;
-    blurView.alpha = 0.0;
-    [chromeView insertSubview:blurView atIndex:0];
-    _chromeBlurView = blurView;
-    [NSLayoutConstraint activateConstraints:@[
-        [blurView.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
-    ]];
+    if (![self pp_usesSystemGlassChrome]) {
+        // Legacy frosted fallback for pre-iOS 26 runtimes.
+        UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+        blurView.translatesAutoresizingMaskIntoConstraints = NO;
+        blurView.userInteractionEnabled = NO;
+        blurView.alpha = 0.0;
+        [chromeView insertSubview:blurView atIndex:0];
+        _chromeBlurView = blurView;
+        [NSLayoutConstraint activateConstraints:@[
+            [blurView.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
+            [blurView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
+            [blurView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
+            [blurView.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
+        ]];
 
-    // Subtle tint overlay on top of blur for color cohesion
-    UIView *chromeTint = [[UIView alloc] init];
-    chromeTint.translatesAutoresizingMaskIntoConstraints = NO;
-    chromeTint.userInteractionEnabled = NO;
-    chromeTint.backgroundColor = UIColor.clearColor;
-    [chromeView insertSubview:chromeTint aboveSubview:blurView];
-    _chromeTintOverlay = chromeTint;
-    [NSLayoutConstraint activateConstraints:@[
-        [chromeTint.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
-        [chromeTint.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
-        [chromeTint.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
-        [chromeTint.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
-    ]];
+        UIView *chromeTint = [[UIView alloc] init];
+        chromeTint.translatesAutoresizingMaskIntoConstraints = NO;
+        chromeTint.userInteractionEnabled = NO;
+        chromeTint.backgroundColor = UIColor.clearColor;
+        [chromeView insertSubview:chromeTint aboveSubview:blurView];
+        _chromeTintOverlay = chromeTint;
+        [NSLayoutConstraint activateConstraints:@[
+            [chromeTint.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
+            [chromeTint.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
+            [chromeTint.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
+            [chromeTint.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
+        ]];
+    }
 
     UIView *leadingChipView = [UIView new];
     leadingChipView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1097,23 +1143,31 @@
     UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *accentColor = AppPrimaryClr ?: AppPrimaryClrShiner ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
     UIColor *surfaceColor = AppForgroundColr ?: [UIColor secondarySystemBackgroundColor];
+    UIColor *liquidBorderColor = AppForgroundColr ?: surfaceColor;
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
 
-    // Modern glass: Force blur + subtle tint visibility
     _chromeView.backgroundColor = UIColor.clearColor;
-    _chromeBlurView.alpha = 1.0;
-    
-    // Adaptive blur: thin material automatically adapts to light/dark
-    UIBlurEffectStyle blurStyle = isDark
-        ? UIBlurEffectStyleSystemThinMaterialDark
-        : UIBlurEffectStyleSystemThinMaterialLight;
-    _chromeBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+    if (usesSystemGlassChrome) {
+        [self pp_configureSystemGlassChromeIfNeeded];
+        _chromeView.layer.borderWidth = 0.0f;
+        _chromeView.layer.borderColor = UIColor.clearColor.CGColor;
+        _chromeBlurView.alpha = 0.0;
+        _chromeTintOverlay.backgroundColor = UIColor.clearColor;
+    } else {
+        _chromeBlurView.alpha = 1.0;
 
-    CGFloat tintAlpha = isDark ? 0.28 : 0.14;
-    _chromeTintOverlay.backgroundColor = [surfaceColor colorWithAlphaComponent:tintAlpha];
-    _chromeView.layer.borderWidth = isDark ? 0.5f : 0.33f;
-    _chromeView.layer.borderColor =
-        [[textColor colorWithAlphaComponent:isDark ? 0.14 : 0.06] CGColor];
+        UIBlurEffectStyle blurStyle = isDark
+            ? UIBlurEffectStyleSystemThinMaterialDark
+            : UIBlurEffectStyleSystemThinMaterialLight;
+        _chromeBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+
+        CGFloat tintAlpha = isDark ? 0.28 : 0.14;
+        _chromeTintOverlay.backgroundColor = [surfaceColor colorWithAlphaComponent:tintAlpha];
+        _chromeView.layer.borderWidth = isDark ? 0.78f : 0.92f;
+        _chromeView.layer.borderColor =
+            [[liquidBorderColor colorWithAlphaComponent:isDark ? 0.30 : 0.58] CGColor];
+    }
 
     _leadingChipView.backgroundColor =
         [accentColor colorWithAlphaComponent:isDark ? 0.24 : 0.12];
@@ -1132,7 +1186,9 @@
     _trailingOrbView.layer.borderColor =
         [[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06] CGColor];
     _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
-    self.layer.shadowOpacity = isDark ? 0.16f : 0.04f;
+    self.layer.shadowOpacity = usesSystemGlassChrome
+        ? (isDark ? 0.10f : 0.025f)
+        : (isDark ? 0.16f : 0.04f);
 }
 
 - (void)pp_updateInteractiveStateAnimated:(BOOL)animated
@@ -1140,11 +1196,15 @@
     void (^changes)(void) = ^{
         BOOL isPressed = self.highlighted;
         BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        self->_chromeView.transform = isPressed ? CGAffineTransformMakeScale(0.988, 0.988) : CGAffineTransformIdentity;
+        BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
+        CGFloat chromeScale = usesSystemGlassChrome ? 0.992 : 0.988;
+        self->_chromeView.transform = isPressed ? CGAffineTransformMakeScale(chromeScale, chromeScale) : CGAffineTransformIdentity;
         self->_leadingChipView.transform = isPressed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
         self->_trailingOrbView.transform = isPressed ? CGAffineTransformMakeScale(0.97, 0.97) : CGAffineTransformIdentity;
-        self.layer.shadowOpacity = self->_showSmartPillBackground ? (isPressed ? (isDark ? 0.20f : 0.12f) : (isDark ? 0.16f : 0.08f)) : 0.0f;
-        self.layer.shadowRadius = isPressed ? 18.0f : 14.0f;
+        CGFloat idleShadow = usesSystemGlassChrome ? (isDark ? 0.10f : 0.05f) : (isDark ? 0.16f : 0.08f);
+        CGFloat pressedShadow = usesSystemGlassChrome ? (isDark ? 0.14f : 0.08f) : (isDark ? 0.20f : 0.12f);
+        self.layer.shadowOpacity = self->_showSmartPillBackground ? (isPressed ? pressedShadow : idleShadow) : 0.0f;
+        self.layer.shadowRadius = isPressed ? (usesSystemGlassChrome ? 16.0f : 18.0f) : (usesSystemGlassChrome ? 12.0f : 14.0f);
         self->_chromeView.alpha = self.enabled ? (isPressed ? 0.98 : 1.0) : 0.72;
     };
 
@@ -1286,6 +1346,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL pp_backgroundAnimationsConfigured;
 @property (nonatomic, strong) UIView *pp_backgroundGlowViewTop;
 @property (nonatomic, strong) UIView *pp_backgroundGlowViewBottom;
+@property (nonatomic, strong) UIImageView *pp_backgroundPatternView;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL petProfilesLoading;
@@ -2199,8 +2260,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.nearbyServicesShowingLatest = NO;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
-    self.view.backgroundColor = AppBageColor();
-
+    self.view.backgroundColor = AppForgroundColr ?: AppBageColor();
+    [self pp_installBackgroundGradient];
     [self pp_setupBackgroundGlowOrbs];
 
     self.mainKinds = PPMainKindsArray;
@@ -7620,7 +7681,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.pp_backgroundCanvasView) {
         return;
     }
-    return;
+
     UIView *canvas = [[UIView alloc] init];
     canvas.translatesAutoresizingMaskIntoConstraints = NO;
     canvas.backgroundColor = UIColor.clearColor;
@@ -7642,6 +7703,22 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     gradient.needsDisplayOnBoundsChange = YES;
     [canvas.layer addSublayer:gradient];
     self.pp_backgroundGradientLayer = gradient;
+
+    UIImage *patternImage = [[UIImage imageNamed:@"chat3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    if (patternImage) {
+        UIImageView *patternView = [[UIImageView alloc] initWithImage:patternImage];
+        patternView.translatesAutoresizingMaskIntoConstraints = NO;
+        patternView.contentMode = UIViewContentModeScaleAspectFill;
+        patternView.userInteractionEnabled = NO;
+        [canvas addSubview:patternView];
+        self.pp_backgroundPatternView = patternView;
+        [NSLayoutConstraint activateConstraints:@[
+            [patternView.topAnchor constraintEqualToAnchor:canvas.topAnchor],
+            [patternView.leadingAnchor constraintEqualToAnchor:canvas.leadingAnchor],
+            [patternView.trailingAnchor constraintEqualToAnchor:canvas.trailingAnchor],
+            [patternView.bottomAnchor constraintEqualToAnchor:canvas.bottomAnchor],
+        ]];
+    }
 
     CAGradientLayer *topGlow = [CAGradientLayer layer];
     topGlow.type = kCAGradientLayerRadial;
@@ -7684,56 +7761,28 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_updateBackgroundGradientColors
 {
-    if (!self.pp_backgroundGradientLayer) return;
+    if (!self.pp_backgroundCanvasView && !self.pp_backgroundGradientLayer) return;
 
-    UIColor *base = [UIColor colorWithHexString:@"#ed1e67"] ;
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    UIColor *surfaceColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    UIColor *ambientColor = AppBackgroundClr ?: AppBageColor();
+    UIColor *primaryColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *secondaryGlowColor = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:0.92];
+    UIColor *highlightColor = [UIColor colorWithWhite:1.0 alpha:1.0];
 
-    UIColor *tintTop = nil;
-    UIColor *tintUpperMid = nil;
-    UIColor *tintLowerMid = nil;
-    UIColor *topGlowStart = nil;
-    UIColor *topGlowMid = nil;
-    UIColor *accentGlowStart = nil;
-    UIColor *accentGlowMid = nil;
-    UIColor *bottomGlowStart = nil;
-    UIColor *bottomGlowMid = nil;
-    UIColor *shinePeak = nil;
-    UIColor *shineTail = nil;
+    UIColor *tintTop = [surfaceColor colorWithAlphaComponent:1.0];
+    UIColor *tintUpperMid = [surfaceColor colorWithAlphaComponent:isDark ? 0.98 : 0.99];
+    UIColor *tintLowerMid = [ambientColor colorWithAlphaComponent:1.0];
+    UIColor *tintBottom = [ambientColor colorWithAlphaComponent:1.0];
 
-    if (isDark) {
-        // Deep charcoal base with richer blue-violet undertones
-        tintTop = [UIColor colorWithRed:0.05 green:0.04 blue:0.10 alpha:1.0];
-        tintUpperMid = [UIColor colorWithRed:0.04 green:0.05 blue:0.14 alpha:1.0];
-        tintLowerMid = [UIColor colorWithRed:0.04 green:0.04 blue:0.11 alpha:1.0];
-        // Vibrant coral/amber glow — top-left focal point
-        topGlowStart = [UIColor colorWithRed:1.0 green:0.48 blue:0.28 alpha:0.38];
-        topGlowMid = [UIColor colorWithRed:0.96 green:0.32 blue:0.38 alpha:0.16];
-        // Electric teal accent — punchy contrast
-        accentGlowStart = [UIColor colorWithRed:0.14 green:0.78 blue:0.90 alpha:0.26];
-        accentGlowMid = [UIColor colorWithRed:0.20 green:0.68 blue:0.92 alpha:0.12];
-        // Rich violet — deeper lower glow
-        bottomGlowStart = [UIColor colorWithRed:0.40 green:0.26 blue:0.86 alpha:0.24];
-        bottomGlowMid = [UIColor colorWithRed:0.34 green:0.22 blue:0.76 alpha:0.10];
-        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.10];
-        shineTail = [UIColor colorWithWhite:1.0 alpha:0.03];
-    } else {
-        // Warm ivory base with lavender-mint undertones
-        tintTop = [UIColor colorWithRed:0.98 green:0.97 blue:1.0 alpha:1.0];
-        tintUpperMid = [UIColor colorWithRed:0.96 green:0.94 blue:0.99 alpha:1.0];
-        tintLowerMid = [UIColor colorWithRed:0.94 green:0.96 blue:1.0 alpha:1.0];
-        // Vivid apricot/peach glow — richer warmth
-        topGlowStart = [UIColor colorWithRed:1.0 green:0.76 blue:0.54 alpha:0.80];
-        topGlowMid = [UIColor colorWithRed:1.0 green:0.60 blue:0.52 alpha:0.36];
-        // Saturated mint/teal accent
-        accentGlowStart = [UIColor colorWithRed:0.40 green:0.88 blue:0.86 alpha:0.44];
-        accentGlowMid = [UIColor colorWithRed:0.48 green:0.84 blue:0.94 alpha:0.20];
-        // Richer lilac/lavender depth
-        bottomGlowStart = [UIColor colorWithRed:0.70 green:0.60 blue:0.98 alpha:0.38];
-        bottomGlowMid = [UIColor colorWithRed:0.74 green:0.66 blue:0.96 alpha:0.16];
-        shinePeak = [UIColor colorWithWhite:1.0 alpha:0.42];
-        shineTail = [UIColor colorWithWhite:1.0 alpha:0.08];
-    }
+    UIColor *topGlowStart = [primaryColor colorWithAlphaComponent:isDark ? 0.24 : 0.15];
+    UIColor *topGlowMid = [primaryColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
+    UIColor *accentGlowStart = [secondaryGlowColor colorWithAlphaComponent:isDark ? 0.24 : 0.16];
+    UIColor *accentGlowMid = [secondaryGlowColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
+    UIColor *bottomGlowStart = [surfaceColor colorWithAlphaComponent:isDark ? 0.18 : 0.14];
+    UIColor *bottomGlowMid = [surfaceColor colorWithAlphaComponent:isDark ? 0.08 : 0.04];
+    UIColor *shinePeak = [highlightColor colorWithAlphaComponent:isDark ? 0.10 : 0.24];
+    UIColor *shineTail = [highlightColor colorWithAlphaComponent:isDark ? 0.02 : 0.06];
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -7741,30 +7790,30 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         (id)tintTop.CGColor,
         (id)tintUpperMid.CGColor,
         (id)tintLowerMid.CGColor,
-        (id)base.CGColor
+        (id)tintBottom.CGColor
     ];
-    self.pp_backgroundTopGlowLayer.colors = @[
-        (id)topGlowStart.CGColor,
-        (id)topGlowMid.CGColor,
-        (id)UIColor.clearColor.CGColor
-    ];
-    self.pp_backgroundAccentGlowLayer.colors = @[
-        (id)accentGlowStart.CGColor,
-        (id)accentGlowMid.CGColor,
-        (id)UIColor.clearColor.CGColor
-    ];
-    self.pp_backgroundBottomGlowLayer.colors = @[
-        (id)bottomGlowStart.CGColor,
-        (id)bottomGlowMid.CGColor,
-        (id)UIColor.clearColor.CGColor
-    ];
-    self.pp_backgroundShineLayer.colors = @[
-        (id)UIColor.clearColor.CGColor,
-        (id)shinePeak.CGColor,
-        (id)shineTail.CGColor,
-        (id)UIColor.clearColor.CGColor
-    ];
+    self.pp_backgroundGradientLayer.locations = @[@0.0, @0.36, @0.76, @1.0];
+    self.pp_backgroundTopGlowLayer.colors = @[(id)topGlowStart.CGColor, (id)topGlowMid.CGColor, (id)UIColor.clearColor.CGColor];
+    self.pp_backgroundAccentGlowLayer.colors = @[(id)accentGlowStart.CGColor, (id)accentGlowMid.CGColor, (id)UIColor.clearColor.CGColor];
+    self.pp_backgroundBottomGlowLayer.colors = @[(id)bottomGlowStart.CGColor, (id)bottomGlowMid.CGColor, (id)UIColor.clearColor.CGColor];
+    self.pp_backgroundShineLayer.colors = @[(id)UIColor.clearColor.CGColor, (id)shinePeak.CGColor, (id)shineTail.CGColor, (id)UIColor.clearColor.CGColor];
     [CATransaction commit];
+
+    self.view.backgroundColor = surfaceColor;
+    self.pp_backgroundPatternView.tintColor = primaryColor;
+    self.pp_backgroundPatternView.alpha = isDark ? 0.045 : 0.028;
+
+    self.pp_backgroundGlowViewTop.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.22 : 0.12];
+    self.pp_backgroundGlowViewTop.layer.shadowColor = primaryColor.CGColor;
+    self.pp_backgroundGlowViewTop.layer.shadowOpacity = isDark ? 0.16f : 0.11f;
+    self.pp_backgroundGlowViewTop.layer.shadowRadius = 66.0f;
+    self.pp_backgroundGlowViewTop.layer.shadowOffset = CGSizeZero;
+
+    self.pp_backgroundGlowViewBottom.backgroundColor = [secondaryGlowColor colorWithAlphaComponent:isDark ? 0.18 : 0.10];
+    self.pp_backgroundGlowViewBottom.layer.shadowColor = secondaryGlowColor.CGColor;
+    self.pp_backgroundGlowViewBottom.layer.shadowOpacity = isDark ? 0.14f : 0.10f;
+    self.pp_backgroundGlowViewBottom.layer.shadowRadius = 58.0f;
+    self.pp_backgroundGlowViewBottom.layer.shadowOffset = CGSizeZero;
 }
 
 - (void)pp_layoutBackgroundLayers
@@ -7784,15 +7833,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.pp_backgroundGradientLayer.frame = bounds;
-    // Top-left warm glow — larger, pulled further off-screen for organic bleed
     self.pp_backgroundTopGlowLayer.frame =
-        CGRectMake(-width * 0.28, -height * 0.22, width * 1.44, MAX(height * 0.78, width * 1.0));
-    // Accent glow — shifted right-center for asymmetric balance
+        CGRectMake(-width * 0.18, -height * 0.10, width * 1.18, MAX(height * 0.62, width * 0.92));
     self.pp_backgroundAccentGlowLayer.frame =
-        CGRectMake(width * 0.42, height * 0.12, width * 0.72, width * 0.72);
-    // Bottom glow — wider spread, lower on screen
+        CGRectMake(width * 0.48, height * 0.10, width * 0.62, width * 0.62);
     self.pp_backgroundBottomGlowLayer.frame =
-        CGRectMake(-width * 0.18, height * 0.52, width * 1.08, height * 0.62);
+        CGRectMake(-width * 0.12, height * 0.56, width * 0.94, height * 0.46);
     self.pp_backgroundShineLayer.frame = bounds;
     [CATransaction commit];
 }
@@ -7848,6 +7894,39 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     bottomDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.pp_backgroundBottomGlowLayer addAnimation:bottomDrift forKey:@"pp.background.bottom.drift"];
 
+    if (self.pp_backgroundPatternView && ![self.pp_backgroundPatternView.layer animationForKey:@"pp.background.pattern.opacity"]) {
+        CABasicAnimation *patternOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        patternOpacity.fromValue = @(self.pp_backgroundPatternView.alpha * 0.78);
+        patternOpacity.toValue = @(self.pp_backgroundPatternView.alpha * 1.18);
+        patternOpacity.duration = 7.4;
+        patternOpacity.autoreverses = YES;
+        patternOpacity.repeatCount = HUGE_VALF;
+        patternOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.pp_backgroundPatternView.layer addAnimation:patternOpacity forKey:@"pp.background.pattern.opacity"];
+    }
+
+    if (self.pp_backgroundGlowViewTop && ![self.pp_backgroundGlowViewTop.layer animationForKey:@"pp.background.orb.top.drift"]) {
+        CABasicAnimation *topDriftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+        topDriftX.fromValue = @(-10.0);
+        topDriftX.toValue = @(12.0);
+        topDriftX.duration = 6.8;
+        topDriftX.autoreverses = YES;
+        topDriftX.repeatCount = HUGE_VALF;
+        topDriftX.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.pp_backgroundGlowViewTop.layer addAnimation:topDriftX forKey:@"pp.background.orb.top.drift"];
+    }
+
+    if (self.pp_backgroundGlowViewBottom && ![self.pp_backgroundGlowViewBottom.layer animationForKey:@"pp.background.orb.bottom.drift"]) {
+        CABasicAnimation *bottomDriftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+        bottomDriftX.fromValue = @(10.0);
+        bottomDriftX.toValue = @(-14.0);
+        bottomDriftX.duration = 7.6;
+        bottomDriftX.autoreverses = YES;
+        bottomDriftX.repeatCount = HUGE_VALF;
+        bottomDriftX.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.pp_backgroundGlowViewBottom.layer addAnimation:bottomDriftX forKey:@"pp.background.orb.bottom.drift"];
+    }
+
     self.pp_backgroundAnimationsConfigured = YES;
 }
 
@@ -7858,6 +7937,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self.pp_backgroundAccentGlowLayer removeAnimationForKey:@"pp.background.accent.drift"];
     [self.pp_backgroundAccentGlowLayer removeAnimationForKey:@"pp.background.accent.scale"];
     [self.pp_backgroundBottomGlowLayer removeAnimationForKey:@"pp.background.bottom.drift"];
+    [self.pp_backgroundPatternView.layer removeAnimationForKey:@"pp.background.pattern.opacity"];
+    [self.pp_backgroundGlowViewTop.layer removeAnimationForKey:@"pp.background.orb.top.drift"];
+    [self.pp_backgroundGlowViewBottom.layer removeAnimationForKey:@"pp.background.orb.bottom.drift"];
     self.pp_backgroundAnimationsConfigured = NO;
 }
 
@@ -7868,50 +7950,32 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.pp_backgroundGlowViewTop || self.pp_backgroundGlowViewBottom) {
         return;
     }
-    return;
+
+    UIView *hostView = self.pp_backgroundCanvasView ?: self.view;
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.12 * 0.40 : 0.12;
-        return [UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:a];
-    }];
-    topGlow.layer.shadowColor = [[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0]
-                                  resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    topGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.10;
-    topGlow.layer.shadowRadius = 64.0;
-    topGlow.layer.shadowOffset = CGSizeZero;
-
     UIView *bottomGlow = [[UIView alloc] init];
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
-        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 * 0.40 : 0.06;
-        return [UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:a];
-    }];
-    bottomGlow.layer.shadowColor = [[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0]
-                                     resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    bottomGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
-    bottomGlow.layer.shadowRadius = 72.0;
-    bottomGlow.layer.shadowOffset = CGSizeZero;
-
-    [self.view insertSubview:topGlow atIndex:0];
-    [self.view insertSubview:bottomGlow atIndex:0];
+    [hostView addSubview:topGlow];
+    [hostView addSubview:bottomGlow];
 
     [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:220.0],
-        [topGlow.heightAnchor constraintEqualToConstant:220.0],
-        [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-72.0],
-        [topGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:84.0],
+        [topGlow.widthAnchor constraintEqualToConstant:308.0],
+        [topGlow.heightAnchor constraintEqualToConstant:308.0],
+        [topGlow.centerXAnchor constraintEqualToAnchor:hostView.centerXAnchor constant:136.0],
+        [topGlow.topAnchor constraintEqualToAnchor:hostView.topAnchor constant:-124.0],
 
-        [bottomGlow.widthAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:200.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:48.0],
-        [bottomGlow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-64.0]
+        [bottomGlow.widthAnchor constraintEqualToConstant:256.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:256.0],
+        [bottomGlow.centerXAnchor constraintEqualToAnchor:hostView.centerXAnchor constant:-152.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor constant:132.0]
     ]];
 
     self.pp_backgroundGlowViewTop = topGlow;
     self.pp_backgroundGlowViewBottom = bottomGlow;
+    [self pp_updateBackgroundGradientColors];
 }
 
 - (void)pp_layoutBackgroundGlowOrbs
@@ -7921,8 +7985,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         CGRectGetWidth(self.pp_backgroundGlowViewTop.bounds) * 0.5;
     self.pp_backgroundGlowViewBottom.layer.cornerRadius =
         CGRectGetWidth(self.pp_backgroundGlowViewBottom.bounds) * 0.5;
-    [self.view sendSubviewToBack:self.pp_backgroundGlowViewBottom];
-    [self.view sendSubviewToBack:self.pp_backgroundGlowViewTop];
+    UIView *hostView = self.pp_backgroundCanvasView ?: self.view;
+    [hostView sendSubviewToBack:self.pp_backgroundGlowViewBottom];
+    [hostView sendSubviewToBack:self.pp_backgroundGlowViewTop];
+    if (self.pp_backgroundCanvasView && self.pp_backgroundPatternView) {
+        [self.pp_backgroundCanvasView bringSubviewToFront:self.pp_backgroundPatternView];
+    }
 }
 
 - (void)viewDidLayoutSubviews
@@ -7930,7 +7998,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [super viewDidLayoutSubviews];
     if (self.pp_backgroundCanvasView &&
         !CGRectEqualToRect(self.pp_backgroundCanvasView.bounds, CGRectZero)) {
-        //[self pp_layoutBackgroundLayers];
+        [self pp_layoutBackgroundLayers];
     }
 
     [self pp_layoutBackgroundGlowOrbs];
