@@ -1347,6 +1347,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) UIView *pp_backgroundGlowViewTop;
 @property (nonatomic, strong) UIView *pp_backgroundGlowViewBottom;
 @property (nonatomic, strong) UIImageView *pp_backgroundPatternView;
+@property (nonatomic, strong) UIView *pp_midGlowA;
+@property (nonatomic, strong) UIView *pp_midGlowB;
+@property (nonatomic, strong) UIView *pp_midGlowC;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL petProfilesLoading;
@@ -1481,6 +1484,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_stopBackgroundAnimations;
 - (void)pp_setupBackgroundGlowOrbs;
 - (void)pp_layoutBackgroundGlowOrbs;
+- (void)pp_setupMidLayerGlows;
+- (void)pp_layoutMidLayerGlows;
+- (void)pp_updateMidLayerGlowColors;
 - (CGFloat)pp_preferredNavigationSearchWidth;
 - (UIView *)pp_navigationSmartSearchTitleView;
 - (void)pp_openSmartSearch;
@@ -2299,6 +2305,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 
     [self setupCollectionView];
+    [self pp_setupMidLayerGlows];
     [self configureDataSource];
     [self applyBaseSnapshot];   // 🔥 NEW
     [self refreshHeroSectionAppearance];
@@ -6505,7 +6512,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     NSInteger kindID = [event[@"kind"] integerValue];
     PPBrowseItemType type = [event[@"type"] integerValue];
     MainKindsModel *kind = [self resolveMainKindWithID:kindID];
-    if (!kind) {
+    if (!kind){
         return @"";
     }
 
@@ -7725,27 +7732,32 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     topGlow.startPoint = CGPointMake(0.5, 0.5);
     topGlow.endPoint = CGPointMake(1.0, 1.0);
     topGlow.locations = @[@0.0, @0.30, @1.0];
+    topGlow.opacity = 0.1;
     topGlow.needsDisplayOnBoundsChange = YES;
     [canvas.layer addSublayer:topGlow];
     self.pp_backgroundTopGlowLayer = topGlow;
-
+    self.pp_backgroundTopGlowLayer.opacity = 0.1;
     CAGradientLayer *accentGlow = [CAGradientLayer layer];
     accentGlow.type = kCAGradientLayerRadial;
     accentGlow.startPoint = CGPointMake(0.5, 0.5);
     accentGlow.endPoint = CGPointMake(1.0, 1.0);
     accentGlow.locations = @[@0.0, @0.36, @1.0];
     accentGlow.needsDisplayOnBoundsChange = YES;
+    accentGlow.opacity = 0.2;
     [canvas.layer addSublayer:accentGlow];
     self.pp_backgroundAccentGlowLayer = accentGlow;
+    self.pp_backgroundAccentGlowLayer.opacity = 0.1;
 
     CAGradientLayer *bottomGlow = [CAGradientLayer layer];
     bottomGlow.type = kCAGradientLayerRadial;
     bottomGlow.startPoint = CGPointMake(0.5, 0.5);
     bottomGlow.endPoint = CGPointMake(1.0, 1.0);
     bottomGlow.locations = @[@0.0, @0.42, @1.0];
+    bottomGlow.opacity = 0.2;
     bottomGlow.needsDisplayOnBoundsChange = YES;
     [canvas.layer addSublayer:bottomGlow];
     self.pp_backgroundBottomGlowLayer = bottomGlow;
+    self.pp_backgroundBottomGlowLayer.opacity = 0.1;
 
     CAGradientLayer *shineLayer = [CAGradientLayer layer];
     shineLayer.startPoint = CGPointMake(0.0, 0.08);
@@ -7754,7 +7766,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     shineLayer.needsDisplayOnBoundsChange = YES;
     [canvas.layer addSublayer:shineLayer];
     self.pp_backgroundShineLayer = shineLayer;
-
+ 
     [self pp_layoutBackgroundLayers];
     [self pp_updateBackgroundGradientColors];
 }
@@ -7814,6 +7826,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.pp_backgroundGlowViewBottom.layer.shadowOpacity = isDark ? 0.14f : 0.10f;
     self.pp_backgroundGlowViewBottom.layer.shadowRadius = 58.0f;
     self.pp_backgroundGlowViewBottom.layer.shadowOffset = CGSizeZero;
+
+    [self pp_updateMidLayerGlowColors];
 }
 
 - (void)pp_layoutBackgroundLayers
@@ -7927,6 +7941,38 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [self.pp_backgroundGlowViewBottom.layer addAnimation:bottomDriftX forKey:@"pp.background.orb.bottom.drift"];
     }
 
+    // ── Mid-layer glow drift animations ──
+    if (self.pp_midGlowA && ![self.pp_midGlowA.layer animationForKey:@"pp.mid.glowA.drift"]) {
+        CABasicAnimation *driftA = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+        driftA.fromValue = @(-8.0);
+        driftA.toValue = @(10.0);
+        driftA.duration = 9.2;
+        driftA.autoreverses = YES;
+        driftA.repeatCount = HUGE_VALF;
+        driftA.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.pp_midGlowA.layer addAnimation:driftA forKey:@"pp.mid.glowA.drift"];
+    }
+    if (self.pp_midGlowB && ![self.pp_midGlowB.layer animationForKey:@"pp.mid.glowB.drift"]) {
+        CABasicAnimation *driftB = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+        driftB.fromValue = @(12.0);
+        driftB.toValue = @(-10.0);
+        driftB.duration = 8.4;
+        driftB.autoreverses = YES;
+        driftB.repeatCount = HUGE_VALF;
+        driftB.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.pp_midGlowB.layer addAnimation:driftB forKey:@"pp.mid.glowB.drift"];
+    }
+    if (self.pp_midGlowC && ![self.pp_midGlowC.layer animationForKey:@"pp.mid.glowC.drift"]) {
+        CABasicAnimation *driftC = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+        driftC.fromValue = @(6.0);
+        driftC.toValue = @(-12.0);
+        driftC.duration = 10.6;
+        driftC.autoreverses = YES;
+        driftC.repeatCount = HUGE_VALF;
+        driftC.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.pp_midGlowC.layer addAnimation:driftC forKey:@"pp.mid.glowC.drift"];
+    }
+
     self.pp_backgroundAnimationsConfigured = YES;
 }
 
@@ -7940,6 +7986,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self.pp_backgroundPatternView.layer removeAnimationForKey:@"pp.background.pattern.opacity"];
     [self.pp_backgroundGlowViewTop.layer removeAnimationForKey:@"pp.background.orb.top.drift"];
     [self.pp_backgroundGlowViewBottom.layer removeAnimationForKey:@"pp.background.orb.bottom.drift"];
+    [self.pp_midGlowA.layer removeAnimationForKey:@"pp.mid.glowA.drift"];
+    [self.pp_midGlowB.layer removeAnimationForKey:@"pp.mid.glowB.drift"];
+    [self.pp_midGlowC.layer removeAnimationForKey:@"pp.mid.glowC.drift"];
     self.pp_backgroundAnimationsConfigured = NO;
 }
 
@@ -7993,6 +8042,102 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 }
 
+#pragma mark - Mid-Layer Glow Orbs (between background & collectionView)
+
+- (void)pp_setupMidLayerGlows
+{
+    if (self.pp_midGlowA) return;
+    if (!self.collectionView) return;
+
+    UIView *(^makeOrb)(void) = ^{
+        UIView *orb = [[UIView alloc] init];
+        orb.translatesAutoresizingMaskIntoConstraints = NO;
+        orb.userInteractionEnabled = NO;
+        orb.clipsToBounds = YES;
+        return orb;
+    };
+
+    UIView *glowA = makeOrb();
+    UIView *glowB = makeOrb();
+    UIView *glowC = makeOrb();
+
+    [self.view insertSubview:glowA belowSubview:self.collectionView];
+    [self.view insertSubview:glowB belowSubview:self.collectionView];
+    [self.view insertSubview:glowC belowSubview:self.collectionView];
+
+    // A — large warm orb, upper-trailing area
+    [NSLayoutConstraint activateConstraints:@[
+        [glowA.widthAnchor constraintEqualToConstant:260.0],
+        [glowA.heightAnchor constraintEqualToConstant:260.0],
+        [glowA.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:40.0],
+        [glowA.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:180.0]
+    ]];
+
+    // B — medium cool orb, center-leading, below mid
+    [NSLayoutConstraint activateConstraints:@[
+        [glowB.widthAnchor constraintEqualToConstant:220.0],
+        [glowB.heightAnchor constraintEqualToConstant:220.0],
+        [glowB.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-50.0],
+        [glowB.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:80.0]
+    ]];
+
+    // C — small accent orb, center-bottom area
+    [NSLayoutConstraint activateConstraints:@[
+        [glowC.widthAnchor constraintEqualToConstant:170.0],
+        [glowC.heightAnchor constraintEqualToConstant:170.0],
+        [glowC.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor constant:60.0],
+        [glowC.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:20.0]
+    ]];
+
+    self.pp_midGlowA = glowA;
+    self.pp_midGlowB = glowB;
+    self.pp_midGlowC = glowC;
+
+    [self pp_updateMidLayerGlowColors];
+}
+
+- (void)pp_layoutMidLayerGlows
+{
+    if (!self.pp_midGlowA) return;
+    self.pp_midGlowA.layer.cornerRadius = CGRectGetWidth(self.pp_midGlowA.bounds) * 0.5;
+    self.pp_midGlowB.layer.cornerRadius = CGRectGetWidth(self.pp_midGlowB.bounds) * 0.5;
+    self.pp_midGlowC.layer.cornerRadius = CGRectGetWidth(self.pp_midGlowC.bounds) * 0.5;
+}
+
+- (void)pp_updateMidLayerGlowColors
+{
+    if (!self.pp_midGlowA) return;
+
+    BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    UIColor *primaryColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *shinerColor  = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:0.92];
+
+    // Orb A — warm tint derived from primary (30% overall alpha)
+    self.pp_midGlowA.alpha = 0.3;
+    self.pp_midGlowA.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.14 : 0.07];
+    self.pp_midGlowA.layer.shadowColor = primaryColor.CGColor;
+    self.pp_midGlowA.layer.shadowOpacity = isDark ? 0.12f : 0.08f;
+    self.pp_midGlowA.layer.shadowRadius = 72.0f;
+    self.pp_midGlowA.layer.shadowOffset = CGSizeZero;
+
+    // Orb B — cool tint from shiner (30% overall alpha)
+    self.pp_midGlowB.alpha = 0.3;
+    self.pp_midGlowB.backgroundColor = [shinerColor colorWithAlphaComponent:isDark ? 0.12 : 0.06];
+    self.pp_midGlowB.layer.shadowColor = shinerColor.CGColor;
+    self.pp_midGlowB.layer.shadowOpacity = isDark ? 0.10f : 0.07f;
+    self.pp_midGlowB.layer.shadowRadius = 62.0f;
+    self.pp_midGlowB.layer.shadowOffset = CGSizeZero;
+
+    // Orb C — subtle accent blend (30% overall alpha)
+    self.pp_midGlowC.alpha = 0.3;
+    UIColor *blendColor = [UIColor colorWithRed:0.42 green:0.36 blue:0.88 alpha:1.0]; // soft violet
+    self.pp_midGlowC.backgroundColor = [blendColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
+    self.pp_midGlowC.layer.shadowColor = blendColor.CGColor;
+    self.pp_midGlowC.layer.shadowOpacity = isDark ? 0.09f : 0.06f;
+    self.pp_midGlowC.layer.shadowRadius = 54.0f;
+    self.pp_midGlowC.layer.shadowOffset = CGSizeZero;
+}
+
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
@@ -8002,6 +8147,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [self pp_layoutBackgroundGlowOrbs];
+    [self pp_layoutMidLayerGlows];
 
     if (self.homeSmartSearchView) {
         CGRect frame = self.homeSmartSearchView.frame;

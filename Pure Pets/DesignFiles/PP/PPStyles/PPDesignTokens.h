@@ -32,7 +32,7 @@
 #define PPCornerSmall    12.0f
 #define PPCornerMedium   18.0f
 #define PPCornerCard     22.0f
-#define PPCornerHero     28.0f
+#define PPCornerHero     32.0f
 #define PPCornerLarge    42.0f
 #define PPCornerPill     9999.0f
 

@@ -836,7 +836,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.subtitleLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.43 green:0.45 blue:0.52 alpha:1.0],
                                                                [UIColor colorWithWhite:0.74 alpha:1.0]);
 
-    self.priceLabel.font = PPUniversalCellBoldFont(26.0);
+    self.priceLabel.font = PPUniversalCellBoldFont(28.0);
     self.priceLabel.textColor = AppPrimaryClr;
     self.oldPriceLabel.font = PPUniversalCellMediumFont(12.0);
     self.oldPriceLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.57 green:0.59 blue:0.65 alpha:1.0],
@@ -1733,7 +1733,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     PPUniversalInsetLabel *label = [[PPUniversalInsetLabel alloc] init];
     label.font = PPUniversalCellBoldFont(11.0);
     label.textInsets = UIEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
-    label.layer.cornerRadius = 14.0;
+    label.layer.cornerRadius = 12.0;
     return label;
 }
 
