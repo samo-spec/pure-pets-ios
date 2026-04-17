@@ -14,6 +14,7 @@
 #import "CartManager.h"
 #import "PPHUD.h"
 #import "PPFunc.h"
+#import "PPAlertHelper.h"
 #import "UserManager.h"
 #import "PetAccessory.h"
 #import "PetAd.h"
@@ -1648,32 +1649,32 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         return;
     }
 
-    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:nil
-                                                                   message:nil
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-
-    [sheet addAction:[UIAlertAction actionWithTitle:PPUniversalCellLocalizedString(@"Edit", @"Edit")
-                                              style:UIAlertActionStyleDefault
-                                            handler:^(__unused UIAlertAction * _Nonnull action) {
+    [PPAlertHelper showThreeActionConfirmationIn:parentVC
+                                           title:PPUniversalCellLocalizedString(@"Options", @"Options")
+                                        subtitle:nil
+                                   primaryButton:PPUniversalCellLocalizedString(@"Edit", @"Edit")
+                                    primaryStyle:UIAlertActionStyleDefault
+                                 secondaryButton:PPUniversalCellLocalizedString(@"Delete", @"Delete")
+                                  secondaryStyle:UIAlertActionStyleDestructive
+                                  tertiaryButton:PPUniversalCellLocalizedString(@"Cancel", @"Cancel")
+                                   tertiaryStyle:UIAlertActionStyleCancel
+                                    primaryBlock:^{
         [self tapEdit];
-    }]];
-
-    [sheet addAction:[UIAlertAction actionWithTitle:PPUniversalCellLocalizedString(@"Delete", @"Delete")
-                                              style:UIAlertActionStyleDestructive
-                                            handler:^(__unused UIAlertAction * _Nonnull action) {
-        [self tapDelete];
-    }]];
-
-    [sheet addAction:[UIAlertAction actionWithTitle:PPUniversalCellLocalizedString(@"Cancel", @"Cancel")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-
-    UIPopoverPresentationController *popover = sheet.popoverPresentationController;
-    if (popover) {
-        popover.sourceView = self.menuButton;
-        popover.sourceRect = self.menuButton.bounds;
     }
-    [parentVC presentViewController:sheet animated:YES completion:nil];
+                                  secondaryBlock:^{
+        [PPAlertHelper showConfirmationIn:parentVC
+                                    title:kLang(@"DeleteConfirmTitle") ?: @"Delete"
+                                 subtitle:kLang(@"DeleteConfirmMessage") ?: @"Are you sure you want to delete this item?"
+                            confirmButton:kLang(@"yes") ?: @"Yes"
+                             cancelButton:kLang(@"no") ?: @"No"
+                                     icon:PPSYSImage(@"trash")
+                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+            if (!didConfirm) return;
+            [self tapDelete];
+        }
+                              cancelBlock:nil];
+    }
+                                   tertiaryBlock:nil];
 }
 
 #pragma mark - Helpers
