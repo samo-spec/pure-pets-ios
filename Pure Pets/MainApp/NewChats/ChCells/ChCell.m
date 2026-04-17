@@ -17,11 +17,11 @@
 static NSString * const PPChCellSupportAvatarToken = @"purepets://support-logo";
 
 static CGFloat const PPChCellCornerRadius = 28.0;
-static CGFloat const PPChCellAvatarSize = 56.0;
-static CGFloat const PPChCellVerticalInset = 8.0;
-static CGFloat const PPChCellHorizontalInset = 14.0;
-static CGFloat const PPChCellContentInset = 14.0;
-static CGFloat const PPChCellSpacing = 12.0;
+static CGFloat const PPChCellAvatarSize = 52.0;
+static CGFloat const PPChCellVerticalInset = 6.0;
+static CGFloat const PPChCellHorizontalInset = 12.0;
+static CGFloat const PPChCellContentInset = 12.0;
+static CGFloat const PPChCellSpacing = 10.0;
 static CGFloat const PPChCellBadgeHeight = 24.0;
 static CGFloat const PPChCellMinimumBadgeWidth = 24.0;
 
@@ -54,6 +54,7 @@ static UIColor *PPChCellStrokeColor(void) {
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) UILabel *unreadBadge;
 @property (nonatomic, strong) UIStackView *summaryStack;
+@property (nonatomic, strong) UIView *metaColumnView;
 @property (nonatomic, strong) UIImageView *verifiedBadgeView;
 @property (nonatomic, strong) NSLayoutConstraint *badgeWidthConstraint;
 @property (nonatomic, assign) NSInteger currentUnreadCount;
@@ -191,13 +192,17 @@ static UIColor *PPChCellStrokeColor(void) {
     self.summaryStack.alignment = UIStackViewAlignmentFill;
     [self.containerView addSubview:self.summaryStack];
 
+    self.metaColumnView = [UIView new];
+    self.metaColumnView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.containerView addSubview:self.metaColumnView];
+
     self.timeLabel = [UILabel new];
     self.timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.timeLabel.font = [GM MidFontWithSize:12];
     self.timeLabel.textColor = UIColor.secondaryLabelColor;
-    self.timeLabel.textAlignment = NSTextAlignmentRight;
+    self.timeLabel.textAlignment = [self pp_isRightToLeftLayout] ? NSTextAlignmentLeft : NSTextAlignmentRight;
     self.timeLabel.isAccessibilityElement = NO;
-    [self.containerView addSubview:self.timeLabel];
+    [self.metaColumnView addSubview:self.timeLabel];
 
     self.unreadBadge = [UILabel new];
     self.unreadBadge.translatesAutoresizingMaskIntoConstraints = NO;
@@ -205,22 +210,31 @@ static UIColor *PPChCellStrokeColor(void) {
     self.unreadBadge.textAlignment = NSTextAlignmentCenter;
     self.unreadBadge.hidden = YES;
     self.unreadBadge.isAccessibilityElement = NO;
-    [self.containerView addSubview:self.unreadBadge];
+    [self.metaColumnView addSubview:self.unreadBadge];
 
-    [self.nameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+    [self.nameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
                                                     forAxis:UILayoutConstraintAxisHorizontal];
-    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
                                                        forAxis:UILayoutConstraintAxisHorizontal];
-    [self.presenceLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+    [self.presenceLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
                                                         forAxis:UILayoutConstraintAxisHorizontal];
-    [self.timeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
+    [self.summaryStack setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                      forAxis:UILayoutConstraintAxisHorizontal];
+    [self.summaryStack setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [self.timeLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
                                                     forAxis:UILayoutConstraintAxisHorizontal];
-    [self.timeLabel setContentHuggingPriority:UILayoutPriorityRequired
+    [self.timeLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh
                                       forAxis:UILayoutConstraintAxisHorizontal];
+    [self.metaColumnView setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [self.metaColumnView setContentHuggingPriority:UILayoutPriorityRequired
+                                           forAxis:UILayoutConstraintAxisHorizontal];
 }
 
 - (void)buildLayout {
     UILayoutGuide *guide = self.containerView.layoutMarginsGuide;
+    BOOL isRTL = [self pp_isRightToLeftLayout];
     self.containerView.layoutMargins = UIEdgeInsetsMake(PPChCellContentInset,
                                                         PPChCellContentInset,
                                                         PPChCellContentInset,
@@ -229,13 +243,12 @@ static UIColor *PPChCellStrokeColor(void) {
     self.badgeWidthConstraint =
     [self.unreadBadge.widthAnchor constraintGreaterThanOrEqualToConstant:PPChCellMinimumBadgeWidth];
 
-    [NSLayoutConstraint activateConstraints:@[
+    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray arrayWithArray:@[
         [self.containerView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:PPChCellVerticalInset],
         [self.containerView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPChCellHorizontalInset],
         [self.containerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPChCellHorizontalInset],
         [self.containerView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-PPChCellVerticalInset],
 
-        [self.avatarView.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor],
         [self.avatarView.centerYAnchor constraintEqualToAnchor:self.containerView.centerYAnchor],
         [self.avatarView.widthAnchor constraintEqualToConstant:PPChCellAvatarSize],
         [self.avatarView.heightAnchor constraintEqualToConstant:PPChCellAvatarSize],
@@ -247,22 +260,46 @@ static UIColor *PPChCellStrokeColor(void) {
         [self.onlineDot.trailingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:-1.0],
         [self.onlineDot.bottomAnchor constraintEqualToAnchor:self.avatarView.bottomAnchor constant:-1.0],
 
-        [self.timeLabel.topAnchor constraintEqualToAnchor:guide.topAnchor constant:1.0],
-        [self.timeLabel.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
-
-        [self.summaryStack.leadingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:PPChCellSpacing],
         [self.summaryStack.topAnchor constraintEqualToAnchor:guide.topAnchor],
-        [self.summaryStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.timeLabel.leadingAnchor constant:-10.0],
         [self.summaryStack.bottomAnchor constraintEqualToAnchor:guide.bottomAnchor],
 
-        [self.unreadBadge.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
-        [self.unreadBadge.bottomAnchor constraintEqualToAnchor:guide.bottomAnchor],
+        [self.metaColumnView.topAnchor constraintEqualToAnchor:guide.topAnchor],
+        [self.metaColumnView.bottomAnchor constraintEqualToAnchor:guide.bottomAnchor],
+
+        [self.timeLabel.topAnchor constraintEqualToAnchor:self.metaColumnView.topAnchor constant:1.0],
+        [self.unreadBadge.bottomAnchor constraintEqualToAnchor:self.metaColumnView.bottomAnchor],
         self.badgeWidthConstraint,
         [self.unreadBadge.heightAnchor constraintEqualToConstant:PPChCellBadgeHeight],
 
-        [self.messageLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.unreadBadge.leadingAnchor constant:-10.0],
-        [self.presenceLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.unreadBadge.leadingAnchor constant:-10.0]
+        [self.metaColumnView.widthAnchor constraintGreaterThanOrEqualToAnchor:self.timeLabel.widthAnchor],
+        [self.metaColumnView.widthAnchor constraintGreaterThanOrEqualToAnchor:self.unreadBadge.widthAnchor]
     ]];
+
+    if (isRTL) {
+        [constraints addObjectsFromArray:@[
+            [self.avatarView.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
+            [self.metaColumnView.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor],
+            [self.timeLabel.leadingAnchor constraintEqualToAnchor:self.metaColumnView.leadingAnchor],
+            [self.timeLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.metaColumnView.trailingAnchor],
+            [self.unreadBadge.leadingAnchor constraintEqualToAnchor:self.metaColumnView.leadingAnchor],
+            [self.unreadBadge.trailingAnchor constraintLessThanOrEqualToAnchor:self.metaColumnView.trailingAnchor],
+            [self.summaryStack.trailingAnchor constraintEqualToAnchor:self.avatarView.leadingAnchor constant:-PPChCellSpacing],
+            [self.summaryStack.leadingAnchor constraintEqualToAnchor:self.metaColumnView.trailingAnchor constant:12.0]
+        ]];
+    } else {
+        [constraints addObjectsFromArray:@[
+            [self.avatarView.leadingAnchor constraintEqualToAnchor:guide.leadingAnchor],
+            [self.metaColumnView.trailingAnchor constraintEqualToAnchor:guide.trailingAnchor],
+            [self.timeLabel.trailingAnchor constraintEqualToAnchor:self.metaColumnView.trailingAnchor],
+            [self.timeLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.metaColumnView.leadingAnchor],
+            [self.unreadBadge.trailingAnchor constraintEqualToAnchor:self.metaColumnView.trailingAnchor],
+            [self.unreadBadge.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.metaColumnView.leadingAnchor],
+            [self.summaryStack.leadingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:PPChCellSpacing],
+            [self.summaryStack.trailingAnchor constraintEqualToAnchor:self.metaColumnView.leadingAnchor constant:-12.0]
+        ]];
+    }
+
+    [NSLayoutConstraint activateConstraints:constraints];
 }
 
 - (void)applyStyle {
@@ -579,6 +616,11 @@ static UIColor *PPChCellStrokeColor(void) {
 
     self.accessibilityLabel = [parts componentsJoinedByString:@", "];
     self.accessibilityValue = self.currentUnreadCount > 0 ? self.unreadBadge.text : nil;
+}
+
+- (BOOL)pp_isRightToLeftLayout {
+    UISemanticContentAttribute semantic = self.contentView.semanticContentAttribute;
+    return [UIView userInterfaceLayoutDirectionForSemanticContentAttribute:semantic] == UIUserInterfaceLayoutDirectionRightToLeft;
 }
 
 @end

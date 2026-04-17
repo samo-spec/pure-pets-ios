@@ -2691,22 +2691,21 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                                        chipY,
                                                        progressChipWidth,
                                                        chipHeight);
-            self.statusEtaChip.frame = CGRectMake(CGRectGetMinX(self.statusProgressChip.frame) - gap - etaChipWidth,
-                                                  chipY,
-                                                  etaChipWidth,
-                                                  chipHeight);
+            CGFloat etaTrail = 16.0;
+            CGFloat etaW = CGRectGetMinX(self.statusProgressChip.frame) - gap - etaTrail;
+            self.statusEtaChip.frame = CGRectMake(etaTrail, chipY, MAX(0.0, etaW), chipHeight);
         } else {
             self.statusProgressChip.frame = CGRectMake(statusCardInset, chipY, progressChipWidth, chipHeight);
-            self.statusEtaChip.frame = CGRectMake(CGRectGetMaxX(self.statusProgressChip.frame) + gap,
-                                                  chipY,
-                                                  etaChipWidth,
-                                                  chipHeight);
+            CGFloat etaX = CGRectGetMaxX(self.statusProgressChip.frame) + gap;
+            CGFloat etaW = separatorWidth - 16.0 - etaX;
+            self.statusEtaChip.frame = CGRectMake(etaX, chipY, MAX(0.0, etaW), chipHeight);
         }
     } else {
         self.statusProgressChip.frame = CGRectMake(statusCardInset, chipY, availableChipWidth, chipHeight);
+        CGFloat etaW = separatorWidth - 16.0 - statusCardInset;
         self.statusEtaChip.frame = CGRectMake(statusCardInset,
                                               CGRectGetMaxY(self.statusProgressChip.frame) + 8.0,
-                                              availableChipWidth,
+                                              MAX(0.0, etaW),
                                               chipHeight);
     }
 
