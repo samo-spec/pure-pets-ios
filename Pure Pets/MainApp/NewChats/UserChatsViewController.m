@@ -805,10 +805,27 @@ trailingSwipeActionsConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
 
             chatThread.otherUser = selectedUserClass;
 
-            if (self.presentedViewController) {
-                [self dismissViewControllerAnimated:YES completion:^{
-                    [self openChatWithThread:chatThread];
-                }];
+            UIViewController *presented = self.presentedViewController;
+            if (presented) {
+                if (presented.isBeingDismissed) {
+                    // Picker is already dismissing itself — wait for the
+                    // transition to finish, then open the chat.
+                    id<UIViewControllerTransitionCoordinator> tc = self.transitionCoordinator;
+                    if (tc) {
+                        [tc animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> _Nonnull context) {
+                            [self openChatWithThread:chatThread];
+                        }];
+                    } else {
+                        // Fallback: transition coordinator already nil — safe to open now
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                            [self openChatWithThread:chatThread];
+                        });
+                    }
+                } else {
+                    [self dismissViewControllerAnimated:YES completion:^{
+                        [self openChatWithThread:chatThread];
+                    }];
+                }
                 return;
             }
 

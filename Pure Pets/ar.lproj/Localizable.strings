@@ -2512,3 +2512,8 @@
 "statusDisabled" = "معطّل";
 "Serv_Available" = "متاح";
 "Serv_Unavailable" = "غير متاح";
+"auth_phone_live_hint" = "دخول سريع وآمن عبر رمز تحقق لمرة واحدة";
+"auth_phone_live_ready" = "سنرسل رمزاً إلى %@";
+"auth_alt_methods_title" = "أو المتابعة باستخدام";
+"auth_complete_profile_subtitle" = "أضف التفاصيل التي تساعد الآخرين على التعرّف على حسابك والثقة به.";
+"auth_profile_progress_format" = "%ld من %ld مكتمل";

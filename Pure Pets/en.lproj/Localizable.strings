@@ -2524,3 +2524,8 @@
 "statusDisabled" = "Disabled";
 "Serv_Available" = "Available";
 "Serv_Unavailable" = "Unavailable";
+"auth_phone_live_hint" = "Fast, secure access with one-time verification";
+"auth_phone_live_ready" = "We’ll send a code to %@";
+"auth_alt_methods_title" = "Or continue with";
+"auth_complete_profile_subtitle" = "Add the details that help people recognize and trust your account.";
+"auth_profile_progress_format" = "%ld of %ld completed";

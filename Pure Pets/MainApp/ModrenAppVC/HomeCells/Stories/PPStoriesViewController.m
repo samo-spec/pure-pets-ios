@@ -45,15 +45,30 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     [super viewDidLoad];
     self.view.backgroundColor = UIColor.clearColor;
 
-    // Glass backdrop card
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+    // Modern glass backdrop card with liquid border
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
     _glassBackdrop = [[UIVisualEffectView alloc] initWithEffect:blur];
     _glassBackdrop.translatesAutoresizingMaskIntoConstraints = NO;
-    _glassBackdrop.layer.cornerRadius = 20.0;
+    _glassBackdrop.layer.cornerRadius = 24.0;
     _glassBackdrop.layer.masksToBounds = YES;
-    _glassBackdrop.layer.borderWidth = 0.5;
-    _glassBackdrop.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.88].CGColor;
+    _glassBackdrop.layer.borderWidth = 1.0;
+    _glassBackdrop.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.18].CGColor;
+    _glassBackdrop.layer.shadowColor = [AppForgroundColr colorWithAlphaComponent:0.10].CGColor;
+    _glassBackdrop.clipsToBounds = NO;
     [self.view addSubview:_glassBackdrop];
+
+    // Tinted overlay inside the glass for AppForgroundColr warmth
+    UIView *tintOverlay = [UIView new];
+    tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
+    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.06];
+    tintOverlay.userInteractionEnabled = NO;
+    [_glassBackdrop.contentView addSubview:tintOverlay];
+    [NSLayoutConstraint activateConstraints:@[
+        [tintOverlay.topAnchor constraintEqualToAnchor:_glassBackdrop.contentView.topAnchor],
+        [tintOverlay.leadingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.leadingAnchor],
+        [tintOverlay.trailingAnchor constraintEqualToAnchor:_glassBackdrop.contentView.trailingAnchor],
+        [tintOverlay.bottomAnchor constraintEqualToAnchor:_glassBackdrop.contentView.bottomAnchor],
+    ]];
 
     _sectionTitleLabel = [UILabel new];
     _sectionTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;

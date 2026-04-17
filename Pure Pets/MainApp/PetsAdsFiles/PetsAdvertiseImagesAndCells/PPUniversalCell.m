@@ -33,7 +33,7 @@ static NSTimeInterval const PPUniversalStepperAutoCollapseDelay = 3.5;
 static BOOL const PPUniversalTemporarilyHideSubtitle = NO;
 static BOOL const PPUniversalTemporarilyHideShareButton = YES;
 static BOOL const PPUniversalTemporarilyHideCategoryBadge = YES;
-static BOOL const PPUniversalTemporarilyHideMenuButton = YES;
+static BOOL const PPUniversalTemporarilyHideMenuButton = NO;
 
 static NSString *PPUniversalCellLocalizedString(NSString *key, NSString *fallback)
 {

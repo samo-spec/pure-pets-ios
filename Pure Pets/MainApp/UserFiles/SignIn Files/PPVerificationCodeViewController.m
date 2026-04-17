@@ -7,17 +7,25 @@
 
 #import "PPVerificationCodeViewController.h"
 
-@interface PPVerificationCodeViewController () <UITextFieldDelegate, UIGestureRecognizerDelegate>
+@interface PPVerificationCodeViewController () <UITextFieldDelegate, UIGestureRecognizerDelegate, UIAdaptivePresentationControllerDelegate>
 
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
+@property (nonatomic, strong) UIView *backgroundTopGlowView;
+@property (nonatomic, strong) UIView *backgroundBottomGlowView;
 
 @property (nonatomic, strong) UIView *cardView;
+@property (nonatomic, strong) UIView *heroIconWrapView;
+@property (nonatomic, strong) UIImageView *heroIconView;
 
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UILabel *instructionLabel;
 
 @property (nonatomic, strong) UITextField *codeField;
+@property (nonatomic, strong) UIStackView *digitStackView;
+@property (nonatomic, strong) NSMutableArray<UIView *> *digitViews;
+@property (nonatomic, strong) NSMutableArray<UILabel *> *digitLabels;
 
 @property (nonatomic, strong) UIButton *continueButton;
 @property (nonatomic, strong) UIButton *resendButton;
@@ -28,6 +36,7 @@
 @property (nonatomic, copy) NSString *phone;
 @property (nonatomic, assign) BOOL isVerifyingCode;
 @property (nonatomic, assign) BOOL isRequestingResend;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
 
 @end
 
@@ -62,7 +71,10 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = PPBackgroundColorForIOS26([AppBackgroundClr colorWithAlphaComponent:0.95]);
+    self.modalInPresentation = YES;
+    self.presentationController.delegate = self;
 
+    [self setupBackgroundDecorations];
     [self setupScroll];
     [self setupCard];
     [self setupTexts];
@@ -81,13 +93,34 @@
     
 }
 
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    self.modalInPresentation = YES;
+    self.presentationController.delegate = self;
+    [self animateVerificationEntranceIfNeeded];
+}
+
 - (void)dealloc {
     [self.timer invalidate];
     self.timer = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
+- (BOOL)presentationControllerShouldDismiss:(UIPresentationController *)presentationController {
+    return NO;
+}
+
 #pragma mark - Setup UI
+
+- (void)setupBackgroundDecorations {
+    self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.backgroundTopGlowView.userInteractionEnabled = NO;
+    [self.view addSubview:self.backgroundTopGlowView];
+
+    self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.backgroundBottomGlowView.userInteractionEnabled = NO;
+    [self.view addSubview:self.backgroundBottomGlowView];
+}
 
 - (void)setupScroll {
     self.scrollView = [[UIScrollView alloc] init];
@@ -115,19 +148,36 @@
 
 - (void)setupCard {
     self.cardView = [[UIView alloc] init];
-    self.cardView.layer.cornerRadius = 30;
-    self.cardView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.1];
+    self.cardView.layer.cornerRadius = 32;
+    self.cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.56 : 0.96];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.userInteractionEnabled = YES;
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(focusField)];
+    tap.delegate = self;
+    [self.cardView addGestureRecognizer:tap];
     [self.contentView addSubview:self.cardView];
 }
 
 - (void)setupTexts {
+    self.heroIconWrapView = [[UIView alloc] init];
+    self.heroIconWrapView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroIconWrapView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.12];
+    self.heroIconWrapView.layer.cornerRadius = 28.0;
+    self.heroIconWrapView.layer.masksToBounds = YES;
+    [self.cardView addSubview:self.heroIconWrapView];
+
+    self.heroIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"lock.shield.fill"]];
+    self.heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.heroIconView.tintColor = AppPrimaryClr;
+    [self.heroIconWrapView addSubview:self.heroIconView];
+
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.text = kLang(@"verification_title");
-    self.titleLabel.font =  [GM boldFontWithSize:22];
+    self.titleLabel.font =  [GM boldFontWithSize:26];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleLabel.textColor = UIColor.labelColor;
 
     self.subtitleLabel = [[UILabel alloc] init];
     self.subtitleLabel.text =
@@ -137,9 +187,29 @@
     self.subtitleLabel.numberOfLines = 0;
     self.subtitleLabel.textAlignment = NSTextAlignmentCenter;
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.subtitleLabel.alpha = 0.92;
 
-    [self.scrollView addSubview:self.titleLabel];
-    [self.scrollView addSubview:self.subtitleLabel];
+    self.instructionLabel = [[UILabel alloc] init];
+    self.instructionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.instructionLabel.text = kLang(@"otp_enter_code_instruction");
+    self.instructionLabel.font = [GM MidFontWithSize:13];
+    self.instructionLabel.textAlignment = NSTextAlignmentCenter;
+    self.instructionLabel.textColor = UIColor.tertiaryLabelColor;
+
+    [self.cardView addSubview:self.titleLabel];
+    [self.cardView addSubview:self.subtitleLabel];
+    [self.cardView addSubview:self.instructionLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.heroIconWrapView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:22],
+        [self.heroIconWrapView.centerXAnchor constraintEqualToAnchor:self.cardView.centerXAnchor],
+        [self.heroIconWrapView.widthAnchor constraintEqualToConstant:56],
+        [self.heroIconWrapView.heightAnchor constraintEqualToConstant:56],
+        [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconWrapView.centerXAnchor],
+        [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconWrapView.centerYAnchor],
+        [self.heroIconView.widthAnchor constraintEqualToConstant:24],
+        [self.heroIconView.heightAnchor constraintEqualToConstant:24]
+    ]];
 }
 
 - (void)setupOTPField {
@@ -147,19 +217,57 @@
      
     self.codeField.textContentType = UITextContentTypeOneTimeCode;
     self.codeField.keyboardType = UIKeyboardTypeASCIICapableNumberPad;
-   
+    self.codeField.tintColor = UIColor.clearColor;
     self.codeField.textAlignment = NSTextAlignmentCenter;
-    self.codeField.font =  [GM boldFontWithSize:32];
+    self.codeField.font =  [GM boldFontWithSize:1];
     self.codeField.placeholder = kLang(@"otp_placeholder");
     self.codeField.delegate = self;
-
-    self.codeField.layer.cornerRadius = 12;
- 
-    self.codeField.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.05];
+    self.codeField.textColor = UIColor.clearColor;
+    self.codeField.layer.cornerRadius = 8;
+    self.codeField.backgroundColor = UIColor.clearColor;
     [self.codeField addTarget:self action:@selector(codeChanged:) forControlEvents:UIControlEventEditingChanged];
     self.codeField.translatesAutoresizingMaskIntoConstraints = NO;
 
-    [self.scrollView addSubview:self.codeField];
+    self.digitViews = [NSMutableArray array];
+    self.digitLabels = [NSMutableArray array];
+    self.digitStackView = [[UIStackView alloc] init];
+    self.digitStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.digitStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.digitStackView.spacing = 10.0;
+    self.digitStackView.distribution = UIStackViewDistributionFillEqually;
+    self.digitStackView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+
+    for (NSInteger index = 0; index < 6; index++) {
+        UIView *digitView = [[UIView alloc] init];
+        digitView.translatesAutoresizingMaskIntoConstraints = NO;
+        digitView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.08 : 0.82];
+        digitView.layer.cornerRadius = 16.0;
+        digitView.layer.masksToBounds = YES;
+        [digitView.heightAnchor constraintEqualToConstant:58].active = YES;
+
+        UILabel *digitLabel = [[UILabel alloc] init];
+        digitLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        digitLabel.font = [GM boldFontWithSize:26];
+        digitLabel.textAlignment = NSTextAlignmentCenter;
+        digitLabel.textColor = UIColor.labelColor;
+        [digitView addSubview:digitLabel];
+
+        [NSLayoutConstraint activateConstraints:@[
+            [digitLabel.centerXAnchor constraintEqualToAnchor:digitView.centerXAnchor],
+            [digitLabel.centerYAnchor constraintEqualToAnchor:digitView.centerYAnchor]
+        ]];
+
+        [self.digitViews addObject:digitView];
+        [self.digitLabels addObject:digitLabel];
+        [self.digitStackView addArrangedSubview:digitView];
+    }
+
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(focusField)];
+    [self.digitStackView addGestureRecognizer:tap];
+
+    [self.cardView addSubview:self.digitStackView];
+    [self.cardView addSubview:self.codeField];
+    [self refreshDigitBoxesAnimated:NO];
 }
 
 - (void)setupButtons {
@@ -173,7 +281,7 @@
     config.cornerStyle = UIButtonConfigurationCornerStyleLarge;
 
     config.attributedTitle =
-        [[NSAttributedString alloc] initWithString:kLang(@"continue_button")
+        [[NSAttributedString alloc] initWithString:kLang(@"otp_verify_button")
                                         attributes:@{
             NSFontAttributeName: [GM boldFontWithSize:17]
                                         }];
@@ -185,18 +293,19 @@
     config.background.cornerRadius = 22;
     config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.1];
     config.baseForegroundColor = AppForgroundColr;
-    
+
     self.continueButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.continueButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.continueButton.configuration = config;
     self.continueButton.clipsToBounds = YES;
     self.continueButton.enabled = NO;
+    self.continueButton.alpha = 0.6;
 
     [self.continueButton addTarget:self
                             action:@selector(didTapContinue)
                   forControlEvents:UIControlEventTouchUpInside];
 
-    [self.scrollView addSubview:self.continueButton];
+    [self.cardView addSubview:self.continueButton];
 
     // resend button
     self.resendButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -208,18 +317,23 @@
     self.resendButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.resendButton.titleLabel.font = [GM boldFontWithSize:13];
     [ self.resendButton setTitleColor:AppButtonMixColorClr forState:UIControlStateNormal];
-    [self.scrollView addSubview:self.resendButton];
+    self.resendButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.08 : 0.78];
+    self.resendButton.layer.cornerRadius = 18.0;
+    self.resendButton.layer.masksToBounds = YES;
+    self.resendButton.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
+    [self.cardView addSubview:self.resendButton];
 }
 
 #pragma mark - Constraints
 
 - (void)setupConstraints {
     [NSLayoutConstraint activateConstraints:@[
-        [self.cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:36],
-        [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:26],
-        [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-26],
+        [self.cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:40],
+        [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:20],
+        [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-20],
+        [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-24],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:25],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.heroIconWrapView.bottomAnchor constant:18],
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
 
@@ -227,32 +341,68 @@
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
 
-        [self.codeField.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:30],
-        [self.codeField.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:40],
-        [self.codeField.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-40],
-        [self.codeField.heightAnchor constraintEqualToConstant:55],
+        [self.instructionLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:10],
+        [self.instructionLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:24],
+        [self.instructionLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-24],
 
-        [self.continueButton.topAnchor constraintEqualToAnchor:self.codeField.bottomAnchor constant:30],
+        [self.digitStackView.topAnchor constraintEqualToAnchor:self.instructionLabel.bottomAnchor constant:24],
+        [self.digitStackView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:18],
+        [self.digitStackView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-18],
+
+        [self.codeField.topAnchor constraintEqualToAnchor:self.digitStackView.bottomAnchor constant:2],
+        [self.codeField.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:30],
+        [self.codeField.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-30],
+        [self.codeField.heightAnchor constraintEqualToConstant:1],
+
+        [self.continueButton.topAnchor constraintEqualToAnchor:self.digitStackView.bottomAnchor constant:28],
         [self.continueButton.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
         [self.continueButton.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
-        [self.continueButton.heightAnchor constraintEqualToConstant:50],
+        [self.continueButton.heightAnchor constraintEqualToConstant:54],
 
-        [self.resendButton.topAnchor constraintEqualToAnchor:self.continueButton.bottomAnchor constant:20],
+        [self.resendButton.topAnchor constraintEqualToAnchor:self.continueButton.bottomAnchor constant:18],
         [self.resendButton.centerXAnchor constraintEqualToAnchor:self.cardView.centerXAnchor],
-        [self.resendButton.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-20]
+        [self.resendButton.bottomAnchor constraintEqualToAnchor:self.cardView.bottomAnchor constant:-22]
     ]];
 }
 
 #pragma mark - OTP Logic
 
+- (NSString *)normalizedOTPDigitsFromInput:(NSString *)rawInput {
+    NSString *trimmed = [rawInput ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSCharacterSet *digitSet = [NSCharacterSet decimalDigitCharacterSet];
+    NSCharacterSet *asciiDigits = [NSCharacterSet characterSetWithCharactersInString:@"0123456789"];
+    NSMutableString *digits = [NSMutableString string];
+
+    for (NSUInteger index = 0; index < trimmed.length; index++) {
+        unichar ch = [trimmed characterAtIndex:index];
+        if (![digitSet characterIsMember:ch]) {
+            continue;
+        }
+
+        NSString *rawDigit = [NSString stringWithFormat:@"%C", ch];
+        NSString *latinDigit = [rawDigit stringByApplyingTransform:NSStringTransformToLatin reverse:NO] ?: rawDigit;
+        unichar normalized = latinDigit.length > 0 ? [latinDigit characterAtIndex:0] : 0;
+        if ([asciiDigits characterIsMember:normalized]) {
+            [digits appendFormat:@"%C", normalized];
+        }
+    }
+
+    if (digits.length > 6) {
+        return [digits substringToIndex:6];
+    }
+
+    return digits;
+}
+
 - (void)codeChanged:(UITextField *)field {
-    if (field.text.length > 6)
-        field.text = [field.text substringToIndex:6];
+    field.text = [self normalizedOTPDigitsFromInput:field.text];
 
     UIImpactFeedbackGenerator *h = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [h impactOccurred];
 
     self.continueButton.enabled = (field.text.length == 6 && !self.isVerifyingCode && !self.isRequestingResend);
+    self.continueButton.alpha = self.continueButton.enabled ? 1.0 : 0.6;
+    [self refreshDigitBoxesAnimated:YES];
 
     if (field.text.length == 6) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(200 * NSEC_PER_MSEC)),
@@ -261,6 +411,37 @@
         });
     }
 
+}
+
+- (void)refreshDigitBoxesAnimated:(BOOL)animated {
+    NSUInteger length = self.codeField.text.length;
+    for (NSInteger index = 0; index < self.digitViews.count; index++) {
+        UIView *digitView = self.digitViews[index];
+        UILabel *digitLabel = self.digitLabels[index];
+        BOOL filled = (index < (NSInteger)length);
+        BOOL current = (index == (NSInteger)length && length < 6);
+
+        NSString *character = filled ? [self.codeField.text substringWithRange:NSMakeRange(index, 1)] : @"";
+        digitLabel.text = character;
+        digitLabel.textColor = filled ? UIColor.labelColor : UIColor.tertiaryLabelColor;
+        digitView.backgroundColor = filled
+        ? [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.10]
+        : [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.08 : 0.82];
+        digitView.layer.borderWidth = current ? 1.4 : 1.0;
+        digitView.layer.borderColor = (current ? [AppPrimaryClr colorWithAlphaComponent:0.70] : [UIColor colorWithWhite:1.0 alpha:0.14]).CGColor;
+
+        if (animated && filled) {
+            digitView.transform = CGAffineTransformMakeScale(0.94, 0.94);
+            [UIView animateWithDuration:0.18
+                                  delay:0.0
+                 usingSpringWithDamping:0.82
+                  initialSpringVelocity:0.18
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                digitView.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }
+    }
 }
 
 - (void)didTapContinue {
@@ -338,6 +519,8 @@
             if (success) {
                 weakSelf.codeField.text = @"";
                 weakSelf.continueButton.enabled = NO;
+                weakSelf.continueButton.alpha = 0.6;
+                [weakSelf refreshDigitBoxesAnimated:NO];
                 [weakSelf.codeField becomeFirstResponder];
                 [weakSelf startTimer];
                 return;
@@ -399,27 +582,34 @@
 -(void)viewWillLayoutSubviews
 {
     [super viewWillLayoutSubviews];
-    
-    [self.view bringSubviewToFront:self.scrollView];
-    [self.scrollView sendSubviewToBack:self.cardView];
-    [self.scrollView bringSubviewToFront:self.codeField];
-    [self.scrollView bringSubviewToFront:self.continueButton];
-    
-     
+
     self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     self.scrollView.canCancelContentTouches = NO;
-    
-    [Styling addLiquidGlassBorderToView:self.cardView cornerRadius:30];
+
+    CGFloat width = CGRectGetWidth(self.view.bounds);
+    CGFloat height = CGRectGetHeight(self.view.bounds);
+    CGFloat topGlowSize = MIN(220.0, width * 0.50);
+    CGFloat bottomGlowSize = MIN(200.0, width * 0.46);
+    self.backgroundTopGlowView.frame = CGRectMake(-34.0, self.view.safeAreaInsets.top - 18.0, topGlowSize, topGlowSize);
+    self.backgroundBottomGlowView.frame = CGRectMake(width - bottomGlowSize + 34.0, MAX(height * 0.48, 300.0), bottomGlowSize, bottomGlowSize);
+    self.backgroundTopGlowView.layer.cornerRadius = topGlowSize * 0.5;
+    self.backgroundBottomGlowView.layer.cornerRadius = bottomGlowSize * 0.5;
+    self.backgroundTopGlowView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.10];
+    self.backgroundBottomGlowView.backgroundColor = [[UIColor systemBlueColor] colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.07];
+
+    [Styling addLiquidGlassBorderToView:self.cardView cornerRadius:32];
+    [Styling addLiquidGlassBorderToView:self.heroIconWrapView cornerRadius:28 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+    [Styling addLiquidGlassBorderToView:self.continueButton cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
+    [Styling addLiquidGlassBorderToView:self.resendButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
+    for (UIView *digitView in self.digitViews) {
+        [Styling addLiquidGlassBorderToView:digitView cornerRadius:16 color:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
+    }
 
 }
 
 -(void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    
-    [self.scrollView sendSubviewToBack:self.cardView];
-    [self.scrollView bringSubviewToFront:self.codeField];
-    [self.scrollView bringSubviewToFront:self.continueButton];
 }
 
 
@@ -456,7 +646,8 @@
     CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
     shake.values = @[ @(-10), @(10), @(-8), @(8), @(-5), @(5), @(0) ];
     shake.duration = 0.35;
-    [self.codeField.layer addAnimation:shake forKey:@"shake"];
+    CALayer *targetLayer = self.digitStackView ? self.digitStackView.layer : self.cardView.layer;
+    [targetLayer addAnimation:shake forKey:@"shake"];
 }
 
 - (void)hapticError {
@@ -475,6 +666,8 @@
     // clear code
     self.codeField.text = @"";
     self.continueButton.enabled = NO;
+    self.continueButton.alpha = 0.6;
+    [self refreshDigitBoxesAnimated:NO];
 
     // 💥 Keep keyboard open
     [self.codeField becomeFirstResponder];
@@ -598,6 +791,7 @@
 
 - (void)setLoadingState:(BOOL)loading {
     self.continueButton.enabled = !loading && !self.isRequestingResend && (self.codeField.text.length == 6);
+    self.continueButton.alpha = self.continueButton.enabled ? 1.0 : 0.6;
     self.codeField.enabled = !loading;
 
     if (@available(iOS 15.0, *)) {
@@ -613,6 +807,37 @@
         }
         self.continueButton.configuration = config;
     }
+}
+
+- (void)animateVerificationEntranceIfNeeded {
+    if (self.didAnimateEntrance) {
+        return;
+    }
+    self.didAnimateEntrance = YES;
+
+    NSArray<UIView *> *views = @[
+        self.cardView ?: UIView.new,
+        self.titleLabel ?: UIView.new,
+        self.subtitleLabel ?: UIView.new,
+        self.digitStackView ?: UIView.new,
+        self.continueButton ?: UIView.new,
+        self.resendButton ?: UIView.new
+    ];
+
+    [views enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        view.alpha = 0.0;
+        view.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
+        [UIView animateWithDuration:0.50
+                              delay:0.04 * idx
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.16
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+        (void)stop;
+    }];
 }
 
 @end

@@ -17,15 +17,24 @@
 
 @interface PPCompleteProfileVC ()<UIAdaptivePresentationControllerDelegate>
 
+@property (nonatomic, strong) UIView *backgroundTopGlowView;
+@property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *headerRoot;
+@property (nonatomic, strong) UIView *heroCardView;
 @property (nonatomic, strong) UIImageView *avatarIMV;
 @property (nonatomic, strong) UIImage *avatarPlaceholderImage;
 @property (nonatomic, strong) UIButton *addPhotoBtn;
+@property (nonatomic, strong) UILabel *heroTitleLabel;
+@property (nonatomic, strong) UILabel *heroSubtitleLabel;
+@property (nonatomic, strong) UIView *progressPillView;
+@property (nonatomic, strong) UIImageView *progressPillIconView;
+@property (nonatomic, strong) UILabel *progressPillLabel;
 
 @property (nonatomic, strong) UIButton *saveBTN;
 @property (nonatomic, strong) UIButton *skipBTN;
 
 @property (nonatomic, assign) BOOL didlayout;
+@property (nonatomic, assign) BOOL didAnimateIntro;
 
 @end
 
@@ -50,6 +59,24 @@
     return UITableViewStyleInsetGrouped;
 }
 
+- (void)pp_updateHeaderLayoutForWidth:(CGFloat)width {
+    if (width <= 0.0 || !self.headerRoot) {
+        return;
+    }
+
+    CGSize targetSize = CGSizeMake(width, UILayoutFittingCompressedSize.height);
+    CGSize headerSize = [self.headerRoot systemLayoutSizeFittingSize:targetSize
+                      withHorizontalFittingPriority:UILayoutPriorityRequired
+                            verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    CGFloat resolvedHeight = MAX(1.0, ceil(headerSize.height));
+
+    if (fabs(self.headerRoot.frame.size.width - width) > 1.0 ||
+        fabs(self.headerRoot.frame.size.height - resolvedHeight) > 1.0) {
+        self.headerRoot.frame = CGRectMake(0, 0, width, resolvedHeight);
+        self.tableView.tableHeaderView = self.headerRoot;
+    }
+}
+
 #pragma mark - Lifecycle
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -57,8 +84,19 @@
     self.didlayout = NO;
     self.view.backgroundColor = PPBackgroundColorForIOS26([AppBackgroundClr colorWithAlphaComponent:0.9]);
     self.tableView.backgroundColor = UIColor.clearColor;
+    self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    self.tableView.sectionHeaderHeight = 12.0;
+    self.tableView.sectionFooterHeight = 8.0;
     self.view.layer.cornerRadius = 42;
     self.view.clipsToBounds = YES;
+
+    self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.backgroundTopGlowView.userInteractionEnabled = NO;
+    [self.view addSubview:self.backgroundTopGlowView];
+
+    self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.backgroundBottomGlowView.userInteractionEnabled = NO;
+    [self.view addSubview:self.backgroundBottomGlowView];
 
     [self setupTopBar];
     [self setupHeaderUI];
@@ -108,9 +146,14 @@
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.text = kLang(@"Complete_Profile");
-    titleLabel.font = [GM boldFontWithSize:18];
+    titleLabel.font = [GM boldFontWithSize:20];
     titleLabel.textColor = UIColor.labelColor;
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.saveBTN.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
+    self.skipBTN.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.80];
+    [self.saveBTN setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [self.skipBTN setTitleColor:UIColor.secondaryLabelColor forState:UIControlStateNormal];
 
     self.saveBTN.translatesAutoresizingMaskIntoConstraints = NO;
     self.skipBTN.translatesAutoresizingMaskIntoConstraints = NO;
@@ -149,6 +192,50 @@
 
     self.headerRoot = [[UIView alloc] init];
     self.headerRoot.backgroundColor = UIColor.clearColor;
+    self.headerRoot.translatesAutoresizingMaskIntoConstraints = NO;
+
+    self.heroCardView = [[UIView alloc] init];
+    self.heroCardView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroCardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.58 : 0.98];
+    self.heroCardView.layer.cornerRadius = 30.0;
+    self.heroCardView.layer.masksToBounds = YES;
+    [self.headerRoot addSubview:self.heroCardView];
+
+    self.progressPillView = [[UIView alloc] init];
+    self.progressPillView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.progressPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.82];
+    self.progressPillView.layer.cornerRadius = 18.0;
+    self.progressPillView.layer.masksToBounds = YES;
+    [self.heroCardView addSubview:self.progressPillView];
+
+    self.progressPillIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"checkmark.seal.fill"]];
+    self.progressPillIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.progressPillIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.progressPillIconView.tintColor = AppPrimaryClr;
+    [self.progressPillView addSubview:self.progressPillIconView];
+
+    self.progressPillLabel = [[UILabel alloc] init];
+    self.progressPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.progressPillLabel.font = [GM boldFontWithSize:13];
+    self.progressPillLabel.textColor = UIColor.labelColor;
+    [self.progressPillView addSubview:self.progressPillLabel];
+
+    self.heroTitleLabel = [[UILabel alloc] init];
+    self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroTitleLabel.text = kLang(@"Complete_Profile");
+    self.heroTitleLabel.font = [GM boldFontWithSize:24];
+    self.heroTitleLabel.textColor = UIColor.labelColor;
+    self.heroTitleLabel.textAlignment = NSTextAlignmentCenter;
+    [self.heroCardView addSubview:self.heroTitleLabel];
+
+    self.heroSubtitleLabel = [[UILabel alloc] init];
+    self.heroSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroSubtitleLabel.text = kLang(@"auth_complete_profile_subtitle");
+    self.heroSubtitleLabel.font = [GM MidFontWithSize:14];
+    self.heroSubtitleLabel.textColor = UIColor.secondaryLabelColor;
+    self.heroSubtitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.heroSubtitleLabel.numberOfLines = 0;
+    [self.heroCardView addSubview:self.heroSubtitleLabel];
 
     // Avatar
     self.avatarPlaceholderImage = [PPModernAvatarRenderer avatarImageForName:self.editingUser.UserName size:110];
@@ -174,14 +261,14 @@
                                    action:@selector(didTapAddPhoto)];
     [self.avatarIMV addGestureRecognizer:tap];
  
-    [self.headerRoot addSubview:self.avatarIMV];
+    [self.heroCardView addSubview:self.avatarIMV];
 
     // Add Photo Button
     self.addPhotoBtn = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.addPhotoBtn setTitle:kLang(@"Add_Photo") forState:UIControlStateNormal];
-    self.addPhotoBtn.backgroundColor = AppPrimaryClr;
+    self.addPhotoBtn.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
     self.addPhotoBtn.titleLabel.font = [GM MidFontWithSize:16];
-    self.addPhotoBtn.layer.cornerRadius = 20;
+    self.addPhotoBtn.layer.cornerRadius = 22;
     self.addPhotoBtn.translatesAutoresizingMaskIntoConstraints = NO;
     [self.addPhotoBtn addTarget:self
                          action:@selector(didTapAddPhoto)
@@ -189,31 +276,59 @@
     self.addPhotoBtn.titleLabel.textColor =  AppForgroundColr;
     self.addPhotoBtn.configuration.baseForegroundColor =  AppForgroundColr;
     [self.addPhotoBtn setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    [self.headerRoot addSubview:self.addPhotoBtn];
+    [self.heroCardView addSubview:self.addPhotoBtn];
 
     // Layout
     [NSLayoutConstraint activateConstraints:@[
-        [self.avatarIMV.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:12],
-        [self.avatarIMV.centerXAnchor constraintEqualToAnchor:self.headerRoot.centerXAnchor],
+        [self.heroCardView.topAnchor constraintEqualToAnchor:self.headerRoot.topAnchor constant:12],
+        [self.heroCardView.leadingAnchor constraintEqualToAnchor:self.headerRoot.leadingAnchor constant:16],
+        [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.headerRoot.trailingAnchor constant:-16],
+        [self.heroCardView.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-10],
+
+        [self.progressPillView.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:18],
+        [self.progressPillView.centerXAnchor constraintEqualToAnchor:self.heroCardView.centerXAnchor],
+
+        [self.progressPillIconView.leadingAnchor constraintEqualToAnchor:self.progressPillView.leadingAnchor constant:12],
+        [self.progressPillIconView.centerYAnchor constraintEqualToAnchor:self.progressPillView.centerYAnchor],
+        [self.progressPillIconView.widthAnchor constraintEqualToConstant:14],
+        [self.progressPillIconView.heightAnchor constraintEqualToConstant:14],
+
+        [self.progressPillLabel.leadingAnchor constraintEqualToAnchor:self.progressPillIconView.trailingAnchor constant:8],
+        [self.progressPillLabel.trailingAnchor constraintEqualToAnchor:self.progressPillView.trailingAnchor constant:-14],
+        [self.progressPillLabel.topAnchor constraintEqualToAnchor:self.progressPillView.topAnchor constant:10],
+        [self.progressPillLabel.bottomAnchor constraintEqualToAnchor:self.progressPillView.bottomAnchor constant:-10],
+
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:self.progressPillView.bottomAnchor constant:18],
+        [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20],
+        [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20],
+
+        [self.heroSubtitleLabel.topAnchor constraintEqualToAnchor:self.heroTitleLabel.bottomAnchor constant:8],
+        [self.heroSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:24],
+        [self.heroSubtitleLabel.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-24],
+
+        [self.avatarIMV.topAnchor constraintEqualToAnchor:self.heroSubtitleLabel.bottomAnchor constant:22],
+        [self.avatarIMV.centerXAnchor constraintEqualToAnchor:self.heroCardView.centerXAnchor],
         [self.avatarIMV.widthAnchor constraintEqualToConstant:115],
         [self.avatarIMV.heightAnchor constraintEqualToConstant:110],
 
         [self.addPhotoBtn.topAnchor constraintEqualToAnchor:self.avatarIMV.bottomAnchor constant:16],
-        [self.addPhotoBtn.centerXAnchor constraintEqualToAnchor:self.headerRoot.centerXAnchor],
-        [self.addPhotoBtn.widthAnchor constraintEqualToConstant:160],
-        [self.addPhotoBtn.heightAnchor constraintEqualToConstant:40],
-        [self.addPhotoBtn.bottomAnchor constraintEqualToAnchor:self.headerRoot.bottomAnchor constant:-20]
+        [self.addPhotoBtn.centerXAnchor constraintEqualToAnchor:self.heroCardView.centerXAnchor],
+        [self.addPhotoBtn.widthAnchor constraintGreaterThanOrEqualToConstant:176],
+        [self.addPhotoBtn.heightAnchor constraintEqualToConstant:44],
+        [self.addPhotoBtn.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:-22]
     ]];
 
     self.tableView.tableHeaderView = self.headerRoot;
     [self.headerRoot setNeedsLayout];
     [self.headerRoot layoutIfNeeded];
-
-    CGSize headerSize = [self.headerRoot systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
-    self.headerRoot.frame = CGRectMake(0, 0, self.view.bounds.size.width, headerSize.height);
-    self.tableView.tableHeaderView = self.headerRoot;
+    CGFloat headerWidth = CGRectGetWidth(self.tableView.bounds);
+    if (headerWidth <= 0.0) {
+        headerWidth = CGRectGetWidth(self.view.bounds);
+    }
+    [self pp_updateHeaderLayoutForWidth:headerWidth];
     
-    self.tableView.contentInset = UIEdgeInsetsMake(70, 0, 0, 0);
+    self.tableView.contentInset = UIEdgeInsetsMake(76, 0, 24, 0);
+    [self updateProfileProgressUI];
  
 }
 
@@ -234,6 +349,7 @@
     usernameRow.height = 54;
     usernameRow.onChangeBlock = ^(id oldValue, id newValue, XLFormRowDescriptor *row) {
         self.editingUser.UserName = newValue;
+        [self updateProfileProgressUI];
     };
 
     [section addFormRow:usernameRow];
@@ -247,6 +363,7 @@
 
     firstRow.onChangeBlock = ^(id oldValue, id newValue, XLFormRowDescriptor *row) {
         self.editingUser.FirstName = newValue;
+        [self updateProfileProgressUI];
     };
     firstRow.height = 54;
     [section addFormRow:firstRow];
@@ -259,6 +376,7 @@
                value:self.editingUser.LastName];
     lastRow.onChangeBlock = ^(id oldValue, id newValue, XLFormRowDescriptor *row) {
         self.editingUser.LastName = newValue;
+        [self updateProfileProgressUI];
     };
     lastRow.height = 54;
     [section addFormRow:lastRow];
@@ -272,6 +390,7 @@
     emailRow.value = self.editingUser.UserEmail;
     emailRow.onChangeBlock = ^(id oldValue, id newValue, XLFormRowDescriptor *row) {
         self.editingUser.UserEmail = newValue;
+        [self updateProfileProgressUI];
     };
     emailRow.height = 54;
     [section addFormRow:emailRow];
@@ -313,11 +432,31 @@
         }
         self.selectedCountry = (CountryCodeModel *)newValue;
         self.editingUser.CountryID = self.selectedCountry.ID;
+        [self updateProfileProgressUI];
     };
     codeRow.height = 54;
     [section addFormRow:codeRow];
     
     self.form = form;
+}
+
+- (void)updateProfileProgressUI {
+    NSInteger completed = 0;
+    NSInteger total = 5;
+
+    NSString *username = [PPSafeString(self.editingUser.UserName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *firstName = [PPSafeString(self.editingUser.FirstName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *lastName = [PPSafeString(self.editingUser.LastName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *email = [PPSafeString(self.editingUser.UserEmail) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+    if (username.length >= 3) completed += 1;
+    if (firstName.length > 0) completed += 1;
+    if (lastName.length > 0) completed += 1;
+    if (email.length > 0) completed += 1;
+    if (self.editingUser.CountryID > 0 || self.selectedCountry.ID > 0) completed += 1;
+
+    self.progressPillLabel.text = [NSString stringWithFormat:kLang(@"auth_profile_progress_format"), (long)completed, (long)total];
+    self.progressPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.82];
 }
 
 #pragma mark - Helpers
@@ -424,6 +563,26 @@
     row.value = value;
  
     return row;
+}
+
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
+    cell.backgroundColor = UIColor.clearColor;
+    cell.contentView.backgroundColor = UIColor.clearColor;
+
+    UIView *background = [[UIView alloc] initWithFrame:CGRectInset(cell.bounds, 12.0, 4.0)];
+    background.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.58 : 0.98];
+    background.layer.cornerRadius = 18.0;
+    background.layer.masksToBounds = YES;
+    [Styling addLiquidGlassBorderToView:background cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+    cell.backgroundView = background;
+
+    UIView *selectedBackground = [[UIView alloc] initWithFrame:background.bounds];
+    selectedBackground.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    selectedBackground.backgroundColor = [[self pp_selectedCellColorFromPrimary] colorWithAlphaComponent:0.22];
+    selectedBackground.layer.cornerRadius = 18.0;
+    selectedBackground.layer.masksToBounds = YES;
+    cell.selectedBackgroundView = selectedBackground;
 }
 
 #pragma mark - Save
@@ -595,6 +754,54 @@
             }
         }];
     }];
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+
+    CGFloat width = CGRectGetWidth(self.view.bounds);
+    CGFloat height = CGRectGetHeight(self.view.bounds);
+    CGFloat topGlowSize = MIN(220.0, width * 0.48);
+    CGFloat bottomGlowSize = MIN(200.0, width * 0.44);
+    self.backgroundTopGlowView.frame = CGRectMake(-36.0, self.view.safeAreaInsets.top + 8.0, topGlowSize, topGlowSize);
+    self.backgroundBottomGlowView.frame = CGRectMake(width - bottomGlowSize + 28.0, MAX(height * 0.56, 360.0), bottomGlowSize, bottomGlowSize);
+    self.backgroundTopGlowView.layer.cornerRadius = topGlowSize * 0.5;
+    self.backgroundBottomGlowView.layer.cornerRadius = bottomGlowSize * 0.5;
+    self.backgroundTopGlowView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.10];
+    self.backgroundBottomGlowView.backgroundColor = [[UIColor systemBlueColor] colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.07];
+
+    [self.headerRoot layoutIfNeeded];
+    CGFloat headerWidth = CGRectGetWidth(self.tableView.bounds);
+    if (headerWidth <= 0.0) {
+        headerWidth = width;
+    }
+    [self pp_updateHeaderLayoutForWidth:headerWidth];
+
+    [Styling addLiquidGlassBorderToView:self.heroCardView cornerRadius:30 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+    [Styling addLiquidGlassBorderToView:self.progressPillView cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+    [Styling addLiquidGlassBorderToView:self.avatarIMV cornerRadius:55 color:[[UIColor whiteColor] colorWithAlphaComponent:0.24]];
+    [Styling addLiquidGlassBorderToView:self.addPhotoBtn cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
+    [Styling addLiquidGlassBorderToView:self.saveBTN cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
+    [Styling addLiquidGlassBorderToView:self.skipBTN cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+
+    if (!self.didAnimateIntro) {
+        self.didAnimateIntro = YES;
+        NSArray<UIView *> *animatedViews = @[self.heroCardView ?: UIView.new, self.tableView ?: UIView.new];
+        [animatedViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+            view.alpha = 0.0;
+            view.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
+            [UIView animateWithDuration:0.55
+                                  delay:0.05 * idx
+                 usingSpringWithDamping:0.88
+                  initialSpringVelocity:0.16
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            } completion:nil];
+            (void)stop;
+        }];
+    }
 }
 
 -(void)viewWillAppear:(BOOL)animated

@@ -89,6 +89,10 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                                                NSString *statusHint,
                                                NSString *statusIconName)
 {
+    if (fallbackColor) {
+        return fallbackColor;
+    }
+
     NSString *iconName = [[statusIconName ?: @"" lowercaseString] copy];
     NSString *combinedText = [NSString stringWithFormat:@"%@ %@", statusTitle ?: @"", statusHint ?: @""];
 

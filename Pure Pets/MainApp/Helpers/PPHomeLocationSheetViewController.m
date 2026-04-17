@@ -9,8 +9,6 @@
 
 
 @implementation PPHomeLocationActionCard {
-    UIVisualEffectView *_blurView;
-    UIView *_tintOverlayView;
     UIView *_iconChipView;
     UIImageView *_iconView;
     UILabel *_titleLabel;
@@ -27,31 +25,7 @@
 
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.backgroundColor = UIColor.clearColor;
-    self.layer.cornerRadius = 22.0;
-    self.layer.cornerCurve = kCACornerCurveContinuous;
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.layer.shadowOpacity = 0.12f;
-    self.layer.shadowRadius = 14.0f;
-    self.layer.shadowOffset = CGSizeMake(0.0, 9.0);
     self.clipsToBounds = NO;
-
-    _blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
-    _blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    _blurView.userInteractionEnabled = NO;
-    _blurView.layer.cornerRadius = 22.0;
-    _blurView.layer.cornerCurve = kCACornerCurveContinuous;
-    _blurView.clipsToBounds = YES;
-    [self addSubview:_blurView];
-
-    _tintOverlayView = [[UIView alloc] init];
-    _tintOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
-    _tintOverlayView.userInteractionEnabled = NO;
-    _tintOverlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.62] ?: [UIColor secondarySystemBackgroundColor];
-    _tintOverlayView.layer.cornerRadius = 22.0;
-    _tintOverlayView.layer.cornerCurve = kCACornerCurveContinuous;
-    _tintOverlayView.layer.borderWidth = 0.8;
-    _tintOverlayView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
-    [self addSubview:_tintOverlayView];
 
     _iconChipView = [[UIView alloc] init];
     _iconChipView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -96,16 +70,6 @@
     [self addSubview:_chevronView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_blurView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [_blurView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [_blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [_blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-
-        [_tintOverlayView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [_tintOverlayView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [_tintOverlayView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [_tintOverlayView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-
         [_iconChipView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14.0],
         [_iconChipView.centerYAnchor constraintEqualToAnchor:self.centerYAnchor],
         [_iconChipView.widthAnchor constraintEqualToConstant:36.0],
@@ -214,6 +178,7 @@
     PPHomeLocationActionCard *_settingsCard;
     UILabel *_recentTitleLabel;
     UIView *_heroSurfaceView;
+    UIButton *_backButton;
     BOOL _didAnimateEntrance;
 }
 
@@ -276,6 +241,24 @@
     _scrollView.alwaysBounceVertical = YES;
     _scrollView.backgroundColor = UIColor.clearColor;
     [backdropView addSubview:_scrollView];
+
+    // Back button (icon only)
+    UIImage *backIcon = [UIImage pp_symbolNamed:(Language.isRTL ? @"chevron.right" : @"chevron.left")
+                                      pointSize:16
+                                         weight:UIImageSymbolWeightSemibold
+                                          scale:UIImageSymbolScaleMedium
+                                        palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
+                                   makeTemplate:YES];
+    _backButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _backButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [_backButton setImage:backIcon forState:UIControlStateNormal];
+    _backButton.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    _backButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+    _backButton.layer.cornerRadius = 16.0;
+    _backButton.layer.cornerCurve = kCACornerCurveContinuous;
+    _backButton.clipsToBounds = YES;
+    [_backButton addTarget:self action:@selector(pp_handleBack) forControlEvents:UIControlEventTouchUpInside];
+    [backdropView addSubview:_backButton];
 
     UIView *contentView = [[UIView alloc] init];
     contentView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -359,7 +342,12 @@
         [backdropView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [backdropView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
 
-        [_scrollView.topAnchor constraintEqualToAnchor:backdropView.topAnchor],
+        [_backButton.topAnchor constraintEqualToAnchor:backdropView.topAnchor constant:14.0],
+        [_backButton.leadingAnchor constraintEqualToAnchor:backdropView.leadingAnchor constant:16.0],
+        [_backButton.widthAnchor constraintEqualToConstant:32.0],
+        [_backButton.heightAnchor constraintEqualToConstant:32.0],
+
+        [_scrollView.topAnchor constraintEqualToAnchor:_backButton.bottomAnchor constant:8.0],
         [_scrollView.leadingAnchor constraintEqualToAnchor:backdropView.leadingAnchor],
         [_scrollView.trailingAnchor constraintEqualToAnchor:backdropView.trailingAnchor],
         [_scrollView.bottomAnchor constraintEqualToAnchor:backdropView.bottomAnchor],
@@ -491,6 +479,11 @@
         }
     };
     [self pp_dismissThenRun:selectBlock];
+}
+
+- (void)pp_handleBack
+{
+    [self pp_dismissThenRun:nil];
 }
 
 - (void)pp_dismissThenRun:(dispatch_block_t)block

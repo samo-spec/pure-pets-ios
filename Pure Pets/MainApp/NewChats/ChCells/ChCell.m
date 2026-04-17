@@ -34,18 +34,18 @@ static UIImage *PPChCellSupportLogoImage(void) {
 }
 
 static UIColor *PPChCellSurfaceColor(BOOL highlighted) {
-    UIColor *fallback = highlighted ? UIColor.tertiarySystemBackgroundColor : UIColor.secondarySystemBackgroundColor;
-    UIColor *surface = PPBackgroundColorForIOS26(fallback) ?: fallback;
-    return [surface colorWithAlphaComponent:highlighted ? 0.98 : 0.94];
+    UIColor *base = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    return [base colorWithAlphaComponent:highlighted ? 0.16 : 0.10];
 }
 
 static UIColor *PPChCellStrokeColor(void) {
-    return [UIColor.separatorColor colorWithAlphaComponent:0.25];
+    return [AppForgroundColr colorWithAlphaComponent:0.18] ?: [UIColor.separatorColor colorWithAlphaComponent:0.25];
 }
 
 @interface ChCell ()
 
 @property (nonatomic, strong) UIView *containerView;
+@property (nonatomic, strong) UIVisualEffectView *liquidBlur;
 @property (nonatomic, strong) RoundedImageViewWithShadow *avatarView;
 @property (nonatomic, strong) UIView *onlineDot;
 @property (nonatomic, strong) UILabel *nameLabel;
@@ -266,6 +266,23 @@ static UIColor *PPChCellStrokeColor(void) {
 }
 
 - (void)applyStyle {
+    // Liquid glass blur backing inside container
+    if (!self.liquidBlur) {
+        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        self.liquidBlur = [[UIVisualEffectView alloc] initWithEffect:blur];
+        self.liquidBlur.translatesAutoresizingMaskIntoConstraints = NO;
+        self.liquidBlur.layer.cornerRadius = PPChCellCornerRadius;
+        self.liquidBlur.layer.masksToBounds = YES;
+        self.liquidBlur.userInteractionEnabled = NO;
+        [self.containerView insertSubview:self.liquidBlur atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [self.liquidBlur.topAnchor constraintEqualToAnchor:self.containerView.topAnchor],
+            [self.liquidBlur.leadingAnchor constraintEqualToAnchor:self.containerView.leadingAnchor],
+            [self.liquidBlur.trailingAnchor constraintEqualToAnchor:self.containerView.trailingAnchor],
+            [self.liquidBlur.bottomAnchor constraintEqualToAnchor:self.containerView.bottomAnchor],
+        ]];
+    }
+
     self.containerView.backgroundColor = PPChCellSurfaceColor(NO);
     self.containerView.layer.cornerRadius = PPChCellCornerRadius;
     if (@available(iOS 13.0, *)) {
@@ -273,10 +290,10 @@ static UIColor *PPChCellStrokeColor(void) {
     }
     self.containerView.layer.borderWidth = 1.0;
     self.containerView.layer.borderColor = PPChCellStrokeColor().CGColor;
-    self.containerView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.containerView.layer.shadowOpacity = 0.05;
-    self.containerView.layer.shadowRadius = 16.0;
-    self.containerView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.containerView.layer.shadowColor = [AppForgroundColr colorWithAlphaComponent:0.08].CGColor;
+    self.containerView.layer.shadowOpacity = 0.12;
+    self.containerView.layer.shadowRadius = 14.0;
+    self.containerView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
 
     self.avatarView.layer.shadowOpacity = 0.10;
     self.avatarView.layer.shadowRadius = 8.0;
@@ -388,8 +405,10 @@ static UIColor *PPChCellStrokeColor(void) {
     BOOL emphasized = self.isHighlighted || self.isSelected;
     CGAffineTransform transform = emphasized ? CGAffineTransformMakeScale(0.985, 0.985) : CGAffineTransformIdentity;
     UIColor *surfaceColor = PPChCellSurfaceColor(emphasized);
-    UIColor *borderColor = emphasized ? [AppPrimaryClr colorWithAlphaComponent:0.18] : PPChCellStrokeColor();
-    CGFloat shadowOpacity = emphasized ? 0.08 : 0.05;
+    UIColor *borderColor = emphasized
+        ? [AppForgroundColr colorWithAlphaComponent:0.30]
+        : PPChCellStrokeColor();
+    CGFloat shadowOpacity = emphasized ? 0.16 : 0.12;
 
     void (^changes)(void) = ^{
         self.containerView.transform = transform;

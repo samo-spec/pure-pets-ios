@@ -31,9 +31,6 @@ static NSString * const kOrderDetailsPlaceholderCellID = @"OrderDetailsPlacehold
 static CGFloat const kOrderDetailsHeaderCornerRadius = 16.0;
 static CGFloat const kOrderDetailsButtonCornerRadius = 18.0;
 static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
-static CGFloat const kOrderStatusStepperHeight = 88.0;
-static CGFloat const kOrderStatusStepperTopInset = 14.0;
-static CGFloat const kOrderStatusStepperBottomInset = 14.0;
 static NSInteger const kOrderSupportComposerMaxAttachments = 4;
 
 static NSString *PPOrderStepperNormalizedKey(NSString *value)
@@ -1527,6 +1524,427 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 @end
 
+typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
+    PPOrderProgressTimelineRowStateCompleted,
+    PPOrderProgressTimelineRowStateCurrent,
+    PPOrderProgressTimelineRowStateUpcoming,
+    PPOrderProgressTimelineRowStateFailure
+};
+
+@interface PPOrderProgressTimelineRowView : UIView
+
+- (void)configureWithTitle:(NSString *)title
+                  subtitle:(NSString *)subtitle
+                  metaText:(NSString *)metaText
+                symbolName:(NSString *)symbolName
+                     state:(PPOrderProgressTimelineRowState)state
+                  expanded:(BOOL)expanded
+                 tintColor:(nullable UIColor *)tintColor
+                     isRTL:(BOOL)isRTL;
+- (CGFloat)preferredHeightForWidth:(CGFloat)width;
+- (CGFloat)markerCenterY;
+- (CGFloat)trackCenterXForWidth:(CGFloat)width;
+
+@end
+
+@interface PPOrderProgressTimelineRowView ()
+
+@property (nonatomic, strong) UIView *markerHaloView;
+@property (nonatomic, strong) UIView *markerView;
+@property (nonatomic, strong) UIImageView *markerIconView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UILabel *metaLabel;
+@property (nonatomic, copy) NSString *titleText;
+@property (nonatomic, copy) NSString *subtitleText;
+@property (nonatomic, copy) NSString *metaText;
+@property (nonatomic, copy) NSString *symbolName;
+@property (nonatomic, assign) PPOrderProgressTimelineRowState rowState;
+@property (nonatomic, assign) BOOL expanded;
+@property (nonatomic, assign) BOOL isRTL;
+@property (nonatomic, strong) UIColor *accentColor;
+
+@end
+
+@implementation PPOrderProgressTimelineRowView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        self.userInteractionEnabled = NO;
+
+        _markerHaloView = [[UIView alloc] initWithFrame:CGRectZero];
+        _markerHaloView.hidden = YES;
+        [self addSubview:_markerHaloView];
+
+        _markerView = [[UIView alloc] initWithFrame:CGRectZero];
+        [self addSubview:_markerView];
+
+        _markerIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
+        _markerIconView.contentMode = UIViewContentModeScaleAspectFit;
+        [_markerView addSubview:_markerIconView];
+
+        _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _titleLabel.numberOfLines = 2;
+        [self addSubview:_titleLabel];
+
+        _subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _subtitleLabel.numberOfLines = 0;
+        [self addSubview:_subtitleLabel];
+
+        _metaLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _metaLabel.numberOfLines = 1;
+        [self addSubview:_metaLabel];
+    }
+    return self;
+}
+
+- (void)configureWithTitle:(NSString *)title
+                  subtitle:(NSString *)subtitle
+                  metaText:(NSString *)metaText
+                symbolName:(NSString *)symbolName
+                     state:(PPOrderProgressTimelineRowState)state
+                  expanded:(BOOL)expanded
+                 tintColor:(UIColor *)tintColor
+                     isRTL:(BOOL)isRTL
+{
+    self.titleText = title ?: @"";
+    self.subtitleText = subtitle ?: @"";
+    self.metaText = metaText ?: @"";
+    self.symbolName = symbolName ?: @"circle";
+    self.rowState = state;
+    self.expanded = expanded;
+    self.isRTL = isRTL;
+    self.accentColor = tintColor ?: [GM appPrimaryColor];
+
+    NSTextAlignment alignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    self.titleLabel.textAlignment = alignment;
+    self.subtitleLabel.textAlignment = alignment;
+    self.metaLabel.textAlignment = alignment;
+    self.titleLabel.text = self.titleText;
+    self.subtitleLabel.text = self.subtitleText;
+    self.metaLabel.text = self.metaText;
+
+    UIColor *accent = self.accentColor ?: [GM appPrimaryColor];
+    UIColor *errorColor = UIColor.systemRedColor;
+    UIColor *upcomingFill = [UIColor tertiarySystemFillColor];
+    UIColor *upcomingBorder = [UIColor quaternaryLabelColor];
+    UIColor *titleColor = UIColor.labelColor;
+    UIColor *subtitleColor = UIColor.secondaryLabelColor;
+    UIColor *metaColor = UIColor.tertiaryLabelColor;
+    UIColor *markerFill = accent;
+    UIColor *markerBorder = accent;
+    UIColor *iconTint = UIColor.whiteColor;
+    BOOL showHalo = NO;
+
+    switch (state) {
+        case PPOrderProgressTimelineRowStateFailure:
+            markerFill = errorColor;
+            markerBorder = errorColor;
+            titleColor = errorColor;
+            subtitleColor = [errorColor colorWithAlphaComponent:0.86];
+            metaColor = [errorColor colorWithAlphaComponent:0.72];
+            showHalo = YES;
+            self.titleLabel.font = [GM boldFontWithSize:16];
+            break;
+        case PPOrderProgressTimelineRowStateCurrent:
+            markerFill = accent;
+            markerBorder = accent;
+            titleColor = accent;
+            subtitleColor = UIColor.labelColor;
+            metaColor = [accent colorWithAlphaComponent:0.78];
+            showHalo = YES;
+            self.titleLabel.font = [GM boldFontWithSize:17];
+            break;
+        case PPOrderProgressTimelineRowStateCompleted:
+            markerFill = accent;
+            markerBorder = accent;
+            titleColor = UIColor.labelColor;
+            subtitleColor = UIColor.secondaryLabelColor;
+            metaColor = UIColor.tertiaryLabelColor;
+            self.titleLabel.font = [GM boldFontWithSize:15];
+            break;
+        case PPOrderProgressTimelineRowStateUpcoming:
+        default:
+            markerFill = upcomingFill;
+            markerBorder = upcomingBorder;
+            iconTint = UIColor.secondaryLabelColor;
+            titleColor = UIColor.secondaryLabelColor;
+            subtitleColor = UIColor.tertiaryLabelColor;
+            metaColor = UIColor.tertiaryLabelColor;
+            self.titleLabel.font = [GM MidFontWithSize:15];
+            break;
+    }
+
+    self.subtitleLabel.font = [GM MidFontWithSize:13];
+    self.metaLabel.font = [GM MidFontWithSize:12];
+    self.titleLabel.textColor = titleColor;
+    self.subtitleLabel.textColor = subtitleColor;
+    self.metaLabel.textColor = metaColor;
+
+    self.markerView.backgroundColor = markerFill;
+    self.markerView.layer.borderColor = markerBorder.CGColor;
+    self.markerView.layer.borderWidth = showHalo ? 1.3 : 1.0;
+    self.markerIconView.image = PPOrderStepperImage(self.symbolName);
+    self.markerIconView.tintColor = iconTint;
+
+    self.markerHaloView.hidden = !showHalo;
+    self.markerHaloView.backgroundColor = [(showHalo ? markerFill : accent) colorWithAlphaComponent:0.18];
+    self.markerHaloView.layer.borderWidth = 1.0;
+    self.markerHaloView.layer.borderColor = [[(showHalo ? markerFill : accent) colorWithAlphaComponent:0.26] CGColor];
+
+    BOOL showsSecondaryDetails = expanded;
+    self.subtitleLabel.hidden = !showsSecondaryDetails || self.subtitleText.length == 0;
+    self.metaLabel.hidden = !showsSecondaryDetails || self.metaText.length == 0;
+    [self setNeedsLayout];
+}
+
+- (CGFloat)preferredHeightForWidth:(CGFloat)width
+{
+    CGFloat contentWidth = MAX(110.0, width - 56.0);
+    CGFloat topPadding = (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                          self.rowState == PPOrderProgressTimelineRowStateFailure) ? 8.0 : 6.0;
+    CGFloat bottomPadding = self.expanded ? 12.0 : 10.0;
+    CGFloat titleHeight = ceil([self.titleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)].height);
+    CGFloat detailsHeight = 0.0;
+    if (self.expanded) {
+        if (self.subtitleText.length > 0) {
+            detailsHeight += 6.0 + ceil([self.subtitleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)].height);
+        }
+        if (self.metaText.length > 0) {
+            detailsHeight += 4.0 + ceil([self.metaLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)].height);
+        }
+    }
+
+    CGFloat minimumHeight = self.expanded ? 78.0 : 54.0;
+    return MAX(minimumHeight, topPadding + titleHeight + detailsHeight + bottomPadding);
+}
+
+- (CGFloat)markerCenterY
+{
+    CGFloat markerSize = (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                          self.rowState == PPOrderProgressTimelineRowStateFailure) ? 28.0 : 22.0;
+    CGFloat topPadding = (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                          self.rowState == PPOrderProgressTimelineRowStateFailure) ? 8.0 : 6.0;
+    return topPadding + (markerSize * 0.5) + 2.0;
+}
+
+- (CGFloat)trackCenterXForWidth:(CGFloat)width
+{
+    return self.isRTL ? (width - 18.0) : 18.0;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    CGFloat width = CGRectGetWidth(self.bounds);
+    CGFloat trackCenterX = [self trackCenterXForWidth:width];
+    CGFloat markerSize = (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                          self.rowState == PPOrderProgressTimelineRowStateFailure) ? 28.0 : 22.0;
+    CGFloat markerCenterY = [self markerCenterY];
+    CGFloat markerX = trackCenterX - (markerSize * 0.5);
+    CGFloat markerY = markerCenterY - (markerSize * 0.5);
+    self.markerView.frame = CGRectMake(markerX, markerY, markerSize, markerSize);
+    self.markerView.layer.cornerRadius = markerSize * 0.5;
+
+    CGFloat haloSize = markerSize + 12.0;
+    self.markerHaloView.frame = CGRectMake(trackCenterX - (haloSize * 0.5),
+                                           markerCenterY - (haloSize * 0.5),
+                                           haloSize,
+                                           haloSize);
+    self.markerHaloView.layer.cornerRadius = haloSize * 0.5;
+    self.markerIconView.frame = CGRectInset(self.markerView.bounds,
+                                            (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                                             self.rowState == PPOrderProgressTimelineRowStateFailure) ? 6.0 : 4.5,
+                                            (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                                             self.rowState == PPOrderProgressTimelineRowStateFailure) ? 6.0 : 4.5);
+
+    CGFloat contentLeading = self.isRTL ? 0.0 : 46.0;
+    CGFloat contentWidth = MAX(0.0, width - 46.0);
+    CGFloat contentTop = (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                          self.rowState == PPOrderProgressTimelineRowStateFailure) ? 8.0 : 6.0;
+    CGFloat y = contentTop;
+
+    CGSize titleSize = [self.titleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)];
+    self.titleLabel.frame = CGRectMake(contentLeading, y, contentWidth, ceil(titleSize.height));
+    y = CGRectGetMaxY(self.titleLabel.frame);
+
+    if (!self.subtitleLabel.hidden) {
+        y += 6.0;
+        CGSize subtitleSize = [self.subtitleLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)];
+        self.subtitleLabel.frame = CGRectMake(contentLeading, y, contentWidth, ceil(subtitleSize.height));
+        y = CGRectGetMaxY(self.subtitleLabel.frame);
+    } else {
+        self.subtitleLabel.frame = CGRectZero;
+    }
+
+    if (!self.metaLabel.hidden) {
+        y += 4.0;
+        CGSize metaSize = [self.metaLabel sizeThatFits:CGSizeMake(contentWidth, CGFLOAT_MAX)];
+        self.metaLabel.frame = CGRectMake(contentLeading, y, contentWidth, ceil(metaSize.height));
+    } else {
+        self.metaLabel.frame = CGRectZero;
+    }
+}
+
+@end
+
+@interface PPOrderProgressTimelineView : UIView
+
+- (void)configureWithStepDescriptors:(NSArray<NSDictionary *> *)stepDescriptors
+                        currentIndex:(NSInteger)currentIndex
+                        showsFailure:(BOOL)showsFailure
+                            expanded:(BOOL)expanded
+                           tintColor:(nullable UIColor *)tintColor
+                            animated:(BOOL)animated;
+- (CGFloat)preferredHeightForWidth:(CGFloat)width;
+
+@end
+
+@interface PPOrderProgressTimelineView ()
+
+@property (nonatomic, strong) UIView *trackView;
+@property (nonatomic, strong) NSMutableArray<PPOrderProgressTimelineRowView *> *rowViews;
+@property (nonatomic, copy) NSArray<NSDictionary *> *stepDescriptors;
+@property (nonatomic, assign) NSInteger currentIndex;
+@property (nonatomic, assign) BOOL showsFailure;
+@property (nonatomic, assign) BOOL expanded;
+@property (nonatomic, strong) UIColor *accentColor;
+
+@end
+
+@implementation PPOrderProgressTimelineView
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.backgroundColor = UIColor.clearColor;
+        _trackView = [[UIView alloc] initWithFrame:CGRectZero];
+        _trackView.layer.cornerRadius = 1.0;
+        [self addSubview:_trackView];
+        _rowViews = [NSMutableArray array];
+    }
+    return self;
+}
+
+- (void)ensureRowCount:(NSInteger)count
+{
+    while (self.rowViews.count < count) {
+        PPOrderProgressTimelineRowView *row = [[PPOrderProgressTimelineRowView alloc] initWithFrame:CGRectZero];
+        [self.rowViews addObject:row];
+        [self addSubview:row];
+    }
+    for (NSInteger index = 0; index < self.rowViews.count; index++) {
+        self.rowViews[index].hidden = (index >= count);
+    }
+}
+
+- (void)configureWithStepDescriptors:(NSArray<NSDictionary *> *)stepDescriptors
+                        currentIndex:(NSInteger)currentIndex
+                        showsFailure:(BOOL)showsFailure
+                            expanded:(BOOL)expanded
+                           tintColor:(UIColor *)tintColor
+                            animated:(BOOL)animated
+{
+    self.stepDescriptors = stepDescriptors ?: @[];
+    self.currentIndex = MAX(0, MIN(currentIndex, MAX((NSInteger)self.stepDescriptors.count - 1, 0)));
+    self.showsFailure = showsFailure;
+    self.expanded = expanded;
+    self.accentColor = tintColor ?: [GM appPrimaryColor];
+
+    [self ensureRowCount:self.stepDescriptors.count];
+
+    BOOL isRTL = [Language isRTL];
+    for (NSInteger index = 0; index < self.stepDescriptors.count; index++) {
+        NSDictionary *descriptor = self.stepDescriptors[index];
+        PPOrderProgressTimelineRowState state = PPOrderProgressTimelineRowStateUpcoming;
+        if (showsFailure && index == self.currentIndex) {
+            state = PPOrderProgressTimelineRowStateFailure;
+        } else if (index < self.currentIndex) {
+            state = PPOrderProgressTimelineRowStateCompleted;
+        } else if (index == self.currentIndex) {
+            state = PPOrderProgressTimelineRowStateCurrent;
+        }
+
+        [self.rowViews[index] configureWithTitle:[descriptor[@"title"] isKindOfClass:NSString.class] ? descriptor[@"title"] : @""
+                                        subtitle:[descriptor[@"subtitle"] isKindOfClass:NSString.class] ? descriptor[@"subtitle"] : @""
+                                        metaText:[descriptor[@"meta"] isKindOfClass:NSString.class] ? descriptor[@"meta"] : @""
+                                      symbolName:[descriptor[@"icon"] isKindOfClass:NSString.class] ? descriptor[@"icon"] : @"circle"
+                                           state:state
+                                        expanded:expanded
+                                       tintColor:self.accentColor
+                                           isRTL:isRTL];
+    }
+
+    if (animated) {
+        [UIView transitionWithView:self
+                          duration:0.26
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                        animations:^{
+            [self setNeedsLayout];
+            [self layoutIfNeeded];
+        } completion:nil];
+    } else {
+        [self setNeedsLayout];
+    }
+}
+
+- (CGFloat)preferredHeightForWidth:(CGFloat)width
+{
+    if (self.stepDescriptors.count == 0) return 0.0;
+
+    CGFloat gap = self.expanded ? 12.0 : 7.0;
+    CGFloat totalHeight = 0.0;
+    for (NSInteger index = 0; index < self.stepDescriptors.count; index++) {
+        PPOrderProgressTimelineRowView *row = (index < self.rowViews.count) ? self.rowViews[index] : nil;
+        totalHeight += [row preferredHeightForWidth:width];
+        if (index < (NSInteger)self.stepDescriptors.count - 1) {
+            totalHeight += gap;
+        }
+    }
+    return totalHeight;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+
+    CGFloat width = CGRectGetWidth(self.bounds);
+    CGFloat gap = self.expanded ? 12.0 : 7.0;
+    CGFloat y = 0.0;
+    CGFloat firstMarkerY = 0.0;
+    CGFloat lastMarkerY = 0.0;
+    CGFloat trackX = [Language isRTL] ? (width - 18.0) : 18.0;
+
+    for (NSInteger index = 0; index < self.stepDescriptors.count; index++) {
+        PPOrderProgressTimelineRowView *row = self.rowViews[index];
+        row.hidden = NO;
+        CGFloat rowHeight = [row preferredHeightForWidth:width];
+        row.frame = CGRectMake(0.0, y, width, rowHeight);
+        CGFloat markerY = y + [row markerCenterY];
+        if (index == 0) firstMarkerY = markerY;
+        lastMarkerY = markerY;
+        y += rowHeight;
+        if (index < (NSInteger)self.stepDescriptors.count - 1) {
+            y += gap;
+        }
+    }
+
+    self.trackView.hidden = (self.stepDescriptors.count < 2);
+    self.trackView.backgroundColor = [self.accentColor colorWithAlphaComponent:self.expanded ? 0.18 : 0.12];
+    self.trackView.frame = CGRectMake(trackX - 1.0,
+                                      firstMarkerY,
+                                      2.0,
+                                      MAX(0.0, lastMarkerY - firstMarkerY));
+    [self sendSubviewToBack:self.trackView];
+}
+
+@end
+
 @interface OrderDetailsViewController () <UITableViewDataSource, UITableViewDelegate, MKMapViewDelegate>
 
 @property (nonatomic, strong) UITableView *tableView;
@@ -1536,6 +1954,19 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 @property (nonatomic, strong) UIView *headerCard;
 @property (nonatomic, strong) UILabel *orderIDLabel;
 @property (nonatomic, strong) UILabel *orderStatusLabel;
+@property (nonatomic, strong) UIView *statusSummaryCard;
+@property (nonatomic, strong) UILabel *statusSummarySubtitleLabel;
+@property (nonatomic, strong) UIView *statusProgressChip;
+@property (nonatomic, strong) UIImageView *statusProgressChipIconView;
+@property (nonatomic, strong) UILabel *statusProgressChipLabel;
+@property (nonatomic, strong) UIView *statusEtaChip;
+@property (nonatomic, strong) UIImageView *statusEtaChipIconView;
+@property (nonatomic, strong) UILabel *statusEtaChipLabel;
+@property (nonatomic, strong) UILabel *progressTimelineTitleLabel;
+@property (nonatomic, strong) UILabel *progressTimelineProgressLabel;
+@property (nonatomic, strong) UIButton *progressTimelineToggleButton;
+@property (nonatomic, strong) UIImageView *progressTimelineToggleIconView;
+@property (nonatomic, strong) PPOrderProgressTimelineView *progressTimelineView;
 @property (nonatomic, strong) UILabel *dateLabel;
 @property (nonatomic, strong) UILabel *totalPriceLabel;
 @property (nonatomic, strong) UILabel *paymentProviderLabel;
@@ -1543,7 +1974,6 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 @property (nonatomic, strong) UIButton *openMapButton;
 @property (nonatomic, strong) UIView *statusBadge;
 @property (nonatomic, strong) UIImageView *statusIconView;
-@property (nonatomic, strong) PPOrderStatusStepperView *statusStepperView;
 @property (nonatomic, strong) UIView *summaryPanel;
 @property (nonatomic, strong) UIView *headerSeparatorTop;
 @property (nonatomic, strong) UIView *headerSeparatorBottom;
@@ -1585,6 +2015,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 @property (nonatomic, assign) BOOL isOrderDetailsScreenVisible;
 @property (nonatomic, copy, nullable) NSString *lastObservedOrderStatusKey;
 @property (nonatomic, assign) BOOL didShowEntryPresentation;
+@property (nonatomic, assign) BOOL isProgressTimelineExpanded;
 @property (nonatomic, assign) BOOL prefersBackToMainScreen;
 @property (nonatomic, assign) BOOL isResolvingAddress;
 
@@ -1672,8 +2103,14 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
             [UIBezierPath bezierPathWithRoundedRect:self.headerCard.bounds
                                       cornerRadius:self.headerCard.layer.cornerRadius].CGPath;
     }
+    if (self.statusSummaryCard) {
+        [Styling addLiquidGlassBorderToView:self.statusSummaryCard cornerRadius:24 color:[[UIColor whiteColor] colorWithAlphaComponent:0.24]];
+    }
     if (self.summaryPanel) {
-        [Styling addLiquidGlassBorderToView:self.summaryPanel cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.22]];
+        [Styling addLiquidGlassBorderToView:self.summaryPanel cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+    }
+    if (self.progressTimelineToggleButton) {
+        [Styling addLiquidGlassBorderToView:self.progressTimelineToggleButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
     }
     if (self.deliveryMapCard) {
         [Styling addLiquidGlassBorderToView:self.deliveryMapCard cornerRadius:20 color:AppBackgroundClrDarker];
@@ -1703,6 +2140,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.didShowEntryPresentation = NO;
     self.prefersBackToMainScreen = NO;
     self.isOrderDetailsScreenVisible = NO;
+    self.isProgressTimelineExpanded = NO;
     self.lastObservedOrderStatusKey = nil;
     
     self.dateFormatter = [[NSDateFormatter alloc] init];
@@ -1835,30 +2273,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     self.headerCard.layer.masksToBounds = NO;
     [self applyCardShadow:self.headerCard];
     [self.headerContainer addSubview:self.headerCard];
-    
-    self.statusBadge = [[UIView alloc] initWithFrame:CGRectZero];
-    self.statusBadge.layer.cornerRadius = 14.0;
-    self.statusBadge.layer.masksToBounds = YES;
-    [self.headerCard addSubview:self.statusBadge];
-    
-    self.statusIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
-    self.statusIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.statusIconView.tintColor = [GM appPrimaryColor];
-    [self.statusBadge addSubview:self.statusIconView];
 
-    self.statusStepperView = [[PPOrderStatusStepperView alloc] initWithFrame:CGRectZero];
-    [self.headerCard addSubview:self.statusStepperView];
-    
-    self.headerSeparatorTop = [[UIView alloc] initWithFrame:CGRectZero];
-    self.headerSeparatorTop.backgroundColor = [UIColor separatorColor];
-    self.headerSeparatorTop.alpha = 0.22;
-    [self.headerCard addSubview:self.headerSeparatorTop];
-    
-    self.headerSeparatorBottom = [[UIView alloc] initWithFrame:CGRectZero];
-    self.headerSeparatorBottom.backgroundColor = [UIColor separatorColor];
-    self.headerSeparatorBottom.alpha = 0.45;
-    self.headerSeparatorBottom.hidden = YES;
-    
     self.orderIDLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.orderIDLabel.font = [GM MidFontWithSize:12];
     self.orderIDLabel.textColor = UIColor.tertiaryLabelColor;
@@ -1872,12 +2287,95 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(orderIDTapped)];
     [self.orderIDLabel addGestureRecognizer:orderIDTapGesture];
     
+    self.statusSummaryCard = [[UIView alloc] initWithFrame:CGRectZero];
+    self.statusSummaryCard.layer.cornerRadius = 24.0;
+    self.statusSummaryCard.layer.masksToBounds = YES;
+    [self.headerCard addSubview:self.statusSummaryCard];
+
+    self.statusBadge = [[UIView alloc] initWithFrame:CGRectZero];
+    self.statusBadge.layer.masksToBounds = YES;
+    [self.statusSummaryCard addSubview:self.statusBadge];
+
+    self.statusIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    self.statusIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.statusIconView.tintColor = [GM appPrimaryColor];
+    [self.statusBadge addSubview:self.statusIconView];
+
     self.orderStatusLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-    self.orderStatusLabel.font = [GM boldFontWithSize:20];
+    self.orderStatusLabel.font = [GM boldFontWithSize:26];
     self.orderStatusLabel.textColor = [GM appPrimaryColor];
     self.orderStatusLabel.adjustsFontSizeToFitWidth = YES;
-    self.orderStatusLabel.minimumScaleFactor = 0.72;
-    [self.headerCard addSubview:self.orderStatusLabel];
+    self.orderStatusLabel.minimumScaleFactor = 0.74;
+    self.orderStatusLabel.numberOfLines = 2;
+    [self.statusSummaryCard addSubview:self.orderStatusLabel];
+
+    self.statusSummarySubtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.statusSummarySubtitleLabel.font = [GM MidFontWithSize:14];
+    self.statusSummarySubtitleLabel.textColor = UIColor.secondaryLabelColor;
+    self.statusSummarySubtitleLabel.numberOfLines = 0;
+    [self.statusSummaryCard addSubview:self.statusSummarySubtitleLabel];
+
+    self.statusProgressChip = [[UIView alloc] initWithFrame:CGRectZero];
+    self.statusProgressChip.layer.cornerRadius = 16.0;
+    self.statusProgressChip.layer.masksToBounds = YES;
+    [self.statusSummaryCard addSubview:self.statusProgressChip];
+
+    self.statusProgressChipIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    self.statusProgressChipIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.statusProgressChipIconView.image = [UIImage systemImageNamed:@"circle.grid.2x2.fill"];
+    [self.statusProgressChip addSubview:self.statusProgressChipIconView];
+
+    self.statusProgressChipLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.statusProgressChipLabel.font = [GM boldFontWithSize:13];
+    [self.statusProgressChip addSubview:self.statusProgressChipLabel];
+
+    self.statusEtaChip = [[UIView alloc] initWithFrame:CGRectZero];
+    self.statusEtaChip.layer.cornerRadius = 16.0;
+    self.statusEtaChip.layer.masksToBounds = YES;
+    [self.statusSummaryCard addSubview:self.statusEtaChip];
+
+    self.statusEtaChipIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    self.statusEtaChipIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.statusEtaChipIconView.image = [UIImage systemImageNamed:@"clock.fill"];
+    [self.statusEtaChip addSubview:self.statusEtaChipIconView];
+
+    self.statusEtaChipLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.statusEtaChipLabel.font = [GM boldFontWithSize:13];
+    [self.statusEtaChip addSubview:self.statusEtaChipLabel];
+
+    self.progressTimelineTitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.progressTimelineTitleLabel.font = [GM boldFontWithSize:18];
+    self.progressTimelineTitleLabel.textColor = UIColor.labelColor;
+    self.progressTimelineTitleLabel.text = kLang(@"order_tracking_title");
+    [self.headerCard addSubview:self.progressTimelineTitleLabel];
+
+    self.progressTimelineProgressLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+    self.progressTimelineProgressLabel.font = [GM boldFontWithSize:13];
+    self.progressTimelineProgressLabel.textColor = [GM appPrimaryColor];
+    [self.headerCard addSubview:self.progressTimelineProgressLabel];
+
+    self.progressTimelineToggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.progressTimelineToggleButton.layer.cornerRadius = 18.0;
+    self.progressTimelineToggleButton.layer.masksToBounds = YES;
+    self.progressTimelineToggleButton.accessibilityLabel = @"Toggle order timeline";
+    self.progressTimelineToggleButton.accessibilityHint = @"Expands or collapses the order progress timeline";
+    self.progressTimelineToggleButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [self.progressTimelineToggleButton addTarget:self action:@selector(toggleProgressTimelineTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.headerCard addSubview:self.progressTimelineToggleButton];
+
+    self.progressTimelineToggleIconView = [[UIImageView alloc] initWithFrame:CGRectZero];
+    self.progressTimelineToggleIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.progressTimelineToggleIconView.image = [UIImage systemImageNamed:@"chevron.down"];
+    [self.progressTimelineToggleButton addSubview:self.progressTimelineToggleIconView];
+
+    self.progressTimelineView = [[PPOrderProgressTimelineView alloc] initWithFrame:CGRectZero];
+    [self.headerCard addSubview:self.progressTimelineView];
+
+    self.headerSeparatorTop = [[UIView alloc] initWithFrame:CGRectZero];
+    self.headerSeparatorTop.hidden = YES;
+
+    self.headerSeparatorBottom = [[UIView alloc] initWithFrame:CGRectZero];
+    self.headerSeparatorBottom.hidden = YES;
     
     self.summaryPanel = [[UIView alloc] initWithFrame:CGRectZero];
     self.summaryPanel.layer.cornerRadius = 22.0;
@@ -2138,39 +2636,130 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     NSTextAlignment leading = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
     NSTextAlignment trailing = isRTL ? NSTextAlignmentLeft : NSTextAlignmentRight;
     
-    self.orderIDLabel.textAlignment = NSTextAlignmentLeft;
-    self.orderStatusLabel.textAlignment = NSTextAlignmentRight;
-    self.headerCard.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
-
+    self.orderIDLabel.textAlignment = leading;
+    self.orderStatusLabel.textAlignment = leading;
+    self.statusSummarySubtitleLabel.textAlignment = leading;
+    self.progressTimelineTitleLabel.textAlignment = leading;
+    self.progressTimelineProgressLabel.textAlignment = trailing;
+    self.headerCard.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.statusSummaryCard.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.dateLabel.textAlignment = leading;
     self.totalPriceLabel.textAlignment = leading;
     self.paymentProviderLabel.textAlignment = leading;
+
     CGFloat padding = 16.0;
-    CGFloat iconSize = 28.0;
-    CGFloat statusY = 16.0;
     CGFloat separatorWidth = MAX(0.0, cardWidth - (padding * 2.0));
     CGFloat gap = 10.0;
+    CGFloat headerY = 16.0;
 
-    // Badge is always on the trailing edge
-    CGFloat badgeX = cardWidth - padding - iconSize;
-    self.statusBadge.frame = CGRectMake(badgeX, statusY, iconSize, iconSize);
-    self.statusIconView.frame = self.statusBadge.bounds;
+    self.orderIDLabel.frame = CGRectMake(padding, headerY, separatorWidth, 18.0);
 
-    CGFloat availableTopRowWidth = MAX(0.0, CGRectGetMinX(self.statusBadge.frame) - padding - gap);
-    CGSize statusSize = [self.orderStatusLabel sizeThatFits:CGSizeMake(availableTopRowWidth, 28.0)];
-    CGFloat statusW = MIN(MAX(0.0, ceil(statusSize.width)), availableTopRowWidth);
-    CGFloat statusX = MAX(padding, CGRectGetMinX(self.statusBadge.frame) - gap - statusW);
-    CGFloat idX = padding;
-    CGFloat idWidth = MAX(0.0, statusX - gap - idX);
-    self.orderIDLabel.frame = CGRectMake(idX, statusY + 4.0, idWidth, 18.0);
-    self.orderStatusLabel.frame = CGRectMake(statusX, statusY, statusW, 28.0);
+    CGFloat statusCardY = CGRectGetMaxY(self.orderIDLabel.frame) + 12.0;
+    self.statusSummaryCard.frame = CGRectMake(padding, statusCardY, separatorWidth, 1.0);
 
-    CGFloat stepperY = CGRectGetMaxY(self.orderStatusLabel.frame) + 18.0;
-    self.statusStepperView.frame = CGRectMake(padding, stepperY, separatorWidth, kOrderStatusStepperHeight);
+    CGFloat statusCardInset = 18.0;
+    CGFloat badgeSize = 48.0;
+    CGFloat badgeX = isRTL ? statusCardInset : (separatorWidth - statusCardInset - badgeSize);
+    self.statusBadge.frame = CGRectMake(badgeX, statusCardInset, badgeSize, badgeSize);
+    self.statusBadge.layer.cornerRadius = badgeSize * 0.5;
+    self.statusIconView.frame = CGRectInset(self.statusBadge.bounds, 12.0, 12.0);
 
-    self.headerSeparatorTop.frame = CGRectMake(padding, CGRectGetMaxY(self.statusStepperView.frame) + 16.0, separatorWidth, 1.0);
+    CGFloat textX = isRTL ? (statusCardInset + badgeSize + 14.0) : statusCardInset;
+    CGFloat textMaxX = isRTL ? (separatorWidth - statusCardInset) : (CGRectGetMinX(self.statusBadge.frame) - 14.0);
+    CGFloat textWidth = MAX(0.0, textMaxX - textX);
+    CGSize statusTitleSize = [self.orderStatusLabel sizeThatFits:CGSizeMake(textWidth, CGFLOAT_MAX)];
+    self.orderStatusLabel.frame = CGRectMake(textX, statusCardInset + 2.0, textWidth, ceil(statusTitleSize.height));
 
-    CGFloat summaryY = CGRectGetMaxY(self.headerSeparatorTop.frame) + 16.0;
+    CGFloat subtitleY = CGRectGetMaxY(self.orderStatusLabel.frame) + 8.0;
+    CGSize subtitleSize = [self.statusSummarySubtitleLabel sizeThatFits:CGSizeMake(textWidth, CGFLOAT_MAX)];
+    self.statusSummarySubtitleLabel.frame = CGRectMake(textX,
+                                                       subtitleY,
+                                                       textWidth,
+                                                       ceil(subtitleSize.height));
+
+    CGFloat chipY = CGRectGetMaxY(self.statusSummarySubtitleLabel.frame) + 16.0;
+    CGFloat chipHeight = 32.0;
+    CGSize progressChipSize = [self.statusProgressChipLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, chipHeight)];
+    CGSize etaChipSize = [self.statusEtaChipLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, chipHeight)];
+    CGFloat progressChipWidth = MAX(78.0, ceil(progressChipSize.width) + 38.0);
+    CGFloat etaChipWidth = MAX(108.0, ceil(etaChipSize.width) + 38.0);
+    CGFloat availableChipWidth = separatorWidth - (statusCardInset * 2.0);
+
+    if ((progressChipWidth + etaChipWidth + gap) <= availableChipWidth) {
+        if (isRTL) {
+            self.statusProgressChip.frame = CGRectMake(separatorWidth - statusCardInset - progressChipWidth,
+                                                       chipY,
+                                                       progressChipWidth,
+                                                       chipHeight);
+            self.statusEtaChip.frame = CGRectMake(CGRectGetMinX(self.statusProgressChip.frame) - gap - etaChipWidth,
+                                                  chipY,
+                                                  etaChipWidth,
+                                                  chipHeight);
+        } else {
+            self.statusProgressChip.frame = CGRectMake(statusCardInset, chipY, progressChipWidth, chipHeight);
+            self.statusEtaChip.frame = CGRectMake(CGRectGetMaxX(self.statusProgressChip.frame) + gap,
+                                                  chipY,
+                                                  etaChipWidth,
+                                                  chipHeight);
+        }
+    } else {
+        self.statusProgressChip.frame = CGRectMake(statusCardInset, chipY, availableChipWidth, chipHeight);
+        self.statusEtaChip.frame = CGRectMake(statusCardInset,
+                                              CGRectGetMaxY(self.statusProgressChip.frame) + 8.0,
+                                              availableChipWidth,
+                                              chipHeight);
+    }
+
+    NSArray<UIView *> *chips = @[self.statusProgressChip, self.statusEtaChip];
+    NSArray<UIImageView *> *chipIcons = @[self.statusProgressChipIconView, self.statusEtaChipIconView];
+    NSArray<UILabel *> *chipLabels = @[self.statusProgressChipLabel, self.statusEtaChipLabel];
+    for (NSInteger index = 0; index < chips.count; index++) {
+        UIView *chip = chips[index];
+        UIImageView *iconView = chipIcons[index];
+        UILabel *label = chipLabels[index];
+        iconView.frame = CGRectMake(isRTL ? (CGRectGetWidth(chip.bounds) - 26.0) : 10.0, 9.0, 14.0, 14.0);
+        CGFloat labelX = isRTL ? 10.0 : CGRectGetMaxX(iconView.frame) + 8.0;
+        CGFloat labelWidth = MAX(0.0, CGRectGetWidth(chip.bounds) - 20.0 - 14.0 - 8.0);
+        label.frame = CGRectMake(labelX, 7.0, labelWidth, 18.0);
+        label.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    }
+
+    CGFloat statusSummaryBottom = MAX(CGRectGetMaxY(self.statusProgressChip.frame), CGRectGetMaxY(self.statusEtaChip.frame));
+    CGFloat statusSummaryHeight = statusSummaryBottom + statusCardInset;
+    self.statusSummaryCard.frame = CGRectMake(padding, statusCardY, separatorWidth, statusSummaryHeight);
+
+    CGFloat toggleButtonSize = 36.0;
+    CGFloat timelineHeaderY = CGRectGetMaxY(self.statusSummaryCard.frame) + 18.0;
+    CGFloat toggleX = isRTL ? padding : (cardWidth - padding - toggleButtonSize);
+    self.progressTimelineToggleButton.frame = CGRectMake(toggleX, timelineHeaderY - 3.0, toggleButtonSize, toggleButtonSize);
+    self.progressTimelineToggleIconView.frame = CGRectInset(self.progressTimelineToggleButton.bounds, 10.0, 10.0);
+
+    CGSize timelineProgressSize = [self.progressTimelineProgressLabel sizeThatFits:CGSizeMake(100.0, 20.0)];
+    CGFloat timelineProgressWidth = MIN(96.0, MAX(42.0, ceil(timelineProgressSize.width)));
+    CGFloat timelineProgressX = isRTL
+    ? (CGRectGetMaxX(self.progressTimelineToggleButton.frame) + 10.0)
+    : (CGRectGetMinX(self.progressTimelineToggleButton.frame) - timelineProgressWidth - 10.0);
+    self.progressTimelineProgressLabel.frame = CGRectMake(timelineProgressX,
+                                                          timelineHeaderY + 6.0,
+                                                          timelineProgressWidth,
+                                                          18.0);
+
+    CGFloat titleX = padding;
+    CGFloat titleWidth = isRTL
+    ? MAX(0.0, CGRectGetMinX(self.progressTimelineToggleButton.frame) - 12.0 - titleX)
+    : MAX(0.0, CGRectGetMinX(self.progressTimelineProgressLabel.frame) - 12.0 - titleX);
+    if (isRTL) {
+        titleX = CGRectGetMaxX(self.progressTimelineProgressLabel.frame) + 12.0;
+        titleWidth = MAX(0.0, cardWidth - padding - titleX);
+    }
+    self.progressTimelineTitleLabel.frame = CGRectMake(titleX, timelineHeaderY + 2.0, titleWidth, 26.0);
+
+    CGFloat timelineY = MAX(CGRectGetMaxY(self.progressTimelineTitleLabel.frame),
+                            CGRectGetMaxY(self.progressTimelineToggleButton.frame)) + 10.0;
+    CGFloat timelineHeight = [self.progressTimelineView preferredHeightForWidth:separatorWidth];
+    self.progressTimelineView.frame = CGRectMake(padding, timelineY, separatorWidth, timelineHeight);
+
+    CGFloat summaryY = CGRectGetMaxY(self.progressTimelineView.frame) + 18.0;
     CGFloat summaryPadding = 16.0;
     CGFloat summaryContentWidth = MAX(0.0, separatorWidth - (summaryPadding * 2.0));
     BOOL useStackedSummary = (summaryContentWidth < 248.0);
@@ -2210,6 +2799,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     }
     
     self.headerSeparatorBottom.frame = CGRectZero;
+    self.headerSeparatorTop.frame = CGRectZero;
     self.deliveryAddressLabel.frame = CGRectZero;
 
     CGFloat finalCardHeight = CGRectGetMaxY(self.summaryPanel.frame) + 16.0;
@@ -2376,14 +2966,28 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
     self.headerCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.97];
     self.deliveryMapCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.97];
-    self.summaryPanel.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.10];
+    self.statusSummaryCard.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.11];
+    self.summaryPanel.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.54 : 0.95];
+    self.statusBadge.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.14];
+    self.statusProgressChip.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.70];
+    self.statusEtaChip.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.14 : 0.70];
+    self.statusProgressChipIconView.tintColor = accent;
+    self.statusEtaChipIconView.tintColor = accent;
+    self.statusProgressChipLabel.textColor = UIColor.labelColor;
+    self.statusEtaChipLabel.textColor = UIColor.labelColor;
+    self.progressTimelineTitleLabel.textColor = UIColor.labelColor;
+    self.progressTimelineProgressLabel.textColor = accent;
+    self.progressTimelineToggleButton.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.10];
+    self.progressTimelineToggleButton.tintColor = accent;
+    self.progressTimelineToggleButton.layer.borderWidth = 1.0;
+    self.progressTimelineToggleButton.layer.borderColor = [accent colorWithAlphaComponent:0.16].CGColor;
+    self.progressTimelineToggleIconView.tintColor = accent;
     self.backgroundTopGlowView.backgroundColor = [[GM appPrimaryColor] colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.10];
     self.backgroundBottomGlowView.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.14 : 0.08];
     self.openMapButton.backgroundColor = [accent colorWithAlphaComponent:0.12];
     self.openMapButton.tintColor = accent;
     self.openMapButton.layer.borderColor = [accent colorWithAlphaComponent:0.16].CGColor;
     self.deliveryMapView.layer.borderColor = [accent colorWithAlphaComponent:0.14].CGColor;
-    self.headerSeparatorTop.backgroundColor = [accent colorWithAlphaComponent:0.18];
     [self refreshActionButtonAppearances];
 }
 
@@ -2542,21 +3146,14 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         self.totalPriceLabel.attributedText = [self stackedAttributedTextWithTitle:kLang(@"order_total_label") value:totalValue emphasis:YES alignment:leading];
         self.paymentProviderLabel.attributedText = [self stackedAttributedTextWithTitle:kLang(@"PaymentMethod") value:paymentValue emphasis:NO alignment:leading];
         self.deliveryAddressLabel.text = [NSString stringWithFormat:@"%@: --", kLang(@"DeliveryAddress")];
-        [self.statusStepperView configureWithSteps:@[kLang(@"Preparing for Shipment"),
-                                                     kLang(@"Ready for Delivery"),
-                                                     kLang(@"Delivery Partner Assigned"),
-                                                     kLang(@"On the Way"),
-                                                     kLang(@"Delivered"),
-                                                     kLang(@"Completed")]
-                                      currentIndex:0
-                                      showsFailure:NO
-                                         tintColor:[UIColor systemOrangeColor]];
         self.selectedAddressModel = nil;
         [self updateStatusStyle];
+        [self updateStatusStepper];
         [self.lineItems removeAllObjects];
         [self.tableView reloadData];
         [self refreshDeliveryMap];
         [self updateButtonsState];
+        [self.view setNeedsLayout];
         return;
     }
     
@@ -2583,6 +3180,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     [self resolveSelectedAddressFromOrderIfNeeded];
     [self refreshDeliveryMap];
     [self updateButtonsState];
+    [self.view setNeedsLayout];
 }
 
 - (void)updateStatusStyle
@@ -2592,11 +3190,11 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     UIColor *badge = [self statusBadgeColorForStatusKey:statusKey];
     NSString *iconName = [self statusIconNameForStatusKey:statusKey];
 
-    self.statusBadge.backgroundColor = badge;
     self.statusIconView.image = [UIImage systemImageNamed:iconName];
     self.statusIconView.tintColor = accent;
     self.orderStatusLabel.textColor = accent;
     [self refreshVisualTheme];
+    self.statusBadge.backgroundColor = badge;
 }
 
 - (UIColor *)stepperTintColorForOrder:(PPOrder *)order
@@ -2675,45 +3273,157 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 - (void)updateStatusStepper
 {
+    [self updateStatusStepperAnimated:NO];
+}
+
+- (void)updateStatusStepperAnimated:(BOOL)animated
+{
     NSString *statusKey = [self customerDisplayStatusKeyForOrder:self.order];
-    BOOL isFailure = [self isFailureStatusKey:statusKey];
-    UIColor *stepperTintColor = [self stepperTintColorForOrder:self.order];
-
-    if (isFailure) {
-        NSString *failureTitle = [self failureStepTitleForStatusKey:statusKey];
-        [self.statusStepperView configureWithSteps:@[kLang(@"Preparing for Shipment"), failureTitle]
-                                      currentIndex:1
-                                      showsFailure:YES
-                                         tintColor:stepperTintColor];
-        return;
-    }
-
-    NSArray<NSString *> *steps = @[
-        kLang(@"Preparing for Shipment"),
-        kLang(@"Ready for Delivery"),
-        kLang(@"Delivery Partner Assigned"),
-        kLang(@"On the Way"),
-        kLang(@"Delivered"),
-        kLang(@"Completed")
-    ];
-
     NSInteger currentIndex = 0;
-    if ([statusKey isEqualToString:@"completed"]) {
-        currentIndex = 5;
-    } else if ([statusKey isEqualToString:@"delivered"]) {
-        currentIndex = 4;
-    } else if ([statusKey isEqualToString:@"on_the_way"]) {
-        currentIndex = 3;
-    } else if ([statusKey isEqualToString:@"delivery_partner_assigned"]) {
-        currentIndex = 2;
-    } else if ([statusKey isEqualToString:@"ready_for_delivery"]) {
-        currentIndex = 1;
+    BOOL showsFailure = NO;
+    NSArray<NSDictionary *> *descriptors = [self progressTimelineDescriptorsForOrder:self.order
+                                                                         currentIndex:&currentIndex
+                                                                         showsFailure:&showsFailure];
+    UIColor *timelineTintColor = [self stepperTintColorForOrder:self.order];
+    NSString *progressText = [self progressCounterTextForCurrentIndex:currentIndex totalSteps:descriptors.count];
+
+    self.orderStatusLabel.text = PPOrderCustomerVisibleStatusTitle(statusKey);
+    self.statusSummarySubtitleLabel.text = PPOrderCustomerVisibleStatusHint(statusKey);
+    self.statusProgressChipLabel.text = progressText;
+    self.progressTimelineProgressLabel.text = progressText;
+    self.statusEtaChipLabel.text = [self summaryStatusDateTextForOrder:self.order statusKey:statusKey];
+    self.progressTimelineToggleButton.accessibilityValue = self.isProgressTimelineExpanded ? @"Expanded" : @"Collapsed";
+
+    [self.progressTimelineView configureWithStepDescriptors:descriptors
+                                               currentIndex:currentIndex
+                                               showsFailure:showsFailure
+                                                   expanded:self.isProgressTimelineExpanded
+                                                  tintColor:timelineTintColor
+                                                   animated:animated];
+
+    self.progressTimelineToggleIconView.transform = self.isProgressTimelineExpanded ? CGAffineTransformMakeRotation((CGFloat)M_PI) : CGAffineTransformIdentity;
+}
+
+- (NSArray<NSDictionary *> *)progressTimelineDescriptorsForOrder:(PPOrder *)order
+                                                    currentIndex:(NSInteger *)currentIndex
+                                                    showsFailure:(BOOL *)showsFailure
+{
+    NSString *statusKey = [self customerDisplayStatusKeyForOrder:order];
+    BOOL failure = [self isFailureStatusKey:statusKey];
+    NSMutableArray<NSString *> *stepKeys = [NSMutableArray array];
+    if (failure) {
+        [stepKeys addObject:@"preparing_for_shipment"];
+        [stepKeys addObject:statusKey.length > 0 ? statusKey : @"delivery_delayed"];
+    } else {
+        [stepKeys addObjectsFromArray:@[
+            @"preparing_for_shipment",
+            @"ready_for_delivery",
+            @"delivery_partner_assigned",
+            @"on_the_way",
+            @"delivered",
+            @"completed"
+        ]];
     }
 
-    [self.statusStepperView configureWithSteps:steps
-                                  currentIndex:currentIndex
-                                  showsFailure:NO
-                                     tintColor:stepperTintColor];
+    NSInteger resolvedIndex = failure ? 1 : [self progressTimelineIndexForStatusKey:statusKey];
+    if (currentIndex) *currentIndex = resolvedIndex;
+    if (showsFailure) *showsFailure = failure;
+
+    NSMutableArray<NSDictionary *> *descriptors = [NSMutableArray arrayWithCapacity:stepKeys.count];
+    [stepKeys enumerateObjectsUsingBlock:^(NSString * _Nonnull stepKey, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSString *resolvedKey = [self safeString:stepKey];
+        NSString *title = PPOrderCustomerVisibleStatusTitle(resolvedKey);
+        NSString *subtitle = PPOrderCustomerVisibleStatusHint(resolvedKey);
+        NSString *metaText = (idx <= (NSUInteger)resolvedIndex) ? [self progressTimelineMetaTextForStatusKey:resolvedKey order:order] : @"";
+        NSString *iconName = [self statusIconNameForStatusKey:resolvedKey];
+        [descriptors addObject:@{
+            @"statusKey": resolvedKey ?: @"",
+            @"title": title ?: @"",
+            @"subtitle": subtitle ?: @"",
+            @"meta": metaText ?: @"",
+            @"icon": iconName ?: @"circle"
+        }];
+        (void)stop;
+    }];
+    return descriptors.copy;
+}
+
+- (NSInteger)progressTimelineIndexForStatusKey:(NSString *)statusKey
+{
+    if ([statusKey isEqualToString:@"completed"]) return 5;
+    if ([statusKey isEqualToString:@"delivered"]) return 4;
+    if ([statusKey isEqualToString:@"on_the_way"]) return 3;
+    if ([statusKey isEqualToString:@"delivery_partner_assigned"]) return 2;
+    if ([statusKey isEqualToString:@"ready_for_delivery"]) return 1;
+    return 0;
+}
+
+- (NSString *)progressCounterTextForCurrentIndex:(NSInteger)currentIndex totalSteps:(NSInteger)totalSteps
+{
+    NSInteger normalizedTotal = MAX(1, totalSteps);
+    NSInteger normalizedCurrent = MAX(1, MIN(currentIndex + 1, normalizedTotal));
+    return [NSString stringWithFormat:@"%ld / %ld", (long)normalizedCurrent, (long)normalizedTotal];
+}
+
+- (NSDate *)progressTimelineDateForStatusKey:(NSString *)statusKey order:(PPOrder *)order
+{
+    if (![order isKindOfClass:PPOrder.class]) {
+        return nil;
+    }
+
+    NSString *normalized = PPOrderStepperNormalizedKey(statusKey);
+    if ([normalized isEqualToString:@"preparing_for_shipment"]) {
+        return order.processedAt ?: order.createdAt;
+    }
+    if ([normalized isEqualToString:@"ready_for_delivery"]) {
+        return order.readyToShipAt ?: order.readyAt ?: order.deliveryRequestedAt ?: order.processedAt;
+    }
+    if ([normalized isEqualToString:@"delivery_partner_assigned"]) {
+        return order.deliveryAcceptedAt;
+    }
+    if ([normalized isEqualToString:@"on_the_way"]) {
+        return order.inTransitAt ?: order.pickedUpAt ?: order.shippedAt;
+    }
+    if ([normalized isEqualToString:@"delivered"]) {
+        return order.deliveredAt ?: order.paymentPendingAt ?: order.paymentConfirmedAt;
+    }
+    if ([normalized isEqualToString:@"completed"]) {
+        return order.completedAt ?: order.deliveredAt;
+    }
+    if ([normalized isEqualToString:@"delivery_cancelled"]) {
+        return order.cancelledAt ?: order.statusUpdatedAt;
+    }
+    if ([normalized isEqualToString:@"delivery_delayed"]) {
+        return order.deliveryFailedAt ?: order.returnedToStoreAt ?: order.statusUpdatedAt;
+    }
+    return order.statusUpdatedAt ?: order.updatedAt ?: order.createdAt;
+}
+
+- (NSString *)progressTimelineMetaTextForStatusKey:(NSString *)statusKey order:(PPOrder *)order
+{
+    NSDate *date = [self progressTimelineDateForStatusKey:statusKey order:order];
+    if (![date isKindOfClass:NSDate.class]) {
+        return @"";
+    }
+    return [self safeString:[self.dateFormatter stringFromDate:date]];
+}
+
+- (NSString *)summaryStatusDateTextForOrder:(PPOrder *)order statusKey:(NSString *)statusKey
+{
+    NSDate *preferredDate = nil;
+    if ([order isKindOfClass:PPOrder.class] &&
+        ![self isFailureStatusKey:statusKey] &&
+        ![statusKey isEqualToString:@"delivered"] &&
+        ![statusKey isEqualToString:@"completed"]) {
+        preferredDate = order.estimatedDeliveryAt;
+    }
+    if (!preferredDate) {
+        preferredDate = [self progressTimelineDateForStatusKey:statusKey order:order];
+    }
+    if (![preferredDate isKindOfClass:NSDate.class]) {
+        return kLang(@"Pending");
+    }
+    return [self safeString:[self.dateFormatter stringFromDate:preferredDate]];
 }
 
 - (NSString *)displayStatusTitleForOrder:(PPOrder *)order
@@ -3178,6 +3888,23 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 }
 
 #pragma mark - Actions
+
+- (void)toggleProgressTimelineTapped
+{
+    self.isProgressTimelineExpanded = !self.isProgressTimelineExpanded;
+    [self updateStatusStepperAnimated:YES];
+    [self refreshVisualTheme];
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.94
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionCurveEaseInOut
+                     animations:^{
+        self.progressTimelineToggleIconView.transform = self.isProgressTimelineExpanded ? CGAffineTransformMakeRotation((CGFloat)M_PI) : CGAffineTransformIdentity;
+        [self layoutHeaderView];
+    } completion:nil];
+}
 
 - (void)contactSupportTapped
 {
