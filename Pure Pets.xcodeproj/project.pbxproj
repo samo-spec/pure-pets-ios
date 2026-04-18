@@ -638,6 +638,7 @@
 		F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA434E2CCA4AC800943394 /* UIView+XIB.m */; };
 		F2BA97562DCE7C66007DE482 /* AddNewAd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA97552DCE7C65007DE482 /* AddNewAd.m */; };
 		F2BC30D62E43E385003F603D /* UIScreen.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC30D52E43E385003F603D /* UIScreen.m */; };
+		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
 		F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C158342E2100D100EFDC91 /* EmptyStateView.m */; };
 		F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C16F8E2D6B63DC00B2887E /* ImagePicker.m */; };
 		F2C1AA032F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C1AA022F70000100ABCD01 /* PPPaymentBasicsSettingsViewController.m */; };
@@ -1975,6 +1976,8 @@
 		F2BA97552DCE7C65007DE482 /* AddNewAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddNewAd.m; sourceTree = "<group>"; };
 		F2BC30D42E43E37A003F603D /* UIScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIScreen.h; sourceTree = "<group>"; };
 		F2BC30D52E43E385003F603D /* UIScreen.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIScreen.m; sourceTree = "<group>"; };
+		F2C085532F935AF8001C27DA /* PPAuditLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuditLogger.h; sourceTree = "<group>"; };
+		F2C085542F935AF8001C27DA /* PPAuditLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuditLogger.m; sourceTree = "<group>"; };
 		F2C158332E2100C700EFDC91 /* EmptyStateView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EmptyStateView.h; sourceTree = "<group>"; };
 		F2C158342E2100D100EFDC91 /* EmptyStateView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EmptyStateView.m; sourceTree = "<group>"; };
 		F2C16F8D2D6B63DC00B2887E /* ImagePicker.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ImagePicker.h; sourceTree = "<group>"; };
@@ -2729,6 +2732,8 @@
 		F21E09542E454EAA00690BC5 /* HelperClassess */ = {
 			isa = PBXGroup;
 			children = (
+				F2C085532F935AF8001C27DA /* PPAuditLogger.h */,
+				F2C085542F935AF8001C27DA /* PPAuditLogger.m */,
 				F229DCC32D3B0D6A0015B67D /* FileUploadManager.h */,
 				F229DCBF2D3B0D070015B67D /* FileUploadManager.m */,
 				F263ABC92D64E3BA00213743 /* Watermark.h */,
@@ -5754,6 +5759,7 @@
 				F276E5D32DE38FF400926D56 /* AppClasses.m in Sources */,
 				F28CB3872E4C67B5009DD547 /* HXPhotosFormCell.m in Sources */,
 				F20F31022D13F986001D1D57 /* ArchiveDetailsModel.m in Sources */,
+				F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */,
 				F2C5F76F2CA00D3300D7897A /* AAPopupView.m in Sources */,
 				F253FA692F07708A00323CB4 /* PPHomeLayoutManager.m in Sources */,
 				F20DFEDF2EB2CB6D00318A8F /* PPAddressesManager.m in Sources */,

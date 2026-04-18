@@ -55,7 +55,7 @@
         if (!fileData) {
             uploadError = [NSError errorWithDomain:@"com.app.error"
                                               code:1002
-                                          userInfo:@{NSLocalizedDescriptionKey : @"Failed to get image data"}];
+                                          userInfo:@{NSLocalizedDescriptionKey : kLang(@"error_failed_to_get_image_data")}];
             dispatch_group_leave(uploadGroup);
             continue;
         }

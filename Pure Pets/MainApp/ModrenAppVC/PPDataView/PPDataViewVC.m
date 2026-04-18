@@ -2660,10 +2660,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         };
         
         NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:[self titleForSection:section] attributes:attributes];
-        [action setValue:attrTitle forKey:@"attributedTitle"]; // KVC hack (Apple doesn’t expose a property yet)
-    
-        [actions addObject:action];
-    }
+        // KVC hack removed
+
+        [actions addObject:action];    }
 
     return [UIMenu menuWithTitle:@"" children:actions];
 }
@@ -2739,8 +2738,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [[NSAttributedString alloc] initWithString:subKind.SubKindName
                                         attributes:attributes];
 
-        // ⚠️ KVC hack (same as your subKindsMenu)
-        [action setValue:attrTitle forKey:@"attributedTitle"];
+        // ⚠️ KVC hack (same as your subKindsMenu) removed
 
         [actions addObject:action];
     }
@@ -2803,8 +2801,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         NSFontAttributeName : allFont,
         NSForegroundColorAttributeName : allColor
     }];
-    // KVC (same pattern you already use)
-    [allAction setValue:allAttrTitle forKey:@"attributedTitle"];
+    // KVC hack removed
     // Add as LAST item
     [actions addObject:allAction];
     return [UIMenu menuWithTitle:@"" children:actions];
@@ -2921,4 +2918,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 }
 
 @end
+    
+
     

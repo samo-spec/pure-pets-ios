@@ -954,9 +954,6 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
         NSNumber *amountNumber = @((order.totalAmount > 0 ? order.totalAmount : order.amount));
         PPPaymentSetValueForCandidateKeys(params, @[@"gatewayId", @"gatewayID", @"GatewayId", @"gateway_id"], gatewayId);
-        // TODO(H-14-phase2): Remove secretKey injection once hosted checkout replaces the legacy QIB SDK flow.
-        // The secret is sourced from createQibSession Cloud Function (Firebase Secret Manager),
-        // NOT from the app binary. It transits client-side only because QPRequestParameters requires it.
         PPPaymentSetValueForCandidateKeys(params, @[@"secretKey", @"secret", @"SecretKey", @"secret_key"], secretKey);
         PPPaymentSetValueForCandidateKeys(params, @[@"mode", @"paymentMode", @"environment", @"env"], mode);
         PPPaymentSetValueForCandidateKeys(params, @[@"amount"], amountNumber);

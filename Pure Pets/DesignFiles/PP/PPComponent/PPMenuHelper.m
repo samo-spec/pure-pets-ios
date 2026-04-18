@@ -50,11 +50,9 @@
         
         
         NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:t attributes:attributes];
-         [action setValue:attrTitle forKey:@"attributedTitle"]; // KVC hack (Apple doesn’t expose a property yet)
-        
+        // KVC hack removed
 
-        [actions addObject:action];
-        
+        [actions addObject:action];        
     }
     return actions;
 }
@@ -131,7 +129,7 @@
     
     
     NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:title attributes:attributes];
-     [action setValue:attrTitle forKey:@"attributedTitle"]; // KVC hack (Apple doesn’t expose a property yet)
+    // KVC hack removed
     
     return action;
 }
@@ -276,3 +274,4 @@
 }
 
 @end
+

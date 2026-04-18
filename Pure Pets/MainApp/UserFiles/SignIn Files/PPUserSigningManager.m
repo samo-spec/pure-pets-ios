@@ -145,7 +145,7 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
         if (!presentingVC) {
             NSError *presentationError = [NSError errorWithDomain:@"PPAuth"
                                                              code:2001
-                                                         userInfo:@{NSLocalizedDescriptionKey: @"Unable to present sign-in screen right now."}];
+                                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_unable_to_present_signin")}];
             if (failure) {
                 failure(presentationError);
             }
@@ -170,7 +170,7 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
             if (failure) {
                 NSError *busyPresenterError = [NSError errorWithDomain:@"PPAuth"
                                                                    code:2003
-                                                               userInfo:@{NSLocalizedDescriptionKey: @"Please try again in a moment."}];
+                                                               userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_please_try_again_in_a_moment")}];
                 failure(busyPresenterError);
             }
             return;

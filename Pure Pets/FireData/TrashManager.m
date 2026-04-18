@@ -7,6 +7,7 @@
 
 
 #import "TrashManager.h"
+#import "PPAuditLogger.h"
 
 @implementation TrashManager
 
@@ -97,6 +98,9 @@
     // 5️⃣ COMMIT
     // ===============================
     [batch commitWithCompletion:^(NSError * _Nullable error) {
+        if (!error) {
+            [PPAuditLogger writeAuditLogForAction:@"restoreTrashItem" collection:@"TrashCol" documentId:trash.ID data:nil];
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(error);
         });

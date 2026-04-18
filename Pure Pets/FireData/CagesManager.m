@@ -14,6 +14,7 @@
 //
 
 #import "CagesManager.h"
+#import "PPAuditLogger.h"
 
 @interface CagesManager ()
 @property (nonatomic, strong) FIRFirestore *db;
@@ -166,6 +167,9 @@
     dict[@"isDeleted"] = @(child.isDeleted);
 
     [docRef setData:dict completion:^(NSError * _Nullable error) {
+        if (!error) {
+            [PPAuditLogger writeAuditLogForAction:@"addChild" collection:@"ChildsCol" documentId:child.ID data:dict];
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(child, error);
         });
@@ -225,6 +229,9 @@
     }
     FIRDocumentReference *docRef = [[self childsCollectionForCageID:child.CageID] documentWithPath:child.ID];
     [docRef deleteDocumentWithCompletion:^(NSError * _Nullable error) {
+        if (!error) {
+            [PPAuditLogger writeAuditLogForAction:@"deleteChildDocument" collection:@"ChildsCol" documentId:child.ID data:nil];
+        }
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(error);
         });

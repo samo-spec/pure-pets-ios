@@ -2692,10 +2692,9 @@ static char kUIViewTapActionKey;
     
     
     NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:title attributes:attributes];
-     [action setValue:attrTitle forKey:@"attributedTitle"]; // KVC hack (Apple doesn’t expose a property yet)
-    
-    return action;
-}
+    // KVC hack removed
+
+    return action;}
 
 #pragma mark - Presets
 

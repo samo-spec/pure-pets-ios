@@ -62,7 +62,7 @@ typedef enum : NSUInteger {
             NSParagraphStyleAttributeName: paragraph
         };
         NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:alert.title attributes:titleAttrs];
-        [alert setValue:attrTitle forKey:@"attributedTitle"];
+        // KVC hack removed to prevent App Store rejection
     }
     
     if (alert.message.length > 0) {

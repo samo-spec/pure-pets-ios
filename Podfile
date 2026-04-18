@@ -37,7 +37,7 @@ post_install do |installer|
     target.build_configurations.each do |config|
       
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'
       config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
 
       # Enable building for simulator

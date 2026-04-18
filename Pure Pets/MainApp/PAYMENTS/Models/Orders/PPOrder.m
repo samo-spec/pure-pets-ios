@@ -474,8 +474,29 @@ static PPOrderStatus PPOrderStatusFromRawValue(id value)
 - (NSString *)customerVisibleStatusKey
 {
     NSString *explicitDelivery = PPOrderNormalizedDeliveryStatusString(self.deliveryStatus);
-    NSString *delivery = [self effectiveDeliveryStatus];
     NSString *raw = PPOrderNormalizedStatusString(self.rawStatus);
+
+    // When deliveryStatus is explicitly set, use strict delivery-only mapping
+    if (explicitDelivery.length > 0) {
+        if ([explicitDelivery isEqualToString:@"delivery_cancelled"]) return @"delivery_cancelled";
+        if ([explicitDelivery isEqualToString:@"delivery_failed"] ||
+            [explicitDelivery isEqualToString:@"returned_to_store"]) return @"delivery_delayed";
+        if ([explicitDelivery isEqualToString:@"completed"]) return @"completed";
+        if ([explicitDelivery isEqualToString:@"delivered"] ||
+            [explicitDelivery isEqualToString:@"payment_pending"] ||
+            [explicitDelivery isEqualToString:@"payment_confirmed"]) return @"delivered";
+        if ([explicitDelivery isEqualToString:@"picked_up"] ||
+            [explicitDelivery isEqualToString:@"in_transit"]) return @"on_the_way";
+        if ([explicitDelivery isEqualToString:@"delivery_assigned"] ||
+            [explicitDelivery isEqualToString:@"awaiting_handover"]) return @"delivery_partner_assigned";
+        if ([explicitDelivery isEqualToString:@"ready_to_ship"] ||
+            [explicitDelivery isEqualToString:@"delivery_requested"] ||
+            [explicitDelivery isEqualToString:@"delivery_reassigned"]) return @"ready_for_delivery";
+        return @"preparing_for_shipment";
+    }
+
+    // Legacy fallback: no deliveryStatus field — derive from rawStatus + timestamps
+    NSString *delivery = [self effectiveDeliveryStatus];
 
     if ([delivery isEqualToString:@"delivery_cancelled"] ||
         PPOrderStatusContainsToken(raw, @"cancelled") ||
@@ -518,9 +539,9 @@ static PPOrderStatus PPOrderStatusFromRawValue(id value)
         return @"delivery_partner_assigned";
     }
 
-    if ([explicitDelivery isEqualToString:@"ready_to_ship"] ||
-        [explicitDelivery isEqualToString:@"delivery_requested"] ||
-        [explicitDelivery isEqualToString:@"delivery_reassigned"] ||
+    if ([delivery isEqualToString:@"ready_to_ship"] ||
+        [delivery isEqualToString:@"delivery_requested"] ||
+        [delivery isEqualToString:@"delivery_reassigned"] ||
         [self.deliveryRequestedAt isKindOfClass:NSDate.class]) {
         return @"ready_for_delivery";
     }

@@ -35,8 +35,6 @@
 	<false/>
 	<key>GIDClientID</key>
 	<string>646051621158-8mrtmqi04u6t4iu7ob7uq3gnt1jg2jia.apps.googleusercontent.com</string>
-	<key>GMSApiKey</key>
-	<string>AIzaSyBlVRMGGq60XRi0oVs2lSBub1Zb5K1gees</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>

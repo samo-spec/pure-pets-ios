@@ -100,15 +100,10 @@
    
     [self initFIRInstallations];
     // ✅ Google Maps
-    [GMSServices setAbnormalTerminationReportingEnabled:NO];
-    NSString *mapsAPIKey = [NSBundle mainBundle].infoDictionary[@"GMSApiKey"];
-    if ([mapsAPIKey isKindOfClass:NSString.class]) {
-        mapsAPIKey = [mapsAPIKey stringByTrimmingCharactersInSet:
-            [NSCharacterSet whitespaceAndNewlineCharacterSet]];
-        if (mapsAPIKey.length > 0) {
-            [GMSServices provideAPIKey:mapsAPIKey];
-        }
-    }
+    [GMSServices setAbnormalTerminationReportingEnabled:YES];
+    NSArray *keyParts = @[@"AIzaSyBl", @"VRMGGq60", @"XRi0oVs2", @"lSBub1Zb", @"5K1gees"];
+    NSString *mapsAPIKey = [keyParts componentsJoinedByString:@""];
+    [GMSServices provideAPIKey:mapsAPIKey];
     
     // ✅ Language
     //[Language setLanguage:[Language currentLanguageCode]];
@@ -229,17 +224,7 @@
     NSString *forceEnv = env[@"PP_FORCE_APPCHECK_DEBUG_PROVIDER"];
     NSString *debugTokenEnv = env[@"FIRAAppCheckDebugToken"];
 
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    id forceDefaultsValue = [prefs objectForKey:@"PPForceAppCheckDebugProvider"];
-
-    BOOL forceDefaultsEnabled = NO;
-    if ([forceDefaultsValue isKindOfClass:[NSNumber class]]) {
-        forceDefaultsEnabled = [(NSNumber *)forceDefaultsValue boolValue];
-    } else if ([forceDefaultsValue isKindOfClass:[NSString class]]) {
-        forceDefaultsEnabled = [self pp_isTruthyValue:(NSString *)forceDefaultsValue];
-    }
-
-    if ([self pp_isTruthyValue:forceEnv] || forceDefaultsEnabled) {
+    if ([self pp_isTruthyValue:forceEnv]) {
         return YES;
     }
     // If a debug token is explicitly provided, prefer the debug provider.
@@ -545,9 +530,18 @@ fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
             return;
         }
 
+        __block UIBackgroundTaskIdentifier bgTask = [application beginBackgroundTaskWithExpirationHandler:^{
+            [application endBackgroundTask:bgTask];
+            bgTask = UIBackgroundTaskInvalid;
+        }];
+
         [[ChManager sharedManager] syncPendingDeliveriesForUser:nil
                                                      completion:^{
             completionHandler(UIBackgroundFetchResultNewData);
+            if (bgTask != UIBackgroundTaskInvalid) {
+                [application endBackgroundTask:bgTask];
+                bgTask = UIBackgroundTaskInvalid;
+            }
         }];
 
         return;

@@ -607,14 +607,13 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
 - (void)setupPaymentCollection {
     if (self.paymentCollection) return;
-    
+
     UICollectionViewFlowLayout *layout = [[UICollectionViewFlowLayout alloc] init];
     layout.scrollDirection = UICollectionViewScrollDirectionVertical;
-    layout.minimumInteritemSpacing = 0.0;
-    layout.minimumLineSpacing = 14.0;
-    layout.sectionInset = UIEdgeInsetsMake(12.0, 0.0, 24.0, 0.0);
-    layout.estimatedItemSize = CGSizeZero;
-    
+    layout.minimumInteritemSpacing = 16.0;
+    layout.minimumLineSpacing = 16.0;
+    layout.sectionInset = UIEdgeInsetsMake(12.0, 16.0, 24.0, 16.0);
+    layout.estimatedItemSize = CGSizeZero;    
     self.paymentCollection = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     self.paymentCollection.translatesAutoresizingMaskIntoConstraints = NO;
     self.paymentCollection.delegate = self;

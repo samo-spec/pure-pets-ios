@@ -46,7 +46,7 @@
                                                              if (self.completionBlock) {
                                                               /*   NSError *error = [NSError errorWithDomain:@"ImagePickerErrorDomain"
                                                                                                      code:1000
-                                                                                                 userInfo:@{NSLocalizedDescriptionKey: @"Image selection cancelled."}];
+                                                                                                 userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_image_selection_cancelled")}];
                                                                  self.completionBlock(nil, error);
                                                                  self.completionBlock = nil; // Clear the completion block */
                                                              }
@@ -74,7 +74,7 @@
             if (self.completionBlock) {
                 NSError *error = [NSError errorWithDomain:@"ImagePickerErrorDomain"
                                                      code:1001
-                                                 userInfo:@{NSLocalizedDescriptionKey: @"Camera not available."}];
+                                                 userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_camera_not_available")}];
                 self.completionBlock(nil, error);
             }
             return;
@@ -134,7 +134,7 @@
         if (self.completionBlock) {
             NSError *error = [NSError errorWithDomain:@"ImagePickerErrorDomain"
                                                  code:1000
-                                             userInfo:@{NSLocalizedDescriptionKey: @"Image selection cancelled."}];
+                                             userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_image_selection_cancelled")}];
             self.completionBlock(nil, error);
             self.completionBlock = nil; // Clear the completion block
         }

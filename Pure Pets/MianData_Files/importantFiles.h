@@ -8,8 +8,6 @@
 #ifndef importantFiles_h
 #define importantFiles_h
 
-#import "AFNetworking.h"
-
 
 
 // Classes

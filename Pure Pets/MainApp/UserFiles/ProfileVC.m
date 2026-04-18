@@ -2121,7 +2121,7 @@
     NSData *jpeg = UIImageJPEGRepresentation(image, 0.82);
     if (!jpeg) {
         if (completion) {
-            completion(nil, [NSError errorWithDomain:@"app.profile" code:-2 userInfo:@{NSLocalizedDescriptionKey: @"Could not encode image"}]);
+            completion(nil, [NSError errorWithDomain:@"app.profile" code:-2 userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_could_not_encode_image")}]);
         }
         return;
     }
@@ -2198,7 +2198,7 @@
             if (completion) {
                 NSError *deallocatedError = [NSError errorWithDomain:@"ProfileVC.PhoneUpdate"
                                                                 code:1003
-                                                            userInfo:@{NSLocalizedDescriptionKey: @"Session expired. Please try again."}];
+                                                            userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_session_expired")}];
                 completion(deallocatedError);
             }
             return;
@@ -2566,3 +2566,11 @@
 }
 
 @end
+/*
+ .05;
+     }
+ }
+
+ @end
+
+ */

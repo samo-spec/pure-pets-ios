@@ -1303,7 +1303,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (index >= candidates.count) {
         NSError *missingConfigError = [NSError errorWithDomain:@"PPAuth"
                                                           code:1010
-                                                      userInfo:@{NSLocalizedDescriptionKey: @"Google Sign-In client configuration is missing."}];
+                                                      userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_google_signin_client_config_missing")}];
         [self pp_finishGoogleSignInWithError:missingConfigError];
         return;
     }
@@ -1355,7 +1355,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (candidates.count == 0) {
         NSError *missingConfigError = [NSError errorWithDomain:@"PPAuth"
                                                           code:1010
-                                                      userInfo:@{NSLocalizedDescriptionKey: @"Google Sign-In client configuration is missing."}];
+                                                      userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_google_signin_client_config_missing")}];
         [self notifySignInFailure:missingConfigError];
         [PPAlertHelper showErrorIn:self
                              title:kLang(@"auth_google_failed_title")
@@ -1690,7 +1690,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (!authUser.uid.length) {
         NSError *missingAuthError = [NSError errorWithDomain:@"PPAuth"
                                                          code:401
-                                                     userInfo:@{NSLocalizedDescriptionKey: @"Missing authenticated user."}];
+                                                     userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_missing_authenticated_user")}];
         [self completeUserFetchWithUser:nil error:missingAuthError completion:completion];
         return;
     }
@@ -1699,7 +1699,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (isNewUser && !self.shouldCreateUserDocument) {
         NSError *createDisabledError = [NSError errorWithDomain:@"PPAuth"
                                                            code:403
-                                                       userInfo:@{NSLocalizedDescriptionKey: @"User creation is disabled for this flow."}];
+                                                       userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_user_creation_is_disabled")}];
         [self completeUserFetchWithUser:nil error:createDisabledError completion:completion];
         return;
     }

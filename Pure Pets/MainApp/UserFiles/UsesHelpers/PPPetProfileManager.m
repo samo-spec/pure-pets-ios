@@ -9,6 +9,7 @@
 #import "PPPetProfileManager.h"
 #import "PPPetProfile.h"
 #import "PPPetReminder.h"
+#import "PPAuditLogger.h"
 
 @import FirebaseAuth;
 @import FirebaseFirestore;
@@ -145,7 +146,12 @@ static NSString *const kPPPetRemindersCollection = @"petReminders";
         return;
     }
 
-    [[[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:petID] deleteDocumentWithCompletion:completion];
+    [[[userRef collectionWithPath:kPPPetProfilesCollection] documentWithPath:petID] deleteDocumentWithCompletion:^(NSError * _Nullable error) {
+        if (!error) {
+            [PPAuditLogger writeAuditLogForAction:@"deletePetProfile" collection:kPPPetProfilesCollection documentId:petID data:nil];
+        }
+        if (completion) completion(error);
+    }];
 }
 
 - (void)setDefaultPetProfileID:(NSString *)petID completion:(void (^)(NSError * _Nullable error))completion
@@ -243,7 +249,12 @@ static NSString *const kPPPetRemindersCollection = @"petReminders";
     if (!reminder.createdAt) reminder.createdAt = reminder.updatedAt;
 
     FIRDocumentReference *ref = [[userRef collectionWithPath:kPPPetRemindersCollection] documentWithPath:identifier];
-    [ref setData:[reminder toDictionary] merge:YES completion:completion];
+    [ref setData:[reminder toDictionary] merge:YES completion:^(NSError * _Nullable error) {
+        if (!error) {
+            [PPAuditLogger writeAuditLogForAction:@"savePetReminder" collection:kPPPetRemindersCollection documentId:identifier data:[reminder toDictionary]];
+        }
+        if (completion) completion(error);
+    }];
 }
 
 - (void)deletePetReminderWithID:(NSString *)reminderID completion:(void (^)(NSError * _Nullable error))completion

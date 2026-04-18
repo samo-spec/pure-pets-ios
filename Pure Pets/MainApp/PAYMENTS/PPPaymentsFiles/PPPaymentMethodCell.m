@@ -200,13 +200,13 @@
     [self.surfaceView addGestureRecognizer:self.tapGesture];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4.0],
-        [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4.0],
-        [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0],
-        [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0],
+        [self.surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+        [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
 
-        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-        [self.iconContainerView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.iconContainerView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
+        [self.iconContainerView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0],
         [self.iconContainerView.widthAnchor constraintEqualToConstant:40.0],
         [self.iconContainerView.heightAnchor constraintEqualToConstant:40.0],
 
@@ -215,39 +215,39 @@
         [self.iconView.widthAnchor constraintEqualToConstant:22.0],
         [self.iconView.heightAnchor constraintEqualToConstant:22.0],
 
-        [self.menuButton.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:14.0],
-        [self.menuButton.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-14.0],
-        [self.menuButton.widthAnchor constraintEqualToConstant:32.0],
-        [self.menuButton.heightAnchor constraintEqualToConstant:32.0],
+        [self.menuButton.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:12.0],
+        [self.menuButton.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-12.0],
+        [self.menuButton.widthAnchor constraintEqualToConstant:28.0],
+        [self.menuButton.heightAnchor constraintEqualToConstant:28.0],
 
-        [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
-        [self.selectionView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.selectionView.widthAnchor constraintEqualToConstant:28.0],
-        [self.selectionView.heightAnchor constraintEqualToConstant:28.0],
+        [self.selectionView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
+        [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
+        [self.selectionView.widthAnchor constraintEqualToConstant:24.0],
+        [self.selectionView.heightAnchor constraintEqualToConstant:24.0],
 
         [self.selectionImageView.centerXAnchor constraintEqualToAnchor:self.selectionView.centerXAnchor],
         [self.selectionImageView.centerYAnchor constraintEqualToAnchor:self.selectionView.centerYAnchor],
 
-        [self.disclosureView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-18.0],
+        [self.disclosureView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
         [self.disclosureView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         [self.disclosureView.widthAnchor constraintEqualToConstant:14.0],
         [self.disclosureView.heightAnchor constraintEqualToConstant:18.0],
 
-        [self.statusLabel.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:18.0],
-        [self.statusLabel.leadingAnchor constraintEqualToAnchor:self.iconContainerView.trailingAnchor constant:14.0],
-        [self.statusLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.menuButton.leadingAnchor constant:-12.0],
-
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.statusLabel.bottomAnchor constant:8.0],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.statusLabel.leadingAnchor],
-        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.selectionView.leadingAnchor constant:-16.0],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.iconContainerView.bottomAnchor constant:16.0],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
 
         [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
-        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.statusLabel.leadingAnchor],
-        [self.subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.selectionView.leadingAnchor constant:-16.0],
+        [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0],
+        [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
 
         [self.brandStack.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:10.0],
-        [self.brandStack.leadingAnchor constraintEqualToAnchor:self.statusLabel.leadingAnchor],
-        [self.brandStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-18.0],
+        [self.brandStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0],
+        [self.brandStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-16.0],
+        
+        [self.statusLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0],
+        [self.statusLabel.leadingAnchor constraintEqualToAnchor:self.subtitleLabel.trailingAnchor constant:8.0],
+        [self.statusLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
     ]];
 }
 

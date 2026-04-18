@@ -238,23 +238,17 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
     (void)collectionView;
     (void)section;
-    return [self pp_displayedInstruments].count + 1;
+    // Temporarily disabled add method
+    return [self pp_displayedInstruments].count;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     PPPaymentMethodCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PaymentMethodCell" forIndexPath:indexPath];
     cell.delegate = self;
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
-    NSInteger addNewIndex = displayed.count;
-
-    if (indexPath.item == addNewIndex) {
-        [cell configureAsAddNewIndexPath:indexPath];
-        return cell;
-    }
 
     NSInteger modelIndex = indexPath.item;
     if (modelIndex < 0 || modelIndex >= (NSInteger)displayed.count) {
-        [cell configureAsAddNewIndexPath:indexPath];
         return cell;
     }
     UserPaymentInstrument *instrument = displayed[modelIndex];
@@ -268,7 +262,6 @@ referenceSizeForHeaderInSection:(NSInteger)section {
         method = [self methodForID:@"card"] ?: self.availableMethods.firstObject;
     }
     if (!method) {
-        [cell configureAsAddNewIndexPath:indexPath];
         return cell;
     }
     [cell configureWithInstrument:instrument method:method indexPath:indexPath];
@@ -295,11 +288,6 @@ referenceSizeForHeaderInSection:(NSInteger)section {
 #pragma mark - CollectionView Delegate
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
-    NSInteger addNewIndex = displayed.count;
-    if (indexPath.item == addNewIndex) {
-        [self showPaymentSheetFull:YES];
-        return;
-    }
 
     NSInteger modelIndex = indexPath.item;
     if (modelIndex < 0 || modelIndex >= (NSInteger)displayed.count) {
@@ -323,10 +311,13 @@ referenceSizeForHeaderInSection:(NSInteger)section {
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     (void)collectionViewLayout;
     CGFloat availableWidth = collectionView.bounds.size.width;
-    NSArray<UserPaymentInstrument *> *displayed = [self pp_displayedInstruments];
-    BOOL isAddNewRow = (indexPath.item == displayed.count);
-    CGFloat itemHeight = isAddNewRow ? 92.0 : 116.0;
-    return CGSizeMake(MAX(0.0, availableWidth), itemHeight);
+    CGFloat spacing = 16.0;
+    // 2 columns, account for margins if needed. The collection view might already have section insets.
+    // If sectionInset is (12, 0, 24, 0) as seen before, width is full. So we subtract the spacing.
+    // But let's check `PPSelectPaymentVC.m` for section inset, wait it has `layout.minimumInteritemSpacing = 0.0`.
+    // We should make width = (availableWidth - spacing) / 2.0; and use itemHeight = 120.0
+    CGFloat itemWidth = (availableWidth - 32.0 - spacing) / 2.0; // 32 is 16 on each side maybe?
+    return CGSizeMake(MAX(0.0, itemWidth), 130.0);
 }
 
 
