@@ -196,7 +196,7 @@
 {
     if(![view isKindOfClass:[UIView class]]) return;
     view.layer.cornerRadius = radius;
-    view.layer.borderColor = color.CGColor;
+    [view pp_setBorderColor:color];
     view.layer.borderWidth = width;
     view.layer.masksToBounds = YES;
 }

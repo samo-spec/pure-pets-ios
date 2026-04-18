@@ -107,7 +107,7 @@
     self.titleShadowContainer = [[UIView alloc] init];
     self.titleShadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleShadowContainer.layer.cornerRadius = PPCornerSmall;
-    self.titleShadowContainer.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.titleShadowContainer pp_setShadowColor:UIColor.blackColor];
     self.titleShadowContainer.layer.shadowOpacity = 0.08;
     self.titleShadowContainer.layer.shadowRadius = 8.0;
     self.titleShadowContainer.layer.shadowOffset = CGSizeMake(0, 4.0);
@@ -143,7 +143,7 @@
         [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.titleBackground.bottomAnchor],
     ]];
 
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self pp_setShadowColor:UIColor.blackColor];
     self.layer.shadowOpacity = 0.07;
     self.layer.shadowRadius = 12.0;
     self.layer.shadowOffset = CGSizeMake(0, 7.0);
@@ -212,7 +212,7 @@
     self.iconView.tintColor = UIColor.labelColor;
     self.titleLabel.textColor = UIColor.labelColor;
     self.iconBackdropView.backgroundColor = UIColor.clearColor;
-    self.iconBackdropView.layer.borderColor = UIColor.clearColor.CGColor;
+    [self.iconBackdropView pp_setBorderColor:UIColor.clearColor];
     self.titleBackground.backgroundColor = UIColor.clearColor;
     self.topGlowView.alpha = 0.0;
     self.bottomGlowView.alpha = 0.0;
@@ -225,7 +225,7 @@
     self.glassButton.configuration = config;
     self.glassButton.backgroundColor = UIColor.clearColor;
     self.glassButton.layer.borderWidth = 0.8;
-    self.glassButton.layer.borderColor = UIColor.clearColor.CGColor;
+    [self.glassButton pp_setBorderColor:UIColor.clearColor];
 
     self.transform = CGAffineTransformIdentity;
     self.iconBackdropView.transform = CGAffineTransformIdentity;
@@ -404,9 +404,9 @@
         ? [UIColor colorWithWhite:1.0 alpha:0.78]
         : [PPColorUtils blendColor:[UIColor whiteColor] withColor:accent factor:0.15];
 
-    self.glassButton.layer.borderColor = (isAll
+    [self.glassButton pp_setBorderColor:(isAll
         ? [contentColor colorWithAlphaComponent:0.10]
-        : [[UIColor whiteColor] colorWithAlphaComponent:0.18]).CGColor;
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.18])];
 
     self.titleBackground.backgroundColor =
         [pillBase colorWithAlphaComponent:isAll ? 0.82 : 0.18];
@@ -414,16 +414,16 @@
 
     self.iconBackdropView.backgroundColor =
         [iconBase colorWithAlphaComponent:isAll ? 0.90 : 0.14];
-    self.iconBackdropView.layer.borderColor = (isAll
+    [self.iconBackdropView pp_setBorderColor:(isAll
         ? [contentColor colorWithAlphaComponent:0.08]
-        : [[UIColor whiteColor] colorWithAlphaComponent:0.22]).CGColor;
+        : [[UIColor whiteColor] colorWithAlphaComponent:0.22])];
 
     self.iconView.tintColor = contentColor;
     self.topGlowView.backgroundColor =
         [[UIColor whiteColor] colorWithAlphaComponent:isAll ? 0.18 : 0.12];
     self.bottomGlowView.backgroundColor =
         [accent colorWithAlphaComponent:isAll ? 0.14 : 0.18];
-    self.titleShadowContainer.layer.shadowColor = accent.CGColor;
+    [self.titleShadowContainer pp_setShadowColor:accent];
 }
 
 - (void)pp_applyGradientIfNeeded
@@ -500,7 +500,7 @@
         self.layer.shadowOpacity = shadowOpacity;
         self.layer.shadowRadius = shadowRadius;
         self.layer.shadowOffset = shadowOffset;
-        self.glassButton.layer.borderColor = borderColor.CGColor;
+        [self.glassButton pp_setBorderColor:borderColor];
         self.glassButton.layer.borderWidth = selected ? 1.2 : 0.8;
         self.topGlowView.alpha = selected ? (self.isAll ? 0.28 : 0.36) : (self.isAll ? 0.12 : 0.18);
         self.bottomGlowView.alpha = selected ? (self.isAll ? 0.20 : 0.30) : (self.isAll ? 0.10 : 0.16);

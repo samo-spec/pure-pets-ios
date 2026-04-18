@@ -816,9 +816,9 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
                                                                 [UIColor colorWithWhite:0.12 alpha:1.0]);
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
     self.cardView.layer.borderWidth = 1.0;
-    self.cardView.layer.borderColor = PPUniversalCellDynamicColor([UIColor colorWithWhite:0.93 alpha:1.0],
-                                                                  [UIColor colorWithWhite:0.22 alpha:1.0]).CGColor;
-    self.cardView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.cardView pp_setBorderColor:PPUniversalCellDynamicColor([UIColor colorWithWhite:0.93 alpha:1.0],
+                                                                  [UIColor colorWithWhite:0.22 alpha:1.0])];
+    [self.cardView pp_setShadowColor:UIColor.blackColor];
     self.cardView.layer.shadowOpacity = 0.08;
     self.cardView.layer.shadowRadius = 16.0;
     self.cardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -827,8 +827,8 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     }
 
     self.imageContainer.layer.borderWidth = 1.0;
-    self.imageContainer.layer.borderColor = PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
-                                                                        [UIColor colorWithWhite:0.28 alpha:1.0]).CGColor;
+    [self.imageContainer pp_setBorderColor:PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
+                                                                        [UIColor colorWithWhite:0.28 alpha:1.0])];
 
     self.titleLabel.font = PPUniversalCellBoldFont(14.0);
     self.titleLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.15 alpha:1.0],
@@ -848,7 +848,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.stepperView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
     self.stepperView.layer.cornerRadius = 17.0;
     self.stepperView.layer.borderWidth = 1.0;
-    self.stepperView.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.14].CGColor;
+    [self.stepperView pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.14]];
     if (@available(iOS 13.0, *)) {
         self.stepperView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1156,7 +1156,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.availabilityLabel.backgroundColor = background;
     self.availabilityLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
     self.availabilityLabel.layer.borderWidth = 1.0;
-    self.availabilityLabel.layer.borderColor = border.CGColor;
+    [self.availabilityLabel pp_setBorderColor:border];
     BOOL shouldHideAvailability = title.length == 0;
     self.availabilityLabel.hidden = shouldHideAvailability;
     self.availabilityTopConstraint.constant = shouldHideAvailability ? 0.0 : 10.0;
@@ -1199,7 +1199,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
                                                                             [UIColor colorWithWhite:0.14 alpha:1.0]);
         self.serviceMetaLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
         self.serviceMetaLabel.layer.borderWidth = 1.0;
-        self.serviceMetaLabel.layer.borderColor = [UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0].CGColor;
+        [self.serviceMetaLabel pp_setBorderColor:[UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0]];
         self.serviceMetaLabel.hidden = NO;
         self.serviceMetaCollapsedConstraint.active = NO;
     } else {
@@ -1393,11 +1393,11 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         self.addButton.titleLabel.font = PPUniversalCellBoldFont(14.0);
         self.addButton.contentEdgeInsets = UIEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
         self.addButton.layer.borderWidth = (usesQuantity && (isOutOfStock || isInCart)) ? 1.0 : 0.0;
-        self.addButton.layer.borderColor = border.CGColor;
+        [self.addButton pp_setBorderColor:border];
     }
 
     self.addButton.layer.cornerRadius = 17.0;
-    self.addButton.layer.shadowColor = AppPrimaryClr.CGColor;
+    [self.addButton pp_setShadowColor:AppPrimaryClr];
     self.addButton.layer.shadowOpacity = (usesQuantity && (isOutOfStock || isInCart)) ? 0.0 : 0.10;
     self.addButton.layer.shadowRadius = 12.0;
     self.addButton.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -1688,8 +1688,8 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.86];
     button.layer.cornerRadius = PPUniversalControlButtonSize / 2.0;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.32].CGColor;
-    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.32]];
+    [button pp_setShadowColor:UIColor.blackColor];
     button.layer.shadowOpacity = 0.06;
     button.layer.shadowRadius = 8.0;
     button.layer.shadowOffset = CGSizeMake(0.0, 3.0);
@@ -1748,7 +1748,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     label.textColor = textColor;
     label.backgroundColor = bgColor;
     label.layer.borderWidth = CGColorGetAlpha(borderColor.CGColor) > 0.001 ? 1.0 : 0.0;
-    label.layer.borderColor = borderColor.CGColor;
+    [label pp_setBorderColor:borderColor];
     label.hidden = text.length == 0;
 }
 

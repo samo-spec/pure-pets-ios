@@ -964,14 +964,14 @@
         case PYSearchHistoryStyleBorderTag:
             for (UILabel *tag in self.searchHistoryTags) {
                 tag.backgroundColor = [UIColor clearColor];
-                tag.layer.borderColor = PYSEARCH_COLOR(223, 223, 223).CGColor;
+                [tag pp_setBorderColor:PYSEARCH_COLOR(223, 223, 223)];
                 tag.layer.borderWidth = 0.5;
             }
             break;
         case PYSearchHistoryStyleARCBorderTag:
             for (UILabel *tag in self.searchHistoryTags) {
                 tag.backgroundColor = [UIColor clearColor];
-                tag.layer.borderColor = PYSEARCH_COLOR(223, 223, 223).CGColor;
+                [tag pp_setBorderColor:PYSEARCH_COLOR(223, 223, 223)];
                 tag.layer.borderWidth = 0.5;
                 tag.layer.cornerRadius = tag.py_height * 0.5;
             }
@@ -1000,14 +1000,14 @@
         case PYHotSearchStyleBorderTag:
             for (UILabel *tag in self.hotSearchTags) {
                 tag.backgroundColor = [UIColor clearColor];
-                tag.layer.borderColor = PYSEARCH_COLOR(223, 223, 223).CGColor;
+                [tag pp_setBorderColor:PYSEARCH_COLOR(223, 223, 223)];
                 tag.layer.borderWidth = 0.5;
             }
             break;
         case PYHotSearchStyleARCBorderTag:
             for (UILabel *tag in self.hotSearchTags) {
                 tag.backgroundColor = [UIColor clearColor];
-                tag.layer.borderColor = PYSEARCH_COLOR(223, 223, 223).CGColor;
+                [tag pp_setBorderColor:PYSEARCH_COLOR(223, 223, 223)];
                 tag.layer.borderWidth = 0.5;
                 tag.layer.cornerRadius = tag.py_height * 0.5;
             }

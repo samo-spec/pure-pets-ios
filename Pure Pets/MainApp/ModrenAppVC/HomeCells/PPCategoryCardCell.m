@@ -69,7 +69,7 @@
 
  
     // Soft shadow (best practice)
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self pp_setShadowColor:UIColor.blackColor];
     self.layer.shadowOpacity = 0.12;
     self.layer.shadowRadius = 10;
     self.layer.shadowOffset = CGSizeMake(0, 4);
@@ -267,7 +267,7 @@
 
     void (^changes)(void) = ^{
         self.glassBackgroundButton.backgroundColor = bgColor;
-        self.glassBackgroundButton.layer.borderColor = borderColor.CGColor;
+        [self.glassBackgroundButton pp_setBorderColor:borderColor];
         self.transform = CGAffineTransformMakeScale(scale, scale);
         self.alpha = alpha;
     };

@@ -428,7 +428,7 @@
         ? [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.10]
         : [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.08 : 0.82];
         digitView.layer.borderWidth = current ? 1.4 : 1.0;
-        digitView.layer.borderColor = (current ? [AppPrimaryClr colorWithAlphaComponent:0.70] : [UIColor colorWithWhite:1.0 alpha:0.14]).CGColor;
+        [digitView pp_setBorderColor:(current ? [AppPrimaryClr colorWithAlphaComponent:0.70] : [UIColor colorWithWhite:1.0 alpha:0.14])];
 
         if (animated && filled) {
             digitView.transform = CGAffineTransformMakeScale(0.94, 0.94);

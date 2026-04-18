@@ -143,11 +143,11 @@
     if (searchField) {
         [searchField setBackgroundColor:[UIColor colorWithRed:255/255.0 green:255/255.0 blue:255/255.0 alpha:1]];
        //searchField.layer.cornerRadius = 14.0f;
-        searchField.layer.borderColor = [UIColor colorWithRed:249/255.0 green:242/255.0 blue:235/255.0 alpha:1].CGColor;
+        [searchField pp_setBorderColor:[UIColor colorWithRed:249/255.0 green:242/255.0 blue:235/255.0 alpha:1]];
         searchField.layer.borderWidth = 0;
         searchField.layer.masksToBounds = NO;
         searchField.layer.cornerRadius =15;
-        searchField.layer.shadowColor = [UIColor blackColor].CGColor;
+        [searchField pp_setShadowColor:[UIColor blackColor]];
         searchField.layer.shadowOffset = CGSizeMake(0.0,0.0);
         searchField.layer.shadowRadius = 1.0;
         searchField.layer.shadowOpacity = 0.2;
@@ -358,7 +358,7 @@
     //cell.contentView.layer.masksToBounds = true;
     cell.centerView.layer.masksToBounds = false;
     cell.centerView.layer.shadowOffset = CGSizeMake(0, 0);
-    cell.centerView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [cell.centerView pp_setShadowColor:UIColor.blackColor];
     cell.centerView.layer.shadowOpacity = 0.23;
     cell.centerView.layer.shadowRadius = 1;
     cell.centerView.frame = CGRectMake(5, 5, CGRectGetWidth(cell.contentView.frame) - 10, CGRectGetHeight(cell.contentView.frame) - 10);
@@ -372,7 +372,7 @@
     cell.sexualLabel.text = nil;
     cell.sexualImageView.image = nil;
 
-    cell.mainImageView.layer.borderColor = GM.appPrimaryColor.CGColor;
+    [cell.mainImageView pp_setBorderColor:GM.appPrimaryColor];
     cell.mainImageView.layer.borderWidth = 1.5;
     
     UserModel *cellUser = [self.userArray objectAtIndex:indexPath.row];

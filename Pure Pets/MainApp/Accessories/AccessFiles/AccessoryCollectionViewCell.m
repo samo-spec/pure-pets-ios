@@ -174,7 +174,7 @@ static const CGFloat kCellImageFallbackInset = 34.0;
         [self.footerStackView.bottomAnchor constraintEqualToAnchor:self.containerView.bottomAnchor constant:-kCellOverlayInset],
     ]];
 
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self pp_setShadowColor:[UIColor blackColor]];
     self.layer.shadowOffset = CGSizeMake(0, kCellShadowOffsetY);
     self.layer.shadowRadius = kCellShadowRadius;
     self.layer.shadowOpacity = kCellShadowOpacity;

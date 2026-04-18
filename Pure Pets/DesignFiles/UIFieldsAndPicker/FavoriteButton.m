@@ -59,7 +59,7 @@
         [self updateAppearance];
 
         // Shadow for lift
-        self.layer.shadowColor = UIColor.blackColor.CGColor;
+        [self pp_setShadowColor:UIColor.blackColor];
         self.layer.shadowOpacity = 0.15;
         self.layer.shadowRadius = 4.0;
         self.layer.shadowOffset = CGSizeMake(0, 3);
@@ -107,7 +107,7 @@
 
 - (void)animateFavButtonGlow:(UIButton *)button {
     UIColor *glowColor = [AppPrimaryClr colorWithAlphaComponent:0.7];
-    button.layer.shadowColor = glowColor.CGColor;
+    [button pp_setShadowColor:glowColor];
     button.layer.shadowRadius = 16;
     button.layer.shadowOpacity = 0.0;
     button.layer.shadowOffset = CGSizeZero;
@@ -221,7 +221,7 @@
     self.layer.masksToBounds = NO;
 
     // Subtle lift (not heavy shadow)
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self pp_setShadowColor:UIColor.blackColor];
     self.layer.shadowOpacity = 0.08;
     self.layer.shadowRadius = 6.0;
     self.layer.shadowOffset = CGSizeMake(0, 3);

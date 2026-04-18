@@ -1445,21 +1445,21 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
         if (isError) {
             dot.backgroundColor = errorColor;
-            dot.layer.borderColor = errorColor.CGColor;
+            [dot pp_setBorderColor:errorColor];
             icon.image = PPOrderStepperImage(@"xmark");
             icon.tintColor = UIColor.whiteColor;
             label.textColor = errorColor;
             label.font = [GM boldFontWithSize:12];
         } else if (isCompleted) {
             dot.backgroundColor = accentColor;
-            dot.layer.borderColor = accentColor.CGColor;
+            [dot pp_setBorderColor:accentColor];
             icon.image = PPOrderStepperImage(baseSymbol.length > 0 ? baseSymbol : @"checkmark");
             icon.tintColor = UIColor.whiteColor;
             label.textColor = accentColor;
             label.font = [GM MidFontWithSize:11];
         } else if (isCurrent) {
             dot.backgroundColor = accentColor;
-            dot.layer.borderColor = accentColor.CGColor;
+            [dot pp_setBorderColor:accentColor];
             icon.image = PPOrderStepperImage(baseSymbol.length > 0 ? baseSymbol : @"smallcircle.filled.circle.fill");
             icon.tintColor = UIColor.whiteColor;
             label.textColor = accentColor;
@@ -1467,7 +1467,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
             [self applyScalePulseToLayer:dot.layer key:@"pp_stepper_dot_pulse"];
         } else if (isPending) {
             dot.backgroundColor = pendingColor;
-            dot.layer.borderColor = pendingBorder.CGColor;
+            [dot pp_setBorderColor:pendingBorder];
             icon.image = PPOrderStepperImage(baseSymbol.length > 0 ? baseSymbol : @"circle");
             icon.tintColor = UIColor.secondaryLabelColor;
             label.textColor = UIColor.secondaryLabelColor;
@@ -1484,7 +1484,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
             halo.layer.cornerRadius = haloSize * 0.5;
             halo.backgroundColor = [haloColor colorWithAlphaComponent:isError ? 0.14 : 0.18];
             halo.layer.borderWidth = 1.2;
-            halo.layer.borderColor = [haloColor colorWithAlphaComponent:0.28].CGColor;
+            [halo pp_setBorderColor:[haloColor colorWithAlphaComponent:0.28]];
             halo.hidden = NO;
             [self applyScalePulseToLayer:halo.layer key:@"pp_stepper_halo_scale"];
             [self applyOpacityPulseToLayer:halo.layer
@@ -1685,7 +1685,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.metaLabel.textColor = metaColor;
 
     self.markerView.backgroundColor = markerFill;
-    self.markerView.layer.borderColor = markerBorder.CGColor;
+    [self.markerView pp_setBorderColor:markerBorder];
     self.markerView.layer.borderWidth = showHalo ? 1.3 : 1.0;
     self.markerIconView.image = PPOrderStepperImage(self.symbolName);
     self.markerIconView.tintColor = iconTint;
@@ -1693,7 +1693,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.markerHaloView.hidden = !showHalo;
     self.markerHaloView.backgroundColor = [(showHalo ? markerFill : accent) colorWithAlphaComponent:0.18];
     self.markerHaloView.layer.borderWidth = 1.0;
-    self.markerHaloView.layer.borderColor = [[(showHalo ? markerFill : accent) colorWithAlphaComponent:0.26] CGColor];
+    [self.markerHaloView pp_setBorderColor:[(showHalo ? markerFill : accent) colorWithAlphaComponent:0.26]];
 
     BOOL showsSecondaryDetails = expanded;
     self.subtitleLabel.hidden = !showsSecondaryDetails || self.subtitleText.length == 0;
@@ -2445,7 +2445,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.openMapButton.layer.masksToBounds = YES;
     self.openMapButton.tintColor = [GM appPrimaryColor];
     self.openMapButton.layer.borderWidth = 1.0;
-    self.openMapButton.layer.borderColor = [[GM appPrimaryColor] colorWithAlphaComponent:0.16].CGColor;
+    [self.openMapButton pp_setBorderColor:[[GM appPrimaryColor] colorWithAlphaComponent:0.16]];
     [self.openMapButton setImage:[UIImage systemImageNamed:@"map.fill"] forState:UIControlStateNormal];
     [self.openMapButton addTarget:self action:@selector(openMapTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.deliveryMapCard addSubview:self.openMapButton];
@@ -2455,7 +2455,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.deliveryMapView.layer.cornerRadius = 18.0;
     self.deliveryMapView.layer.masksToBounds = YES;
     self.deliveryMapView.layer.borderWidth = 1.0;
-    self.deliveryMapView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.22].CGColor;
+    [self.deliveryMapView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.22]];
     self.deliveryMapView.scrollEnabled = NO;
     self.deliveryMapView.zoomEnabled = NO;
     self.deliveryMapView.rotateEnabled = NO;
@@ -2538,7 +2538,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     button.titleLabel.numberOfLines = 2;
     button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [[UIColor colorWithWhite:1.0 alpha:0.08] CGColor];
+    [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
     
     
     if (@available(iOS 26.0, *)) {
@@ -2979,14 +2979,14 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.progressTimelineToggleButton.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.10];
     self.progressTimelineToggleButton.tintColor = accent;
     self.progressTimelineToggleButton.layer.borderWidth = 1.0;
-    self.progressTimelineToggleButton.layer.borderColor = [accent colorWithAlphaComponent:0.16].CGColor;
+    [self.progressTimelineToggleButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
     self.progressTimelineToggleIconView.tintColor = accent;
     self.backgroundTopGlowView.backgroundColor = [[GM appPrimaryColor] colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.10];
     self.backgroundBottomGlowView.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.14 : 0.08];
     self.openMapButton.backgroundColor = [accent colorWithAlphaComponent:0.12];
     self.openMapButton.tintColor = accent;
-    self.openMapButton.layer.borderColor = [accent colorWithAlphaComponent:0.16].CGColor;
-    self.deliveryMapView.layer.borderColor = [accent colorWithAlphaComponent:0.14].CGColor;
+    [self.openMapButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
+    [self.deliveryMapView pp_setBorderColor:[accent colorWithAlphaComponent:0.14]];
     [self refreshActionButtonAppearances];
 }
 
@@ -3102,7 +3102,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     button.backgroundColor = backgroundColor;
     button.tintColor = tintColor;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = borderColor.CGColor;
+    [button pp_setBorderColor:borderColor];
 
     NSString *title = nil;
     if (@available(iOS 15.0, *)) {
@@ -4592,7 +4592,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 
 - (void)applyCardShadow:(UIView *)view
 {
-    view.layer.shadowColor = [GM AppShadowColor].CGColor;
+    [view pp_setShadowColor:[GM AppShadowColor]];
     view.layer.shadowOffset = CGSizeMake(0, 14);
     view.layer.shadowOpacity = PPIOS26() ? 0.12 : 0.08;
     view.layer.shadowRadius = 28;

@@ -34,7 +34,7 @@
     _cardView.translatesAutoresizingMaskIntoConstraints = NO;
     _cardView.backgroundColor = GM.AppForegroundColor;
  
-    _cardView.layer.shadowColor = GM.AppShadowColor.CGColor;
+    [_cardView pp_setShadowColor:GM.AppShadowColor];
     _cardView.layer.shadowOpacity = 0.06;
     _cardView.layer.shadowOffset = CGSizeMake(0, 1.0);
     _cardView.layer.shadowRadius = 5.0;

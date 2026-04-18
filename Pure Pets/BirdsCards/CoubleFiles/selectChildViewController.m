@@ -1104,13 +1104,13 @@ UITextFieldDelegate,PPChildCellDelegate
         bgButton.configuration = cfg;
       } else {
          
- 
+
         // 🌫️ Fallback for iOS <26
         bgButton = [UIButton buttonWithType:UIButtonTypeSystem];
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 8;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);
@@ -1137,13 +1137,13 @@ UITextFieldDelegate,PPChildCellDelegate
         bgButton.configuration = cfg;
       } else {
          
- 
+
         // 🌫️ Fallback for iOS <26
         bgButton = [UIButton buttonWithType:UIButtonTypeSystem];
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 8;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);

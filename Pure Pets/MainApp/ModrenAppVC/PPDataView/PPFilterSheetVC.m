@@ -187,9 +187,9 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     } else {
         self.backgroundColor = surfaceColor;
         self.layer.borderWidth = selected ? 0.0 : 1.0;
-        self.layer.borderColor = selected
-            ? UIColor.clearColor.CGColor
-            : [accent colorWithAlphaComponent:0.14].CGColor;
+        [self pp_setBorderColor:selected
+            ? UIColor.clearColor
+            : [accent colorWithAlphaComponent:0.14]];
         self.contentEdgeInsets = UIEdgeInsetsMake(11.0, 15.0, 11.0, 15.0);
         self.titleLabel.font = selected ? PPFilterSheetBold(14.0) : PPFilterSheetMedium(14.0);
         [self setTitle:self.optionTitle ?: @"" forState:UIControlStateNormal];
@@ -201,7 +201,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     }
 
     self.layer.masksToBounds = NO;
-    self.layer.shadowColor = accent.CGColor;
+    [self pp_setShadowColor:accent];
     self.layer.shadowOpacity = selected ? 0.20f : 0.0f;
     self.layer.shadowRadius = selected ? 16.0f : 0.0f;
     self.layer.shadowOffset = selected ? CGSizeMake(0.0, 10.0) : CGSizeZero;
@@ -407,7 +407,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     surfaceView.backgroundColor = AppBackgroundClrLigter;
     surfaceView.layer.cornerRadius = 28.0;
     surfaceView.layer.borderWidth = PPFilterSheetHairline();
-    surfaceView.layer.borderColor = [accent colorWithAlphaComponent:0.10].CGColor;
+    [surfaceView pp_setBorderColor:[accent colorWithAlphaComponent:0.10]];
     surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -546,7 +546,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
         : [accent colorWithAlphaComponent:0.12];
 
     self.iconChipView.backgroundColor = [accent colorWithAlphaComponent:isActive ? 0.20 : 0.12];
-    self.surfaceView.layer.borderColor = [accent colorWithAlphaComponent:isActive ? 0.22 : 0.10].CGColor;
+    [self.surfaceView pp_setBorderColor:[accent colorWithAlphaComponent:isActive ? 0.22 : 0.10]];
 
     for (PPFilterOptionPill *pill in self.pills) {
         [pill pp_applySelected:(pill.optionValue == self.group.selectedValue) accentColor:accent];
@@ -770,7 +770,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     UIView *shadowView = [[UIView alloc] init];
     shadowView.translatesAutoresizingMaskIntoConstraints = NO;
     shadowView.backgroundColor = UIColor.clearColor;
-    shadowView.layer.shadowColor = [accent colorWithAlphaComponent:0.34].CGColor;
+    [shadowView pp_setShadowColor:[accent colorWithAlphaComponent:0.34]];
     shadowView.layer.shadowOpacity = 0.20f;
     shadowView.layer.shadowRadius = 28.0f;
     shadowView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
@@ -780,7 +780,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     heroCard.translatesAutoresizingMaskIntoConstraints = NO;
     heroCard.layer.cornerRadius = 30.0;
     heroCard.layer.borderWidth = PPFilterSheetHairline();
-    heroCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [heroCard pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
     heroCard.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         heroCard.layer.cornerCurve = kCACornerCurveContinuous;
@@ -960,7 +960,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     surfaceView.backgroundColor = AppBackgroundClrLigter;
     surfaceView.layer.cornerRadius = 28.0;
     surfaceView.layer.borderWidth = PPFilterSheetHairline();
-    surfaceView.layer.borderColor = [accent colorWithAlphaComponent:0.10].CGColor;
+    [surfaceView pp_setBorderColor:[accent colorWithAlphaComponent:0.10]];
     if (@available(iOS 13.0, *)) {
         surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1031,8 +1031,8 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     shellView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.96];
     shellView.layer.cornerRadius = 28.0;
     shellView.layer.borderWidth = PPFilterSheetHairline();
-    shellView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.12].CGColor;
-    shellView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [shellView pp_setBorderColor:[UIColor.separatorColor colorWithAlphaComponent:0.12]];
+    [shellView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     shellView.layer.shadowOpacity = 0.10f;
     shellView.layer.shadowRadius = 24.0f;
     shellView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
@@ -1386,7 +1386,7 @@ static UIColor *PPFilterSheetBlendColor(UIColor *fromColor, UIColor *toColor, CG
     button.backgroundColor = backgroundColor;
     button.layer.cornerRadius = 27.0;
     button.layer.borderWidth = CGColorGetAlpha(borderColor.CGColor) <= 0.001 ? 0.0 : 1.0;
-    button.layer.borderColor = borderColor.CGColor;
+    [button pp_setBorderColor:borderColor];
     button.contentEdgeInsets = UIEdgeInsetsMake(15.0, 18.0, 15.0, 18.0);
     button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     button.titleLabel.font = PPFilterSheetBold(15.0);

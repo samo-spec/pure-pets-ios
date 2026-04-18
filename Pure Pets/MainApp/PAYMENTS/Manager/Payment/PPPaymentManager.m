@@ -26,6 +26,11 @@
 @property (nonatomic, assign) BOOL isRequestInFlight;
 @property (nonatomic, copy) NSString *activeQIBSessionId;
 
+// Orphaned-request detection: catches QIB SDK dismissals that never call qpResponse:.
+@property (nonatomic, weak) UIViewController *paymentPresenterVC;
+@property (nonatomic, assign) BOOL sdkDidPresent;
+@property (nonatomic, strong) NSDate *requestStartDate;
+
 @end
 
 static NSString * const PPPaymentSimulatedPaymentSuccessDefaultsKey = @"PPSimulatedPaymentSuccessEnabled";
@@ -281,6 +286,18 @@ static BOOL PPPaymentResponseIsCancellation(NSDictionary *response)
     return PPPaymentStatusMatchesAnyKeyword(status, @[@"cancelled", @"canceled", @"cancel"]);
 }
 
+static BOOL PPPaymentResponseIsExplicitSuccess(NSDictionary *response)
+{
+    NSString *status = PPPaymentExtractStatusFromResponseObject(response, 0);
+    return PPPaymentStatusMatchesAnyKeyword(status, @[@"success", @"succeeded", @"paid", @"approved", @"authorized", @"captured", @"completed"]);
+}
+
+static BOOL PPPaymentResponseIsExplicitFailure(NSDictionary *response)
+{
+    NSString *status = PPPaymentExtractStatusFromResponseObject(response, 0);
+    return PPPaymentStatusMatchesAnyKeyword(status, @[@"failed", @"failure", @"declined", @"rejected", @"error", @"expired", @"voided"]);
+}
+
 static BOOL PPPaymentResponseHasTerminalResult(NSDictionary *response)
 {
     NSString *status = PPPaymentExtractStatusFromResponseObject(response, 0);
@@ -291,6 +308,11 @@ static BOOL PPPaymentResponseHasTerminalResult(NSDictionary *response)
         return YES;
     }
     if (PPPaymentStatusMatchesAnyKeyword(status, @[@"pending", @"processing", @"initiated", @"created", @"in_progress", @"verifying", @"verification_pending"])) {
+        // Pending/processing responses are NEVER terminal regardless of whether
+        // a transactionId is present.  The QIB SDK sometimes returns a
+        // transactionId alongside a pending status when the user cancels mid-flow.
+        // Treating that as terminal would bypass cancellation detection and push
+        // the app into a stuck verification/pending-review state.
         return NO;
     }
 
@@ -654,6 +676,17 @@ static void PPQIBTryLoadFrameworkBundle(void)
         return;
     }
 
+    // Auto-reset stale requests: if a previous payment has been in-flight
+    // for over 2 minutes, the QIB SDK almost certainly dismissed without
+    // calling qpResponse:.  Reset so the user can retry.
+    if (self.isRequestInFlight && self.requestStartDate) {
+        NSTimeInterval elapsed = -[self.requestStartDate timeIntervalSinceNow];
+        if (elapsed > 120) {
+            PPORDERLog(@"Auto-resetting stale payment request | elapsed=%.0fs", elapsed);
+            [self reset];
+        }
+    }
+
     if (self.isRequestInFlight) {
         NSError *inFlightError =
         [NSError errorWithDomain:@"PPPayment"
@@ -687,6 +720,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
     }
 
     self.isRequestInFlight = YES;
+    self.requestStartDate = [NSDate date];
     self.paymentAttemptId = [NSUUID UUID].UUIDString;
     NSString *requestedCurrency = PPPaymentEffectiveCurrencyForOrder(order);
     if (requestedCurrency.length == 3) {
@@ -725,6 +759,19 @@ static void PPQIBTryLoadFrameworkBundle(void)
     if (!isTerminal && !looksLikeCancellation) {
         PPORDERLog(@"QIB returned non-terminal response — treating as user cancellation | status=%@ | keys=%@",
                    PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"(empty)",
+                   safeResponse.allKeys ?: @[]);
+        looksLikeCancellation = YES;
+    }
+
+    // QIB SDK sometimes returns a transactionId with no recognizable status
+    // (e.g. user closed the webview mid-payment).  PPPaymentResponseHasTerminalResult
+    // marks that as terminal, but without an explicit success or failure status the
+    // response is ambiguous and must NOT advance the order into verification.
+    // Treat it as a user cancellation.
+    if (isTerminal && !looksLikeCancellation &&
+        !PPPaymentResponseIsExplicitSuccess(safeResponse) &&
+        !PPPaymentResponseIsExplicitFailure(safeResponse)) {
+        PPORDERLog(@"QIB returned ambiguous terminal response (transactionId only, no status) — treating as cancellation | keys=%@",
                    safeResponse.allKeys ?: @[]);
         looksLikeCancellation = YES;
     }
@@ -974,6 +1021,8 @@ static void PPQIBTryLoadFrameworkBundle(void)
         }
 
         self.qpParams = params;
+        self.paymentPresenterVC = presenter;
+        self.sdkDidPresent = NO;
         PPORDERLog(@"Launching QIB request | orderId=%@ | paymentAttemptId=%@ | qibSessionId=%@",
                    order.orderId ?: @"",
                    self.paymentAttemptId ?: @"",
@@ -984,7 +1033,13 @@ static void PPQIBTryLoadFrameworkBundle(void)
             PPORDERLog(@"QIB sendRequest threw exception | name=%@ | reason=%@",
                        exception.name ?: @"", exception.reason ?: @"");
             [self failWithMessage:kLang(@"payment_qib_sdk_error")];
+            return;
         }
+
+        // Begin monitoring for orphaned payment requests: if the QIB SDK
+        // dismisses its UI without calling qpResponse:, detect that and
+        // auto-cancel so the user isn't stuck with a spinner forever.
+        [self pp_beginOrphanedPaymentMonitoring];
     });
 }
 
@@ -1165,6 +1220,77 @@ static void PPQIBTryLoadFrameworkBundle(void)
     self.paymentAttemptId = nil;
     self.activeQIBSessionId = nil;
     self.isRequestInFlight = NO;
+    self.paymentPresenterVC = nil;
+    self.sdkDidPresent = NO;
+    self.requestStartDate = nil;
+}
+
+#pragma mark - Orphaned Payment Detection
+
+/// Periodically checks whether the QIB SDK has dismissed its modal UI
+/// without calling `qpResponse:`.  When detected, the pending request
+/// is resolved as a user-cancellation so the spinner doesn't hang forever.
+- (void)pp_beginOrphanedPaymentMonitoring
+{
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2.0 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.completion) return; // Already resolved via qpResponse:
+
+        UIViewController *presenter = self.paymentPresenterVC;
+
+        // Presenter deallocated → definitely orphaned.
+        if (!presenter) {
+            PPORDERLog(@"Payment presenter deallocated while payment in flight — treating as cancellation");
+            [self pp_resolveOrphanedPaymentAsCancellation];
+            return;
+        }
+
+        if (presenter.presentedViewController) {
+            // SDK is still presenting its UI.
+            self.sdkDidPresent = YES;
+            [self pp_beginOrphanedPaymentMonitoring];
+            return;
+        }
+
+        // Presenter has no presented VC.
+        if (self.sdkDidPresent) {
+            // SDK was visible and is now gone → dismissed without callback.
+            PPORDERLog(@"QIB SDK dismissed without calling qpResponse: — treating as cancellation");
+            [self pp_resolveOrphanedPaymentAsCancellation];
+            return;
+        }
+
+        // SDK hasn't appeared yet (still loading). Give it up to 30 seconds
+        // from when `sendRequest` was called.
+        NSTimeInterval elapsed = self.requestStartDate
+            ? -[self.requestStartDate timeIntervalSinceNow]
+            : 0;
+        if (elapsed > 30) {
+            PPORDERLog(@"QIB SDK never presented after %.0fs — treating as cancellation", elapsed);
+            [self pp_resolveOrphanedPaymentAsCancellation];
+            return;
+        }
+
+        // Keep waiting.
+        [self pp_beginOrphanedPaymentMonitoring];
+    });
+}
+
+- (void)pp_resolveOrphanedPaymentAsCancellation
+{
+    PPPaymentCompletion capturedCompletion = self.completion;
+    [self reset];
+
+    if (capturedCompletion) {
+        NSError *cancelError =
+        [NSError errorWithDomain:NSCocoaErrorDomain
+                            code:NSUserCancelledError
+                        userInfo:@{NSLocalizedDescriptionKey:
+                                       kLang(@"payment_cancelled_by_user")}];
+        capturedCompletion(@{}, cancelError);
+    }
 }
 
 @end

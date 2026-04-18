@@ -443,7 +443,7 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
         card.transform          = CGAffineTransformIdentity;
         card.alpha              = 1.0;
         card.layer.borderWidth  = 2.0;
-        card.layer.borderColor  = AppPrimaryClr.CGColor;
+        [card pp_setBorderColor:AppPrimaryClr];
         check.alpha             = 1.0;
     } completion:nil];
 }
@@ -452,7 +452,7 @@ static NSDictionary<NSString *, NSString *> *PPPaymentFormExpiryComponents(NSStr
     UIImageView *check = [card viewWithTag:kPPCheckmarkTag];
     [UIView animateWithDuration:0.2 animations:^{
         card.layer.borderWidth = 0.0;
-        card.layer.borderColor = UIColor.clearColor.CGColor;
+        [card pp_setBorderColor:UIColor.clearColor];
         check.alpha = 0.0;
     }];
 }

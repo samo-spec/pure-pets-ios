@@ -77,7 +77,7 @@ static inline BOOL PPPetAdoptIsCompactPhone(CGFloat width)
         _petImageView = [[UIImageView alloc] init];
         _petImageView.contentMode = UIViewContentModeScaleAspectFit;
         _petImageView.layer.masksToBounds = NO;
-        _petImageView.layer.shadowColor = GM.AppShadowColor.CGColor;
+        [_petImageView pp_setShadowColor:GM.AppShadowColor];
         _petImageView.layer.shadowOffset = CGSizeMake(0, 1);
         _petImageView.layer.shadowOpacity = 0.3;
         _petImageView.layer.shadowRadius = 1;
@@ -120,7 +120,7 @@ static inline BOOL PPPetAdoptIsCompactPhone(CGFloat width)
 - (void)setupShadow {
     _shadowView.layer.cornerRadius = PPCornersMainCell;
     _shadowView.layer.masksToBounds = NO;
-    _shadowView.layer.shadowColor = GM.AppShadowColor.CGColor;
+    [_shadowView pp_setShadowColor:GM.AppShadowColor];
     _shadowView.layer.shadowOffset = CGSizeMake(0, 2);
     _shadowView.layer.shadowOpacity = 0.081;
     _shadowView.layer.shadowRadius = 3;

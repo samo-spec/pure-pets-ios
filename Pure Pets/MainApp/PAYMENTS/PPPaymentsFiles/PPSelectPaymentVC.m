@@ -99,7 +99,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
             CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
             return [[UIColor whiteColor] colorWithAlphaComponent:a];
         }];
-        self.heroCardView.layer.borderColor = [heroBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+        [self.heroCardView pp_setBorderColor:[heroBorderDynamic resolvedColorWithTraitCollection:self.traitCollection]];
         self.heroCardView.layer.shadowOpacity =
             (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     }
@@ -218,8 +218,8 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.heroCardView.layer.borderColor = [heroBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    self.heroCardView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self.heroCardView pp_setBorderColor:[heroBorderColor resolvedColorWithTraitCollection:self.traitCollection]];
+    [self.heroCardView pp_setShadowColor:[UIColor blackColor]];
     self.heroCardView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     self.heroCardView.layer.shadowRadius = 24.0;
     self.heroCardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
@@ -246,7 +246,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroAmbientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.10];
     self.heroAmbientGlow.userInteractionEnabled = NO;
     self.heroAmbientGlow.layer.cornerRadius = 94.0;
-    self.heroAmbientGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.50].CGColor;
+    [self.heroAmbientGlow pp_setShadowColor:[brandColor colorWithAlphaComponent:0.50]];
     self.heroAmbientGlow.layer.shadowOpacity = 0.16;
     self.heroAmbientGlow.layer.shadowRadius = 42.0;
     self.heroAmbientGlow.layer.shadowOffset = CGSizeZero;
@@ -264,7 +264,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.heroSecondaryGlow.layer.shadowColor = [secGlowShadow resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [self.heroSecondaryGlow pp_setShadowColor:[secGlowShadow resolvedColorWithTraitCollection:self.traitCollection]];
     self.heroSecondaryGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.20;
     self.heroSecondaryGlow.layer.shadowRadius = 22.0;
     self.heroSecondaryGlow.layer.shadowOffset = CGSizeZero;
@@ -285,7 +285,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     eyebrowContainer.layer.cornerRadius = 14.0;
     eyebrowContainer.layer.cornerCurve = kCACornerCurveContinuous;
     eyebrowContainer.layer.borderWidth = 1.0;
-    eyebrowContainer.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
+    [eyebrowContainer pp_setBorderColor:[brandColor colorWithAlphaComponent:0.10]];
     eyebrowContainer.layer.masksToBounds = YES;
     [self.heroCardView addSubview:eyebrowContainer];
 
@@ -973,9 +973,26 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     } else if (result == PPCheckoutResultCancelled) {
         PPORDERLog(@"Payment cancelled by user | orderId=%@", order.orderId ?: @"");
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
-        [PPAlertHelper showInfoIn:self
-                            title:kLang(@"payment_cancelled_title")
-                         subtitle:kLang(@"payment_cancelled_message")];
+
+        // Return user to the payment screen with a clear choice:
+        // choose another payment method or cancel the order entirely.
+        __weak typeof(self) weakCancel = self;
+        [PPAlertHelper showConfirmationIn:self
+                                    title:kLang(@"payment_cancelled_title")
+                                 subtitle:kLang(@"payment_cancelled_choose_method_message")
+                            confirmButton:kLang(@"payment_cancelled_choose_another")
+                             cancelButton:kLang(@"payment_cancelled_cancel_order")
+                                     icon:nil
+                             confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+            // User wants to pick a different payment method — stay on this screen.
+            PPORDERLog(@"User chose to select another payment method after cancel");
+        }
+                              cancelBlock:^{
+            __strong typeof(weakCancel) strongCancel = weakCancel;
+            if (!strongCancel) return;
+            PPORDERLog(@"User chose to cancel order after payment cancel");
+            [strongCancel.navigationController popViewControllerAnimated:YES];
+        }];
 
     } else {
         // PPCheckoutResultFailed

@@ -48,7 +48,7 @@ static UIColor *PPFolderColor(NSInteger idx) {
     UIView *cv = self.contentView;
     cv.backgroundColor = AppForgroundColr;
     cv.layer.cornerRadius = 14;
-    cv.layer.shadowColor  = [UIColor blackColor].CGColor;
+    [cv pp_setShadowColor:[UIColor blackColor]];
     cv.layer.shadowOffset  = CGSizeMake(0, 2);
     cv.layer.shadowRadius  = 8;
     cv.layer.shadowOpacity = 0.06;
@@ -149,7 +149,7 @@ static UIColor *PPFolderColor(NSInteger idx) {
     cv.backgroundColor    = [AppPrimaryClr colorWithAlphaComponent:0.06];
     cv.layer.cornerRadius = 14;
     cv.layer.borderWidth  = 1.5;
-    cv.layer.borderColor  = [AppPrimaryClr colorWithAlphaComponent:0.30].CGColor;
+    [cv pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.30]];
 
     _plusIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"plus.circle.fill"]];
     _plusIcon.tintColor   = AppPrimaryClr;

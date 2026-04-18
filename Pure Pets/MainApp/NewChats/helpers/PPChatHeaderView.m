@@ -86,7 +86,7 @@ static UIImage *PPChatHeaderSupportLogoImage(void) {
     self.onlineDotView.backgroundColor = [UIColor systemGreenColor];
     self.onlineDotView.layer.cornerRadius = 6;
     self.onlineDotView.layer.borderWidth = 2;
-    self.onlineDotView.layer.borderColor = UIColor.systemBackgroundColor.CGColor;
+    [self.onlineDotView pp_setBorderColor:UIColor.systemBackgroundColor];
     self.onlineDotView.hidden = YES;
 
     [self addSubview:self.onlineDotView];

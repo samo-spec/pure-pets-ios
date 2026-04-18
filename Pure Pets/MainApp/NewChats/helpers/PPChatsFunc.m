@@ -704,7 +704,7 @@ forCellWithReuseIdentifier:@"cell"];
     }];
 
     cell.layer.borderWidth = (index == self.selectedIndex) ? 2 : 0;
-    cell.layer.borderColor = UIColor.systemBlueColor.CGColor;
+    [cell pp_setBorderColor:UIColor.systemBlueColor];
 
     return cell;
 }

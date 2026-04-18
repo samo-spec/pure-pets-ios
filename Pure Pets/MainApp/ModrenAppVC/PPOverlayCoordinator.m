@@ -340,7 +340,7 @@
     view.layer.masksToBounds = NO;
 
     // Shadow color (dynamic, works in dark/light)
-    view.layer.shadowColor = [UIColor blackColor].CGColor;
+    [view pp_setShadowColor:[UIColor blackColor]];
 
     // Soft, modern shadow
     view.layer.shadowOpacity = 0.82;

@@ -117,7 +117,7 @@
     _chevronView.hidden = !showsChevron;
     _iconChipView.backgroundColor = [resolvedTint colorWithAlphaComponent:0.14];
     _iconChipView.layer.borderWidth = 1.0;
-    _iconChipView.layer.borderColor = [resolvedTint colorWithAlphaComponent:0.08].CGColor;
+    [_iconChipView pp_setBorderColor:[resolvedTint colorWithAlphaComponent:0.08]];
     _iconView.tintColor = resolvedTint;
     _iconView.image =
         [UIImage pp_symbolNamed:PPSafeString(iconName)
@@ -278,7 +278,7 @@
     _heroSurfaceView.layer.cornerRadius = 26.0;
     _heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     _heroSurfaceView.layer.borderWidth = 0.8;
-    _heroSurfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [_heroSurfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;

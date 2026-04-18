@@ -377,29 +377,28 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     self.patternView.alpha = isDark ? 0.05 : 0.035;
 
     self.topGlowView.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.22 : 0.12];
-    self.topGlowView.layer.shadowColor = primaryColor.CGColor;
+    [self.topGlowView pp_setShadowColor:primaryColor];
     self.topGlowView.layer.shadowOpacity = isDark ? 0.18f : 0.12f;
     self.topGlowView.layer.shadowRadius = 60.0f;
     self.topGlowView.layer.shadowOffset = CGSizeZero;
 
     self.bottomGlowView.backgroundColor = [primaryGlowColor colorWithAlphaComponent:isDark ? 0.18 : 0.10];
-    self.bottomGlowView.layer.shadowColor = primaryGlowColor.CGColor;
+    [self.bottomGlowView pp_setShadowColor:primaryGlowColor];
     self.bottomGlowView.layer.shadowOpacity = isDark ? 0.16f : 0.10f;
     self.bottomGlowView.layer.shadowRadius = 54.0f;
     self.bottomGlowView.layer.shadowOffset = CGSizeZero;
 
     self.logoPlateView.backgroundColor = [whiteTint colorWithAlphaComponent:isDark ? 0.06 : 0.42];
     self.logoPlateView.layer.borderWidth = 1.0f;
-    self.logoPlateView.layer.borderColor = [[whiteTint colorWithAlphaComponent:isDark ? 0.08 : 0.22] CGColor];
-    self.logoPlateView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.logoPlateView pp_setBorderColor:[whiteTint colorWithAlphaComponent:isDark ? 0.08 : 0.22]];
+    [self.logoPlateView pp_setShadowColor:UIColor.blackColor];
     self.logoPlateView.layer.shadowOpacity = isDark ? 0.34f : 0.10f;
     self.logoPlateView.layer.shadowRadius = isDark ? 26.0f : 24.0f;
     self.logoPlateView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 
     self.logoInnerSurfaceView.backgroundColor = [surfaceColor colorWithAlphaComponent:isDark ? 0.94 : 0.96];
     self.logoInnerSurfaceView.layer.borderWidth = 1.0f;
-    self.logoInnerSurfaceView.layer.borderColor =
-        [[whiteTint colorWithAlphaComponent:isDark ? 0.06 : 0.20] CGColor];
+    [self.logoInnerSurfaceView pp_setBorderColor:[whiteTint colorWithAlphaComponent:isDark ? 0.06 : 0.20]];
 
     self.logoView.tintColor = primaryColor;
 
@@ -408,8 +407,8 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
 
     self.loadingCardView.backgroundColor = [surfaceColor colorWithAlphaComponent:isDark ? 0.74 : 0.90];
     self.loadingCardView.layer.borderWidth = 1.0f;
-    self.loadingCardView.layer.borderColor = [[whiteTint colorWithAlphaComponent:isDark ? 0.08 : 0.18] CGColor];
-    self.loadingCardView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.loadingCardView pp_setBorderColor:[whiteTint colorWithAlphaComponent:isDark ? 0.08 : 0.18]];
+    [self.loadingCardView pp_setShadowColor:UIColor.blackColor];
     self.loadingCardView.layer.shadowOpacity = isDark ? 0.22f : 0.08f;
     self.loadingCardView.layer.shadowRadius = 18.0f;
     self.loadingCardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);

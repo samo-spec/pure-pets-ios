@@ -26,7 +26,7 @@
     _blur.layer.cornerRadius = PPCornerMedium;
     _blur.clipsToBounds = YES;
     _blur.layer.borderWidth = 0.5;
-    _blur.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [_blur pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
 
     // --- Search text field ---
     _textField = [UITextField new];

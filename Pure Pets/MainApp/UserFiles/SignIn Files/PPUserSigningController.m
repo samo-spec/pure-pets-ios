@@ -726,7 +726,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     button.configuration = config;
     button.layer.cornerRadius = 20.0;
     button.layer.masksToBounds = NO;
-    button.layer.shadowColor = [UIColor blackColor].CGColor;
+    [button pp_setShadowColor:[UIColor blackColor]];
     button.layer.shadowOpacity = isPrimary ? 0.10 : 0.08;
     button.layer.shadowRadius = 18.0;
     button.layer.shadowOffset = CGSizeMake(0.0, 10.0);

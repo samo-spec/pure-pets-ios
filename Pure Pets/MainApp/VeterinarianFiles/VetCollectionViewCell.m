@@ -152,7 +152,7 @@
     self.contentView.layer.cornerRadius = 15.0;
     self.contentView.layer.masksToBounds = YES;
 
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self pp_setShadowColor:[UIColor blackColor]];
     self.layer.shadowOffset = CGSizeMake(0, 2);
     self.layer.shadowRadius = 4.0;
     self.layer.shadowOpacity = 0.25;

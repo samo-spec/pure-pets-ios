@@ -138,7 +138,7 @@
     self.inputTextView.placeholder = kLang(@"Askanythingaboutpets");
     
     // ✨ Optional shadow
-    self.inputTextView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self.inputTextView pp_setShadowColor:[UIColor blackColor]];
     self.inputTextView.layer.shadowOpacity = 0.1;
     self.inputTextView.layer.shadowOffset = CGSizeMake(0, 1);
     self.inputTextView.layer.shadowRadius = 3;
@@ -189,14 +189,14 @@
     self.responseTextView = [[UITextView alloc] initWithFrame:CGRectZero];
     self.responseTextView.font = [GM MidFontWithSize:16];
     self.responseTextView.editable = NO;
-    self.responseTextView.layer.borderColor = [UIColor systemGray4Color].CGColor;
+    [self.responseTextView pp_setBorderColor:[UIColor systemGray4Color]];
     self.responseTextView.layer.borderWidth = 0.0;
     self.responseTextView.layer.cornerRadius = 25.0;
     self.responseTextView.backgroundColor = AppForgroundColr;
     self.responseTextView.textAlignment = [Language languageVal] == 0 ? NSTextAlignmentLeft : NSTextAlignmentRight;
     
     // ✨ Optional shadow
-    self.responseTextView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self.responseTextView pp_setShadowColor:[UIColor blackColor]];
     self.responseTextView.layer.shadowOpacity = 0.1;
     self.responseTextView.layer.shadowOffset = CGSizeMake(0, 1);
     self.responseTextView.layer.shadowRadius = 3;

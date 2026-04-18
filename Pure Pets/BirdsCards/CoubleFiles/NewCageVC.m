@@ -398,7 +398,7 @@
     self.inputContainerView.layer.cornerCurve = kCACornerCurveContinuous;
     if (@available(iOS 26.0, *)) {
         self.inputContainerView.layer.borderWidth = 1.0;
-        self.inputContainerView.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.30].CGColor;
+        [self.inputContainerView pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.30]];
     }
 
     self.CageName.delegate = self;
@@ -453,7 +453,7 @@
         if (@available(iOS 26.0, *)) {
             // Liquid-style visible borders for glass UI
             cardView.layer.borderWidth = 0.85;
-            cardView.layer.borderColor = [AppBackgroundClrDarker colorWithAlphaComponent:0.75].CGColor;
+            [cardView pp_setBorderColor:[AppBackgroundClrDarker colorWithAlphaComponent:0.75]];
         }
     }
 
@@ -485,7 +485,7 @@
     self.bottomBarView.layer.cornerCurve = kCACornerCurveContinuous;
     if (@available(iOS 26.0, *)) {
         self.bottomBarView.layer.borderWidth = 1.0;
-        self.bottomBarView.layer.borderColor = [AppBackgroundClrDarker colorWithAlphaComponent:0.80].CGColor;
+        [self.bottomBarView pp_setBorderColor:[AppBackgroundClrDarker colorWithAlphaComponent:0.80]];
     }
 
     self.noteLablel.font = [self scaledRegularFont:14.0];
@@ -602,7 +602,7 @@
     [UIView animateWithDuration:0.2 animations:^{
         self.inputContainerView.transform = CGAffineTransformMakeScale(1.01, 1.01);
         self.inputContainerView.layer.borderWidth = 1.0;
-        self.inputContainerView.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.35].CGColor;
+        [self.inputContainerView pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.35]];
     }];
 
     CGRect textFieldRect = [self.inputContainerView convertRect:self.inputContainerView.bounds toView:self.scrollView];
@@ -614,7 +614,7 @@
     [UIView animateWithDuration:0.2 animations:^{
         self.inputContainerView.transform = CGAffineTransformIdentity;
         self.inputContainerView.layer.borderWidth = 0.0;
-        self.inputContainerView.layer.borderColor = AppClearClr.CGColor;
+        [self.inputContainerView pp_setBorderColor:AppClearClr];
     }];
 }
 
@@ -635,7 +635,7 @@
 {
     NSArray<UIView *> *shadowedViews = @[self.inputContainerView, self.MotherView, self.tioView, self.bottomBarView];
     for (UIView *view in shadowedViews) {
-        view.layer.shadowColor = [AppPrimaryClrDarker colorWithAlphaComponent:0.18].CGColor;
+        [view pp_setShadowColor:[AppPrimaryClrDarker colorWithAlphaComponent:0.18]];
         view.layer.shadowOpacity = 0.16;
         view.layer.shadowRadius = 16.0;
         view.layer.shadowOffset = CGSizeMake(0, 8);

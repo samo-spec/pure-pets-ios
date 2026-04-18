@@ -90,7 +90,7 @@
     container.layer.cornerRadius = 28;
     container.layer.masksToBounds = NO;
 
-    container.layer.shadowColor = [UIColor blackColor].CGColor;
+    [container pp_setShadowColor:[UIColor blackColor]];
     container.layer.shadowOpacity = 0.10;
     container.layer.shadowRadius = 20;
     container.layer.shadowOffset = CGSizeMake(0, 8);
@@ -1178,7 +1178,7 @@
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 0;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);

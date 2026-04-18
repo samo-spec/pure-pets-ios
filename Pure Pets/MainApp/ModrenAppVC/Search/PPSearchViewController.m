@@ -239,7 +239,7 @@ PPUniversalCellDelegate>
     primaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     primaryGlow.userInteractionEnabled = NO;
     primaryGlow.backgroundColor = [[UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0] colorWithAlphaComponent:0.26];
-    primaryGlow.layer.shadowColor = [UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0].CGColor;
+    [primaryGlow pp_setShadowColor:[UIColor colorWithRed:0.92 green:0.78 blue:0.66 alpha:1.0]];
     primaryGlow.layer.shadowOpacity = 0.30;
     primaryGlow.layer.shadowRadius = 120.0;
     primaryGlow.layer.shadowOffset = CGSizeZero;
@@ -249,7 +249,7 @@ PPUniversalCellDelegate>
     secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
     secondaryGlow.userInteractionEnabled = NO;
     secondaryGlow.backgroundColor = [[UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0] colorWithAlphaComponent:0.16];
-    secondaryGlow.layer.shadowColor = [UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0].CGColor;
+    [secondaryGlow pp_setShadowColor:[UIColor colorWithRed:0.48 green:0.25 blue:0.33 alpha:1.0]];
     secondaryGlow.layer.shadowOpacity = 0.22;
     secondaryGlow.layer.shadowRadius = 96.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
@@ -352,8 +352,8 @@ PPUniversalCellDelegate>
     chromeView.layer.cornerRadius = 20.0;
     chromeView.layer.masksToBounds = NO;
     chromeView.layer.borderWidth = 1.0;
-    chromeView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.14].CGColor;
-    chromeView.layer.shadowColor = [UIColor colorWithWhite:0.09 alpha:1.0].CGColor;
+    [chromeView pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0.14]];
+    [chromeView pp_setShadowColor:[UIColor colorWithWhite:0.09 alpha:1.0]];
     chromeView.layer.shadowOpacity = 0.12f;
     chromeView.layer.shadowRadius = 18.0f;
     chromeView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -469,7 +469,7 @@ PPUniversalCellDelegate>
     heroShadowView.backgroundColor = UIColor.clearColor;
     heroShadowView.semanticContentAttribute = semanticAttribute;
     heroShadowView.layer.cornerRadius = PPCornerHero;
-    heroShadowView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     heroShadowView.layer.shadowOpacity = 0.18f;
     heroShadowView.layer.shadowRadius = 28.0f;
     heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
@@ -483,7 +483,7 @@ PPUniversalCellDelegate>
     heroCard.layer.cornerRadius = PPCornerHero;
     heroCard.layer.masksToBounds = YES;
     heroCard.layer.borderWidth = 1.0;
-    heroCard.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [heroCard pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
     if (@available(iOS 13.0, *)) {
         heroCard.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -578,7 +578,7 @@ PPUniversalCellDelegate>
     segmentRowView.layer.masksToBounds = NO;
     segmentRowView.clipsToBounds = NO;
     segmentRowView.layer.borderWidth = 1.0;
-    segmentRowView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [segmentRowView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
     if (@available(iOS 13.0, *)) {
         segmentRowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1361,19 +1361,19 @@ PPUniversalCellDelegate>
 
     self.statusPillLabel.backgroundColor = statusBackground;
     self.statusPillLabel.textColor = statusForeground;
-    self.statusPillLabel.layer.borderColor = [statusForeground colorWithAlphaComponent:0.10].CGColor;
+    [self.statusPillLabel pp_setBorderColor:[statusForeground colorWithAlphaComponent:0.10]];
 
     self.scopePillLabel.backgroundColor = [scopeTint colorWithAlphaComponent:0.18];
     self.scopePillLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.96];
-    self.scopePillLabel.layer.borderColor = [scopeTint colorWithAlphaComponent:0.18].CGColor;
+    [self.scopePillLabel pp_setBorderColor:[scopeTint colorWithAlphaComponent:0.18]];
 
     self.countPillLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
     self.countPillLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.88];
-    self.countPillLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.06].CGColor;
+    [self.countPillLabel pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.06]];
 
     self.queryPillLabel.backgroundColor = [[UIColor colorWithRed:0.98 green:0.81 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.18];
     self.queryPillLabel.textColor = [[UIColor colorWithRed:1.0 green:0.95 blue:0.83 alpha:1.0] colorWithAlphaComponent:0.95];
-    self.queryPillLabel.layer.borderColor = [[UIColor colorWithRed:0.98 green:0.81 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.18].CGColor;
+    [self.queryPillLabel pp_setBorderColor:[[UIColor colorWithRed:0.98 green:0.81 blue:0.54 alpha:1.0] colorWithAlphaComponent:0.18]];
 
     [self pp_updateSegmentButtonsSelectionAnimated:animated];
 }
@@ -1475,7 +1475,7 @@ PPUniversalCellDelegate>
     label.layer.cornerRadius = 14.0;
     label.layer.masksToBounds = YES;
     label.layer.borderWidth = 0.5;
-    label.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.06].CGColor;
+    [label pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.06]];
     [NSLayoutConstraint activateConstraints:@[
         [label.heightAnchor constraintEqualToConstant:28.0]
     ]];
@@ -1730,7 +1730,7 @@ PPUniversalCellDelegate>
     button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
     button.layer.cornerRadius = 18.0;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
     button.layer.shadowOpacity = 0.0f;
     button.layer.shadowRadius = 12.0f;
     button.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -1888,10 +1888,10 @@ PPUniversalCellDelegate>
         button.backgroundColor = selected
             ? [accentColor colorWithAlphaComponent:0.24]
             : [UIColor colorWithWhite:1.0 alpha:0.08];
-        button.layer.borderColor = (selected
+        [button pp_setBorderColor:(selected
             ? [accentColor colorWithAlphaComponent:0.34]
-            : [UIColor colorWithWhite:1.0 alpha:0.08]).CGColor;
-        button.layer.shadowColor = accentColor.CGColor;
+            : [UIColor colorWithWhite:1.0 alpha:0.08])];
+        [button pp_setShadowColor:accentColor];
         button.layer.shadowOpacity = selected ? 0.14f : 0.0f;
 
         UIColor *contentColor = selected

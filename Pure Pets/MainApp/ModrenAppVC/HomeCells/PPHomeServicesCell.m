@@ -65,7 +65,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _cardView.layer.masksToBounds = NO;
     _cardView.layer.cornerRadius = PPCornerMedium;
     _cardView.layer.cornerCurve = kCACornerCurveContinuous;
-    _cardView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [_cardView pp_setShadowColor:UIColor.blackColor];
     _cardView.layer.shadowOpacity = 0.06;
     _cardView.layer.shadowRadius = 12.0;
     
@@ -364,7 +364,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     self.gradientLayer.colors = @[(id)gradientColors.firstObject.CGColor,
                                   (id)gradientColors.lastObject.CGColor];
     self.surfaceView.layer.borderWidth = 0.0;
-    self.surfaceView.layer.borderColor = [accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.10].CGColor;
+    [self.surfaceView pp_setBorderColor:[accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.10]];
 
     UIButtonConfiguration *config = _cardView.configuration;
     //config.background.strokeColor = [accentColor colorWithAlphaComponent:darkMode ? 0.24 : 0.10];

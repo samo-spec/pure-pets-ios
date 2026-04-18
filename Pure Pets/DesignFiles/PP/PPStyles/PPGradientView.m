@@ -15,7 +15,7 @@ static char kPPGradientLayerKey;
 @implementation UIView (PPViewDesign)
  
 - (void)setShadow:(UIColor*)color offset:(CGSize)offset radius:(CGFloat)radius {
-    self.layer.shadowColor = color.CGColor;
+    [self pp_setShadowColor:color];
     self.layer.shadowOffset = offset;
     self.layer.shadowRadius = radius;
     self.layer.shadowOpacity = 1;
@@ -25,7 +25,7 @@ static char kPPGradientLayerKey;
 
 
 - (void)setBlackShadowOffset:(CGSize)offset radius:(CGFloat)radius alpha:(CGFloat)alpha{
-    self.layer.shadowColor = [AppShadowClr colorWithAlphaComponent:alpha].CGColor;
+    [self pp_setShadowColor:[AppShadowClr colorWithAlphaComponent:alpha]];
     self.layer.shadowOffset = offset;
     self.layer.shadowRadius = radius;
     self.layer.shadowOpacity = 1;
@@ -114,7 +114,7 @@ static char kPPGradientLayerKey;
     // Configure shadow if provided
     if (shadowColor && shadowOpacity > 0) {
         self.layer.masksToBounds = NO;
-        self.layer.shadowColor = shadowColor.CGColor;
+        [self pp_setShadowColor:shadowColor];
         self.layer.shadowOpacity = shadowOpacity;
         self.layer.shadowRadius = shadowRadius;
         self.layer.shadowOffset = shadowOffset;
@@ -165,7 +165,7 @@ static char kPPGradientLayerKey;
     // Configure shadow if provided
     if (shadowColor && shadowOpacity > 0) {
         self.layer.masksToBounds = NO;
-        self.layer.shadowColor = shadowColor.CGColor;
+        [self pp_setShadowColor:shadowColor];
         self.layer.shadowOpacity = shadowOpacity;
         self.layer.shadowRadius = shadowRadius;
         self.layer.shadowOffset = shadowOffset;
@@ -185,7 +185,7 @@ static char kPPGradientLayerKey;
     }
     
     // Reset shadow
-    self.layer.shadowColor = nil;
+    [self pp_setShadowColor:nil];
     self.layer.shadowOpacity = 0;
     self.layer.shadowRadius = 0;
     self.layer.shadowPath = nil;

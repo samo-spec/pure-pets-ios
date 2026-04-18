@@ -111,7 +111,7 @@
     titleCard.layer.masksToBounds = NO;
 
     // Soft, modern shadow (Apple-style)
-    titleCard.layer.shadowColor = UIColor.blackColor.CGColor;
+    [titleCard pp_setShadowColor:UIColor.blackColor];
     titleCard.layer.shadowOpacity = 0.12;
     titleCard.layer.shadowRadius = 22;
     titleCard.layer.shadowOffset = CGSizeMake(0, 10);
@@ -764,7 +764,7 @@
     self.contactLockOverlayView.userInteractionEnabled = YES;
     self.contactLockOverlayView.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.08];
     self.contactLockOverlayView.layer.borderWidth = 0.75;
-    self.contactLockOverlayView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.16].CGColor;
+    [self.contactLockOverlayView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.16]];
 
     [self.contactView addSubview:self.contactLockOverlayView];
 

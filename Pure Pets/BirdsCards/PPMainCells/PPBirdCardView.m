@@ -75,7 +75,7 @@
     self.imageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.imageView.contentMode = UIViewContentModeScaleAspectFill;
     self.imageView.clipsToBounds = YES;
-    self.imageView.layer.borderColor = AppForgroundColr.CGColor;
+    [self.imageView pp_setBorderColor:AppForgroundColr];
     self.imageView.layer.borderWidth = 3;
     [self addSubview:self.imageView];
     
@@ -85,7 +85,7 @@
     self.sexualImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.sexualImageView.contentMode = UIViewContentModeScaleAspectFill;
     self.sexualImageView.clipsToBounds = NO;
-    self.sexualImageView.layer.borderColor = AppClearClr.CGColor;
+    [self.sexualImageView pp_setBorderColor:AppClearClr];
     self.sexualImageView.alpha = 0.0;
     
     self.sexualImageView.tintColor = AppBackgroundClr;

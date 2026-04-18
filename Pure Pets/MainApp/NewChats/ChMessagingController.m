@@ -457,7 +457,7 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
     self.bottomFill.layer.cornerRadius = 0.0;
     self.bottomFill.layer.masksToBounds = NO;
 
-    self.bottomFill.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self.bottomFill pp_setShadowColor:[UIColor blackColor]];
     self.bottomFill.layer.shadowOpacity = 0.01;
     self.bottomFill.layer.shadowRadius = 12;
     self.bottomFill.layer.shadowOffset = CGSizeMake(0, -6);

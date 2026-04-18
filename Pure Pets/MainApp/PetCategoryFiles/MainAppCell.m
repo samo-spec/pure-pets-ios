@@ -433,7 +433,7 @@
        // Apply shadow settings (best practice)
     self.contentView.layer.masksToBounds = NO;
     self.contentView.clipsToBounds = NO;
-    self.contentView.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:1.0].CGColor;
+    [self.contentView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:1.0]];
     self.contentView.layer.shadowRadius = 5;
     self.contentView.layer.shadowOpacity = 0.5;
     self.contentView.layer.shadowOffset = CGSizeMake(0, 0);
@@ -757,7 +757,7 @@
         bgButton = [UIButton buttonWithType:UIButtonTypeSystem];
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = PPCornersMainCell;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 8;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);
@@ -901,7 +901,7 @@
         bgButton = [UIButton buttonWithType:UIButtonTypeSystem];
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = PPCornersMainCell;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 16.0;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);

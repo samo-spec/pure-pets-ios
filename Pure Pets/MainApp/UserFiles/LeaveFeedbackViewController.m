@@ -95,14 +95,14 @@
 
     if (selected) {
         self.cardContainer.backgroundColor = [brand colorWithAlphaComponent:0.10];
-        self.cardContainer.layer.borderColor = [brand colorWithAlphaComponent:0.50].CGColor;
+        [self.cardContainer pp_setBorderColor:[brand colorWithAlphaComponent:0.50]];
         self.iconView.tintColor = brand;
         self.reasonLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
         self.checkView.tintColor = brand;
         self.checkView.hidden = NO;
     } else {
         self.cardContainer.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6];
-        self.cardContainer.layer.borderColor = [[UIColor.secondaryLabelColor colorWithAlphaComponent:0.12] CGColor];
+        [self.cardContainer pp_setBorderColor:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.12]];
         self.iconView.tintColor = UIColor.secondaryLabelColor;
         self.reasonLabel.textColor = UIColor.secondaryLabelColor;
         self.checkView.hidden = YES;
@@ -245,7 +245,7 @@ static NSString *const kFeedbackReasonCellID = @"PPFeedbackReasonCell";
     reasonCard.layer.cornerRadius = 16.0;
     if (@available(iOS 13.0, *)) reasonCard.layer.cornerCurve = kCACornerCurveContinuous;
     reasonCard.layer.borderWidth = 1.5;
-    reasonCard.layer.borderColor = [[UIColor.secondaryLabelColor colorWithAlphaComponent:0.12] CGColor];
+    [reasonCard pp_setBorderColor:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.12]];
     [content addSubview:reasonCard];
     self.customReasonCard = reasonCard;
 
@@ -279,7 +279,7 @@ static NSString *const kFeedbackReasonCellID = @"PPFeedbackReasonCell";
     logout.layer.cornerRadius = 16.0;
     if (@available(iOS 13.0, *)) logout.layer.cornerCurve = kCACornerCurveContinuous;
     logout.layer.borderWidth = 1.0;
-    logout.layer.borderColor = [UIColor.systemRedColor colorWithAlphaComponent:0.15].CGColor;
+    [logout pp_setBorderColor:[UIColor.systemRedColor colorWithAlphaComponent:0.15]];
     [logout addTarget:self action:@selector(logoutTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:logout];
     self.logoutButton = logout;
@@ -384,7 +384,7 @@ static NSString *const kFeedbackReasonCellID = @"PPFeedbackReasonCell";
     [UIView animateWithDuration:0.2 animations:^{
         self.logoutButton.backgroundColor = [UIColor.systemRedColor colorWithAlphaComponent:0.12];
         [self.logoutButton setTitleColor:UIColor.systemRedColor forState:UIControlStateNormal];
-        self.logoutButton.layer.borderColor = [UIColor.systemRedColor colorWithAlphaComponent:0.25].CGColor;
+        [self.logoutButton pp_setBorderColor:[UIColor.systemRedColor colorWithAlphaComponent:0.25]];
         self.logoutButton.transform = CGAffineTransformMakeScale(1.02, 1.02);
     } completion:^(BOOL finished) {
         [UIView animateWithDuration:0.15 animations:^{
@@ -403,14 +403,14 @@ static NSString *const kFeedbackReasonCellID = @"PPFeedbackReasonCell";
 - (void)textFieldDidBeginEditing:(UITextField *)textField {
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
     [UIView animateWithDuration:0.2 animations:^{
-        self.customReasonCard.layer.borderColor = [brand colorWithAlphaComponent:0.50].CGColor;
+        [self.customReasonCard pp_setBorderColor:[brand colorWithAlphaComponent:0.50]];
         self.customReasonCard.backgroundColor = [brand colorWithAlphaComponent:0.06];
     }];
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)textField {
     [UIView animateWithDuration:0.2 animations:^{
-        self.customReasonCard.layer.borderColor = [[UIColor.secondaryLabelColor colorWithAlphaComponent:0.12] CGColor];
+        [self.customReasonCard pp_setBorderColor:[UIColor.secondaryLabelColor colorWithAlphaComponent:0.12]];
         self.customReasonCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6];
     }];
 }

@@ -771,7 +771,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.30 * 0.40 : 0.30;
         return [[UIColor colorWithRed:0.95 green:0.77 blue:0.65 alpha:1.0] colorWithAlphaComponent:a];
     }];
-    topGlow.layer.shadowColor = [[UIColor colorWithRed:0.95 green:0.73 blue:0.52 alpha:1.0] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [topGlow pp_setShadowColor:[UIColor colorWithRed:0.95 green:0.73 blue:0.52 alpha:1.0]];
     topGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.08 : 0.22;
     topGlow.layer.shadowRadius = 60.0;
     topGlow.layer.shadowOffset = CGSizeZero;
@@ -783,7 +783,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.22 * 0.40 : 0.22;
         return [[UIColor colorWithRed:0.75 green:0.52 blue:0.58 alpha:1.0] colorWithAlphaComponent:a];
     }];
-    bottomGlow.layer.shadowColor = [[UIColor colorWithRed:0.71 green:0.34 blue:0.42 alpha:1.0] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [bottomGlow pp_setShadowColor:[UIColor colorWithRed:0.71 green:0.34 blue:0.42 alpha:1.0]];
     bottomGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 : 0.18;
     bottomGlow.layer.shadowRadius = 70.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
@@ -941,8 +941,8 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    cardView.layer.borderColor = [cardBorderDyn resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cardView pp_setBorderColor:cardBorderDyn];
+    [cardView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cardView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     cardView.layer.shadowRadius = 24.0;
     cardView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
@@ -967,7 +967,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     ambientGlow.backgroundColor = [brandClr colorWithAlphaComponent:0.16];
     ambientGlow.userInteractionEnabled = NO;
     ambientGlow.layer.cornerRadius = 92.0;
-    ambientGlow.layer.shadowColor = [brandClr colorWithAlphaComponent:0.58].CGColor;
+    [ambientGlow pp_setShadowColor:[brandClr colorWithAlphaComponent:0.58]];
     ambientGlow.layer.shadowOpacity = 0.18;
     ambientGlow.layer.shadowRadius = 42.0;
     ambientGlow.layer.shadowOffset = CGSizeZero;
@@ -985,7 +985,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    secondaryGlow.layer.shadowColor = [secGlowShadowDyn resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [secondaryGlow pp_setShadowColor:secGlowShadowDyn];
     secondaryGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.22;
     secondaryGlow.layer.shadowRadius = 24.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
@@ -1018,8 +1018,8 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     iconBadge.layer.cornerRadius = 31.0;
     iconBadge.layer.masksToBounds = YES;
     iconBadge.layer.borderWidth = 1.0;
-    iconBadge.layer.borderColor = [brandClr colorWithAlphaComponent:0.18].CGColor;
-    iconBadge.layer.shadowColor = [brandClr colorWithAlphaComponent:0.35].CGColor;
+    [iconBadge pp_setBorderColor:[brandClr colorWithAlphaComponent:0.18]];
+    [iconBadge pp_setShadowColor:[brandClr colorWithAlphaComponent:0.35]];
     iconBadge.layer.shadowOpacity = 0.18;
     iconBadge.layer.shadowRadius = 18.0;
     iconBadge.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -1040,7 +1040,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.masksToBounds = YES;
     eyebrowPill.layer.borderWidth = 1.0;
-    eyebrowPill.layer.borderColor = [brandClr colorWithAlphaComponent:0.10].CGColor;
+    [eyebrowPill pp_setBorderColor:[brandClr colorWithAlphaComponent:0.10]];
     [cardView addSubview:eyebrowPill];
 
     UILabel *eyebrowLabel = [[UILabel alloc] init];
@@ -1080,7 +1080,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.masksToBounds = YES;
     metaLabel.layer.borderWidth = 1.0;
-    metaLabel.layer.borderColor = [brandClr colorWithAlphaComponent:0.14].CGColor;
+    [metaLabel pp_setBorderColor:[brandClr colorWithAlphaComponent:0.14]];
     metaLabel.textInsets = UIEdgeInsetsMake(3, 8, 3, 8);
 
     [cardView addSubview:metaLabel];
@@ -2118,8 +2118,8 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     cell.contentView.layer.cornerRadius = 20.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth = 1.0;
-    cell.contentView.layer.borderColor = [borderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cell.contentView pp_setBorderColor:borderColor];
+    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
     cell.layer.shadowRadius = 12.0;
     cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -2679,13 +2679,13 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.headerCardView.layer.borderColor = [cardBorderDyn resolvedColorWithTraitCollection:tc].CGColor;
+    [self.headerCardView pp_setBorderColor:cardBorderDyn];
     self.headerCardView.layer.shadowOpacity = isDark ? 0.03 : 0.08;
 
     // Backdrop glows
-    self.backgroundGlowViewTop.layer.shadowColor = [[UIColor colorWithRed:0.95 green:0.73 blue:0.52 alpha:1.0] resolvedColorWithTraitCollection:tc].CGColor;
+    [self.backgroundGlowViewTop pp_setShadowColor:[UIColor colorWithRed:0.95 green:0.73 blue:0.52 alpha:1.0]];
     self.backgroundGlowViewTop.layer.shadowOpacity = isDark ? 0.08 : 0.22;
-    self.backgroundGlowViewBottom.layer.shadowColor = [[UIColor colorWithRed:0.71 green:0.34 blue:0.42 alpha:1.0] resolvedColorWithTraitCollection:tc].CGColor;
+    [self.backgroundGlowViewBottom pp_setShadowColor:[UIColor colorWithRed:0.71 green:0.34 blue:0.42 alpha:1.0]];
     self.backgroundGlowViewBottom.layer.shadowOpacity = isDark ? 0.06 : 0.18;
 
     // Refresh cell layer CGColors
@@ -2695,7 +2695,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         UIColor *borderClr = isDanger
             ? [[UIColor systemRedColor] colorWithAlphaComponent:0.18]
             : [self pp_surfaceBorderColor];
-        cell.contentView.layer.borderColor = [borderClr resolvedColorWithTraitCollection:tc].CGColor;
+        [cell.contentView pp_setBorderColor:borderClr];
         cell.layer.shadowOpacity = isDark ? 0.02 : 0.05;
     }
 }

@@ -179,11 +179,11 @@
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
 
-    self.layer.shadowColor = [UIColor colorWithRed:0.11 green:0.17 blue:0.22 alpha:1.0].CGColor;
+    [self pp_setShadowColor:[UIColor colorWithRed:0.11 green:0.17 blue:0.22 alpha:1.0]];
     self.layer.shadowOpacity = 0.16f;
     self.layer.shadowRadius = 28.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    self.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.6].CGColor;
+    [self pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.6]];
     self.layer.borderWidth = 0.9;
     self.layer.cornerRadius = corners;
     if (@available(iOS 13.0, *)) {
@@ -606,11 +606,11 @@
     self.visualStageGradientLayer.startPoint = CGPointMake(isRTL ? 1.0 : 0.0, 0.0);
     self.visualStageGradientLayer.endPoint = CGPointMake(isRTL ? 0.0 : 1.0, 1.0);
 
-    self.visualStageView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.0].CGColor;
+    [self.visualStageView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.0]];
     self.stageGlossView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.76];
     
     self.badgePillView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.0];
-    self.badgePillView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.0].CGColor;
+    [self.badgePillView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.0]];
     self.badgeLabel.textColor = [UIColor hx_colorWithHexStr:@"#344351"];
     self.badgeIconView.tintColor = [AppPrimaryClr colorWithAlphaComponent:1];
 
@@ -628,7 +628,7 @@
     self.ctaIconBadgeView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
     self.ctaIconView.tintColor = UIColor.whiteColor;
     
-    self.ctaPillView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.9].CGColor;
+    [self.ctaPillView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.9]];
     self.ctaPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.6];
 
     self.ctaPillView.layer.cornerRadius = 18.0;
@@ -710,7 +710,7 @@
     view.translatesAutoresizingMaskIntoConstraints = NO;
     view.backgroundColor = [color colorWithAlphaComponent:alpha];
     view.userInteractionEnabled = NO;
-    view.layer.shadowColor = color.CGColor;
+    [view pp_setShadowColor:color];
     view.layer.shadowOpacity = shadowAlpha;
     view.layer.shadowRadius = 26.0;
     view.layer.shadowOffset = CGSizeZero;

@@ -158,7 +158,7 @@ static NSString *PPAdoptCellSafeString(id value)
     self.overlayPillView.userInteractionEnabled = NO;
     self.overlayPillView.alpha = 0.96;
     self.overlayPillView.layer.borderWidth = 0.0;
-    self.overlayPillView.layer.borderColor = UIColor.clearColor.CGColor;
+    [self.overlayPillView pp_setBorderColor:UIColor.clearColor];
 
     [self.imageOverlayView addSubview:self.overlayPillView];
 
@@ -312,7 +312,7 @@ static NSString *PPAdoptCellSafeString(id value)
 
     button.layer.cornerRadius = 14.0;
     button.layer.masksToBounds = NO;
-    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    [button pp_setShadowColor:UIColor.blackColor];
     button.layer.shadowOpacity = 0.15;
     button.layer.shadowRadius = 6.0;
     button.layer.shadowOffset = CGSizeMake(0, 3);
@@ -336,7 +336,7 @@ static NSString *PPAdoptCellSafeString(id value)
 - (void)setupShadow {
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     self.layer.cornerRadius = 18.0;
-    self.layer.shadowColor = GM.AppShadowColor.CGColor;
+    [self pp_setShadowColor:GM.AppShadowColor];
     self.layer.shadowOffset = CGSizeMake(0, isDark ? 2 : 4);
     self.layer.shadowRadius = isDark ? 6 : 10;
     self.layer.shadowOpacity = isDark ? 0.30 : 0.12;
@@ -356,9 +356,9 @@ static NSString *PPAdoptCellSafeString(id value)
 
     // Overlay pill border — subtle edge in dark, hidden in light
     self.overlayPillView.layer.borderWidth = isDark ? 0.5 : 0.0;
-    self.overlayPillView.layer.borderColor = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.12].CGColor
-        : UIColor.clearColor.CGColor;
+    [self.overlayPillView pp_setBorderColor:isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.12]
+        : UIColor.clearColor];
 
     // Shadow adapts for dark mode
     [self setupShadow];

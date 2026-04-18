@@ -205,7 +205,7 @@
      
     
     self.clipsToBounds = NO;
-    self.layer.shadowColor = AppShadowClr.CGColor;
+    [self pp_setShadowColor:AppShadowClr];
     self.layer.shadowOpacity = 0.0;
     self.layer.shadowRadius = 0;
     self.layer.shadowOffset = CGSizeMake(0, -2);
@@ -677,7 +677,7 @@
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 8;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);
@@ -1756,7 +1756,7 @@
         badge.backgroundColor = bgColor ?: UIColor.systemRedColor;
         badge.layer.cornerRadius = 9;
         badge.layer.masksToBounds = YES;
-        badge.layer.borderColor = borderColor.CGColor;
+        [badge pp_setBorderColor:borderColor];
         badge.layer.borderWidth = borderColor ? 1.0 : 0.0;
         badge.adjustsFontSizeToFitWidth = YES;
         badge.minimumScaleFactor = 0.7;
@@ -1774,7 +1774,7 @@
 
     badge.text = value;
     badge.backgroundColor = bgColor ?: badge.backgroundColor;
-    badge.layer.borderColor = borderColor.CGColor;
+    [badge pp_setBorderColor:borderColor];
     badge.hidden = (value.length == 0);
 }
 - (UIImage *)bar_symbolNamed:(NSString *)name

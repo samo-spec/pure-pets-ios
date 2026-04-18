@@ -77,7 +77,7 @@
     self.glassButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.glassButton.configuration = cfg;
     self.glassButton.userInteractionEnabled = NO; // display-only
-    self.glassButton.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.glassButton pp_setShadowColor:UIColor.blackColor];
     self.glassButton.layer.shadowOpacity = 0.12;
     self.glassButton.layer.shadowRadius = 14;
     self.glassButton.layer.shadowOffset = CGSizeMake(0, 8);

@@ -324,7 +324,7 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     }
 
     self.surfaceView.layer.borderWidth = 1.0;
-    self.surfaceView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.28].CGColor;
+    [self.surfaceView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.28]];
     self.surfaceView.layer.masksToBounds = YES;
     self.iconBackdropView.layer.masksToBounds = YES;
 
@@ -353,10 +353,10 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 0.5);
     self.surfaceGradientLayer.cornerRadius = self.surfaceView.layer.cornerRadius;
 
-    self.layer.shadowColor = [UIColor colorWithRed:15.0 / 255.0
-                                             green:23.0 / 255.0
-                                              blue:42.0 / 255.0
-                                             alpha:1.0].CGColor;
+    [self pp_setShadowColor:[UIColor colorWithRed:15.0 / 255.0
+                                            green:23.0 / 255.0
+                                             blue:42.0 / 255.0
+                                            alpha:1.0]];
     self.layer.shadowOpacity = 0.08;
     self.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     self.layer.shadowRadius = 18.0;
@@ -564,15 +564,15 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     }
 
     self.rightMenuView.layer.cornerRadius = 0;
-    self.rightMenuView.layer.shadowColor = [UIColor colorWithRed:89.0 / 255.0
-                                                           green:15.0 / 255.0
-                                                            blue:45.0 / 255.0
-                                                           alpha:1.0].CGColor;
+    [self.rightMenuView pp_setShadowColor:[UIColor colorWithRed:89.0 / 255.0
+                                                          green:15.0 / 255.0
+                                                           blue:45.0 / 255.0
+                                                          alpha:1.0]];
     self.rightMenuView.layer.shadowOpacity = 0.20;
     self.rightMenuView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     self.rightMenuView.layer.shadowRadius = 16.0;
     self.rightMenuView.layer.borderWidth = 1.0;
-    self.rightMenuView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.18].CGColor;
+    [self.rightMenuView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
 }
 
 - (void)hideMenu

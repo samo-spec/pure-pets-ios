@@ -33,7 +33,7 @@
    // self.surfaceView.layer.cornerRadius  = PPCornerCard;
     self.surfaceView.layer.cornerCurve   = kCACornerCurveContinuous;
     self.surfaceView.layer.borderWidth = 0.0;
-    self.surfaceView.layer.borderColor = [[UIColor labelColor] colorWithAlphaComponent:0.04].CGColor;
+    [self.surfaceView pp_setBorderColor:[[UIColor labelColor] colorWithAlphaComponent:0.04]];
    // self.surfaceView.clipsToBounds = YES;
     [self addSubview:self.surfaceView];
 
@@ -396,7 +396,7 @@
     _actionButton = [UIButton buttonWithConfiguration:[self pp_baseActionButtonConfiguration] primaryAction:nil];
     _actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     _actionButton.hidden = YES;
-    _actionButton.layer.shadowColor   = UIColor.blackColor.CGColor;
+    [_actionButton pp_setShadowColor:UIColor.blackColor];
     _actionButton.layer.shadowOpacity = 0.05;
     _actionButton.layer.shadowRadius  = 8.0;
     _actionButton.layer.shadowOffset  = CGSizeMake(0, 3.0);
@@ -459,7 +459,7 @@
             (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.92].CGColor,
             (id)[(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.16].CGColor,
         ];
-        _actionButton.layer.shadowColor = UIColor.blackColor.CGColor;
+        [_actionButton pp_setShadowColor:UIColor.blackColor];
     }
 }
 

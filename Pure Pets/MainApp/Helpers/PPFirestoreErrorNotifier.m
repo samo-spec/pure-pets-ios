@@ -174,7 +174,7 @@ static id _pp_globalObserverToken = nil;
     banner.backgroundColor = [UIColor colorWithRed:0.95 green:0.30 blue:0.30 alpha:0.95];
     banner.layer.cornerRadius = 14.0;
     banner.layer.masksToBounds = YES;
-    banner.layer.shadowColor = UIColor.blackColor.CGColor;
+    [banner pp_setShadowColor:UIColor.blackColor];
     banner.layer.shadowOpacity = 0.15;
     banner.layer.shadowOffset = CGSizeMake(0, 2);
     banner.layer.shadowRadius = 6;

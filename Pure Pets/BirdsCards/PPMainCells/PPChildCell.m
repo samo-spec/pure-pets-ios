@@ -70,7 +70,7 @@
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.backgroundColor = AppForgroundColr;
     self.cardView.layer.cornerRadius = 26;
-    self.cardView.layer.shadowColor = AppShadowClr.CGColor;
+    [self.cardView pp_setShadowColor:AppShadowClr];
     self.cardView.layer.shadowOpacity = 0.12;
     self.cardView.layer.shadowRadius = 8;
     self.cardView.layer.shadowOffset = CGSizeMake(0, 2);

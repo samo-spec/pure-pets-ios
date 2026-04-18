@@ -80,7 +80,7 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
     self.actionButton.tintColor = AppPrimaryClr;
     self.actionButton.showsMenuAsPrimaryAction = NO;
     self.actionButton.backgroundColor = UIColor.clearColor;
-    self.actionButton.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.actionButton pp_setShadowColor:UIColor.blackColor];
     self.actionButton.layer.shadowOpacity = 0.08f;
     self.actionButton.layer.shadowRadius = 18.0f;
     self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -392,7 +392,7 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
     UIColor *warmHighlight = [AppForgroundColr colorWithAlphaComponent:0.82];
     UIColor *tintedSurfaceColor = PPQuickActionBlendColors(surfaceColor, resolvedAccent, 0.08);
 
-    self.surfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.14].CGColor;
+    [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.14]];
     self.surfaceGradientLayer.colors = @[
         (__bridge id)[warmHighlight colorWithAlphaComponent:0.34].CGColor,
         (__bridge id)[surfaceColor colorWithAlphaComponent:0.98].CGColor,
@@ -417,7 +417,7 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
     self.glowGradientLayer.locations = @[@0.0, @0.55, @1.0];
 
     self.iconChipView.backgroundColor = [resolvedAccent colorWithAlphaComponent:0.13];
-    self.iconChipView.layer.borderColor = [resolvedAccent colorWithAlphaComponent:0.18].CGColor;
+    [self.iconChipView pp_setBorderColor:[resolvedAccent colorWithAlphaComponent:0.18]];
     self.titleLabel.text = PPSafeString(title);
     self.titleLabel.textColor = textColor;
     self.chevronView.tintColor = secondaryColor;

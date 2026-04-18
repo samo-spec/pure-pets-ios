@@ -133,7 +133,7 @@
 
     if (self.searchTextField) {
         [ self.searchTextField setBackgroundColor:[UIColor whiteColor]];
-        self.searchTextField.layer.borderColor = [UIColor colorWithRed:230 / 255.0 green:242 / 255.0 blue:235 / 255.0 alpha:1].CGColor;
+        [self.searchTextField pp_setBorderColor:[UIColor colorWithRed:230 / 255.0 green:242 / 255.0 blue:235 / 255.0 alpha:1]];
         self.searchTextField.layer.borderWidth = 0;
         self.searchTextField.layer.masksToBounds = YES;
         self.searchTextField.layer.cornerRadius = self.searchTextField.hx_h/2;

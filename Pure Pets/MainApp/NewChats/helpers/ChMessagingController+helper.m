@@ -110,7 +110,7 @@
     self.chatHeaderView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.chatHeaderView];
 
-    self.chatHeaderView.layer.shadowColor = [UIColor.blackColor  colorWithAlphaComponent:0.5].CGColor;
+    [self.chatHeaderView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.5]];
     self.chatHeaderView.layer.shadowOpacity = 0.02;
     self.chatHeaderView.layer.shadowRadius = 8;
     self.chatHeaderView.layer.shadowOffset = CGSizeMake(0, 3);

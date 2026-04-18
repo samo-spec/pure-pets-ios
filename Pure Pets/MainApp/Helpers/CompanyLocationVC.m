@@ -675,7 +675,7 @@ static CGFloat const kPPChromeHorizontalInset = 16.0;
     panel.translatesAutoresizingMaskIntoConstraints = NO;
     panel.backgroundColor = UIColor.clearColor;
     panel.layer.cornerRadius = cornerRadius;
-    panel.layer.shadowColor = [UIColor blackColor].CGColor;
+    [panel pp_setShadowColor:[UIColor blackColor]];
     panel.layer.shadowOpacity = 0.22;
     panel.layer.shadowOffset = CGSizeMake(0, 18);
     panel.layer.shadowRadius = 28;
@@ -686,7 +686,7 @@ static CGFloat const kPPChromeHorizontalInset = 16.0;
     blurView.clipsToBounds = YES;
     blurView.layer.cornerRadius = cornerRadius;
     blurView.layer.borderWidth = 1.0;
-    blurView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10].CGColor;
+    [blurView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
     [panel addSubview:blurView];
 
     UIView *toneView = [[UIView alloc] init];

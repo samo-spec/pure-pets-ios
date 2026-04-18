@@ -23,7 +23,7 @@ static const CGFloat PPChatStoriesHeaderHiddenHeight = 8.0;
 static const CGFloat PPChatStoriesHeaderVisibleHeight = 156.0;
 static const CGFloat PPChatListContentTopInset = 10.0;
 static const CGFloat PPChatListContentBottomInset = 28.0;
-static const CGFloat PPChatListEstimatedRowHeight = 108.0;
+static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 
 @interface UserChatsViewController ()
 <UITableViewDelegate, UITableViewDataSource, UITableViewDataSourcePrefetching>

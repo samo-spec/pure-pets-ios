@@ -30,7 +30,7 @@
 
 - (void)setBorderColor:(UIColor *)borderColor {
     if (borderColor.CGColor != self.layer.borderColor) {
-        self.layer.borderColor = borderColor.CGColor;
+        [self pp_setBorderColor:borderColor];
     }
 }
 
@@ -484,7 +484,7 @@
 }
 
 - (void)addShadowOverlay {
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self pp_setShadowColor:[UIColor blackColor]];
     self.layer.shadowOffset = CGSizeMake(2.0, 2.0);
     self.layer.shadowOpacity = 0.5;
 }

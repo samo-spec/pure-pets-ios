@@ -362,7 +362,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.titleCard.layer.masksToBounds = NO;
 
     // Soft, modern shadow (Apple-style)
-    self.titleCard.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.titleCard pp_setShadowColor:UIColor.blackColor];
     self.titleCard.layer.shadowOpacity = 0.12;
     self.titleCard.layer.shadowRadius = 22;
     self.titleCard.layer.shadowOffset = CGSizeMake(0, 10);
@@ -733,7 +733,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     card.layer.cornerRadius = kAVCardCornerRadius;
     card.layer.masksToBounds = YES;
     card.layer.borderWidth = kAVSectionBorderWidth;
-    card.layer.borderColor = [AppPrimaryTextClr colorWithAlphaComponent:0.06].CGColor;
+    [card pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.06]];
     if (@available(iOS 13.0, *)) {
         card.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -760,7 +760,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     card.layer.cornerRadius = 26;
     card.layer.masksToBounds = YES;
     card.layer.borderWidth = kAVSectionBorderWidth;
-    card.layer.borderColor = [AppPrimaryTextClr colorWithAlphaComponent:0.00].CGColor;
+    [card pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.00]];
     if (@available(iOS 13.0, *)) {
         card.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -835,7 +835,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     } else {
         button.backgroundColor = emphasized ? AppPrimaryClr : [AppForgroundColr colorWithAlphaComponent:0.9];
         button.layer.borderWidth = emphasized ? 0.0 : 1.0;
-        button.layer.borderColor = [AppPrimaryTextClr colorWithAlphaComponent:0.08].CGColor;
+        [button pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.08]];
         [button setTitleColor:emphasized ? AppForgroundColr : AppPrimaryTextClr forState:UIControlStateNormal];
         [button setTitle:title forState:UIControlStateNormal];
         [button setImage:icon forState:UIControlStateNormal];
@@ -857,7 +857,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     row.layer.cornerRadius = kAVDetailRowCorner;
     row.layer.masksToBounds = YES;
     row.layer.borderWidth = 1.0;
-    row.layer.borderColor = [tintColor colorWithAlphaComponent:0.12].CGColor;
+    [row pp_setBorderColor:[tintColor colorWithAlphaComponent:0.12]];
     if (@available(iOS 13.0, *)) {
         row.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1374,7 +1374,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     titleCard.translatesAutoresizingMaskIntoConstraints = NO;
     titleCard.layer.cornerRadius = 22;
     titleCard.layer.masksToBounds = NO;
-    titleCard.layer.shadowColor   = UIColor.blackColor.CGColor;
+    [titleCard pp_setShadowColor:UIColor.blackColor];
     titleCard.layer.shadowOpacity = 0.12;
     titleCard.layer.shadowRadius  = 22;
     titleCard.layer.shadowOffset  = CGSizeMake(0, 10);
@@ -1691,7 +1691,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.surfaceView.layer.cornerRadius = kAVCardCornerRadius;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = kAVSectionBorderWidth;
-    self.surfaceView.layer.borderColor = [AppPrimaryTextClr colorWithAlphaComponent:0.06].CGColor;
+    [self.surfaceView pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.06]];
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }

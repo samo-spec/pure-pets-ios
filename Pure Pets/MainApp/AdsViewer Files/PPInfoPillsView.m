@@ -132,7 +132,7 @@
 
     pill.backgroundColor = [tint colorWithAlphaComponent:0.14];
     pill.layer.borderWidth = 0.5;
-    pill.layer.borderColor = [tint colorWithAlphaComponent:0.28].CGColor;
+    [pill pp_setBorderColor:[tint colorWithAlphaComponent:0.28]];
     icon.tintColor = tint;
     label.textColor = UIColor.labelColor;
     // --- End color styling ---

@@ -255,7 +255,7 @@ static UIViewController *ppAlertRootViewController = nil;
             _cancelButton.titleLabel.font = [GM MidFontWithSize:17];
             _cancelButton.layer.cornerRadius = 24;
             _cancelButton.layer.borderWidth = 1;
-            _cancelButton.layer.borderColor = _typeColor.CGColor;
+            [_cancelButton pp_setBorderColor:_typeColor];
             [_cancelButton addTarget:self action:@selector(handleCancel) forControlEvents:UIControlEventTouchUpInside];
             [_containerView addSubview:_cancelButton];
             
@@ -364,7 +364,7 @@ static UIViewController *ppAlertRootViewController = nil;
 
     bgButton.translatesAutoresizingMaskIntoConstraints = NO;
  
-    bgButton.layer.shadowColor = AppShadowClr.CGColor;
+    [bgButton pp_setShadowColor:AppShadowClr];
     bgButton.layer.shadowOpacity = 0.15;
     bgButton.layer.shadowRadius = 8;
     bgButton.layer.shadowOffset = CGSizeMake(0, 2);

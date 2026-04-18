@@ -146,7 +146,7 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
 - (void)setupCollectionView {
     self.collectionShadowContainer = [[UIView alloc] initWithFrame:CGRectZero];
     self.collectionShadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collectionShadowContainer.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.collectionShadowContainer pp_setShadowColor:UIColor.blackColor];
     self.collectionShadowContainer.layer.shadowOpacity = 0.18;
     self.collectionShadowContainer.layer.shadowRadius = 10;
     self.collectionShadowContainer.layer.shadowOffset = CGSizeMake(0, 6);
@@ -215,7 +215,7 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
     }
 
     // Subtle elevation
-    self.pageControlGlassButton.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.pageControlGlassButton pp_setShadowColor:UIColor.blackColor];
     self.pageControlGlassButton.layer.shadowOpacity = 0.18;
     self.pageControlGlassButton.layer.shadowRadius = 6;
     self.pageControlGlassButton.layer.shadowOffset = CGSizeMake(0, 3);

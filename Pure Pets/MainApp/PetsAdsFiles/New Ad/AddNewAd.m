@@ -804,7 +804,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
     topGlow.backgroundColor = [[UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:1.0] colorWithAlphaComponent:0.12];
-    topGlow.layer.shadowColor = [UIColor colorWithRed:0.97 green:0.80 blue:0.64 alpha:1.0].CGColor;
+    [topGlow pp_setShadowColor:[UIColor colorWithRed:0.97 green:0.80 blue:0.64 alpha:1.0]];
     topGlow.layer.shadowOpacity = 0.10;
     topGlow.layer.shadowRadius = 62.0;
     topGlow.layer.shadowOffset = CGSizeZero;
@@ -813,7 +813,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
     bottomGlow.backgroundColor = [[UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:1.0] colorWithAlphaComponent:0.06];
-    bottomGlow.layer.shadowColor = [UIColor colorWithRed:0.73 green:0.31 blue:0.32 alpha:1.0].CGColor;
+    [bottomGlow pp_setShadowColor:[UIColor colorWithRed:0.73 green:0.31 blue:0.32 alpha:1.0]];
     bottomGlow.layer.shadowOpacity = 0.08;
     bottomGlow.layer.shadowRadius = 72.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
@@ -852,8 +852,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     cardView.layer.cornerRadius = 34.0;
     cardView.layer.cornerCurve = kCACornerCurveContinuous;
     cardView.layer.borderWidth = 1.0;
-    cardView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.68].CGColor;
-    cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cardView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.68]];
+    [cardView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cardView.layer.shadowOpacity = 0.08;
     cardView.layer.shadowRadius = 24.0;
     cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
@@ -872,7 +872,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     ambientGlow.backgroundColor = [accentColor colorWithAlphaComponent:0.16];
     ambientGlow.userInteractionEnabled = NO;
     ambientGlow.layer.cornerRadius = 94.0;
-    ambientGlow.layer.shadowColor = [accentColor colorWithAlphaComponent:0.48].CGColor;
+    [ambientGlow pp_setShadowColor:[accentColor colorWithAlphaComponent:0.48]];
     ambientGlow.layer.shadowOpacity = 0.16;
     ambientGlow.layer.shadowRadius = 42.0;
     ambientGlow.layer.shadowOffset = CGSizeZero;
@@ -883,7 +883,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.38];
     secondaryGlow.userInteractionEnabled = NO;
     secondaryGlow.layer.cornerRadius = 58.0;
-    secondaryGlow.layer.shadowColor = [[UIColor whiteColor] colorWithAlphaComponent:0.44].CGColor;
+    [secondaryGlow pp_setShadowColor:[[UIColor whiteColor] colorWithAlphaComponent:0.44]];
     secondaryGlow.layer.shadowOpacity = 0.18;
     secondaryGlow.layer.shadowRadius = 24.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
@@ -901,8 +901,8 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     iconBadge.layer.cornerRadius = 31.0;
     iconBadge.layer.cornerCurve = kCACornerCurveContinuous;
     iconBadge.layer.borderWidth = 1.0;
-    iconBadge.layer.borderColor = [accentColor colorWithAlphaComponent:0.18].CGColor;
-    iconBadge.layer.shadowColor = [accentColor colorWithAlphaComponent:0.30].CGColor;
+    [iconBadge pp_setBorderColor:[accentColor colorWithAlphaComponent:0.18]];
+    [iconBadge pp_setShadowColor:[accentColor colorWithAlphaComponent:0.30]];
     iconBadge.layer.shadowOpacity = 0.16;
     iconBadge.layer.shadowRadius = 18.0;
     iconBadge.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -920,7 +920,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.cornerCurve = kCACornerCurveContinuous;
     eyebrowPill.layer.borderWidth = 1.0;
-    eyebrowPill.layer.borderColor = [accentColor colorWithAlphaComponent:0.10].CGColor;
+    [eyebrowPill pp_setBorderColor:[accentColor colorWithAlphaComponent:0.10]];
     eyebrowPill.layer.masksToBounds = YES;
     [cardView addSubview:eyebrowPill];
 
@@ -957,7 +957,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.cornerCurve = kCACornerCurveContinuous;
     metaLabel.layer.borderWidth = 1.0;
-    metaLabel.layer.borderColor = [accentColor colorWithAlphaComponent:0.10].CGColor;
+    [metaLabel pp_setBorderColor:[accentColor colorWithAlphaComponent:0.10]];
     metaLabel.layer.masksToBounds = YES;
     [cardView addSubview:metaLabel];
 
@@ -2357,8 +2357,8 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     cell.contentView.layer.cornerRadius = 20.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth = 1.0;
-    cell.contentView.layer.borderColor = [self pp_adSurfaceBorderColor].CGColor;
-    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cell.contentView pp_setBorderColor:[self pp_adSurfaceBorderColor]];
+    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cell.layer.shadowOpacity = 0.05;
     cell.layer.shadowRadius = 12.0;
     cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -3439,8 +3439,8 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     CGFloat cornerRadius = height / 2.0;
     container.layer.cornerRadius = cornerRadius;
     container.layer.borderWidth = 1.0;
-    container.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.52].CGColor;
-    container.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [container pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.52]];
+    [container pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     container.layer.shadowOffset = CGSizeMake(0, 6);
     container.layer.shadowOpacity = 0.06;
     container.layer.shadowRadius = 14.0;

@@ -100,7 +100,7 @@ typedef NS_ENUM(NSUInteger, PPAddressPickerState) {
         return [[UIColor whiteColor] colorWithAlphaComponent:0.88];
     }];
     // Soft glass-like shadow on the container layer
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self pp_setShadowColor:[UIColor blackColor]];
     self.layer.shadowOpacity = 0.09;
     self.layer.shadowRadius = 14.0;
     self.layer.shadowOffset = CGSizeMake(0, 6);

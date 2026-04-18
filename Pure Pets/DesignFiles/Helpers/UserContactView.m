@@ -56,10 +56,10 @@
 
     // Subtle border (liquid glass look)
     blurView.layer.borderWidth = 0.3;
-    blurView.layer.borderColor = UIColor.separatorColor.CGColor;
+    [blurView pp_setBorderColor:UIColor.separatorColor];
 
     // ---- Shadow ----
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self pp_setShadowColor:UIColor.blackColor];
     self.layer.shadowOpacity = 0.04;
     self.layer.shadowRadius = 4;
     self.layer.shadowOffset = CGSizeMake(0, 10);
@@ -236,7 +236,7 @@
         self.clipsToBounds = NO;
 
         // --- Shadow for the whole card ---
-        self.layer.shadowColor   = [UIColor blackColor].CGColor;
+        [self pp_setShadowColor:[UIColor blackColor]];
         self.layer.shadowOpacity = 0.16;
         self.layer.shadowOffset  = CGSizeMake(0, 4);
         self.layer.shadowRadius  = 8;

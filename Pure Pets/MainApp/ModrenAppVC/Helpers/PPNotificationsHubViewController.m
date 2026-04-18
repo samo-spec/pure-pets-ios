@@ -108,8 +108,8 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     _surfaceView.layer.cornerRadius = 28.0;
     _surfaceView.layer.masksToBounds = NO;
     _surfaceView.layer.borderWidth = 1.0;
-    _surfaceView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.16].CGColor;
-    _surfaceView.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.20].CGColor;
+    [_surfaceView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+    [_surfaceView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.20]];
     _surfaceView.layer.shadowOpacity = 0.12;
     _surfaceView.layer.shadowRadius = 14.0;
     _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -326,7 +326,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     _cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.0 : 0.96];
     _cardView.layer.cornerRadius = 24.0;
     _cardView.layer.masksToBounds = NO;
-    _cardView.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.16].CGColor;
+    [_cardView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.16]];
     _cardView.layer.shadowOpacity = 0.10;
     _cardView.layer.shadowRadius = 14.0;
     _cardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -813,10 +813,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.actionButton.layer.borderWidth = 1.0;
     if(!PPIOS26())
     {
-        self.actionButton.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14].CGColor;
+        [self.actionButton pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
     }
     
-    self.actionButton.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.18].CGColor;
+    [self.actionButton pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.18]];
     self.actionButton.layer.shadowOpacity = 0.10;
     self.actionButton.layer.shadowRadius = 10.0;
     self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);

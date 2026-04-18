@@ -139,8 +139,8 @@
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.layer.cornerRadius = 30.0;
     cardView.layer.borderWidth = 0.7;
-    cardView.layer.borderColor = [PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08].CGColor;
-    cardView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08]];
+    [cardView pp_setShadowColor:UIColor.blackColor];
     cardView.layer.shadowOpacity = 0.10f;
     cardView.layer.shadowRadius = 24.0f;
     cardView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
@@ -176,8 +176,8 @@
     avatarShellView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
     avatarShellView.layer.cornerRadius = 41.0;
     avatarShellView.layer.borderWidth = 1.0;
-    avatarShellView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
-    avatarShellView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [avatarShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.24]];
+    [avatarShellView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     avatarShellView.layer.shadowOpacity = 0.10f;
     avatarShellView.layer.shadowRadius = 20.0f;
     avatarShellView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -193,7 +193,7 @@
     avatarImageView.clipsToBounds = YES;
     avatarImageView.layer.cornerRadius = 34.0;
     avatarImageView.layer.borderWidth = 1.5;
-    avatarImageView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.35].CGColor;
+    [avatarImageView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.35]];
     if (@available(iOS 13.0, *)) {
         avatarImageView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -280,7 +280,7 @@
     ctaView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.26];
     ctaView.layer.cornerRadius = 18.0;
     ctaView.layer.borderWidth = 1.0;
-    ctaView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.24].CGColor;
+    [ctaView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.24]];
     if (@available(iOS 13.0, *)) {
         ctaView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -590,9 +590,9 @@
     _metaSecondaryLabel.textColor = tagText;
     _metaSecondaryLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.14 : 0.46)];
     _ctaView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.16 : 0.26)];
-    _ctaView.layer.borderColor = [UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.12 : 0.24)].CGColor;
+    [_ctaView pp_setBorderColor:[UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.12 : 0.24)]];
     _avatarShellView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.12 : 0.18)];
-    _avatarShellView.layer.borderColor = [UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.10 : 0.24)].CGColor;
+    [_avatarShellView pp_setBorderColor:[UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.10 : 0.24)]];
     _cardView.layer.shadowOpacity = isDark ? 0.0f : 0.10f;
     _ctaImageView.image = [UIImage systemImageNamed:forwardSymbol
                                   withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0
@@ -758,7 +758,7 @@
     self.clipsToBounds = NO;
     _showSmartPillBackground = NO;
 
-    self.layer.shadowColor = [UIColor colorWithWhite:0.02 alpha:1.0].CGColor;
+    [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:1.0]];
     self.layer.shadowOpacity = 0.0f;
     self.layer.shadowRadius = 14.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -1151,7 +1151,7 @@
     if (usesSystemGlassChrome) {
         [self pp_configureSystemGlassChromeIfNeeded];
         _chromeView.layer.borderWidth = 0.0f;
-        _chromeView.layer.borderColor = UIColor.clearColor.CGColor;
+        [_chromeView pp_setBorderColor:UIColor.clearColor];
         _chromeBlurView.alpha = 0.0;
         _chromeTintOverlay.backgroundColor = UIColor.clearColor;
     } else {
@@ -1165,15 +1165,13 @@
         CGFloat tintAlpha = isDark ? 0.28 : 0.14;
         _chromeTintOverlay.backgroundColor = [surfaceColor colorWithAlphaComponent:tintAlpha];
         _chromeView.layer.borderWidth = isDark ? 0.78f : 0.92f;
-        _chromeView.layer.borderColor =
-            [[liquidBorderColor colorWithAlphaComponent:isDark ? 0.30 : 0.58] CGColor];
+        [_chromeView pp_setBorderColor:[liquidBorderColor colorWithAlphaComponent:isDark ? 0.30 : 0.58]];
     }
 
     _leadingChipView.backgroundColor =
         [accentColor colorWithAlphaComponent:isDark ? 0.24 : 0.12];
     _leadingChipView.layer.borderWidth = 1.0f;
-    _leadingChipView.layer.borderColor =
-        [[accentColor colorWithAlphaComponent:isDark ? 0.22 : 0.14] CGColor];
+    [_leadingChipView pp_setBorderColor:[accentColor colorWithAlphaComponent:isDark ? 0.22 : 0.14]];
     _leadingIconView.tintColor = accentColor;
 
     _signalDotView.backgroundColor = AppPrimaryClrShiner ?: accentColor;
@@ -1183,8 +1181,7 @@
     _trailingOrbView.backgroundColor =
         [textColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
     _trailingOrbView.layer.borderWidth = 1.0f;
-    _trailingOrbView.layer.borderColor =
-        [[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06] CGColor];
+    [_trailingOrbView pp_setBorderColor:[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06]];
     _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
     self.layer.shadowOpacity = usesSystemGlassChrome
         ? (isDark ? 0.10f : 0.025f)
@@ -6839,8 +6836,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     button.clipsToBounds = NO;
     button.layer.cornerRadius = kSize * 0.5;
     button.layer.borderWidth = 0.8;
-    button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.12].CGColor;
-    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
+    [button pp_setShadowColor:UIColor.blackColor];
     button.layer.shadowOpacity = 0.06;
     button.layer.shadowRadius = 10.0;
     button.layer.shadowOffset = CGSizeMake(0.0, 4.0);
@@ -7816,13 +7813,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.pp_backgroundPatternView.alpha = isDark ? 0.045 : 0.028;
 
     self.pp_backgroundGlowViewTop.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.22 : 0.12];
-    self.pp_backgroundGlowViewTop.layer.shadowColor = primaryColor.CGColor;
+    [self.pp_backgroundGlowViewTop pp_setShadowColor:primaryColor];
     self.pp_backgroundGlowViewTop.layer.shadowOpacity = isDark ? 0.16f : 0.11f;
     self.pp_backgroundGlowViewTop.layer.shadowRadius = 66.0f;
     self.pp_backgroundGlowViewTop.layer.shadowOffset = CGSizeZero;
 
     self.pp_backgroundGlowViewBottom.backgroundColor = [secondaryGlowColor colorWithAlphaComponent:isDark ? 0.18 : 0.10];
-    self.pp_backgroundGlowViewBottom.layer.shadowColor = secondaryGlowColor.CGColor;
+    [self.pp_backgroundGlowViewBottom pp_setShadowColor:secondaryGlowColor];
     self.pp_backgroundGlowViewBottom.layer.shadowOpacity = isDark ? 0.14f : 0.10f;
     self.pp_backgroundGlowViewBottom.layer.shadowRadius = 58.0f;
     self.pp_backgroundGlowViewBottom.layer.shadowOffset = CGSizeZero;
@@ -8115,7 +8112,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     // Orb A — warm tint derived from primary (30% overall alpha)
     self.pp_midGlowA.alpha = 0.3;
     self.pp_midGlowA.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.14 : 0.07];
-    self.pp_midGlowA.layer.shadowColor = primaryColor.CGColor;
+    [self.pp_midGlowA pp_setShadowColor:primaryColor];
     self.pp_midGlowA.layer.shadowOpacity = isDark ? 0.12f : 0.08f;
     self.pp_midGlowA.layer.shadowRadius = 72.0f;
     self.pp_midGlowA.layer.shadowOffset = CGSizeZero;
@@ -8123,7 +8120,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     // Orb B — cool tint from shiner (30% overall alpha)
     self.pp_midGlowB.alpha = 0.3;
     self.pp_midGlowB.backgroundColor = [shinerColor colorWithAlphaComponent:isDark ? 0.12 : 0.06];
-    self.pp_midGlowB.layer.shadowColor = shinerColor.CGColor;
+    [self.pp_midGlowB pp_setShadowColor:shinerColor];
     self.pp_midGlowB.layer.shadowOpacity = isDark ? 0.10f : 0.07f;
     self.pp_midGlowB.layer.shadowRadius = 62.0f;
     self.pp_midGlowB.layer.shadowOffset = CGSizeZero;
@@ -8132,7 +8129,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.pp_midGlowC.alpha = 0.3;
     UIColor *blendColor = [UIColor colorWithRed:0.42 green:0.36 blue:0.88 alpha:1.0]; // soft violet
     self.pp_midGlowC.backgroundColor = [blendColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
-    self.pp_midGlowC.layer.shadowColor = blendColor.CGColor;
+    [self.pp_midGlowC pp_setShadowColor:blendColor];
     self.pp_midGlowC.layer.shadowOpacity = isDark ? 0.09f : 0.06f;
     self.pp_midGlowC.layer.shadowRadius = 54.0f;
     self.pp_midGlowC.layer.shadowOffset = CGSizeZero;

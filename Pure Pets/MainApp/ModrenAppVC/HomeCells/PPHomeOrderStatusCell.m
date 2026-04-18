@@ -157,7 +157,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.shadowView = [[UIView alloc] init];
     self.shadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.shadowView.backgroundColor = UIColor.clearColor;
-    self.shadowView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.shadowView pp_setShadowColor:UIColor.blackColor];
     self.shadowView.layer.shadowOpacity = 0.08;
     self.shadowView.layer.shadowRadius = 18.0;
     self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -172,7 +172,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.surfaceView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.98)];
     self.surfaceView.layer.cornerRadius = PPNewCorner;
     self.surfaceView.layer.borderWidth = 1.0;
-    self.surfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.16)].CGColor;
+    [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.16)]];
     self.surfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -775,10 +775,10 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     if (hasPreviewImages) {
         self.collapsedIconBadgeView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.18 : 0.94)];
         self.collapsedIconBadgeView.layer.borderWidth = 1.0;
-        self.collapsedIconBadgeView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.64].CGColor;
+        [self.collapsedIconBadgeView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.64]];
     } else {
         self.collapsedIconBadgeView.layer.borderWidth = 0.0;
-        self.collapsedIconBadgeView.layer.borderColor = UIColor.clearColor.CGColor;
+        [self.collapsedIconBadgeView pp_setBorderColor:UIColor.clearColor];
     }
 
     [self setNeedsLayout];
@@ -1018,7 +1018,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     button.backgroundColor = isPrimary ? resolved : PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.14);
     button.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
     button.layer.borderWidth = isPrimary ? 0.0 : 1.0;
-    button.layer.borderColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.18).CGColor;
+    [button pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.18)];
 }
 
 - (void)pp_applyStatusColor:(UIColor *)statusColor
@@ -1030,18 +1030,18 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
     self.chipView.backgroundColor = chipBackground;
     self.chipView.layer.borderWidth = 0.8;
-    self.chipView.layer.borderColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20).CGColor;
+    [self.chipView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20)];
     self.chipLabel.textColor = resolved;
     self.chipIconView.tintColor = resolved;
     self.progressFillView.backgroundColor = resolved;
-    self.surfaceView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.22 : 0.16) CGColor];
+    [self.surfaceView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.22 : 0.16)];
     self.actionRailView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
-    self.actionRailView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20) CGColor];
+    [self.actionRailView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20)];
     self.collapsedIconBadgeView.backgroundColor = chipBackground;
     self.collapsedIconView.tintColor = resolved;
     self.collapsedStatusPillView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.18 : 0.14);
     self.collapsedStatusPillLabel.textColor = resolved;
-    self.collapsedChevronContainerView.layer.borderColor = [PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.14) CGColor];
+    [self.collapsedChevronContainerView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.14)];
     self.collapsedChevronTintView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.10);
     self.collapsedChevronView.tintColor = resolved;
 

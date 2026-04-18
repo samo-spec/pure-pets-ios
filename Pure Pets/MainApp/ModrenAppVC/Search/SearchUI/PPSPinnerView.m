@@ -70,7 +70,7 @@
     self.blurView.layer.cornerRadius = PPCornerHero;
     self.blurView.clipsToBounds = YES;
     self.blurView.layer.borderWidth = 0.5;
-    self.blurView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [self.blurView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
 
     self.containerView = self.blurView.contentView;
 

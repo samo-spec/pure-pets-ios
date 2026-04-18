@@ -238,7 +238,7 @@
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 8;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);
@@ -316,7 +316,7 @@
     [self bringSubviewToFront:_categoriesContainer];
     
     // Add subtle shadow for better visibility
-    _categoriesContainer.layer.shadowColor = [UIColor blackColor].CGColor;
+    [_categoriesContainer pp_setShadowColor:[UIColor blackColor]];
     _categoriesContainer.layer.shadowOffset = CGSizeMake(0, 2);
     _categoriesContainer.layer.shadowRadius = 4;
     _categoriesContainer.layer.shadowOpacity = 0.1;
@@ -915,7 +915,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths {
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 8;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);

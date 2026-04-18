@@ -545,7 +545,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         arabicBtn.backgroundColor = inactiveBg;
         [arabicBtn setTitleColor:inactiveFg forState:UIControlStateNormal];
         arabicBtn.layer.borderWidth = 1.0;
-        arabicBtn.layer.borderColor = inactiveBorder.CGColor;
+        [arabicBtn pp_setBorderColor:inactiveBorder];
     }
     [arabicBtn addTarget:self action:@selector(pp_languageButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
 
@@ -565,7 +565,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         englishBtn.backgroundColor = inactiveBg;
         [englishBtn setTitleColor:inactiveFg forState:UIControlStateNormal];
         englishBtn.layer.borderWidth = 1.0;
-        englishBtn.layer.borderColor = inactiveBorder.CGColor;
+        [englishBtn pp_setBorderColor:inactiveBorder];
     }
     [englishBtn addTarget:self action:@selector(pp_languageButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
 
@@ -812,7 +812,7 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
         } else {
             btn.backgroundColor = inactiveBg;
             btn.layer.borderWidth = 1.0;
-            btn.layer.borderColor = inactiveBorder.CGColor;
+            [btn pp_setBorderColor:inactiveBorder];
         }
 
         [btn addTarget:self action:@selector(pp_themeButtonTapped:) forControlEvents:UIControlEventTouchUpInside];

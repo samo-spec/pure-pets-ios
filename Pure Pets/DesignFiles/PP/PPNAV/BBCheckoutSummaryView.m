@@ -248,7 +248,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
 
     self.checkoutBTN.layer.cornerRadius = PPCheckoutButtonCornerRadius();
     self.checkoutBTN.layer.masksToBounds = NO;
-    self.checkoutBTN.layer.shadowColor = (AppPrimaryClr ?: UIColor.blackColor).CGColor;
+    [self.checkoutBTN pp_setShadowColor:(AppPrimaryClr ?: UIColor.blackColor)];
     self.checkoutBTN.layer.shadowOpacity = 0.18f;
     self.checkoutBTN.layer.shadowRadius = 16.0f;
     self.checkoutBTN.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -300,7 +300,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     row.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.035];
     row.layer.cornerRadius = 18.0;
     row.layer.borderWidth = 1.0;
-    row.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+    [row pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.06]];
     if (@available(iOS 13.0, *)) {
         row.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -359,8 +359,8 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     self.cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92];
     self.cardView.layer.masksToBounds = NO;
     self.cardView.layer.borderWidth = 1.0;
-    self.cardView.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.08].CGColor;
-    self.cardView.layer.shadowColor = (AppShadowClr ?: UIColor.blackColor).CGColor;
+    [self.cardView pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.08]];
+    [self.cardView pp_setShadowColor:(AppShadowClr ?: UIColor.blackColor)];
     self.cardView.layer.shadowOpacity = 0.14f;
     self.cardView.layer.shadowRadius = 24.0f;
     self.cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
@@ -531,7 +531,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
     self.trustBannerView.layer.cornerRadius =16.0;
     self.trustBannerView.layer.masksToBounds = YES;
     self.trustBannerView.layer.borderWidth = 1.0;
-    self.trustBannerView.layer.borderColor = [[UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.12] CGColor];
+    [self.trustBannerView pp_setBorderColor:[UIColor colorWithRed:1.00 green:0.84 blue:0.00 alpha:0.12]];
     [self.trustBannerView setBackgroundColor:[UIColor hx_colorWithHexStr:@"#FABB00" alpha:0.05]];
     if (@available(iOS 13.0, *)) {
         self.trustBannerView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -920,7 +920,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
         cell.contentView.backgroundColor = [UIColor.labelColor colorWithAlphaComponent:0.035];
         cell.contentView.layer.cornerRadius = 20.0;
         cell.contentView.layer.borderWidth = 1.0;
-        cell.contentView.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+        [cell.contentView pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.06]];
         cell.contentView.layer.masksToBounds = YES;
         if (@available(iOS 13.0, *)) {
             cell.contentView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -945,7 +945,7 @@ static CGFloat PPCheckoutButtonCornerRadius(void) {
         removeBtn.layer.cornerRadius = 11.0;
         removeBtn.clipsToBounds = YES;
         removeBtn.layer.borderWidth = 1.0;
-        removeBtn.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
+        [removeBtn pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.06]];
         if (@available(iOS 13.0, *)) {
             removeBtn.layer.cornerCurve = kCACornerCurveContinuous;
         }

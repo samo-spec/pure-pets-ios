@@ -15,7 +15,7 @@
     view.layer.masksToBounds = NO;
     
     // Shadow
-    view.layer.shadowColor = GM.AppShadowColor.CGColor;
+    [view pp_setShadowColor:GM.AppShadowColor];
     view.layer.shadowOpacity = 0.15;
     view.layer.shadowOffset = CGSizeMake(0, 4);
     view.layer.shadowRadius = 8;

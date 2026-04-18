@@ -62,7 +62,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         _imageView.clipsToBounds = YES;
         _imageView.layer.cornerRadius = PPStoryAvatarSize * 0.5;
         _imageView.layer.borderWidth = 2.4;
-        _imageView.layer.borderColor = UIColor.systemBackgroundColor.CGColor;
+        [_imageView pp_setBorderColor:UIColor.systemBackgroundColor];
         [self.ringHostView addSubview:_imageView];
 
         // Name label
@@ -121,8 +121,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         _addBadgeButton.backgroundColor = [self pp_appPrimaryColor];
         _addBadgeButton.layer.cornerRadius = 13.0;
         _addBadgeButton.layer.borderWidth = 2.6;
-        _addBadgeButton.layer.borderColor = UIColor.systemBackgroundColor.CGColor;
-        _addBadgeButton.layer.shadowColor = [self pp_appPrimaryColor].CGColor;
+        [_addBadgeButton pp_setBorderColor:UIColor.systemBackgroundColor];
+        [_addBadgeButton pp_setShadowColor:[self pp_appPrimaryColor]];
         _addBadgeButton.layer.shadowOpacity = 0.35;
         _addBadgeButton.layer.shadowOffset = CGSizeMake(0, 2.0);
         _addBadgeButton.layer.shadowRadius = 4.0;
@@ -283,7 +283,7 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
         self.ringGradientLayer.hidden = NO;
 
         // Soft colored glow
-        self.glowView.layer.shadowColor = hotPink.CGColor;
+        [self.glowView pp_setShadowColor:hotPink];
         self.glowView.layer.shadowOpacity = 0.35;
         self.glowView.layer.shadowRadius = PPStoryGlowRadius;
         self.glowView.layer.shadowOffset = CGSizeZero;

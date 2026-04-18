@@ -135,7 +135,7 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     avatar.clipsToBounds = YES;
     avatar.layer.cornerRadius = 16.0;
     avatar.layer.borderWidth = 1.5;
-    avatar.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.85].CGColor;
+    [avatar pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.85]];
     avatar.image = [UIImage systemImageNamed:@"person.crop.circle.fill"];
     avatar.tintColor = [UIColor colorWithWhite:1.0 alpha:0.7];
     [self.view addSubview:avatar];

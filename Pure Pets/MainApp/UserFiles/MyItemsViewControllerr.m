@@ -124,7 +124,7 @@ static const CGFloat kMyItemsCellHeight = 280.0;
     shadowView.backgroundColor     = UIColor.clearColor;
     shadowView.semanticContentAttribute = sem;
     shadowView.layer.cornerRadius  = PPCornerHero;
-    shadowView.layer.shadowColor   = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [shadowView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     shadowView.layer.shadowOpacity = 0.16f;
     shadowView.layer.shadowRadius  = 26.0f;
     shadowView.layer.shadowOffset  = CGSizeMake(0.0, 14.0);
@@ -140,7 +140,7 @@ static const CGFloat kMyItemsCellHeight = 280.0;
     card.layer.cornerRadius  = PPCornerHero;
     card.layer.masksToBounds = YES;
     card.layer.borderWidth   = 1.0;
-    card.layer.borderColor   = [UIColor colorWithWhite:1.0 alpha:0.08].CGColor;
+    [card pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
     if (@available(iOS 13.0, *)) {
         card.layer.cornerCurve = kCACornerCurveContinuous;
     }

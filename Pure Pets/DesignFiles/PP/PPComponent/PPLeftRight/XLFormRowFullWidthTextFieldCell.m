@@ -388,12 +388,12 @@ NSString * const XLFormRowDescriptorTypeFullWidthTextField = @"XLFormRowFullWidt
 {
     [super layoutSubviews];
     self.button.layer.shadowOpacity = 0;
-    self.button.layer.shadowColor = nil;
+    [self.button pp_setShadowColor:nil];
     self.button.layer.shadowOffset = CGSizeZero;
     self.button.layer.shadowRadius = 0;
     
     self.contentView.layer.shadowOpacity = 0;
-    self.contentView.layer.shadowColor = nil;
+    [self.contentView pp_setShadowColor:nil];
     self.contentView.layer.shadowOffset = CGSizeZero;
     self.contentView.layer.shadowRadius = 0;
     
@@ -581,12 +581,12 @@ NSString * const XLFormRowButtonKey = @"XLFormRowButton";
 {
     [super layoutSubviews];
     self.button.layer.shadowOpacity = 0;
-    self.button.layer.shadowColor = nil;
+    [self.button pp_setShadowColor:nil];
     self.button.layer.shadowOffset = CGSizeZero;
     self.button.layer.shadowRadius = 0;
     self.button.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentView.layer.shadowOpacity = 0;
-    self.contentView.layer.shadowColor = nil;
+    [self.contentView pp_setShadowColor:nil];
     self.contentView.layer.shadowOffset = CGSizeZero;
     self.contentView.layer.shadowRadius = 0;
     
@@ -633,7 +633,7 @@ NSString * const XLFormRowButtonKey = @"XLFormRowButton";
 
         
         self.button.layer.shadowOpacity = 0.0;
-        self.button.layer.shadowColor = AppClearClr.CGColor;
+        [self.button pp_setShadowColor:AppClearClr];
         self.button.layer.shadowOffset = CGSizeMake(0, 0);
         self.button.layer.masksToBounds =YES;
         self.button.clipsToBounds = YES;
@@ -647,7 +647,7 @@ NSString * const XLFormRowButtonKey = @"XLFormRowButton";
         self.contentView.layer.masksToBounds = NO;
         self.contentView.clipsToBounds = NO;
         self.contentView.layer.shadowOpacity = 0;
-        self.contentView.layer.shadowColor = nil;
+        [self.contentView pp_setShadowColor:nil];
         self.contentView.layer.shadowOffset = CGSizeZero;
         self.contentView.layer.shadowRadius = 0;
         

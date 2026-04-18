@@ -20,7 +20,7 @@
     // Thin system-background ring so the badge pops against any avatar
     badge.layer.cornerRadius = size / 2.0;
     badge.layer.borderWidth = 1.5;
-    badge.layer.borderColor = UIColor.systemBackgroundColor.CGColor;
+    [badge pp_setBorderColor:UIColor.systemBackgroundColor];
     badge.clipsToBounds = YES;
     badge.backgroundColor = UIColor.systemBackgroundColor;
 

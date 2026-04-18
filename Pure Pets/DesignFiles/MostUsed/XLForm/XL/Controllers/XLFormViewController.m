@@ -1248,7 +1248,7 @@
 - (void)setCornerRadius:(CGFloat)radius withShadow:(BOOL)shadow withOpacity:(CGFloat)opacity view:(UIView *)view {
     view.layer.cornerRadius = radius;
     if (shadow) {
-        view.layer.shadowColor = AppShadowClr.CGColor;
+        [view pp_setShadowColor:AppShadowClr];
         view.layer.shadowOpacity = opacity;
         view.layer.shadowOffset = CGSizeMake(-1, 1);
         view.layer.shadowRadius = 1;
@@ -1329,7 +1329,7 @@
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
     
     // Add text shadow
-    self.tableView.layer.shadowColor = UIColor.whiteColor.CGColor; // shadow color
+    [self.tableView pp_setShadowColor:UIColor.whiteColor]; // shadow color
     self.tableView.layer.shadowOffset = CGSizeMake(0.0, 1.0);       // small vertical offset
     self.tableView.layer.shadowOpacity = 0.6;                       // transparency
     self.tableView.layer.shadowRadius = 1.0;                        // blur radius

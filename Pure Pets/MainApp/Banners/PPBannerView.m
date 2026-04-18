@@ -484,7 +484,7 @@
 // Apply (or clear) drop shadow on the outer view (not clipped)
 - (void)applyShadowIfNeeded {
     if (_showsShadow) {
-        self.layer.shadowColor = [UIColor blackColor].CGColor;
+        [self pp_setShadowColor:[UIColor blackColor]];
         self.layer.shadowOpacity = 0.15;
         self.layer.shadowRadius = 10;
 
@@ -1212,7 +1212,7 @@
  // Apply (or clear) drop shadow on the outer view (not clipped)
  - (void)applyShadowIfNeeded {
      if (_showsShadow) {
-         self.layer.shadowColor = [UIColor blackColor].CGColor;
+         [self pp_setShadowColor:[UIColor blackColor]];
          self.layer.shadowOpacity = 0.15;
          self.layer.shadowRadius = 10;
 

@@ -348,7 +348,7 @@ static CGSize CGSizeScale(CGSize size, CGFloat scale) {
     // -------------------
     // Shadow (modern subtle)
     // -------------------
-    self.infoBTN.layer.shadowColor = AppShadowClr.CGColor;
+    [self.infoBTN pp_setShadowColor:AppShadowClr];
     self.infoBTN.layer.shadowOpacity = 0.10;
     self.infoBTN.layer.shadowOffset = CGSizeMake(0, 3);
     self.infoBTN.layer.shadowRadius = 8;

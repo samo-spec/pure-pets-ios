@@ -35,7 +35,7 @@
         _cardView.backgroundColor = GM.AppForegroundColor; // your foreground color
         _cardView.layer.cornerRadius = 16.0;
         _cardView.layer.masksToBounds = NO; // must be NO for shadow to appear
-        _cardView.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.25].CGColor;
+        [_cardView pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.25]];
         _cardView.layer.shadowOpacity = 0.18;
         _cardView.layer.shadowOffset = CGSizeMake(0, 4);
         _cardView.layer.shadowRadius = 10;
@@ -61,7 +61,7 @@
         _badgeLabel.textColor = GM.appPrimaryColor;
         _badgeLabel.textAlignment = NSTextAlignmentCenter;
         _badgeLabel.layer.borderWidth = 1.0;
-        _badgeLabel.layer.borderColor = GM.AppForegroundColor.CGColor;
+        [_badgeLabel pp_setBorderColor:GM.AppForegroundColor];
         // Make it hug content and expand as needed
         //[_badgeLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
         //[_badgeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];

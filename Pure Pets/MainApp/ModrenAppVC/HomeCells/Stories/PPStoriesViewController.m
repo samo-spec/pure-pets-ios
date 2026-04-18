@@ -52,8 +52,8 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     _glassBackdrop.layer.cornerRadius = 24.0;
     _glassBackdrop.layer.masksToBounds = YES;
     _glassBackdrop.layer.borderWidth = 1.0;
-    _glassBackdrop.layer.borderColor = [AppForgroundColr colorWithAlphaComponent:0.18].CGColor;
-    _glassBackdrop.layer.shadowColor = [AppForgroundColr colorWithAlphaComponent:0.10].CGColor;
+    [_glassBackdrop pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.18]];
+    [_glassBackdrop pp_setShadowColor:[AppForgroundColr colorWithAlphaComponent:0.10]];
     _glassBackdrop.clipsToBounds = NO;
     [self.view addSubview:_glassBackdrop];
 

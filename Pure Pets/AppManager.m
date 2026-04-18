@@ -1321,7 +1321,7 @@ int startListen = 0;
 - (void)setCornerRadius:(CGFloat)radius withOpacity:(CGFloat)opacity shadowOffset:(CGFloat)offset shadowRadius:(CGFloat)sharowRadis onView:(UIView *)view color:(UIColor *)color {
     view.layer.cornerRadius = radius;
     
-    view.layer.shadowColor = color.CGColor;
+    [view pp_setShadowColor:color];
     view.layer.shadowOpacity = opacity;
     view.layer.shadowOffset = CGSizeMake(-(offset), offset);
     view.layer.shadowRadius = sharowRadis;

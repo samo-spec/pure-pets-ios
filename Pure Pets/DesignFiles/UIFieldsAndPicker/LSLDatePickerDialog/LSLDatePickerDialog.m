@@ -189,12 +189,12 @@ static NSInteger const kDatePickerDialogDoneButtonTag = 1;
     [dialogContainer.layer insertSublayer:gradient above:0];
     
     dialogContainer.layer.cornerRadius = cornerRadius;
-    dialogContainer.layer.borderColor = [UIColor colorWithRed: 198.0/255.0 green: 198.0/255.0 blue: 198.0/255.0 alpha: 1.0].CGColor;
+    [dialogContainer pp_setBorderColor:[UIColor colorWithRed: 198.0/255.0 green: 198.0/255.0 blue: 198.0/255.0 alpha: 1.0]];
     dialogContainer.layer.borderWidth = 1;
     dialogContainer.layer.shadowRadius = cornerRadius + 5.0;
     dialogContainer.layer.shadowOpacity = 0.1;
     dialogContainer.layer.shadowOffset = CGSizeMake(0 - (cornerRadius + 5.0) / 2.0, 0 - (cornerRadius + 5.0) / 2.0);
-    dialogContainer.layer.shadowColor = [UIColor blackColor].CGColor;
+    [dialogContainer pp_setShadowColor:[UIColor blackColor]];
     dialogContainer.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:dialogContainer.bounds cornerRadius:dialogContainer.layer.cornerRadius].CGPath;
     
     // There is a line above the button

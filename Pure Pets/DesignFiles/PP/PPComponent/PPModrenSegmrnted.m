@@ -326,7 +326,7 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     containerFillView.backgroundColor = _containerBackgroundColor;
     containerFillView.userInteractionEnabled = NO;
     containerFillView.layer.borderWidth = 1.0;
-    containerFillView.layer.borderColor = PPModrenSegmrntedTrackStrokeColor().CGColor;
+    [containerFillView pp_setBorderColor:PPModrenSegmrntedTrackStrokeColor()];
     containerFillView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         containerFillView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -352,8 +352,8 @@ static inline UIColor *PPModrenSegmrntedIndicatorShadowColor(void)
     selectionIndicatorView.backgroundColor = _selectedSegmentColor;
     selectionIndicatorView.alpha = 0.0;
     selectionIndicatorView.layer.borderWidth = 0.5;
-    selectionIndicatorView.layer.borderColor = PPModrenSegmrntedIndicatorBorderColor().CGColor;
-    selectionIndicatorView.layer.shadowColor = PPModrenSegmrntedIndicatorShadowColor().CGColor;
+    [selectionIndicatorView pp_setBorderColor:PPModrenSegmrntedIndicatorBorderColor()];
+    [selectionIndicatorView pp_setShadowColor:PPModrenSegmrntedIndicatorShadowColor()];
     selectionIndicatorView.layer.shadowOpacity = 0.18;
     selectionIndicatorView.layer.shadowRadius = 10.0;
     selectionIndicatorView.layer.shadowOffset = CGSizeMake(0.0, 4.0);

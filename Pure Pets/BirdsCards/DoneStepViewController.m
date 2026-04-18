@@ -145,7 +145,7 @@ static const CGFloat kPhotoViewMargin = 12.0;
     
     _topLabel.text = kLang(@"saveDone");
     
-    self.EndBTN.layer.shadowColor = [[UIColor lightGrayColor] CGColor];
+    [self.EndBTN pp_setShadowColor:[UIColor lightGrayColor]];
     self.EndBTN.layer.masksToBounds = NO;
     self.EndBTN.layer.cornerRadius =CGRectGetHeight( self.EndBTN.frame)/2;
     self.EndBTN.alpha = 0;
@@ -215,7 +215,7 @@ static const CGFloat kPhotoViewMargin = 12.0;
 {
     vName.clipsToBounds = NO;
     vName.layer.masksToBounds = NO;
-    vName.layer.shadowColor = [UIColor lightGrayColor].CGColor;;
+    [vName pp_setShadowColor:[UIColor lightGrayColor]];
     vName.layer.shadowRadius = 1;
     vName.layer.shadowOpacity = 1;
     vName.layer.shadowOffset = CGSizeMake(0.0,0);

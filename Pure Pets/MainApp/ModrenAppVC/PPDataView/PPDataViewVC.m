@@ -116,7 +116,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     self.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 
     // Active state: brand-glow shadow
-    self.layer.shadowColor  = [brand colorWithAlphaComponent:0.50].CGColor;
+    [self pp_setShadowColor:[brand colorWithAlphaComponent:0.50]];
     self.layer.shadowOpacity = active ? 0.22 : 0.0;
     self.layer.shadowRadius  = active ? 8.0  : 0.0;
     self.layer.shadowOffset  = active ? CGSizeMake(0, 3) : CGSizeZero;
@@ -2546,7 +2546,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     sectionsControl.selectedFont = [GM boldFontWithSize:13];
     sectionsControl.layer.cornerRadius = 17.0;
     sectionsControl.layer.borderWidth = 0.0;
-    sectionsControl.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.20].CGColor;
+    [sectionsControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.20]];
     if (@available(iOS 13.0, *)) {
         sectionsControl.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -2558,7 +2558,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.sectionsSegmentedControl = sectionsControl;
     
     if (!PPIOS26()) {
-        sectionsControl.layer.shadowColor = UIColor.blackColor.CGColor;
+        [sectionsControl pp_setShadowColor:UIColor.blackColor];
         sectionsControl.layer.shadowOpacity = 0.1;
         sectionsControl.layer.shadowRadius = 4;
         sectionsControl.layer.shadowOffset = CGSizeMake(0, 2);

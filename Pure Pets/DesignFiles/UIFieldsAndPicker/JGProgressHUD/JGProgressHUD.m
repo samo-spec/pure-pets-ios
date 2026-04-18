@@ -942,7 +942,7 @@ static inline UIViewAnimationOptions UIViewAnimationOptionsFromUIViewAnimationCu
     [self updateShadowViewMask];
     
     if (_shadow != nil) {
-        _shadowView.layer.shadowColor = _shadow.color.CGColor;
+        [_shadowView pp_setShadowColor:_shadow.color];
         _shadowView.layer.shadowOffset = _shadow.offset;
         _shadowView.layer.shadowRadius = _shadow.radius;
         

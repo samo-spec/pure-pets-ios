@@ -433,7 +433,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     label.layer.cornerRadius = 24.0;
     label.layer.masksToBounds = YES;
     label.layer.borderWidth = 0.8;
-    label.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    [label pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     label.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.11];
     return label;
 }
@@ -505,7 +505,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
         button.layer.cornerRadius = 19.0;
         button.layer.borderWidth = 0.8;
-        button.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+        [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
         button.contentEdgeInsets = UIEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
     }
 
@@ -537,7 +537,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     containerView.translatesAutoresizingMaskIntoConstraints = NO;
     containerView.backgroundColor = UIColor.clearColor;
     containerView.layer.cornerRadius = 34.0;
-    containerView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [containerView pp_setShadowColor:UIColor.blackColor];
     containerView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     containerView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     containerView.layer.shadowRadius = 24.0;
@@ -561,7 +561,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    chromeView.layer.borderColor = [chromeBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [chromeView pp_setBorderColor:[chromeBorderDynamic resolvedColorWithTraitCollection:self.traitCollection]];
     UIColor *chromeSurfaceColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
             return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:0.92];
@@ -598,7 +598,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     primaryOrb.userInteractionEnabled = NO;
     primaryOrb.backgroundColor = [brandColor colorWithAlphaComponent:0.16];
     primaryOrb.layer.cornerRadius = 94.0;
-    primaryOrb.layer.shadowColor = [brandColor colorWithAlphaComponent:0.50].CGColor;
+    [primaryOrb pp_setShadowColor:[brandColor colorWithAlphaComponent:0.50]];
     primaryOrb.layer.shadowOpacity = 0.16;
     primaryOrb.layer.shadowRadius = 42.0;
     primaryOrb.layer.shadowOffset = CGSizeZero;
@@ -615,7 +615,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    secondaryOrb.layer.shadowColor = [secGlowShadowColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [secondaryOrb pp_setShadowColor:[secGlowShadowColor resolvedColorWithTraitCollection:self.traitCollection]];
     secondaryOrb.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.20;
     secondaryOrb.layer.shadowRadius = 22.0;
     secondaryOrb.layer.shadowOffset = CGSizeZero;
@@ -630,7 +630,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     iconContainer.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
     iconContainer.layer.cornerRadius = 30.0;
     iconContainer.layer.borderWidth = 0.8;
-    iconContainer.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [iconContainer pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"bag.fill"
                                                                               pointSize:24
@@ -654,7 +654,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     badgeLabel.layer.cornerRadius = 14.0;
     badgeLabel.layer.masksToBounds = YES;
     badgeLabel.layer.borderWidth = 0.8;
-    badgeLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [badgeLabel pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -688,7 +688,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     compactSummaryLabel.layer.cornerRadius = 14.0;
     compactSummaryLabel.layer.masksToBounds = YES;
     compactSummaryLabel.layer.borderWidth = 0.8;
-    compactSummaryLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    [compactSummaryLabel pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     compactSummaryLabel.numberOfLines = 1;
     compactSummaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     compactSummaryLabel.textAlignment = NSTextAlignmentCenter;
@@ -1264,8 +1264,8 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     container.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.94];
     container.layer.cornerRadius = 20.0;
     container.layer.borderWidth = 0.0;
-    container.layer.borderColor = [UIColor.labelColor colorWithAlphaComponent:0.06].CGColor;
-    container.layer.shadowColor = UIColor.blackColor.CGColor;
+    [container pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.06]];
+    [container pp_setShadowColor:UIColor.blackColor];
     container.layer.shadowOpacity = 0.10;
     container.layer.shadowOffset = CGSizeMake(0, 10);
     container.layer.shadowRadius = 18;

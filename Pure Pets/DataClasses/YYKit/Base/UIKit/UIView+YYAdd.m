@@ -55,7 +55,7 @@ YYSYNTH_DUMMY_CLASS(UIView_YYAdd)
 }
 
 - (void)setLayerShadow:(UIColor*)color offset:(CGSize)offset radius:(CGFloat)radius {
-    self.layer.shadowColor = color.CGColor;
+    [self pp_setShadowColor:color];
     self.layer.shadowOffset = offset;
     self.layer.shadowRadius = radius;
     self.layer.shadowOpacity = 1;

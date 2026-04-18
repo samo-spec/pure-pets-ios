@@ -383,7 +383,7 @@
 
     badge.backgroundColor = [tint colorWithAlphaComponent:0.16];
     badge.layer.borderWidth = 0.5;
-    badge.layer.borderColor = [tint colorWithAlphaComponent:0.24].CGColor;
+    [badge pp_setBorderColor:[tint colorWithAlphaComponent:0.24]];
     icon.tintColor = tint;
 
     return badge;

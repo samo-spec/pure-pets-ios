@@ -809,7 +809,7 @@ NS_ASSUME_NONNULL_BEGIN
     bgImageView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.9];
     bgImageView.layer.cornerRadius =  9;
     bgImageView.clipsToBounds  = YES;
-    bgImageView.layer.borderColor = AppSecondaryTextClr.CGColor;
+    [bgImageView pp_setBorderColor:AppSecondaryTextClr];
     bgImageView.layer.borderWidth = 1.0;
     [view addSubview:bgImageView];
     
@@ -868,7 +868,7 @@ NS_ASSUME_NONNULL_BEGIN
     [bgImageView.centerYAnchor constraintEqualToAnchor:iv.centerYAnchor].active = YES;
     [bgImageView.centerXAnchor constraintEqualToAnchor:iv.centerXAnchor].active = YES;
     
-    bgImageView.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.32].CGColor;
+    [bgImageView pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.32]];
     bgImageView.layer.shadowOpacity = 1.0;
     bgImageView.layer.shadowOffset = CGSizeMake(0, 0);
     bgImageView.layer.shadowRadius = 3;
@@ -885,7 +885,7 @@ NS_ASSUME_NONNULL_BEGIN
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.layer.cornerRadius = 25; // Rounded corners
     cardView.layer.masksToBounds = NO; // Allow shadow outside the bounds
-    cardView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [cardView pp_setShadowColor:[UIColor blackColor]];
     cardView.layer.shadowOpacity = 0.2;
     cardView.layer.shadowOffset = CGSizeMake(0, 2);
     cardView.layer.shadowRadius = 6;
@@ -913,7 +913,7 @@ NS_ASSUME_NONNULL_BEGIN
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
     cardView.layer.cornerRadius = height/2; // Rounded corners
     cardView.layer.masksToBounds = NO; // Allow shadow outside the bounds
-    cardView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [cardView pp_setShadowColor:[UIColor blackColor]];
     cardView.layer.shadowOpacity = 0.4;
     cardView.layer.shadowOffset = CGSizeMake(0, 2);
     cardView.layer.shadowRadius = 8;
@@ -1764,7 +1764,7 @@ static char kUIViewTapActionKey;
         
         btn.configurationUpdateHandler = ^(UIButton *btn) {
             btn.layer.shadowOpacity = 0.06;
-            btn.layer.shadowColor = UIColor.blackColor.CGColor;
+            [btn pp_setShadowColor:UIColor.blackColor];
             btn.layer.shadowRadius = 8.0;
             btn.layer.shadowOffset = CGSizeMake(0, 2);
         };
@@ -1887,7 +1887,7 @@ static char kUIViewTapActionKey;
     iconView.translatesAutoresizingMaskIntoConstraints = NO;
     iconView.contentMode = UIViewContentModeScaleToFill;
     iconView.tintColor = AppPrimaryClr;
-    iconView.layer.shadowColor = AppShadowClr.CGColor;
+    [iconView pp_setShadowColor:AppShadowClr];
     iconView.layer.shadowOffset = CGSizeMake(0, 2);
     iconView.layer.shadowOpacity = 0.15;
     iconView.layer.shadowRadius = 6;
@@ -2074,7 +2074,7 @@ static char kUIViewTapActionKey;
      iconView.translatesAutoresizingMaskIntoConstraints = NO;
      iconView.contentMode = UIViewContentModeScaleToFill;
      iconView.tintColor = AppPrimaryClr;
-     iconView.layer.shadowColor = AppPrimaryClr.CGColor;
+     [iconView pp_setShadowColor:AppPrimaryClr];
      iconView.layer.shadowOffset = CGSizeMake(0, 2);
      iconView.layer.shadowOpacity = 0.35;
      iconView.layer.shadowRadius = 4;
@@ -2208,7 +2208,7 @@ static char kUIViewTapActionKey;
          subtitleLabel.textAlignment = NSTextAlignmentCenter;
          
          // Optional modern drop shadow on icon
-         iconView.layer.shadowColor = [UIColor blackColor].CGColor;
+         [iconView pp_setShadowColor:[UIColor blackColor]];
          iconView.layer.shadowOpacity = 0.25;
          iconView.layer.shadowOffset = CGSizeMake(0, 3);
          iconView.layer.shadowRadius = 6;
@@ -3445,7 +3445,7 @@ static char kUIViewTapActionKey;
     button.translatesAutoresizingMaskIntoConstraints = NO;
 
     // Soft lift shadow (Pure Pets style)
-    button.layer.shadowColor = AppShadowClr.CGColor;
+    [button pp_setShadowColor:AppShadowClr];
     button.layer.shadowOpacity = 0.12;
     button.layer.shadowOffset = CGSizeMake(0, 2);
     button.layer.shadowRadius = 6;
@@ -3492,7 +3492,7 @@ static char kUIViewTapActionKey;
         
         button.layer.cornerRadius = radius;
         button.layer.maskedCorners = masked;
-        button.layer.shadowColor = [UIColor blackColor].CGColor;
+        [button pp_setShadowColor:[UIColor blackColor]];
         button.layer.shadowOpacity = 0.12;
         button.layer.shadowRadius = 10;
         button.layer.shadowOffset = CGSizeMake(0, 6);
@@ -3636,7 +3636,7 @@ static char kUIViewTapActionKey;
     
     
     // Subtle shadow for lift
-    btn.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.25].CGColor;
+    [btn pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.25]];
     btn.layer.shadowOpacity = 0.12;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -3935,7 +3935,7 @@ static char kUIViewTapActionKey;
     
     btn.translatesAutoresizingMaskIntoConstraints = NO;
     // --- Shadows ---
-    btn.layer.shadowColor = AppShadowClr.CGColor;
+    [btn pp_setShadowColor:AppShadowClr];
     btn.layer.shadowOpacity = 0.12;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -4083,7 +4083,7 @@ static char kUIViewTapActionKey;
     [btn.heightAnchor constraintEqualToConstant:size].active = YES;
 
     // Subtle lift (matches your style)
-    btn.layer.shadowColor = AppShadowClr.CGColor;
+    [btn pp_setShadowColor:AppShadowClr];
     btn.layer.shadowOpacity = 0.12;
     btn.layer.shadowRadius = 6;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
@@ -4167,7 +4167,7 @@ static char kUIViewTapActionKey;
     [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
     
     // Shadows (glass or not)
-    btn.layer.shadowColor = AppShadowClr.CGColor;
+    [btn pp_setShadowColor:AppShadowClr];
     btn.layer.shadowOpacity = 0.10;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -4254,7 +4254,7 @@ static char kUIViewTapActionKey;
     [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
     [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
 
-    btn.layer.shadowColor = AppShadowClr.CGColor;
+    [btn pp_setShadowColor:AppShadowClr];
     btn.layer.shadowOpacity = 0.16;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 8;
@@ -4364,7 +4364,7 @@ static char kUIViewTapActionKey;
     // ----------------------------------------------------
     // Shadow (Pure Pets style)
     // ----------------------------------------------------
-    btn.layer.shadowColor = (AppShadowClr ?: UIColor.blackColor).CGColor;
+    [btn pp_setShadowColor:(AppShadowClr ?: UIColor.blackColor)];
     btn.layer.shadowOpacity = 0.10;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -4763,7 +4763,7 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
     
     // 5) view shadow (not clipped)
     self.layer.masksToBounds = NO;
-    self.layer.shadowColor   = shadowColor.CGColor;
+    [self pp_setShadowColor:shadowColor];
     self.layer.shadowOpacity = shadowOpacity;
     self.layer.shadowRadius  = shadowRadius;
     self.layer.shadowOffset  = shadowOffset;
@@ -5185,7 +5185,7 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
         [btn setImage:[img imageByApplyingSymbolConfiguration:sym] forState:UIControlStateNormal];
  
     // shadow (subtle)
-    btn.layer.shadowColor = (AppShadowClr ?: [UIColor blackColor]).CGColor;
+    [btn pp_setShadowColor:(AppShadowClr ?: [UIColor blackColor])];
     btn.layer.shadowOpacity = 0.12;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -5391,7 +5391,7 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
     //self.contentView.layer.masksToBounds = YES;
     self.backgroundColor = AppClearClr;
     //self.contentView.backgroundColor = AppBackgroundClr;
-    self.layer.shadowColor = GM.AppShadowColor.CGColor;
+    [self pp_setShadowColor:GM.AppShadowColor];
     self.layer.shadowOffset = CGSizeMake(0, 2);
     self.layer.shadowRadius = 6.0;
     self.layer.shadowOpacity = 0.26;
@@ -6029,7 +6029,7 @@ static const void *kPPTwoToneMaskKey  = &kPPTwoToneMaskKey;
     [self.layer addSublayer:shineLayer];
     
     // 5. إضافة ظل للتأثير ثلاثي الأبعاد
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self pp_setShadowColor:[UIColor blackColor]];
     self.layer.shadowOffset = CGSizeMake(0, 4);
     self.layer.shadowRadius = 8;
     self.layer.shadowOpacity = 0.1;

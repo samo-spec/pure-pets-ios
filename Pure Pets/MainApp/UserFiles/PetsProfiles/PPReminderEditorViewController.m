@@ -718,7 +718,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
     eyebrowPill.layer.cornerRadius = 13.0;
     eyebrowPill.layer.borderWidth = 1.0;
-    eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
+    [eyebrowPill pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
     eyebrowPill.layer.masksToBounds = YES;
     [cardView addSubview:eyebrowPill];
 
@@ -735,8 +735,8 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     iconHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
     iconHalo.layer.cornerRadius = 32.0;
     iconHalo.layer.borderWidth = 1.0;
-    iconHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    iconHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
+    [iconHalo pp_setBorderColor:PPPetsCardOverlay(0.48)];
+    [iconHalo pp_setShadowColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.30]];
     iconHalo.layer.shadowOpacity = 0.12;
     iconHalo.layer.shadowRadius = 12.0;
     iconHalo.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -776,7 +776,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
-    metaLabel.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
+    [metaLabel pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
     metaLabel.layer.masksToBounds = YES;
     metaLabel.textInsets = UIEdgeInsetsMake(6.0, 12.0, 6.0, 12.0);
     [cardView addSubview:metaLabel];

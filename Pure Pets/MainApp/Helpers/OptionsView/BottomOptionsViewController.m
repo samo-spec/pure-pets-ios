@@ -91,7 +91,7 @@
     //self.view.clipsToBounds = NO;     // must be NO for shadow to show
 
     // Apply a shadow that only shows above (top shadow)
-    self.view.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self.view pp_setShadowColor:[UIColor blackColor]];
     self.view.layer.shadowOpacity = 0.6; // adjust darkness
     self.view.layer.shadowRadius = 8.0;  // blur
     self.view.layer.shadowOffset = CGSizeMake(0, -8); // vertical offset up

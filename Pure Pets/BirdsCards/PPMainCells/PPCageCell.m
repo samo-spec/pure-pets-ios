@@ -172,7 +172,7 @@
     self.cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardContainer.backgroundColor = AppForgroundColr;
     self.cardContainer.layer.cornerRadius = 26;
-    self.cardContainer.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.cardContainer pp_setShadowColor:UIColor.blackColor];
     self.cardContainer.layer.shadowOpacity = 0.08;
     self.cardContainer.layer.shadowRadius = 10;
     [self.contentView addSubview:self.cardContainer];

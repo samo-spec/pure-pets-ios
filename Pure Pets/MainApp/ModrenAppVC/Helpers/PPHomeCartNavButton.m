@@ -35,7 +35,7 @@
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.accessibilityLabel = kLang(@"Cart") ?: @"Cart";
 
-    self.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self pp_setShadowColor:UIColor.blackColor];
     self.layer.shadowOpacity = 0.08f;
     self.layer.shadowRadius = 10.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 4.0);
@@ -94,7 +94,7 @@
     badgeLabel.minimumScaleFactor = 0.82;
     badgeLabel.layer.cornerRadius = 8.5;
     badgeLabel.layer.borderWidth = 1.0;
-    badgeLabel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.92].CGColor;
+    [badgeLabel pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.92]];
     badgeLabel.layer.masksToBounds = YES;
     badgeLabel.hidden = YES;
     badgeLabel.alpha = 0.0;
@@ -205,7 +205,7 @@
     UIColor *surfaceColor = [AppForgroundColr colorWithAlphaComponent:0.66] ?: [UIColor colorWithWhite:0.95 alpha:1.0];
     UIColor *iconColor = AppPrimaryTextClr ?: UIColor.labelColor;
     _surfaceView.backgroundColor = surfaceColor;
-    _surfaceView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.14].CGColor;
+    [_surfaceView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
     _iconView.tintColor = iconColor;
     _highlightLayer.colors = @[
         (__bridge id)[[UIColor whiteColor] colorWithAlphaComponent:0.34].CGColor,

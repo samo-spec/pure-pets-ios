@@ -358,7 +358,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroShadowView = [[UIView alloc] init];
     self.heroShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroShadowView.backgroundColor = UIColor.clearColor;
-    self.heroShadowView.layer.shadowColor = [UIColor colorWithWhite:0.03 alpha:1.0].CGColor;
+    [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:1.0]];
     self.heroShadowView.layer.shadowOpacity = 0.08;
     self.heroShadowView.layer.shadowRadius = 18.0;
     self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -467,7 +467,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationControl.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.13];
     self.locationControl.layer.cornerRadius = PPCornerCard;
     self.locationControl.layer.borderWidth = 1.0;
-    self.locationControl.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    [self.locationControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     self.locationControl.layer.masksToBounds = YES;
     self.locationControl.accessibilityTraits = UIAccessibilityTraitButton;
     if (@available(iOS 13.0, *)) {
@@ -497,7 +497,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationIconPlateView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
     self.locationIconPlateView.layer.cornerRadius = PPCornerMedium;
     self.locationIconPlateView.layer.borderWidth = 1.0;
-    self.locationIconPlateView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    [self.locationIconPlateView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     if (@available(iOS 13.0, *)) {
         self.locationIconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -535,7 +535,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationStatusChipView.layer.cornerRadius = PPCornerMedium;
     self.locationStatusChipView.layer.borderWidth = 1.0;
    // self.locationStatusChipView.layer.borderColor = [UIColor clearColor].CGColor;
-    self.locationStatusChipView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    [self.locationStatusChipView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
 
     self.locationStatusChipView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -581,7 +581,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.actionButton.layer.cornerRadius = PPButtonHeightLG / 2.0;
     self.actionButton.layer.masksToBounds = YES;
     self.actionButton.layer.borderWidth = 0.85;
-    self.actionButton.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    [self.actionButton pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     if (@available(iOS 13.0, *)) {
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -903,7 +903,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.orderPeekExpanded = NO;
     self.orderPeekStrip.alpha = 0.0;
     self.orderPeekStrip.transform = CGAffineTransformMakeTranslation(0.0, -24.0);
-    self.orderPeekStrip.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [self.orderPeekStrip pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
     self.orderPeekThumbnail.image = nil;
     self.orderPeekThumbnail.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
     self.orderPeekReferenceLabel.text = @"";
@@ -1350,12 +1350,12 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     }
 
     self.locationControl.backgroundColor = glassFill;
-    self.locationControl.layer.borderColor = glassBorder.CGColor;
+    [self.locationControl pp_setBorderColor:glassBorder];
     self.locationAccentWashView.backgroundColor = accentWashFill;
     self.locationIconPlateView.backgroundColor = iconPlateFill;
-    self.locationIconPlateView.layer.borderColor = iconPlateBorder.CGColor;
+    [self.locationIconPlateView pp_setBorderColor:iconPlateBorder];
     self.locationStatusChipView.backgroundColor = chipFill;
-    self.locationStatusChipView.layer.borderColor = chipBorder.CGColor;
+    [self.locationStatusChipView pp_setBorderColor:chipBorder];
     self.locationStatusLabel.text = [self pp_locationChipTextForState:locationState];
     self.locationStatusLabel.textColor = chipTextColor;
     self.locationStatusDotView.backgroundColor = dotColor;
@@ -1771,7 +1771,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.orderPeekStrip.backgroundColor = UIColor.clearColor;
     self.orderPeekStrip.layer.cornerRadius = PPCornerMedium;
     self.orderPeekStrip.layer.borderWidth = 1.0;
-    self.orderPeekStrip.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [self.orderPeekStrip pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
     self.orderPeekStrip.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.orderPeekStrip.layer.cornerCurve = kCACornerCurveContinuous;
@@ -1943,7 +1943,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.orderPeekStatusColor = resolvedStatusColor;
     self.orderPeekExpanded = expanded;
     self.orderPeekTintOverlay.backgroundColor = [tintColor colorWithAlphaComponent:(expanded ? 0.78 : 0.68)];
-    self.orderPeekStrip.layer.borderColor = [resolvedStatusColor colorWithAlphaComponent:(expanded ? 0.34 : 0.24)].CGColor;
+    [self.orderPeekStrip pp_setBorderColor:[resolvedStatusColor colorWithAlphaComponent:(expanded ? 0.34 : 0.24)]];
     self.orderPeekThumbnail.backgroundColor = [resolvedStatusColor colorWithAlphaComponent:(expanded ? 0.24 : 0.16)];
     self.orderPeekStatusDot.backgroundColor = resolvedStatusColor;
     self.orderPeekStatusLabel.textColor = resolvedStatusColor;

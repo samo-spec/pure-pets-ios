@@ -351,7 +351,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     if (@available(iOS 13.0, *)) {
         self.heroContainer.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    self.heroContainer.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.heroContainer pp_setShadowColor:UIColor.blackColor];
     self.heroContainer.layer.shadowOpacity = 0.12;
     self.heroContainer.layer.shadowRadius = 24.0;
     self.heroContainer.layer.shadowOffset = CGSizeMake(0, 14);
@@ -603,7 +603,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.contactView.alpha = 1.0;
     self.contactView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.65];
     self.contactView.layer.cornerRadius = 22.0;
-    self.contactView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.contactView pp_setShadowColor:UIColor.blackColor];
     self.contactView.layer.shadowOpacity = 0.06;
     self.contactView.layer.shadowRadius = 12.0;
     self.contactView.layer.shadowOffset = CGSizeMake(0, 6);
@@ -735,7 +735,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     card.backgroundColor = AppForgroundColr;
     card.layer.cornerRadius = 26.0;
     card.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    card.layer.borderColor = [[UIColor separatorColor] colorWithAlphaComponent:0.28].CGColor;
+    [card pp_setBorderColor:[[UIColor separatorColor] colorWithAlphaComponent:0.28]];
     card.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         card.layer.cornerCurve = kCACornerCurveContinuous;

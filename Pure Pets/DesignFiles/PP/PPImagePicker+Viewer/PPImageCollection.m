@@ -236,8 +236,8 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     _collectionShellView.layer.masksToBounds = NO;
     _collectionShellView.semanticContentAttribute = PPImageCollectionSemanticAttributeForArabic(self.useArabic);
     _collectionShellView.layer.borderWidth = 1.0;
-    _collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.05].CGColor;
-    _collectionShellView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [_collectionShellView pp_setBorderColor:[UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.05]];
+    [_collectionShellView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     _collectionShellView.layer.shadowOpacity = 0.03;
     _collectionShellView.layer.shadowRadius = 10.0;
     _collectionShellView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -357,9 +357,9 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     self.collectionShellView.layer.cornerRadius = 24.0;
     self.collectionShellBlurView.layer.cornerRadius = 24.0;
     self.collectionShellView.layer.borderWidth = 1.0;
-    self.collectionShellView.layer.borderColor = [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.05].CGColor;
+    [self.collectionShellView pp_setBorderColor:[UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.05]];
     self.countPillLabel.layer.borderWidth = 1.0;
-    self.countPillLabel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.72].CGColor;
+    [self.countPillLabel pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.72]];
 }
 
 - (void)pp_applyLayoutDirection

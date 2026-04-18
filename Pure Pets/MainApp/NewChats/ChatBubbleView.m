@@ -281,7 +281,7 @@
         return;
     }
 
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self pp_setShadowColor:[UIColor blackColor]];
     self.layer.shadowOpacity = 0.06;      // micro elevation
     self.layer.shadowRadius = 6.0;
     self.layer.shadowOffset = CGSizeMake(0, 2);

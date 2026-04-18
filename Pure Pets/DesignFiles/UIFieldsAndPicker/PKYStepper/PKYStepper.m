@@ -106,8 +106,8 @@ static const float kButtonWidth = 44.0f;
 #pragma mark view customization
 - (void)setBorderColor:(UIColor *)color
 {
-    self.layer.borderColor = color.CGColor;
-    self.countLabel.layer.borderColor = color.CGColor;
+    [self pp_setBorderColor:color];
+    [self.countLabel pp_setBorderColor:color];
 }
 
 - (void)setBorderWidth:(CGFloat)width

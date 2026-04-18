@@ -35,7 +35,7 @@ static const CGFloat kCorner      = 16.0;
     self.backgroundColor = PPPetsUISurfaceColor();
     self.layer.cornerRadius = kCorner;
     self.layer.borderWidth  = 1.0;
-    self.layer.borderColor  = PPPetsUISurfaceBorderColor().CGColor;
+    [self pp_setBorderColor:PPPetsUISurfaceBorderColor()];
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -74,7 +74,7 @@ static const CGFloat kCorner      = 16.0;
     self.backgroundColor = PPPetsUISurfaceColor();
     self.layer.cornerRadius = kCorner;
     self.layer.borderWidth  = 1.0;
-    self.layer.borderColor  = PPPetsUISurfaceBorderColor().CGColor;
+    [self pp_setBorderColor:PPPetsUISurfaceBorderColor()];
     if (@available(iOS 13.0, *)) {
         self.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -423,7 +423,7 @@ static const CGFloat kCorner      = 16.0;
     btn.translatesAutoresizingMaskIntoConstraints = NO;
     if (!filled) {
         btn.layer.borderWidth = 1.0;
-        btn.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.16].CGColor;
+        [btn pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.16]];
     }
     if (@available(iOS 13.0, *)) {
         btn.layer.cornerCurve = kCACornerCurveContinuous;
@@ -483,9 +483,9 @@ static const CGFloat kCorner      = 16.0;
     shake.values   = @[@(-8), @(8), @(-6), @(6), @(-3), @(3), @(0)];
     [field.layer addAnimation:shake forKey:@"shake"];
 
-    field.layer.borderColor = UIColor.systemRedColor.CGColor;
+    [field pp_setBorderColor:UIColor.systemRedColor];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        field.layer.borderColor = PPPetsUISurfaceBorderColor().CGColor;
+        [field pp_setBorderColor:PPPetsUISurfaceBorderColor()];
     });
 }
 
@@ -505,11 +505,11 @@ static const CGFloat kCorner      = 16.0;
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        CGColorRef borderCG = [PPPetsUISurfaceBorderColor() resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-        self.nameField.layer.borderColor       = borderCG;
-        self.notesField.layer.borderColor      = borderCG;
-        self.appliedDateRow.layer.borderColor   = borderCG;
-        self.nextDueDateRow.layer.borderColor   = borderCG;
+        UIColor *borderClr = PPPetsUISurfaceBorderColor();
+        [self.nameField pp_setBorderColor:borderClr];
+        [self.notesField pp_setBorderColor:borderClr];
+        [self.appliedDateRow pp_setBorderColor:borderClr];
+        [self.nextDueDateRow pp_setBorderColor:borderClr];
     }
 }
 

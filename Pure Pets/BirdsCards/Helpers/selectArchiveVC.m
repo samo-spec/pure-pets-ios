@@ -45,11 +45,11 @@ static NSString *menuCellIdentifier = @"Default Cell";
 {
     view.layer.cornerRadius = cornerRadius;
     view.layer.borderWidth = 1.0;
-    view.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.34].CGColor;
-    view.layer.shadowColor = [UIColor colorWithRed:23.0 / 255.0
-                                             green:36.0 / 255.0
-                                              blue:65.0 / 255.0
-                                             alpha:1.0].CGColor;
+    [view pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.34]];
+    [view pp_setShadowColor:[UIColor colorWithRed:23.0 / 255.0
+                                                green:36.0 / 255.0
+                                                 blue:65.0 / 255.0
+                                                alpha:1.0]];
     view.layer.shadowOpacity = PPIOS26() ? 0.10 : 0.08;
     view.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     view.layer.shadowRadius = 26.0;
@@ -73,13 +73,13 @@ static NSString *menuCellIdentifier = @"Default Cell";
     cell.contentView.layer.cornerRadius = (tableView == self.selectTableView) ? 24.0 : 18.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth = 1.0;
-    cell.contentView.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.28].CGColor;
+    [cell.contentView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.28]];
 
     cell.layer.cornerRadius = cell.contentView.layer.cornerRadius;
-    cell.layer.shadowColor = [UIColor colorWithRed:15.0 / 255.0
-                                             green:23.0 / 255.0
-                                              blue:42.0 / 255.0
-                                             alpha:1.0].CGColor;
+    [cell pp_setShadowColor:[UIColor colorWithRed:15.0 / 255.0
+                                                green:23.0 / 255.0
+                                                 blue:42.0 / 255.0
+                                                alpha:1.0]];
     cell.layer.shadowOpacity = 0.07;
     cell.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     cell.layer.shadowRadius = 18.0;

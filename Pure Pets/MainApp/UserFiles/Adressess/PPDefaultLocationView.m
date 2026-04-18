@@ -65,7 +65,7 @@ static CGFloat const kViewHeight = 60.0;
         self.configuration = cfg;
     } else {
         self.layer.cornerRadius = 22;
-        self.layer.shadowColor = [AppShadowClr colorWithAlphaComponent:0.4].CGColor;
+        [self pp_setShadowColor:[AppShadowClr colorWithAlphaComponent:0.4]];
         self.layer.shadowOpacity = 0.12;
         self.layer.shadowOffset = CGSizeMake(0, 2);
         self.layer.shadowRadius = 8;

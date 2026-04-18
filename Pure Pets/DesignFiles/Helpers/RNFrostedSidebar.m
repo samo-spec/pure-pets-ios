@@ -227,7 +227,7 @@
     [UIView animateWithDuration:0.25 animations:^{
         self.dimView.alpha = highlighted ? 0.0 : 1.0; // 🔥 hide dim for selected
         self.layer.borderWidth = highlighted ? 3 : 0;
-        self.layer.borderColor = highlighted ? AppPrimaryClr.CGColor : UIColor.clearColor.CGColor;
+        [self pp_setBorderColor:highlighted ? AppPrimaryClr : UIColor.clearColor];
         self.transform = highlighted ? CGAffineTransformMakeScale(1.1, 1.1) : CGAffineTransformIdentity;
     }];
 }
@@ -353,10 +353,10 @@ static RNFrostedSidebar *rn_frostedMenu;
             
             if (_borderColors && _selectedIndices && [_selectedIndices containsIndex:idx]) {
                 UIColor *color = _borderColors[idx];
-                view.layer.borderColor = color.CGColor;
+                [view pp_setBorderColor:color];
             }
             else {
-                view.layer.borderColor = [UIColor clearColor].CGColor;
+                [view pp_setBorderColor:[UIColor clearColor]];
             }
         }];
     }
@@ -408,13 +408,13 @@ static RNFrostedSidebar *rn_frostedMenu;
             
             if (_borderColors && _selectedIndices && [_selectedIndices containsIndex:idx]) {
                 UIColor *color = _borderColors[idx];
-                view.layer.borderColor = color.CGColor;
+                [view pp_setBorderColor:color];
             }
             else {
-                view.layer.borderColor = [UIColor clearColor].CGColor;
+                [view pp_setBorderColor:[UIColor clearColor]];
             }
             
-            view.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.5].CGColor;
+            [view pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.5]];
         }];
     }
     return self;
@@ -687,7 +687,7 @@ static RNFrostedSidebar *rn_frostedMenu;
     [self.itemViews enumerateObjectsUsingBlock:^(RNCalloutItemView *view, NSUInteger idx, BOOL *stop) {
             if (idx == index) {
                 // Highlight tapped item
-                view.layer.borderColor = AppPrimaryClr.CGColor;
+                [view pp_setBorderColor:AppPrimaryClr];
                 view.layer.borderWidth = 1.5;
                 
                 // ✅ Tap bounce animation
@@ -700,7 +700,7 @@ static RNFrostedSidebar *rn_frostedMenu;
                 }];
             } else {
                 // Reset others
-                view.layer.borderColor = [UIColor clearColor].CGColor;
+                [view pp_setBorderColor:[UIColor clearColor]];
                 view.layer.borderWidth = 0;
             }
         }];
@@ -868,7 +868,7 @@ if (self.borderColors) {
     UIView *view = self.itemViews[index];
     
     if (didEnable) {
-        view.layer.borderColor = stroke.CGColor;
+        [view pp_setBorderColor:stroke];
         
         CABasicAnimation *borderAnimation = [CABasicAnimation animationWithKeyPath:@"borderColor"];
         borderAnimation.fromValue = (id)[UIColor clearColor].CGColor;
@@ -879,7 +879,7 @@ if (self.borderColors) {
         [self.selectedIndices addIndex:index];
     }
     else {
-        view.layer.borderColor = [UIColor clearColor].CGColor;
+        [view pp_setBorderColor:[UIColor clearColor]];
         [self.selectedIndices removeIndex:index];
     }
     
@@ -930,7 +930,7 @@ if (self.borderColors) {
     [self.itemViews enumerateObjectsUsingBlock:^(RNCalloutItemView *view, NSUInteger idx, BOOL *stop) {
         if (idx == index) {
             // Highlight tapped item
-            view.layer.borderColor = AppPrimaryClr.CGColor;
+            [view pp_setBorderColor:AppPrimaryClr];
             view.layer.borderWidth = 3.0;
             
             // ✅ Tap bounce animation
@@ -943,7 +943,7 @@ if (self.borderColors) {
             }];
         } else {
             // Reset others
-            view.layer.borderColor = [UIColor clearColor].CGColor;
+            [view pp_setBorderColor:[UIColor clearColor]];
             view.layer.borderWidth = 0;
         }
     }];

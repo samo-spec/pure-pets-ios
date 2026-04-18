@@ -1167,8 +1167,8 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
         }
         return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
     }];
-    cell.contentView.layer.borderColor   = [adoptBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    cell.layer.shadowColor   = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cell.contentView pp_setBorderColor:[adoptBorderColor resolvedColorWithTraitCollection:self.traitCollection]];
+    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
     cell.layer.shadowRadius  = 12.0;
     cell.layer.shadowOffset  = CGSizeMake(0.0, 6.0);

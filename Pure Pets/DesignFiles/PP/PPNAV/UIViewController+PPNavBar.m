@@ -1073,7 +1073,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
     [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
     
-    btn.layer.shadowColor = AppShadowClr.CGColor;
+    [btn pp_setShadowColor:AppShadowClr];
     btn.layer.shadowOpacity = 0.07;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -1170,7 +1170,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
     [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
     
-    btn.layer.shadowColor = AppShadowClr.CGColor;
+    [btn pp_setShadowColor:AppShadowClr];
     btn.layer.shadowOpacity = 0.07;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -1256,7 +1256,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 
     [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     
-    btn.layer.shadowColor = AppShadowClr.CGColor;
+    [btn pp_setShadowColor:AppShadowClr];
     btn.layer.shadowOpacity = 0.04;
     btn.layer.shadowOffset = CGSizeMake(0, 2);
     btn.layer.shadowRadius = 6;
@@ -1333,7 +1333,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         btn.layer.cornerRadius = 22;
         btn.layer.masksToBounds = NO;
         
-        btn.layer.shadowColor = AppShadowClr.CGColor;
+        [btn pp_setShadowColor:AppShadowClr];
         btn.layer.shadowOpacity = 0.07;
         btn.layer.shadowOffset = CGSizeMake(0, 2);
         btn.layer.shadowRadius = 6;
@@ -1636,9 +1636,9 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     container.clipsToBounds = YES;
 
     // Border / Glow
-    container.layer.borderColor = [UIColor colorWithWhite:1 alpha:0.25].CGColor;
+    [container pp_setBorderColor:[UIColor colorWithWhite:1 alpha:0.25]];
     container.layer.borderWidth = 0.5;
-    container.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.2].CGColor;
+    [container pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.2]];
     container.layer.shadowOpacity = 0.3;
     container.layer.shadowOffset = CGSizeMake(0, 2);
     container.layer.shadowRadius = 4;
@@ -1838,7 +1838,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         iv.translatesAutoresizingMaskIntoConstraints = NO;
         iv.contentMode = UIViewContentModeScaleAspectFit;
         iv.tintColor = AppPrimaryClrShiner ?: UIColor.systemBlueColor;
-        iv.layer.shadowColor = [AppShadowClr colorWithAlphaComponent:0.4].CGColor;
+        [iv pp_setShadowColor:[AppShadowClr colorWithAlphaComponent:0.4]];
         iv.layer.shadowOpacity = 0.20;
         iv.layer.shadowOffset = CGSizeMake(0, 2);
         iv.layer.shadowRadius = 6;
@@ -1951,7 +1951,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     //container.backgroundColor = [AppBackgroundClrDarker colorWithAlphaComponent:0.9] ?: UIColor.whiteColor;  //D6D6D6
     container.layer.cornerRadius = 22; // half of 44
     container.layer.masksToBounds = NO;
-    container.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.2].CGColor;
+    [container pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.2]];
     container.layer.shadowOpacity = 0.35;
     container.layer.shadowOffset = CGSizeMake(0, 2);
     container.layer.shadowRadius = 3;
@@ -1965,7 +1965,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     iv.tintColor = AppSecondaryTextClr ?: UIColor.systemBlueColor;
     
     iv.layer.masksToBounds = NO;
-    iv.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.2].CGColor;
+    [iv pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.2]];
     iv.layer.shadowOpacity = 0.20;
     iv.layer.shadowOffset = CGSizeMake(0, 2);
     iv.layer.shadowRadius = 6;
@@ -2111,7 +2111,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         bgbutton.layer.masksToBounds = YES;
 
         // Optional: add subtle shadow for depth
-        bgbutton.layer.shadowColor = [UIColor blackColor].CGColor;
+        [bgbutton pp_setShadowColor:[UIColor blackColor]];
         bgbutton.layer.shadowOpacity = 0.2;
         bgbutton.layer.shadowOffset = CGSizeMake(0, 4);
         bgbutton.layer.shadowRadius = 8;
@@ -2297,7 +2297,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;
-        bgButton.layer.shadowColor = AppShadowClr.CGColor;
+        [bgButton pp_setShadowColor:AppShadowClr];
         bgButton.layer.shadowOpacity = 0.15;
         bgButton.layer.shadowRadius = 8;
         bgButton.layer.shadowOffset = CGSizeMake(0, 4);
@@ -2736,7 +2736,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
      [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
      [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
 
-     btn.layer.shadowColor = AppShadowClr.CGColor;
+     [btn pp_setShadowColor:AppShadowClr];
      btn.layer.shadowOpacity = 0.10;
      btn.layer.shadowOffset = CGSizeMake(0, 2);
      btn.layer.shadowRadius = 6;
@@ -2876,7 +2876,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
      container.translatesAutoresizingMaskIntoConstraints = NO;
      container.backgroundColor = AppForgroundColr ?: UIColor.whiteColor;
       container.layer.masksToBounds = NO;
-     container.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.2].CGColor;
+     [container pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.2]];
      container.layer.shadowOpacity = 0.35;
      container.layer.shadowOffset = CGSizeMake(0, 2);
      container.layer.shadowRadius = 6;
@@ -2891,7 +2891,7 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
      iv.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
      
      iv.layer.masksToBounds = NO;
-     iv.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.2].CGColor;
+     [iv pp_setShadowColor:[UIColor colorWithWhite:0 alpha:0.2]];
      iv.layer.shadowOpacity = 0.20;
      iv.layer.shadowOffset = CGSizeMake(0, 2);
      iv.layer.shadowRadius = 6;

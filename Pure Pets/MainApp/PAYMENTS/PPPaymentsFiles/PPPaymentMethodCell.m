@@ -90,7 +90,7 @@
 {
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
-    self.layer.shadowColor = [UIColor blackColor].CGColor;
+    [self pp_setShadowColor:[UIColor blackColor]];
     self.layer.shadowOpacity = 0.08;
     self.layer.shadowRadius = 18.0;
     self.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -101,7 +101,7 @@
     self.surfaceView.layer.cornerRadius = 26.0;
     self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     self.surfaceView.layer.borderWidth = 1.0;
-    self.surfaceView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.06].CGColor;
+    [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0.06]];
     [self.contentView addSubview:self.surfaceView];
 
     self.dashedBorderLayer = [CAShapeLayer layer];
@@ -131,9 +131,9 @@
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:18.0];
+    self.titleLabel.font = [GM MidFontWithSize:14.0];
     self.titleLabel.textColor = UIColor.labelColor;
-    self.titleLabel.numberOfLines = 1;
+    self.titleLabel.numberOfLines = 2;
     [self.surfaceView addSubview:self.titleLabel];
 
     self.subtitleLabel = [[UILabel alloc] init];
@@ -180,7 +180,7 @@
 
     self.selectionView = [[UIView alloc] init];
     self.selectionView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.selectionView.layer.cornerRadius = 14.0;
+    self.selectionView.layer.cornerRadius = 10.0;
     self.selectionView.layer.cornerCurve = kCACornerCurveContinuous;
     self.selectionView.layer.borderWidth = 1.0;
     [self.surfaceView addSubview:self.selectionView];
@@ -222,8 +222,8 @@
 
         [self.selectionView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0],
         [self.selectionView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
-        [self.selectionView.widthAnchor constraintEqualToConstant:24.0],
-        [self.selectionView.heightAnchor constraintEqualToConstant:24.0],
+        [self.selectionView.widthAnchor constraintEqualToConstant:20.0],
+        [self.selectionView.heightAnchor constraintEqualToConstant:20.0],
 
         [self.selectionImageView.centerXAnchor constraintEqualToAnchor:self.selectionView.centerXAnchor],
         [self.selectionImageView.centerYAnchor constraintEqualToAnchor:self.selectionView.centerYAnchor],
@@ -316,7 +316,7 @@
 {
     self.currentSelectionState = isSelected;
     if (self.addNewStyle) {
-        self.surfaceView.layer.borderColor = [UIColor colorWithWhite:0.0 alpha:0.05].CGColor;
+        [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0.05]];
         self.selectionView.hidden = YES;
         return;
     }
@@ -324,9 +324,9 @@
     UIColor *accentColor = [self pp_accentColorForMethod:self.method];
     void (^changes)(void) = ^{
         self.selectionView.backgroundColor = isSelected ? accentColor : UIColor.clearColor;
-        self.selectionView.layer.borderColor = (isSelected ? accentColor : [UIColor colorWithWhite:0.0 alpha:0.12]).CGColor;
+        [self.selectionView pp_setBorderColor:(isSelected ? accentColor : [UIColor colorWithWhite:0.0 alpha:0.12])];
         self.selectionImageView.tintColor = isSelected ? AppForgroundColr : UIColor.clearColor;
-        self.surfaceView.layer.borderColor = (isSelected ? [accentColor colorWithAlphaComponent:0.45] : [UIColor colorWithWhite:0.0 alpha:0.06]).CGColor;
+        [self.surfaceView pp_setBorderColor:(isSelected ? [accentColor colorWithAlphaComponent:0.45] : [UIColor colorWithWhite:0.0 alpha:0.06])];
         self.surfaceView.backgroundColor = isSelected
             ? [accentColor colorWithAlphaComponent:0.08]
             : (AppForgroundColr ?: UIColor.secondarySystemBackgroundColor);

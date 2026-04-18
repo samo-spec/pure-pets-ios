@@ -47,11 +47,11 @@
          self.singleButton.layer.cornerRadius = 8;
         self.singleButton.clipsToBounds = YES;
          self.singleButton.layer.cornerRadius = BTNHeight/2;
-        self.singleButton.layer.shadowColor = GM.AppShadowColor.CGColor;
+        [self.singleButton pp_setShadowColor:GM.AppShadowColor];
         self.singleButton.layer.shadowOffset = CGSizeMake(0, 2);  // Horizontal & vertical offset
         self.singleButton.layer.shadowOpacity = 0.25;             // Opacity from 0 to 1
         self.singleButton.layer.shadowRadius = 2.0;
-        self.singleButton.layer.borderColor = [GM.SecondaryTextColor colorWithAlphaComponent:0.2].CGColor;
+        [self.singleButton pp_setBorderColor:[GM.SecondaryTextColor colorWithAlphaComponent:0.2]];
         self.singleButton.layer.borderWidth = 1;
         
     }

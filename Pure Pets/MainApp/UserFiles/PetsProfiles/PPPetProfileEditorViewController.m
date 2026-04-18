@@ -505,7 +505,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     eyebrowPill.backgroundColor = PPPetsCardOverlay(0.74);
     eyebrowPill.layer.cornerRadius = 13.0;
     eyebrowPill.layer.borderWidth = 1.0;
-    eyebrowPill.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
+    [eyebrowPill pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
     eyebrowPill.layer.masksToBounds = YES;
     [cardView addSubview:eyebrowPill];
 
@@ -522,8 +522,8 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     avatarHalo.backgroundColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.12];
     avatarHalo.layer.cornerRadius = 32.0;
     avatarHalo.layer.borderWidth = 0.0;
-    avatarHalo.layer.borderColor = [PPPetsCardOverlay(0.48) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    avatarHalo.layer.shadowColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.30].CGColor;
+    [avatarHalo pp_setBorderColor:PPPetsCardOverlay(0.48)];
+    [avatarHalo pp_setShadowColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.30]];
     avatarHalo.layer.shadowOpacity = 0.12;
     avatarHalo.layer.shadowRadius = 12.0;
     avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -535,7 +535,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     self.heroImageView.clipsToBounds = YES;
     self.heroImageView.layer.cornerRadius = 26.0;
     self.heroImageView.layer.borderWidth = 3.0;
-    self.heroImageView.layer.borderColor = [PPPetsCardOverlay(0.86) resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [self.heroImageView pp_setBorderColor:PPPetsCardOverlay(0.86)];
     self.heroImageView.backgroundColor = UIColor.clearColor;
     self.heroImageView.tintColor = PPPetsUIBrandColor();
     self.heroImageView.userInteractionEnabled = YES;
@@ -566,7 +566,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     metaLabel.backgroundColor = PPPetsCardOverlay(0.78);
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
-    metaLabel.layer.borderColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.10].CGColor;
+    [metaLabel pp_setBorderColor:[PPPetsUIBrandColor() colorWithAlphaComponent:0.10]];
     metaLabel.layer.masksToBounds = YES;
     metaLabel.textInsets = UIEdgeInsetsMake(6.0, 12.0, 6.0, 12.0);
     [cardView addSubview:metaLabel];
@@ -580,8 +580,8 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     photoButton.backgroundColor = PPPetsUIBrandColor();
     photoButton.layer.cornerRadius = 12.0;
     photoButton.layer.borderWidth = 2.5;
-    photoButton.layer.borderColor = UIColor.whiteColor.CGColor;
-    photoButton.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [photoButton pp_setBorderColor:UIColor.whiteColor];
+    [photoButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     photoButton.layer.shadowOpacity = 0.18;
     photoButton.layer.shadowRadius = 6.0;
     photoButton.layer.shadowOffset = CGSizeMake(0.0, 2.0);

@@ -257,7 +257,7 @@ static const NSInteger kLoopMultiplier = 200;
 
         // Shadow on focused cell
         if (normalizedDist < 0.3) {
-            cell.layer.shadowColor = UIColor.blackColor.CGColor;
+            [cell pp_setShadowColor:UIColor.blackColor];
             cell.layer.shadowOpacity = 0.18;
             cell.layer.shadowRadius = 16;
             cell.layer.shadowOffset = CGSizeMake(0, 6);

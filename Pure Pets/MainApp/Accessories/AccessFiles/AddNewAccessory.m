@@ -763,8 +763,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [bv.contentView addSubview:tv];
     } else { c.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.12]; }
     c.layer.cornerRadius = cr; c.layer.borderWidth = 1.0;
-    c.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.16 : 0.10].CGColor;
-    c.layer.shadowColor = [AppShadowClr colorWithAlphaComponent:0.18].CGColor;
+    [c pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.16 : 0.10]];
+    [c pp_setShadowColor:[AppShadowClr colorWithAlphaComponent:0.18]];
     c.layer.shadowOffset = CGSizeMake(0,8); c.layer.shadowOpacity = 1.0; c.layer.shadowRadius = 18.0;
     UIStackView *sk = [[UIStackView alloc] init];
     sk.axis = UILayoutConstraintAxisVertical; sk.alignment = UIStackViewAlignmentCenter;
@@ -1063,8 +1063,8 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         }
         return [UIColor colorWithRed:0.25 green:0.17 blue:0.18 alpha:0.08];
     }];
-    cell.contentView.layer.borderColor = [accessBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cell.contentView pp_setBorderColor:[accessBorderColor resolvedColorWithTraitCollection:self.traitCollection]];
+    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
     cell.layer.shadowRadius = 12.0;
     cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);

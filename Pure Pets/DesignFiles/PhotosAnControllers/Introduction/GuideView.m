@@ -76,7 +76,7 @@
         imageViewLogo.contentMode = UIViewContentModeScaleAspectFill;
         imageViewLogo.layer.cornerRadius = 50;
         imageViewLogo.clipsToBounds = YES;
-        imageViewLogo.layer.borderColor = [UIColor colorWithRed:255.0/255.0 green:255.0/255.0 blue:255.0/255.0 alpha:1].CGColor;
+        [imageViewLogo pp_setBorderColor:[UIColor colorWithRed:255.0/255.0 green:255.0/255.0 blue:255.0/255.0 alpha:1]];
         imageViewLogo.layer.borderWidth = 2.5;
        
        // [GM appPrimaryColor].CGColor;

@@ -115,7 +115,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     cardContainer.translatesAutoresizingMaskIntoConstraints = NO;
     cardContainer.backgroundColor = UIColor.clearColor;
     cardContainer.layer.cornerRadius = kPPCartCellCardCornerRadius;
-    cardContainer.layer.shadowColor = UIColor.blackColor.CGColor;
+    [cardContainer pp_setShadowColor:UIColor.blackColor];
     cardContainer.layer.shadowOpacity = 0.11;
     cardContainer.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     cardContainer.layer.shadowRadius = 24.0;
@@ -131,7 +131,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92] ?: [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.92];
     surfaceView.layer.cornerRadius = kPPCartCellCardCornerRadius;
     surfaceView.layer.borderWidth = 0.8;
-    surfaceView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
     surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -160,7 +160,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     imageShellView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
     imageShellView.layer.cornerRadius = 24.0;
     imageShellView.layer.borderWidth = 0.8;
-    imageShellView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [imageShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
     imageShellView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         imageShellView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -298,7 +298,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     stepperPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
     stepperPillView.layer.cornerRadius = 21.0;
     stepperPillView.layer.borderWidth = 0.8;
-    stepperPillView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+    [stepperPillView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
     stepperPillView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         stepperPillView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -425,7 +425,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     label.backgroundColor = backgroundColor;
     label.layer.cornerRadius = 14.0;
     label.layer.borderWidth = 0.8;
-    label.layer.borderColor = borderColor.CGColor;
+    [label pp_setBorderColor:borderColor];
     label.layer.masksToBounds = YES;
     label.textAlignment = NSTextAlignmentNatural;
     label.numberOfLines = 1;
@@ -522,7 +522,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
                                       [PPChatsFunc formattedCurrency:item.discountPerUnit]];
         self.savingsPillLabel.hidden = NO;
         self.subtotalPillLabel.backgroundColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.16];
-        self.subtotalPillLabel.layer.borderColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.18].CGColor;
+        [self.subtotalPillLabel pp_setBorderColor:[(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.18]];
         self.subtotalPillLabel.textColor = AppPrimaryClr ?: UIColor.labelColor;
     } else {
         self.originalPriceLabel.attributedText = nil;
@@ -530,7 +530,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         self.savingsPillLabel.text = @"";
         self.savingsPillLabel.hidden = YES;
         self.subtotalPillLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
-        self.subtotalPillLabel.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.12].CGColor;
+        [self.subtotalPillLabel pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
         self.subtotalPillLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.78];
     }
 
@@ -668,7 +668,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         button.tintColor = foregroundColor;
         button.backgroundColor = backgroundColor;
         button.layer.borderWidth = 0.8;
-        button.layer.borderColor = borderColor.CGColor;
+        [button pp_setBorderColor:borderColor];
     }
 }
 

@@ -25,7 +25,7 @@
     _containerView = [[UIView alloc] init];
     _containerView.backgroundColor = AppForgroundColr;
     _containerView.layer.cornerRadius = 16;
-    _containerView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [_containerView pp_setShadowColor:[UIColor blackColor]];
     _containerView.layer.shadowOffset = CGSizeMake(0, 2);
     _containerView.layer.shadowRadius = 4;
     _containerView.layer.shadowOpacity = 0.05;
@@ -123,7 +123,7 @@
     self.sexualImageView.image = nil;
     self.mainImageView.image = [UIImage imageNamed:@"placeholder"];
     self.mainImageView.layer.borderWidth = 0.0;
-    self.mainImageView.layer.borderColor = UIColor.clearColor.CGColor;
+    [self.mainImageView pp_setBorderColor:UIColor.clearColor];
     self.containerView.backgroundColor = AppForgroundColr;
     self.userInteractionEnabled = YES;
     self.contentView.alpha = 1.0;

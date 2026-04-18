@@ -383,6 +383,7 @@
 		F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F273149C2F31D7E500FFA0B8 /* PPCheckoutCoordinator.m */; };
 		F27365F82F858773000AB3DD /* PPModernAvatarRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = F27365F72F858773000AB3DD /* PPModernAvatarRenderer.m */; };
 		F2736E972E8265D800902E1C /* Styling.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E962E8265D800902E1C /* Styling.m */; };
+		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		F2736E9A2E827C0A00902E1C /* PPHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E992E827C0A00902E1C /* PPHUD.m */; };
 		F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E9C2E82834F00902E1C /* PPAlertHelper.m */; };
 		F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */; };
@@ -1476,6 +1477,8 @@
 		F27365F72F858773000AB3DD /* PPModernAvatarRenderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModernAvatarRenderer.m; sourceTree = "<group>"; };
 		F2736E952E8265D800902E1C /* Styling.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Styling.h; sourceTree = "<group>"; };
 		F2736E962E8265D800902E1C /* Styling.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Styling.m; sourceTree = "<group>"; };
+		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
+		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
 		F2736E982E827C0A00902E1C /* PPHUD.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHUD.h; sourceTree = "<group>"; };
 		F2736E992E827C0A00902E1C /* PPHUD.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHUD.m; sourceTree = "<group>"; };
 		F2736E9B2E82834F00902E1C /* PPAlertHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAlertHelper.h; sourceTree = "<group>"; };
@@ -4910,6 +4913,8 @@
 				F2B02B202EF86462001A7B19 /* PPTextField.m */,
 				F2736E952E8265D800902E1C /* Styling.h */,
 				F2736E962E8265D800902E1C /* Styling.m */,
+				AA0000012F40000100000001 /* PPThemeRefresh.h */,
+				AA0000022F40000100000002 /* PPThemeRefresh.m */,
 				F2736E9B2E82834F00902E1C /* PPAlertHelper.h */,
 				F2736E9C2E82834F00902E1C /* PPAlertHelper.m */,
 				F2736E982E827C0A00902E1C /* PPHUD.h */,
@@ -5472,6 +5477,7 @@
 				F28DD5962F04691700FF2671 /* PPHomeBannerContainerCell.m in Sources */,
 				F20F31AF2D177602001D1D57 /* PGDatePicker+DateAndTime.m in Sources */,
 				F2736E972E8265D800902E1C /* Styling.m in Sources */,
+				AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */,
 				F20F31B02D177602001D1D57 /* NSBundle+PGDatePicker.m in Sources */,
 				F20F31B12D177602001D1D57 /* PGDatePicker+TimeAndSecond.m in Sources */,
 				F20F31B22D177602001D1D57 /* PGDatePicker+DateHourMinute.m in Sources */,

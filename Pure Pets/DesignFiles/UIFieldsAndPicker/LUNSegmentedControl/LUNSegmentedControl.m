@@ -617,7 +617,7 @@
     return self.selectorViewColor;
 }
 - (void)setupShadowForStateAtIndex:(NSInteger)index visible:(BOOL)visible animated:(BOOL)animated {
-    self.shadowView.layer.shadowColor = [self shadowColorForStateAtIndex:index].CGColor;
+    [self.shadowView pp_setShadowColor:[self shadowColorForStateAtIndex:index]];
     self.shadowView.layer.shadowRadius = 3.0;
     self.shadowView.layer.shadowOffset = CGSizeMake(0, 3);
     CGAffineTransform transform = CGAffineTransformMakeTranslation(self.stateViews[index].bounds.size.width * [self percentFromOffset:[self offsetFromState:index]], 0);

@@ -1871,6 +1871,9 @@
 "payment_cancelled_by_user" = "تم إلغاء الدفع.";
 "payment_cancelled_title" = "تم إلغاء الدفع";
 "payment_cancelled_message" = "تم إلغاء عملية الدفع. إذا كنت لا تزال ترغب بإتمام عملية الشراء، يرجى اختيار طريقة دفع أخرى.";
+"payment_cancelled_choose_method_message" = "لقد قمت بإلغاء الدفع. يرجى اختيار طريقة دفع أخرى أو إلغاء طلبك.";
+"payment_cancelled_choose_another" = "اختر طريقة أخرى";
+"payment_cancelled_cancel_order" = "إلغاء الطلب";
 "payment_create_session_failed" = "فشل إنشاء جلسة الدفع.";
 "checkout_payment_verification_pending" = "جاري التحقق من عملية الدفع. يرجى مراجعة حالة الطلب بعد قليل.";
 "cart_undo_action" = "تراجع";

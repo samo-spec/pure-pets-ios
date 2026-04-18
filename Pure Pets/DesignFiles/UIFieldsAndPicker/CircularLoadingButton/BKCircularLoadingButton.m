@@ -118,7 +118,7 @@
 - (void)updateLayerProperties {
     
     self.layer.borderWidth = self.borderWidth;
-    self.layer.borderColor = self.borderColor.CGColor;
+    [self pp_setBorderColor:self.borderColor];
     self.layer.cornerRadius = self.cornerRadius;
     self.layer.masksToBounds = YES;
 }

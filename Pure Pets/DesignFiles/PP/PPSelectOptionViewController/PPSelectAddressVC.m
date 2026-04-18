@@ -280,7 +280,7 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
             ? [AppForgroundColr colorWithAlphaComponent:0.20]
             : AppForgroundColr;
         button.layer.borderWidth = 1.0;
-        button.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.35 : 0.22].CGColor;
+        [button pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.35 : 0.22]];
         [button setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
     }
 
@@ -301,7 +301,7 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     }
     container.layer.masksToBounds = YES;
     container.layer.borderWidth = PPIOS26() ? 0.8 : 0.0;
-    container.layer.borderColor = [[AppPrimaryTextClr colorWithAlphaComponent:0.10] CGColor];
+    [container pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.10]];
 
     UIBlurEffectStyle blurStyle = PPIOS26() ? UIBlurEffectStyleSystemThinMaterial : UIBlurEffectStyleSystemUltraThinMaterial;
     UIBlurEffect *blur = [UIBlurEffect effectWithStyle:blurStyle];

@@ -52,12 +52,12 @@
     self.layer.cornerRadius = CGRectGetHeight(self.bounds) / 2.0;
     self.layer.backgroundColor = [[UIColor colorWithWhite:1.0 alpha:0.96] CGColor];
     self.layer.borderWidth = 1.0;
-    self.layer.borderColor = [[UIColor blackColor] colorWithAlphaComponent:0.05].CGColor;
+    [self pp_setBorderColor:[[UIColor blackColor] colorWithAlphaComponent:0.05]];
 
-    self.layer.shadowColor = [UIColor colorWithRed:76.0 / 255.0
-                                             green:11.0 / 255.0
-                                              blue:37.0 / 255.0
-                                             alpha:1.0].CGColor;
+    [self pp_setShadowColor:[UIColor colorWithRed:76.0 / 255.0
+                                            green:11.0 / 255.0
+                                             blue:37.0 / 255.0
+                                            alpha:1.0]];
     self.layer.shadowOpacity = 0.24;
     self.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     self.layer.shadowRadius = 16.0;
@@ -99,7 +99,7 @@
     button.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
     button.tintColor = accentColor;
     button.layer.borderWidth = 1.0;
-    button.layer.borderColor = [accentColor colorWithAlphaComponent:0.14].CGColor;
+    [button pp_setBorderColor:[accentColor colorWithAlphaComponent:0.14]];
     button.layer.masksToBounds = YES;
     button.imageView.contentMode = UIViewContentModeScaleAspectFit;
 }

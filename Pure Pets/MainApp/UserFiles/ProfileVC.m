@@ -253,14 +253,14 @@
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.86 * 0.18 : 0.86;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.avatarIMV.layer.borderColor = [avatarBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [self.avatarIMV pp_setBorderColor:avatarBorderDynamic];
 
     self.headerCardView.layer.borderWidth = 1.0;
     UIColor *headerCardBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.headerCardView.layer.borderColor = [headerCardBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [self.headerCardView pp_setBorderColor:headerCardBorderDynamic];
 
     UIColor *editBadgeBorderDynamic = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
@@ -268,8 +268,8 @@
         }
         return UIColor.whiteColor;
     }];
-    self.addPhotoBtn.layer.borderColor = [editBadgeBorderDynamic resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    self.addPhotoBtn.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [self.addPhotoBtn pp_setBorderColor:editBadgeBorderDynamic];
+    [self.addPhotoBtn pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     self.addPhotoBtn.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 : 0.18;
     self.addPhotoBtn.layer.shadowRadius = 6.0;
     self.addPhotoBtn.layer.shadowOffset = CGSizeMake(0.0, 2.0);
@@ -548,7 +548,7 @@
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.12 * 0.40 : 0.12;
         return [UIColor colorWithRed:0.93 green:0.80 blue:0.69 alpha:a];
     }];
-    topGlow.layer.shadowColor = [[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [topGlow pp_setShadowColor:[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0]];
     topGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.10;
     topGlow.layer.shadowRadius = 64.0;
     topGlow.layer.shadowOffset = CGSizeZero;
@@ -560,7 +560,7 @@
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 * 0.40 : 0.06;
         return [UIColor colorWithRed:0.72 green:0.45 blue:0.42 alpha:a];
     }];
-    bottomGlow.layer.shadowColor = [[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [bottomGlow pp_setShadowColor:[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0]];
     bottomGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     bottomGlow.layer.shadowRadius = 72.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
@@ -601,8 +601,8 @@
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    cardView.layer.borderColor = [cardBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    cardView.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cardView pp_setBorderColor:cardBorderColor];
+    [cardView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cardView.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.03 : 0.08;
     cardView.layer.shadowRadius = 24.0;
     cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
@@ -625,7 +625,7 @@
     ambientGlow.backgroundColor = [brandColor colorWithAlphaComponent:0.16];
     ambientGlow.userInteractionEnabled = NO;
     ambientGlow.layer.cornerRadius = 94.0;
-    ambientGlow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.50].CGColor;
+    [ambientGlow pp_setShadowColor:[brandColor colorWithAlphaComponent:0.50]];
     ambientGlow.layer.shadowOpacity = 0.16;
     ambientGlow.layer.shadowRadius = 42.0;
     ambientGlow.layer.shadowOffset = CGSizeZero;
@@ -643,7 +643,7 @@
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 * 0.18 : 0.45;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    secondaryGlow.layer.shadowColor = [secondaryGlowShadowColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
+    [secondaryGlow pp_setShadowColor:secondaryGlowShadowColor];
     secondaryGlow.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.04 : 0.20;
     secondaryGlow.layer.shadowRadius = 22.0;
     secondaryGlow.layer.shadowOffset = CGSizeZero;
@@ -663,7 +663,7 @@
     }];
     eyebrowPill.layer.cornerRadius = 14.0;
     eyebrowPill.layer.borderWidth = 1.0;
-    eyebrowPill.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
+    [eyebrowPill pp_setBorderColor:[brandColor colorWithAlphaComponent:0.10]];
     eyebrowPill.layer.masksToBounds = YES;
     [cardView addSubview:eyebrowPill];
 
@@ -684,8 +684,8 @@
         CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.48 * 0.18 : 0.48;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    avatarHalo.layer.borderColor = [avatarHaloBorderColor resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    avatarHalo.layer.shadowColor = [brandColor colorWithAlphaComponent:0.30].CGColor;
+    [avatarHalo pp_setBorderColor:avatarHaloBorderColor];
+    [avatarHalo pp_setShadowColor:[brandColor colorWithAlphaComponent:0.30]];
     avatarHalo.layer.shadowOpacity = 0.12;
     avatarHalo.layer.shadowRadius = 22.0;
     avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -740,7 +740,7 @@
     }];
     metaLabel.layer.cornerRadius = 17.0;
     metaLabel.layer.borderWidth = 1.0;
-    metaLabel.layer.borderColor = [brandColor colorWithAlphaComponent:0.10].CGColor;
+    [metaLabel pp_setBorderColor:[brandColor colorWithAlphaComponent:0.10]];
     metaLabel.layer.masksToBounds = YES;
     metaLabel.textInsets = UIEdgeInsetsMake(6, 12, 6, 12);
     [cardView addSubview:metaLabel];
@@ -754,13 +754,13 @@
     editBadge.backgroundColor = brandColor;
     editBadge.layer.cornerRadius = 16.0;
     editBadge.layer.borderWidth = 2.5;
-    editBadge.layer.borderColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+    [editBadge pp_setBorderColor:[UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
             return [UIColor colorWithRed:0.17 green:0.17 blue:0.19 alpha:1.0];
         }
         return UIColor.whiteColor;
-    }].CGColor;
-    editBadge.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    }]];
+    [editBadge pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     editBadge.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.06 : 0.18;
     editBadge.layer.shadowRadius = 6.0;
     editBadge.layer.shadowOffset = CGSizeMake(0.0, 2.0);
@@ -1131,8 +1131,8 @@
     cell.contentView.layer.cornerRadius = 20.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth = 1.0;
-    cell.contentView.layer.borderColor = [[self pp_profileSurfaceBorderColor] resolvedColorWithTraitCollection:self.traitCollection].CGColor;
-    cell.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [cell.contentView pp_setBorderColor:[self pp_profileSurfaceBorderColor]];
+    [cell pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     cell.layer.shadowOpacity = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.02 : 0.05;
     cell.layer.shadowRadius = 12.0;
     cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
@@ -2537,14 +2537,14 @@
         CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.86 * 0.18 : 0.86;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.avatarIMV.layer.borderColor = [avatarBorderDyn resolvedColorWithTraitCollection:tc].CGColor;
+    [self.avatarIMV pp_setBorderColor:avatarBorderDyn];
 
     // Header card border + shadow
     UIColor *headerCardBorderDyn = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *t) {
         CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.68 * 0.18 : 0.68;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.headerCardView.layer.borderColor = [headerCardBorderDyn resolvedColorWithTraitCollection:tc].CGColor;
+    [self.headerCardView pp_setBorderColor:headerCardBorderDyn];
     self.headerCardView.layer.shadowOpacity = isDark ? 0.03 : 0.08;
 
     // Add-photo button
@@ -2552,15 +2552,15 @@
         CGFloat a = (t.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.18 : 1.0;
         return [[UIColor whiteColor] colorWithAlphaComponent:a];
     }];
-    self.addPhotoBtn.layer.borderColor = [photoBorderDyn resolvedColorWithTraitCollection:tc].CGColor;
+    [self.addPhotoBtn pp_setBorderColor:photoBorderDyn];
 
     // Backdrop glows
-    self.backgroundGlowViewTop.layer.shadowColor = [[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0] resolvedColorWithTraitCollection:tc].CGColor;
-    self.backgroundGlowViewBottom.layer.shadowColor = [[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0] resolvedColorWithTraitCollection:tc].CGColor;
+    [self.backgroundGlowViewTop pp_setShadowColor:[UIColor colorWithRed:0.98 green:0.82 blue:0.60 alpha:1.0]];
+    [self.backgroundGlowViewBottom pp_setShadowColor:[UIColor colorWithRed:0.68 green:0.27 blue:0.33 alpha:1.0]];
 
     // Refresh cell layer CGColors
     for (UITableViewCell *cell in self.tableView.visibleCells) {
-        cell.contentView.layer.borderColor = [[self pp_profileSurfaceBorderColor] resolvedColorWithTraitCollection:tc].CGColor;
+        [cell.contentView pp_setBorderColor:[self pp_profileSurfaceBorderColor]];
         cell.layer.shadowOpacity = isDark ? 0.02 : 0.05;
     }
 }

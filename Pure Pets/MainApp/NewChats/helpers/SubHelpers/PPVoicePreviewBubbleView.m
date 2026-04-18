@@ -22,7 +22,7 @@
     self.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
     self.layer.cornerRadius = 18;
     self.layer.borderWidth = 1;
-    self.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.25].CGColor;
+    [self pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.25]];
 
     [self buildUI];
     return self;

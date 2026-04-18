@@ -40,7 +40,7 @@
     badge.layer.cornerRadius = 14;
     badge.layer.masksToBounds = YES;
     badge.hidden = YES;
-    badge.layer.borderColor = AppPrimaryClr.CGColor;
+    [badge pp_setBorderColor:AppPrimaryClr];
     badge.layer.borderWidth = 1.0;
     [self.contentView addSubview:badge];
     self.pp_orderLabel = badge;

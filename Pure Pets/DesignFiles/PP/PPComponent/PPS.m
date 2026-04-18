@@ -503,7 +503,7 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
 
 - (void)applyShadow {
     if (_shadowEnabled) {
-        self.layer.shadowColor = _shadowColor.CGColor;
+        [self pp_setShadowColor:_shadowColor];
         self.layer.shadowOpacity = (float)_shadowOpacity;
         self.layer.shadowRadius = _shadowRadius;
         self.layer.shadowOffset = _shadowOffset;
@@ -522,7 +522,7 @@ static CGFloat PPRelevanceScore(NSString *query, NSString *candidate) {
 - (void)updateStroke {
     self.strokeView.layer.cornerRadius = self.cornerRadius;
     self.strokeView.layer.borderWidth = self.strokeColor == UIColor.clearColor ? 0.0 : 1.0 / UIScreen.mainScreen.scale;
-    self.strokeView.layer.borderColor = self.strokeColor.CGColor;
+    [self.strokeView pp_setBorderColor:self.strokeColor];
 }
 
 #pragma mark - Buttons

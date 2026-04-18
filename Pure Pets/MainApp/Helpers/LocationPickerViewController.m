@@ -127,8 +127,8 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     panel.layer.cornerRadius = cornerRadius;
     panel.layer.cornerCurve = kCACornerCurveContinuous;
     panel.layer.borderWidth = 0.0;
-    panel.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.34].CGColor;
-    panel.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [panel pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.34]];
+    [panel pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     panel.layer.shadowOpacity = 0.12;
     panel.layer.shadowRadius = 22.0;
     panel.layer.shadowOffset = CGSizeMake(0.0, 14.0);
@@ -150,8 +150,8 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     button.layer.cornerRadius = 22.0;
     button.layer.cornerCurve = kCACornerCurveContinuous;
     button.layer.borderWidth = 0.0;
-    button.layer.borderColor = [[UIColor whiteColor] colorWithAlphaComponent:0.52].CGColor;
-    button.layer.shadowColor = [UIColor colorWithWhite:0.0 alpha:1.0].CGColor;
+    [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.52]];
+    [button pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     button.layer.shadowOpacity = 0.10;
     button.layer.shadowRadius = 18.0;
     button.layer.shadowOffset = CGSizeMake(0.0, 10.0);
@@ -169,7 +169,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     button.backgroundColor = PPLocationPickerAccentColor();
     button.layer.cornerRadius = 18.0;
     button.layer.cornerCurve = kCACornerCurveContinuous;
-    button.layer.shadowColor = PPLocationPickerAccentColor().CGColor;
+    [button pp_setShadowColor:PPLocationPickerAccentColor()];
     button.layer.shadowOpacity = 0.26;
     button.layer.shadowRadius = 20.0;
     button.layer.shadowOffset = CGSizeMake(0.0, 12.0);
@@ -341,7 +341,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     self.statusPillView.layer.cornerRadius = 14.0;
     self.statusPillView.layer.cornerCurve = kCACornerCurveContinuous;
     self.statusPillView.layer.borderWidth = 1.0;
-    self.statusPillView.layer.borderColor = [accentColor colorWithAlphaComponent:0.18].CGColor;
+    [self.statusPillView pp_setBorderColor:[accentColor colorWithAlphaComponent:0.18]];
     [self.selectionChromeView.contentView addSubview:self.statusPillView];
 
     self.spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleMedium];
@@ -547,7 +547,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     self.statusLabel.text = text ?: @"";
     self.statusLabel.textColor = resolvedTint;
     self.statusPillView.backgroundColor = [resolvedTint colorWithAlphaComponent:loading ? 0.18 : 0.12];
-    self.statusPillView.layer.borderColor = [resolvedTint colorWithAlphaComponent:0.18].CGColor;
+    [self.statusPillView pp_setBorderColor:[resolvedTint colorWithAlphaComponent:0.18]];
     if (loading) {
         [self.spinner startAnimating];
     } else {
@@ -680,7 +680,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
     [super viewDidLayoutSubviews];
     self.topScrimLayer.frame = self.topScrimView.bounds;
     self.bottomScrimLayer.frame = self.bottomScrimView.bounds;
-    self.pinHaloView.layer.shadowColor = PPLocationPickerAccentColor().CGColor;
+    [self.pinHaloView pp_setShadowColor:PPLocationPickerAccentColor()];
     self.pinHaloView.layer.shadowOpacity = 0.20;
     self.pinHaloView.layer.shadowRadius = 26.0;
     self.pinHaloView.layer.shadowOffset = CGSizeZero;

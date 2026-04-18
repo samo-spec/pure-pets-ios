@@ -204,6 +204,9 @@ static NSString * const kUserInterfaceStyleKey = @"UserInterfaceStylePreference"
 /// تبديل النمط الحالي (Light ↔️ Dark)
 - (void)toggleUserInterfaceStyleForWindow:(UIWindow *)window;
 
+/// Apply a specific style (Light / Dark / System) with animation
+- (void)applyInterfaceStyle:(UIUserInterfaceStyle)style toWindow:(UIWindow *)window;
+
 @end
 
 NS_ASSUME_NONNULL_END

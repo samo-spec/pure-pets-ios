@@ -111,7 +111,7 @@
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.whiteColor;
     self.contentView.layer.cornerRadius = 28;
-    self.contentView.layer.shadowColor = UIColor.blackColor.CGColor;
+    [self.contentView pp_setShadowColor:UIColor.blackColor];
     self.contentView.layer.shadowOpacity = 0.08;
     self.contentView.layer.shadowRadius = 10;
     self.contentView.layer.shadowOffset = CGSizeMake(0, 4);

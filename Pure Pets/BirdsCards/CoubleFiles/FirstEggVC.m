@@ -523,7 +523,7 @@ NSIndexPath *dateIndexP;
     }
     datePickManager.view.layer.cornerRadius = 15;
  
-    datePickManager.view.layer.shadowColor = UIColor.blackColor.CGColor;
+    [datePickManager.view pp_setShadowColor:UIColor.blackColor];
     datePickManager.view.layer.shadowOpacity = 1;
     datePickManager.view.layer.shadowOffset = CGSizeMake(5, 5);
     datePickManager.view.layer.shadowRadius = 2;

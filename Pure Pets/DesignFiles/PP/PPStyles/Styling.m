@@ -4,6 +4,7 @@
 //
 
 #import "Styling.h"
+#import "PPThemeRefresh.h"
 #import "AppManager.h" // for kAppPrimaryColor, etc.
 #import "YYCache.h"
 
@@ -140,16 +141,20 @@
     
     // 🔹 Border color and width
     if (borderColor) {
-        view.layer.borderColor = borderColor.CGColor;
+        [view pp_setBorderColor:borderColor];
         view.layer.borderWidth = borderWidth;
     } else {
         view.layer.borderWidth = 0;
-        view.layer.borderColor = nil;
+        [view pp_setBorderColor:nil];
     }
     
     // 🔹 Optional shadow
     if (addShadow) {
-        view.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.25].CGColor;
+        UIColor *shadowClr = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+            CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.45 : 0.25;
+            return [UIColor colorWithWhite:0 alpha:a];
+        }];
+        [view pp_setShadowColor:shadowClr];
         view.layer.shadowOpacity = 0.2;
         view.layer.shadowRadius = 4.0;
         view.layer.shadowOffset = CGSizeMake(0, 3);
@@ -204,7 +209,7 @@
     button.layer.masksToBounds = NO; // allow shadow
     
     // Shadow (if needed)
-    button.layer.shadowColor = [UIColor blackColor].CGColor;
+    [button pp_setShadowColor:[UIColor blackColor]];
     button.layer.shadowOpacity = 0.07f;
     button.layer.shadowOffset = CGSizeMake(0, 2);
     button.layer.shadowRadius = 4.0f;
@@ -685,7 +690,11 @@
      cell.layer.masksToBounds = YES;
      }*/
     
-    cell.layer.shadowColor = [UIColor colorWithWhite:0 alpha:0.22].CGColor;
+    UIColor *cellShadowClr = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        CGFloat a = (tc.userInterfaceStyle == UIUserInterfaceStyleDark) ? 0.40 : 0.22;
+        return [UIColor colorWithWhite:0 alpha:a];
+    }];
+    [cell pp_setShadowColor:cellShadowClr];
     cell.layer.shadowOpacity = 1.0;
     cell.layer.shadowOffset = CGSizeMake(0, 2);
     cell.layer.shadowRadius = 6;
@@ -698,7 +707,7 @@
     button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
     button.layer.cornerRadius = 25;
     button.layer.masksToBounds = YES;
-    button.layer.shadowColor = AppShadowClr.CGColor;
+    [button pp_setShadowColor:AppShadowClr];
     button.layer.shadowOpacity = 0.15;
     button.layer.shadowRadius = 8;
     button.layer.shadowOffset = CGSizeMake(0, 4);
@@ -1000,9 +1009,14 @@
     
     // 🔹 Optional décor
     bgView.layer.borderWidth = 0.5;
-    bgView.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.9].CGColor;
+    UIColor *decorBorder = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor colorWithWhite:1.0 alpha:0.15]
+            : [UIColor colorWithWhite:1.0 alpha:0.9];
+    }];
+    [bgView pp_setBorderColor:decorBorder];
     
-    bgView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [bgView pp_setShadowColor:[UIColor blackColor]];
     bgView.layer.shadowOpacity = 0.3;
     bgView.layer.shadowOffset = CGSizeMake(0, 2);
     bgView.layer.shadowRadius = 4;
@@ -1059,7 +1073,7 @@
     button.titleLabel.font = [GM boldFontWithSize:PPFontBody] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightBold];
     button.layer.cornerRadius = PPButtonHeightLG / 2.0;
     button.layer.borderWidth = 1.5;
-    button.layer.borderColor = AppPrimaryClr.CGColor;
+    [button pp_setBorderColor:AppPrimaryClr];
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1074,7 +1088,12 @@
     view.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
     view.layer.cornerRadius = cornerRadius;
     view.layer.borderWidth = 0.5;
-    view.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.10].CGColor;
+    UIColor *glassBorder = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        return (tc.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor colorWithWhite:1.0 alpha:0.18]
+            : [UIColor colorWithWhite:1.0 alpha:0.10];
+    }];
+    [view pp_setBorderColor:glassBorder];
     if (@available(iOS 13.0, *)) {
         view.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1208,8 +1227,37 @@ static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
     [UIView transitionWithView:window
                       duration:0.35
                        options:UIViewAnimationOptionTransitionCrossDissolve
-                    animations:nil
-                    completion:nil];
+                    animations:^{
+        // Force the entire view hierarchy to re-resolve dynamic CGColorRef
+        // values (border, shadow) during the cross-dissolve.
+        [window pp_resolveLayerColorsRecursively];
+    }
+                    completion:^(BOOL finished) {
+        [[NSNotificationCenter defaultCenter]
+            postNotificationName:PPThemeDidChangeNotification
+                          object:self
+                        userInfo:@{@"style": @(next)}];
+    }];
+}
+
+- (void)applyInterfaceStyle:(UIUserInterfaceStyle)style toWindow:(UIWindow *)window {
+    if (!window) return;
+
+    window.overrideUserInterfaceStyle = style;
+    [self saveUserInterfaceStyle:style];
+
+    [UIView transitionWithView:window
+                      duration:0.35
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+        [window pp_resolveLayerColorsRecursively];
+    }
+                    completion:^(BOOL finished) {
+        [[NSNotificationCenter defaultCenter]
+            postNotificationName:PPThemeDidChangeNotification
+                          object:self
+                        userInfo:@{@"style": @(style)}];
+    }];
 }
 
 

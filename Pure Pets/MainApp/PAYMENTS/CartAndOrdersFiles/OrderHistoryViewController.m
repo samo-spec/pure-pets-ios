@@ -241,7 +241,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.searchContainer.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.80 : 0.96];
     self.searchContainer.layer.cornerRadius = 22.0;
     self.searchContainer.layer.masksToBounds = NO;
-    self.searchContainer.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.14].CGColor;
+    [self.searchContainer pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.14]];
     self.searchContainer.layer.shadowOpacity = 0.08;
     self.searchContainer.layer.shadowRadius = 14.0;
     self.searchContainer.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -346,7 +346,7 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.heroCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
     self.heroCard.layer.cornerRadius = 28.0;
     self.heroCard.layer.masksToBounds = NO;
-    self.heroCard.layer.shadowColor = [UIColor.blackColor colorWithAlphaComponent:0.18].CGColor;
+    [self.heroCard pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.18]];
     self.heroCard.layer.shadowOpacity = 0.10;
     self.heroCard.layer.shadowRadius = 18.0;
     self.heroCard.layer.shadowOffset = CGSizeMake(0.0, 10.0);

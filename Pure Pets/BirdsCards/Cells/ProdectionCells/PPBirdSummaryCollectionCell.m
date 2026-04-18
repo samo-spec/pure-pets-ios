@@ -242,7 +242,7 @@
         _TransactionBTN.configuration = cfg;
         _TransactionBTN.configurationUpdateHandler = ^(UIButton *btn) {
             btn.layer.shadowOpacity = 0.08;
-            btn.layer.shadowColor = UIColor.blackColor.CGColor;
+            [btn pp_setShadowColor:UIColor.blackColor];
             btn.layer.shadowRadius = 10.0;
             btn.layer.shadowOffset = CGSizeMake(0, 4);
         };
@@ -345,7 +345,7 @@
     _photoShadowView = [UIView new];
     _photoShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     _photoShadowView.backgroundColor = UIColor.clearColor;
-    _photoShadowView.layer.shadowColor = [UIColor blackColor].CGColor;
+    [_photoShadowView pp_setShadowColor:[UIColor blackColor]];
     _photoShadowView.layer.shadowOpacity = 0.08;
     _photoShadowView.layer.shadowRadius = 10;
     _photoShadowView.layer.shadowOffset = CGSizeMake(0, 4);

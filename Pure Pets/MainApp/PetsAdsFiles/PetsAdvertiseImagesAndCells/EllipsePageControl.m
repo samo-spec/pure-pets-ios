@@ -165,7 +165,7 @@
              }
             
           /*
-           currPointView.layer.shadowColor = [AppPrimaryClr colorWithAlphaComponent:1.0].CGColor;
+           [currPointView pp_setShadowColor:[AppPrimaryClr colorWithAlphaComponent:1.0]];
            currPointView.layer.shadowOffset = CGSizeMake(0, 2);
            currPointView.layer.shadowOpacity = 0.5;
            currPointView.layer.shadowRadius = 2;
@@ -185,7 +185,7 @@
              startX=CGRectGetMaxX(otherPointView.frame)+_controlSpacing;
             
             /*
-             otherPointView.layer.shadowColor = AppShadowClr.CGColor;
+             [otherPointView pp_setShadowColor:AppShadowClr];
              otherPointView.layer.shadowOffset = CGSizeMake(0, 2);
              otherPointView.layer.shadowOpacity = 0.5;
              otherPointView.layer.shadowRadius = 2;
