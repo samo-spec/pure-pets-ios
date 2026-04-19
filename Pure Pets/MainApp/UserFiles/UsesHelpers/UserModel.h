@@ -56,6 +56,8 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, strong, nullable) NSDate *updatedAt;
 @property (nonatomic, assign) NSInteger CountryID;
 @property (nonatomic, copy) NSString *PPUserTokenID;
+@property (nonatomic, copy) NSString *PPAdminTokenID;
+@property (nonatomic, copy) NSString *PPProTokenID;
 
 #pragma mark - Roles
 @property (nonatomic, assign) UserRole role;

@@ -282,6 +282,26 @@ static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat 
     } completion:nil];
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshThemeColors];
+        }
+    }
+}
+
+- (void)pp_refreshThemeColors
+{
+    // Re-apply the current configuration to refresh CALayer colors
+    if (self.titleLabel.text.length > 0) {
+        [self pp_applyQuickActionTitle:self.titleLabel.text
+                              iconName:self.iconView.image.accessibilityIdentifier ?: @""
+                                accent:[self pp_quickActionAccentColor]];
+    }
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];

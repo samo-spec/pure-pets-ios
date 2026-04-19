@@ -28,6 +28,17 @@ static NSString * const kReuseBannerCell = @"PPBannerCell";
 @implementation PPBannersCollection
 
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self.collectionShadowContainer pp_setShadowColor:UIColor.blackColor];
+            [self.pageControlGlassButton pp_setShadowColor:UIColor.blackColor];
+        }
+    }
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self bringSubviewToFront:self.pageControl];

@@ -490,6 +490,32 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     return self;
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshThemeColors];
+        }
+    }
+}
+
+- (void)pp_refreshThemeColors
+{
+    [_shadowContainer pp_setShadowColor:[UIColor colorWithWhite:0 alpha:1]];
+    [_contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
+    [_badgeContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
+    [_characterGlowView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
+    
+    // If not using background image, refresh gradient colors
+    if (self.card && self.backgroundImageView.alpha < 0.5) {
+        [self configureWithCard:self.card
+                      onCardTap:self.onCardTap
+                   onPrimaryTap:self.onPrimaryTap
+                 onSecondaryTap:self.onSecondaryTap];
+    }
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
@@ -1391,6 +1417,21 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     ]];
 
     return self;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshThemeColors];
+        }
+    }
+}
+
+- (void)pp_refreshThemeColors
+{
+    [_shadowContainer pp_setShadowColor:UIColor.blackColor];
 }
 
 - (void)layoutSubviews

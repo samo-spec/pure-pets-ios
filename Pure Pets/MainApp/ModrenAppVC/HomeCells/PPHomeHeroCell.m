@@ -1254,6 +1254,33 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     }
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_applyPaletteForCurrentTime];
+            [self pp_applyStatusForState:self.currentLocationState];
+            [self pp_refreshBorderColors];
+        }
+    }
+}
+
+- (void)pp_refreshBorderColors
+{
+    [self.locationControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
+    [self.locationIconPlateView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    [self.locationStatusChipView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.11]];
+    [self.actionButton pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
+    [self.orderPeekStrip pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
+    
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:1.0]];
+}
+
 #pragma mark - State Styling
 
 - (void)pp_applyStatusForState:(PPHomeHeroLocationState)state

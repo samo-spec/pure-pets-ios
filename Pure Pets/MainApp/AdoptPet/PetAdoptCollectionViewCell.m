@@ -106,6 +106,23 @@
         [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:corners].CGPath;
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshThemeColors];
+        }
+    }
+}
+
+- (void)pp_refreshThemeColors
+{
+    [self pp_setShadowColor:[UIColor colorWithRed:0.11 green:0.17 blue:0.22 alpha:1.0]];
+    [self pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.6]];
+    [self pp_applyGradientForRTL:Language.isRTL];
+}
+
 - (void)layoutSubviews {
     [super layoutSubviews];
     [self pp_refreshVisualGeometry];

@@ -553,6 +553,24 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     [self pp_applyStatusColor:UIColor.systemBlueColor];
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_applyThemeColors];
+        }
+    }
+}
+
+- (void)pp_applyThemeColors
+{
+    [self.shadowView pp_setShadowColor:UIColor.blackColor];
+    [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.16)]];
+    self.overlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.85];
+    [self pp_applyStatusColor:self.currentStatusColor];
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];

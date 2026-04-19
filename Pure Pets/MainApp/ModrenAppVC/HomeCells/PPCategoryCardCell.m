@@ -235,6 +235,23 @@
     [self applySelection:selected animated:NO];
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshThemeColors];
+        }
+    }
+}
+
+- (void)pp_refreshThemeColors
+{
+    [self pp_setShadowColor:UIColor.blackColor];
+    self.titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    [self applySelection:self.selected animated:NO];
+}
+
 #pragma mark - Reuse
 
 - (void)prepareForReuse {

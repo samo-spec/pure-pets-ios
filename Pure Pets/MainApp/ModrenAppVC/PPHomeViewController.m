@@ -432,12 +432,40 @@
     [self pp_refreshCardGeometry];
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshThemeColors];
+        }
+    }
+}
+
+- (void)pp_refreshThemeColors
+{
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    
+    [_cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08]];
+    _cardView.layer.shadowOpacity = isDark ? 0.0f : 0.10f;
+    [_avatarShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.10 : 0.24)]];
+    [_avatarImageView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.35]];
+    [_ctaView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.12 : 0.24)]];
+}
+
 - (void)configureWithDefaultPet:(nullable PPPetProfile *)defaultPet
                        petCount:(NSInteger)petCount
                       isLoading:(BOOL)isLoading
 {
+    [self pp_refreshThemeColors];
     BOOL hasProfiles = (petCount > 0);
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
     UIColor *textColor = isDark
         ? [UIColor colorWithRed:0.95 green:0.90 blue:0.86 alpha:1.0]
         : [UIColor colorWithRed:0.23 green:0.13 blue:0.10 alpha:1.0];
@@ -590,9 +618,7 @@
     _metaSecondaryLabel.textColor = tagText;
     _metaSecondaryLabel.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.14 : 0.46)];
     _ctaView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.16 : 0.26)];
-    [_ctaView pp_setBorderColor:[UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.12 : 0.24)]];
     _avatarShellView.backgroundColor = [UIColor colorWithWhite:(isDark ? 0.0 : 1.0) alpha:(isDark ? 0.12 : 0.18)];
-    [_avatarShellView pp_setBorderColor:[UIColor colorWithWhite:(isDark ? 1.0 : 1.0) alpha:(isDark ? 0.10 : 0.24)]];
     _cardView.layer.shadowOpacity = isDark ? 0.0f : 0.10f;
     _ctaImageView.image = [UIImage systemImageNamed:forwardSymbol
                                   withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:13.0

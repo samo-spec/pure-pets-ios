@@ -42,6 +42,8 @@ static NSString *const kUserKeyLoginDate = @"loginDate";
 static NSString *const kUserKeyUpdatedAt = @"updatedAt";
 static NSString *const kUserKeyCountryID = @"CountryID";
 static NSString *const kUserKeyPPUserTokenID = @"PPUserTokenID";
+static NSString *const kUserKeyPPAdminTokenID = @"PPAdminTokenID";
+static NSString *const kUserKeyPPProTokenID = @"PPProTokenID";
 static NSString *const kUserKeyRole = @"role";
 static NSString *const kUserKeyRoleValue = @"roleValue";
 static NSString *const kUserKeyRoleName = @"roleName";
@@ -219,6 +221,8 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     self.UserName = @"";
     self.UserEmail = @"";
     self.PPUserTokenID = @"";
+    self.PPAdminTokenID = @"";
+    self.PPProTokenID = @"";
     self.permissions = @{};
     self.Addresses = [NSMutableArray array];
     self.onlineStatus = OnlineStatusOffline;
@@ -273,6 +277,8 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
 
     self.UserImageName = PPSafeString(safeDict[kUserKeyUserImageName]);
     self.PPUserTokenID = PPSafeString(safeDict[kUserKeyPPUserTokenID]);
+    self.PPAdminTokenID = PPSafeString(safeDict[kUserKeyPPAdminTokenID]);
+    self.PPProTokenID = PPSafeString(safeDict[kUserKeyPPProTokenID]);
 
     NSString *imageURLString = PPSafeString(safeDict[kUserKeyUserImageURL]);
     NSString *photoURLString = PPSafeString(safeDict[kUserKeyPhotoURL]);
@@ -608,6 +614,8 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     [coder encodeObject:self.updatedAt forKey:kUserKeyUpdatedAt];
     [coder encodeInteger:self.CountryID forKey:kUserKeyCountryID];
     [coder encodeObject:self.PPUserTokenID forKey:kUserKeyPPUserTokenID];
+    [coder encodeObject:self.PPAdminTokenID forKey:kUserKeyPPAdminTokenID];
+    [coder encodeObject:self.PPProTokenID forKey:kUserKeyPPProTokenID];
     [coder encodeBool:self.isAdmin forKey:kUserKeyIsAdmin];
     [coder encodeBool:self.isSuperAdmin forKey:kUserKeyIsSuperAdmin];
     [coder encodeBool:self.isBlocked forKey:kUserKeyIsBlocked];
@@ -674,6 +682,8 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     self.updatedAt = [coder decodeObjectOfClass:NSDate.class forKey:kUserKeyUpdatedAt];
     self.CountryID = [coder decodeIntegerForKey:kUserKeyCountryID];
     self.PPUserTokenID = PPSafeString([coder decodeObjectOfClass:NSString.class forKey:kUserKeyPPUserTokenID]);
+    self.PPAdminTokenID = PPSafeString([coder decodeObjectOfClass:NSString.class forKey:kUserKeyPPAdminTokenID]);
+    self.PPProTokenID = PPSafeString([coder decodeObjectOfClass:NSString.class forKey:kUserKeyPPProTokenID]);
     self.isAdmin = [coder decodeBoolForKey:kUserKeyIsAdmin];
     self.isSuperAdmin = [coder decodeBoolForKey:kUserKeyIsSuperAdmin];
     self.isBlocked = [coder decodeBoolForKey:kUserKeyIsBlocked];
