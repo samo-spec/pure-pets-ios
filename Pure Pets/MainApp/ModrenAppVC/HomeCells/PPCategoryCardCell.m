@@ -107,8 +107,13 @@
     // =========================
     [self.contentView addSubview:self.imageView];
     [self.contentView addSubview:self.glassBackgroundButton];
-    [self.contentView addSubview:self.kindImageView];
-    [self.contentView addSubview:self.titleLabel];
+    
+    // Add these as subviews of the button so they don't block touches
+    self.kindImageView.userInteractionEnabled = NO;
+    self.titleLabel.userInteractionEnabled = NO;
+    
+    [self.glassBackgroundButton addSubview:self.kindImageView];
+    [self.glassBackgroundButton addSubview:self.titleLabel];
 
     // =========================
     // Constraints

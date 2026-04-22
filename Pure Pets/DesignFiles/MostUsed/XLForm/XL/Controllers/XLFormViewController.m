@@ -122,7 +122,7 @@
     UITableView *tableView = self.tableView;
     if (!tableView){
         tableView = [[UITableView alloc] initWithFrame:self.view.bounds
-                                                      style:self.tableViewStyle];
+                                                      style:UITableViewStyleInsetGrouped];
         tableView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         if([tableView respondsToSelector:@selector(cellLayoutMarginsFollowReadableWidth)]){
             tableView.cellLayoutMarginsFollowReadableWidth = NO;

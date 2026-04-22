@@ -5,22 +5,14 @@
 //  Created by Mohammed Ahmed on 18/11/2025.
 //
 
-
-
-
-#import "TOCropViewController.h"
-#import <TOCropViewController/TOCropViewController.h>
+#import <UIKit/UIKit.h>
 #import <PhotosUI/PhotosUI.h>
+#import <TOCropViewController/TOCropViewController.h>
 
-//
-//  PPCompleteProfileVC.h
-//  Pure Pets
-//
-
- #import <UIKit/UIKit.h>
+@class CountryCodeModel;
 @class UserModel;
 
-@interface PPCompleteProfileVC : XLFormViewController
+@interface PPCompleteProfileVC : UIViewController
 <
     UIImagePickerControllerDelegate,
     UINavigationControllerDelegate,
@@ -32,16 +24,14 @@
 @property (nonatomic, strong) CountryCodeModel *selectedCountry;
 @property (nonatomic, strong) NSMutableArray<CountryCodeModel *> *contriesArray;
 
-/// Called once user finishes profile
+/// Called once user finishes profile.
 @property (nonatomic, copy) void (^onProfileCompleted)(UserModel *);
 
-/// Designated initializer
+/// Designated initializer.
 - (instancetype)initWithUser:(UserModel *)user;
 
 @end
 
-
- 
 @interface PPCameraPreviewController : UIViewController
 @property (nonatomic, copy) void (^onCapture)(UIImage *capturedImage);
 @end

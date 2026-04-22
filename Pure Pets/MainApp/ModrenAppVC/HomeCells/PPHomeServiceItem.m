@@ -34,12 +34,12 @@
          title:kLang(@"Veterinary")
          systemIconName:@"veterinaryNewColor"],
 
-        [[PPHomeServiceItem alloc]
+       /* [[PPHomeServiceItem alloc]
          initWithType:PPHomeServiceTypeGrooming
          title:kLang(@"Grooming")
          systemIconName:@"blind"],
 
-     /*  [[PPHomeServiceItem alloc]
+      [[PPHomeServiceItem alloc]
          initWithType:PPHomeServiceTypeTraining
          title:kLang(@"Training")
          systemIconName:@"blind"],*/

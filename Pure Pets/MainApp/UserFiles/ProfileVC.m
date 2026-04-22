@@ -2288,6 +2288,8 @@
             return;
         }
 
+        window.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
         UIViewController *newRoot = [self buildRootController];
         if (!newRoot) {
             return;

@@ -11,6 +11,24 @@
 
 @implementation PPPinterestLayout
 
+static NSUInteger PPPinterestAutomaticColumnCount(CGFloat collectionWidth)
+{
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        if (collectionWidth >= 1280.0) {
+            return 5;
+        }
+        if (collectionWidth >= 920.0) {
+            return 4;
+        }
+        return 3;
+    }
+
+    CGFloat targetCellWidth = 188.0;
+    NSUInteger columns =
+        (NSUInteger)floor(MAX(collectionWidth, 0.0) / MAX(targetCellWidth, 1.0));
+    return MAX(columns, 2);
+}
+
 - (instancetype)init {
     self = [super init];
     if (self) {
@@ -62,8 +80,7 @@
     
     NSUInteger columns = self.columnCount;
     if (columns == 0) {
-        // Automatic column count based on width. Target cell width ~150pt.
-        columns = MAX(2, floor((collectionWidth - _sectionInset.left - _sectionInset.right + _minimumInteritemSpacing) / (150.0 + _minimumInteritemSpacing)));
+        columns = PPPinterestAutomaticColumnCount(collectionWidth);
     }
     if (columns < 1) {
         columns = 1; // safety check (at least 1 column)
@@ -152,8 +169,7 @@
                 itemHeight = itemWidth;
             }
 
-            // 🔒 Enforce minimum height
-            itemHeight = MAX(itemHeight, 220.0);
+            itemHeight = MAX(itemHeight, MAX(kPPPinterestMinCellHeight, itemWidth));
 
             // Create layout attributes and set frame
             UICollectionViewLayoutAttributes *attributes = [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];

@@ -199,6 +199,10 @@ BOOL const isPPDebugMode = NO;
     return self.accessKindType == AccessTypeFood;
 }
 
+- (BOOL)isPetMedicine {
+    return self.accessKindType == AccessTypePetMedicine;
+}
+
 - (instancetype)initWithDictionary:(NSDictionary *)dict documentID:(NSString *)docID {
     
     if (self = [super init]) {
@@ -239,6 +243,7 @@ BOOL const isPPDebugMode = NO;
             switch (rawKind) {
                 case AccessTypeFood:     parsed = AccessTypeFood;     break;
                 case AccessTypeLivePet:  parsed = AccessTypeLivePet;  break;
+                case AccessTypePetMedicine: parsed = AccessTypePetMedicine; break;
                 default:                 parsed = AccessTypeAccessory; break;
             }
             // Backward compat: old docs with product_type == "live" but no accessKindType 3
@@ -452,6 +457,8 @@ BOOL const isPPDebugMode = NO;
             return kLang(@"Food");
         case AccessTypeLivePet:
             return kLang(@"Live Pet");
+        case AccessTypePetMedicine:
+            return kLang(@"PetMedicine");
         default:
             return kLang(@"Unknown");
     }

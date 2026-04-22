@@ -49,11 +49,13 @@
                 @(PPHomeSectionSuggestions),
                 @(PPHomeSectionAccessories),
                 @(PPHomeSectionPetProfile),
+                @(PPHomeSectionPremiumCare),
                 @(PPHomeSectionLastFood),
                 @(PPHomeSectionNearbyServices),
                 @(PPHomeSectionAdsNearBy),
                 @(PPHomeSectionAdopt),
                 @(PPHomeSectionBuyAgain),
+                @(PPHomeSectionServices),
             ];
             if (sectionIndex >= 0 && sectionIndex < renderOrder.count) {
                 sectionType = (PPHomeSection)renderOrder[sectionIndex].integerValue;
@@ -111,6 +113,9 @@
 
             case PPHomeSectionPetProfile:
                 return [PPHomeFunc petProfileSectionForWidth:availableWidth];
+
+            case PPHomeSectionPremiumCare:
+                return [PPHomeFunc premiumCareSectionForWidth:availableWidth];
 
             case PPHomeSectionLastFood:
                 return [PPHomeFunc lastFoodSectionForWidth:availableWidth];

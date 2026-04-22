@@ -8,16 +8,7 @@
 #import <UIKit/UIKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
-
-/// Lightweight glass-surface section header used outside the home feed.
-@interface PPCollectionSectionHeader : UICollectionReusableView
-
-- (void)configureWithTitle:(NSString *)title
-                  subtitle:(nullable NSString *)subtitle
-               actionTitle:(nullable NSString *)actionTitle
-                    action:(nullable void (^)(void))action;
-
-@end
+ 
 
 /// Primary home-feed section header with expand/collapse, menus, and subtitle support.
 @interface PPSectionHeaderView : UICollectionReusableView

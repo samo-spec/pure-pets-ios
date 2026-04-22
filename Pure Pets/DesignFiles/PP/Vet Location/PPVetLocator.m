@@ -128,21 +128,10 @@ static CLLocationCoordinate2D const kSampleLocationCoordinate = {30.0444, 31.235
     self.locationManager = [CLLocationManager new];
     self.locationManager.delegate = self;
     self.locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters;
-
-    CLAuthorizationStatus status;
-    if (@available(iOS 14.0, *)) {
-        status = self.locationManager.authorizationStatus;
-    } else {
-        status = [CLLocationManager authorizationStatus];
-    }
-
-    if (status == kCLAuthorizationStatusNotDetermined) {
-        NSLog(@"[PPVETLOCATOR] Requesting when-in-use authorization");
-        [self.locationManager requestWhenInUseAuthorization];
-        [self showStatus:NSLocalizedString(@"KLang_LocationWaiting", @"Waiting for location permission...") showSpinner:YES showAction:NO];
-    } else {
-        [self handleAuthorizationStatus:status];
-    }
+    
+    // We don't check authorizationStatus here to avoid main-thread unresponsiveness.
+    // The delegate callback -locationManagerDidChangeAuthorization: or -locationManager:didChangeAuthorizationStatus:
+    // will be called immediately after setting the delegate, where we will handle the status.
 }
 
 - (void)handleAuthorizationStatus:(CLAuthorizationStatus)status {
@@ -158,8 +147,13 @@ static CLLocationCoordinate2D const kSampleLocationCoordinate = {30.0444, 31.235
             [self showStatus:NSLocalizedString(@"KLang_LocationDenied", @"Location permission denied. Open Settings to allow access.") showSpinner:NO showAction:YES];
             break;
         }
-        default:
+        case kCLAuthorizationStatusNotDetermined: {
+            NSLog(@"[PPVETLOCATOR] Requesting when-in-use authorization");
+            [self.locationManager requestWhenInUseAuthorization];
             [self showStatus:NSLocalizedString(@"KLang_LocationWaiting", @"Waiting for location permission...") showSpinner:YES showAction:NO];
+            break;
+        }
+        default:
             break;
     }
 }

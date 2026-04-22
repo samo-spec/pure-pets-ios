@@ -211,16 +211,23 @@ if ([NSThread isMainThread]) { \
     CGRect imageRect = _imageView.frame;
     UIImage *image = _imageView.image;
     
-    if (image.size.height / image.size.width > self.bounds.size.height / self.bounds.size.width) {
-        imageRect.size.height = floor(image.size.height / (image.size.width / self.bounds.size.width));
+    if (!image || image.size.width < 0.1 || self.bounds.size.width < 0.1) {
+        imageRect.size.height = self.bounds.size.height;
         _imageView.frame = imageRect;
     } else {
-        CGFloat height = image.size.height / image.size.width * self.bounds.size.width;
-        if (height < 1 || isnan(height)) height = self.bounds.size.height;
-        height = floor(height);
-        imageRect.size.height = height;
-        _imageView.frame = imageRect;
-        _imageView.center = CGPointMake(_imageView.center.x, self.bounds.size.height / 2);
+        CGFloat imgRatio = image.size.height / image.size.width;
+        CGFloat viewRatio = self.bounds.size.height / self.bounds.size.width;
+
+        if (imgRatio > viewRatio) {
+            imageRect.size.height = floor(image.size.height / (image.size.width / self.bounds.size.width));
+            _imageView.frame = imageRect;
+        } else {
+            CGFloat height = floor(imgRatio * self.bounds.size.width);
+            if (height < 1 || !isfinite(height)) height = self.bounds.size.height;
+            imageRect.size.height = height;
+            _imageView.frame = imageRect;
+            _imageView.center = CGPointMake(_imageView.center.x, self.bounds.size.height / 2);
+        }
     }
     
     if (_imageView.frame.size.height > self.bounds.size.height && _imageView.frame.size.height - self.bounds.size.height <= 1) {

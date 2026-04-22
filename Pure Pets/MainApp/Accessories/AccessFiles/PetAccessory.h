@@ -11,7 +11,8 @@ typedef NS_ENUM(NSInteger, AccessKindType)
 {
     AccessTypeAccessory = 1,
     AccessTypeFood = 2,
-    AccessTypeLivePet = 3
+    AccessTypeLivePet = 3,
+    AccessTypePetMedicine = 4
 };
 
 NS_ASSUME_NONNULL_BEGIN
@@ -53,6 +54,7 @@ NS_ASSUME_NONNULL_BEGIN
 // Computed type helpers
 @property (nonatomic, readonly) BOOL isLivePet;
 @property (nonatomic, readonly) BOOL isFood;
+@property (nonatomic, readonly) BOOL isPetMedicine;
 
 // Firestore helpers
 - (instancetype)initWithDictionary:(NSDictionary *)dict documentID:(NSString *)docID;
@@ -83,6 +85,5 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
-
 
 

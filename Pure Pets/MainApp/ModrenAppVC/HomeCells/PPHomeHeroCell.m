@@ -341,6 +341,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
 @implementation PPHomeHeroCell
 
+ 
+
 + (NSString *)reuseIdentifier
 {
     return @"PPHomeHeroCell";
@@ -350,7 +352,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 {
     self = [super initWithFrame:frame];
     if (!self) return nil;
-
+   
+    
+    
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
@@ -449,7 +453,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.headlineLabel.adjustsFontSizeToFitWidth = YES;
     self.headlineLabel.minimumScaleFactor = 0.76;
     self.headlineLabel.allowsDefaultTighteningForTruncation = YES;
-
+   // self.headlineLabel.backgroundColor = UIColor.redColor;
     [self.heroSurfaceView addSubview:self.headlineLabel];
 
     self.supportLabel = [[UILabel alloc] init];
@@ -470,6 +474,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     [self.locationControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     self.locationControl.layer.masksToBounds = YES;
     self.locationControl.accessibilityTraits = UIAccessibilityTraitButton;
+    self.locationControl.exclusiveTouch = YES;
     if (@available(iOS 13.0, *)) {
         self.locationControl.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -737,7 +742,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.actionButton.hidden = YES;
 
     [self pp_applyPaletteForCurrentTime];
-    [self pp_startAmbientAnimationsIfNeeded];
+     [self pp_startAmbientAnimationsIfNeeded];
      
     
     
@@ -787,7 +792,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     BOOL widePhone = PPHomeHeroWidthIsWidePhone(width);
     BOOL tablet = PPHomeHeroWidthIsTablet(width);
 
-    CGFloat lottieSize = tablet ? 164.0 : (widePhone ? 142.0 : (compact ? 104.0 : 128.0));
+    CGFloat lottieSize = tablet ? 164.0 : (widePhone ? 142.0 : (compact ? 114.0 : 128.0));
     CGFloat orbSize = tablet ? 196.0 : (widePhone ? 176.0 : (compact ? 136.0 : 168.0));
     CGFloat reservedTrailingWidth = lottieSize + (tablet ? 34.0 : (compact ? 16.0 : 24.0));
     reservedTrailingWidth = MIN(reservedTrailingWidth, MAX(112.0, width - 140.0));
@@ -821,10 +826,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+
     [self pp_updateAdaptiveLayoutMetrics];
 
-   
-    
+  
     
     CGRect bounds = self.heroSurfaceView.bounds;
     if (CGRectIsEmpty(bounds)) return;
@@ -846,6 +851,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     CAShapeLayer *mask = [CAShapeLayer layer];
     mask.path = path.CGPath;
     self.orderPeekStrip.layer.maskedCorners = kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
+    
+    self.headlineLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.statusLabel.textAlignment = Language.alignmentForCurrentLanguage;
 }
 
 - (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
@@ -866,7 +874,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 - (void)prepareForReuse
 {
     [super prepareForReuse];
-
+ 
     self.onLocationTap = nil;
     self.onLocationActionTap = nil;
     self.onOrderPeekTap = nil;
@@ -926,12 +934,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     NSString *safeUserName = PPTrimHeroLine(userName);
     NSString *safeLocation = PPTrimHeroLine(location);
     NSString *resolvedActionTitle = PPSafeString(actionTitle);
-    UISemanticContentAttribute semantic = Language.semanticAttributeForCurrentLanguage;
 
-    self.semanticContentAttribute = semantic;
-    //self.contentView.semanticContentAttribute = semantic;
-    //self.heroSurfaceView.semanticContentAttribute = semantic;
-    //self.locationControl.semanticContentAttribute = semantic;
     self.currentGreetingText = safeGreeting;
     self.currentUserNameText = safeUserName;
 
@@ -986,6 +989,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     NSString *brandText = kLang(@"Hero_Brand") ?: @"Pure Pets";
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
     paragraph.alignment = Language.alignmentForCurrentLanguage;
+   // paragraph.baseWritingDirection = Language.isRTL ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
     paragraph.lineBreakMode = NSLineBreakByTruncatingTail;
 
     NSDictionary *attributes = @{
@@ -1065,10 +1069,19 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     UIFont *secondLineFont = [GM boldFontWithSize:secondLineSize] ?: [UIFont systemFontOfSize:secondLineSize weight:UIFontWeightSemibold];
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
     paragraph.alignment = Language.alignmentForCurrentLanguage;
+    paragraph.baseWritingDirection = Language.isRTL ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
     paragraph.lineBreakMode = NSLineBreakByWordWrapping;
     paragraph.lineSpacing = 1.0;
 
     UIColor *textColor = UIColor.whiteColor;
+    BOOL shouldAppendDecorativeAttachment = YES;
+    if (Language.isRTL) {
+        if (@available(iOS 18.0, *)) {
+            shouldAppendDecorativeAttachment = YES;
+        } else {
+            shouldAppendDecorativeAttachment = NO;
+        }
+    }
 
     NSMutableAttributedString *result =
         [[NSMutableAttributedString alloc] initWithString:firstLine
@@ -1087,8 +1100,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
             NSParagraphStyleAttributeName : paragraph
         }];
         [result appendAttributedString:secondLineAttributed];
-        [result appendAttributedString:[self pp_tintedPawAttachmentForFont:secondLineFont color:textColor]];
-    } else if (firstLine.length > 0) {
+        if (shouldAppendDecorativeAttachment) {
+            [result appendAttributedString:[self pp_tintedPawAttachmentForFont:secondLineFont color:textColor]];
+        }
+    } else if (firstLine.length > 0 && shouldAppendDecorativeAttachment) {
         [result appendAttributedString:[self pp_tintedPawAttachmentForFont:firstLineFont color:textColor]];
     }
 
@@ -1257,6 +1272,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
+
     if (@available(iOS 13.0, *)) {
         if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
             [self pp_applyPaletteForCurrentTime];

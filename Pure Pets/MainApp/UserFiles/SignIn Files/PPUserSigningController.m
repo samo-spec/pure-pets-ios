@@ -1056,7 +1056,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.phoneCooldownTimer = nil;
     self.phoneCooldownRemaining = (NSInteger)kPPSMSCooldownSeconds;
     [self updateContinuePhoneButtonState];
-    
+
     __weak typeof(self) weakSelf = self;
     self.phoneCooldownTimer = [NSTimer scheduledTimerWithTimeInterval:1.0 repeats:YES block:^(NSTimer * _Nonnull timer) {
         PPDispatchMain(^{
@@ -1075,6 +1075,12 @@ static inline void PPDispatchMain(void (^block)(void)) {
     }];
 }
 
+- (void)resetPhoneSMSCooldown {
+    [self.phoneCooldownTimer invalidate];
+    self.phoneCooldownTimer = nil;
+    self.phoneCooldownRemaining = 0;
+    [self updateContinuePhoneButtonState];
+}
 - (void)handlePhoneSignIn {
     NSString *countryCode = [self normalizedCountryCode:self.currentPhoneCode];
     BOOL hasInvalidCharacters = NO;
@@ -1416,6 +1422,12 @@ static inline void PPDispatchMain(void (^block)(void)) {
                                    strongSelf.normalizedPhoneDigits ?: @""];
         [strongSelf resendVerificationCodeForPhone:safeFullPhone completion:completion];
     };
+    vc.onBackRequested = ^{
+        PPDispatchMain(^{
+            if (!weakSelf) return;
+            [weakSelf resetPhoneSMSCooldown];
+        });
+    };
 
     [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyleMediumOnly];
 }
@@ -1655,7 +1667,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 });
             };
 
-            [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle70];
+            [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle80];
             return; // stop flow here
         }
 

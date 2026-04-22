@@ -20,6 +20,7 @@ typedef void (^PPVerificationCodeCheckCompletion)(BOOL success, NSError * _Nulla
 @property (nonatomic, copy, nullable) void (^onCodeVerificationRequested)(NSString *code, PPVerificationCodeCheckCompletion completion);
 @property (nonatomic, copy, nullable) void (^onAuthResultSuccess)(FIRAuthDataResult *authResult);
 @property (nonatomic, copy, nullable) void (^onResendRequested)(PPVerificationResendCompletion completion);
+@property (nonatomic, copy, nullable) void (^onBackRequested)(void);
 
 - (instancetype)initWithPhone:(NSString *)phone;
 

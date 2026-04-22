@@ -18,6 +18,7 @@
 #import "PPPetProfileEditorViewController.h"
 #import "PPPetProfilesUIStyle.h"
 #import "PPPetProfilesViewController.h"
+#import "PetCare/PPPetCareViewController.h"
 #import "PPVetLocator.h"
 #import "PPBrowseHistoryManager.h"
 #import "PPImageLoaderManager.h"
@@ -50,6 +51,132 @@
 #import "UIView+Badge.h"
 #import "PPHomeLocationSheetViewController.h"
 
+extern NSString * const PPThemePreferenceDidChangeNotification;
+static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
+{
+    return [Language semanticAttributeForCurrentLanguage];
+}
+
+static NSTextAlignment PPHomeCurrentTextAlignment(void)
+{
+    return [Language alignmentForCurrentLanguage];
+}
+
+static NSArray<UIBarButtonItem *> *PPHomeBarButtonItems(UIBarButtonItem * _Nullable item)
+{
+    return item ? @[item] : @[];
+}
+
+static UIMenu * _Nullable PPHomeCombinedInlineMenu(UIMenu * _Nullable primaryMenu,
+                                                   UIMenu * _Nullable secondaryMenu)
+{
+    NSMutableArray<UIMenuElement *> *children = [NSMutableArray arrayWithCapacity:2];
+    if (primaryMenu) {
+        [children addObject:primaryMenu];
+    }
+    if (secondaryMenu) {
+        [children addObject:secondaryMenu];
+    }
+    if (children.count == 0) {
+        return nil;
+    }
+
+    return [UIMenu menuWithTitle:@""
+                           image:nil
+                      identifier:nil
+                         options:UIMenuOptionsDisplayInline
+                        children:children];
+}
+
+static void PPHomeConfigurePrimaryMenuButton(UIButton * _Nullable button,
+                                             UIMenu * _Nullable primaryMenu,
+                                             UIMenu * _Nullable secondaryMenu)
+{
+    if (!button) {
+        return;
+    }
+
+    button.menu = PPHomeCombinedInlineMenu(primaryMenu, secondaryMenu);
+    button.showsMenuAsPrimaryAction = (button.menu != nil);
+}
+
+static void PPHomeApplySemanticToViewTree(UIView * _Nullable view, UISemanticContentAttribute semantic)
+{
+    if (!view) {
+        return;
+    }
+
+    view.semanticContentAttribute = semantic;
+    for (UIView *subview in view.subviews) {
+        PPHomeApplySemanticToViewTree(subview, semantic);
+    }
+}
+
+static NSArray<NSString *> *PPHomeSanitizedGradientHexColors(NSArray<NSString *> * _Nullable colors)
+{
+    if (![colors isKindOfClass:NSArray.class] || colors.count == 0) {
+        return @[];
+    }
+
+    NSMutableArray<NSString *> *sanitizedColors = [NSMutableArray arrayWithCapacity:colors.count];
+    for (id color in colors) {
+        if (![color isKindOfClass:NSString.class]) {
+            continue;
+        }
+
+        NSString *hex = [((NSString *)color) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (hex.length == 0) {
+            continue;
+        }
+        [sanitizedColors addObject:hex];
+    }
+
+    return sanitizedColors.copy;
+}
+
+static void PPHomeApplyFallbackPromoPalette(PPHomePromoCarouselCard *card, NSInteger idx)
+{
+    switch (idx % 4) {
+        case 1:
+            card.startColorHex = @"#F39B3C";
+            card.endColorHex = @"#E9792C";
+            card.accentColorHex = @"#FFD893";
+            break;
+        case 2:
+            card.startColorHex = @"#F2A84A";
+            card.endColorHex = @"#D96F27";
+            card.accentColorHex = @"#FFC773";
+            break;
+        case 3:
+            card.startColorHex = @"#EF9740";
+            card.endColorHex = @"#D86721";
+            card.accentColorHex = @"#FFD28B";
+            break;
+        default:
+            card.startColorHex = @"#F5A63A";
+            card.endColorHex = @"#EF8628";
+            card.accentColorHex = @"#FFC86D";
+            break;
+    }
+}
+
+static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArray<NSString *> *gradientColors, NSInteger idx)
+{
+    NSArray<NSString *> *sanitizedColors = PPHomeSanitizedGradientHexColors(gradientColors);
+    if (sanitizedColors.count >= 2) {
+        card.startColorHex = sanitizedColors.firstObject;
+        card.endColorHex = sanitizedColors.lastObject;
+        NSUInteger accentIndex = sanitizedColors.count > 2 ? (sanitizedColors.count / 2) : 0;
+        NSString *accentHex = PPSafeString(sanitizedColors[accentIndex]);
+        if (accentHex.length == 0) {
+            accentHex = PPSafeString(sanitizedColors.firstObject);
+        }
+        card.accentColorHex = accentHex;
+        return;
+    }
+
+    PPHomeApplyFallbackPromoPalette(card, idx);
+}
 
 @interface PPHomeInsetLabel : UILabel
 @property (nonatomic, assign) UIEdgeInsets contentInsets;
@@ -88,6 +215,300 @@
 - (void)drawTextInRect:(CGRect)rect
 {
     [super drawTextInRect:UIEdgeInsetsInsetRect(rect, self.contentInsets)];
+}
+
+@end
+
+@interface PPHomePremiumCareCell : UICollectionViewCell
++ (NSString *)reuseIdentifier;
+- (void)configure;
+@end
+
+@implementation PPHomePremiumCareCell {
+    UIView *_surfaceView;
+    CAGradientLayer *_gradientLayer;
+    UIView *_iconPlateView;
+    UIImageView *_iconImageView;
+    UILabel *_eyebrowLabel;
+    UILabel *_titleLabel;
+    UILabel *_subtitleLabel;
+    UIStackView *_pillStackView;
+    UILabel *_medicinePillLabel;
+    UILabel *_vetPillLabel;
+    UIView *_ctaView;
+    UILabel *_ctaLabel;
+    UIImageView *_ctaIconView;
+}
+
++ (NSString *)reuseIdentifier
+{
+    return @"PPHomePremiumCareCell";
+}
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame:frame];
+    if (!self) {
+        return nil;
+    }
+
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.isAccessibilityElement = YES;
+    self.accessibilityTraits = UIAccessibilityTraitButton;
+
+    _surfaceView = [[UIView alloc] init];
+    _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    _surfaceView.layer.cornerRadius = 30.0;
+    _surfaceView.layer.borderWidth = 0.8;
+    _surfaceView.clipsToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [_surfaceView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
+    _surfaceView.layer.shadowRadius = 24.0;
+    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    [self.contentView addSubview:_surfaceView];
+
+    _gradientLayer = [CAGradientLayer layer];
+    _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    [_surfaceView.layer insertSublayer:_gradientLayer atIndex:0];
+
+    _iconPlateView = [[UIView alloc] init];
+    _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconPlateView.layer.cornerRadius = 28.0;
+    _iconPlateView.layer.borderWidth = 0.8;
+    _iconPlateView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        _iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [_surfaceView addSubview:_iconPlateView];
+
+    _iconImageView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"cross.case.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    _iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    _iconImageView.contentMode = UIViewContentModeScaleAspectFit;
+    [_iconPlateView addSubview:_iconImageView];
+
+    _eyebrowLabel = [[UILabel alloc] init];
+    _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    _eyebrowLabel.numberOfLines = 1;
+    [_surfaceView addSubview:_eyebrowLabel];
+
+    _titleLabel = [[UILabel alloc] init];
+    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    _titleLabel.numberOfLines = 1;
+    _titleLabel.adjustsFontSizeToFitWidth = YES;
+    _titleLabel.minimumScaleFactor = 0.8;
+    [_surfaceView addSubview:_titleLabel];
+
+    _subtitleLabel = [[UILabel alloc] init];
+    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _subtitleLabel.numberOfLines = 2;
+    [_surfaceView addSubview:_subtitleLabel];
+
+    _pillStackView = [[UIStackView alloc] init];
+    _pillStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    _pillStackView.axis = UILayoutConstraintAxisHorizontal;
+    _pillStackView.alignment = UIStackViewAlignmentCenter;
+    _pillStackView.spacing = 8.0;
+    _pillStackView.distribution = UIStackViewDistributionFillProportionally;
+    [_surfaceView addSubview:_pillStackView];
+
+    _medicinePillLabel = [self pp_makePillLabel];
+    _vetPillLabel = [self pp_makePillLabel];
+    [_pillStackView addArrangedSubview:_medicinePillLabel];
+    [_pillStackView addArrangedSubview:_vetPillLabel];
+
+    _ctaView = [[UIView alloc] init];
+    _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
+    _ctaView.layer.cornerRadius = 20.0;
+    _ctaView.layer.borderWidth = 0.8;
+    if (@available(iOS 13.0, *)) {
+        _ctaView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [_surfaceView addSubview:_ctaView];
+
+    _ctaLabel = [[UILabel alloc] init];
+    _ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    _ctaLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    [_ctaView addSubview:_ctaLabel];
+
+    NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
+    _ctaIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:forwardSymbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    _ctaIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    _ctaIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [_ctaView addSubview:_ctaIconView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
+        [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
+        [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
+
+        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
+        [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
+        [_iconPlateView.widthAnchor constraintEqualToConstant:56.0],
+        [_iconPlateView.heightAnchor constraintEqualToConstant:56.0],
+
+        [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
+        [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
+        [_iconImageView.widthAnchor constraintEqualToConstant:25.0],
+        [_iconImageView.heightAnchor constraintEqualToConstant:25.0],
+
+        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
+        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
+        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_iconPlateView.leadingAnchor constant:-14.0],
+
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-14.0],
+        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:7.0],
+
+        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
+        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
+
+        [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
+        [_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
+        [_pillStackView.heightAnchor constraintEqualToConstant:28.0],
+
+        [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+        [_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
+        [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
+        [_ctaView.heightAnchor constraintEqualToConstant:40.0],
+        [_ctaView.topAnchor constraintEqualToAnchor:_pillStackView.bottomAnchor constant:10.0],
+
+        [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
+        [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
+        [_ctaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_ctaIconView.leadingAnchor constant:-10.0],
+
+        [_ctaIconView.trailingAnchor constraintEqualToAnchor:_ctaView.trailingAnchor constant:-14.0],
+        [_ctaIconView.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
+        [_ctaIconView.widthAnchor constraintEqualToConstant:14.0],
+        [_ctaIconView.heightAnchor constraintEqualToConstant:14.0],
+    ]];
+
+    [self pp_applyTheme];
+    return self;
+}
+
+- (UILabel *)pp_makePillLabel
+{
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    label.textAlignment = NSTextAlignmentCenter;
+    label.numberOfLines = 1;
+    label.layer.cornerRadius = 14.0;
+    label.layer.masksToBounds = YES;
+    label.layer.borderWidth = 0.8;
+    if (@available(iOS 13.0, *)) {
+        label.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [label.widthAnchor constraintGreaterThanOrEqualToConstant:82.0].active = YES;
+    return label;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+    _gradientLayer.frame = _surfaceView.bounds;
+    _gradientLayer.cornerRadius = _surfaceView.layer.cornerRadius;
+    _surfaceView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:_surfaceView.bounds
+                                   cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
+}
+
+- (void)prepareForReuse
+{
+    [super prepareForReuse];
+    _eyebrowLabel.text = nil;
+    _titleLabel.text = nil;
+    _subtitleLabel.text = nil;
+    _medicinePillLabel.text = nil;
+    _vetPillLabel.text = nil;
+    _ctaLabel.text = nil;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_applyTheme];
+        }
+    }
+}
+
+- (void)pp_applyTheme
+{
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    UIColor *secondaryColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+    UIColor *borderColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.10]
+        : [UIColor colorWithRed:0.72 green:0.66 blue:0.62 alpha:0.22];
+    UIColor *surfaceColor = isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.07]
+        : [UIColor colorWithWhite:1.0 alpha:0.78];
+
+    _surfaceView.backgroundColor = surfaceColor;
+    [_surfaceView pp_setBorderColor:borderColor];
+    _surfaceView.layer.shadowOpacity = isDark ? 0.0 : 0.09;
+    _gradientLayer.colors = @[
+        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor,
+        (id)[UIColor clearColor].CGColor
+    ];
+    _iconPlateView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.18 : 0.11];
+    [_iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
+    _iconImageView.tintColor = accent;
+    _eyebrowLabel.textColor = [accent colorWithAlphaComponent:isDark ? 0.92 : 0.82];
+    _titleLabel.textColor = titleColor;
+    _subtitleLabel.textColor = secondaryColor;
+    _ctaView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.18 : 0.10];
+    [_ctaView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
+    _ctaLabel.textColor = titleColor;
+    _ctaIconView.tintColor = titleColor;
+
+    for (UILabel *pill in @[_medicinePillLabel, _vetPillLabel]) {
+        pill.textColor = titleColor;
+        pill.backgroundColor = [UIColor colorWithWhite:isDark ? 1.0 : 0.0
+                                                alpha:isDark ? 0.06 : 0.035];
+        [pill pp_setBorderColor:borderColor];
+    }
+}
+
+- (void)configure
+{
+    [self pp_applyTheme];
+    self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    _surfaceView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    _eyebrowLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _titleLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _subtitleLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _ctaLabel.textAlignment = PPHomeCurrentTextAlignment();
+
+    _eyebrowLabel.text = kLang(@"home_premium_care_eyebrow") ?: @"Premium care";
+    _titleLabel.text = kLang(@"home_premium_care_title") ?: @"Medicines and vets";
+    _subtitleLabel.text = kLang(@"home_premium_care_subtitle") ?: @"Pet medicine and veterinarian care in one refined place.";
+    _medicinePillLabel.text = kLang(@"pet_care_medicines") ?: @"Medicines";
+    _vetPillLabel.text = kLang(@"pet_care_veterinarians") ?: @"Veterinarians";
+    _ctaLabel.text = kLang(@"home_premium_care_cta") ?: @"Open care center";
+
+    NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
+    _ctaIconView.image = [[UIImage systemImageNamed:forwardSymbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",
+                               _titleLabel.text ?: @"",
+                               _subtitleLabel.text ?: @""];
 }
 
 @end
@@ -214,6 +635,7 @@
     eyebrowLabel.numberOfLines = 1;
     eyebrowLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     eyebrowLabel.textInsets = UIEdgeInsetsMake(4.0, 14.0, 4.0, 14.0);
+    eyebrowLabel.textAlignment = PPHomeCurrentTextAlignment();
     [cardView addSubview:eyebrowLabel];
     _eyebrowLabel = eyebrowLabel;
 
@@ -226,6 +648,7 @@
     titleLabel.adjustsFontSizeToFitWidth = YES;
     titleLabel.minimumScaleFactor = 0.84;
     titleLabel.allowsDefaultTighteningForTruncation = YES;
+    titleLabel.textAlignment = PPHomeCurrentTextAlignment();
     [cardView addSubview:titleLabel];
     _titleLabel = titleLabel;
 
@@ -235,6 +658,7 @@
     subtitleLabel.textColor = [UIColor colorWithRed:0.33 green:0.22 blue:0.18 alpha:0.82];
     subtitleLabel.numberOfLines = 2;
     subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    subtitleLabel.textAlignment = PPHomeCurrentTextAlignment();
     [cardView addSubview:subtitleLabel];
     _subtitleLabel = subtitleLabel;
 
@@ -258,6 +682,7 @@
         metaPrimaryLabel.layer.cornerCurve = kCACornerCurveContinuous;
     }
     metaPrimaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
+    metaPrimaryLabel.textAlignment = PPHomeCurrentTextAlignment();
     [metaStackView addArrangedSubview:metaPrimaryLabel];
     _metaPrimaryLabel = metaPrimaryLabel;
 
@@ -272,6 +697,7 @@
         metaSecondaryLabel.layer.cornerCurve = kCACornerCurveContinuous;
     }
     metaSecondaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
+    metaSecondaryLabel.textAlignment = PPHomeCurrentTextAlignment();
     [metaStackView addArrangedSubview:metaSecondaryLabel];
     _metaSecondaryLabel = metaSecondaryLabel;
 
@@ -291,6 +717,7 @@
     ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
     ctaLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
     ctaLabel.textColor = [UIColor colorWithRed:0.22 green:0.13 blue:0.09 alpha:1.0];
+    ctaLabel.textAlignment = PPHomeCurrentTextAlignment();
     [ctaView addSubview:ctaLabel];
     _ctaLabel = ctaLabel;
 
@@ -461,6 +888,19 @@
                       isLoading:(BOOL)isLoading
 {
     [self pp_refreshThemeColors];
+
+    self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    self.contentView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    _cardView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    _metaStackView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    _ctaView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    _eyebrowLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _titleLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _subtitleLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _metaPrimaryLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _metaSecondaryLabel.textAlignment = PPHomeCurrentTextAlignment();
+    _ctaLabel.textAlignment = PPHomeCurrentTextAlignment();
+
     BOOL hasProfiles = (petCount > 0);
     BOOL isDark = NO;
     if (@available(iOS 13.0, *)) {
@@ -473,16 +913,6 @@
     NSArray<UIColor *> *gradientColors = nil;
     UIColor *orbColor = [PPPetsUIBrandColor() colorWithAlphaComponent:0.24];
     UIImage *avatarPlaceholder = nil;
-
-    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.contentView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
-    _cardView.semanticContentAttribute = PPPetsCurrentSemanticAttribute();
-    _eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    _subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    _metaPrimaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    _metaSecondaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    _ctaLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
     if (isLoading) {
         _eyebrowLabel.text = kLang(@"please_wait") ?: @"Loading";
@@ -521,7 +951,7 @@
             ? [summaryParts componentsJoinedByString:@" · "]
             : (kLang(@"pet_profiles_home_ready") ?: @"Care details ready on home");
         NSString *detailLine = defaultPet.vaccinations.count > 0
-            ? [NSString stringWithFormat:@"%ld %@ ready for quick access",
+            ? [NSString stringWithFormat:@"%ld %@ ready for  access",
                (long)defaultPet.vaccinations.count,
                (kLang(@"pet_vaccines_short") ?: @"vaccines")]
             : (kLang(@"home_pet_profile_vaccine_prompt") ?: @"Open the profile to update vaccines, notes, and reminders.");
@@ -775,7 +1205,7 @@
     }
 
     self.backgroundColor = UIColor.clearColor;
-    self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.accessibilityLabel =
         kLang(@"home_nav_search_accessibility") ?:
@@ -896,7 +1326,7 @@
     UILabel *signalLabel = [UILabel new];
     signalLabel.translatesAutoresizingMaskIntoConstraints = NO;
     signalLabel.font = [GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold];
-    signalLabel.textAlignment = GM.setAligment;
+    signalLabel.textAlignment = PPHomeCurrentTextAlignment();
     signalLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     signalLabel.adjustsFontSizeToFitWidth = YES;
     signalLabel.minimumScaleFactor = 0.84;
@@ -909,7 +1339,7 @@
     UILabel *placeholderLabel = [UILabel new];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
     placeholderLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
-    placeholderLabel.textAlignment = NSTextAlignmentNatural;
+    placeholderLabel.textAlignment = PPHomeCurrentTextAlignment();
     placeholderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     placeholderLabel.adjustsFontSizeToFitWidth = YES;
     placeholderLabel.allowsDefaultTighteningForTruncation = YES;
@@ -1388,6 +1818,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, copy, nullable) NSString *lastObservedHomeOrderID;
 @property (nonatomic, copy, nullable) NSString *lastObservedHomeOrderStatusKey;
 - (void)handleSeeAllForSection:(PPHomeSection)section;
+- (void)openPremiumPetCare;
 - (NSString *)heroGreetingText;
 - (NSString *)heroBaseGreetingText;
 - (NSString *)heroDisplayNameText;
@@ -1419,6 +1850,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_emitSelectionHaptic;
 - (void)pp_emitSoftImpactHaptic;
 - (void)pp_animateHomeCell:(UICollectionViewCell *)cell highlighted:(BOOL)highlighted;
+- (void)pp_refreshThemeSensitiveHomeContent;
+- (void)handleThemePreferenceDidChange:(NSNotification *)notification;
+- (void)pp_applyCurrentLanguageDirectionToHomeUI;
+- (void)pp_forceHomeCollectionLayoutRefresh;
 - (void)pp_scheduleInitialMainKindsLayoutRefresh;
 - (void)refreshCurrentOrdersForce:(BOOL)force;
 - (NSString *)pp_currentOrdersUserID;
@@ -1485,6 +1920,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, copy) NSString *lastHeroRenderSignature;
 @property (nonatomic, assign) BOOL heroRefreshScheduled;
 @property (nonatomic, assign) BOOL didStabilizeInitialHomeLayout;
+@property (nonatomic, assign) BOOL isPresentingHomeLocationSheet;
 @property (nonatomic, assign) CGSize lastHomeLayoutBoundsSize;
 @property (nonatomic, assign) UIEdgeInsets lastHomeLayoutAdjustedInsets;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
@@ -1511,6 +1947,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_layoutMidLayerGlows;
 - (void)pp_updateMidLayerGlowColors;
 - (CGFloat)pp_preferredNavigationSearchWidth;
+- (BOOL)pp_canOwnHomeNavigationChrome;
+- (void)pp_detachHomeSmartSearchTitleViewIfNeeded;
 - (UIView *)pp_navigationSmartSearchTitleView;
 - (void)pp_openSmartSearch;
 - (NSArray<NSString *> *)pp_resolvedHomeSmartSearchPlaceholders;
@@ -1766,29 +2204,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         card.backgroundImageURL = vm.backgroundImageURL;
         card.autoScrollInterval = 5.0;
 
-        // Subtle color variance while keeping the same warm style
-        switch (idx % 4) {
-            case 1:
-                card.startColorHex = @"#F39B3C";
-                card.endColorHex = @"#E9792C";
-                card.accentColorHex = @"#FFD893";
-                break;
-            case 2:
-                card.startColorHex = @"#F2A84A";
-                card.endColorHex = @"#D96F27";
-                card.accentColorHex = @"#FFC773";
-                break;
-            case 3:
-                card.startColorHex = @"#EF9740";
-                card.endColorHex = @"#D86721";
-                card.accentColorHex = @"#FFD28B";
-                break;
-            default:
-                card.startColorHex = @"#F5A63A";
-                card.endColorHex = @"#EF8628";
-                card.accentColorHex = @"#FFC86D";
-                break;
-        }
+        PPHomeApplyPromoGradientPalette(card, vm.backgroundGradientColors, idx);
 
         [cards addObject:card];
         idx += 1;
@@ -1806,9 +2222,6 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionHero),
         @(PPHomeSectionQuickActions),
     ] mutableCopy];
-    if (!self.hideServiceSection) {
-        [sections addObject:@(PPHomeSectionServices)];
-    }
     [sections addObjectsFromArray:@[
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionCarousel),
@@ -1816,11 +2229,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionPetProfile),
+        @(PPHomeSectionPremiumCare),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionAdopt),
     ]];
+    if (!self.hideServiceSection) {
+        [sections addObject:@(PPHomeSectionServices)];
+    }
     [snapshot appendSectionsWithIdentifiers:sections];
 
     // ✅ Hero (always present)
@@ -1840,7 +2257,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [snapshot appendItemsWithIdentifiers:quickActions
                intoSectionWithIdentifier:@(PPHomeSectionQuickActions)];
 
-    // ✅ Services (right after hero)
+    // ✅ Services (at the bottom)
     if (!self.hideServiceSection) {
         NSMutableArray *services = [NSMutableArray array];
         for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
@@ -1895,6 +2312,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
     [snapshot appendItemsWithIdentifiers:@[petProfileItem]
                intoSectionWithIdentifier:@(PPHomeSectionPetProfile)];
+    PPHomeItem *premiumCareItem =
+        [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
+    [snapshot appendItemsWithIdentifiers:@[premiumCareItem]
+               intoSectionWithIdentifier:@(PPHomeSectionPremiumCare)];
     [snapshot appendItemsWithIdentifiers:@[]
                intoSectionWithIdentifier:@(PPHomeSectionLastFood)];
     [snapshot appendItemsWithIdentifiers:@[]
@@ -1982,6 +2403,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self refreshHeroSectionAppearance];
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
+        @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAdopt)
     ]];
 }
@@ -2025,6 +2447,131 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         }];
         [CATransaction commit];
     });
+}
+
+- (void)pp_applyCurrentLanguageDirectionToHomeUI
+{
+    UISemanticContentAttribute semantic = PPHomeCurrentSemanticAttribute();
+    self.view.semanticContentAttribute = semantic;
+    self.collectionView.semanticContentAttribute = semantic;
+    self.navigationController.navigationBar.semanticContentAttribute = semantic;
+
+    PPHomeApplySemanticToViewTree(self.navigationItem.titleView, semantic);
+    PPHomeApplySemanticToViewTree(self.homeSmartSearchView, semantic);
+    PPHomeApplySemanticToViewTree(self.homeProfileItem.customView, semantic);
+    PPHomeApplySemanticToViewTree(self.homeCartItem.customView, semantic);
+
+    for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+        cell.semanticContentAttribute = semantic;
+        cell.contentView.semanticContentAttribute = semantic;
+    }
+
+    for (UICollectionReusableView *header in
+         [self.collectionView visibleSupplementaryViewsOfKind:UICollectionElementKindSectionHeader]) {
+        PPHomeApplySemanticToViewTree(header, semantic);
+    }
+}
+
+- (void)pp_forceHomeCollectionLayoutRefresh
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_forceHomeCollectionLayoutRefresh];
+        });
+        return;
+    }
+
+    if (!self.isViewLoaded || !self.collectionView || !self.dataSource) {
+        return;
+    }
+
+    CGPoint preservedOffset = self.collectionView.contentOffset;
+    self.didStabilizeInitialHomeLayout = NO;
+    self.lastHomeLayoutBoundsSize = CGSizeZero;
+    self.lastHomeLayoutAdjustedInsets = UIEdgeInsetsZero;
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [UIView performWithoutAnimation:^{
+        [self.collectionView reloadData];
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+    }];
+    [CATransaction commit];
+
+    CGFloat minOffsetY = -self.collectionView.adjustedContentInset.top;
+    CGFloat maxOffsetY = MAX(minOffsetY,
+                             self.collectionView.contentSize.height -
+                             CGRectGetHeight(self.collectionView.bounds) +
+                             self.collectionView.adjustedContentInset.bottom);
+    CGFloat targetOffsetY = MIN(MAX(preservedOffset.y, minOffsetY), maxOffsetY);
+    self.collectionView.contentOffset = CGPointMake(preservedOffset.x, targetOffsetY);
+
+    [self pp_applyCurrentLanguageDirectionToHomeUI];
+    [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+}
+
+- (void)pp_refreshThemeSensitiveHomeContent
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_refreshThemeSensitiveHomeContent];
+        });
+        return;
+    }
+
+    if (!self.isViewLoaded || !self.collectionView || !self.dataSource) {
+        return;
+    }
+
+    NSArray<NSNumber *> *themeSections = @[
+        @(PPHomeSectionSuggestions),
+        @(PPHomeSectionAccessories),
+        @(PPHomeSectionPremiumCare),
+        @(PPHomeSectionLastFood),
+        @(PPHomeSectionNearbyServices),
+        @(PPHomeSectionAdsNearBy),
+        @(PPHomeSectionBuyAgain)
+    ];
+
+    [self pp_updateBackgroundGradientColors];
+    if ([self pp_canOwnHomeNavigationChrome]) {
+        [self configureNavigationBar];
+    } else {
+        [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+    }
+    [self refreshHeroSectionAppearance];
+    [self setNeedsStatusBarAppearanceUpdate];
+
+    NSArray<NSIndexPath *> *visibleIndexPaths = self.collectionView.indexPathsForVisibleItems ?: @[];
+    NSMutableArray<PPHomeItem *> *visibleIdentifiers = [NSMutableArray array];
+    for (NSIndexPath *indexPath in visibleIndexPaths) {
+        NSNumber *sectionNumber = @([self sectionTypeForIndexPath:indexPath]);
+        if (![themeSections containsObject:sectionNumber]) {
+            continue;
+        }
+
+        PPHomeItem *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
+        if (item) {
+            [visibleIdentifiers addObject:item];
+        }
+    }
+
+    if (visibleIdentifiers.count > 0) {
+        NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+        [snapshot reloadItemsWithIdentifiers:visibleIdentifiers];
+        [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+    }
+
+    [self pp_refreshVisibleHomeCardsForSections:themeSections];
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self.collectionView setNeedsLayout];
+    [self.collectionView layoutIfNeeded];
+
+    NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
+    [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+    [self pp_applyCurrentLanguageDirectionToHomeUI];
 }
 
 - (void)reloadSection:(PPHomeSection)section
@@ -2244,6 +2791,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         section == PPHomeSectionAdsNearBy ||
         section == PPHomeSectionCurrentOrders ||
         section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt ||
         section == PPHomeSectionAccessories ||
         section == PPHomeSectionLastFood ||
@@ -2257,7 +2805,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     [self.dataSource applySnapshot:snapshot animatingDifferences:animate];
 
-    if (section == PPHomeSectionPetProfile || section == PPHomeSectionAdopt) {
+    if (section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumCare ||
+        section == PPHomeSectionAdopt) {
         [self.collectionView setNeedsLayout];
         [self.collectionView layoutIfNeeded];
         [self pp_refreshVisibleHomeCardsForSections:@[@(section)]];
@@ -2277,19 +2827,20 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     //[PetAccessoryManager.sharedManager pp_oneTimeSetAllAccessoriesPriceToFixedValuesWithCompletion:^(NSError * _Nullable error, NSInteger updatedCount) {
-
     //}];
-   // [PetAdManager.sharedManager migrateImageMetaToImageItemsOnce];
+    // [PetAdManager.sharedManager migrateImageMetaToImageItemsOnce];
     //[CartManager.sharedManager clearCart];
-    self.isMainKindsExpanded = NO; // collapsed = horizontal
-    self.hideServiceSection = YES;
+    
+
+    
+    self.isMainKindsExpanded = NO; // collapsed = horizontal    self.hideServiceSection = YES;
     self.nearbyServiceProviders = @[];
     self.nearbyServicesLoaded = NO;
     self.nearbyServicesLoading = NO;
     self.nearbyServicesShowingLatest = NO;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
-    self.view.backgroundColor = AppForgroundColr ?: AppBageColor();
+    self.view.backgroundColor = AppBackgroundClr ?: AppBageColor();
     [self pp_installBackgroundGradient];
     [self pp_setupBackgroundGlowOrbs];
 
@@ -2328,6 +2879,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 
     [self setupCollectionView];
+    [self pp_applyCurrentLanguageDirectionToHomeUI];
     [self pp_setupMidLayerGlows];
     [self configureDataSource];
     [self applyBaseSnapshot];   // 🔥 NEW
@@ -2395,9 +2947,17 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [[NSNotificationCenter defaultCenter]
         addObserver:self
            selector:@selector(handleUserAccessUpdateNotification:)
-               name:PPUserManagerDidUpdateUserAccessNotification
+              name:PPUserManagerDidUpdateUserAccessNotification
               object:nil];
 
+    // Language changes rebuild the root controller via SceneDelegate/Language.
+    // Home must not do a second in-place language reload, which can leave stale
+    // collection work running during the root swap on older iPad/iOS builds.
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(handleThemePreferenceDidChange:)
+               name:PPThemePreferenceDidChangeNotification
+             object:nil];
 
 }
 
@@ -2427,11 +2987,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         if (profileButton) {
             UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
             UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
-            profileButton.menu = [UIMenu menuWithTitle:@""
-                                                 image:nil
-                                            identifier:nil
-                                               options:UIMenuOptionsDisplayInline
-                                              children:@[userMenu, appMenu]];
+            PPHomeConfigurePrimaryMenuButton(profileButton, userMenu, appMenu);
         }
     }
 }
@@ -2451,7 +3007,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     UIBarButtonItem *profileItem = [self pp_buildProfileBarButtonItem];
     self.homeProfileItem = profileItem;
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
-    self.navigationItem.leftBarButtonItems  = @[profileItem];
+    self.navigationItem.leftBarButtonItems  = PPHomeBarButtonItems(profileItem);
     [self refreshNavigationRightItemsForCartCount:cartCount];
     [self pp_refreshNavigationMenusForCurrentUser];
 }
@@ -3798,10 +4354,17 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 - (void)presentHomeLocationSheet
 {
+    if (self.isPresentingHomeLocationSheet) {
+        return;
+    }
     if ([self.presentedViewController isKindOfClass:PPHomeLocationSheetViewController.class]) {
         return;
     }
+    if (self.presentedViewController || self.isBeingPresented || self.isBeingDismissed) {
+        return;
+    }
 
+    self.isPresentingHomeLocationSheet = YES;
     PPHomeLocationSheetViewController *sheet = [[PPHomeLocationSheetViewController alloc] init];
     sheet.sheetTitleText = kLang(@"home_location_sheet_title") ?: @"Choose your smart location";
     sheet.sheetSubtitleText = kLang(@"home_location_sheet_subtitle") ?: @"Switch between your live GPS position and recent areas quickly, while keeping nearby discovery smooth.";
@@ -3843,7 +4406,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     };
 
     [self pp_emitSoftImpactHaptic];
-    [self presentViewController:sheet animated:YES completion:nil];
+
+    [self presentViewController:sheet
+                       animated:YES
+                     completion:^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.isPresentingHomeLocationSheet = NO;
+    }];
 }
 
 - (void)switchHomeLocationBackToAutomatic
@@ -3874,6 +4444,11 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 - (void)handleAppWillEnterForeground
 {
+    if (![self pp_canOwnHomeNavigationChrome]) {
+        [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+        return;
+    }
+
     if (self.homeLocationManager && !self.isUsingManualNearbySelection) {
         CLAuthorizationStatus status;
         if (@available(iOS 14.0, *)) {
@@ -3886,6 +4461,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self refreshCurrentOrdersForce:YES];
     [self pp_refreshPetProfilesSection];
     [self refreshNearbyAdsForce:YES reason:@"foreground"];
+    [self pp_refreshThemeSensitiveHomeContent];
+}
+
+- (void)handleThemePreferenceDidChange:(NSNotification *)notification
+{
+    (void)notification;
+    [self pp_refreshThemeSensitiveHomeContent];
+    [self pp_forceHomeCollectionLayoutRefresh];
 }
 
 - (void)handleAdUploadCompletedNotification:(NSNotification *)notification
@@ -4161,7 +4744,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
-    self.collectionView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.collectionView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
     self.collectionView.delegate = self;
     self.collectionView.prefetchingEnabled = YES;
     self.collectionView.prefetchDataSource = self;
@@ -4192,6 +4775,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomePremiumCareCell.class
+            forCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier];
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
     [self.collectionView registerClass:PPHomeServicesCell.class forCellWithReuseIdentifier:PPHomeServicesCell.reuseIdentifier];
@@ -4201,11 +4786,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:PPSectionHeaderView.class
             forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
                    withReuseIdentifier:@"PPSectionHeaderView"];
-
-    [self.collectionView registerClass:PPCollectionSectionHeader.class
-            forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
-                   withReuseIdentifier:@"PPCollectionSectionHeader"];
-
+ 
     [self.collectionView registerClass:PPCategoryCardCell.class
             forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
 }
@@ -4335,6 +4916,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             [cell configureWithDefaultPet:strongSelf.defaultPetProfile
                                  petCount:strongSelf.petProfiles.count
                                 isLoading:strongSelf.petProfilesLoading];
+            return cell;
+        }
+
+        if (section == PPHomeSectionPremiumCare) {
+            PPHomePremiumCareCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
+                                                          forIndexPath:indexPath];
+            [cell configure];
             return cell;
         }
 
@@ -5380,6 +5969,10 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             break;
         }
 
+        case PPHomeSectionPremiumCare:
+            [self openPremiumPetCare];
+            break;
+
         case PPHomeSectionAccessories:
             [self handleDeepLinkWithTarget:PPDeepLinkTargetAccessories
                                   mainKind:nil
@@ -5805,6 +6398,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     NSLog(@"PPHomeQuickActionFood");
 }
 
+- (void)openPremiumPetCare {
+    PPPetCareViewController *vc =
+        [[PPPetCareViewController alloc] initWithInitialSection:PPPetCareInitialSectionMedicines
+                                                       mainKind:nil];
+    vc.hidesBottomBarWhenPushed = YES;
+    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
+}
+
 #pragma mark - UICollectionViewDelegate
 
 // MARK: - UICollectionViewDelegate
@@ -5813,7 +6414,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionHero) {
-        [self presentHomeLocationSheet];
         return;
     }
 
@@ -5884,6 +6484,12 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             }
             [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
             [self pp_openOrderDetailsForOrder:(PPOrder *)item.payload];
+            return;
+        }
+
+        case PPHomeSectionPremiumCare: {
+            [self pp_emitSelectionHaptic];
+            [self openPremiumPetCare];
             return;
         }
 
@@ -5964,7 +6570,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
-    if (section != PPHomeSectionPetProfile && section != PPHomeSectionAdopt) {
+    if (section != PPHomeSectionPetProfile &&
+        section != PPHomeSectionPremiumCare &&
+        section != PPHomeSectionAdopt) {
         return;
     }
 
@@ -6619,6 +7227,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [super viewWillAppear:animated];
 
     [self configureNavigationBar];
+    [self pp_applyCurrentLanguageDirectionToHomeUI];
+    [self pp_refreshThemeSensitiveHomeContent];
     [self pp_refreshPetProfilesSection];
     
     if (self.accessoriesLoaded || self.nearbyLoaded) {
@@ -6655,6 +7265,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_stopCurrentOrdersListener];
     [self stopNearbyRefreshTimer];
     [self pp_stopHomeSmartSearchTimer];
+    [self pp_detachHomeSmartSearchTitleViewIfNeeded];
 }
 
 // Show bottom card with haptic feedback
@@ -6732,7 +7343,36 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                                    completion:nil];
 }
 
+- (BOOL)pp_canOwnHomeNavigationChrome
+{
+    UINavigationController *nav = self.navigationController;
+    return self.isViewLoaded && (!nav || nav.topViewController == self);
+}
+
+- (void)pp_detachHomeSmartSearchTitleViewIfNeeded
+{
+    if (!self.homeSmartSearchView) {
+        return;
+    }
+
+    if (self.navigationItem.titleView == self.homeSmartSearchView) {
+        self.navigationItem.titleView = nil;
+    }
+
+    if (self.homeSmartSearchView.superview) {
+        [self.homeSmartSearchView removeFromSuperview];
+    }
+}
+
 - (void)configureNavigationBar {
+    if (!self.navigationController) {
+        return;
+    }
+    if (![self pp_canOwnHomeNavigationChrome]) {
+        [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+        return;
+    }
+    
      self.navigationItem.title = nil;
     UIView *centerView= [self pp_navigationSmartSearchTitleView];
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
@@ -6741,7 +7381,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeProfileItem = profileItem;
     self.homeCartItem = [self pp_buildCartBarButtonItem];
 
-    self.navigationItem.leftBarButtonItems  = @[profileItem];
+    self.navigationItem.leftBarButtonItems  = PPHomeBarButtonItems(profileItem);
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
     [self refreshNavigationRightItemsForCartCount:cartCount];
     [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
@@ -6938,12 +7578,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         // Combine user actions + app actions into a single profile menu
         UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
         UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
-        button.menu = [UIMenu menuWithTitle:@""
-                                      image:nil
-                                 identifier:nil
-                                    options:UIMenuOptionsDisplayInline
-                                   children:@[userMenu, appMenu]];
-        button.showsMenuAsPrimaryAction = YES;
+        PPHomeConfigurePrimaryMenuButton(button, userMenu, appMenu);
     }
 
     return [[UIBarButtonItem alloc] initWithCustomView:container];
@@ -6953,11 +7588,15 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count
 {
     (void)count;
-    
+    UIBarButtonItem *cartItem = self.homeCartItem;
+    if (!cartItem) {
+        self.navigationItem.rightBarButtonItems = @[];
+        return;
+    }
 
-    BOOL isAlreadyShowing = [self.navigationItem.rightBarButtonItems containsObject:self.homeCartItem];
+    BOOL isAlreadyShowing = [self.navigationItem.rightBarButtonItems containsObject:cartItem];
     if (!isAlreadyShowing || self.navigationItem.rightBarButtonItems.count != 1) {
-        self.navigationItem.rightBarButtonItems = @[self.homeCartItem];
+        self.navigationItem.rightBarButtonItems = PPHomeBarButtonItems(cartItem);
     }
 
     
@@ -7033,6 +7672,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     frame.size.width = width;
     frame.size.height = 42.0;
     self.homeSmartSearchView.frame = frame;
+    self.homeSmartSearchView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
     return self.homeSmartSearchView;
 }
 
@@ -7244,6 +7884,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.view.hx_w - 32, navHeight)];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = UIColor.clearColor;
+    container.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
 
     content.translatesAutoresizingMaskIntoConstraints = NO;
     [container addSubview:content];
@@ -7405,18 +8046,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.adjustsImageWhenHighlighted = NO;
     container.clipsToBounds = NO;
-
-    container.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    container.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
 
     // Menu + tap safely coexist — combined user + app actions
     UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
     UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
-    container.menu = [UIMenu menuWithTitle:@""
-                                     image:nil
-                                identifier:nil
-                                   options:UIMenuOptionsDisplayInline
-                                  children:@[userMenu, appMenu]];
-    container.showsMenuAsPrimaryAction = YES;
+    PPHomeConfigurePrimaryMenuButton(container, userMenu, appMenu);
 
     if (target && action) {
         [container addTarget:target
@@ -7454,9 +8089,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         }
     }
 
-    // =====================================================
-    // 3️⃣ Title
-    // =====================================================
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:16];
@@ -7464,6 +8096,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     titleLabel.text = title ?: kLang(@"JoinUs");
     titleLabel.numberOfLines = 1;
     titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    titleLabel.textAlignment = PPHomeCurrentTextAlignment();
 
     // =====================================================
     // 4️⃣ Subtitle (icon + text, baseline safe)
@@ -7474,6 +8107,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     subtitleLabel.textColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
     subtitleLabel.numberOfLines = 1;
     subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    subtitleLabel.textAlignment = PPHomeCurrentTextAlignment();
 
     if (subtitle.length > 0) {
         UIImageSymbolConfiguration *cfg =
@@ -7503,6 +8137,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     textStack.axis = UILayoutConstraintAxisVertical;
     textStack.spacing = 0;
     textStack.alignment = UIStackViewAlignmentLeading;
+    textStack.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
 
     [titleLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
                                                 forAxis:UILayoutConstraintAxisHorizontal];
@@ -7519,6 +8154,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     contentStack.axis = UILayoutConstraintAxisHorizontal;
     contentStack.spacing = 10;
     contentStack.alignment = UIStackViewAlignmentCenter;
+    contentStack.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
 
     [container addSubview:contentStack];
 
@@ -7731,42 +8367,29 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     gradient.endPoint = CGPointMake(0.92, 1.0);
     gradient.locations = @[@0.0, @0.34, @0.72, @1.0];
     gradient.needsDisplayOnBoundsChange = YES;
+    gradient.opacity = 0.0;
+
     [canvas.layer addSublayer:gradient];
     self.pp_backgroundGradientLayer = gradient;
 
-    UIImage *patternImage = [[UIImage imageNamed:@"chat3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    if (patternImage) {
-        UIImageView *patternView = [[UIImageView alloc] initWithImage:patternImage];
-        patternView.translatesAutoresizingMaskIntoConstraints = NO;
-        patternView.contentMode = UIViewContentModeScaleAspectFill;
-        patternView.userInteractionEnabled = NO;
-        [canvas addSubview:patternView];
-        self.pp_backgroundPatternView = patternView;
-        [NSLayoutConstraint activateConstraints:@[
-            [patternView.topAnchor constraintEqualToAnchor:canvas.topAnchor],
-            [patternView.leadingAnchor constraintEqualToAnchor:canvas.leadingAnchor],
-            [patternView.trailingAnchor constraintEqualToAnchor:canvas.trailingAnchor],
-            [patternView.bottomAnchor constraintEqualToAnchor:canvas.bottomAnchor],
-        ]];
-    }
-
+   
     CAGradientLayer *topGlow = [CAGradientLayer layer];
     topGlow.type = kCAGradientLayerRadial;
     topGlow.startPoint = CGPointMake(0.5, 0.5);
     topGlow.endPoint = CGPointMake(1.0, 1.0);
     topGlow.locations = @[@0.0, @0.30, @1.0];
-    topGlow.opacity = 0.1;
+    topGlow.opacity = 0.0;
     topGlow.needsDisplayOnBoundsChange = YES;
     [canvas.layer addSublayer:topGlow];
     self.pp_backgroundTopGlowLayer = topGlow;
-    self.pp_backgroundTopGlowLayer.opacity = 0.1;
+    self.pp_backgroundTopGlowLayer.opacity = 0.5;
     CAGradientLayer *accentGlow = [CAGradientLayer layer];
     accentGlow.type = kCAGradientLayerRadial;
     accentGlow.startPoint = CGPointMake(0.5, 0.5);
     accentGlow.endPoint = CGPointMake(1.0, 1.0);
     accentGlow.locations = @[@0.0, @0.36, @1.0];
     accentGlow.needsDisplayOnBoundsChange = YES;
-    accentGlow.opacity = 0.2;
+    accentGlow.opacity = 0.0;
     [canvas.layer addSublayer:accentGlow];
     self.pp_backgroundAccentGlowLayer = accentGlow;
     self.pp_backgroundAccentGlowLayer.opacity = 0.1;
@@ -7776,7 +8399,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     bottomGlow.startPoint = CGPointMake(0.5, 0.5);
     bottomGlow.endPoint = CGPointMake(1.0, 1.0);
     bottomGlow.locations = @[@0.0, @0.42, @1.0];
-    bottomGlow.opacity = 0.2;
+    bottomGlow.opacity = 0.0;
     bottomGlow.needsDisplayOnBoundsChange = YES;
     [canvas.layer addSublayer:bottomGlow];
     self.pp_backgroundBottomGlowLayer = bottomGlow;
@@ -7787,6 +8410,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     shineLayer.endPoint = CGPointMake(1.0, 0.92);
     shineLayer.locations = @[@0.0, @0.40, @0.64, @1.0];
     shineLayer.needsDisplayOnBoundsChange = YES;
+    shineLayer.opacity = 0.0;
     [canvas.layer addSublayer:shineLayer];
     self.pp_backgroundShineLayer = shineLayer;
  
@@ -7799,8 +8423,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (!self.pp_backgroundCanvasView && !self.pp_backgroundGradientLayer) return;
 
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    UIColor *surfaceColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
-    UIColor *ambientColor = AppBackgroundClr ?: AppBageColor();
+    UIColor *surfaceColor =   UIColor.secondarySystemBackgroundColor;
+    UIColor *ambientColor =   UIColor.systemBackgroundColor;
     UIColor *primaryColor = AppPrimaryClr ?: UIColor.systemPinkColor;
     UIColor *secondaryGlowColor = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:0.92];
     UIColor *highlightColor = [UIColor colorWithWhite:1.0 alpha:1.0];
@@ -7836,7 +8460,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     self.view.backgroundColor = surfaceColor;
     self.pp_backgroundPatternView.tintColor = primaryColor;
-    self.pp_backgroundPatternView.alpha = isDark ? 0.045 : 0.028;
+    self.pp_backgroundPatternView.alpha = isDark ? 0.045 : 0.022;
 
     self.pp_backgroundGlowViewTop.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.22 : 0.12];
     [self.pp_backgroundGlowViewTop pp_setShadowColor:primaryColor];
@@ -8136,7 +8760,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     UIColor *shinerColor  = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:0.92];
 
     // Orb A — warm tint derived from primary (30% overall alpha)
-    self.pp_midGlowA.alpha = 0.3;
+    self.pp_midGlowA.alpha = 0.2;
     self.pp_midGlowA.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.14 : 0.07];
     [self.pp_midGlowA pp_setShadowColor:primaryColor];
     self.pp_midGlowA.layer.shadowOpacity = isDark ? 0.12f : 0.08f;
@@ -8182,6 +8806,22 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_stabilizeHomeCollectionLayoutIfNeeded];
 }
 
+
+// MARK: - changeLanguageWithCode Delagate
+- (void)changeLanguageWithCode:(int)code {
+    self.currentLanguage = LanguageCode[code];
+    [Language userSelectedLanguage:LanguageCode[code]];
+}
+
+
+
+-(void)viewWillLayoutSubviews
+{
+    [super viewWillLayoutSubviews];
+    
+    [self pp_applyCurrentLanguageDirectionToHomeUI];
+ }
+
 - (void)viewSafeAreaInsetsDidChange
 {
     [super viewSafeAreaInsetsDidChange];
@@ -8216,23 +8856,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [super traitCollectionDidChange:previousTraitCollection];
     if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        //self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
-        [self pp_updateBackgroundGradientColors];
-        [self configureNavigationBar];
-        [self refreshHeroSectionAppearance];
-        [self setNeedsStatusBarAppearanceUpdate];
-
-        // Force visual refresh via diffable data source (direct mutation APIs are forbidden)
-        if (self.dataSource) {
-            NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
-            [snapshot reconfigureItemsWithIdentifiers:snapshot.itemIdentifiers];
-            [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
-        }
-        [self.collectionView.collectionViewLayout invalidateLayout];
-
-        // Re-apply cart badge so CALayer colors match the new appearance
-        NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
-        [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+        [self pp_refreshThemeSensitiveHomeContent];
+        [self pp_forceHomeCollectionLayoutRefresh];
     }
 }
 

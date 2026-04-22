@@ -72,6 +72,9 @@ static NSInteger const PPRootTabIndexSettings = 4;
 - (void)viewDidLoad {
     [super viewDidLoad];
 
+    UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+    self.view.semanticContentAttribute = semantic;
+    self.tabBar.semanticContentAttribute = semantic;
     self.view.backgroundColor = AppClearClr;
     self.delegate = self;
     // Home
@@ -297,6 +300,12 @@ static NSInteger const PPRootTabIndexSettings = 4;
     }];
 }
 
+-(void)viewWillLayoutSubviews
+{
+    [super viewWillLayoutSubviews];
+     
+    
+}
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
@@ -1023,7 +1032,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
         return;
     }
 
-    CGFloat itemWidth = floor(tabBarSize.width / (CGFloat)self.tabBar.items.count);
+    CGFloat itemWidth = floor(tabBarSize.width / MAX(1.0, (CGFloat)self.tabBar.items.count));
     if (itemWidth <= 0.0) {
         return;
     }

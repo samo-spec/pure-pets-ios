@@ -14,6 +14,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *holderName; // e.g. BannerHolderMainView
 
 @property (nonatomic, copy, nullable) NSURL *backgroundImageURL;
+@property (nonatomic, copy, nullable) NSArray<NSString *> *backgroundGradientColors;
+@property (nonatomic, copy, nullable) NSString *backgroundGradientDirection;
 @property (nonatomic, copy, nullable) NSURL *sampleImageURL;
 @property (nonatomic, copy, nullable) NSURL *badgeImageURL;
 

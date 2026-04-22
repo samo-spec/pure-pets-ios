@@ -6,6 +6,7 @@
 //
 
 #import "PPVerificationCodeViewController.h"
+#import "Language.h"
 
 @interface PPVerificationCodeViewController () <UITextFieldDelegate, UIGestureRecognizerDelegate, UIAdaptivePresentationControllerDelegate>
 
@@ -17,6 +18,8 @@
 @property (nonatomic, strong) UIView *cardView;
 @property (nonatomic, strong) UIView *heroIconWrapView;
 @property (nonatomic, strong) UIImageView *heroIconView;
+@property (nonatomic, strong) UIButton *backButton;
+@property (nonatomic, strong) UIButton *changeNumberButton;
 
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
@@ -172,6 +175,14 @@
     self.heroIconView.tintColor = AppPrimaryClr;
     [self.heroIconWrapView addSubview:self.heroIconView];
 
+    self.backButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.backButton.translatesAutoresizingMaskIntoConstraints = NO;
+    NSString *backIcon = [Language isRTL] ? @"arrow.right" : @"arrow.left";
+    [self.backButton setImage:[UIImage systemImageNamed:backIcon withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:18 weight:UIImageSymbolWeightBold]] forState:UIControlStateNormal];
+    [self.backButton setTintColor:UIColor.secondaryLabelColor];
+    [self.backButton addTarget:self action:@selector(didTapBack) forControlEvents:UIControlEventTouchUpInside];
+    [self.cardView addSubview:self.backButton];
+
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.text = kLang(@"verification_title");
     self.titleLabel.font =  [GM boldFontWithSize:26];
@@ -188,6 +199,14 @@
     self.subtitleLabel.textAlignment = NSTextAlignmentCenter;
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.subtitleLabel.alpha = 0.92;
+
+    self.changeNumberButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.changeNumberButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.changeNumberButton setTitle:kLang(@"auth_change_number") ?: (Language.isRTL ? @"تغيير الرقم" : @"Change Number") forState:UIControlStateNormal];
+    [self.changeNumberButton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    self.changeNumberButton.titleLabel.font = [GM MidFontWithSize:14];
+    [self.changeNumberButton addTarget:self action:@selector(didTapBack) forControlEvents:UIControlEventTouchUpInside];
+    [self.cardView addSubview:self.changeNumberButton];
 
     self.instructionLabel = [[UILabel alloc] init];
     self.instructionLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -333,6 +352,11 @@
         [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-20],
         [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-24],
 
+        [self.backButton.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:12],
+        [self.backButton.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:12],
+        [self.backButton.widthAnchor constraintEqualToConstant:44],
+        [self.backButton.heightAnchor constraintEqualToConstant:44],
+
         [self.titleLabel.topAnchor constraintEqualToAnchor:self.heroIconWrapView.bottomAnchor constant:18],
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
@@ -341,7 +365,10 @@
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
 
-        [self.instructionLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:10],
+        [self.changeNumberButton.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:2],
+        [self.changeNumberButton.centerXAnchor constraintEqualToAnchor:self.cardView.centerXAnchor],
+
+        [self.instructionLabel.topAnchor constraintEqualToAnchor:self.changeNumberButton.bottomAnchor constant:14],
         [self.instructionLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:24],
         [self.instructionLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-24],
 
@@ -570,6 +597,16 @@
         self.scrollView.canCancelContentTouches = NO;
 
     });
+}
+
+#pragma mark - Actions
+
+- (void)didTapBack {
+    [self.codeField resignFirstResponder];
+    if (self.onBackRequested) {
+        self.onBackRequested();
+    }
+    [self dismissViewControllerAnimated:YES completion:nil];
 }
 
 #pragma mark - Focus
@@ -817,8 +854,10 @@
 
     NSArray<UIView *> *views = @[
         self.cardView ?: UIView.new,
+        self.backButton ?: UIView.new,
         self.titleLabel ?: UIView.new,
         self.subtitleLabel ?: UIView.new,
+        self.changeNumberButton ?: UIView.new,
         self.digitStackView ?: UIView.new,
         self.continueButton ?: UIView.new,
         self.resendButton ?: UIView.new

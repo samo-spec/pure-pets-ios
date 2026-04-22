@@ -24,6 +24,7 @@
 + (NSCollectionLayoutSection *)buyAgainSection;
 + (NSCollectionLayoutSection *)adsNearBySection;
 + (NSCollectionLayoutSection *)petProfileSection;
++ (NSCollectionLayoutSection *)premiumCareSection;
 + (NSCollectionLayoutSection *)emptySection;
 + (void)registerDecorationsForLayout:(UICollectionViewCompositionalLayout *)layout;
 + (NSCollectionLayoutSection *)adoptSection;
@@ -43,6 +44,7 @@
 + (NSCollectionLayoutSection *)adsNearBySectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)nearbyServicesSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)petProfileSectionForWidth:(CGFloat)availableWidth;
++ (NSCollectionLayoutSection *)premiumCareSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)lastFoodSection;
 + (NSCollectionLayoutSection *)lastFoodSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)adoptSectionForWidth:(CGFloat)availableWidth;

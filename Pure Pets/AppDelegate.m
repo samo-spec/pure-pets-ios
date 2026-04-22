@@ -34,6 +34,14 @@
     [SDImageCache sharedImageCache].config.shouldRemoveExpiredDataWhenEnterBackground = YES;
     [SDImageCache sharedImageCache].config.shouldRemoveExpiredDataWhenTerminate = YES;
 
+    NSString *lang = [Language currentLanguageCode];
+    [Language setLanguage:lang];
+
+    
+    [[NSUserDefaults standardUserDefaults] setObject:@[lang] forKey:@"AppleLanguages"];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+
+    
 
     [[UINavigationBar appearance] setBarTintColor:UIColor.clearColor];
  
@@ -44,10 +52,6 @@
     }];
     
     
-    [[UIView appearance] setSemanticContentAttribute:Language.semanticAttributeForCurrentLanguage];
-    [[UINavigationBar appearance] setSemanticContentAttribute:Language.semanticAttributeForCurrentLanguage];
-    [[UITabBar appearance] setSemanticContentAttribute:Language.semanticAttributeForCurrentLanguage];
- 
     [UITableView appearance].tintColor = AppPrimaryClr;
  
     UITabBarItem *itemAppearance = [UITabBarItem appearance];
@@ -151,6 +155,17 @@
                           titleColor:(AppPrimaryTextClr ?: UIColor.labelColor)
                             statusStyle:UIStatusBarStyleLightContent];
     
+    /*
+     [[UIView appearance] setSemanticContentAttribute:GM.setSemantic];
+     [[UINavigationBar appearance] setSemanticContentAttribute:GM.setSemantic];
+     [[UITabBar appearance] setSemanticContentAttribute:GM.setSemantic];
+     [[UITableView appearance] setSemanticContentAttribute:GM.setSemantic];
+     [[UICollectionView appearance] setSemanticContentAttribute:GM.setSemantic];
+     */
+    if(PPIOS18())
+    {
+     
+    }
     
 #if DEBUG
     [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"_UIConstraintBasedLayoutLogUnsatisfiable"];

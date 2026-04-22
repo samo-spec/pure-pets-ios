@@ -30,6 +30,10 @@ static CGFloat const PPUniversalPillHeight = 34.0;
 static CGFloat const PPUniversalCompactTitleHeight = 24.0;
 static CGFloat const PPUniversalCompactPriceHeight = 26.0;
 static CGFloat const PPUniversalControlButtonSize = 38.0;
+static CGFloat const PPUniversalCompactCardHorizontalInset = 2.0;
+static CGFloat const PPUniversalCompactCardVerticalInset = 4.0;
+static CGFloat const PPUniversalCompactTitleToPriceSpacing = 4.0;
+static CGFloat const PPUniversalCompactPriceToActionSpacing = 6.0;
 static NSTimeInterval const PPUniversalStepperAutoCollapseDelay = 3.5;
 static BOOL const PPUniversalTemporarilyHideSubtitle = NO;
 static BOOL const PPUniversalTemporarilyHideShareButton = YES;
@@ -50,6 +54,36 @@ static UIColor *PPUniversalCellDynamicColor(UIColor *light, UIColor *dark)
         }];
     }
     return light;
+}
+
+static UIColor *PPUniversalCellSoftSurfaceColor(void)
+{
+    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
+                                      [UIColor colorWithWhite:0.12 alpha:0.82]);
+}
+
+static UIColor *PPUniversalCellSoftCardBorderColor(void)
+{
+    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
+                                      [UIColor colorWithWhite:1.0 alpha:0.10]);
+}
+
+static UIColor *PPUniversalCellSoftImageBorderColor(void)
+{
+    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.54],
+                                      [UIColor colorWithWhite:1.0 alpha:0.12]);
+}
+
+static UIColor *PPUniversalCellSoftShadowColor(void)
+{
+    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.13 blue:0.18 alpha:0.48],
+                                      [UIColor colorWithRed:0.03 green:0.04 blue:0.05 alpha:0.88]);
+}
+
+static UIColor *PPUniversalCellSoftImageScrimColor(void)
+{
+    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.10],
+                                      [UIColor colorWithWhite:1.0 alpha:0.05]);
 }
 
 static UIFont *PPUniversalCellMediumFont(CGFloat size)
@@ -174,6 +208,88 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
     NSString *formatted = [formatter stringFromNumber:amount];
     return formatted.length > 0 ? formatted : amount.stringValue;
+}
+
+static BOOL PPUniversalCellUsesAdsPinterestLayout(PPCellContext context,
+                                                  PPManagerCellLayoutMode layoutMode,
+                                                  id _Nullable modelObject)
+{
+    BOOL isAdContext = [modelObject isKindOfClass:[PetAd class]] ||
+                       context == PPCellForAds ||
+                       context == PPCellForHomeAds;
+    return isAdContext && layoutMode == PPCellLayoutModePinterest;
+}
+
+static CGFloat PPUniversalCellAdsPinterestInnerImageWidth(CGFloat cellWidth)
+{
+    CGFloat horizontalChrome = (PPUniversalCompactCardHorizontalInset * 2.0) + (PPUniversalOuterInset * 2.0);
+    return MAX(cellWidth - horizontalChrome, 1.0);
+}
+
+static CGFloat PPUniversalCellMeasuredTitleHeight(NSString *title,
+                                                  UIFont *font,
+                                                  CGFloat width,
+                                                  NSInteger maxLines,
+                                                  CGFloat minimumHeight)
+{
+    CGFloat safeMinimum = MAX(minimumHeight, ceil(font.lineHeight));
+    if (title.length == 0 || width <= 0.0) {
+        return safeMinimum;
+    }
+
+    CGRect rect = [title boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+                                      options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                   attributes:@{ NSFontAttributeName : font }
+                                      context:nil];
+    CGFloat lineHeight = ceil(font.lineHeight);
+    CGFloat maxHeight = lineHeight * MAX(maxLines, 1);
+    CGFloat measured = MIN(ceil(rect.size.height), ceil(maxHeight));
+    return MAX(safeMinimum, measured);
+}
+
+static CGFloat PPUniversalCellAdsPinterestAspectRatio(PPUniversalCellViewModel * _Nullable vm)
+{
+    CGFloat ratio = 1.0;
+    if ([vm isKindOfClass:[PPUniversalCellViewModel class]] &&
+        vm.imageSize.width > 0.0 &&
+        vm.imageSize.height > 0.0) {
+        ratio = vm.imageSize.height / MAX(vm.imageSize.width, 1.0);
+    } else if ([vm isKindOfClass:[PPUniversalCellViewModel class]] &&
+               vm.preferredAspectRatio > 0.0) {
+        ratio = vm.preferredAspectRatio;
+    }
+
+    return MIN(MAX(ratio, 1.0), 2.0);
+}
+
+static CGFloat PPUniversalCellAdsPinterestBodyHeight(CGFloat cellWidth,
+                                                     PPUniversalCellViewModel * _Nullable vm)
+{
+    CGFloat contentWidth = PPUniversalCellAdsPinterestInnerImageWidth(cellWidth);
+    UIFont *titleFont = PPUniversalCellBoldFont(13.0);
+    CGFloat titleHeight = PPUniversalCellMeasuredTitleHeight(vm.title ?: @"",
+                                                             titleFont,
+                                                             contentWidth,
+                                                             2,
+                                                             PPUniversalCompactTitleHeight);
+
+    return ceil(titleHeight +
+                PPUniversalCompactTitleToPriceSpacing +
+                PPUniversalCompactPriceHeight +
+                PPUniversalCompactPriceToActionSpacing +
+                PPUniversalButtonHeight);
+}
+
+static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
+                                                 PPUniversalCellViewModel * _Nullable vm)
+{
+    CGFloat imageWidth = PPUniversalCellAdsPinterestInnerImageWidth(cellWidth);
+    CGFloat imageHeight = ceil(imageWidth * PPUniversalCellAdsPinterestAspectRatio(vm));
+    CGFloat bodyHeight = PPUniversalCellAdsPinterestBodyHeight(cellWidth, vm);
+    CGFloat verticalChrome = (PPUniversalCompactCardVerticalInset * 2.0) +
+                             (PPUniversalOuterInset * 2.0) +
+                             (PPUniversalInnerSpacing * 0.5);
+    return ceil(imageHeight + bodyHeight + verticalChrome);
 }
 
 @interface PPUniversalGradientView : UIView
@@ -399,6 +515,8 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 @property (nonatomic, assign) BOOL isEditingQuantity;
 @property (nonatomic, strong) NSTimer *stepperCollapseTimer;
 
+- (void)pp_resetReusableVisualState;
+
 @end
 
 @implementation PPUniversalCell
@@ -484,6 +602,8 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     [self.cardGradientLayer removeFromSuperlayer];
     self.cardGradientLayer = nil;
     [self collapseStepper:NO];
+    [self pp_resetReusableVisualState];
+    [self pp_applyBaseStyling];
 }
 
 - (void)layoutSubviews
@@ -496,6 +616,76 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         self.cardGradientLayer.cornerRadius = self.cardView.layer.cornerRadius;
         [CATransaction commit];
     }
+
+    self.cardView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.cardView.bounds
+                                   cornerRadius:self.cardView.layer.cornerRadius].CGPath;
+}
+
+- (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
+{
+    UICollectionViewLayoutAttributes *attributes = [super preferredLayoutAttributesFittingAttributes:layoutAttributes];
+    if (PPUniversalCellUsesAdsPinterestLayout(self.context, self.layoutMode, self.vm.ModelObject)) {
+        CGRect frame = attributes.frame;
+        frame.size.height = PPUniversalCellAdsPinterestHeight(CGRectGetWidth(frame), self.vm);
+        attributes.frame = frame;
+    }
+    return attributes;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshAppearanceForCurrentTraits];
+        }
+    }
+}
+
+- (void)refreshThemeAppearance
+{
+    [self pp_refreshAppearanceForCurrentTraits];
+}
+
+- (void)pp_resetReusableVisualState
+{
+    NSArray<UIView *> *views = @[
+        self.contentView,
+        self.cardView,
+        self.imageContainer,
+        self.imageView,
+        self.imageScrimView,
+        self.bodyContainer,
+        self.actionHostView,
+        self.stepperView,
+        self.favoriteButton,
+        self.bodyFavButton,
+        self.shareButton,
+        self.menuButton
+    ];
+
+    for (UIView *view in views) {
+        [view.layer removeAllAnimations];
+        view.alpha = 1.0;
+        view.transform = CGAffineTransformIdentity;
+    }
+
+    self.cardView.clipsToBounds = NO;
+    self.cardView.layer.masksToBounds = NO;
+    self.cardView.layer.shadowPath = nil;
+    self.imageContainer.hidden = NO;
+    self.imageContainer.clipsToBounds = YES;
+    self.imageView.hidden = NO;
+    self.imageView.clipsToBounds = YES;
+    self.imageScrimView.hidden = NO;
+    self.imageScrimView.backgroundColor = PPUniversalCellSoftImageScrimColor();
+    self.bodyContainer.hidden = NO;
+    self.actionHostView.hidden = NO;
+    self.stepperView.hidden = YES;
+    self.stepperView.alpha = 0.0;
+    self.addButton.hidden = NO;
+    self.addButton.alpha = 1.0;
 }
 
 #pragma mark - Setup
@@ -812,23 +1002,26 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 
 - (void)pp_applyBaseStyling
 {
-    self.cardView.backgroundColor = PPUniversalCellDynamicColor([UIColor colorWithWhite:0.998 alpha:1.0],
-                                                                [UIColor colorWithWhite:0.12 alpha:1.0]);
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    self.cardView.backgroundColor = PPUniversalCellSoftSurfaceColor();
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
-    self.cardView.layer.borderWidth = 1.0;
-    [self.cardView pp_setBorderColor:PPUniversalCellDynamicColor([UIColor colorWithWhite:0.93 alpha:1.0],
-                                                                  [UIColor colorWithWhite:0.22 alpha:1.0])];
-    [self.cardView pp_setShadowColor:UIColor.blackColor];
-    self.cardView.layer.shadowOpacity = 0.08;
-    self.cardView.layer.shadowRadius = 16.0;
-    self.cardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.cardView.layer.borderWidth = isDark ? 0.55 : 0.75;
+    [self.cardView pp_setBorderColor:PPUniversalCellSoftCardBorderColor()];
+    [self.cardView pp_setShadowColor:PPUniversalCellSoftShadowColor()];
+    self.cardView.layer.shadowOpacity = isDark ? 0.22 : 0.12;
+    self.cardView.layer.shadowRadius = isDark ? 22.0 : 26.0;
+    self.cardView.layer.shadowOffset = CGSizeMake(0.0, isDark ? 12.0 : 14.0);
     if (@available(iOS 13.0, *)) {
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    self.imageContainer.layer.borderWidth = 1.0;
-    [self.imageContainer pp_setBorderColor:PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
-                                                                        [UIColor colorWithWhite:0.28 alpha:1.0])];
+    self.imageContainer.layer.borderWidth = isDark ? 0.65 : 0.85;
+    [self.imageContainer pp_setBorderColor:PPUniversalCellSoftImageBorderColor()];
+    self.imageScrimView.backgroundColor = PPUniversalCellSoftImageScrimColor();
 
     self.titleLabel.font = PPUniversalCellBoldFont(14.0);
     self.titleLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.15 alpha:1.0],
@@ -852,6 +1045,47 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     if (@available(iOS 13.0, *)) {
         self.stepperView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+
+    UIColor *floatingButtonFill = PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.90],
+                                                              [UIColor colorWithWhite:0.16 alpha:0.96]);
+    UIColor *floatingButtonBorder = PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.24],
+                                                                [UIColor colorWithWhite:1.0 alpha:0.10]);
+    UIColor *floatingButtonTint = PPUniversalCellDynamicColor([UIColor colorWithRed:0.28 green:0.30 blue:0.35 alpha:1.0],
+                                                              [UIColor colorWithWhite:0.96 alpha:1.0]);
+    UIColor *floatingButtonShadow = PPUniversalCellSoftShadowColor();
+    for (UIButton *button in @[self.shareButton, self.menuButton]) {
+        button.backgroundColor = floatingButtonFill;
+        button.tintColor = floatingButtonTint;
+        [button pp_setBorderColor:floatingButtonBorder];
+        [button pp_setShadowColor:floatingButtonShadow];
+        button.layer.shadowOpacity = isDark ? 0.18 : 0.08;
+        button.layer.shadowRadius = isDark ? 12.0 : 9.0;
+        button.layer.shadowOffset = CGSizeMake(0.0, isDark ? 6.0 : 4.0);
+    }
+}
+
+- (void)pp_refreshAppearanceForCurrentTraits
+{
+    [self pp_applyBaseStyling];
+    [self pp_applySemanticDirection];
+    [self.imageContainer applyContextPaletteForContext:self.context];
+
+    if (self.vm.isSkeleton) {
+        [self.skeletonView setNeedsLayout];
+    } else if (self.vm) {
+        [self pp_configureTextsWithViewModel:self.vm];
+        [self pp_configureBadgesWithViewModel:self.vm];
+        [self pp_configureControlsWithViewModel:self.vm];
+        [self pp_configureAvailabilityWithViewModel:self.vm];
+        [self pp_refreshActionPresentationAnimated:NO];
+    }
+
+    [self setNeedsLayout];
+    [self.contentView setNeedsLayout];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self layoutIfNeeded];
+        [self.skeletonView layoutIfNeeded];
+    });
 }
 
 - (void)pp_applyCardGradientForContext:(PPCellContext)ctx
@@ -874,6 +1108,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     self.discountStyle = discountStyle;
     self.imageLoader = loader;
 
+    [self pp_applyBaseStyling];
     [self pp_applySemanticDirection];
     [self.imageContainer applyContextPaletteForContext:context];
     [self pp_applyCardGradientForContext:context];
@@ -1251,6 +1486,9 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 - (void)pp_applyLayoutMode
 {
     BOOL fullWidth = [self pp_isFullWidthLayout];
+    BOOL adsPinterest = PPUniversalCellUsesAdsPinterestLayout(self.context,
+                                                              self.layoutMode,
+                                                              self.vm.ModelObject);
     [NSLayoutConstraint deactivateConstraints:self.compactLayoutConstraints];
     [NSLayoutConstraint deactivateConstraints:self.fullWidthLayoutConstraints];
     [NSLayoutConstraint activateConstraints:fullWidth ? self.fullWidthLayoutConstraints : self.compactLayoutConstraints];
@@ -1266,9 +1504,9 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
         self.imageAspectConstraint.active = YES;
     }
 
-    self.titleLabel.numberOfLines = fullWidth ? 2 : 1;
+    self.titleLabel.numberOfLines = fullWidth ? 2 : (adsPinterest ? 2 : 1);
     self.subtitleLabel.numberOfLines = fullWidth ? 2 : 1;
-    self.titleHeightConstraint.active = !fullWidth;
+    self.titleHeightConstraint.active = !fullWidth && !adsPinterest;
     self.priceHeightConstraint.active = !fullWidth;
     self.availabilityHeightConstraint.active = !fullWidth;
     self.skeletonView.compactLayout = !fullWidth;
@@ -1277,6 +1515,10 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 - (CGFloat)pp_imageAspectRatioForCurrentContent
 {
     CGFloat fallback = 0.82;
+    if (PPUniversalCellUsesAdsPinterestLayout(self.context, self.layoutMode, self.vm.ModelObject)) {
+        return PPUniversalCellAdsPinterestAspectRatio(self.vm);
+    }
+
     if ([self pp_isAdContext]) {
         fallback = 0.98;
     } else if ([self pp_isServiceLikeContext]) {
@@ -1445,7 +1687,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     CGFloat fractionLift = MAX(5.0, round(integerFont.pointSize * 0.34));
     NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
     paragraph.alignment = self.priceLabel.textAlignment;
-    paragraph.baseWritingDirection = Language.isRTL ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
+    //paragraph.baseWritingDirection = Language.isRTL ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
 
     NSMutableAttributedString *result = [[NSMutableAttributedString alloc] init];
     NSAttributedString *currencyString = [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@" %@", displayCurrency]
@@ -1689,7 +1931,7 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     button.layer.cornerRadius = PPUniversalControlButtonSize / 2.0;
     button.layer.borderWidth = 1.0;
     [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.32]];
-    [button pp_setShadowColor:UIColor.blackColor];
+    [button pp_setShadowColor:PPUniversalCellSoftShadowColor()];
     button.layer.shadowOpacity = 0.06;
     button.layer.shadowRadius = 8.0;
     button.layer.shadowOffset = CGSizeMake(0.0, 3.0);
@@ -1960,12 +2202,3 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
 }
 
 @end
-
-
-
-
-
-
-
-
-

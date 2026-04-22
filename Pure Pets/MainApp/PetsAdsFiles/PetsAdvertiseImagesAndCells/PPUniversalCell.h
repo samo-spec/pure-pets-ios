@@ -40,6 +40,8 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 @property (nonatomic, assign, readonly) NSInteger quantity;
 - (void)setQuantity:(NSInteger)quantity animated:(BOOL)animated;
 - (void)collapseStepper:(BOOL)animated;
+/// Re-resolves dynamic layer colors after foreground/theme restoration.
+- (void)refreshThemeAppearance;
 /// Configure cell from a view model
 
 - (void)applyViewModel:(PPUniversalCellViewModel *)vm

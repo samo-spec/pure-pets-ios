@@ -2162,7 +2162,11 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     [[PetAccessory alloc] initWithDictionary:doc.data
                                                   documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
-                    if (item && item.accessKindType != AccessTypeLivePet && item.showInAppMarket) [results addObject:item];
+                    if (item &&
+                        item.accessKindType == AccessTypeAccessory &&
+                        item.showInAppMarket) {
+                        [results addObject:item];
+                    }
                 }
                 
                 dispatch_async(dispatch_get_main_queue(), ^{

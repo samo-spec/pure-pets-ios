@@ -106,6 +106,7 @@
 
     self.titleShadowContainer = [[UIView alloc] init];
     self.titleShadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleShadowContainer.userInteractionEnabled = NO;
     self.titleShadowContainer.layer.cornerRadius = PPCornerSmall;
     [self.titleShadowContainer pp_setShadowColor:UIColor.blackColor];
     self.titleShadowContainer.layer.shadowOpacity = 0.08;
@@ -115,11 +116,13 @@
 
     self.titleBackground = [[UIView alloc] init];
     self.titleBackground.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleBackground.userInteractionEnabled = NO;
     self.titleBackground.layer.cornerRadius = PPCornerSmall;
     [self.titleShadowContainer addSubview:self.titleBackground];
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleLabel.userInteractionEnabled = NO;
     self.titleLabel.font = [GM boldFontWithSize:PPFontCallout];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.textColor = UIColor.labelColor;

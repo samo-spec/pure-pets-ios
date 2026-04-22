@@ -6,6 +6,7 @@
 //
 
 #import "VetModel.h"
+@import FirebaseFirestore;
 
 @implementation VetModel
 
@@ -42,7 +43,14 @@
     model.descriptionText = dict[@"descriptionText"] ?: @"";
     model.phone = dict[@"phone"] ?: @"";
     model.whatsapp = dict[@"whatsapp"] ?: @"";
-    model.availableDate = dict[@"availableDate"];
+    id availableDate = dict[@"availableDate"];
+    if ([availableDate isKindOfClass:[FIRTimestamp class]]) {
+        model.availableDate = [(FIRTimestamp *)availableDate dateValue];
+    } else if ([availableDate isKindOfClass:[NSDate class]]) {
+        model.availableDate = (NSDate *)availableDate;
+    } else {
+        model.availableDate = nil;
+    }
     return model;
 }
 

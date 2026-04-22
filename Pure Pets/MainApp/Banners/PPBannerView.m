@@ -1065,9 +1065,20 @@
      if (_bgURL && _bgURL.absoluteString.length > 10) {
          _backgroundImageView.hidden = NO;
          [GM setImageFromUrlString:_bgURL.absoluteString imageView:_backgroundImageView phImage:nil];
+     } else if (self.bannerModel.backgroundGradientColors.count >= 2) {
+         _backgroundImageView.hidden = YES;
+         _backgroundImageView.image = nil;
+         
+         NSMutableArray *cgColors = [NSMutableArray array];
+         for (NSString *hex in self.bannerModel.backgroundGradientColors) {
+             [cgColors addObject:(id)PPPromoColorFromHex(hex, UIColor.lightGrayColor).CGColor];
+         }
+         _gradientLayer.colors = cgColors;
+         _gradientLayer.hidden = NO;
      } else {
          _backgroundImageView.hidden = YES;
          _backgroundImageView.image = nil;
+         _gradientLayer.hidden = YES;
      }
 
      if (model.expireInDateTime) {

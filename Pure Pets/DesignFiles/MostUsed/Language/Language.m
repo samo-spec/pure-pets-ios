@@ -3,6 +3,7 @@
 //
 
 #import "Language.h"
+#import "PPRootTabBarController.h"
 @import UIKit;  // <— needed for UIApplication/scenes
 
 static NSBundle *bundle = nil;
@@ -11,6 +12,29 @@ NSString *const LanguageCodeIdIndentifier = @"AppLanguage";
 static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNotification";
 
 @implementation Language
+
++ (void)pp_applySemanticAppearance
+{
+    UISemanticContentAttribute attr = [self semanticAttributeForCurrentLanguage];
+    [UIView appearance].semanticContentAttribute = attr;
+    [UINavigationBar appearance].semanticContentAttribute = attr;
+    [UITabBar appearance].semanticContentAttribute = attr;
+    [UITableView appearance].semanticContentAttribute = attr;
+    [UICollectionView appearance].semanticContentAttribute = attr;
+}
+
++ (void)pp_applySemanticToWindow:(nullable UIWindow *)window
+{
+    if (!window) {
+        return;
+    }
+
+    UISemanticContentAttribute attr = [self semanticAttributeForCurrentLanguage];
+    window.semanticContentAttribute = attr;
+    window.rootViewController.view.semanticContentAttribute = attr;
+    [window setNeedsLayout];
+    [window layoutIfNeeded];
+}
 
 + (NSString *)_normalize:(NSString *)code {
     
@@ -37,6 +61,7 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
 
     // Cache selection
     [[NSUserDefaults standardUserDefaults] setObject:norm forKey:LanguageCodeIdIndentifier];
+    [[NSUserDefaults standardUserDefaults] setObject:@[norm] forKey:@"AppleLanguages"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
     // Notify app
@@ -65,45 +90,119 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
 
     // 1) Persist & load bundle, post notification
     [self setLanguage:selectedLanguage];
+    [self pp_applySemanticAppearance];
 
-    // 2) Apply semantic direction globally (affects NEW views)
-    UISemanticContentAttribute attr = [self semanticAttributeForCurrentLanguage];
-    [UIView appearance].semanticContentAttribute        = attr;
-    [UINavigationBar appearance].semanticContentAttribute = attr;
-    [PPNavigationBar appearance].semanticContentAttribute = attr;
-
-    DLog(@"[Language] applied appearance semanticAttribute=%ld", (long)attr);
-    [UINavigationBar appearance].backgroundColor = UIColor.clearColor;
-    [PPNavigationBar appearance].backgroundColor = UIColor.clearColor;
-    
-    [UINavigationBar appearance].barTintColor = UIColor.clearColor;
-    [PPNavigationBar appearance].barTintColor = UIColor.clearColor;
-    
-    
-    // 3) Reload all scenes so EXISTING UI rebuilds under new direction
     dispatch_async(dispatch_get_main_queue(), ^{
+        BOOL reloadedViaSceneDelegate = NO;
+
         if (@available(iOS 13.0, *)) {
             for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-                if (![scene isKindOfClass:[UIWindowScene class]]) continue;
-                UIWindowScene *ws = (UIWindowScene *)scene;
-                //id delegate = ws.delegate;
+                if (![scene isKindOfClass:UIWindowScene.class]) {
+                    continue;
+                }
 
-                
-                for (UIWindow *w in ws.windows) {
-                    w.semanticContentAttribute = attr;
-                    [w setNeedsLayout];
-                    [w layoutIfNeeded];
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                id delegate = windowScene.delegate;
+                if ([delegate respondsToSelector:@selector(reloadRootViewControllerForLanguageChange)]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                    [delegate performSelector:@selector(reloadRootViewControllerForLanguageChange)];
+#pragma clang diagnostic pop
+                    reloadedViaSceneDelegate = YES;
+                    continue;
+                }
+
+                for (UIWindow *window in windowScene.windows) {
+                    [self pp_applySemanticToWindow:window];
                 }
             }
-        } else {
-            // iOS 12 and earlier fallback
-            UIWindow *w = UIApplication.sharedApplication.keyWindow;
-            w.semanticContentAttribute = attr;
-            [w setNeedsLayout];
-            [w layoutIfNeeded];
         }
+
+        if (reloadedViaSceneDelegate) {
+            return;
+        }
+
+        UIWindow *window = [self pp_transitionWindow];
+        if (!window) {
+            NSLog(@"[Language] No active window available yet; semantic appearance updated for next scene.");
+            return;
+        }
+
+        [self pp_applySemanticToWindow:window];
+
+        PPRootTabBarController *rootVC = [[PPRootTabBarController alloc] init];
+        rootVC.view.semanticContentAttribute = [self semanticAttributeForCurrentLanguage];
+        [self pp_swapRootViewController:rootVC onWindow:window];
     });
 }
+
+
++ (nullable UIWindow *)pp_transitionWindow
+{
+    UIWindow *window = AppManager.sharedInstance.topViewController.view.window;
+    if (window) {
+        return window;
+    }
+
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (![scene isKindOfClass:UIWindowScene.class]) {
+                continue;
+            }
+
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            if (windowScene.activationState != UISceneActivationStateForegroundActive &&
+                windowScene.activationState != UISceneActivationStateForegroundInactive) {
+                continue;
+            }
+
+            for (UIWindow *candidate in windowScene.windows) {
+                if (candidate.isKeyWindow) {
+                    return candidate;
+                }
+            }
+
+            if (windowScene.windows.firstObject) {
+                return windowScene.windows.firstObject;
+            }
+        }
+    }
+
+    for (UIWindow *candidate in UIApplication.sharedApplication.windows) {
+        if (candidate.isKeyWindow) {
+            return candidate;
+        }
+    }
+
+    UIWindow *fallback = UIApplication.sharedApplication.windows.firstObject;
+    if (!fallback) {
+        NSLog(@"❌ SplashVC: no UIWindow available");
+    }
+    return fallback;
+}
+
++ (void)pp_swapRootViewController:(UIViewController *)rootViewController
+                         onWindow:(UIWindow *)window
+{
+    [self pp_applySemanticAppearance];
+    window.semanticContentAttribute = [self semanticAttributeForCurrentLanguage];
+    rootViewController.view.semanticContentAttribute = [self semanticAttributeForCurrentLanguage];
+
+    [UIView transitionWithView:window
+                      duration:0.35
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                    animations:^{
+        BOOL previousAnimationState = [UIView areAnimationsEnabled];
+        [UIView setAnimationsEnabled:NO];
+        window.rootViewController = rootViewController;
+        [window makeKeyAndVisible];
+        [window layoutIfNeeded];
+        [UIView setAnimationsEnabled:previousAnimationState];
+    } completion:nil];
+}
+
+
+
 
 #pragma mark - Strings
 

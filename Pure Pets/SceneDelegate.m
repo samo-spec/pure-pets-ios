@@ -2,6 +2,7 @@
 #import "AppDelegate.h"
 #import "PPUserSigningController.h"
 #import "SplashViewController.h"
+#import "PPRootTabBarController.h"
 #import "PPCheckoutCoordinator.h"
 @import GoogleSignIn;
 #import "ChNotificationRouter.h"
@@ -17,6 +18,54 @@
 @end
 
 @implementation SceneDelegate
+
+- (void)pp_applyCurrentLanguageSemanticToWindow:(nullable UIWindow *)window
+{
+    UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+    [UIView appearance].semanticContentAttribute = semantic;
+    [UINavigationBar appearance].semanticContentAttribute = semantic;
+    [UITabBar appearance].semanticContentAttribute = semantic;
+    [UITableView appearance].semanticContentAttribute = semantic;
+    [UICollectionView appearance].semanticContentAttribute = semantic;
+
+    if (!window) {
+        return;
+    }
+
+    window.semanticContentAttribute = semantic;
+    window.rootViewController.view.semanticContentAttribute = semantic;
+    [window setNeedsLayout];
+    [window layoutIfNeeded];
+}
+
+- (NSInteger)pp_preservedSelectedTabIndexFromRootViewController:(nullable UIViewController *)rootViewController
+{
+    UIViewController *candidate = rootViewController;
+    if ([candidate isKindOfClass:UINavigationController.class]) {
+        candidate = ((UINavigationController *)candidate).viewControllers.firstObject;
+    }
+
+    if ([candidate isKindOfClass:PPRootTabBarController.class]) {
+        return ((PPRootTabBarController *)candidate).selectedIndex;
+    }
+
+    return NSNotFound;
+}
+
+- (UIViewController *)pp_buildRootViewControllerForLanguageReloadFrom:(nullable UIViewController *)currentRootViewController
+{
+    PPRootTabBarController *rootViewController = [[PPRootTabBarController alloc] init];
+    [rootViewController view];
+    NSInteger selectedIndex = [self pp_preservedSelectedTabIndexFromRootViewController:currentRootViewController];
+    if (selectedIndex != NSNotFound &&
+        selectedIndex >= 0 &&
+        selectedIndex < (NSInteger)rootViewController.viewControllers.count) {
+        rootViewController.selectedIndex = selectedIndex;
+    }
+
+    rootViewController.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    return rootViewController;
+}
 
 - (void)pp_startUserScopedListenersIfPossible
 {
@@ -98,7 +147,9 @@
     
     NSLog(@"[AppDelegate] [Language languageVal] %ld",[Language languageVal]);
     if([Language languageVal] != 0 && [Language languageVal] != 1)
-        [Language userSelectedLanguage:LanguageCode[1]];
+        [Language setLanguage:LanguageCode[1]];
+    
+    [self pp_applyCurrentLanguageSemanticToWindow:window];
     
 }
 
@@ -124,7 +175,9 @@ willConnectToSession:(UISceneSession *)session
     [self applySavedInterfaceStyleToWindow:self.window];
     UIStoryboard *sb = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
     SplashViewController *splash = [SplashViewController new];
+    splash.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.window.rootViewController = splash;
+    [self pp_applyCurrentLanguageSemanticToWindow:self.window];
     [self.window makeKeyAndVisible];
     
     __weak typeof(self) weakSelf = self;
@@ -219,8 +272,8 @@ willConnectToSession:(UISceneSession *)session
         
     }
     
-    [[UINavigationBar appearance] setSemanticContentAttribute:Language.semanticAttributeForCurrentLanguage];
-    [[UIView appearance] setSemanticContentAttribute:Language.semanticAttributeForCurrentLanguage];
+    
+ 
 }
 - (void)loadMainAppAfterLogin {
     if (self.didShowMainVC) return;
@@ -248,9 +301,28 @@ willConnectToSession:(UISceneSession *)session
 #pragma mark - Language
 
 - (void)reloadRootViewControllerForLanguageChange {
-UISemanticContentAttribute attr = [Language semanticAttributeForCurrentLanguage];
-[UIView appearance].semanticContentAttribute = attr;
-self.window.semanticContentAttribute = attr;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *window = self.window ?: UIApplication.sharedApplication.windows.firstObject;
+        if (!window) {
+            return;
+        }
+
+        UIViewController *currentRootViewController = window.rootViewController;
+        UIViewController *newRootViewController = [self pp_buildRootViewControllerForLanguageReloadFrom:currentRootViewController];
+        [self pp_applyCurrentLanguageSemanticToWindow:window];
+
+        [UIView transitionWithView:window
+                          duration:0.35
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                        animations:^{
+            BOOL wereAnimationsEnabled = [UIView areAnimationsEnabled];
+            [UIView setAnimationsEnabled:NO];
+            window.rootViewController = newRootViewController;
+            [self pp_applyCurrentLanguageSemanticToWindow:window];
+            [window makeKeyAndVisible];
+            [UIView setAnimationsEnabled:wereAnimationsEnabled];
+        } completion:nil];
+    });
 
  }
 

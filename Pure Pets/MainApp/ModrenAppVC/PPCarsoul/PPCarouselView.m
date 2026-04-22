@@ -245,7 +245,7 @@ static const NSInteger kLoopMultiplier = 200;
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
         CGFloat cellCenterX = cell.center.x;
         CGFloat distance = fabs(centerX - cellCenterX);
-        CGFloat maxDist = self.collectionView.bounds.size.width * 0.6;
+        CGFloat maxDist = MAX(self.collectionView.bounds.size.width * 0.6, 1.0);
 
         // Scale: 1.0 for center, 0.92 for edges
         CGFloat normalizedDist = MIN(distance / maxDist, 1.0);

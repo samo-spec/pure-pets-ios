@@ -17,6 +17,7 @@
 static NSString *const kSettingsAutoPlayKey        = @"isAutoPlaySet";
 static NSString *const kSettingsMessagesPrivacyKey = @"messagesPrivacyValue";
 static NSString *const kSettingsNotificationsKey   = @"notificationsSet";
+NSString * const PPThemePreferenceDidChangeNotification = @"PPThemePreferenceDidChangeNotification";
 
 // MARK: Legal URLs — update these to the production website URLs when available.
 static NSString *const kPPPrivacyPolicyURL   = @"https://pure-pets.net/privacy";
@@ -114,8 +115,8 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     [self pp_buildSections];
     [self pp_setupNotificationObservers];
     
-    self.view.semanticContentAttribute = GM.setSemantic;
-    self.tableView.semanticContentAttribute = GM.setSemantic;
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
  }
 
 - (void)viewWillAppear:(BOOL)animated
@@ -739,7 +740,25 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
                            options:UIViewAnimationOptionTransitionCrossDissolve
                         animations:^{
             window.overrideUserInterfaceStyle = style;
-        } completion:nil];
+            [window setNeedsLayout];
+            [window layoutIfNeeded];
+            [window.rootViewController.view setNeedsLayout];
+            [window.rootViewController.view layoutIfNeeded];
+        } completion:^(__unused BOOL finished) {
+            [window setNeedsLayout];
+            [window layoutIfNeeded];
+            [window.rootViewController.view setNeedsLayout];
+            [window.rootViewController.view layoutIfNeeded];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [window setNeedsLayout];
+                [window layoutIfNeeded];
+                [window.rootViewController.view setNeedsLayout];
+                [window.rootViewController.view layoutIfNeeded];
+                [[NSNotificationCenter defaultCenter] postNotificationName:PPThemePreferenceDidChangeNotification object:nil];
+            });
+        }];
+    } else {
+        [[NSNotificationCenter defaultCenter] postNotificationName:PPThemePreferenceDidChangeNotification object:nil];
     }
     [self pp_buildSections];
     [self.tableView reloadData];
@@ -885,11 +904,8 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
 
         NSInteger newLangVal = ([Language languageVal] == 0) ? 1 : 0;
         [Language userSelectedLanguage:LanguageCode[newLangVal]];
-
-        if ([strongSelf.delegate respondsToSelector:@selector(changeLanguageWithCode:)]) {
-            [strongSelf.delegate changeLanguageWithCode:(int)newLangVal];
-        }
-        [strongSelf pp_applyLanguageChangeAndReloadUI];
+        
+        
         strongSelf.alertAppear = NO;
     }
                            cancelBlock:^{
@@ -1109,15 +1125,28 @@ static NSString *const kThemeCellID    = @"PPThemeCell";
     dispatch_async(dispatch_get_main_queue(), ^{
         UIWindow *window = [self pp_keyWindow];
         if (!window) return;
+        
+        UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+        window.semanticContentAttribute = semantic;
+        
         UIViewController *newRoot = [[PPRootTabBarController alloc] init];
         if (!newRoot) return;
         [UIView transitionWithView:window
                           duration:0.35
                            options:UIViewAnimationOptionTransitionCrossDissolve
-                        animations:^{
+        animations:^{
             BOOL old = [UIView areAnimationsEnabled];
             [UIView setAnimationsEnabled:NO];
             window.rootViewController = newRoot;
+            newRoot.view.semanticContentAttribute = semantic;
+            window.semanticContentAttribute = semantic;
+            [[UIView appearance] setSemanticContentAttribute:semantic];
+            [[UINavigationBar appearance] setSemanticContentAttribute:semantic];
+            [[UITabBar appearance] setSemanticContentAttribute:semantic];
+            [[UITableView appearance] setSemanticContentAttribute:semantic];
+            [[UICollectionView appearance] setSemanticContentAttribute:semantic];
+            
+            
             [window makeKeyAndVisible];
             [UIView setAnimationsEnabled:old];
         } completion:nil];

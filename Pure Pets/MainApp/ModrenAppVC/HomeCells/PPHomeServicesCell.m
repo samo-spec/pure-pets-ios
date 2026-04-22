@@ -63,14 +63,14 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _cardView.adjustsImageWhenHighlighted = NO;
     _cardView.clipsToBounds = NO;
     _cardView.layer.masksToBounds = NO;
-    _cardView.layer.cornerRadius = PPCornerMedium;
+    _cardView.layer.cornerRadius = PPCornerMedium + 4;
     _cardView.layer.cornerCurve = kCACornerCurveContinuous;
     [_cardView pp_setShadowColor:UIColor.blackColor];
     _cardView.layer.shadowOpacity = 0.06;
     _cardView.layer.shadowRadius = 12.0;
     
     UIButtonConfiguration *config = _cardView.configuration;
-    config.background.cornerRadius = PPCornerMedium;
+    config.background.cornerRadius = PPCornerMedium + 4;
     _cardView .configuration = config;
     
     
@@ -80,7 +80,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _surfaceView = [[UIView alloc] init];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     _surfaceView.userInteractionEnabled = NO;
-    _surfaceView.layer.cornerRadius = PPCornerMedium;
+    _surfaceView.layer.cornerRadius = PPCornerMedium + 4;
     _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     _surfaceView.layer.masksToBounds = YES;
     [_cardView addSubview:_surfaceView];
@@ -93,7 +93,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _accentGlowView = [[UIView alloc] init];
     _accentGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     _accentGlowView.userInteractionEnabled = NO;
-    _accentGlowView.alpha = 0.18;
+    _accentGlowView.alpha = 0.26;
     _accentGlowView.layer.cornerRadius = 56.0;
     [_surfaceView addSubview:_accentGlowView];
 
@@ -107,7 +107,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _iconChipView = [[UIView alloc] init];
     _iconChipView.translatesAutoresizingMaskIntoConstraints = NO;
     _iconChipView.userInteractionEnabled = NO;
-    _iconChipView.layer.cornerRadius = PPCornerMedium;
+    _iconChipView.layer.cornerRadius = PPCornerMedium + 4;
     _iconChipView.layer.cornerCurve = kCACornerCurveContinuous;
     _iconChipView.hidden=NO;
     [_surfaceView addSubview:_iconChipView];
@@ -122,12 +122,12 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _eyebrowLabel.font = [GM MidFontWithSize:PPFontCaption1];
     _eyebrowLabel.text = [kLang(@"services") uppercaseString];
-    _eyebrowLabel.hidden = YES;
+    _eyebrowLabel.hidden = NO;
     [_surfaceView addSubview:_eyebrowLabel];
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:PPFontHeadline];
+    _titleLabel.font = [GM boldFontWithSize:PPFontHeadline +2];
     _titleLabel.numberOfLines = 1;
     _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     [_surfaceView addSubview:_titleLabel];
@@ -175,7 +175,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
 
         [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
 
-        [_chevronPillView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
+        [_chevronPillView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-16.0],
         [_chevronView.centerXAnchor constraintEqualToAnchor:_chevronPillView.centerXAnchor],
         [_chevronView.centerYAnchor constraintEqualToAnchor:_chevronPillView.centerYAnchor],
         [_chevronView.widthAnchor constraintEqualToConstant:16.0],
@@ -183,17 +183,17 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     ]];
 
     self.compactConstraints = @[
-        [_iconChipView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:4.0],
+        [_iconChipView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:0.0],
         [_iconChipView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:12.0],
         [_iconChipView.widthAnchor constraintEqualToConstant:32.0],
         [_iconChipView.heightAnchor constraintEqualToConstant:32.0],
 
-        [_chevronPillView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:12.0],
+        [_chevronPillView.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:0.0],
         [_chevronPillView.widthAnchor constraintEqualToConstant:28.0],
         [_chevronPillView.heightAnchor constraintEqualToConstant:28.0],
         
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:12.0],
-        [_titleLabel.centerYAnchor constraintEqualToAnchor:_chevronPillView.centerYAnchor constant:0.0],
+        [_titleLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:16.0],
+        [_titleLabel.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor constant:0.0],
         [_titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_chevronPillView.leadingAnchor constant:-10.0],
 
         

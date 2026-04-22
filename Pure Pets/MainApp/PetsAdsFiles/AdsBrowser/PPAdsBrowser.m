@@ -17,6 +17,70 @@
 #define NUMBER_OF_VISIBLE_VIEWS 5
 #define ICON_VIEW_PADDING 5
 
+static CGFloat const PPAdsBrowserPinterestOuterInset = 14.0;
+static CGFloat const PPAdsBrowserPinterestInnerSpacing = 12.0;
+static CGFloat const PPAdsBrowserPinterestButtonHeight = 34.0;
+static CGFloat const PPAdsBrowserPinterestCompactTitleHeight = 24.0;
+static CGFloat const PPAdsBrowserPinterestCompactPriceHeight = 26.0;
+static CGFloat const PPAdsBrowserPinterestCardHorizontalInset = 2.0;
+static CGFloat const PPAdsBrowserPinterestCardVerticalInset = 4.0;
+static CGFloat const PPAdsBrowserPinterestTitleToPriceSpacing = 4.0;
+static CGFloat const PPAdsBrowserPinterestPriceToActionSpacing = 6.0;
+
+static CGFloat PPAdsBrowserPinterestInnerImageWidth(CGFloat cellWidth)
+{
+    CGFloat horizontalChrome = (PPAdsBrowserPinterestCardHorizontalInset * 2.0) + (PPAdsBrowserPinterestOuterInset * 2.0);
+    return MAX(cellWidth - horizontalChrome, 1.0);
+}
+
+static CGFloat PPAdsBrowserPinterestAspectRatio(PPUniversalCellViewModel * _Nullable vm)
+{
+    CGFloat ratio = 1.0;
+    if ([vm isKindOfClass:[PPUniversalCellViewModel class]] &&
+        vm.imageSize.width > 0.0 &&
+        vm.imageSize.height > 0.0) {
+        ratio = vm.imageSize.height / MAX(vm.imageSize.width, 1.0);
+    } else if ([vm isKindOfClass:[PPUniversalCellViewModel class]] &&
+               vm.preferredAspectRatio > 0.0) {
+        ratio = vm.preferredAspectRatio;
+    }
+    return MIN(MAX(ratio, 1.0), 2.0);
+}
+
+static CGFloat PPAdsBrowserPinterestMeasuredTitleHeight(NSString *title,
+                                                        CGFloat width)
+{
+    UIFont *font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    CGFloat minimumHeight = MAX(PPAdsBrowserPinterestCompactTitleHeight, ceil(font.lineHeight));
+    if (title.length == 0 || width <= 0.0) {
+        return minimumHeight;
+    }
+
+    CGRect rect = [title boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+                                      options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                   attributes:@{ NSFontAttributeName : font }
+                                      context:nil];
+    CGFloat maxHeight = ceil(font.lineHeight) * 2.0;
+    return MAX(minimumHeight, MIN(ceil(rect.size.height), maxHeight));
+}
+
+static CGFloat PPAdsBrowserPinterestHeightForViewModel(PPUniversalCellViewModel * _Nullable vm,
+                                                       CGFloat cellWidth)
+{
+    CGFloat contentWidth = PPAdsBrowserPinterestInnerImageWidth(cellWidth);
+    CGFloat imageHeight = ceil(contentWidth * PPAdsBrowserPinterestAspectRatio(vm));
+    CGFloat titleHeight = PPAdsBrowserPinterestMeasuredTitleHeight(vm.title ?: @"", contentWidth);
+    CGFloat bodyHeight = ceil(titleHeight +
+                              PPAdsBrowserPinterestTitleToPriceSpacing +
+                              PPAdsBrowserPinterestCompactPriceHeight +
+                              PPAdsBrowserPinterestPriceToActionSpacing +
+                              PPAdsBrowserPinterestButtonHeight);
+    CGFloat verticalChrome = (PPAdsBrowserPinterestCardVerticalInset * 2.0) +
+                             (PPAdsBrowserPinterestOuterInset * 2.0) +
+                             (PPAdsBrowserPinterestInnerSpacing * 0.5);
+    return ceil(imageHeight + bodyHeight + verticalChrome);
+}
+
 @interface PPAdsBrowser () <LTInfiniteScrollViewDataSource, LTInfiniteScrollViewDelegate,UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, PPUniversalCellDelegate, AdsBrowserDelegate, UICollectionViewDataSourcePrefetching,PPCenteredSelectorViewDelegate>
 @property (nonatomic, strong) UIView *categoriesContainer;
 @property (nonatomic, strong) NSLayoutConstraint *categoriesTopConstraint;
@@ -737,8 +801,7 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
  heightForItemAtIndexPath:(NSIndexPath *)indexPath
                 withWidth:(CGFloat)width {
 
-    // 1) Use cache if we already calculated this height
-    NSString *cacheKey = self.heightCacheKey ?: @"PPAdsBrowserPinterestHeights";
+    NSString *cacheKey = [self pp_heightCacheKeyForWidth:width];
     NSNumber *cachedHeight = [[PPHeightCacheManager sharedManager]
                               heightForIndexPath:indexPath
                               key:cacheKey];
@@ -746,38 +809,18 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
         return cachedHeight.floatValue;
     }
 
-    // 2) Get the view model from diffable data source
-
-    CGFloat height = kPPPinterestMinCellHeight;
-
-    // Your logic for calculating height...
-    if (indexPath.item < [self buildViewModelsFromAds:self.ads].count) {
-        PPUniversalCellViewModel *model = [self buildViewModelsFromAds:self.ads][indexPath.item];
-        if ([model.ModelObject isKindOfClass:[PetAd class]]) {
-            PetAd *ad = (PetAd *)model.ModelObject;
-            PetImageItem *img = ad.imageItems.firstObject;
-            if (img && img.width > 0) {
-                height = width * (img.height / img.width);
-            }
-        }
-        
-        else if ([model.ModelObject isKindOfClass:[PetAccessory class]]) {
-            PetAccessory *ad = (PetAccessory *)model.ModelObject;
-            PetImageItem *img = ad.imageItems.firstObject;
-            if (img && img.width > 0) {
-                height = width * (img.height / img.width);
-            }
-        }
+    CGFloat height = MAX(kPPPinterestMinCellHeight, width);
+    PPUniversalCellViewModel *model = [self.adsDataSource itemIdentifierForIndexPath:indexPath];
+    if (!model && indexPath.item < [self buildViewModelsFromAds:self.ads].count) {
+        model = [self buildViewModelsFromAds:self.ads][indexPath.item];
     }
-    
-    height = MAX(height, kPPPinterestMinCellHeight);
-    
-    [[PPHeightCacheManager sharedManager] setHeight:height forIndexPath:indexPath key:self.currentCellSectionKey];
-    if(indexPath.item > ([self buildViewModelsFromAds:self.ads].count - 1 ))
-    {
-        [[PPHeightCacheManager sharedManager] saveCacheForKey:self.currentCellSectionKey];
-        //NSLog(@"⚠️ [PPHeightCacheManager] saveCacheForKey %@", self.currentCellSectionKey);
+
+    if (model) {
+        height = PPAdsBrowserPinterestHeightForViewModel(model, width);
     }
+
+    height = MAX(height, MAX(kPPPinterestMinCellHeight, width));
+    [[PPHeightCacheManager sharedManager] setHeight:height forIndexPath:indexPath key:cacheKey];
     return height;
 }
 
@@ -811,10 +854,17 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     }
 }
 
+- (NSString *)pp_heightCacheKeyForWidth:(CGFloat)width
+{
+    NSInteger roundedWidth = (NSInteger)lround(width);
+    NSString *baseKey = self.heightCacheKey.length > 0 ? self.heightCacheKey : [self currentCellSectionKey];
+    return [NSString stringWithFormat:@"%@-w%ld", baseKey, (long)roundedWidth];
+}
+
 
 -(void)dealloc
 {
-    [[PPHeightCacheManager sharedManager] saveCacheForKey:self.heightCacheKey];
+    [[PPHeightCacheManager sharedManager] saveCacheForKey:[self pp_heightCacheKeyForWidth:CGRectGetWidth(self.adsCollectionView.bounds)]];
 
 }
 

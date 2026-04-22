@@ -214,6 +214,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.chipLabel = [[UILabel alloc] init];
     self.chipLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.chipLabel.font = [GM boldFontWithSize:12] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    self.chipLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.chipView addSubview:self.chipLabel];
 
     self.orderKickerLabel = [[UILabel alloc] init];
@@ -221,7 +222,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.orderKickerLabel.font = [GM MidFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
     self.orderKickerLabel.textColor = UIColor.secondaryLabelColor;
     self.orderKickerLabel.numberOfLines = 1;
-    self.orderKickerLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.orderKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.surfaceView addSubview:self.orderKickerLabel];
 
     self.orderLabel = [[UILabel alloc] init];
@@ -229,7 +230,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.orderLabel.font = [GM boldFontWithSize:21] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
     self.orderLabel.textColor = UIColor.labelColor;
     self.orderLabel.numberOfLines = 1;
-    self.orderLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.orderLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.surfaceView addSubview:self.orderLabel];
 
     self.metaLabel = [[UILabel alloc] init];
@@ -237,7 +238,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.metaLabel.font = [GM MidFontWithSize:11.5] ?: [UIFont systemFontOfSize:11.5 weight:UIFontWeightMedium];
     self.metaLabel.textColor = UIColor.secondaryLabelColor;
     self.metaLabel.numberOfLines = 1;
-    self.metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.metaLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.surfaceView addSubview:self.metaLabel];
 
     self.hintLabel = [[UILabel alloc] init];
@@ -245,7 +246,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.hintLabel.font = [GM MidFontWithSize:14] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
     self.hintLabel.textColor = UIColor.labelColor;
     self.hintLabel.numberOfLines = 2;
-    self.hintLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.hintLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.surfaceView addSubview:self.hintLabel];
 
     self.progressTrackView = [[UIView alloc] init];
@@ -266,7 +267,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.footerLabel.font = [GM MidFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
     self.footerLabel.textColor = UIColor.tertiaryLabelColor;
     self.footerLabel.numberOfLines = 1;
-    self.footerLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.footerLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.surfaceView addSubview:self.footerLabel];
 
     self.actionRailView = [[UIView alloc] init];
@@ -361,7 +362,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedKickerLabel.textColor = UIColor.tertiaryLabelColor;
     self.collapsedKickerLabel.numberOfLines = 1;
     self.collapsedKickerLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.collapsedKickerLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.collapsedKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.collapsedTextStackView addArrangedSubview:self.collapsedKickerLabel];
 
     self.collapsedOrderLabel = [[UILabel alloc] init];
@@ -369,7 +370,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedOrderLabel.font = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
     self.collapsedOrderLabel.textColor = UIColor.labelColor;
     self.collapsedOrderLabel.numberOfLines = 1;
-    self.collapsedOrderLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.collapsedOrderLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.collapsedTextStackView addArrangedSubview:self.collapsedOrderLabel];
 
     self.collapsedSummaryLabel = [[UILabel alloc] init];
@@ -378,7 +379,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedSummaryLabel.textColor = UIColor.secondaryLabelColor;
     self.collapsedSummaryLabel.numberOfLines = 1;
     self.collapsedSummaryLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    self.collapsedSummaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.collapsedSummaryLabel.textAlignment = [Language alignmentForCurrentLanguage];
     [self.collapsedTextStackView addArrangedSubview:self.collapsedSummaryLabel];
 
     self.collapsedStatusPillView = [[UIView alloc] init];
@@ -684,20 +685,23 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.historyButton.hidden = NO;
     self.actionRailView.alpha = 1.0;
 
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.surfaceView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.chipView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.actionRailView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.actionsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.collapsedContentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.collapsedTextStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.orderKickerLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.orderLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.metaLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.hintLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.footerLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.collapsedKickerLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.collapsedOrderLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.collapsedSummaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.chipLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.orderKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.orderLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.metaLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.hintLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.footerLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.collapsedKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.collapsedOrderLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.collapsedSummaryLabel.textAlignment = [Language alignmentForCurrentLanguage];
 
     self.orderKickerLabel.text = PPSafeString(orderKickerTitle);
     self.collapsedKickerLabel.text = PPSafeString(orderKickerTitle);

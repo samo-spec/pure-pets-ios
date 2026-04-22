@@ -21,6 +21,7 @@
 		8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
+		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
 		F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A06D2EFE20330048D4C2 /* PPHomeCell.m */; };
@@ -116,6 +117,7 @@
 		F21A622F2D0AF21400A28792 /* eggDatesCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21A622E2D0AF21400A28792 /* eggDatesCell.m */; };
 		F21C2B0F2CD01E3A00B2373D /* XLFormCustomCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21C2B0E2CD01E3A00B2373D /* XLFormCustomCell.m */; };
 		F21D1B5F2E9C72B600220F72 /* PPUniversalCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21D1B5E2E9C72B600220F72 /* PPUniversalCell.m */; };
+		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
 		F21D1B732E9D640C00220F72 /* AKPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21D1B712E9D640C00220F72 /* AKPickerView.m */; };
 		F21E09322E451A4B00690BC5 /* Language.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09302E451A4B00690BC5 /* Language.m */; };
 		F21E09352E452D8F00690BC5 /* ISO8601DateFormatter.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09342E452D8F00690BC5 /* ISO8601DateFormatter.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
@@ -383,7 +385,6 @@
 		F273149D2F31D7F500FFA0B8 /* PPCheckoutCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = F273149C2F31D7E500FFA0B8 /* PPCheckoutCoordinator.m */; };
 		F27365F82F858773000AB3DD /* PPModernAvatarRenderer.m in Sources */ = {isa = PBXBuildFile; fileRef = F27365F72F858773000AB3DD /* PPModernAvatarRenderer.m */; };
 		F2736E972E8265D800902E1C /* Styling.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E962E8265D800902E1C /* Styling.m */; };
-		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		F2736E9A2E827C0A00902E1C /* PPHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E992E827C0A00902E1C /* PPHUD.m */; };
 		F2736E9D2E82834F00902E1C /* PPAlertHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736E9C2E82834F00902E1C /* PPAlertHelper.m */; };
 		F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2736EB92E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m */; };
@@ -682,9 +683,7 @@
 		F2D093A22F26BB6600D4EE49 /* PPVoicePreviewBubbleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D093A12F26BB6500D4EE49 /* PPVoicePreviewBubbleView.m */; };
 		F2D0C5DA2C4BE1B80023CE53 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5D92C4BE1B80023CE53 /* AppDelegate.m */; };
 		F2D0C5DD2C4BE1B80023CE53 /* SceneDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5DC2C4BE1B80023CE53 /* SceneDelegate.m */; };
-		F2D0C5E32C4BE1B80023CE53 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E22C4BE1B80023CE53 /* Base */; };
 		F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E42C4BE1BB0023CE53 /* Assets.xcassets */; };
-		F2D0C5E82C4BE1BB0023CE53 /* Base in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E72C4BE1BB0023CE53 /* Base */; };
 		F2D0C5EB2C4BE1BB0023CE53 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5EA2C4BE1BB0023CE53 /* main.m */; };
 		F2D0C5F52C4BE1BB0023CE53 /* Pure_PetsTests.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5F42C4BE1BB0023CE53 /* Pure_PetsTests.m */; };
 		F2D0C5FF2C4BE1BB0023CE53 /* Pure_PetsUITests.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D0C5FE2C4BE1BB0023CE53 /* Pure_PetsUITests.m */; };
@@ -694,6 +693,7 @@
 		F2D2BC682EB7182B000A13D1 /* PPSelectPaymentVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2BC672EB71813000A13D1 /* PPSelectPaymentVC.m */; };
 		F2D2F94A2E0C9E64001B026B /* AccessoryCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */; };
 		F2D44D202F3D611200999337 /* map_dark_style.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D44D1F2F3D611200999337 /* map_dark_style.json */; };
+		F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */; };
 		F2D639712ECB4E2500FEBCBB /* PPUserSigningManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */; };
 		F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */; };
 		F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D7F0ED2F135F9100105778 /* NoResult.json */; };
@@ -750,6 +750,7 @@
 		F2FBFEDD2C82935300E84C14 /* FTPopOverMenu.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FBFEDC2C82935200E84C14 /* FTPopOverMenu.m */; };
 		F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */; };
 		F2FCEBAF2ECD09BF002A9F67 /* PPCompleteProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */; };
+		F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2FD336D2F97CB000089BBB1 /* Main.storyboard */; };
 		F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = F2HXCOMPAT0002 /* HXCompatibilityCategories.m */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
 /* End PBXBuildFile section */
@@ -819,6 +820,8 @@
 		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
+		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
+		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
 		B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageUploadValidator.m; sourceTree = "<group>"; };
 		B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageUploadValidator.h; sourceTree = "<group>"; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
@@ -1477,8 +1480,6 @@
 		F27365F72F858773000AB3DD /* PPModernAvatarRenderer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModernAvatarRenderer.m; sourceTree = "<group>"; };
 		F2736E952E8265D800902E1C /* Styling.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Styling.h; sourceTree = "<group>"; };
 		F2736E962E8265D800902E1C /* Styling.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Styling.m; sourceTree = "<group>"; };
-		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
-		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
 		F2736E982E827C0A00902E1C /* PPHUD.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHUD.h; sourceTree = "<group>"; };
 		F2736E992E827C0A00902E1C /* PPHUD.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHUD.m; sourceTree = "<group>"; };
 		F2736E9B2E82834F00902E1C /* PPAlertHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAlertHelper.h; sourceTree = "<group>"; };
@@ -2062,9 +2063,7 @@
 		F2D0C5D92C4BE1B80023CE53 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		F2D0C5DB2C4BE1B80023CE53 /* SceneDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SceneDelegate.h; sourceTree = "<group>"; };
 		F2D0C5DC2C4BE1B80023CE53 /* SceneDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SceneDelegate.m; sourceTree = "<group>"; };
-		F2D0C5E22C4BE1B80023CE53 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		F2D0C5E42C4BE1BB0023CE53 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F2D0C5E72C4BE1BB0023CE53 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F2D0C5E92C4BE1BB0023CE53 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F2D0C5EA2C4BE1BB0023CE53 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		F2D0C5F02C4BE1BB0023CE53 /* Pure PetsTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Pure PetsTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2098,6 +2097,8 @@
 		F2DF5DCF2EFC8E80009C7B6F /* PPRootTabBarController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRootTabBarController.m; sourceTree = "<group>"; };
 		F2DF5DD22EFC9145009C7B6F /* PPHomeViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeViewController.h; sourceTree = "<group>"; };
 		F2DF5DD32EFC917F009C7B6F /* PPHomeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeViewController.m; sourceTree = "<group>"; };
+		40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareViewController.h; sourceTree = "<group>"; };
+		C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareViewController.m; sourceTree = "<group>"; };
 		F2DF5DD52EFC92BA009C7B6F /* PPOverlayCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOverlayCoordinator.h; sourceTree = "<group>"; };
 		F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOverlayCoordinator.m; sourceTree = "<group>"; };
 		F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIViewController+PPNavBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m"; sourceTree = SOURCE_ROOT; };
@@ -2189,6 +2190,8 @@
 		F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVerificationCodeViewController.m; sourceTree = "<group>"; };
 		F2FCEBAD2ECD0969002A9F67 /* PPCompleteProfileVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPCompleteProfileVC.h; sourceTree = "<group>"; };
 		F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPCompleteProfileVC.m; sourceTree = "<group>"; };
+		F2FD336A2F9772EB0089BBB1 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		F2FD336D2F97CB000089BBB1 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
@@ -4332,7 +4335,7 @@
 				F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */,
 				F2AD350D2C6AEDEE00C0F6F8 /* importantFiles.h */,
 				F27FA1422CE492B000A9A078 /* NullSafe.m */,
-				F2D0C5E12C4BE1B80023CE53 /* Main.storyboard */,
+				F2FD336D2F97CB000089BBB1 /* Main.storyboard */,
 				F2D0C5EA2C4BE1BB0023CE53 /* main.m */,
 				F291F5192D71361E00A2B971 /* LBHamburgerButton.h */,
 				F291F51A2D71361E00A2B971 /* LBHamburgerButton.m */,
@@ -4808,6 +4811,7 @@
 				F282C1132F0EC700001C110A /* SmartSuggest */,
 				F213021C2F0C6546006E71AB /* Search */,
 				F28DD5992F049B7900FF2671 /* PPDataView */,
+				3378F680D53C80BADF309B7D /* PetCare */,
 				F25E80032F0048440089F659 /* PPCarsoul */,
 				F25E7FF32EFF71FE0089F659 /* Helpers */,
 				F202A0722EFF15B30048D4C2 /* HomeCells */,
@@ -4821,6 +4825,15 @@
 				F2DF5DCD2EFC8E70009C7B6F /* NewAppVC.m */,
 			);
 			path = ModrenAppVC;
+			sourceTree = "<group>";
+		};
+		3378F680D53C80BADF309B7D /* PetCare */ = {
+			isa = PBXGroup;
+			children = (
+				40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */,
+				C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */,
+			);
+			path = PetCare;
 			sourceTree = "<group>";
 		};
 		F2E1345A2DDC6CBD006770E5 /* Accessories */ = {
@@ -5055,7 +5068,6 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
-				Base,
 				ar,
 			);
 			mainGroup = F2D0C5CC2C4BE1B80023CE53;
@@ -5101,9 +5113,7 @@
 				F22CD3852C6709650098B6E9 /* star.png in Resources */,
 				F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
-				F2D0C5E82C4BE1BB0023CE53 /* Base in Resources */,
 				F260D32A2C7B36EF0098C8F0 /* blank_button@3x.png in Resources */,
-				F2D0C5E32C4BE1B80023CE53 /* Base in Resources */,
 				F22CD3822C6709650098B6E9 /* checkmark-round.png in Resources */,
 				F2BA434C2CCA489D00943394 /* ABCellMailStyleMenuView.xib in Resources */,
 				F22CD3812C6709650098B6E9 /* alert-round.png in Resources */,
@@ -5117,7 +5127,9 @@
 				F2A260932D20C55A00081E59 /* deletealert.png in Resources */,
 				F22CD3832C6709650098B6E9 /* close-round.png in Resources */,
 				F22CD3842C6709650098B6E9 /* heart.png in Resources */,
+				F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */,
 				F28CBB682D30298C002993F0 /* JPCell.xib in Resources */,
+				F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */,
 				F299C1722C9D820C00EFA142 /* ZXQRScanViewController.xib in Resources */,
 				F299C1732C9D820C00EFA142 /* ZXQRScan.xcassets in Resources */,
 				F2D44D202F3D611200999337 /* map_dark_style.json in Resources */,
@@ -5353,6 +5365,7 @@
 				F28DD58D2F0195B900FF2671 /* PPHomeServiceItem.m in Sources */,
 				F27146812CCE6B5300F7F3BA /* XLFormRowDescriptor.m in Sources */,
 				F2DF5DD42EFC9196009C7B6F /* PPHomeViewController.m in Sources */,
+				B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */,
 				F283FABC2E542933001EF0BA /* UserContactView.m in Sources */,
 				F2B6F7AA2E37CE3E00AC0DAE /* ChatBubbleView.m in Sources */,
 				F21C2B0F2CD01E3A00B2373D /* XLFormCustomCell.m in Sources */,
@@ -5944,18 +5957,10 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
-		F2D0C5E12C4BE1B80023CE53 /* Main.storyboard */ = {
-			isa = PBXVariantGroup;
-			children = (
-				F2D0C5E22C4BE1B80023CE53 /* Base */,
-			);
-			name = Main.storyboard;
-			sourceTree = "<group>";
-		};
 		F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
-				F2D0C5E72C4BE1BB0023CE53 /* Base */,
+				F2FD336A2F9772EB0089BBB1 /* en */,
 			);
 			name = LaunchScreen.storyboard;
 			sourceTree = "<group>";

@@ -230,8 +230,12 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
         CGPoint cellCenter =
         [self.collectionView convertPoint:cell.center toView:self.collectionView];
 
+        if (!isfinite(cellCenter.x) || !isfinite(centerX)) {
+            continue;
+        }
+
         CGFloat distance = fabs(cellCenter.x - centerX);
-        CGFloat maxDistance = scrollView.bounds.size.width * 0.6;
+        CGFloat maxDistance = MAX(scrollView.bounds.size.width * 0.6, 1.0);
         CGFloat ratio = MIN(distance / maxDistance, 1.0);
 
         CGFloat scale = 1.0 - (ratio * 0.18);

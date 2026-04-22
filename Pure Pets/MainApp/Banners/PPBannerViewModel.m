@@ -105,6 +105,8 @@
     }
 
     NSURL *bgURL     = dict[@"backgroundImageURL"] ? [NSURL URLWithString:dict[@"backgroundImageURL"]] : nil;
+    NSArray<NSString *> *gradColors = [dict[@"backgroundGradientColors"] isKindOfClass:NSArray.class] ? dict[@"backgroundGradientColors"] : nil;
+    NSString *gradDir = [dict[@"backgroundGradientDirection"] isKindOfClass:NSString.class] ? dict[@"backgroundGradientDirection"] : nil;
     NSURL *sampleURL = dict[@"sampleImageURL"] ? [NSURL URLWithString:dict[@"sampleImageURL"]] : nil;
     NSURL *badgeURL  = dict[@"badgeImageURL"] ? [NSURL URLWithString:dict[@"badgeImageURL"]] : nil;
 
@@ -157,6 +159,8 @@
         _holderName = dict[@"BannerViewHolder"] ?: @"";
         _position   = [dict[@"BannerViewPosition"] integerValue];
         _transaction= [dict[@"BannerViewTransaction"] integerValue];
+        _backgroundGradientColors = [gradColors copy];
+        _backgroundGradientDirection = [gradDir copy];
         
         [self logValidityAndExpiration:@"[BANNERS]  initWithDictionary"];
     }
@@ -185,6 +189,8 @@
     [coder encodeObject:self.bannerID forKey:@"bannerID"];
     [coder encodeObject:self.holderName forKey:@"holderName"];
     [coder encodeObject:self.backgroundImageURL forKey:@"backgroundImageURL"];
+    [coder encodeObject:self.backgroundGradientColors forKey:@"backgroundGradientColors"];
+    [coder encodeObject:self.backgroundGradientDirection forKey:@"backgroundGradientDirection"];
     [coder encodeObject:self.sampleImageURL forKey:@"sampleImageURL"];
     [coder encodeObject:self.badgeImageURL forKey:@"badgeImageURL"];
     
@@ -213,6 +219,8 @@
     NSString *bannerID = [coder decodeObjectOfClass:NSString.class forKey:@"bannerID"];
     NSString *holderName = [coder decodeObjectOfClass:NSString.class forKey:@"holderName"];
     NSURL *backgroundImageURL = [coder decodeObjectOfClass:NSURL.class forKey:@"backgroundImageURL"];
+    NSArray<NSString *> *backgroundGradientColors = [coder decodeObjectOfClasses:[NSSet setWithArray:@[NSArray.class, NSString.class]] forKey:@"backgroundGradientColors"];
+    NSString *backgroundGradientDirection = [coder decodeObjectOfClass:NSString.class forKey:@"backgroundGradientDirection"];
     NSURL *sampleImageURL = [coder decodeObjectOfClass:NSURL.class forKey:@"sampleImageURL"];
     NSURL *badgeImageURL = [coder decodeObjectOfClass:NSURL.class forKey:@"badgeImageURL"];
 
@@ -248,6 +256,8 @@
                          bannerID:bannerID];
     if (self) {
         _holderName = [holderName copy];
+        _backgroundGradientColors = [backgroundGradientColors copy];
+        _backgroundGradientDirection = [backgroundGradientDirection copy];
         _tapCount   = tapCount;
         _position   = position;
         _transaction= transaction;
@@ -299,6 +309,8 @@
     d[@"descTextAr"]  = self.descTextAr  ?: @"";
     
     if (self.backgroundImageURL) d[@"backgroundImageURL"] = self.backgroundImageURL.absoluteString;
+    if (self.backgroundGradientColors) d[@"backgroundGradientColors"] = self.backgroundGradientColors;
+    if (self.backgroundGradientDirection) d[@"backgroundGradientDirection"] = self.backgroundGradientDirection;
     if (self.sampleImageURL)     d[@"sampleImageURL"] = self.sampleImageURL.absoluteString;
     if (self.badgeImageURL)      d[@"badgeImageURL"] = self.badgeImageURL.absoluteString;
     

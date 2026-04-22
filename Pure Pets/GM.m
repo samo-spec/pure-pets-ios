@@ -1588,7 +1588,7 @@ CGSize getImageSizeSafely(UIImage *image) {
     return segmTitles;
 }
 
-+(NSMutableArray *)getAdsAccessSegmentedTitleForLanguage:(NSInteger)languageCode
++(NSMutableArray *)getAdsAccessSegmentedTitleForsettingvc:(NSInteger)languageCode
 {
     NSMutableArray *segmTitles = [NSMutableArray new];
     
@@ -2147,14 +2147,14 @@ CGSize getImageSizeSafely(UIImage *image) {
 
 +(NSTextAlignment)setAligment
 {
-    if([Language languageVal] == 0)
+    if(Language.isRTL)
         return NSTextAlignmentLeft;
     else
         return NSTextAlignmentRight;
 }
 +(UISemanticContentAttribute)setSemantic
 {
-    if([Language languageVal] == 0)
+    if(Language.isRTL)
         return UISemanticContentAttributeForceLeftToRight;
     else
         return UISemanticContentAttributeForceRightToLeft;
@@ -2247,7 +2247,7 @@ CGSize getImageSizeSafely(UIImage *image) {
         [defaults setBool:YES forKey:@"LgAlreadySet"];
         [defaults synchronize]; // not strictly required, but safe if you want immediate persistence
         
-    //NSLog(@"LANG ----->> showLanguageSetupAlertFrom");
+    NSLog(@"LANG ----->> showLanguageSetupAlertFrom");
     
     NSString *title = kLang(@"Language Setup");
     NSString *currentLangName = ([Language languageVal] == 0) ? @"English" : @"العربية";
@@ -2258,7 +2258,7 @@ CGSize getImageSizeSafely(UIImage *image) {
     NSString *changeTitle = ([Language languageVal] == 0) ? @"تغيير للغة العربية" : @"Change to English";
     NSString *cancelTitle = kLang(@"cancel");
 
-    //NSLog(@"LANG ----->> detail : %@",detail);
+    NSLog(@"LANG ----->> detail : %@",detail);
     
     FCAlertView *alert = [[FCAlertView alloc] init];
 

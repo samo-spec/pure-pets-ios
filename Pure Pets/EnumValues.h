@@ -151,6 +151,7 @@ typedef NS_ENUM(NSInteger, PPHomeItemType) {
     PPHomeItemTypeMainKinds,           // Main categories (grid / horizontal)
     PPHomeItemTypeAccessories,         // Accessories listing
     PPHomeItemTypePetProfile,          // Default pet / pet profiles feature card
+    PPHomeItemTypePremiumCare,         // Pet medicines and veterinarians gateway
     PPHomeItemTypeAdopt,               // Adopt a pet (static card)
 
     PPHomeItemTypeAdsNearBy,            // Nearby ads
@@ -273,6 +274,7 @@ typedef NS_ENUM(NSInteger, PPHomeSection) {
     PPHomeSectionSuggestions,
     PPHomeSectionAccessories,
     PPHomeSectionPetProfile,
+    PPHomeSectionPremiumCare,
     PPHomeSectionLastFood,
     PPHomeSectionNearbyServices,
     PPHomeSectionAdsNearBy,

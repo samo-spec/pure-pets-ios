@@ -22,6 +22,68 @@
 #define ABSOLUTE(x) [NSCollectionLayoutDimension absoluteDimension:x]
 #define ESTIMATED(x) [NSCollectionLayoutDimension estimatedDimension:x]
 
+static CGFloat const PPUniversalAdsPinterestOuterInset = 14.0;
+static CGFloat const PPUniversalAdsPinterestInnerSpacing = 12.0;
+static CGFloat const PPUniversalAdsPinterestButtonHeight = 34.0;
+static CGFloat const PPUniversalAdsPinterestCompactTitleHeight = 24.0;
+static CGFloat const PPUniversalAdsPinterestCompactPriceHeight = 26.0;
+static CGFloat const PPUniversalAdsPinterestCardHorizontalInset = 2.0;
+static CGFloat const PPUniversalAdsPinterestCardVerticalInset = 4.0;
+static CGFloat const PPUniversalAdsPinterestTitleToPriceSpacing = 4.0;
+static CGFloat const PPUniversalAdsPinterestPriceToActionSpacing = 6.0;
+
+static CGFloat PPUniversalAdsPinterestInnerImageWidth(CGFloat cellWidth)
+{
+    CGFloat horizontalChrome = (PPUniversalAdsPinterestCardHorizontalInset * 2.0) + (PPUniversalAdsPinterestOuterInset * 2.0);
+    return MAX(cellWidth - horizontalChrome, 1.0);
+}
+
+static CGFloat PPUniversalAdsPinterestAspectRatio(PPUniversalCellViewModel * _Nullable vm)
+{
+    CGFloat ratio = 1.0;
+    if ([vm isKindOfClass:[PPUniversalCellViewModel class]] &&
+        vm.imageSize.width > 0.0 &&
+        vm.imageSize.height > 0.0) {
+        ratio = vm.imageSize.height / MAX(vm.imageSize.width, 1.0);
+    } else if ([vm isKindOfClass:[PPUniversalCellViewModel class]] &&
+               vm.preferredAspectRatio > 0.0) {
+        ratio = vm.preferredAspectRatio;
+    }
+
+    return MIN(MAX(ratio, 1.0), 2.0);
+}
+
+static CGFloat PPUniversalAdsPinterestMeasuredTitleHeight(NSString *title,
+                                                          UIFont *font,
+                                                          CGFloat width)
+{
+    CGFloat minimumHeight = MAX(PPUniversalAdsPinterestCompactTitleHeight, ceil(font.lineHeight));
+    if (title.length == 0 || width <= 0.0) {
+        return minimumHeight;
+    }
+
+    CGRect rect = [title boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+                                      options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                   attributes:@{ NSFontAttributeName : font }
+                                      context:nil];
+    CGFloat maxHeight = ceil(font.lineHeight) * 2.0;
+    return MAX(minimumHeight, MIN(ceil(rect.size.height), maxHeight));
+}
+
+static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
+                                                 PPUniversalCellViewModel * _Nullable vm)
+{
+    CGFloat contentWidth = PPUniversalAdsPinterestInnerImageWidth(cellWidth);
+    UIFont *titleFont = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightBold];
+    CGFloat titleHeight = PPUniversalAdsPinterestMeasuredTitleHeight(vm.title ?: @"", titleFont, contentWidth);
+
+    return ceil(titleHeight +
+                PPUniversalAdsPinterestTitleToPriceSpacing +
+                PPUniversalAdsPinterestCompactPriceHeight +
+                PPUniversalAdsPinterestPriceToActionSpacing +
+                PPUniversalAdsPinterestButtonHeight);
+}
+
 - (nullable PPUniversalCellViewModel *)pp_firstUniversalViewModel
 {
     id firstItem = self.items.firstObject;
@@ -78,17 +140,13 @@
 - (CGFloat)pp_adsCardHeightForWidth:(CGFloat)width
                           viewModel:(PPUniversalCellViewModel *)vm
 {
-    CGFloat ratio = 1.02;
-    if (!CGSizeEqualToSize(vm.imageSize, CGSizeZero) && vm.imageSize.width > 0.0) {
-        ratio = MAX(ratio, vm.imageSize.height / MAX(vm.imageSize.width, 1.0));
-    } else if (vm.preferredAspectRatio > 0.0) {
-        ratio = MAX(ratio, vm.preferredAspectRatio);
-    }
-    ratio = MIN(ratio, 1.18);
-    if (width > 260.0) {
-        return 204.0;
-    }
-    return ceil((width * ratio) + 160.0);
+    CGFloat imageHeight = ceil(PPUniversalAdsPinterestInnerImageWidth(width) *
+                               PPUniversalAdsPinterestAspectRatio(vm));
+    CGFloat bodyHeight = PPUniversalAdsPinterestBodyHeight(width, vm);
+    CGFloat verticalChrome = (PPUniversalAdsPinterestCardVerticalInset * 2.0) +
+                             (PPUniversalAdsPinterestOuterInset * 2.0) +
+                             (PPUniversalAdsPinterestInnerSpacing * 0.5);
+    return ceil(imageHeight + bodyHeight + verticalChrome);
 }
 
 - (CGFloat)pp_preferredHeightForViewModel:(PPUniversalCellViewModel *)vm
@@ -214,7 +272,8 @@
             case PPCellLayoutModePinterest: {
                 PPPinterestLayout *pinterestLayout = [[PPPinterestLayout alloc] init];
                 pinterestLayout.delegate = self;
-                pinterestLayout.columnCount = 2;
+                PPUniversalCellViewModel *firstVM = [self pp_firstUniversalViewModel];
+                pinterestLayout.columnCount = [self pp_isAdsContextForViewModel:firstVM] ? 0 : 2;
                 pinterestLayout.minimumInteritemSpacing = horizontalSpacing;
                 pinterestLayout.minimumLineSpacing = verticalSpacing;
                 pinterestLayout.sectionInset =  UIEdgeInsetsMake(topInset,

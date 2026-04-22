@@ -199,7 +199,12 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)onCartTapped;
 - (CGFloat)preferredNavigationCenterViewWidth;
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
-- (PPFilterState *)pp_currentFilterState;@end
+- (PPFilterState *)pp_currentFilterState;
+- (void)pp_restoreNavigationOwnership;
+- (void)pp_removeForeignHomeSearchViewsFromView:(UIView *)view;
+- (void)pp_handleForegroundRestore:(NSNotification *)notification;
+- (void)pp_refreshVisibleUniversalCellsAppearance;
+@end
 @implementation PPDataViewVC
 -(void)viewWillLayoutSubviews
 {
@@ -232,6 +237,8 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         self.collectionView.userInteractionEnabled = YES;
         self.collectionView.alpha = 1.0;
     }
+    [self pp_restoreNavigationOwnership];
+    [self pp_refreshVisibleUniversalCellsAppearance];
 }
 - (void)viewWillDisappear:(BOOL)animated
 {
@@ -245,6 +252,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
+    [self pp_restoreNavigationOwnership];
     [self.view bringSubviewToFront:self.sectionsSegmentedControl];
     [self.view bringSubviewToFront:self.filterChipContainer];
 }
@@ -267,6 +275,8 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         if (changed && self.lastSubKindsTitle.length > 0) {
             [self updateSubKindsButtonTitle:self.lastSubKindsTitle];
             [self refreshFilterChipTitles];
+            [self pp_restoreNavigationOwnership];
+            [self pp_refreshVisibleUniversalCellsAppearance];
         }
     }
 }
@@ -356,7 +366,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     dispatch_queue_create("com.purepets.blurhash.decode", DISPATCH_QUEUE_CONCURRENT);
     self.isPerformingCrossFade = NO;
     self.presentedItems = @[];
-    self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);
+    self.view.backgroundColor = UIColor.secondarySystemBackgroundColor;
     [self emptyStateInit];
     [self setupSectionsTabBar];
     // 🔥 FIX: normalize AllKinds EARLY
@@ -386,6 +396,16 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
      selector:@selector(pp_handleCartUpdated:)
      name:kCartUpdatedNotification
      object:nil];
+    [[NSNotificationCenter defaultCenter]
+     addObserver:self
+     selector:@selector(pp_handleForegroundRestore:)
+     name:UIApplicationWillEnterForegroundNotification
+     object:nil];
+    [[NSNotificationCenter defaultCenter]
+     addObserver:self
+     selector:@selector(pp_handleForegroundRestore:)
+     name:UIApplicationDidBecomeActiveNotification
+     object:nil];
     
      
 }
@@ -399,9 +419,95 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:kCartUpdatedNotification
                                                   object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:UIApplicationWillEnterForegroundNotification
+                                                  object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:UIApplicationDidBecomeActiveNotification
+                                                  object:nil];
     UIGestureRecognizer *pop = self.navigationController.interactivePopGestureRecognizer;
     if (pop.delegate == self) {
         pop.delegate = nil;
+    }
+}
+
+- (void)pp_handleForegroundRestore:(NSNotification *)notification
+{
+    (void)notification;
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_handleForegroundRestore:notification];
+        });
+        return;
+    }
+
+    if (self.navigationController.topViewController != self) {
+        return;
+    }
+
+    [self pp_restoreNavigationOwnership];
+    [self pp_refreshVisibleUniversalCellsAppearance];
+}
+
+- (void)pp_restoreNavigationOwnership
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_restoreNavigationOwnership];
+        });
+        return;
+    }
+    if (!self.isViewLoaded) {
+        return;
+    }
+
+    UINavigationController *nav = self.navigationController;
+    if (nav && nav.topViewController != self) {
+        return;
+    }
+
+    self.title = nil;
+    self.navigationItem.title = nil;
+    if (nav.navigationBar) {
+        [self pp_removeForeignHomeSearchViewsFromView:nav.navigationBar];
+    }
+    if (self.navContainerView && self.navigationItem.titleView != self.navContainerView) {
+        self.navigationItem.titleView = self.navContainerView;
+    }
+    self.navContainerView.hidden = NO;
+    self.navContainerView.alpha = 1.0;
+    [self.navContainerView setNeedsLayout];
+    [self.navContainerView layoutIfNeeded];
+    [self updateCartBadge];
+}
+
+- (void)pp_removeForeignHomeSearchViewsFromView:(UIView *)view
+{
+    for (UIView *subview in view.subviews.copy) {
+        NSString *className = NSStringFromClass(subview.class);
+        if ([className containsString:@"PPHomeSmartSearchTitleView"]) {
+            [subview removeFromSuperview];
+            continue;
+        }
+        [self pp_removeForeignHomeSearchViewsFromView:subview];
+    }
+}
+
+- (void)pp_refreshVisibleUniversalCellsAppearance
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_refreshVisibleUniversalCellsAppearance];
+        });
+        return;
+    }
+
+    for (__kindof UICollectionViewCell *cell in self.collectionView.visibleCells) {
+        if ([cell isKindOfClass:PPUniversalCell.class]) {
+            [(PPUniversalCell *)cell refreshThemeAppearance];
+        } else {
+            [cell setNeedsLayout];
+        }
     }
 }
 
@@ -2538,14 +2644,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     sectionsControl.translatesAutoresizingMaskIntoConstraints = NO;
     sectionsControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     sectionsControl.accessibilityIdentifier = @"pp.data.sectionsTabBar";
-    sectionsControl.containerBackgroundColor = [AppBackgroundClrLigter colorWithAlphaComponent:0.86];
+    sectionsControl.containerBackgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.16];
     sectionsControl.normalTextColor = UIColor.secondaryLabelColor;
     sectionsControl.selectedTextColor = [UIColor colorWithWhite:1.0 alpha:0.94];
     sectionsControl.selectedSegmentColor = AppPrimaryClr;
-    sectionsControl.normalFont = [GM MidFontWithSize:13];
-    sectionsControl.selectedFont = [GM boldFontWithSize:13];
+    sectionsControl.normalFont = [GM MidFontWithSize:15];
+    sectionsControl.selectedFont = [GM boldFontWithSize:15];
     sectionsControl.layer.cornerRadius = 17.0;
-    sectionsControl.layer.borderWidth = 0.0;
+    sectionsControl.layer.borderWidth = 0.4;
     [sectionsControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.20]];
     if (@available(iOS 13.0, *)) {
         sectionsControl.layer.cornerCurve = kCACornerCurveContinuous;
