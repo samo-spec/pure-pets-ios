@@ -2556,6 +2556,8 @@
 "pet_care_filter_offers" = "Offers";
 "pet_care_filter_in_stock" = "In stock";
 "pet_care_filter_new" = "New";
+"pet_care_kind_filter" = "Pet Kind";
+"pet_care_filter_by" = "Filter By";
 "pet_care_filter_with_phone" = "Contact ready";
 "pet_care_filter_clinics" = "Clinics";
 "pet_care_filter_doctors" = "Doctors";

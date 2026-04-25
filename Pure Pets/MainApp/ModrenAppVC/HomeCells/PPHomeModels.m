@@ -32,7 +32,7 @@
                    iconName:@"pawprint"],
         [self modelWithType:PPHomeQuickActionTypeAdopt
                       title:(kLang(@"home_quick_action_adopt") ?: @"Adopt")
-                   iconName:@"heart"],
+                   iconName:@"heart.fill"],
         [self modelWithType:PPHomeQuickActionTypeAddAd
                       title:(kLang(@"home_quick_action_add_ad") ?: @"Add ad")
                    iconName:@"plus"],

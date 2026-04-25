@@ -67,9 +67,20 @@ static NSString *const kUserKeyProdectionStatus = @"prodectionStatus";
 static NSString *const kUserKeyFeatures = @"features";
 static NSString *const kUserKeyRestrictions = @"restrictions";
 static NSString *const kUserKeySubscription = @"subscription";
+static NSString *const kUserKeyOnboarding = @"onboarding";
 
 static inline BOOL PPUserBoolValue(id _Nullable value) {
     return [value respondsToSelector:@selector(boolValue)] ? [value boolValue] : NO;
+}
+
+static BOOL PPUserBoolForKeyVariants(NSDictionary *dict, NSArray<NSString *> *keys) {
+    for (NSString *key in keys ?: @[]) {
+        id value = dict[key];
+        if (value && value != [NSNull null]) {
+            return PPUserBoolValue(value);
+        }
+    }
+    return NO;
 }
 
 static id _Nullable PPUserFirstValueForKeys(NSDictionary *dict, NSArray<NSString *> *keys) {
@@ -149,6 +160,25 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
         return [NSDate dateWithTimeIntervalSince1970:[value doubleValue]];
     }
     return nil;
+}
+
+static NSString *PPUserNormalizedPartnerType(id _Nullable value) {
+    NSString *raw = [[PPSafeString(value) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] lowercaseString];
+    if (raw.length == 0) {
+        return @"";
+    }
+    if ([raw isEqualToString:@"delivery_subscription"]) {
+        return @"delivery";
+    }
+    if ([raw isEqualToString:@"service"] || [raw isEqualToString:@"serviceprovider"]) {
+        return @"service_provider";
+    }
+    if ([raw isEqualToString:@"delivery"] ||
+        [raw isEqualToString:@"service_provider"] ||
+        [raw isEqualToString:@"vet"]) {
+        return raw;
+    }
+    return @"";
 }
 
 @interface UserModel ()
@@ -235,9 +265,22 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     self.canPostAdoptionFeature = YES;
     self.canSellAccessoriesFeature = YES;
     self.canOfferServicesFeature = NO;
+    self.canDeliveryFeature = NO;
+    self.canPharmacyFeature = NO;
+    self.canVetFeature = NO;
     self.canUseStoriesFeature = YES;
     self.canUseChatFeature = YES;
     self.canAccessPremiumMarketplaceFeature = NO;
+    self.partnerOnboardingVisible = NO;
+    self.partnerApplicationStatus = @"not_started";
+    self.selectedPartnerType = nil;
+    self.canAccessPartnerAppPermission = NO;
+    self.canManageDeliveryPermission = NO;
+    self.canManageServiceProviderPermission = NO;
+    self.canManageVetPermission = NO;
+    self.canPostVetProfilePermission = NO;
+    self.canEditVetInfoPermission = NO;
+    self.canManagePetMedicinesPermission = NO;
     self.subscriptionPlan = @"free";
     self.subscriptionStatus = @"active";
     self.subscriptionSource = @"manual";
@@ -357,7 +400,12 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
         self.canPostPetAdsFeature = PPUserBoolValue(featuresDict[@"canPostPetAds"]);
         self.canPostAdoptionFeature = PPUserBoolValue(featuresDict[@"canPostAdoption"]);
         self.canSellAccessoriesFeature = PPUserBoolValue(featuresDict[@"canSellAccessories"]);
-        self.canOfferServicesFeature = PPUserBoolValue(featuresDict[@"canOfferServices"]);
+        self.canOfferServicesFeature = PPUserBoolForKeyVariants(featuresDict, @[@"service_provider", @"canOfferServices"]);
+        self.canDeliveryFeature = PPUserBoolForKeyVariants(featuresDict, @[@"delivery", @"canDelivery"]);
+        self.canPharmacyFeature =
+            PPUserBoolValue(safeDict[@"canPharmacy"]) ||
+            PPUserBoolForKeyVariants(featuresDict, @[@"pharmacy", @"canPharmacy"]);
+        self.canVetFeature = PPUserBoolForKeyVariants(featuresDict, @[@"vet", @"canVet"]);
         self.canUseStoriesFeature = PPUserBoolValue(featuresDict[@"canUseStories"]);
         self.canUseChatFeature = PPUserBoolValue(featuresDict[@"canUseChat"]);
         self.canAccessPremiumMarketplaceFeature = PPUserBoolValue(featuresDict[@"canAccessPremiumMarketplace"]);
@@ -367,10 +415,21 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
         self.canPostAdoptionFeature = YES;
         self.canSellAccessoriesFeature = YES;
         self.canOfferServicesFeature = NO;
+        self.canDeliveryFeature = NO;
+        self.canPharmacyFeature = PPUserBoolValue(safeDict[@"canPharmacy"]);
+        self.canVetFeature = NO;
         self.canUseStoriesFeature = YES;
         self.canUseChatFeature = YES;
         self.canAccessPremiumMarketplaceFeature = NO;
     }
+
+    NSDictionary *onboardingDict = PPSafeDict(safeDict[kUserKeyOnboarding]);
+    self.partnerOnboardingVisible = PPUserBoolForKeyVariants(onboardingDict.count > 0 ? onboardingDict : safeDict,
+                                                             @[@"partnerOnboardingVisible"]);
+    NSString *partnerStatus = PPSafeString((onboardingDict.count > 0 ? onboardingDict : safeDict)[@"partnerApplicationStatus"]);
+    self.partnerApplicationStatus = partnerStatus.length > 0 ? partnerStatus : @"not_started";
+    NSString *partnerType = PPUserNormalizedPartnerType((onboardingDict.count > 0 ? onboardingDict : safeDict)[@"selectedPartnerType"]);
+    self.selectedPartnerType = partnerType.length > 0 ? partnerType : nil;
 
     // Subscription
     NSDictionary *subDict = PPSafeDict(safeDict[kUserKeySubscription]);
@@ -405,6 +464,42 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
 
     NSDictionary *permDict = PPSafeDict(safeDict[kUserKeyPermissions]);
     self.permissions = [[PPUserPermissionsManager sanitizedPermissionsDictionary:permDict] copy];
+    self.canManageDeliveryPermission = PPUserBoolValue(permDict[@"canManageDelivery"]);
+    self.canManageServiceProviderPermission = PPUserBoolValue(permDict[@"canManageServiceProvider"]);
+    self.canManageVetPermission = PPUserBoolValue(permDict[@"canManageVet"]);
+    self.canPostVetProfilePermission = PPUserBoolValue(permDict[@"canPostVetProfile"]);
+    self.canEditVetInfoPermission = PPUserBoolValue(permDict[@"canEditVetInfo"]);
+    self.canManagePetMedicinesPermission = PPUserBoolValue(permDict[@"canManagePetMedicines"]);
+    self.canAccessPartnerAppPermission = PPUserBoolValue(permDict[@"canAccessPartnerApp"]);
+
+    if (!self.canManageDeliveryPermission) {
+        self.canManageDeliveryPermission = self.canDeliveryFeature;
+    }
+    if (!self.canManageServiceProviderPermission) {
+        self.canManageServiceProviderPermission = self.canOfferServicesFeature;
+    }
+    if (!self.canManageVetPermission) {
+        self.canManageVetPermission = self.canVetFeature;
+    }
+    if (!self.canPostVetProfilePermission) {
+        self.canPostVetProfilePermission = self.canManageVetPermission;
+    }
+    if (!self.canEditVetInfoPermission) {
+        self.canEditVetInfoPermission = self.canManageVetPermission;
+    }
+    if (!self.canManagePetMedicinesPermission) {
+        self.canManagePetMedicinesPermission = self.canPharmacyFeature;
+    }
+    if (!self.canAccessPartnerAppPermission) {
+        self.canAccessPartnerAppPermission =
+            self.canManageDeliveryPermission ||
+            self.canManageServiceProviderPermission ||
+            self.canManageVetPermission ||
+            self.canDeliveryFeature ||
+            self.canOfferServicesFeature ||
+            self.canVetFeature ||
+            self.canPharmacyFeature;
+    }
 
     [self pp_normalizeIdentityFields];
 }
@@ -635,9 +730,22 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     [coder encodeBool:self.canPostAdoptionFeature forKey:@"canPostAdoptionFeature"];
     [coder encodeBool:self.canSellAccessoriesFeature forKey:@"canSellAccessoriesFeature"];
     [coder encodeBool:self.canOfferServicesFeature forKey:@"canOfferServicesFeature"];
+    [coder encodeBool:self.canDeliveryFeature forKey:@"canDeliveryFeature"];
+    [coder encodeBool:self.canPharmacyFeature forKey:@"canPharmacyFeature"];
+    [coder encodeBool:self.canVetFeature forKey:@"canVetFeature"];
     [coder encodeBool:self.canUseStoriesFeature forKey:@"canUseStoriesFeature"];
     [coder encodeBool:self.canUseChatFeature forKey:@"canUseChatFeature"];
     [coder encodeBool:self.canAccessPremiumMarketplaceFeature forKey:@"canAccessPremiumMarketplaceFeature"];
+    [coder encodeBool:self.partnerOnboardingVisible forKey:@"partnerOnboardingVisible"];
+    [coder encodeObject:self.partnerApplicationStatus forKey:@"partnerApplicationStatus"];
+    [coder encodeObject:self.selectedPartnerType forKey:@"selectedPartnerType"];
+    [coder encodeBool:self.canAccessPartnerAppPermission forKey:@"canAccessPartnerAppPermission"];
+    [coder encodeBool:self.canManageDeliveryPermission forKey:@"canManageDeliveryPermission"];
+    [coder encodeBool:self.canManageServiceProviderPermission forKey:@"canManageServiceProviderPermission"];
+    [coder encodeBool:self.canManageVetPermission forKey:@"canManageVetPermission"];
+    [coder encodeBool:self.canPostVetProfilePermission forKey:@"canPostVetProfilePermission"];
+    [coder encodeBool:self.canEditVetInfoPermission forKey:@"canEditVetInfoPermission"];
+    [coder encodeBool:self.canManagePetMedicinesPermission forKey:@"canManagePetMedicinesPermission"];
     [coder encodeObject:self.subscriptionPlan forKey:@"subscriptionPlan"];
     [coder encodeObject:self.subscriptionStatus forKey:@"subscriptionStatus"];
     [coder encodeObject:self.subscriptionSource forKey:@"subscriptionSource"];
@@ -713,9 +821,22 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     self.canPostAdoptionFeature = [coder decodeBoolForKey:@"canPostAdoptionFeature"];
     self.canSellAccessoriesFeature = [coder decodeBoolForKey:@"canSellAccessoriesFeature"];
     self.canOfferServicesFeature = [coder decodeBoolForKey:@"canOfferServicesFeature"];
+    self.canDeliveryFeature = [coder decodeBoolForKey:@"canDeliveryFeature"];
+    self.canPharmacyFeature = [coder decodeBoolForKey:@"canPharmacyFeature"];
+    self.canVetFeature = [coder decodeBoolForKey:@"canVetFeature"];
     self.canUseStoriesFeature = [coder decodeBoolForKey:@"canUseStoriesFeature"];
     self.canUseChatFeature = [coder decodeBoolForKey:@"canUseChatFeature"];
     self.canAccessPremiumMarketplaceFeature = [coder decodeBoolForKey:@"canAccessPremiumMarketplaceFeature"];
+    self.partnerOnboardingVisible = [coder decodeBoolForKey:@"partnerOnboardingVisible"];
+    self.partnerApplicationStatus = [coder decodeObjectOfClass:[NSString class] forKey:@"partnerApplicationStatus"] ?: @"not_started";
+    self.selectedPartnerType = [coder decodeObjectOfClass:[NSString class] forKey:@"selectedPartnerType"];
+    self.canAccessPartnerAppPermission = [coder decodeBoolForKey:@"canAccessPartnerAppPermission"];
+    self.canManageDeliveryPermission = [coder decodeBoolForKey:@"canManageDeliveryPermission"];
+    self.canManageServiceProviderPermission = [coder decodeBoolForKey:@"canManageServiceProviderPermission"];
+    self.canManageVetPermission = [coder decodeBoolForKey:@"canManageVetPermission"];
+    self.canPostVetProfilePermission = [coder decodeBoolForKey:@"canPostVetProfilePermission"];
+    self.canEditVetInfoPermission = [coder decodeBoolForKey:@"canEditVetInfoPermission"];
+    self.canManagePetMedicinesPermission = [coder decodeBoolForKey:@"canManagePetMedicinesPermission"];
     self.subscriptionPlan = [coder decodeObjectOfClass:[NSString class] forKey:@"subscriptionPlan"] ?: @"free";
     self.subscriptionStatus = [coder decodeObjectOfClass:[NSString class] forKey:@"subscriptionStatus"] ?: @"active";
     self.subscriptionSource = [coder decodeObjectOfClass:[NSString class] forKey:@"subscriptionSource"] ?: @"manual";
@@ -723,6 +844,35 @@ static NSDate *_Nullable PPUserDateFromValue(id _Nullable value) {
     self.chatBlocked = [coder decodeBoolForKey:@"chatBlocked"];
     self.purchaseBlocked = [coder decodeBoolForKey:@"purchaseBlocked"];
     self.withdrawalBlocked = [coder decodeBoolForKey:@"withdrawalBlocked"];
+
+    if (!self.canManageDeliveryPermission) {
+        self.canManageDeliveryPermission = self.canDeliveryFeature;
+    }
+    if (!self.canManageServiceProviderPermission) {
+        self.canManageServiceProviderPermission = self.canOfferServicesFeature;
+    }
+    if (!self.canManageVetPermission) {
+        self.canManageVetPermission = self.canVetFeature;
+    }
+    if (!self.canPostVetProfilePermission) {
+        self.canPostVetProfilePermission = self.canManageVetPermission;
+    }
+    if (!self.canEditVetInfoPermission) {
+        self.canEditVetInfoPermission = self.canManageVetPermission;
+    }
+    if (!self.canManagePetMedicinesPermission) {
+        self.canManagePetMedicinesPermission = self.canPharmacyFeature;
+    }
+    if (!self.canAccessPartnerAppPermission) {
+        self.canAccessPartnerAppPermission =
+            self.canManageDeliveryPermission ||
+            self.canManageServiceProviderPermission ||
+            self.canManageVetPermission ||
+            self.canDeliveryFeature ||
+            self.canOfferServicesFeature ||
+            self.canVetFeature ||
+            self.canPharmacyFeature;
+    }
 
     [self pp_normalizeIdentityFields];
 

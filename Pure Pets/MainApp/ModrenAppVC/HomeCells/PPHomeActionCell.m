@@ -145,7 +145,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.iconOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     self.iconOrbView.userInteractionEnabled = NO;
     self.iconOrbView.hidden = NO;
-    self.iconOrbView.layer.cornerRadius = 22.0;
+    self.iconOrbView.layer.cornerRadius = 20.0;
     self.iconOrbView.layer.masksToBounds = YES;
     self.iconOrbView.layer.borderWidth = 1.0;
     if (@available(iOS 13.0, *)) {
@@ -225,10 +225,10 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         [self.accentBarView.widthAnchor constraintEqualToConstant:0.0],
         [self.accentBarView.heightAnchor constraintEqualToConstant:28.0],
 
-        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:12.0],
+        [self.iconOrbView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:14.0],
         [self.iconOrbView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.iconOrbView.widthAnchor constraintEqualToConstant:44.0],
-        [self.iconOrbView.heightAnchor constraintEqualToConstant:44.0],
+        [self.iconOrbView.widthAnchor constraintEqualToConstant:40.0],
+        [self.iconOrbView.heightAnchor constraintEqualToConstant:40.0],
 
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconOrbView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconOrbView.centerYAnchor],
@@ -463,12 +463,12 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.chevronView.hidden = NO;
 
     UIColor *resolvedAccent = accent ?: [self pp_quickActionAccentColor];
-    UIColor *surfaceBase = [AppForgroundColr colorWithAlphaComponent:0.98] ?: UIColor.secondarySystemBackgroundColor;
+    UIColor *surfaceBase = [AppBageColor() colorWithAlphaComponent:0.98] ?: UIColor.secondarySystemBackgroundColor;
     UIColor *primaryText = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *secondaryText = [primaryText colorWithAlphaComponent:0.54];
     UIColor *upperSurface = PPQuickActionElevatedColor(surfaceBase, 0.06);
     UIColor *lowerSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.05);
-    UIColor *borderColor = [PPQuickActionElevatedColor(surfaceBase, 0.18) colorWithAlphaComponent:0.58];
+    UIColor *borderColor = [PPQuickActionElevatedColor(AppForgroundColr, 0.18) colorWithAlphaComponent:0.58];
     UIColor *orbSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.10);
     UIColor *orbBorder = [resolvedAccent colorWithAlphaComponent:0.18];
     UIColor *chevronSurface = [primaryText colorWithAlphaComponent:0.05];
@@ -500,7 +500,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 
     self.accentBarView.backgroundColor = resolvedAccent;
     self.iconOrbView.backgroundColor = orbSurface;
-    [self.iconOrbView pp_setBorderColor:[orbBorder colorWithAlphaComponent:0.3]];
+    [self.iconOrbView pp_setBorderColor:[orbBorder colorWithAlphaComponent:0.07]];
     self.chevronOrbView.backgroundColor = [orbSurface colorWithAlphaComponent:0.3];
     [self.chevronOrbView pp_setBorderColor:AppClearClr];
 

@@ -1,10 +1,11 @@
 //
-//  PPHomeOrderStatusCell 2.h
+//  PPHomeOrderStatusCell.m
 //  Pure Pets
 //
 //  Created by Mohammed Ahmed on 4/3/26.
 //
 #import "PPHomeOrderStatusCell.h"
+#import <math.h>
 
 @interface PPHomeOrderStatusCell ()
 @property (nonatomic, strong) UIView *shadowView;
@@ -47,13 +48,37 @@
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *expandedConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *collapsedConstraints;
 @property (nonatomic, strong) UIColor *currentStatusColor;
+@property (nonatomic, assign) CGFloat currentProgress;
 @property (nonatomic, assign) BOOL showsExpandedState;
 @end
+
+static const CGFloat PPHomeOrderCellZPosition = 120.0;
+static const CGFloat PPHomeOrderMinimumProgress = 0.08;
+static const CGFloat PPHomeOrderFallbackProgressWidth = 96.0;
+static const CGFloat PPHomeOrderCardCornerRadius = PPNewCorner;
+static const CGFloat PPHomeOrderSmallCornerRadius = 14.0;
+static NSString * const PPHomeOrderDefaultStatusIconName = @"shippingbox.circle.fill";
+static NSString * const PPHomeOrderChevronIconName = @"chevron.down";
+static NSString * const PPHomeOrderPreviewPlaceholderName = @"placeholder";
 
 static inline UIColor *PPHomeOrderBlendColor(UIColor *baseColor, UIColor *fallbackColor, CGFloat alpha)
 {
     UIColor *resolved = baseColor ?: fallbackColor ?: UIColor.systemBlueColor;
     return [resolved colorWithAlphaComponent:alpha];
+}
+
+static inline CGFloat PPHomeOrderClampedProgress(double progress)
+{
+    if (!isfinite(progress)) {
+        return PPHomeOrderMinimumProgress;
+    }
+    return (CGFloat)fmax(PPHomeOrderMinimumProgress, fmin(1.0, progress));
+}
+
+static inline NSString *PPHomeOrderResolvedSymbolName(NSString *symbolName)
+{
+    NSString *trimmed = [PPSafeString(symbolName) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    return trimmed.length > 0 ? trimmed : PPHomeOrderDefaultStatusIconName;
 }
 
 static BOOL PPHomeOrderStatusTextContainsAnyKeyword(NSString *text, NSArray<NSString *> *keywords)
@@ -151,8 +176,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.backgroundColor = UIColor.clearColor;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
-    self.layer.zPosition = 120.0;
-    self.contentView.layer.zPosition = 120.0;
+    self.layer.zPosition = PPHomeOrderCellZPosition;
+    self.contentView.layer.zPosition = PPHomeOrderCellZPosition;
 
     self.shadowView = [[UIView alloc] init];
     self.shadowView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -161,7 +186,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.shadowView.layer.shadowOpacity = 0.08;
     self.shadowView.layer.shadowRadius = 18.0;
     self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    self.shadowView.layer.cornerRadius = PPNewCorner;
+    self.shadowView.layer.cornerRadius = PPHomeOrderCardCornerRadius;
     if (@available(iOS 13.0, *)) {
         self.shadowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -170,7 +195,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.98)];
-    self.surfaceView.layer.cornerRadius = PPNewCorner;
+    self.surfaceView.layer.cornerRadius = PPHomeOrderCardCornerRadius;
     self.surfaceView.layer.borderWidth = 1.0;
     [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.20 : 0.16)]];
     self.surfaceView.layer.masksToBounds = YES;
@@ -202,7 +227,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
     self.chipView = [[UIView alloc] init];
     self.chipView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.chipView.layer.cornerRadius = 14.0;
+    self.chipView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
     self.chipView.layer.masksToBounds = YES;
     [self.surfaceView addSubview:self.chipView];
 
@@ -215,6 +240,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.chipLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.chipLabel.font = [GM boldFontWithSize:12] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     self.chipLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.chipLabel.adjustsFontSizeToFitWidth = YES;
+    self.chipLabel.minimumScaleFactor = 0.82;
     [self.chipView addSubview:self.chipLabel];
 
     self.orderKickerLabel = [[UILabel alloc] init];
@@ -231,6 +258,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.orderLabel.textColor = UIColor.labelColor;
     self.orderLabel.numberOfLines = 1;
     self.orderLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.orderLabel.adjustsFontSizeToFitWidth = YES;
+    self.orderLabel.minimumScaleFactor = 0.82;
     [self.surfaceView addSubview:self.orderLabel];
 
     self.metaLabel = [[UILabel alloc] init];
@@ -319,7 +348,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
     self.collapsedIconBadgeView = [[UIView alloc] init];
     self.collapsedIconBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedIconBadgeView.layer.cornerRadius = 14.0;
+    self.collapsedIconBadgeView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
     self.collapsedIconBadgeView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.collapsedIconBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -371,6 +400,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedOrderLabel.textColor = UIColor.labelColor;
     self.collapsedOrderLabel.numberOfLines = 1;
     self.collapsedOrderLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.collapsedOrderLabel.adjustsFontSizeToFitWidth = YES;
+    self.collapsedOrderLabel.minimumScaleFactor = 0.84;
     [self.collapsedTextStackView addArrangedSubview:self.collapsedOrderLabel];
 
     self.collapsedSummaryLabel = [[UILabel alloc] init];
@@ -384,7 +415,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 
     self.collapsedStatusPillView = [[UIView alloc] init];
     self.collapsedStatusPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.collapsedStatusPillView.layer.cornerRadius = 14.0;
+    self.collapsedStatusPillView.layer.cornerRadius = PPHomeOrderSmallCornerRadius;
     self.collapsedStatusPillView.layer.masksToBounds = YES;
     [self.collapsedContentView addSubview:self.collapsedStatusPillView];
 
@@ -392,6 +423,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedStatusPillLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.collapsedStatusPillLabel.font = [GM boldFontWithSize:11] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     self.collapsedStatusPillLabel.textAlignment = NSTextAlignmentCenter;
+    self.collapsedStatusPillLabel.adjustsFontSizeToFitWidth = YES;
+    self.collapsedStatusPillLabel.minimumScaleFactor = 0.82;
     [self.collapsedStatusPillView addSubview:self.collapsedStatusPillLabel];
 
     self.collapsedChevronContainerView = [[UIView alloc] init];
@@ -430,9 +463,11 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                                                              scale:UIImageSymbolScaleMedium];
         self.collapsedChevronView.preferredSymbolConfiguration = chevronConfig;
     }
-    self.collapsedChevronView.image = [UIImage systemImageNamed:@"chevron.down"];
+    self.collapsedChevronView.image = [UIImage systemImageNamed:PPHomeOrderChevronIconName];
     [self.collapsedChevronContainerView addSubview:self.collapsedChevronView];
     self.collapsedChevronContainerView.userInteractionEnabled = YES;
+    self.collapsedChevronContainerView.isAccessibilityElement = YES;
+    self.collapsedChevronContainerView.accessibilityTraits = UIAccessibilityTraitButton;
     UITapGestureRecognizer *collapseTapGesture =
         [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleCollapseTap)];
     collapseTapGesture.cancelsTouchesInView = YES;
@@ -551,6 +586,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     ];
 
     [self pp_setShowsExpandedState:NO];
+    self.currentProgress = PPHomeOrderMinimumProgress;
     [self pp_applyStatusColor:UIColor.systemBlueColor];
 }
 
@@ -582,7 +618,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 {
     CGSize previousSize = self.bounds.size;
     [super applyLayoutAttributes:layoutAttributes];
-    self.layer.zPosition = MAX(self.layer.zPosition, 120.0);
+    self.layer.zPosition = MAX(self.layer.zPosition, PPHomeOrderCellZPosition);
     self.contentView.layer.zPosition = self.layer.zPosition;
     if (!CGSizeEqualToSize(previousSize, self.bounds.size)) {
         [self setNeedsLayout];
@@ -599,6 +635,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.shadowView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.shadowView.bounds
                                    cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
+    [self pp_updateProgressFillWidth];
     [self pp_updateCollapsedPreviewLayout];
     [CATransaction commit];
 }
@@ -608,30 +645,191 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     [self pp_updateDecorativeLayers];
 }
 
+- (void)pp_updateProgressWithValue:(double)progress
+{
+    self.currentProgress = PPHomeOrderClampedProgress(progress);
+    [self pp_updateProgressFillWidth];
+}
+
+- (void)pp_updateProgressFillWidth
+{
+    CGFloat trackWidth = CGRectGetWidth(self.progressTrackView.bounds);
+    if (trackWidth <= 0.0) {
+        trackWidth = PPHomeOrderFallbackProgressWidth;
+    }
+    self.progressFillWidthConstraint.constant = floor(trackWidth * self.currentProgress);
+}
+
+- (void)pp_resetReusablePresentation
+{
+    self.orderLabel.alpha = 1.0;
+    self.orderKickerLabel.alpha = 1.0;
+    self.metaLabel.alpha = 1.0;
+    self.hintLabel.alpha = 1.0;
+    self.footerLabel.alpha = 1.0;
+    self.chipView.alpha = 1.0;
+    self.collapsedContentView.alpha = 1.0;
+    self.actionRailView.alpha = 1.0;
+
+    self.trackButton.hidden = NO;
+    self.historyButton.hidden = NO;
+    self.trackButton.enabled = YES;
+    self.historyButton.enabled = YES;
+
+    self.surfaceView.transform = CGAffineTransformIdentity;
+    self.shadowView.transform = CGAffineTransformIdentity;
+    self.collapsedContentView.transform = CGAffineTransformIdentity;
+    self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
+    self.collapsedChevronView.transform = CGAffineTransformIdentity;
+}
+
+- (void)pp_applyPlaceholderPresentation
+{
+    self.orderLabel.alpha = 0.55;
+    self.orderKickerLabel.alpha = 0.45;
+    self.metaLabel.alpha = 0.45;
+    self.hintLabel.alpha = 0.35;
+    self.footerLabel.alpha = 0.35;
+    self.chipView.alpha = 0.72;
+    self.trackButton.hidden = YES;
+    self.historyButton.hidden = YES;
+    self.actionRailView.alpha = 0.45;
+    self.collapsedContentView.alpha = 0.72;
+}
+
+- (void)pp_applyCurrentLanguageDirection
+{
+    UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
+    NSTextAlignment textAlignment = Language.alignmentForCurrentLanguage;
+
+    self.semanticContentAttribute = semanticAttribute;
+    self.contentView.semanticContentAttribute = semanticAttribute;
+    self.surfaceView.semanticContentAttribute = semanticAttribute;
+    self.chipView.semanticContentAttribute = semanticAttribute;
+    self.actionRailView.semanticContentAttribute = semanticAttribute;
+    self.actionsStackView.semanticContentAttribute = semanticAttribute;
+    self.collapsedContentView.semanticContentAttribute = semanticAttribute;
+    self.collapsedTextStackView.semanticContentAttribute = semanticAttribute;
+
+    for (UILabel *label in [self pp_directionalLabels]) {
+        label.textAlignment = textAlignment;
+    }
+}
+
+- (NSArray<UILabel *> *)pp_directionalLabels
+{
+    return @[
+        self.chipLabel,
+        self.orderKickerLabel,
+        self.orderLabel,
+        self.metaLabel,
+        self.hintLabel,
+        self.footerLabel,
+        self.collapsedKickerLabel,
+        self.collapsedOrderLabel,
+        self.collapsedSummaryLabel
+    ];
+}
+
+- (void)pp_applyOrderReference:(NSString *)orderReference
+              orderKickerTitle:(NSString *)orderKickerTitle
+                          meta:(NSString *)meta
+                   statusTitle:(NSString *)statusTitle
+                    statusHint:(NSString *)statusHint
+                    footerText:(NSString *)footerText
+                statusIconName:(NSString *)statusIconName
+{
+    NSString *safeOrderReference = PPSafeString(orderReference);
+    NSString *safeKickerTitle = PPSafeString(orderKickerTitle);
+    NSString *safeMeta = PPSafeString(meta);
+    NSString *safeStatusTitle = PPSafeString(statusTitle);
+    NSString *safeStatusHint = PPSafeString(statusHint);
+    NSString *safeFooterText = PPSafeString(footerText);
+    UIImage *statusIcon = [UIImage systemImageNamed:PPHomeOrderResolvedSymbolName(statusIconName)];
+
+    self.orderKickerLabel.text = safeKickerTitle;
+    self.collapsedKickerLabel.text = safeKickerTitle;
+    self.orderLabel.text = safeOrderReference;
+    self.metaLabel.text = safeMeta;
+    self.hintLabel.text = safeStatusHint;
+    self.footerLabel.text = safeFooterText;
+    self.chipLabel.text = safeStatusTitle;
+    self.chipIconView.image = statusIcon;
+    self.collapsedOrderLabel.text = safeOrderReference;
+    self.collapsedSummaryLabel.text = [self pp_collapsedSummaryWithMeta:safeMeta
+                                                             footerText:safeFooterText
+                                                             statusHint:safeStatusHint];
+    self.collapsedStatusPillLabel.text = safeStatusTitle;
+    self.collapsedIconView.image = statusIcon;
+    self.collapsedChevronView.image = [UIImage systemImageNamed:PPHomeOrderChevronIconName];
+}
+
+- (void)pp_configureActionsWithActionTitle:(NSString *)actionTitle
+                               statusColor:(UIColor *)statusColor
+{
+    NSString *resolvedActionTitle = actionTitle.length > 0 ? actionTitle : (kLang(@"order_action_track") ?: @"Track order");
+    NSString *historyActionTitle = kLang(@"OrderHistory") ?: @"Order history";
+
+    [self pp_configureActionButton:self.trackButton
+                             title:resolvedActionTitle
+                          iconName:@"location.fill"
+                       statusColor:statusColor
+                         isPrimary:YES];
+    [self pp_configureActionButton:self.historyButton
+                             title:historyActionTitle
+                         iconName:@"clock.fill"
+                       statusColor:statusColor
+                         isPrimary:NO];
+}
+
+- (void)pp_updateAccessibilityForExpanded:(BOOL)expanded
+{
+    NSMutableArray<NSString *> *spokenParts = [NSMutableArray array];
+    for (NSString *part in @[
+        PPSafeString(self.orderKickerLabel.text),
+        PPSafeString(self.orderLabel.text),
+        PPSafeString(self.chipLabel.text),
+        PPSafeString(expanded ? self.hintLabel.text : self.collapsedSummaryLabel.text)
+    ]) {
+        if (part.length > 0) {
+            [spokenParts addObject:part];
+        }
+    }
+
+    self.accessibilityLabel = [spokenParts componentsJoinedByString:@", "];
+    self.collapsedChevronContainerView.accessibilityLabel = expanded
+        ? (kLang(@"ShowLess") ?: PPSafeString(self.orderLabel.text))
+        : PPSafeString(self.orderLabel.text);
+    self.collapsedChevronContainerView.accessibilityValue = PPSafeString(self.chipLabel.text);
+    self.collapsedChevronContainerView.accessibilityHint = PPSafeString(self.hintLabel.text);
+}
+
+- (void)pp_applyCollapsedPreviewChromeForHasPreviewImages:(BOOL)hasPreviewImages
+{
+    if (hasPreviewImages) {
+        self.collapsedIconBadgeView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.18 : 0.94)];
+        self.collapsedIconBadgeView.layer.borderWidth = 1.0;
+        [self.collapsedIconBadgeView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.64]];
+    } else {
+        self.collapsedIconBadgeView.layer.borderWidth = 0.0;
+        [self.collapsedIconBadgeView pp_setBorderColor:UIColor.clearColor];
+    }
+}
+
 - (void)prepareForReuse
 {
     [super prepareForReuse];
     self.onTrackTap = nil;
     self.onHistoryTap = nil;
     self.onCollapseTap = nil;
-    self.trackButton.hidden = NO;
-    self.historyButton.hidden = NO;
-    self.trackButton.enabled = YES;
-    self.historyButton.enabled = YES;
-    self.actionRailView.alpha = 1.0;
-    self.chipView.alpha = 1.0;
-    self.collapsedContentView.alpha = 1.0;
-    self.surfaceView.transform = CGAffineTransformIdentity;
-    self.shadowView.transform = CGAffineTransformIdentity;
-    self.collapsedContentView.transform = CGAffineTransformIdentity;
-    self.collapsedChevronContainerView.transform = CGAffineTransformIdentity;
-    self.collapsedChevronView.transform = CGAffineTransformIdentity;
+    [self pp_resetReusablePresentation];
+    [self pp_updateProgressWithValue:PPHomeOrderMinimumProgress];
     self.previewImageURLs = @[];
     self.collapsedIconView.hidden = NO;
     self.collapsedIconView.image = nil;
     for (UIImageView *imageView in self.collapsedPreviewImageViews ?: @[]) {
         imageView.hidden = YES;
-        imageView.image = [UIImage imageNamed:@"placeholder"];
+        imageView.image = [UIImage imageNamed:PPHomeOrderPreviewPlaceholderName];
     }
 }
 
@@ -649,16 +847,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                        statusIconName:@"clock.fill"
                           actionTitle:(kLang(@"order_action_track") ?: @"Track order")
                              expanded:expanded];
-    self.orderLabel.alpha = 0.55;
-    self.orderKickerLabel.alpha = 0.45;
-    self.metaLabel.alpha = 0.45;
-    self.hintLabel.alpha = 0.35;
-    self.footerLabel.alpha = 0.35;
-    self.chipView.alpha = 0.72;
-    self.trackButton.hidden = YES;
-    self.historyButton.hidden = YES;
-    self.actionRailView.alpha = 0.45;
-    self.collapsedContentView.alpha = 0.72;
+    [self pp_applyPlaceholderPresentation];
 }
 
 - (void)configureWithOrderReference:(NSString *)orderReference
@@ -674,50 +863,15 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
                         actionTitle:(NSString *)actionTitle
                            expanded:(BOOL)expanded
 {
-    self.orderLabel.alpha = 1.0;
-    self.orderKickerLabel.alpha = 1.0;
-    self.metaLabel.alpha = 1.0;
-    self.hintLabel.alpha = 1.0;
-    self.footerLabel.alpha = 1.0;
-    self.chipView.alpha = 1.0;
-    self.collapsedContentView.alpha = 1.0;
-    self.trackButton.hidden = NO;
-    self.historyButton.hidden = NO;
-    self.actionRailView.alpha = 1.0;
-
-    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.surfaceView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.chipView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.actionRailView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.actionsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.collapsedContentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.collapsedTextStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.chipLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.orderKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.orderLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.metaLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.hintLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.footerLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.collapsedKickerLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.collapsedOrderLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    self.collapsedSummaryLabel.textAlignment = [Language alignmentForCurrentLanguage];
-
-    self.orderKickerLabel.text = PPSafeString(orderKickerTitle);
-    self.collapsedKickerLabel.text = PPSafeString(orderKickerTitle);
-    self.orderLabel.text = PPSafeString(orderReference);
-    self.metaLabel.text = PPSafeString(meta);
-    self.hintLabel.text = PPSafeString(statusHint);
-    self.footerLabel.text = PPSafeString(footerText);
-    self.chipLabel.text = PPSafeString(statusTitle);
-    self.chipIconView.image = [UIImage systemImageNamed:(statusIconName.length > 0 ? statusIconName : @"shippingbox.circle.fill")];
-    self.collapsedOrderLabel.text = PPSafeString(orderReference);
-    self.collapsedSummaryLabel.text = [self pp_collapsedSummaryWithMeta:PPSafeString(meta)
-                                                             footerText:PPSafeString(footerText)
-                                                             statusHint:PPSafeString(statusHint)];
-    self.collapsedStatusPillLabel.text = PPSafeString(statusTitle);
-    self.collapsedIconView.image = [UIImage systemImageNamed:(statusIconName.length > 0 ? statusIconName : @"shippingbox.circle.fill")];
-    self.collapsedChevronView.image = [UIImage systemImageNamed:@"chevron.down"];
+    [self pp_resetReusablePresentation];
+    [self pp_applyCurrentLanguageDirection];
+    [self pp_applyOrderReference:orderReference
+                orderKickerTitle:orderKickerTitle
+                            meta:meta
+                     statusTitle:statusTitle
+                      statusHint:statusHint
+                      footerText:footerText
+                  statusIconName:statusIconName];
 
     UIColor *resolvedStatusColor = PPHomeOrderResolvedStatusColor(statusColor,
                                                                   statusTitle,
@@ -727,26 +881,8 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     [self pp_applyStatusColor:resolvedStatusColor];
     [self pp_applyPreviewImageURLs:previewImageURLs];
     [self pp_setShowsExpandedState:expanded];
-
-    double clamped = fmax(0.08, fmin(1.0, progress));
-    CGFloat fillWidth = CGRectGetWidth(self.progressTrackView.bounds) * clamped;
-    if (fillWidth <= 0.0) {
-        fillWidth = 96.0 * clamped;
-    }
-    self.progressFillWidthConstraint.constant = fillWidth;
-
-    NSString *resolvedActionTitle = actionTitle.length > 0 ? actionTitle : (kLang(@"order_action_track") ?: @"Track order");
-    NSString *historyActionTitle = kLang(@"OrderHistory") ?: @"Order history";
-    [self pp_configureActionButton:self.trackButton
-                             title:resolvedActionTitle
-                          iconName:@"location.fill"
-                       statusColor:resolvedStatusColor
-                         isPrimary:YES];
-    [self pp_configureActionButton:self.historyButton
-                             title:historyActionTitle
-                          iconName:@"clock.fill"
-                       statusColor:resolvedStatusColor
-                         isPrimary:NO];
+    [self pp_updateProgressWithValue:progress];
+    [self pp_configureActionsWithActionTitle:actionTitle statusColor:resolvedStatusColor];
 
     [self setNeedsLayout];
     [self layoutIfNeeded];
@@ -773,7 +909,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     BOOL didChangePreviewURLs = ![self.previewImageURLs isEqualToArray:resolvedURLs];
     self.previewImageURLs = resolvedURLs.copy;
 
-    UIImage *placeholder = [UIImage imageNamed:@"placeholder"];
+    UIImage *placeholder = [UIImage imageNamed:PPHomeOrderPreviewPlaceholderName];
     BOOL hasPreviewImages = (self.previewImageURLs.count > 0);
     self.collapsedIconView.hidden = hasPreviewImages;
 
@@ -790,18 +926,11 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
             imageView.image = placeholder;
         }
         if (imageURL.length > 0 && (didChangePreviewURLs || imageView.image == nil)) {
-            [GM setImageFromUrlString:imageURL imageView:imageView phImage:@"placeholder"];
+            [GM setImageFromUrlString:imageURL imageView:imageView phImage:PPHomeOrderPreviewPlaceholderName];
         }
     }
 
-    if (hasPreviewImages) {
-        self.collapsedIconBadgeView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:(PPIOS26() ? 0.18 : 0.94)];
-        self.collapsedIconBadgeView.layer.borderWidth = 1.0;
-        [self.collapsedIconBadgeView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.64]];
-    } else {
-        self.collapsedIconBadgeView.layer.borderWidth = 0.0;
-        [self.collapsedIconBadgeView pp_setBorderColor:UIColor.clearColor];
-    }
+    [self pp_applyCollapsedPreviewChromeForHasPreviewImages:hasPreviewImages];
 
     [self setNeedsLayout];
 }
@@ -917,6 +1046,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.collapsedContentView.alpha = expanded ? 0.0 : 1.0;
     self.collapsedContentView.transform = CGAffineTransformIdentity;
     [self pp_updateChevronAppearanceForExpanded:expanded];
+    [self pp_updateAccessibilityForExpanded:expanded];
 }
 
 - (void)setExpandedState:(BOOL)expanded animated:(BOOL)animated
@@ -1012,6 +1142,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
 {
     UIColor *resolved = statusColor ?: AppPrimaryClr ?: UIColor.systemBlueColor;
     NSString *resolvedTitle = title.length > 0 ? title : @"";
+    button.accessibilityLabel = resolvedTitle;
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config =
@@ -1060,6 +1191,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.actionRailView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.12 : 0.08);
     [self.actionRailView pp_setBorderColor:PPHomeOrderBlendColor(resolved, AppPrimaryClr, 0.20)];
     self.collapsedIconBadgeView.backgroundColor = chipBackground;
+    [self pp_applyCollapsedPreviewChromeForHasPreviewImages:(self.previewImageURLs.count > 0)];
     self.collapsedIconView.tintColor = resolved;
     self.collapsedStatusPillView.backgroundColor = PPHomeOrderBlendColor(resolved, AppPrimaryClr, PPIOS26() ? 0.18 : 0.14);
     self.collapsedStatusPillLabel.textColor = resolved;

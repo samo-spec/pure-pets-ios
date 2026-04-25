@@ -11,6 +11,59 @@ BOOL const isPPDebugMode = YES;
 BOOL const isPPDebugMode = NO;
 #endif
 
+static NSString *PPAccessoryTrimmedString(id value)
+{
+    if ([value isKindOfClass:[NSNull class]] || value == nil) {
+        return @"";
+    }
+
+    NSString *string = nil;
+    if ([value isKindOfClass:[NSString class]]) {
+        string = (NSString *)value;
+    } else if ([value isKindOfClass:[NSNumber class]]) {
+        string = [(NSNumber *)value stringValue];
+    }
+
+    return [string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] ?: @"";
+}
+
+static NSString *PPAccessoryStringValueForKeys(NSDictionary *dict, NSArray<NSString *> *keys)
+{
+    for (NSString *key in keys) {
+        NSString *value = PPAccessoryTrimmedString(dict[key]);
+        if (value.length > 0) {
+            return value;
+        }
+    }
+    return @"";
+}
+
+static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSString *> *keys)
+{
+    static NSNumberFormatter *formatter;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        formatter = [[NSNumberFormatter alloc] init];
+        formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+        formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    });
+
+    for (NSString *key in keys) {
+        id value = dict[key];
+        if ([value isKindOfClass:[NSNumber class]]) {
+            return value;
+        }
+        NSString *string = PPAccessoryTrimmedString(value);
+        if (string.length > 0) {
+            NSNumber *number = [formatter numberFromString:string];
+            if (number) {
+                return number;
+            }
+        }
+    }
+    return nil;
+}
+
 
 
 
@@ -37,6 +90,12 @@ BOOL const isPPDebugMode = NO;
     // Discount fields
     if (self.discountPercent) dict[@"discountPercent"] = self.discountPercent;
     if (self.discountAmount) dict[@"discountAmount"] = self.discountAmount;
+    if (self.weightText.length > 0) {
+        dict[@"weightText"] = self.weightText;
+        dict[@"weight"] = self.weightText; // Keep sync with console field name
+    }
+    if (self.weight) dict[@"weight"] = self.weight;
+    if (self.weightUnit.length > 0) dict[@"weightUnit"] = self.weightUnit;
     
     // Images
     if (self.imageURLsArray) dict[@"imageURLsArray"] = self.imageURLsArray;
@@ -212,6 +271,28 @@ BOOL const isPPDebugMode = NO;
         _price = dict[@"price"] ?: @(0);
         _discountPercent = dict[@"discountPercent"];
         _discountAmount = dict[@"discountAmount"];
+        _weightText = PPAccessoryStringValueForKeys(dict, (@[
+            @"weight",
+            @"weightText",
+            @"weightLabel",
+            @"packageWeightText",
+            @"netWeightText",
+            @"itemWeightText"
+        ]));
+        _weight = PPAccessoryNumberValueForKeys(dict, (@[
+            @"weight",
+            @"packageWeight",
+            @"netWeight",
+            @"itemWeight",
+            @"unitWeight"
+        ]));
+        _weightUnit = PPAccessoryStringValueForKeys(dict, (@[
+            @"weightUnit",
+            @"unit",
+            @"packageUnit",
+            @"measurementUnit",
+            @"weight_unit"
+        ]));
         _imageURLsArray = dict[@"imageURLsArray"] ?: @[];
         _imageMeta  = dict[@"imageMeta"] ?: nil;
         _petMainCategoryID = [dict[@"petMainCategoryID"] integerValue];
@@ -283,6 +364,9 @@ BOOL const isPPDebugMode = NO;
     copy.price = [source.price copy];
     copy.discountPercent = [source.discountPercent copy];
     copy.discountAmount = [source.discountAmount copy];
+    copy.weightText = [source.weightText copy];
+    copy.weight = [source.weight copy];
+    copy.weightUnit = [source.weightUnit copy];
     copy.desc = [source.desc copy];
     copy.blurHash = [source.blurHash copy];
     copy.petMainCategoryID = source.petMainCategoryID;

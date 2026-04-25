@@ -222,13 +222,17 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 @interface PPHomePremiumCareCell : UICollectionViewCell
 + (NSString *)reuseIdentifier;
 - (void)configure;
+- (void)configureWithAnimationName:(NSString *)animationName;
+- (void)pp_configureCareAnimationNamed:(NSString *)animationName;
 @end
 
 @implementation PPHomePremiumCareCell {
     UIView *_surfaceView;
     CAGradientLayer *_gradientLayer;
+    UIView *_bottomLeadingGlowView;
     UIView *_iconPlateView;
     UIImageView *_iconImageView;
+    LOTAnimationView *_careAnimationView;
     UILabel *_eyebrowLabel;
     UILabel *_titleLabel;
     UILabel *_subtitleLabel;
@@ -238,6 +242,8 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     UIView *_ctaView;
     UILabel *_ctaLabel;
     UIImageView *_ctaIconView;
+    NSString *_currentCareAnimationName;
+    NSInteger _careAnimationLoadToken;
 }
 
 + (NSString *)reuseIdentifier
@@ -275,9 +281,15 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
     [_surfaceView.layer insertSublayer:_gradientLayer atIndex:0];
 
+    _bottomLeadingGlowView = [[UIView alloc] init];
+    _bottomLeadingGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    _bottomLeadingGlowView.layer.cornerRadius = 36.0;
+    _bottomLeadingGlowView.userInteractionEnabled = NO;
+    [_surfaceView insertSubview:_bottomLeadingGlowView atIndex:1];
+
     _iconPlateView = [[UIView alloc] init];
     _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconPlateView.layer.cornerRadius = 28.0;
+    _iconPlateView.layer.cornerRadius = 38.0;
     _iconPlateView.layer.borderWidth = 0.8;
     _iconPlateView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -289,6 +301,16 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     _iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
     _iconImageView.contentMode = UIViewContentModeScaleAspectFit;
     [_iconPlateView addSubview:_iconImageView];
+
+    _careAnimationView = [[LOTAnimationView alloc] init];
+    _careAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
+    _careAnimationView.backgroundColor = UIColor.clearColor;
+    _careAnimationView.userInteractionEnabled = NO;
+    _careAnimationView.contentMode = UIViewContentModeScaleAspectFit;
+    _careAnimationView.loopAnimation = YES;
+    _careAnimationView.animationSpeed = 0.82;
+    _careAnimationView.hidden = YES;
+    [_iconPlateView addSubview:_careAnimationView];
 
     _eyebrowLabel = [[UILabel alloc] init];
     _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -313,7 +335,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     _pillStackView = [[UIStackView alloc] init];
     _pillStackView.translatesAutoresizingMaskIntoConstraints = NO;
     _pillStackView.axis = UILayoutConstraintAxisHorizontal;
-    _pillStackView.alignment = UIStackViewAlignmentCenter;
+    _pillStackView.alignment = UIStackViewAlignmentFill;
     _pillStackView.spacing = 8.0;
     _pillStackView.distribution = UIStackViewDistributionFillProportionally;
     [_surfaceView addSubview:_pillStackView];
@@ -349,22 +371,27 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
         [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
-        [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant:56.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:56.0],
+        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
+        [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:14.0],
+        [_iconPlateView.widthAnchor constraintEqualToConstant:76.0],
+        [_iconPlateView.heightAnchor constraintEqualToConstant:76.0],
 
         [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
         [_iconImageView.widthAnchor constraintEqualToConstant:25.0],
         [_iconImageView.heightAnchor constraintEqualToConstant:25.0],
 
+        [_careAnimationView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
+        [_careAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
+        [_careAnimationView.widthAnchor constraintEqualToConstant:84.0],
+        [_careAnimationView.heightAnchor constraintEqualToConstant:84.0],
+
         [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
         [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
-        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_iconPlateView.leadingAnchor constant:-14.0],
+        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
 
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-14.0],
+        [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
         [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:7.0],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
@@ -374,7 +401,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
         [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
         [_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_pillStackView.heightAnchor constraintEqualToConstant:28.0],
+        [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
 
         [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
@@ -390,6 +417,11 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
         [_ctaIconView.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
         [_ctaIconView.widthAnchor constraintEqualToConstant:14.0],
         [_ctaIconView.heightAnchor constraintEqualToConstant:14.0],
+
+        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-20.0],
+        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:18.0],
+        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:72.0],
+        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:72.0],
     ]];
 
     [self pp_applyTheme];
@@ -398,18 +430,24 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 
 - (UILabel *)pp_makePillLabel
 {
-    UILabel *label = [[UILabel alloc] init];
+    PPHomeInsetLabel *label = [[PPHomeInsetLabel alloc] init];
     label.translatesAutoresizingMaskIntoConstraints = NO;
     label.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     label.textAlignment = NSTextAlignmentCenter;
     label.numberOfLines = 1;
-    label.layer.cornerRadius = 14.0;
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.82;
+    label.contentInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
+    label.layer.cornerRadius = 15.0;
     label.layer.masksToBounds = YES;
     label.layer.borderWidth = 0.8;
     if (@available(iOS 13.0, *)) {
         label.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [label.widthAnchor constraintGreaterThanOrEqualToConstant:82.0].active = YES;
+    [label.heightAnchor constraintEqualToConstant:30.0].active = YES;
+    [label.widthAnchor constraintGreaterThanOrEqualToConstant:92.0].active = YES;
+    [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [label setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
     return label;
 }
 
@@ -418,14 +456,26 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     [super layoutSubviews];
     _gradientLayer.frame = _surfaceView.bounds;
     _gradientLayer.cornerRadius = _surfaceView.layer.cornerRadius;
+    _iconPlateView.layer.cornerRadius = CGRectGetHeight(_iconPlateView.bounds) * 0.5;
+    
+    _surfaceView.layer.shadowRadius = 28.0;
     _surfaceView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:_surfaceView.bounds
                                    cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
+    
+    _bottomLeadingGlowView.layer.shadowPath =
+        [UIBezierPath bezierPathWithOvalInRect:_bottomLeadingGlowView.bounds].CGPath;
 }
 
 - (void)prepareForReuse
 {
     [super prepareForReuse];
+    _careAnimationLoadToken += 1;
+    [_careAnimationView stop];
+    _careAnimationView.hidden = YES;
+    _careAnimationView.alpha = 0.0;
+    _iconImageView.hidden = NO;
+    _currentCareAnimationName = nil;
     _eyebrowLabel.text = nil;
     _titleLabel.text = nil;
     _subtitleLabel.text = nil;
@@ -463,11 +513,18 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 
     _surfaceView.backgroundColor = surfaceColor;
     [_surfaceView pp_setBorderColor:borderColor];
-    _surfaceView.layer.shadowOpacity = isDark ? 0.0 : 0.09;
+    _surfaceView.layer.shadowOpacity = isDark ? 0.0 : 0.11;
     _gradientLayer.colors = @[
         (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor,
         (id)[UIColor clearColor].CGColor
     ];
+    
+    _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.22 : 0.14];
+    [_bottomLeadingGlowView pp_setShadowColor:accent];
+    _bottomLeadingGlowView.layer.shadowOpacity = isDark ? 0.16 : 0.10;
+    _bottomLeadingGlowView.layer.shadowRadius = 32.0;
+    _bottomLeadingGlowView.layer.shadowOffset = CGSizeZero;
+    
     _iconPlateView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.18 : 0.11];
     [_iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
     _iconImageView.tintColor = accent;
@@ -489,6 +546,11 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 
 - (void)configure
 {
+    [self configureWithAnimationName:@"pet-care1"];
+}
+
+- (void)configureWithAnimationName:(NSString *)animationName
+{
     [self pp_applyTheme];
     self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
     _surfaceView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
@@ -506,9 +568,67 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
     _ctaIconView.image = [[UIImage systemImageNamed:forwardSymbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    [self pp_configureCareAnimationNamed:animationName];
     self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",
                                _titleLabel.text ?: @"",
                                _subtitleLabel.text ?: @""];
+}
+
+- (void)pp_configureCareAnimationNamed:(NSString *)animationName
+{
+    NSString *safeName = PPSafeString(animationName);
+    if (safeName.length == 0) {
+        safeName = @"pet-care1";
+    }
+
+    if ([_currentCareAnimationName isEqualToString:safeName]) {
+        if (!_careAnimationView.hidden && !_careAnimationView.isAnimationPlaying) {
+            [_careAnimationView play];
+        }
+        return;
+    }
+
+    _currentCareAnimationName = safeName;
+    _careAnimationLoadToken += 1;
+    NSInteger token = _careAnimationLoadToken;
+
+    [_careAnimationView stop];
+    _careAnimationView.hidden = YES;
+    _careAnimationView.alpha = 0.0;
+    _iconImageView.hidden = NO;
+
+    __weak typeof(self) weakSelf = self;
+    [AppClasses setAnimationNamed:safeName
+                            ToView:_careAnimationView
+                         withSpeed:0.82
+                        completion:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf->_careAnimationLoadToken != token) {
+                return;
+            }
+
+            if (!success) {
+                strongSelf->_careAnimationView.hidden = YES;
+                strongSelf->_iconImageView.hidden = NO;
+                return;
+            }
+
+            strongSelf->_careAnimationView.loopAnimation = YES;
+            strongSelf->_careAnimationView.hidden = NO;
+            strongSelf->_iconImageView.hidden = YES;
+            [strongSelf->_careAnimationView setNeedsLayout];
+            [strongSelf->_careAnimationView layoutIfNeeded];
+            [strongSelf->_careAnimationView play];
+
+            [UIView animateWithDuration:0.22
+                                  delay:0.0
+                                options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                strongSelf->_careAnimationView.alpha = 1.0;
+            } completion:nil];
+        });
+    }];
 }
 
 @end
@@ -683,6 +803,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     }
     metaPrimaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
     metaPrimaryLabel.textAlignment = PPHomeCurrentTextAlignment();
+    [metaPrimaryLabel.heightAnchor constraintEqualToConstant:28.0].active = YES;
     [metaStackView addArrangedSubview:metaPrimaryLabel];
     _metaPrimaryLabel = metaPrimaryLabel;
 
@@ -698,6 +819,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     }
     metaSecondaryLabel.contentInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
     metaSecondaryLabel.textAlignment = PPHomeCurrentTextAlignment();
+    [metaSecondaryLabel.heightAnchor constraintEqualToConstant:28.0].active = YES;
     [metaStackView addArrangedSubview:metaSecondaryLabel];
     _metaSecondaryLabel = metaSecondaryLabel;
 
@@ -875,7 +997,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     if (@available(iOS 13.0, *)) {
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
-    
+
     [_cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08]];
     _cardView.layer.shadowOpacity = isDark ? 0.0f : 0.10f;
     [_avatarShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:(isDark ? 0.10 : 0.24)]];
@@ -1703,7 +1825,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 
 
 
-  
+
 
 
 static NSString * const PPNearbySelectedLatitudeKey = @"pp.home.nearby.latitude";
@@ -1790,19 +1912,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) NSTimer *nearbyRefreshTimer;
 @property (nonatomic, assign) BOOL isUsingManualNearbySelection;
 @property (nonatomic, assign) BOOL nearbyShowingRecentlyAdded;
-@property (nonatomic, strong) UIView *pp_backgroundCanvasView;
-@property (nonatomic, strong) CAGradientLayer *pp_backgroundGradientLayer;
-@property (nonatomic, strong) CAGradientLayer *pp_backgroundTopGlowLayer;
-@property (nonatomic, strong) CAGradientLayer *pp_backgroundAccentGlowLayer;
-@property (nonatomic, strong) CAGradientLayer *pp_backgroundBottomGlowLayer;
-@property (nonatomic, strong) CAGradientLayer *pp_backgroundShineLayer;
-@property (nonatomic, assign) BOOL pp_backgroundAnimationsConfigured;
-@property (nonatomic, strong) UIView *pp_backgroundGlowViewTop;
-@property (nonatomic, strong) UIView *pp_backgroundGlowViewBottom;
-@property (nonatomic, strong) UIImageView *pp_backgroundPatternView;
-@property (nonatomic, strong) UIView *pp_midGlowA;
-@property (nonatomic, strong) UIView *pp_midGlowB;
-@property (nonatomic, strong) UIView *pp_midGlowC;
+@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewTop;
+@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewMid;
+@property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL petProfilesLoading;
@@ -1817,8 +1929,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL isHomeScreenVisible;
 @property (nonatomic, copy, nullable) NSString *lastObservedHomeOrderID;
 @property (nonatomic, copy, nullable) NSString *lastObservedHomeOrderStatusKey;
+@property (nonatomic, assign) NSInteger premiumCareAnimationCursor;
+@property (nonatomic, copy, nullable) NSString *currentPremiumCareAnimationName;
 - (void)handleSeeAllForSection:(PPHomeSection)section;
 - (void)openPremiumPetCare;
+- (NSArray<NSString *> *)pp_premiumCareAnimationNames;
+- (NSString *)pp_currentPremiumCareAnimationName;
+- (void)pp_advancePremiumCareAnimationForAppearance;
+- (void)pp_refreshVisiblePremiumCareAnimation;
 - (NSString *)heroGreetingText;
 - (NSString *)heroBaseGreetingText;
 - (NSString *)heroDisplayNameText;
@@ -1931,6 +2049,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)handleUserProfileSyncNotification:(NSNotification *)notification;
 - (void)handleUserAccessUpdateNotification:(NSNotification *)notification;
 - (void)pp_handlePromoCardTap:(PPHomePromoCarouselCard *)card interaction:(NSString *)interaction;
+- (void)pp_configureBannerCell:(PPBannerCollectionCell *)cell
+                       forItem:(PPHomeItem *)item;
 - (void)pp_handleCarouselTapAction:(PPBannerOnTapAction)action
                              value:(NSString *)value
                        defaultKind:(NSInteger)fallbackMainKindID
@@ -1938,14 +2058,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (nullable MainBannerModel *)pp_homeTopCarouselBannerGroup;
 - (NSArray<PPHomePromoCarouselCard *> *)pp_homePromoFallbackCards;
 - (NSArray<PPHomePromoCarouselCard *> *)pp_promoCardsFromLegacyBannerGroup:(MainBannerModel *)group;
-- (void)pp_layoutBackgroundLayers;
-- (void)pp_startBackgroundAnimationsIfNeeded;
-- (void)pp_stopBackgroundAnimations;
-- (void)pp_setupBackgroundGlowOrbs;
-- (void)pp_layoutBackgroundGlowOrbs;
-- (void)pp_setupMidLayerGlows;
-- (void)pp_layoutMidLayerGlows;
-- (void)pp_updateMidLayerGlowColors;
+- (void)pp_applyOrderDetailsBackgroundAppearance;
+- (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
+- (void)pp_layoutPremiumBackgroundGlowViews;
+- (void)pp_updatePremiumBackgroundGlowAppearance;
 - (CGFloat)pp_preferredNavigationSearchWidth;
 - (BOOL)pp_canOwnHomeNavigationChrome;
 - (void)pp_detachHomeSmartSearchTitleViewIfNeeded;
@@ -1965,6 +2081,57 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 
 @implementation PPHomeViewController
+
+- (NSArray<NSString *> *)pp_premiumCareAnimationNames
+{
+    static NSArray<NSString *> *names = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        names = @[@"pet-care1", @"pet-care2", @"pet-care3", @"pet-care4", @"pet-care5"];
+    });
+    return names;
+}
+
+- (NSString *)pp_currentPremiumCareAnimationName
+{
+    NSString *name = PPSafeString(self.currentPremiumCareAnimationName);
+    return name.length > 0 ? name : @"pet-care1";
+}
+
+- (void)pp_advancePremiumCareAnimationForAppearance
+{
+    NSArray<NSString *> *names = [self pp_premiumCareAnimationNames];
+    if (names.count == 0) {
+        self.currentPremiumCareAnimationName = @"pet-care1";
+        return;
+    }
+
+    NSInteger index = self.premiumCareAnimationCursor % (NSInteger)names.count;
+    if (index < 0) {
+        index = 0;
+    }
+
+    self.currentPremiumCareAnimationName = names[(NSUInteger)index];
+    self.premiumCareAnimationCursor = (index + 1) % (NSInteger)names.count;
+    [self pp_refreshVisiblePremiumCareAnimation];
+}
+
+- (void)pp_refreshVisiblePremiumCareAnimation
+{
+    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
+    if (sectionIndex == NSNotFound || !self.collectionView) {
+        return;
+    }
+
+    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:sectionIndex];
+    UICollectionViewCell *rawCell = [self.collectionView cellForItemAtIndexPath:indexPath];
+    if (![rawCell isKindOfClass:PPHomePremiumCareCell.class]) {
+        return;
+    }
+
+    PPHomePremiumCareCell *cell = (PPHomePremiumCareCell *)rawCell;
+    [cell configureWithAnimationName:[self pp_currentPremiumCareAnimationName]];
+}
 
 
 // Scroll Suggestions section to item index 2 after data is loaded
@@ -2227,11 +2394,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionCarousel),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
-        @(PPHomeSectionAccessories),
-        @(PPHomeSectionPetProfile),
         @(PPHomeSectionPremiumCare),
+        @(PPHomeSectionAccessories),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
+        @(PPHomeSectionPetProfile),
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionAdopt),
     ]];
@@ -2535,7 +2702,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionBuyAgain)
     ];
 
-    [self pp_updateBackgroundGradientColors];
+    [self pp_applyOrderDetailsBackgroundAppearance];
     if ([self pp_canOwnHomeNavigationChrome]) {
         [self configureNavigationBar];
     } else {
@@ -2826,13 +2993,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    //[PetAccessoryManager.sharedManager pp_oneTimeSetAllAccessoriesPriceToFixedValuesWithCompletion:^(NSError * _Nullable error, NSInteger updatedCount) {
-    //}];
-    // [PetAdManager.sharedManager migrateImageMetaToImageItemsOnce];
-    //[CartManager.sharedManager clearCart];
-    
 
-    
     self.isMainKindsExpanded = NO; // collapsed = horizontal    self.hideServiceSection = YES;
     self.nearbyServiceProviders = @[];
     self.nearbyServicesLoaded = NO;
@@ -2840,9 +3001,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.nearbyServicesShowingLatest = NO;
     self.warmUpCache = NO;
     self.chatsListenerStarted = NO;
-    self.view.backgroundColor = AppBackgroundClr ?: AppBageColor();
-    [self pp_installBackgroundGradient];
-    [self pp_setupBackgroundGlowOrbs];
+    [self pp_applyOrderDetailsBackgroundAppearance];
 
     self.mainKinds = PPMainKindsArray;
     self.selectedCategory = nil; // nil == "All"
@@ -2879,8 +3038,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 
     [self setupCollectionView];
+    [self pp_applyOrderDetailsBackgroundAppearance];
     [self pp_applyCurrentLanguageDirectionToHomeUI];
-    [self pp_setupMidLayerGlows];
     [self configureDataSource];
     [self applyBaseSnapshot];   // 🔥 NEW
     [self refreshHeroSectionAppearance];
@@ -4481,7 +4640,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [super viewDidAppear:animated];
     self.isHomeScreenVisible = YES;
     [self pp_stabilizeHomeCollectionLayoutIfNeeded];
-    [self pp_startBackgroundAnimationsIfNeeded];
+    [self pp_advancePremiumCareAnimationForAppearance];
     [self pp_centerNearbySectionIfPossible];
     [self updateCartQuantityBadge];
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -4786,7 +4945,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:PPSectionHeaderView.class
             forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
                    withReuseIdentifier:@"PPSectionHeaderView"];
- 
+
     [self.collectionView registerClass:PPCategoryCardCell.class
             forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
 }
@@ -4803,6 +4962,53 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [snapshot reloadItemsWithIdentifiers:items];
 
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+}
+
+- (void)pp_configureBannerCell:(PPBannerCollectionCell *)cell
+                       forItem:(PPHomeItem *)item
+{
+    if (!cell || item.payload == [NSNull null]) {
+        [cell configurePlaceholder];
+        return;
+    }
+
+    if ([item.payload isKindOfClass:NSArray.class]) {
+        NSArray *promoCards = (NSArray *)item.payload;
+        BOOL hasPromoCardObjects =
+            promoCards.count > 0 &&
+            [promoCards.firstObject isKindOfClass:PPHomePromoCarouselCard.class];
+
+        if (hasPromoCardObjects) {
+            __weak typeof(self) weakSelf = self;
+            [cell configureWithPromoCards:(NSArray<PPHomePromoCarouselCard *> *)promoCards
+                                onCardTap:^(PPHomePromoCarouselCard *card) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                [self pp_handlePromoCardTap:card interaction:@"card"];
+            }
+                             onPrimaryTap:^(PPHomePromoCarouselCard *card) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                [self pp_handlePromoCardTap:card interaction:@"primary"];
+            }
+                           onSecondaryTap:^(PPHomePromoCarouselCard *card) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self) return;
+                [self pp_handlePromoCardTap:card interaction:@"secondary"];
+            }];
+            return;
+        }
+    }
+
+    MainBannerModel *homeTop = [self pp_homeTopCarouselBannerGroup];
+    if (!homeTop || homeTop.childBanners.count == 0) {
+        [cell configurePlaceholder];
+        return;
+    }
+
+    [cell configureWithBanners:homeTop.childBanners
+                         group:homeTop
+                      delegate:self];
 }
 
 
@@ -4923,63 +5129,16 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             PPHomePremiumCareCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
                                                           forIndexPath:indexPath];
-            [cell configure];
+            [cell configureWithAnimationName:[strongSelf pp_currentPremiumCareAnimationName]];
             return cell;
         }
 
         if (section == PPHomeSectionCarousel) {
 
             PPBannerCollectionCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:@"PPBannerCollectionCell"
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPBannerCollectionCell.reuseIdentifier
                                                           forIndexPath:indexPath];
-
-            if (item.payload == [NSNull null]) {
-                // 🔥 Soft placeholder — NO skeleton, NO shimmer
-                [cell configurePlaceholder];
-
-
-                return cell;
-            }
-
-            if ([item.payload isKindOfClass:NSArray.class]) {
-                NSArray *promoCards = (NSArray *)item.payload;
-                BOOL hasPromoCardObjects =
-                    promoCards.count > 0 &&
-                    [promoCards.firstObject isKindOfClass:PPHomePromoCarouselCard.class];
-
-                if (hasPromoCardObjects) {
-                    __weak typeof(strongSelf) weakHome = strongSelf;
-                    [cell configureWithPromoCards:(NSArray<PPHomePromoCarouselCard *> *)promoCards
-                                        onCardTap:^(PPHomePromoCarouselCard *card) {
-                        __strong typeof(weakHome) self = weakHome;
-                        if (!self) return;
-                        [self pp_handlePromoCardTap:card interaction:@"card"];
-                    }
-                                     onPrimaryTap:^(PPHomePromoCarouselCard *card) {
-                        __strong typeof(weakHome) self = weakHome;
-                        if (!self) return;
-                        [self pp_handlePromoCardTap:card interaction:@"primary"];
-                    }
-                                   onSecondaryTap:^(PPHomePromoCarouselCard *card) {
-                        __strong typeof(weakHome) self = weakHome;
-                        if (!self) return;
-                        [self pp_handlePromoCardTap:card interaction:@"secondary"];
-                    }];
-                    return cell;
-                }
-            }
-
-            MainBannerModel *homeTop = [strongSelf pp_homeTopCarouselBannerGroup];
-
-            if (!homeTop || homeTop.childBanners.count == 0) {
-                [cell configurePlaceholder];
-                return cell;
-            }
-
-            [cell configureWithBanners:homeTop.childBanners
-                                 group:homeTop
-                              delegate:strongSelf];
-
+            [strongSelf pp_configureBannerCell:cell forItem:item];
             return cell;
         }
 
@@ -5711,7 +5870,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 self.nearbyServicesLoaded = YES;
                 self.nearbyServicesLoading = NO;
                 [self reloadSection:PPHomeSectionNearbyServices];
-                
+
                 if (!self.didAutoScrollNearbyServices && self.nearbyServiceProviders.count > 1) {
                     self.didAutoScrollNearbyServices = YES;
                     [self autoScrollIndextoIndex:1 inSection:PPHomeSectionNearbyServices];
@@ -5733,7 +5892,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 self.nearbyServicesLoaded = YES;
                 self.nearbyServicesLoading = NO;
                 [self reloadSection:PPHomeSectionNearbyServices];
-                
+
                 if (!self.didAutoScrollNearbyServices && self.nearbyServiceProviders.count > 1) {
                     self.didAutoScrollNearbyServices = YES;
                     [self autoScrollIndextoIndex:1 inSection:PPHomeSectionNearbyServices];
@@ -6382,10 +6541,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 }
 
 - (void)openNearestVet {
-    // push nearest vet map / list
-    NSLog(@"PPHomeQuickActionNearestVet");
-    PPVetLocator *vc = [PPVetLocator new];
-    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle70];
+    PPPetCareViewController *vc =
+        [[PPPetCareViewController alloc] initWithInitialSection:PPPetCareInitialSectionVeterinarians
+                                                       mainKind:nil];
+    vc.hidesBottomBarWhenPushed = YES;
+    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
 }
 
 - (void)openAccessories {
@@ -7230,7 +7390,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_applyCurrentLanguageDirectionToHomeUI];
     [self pp_refreshThemeSensitiveHomeContent];
     [self pp_refreshPetProfilesSection];
-    
+
     if (self.accessoriesLoaded || self.nearbyLoaded) {
         [self reloadSection:PPHomeSectionSuggestions];
     }
@@ -7251,7 +7411,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             self.didAutoScrollSuggestions = YES;
         });
     }
-    
+
     [self updateCartQuantityBadge];
 }
 
@@ -7259,7 +7419,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [super viewDidDisappear:animated];
     self.isHomeScreenVisible = NO;
-    [self pp_stopBackgroundAnimations];
     self.lastObservedHomeOrderID = nil;
     self.lastObservedHomeOrderStatusKey = nil;
     [self pp_stopCurrentOrdersListener];
@@ -7372,7 +7531,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [self pp_detachHomeSmartSearchTitleViewIfNeeded];
         return;
     }
-    
+
      self.navigationItem.title = nil;
     UIView *centerView= [self pp_navigationSmartSearchTitleView];
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
@@ -7599,8 +7758,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.navigationItem.rightBarButtonItems = PPHomeBarButtonItems(cartItem);
     }
 
-    
-   
+
+
 }
 
 - (void)pp_applyHomeCartBadgeCount:(NSInteger)count animated:(BOOL)animated
@@ -8340,461 +8499,167 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 }
 
-#pragma mark - Background Gradient
+#pragma mark - Background
 
-- (void)pp_installBackgroundGradient
+- (void)pp_applyOrderDetailsBackgroundAppearance
 {
-    if (self.pp_backgroundCanvasView) {
+    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.collectionView.backgroundColor = AppClearClr;
+    [self pp_installPremiumBackgroundGlowViewsIfNeeded];
+    [self pp_updatePremiumBackgroundGlowAppearance];
+}
+
+- (UIView *)pp_makePremiumBackgroundGlowView
+{
+    UIView *glowView = [[UIView alloc] initWithFrame:CGRectZero];
+    glowView.userInteractionEnabled = NO;
+    glowView.backgroundColor = UIColor.clearColor;
+    glowView.clipsToBounds = NO;
+    glowView.layer.masksToBounds = NO;
+    glowView.layer.shadowOffset = CGSizeZero;
+    return glowView;
+}
+
+- (void)pp_insertPremiumBackgroundGlowView:(UIView *)glowView
+{
+    if (!glowView || glowView.superview == self.view) {
         return;
     }
 
-    UIView *canvas = [[UIView alloc] init];
-    canvas.translatesAutoresizingMaskIntoConstraints = NO;
-    canvas.backgroundColor = UIColor.clearColor;
-    canvas.userInteractionEnabled = NO;
-    canvas.clipsToBounds = YES;
-    [self.view insertSubview:canvas atIndex:0];
-    [NSLayoutConstraint activateConstraints:@[
-        [canvas.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [canvas.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [canvas.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [canvas.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-    ]];
-    self.pp_backgroundCanvasView = canvas;
-
-    CAGradientLayer *gradient = [CAGradientLayer layer];
-    gradient.startPoint = CGPointMake(0.08, 0.0);
-    gradient.endPoint = CGPointMake(0.92, 1.0);
-    gradient.locations = @[@0.0, @0.34, @0.72, @1.0];
-    gradient.needsDisplayOnBoundsChange = YES;
-    gradient.opacity = 0.0;
-
-    [canvas.layer addSublayer:gradient];
-    self.pp_backgroundGradientLayer = gradient;
-
-   
-    CAGradientLayer *topGlow = [CAGradientLayer layer];
-    topGlow.type = kCAGradientLayerRadial;
-    topGlow.startPoint = CGPointMake(0.5, 0.5);
-    topGlow.endPoint = CGPointMake(1.0, 1.0);
-    topGlow.locations = @[@0.0, @0.30, @1.0];
-    topGlow.opacity = 0.0;
-    topGlow.needsDisplayOnBoundsChange = YES;
-    [canvas.layer addSublayer:topGlow];
-    self.pp_backgroundTopGlowLayer = topGlow;
-    self.pp_backgroundTopGlowLayer.opacity = 0.5;
-    CAGradientLayer *accentGlow = [CAGradientLayer layer];
-    accentGlow.type = kCAGradientLayerRadial;
-    accentGlow.startPoint = CGPointMake(0.5, 0.5);
-    accentGlow.endPoint = CGPointMake(1.0, 1.0);
-    accentGlow.locations = @[@0.0, @0.36, @1.0];
-    accentGlow.needsDisplayOnBoundsChange = YES;
-    accentGlow.opacity = 0.0;
-    [canvas.layer addSublayer:accentGlow];
-    self.pp_backgroundAccentGlowLayer = accentGlow;
-    self.pp_backgroundAccentGlowLayer.opacity = 0.1;
-
-    CAGradientLayer *bottomGlow = [CAGradientLayer layer];
-    bottomGlow.type = kCAGradientLayerRadial;
-    bottomGlow.startPoint = CGPointMake(0.5, 0.5);
-    bottomGlow.endPoint = CGPointMake(1.0, 1.0);
-    bottomGlow.locations = @[@0.0, @0.42, @1.0];
-    bottomGlow.opacity = 0.0;
-    bottomGlow.needsDisplayOnBoundsChange = YES;
-    [canvas.layer addSublayer:bottomGlow];
-    self.pp_backgroundBottomGlowLayer = bottomGlow;
-    self.pp_backgroundBottomGlowLayer.opacity = 0.1;
-
-    CAGradientLayer *shineLayer = [CAGradientLayer layer];
-    shineLayer.startPoint = CGPointMake(0.0, 0.08);
-    shineLayer.endPoint = CGPointMake(1.0, 0.92);
-    shineLayer.locations = @[@0.0, @0.40, @0.64, @1.0];
-    shineLayer.needsDisplayOnBoundsChange = YES;
-    shineLayer.opacity = 0.0;
-    [canvas.layer addSublayer:shineLayer];
-    self.pp_backgroundShineLayer = shineLayer;
- 
-    [self pp_layoutBackgroundLayers];
-    [self pp_updateBackgroundGradientColors];
+    if (self.collectionView.superview == self.view) {
+        [self.view insertSubview:glowView belowSubview:self.collectionView];
+    } else {
+        [self.view addSubview:glowView];
+    }
 }
 
-- (void)pp_updateBackgroundGradientColors
+- (void)pp_installPremiumBackgroundGlowViewsIfNeeded
 {
-    if (!self.pp_backgroundCanvasView && !self.pp_backgroundGradientLayer) return;
+    if (!self.pp_premiumBackgroundGlowViewTop) {
+        self.pp_premiumBackgroundGlowViewTop = [self pp_makePremiumBackgroundGlowView];
+    }
+    if (!self.pp_premiumBackgroundGlowViewMid) {
+        self.pp_premiumBackgroundGlowViewMid = [self pp_makePremiumBackgroundGlowView];
+    }
+    if (!self.pp_premiumBackgroundGlowViewBottom) {
+        self.pp_premiumBackgroundGlowViewBottom = [self pp_makePremiumBackgroundGlowView];
+    }
 
-    BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    UIColor *surfaceColor =   UIColor.secondarySystemBackgroundColor;
-    UIColor *ambientColor =   UIColor.systemBackgroundColor;
-    UIColor *primaryColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *secondaryGlowColor = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:0.92];
-    UIColor *highlightColor = [UIColor colorWithWhite:1.0 alpha:1.0];
+    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewTop];
+    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewMid];
+    [self pp_insertPremiumBackgroundGlowView:self.pp_premiumBackgroundGlowViewBottom];
 
-    UIColor *tintTop = [surfaceColor colorWithAlphaComponent:1.0];
-    UIColor *tintUpperMid = [surfaceColor colorWithAlphaComponent:isDark ? 0.98 : 0.99];
-    UIColor *tintLowerMid = [ambientColor colorWithAlphaComponent:1.0];
-    UIColor *tintBottom = [ambientColor colorWithAlphaComponent:1.0];
-
-    UIColor *topGlowStart = [primaryColor colorWithAlphaComponent:isDark ? 0.24 : 0.15];
-    UIColor *topGlowMid = [primaryColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
-    UIColor *accentGlowStart = [secondaryGlowColor colorWithAlphaComponent:isDark ? 0.24 : 0.16];
-    UIColor *accentGlowMid = [secondaryGlowColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
-    UIColor *bottomGlowStart = [surfaceColor colorWithAlphaComponent:isDark ? 0.18 : 0.14];
-    UIColor *bottomGlowMid = [surfaceColor colorWithAlphaComponent:isDark ? 0.08 : 0.04];
-    UIColor *shinePeak = [highlightColor colorWithAlphaComponent:isDark ? 0.10 : 0.24];
-    UIColor *shineTail = [highlightColor colorWithAlphaComponent:isDark ? 0.02 : 0.06];
-
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.pp_backgroundGradientLayer.colors = @[
-        (id)tintTop.CGColor,
-        (id)tintUpperMid.CGColor,
-        (id)tintLowerMid.CGColor,
-        (id)tintBottom.CGColor
-    ];
-    self.pp_backgroundGradientLayer.locations = @[@0.0, @0.36, @0.76, @1.0];
-    self.pp_backgroundTopGlowLayer.colors = @[(id)topGlowStart.CGColor, (id)topGlowMid.CGColor, (id)UIColor.clearColor.CGColor];
-    self.pp_backgroundAccentGlowLayer.colors = @[(id)accentGlowStart.CGColor, (id)accentGlowMid.CGColor, (id)UIColor.clearColor.CGColor];
-    self.pp_backgroundBottomGlowLayer.colors = @[(id)bottomGlowStart.CGColor, (id)bottomGlowMid.CGColor, (id)UIColor.clearColor.CGColor];
-    self.pp_backgroundShineLayer.colors = @[(id)UIColor.clearColor.CGColor, (id)shinePeak.CGColor, (id)shineTail.CGColor, (id)UIColor.clearColor.CGColor];
-    [CATransaction commit];
-
-    self.view.backgroundColor = surfaceColor;
-    self.pp_backgroundPatternView.tintColor = primaryColor;
-    self.pp_backgroundPatternView.alpha = isDark ? 0.045 : 0.022;
-
-    self.pp_backgroundGlowViewTop.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.22 : 0.12];
-    [self.pp_backgroundGlowViewTop pp_setShadowColor:primaryColor];
-    self.pp_backgroundGlowViewTop.layer.shadowOpacity = isDark ? 0.16f : 0.11f;
-    self.pp_backgroundGlowViewTop.layer.shadowRadius = 66.0f;
-    self.pp_backgroundGlowViewTop.layer.shadowOffset = CGSizeZero;
-
-    self.pp_backgroundGlowViewBottom.backgroundColor = [secondaryGlowColor colorWithAlphaComponent:isDark ? 0.18 : 0.10];
-    [self.pp_backgroundGlowViewBottom pp_setShadowColor:secondaryGlowColor];
-    self.pp_backgroundGlowViewBottom.layer.shadowOpacity = isDark ? 0.14f : 0.10f;
-    self.pp_backgroundGlowViewBottom.layer.shadowRadius = 58.0f;
-    self.pp_backgroundGlowViewBottom.layer.shadowOffset = CGSizeZero;
-
-    [self pp_updateMidLayerGlowColors];
+    if (self.collectionView.superview == self.view) {
+        [self.view insertSubview:self.pp_premiumBackgroundGlowViewTop belowSubview:self.collectionView];
+        [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];
+        [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
+    }
 }
 
-- (void)pp_layoutBackgroundLayers
+- (void)pp_applyPremiumGlowView:(UIView *)glowView
+                          color:(UIColor *)color
+                   surfaceAlpha:(CGFloat)surfaceAlpha
+                  shadowOpacity:(CGFloat)shadowOpacity
+                   shadowRadius:(CGFloat)shadowRadius
 {
-    if (!self.pp_backgroundCanvasView) {
+    if (!glowView || !color) {
         return;
     }
 
-    CGRect bounds = self.pp_backgroundCanvasView.bounds;
+    glowView.alpha = 1.0;
+    glowView.backgroundColor = [color colorWithAlphaComponent:surfaceAlpha];
+    glowView.layer.shadowColor = color.CGColor;
+    glowView.layer.shadowOpacity = shadowOpacity;
+    glowView.layer.shadowRadius = shadowRadius;
+}
+
+- (void)pp_updatePremiumBackgroundGlowAppearance
+{
+    BOOL isDark = NO;
+    if (@available(iOS 12.0, *)) {
+        isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    }
+
+    UIColor *primaryColor = [GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *secondaryColor = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:1.0];
+    UIColor *ambientColor = isDark ? UIColor.whiteColor : UIColor.blackColor;
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
+                            color:primaryColor
+                     surfaceAlpha:isDark ? 0.13 : 0.075
+                    shadowOpacity:isDark ? 0.16f : 0.10f
+                     shadowRadius:isDark ? 82.0 : 74.0];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewMid
+                            color:secondaryColor
+                     surfaceAlpha:isDark ? 0.10 : 0.055
+                    shadowOpacity:isDark ? 0.12f : 0.075f
+                     shadowRadius:isDark ? 72.0 : 64.0];
+
+    [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
+                            color:ambientColor
+                     surfaceAlpha:isDark ? 0.05 : 0.025
+                    shadowOpacity:isDark ? 0.08f : 0.045f
+                     shadowRadius:isDark ? 62.0 : 54.0];
+}
+
+- (void)pp_layoutPremiumBackgroundGlowViews
+{
+    CGRect bounds = self.view.bounds;
     if (CGRectIsEmpty(bounds)) {
         return;
     }
 
     CGFloat width = CGRectGetWidth(bounds);
     CGFloat height = CGRectGetHeight(bounds);
+    CGFloat safeTop = self.view.safeAreaInsets.top;
 
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-    self.pp_backgroundGradientLayer.frame = bounds;
-    self.pp_backgroundTopGlowLayer.frame =
-        CGRectMake(-width * 0.18, -height * 0.10, width * 1.18, MAX(height * 0.62, width * 0.92));
-    self.pp_backgroundAccentGlowLayer.frame =
-        CGRectMake(width * 0.48, height * 0.10, width * 0.62, width * 0.62);
-    self.pp_backgroundBottomGlowLayer.frame =
-        CGRectMake(-width * 0.12, height * 0.56, width * 0.94, height * 0.46);
-    self.pp_backgroundShineLayer.frame = bounds;
-    [CATransaction commit];
-}
+    CGFloat topSize = MIN(360.0, MAX(248.0, width * 0.74));
+    CGFloat midSize = MIN(300.0, MAX(210.0, width * 0.58));
+    CGFloat bottomSize = MIN(340.0, MAX(220.0, width * 0.66));
 
-- (void)pp_startBackgroundAnimationsIfNeeded
-{
-    if (self.pp_backgroundAnimationsConfigured || UIAccessibilityIsReduceMotionEnabled()) {
-        return;
+    self.pp_premiumBackgroundGlowViewTop.frame =
+        CGRectMake(width - (topSize * 0.62),
+                   safeTop - (topSize * 0.72),
+                   topSize,
+                   topSize);
+
+    self.pp_premiumBackgroundGlowViewMid.frame =
+        CGRectMake(-(midSize * 0.46),
+                   MAX(168.0, height * 0.30),
+                   midSize,
+                   midSize);
+
+    self.pp_premiumBackgroundGlowViewBottom.frame =
+        CGRectMake(width - (bottomSize * 0.56),
+                   height - (bottomSize * 0.62),
+                   bottomSize,
+                   bottomSize);
+
+    NSArray<UIView *> *glowViews = @[
+        self.pp_premiumBackgroundGlowViewTop,
+        self.pp_premiumBackgroundGlowViewMid,
+        self.pp_premiumBackgroundGlowViewBottom
+    ];
+
+    for (UIView *glowView in glowViews) {
+        CGFloat radius = CGRectGetWidth(glowView.bounds) * 0.5;
+        glowView.layer.cornerRadius = radius;
+        glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
     }
 
-    CABasicAnimation *topOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    topOpacity.fromValue = @0.78;
-    topOpacity.toValue = @1.0;
-    topOpacity.duration = 8.0;
-    topOpacity.autoreverses = YES;
-    topOpacity.repeatCount = HUGE_VALF;
-    topOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.pp_backgroundTopGlowLayer addAnimation:topOpacity forKey:@"pp.background.top.opacity"];
-
-    CABasicAnimation *topScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    topScale.fromValue = @1.0;
-    topScale.toValue = @1.08;
-    topScale.duration = 14.0;
-    topScale.autoreverses = YES;
-    topScale.repeatCount = HUGE_VALF;
-    topScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.pp_backgroundTopGlowLayer addAnimation:topScale forKey:@"pp.background.top.scale"];
-
-    CABasicAnimation *accentDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    accentDrift.fromValue = @0.0;
-    accentDrift.toValue = @(-24.0);
-    accentDrift.duration = 16.0;
-    accentDrift.autoreverses = YES;
-    accentDrift.repeatCount = HUGE_VALF;
-    accentDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.pp_backgroundAccentGlowLayer addAnimation:accentDrift forKey:@"pp.background.accent.drift"];
-
-    CABasicAnimation *accentScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    accentScale.fromValue = @1.0;
-    accentScale.toValue = @1.10;
-    accentScale.duration = 18.0;
-    accentScale.autoreverses = YES;
-    accentScale.repeatCount = HUGE_VALF;
-    accentScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.pp_backgroundAccentGlowLayer addAnimation:accentScale forKey:@"pp.background.accent.scale"];
-
-    CABasicAnimation *bottomDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-    bottomDrift.fromValue = @0.0;
-    bottomDrift.toValue = @22.0;
-    bottomDrift.duration = 15.0;
-    bottomDrift.autoreverses = YES;
-    bottomDrift.repeatCount = HUGE_VALF;
-    bottomDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.pp_backgroundBottomGlowLayer addAnimation:bottomDrift forKey:@"pp.background.bottom.drift"];
-
-    if (self.pp_backgroundPatternView && ![self.pp_backgroundPatternView.layer animationForKey:@"pp.background.pattern.opacity"]) {
-        CABasicAnimation *patternOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        patternOpacity.fromValue = @(self.pp_backgroundPatternView.alpha * 0.78);
-        patternOpacity.toValue = @(self.pp_backgroundPatternView.alpha * 1.18);
-        patternOpacity.duration = 7.4;
-        patternOpacity.autoreverses = YES;
-        patternOpacity.repeatCount = HUGE_VALF;
-        patternOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.pp_backgroundPatternView.layer addAnimation:patternOpacity forKey:@"pp.background.pattern.opacity"];
+    if (self.collectionView.superview == self.view) {
+        [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
+        [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];
+        [self.view insertSubview:self.pp_premiumBackgroundGlowViewTop belowSubview:self.collectionView];
     }
-
-    if (self.pp_backgroundGlowViewTop && ![self.pp_backgroundGlowViewTop.layer animationForKey:@"pp.background.orb.top.drift"]) {
-        CABasicAnimation *topDriftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-        topDriftX.fromValue = @(-10.0);
-        topDriftX.toValue = @(12.0);
-        topDriftX.duration = 6.8;
-        topDriftX.autoreverses = YES;
-        topDriftX.repeatCount = HUGE_VALF;
-        topDriftX.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.pp_backgroundGlowViewTop.layer addAnimation:topDriftX forKey:@"pp.background.orb.top.drift"];
-    }
-
-    if (self.pp_backgroundGlowViewBottom && ![self.pp_backgroundGlowViewBottom.layer animationForKey:@"pp.background.orb.bottom.drift"]) {
-        CABasicAnimation *bottomDriftX = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-        bottomDriftX.fromValue = @(10.0);
-        bottomDriftX.toValue = @(-14.0);
-        bottomDriftX.duration = 7.6;
-        bottomDriftX.autoreverses = YES;
-        bottomDriftX.repeatCount = HUGE_VALF;
-        bottomDriftX.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.pp_backgroundGlowViewBottom.layer addAnimation:bottomDriftX forKey:@"pp.background.orb.bottom.drift"];
-    }
-
-    // ── Mid-layer glow drift animations ──
-    if (self.pp_midGlowA && ![self.pp_midGlowA.layer animationForKey:@"pp.mid.glowA.drift"]) {
-        CABasicAnimation *driftA = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-        driftA.fromValue = @(-8.0);
-        driftA.toValue = @(10.0);
-        driftA.duration = 9.2;
-        driftA.autoreverses = YES;
-        driftA.repeatCount = HUGE_VALF;
-        driftA.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.pp_midGlowA.layer addAnimation:driftA forKey:@"pp.mid.glowA.drift"];
-    }
-    if (self.pp_midGlowB && ![self.pp_midGlowB.layer animationForKey:@"pp.mid.glowB.drift"]) {
-        CABasicAnimation *driftB = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-        driftB.fromValue = @(12.0);
-        driftB.toValue = @(-10.0);
-        driftB.duration = 8.4;
-        driftB.autoreverses = YES;
-        driftB.repeatCount = HUGE_VALF;
-        driftB.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.pp_midGlowB.layer addAnimation:driftB forKey:@"pp.mid.glowB.drift"];
-    }
-    if (self.pp_midGlowC && ![self.pp_midGlowC.layer animationForKey:@"pp.mid.glowC.drift"]) {
-        CABasicAnimation *driftC = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-        driftC.fromValue = @(6.0);
-        driftC.toValue = @(-12.0);
-        driftC.duration = 10.6;
-        driftC.autoreverses = YES;
-        driftC.repeatCount = HUGE_VALF;
-        driftC.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.pp_midGlowC.layer addAnimation:driftC forKey:@"pp.mid.glowC.drift"];
-    }
-
-    self.pp_backgroundAnimationsConfigured = YES;
-}
-
-- (void)pp_stopBackgroundAnimations
-{
-    [self.pp_backgroundTopGlowLayer removeAnimationForKey:@"pp.background.top.opacity"];
-    [self.pp_backgroundTopGlowLayer removeAnimationForKey:@"pp.background.top.scale"];
-    [self.pp_backgroundAccentGlowLayer removeAnimationForKey:@"pp.background.accent.drift"];
-    [self.pp_backgroundAccentGlowLayer removeAnimationForKey:@"pp.background.accent.scale"];
-    [self.pp_backgroundBottomGlowLayer removeAnimationForKey:@"pp.background.bottom.drift"];
-    [self.pp_backgroundPatternView.layer removeAnimationForKey:@"pp.background.pattern.opacity"];
-    [self.pp_backgroundGlowViewTop.layer removeAnimationForKey:@"pp.background.orb.top.drift"];
-    [self.pp_backgroundGlowViewBottom.layer removeAnimationForKey:@"pp.background.orb.bottom.drift"];
-    [self.pp_midGlowA.layer removeAnimationForKey:@"pp.mid.glowA.drift"];
-    [self.pp_midGlowB.layer removeAnimationForKey:@"pp.mid.glowB.drift"];
-    [self.pp_midGlowC.layer removeAnimationForKey:@"pp.mid.glowC.drift"];
-    self.pp_backgroundAnimationsConfigured = NO;
-}
-
-#pragma mark - Background Glow Orbs (ProfileVC-style)
-
-- (void)pp_setupBackgroundGlowOrbs
-{
-    if (self.pp_backgroundGlowViewTop || self.pp_backgroundGlowViewBottom) {
-        return;
-    }
-
-    UIView *hostView = self.pp_backgroundCanvasView ?: self.view;
-    UIView *topGlow = [[UIView alloc] init];
-    topGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    topGlow.userInteractionEnabled = NO;
-    UIView *bottomGlow = [[UIView alloc] init];
-    bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
-    bottomGlow.userInteractionEnabled = NO;
-    [hostView addSubview:topGlow];
-    [hostView addSubview:bottomGlow];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [topGlow.widthAnchor constraintEqualToConstant:308.0],
-        [topGlow.heightAnchor constraintEqualToConstant:308.0],
-        [topGlow.centerXAnchor constraintEqualToAnchor:hostView.centerXAnchor constant:136.0],
-        [topGlow.topAnchor constraintEqualToAnchor:hostView.topAnchor constant:-124.0],
-
-        [bottomGlow.widthAnchor constraintEqualToConstant:256.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:256.0],
-        [bottomGlow.centerXAnchor constraintEqualToAnchor:hostView.centerXAnchor constant:-152.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor constant:132.0]
-    ]];
-
-    self.pp_backgroundGlowViewTop = topGlow;
-    self.pp_backgroundGlowViewBottom = bottomGlow;
-    [self pp_updateBackgroundGradientColors];
-}
-
-- (void)pp_layoutBackgroundGlowOrbs
-{
-    if (!self.pp_backgroundGlowViewTop) return;
-    self.pp_backgroundGlowViewTop.layer.cornerRadius =
-        CGRectGetWidth(self.pp_backgroundGlowViewTop.bounds) * 0.5;
-    self.pp_backgroundGlowViewBottom.layer.cornerRadius =
-        CGRectGetWidth(self.pp_backgroundGlowViewBottom.bounds) * 0.5;
-    UIView *hostView = self.pp_backgroundCanvasView ?: self.view;
-    [hostView sendSubviewToBack:self.pp_backgroundGlowViewBottom];
-    [hostView sendSubviewToBack:self.pp_backgroundGlowViewTop];
-    if (self.pp_backgroundCanvasView && self.pp_backgroundPatternView) {
-        [self.pp_backgroundCanvasView bringSubviewToFront:self.pp_backgroundPatternView];
-    }
-}
-
-#pragma mark - Mid-Layer Glow Orbs (between background & collectionView)
-
-- (void)pp_setupMidLayerGlows
-{
-    if (self.pp_midGlowA) return;
-    if (!self.collectionView) return;
-
-    UIView *(^makeOrb)(void) = ^{
-        UIView *orb = [[UIView alloc] init];
-        orb.translatesAutoresizingMaskIntoConstraints = NO;
-        orb.userInteractionEnabled = NO;
-        orb.clipsToBounds = YES;
-        return orb;
-    };
-
-    UIView *glowA = makeOrb();
-    UIView *glowB = makeOrb();
-    UIView *glowC = makeOrb();
-
-    [self.view insertSubview:glowA belowSubview:self.collectionView];
-    [self.view insertSubview:glowB belowSubview:self.collectionView];
-    [self.view insertSubview:glowC belowSubview:self.collectionView];
-
-    // A — large warm orb, upper-trailing area
-    [NSLayoutConstraint activateConstraints:@[
-        [glowA.widthAnchor constraintEqualToConstant:260.0],
-        [glowA.heightAnchor constraintEqualToConstant:260.0],
-        [glowA.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:40.0],
-        [glowA.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:180.0]
-    ]];
-
-    // B — medium cool orb, center-leading, below mid
-    [NSLayoutConstraint activateConstraints:@[
-        [glowB.widthAnchor constraintEqualToConstant:220.0],
-        [glowB.heightAnchor constraintEqualToConstant:220.0],
-        [glowB.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-50.0],
-        [glowB.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:80.0]
-    ]];
-
-    // C — small accent orb, center-bottom area
-    [NSLayoutConstraint activateConstraints:@[
-        [glowC.widthAnchor constraintEqualToConstant:170.0],
-        [glowC.heightAnchor constraintEqualToConstant:170.0],
-        [glowC.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor constant:60.0],
-        [glowC.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:20.0]
-    ]];
-
-    self.pp_midGlowA = glowA;
-    self.pp_midGlowB = glowB;
-    self.pp_midGlowC = glowC;
-
-    [self pp_updateMidLayerGlowColors];
-}
-
-- (void)pp_layoutMidLayerGlows
-{
-    if (!self.pp_midGlowA) return;
-    self.pp_midGlowA.layer.cornerRadius = CGRectGetWidth(self.pp_midGlowA.bounds) * 0.5;
-    self.pp_midGlowB.layer.cornerRadius = CGRectGetWidth(self.pp_midGlowB.bounds) * 0.5;
-    self.pp_midGlowC.layer.cornerRadius = CGRectGetWidth(self.pp_midGlowC.bounds) * 0.5;
-}
-
-- (void)pp_updateMidLayerGlowColors
-{
-    if (!self.pp_midGlowA) return;
-
-    BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
-    UIColor *primaryColor = AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *shinerColor  = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:0.92];
-
-    // Orb A — warm tint derived from primary (30% overall alpha)
-    self.pp_midGlowA.alpha = 0.2;
-    self.pp_midGlowA.backgroundColor = [primaryColor colorWithAlphaComponent:isDark ? 0.14 : 0.07];
-    [self.pp_midGlowA pp_setShadowColor:primaryColor];
-    self.pp_midGlowA.layer.shadowOpacity = isDark ? 0.12f : 0.08f;
-    self.pp_midGlowA.layer.shadowRadius = 72.0f;
-    self.pp_midGlowA.layer.shadowOffset = CGSizeZero;
-
-    // Orb B — cool tint from shiner (30% overall alpha)
-    self.pp_midGlowB.alpha = 0.3;
-    self.pp_midGlowB.backgroundColor = [shinerColor colorWithAlphaComponent:isDark ? 0.12 : 0.06];
-    [self.pp_midGlowB pp_setShadowColor:shinerColor];
-    self.pp_midGlowB.layer.shadowOpacity = isDark ? 0.10f : 0.07f;
-    self.pp_midGlowB.layer.shadowRadius = 62.0f;
-    self.pp_midGlowB.layer.shadowOffset = CGSizeZero;
-
-    // Orb C — subtle accent blend (30% overall alpha)
-    self.pp_midGlowC.alpha = 0.3;
-    UIColor *blendColor = [UIColor colorWithRed:0.42 green:0.36 blue:0.88 alpha:1.0]; // soft violet
-    self.pp_midGlowC.backgroundColor = [blendColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
-    [self.pp_midGlowC pp_setShadowColor:blendColor];
-    self.pp_midGlowC.layer.shadowOpacity = isDark ? 0.09f : 0.06f;
-    self.pp_midGlowC.layer.shadowRadius = 54.0f;
-    self.pp_midGlowC.layer.shadowOffset = CGSizeZero;
 }
 
 - (void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
-    if (self.pp_backgroundCanvasView &&
-        !CGRectEqualToRect(self.pp_backgroundCanvasView.bounds, CGRectZero)) {
-        [self pp_layoutBackgroundLayers];
-    }
-
-    [self pp_layoutBackgroundGlowOrbs];
-    [self pp_layoutMidLayerGlows];
+    [self pp_applyOrderDetailsBackgroundAppearance];
+    [self pp_layoutPremiumBackgroundGlowViews];
 
     if (self.homeSmartSearchView) {
         CGRect frame = self.homeSmartSearchView.frame;
@@ -8818,7 +8683,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 -(void)viewWillLayoutSubviews
 {
     [super viewWillLayoutSubviews];
-    
+
     [self pp_applyCurrentLanguageDirectionToHomeUI];
  }
 

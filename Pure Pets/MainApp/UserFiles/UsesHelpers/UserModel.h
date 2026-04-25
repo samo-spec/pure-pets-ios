@@ -80,9 +80,24 @@ typedef NS_ENUM(NSInteger, OnlineStatus) {
 @property (nonatomic, assign) BOOL canPostAdoptionFeature;
 @property (nonatomic, assign) BOOL canSellAccessoriesFeature;
 @property (nonatomic, assign) BOOL canOfferServicesFeature;
+@property (nonatomic, assign) BOOL canDeliveryFeature;
+@property (nonatomic, assign) BOOL canPharmacyFeature;
+@property (nonatomic, assign) BOOL canVetFeature;
 @property (nonatomic, assign) BOOL canUseStoriesFeature;
 @property (nonatomic, assign) BOOL canUseChatFeature;
 @property (nonatomic, assign) BOOL canAccessPremiumMarketplaceFeature;
+
+/// Partner onboarding + workspace access
+@property (nonatomic, assign) BOOL partnerOnboardingVisible;
+@property (nonatomic, copy) NSString *partnerApplicationStatus;   // "not_started" | "in_progress" | "submitted" | "approved" | "rejected"
+@property (nonatomic, copy, nullable) NSString *selectedPartnerType; // "delivery" | "service_provider" | "vet"
+@property (nonatomic, assign) BOOL canAccessPartnerAppPermission;
+@property (nonatomic, assign) BOOL canManageDeliveryPermission;
+@property (nonatomic, assign) BOOL canManageServiceProviderPermission;
+@property (nonatomic, assign) BOOL canManageVetPermission;
+@property (nonatomic, assign) BOOL canPostVetProfilePermission;
+@property (nonatomic, assign) BOOL canEditVetInfoPermission;
+@property (nonatomic, assign) BOOL canManagePetMedicinesPermission;
 
 /// Subscription info
 @property (nonatomic, copy) NSString *subscriptionPlan;    // "free" | "pro" | "business" | "production" | "service_provider"

@@ -11,18 +11,18 @@
 #import <SDWebImage/SDWebImage.h>
 
 static NSString * const kPPHomePromoCarouselPageCellReuseID = @"PPHomePromoCarouselPageCell";
-static const CGFloat kPPHomeBannerSectionHeight = 168.0;
-static const CGFloat kPPHomeBannerSectionTopInset = 4.0;
+static const CGFloat kPPHomeBannerSectionHeight = 188.0;
+static const CGFloat kPPHomeBannerSectionTopInset = 2.0;
 static const CGFloat kPPHomeBannerSectionHorizontalInset = 16.0;
-static const CGFloat kPPHomeBannerSectionBottomInset = 12.0;
-static const CGFloat kPPHomeBannerCellVerticalPadding = 4.0;
-static const CGFloat kPPHomePromoCarouselCardWidthFraction = 0.88;
-static const CGFloat kPPHomePromoCarouselLineSpacing = 12.0;
+static const CGFloat kPPHomeBannerSectionBottomInset = 14.0;
+static const CGFloat kPPHomeBannerCellVerticalPadding = 2.0;
+static const CGFloat kPPHomePromoCarouselCardWidthFraction = 0.905;
+static const CGFloat kPPHomePromoCarouselLineSpacing = 10.0;
 static const CGFloat kPPHomePromoCarouselPageControlBottomInset = 10.0;
 static const CGFloat kPPHomePromoCarouselPageControlHeight = 20.0;
 static const CGFloat kPPHomePromoCarouselViewportEpsilon = 1.0;
-static const CGFloat kPPHomePromoCarouselMinScale = 0.96;
-static const CGFloat kPPHomePromoCarouselMaxTranslateY = 4.0;
+static const CGFloat kPPHomePromoCarouselMinScale = 0.965;
+static const CGFloat kPPHomePromoCarouselMaxTranslateY = 3.0;
 
 static UIColor *PPPromoColorFromHex(NSString *hexString, UIColor *fallback)
 {
@@ -143,6 +143,8 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 @property (nonatomic, strong) UIImageView *backgroundImageView;
 @property (nonatomic, strong) UIView *backgroundTintView;
 @property (nonatomic, strong) UIView *contentPanelView;
+@property (nonatomic, strong) UIVisualEffectView *contentBlurView;
+@property (nonatomic, strong) UIView *contentTintView;
 @property (nonatomic, strong) UIImageView *characterImageView;
 @property (nonatomic, strong) UIView *characterGlowView;
 @property (nonatomic, strong) UIStackView *contentStack;
@@ -234,14 +236,14 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _shadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _shadowContainer.backgroundColor = UIColor.clearColor;
     [_shadowContainer pp_setShadowColor:[UIColor colorWithWhite:0 alpha:1]];
-    _shadowContainer.layer.shadowOpacity = 0.08;
-    _shadowContainer.layer.shadowRadius = 18.0;
-    _shadowContainer.layer.shadowOffset = CGSizeMake(0, 10);
+    _shadowContainer.layer.shadowOpacity = 0.10;
+    _shadowContainer.layer.shadowRadius = 22.0;
+    _shadowContainer.layer.shadowOffset = CGSizeMake(0, 12);
     [self.contentView addSubview:_shadowContainer];
 
     _cardSurface = [UIView new];
     _cardSurface.translatesAutoresizingMaskIntoConstraints = NO;
-    _cardSurface.layer.cornerRadius = 26.0;
+    _cardSurface.layer.cornerRadius = 30.0;
     _cardSurface.layer.masksToBounds = YES;
     _cardSurface.backgroundColor = UIColor.systemOrangeColor;
     if (@available(iOS 13.0, *)) {
@@ -291,7 +293,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _backgroundImageView = [UIImageView new];
     _backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
     _backgroundImageView.contentMode = UIViewContentModeScaleAspectFill;
-    _backgroundImageView.alpha = 0.18;
+    _backgroundImageView.alpha = 0.22;
     _backgroundImageView.clipsToBounds = YES;
     [_cardSurface addSubview:_backgroundImageView];
 
@@ -302,15 +304,30 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _contentPanelView = [UIView new];
     _contentPanelView.translatesAutoresizingMaskIntoConstraints = NO;
-    _contentPanelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
-    _contentPanelView.layer.cornerRadius = PPCornerMedium;
-    _contentPanelView.layer.borderWidth = 1.0;
-    [_contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
+    _contentPanelView.backgroundColor = UIColor.clearColor;
+    _contentPanelView.layer.cornerRadius = 22.0;
+    _contentPanelView.layer.borderWidth = 0.8;
+    [_contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
     _contentPanelView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         _contentPanelView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [_cardSurface addSubview:_contentPanelView];
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleLight;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = UIBlurEffectStyleSystemUltraThinMaterialDark;
+    }
+    _contentBlurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    _contentBlurView.translatesAutoresizingMaskIntoConstraints = NO;
+    _contentBlurView.userInteractionEnabled = NO;
+    [_contentPanelView addSubview:_contentBlurView];
+
+    _contentTintView = [UIView new];
+    _contentTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    _contentTintView.userInteractionEnabled = NO;
+    _contentTintView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.10];
+    [_contentPanelView addSubview:_contentTintView];
 
     UIButton *panelTapButton = [UIButton buttonWithType:UIButtonTypeCustom];
     panelTapButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -321,7 +338,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _contentStack = [[UIStackView alloc] init];
     _contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     _contentStack.axis = UILayoutConstraintAxisVertical;
-    _contentStack.spacing = 8.0;
+    _contentStack.spacing = 7.0;
     _contentStack.alignment = UIStackViewAlignmentFill;
     [_contentPanelView addSubview:_contentStack];
 
@@ -343,7 +360,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _badgeLabel.hidden = YES;
     _titleLabel = [UILabel new];
     _titleLabel.numberOfLines = 2;
-    _titleLabel.font = [GM boldFontWithSize:19];
+    _titleLabel.font = [GM boldFontWithSize:20.0];
     _titleLabel.textColor = UIColor.whiteColor;
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
@@ -352,7 +369,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _subtitleLabel = [UILabel new];
     _subtitleLabel.numberOfLines = 2;
-    _subtitleLabel.font = [GM MidFontWithSize:13.0];
+    _subtitleLabel.font = [GM MidFontWithSize:13.5];
     _subtitleLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
     _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -373,28 +390,28 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
     _primaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _primaryButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _primaryButton.titleLabel.font = [GM boldFontWithSize:13]; // 🎯 Slightly smaller font
+    _primaryButton.titleLabel.font = [GM boldFontWithSize:13.0];
     [_primaryButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_primaryButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_primaryButton addTarget:self action:@selector(primaryButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [_buttonsRow addArrangedSubview:_primaryButton];
-    [_primaryButton.heightAnchor constraintEqualToConstant:34.0].active = YES; // 🎯 Decreased size
+    [_primaryButton.heightAnchor constraintEqualToConstant:36.0].active = YES;
     [_primaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:44.0].active = YES;
 
     _secondaryButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _secondaryButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _secondaryButton.titleLabel.font = [GM MidFontWithSize:12]; // 🎯 Slightly smaller font
+    _secondaryButton.titleLabel.font = [GM MidFontWithSize:12.5];
     [_secondaryButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_secondaryButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [_secondaryButton addTarget:self action:@selector(secondaryButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
     [_buttonsRow addArrangedSubview:_secondaryButton];
-    [_secondaryButton.heightAnchor constraintEqualToConstant:34.0].active = YES; // 🎯 Decreased size
+    [_secondaryButton.heightAnchor constraintEqualToConstant:36.0].active = YES;
     [_secondaryButton.widthAnchor constraintGreaterThanOrEqualToConstant:44.0].active = YES;
 
     _characterGlowView = [UIView new];
     _characterGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     _characterGlowView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.09];
-    _characterGlowView.layer.cornerRadius = 56.0;
+    _characterGlowView.layer.cornerRadius = 54.0;
     _characterGlowView.layer.borderWidth = 1.0;
     [_characterGlowView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
     _characterGlowView.layer.masksToBounds = YES;
@@ -406,8 +423,6 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _characterImageView.contentMode = UIViewContentModeScaleAspectFit;
     _characterImageView.clipsToBounds = YES;
     [_cardSurface addSubview:_characterImageView];
-
-     
 
     _contentLeadingLTRConstraint = [self.contentPanelView.leadingAnchor constraintEqualToAnchor:_characterGlowView.trailingAnchor constant:12.0];
     _contentTrailingRTLConstraint = [self.contentPanelView.trailingAnchor constraintEqualToAnchor:_cardSurface.trailingAnchor constant:-12.0];
@@ -437,21 +452,31 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [_backgroundTintView.topAnchor constraintEqualToAnchor:_cardSurface.topAnchor],
         [_backgroundTintView.bottomAnchor constraintEqualToAnchor:_cardSurface.bottomAnchor],
 
-       
+
 
         [_contentPanelView.topAnchor constraintEqualToAnchor:_cardSurface.topAnchor constant:12.0],
         [_contentPanelView.bottomAnchor constraintLessThanOrEqualToAnchor:_cardSurface.bottomAnchor constant:-12.0],
         // [_contentPanelView.widthAnchor constraintLessThanOrEqualToAnchor:_cardSurface.widthAnchor multiplier:0.82], // Removed to allow leading/trailing to define width
+
+        [_contentBlurView.leadingAnchor constraintEqualToAnchor:_contentPanelView.leadingAnchor],
+        [_contentBlurView.trailingAnchor constraintEqualToAnchor:_contentPanelView.trailingAnchor],
+        [_contentBlurView.topAnchor constraintEqualToAnchor:_contentPanelView.topAnchor],
+        [_contentBlurView.bottomAnchor constraintEqualToAnchor:_contentPanelView.bottomAnchor],
+
+        [_contentTintView.leadingAnchor constraintEqualToAnchor:_contentPanelView.leadingAnchor],
+        [_contentTintView.trailingAnchor constraintEqualToAnchor:_contentPanelView.trailingAnchor],
+        [_contentTintView.topAnchor constraintEqualToAnchor:_contentPanelView.topAnchor],
+        [_contentTintView.bottomAnchor constraintEqualToAnchor:_contentPanelView.bottomAnchor],
 
         [panelTapButton.leadingAnchor constraintEqualToAnchor:_contentPanelView.leadingAnchor],
         [panelTapButton.trailingAnchor constraintEqualToAnchor:_contentPanelView.trailingAnchor],
         [panelTapButton.topAnchor constraintEqualToAnchor:_contentPanelView.topAnchor],
         [panelTapButton.bottomAnchor constraintEqualToAnchor:_contentPanelView.bottomAnchor],
 
-        [_contentStack.leadingAnchor constraintEqualToAnchor:_contentPanelView.leadingAnchor constant:14.0],
-        [_contentStack.trailingAnchor constraintEqualToAnchor:_contentPanelView.trailingAnchor constant:-14.0],
-        [_contentStack.topAnchor constraintEqualToAnchor:_contentPanelView.topAnchor constant:14.0],
-        [_contentStack.bottomAnchor constraintEqualToAnchor:_contentPanelView.bottomAnchor constant:-14.0],
+        [_contentStack.leadingAnchor constraintEqualToAnchor:_contentPanelView.leadingAnchor constant:15.0],
+        [_contentStack.trailingAnchor constraintEqualToAnchor:_contentPanelView.trailingAnchor constant:-15.0],
+        [_contentStack.topAnchor constraintEqualToAnchor:_contentPanelView.topAnchor constant:15.0],
+        [_contentStack.bottomAnchor constraintEqualToAnchor:_contentPanelView.bottomAnchor constant:-15.0],
 
         self.badgeContainerHeightConstraint = [_badgeContainer.heightAnchor constraintEqualToConstant:0.0],
 
@@ -460,19 +485,19 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [_badgeLabel.topAnchor constraintEqualToAnchor:_badgeContainer.topAnchor constant:6.0],
         [_badgeLabel.bottomAnchor constraintEqualToAnchor:_badgeContainer.bottomAnchor constant:-6.0],
 
-        [_buttonsRow.trailingAnchor constraintEqualToAnchor:_buttonsContainer.trailingAnchor], // 🎯 Moved to trail
+        [_buttonsRow.trailingAnchor constraintEqualToAnchor:_buttonsContainer.trailingAnchor],
         [_buttonsRow.topAnchor constraintEqualToAnchor:_buttonsContainer.topAnchor],
         [_buttonsRow.bottomAnchor constraintEqualToAnchor:_buttonsContainer.bottomAnchor],
-        [_buttonsRow.leadingAnchor constraintGreaterThanOrEqualToAnchor:_buttonsContainer.leadingAnchor], // 🎯 Flexible leading to stick to trail
+        [_buttonsRow.leadingAnchor constraintGreaterThanOrEqualToAnchor:_buttonsContainer.leadingAnchor],
 
         [_characterGlowView.centerYAnchor constraintEqualToAnchor:_cardSurface.centerYAnchor],
-        [_characterGlowView.widthAnchor constraintEqualToConstant:112.0],
-        [_characterGlowView.heightAnchor constraintEqualToConstant:112.0],
+        [_characterGlowView.widthAnchor constraintEqualToConstant:108.0],
+        [_characterGlowView.heightAnchor constraintEqualToConstant:108.0],
 
         [_characterImageView.centerXAnchor constraintEqualToAnchor:_characterGlowView.centerXAnchor],
         [_characterImageView.centerYAnchor constraintEqualToAnchor:_characterGlowView.centerYAnchor],
-        [_characterImageView.widthAnchor constraintEqualToConstant:122.0],
-        [_characterImageView.heightAnchor constraintEqualToConstant:122.0],
+        [_characterImageView.widthAnchor constraintEqualToConstant:118.0],
+        [_characterImageView.heightAnchor constraintEqualToConstant:118.0],
     ]];
 
     [self.contentStack setCustomSpacing:12.0 afterView:_badgeContainer];
@@ -506,7 +531,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     [_contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
     [_badgeContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
     [_characterGlowView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
-    
+
     // If not using background image, refresh gradient colors
     if (self.card && self.backgroundImageView.alpha < 0.5) {
         [self configureWithCard:self.card
@@ -637,9 +662,14 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.backgroundTintView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.04];
     self.characterGlowView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.09];
     [self.characterGlowView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
-    self.contentPanelView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.10];
-    [self.contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
+    self.contentPanelView.backgroundColor = UIColor.clearColor;
+    self.contentTintView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.10];
+    [self.contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
     [self.shadowContainer pp_setShadowColor:[UIColor colorWithWhite:0 alpha:1]];
+    self.transform = CGAffineTransformIdentity;
+    self.alpha = 1.0;
+    self.primaryButton.transform = CGAffineTransformIdentity;
+    self.secondaryButton.transform = CGAffineTransformIdentity;
     self.gradientLayer.hidden = NO;
     self.shapeLayerOne.hidden = NO;
     self.shapeLayerTwo.hidden = NO;
@@ -667,23 +697,22 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     BOOL hasBackgroundImage = (card.backgroundImageURL.absoluteString.length > 0);
 
     if (hasBackgroundImage) {
-        // Background image mode — show image cleanly, no color overlays
         self.backgroundImageView.alpha = 1.0;
         [self.backgroundImageView sd_setImageWithURL:card.backgroundImageURL placeholderImage:nil];
         self.gradientLayer.hidden = YES;
         self.shapeLayerOne.hidden = YES;
         self.shapeLayerTwo.hidden = YES;
-        self.scrimLayer.hidden = YES;
-        self.highlightLayer.hidden = YES;
-        self.backgroundTintView.hidden = YES;
+        self.scrimLayer.hidden = NO;
+        self.highlightLayer.hidden = NO;
+        self.backgroundTintView.hidden = NO;
         self.cardSurface.backgroundColor = [UIColor colorWithWhite:0.12 alpha:1.0];
-        self.contentPanelView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.26];
-        [self.contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
-        self.characterGlowView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.16];
+        self.backgroundTintView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.12];
+        self.contentTintView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.18];
+        [self.contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+        self.characterGlowView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.18];
         [self.characterGlowView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
         [self.shadowContainer pp_setShadowColor:[UIColor colorWithWhite:0 alpha:1]];
     } else {
-        // Gradient mode — use card colors or random modern gradient
         UIColor *startColor, *endColor, *accentColor;
         BOOL hasCardColors = (card.startColorHex.length > 0 && card.endColorHex.length > 0);
         if (hasCardColors) {
@@ -712,8 +741,8 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         self.shapeLayerOne.fillColor = [accentColor colorWithAlphaComponent:0.16].CGColor;
         self.shapeLayerTwo.fillColor = [UIColor.whiteColor colorWithAlphaComponent:0.06].CGColor;
         self.backgroundTintView.backgroundColor = [deepTone colorWithAlphaComponent:0.06];
-        self.contentPanelView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
-        [self.contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.13]];
+        self.contentTintView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
+        [self.contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.15]];
         self.characterGlowView.backgroundColor = [accentColor colorWithAlphaComponent:0.14];
         [self.characterGlowView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
         [self.shadowContainer pp_setShadowColor:PPPromoBlendColor(endColor, UIColor.blackColor, 0.25)];
@@ -794,15 +823,15 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         : [UIButtonConfiguration tintedButtonConfiguration];
 
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(8, 12, 8, 12); // 🎯 Reduced insets
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(8, 12, 8, 12);
         cfg.image = icon;
-        cfg.imagePadding = 4; // 🎯 Reduced padding
+        cfg.imagePadding = 4;
         cfg.imagePlacement = Language.isRTL ? NSDirectionalRectEdgeTrailing : NSDirectionalRectEdgeLeading;
         cfg.titleLineBreakMode = NSLineBreakByTruncatingTail;
 
         cfg.attributedTitle = [[NSAttributedString alloc] initWithString:safeTitle
                                                               attributes:@{
-            NSFontAttributeName : (isPrimary ? [GM boldFontWithSize:13] : [GM MidFontWithSize:12]), // 🎯 Smaller font
+            NSFontAttributeName : (isPrimary ? [GM boldFontWithSize:13.0] : [GM MidFontWithSize:12.5]),
             NSForegroundColorAttributeName : (isPrimary ? primaryText : secondaryText)
         }];
 
@@ -824,7 +853,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
         [button setTitle:safeTitle forState:UIControlStateNormal];
         [button setTitleColor:(isPrimary ? primaryText : secondaryText) forState:UIControlStateNormal];
-        button.titleLabel.font = isPrimary ? [GM boldFontWithSize:13] : [GM MidFontWithSize:12]; // 🎯 Smaller font
+        button.titleLabel.font = isPrimary ? [GM boldFontWithSize:13.0] : [GM MidFontWithSize:12.5];
         [button setImage:icon forState:UIControlStateNormal];
         button.tintColor = isPrimary ? primaryText : secondaryText;
 
@@ -836,11 +865,11 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         ? [UIColor colorWithWhite:1 alpha:0.97]
         : [UIColor colorWithWhite:1 alpha:0.14];
 
-        button.layer.cornerRadius = 17.0; // 🎯 Adjusted for 34 height
+        button.layer.cornerRadius = 18.0;
         button.layer.borderWidth = isPrimary ? 0.0 : 1.0;
         [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
         button.layer.masksToBounds = NO;
-        button.contentEdgeInsets = UIEdgeInsetsMake(8, 12, 8, 12); // 🎯 Reduced insets
+        button.contentEdgeInsets = UIEdgeInsetsMake(8, 12, 8, 12);
     }
 
     if (@available(iOS 13.0, *)) {
@@ -1343,32 +1372,37 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _shadowContainer = [UIView new];
     _shadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
     _shadowContainer.backgroundColor = UIColor.clearColor;
-    _shadowContainer.layer.cornerRadius = PPNewCorner;
+    _shadowContainer.layer.cornerRadius = 30.0;
     [_shadowContainer pp_setShadowColor:UIColor.blackColor];
-    _shadowContainer.layer.shadowOpacity = 0.08;
-    _shadowContainer.layer.shadowRadius = 18;
-    _shadowContainer.layer.shadowOffset = CGSizeMake(0, 10);
+    _shadowContainer.layer.shadowOpacity = 0.10;
+    _shadowContainer.layer.shadowRadius = 22.0;
+    _shadowContainer.layer.shadowOffset = CGSizeMake(0, 12);
     [self.contentView addSubview:_shadowContainer];
 
     _bannersView = [[PPBannersCollection alloc] init];
     _bannersView.translatesAutoresizingMaskIntoConstraints = NO;
-    _bannersView.layer.cornerRadius = PPNewCorner;
+    _bannersView.layer.cornerRadius = 30.0;
     _bannersView.layer.masksToBounds = YES;
     [self.shadowContainer addSubview:_bannersView];
 
     _promoCarouselView = [[PPHomePromoCarouselView alloc] initWithFrame:CGRectZero];
     _promoCarouselView.translatesAutoresizingMaskIntoConstraints = NO;
-    _promoCarouselView.layer.cornerRadius = PPNewCorner;
+    _promoCarouselView.layer.cornerRadius = 30.0;
     _promoCarouselView.layer.masksToBounds = NO;
     _promoCarouselView.clipsToBounds = NO;
     _promoCarouselView.hidden = YES;
     [self.shadowContainer addSubview:_promoCarouselView];
 
+    UIColor *placeholderBackgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    if (@available(iOS 13.0, *)) {
+        placeholderBackgroundColor = UIColor.secondarySystemBackgroundColor;
+    }
+
     _placeholderView = [UIView new];
     _placeholderView.translatesAutoresizingMaskIntoConstraints = NO;
-    _placeholderView.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    _placeholderView.backgroundColor = placeholderBackgroundColor;
     _placeholderView.hidden = YES;
-    _placeholderView.layer.cornerRadius = PPNewCorner;
+    _placeholderView.layer.cornerRadius = 30.0;
     _placeholderView.layer.masksToBounds = YES;
     [self.shadowContainer addSubview:_placeholderView];
 
@@ -1431,14 +1465,20 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
 - (void)pp_refreshThemeColors
 {
+    UIColor *placeholderBackgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+    if (@available(iOS 13.0, *)) {
+        placeholderBackgroundColor = UIColor.secondarySystemBackgroundColor;
+    }
     [_shadowContainer pp_setShadowColor:UIColor.blackColor];
+    self.placeholderView.backgroundColor = placeholderBackgroundColor;
 }
 
 - (void)layoutSubviews
 {
     [super layoutSubviews];
     self.shadowContainer.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.shadowContainer.bounds cornerRadius:26.0].CGPath;
+        [UIBezierPath bezierPathWithRoundedRect:self.shadowContainer.bounds
+                                   cornerRadius:self.shadowContainer.layer.cornerRadius].CGPath;
 }
 
 - (void)prepareForReuse

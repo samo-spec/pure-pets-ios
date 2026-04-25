@@ -38,7 +38,7 @@ static NSTimeInterval const PPUniversalStepperAutoCollapseDelay = 3.5;
 static BOOL const PPUniversalTemporarilyHideSubtitle = NO;
 static BOOL const PPUniversalTemporarilyHideShareButton = YES;
 static BOOL const PPUniversalTemporarilyHideCategoryBadge = YES;
-static BOOL const PPUniversalTemporarilyHideMenuButton = NO;
+static BOOL const PPUniversalTemporarilyHideMenuButton = YES;
 
 static NSString *PPUniversalCellLocalizedString(NSString *key, NSString *fallback)
 {
@@ -64,14 +64,14 @@ static UIColor *PPUniversalCellSoftSurfaceColor(void)
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
-                                      [UIColor colorWithWhite:1.0 alpha:0.10]);
+    return PPUniversalCellDynamicColor([AppForgroundColr colorWithAlphaComponent:0.92],
+                                       [AppBackgroundClrDarker colorWithAlphaComponent:0.20]);
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.54],
-                                      [UIColor colorWithWhite:1.0 alpha:0.12]);
+    return PPUniversalCellDynamicColor([AppForgroundColr colorWithAlphaComponent:0.92],
+                                       [AppForgroundColr colorWithAlphaComponent:0.62]);
 }
 
 static UIColor *PPUniversalCellSoftShadowColor(void)
@@ -123,14 +123,6 @@ static NSString *PPUniversalCellFormattedPrice(NSNumber *amount, NSString *curre
     return Language.isRTL
         ? [NSString stringWithFormat:@"%@ %@", numberText, resolvedCurrency]
         : [NSString stringWithFormat:@"%@ %@", resolvedCurrency, numberText];
-}
-
-static BOOL PPUniversalCellReasonLooksNearby(NSString *text)
-{
-    NSString *lowerText = PPUniversalCellSafeString(text).lowercaseString;
-    return [lowerText containsString:@"near"] ||
-           [lowerText containsString:@"قريب"] ||
-           [lowerText containsString:@"بالقرب"];
 }
 
 static NSString *PPUniversalCellNormalizedCurrencyCode(NSString *currencyCode)
@@ -205,6 +197,22 @@ static NSString *PPUniversalCellFormattedAmountString(NSNumber *amount)
     formatter.minimumFractionDigits = 2;
     formatter.maximumFractionDigits = 2;
     formatter.usesGroupingSeparator = YES;
+    formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+    NSString *formatted = [formatter stringFromNumber:amount];
+    return formatted.length > 0 ? formatted : amount.stringValue;
+}
+
+static NSString *PPUniversalCellCompactNumberString(NSNumber *amount)
+{
+    if (!amount) {
+        return @"";
+    }
+
+    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    formatter.minimumFractionDigits = 0;
+    formatter.maximumFractionDigits = 2;
+    formatter.usesGroupingSeparator = NO;
     formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
     NSString *formatted = [formatter stringFromNumber:amount];
     return formatted.length > 0 ? formatted : amount.stringValue;
@@ -714,10 +722,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self.imageContainer addSubview:self.imageScrimView];
 
     self.reasonBadgeLabel = [self pp_makeBadgeLabel];
+    [self pp_configureTopBadgeLabel:self.reasonBadgeLabel];
     self.reasonBadgeLabel.hidden = YES;
     [self.imageContainer addSubview:self.reasonBadgeLabel];
 
     self.discountBadgeLabel = [self pp_makeBadgeLabel];
+    [self pp_configureTopBadgeLabel:self.discountBadgeLabel];
     self.discountBadgeLabel.hidden = YES;
     [self.imageContainer addSubview:self.discountBadgeLabel];
 
@@ -866,8 +876,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     ]];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.favoriteButton.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:10.0],
         [self.favoriteButton.leadingAnchor constraintEqualToAnchor:self.imageContainer.leadingAnchor constant:10.0],
+        [self.favoriteButton.bottomAnchor constraintEqualToAnchor:self.imageContainer.bottomAnchor constant:-10.0],
 
         [self.shareButton.centerYAnchor constraintEqualToAnchor:self.favoriteButton.centerYAnchor],
         [self.shareButton.leadingAnchor constraintEqualToAnchor:self.favoriteButton.trailingAnchor constant:8.0],
@@ -892,9 +902,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.priceLabel.leadingAnchor constraintEqualToAnchor:self.priceContainerView.leadingAnchor],
         [self.priceLabel.bottomAnchor constraintEqualToAnchor:self.priceContainerView.bottomAnchor],
 
-        [self.oldPriceLabel.leadingAnchor constraintEqualToAnchor:self.priceLabel.trailingAnchor constant:8.0],
         [self.oldPriceLabel.firstBaselineAnchor constraintEqualToAnchor:self.priceLabel.firstBaselineAnchor],
-        [self.oldPriceLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.priceContainerView.trailingAnchor],
+        [self.oldPriceLabel.trailingAnchor constraintEqualToAnchor:self.priceContainerView.trailingAnchor],
+        [self.oldPriceLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.priceLabel.trailingAnchor constant:12.0],
         [self.oldPriceLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.priceContainerView.bottomAnchor],
 
         [self.actionHostView.topAnchor constraintEqualToAnchor:self.priceContainerView.bottomAnchor constant:6.0],
@@ -1255,17 +1265,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     NSString *reasonText = @"";
     if ([self pp_isAdContext]) {
-        if (PPUniversalCellReasonLooksNearby(vm.contextualReasonText)) {
-            reasonText = PPUniversalCellLocalizedString(@"Home_NearbyAds", @"Nearby");
-        } else {
-            reasonText = PPUniversalCellSafeString(vm.location);
-        }
+        reasonText = PPUniversalCellSafeString(vm.location);
     }
     NSString *badgeText = PPUniversalTemporarilyHideCategoryBadge ? @"" : PPUniversalCellSafeString(vm.badgeText);
     NSString *discountText = (self.discountStyle == PPDiscountStyleBadge) ? PPUniversalCellSafeString(vm.discountText) : @"";
 
-    self.reasonBadgeLabel.numberOfLines = 0;
-    self.reasonBadgeLabel.lineBreakMode = NSLineBreakByWordWrapping;
     [self pp_applyBadgeLabel:self.reasonBadgeLabel
                         text:reasonText
                      bgColor:[AppForgroundColr colorWithAlphaComponent:0.34]
@@ -1401,42 +1405,14 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         ? (ServiceModel *)vm.ModelObject
         : nil;
     BOOL showsServiceMeta = [self pp_isServiceLikeContext];
-    if (showsServiceMeta) {
-        CGFloat rating = MAX(0.0, service.ratingValue.doubleValue);
-        NSMutableAttributedString *attrText = [[NSMutableAttributedString alloc] init];
-        UIColor *starColor = [UIColor colorWithRed:0.97 green:0.72 blue:0.20 alpha:1.0];
-        UIColor *valueColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.15 alpha:1.0],
-                                                          [UIColor colorWithWhite:0.96 alpha:1.0]);
-
-        [attrText appendAttributedString:[[NSAttributedString alloc]
-            initWithString:@"★"
-            attributes:@{
-                NSFontAttributeName: PPUniversalCellBoldFont(13.0),
-                NSForegroundColorAttributeName: starColor
-            }]];
-        [attrText appendAttributedString:[[NSAttributedString alloc]
-            initWithString:@"  "
-            attributes:@{
-                NSFontAttributeName: PPUniversalCellBoldFont(12.0),
-                NSForegroundColorAttributeName: valueColor
-            }]];
-        [attrText appendAttributedString:[[NSAttributedString alloc]
-            initWithString:[NSString stringWithFormat:@"%.1f", rating]
-            attributes:@{
-                NSFontAttributeName: PPUniversalCellBoldFont(12.5),
-                NSForegroundColorAttributeName: valueColor
-            }]];
-
-        self.serviceMetaLabel.attributedText = attrText;
-        self.serviceMetaLabel.font = PPUniversalCellBoldFont(12.0);
-        self.serviceMetaLabel.textInsets = UIEdgeInsetsMake(4.0, 12.0, 4.0, 12.0);
-        self.serviceMetaLabel.backgroundColor = PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.98],
-                                                                            [UIColor colorWithWhite:0.14 alpha:1.0]);
-        self.serviceMetaLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
-        self.serviceMetaLabel.layer.borderWidth = 1.0;
-        [self.serviceMetaLabel pp_setBorderColor:[UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0]];
-        self.serviceMetaLabel.hidden = NO;
-        self.serviceMetaCollapsedConstraint.active = NO;
+    NSString *weightText = [self pp_weightBadgeTextForViewModel:vm];
+    BOOL showsWeightMeta = !showsServiceMeta && weightText.length > 0;
+    BOOL showsMeta = showsServiceMeta || showsWeightMeta;
+    if (showsMeta) {
+        NSAttributedString *attrText = showsServiceMeta
+            ? [self pp_serviceRatingMetaAttributedStringForService:service]
+            : [self pp_weightMetaAttributedStringWithText:weightText];
+        [self pp_applyServiceMetaPillWithAttributedText:attrText];
     } else {
         self.serviceMetaLabel.text = @"";
         self.serviceMetaLabel.attributedText = nil;
@@ -1444,7 +1420,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.serviceMetaCollapsedConstraint.active = YES;
     }
 
-    BOOL tieAvailabilityToServiceMeta = showsServiceMeta && !shouldHideAvailability;
+    BOOL tieAvailabilityToServiceMeta = showsMeta && !shouldHideAvailability;
     self.availabilityLeadingToBodyConstraint.active = !tieAvailabilityToServiceMeta;
     self.availabilityLeadingToMetaConstraint.active = tieAvailabilityToServiceMeta;
 }
@@ -1478,7 +1454,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.titleLabel.textAlignment = alignment;
     self.subtitleLabel.textAlignment = alignment;
     self.priceLabel.textAlignment = alignment;
-    self.oldPriceLabel.textAlignment = alignment;
+    self.oldPriceLabel.textAlignment = [Language isRTL] ? NSTextAlignmentLeft : NSTextAlignmentRight;
     self.serviceMetaLabel.textAlignment = NSTextAlignmentCenter;
     self.availabilityLabel.textAlignment = NSTextAlignmentCenter;
 }
@@ -1727,6 +1703,233 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [result appendAttributedString:fractionString];
     }
     return result;
+}
+
+- (NSAttributedString *)pp_serviceRatingMetaAttributedStringForService:(ServiceModel *)service
+{
+    CGFloat rating = MAX(0.0, service.ratingValue.doubleValue);
+    NSMutableAttributedString *attrText = [[NSMutableAttributedString alloc] init];
+    UIColor *starColor = [UIColor colorWithRed:0.97 green:0.72 blue:0.20 alpha:1.0];
+    UIColor *valueColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.15 alpha:1.0],
+                                                      [UIColor colorWithWhite:0.96 alpha:1.0]);
+
+    [attrText appendAttributedString:[[NSAttributedString alloc]
+        initWithString:@"★"
+        attributes:@{
+            NSFontAttributeName: PPUniversalCellBoldFont(13.0),
+            NSForegroundColorAttributeName: starColor
+        }]];
+    [attrText appendAttributedString:[[NSAttributedString alloc]
+        initWithString:@"  "
+        attributes:@{
+            NSFontAttributeName: PPUniversalCellBoldFont(12.0),
+            NSForegroundColorAttributeName: valueColor
+        }]];
+    [attrText appendAttributedString:[[NSAttributedString alloc]
+        initWithString:[NSString stringWithFormat:@"%.1f", rating]
+        attributes:@{
+            NSFontAttributeName: PPUniversalCellBoldFont(12.5),
+            NSForegroundColorAttributeName: valueColor
+        }]];
+
+    return attrText;
+}
+
+- (NSAttributedString *)pp_weightMetaAttributedStringWithText:(NSString *)weightText
+{
+    NSString *resolvedText = PPUniversalCellSafeString(weightText);
+    UIColor *iconColor = [UIColor colorWithRed:0.11 green:0.56 blue:0.51 alpha:1.0]; // Premium Teal
+    UIColor *valueColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.10 green:0.11 blue:0.15 alpha:1.0],
+                                                      [UIColor colorWithWhite:0.96 alpha:1.0]);
+    NSMutableAttributedString *attrText = [[NSMutableAttributedString alloc] init];
+
+    UIImageSymbolConfiguration *symbolConfig =
+    [UIImageSymbolConfiguration configurationWithPointSize:11.0
+                                                    weight:UIImageSymbolWeightBold
+                                                     scale:UIImageSymbolScaleMedium];
+    UIImage *symbol = [UIImage systemImageNamed:@"scalemass.fill" withConfiguration:symbolConfig];
+    if (!symbol) {
+        symbol = [UIImage systemImageNamed:@"shippingbox.fill" withConfiguration:symbolConfig];
+    }
+    if (symbol) {
+        NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
+        attachment.image = [symbol imageWithTintColor:iconColor renderingMode:UIImageRenderingModeAlwaysOriginal];
+        attachment.bounds = CGRectMake(0.0, -1.5, 11.5, 11.5);
+        [attrText appendAttributedString:[NSAttributedString attributedStringWithAttachment:attachment]];
+        [attrText appendAttributedString:[[NSAttributedString alloc]
+            initWithString:@"  "
+            attributes:@{
+                NSFontAttributeName: PPUniversalCellBoldFont(11.0),
+                NSForegroundColorAttributeName: valueColor
+            }]];
+    }
+
+    [attrText appendAttributedString:[[NSAttributedString alloc]
+        initWithString:resolvedText
+        attributes:@{
+            NSFontAttributeName: PPUniversalCellBoldFont(12.5),
+            NSForegroundColorAttributeName: valueColor
+        }]];
+    return attrText;
+}
+
+- (void)pp_applyServiceMetaPillWithAttributedText:(NSAttributedString *)attrText
+{
+    self.serviceMetaLabel.text = @"";
+    self.serviceMetaLabel.attributedText = attrText;
+    self.serviceMetaLabel.font = PPUniversalCellBoldFont(12.0);
+    self.serviceMetaLabel.textInsets = UIEdgeInsetsMake(4.0, 12.0, 4.0, 12.0);
+    self.serviceMetaLabel.backgroundColor = PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.98],
+                                                                        [UIColor colorWithWhite:0.14 alpha:1.0]);
+    self.serviceMetaLabel.layer.cornerRadius = PPUniversalPillHeight / 2.0;
+    self.serviceMetaLabel.layer.borderWidth = 1.0;
+    [self.serviceMetaLabel pp_setBorderColor:[UIColor colorWithRed:0.96 green:0.86 blue:0.88 alpha:1.0]];
+    self.serviceMetaLabel.hidden = attrText.length == 0;
+    self.serviceMetaCollapsedConstraint.active = attrText.length == 0;
+}
+
+- (NSString *)pp_trimmedStringFromValue:(id)value
+{
+    if ([value isKindOfClass:[NSNull class]] || value == nil) {
+        return @"";
+    }
+
+    NSString *string = nil;
+    if ([value isKindOfClass:[NSString class]]) {
+        string = (NSString *)value;
+    } else if ([value isKindOfClass:[NSNumber class]]) {
+        string = [(NSNumber *)value stringValue];
+    }
+    return [string stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] ?: @"";
+}
+
+- (id)pp_optionalValueForKey:(NSString *)key fromObject:(id)object
+{
+    if (key.length == 0 || object == nil || [object isKindOfClass:[NSNull class]]) {
+        return nil;
+    }
+    if ([object isKindOfClass:[NSDictionary class]]) {
+        return ((NSDictionary *)object)[key];
+    }
+
+    @try {
+        return [object valueForKey:key];
+    } @catch (__unused NSException *exception) {
+        return nil;
+    }
+}
+
+- (NSNumber *)pp_numberFromValue:(id)value
+{
+    if ([value isKindOfClass:[NSNumber class]]) {
+        return value;
+    }
+
+    NSString *string = [self pp_trimmedStringFromValue:value];
+    if (string.length == 0) {
+        return nil;
+    }
+
+    NSMutableCharacterSet *allowed = [NSMutableCharacterSet decimalDigitCharacterSet];
+    [allowed addCharactersInString:@".,-+"];
+    if ([string rangeOfCharacterFromSet:allowed.invertedSet].location != NSNotFound) {
+        return nil;
+    }
+
+    static NSNumberFormatter *formatter;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        formatter = [[NSNumberFormatter alloc] init];
+        formatter.locale = [NSLocale localeWithLocaleIdentifier:@"en_US_POSIX"];
+        formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    });
+    return [formatter numberFromString:string];
+}
+
+- (NSString *)pp_weightTextWithNumber:(NSNumber *)weight unit:(NSString *)unit
+{
+    if (!weight || weight.doubleValue <= 0.0) {
+        return @"";
+    }
+
+    NSString *numberText = PPUniversalCellCompactNumberString(weight);
+    if (numberText.length == 0) {
+        return @"";
+    }
+
+    NSString *unitText = [[unit ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] copy];
+    return unitText.length > 0
+        ? [NSString stringWithFormat:@"%@ %@", numberText, unitText]
+        : numberText;
+}
+
+- (NSString *)pp_weightBadgeTextForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)vm.ModelObject;
+        if (accessory.weightText.length > 0) {
+            return accessory.weightText;
+        }
+
+        NSString *typedWeightText = [self pp_weightTextWithNumber:accessory.weight unit:accessory.weightUnit];
+        if (typedWeightText.length > 0) {
+            return typedWeightText;
+        }
+    }
+
+    NSArray<NSString *> *textKeys = @[
+        @"weight",
+        @"weightText",
+        @"weightLabel",
+        @"packageWeightText",
+        @"netWeightText",
+        @"itemWeightText"
+    ];
+    for (NSString *key in textKeys) {
+        NSString *text = [self pp_trimmedStringFromValue:[self pp_optionalValueForKey:key fromObject:vm.ModelObject]];
+        if (text.length > 0) {
+            return text;
+        }
+    }
+
+    NSArray<NSString *> *numberKeys = @[
+        @"weight",
+        @"packageWeight",
+        @"netWeight",
+        @"itemWeight",
+        @"unitWeight"
+    ];
+    NSNumber *weightNumber = nil;
+    NSString *rawWeightString = @"";
+    for (NSString *key in numberKeys) {
+        id value = [self pp_optionalValueForKey:key fromObject:vm.ModelObject];
+        weightNumber = [self pp_numberFromValue:value];
+        rawWeightString = [self pp_trimmedStringFromValue:value];
+        if (weightNumber || rawWeightString.length > 0) {
+            break;
+        }
+    }
+
+    if (!weightNumber && rawWeightString.length > 0) {
+        return rawWeightString;
+    }
+
+    NSArray<NSString *> *unitKeys = @[
+        @"weightUnit",
+        @"unit",
+        @"packageUnit",
+        @"measurementUnit",
+        @"weight_unit"
+    ];
+    NSString *unit = @"";
+    for (NSString *key in unitKeys) {
+        unit = [self pp_trimmedStringFromValue:[self pp_optionalValueForKey:key fromObject:vm.ModelObject]];
+        if (unit.length > 0) {
+            break;
+        }
+    }
+
+    return [self pp_weightTextWithNumber:weightNumber unit:unit];
 }
 
 #pragma mark - Actions
@@ -1980,6 +2183,16 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return label;
 }
 
+- (void)pp_configureTopBadgeLabel:(PPUniversalInsetLabel *)label
+{
+    label.numberOfLines = 1;
+    label.lineBreakMode = NSLineBreakByTruncatingTail;
+    [label setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [label setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+}
+
 - (void)pp_applyBadgeLabel:(PPUniversalInsetLabel *)label
                       text:(NSString *)text
                    bgColor:(UIColor *)bgColor
@@ -2016,25 +2229,49 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         return;
     }
 
-    NSLayoutXAxisAnchor *currentTrailingAnchor = self.menuButton.hidden
-        ? self.imageContainer.trailingAnchor
-        : self.menuButton.leadingAnchor;
-    CGFloat trailingSpacing = self.menuButton.hidden ? -12.0 : -8.0;
+    BOOL isRTL = Language.isRTL;
+    NSLayoutXAxisAnchor *currentEdgeAnchor = nil;
+    CGFloat badgeSpacing = self.menuButton.hidden ? 12.0 : 8.0;
     PPUniversalInsetLabel *leftMostBadge = nil;
 
     for (PPUniversalInsetLabel *badge in visibleBadges) {
         [constraints addObject:[badge.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:12.0]];
-        [constraints addObject:[badge.trailingAnchor constraintEqualToAnchor:currentTrailingAnchor constant:trailingSpacing]];
-        currentTrailingAnchor = badge.leadingAnchor;
-        trailingSpacing = -6.0;
+
+        if (badge == self.discountBadgeLabel) {
+            if (isRTL) {
+                [constraints addObject:[badge.leftAnchor constraintEqualToAnchor:self.imageView.leftAnchor constant:8.0]];
+                currentEdgeAnchor = badge.rightAnchor;
+            } else {
+                [constraints addObject:[badge.rightAnchor constraintEqualToAnchor:self.imageView.rightAnchor constant:-8.0]];
+                currentEdgeAnchor = badge.leftAnchor;
+            }
+        } else {
+            if (currentEdgeAnchor == nil) {
+                if (self.menuButton.hidden) {
+                    currentEdgeAnchor = isRTL ? self.imageView.leftAnchor : self.imageView.rightAnchor;
+                } else {
+                    currentEdgeAnchor = isRTL ? self.menuButton.rightAnchor : self.menuButton.leftAnchor;
+                }
+            }
+
+            if (isRTL) {
+                [constraints addObject:[badge.leftAnchor constraintEqualToAnchor:currentEdgeAnchor constant:badgeSpacing]];
+                currentEdgeAnchor = badge.rightAnchor;
+            } else {
+                [constraints addObject:[badge.rightAnchor constraintEqualToAnchor:currentEdgeAnchor constant:-badgeSpacing]];
+                currentEdgeAnchor = badge.leftAnchor;
+            }
+        }
+
+        badgeSpacing = 6.0;
         leftMostBadge = badge;
     }
 
-    NSLayoutXAxisAnchor *minimumLeadingAnchor = self.favoriteButton.hidden
-        ? self.imageContainer.leadingAnchor
-        : self.favoriteButton.trailingAnchor;
-    CGFloat leadingSpacing = self.favoriteButton.hidden ? 12.0 : 8.0;
-    [constraints addObject:[leftMostBadge.leadingAnchor constraintGreaterThanOrEqualToAnchor:minimumLeadingAnchor constant:leadingSpacing]];
+    if (isRTL) {
+        [constraints addObject:[leftMostBadge.rightAnchor constraintLessThanOrEqualToAnchor:self.imageView.rightAnchor constant:-12.0]];
+    } else {
+        [constraints addObject:[leftMostBadge.leftAnchor constraintGreaterThanOrEqualToAnchor:self.imageView.leftAnchor constant:12.0]];
+    }
 
     self.dynamicBadgeConstraints = constraints;
     [NSLayoutConstraint activateConstraints:self.dynamicBadgeConstraints];
@@ -2054,6 +2291,15 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
            self.context == PPCellForMarket ||
            self.context == PPCellForFood ||
            self.context == PPCellForContextAccessory;
+}
+
+- (BOOL)pp_isFoodOrMedicineContext
+{
+    if ([self.vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)self.vm.ModelObject;
+        return accessory.isFood || accessory.isPetMedicine;
+    }
+    return self.context == PPCellForFood;
 }
 
 - (BOOL)pp_isAdContext

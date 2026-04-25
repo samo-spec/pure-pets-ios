@@ -8,6 +8,199 @@
 #import "VetManager.h"
 #import "VetModel.h"
 
+static NSString *PPVetManagerSafeString(id value) {
+    if ([value isKindOfClass:NSString.class]) {
+        return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
+    if ([value respondsToSelector:@selector(stringValue)]) {
+        return [[[value stringValue] ?: @"" stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] copy];
+    }
+    return @"";
+}
+
+static NSArray<NSString *> *PPVetManagerStringArray(id value) {
+    if (![value isKindOfClass:NSArray.class]) {
+        return @[];
+    }
+    NSMutableArray<NSString *> *items = [NSMutableArray array];
+    for (id entry in (NSArray *)value) {
+        NSString *safeEntry = PPVetManagerSafeString(entry);
+        if (safeEntry.length > 0) {
+            [items addObject:safeEntry];
+        }
+    }
+    return items.copy;
+}
+
+static NSDate * _Nullable PPVetManagerDateFromValue(id value) {
+    if ([value isKindOfClass:[NSDate class]]) {
+        return value;
+    }
+    if ([value isKindOfClass:FIRTimestamp.class]) {
+        return [(FIRTimestamp *)value dateValue];
+    }
+    return nil;
+}
+
+static NSInteger const PPVetMedicineAccessKindType = 4;
+
+static BOOL PPVetManagerBoolFromValue(id value) {
+    if ([value respondsToSelector:@selector(boolValue)]) {
+        return [value boolValue];
+    }
+    if ([value isKindOfClass:NSString.class]) {
+        NSString *normalized = [[(NSString *)value lowercaseString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        return [normalized isEqualToString:@"true"] || [normalized isEqualToString:@"yes"] || [normalized isEqualToString:@"1"];
+    }
+    return NO;
+}
+
+static NSString *PPVetManagerFirstImageURL(id value) {
+    if ([value isKindOfClass:NSString.class]) {
+        return PPVetManagerSafeString(value);
+    }
+    if ([value isKindOfClass:NSArray.class]) {
+        for (id entry in (NSArray *)value) {
+            NSString *url = PPVetManagerFirstImageURL(entry);
+            if (url.length > 0) {
+                return url;
+            }
+        }
+    }
+    if ([value isKindOfClass:NSDictionary.class]) {
+        return PPVetManagerFirstImageURL(((NSDictionary *)value)[@"url"]);
+    }
+    return @"";
+}
+
+static BOOL PPVetManagerIsMedicineDocument(NSDictionary *dict) {
+    NSInteger accessKindType = [dict[@"accessKindType"] respondsToSelector:@selector(integerValue)] ? [dict[@"accessKindType"] integerValue] : 0;
+    NSInteger legacyType = [dict[@"type"] respondsToSelector:@selector(integerValue)] ? [dict[@"type"] integerValue] : 0;
+    return accessKindType == PPVetMedicineAccessKindType || legacyType == PPVetMedicineAccessKindType;
+}
+
+static NSString *PPVetManagerOwnerIdentifierForDocument(NSDictionary *dict) {
+    for (NSString *key in @[@"ownerID", @"ownerId", @"userId", @"userID", @"providerId", @"providerID"]) {
+        NSString *candidate = PPVetManagerSafeString(dict[key]);
+        if (candidate.length > 0) {
+            return candidate;
+        }
+    }
+    return @"";
+}
+
+@implementation VetMedicineModel
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _medicineID = @"";
+        _title = @"";
+        _medicineDescription = @"";
+        _imageUrl = @"";
+        _blurHash = @"";
+        _vetId = @"";
+        _userId = @"";
+        _animalTypes = @[];
+        _category = @"";
+        _currency = @"QAR";
+        _isAvailable = YES;
+        _isPublished = YES;
+    }
+    return self;
+}
+
+- (NSString *)title_lowercase {
+    return self.title.lowercaseString ?: @"";
+}
+
+- (NSDictionary *)toDictionary {
+    NSString *title = self.title ?: @"";
+    NSString *desc = self.medicineDescription ?: @"";
+    NSString *ownerID = self.userId ?: @"";
+    NSInteger quantity = MAX(0, self.stockQuantity);
+    NSMutableArray<NSString *> *imageURLs = [NSMutableArray array];
+    if (self.imageUrl.length > 0) {
+        [imageURLs addObject:self.imageUrl];
+    }
+    NSMutableDictionary *dict = [@{
+        @"accessKindType": @(PPVetMedicineAccessKindType),
+        @"type": @(PPVetMedicineAccessKindType),
+        @"name": title,
+        @"nameEn": title,
+        @"title": title,
+        @"title_lowercase": self.title_lowercase,
+        @"searchTitle": self.title_lowercase,
+        @"desc": desc,
+        @"descEn": desc,
+        @"description": desc,
+        @"imageUrl": self.imageUrl ?: @"",
+        @"imageURLsArray": imageURLs.copy,
+        @"blurHash": self.blurHash ?: @"",
+        @"vetId": self.vetId ?: @"",
+        @"userId": ownerID,
+        @"ownerID": ownerID,
+        @"animalTypes": self.animalTypes ?: @[],
+        @"category": self.category ?: @"",
+        @"requiresPrescription": @(self.requiresPrescription),
+        @"price": @(self.price),
+        @"finalPrice": @(self.price),
+        @"currency": self.currency.length > 0 ? self.currency : @"QAR",
+        @"stockQuantity": @(quantity),
+        @"quantity": @(quantity),
+        @"noStock": @(quantity <= 0),
+        @"isAvailable": @(self.isAvailable && quantity > 0),
+        @"isPublished": @(self.isPublished),
+        @"isDisabled": @(self.isDisabled),
+        @"condition": @(1),
+    } mutableCopy];
+    if (self.createdAt) dict[@"createdAt"] = self.createdAt;
+    if (self.updatedAt) dict[@"updatedAt"] = self.updatedAt;
+    return dict.copy;
+}
+
++ (instancetype)fromDictionary:(NSDictionary *)dict withID:(NSString *)medicineID {
+    VetMedicineModel *model = [[VetMedicineModel alloc] init];
+    model.medicineID = medicineID ?: @"";
+    NSString *name = PPVetManagerSafeString(dict[@"name"]);
+    NSString *nameEn = PPVetManagerSafeString(dict[@"nameEn"]);
+    NSString *title = PPVetManagerSafeString(dict[@"title"]);
+    model.title = title.length > 0 ? title : (name.length > 0 ? name : nameEn);
+    NSString *desc = PPVetManagerSafeString(dict[@"desc"]);
+    NSString *descEn = PPVetManagerSafeString(dict[@"descEn"]);
+    NSString *legacyDescription = PPVetManagerSafeString(dict[@"description"]);
+    model.medicineDescription = legacyDescription.length > 0 ? legacyDescription : (desc.length > 0 ? desc : descEn);
+    NSString *imageUrl = PPVetManagerFirstImageURL(dict[@"imageUrl"]);
+    if (imageUrl.length == 0) {
+        imageUrl = PPVetManagerFirstImageURL(dict[@"imageURLsArray"]);
+    }
+    model.imageUrl = imageUrl;
+    model.blurHash = PPVetManagerSafeString(dict[@"blurHash"]);
+    model.vetId = PPVetManagerSafeString(dict[@"vetId"]);
+    NSString *ownerID = PPVetManagerOwnerIdentifierForDocument(dict);
+    NSString *userId = PPVetManagerSafeString(dict[@"userId"]);
+    model.userId = userId.length > 0 ? userId : ownerID;
+    model.animalTypes = PPVetManagerStringArray(dict[@"animalTypes"]);
+    model.category = PPVetManagerSafeString(dict[@"category"]);
+    model.requiresPrescription = [dict[@"requiresPrescription"] boolValue];
+    model.price = [dict[@"price"] respondsToSelector:@selector(doubleValue)] ? [dict[@"price"] doubleValue] : ([dict[@"finalPrice"] respondsToSelector:@selector(doubleValue)] ? [dict[@"finalPrice"] doubleValue] : 0.0);
+    model.currency = PPVetManagerSafeString(dict[@"currency"]).length > 0 ? PPVetManagerSafeString(dict[@"currency"]) : @"QAR";
+    model.stockQuantity = [dict[@"stockQuantity"] respondsToSelector:@selector(integerValue)] ? [dict[@"stockQuantity"] integerValue] : ([dict[@"quantity"] respondsToSelector:@selector(integerValue)] ? [dict[@"quantity"] integerValue] : 0);
+    BOOL noStock = PPVetManagerBoolFromValue(dict[@"noStock"]);
+    model.isAvailable = dict[@"isAvailable"] == nil ? (model.stockQuantity > 0 && !noStock) : [dict[@"isAvailable"] boolValue];
+    BOOL blocked = PPVetManagerBoolFromValue(dict[@"isBlocked"]);
+    BOOL deleted = PPVetManagerBoolFromValue(dict[@"isDeleted"]);
+    BOOL archived = PPVetManagerBoolFromValue(dict[@"isArchived"]);
+    BOOL active = dict[@"active"] == nil ? YES : PPVetManagerBoolFromValue(dict[@"active"]);
+    model.isPublished = dict[@"isPublished"] == nil ? (active && !(blocked || deleted || archived)) : [dict[@"isPublished"] boolValue];
+    model.isDisabled = [dict[@"isDisabled"] boolValue] || blocked || deleted || archived;
+    model.createdAt = PPVetManagerDateFromValue(dict[@"createdAt"]);
+    model.updatedAt = PPVetManagerDateFromValue(dict[@"updatedAt"]);
+    return model;
+}
+
+@end
+
 @interface VetManager ()
 @property (nonatomic, strong) id<FIRListenerRegistration> listener;
 @end
@@ -27,9 +220,24 @@
     return [[FIRFirestore firestore] collectionWithPath:@"veterinarians"];
 }
 
+- (FIRCollectionReference *)petAccessoriesCollection {
+    return [[FIRFirestore firestore] collectionWithPath:@"petAccessories"];
+}
+
 - (void)addVet:(VetModel *)vet image:(UIImage *)image completion:(void (^)(NSError * _Nullable))completion {
     NSString *docID = [[NSUUID UUID] UUIDString];
     vet.vetID = docID;
+    if (vet.userID.length == 0) {
+        vet.userID = [FIRAuth auth].currentUser.uid ?: @"";
+    }
+    if (!vet.createdAt) {
+        vet.createdAt = [NSDate date];
+    }
+    vet.updatedAt = [NSDate date];
+    if (vet.verificationStatus.length == 0) {
+        vet.verificationStatus = @"pending";
+    }
+    vet.readyToContact = vet.readyToContact || vet.phone.length > 0 || vet.whatsapp.length > 0;
     
     void (^saveBlock)(NSString *) = ^(NSString *logoURL) {
         vet.logoURL = logoURL;
@@ -44,6 +252,11 @@
 }
 
 - (void)updateVet:(VetModel *)vet image:(UIImage *)image completion:(void (^)(NSError * _Nullable))completion {
+    vet.updatedAt = [NSDate date];
+    if (vet.verificationStatus.length == 0) {
+        vet.verificationStatus = @"pending";
+    }
+    vet.readyToContact = vet.readyToContact || vet.phone.length > 0 || vet.whatsapp.length > 0;
     void (^updateBlock)(NSString *) = ^(NSString *logoURL) {
         vet.logoURL = logoURL.length ? logoURL : vet.logoURL;
         [[[self vetsCollection] documentWithPath:vet.vetID]  setData:[vet toDictionary]  completion:completion];
@@ -61,14 +274,39 @@
 }
 
 - (void)getVetsForUser:(NSString *)userID completion:(void (^)(NSArray<VetModel *> *, NSError * _Nullable))completion {
-    [[[self vetsCollection] queryWhereField:@"userID" isEqualTo:userID]
+    NSString *safeUserID = userID ?: @"";
+    if (safeUserID.length == 0) {
+        if (completion) completion(@[], nil);
+        return;
+    }
+
+    [[[self vetsCollection] queryWhereField:@"userId" isEqualTo:safeUserID]
      getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error) {
+            if (completion) completion(nil, error);
+            return;
+        }
+
+        NSArray<FIRDocumentSnapshot *> *documents = snapshot.documents;
+        if (documents.count == 0) {
+            [[[self vetsCollection] queryWhereField:@"userID" isEqualTo:safeUserID]
+             getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable legacySnapshot, NSError * _Nullable legacyError) {
+                NSMutableArray *legacyResult = [NSMutableArray array];
+                for (FIRDocumentSnapshot *doc in legacySnapshot.documents) {
+                    VetModel *vet = [VetModel fromDictionary:doc.data withID:doc.documentID];
+                    [legacyResult addObject:vet];
+                }
+                if (completion) completion(legacyResult.copy, legacyError);
+            }];
+            return;
+        }
+
         NSMutableArray *result = [NSMutableArray array];
-        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+        for (FIRDocumentSnapshot *doc in documents) {
             VetModel *vet = [VetModel fromDictionary:doc.data withID:doc.documentID];
             [result addObject:vet];
         }
-        completion(result, error);
+        if (completion) completion(result.copy, nil);
     }];
 }
 
@@ -80,6 +318,22 @@
             [vets addObject:vet];
         }
         completion(vets, error);
+    }];
+}
+
+- (void)fetchAllPetMedicinesWithCompletion:(void (^)(NSArray<VetMedicineModel *> *medicinesArray, NSError * _Nullable error))completion {
+    [[self.petAccessoriesCollection queryWhereField:@"accessKindType" isEqualTo:@(PPVetMedicineAccessKindType)] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        NSMutableArray<VetMedicineModel *> *medicines = [NSMutableArray array];
+        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+            if (!PPVetManagerIsMedicineDocument(doc.data ?: @{})) {
+                continue;
+            }
+            VetMedicineModel *medicine = [VetMedicineModel fromDictionary:doc.data ?: @{} withID:doc.documentID];
+            [medicines addObject:medicine];
+        }
+        if (completion) {
+            completion(medicines.copy, error);
+        }
     }];
 }
 

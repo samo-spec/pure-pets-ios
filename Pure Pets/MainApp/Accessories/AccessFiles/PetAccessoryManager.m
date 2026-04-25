@@ -25,6 +25,10 @@
 @interface PetAccessoryManager ()
 @property (nonatomic, strong) FIRFirestore *firestore;
 @property (nonatomic, strong) id<FIRListenerRegistration> listener;
++ (NSArray<PetAccessory *> *)pp_filterItems:(NSArray<PetAccessory *> *)items
+                               matchingKind:(AccessKindType)kind
+                requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility;
++ (NSArray<PetAccessory *> *)pp_sortItemsByCreatedAtDescending:(NSArray<PetAccessory *> *)items;
 @end
 
 @implementation PetAccessoryManager
@@ -33,6 +37,17 @@
 
 static NSInteger _pp_cachedExpiryThresholdDays = 7;
 static BOOL _pp_thresholdLoaded = NO;
+
+static AccessKindType PPAccessKindTypeNormalize(AccessKindType kind) {
+    switch (kind) {
+        case AccessTypeAccessory:
+        case AccessTypeFood:
+        case AccessTypeLivePet:
+        case AccessTypePetMedicine:
+            return kind;
+    }
+    return AccessTypeAccessory;
+}
 
 + (void)pp_loadExpiryThresholdIfNeeded {
     if (_pp_thresholdLoaded) return;
@@ -51,32 +66,60 @@ static BOOL _pp_thresholdLoaded = NO;
     }];
 }
 
-+ (NSArray<PetAccessory *> *)pp_filterExpiredItems:(NSArray<PetAccessory *> *)items {
++ (BOOL)pp_itemPassesVisibilityAndExpiry:(PetAccessory *)item
+                               cutoffDate:(NSDate *)cutoff
+                requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility {
+    if (!item) {
+        return NO;
+    }
+    if (requiresAppMarketVisibility && !item.showInAppMarket) {
+        return NO;
+    }
+    if (!item.expiryDate) {
+        return YES;
+    }
+    return [item.expiryDate compare:cutoff] == NSOrderedDescending;
+}
+
++ (NSArray<PetAccessory *> *)pp_filterVisibleItems:(NSArray<PetAccessory *> *)items
+                                      matchingKind:(AccessKindType)kind {
+    return [self pp_filterItems:items
+                   matchingKind:kind
+    requiresAppMarketVisibility:YES];
+}
+
++ (NSArray<PetAccessory *> *)pp_filterItems:(NSArray<PetAccessory *> *)items
+                               matchingKind:(AccessKindType)kind
+                requiresAppMarketVisibility:(BOOL)requiresAppMarketVisibility {
     if (!items.count) return items;
 
+    AccessKindType normalizedKind = PPAccessKindTypeNormalize(kind);
     NSDate *cutoff = [[NSDate date] dateByAddingTimeInterval:_pp_cachedExpiryThresholdDays * 86400.0];
     NSMutableArray<PetAccessory *> *filtered = [NSMutableArray arrayWithCapacity:items.count];
 
     for (PetAccessory *item in items) {
-        // Exclude live-pet items from user-facing lists
-        if (item.accessKindType == AccessTypeLivePet) {
+        if (item.accessKindType != normalizedKind) {
             continue;
         }
-        // Exclude items not marked for app market visibility
-        if (!item.showInAppMarket) {
-            continue;
-        }
-        // Keep items with no expiry date (nullable — not all items expire)
-        if (!item.expiryDate) {
-            [filtered addObject:item];
-            continue;
-        }
-        // Keep items whose expiry date is AFTER the cutoff
-        if ([item.expiryDate compare:cutoff] == NSOrderedDescending) {
+        if ([self pp_itemPassesVisibilityAndExpiry:item
+                                        cutoffDate:cutoff
+                         requiresAppMarketVisibility:requiresAppMarketVisibility]) {
             [filtered addObject:item];
         }
     }
-    return filtered.copy;
+    return [self pp_sortItemsByCreatedAtDescending:filtered];
+}
+
++ (NSArray<PetAccessory *> *)pp_filterExpiredItems:(NSArray<PetAccessory *> *)items {
+    return [self pp_filterVisibleItems:items matchingKind:AccessTypeAccessory];
+}
+
++ (NSArray<PetAccessory *> *)pp_sortItemsByCreatedAtDescending:(NSArray<PetAccessory *> *)items {
+    return [items sortedArrayUsingComparator:^NSComparisonResult(PetAccessory *a, PetAccessory *b) {
+        NSDate *left = [a.createdAt isKindOfClass:NSDate.class] ? a.createdAt : NSDate.distantPast;
+        NSDate *right = [b.createdAt isKindOfClass:NSDate.class] ? b.createdAt : NSDate.distantPast;
+        return [right compare:left];
+    }];
 }
 
 #pragma mark - ONE TIME PRICE MIGRATION (REMOVE AFTER RUNNING)
@@ -256,7 +299,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             if (item) [results addObject:item];
         }
 
-        NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        NSArray *visible = [PetAccessoryManager pp_filterVisibleItems:results
+                                                         matchingKind:AccessTypeAccessory];
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible);
         });
@@ -316,7 +360,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [results addObject:item];
         }
 
-        NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        AccessKindType similarKind = PPAccessKindTypeNormalize(ad.accessKindType);
+        NSArray *visible = [PetAccessoryManager pp_filterVisibleItems:results
+                                                         matchingKind:similarKind];
         dispatch_async(dispatch_get_main_queue(), ^{
             if (completion) completion(visible);
         });
@@ -330,10 +376,11 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     completion:(void (^)(NSArray<PetAccessory *> *accessories))completion
 {
     FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
+    AccessKindType normalizedKind = PPAccessKindTypeNormalize(kind);
 
     FIRQuery *query =
         [[db collectionWithPath:@"petAccessories"]
-         queryWhereField:@"accessKindType" isEqualTo:@(kind)];
+         queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
 
     if (mainCategoryID > 0) {
         query =
@@ -347,7 +394,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                    isEqualTo:@(subKindID)];
     }
 
-    query = [query queryOrderedByField:@"createdAt" descending:YES];
+    // Sort locally after fetch. Keeping this query equality-only avoids a
+    // required composite Firestore index for the Pet Care medicine screen.
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                         NSError *error) {
@@ -377,7 +425,10 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                 if (item) [results addObject:item];
             }
 
-            NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+            BOOL requiresMarketVisibility = normalizedKind != AccessTypePetMedicine;
+            NSArray *visible = [PetAccessoryManager pp_filterItems:results
+                                                      matchingKind:normalizedKind
+                                       requiresAppMarketVisibility:requiresMarketVisibility];
             dispatch_async(dispatch_get_main_queue(), ^{
                 if (completion) completion(visible);
             });
@@ -392,21 +443,17 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     completion:(void (^)(NSArray<PetAccessory *> *items))completion
 {
     NSString *PetAccessoriesCol  = @"petAccessories";
+    AccessKindType normalizedKind = PPAccessKindTypeNormalize(kind);
     FIRQuery *query =
     [[self.firestore collectionWithPath:PetAccessoriesCol]
-     queryWhereField:@"accessKindType" isEqualTo:@(kind)];
+     queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
 
     if (mainCatID != 0) {
         query = [query queryWhereField:@"petMainCategoryID"
                              isEqualTo:@(mainCatID)];
     }
 
-    // ✅ Stable ordering (RECOMMENDED)
-    query = [query queryOrderedByField:@"createdAt"
-                             descending:YES];
-
-    // ✅ Optional safety limit
-    //query = [query queryLimitedTo:50];
+    // Sort locally after fetch to keep the Firestore query equality-only.
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot,
                                         NSError *error) {
@@ -430,7 +477,10 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [results addObject:item];
         }
 
-        NSArray *visible = [PetAccessoryManager pp_filterExpiredItems:results];
+        BOOL requiresMarketVisibility = normalizedKind != AccessTypePetMedicine;
+        NSArray *visible = [PetAccessoryManager pp_filterItems:results
+                                                  matchingKind:normalizedKind
+                                   requiresAppMarketVisibility:requiresMarketVisibility];
         // ✅ Always return on main thread
         dispatch_async(dispatch_get_main_queue(), ^{
             completion(visible);
@@ -1006,8 +1056,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         [self.listener remove];
     }
 
+    AccessKindType normalizedKind = PPAccessKindTypeNormalize(kindType);
     FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
-                       queryWhereField:@"accessKindType" isEqualTo:@(kindType)];
+                       queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
 
     if (mainCategoryID != 0) {
         query = [query queryWhereField:@"petMainCategoryID" isEqualTo:@(mainCategoryID)];
@@ -1021,20 +1072,27 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         if (!strongSelf) return;
         if (error) {
             NSLog(@"❌ Error listening for kind %ld + mainCategory %ld: %@",
-                  (long)kindType, (long)mainCategoryID, error.localizedDescription);
+                  (long)normalizedKind, (long)mainCategoryID, error.localizedDescription);
             return;
         }
 
         [strongSelf.accessoriesArray removeAllObjects];
+        NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             PetAccessory *accessory =
                 [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
-            if (accessory.accessKindType == AccessTypeLivePet) continue;
-            if (!accessory.showInAppMarket) continue;
-            [strongSelf.accessoriesArray addObject:accessory];
+            accessory.accessoryID = doc.documentID;
+            if (accessory) [snapshotItems addObject:accessory];
             
             NSLog(@"listening for kind  %@",accessory.name);
         }
+
+        BOOL requiresMarketVisibility = normalizedKind != AccessTypePetMedicine;
+        NSArray<PetAccessory *> *visibleItems =
+            [PetAccessoryManager pp_filterItems:snapshotItems
+                                  matchingKind:normalizedKind
+                   requiresAppMarketVisibility:requiresMarketVisibility];
+        [strongSelf.accessoriesArray addObjectsFromArray:visibleItems];
 
         if (updateBlock) {
             updateBlock(strongSelf.accessoriesArray);
@@ -1062,12 +1120,16 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             
             [strongSelf.accessoriesArray removeAllObjects];
+            NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
-                if (accessory.accessKindType == AccessTypeLivePet) continue;
-                if (!accessory.showInAppMarket) continue;
-                [strongSelf.accessoriesArray addObject:accessory];
+                accessory.accessoryID = doc.documentID;
+                if (accessory) [snapshotItems addObject:accessory];
             }
+
+            NSArray<PetAccessory *> *visibleAccessories =
+                [PetAccessoryManager pp_filterVisibleItems:snapshotItems matchingKind:AccessTypeAccessory];
+            [strongSelf.accessoriesArray addObjectsFromArray:visibleAccessories];
             
             if (updateBlock) {
                 updateBlock(strongSelf.accessoriesArray);
@@ -1088,12 +1150,16 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             
             [strongSelf.accessoriesArray removeAllObjects];
+            NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
-                if (accessory.accessKindType == AccessTypeLivePet) continue;
-                [strongSelf.accessoriesArray addObject:accessory];
-                if (!accessory.showInAppMarket) continue;
+                accessory.accessoryID = doc.documentID;
+                if (accessory) [snapshotItems addObject:accessory];
             }
+
+            NSArray<PetAccessory *> *visibleAccessories =
+                [PetAccessoryManager pp_filterVisibleItems:snapshotItems matchingKind:AccessTypeAccessory];
+            [strongSelf.accessoriesArray addObjectsFromArray:visibleAccessories];
             
             if (updateBlock) {
                 updateBlock(strongSelf.accessoriesArray);
@@ -1117,12 +1183,16 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             
             [self.accessoriesArray removeAllObjects];
+            NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
-                if (accessory.accessKindType == AccessTypeLivePet) continue;
-                [self.accessoriesArray addObject:accessory];
-                if (!accessory.showInAppMarket) continue;
+                accessory.accessoryID = doc.documentID;
+                if (accessory) [snapshotItems addObject:accessory];
             }
+
+            NSArray<PetAccessory *> *visibleAccessories =
+                [PetAccessoryManager pp_filterVisibleItems:snapshotItems matchingKind:AccessTypeAccessory];
+            [self.accessoriesArray addObjectsFromArray:visibleAccessories];
             
             if (updateBlock) {
                 updateBlock(self.accessoriesArray);
@@ -2077,8 +2147,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             [self.listener remove];
         }
         
+        AccessKindType normalizedKind = PPAccessKindTypeNormalize(kindType);
         FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
-                           queryWhereField:@"accessKindType" isEqualTo:@(kindType)];
+                           queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
         
         // U4: Prevent retain cycle in accessory kind-only listener
         __weak typeof(self) weakSelf = self;
@@ -2091,10 +2162,19 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             }
             
             [strongSelf.accessoriesArray removeAllObjects];
+            NSMutableArray<PetAccessory *> *snapshotItems = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *accessory = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
-                [strongSelf.accessoriesArray addObject:accessory];
+                accessory.accessoryID = doc.documentID;
+                if (accessory) [snapshotItems addObject:accessory];
             }
+
+            BOOL requiresMarketVisibility = normalizedKind != AccessTypePetMedicine;
+            NSArray<PetAccessory *> *visibleItems =
+                [PetAccessoryManager pp_filterItems:snapshotItems
+                                      matchingKind:normalizedKind
+                       requiresAppMarketVisibility:requiresMarketVisibility];
+            [strongSelf.accessoriesArray addObjectsFromArray:visibleItems];
             
             if (updateBlock) {
                 updateBlock(strongSelf.accessoriesArray);
@@ -2106,7 +2186,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     - (void)fetchAccessoriesOfKind:(AccessKindType)kind
     completion:(void (^)(NSArray<PetAccessory *> *accessories))completion {
         
-        FIRQuery *query = [self.firestore collectionWithPath:@"petAccessories"];
+        AccessKindType normalizedKind = PPAccessKindTypeNormalize(kind);
+        FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
+                           queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
         
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
             if (error) {
@@ -2118,13 +2200,16 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
             NSMutableArray *results = [NSMutableArray array];
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 PetAccessory *item = [[PetAccessory alloc] initWithDictionary:doc.data documentID:doc.documentID];
-                if (item.accessKindType == AccessTypeLivePet) continue;
-                if (!item.showInAppMarket) continue;
-                if(item.accessKindType == kind)
-                    [results addObject:item];
+                item.accessoryID = doc.documentID;
+                if (item) [results addObject:item];
             }
             
-            completion(results);
+            BOOL requiresMarketVisibility = normalizedKind != AccessTypePetMedicine;
+            NSArray<PetAccessory *> *visibleItems =
+                [PetAccessoryManager pp_filterItems:results
+                                      matchingKind:normalizedKind
+                       requiresAppMarketVisibility:requiresMarketVisibility];
+            completion(visibleItems);
         }];
     }
 #pragma mark - Global Accessories Fetching
@@ -2162,15 +2247,14 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     [[PetAccessory alloc] initWithDictionary:doc.data
                                                   documentID:doc.documentID];
                     item.accessoryID = doc.documentID;
-                    if (item &&
-                        item.accessKindType == AccessTypeAccessory &&
-                        item.showInAppMarket) {
-                        [results addObject:item];
-                    }
+                    if (item) [results addObject:item];
                 }
+
+                NSArray<PetAccessory *> *visibleAccessories =
+                    [PetAccessoryManager pp_filterVisibleItems:results matchingKind:AccessTypeAccessory];
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    if (completion) completion(results.copy);
+                    if (completion) completion(visibleAccessories);
                 });
             });
         }];
@@ -2214,9 +2298,12 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
                     item.accessoryID = doc.documentID;
                     if (item) [results addObject:item];
                 }
+
+                NSArray<PetAccessory *> *visibleFoods =
+                    [PetAccessoryManager pp_filterVisibleItems:results matchingKind:AccessTypeFood];
                 
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    if (completion) completion(results.copy);
+                    if (completion) completion(visibleFoods);
                 });
             });
         }];

@@ -967,7 +967,7 @@
 "ShowAllCards_Ar" = "عرض كل البطاقات";
 
 
-"Out of stock" = "صنف غير متوفر";
+"Out of stock" = "غير متوفر";
 "Only" = "متبقي";
 "left in stock" = "فقط";
 "leftInStock" = "فقط";
@@ -2526,15 +2526,15 @@
 "PetMedicine" = "دواء للحيوانات";
 "CellSectionMedicine" = "دواء للحيوانات";
 "home_premium_care_eyebrow" = "رعاية مميزة";
-"home_premium_care_title" = "الأدوية والأطباء";
+"home_premium_care_title" = "مركز العناية البيطري";
 "home_premium_care_subtitle" = "أدوية الحيوانات والرعاية البيطرية في مكان واحد أنيق.";
 "home_premium_care_cta" = "افتح مركز الرعاية";
 "pet_care_title" = "رعاية الحيوانات";
 "pet_care_eyebrow" = "رعاية مميزة";
 "pet_care_medicines" = "الأدوية";
-"pet_care_veterinarians" = "الأطباء البيطريون";
+"pet_care_veterinarians" = "الأطباء";
 "pet_care_medicine_title" = "أدوية الحيوانات";
-"pet_care_medicine_subtitle" = "أدوية ومستلزمات علاج وعناية مختارة من كتالوج المتجر المشترك.";
+"pet_care_medicine_subtitle" = "أدوية ومستلزمات عناية طبية للحيوانات الأليفة، مختارة لتمنحها حياة افضل  .";
 "pet_care_vets_title" = "الأطباء البيطريون";
 "pet_care_vets_subtitle" = "اعثر على أطباء حسب نوع الحيوان، جاهزية التواصل، ونوع العيادة.";
 "pet_care_search_medicines" = "ابحث في الأدوية";
@@ -2544,6 +2544,8 @@
 "pet_care_filter_offers" = "العروض";
 "pet_care_filter_in_stock" = "متوفر";
 "pet_care_filter_new" = "جديد";
+"pet_care_kind_filter" = "نوع الحيوان";
+"pet_care_filter_by" = "التصفية حسب";
 "pet_care_filter_with_phone" = "جاهز للتواصل";
 "pet_care_filter_clinics" = "عيادات";
 "pet_care_filter_doctors" = "أطباء";

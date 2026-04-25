@@ -2258,8 +2258,35 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
             return;
         }
 
-        NSDictionary *data = snapshot.data;
+        NSDictionary *data = snapshot.data ?: @{};
         BOOL isBlocked = [data[@"isBlocked"] boolValue];
+        BOOL previousCanPostPetAdsFeature = strongSelf.currentUser.canPostPetAdsFeature;
+        BOOL previousCanPostAdoptionFeature = strongSelf.currentUser.canPostAdoptionFeature;
+        BOOL previousCanSellAccessoriesFeature = strongSelf.currentUser.canSellAccessoriesFeature;
+        BOOL previousCanOfferServicesFeature = strongSelf.currentUser.canOfferServicesFeature;
+        BOOL previousCanDeliveryFeature = strongSelf.currentUser.canDeliveryFeature;
+        BOOL previousCanPharmacyFeature = strongSelf.currentUser.canPharmacyFeature;
+        BOOL previousCanVetFeature = strongSelf.currentUser.canVetFeature;
+        BOOL previousCanUseStoriesFeature = strongSelf.currentUser.canUseStoriesFeature;
+        BOOL previousCanUseChatFeature = strongSelf.currentUser.canUseChatFeature;
+        BOOL previousCanAccessPremiumMarketplaceFeature = strongSelf.currentUser.canAccessPremiumMarketplaceFeature;
+        BOOL previousPartnerOnboardingVisible = strongSelf.currentUser.partnerOnboardingVisible;
+        NSString *previousPartnerApplicationStatus = PPSafeString(strongSelf.currentUser.partnerApplicationStatus);
+        NSString *previousSelectedPartnerType = PPSafeString(strongSelf.currentUser.selectedPartnerType);
+        BOOL previousCanAccessPartnerAppPermission = strongSelf.currentUser.canAccessPartnerAppPermission;
+        BOOL previousCanManageDeliveryPermission = strongSelf.currentUser.canManageDeliveryPermission;
+        BOOL previousCanManageServiceProviderPermission = strongSelf.currentUser.canManageServiceProviderPermission;
+        BOOL previousCanManageVetPermission = strongSelf.currentUser.canManageVetPermission;
+        BOOL previousCanPostVetProfilePermission = strongSelf.currentUser.canPostVetProfilePermission;
+        BOOL previousCanEditVetInfoPermission = strongSelf.currentUser.canEditVetInfoPermission;
+        BOOL previousCanManagePetMedicinesPermission = strongSelf.currentUser.canManagePetMedicinesPermission;
+        BOOL previousPostingBlocked = strongSelf.currentUser.postingBlocked;
+        BOOL previousChatBlocked = strongSelf.currentUser.chatBlocked;
+        BOOL previousPurchaseBlocked = strongSelf.currentUser.purchaseBlocked;
+        BOOL previousWithdrawalBlocked = strongSelf.currentUser.withdrawalBlocked;
+        NSString *previousSubscriptionPlan = PPSafeString(strongSelf.currentUser.subscriptionPlan);
+        NSString *previousSubscriptionStatus = PPSafeString(strongSelf.currentUser.subscriptionStatus);
+        NSString *previousSubscriptionSource = PPSafeString(strongSelf.currentUser.subscriptionSource);
 
         // ── Parse new User Access Model fields from the same snapshot ──
         NSString *accountStatus = PPSafeString(data[@"accountStatus"]);
@@ -2273,10 +2300,74 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
             strongSelf.currentUser.canPostPetAdsFeature = [featuresDict[@"canPostPetAds"] boolValue];
             strongSelf.currentUser.canPostAdoptionFeature = [featuresDict[@"canPostAdoption"] boolValue];
             strongSelf.currentUser.canSellAccessoriesFeature = [featuresDict[@"canSellAccessories"] boolValue];
-            strongSelf.currentUser.canOfferServicesFeature = [featuresDict[@"canOfferServices"] boolValue];
+            strongSelf.currentUser.canOfferServicesFeature = [featuresDict[@"service_provider"] boolValue] || [featuresDict[@"canOfferServices"] boolValue];
+            strongSelf.currentUser.canDeliveryFeature = [featuresDict[@"delivery"] boolValue] || [featuresDict[@"canDelivery"] boolValue];
+            strongSelf.currentUser.canPharmacyFeature = [data[@"canPharmacy"] boolValue] || [featuresDict[@"pharmacy"] boolValue] || [featuresDict[@"canPharmacy"] boolValue];
+            strongSelf.currentUser.canVetFeature = [featuresDict[@"vet"] boolValue] || [featuresDict[@"canVet"] boolValue];
             strongSelf.currentUser.canUseStoriesFeature = [featuresDict[@"canUseStories"] boolValue];
             strongSelf.currentUser.canUseChatFeature = [featuresDict[@"canUseChat"] boolValue];
             strongSelf.currentUser.canAccessPremiumMarketplaceFeature = [featuresDict[@"canAccessPremiumMarketplace"] boolValue];
+        } else {
+            strongSelf.currentUser.canPharmacyFeature = [data[@"canPharmacy"] boolValue];
+        }
+
+        NSDictionary *onboardingDict = [data[@"onboarding"] isKindOfClass:NSDictionary.class] ? data[@"onboarding"] : nil;
+        NSDictionary *partnerRoot = onboardingDict ?: data;
+        strongSelf.currentUser.partnerOnboardingVisible = [partnerRoot[@"partnerOnboardingVisible"] boolValue];
+
+        NSString *partnerApplicationStatus = PPSafeString(partnerRoot[@"partnerApplicationStatus"]);
+        strongSelf.currentUser.partnerApplicationStatus = partnerApplicationStatus.length > 0 ? partnerApplicationStatus : @"not_started";
+
+        NSString *rawPartnerType = [PPSafeString(partnerRoot[@"selectedPartnerType"]).lowercaseString stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if ([rawPartnerType isEqualToString:@"delivery_subscription"]) {
+            rawPartnerType = @"delivery";
+        } else if ([rawPartnerType isEqualToString:@"service"] || [rawPartnerType isEqualToString:@"serviceprovider"]) {
+            rawPartnerType = @"service_provider";
+        }
+        if (!([rawPartnerType isEqualToString:@"delivery"] ||
+              [rawPartnerType isEqualToString:@"service_provider"] ||
+              [rawPartnerType isEqualToString:@"vet"])) {
+            rawPartnerType = @"";
+        }
+        strongSelf.currentUser.selectedPartnerType = rawPartnerType.length > 0 ? rawPartnerType : nil;
+
+        NSDictionary *permDict = [data[@"permissions"] isKindOfClass:NSDictionary.class] ? data[@"permissions"] : nil;
+        if (permDict) {
+            strongSelf.currentUser.canManageDeliveryPermission = [permDict[@"canManageDelivery"] boolValue];
+            strongSelf.currentUser.canManageServiceProviderPermission = [permDict[@"canManageServiceProvider"] boolValue];
+            strongSelf.currentUser.canManageVetPermission = [permDict[@"canManageVet"] boolValue];
+            strongSelf.currentUser.canPostVetProfilePermission = [permDict[@"canPostVetProfile"] boolValue];
+            strongSelf.currentUser.canEditVetInfoPermission = [permDict[@"canEditVetInfo"] boolValue];
+            strongSelf.currentUser.canManagePetMedicinesPermission = [permDict[@"canManagePetMedicines"] boolValue];
+            strongSelf.currentUser.canAccessPartnerAppPermission = [permDict[@"canAccessPartnerApp"] boolValue];
+        }
+        if (!strongSelf.currentUser.canManageDeliveryPermission) {
+            strongSelf.currentUser.canManageDeliveryPermission = strongSelf.currentUser.canDeliveryFeature;
+        }
+        if (!strongSelf.currentUser.canManageServiceProviderPermission) {
+            strongSelf.currentUser.canManageServiceProviderPermission = strongSelf.currentUser.canOfferServicesFeature;
+        }
+        if (!strongSelf.currentUser.canManageVetPermission) {
+            strongSelf.currentUser.canManageVetPermission = strongSelf.currentUser.canVetFeature;
+        }
+        if (!strongSelf.currentUser.canPostVetProfilePermission) {
+            strongSelf.currentUser.canPostVetProfilePermission = strongSelf.currentUser.canManageVetPermission;
+        }
+        if (!strongSelf.currentUser.canEditVetInfoPermission) {
+            strongSelf.currentUser.canEditVetInfoPermission = strongSelf.currentUser.canManageVetPermission;
+        }
+        if (!strongSelf.currentUser.canManagePetMedicinesPermission) {
+            strongSelf.currentUser.canManagePetMedicinesPermission = strongSelf.currentUser.canPharmacyFeature;
+        }
+        if (!strongSelf.currentUser.canAccessPartnerAppPermission) {
+            strongSelf.currentUser.canAccessPartnerAppPermission =
+                strongSelf.currentUser.canManageDeliveryPermission ||
+                strongSelf.currentUser.canManageServiceProviderPermission ||
+                strongSelf.currentUser.canManageVetPermission ||
+                strongSelf.currentUser.canDeliveryFeature ||
+                strongSelf.currentUser.canOfferServicesFeature ||
+                strongSelf.currentUser.canVetFeature ||
+                strongSelf.currentUser.canPharmacyFeature;
         }
 
         // Restrictions
@@ -2313,7 +2404,36 @@ static NSString *PPUserManagerCanonicalE164Candidate(NSString *value)
         // Combine blocked check: legacy isBlocked OR accountStatus == "blocked"/"disabled"
         BOOL effectivelyBlocked = isBlocked || [accountStatus isEqualToString:@"blocked"] || [accountStatus isEqualToString:@"disabled"];
 
-        BOOL didChange = (strongSelf.currentUser.isBlocked != isBlocked) || accountStatusChanged || prodectionChanged || verifiedChanged;
+        BOOL accessChanged =
+            previousCanPostPetAdsFeature != strongSelf.currentUser.canPostPetAdsFeature ||
+            previousCanPostAdoptionFeature != strongSelf.currentUser.canPostAdoptionFeature ||
+            previousCanSellAccessoriesFeature != strongSelf.currentUser.canSellAccessoriesFeature ||
+            previousCanOfferServicesFeature != strongSelf.currentUser.canOfferServicesFeature ||
+            previousCanDeliveryFeature != strongSelf.currentUser.canDeliveryFeature ||
+            previousCanPharmacyFeature != strongSelf.currentUser.canPharmacyFeature ||
+            previousCanVetFeature != strongSelf.currentUser.canVetFeature ||
+            previousCanUseStoriesFeature != strongSelf.currentUser.canUseStoriesFeature ||
+            previousCanUseChatFeature != strongSelf.currentUser.canUseChatFeature ||
+            previousCanAccessPremiumMarketplaceFeature != strongSelf.currentUser.canAccessPremiumMarketplaceFeature ||
+            previousPartnerOnboardingVisible != strongSelf.currentUser.partnerOnboardingVisible ||
+            ![previousPartnerApplicationStatus isEqualToString:PPSafeString(strongSelf.currentUser.partnerApplicationStatus)] ||
+            ![previousSelectedPartnerType isEqualToString:PPSafeString(strongSelf.currentUser.selectedPartnerType)] ||
+            previousCanAccessPartnerAppPermission != strongSelf.currentUser.canAccessPartnerAppPermission ||
+            previousCanManageDeliveryPermission != strongSelf.currentUser.canManageDeliveryPermission ||
+            previousCanManageServiceProviderPermission != strongSelf.currentUser.canManageServiceProviderPermission ||
+            previousCanManageVetPermission != strongSelf.currentUser.canManageVetPermission ||
+            previousCanPostVetProfilePermission != strongSelf.currentUser.canPostVetProfilePermission ||
+            previousCanEditVetInfoPermission != strongSelf.currentUser.canEditVetInfoPermission ||
+            previousCanManagePetMedicinesPermission != strongSelf.currentUser.canManagePetMedicinesPermission ||
+            previousPostingBlocked != strongSelf.currentUser.postingBlocked ||
+            previousChatBlocked != strongSelf.currentUser.chatBlocked ||
+            previousPurchaseBlocked != strongSelf.currentUser.purchaseBlocked ||
+            previousWithdrawalBlocked != strongSelf.currentUser.withdrawalBlocked ||
+            ![previousSubscriptionPlan isEqualToString:PPSafeString(strongSelf.currentUser.subscriptionPlan)] ||
+            ![previousSubscriptionStatus isEqualToString:PPSafeString(strongSelf.currentUser.subscriptionStatus)] ||
+            ![previousSubscriptionSource isEqualToString:PPSafeString(strongSelf.currentUser.subscriptionSource)];
+
+        BOOL didChange = (strongSelf.currentUser.isBlocked != isBlocked) || accountStatusChanged || prodectionChanged || verifiedChanged || accessChanged;
         strongSelf.currentUser.isBlocked = isBlocked;
 
         if (didChange && strongSelf.currentUser.ID.length > 0) {
