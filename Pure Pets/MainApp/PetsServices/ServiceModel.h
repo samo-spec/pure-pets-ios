@@ -29,6 +29,7 @@ typedef NS_ENUM(NSInteger, ServiceType) {
 @property (nonatomic, copy)   NSString *categoryID;
 @property (nonatomic, assign) NSInteger petMainKindID;
 @property (nonatomic, assign) ServiceType type;
+@property (nonatomic, copy, nullable) NSString *serviceTypeText;
 @property (nonatomic, copy, nullable) NSString *imageURL;
 @property (nonatomic, copy)   NSString *blurHash;
 @property (nonatomic, assign) BOOL isAvailable;            ///< Provider-controlled availability toggle
@@ -36,6 +37,7 @@ typedef NS_ENUM(NSInteger, ServiceType) {
 // ── Rating / Reviews ──
 @property (nonatomic, strong, nullable) NSNumber *ratingValue;
 @property (nonatomic, assign) NSInteger reviewCount;
+@property (nonatomic, copy) NSArray<NSDictionary<NSString *, id> *> *reviews;
 
 // ── System Status (read-only — set by admin/backend) ──
 @property (nonatomic, assign, readonly) BOOL isDisabled;
@@ -73,6 +75,9 @@ typedef NS_ENUM(NSInteger, ServiceType) {
 - (NSString *)localizedTypeName;
 - (NSString *)localizedVerificationStatus;
 - (NSString *)localizedAvailabilityStatus;
+- (BOOL)hasDisplayableRating;
+- (NSString *)localizedRatingBadgeText;
+- (NSString *)localizedRatingSummaryText;
 /// YES if not deleted, not blocked, not disabled, and provider has set available.
 - (BOOL)isLive;
 

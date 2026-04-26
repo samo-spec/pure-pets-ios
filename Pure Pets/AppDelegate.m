@@ -18,6 +18,28 @@
 
 @end
 
+#if PP_HAS_FIREBASE_APPCHECK
+@interface PPAppCheckAppAttestProviderFactory : NSObject <FIRAppCheckProviderFactory>
+@end
+
+@implementation PPAppCheckAppAttestProviderFactory
+
+- (id<FIRAppCheckProvider>)createProviderWithApp:(FIRApp *)app
+{
+#if TARGET_OS_SIMULATOR
+    (void)app;
+    return nil;
+#else
+    if (@available(iOS 14.0, *)) {
+        return [[FIRAppAttestProvider alloc] initWithApp:app];
+    }
+    return nil;
+#endif
+}
+
+@end
+#endif
+
 
 
 @implementation AppDelegate
@@ -71,8 +93,10 @@
     // ✅ Firebase setup`
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
+       
         [self pp_configureAppCheckIfAvailable];
         [FIRApp configure];
+        [self pp_enableAppCheckTokenAutoRefreshIfAvailable];
         // Firestore persistence is enabled by default in Firebase iOS SDK 12.x.
         // Cache size uses the SDK default (100MB with auto-GC).
 
@@ -209,9 +233,31 @@
         return nil;
     }
 
+#if PP_HAS_FIREBASE_APPCHECK
+    if ([className isEqualToString:@"FIRAppCheckDebugProviderFactory"]) {
+        return [[FIRAppCheckDebugProviderFactory alloc] init];
+    }
+    if ([className isEqualToString:@"FIRDeviceCheckProviderFactory"]) {
+        return [[FIRDeviceCheckProviderFactory alloc] init];
+    }
+#endif
+
     Class factoryClass = NSClassFromString(className);
+    if (!factoryClass) {
+        factoryClass = NSClassFromString([@"FirebaseAppCheck." stringByAppendingString:className]);
+    }
+    if (!factoryClass) {
+        return nil;
+    }
+
+    id providerFactory = [[factoryClass alloc] init];
+    if (providerFactory) {
+        return providerFactory;
+    }
+
+    // Backward-compatible fallback for SDKs that expose a class factory method.
     SEL providerFactorySelector = NSSelectorFromString(@"providerFactory");
-    if (!factoryClass || ![factoryClass respondsToSelector:providerFactorySelector]) {
+    if (![factoryClass respondsToSelector:providerFactorySelector]) {
         return nil;
     }
 
@@ -310,7 +356,9 @@
     if (!providerFactory) {
         // Production/dev-default path for iOS devices that use DeviceCheck (more compatible in current Firebase setup).
         if ([self pp_shouldUseAppAttestAppCheckProvider] && @available(iOS 14.0, *)) {
-            providerFactory = [self pp_appCheckProviderFactoryForClassName:@"FIRAppAttestProviderFactory"];
+#if PP_HAS_FIREBASE_APPCHECK
+            providerFactory = [[PPAppCheckAppAttestProviderFactory alloc] init];
+#endif
             if (providerFactory) {
                 selectedProviderName = @"AppAttest";
             } else {
@@ -353,25 +401,6 @@
     [appCheckClass performSelector:setter withObject:providerFactory];
 #pragma clang diagnostic pop
 
-    SEL appCheckGetter = NSSelectorFromString(@"appCheck");
-    SEL autoRefreshSetter = NSSelectorFromString(@"setTokenAutoRefreshEnabled:");
-    if ([appCheckClass respondsToSelector:appCheckGetter]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        id appCheckInstance = [appCheckClass performSelector:appCheckGetter];
-#pragma clang diagnostic pop
-        if (appCheckInstance && [appCheckInstance respondsToSelector:autoRefreshSetter]) {
-            NSMethodSignature *signature = [appCheckInstance methodSignatureForSelector:autoRefreshSetter];
-            if (signature) {
-                NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-                BOOL enabled = YES;
-                [invocation setSelector:autoRefreshSetter];
-                [invocation setTarget:appCheckInstance];
-                [invocation setArgument:&enabled atIndex:2];
-                [invocation invoke];
-            }
-        }
-    }
     if ([selectedProviderName hasPrefix:@"Debug"]) {
         NSDictionary<NSString *, NSString *> *env = [NSProcessInfo processInfo].environment ?: @{};
         NSString *debugTokenHint = env[@"FIRAAppCheckDebugToken"];
@@ -381,6 +410,18 @@
         }
     }
     NSLog(@"[AppCheck] Provider configured: %@.", selectedProviderName ?: @"Unknown");
+}
+
+- (void)pp_enableAppCheckTokenAutoRefreshIfAvailable
+{
+#if PP_HAS_FIREBASE_APPCHECK
+    if (![FIRApp defaultApp]) {
+        return;
+    }
+
+    FIRAppCheck *appCheck = [FIRAppCheck appCheck];
+    appCheck.isTokenAutoRefreshEnabled = YES;
+#endif
 }
 
 - (void)pp_storeFCMTokenLocally:(NSString *)fcmToken

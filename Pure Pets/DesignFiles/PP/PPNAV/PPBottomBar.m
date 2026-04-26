@@ -8,7 +8,8 @@
 //  Created by Mohammed Ahmed on 01/11/2025.
 //
 
- #import "Styling.h"
+#import "Styling.h"
+#import "PPCommerceFeedbackManager.h"
 
 @interface PPPaymentTabBar ()
 @property (nonatomic, strong) NSArray<UIButton *> *tabButtons;
@@ -181,6 +182,47 @@
 /* **********************************************************************************************************************************************************************************************************/
 #pragma mark - BBCartBottomBar
 
+static CGFloat PPBBCartBarCornerRadius(void) {
+    return PPIOS26() ? 34.0 : 28.0;
+}
+
+static CGFloat PPBBCartBadgeCartButtonSize(void) {
+    return 44.0;
+}
+
+static UIColor *PPBBCartColor(UIColor *color, UIColor *fallback) {
+    return color ?: fallback ?: UIColor.systemBackgroundColor;
+}
+
+static UIColor *PPBBCartSurfaceFillColor(void) {
+    UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.24 : 0.92];
+}
+
+static UIColor *PPBBCartSurfaceTintColor(void) {
+    UIColor *base = PPBBCartColor(AppBackgroundClr, UIColor.systemBackgroundColor);
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.18];
+}
+
+static UIColor *PPBBCartSurfaceStrokeColor(void) {
+    return [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.24 : 0.32];
+}
+
+static UIColor *PPBBCartBadgeFillColor(void) {
+    UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.80];
+}
+
+static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolWeight weight, UIColor *color) {
+    UIImageSymbolConfiguration *size =
+    [UIImageSymbolConfiguration configurationWithPointSize:pointSize
+                                                    weight:weight
+                                                     scale:UIImageSymbolScaleMedium];
+    UIImage *image = [UIImage systemImageNamed:name withConfiguration:size];
+    UIColor *resolved = color ?: UIColor.labelColor;
+    return [[image imageWithTintColor:resolved] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
 @interface BBCartBottomBar ()
 {
     UIStackView *topRow;
@@ -189,6 +231,18 @@
 @property (nonatomic, strong) UIView *separator;
 @property (nonatomic, strong) UIVisualEffectView *blurBackground;
 @property (nonatomic, strong) UIButton *BackgroundB;
+@property (nonatomic, strong) UIView *surfaceTintView;
+@property (nonatomic, strong) UIView *surfaceHighlightView;
+@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
+@property (nonatomic, strong) UIStackView *contentStack;
+@property (nonatomic, strong) UIStackView *priceStack;
+@property (nonatomic, strong) UIView *successHaloView;
+@property (nonatomic, strong) CAGradientLayer *buttonSheenLayer;
+@property (nonatomic, copy) NSString *idleAddToCartTitle;
+@property (nonatomic, strong) UIImage *idleAddToCartImage;
+@property (nonatomic, assign) BOOL didRunEntranceAnimation;
+@property (nonatomic, assign, getter=isRestoringButton) BOOL restoringButton;
+@property (nonatomic, assign) BOOL usesCompactCartButton;
 @end
 @implementation BBCartBottomBar
 
@@ -202,87 +256,47 @@
 -(void)layoutSubviews
 {
     [super layoutSubviews];
-     
-    
+
     self.clipsToBounds = NO;
     [self pp_setShadowColor:AppShadowClr];
-    self.layer.shadowOpacity = 0.0;
-    self.layer.shadowRadius = 0;
-    self.layer.shadowOffset = CGSizeMake(0, -2);
+    self.layer.shadowOpacity = PPIOS26() ? 0.08 : 0.10;
+    self.layer.shadowRadius = 22.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, -10.0);
+    self.layer.shadowPath =
+    [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                               cornerRadius:PPBBCartBarCornerRadius()].CGPath;
+
+    CGFloat surfaceRadius = PPBBCartBarCornerRadius();
+    self.BackgroundB.layer.cornerRadius = surfaceRadius;
+    self.blurBackground.layer.cornerRadius = surfaceRadius;
+    self.surfaceTintView.layer.cornerRadius = surfaceRadius;
+    self.surfaceGradientLayer.frame = self.BackgroundB.bounds;
+    self.buttonSheenLayer.frame = self.addToCartButton.bounds;
+    if (!self.didRunEntranceAnimation && self.bounds.size.height > 0.0) {
+        self.didRunEntranceAnimation = YES;
+        self.alpha = 0.0;
+        self.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
+        [UIView animateWithDuration:0.46
+                              delay:0.04
+             usingSpringWithDamping:0.86
+              initialSpringVelocity:0.45
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.alpha = 1.0;
+            self.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
 }
 
 
 - (void)setupUI {
-    
-    //UIColor *gb = [AppPrimaryClr colorWithAlphaComponent:1.2];
-    self.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.0];
- 
-     
-        self.BackgroundB = [UIButton buttonWithType:UIButtonTypeSystem];
-        self.BackgroundB.translatesAutoresizingMaskIntoConstraints = NO;
-        if (@available(iOS 26.0, *)) {
-            UIButtonConfiguration *cfg = [UIButtonConfiguration glassButtonConfiguration];
-            cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-            cfg.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
-            cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.03];
-            cfg.background.cornerRadius = 00;
+    self.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = GM.setSemantic;
+    self.usesCompactCartButton = YES;
 
-            self.BackgroundB.configuration = cfg;
-            [_BackgroundB updateConfiguration];
-        }
-         
-        // ✅ Modern blur background
-        if (@available(iOS 26.0, *)) {
-            //UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
-           
-             //cfg.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.09];
-             [self addSubview:self.BackgroundB];
-            [NSLayoutConstraint activateConstraints:@[
-                [self.BackgroundB.topAnchor constraintEqualToAnchor:self.topAnchor],
-                [self.BackgroundB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:0],
-                [self.BackgroundB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-0],
-                [self.BackgroundB.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-0],
-            ]];
-        } else {
-            self.backgroundColor = [UIColor systemBackgroundColor];
+    [self pp_buildSurface];
 
-            // Allocate the blur backdrop for iOS < 26
-            UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
-            _blurBackground = [[UIVisualEffectView alloc] initWithEffect:blur];
-            _blurBackground.translatesAutoresizingMaskIntoConstraints = NO;
-            [self addSubview:_blurBackground];
-
-            // Add BackgroundB to self so subviews share a common ancestor
-            self.BackgroundB.backgroundColor = UIColor.clearColor;
-            [self addSubview:self.BackgroundB];
-            [NSLayoutConstraint activateConstraints:@[
-                [self.BackgroundB.topAnchor constraintEqualToAnchor:self.topAnchor],
-                [self.BackgroundB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-                [self.BackgroundB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-                [self.BackgroundB.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-            ]];
-        }
-        
-        if(!PPIOS26())
-        {
-            self.blurBackground.backgroundColor = AppClearClr;
-            self.blurBackground.layer.cornerRadius = 42;
-            
-            [NSLayoutConstraint activateConstraints:@[
-                [self.blurBackground.topAnchor constraintEqualToAnchor:self.topAnchor],
-                [self.blurBackground.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-                [self.blurBackground.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-                [self.blurBackground.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
-            ]];
-            
-            self.blurBackground.clipsToBounds = YES;
-            self.blurBackground.layer.cornerRadius = PPCorners;
-
-        }
-         
-     
- 
-    _minusButton = [self circleButtonWithTitle:@"–"];
+    _minusButton = [self circleButtonWithTitle:@"-"];
     [_minusButton addTarget:self action:@selector(decreaseQuantity) forControlEvents:UIControlEventTouchUpInside];
 
     _plusButton = [self circleButtonWithTitle:@"+"];
@@ -290,203 +304,111 @@
 
     _countLabel = [[UILabel alloc] init];
     _countLabel.text = @"1";
-    _countLabel.font = [UIFont boldSystemFontOfSize:20];
+    _countLabel.font = [GM boldFontWithSize:18] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightSemibold];
     _countLabel.textAlignment = NSTextAlignmentCenter;
     _countLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _countLabel.textColor = AppPrimaryClr;
-    [_totalLabel removeFromSuperview];
+    _countLabel.textColor = PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
+    _countLabel.adjustsFontSizeToFitWidth = YES;
+    _countLabel.minimumScaleFactor = 0.72;
+    [_countLabel.widthAnchor constraintGreaterThanOrEqualToConstant:34.0].active = YES;
 
-    // === Create the labels ===
     _totalLabel = [[PPInsetLabel alloc] init];
     _totalLabel.text = kLang(@"OrderTotal");
-    _totalLabel.font = [GM MidFontWithSize:16];
-    _totalLabel.textColor = AppSecondaryTextClr;
+    _totalLabel.font = [GM MidFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _totalLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
     _totalLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [_totalLabel sizeToFit];
+    _totalLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
     _amountLabel = [[PPInsetLabel alloc] init];
-    _amountLabel.text = [NSString stringWithFormat:@"%.2f", _itemAmount];
-    _amountLabel.font = [GM boldFontWithSize:26];
-    _amountLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:1.1];
+    _amountLabel.text = [self pp_priceStringFromAmount:_itemAmount];
+    _amountLabel.font = [GM boldFontWithSize:24] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    _amountLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
     _amountLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [_amountLabel sizeToFit];
+    _amountLabel.adjustsFontSizeToFitWidth = YES;
+    _amountLabel.minimumScaleFactor = 0.72;
+
     _currencyLabel = [[PPInsetLabel alloc] init];
     _currencyLabel.text = kLang(@"Rials");
-    _currencyLabel.font = [GM MidFontWithSize:16];
-    _currencyLabel.textColor = AppSecondaryTextClr;
+    _currencyLabel.font = [GM MidFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _currencyLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
     _currencyLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    [_currencyLabel sizeToFit];
-    // === Create a horizontal stack view ===
-    UIStackView *totalStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+
+    _priceStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         _totalLabel,
         _amountLabel,
         _currencyLabel
     ]];
-    totalStack.axis = UILayoutConstraintAxisHorizontal;
-    totalStack.alignment = UIStackViewAlignmentCenter;
-    totalStack.spacing = 4;
-    totalStack.translatesAutoresizingMaskIntoConstraints = NO;
+    _priceStack.axis = UILayoutConstraintAxisHorizontal;
+    _priceStack.alignment = UIStackViewAlignmentFirstBaseline;
+    _priceStack.spacing = PPSpaceXS;
+    _priceStack.translatesAutoresizingMaskIntoConstraints = NO;
+    _priceStack.semanticContentAttribute = GM.setSemantic;
 
-   
-    // === Add to Cart button ===
+    _totalContainer = [UIButton buttonWithType:UIButtonTypeCustom];
+    _totalContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    _totalContainer.userInteractionEnabled = YES;
+    _totalContainer.isAccessibilityElement = NO;
+    _totalContainer.backgroundColor = PPBBCartBadgeFillColor();
+    PPApplyContinuousCorners(_totalContainer, 22.0);
+    [_totalContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.20 : 0.30]];
+    _totalContainer.layer.borderWidth = 0.7;
+    [_totalContainer addSubview:_priceStack];
+
     _addToCartButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _addToCartButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [_addToCartButton addTarget:self action:@selector(addToCartTapped)
-               forControlEvents:UIControlEventTouchUpInside];
-
-    // iOS 16+ Glass Button (modern style)
-    if (@available(iOS 26.0, *)) {
-        
-        UIButtonConfiguration *config = [UIButtonConfiguration tintedButtonConfiguration];
-        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        config.buttonSize = UIButtonConfigurationSizeLarge;
-        config.baseForegroundColor = AppForgroundColr;
-        config.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:1];
-        config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.1];
-        config.background.cornerRadius = 30;
- 
-       
-        config.title = kLang(@"addToCart");
-            config.titleTextAttributesTransformer =
-            ^NSDictionary<NSAttributedStringKey, id> * (NSDictionary<NSAttributedStringKey, id> *attrs) {
-                NSMutableDictionary *m = [attrs mutableCopy];
-                m[NSFontAttributeName] = [GM boldFontWithSize:18];
-                m[NSForegroundColorAttributeName] = [AppForgroundColr colorWithAlphaComponent:1];
-                return m;
-            };
-        
-        
-        // ✅ Stroke (supported in configuration)
-        config.background.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.8];
-        config.background.strokeWidth = 1.0;
- 
-
-            config.image = [UIImage systemImageNamed:@"cart.fill"];
-            config.imagePlacement = NSDirectionalRectEdgeLeading;
-            config.imagePadding = 6;
-            config.preferredSymbolConfigurationForImage =
-                [UIImageSymbolConfiguration configurationWithPointSize:18
-                                                                weight:UIImageSymbolWeightSemibold
-                                                                 scale:UIImageSymbolScaleMedium];
-
-          config.background.strokeColor = [AppPrimaryClr colorWithAlphaComponent:0.3];
-           config.background.strokeWidth = 1.3;
-        _addToCartButton.configuration = config;
-        [_addToCartButton setTintColor:AppForgroundColr];
-    }
-    // Older systems fallback (regular filled look)
-    else {
-        [_addToCartButton setTitle:kLang(@"addToCart") forState:UIControlStateNormal];
-        _addToCartButton.titleLabel.font =  [GM boldFontWithSize:17];
-        
-        if (!PPIOS26()) {
-            _addToCartButton.backgroundColor = AppPrimaryClr;
-            [_addToCartButton setTitleColor:AppForgroundColr forState:UIControlStateNormal];
-            [_addToCartButton setTintColor:AppForgroundColr];
-        } else {
-            _addToCartButton.backgroundColor = AppForgroundColr;
-            [_addToCartButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
-        }
-        
-        _addToCartButton.layer.cornerRadius = 16;
-    }
-    
     _addToCartButton.clipsToBounds = YES;
     _addToCartButton.layer.masksToBounds = YES;
-  
-    
-    // === Quantity stack ===
-    UIStackView *qtyStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+    _addToCartButton.accessibilityTraits = UIAccessibilityTraitButton;
+    _addToCartButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_add_to_cart", @"Add to cart");
+    _addToCartButton.accessibilityHint = NSLocalizedString(@"a11y_btn_add_to_cart_hint", @"Double-tap to add this item to your cart");
+    [_addToCartButton addTarget:self action:@selector(addToCartTapped)
+               forControlEvents:UIControlEventTouchUpInside];
+    self.idleAddToCartTitle = kLang(@"addToCart");
+    self.idleAddToCartImage = PPBBCartSymbol(@"cart.badge.plus", 18.0, UIImageSymbolWeightSemibold, AppForgroundColr);
+    [self pp_setAddToCartTitle:self.idleAddToCartTitle
+                     imageName:@"cart.badge.plus"
+                    foreground:PPBBCartColor(AppForgroundColr, UIColor.whiteColor)
+                    background:PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)];
+    PPApplyButtonShadow(_addToCartButton);
+    [_totalContainer addSubview:_addToCartButton];
+    _totalContainer.accessibilityElements = @[
+        _totalLabel,
+        _amountLabel,
+        _currencyLabel,
+        _addToCartButton
+    ];
+
+    _qtyStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         _minusButton, _countLabel, _plusButton
     ]];
-    qtyStack.axis = UILayoutConstraintAxisHorizontal;
-    qtyStack.spacing = 3;
-    qtyStack.alignment = UIStackViewAlignmentCenter;
-    qtyStack.translatesAutoresizingMaskIntoConstraints = NO;
-    qtyStack.semanticContentAttribute = GM.setSemantic;
+    _qtyStack.axis = UILayoutConstraintAxisHorizontal;
+    _qtyStack.spacing = PPSpaceXS;
+    _qtyStack.alignment = UIStackViewAlignmentCenter;
+    _qtyStack.distribution = UIStackViewDistributionEqualCentering;
+    _qtyStack.translatesAutoresizingMaskIntoConstraints = NO;
+    _qtyStack.semanticContentAttribute = GM.setSemantic;
 
-    // === Container for qtyStack ===
-    _qtyContainer = [Styling createContainerInParent:self withBgColor:nil];
+    _qtyContainer = [UIButton buttonWithType:UIButtonTypeCustom];
     _qtyContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.BackgroundB addSubview:_qtyContainer];
-    [_qtyContainer addSubview:qtyStack];
+    _qtyContainer.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.82];
+    PPApplyContinuousCorners(_qtyContainer, 25.0);
+    [_qtyContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.20 : 0.34]];
+    _qtyContainer.layer.borderWidth = 0.8;
+    _qtyContainer.accessibilityLabel = NSLocalizedString(@"a11y_cart_qty_stepper", @"Item quantity");
+    [_qtyContainer addSubview:_qtyStack];
 
-   
-
-    
-    [self.BackgroundB addSubview:_addToCartButton];
-    
     self.favButton = [PPButtonHelper buttonWithSystemName:@"square.and.arrow.up" target:self action:@selector(sharaAccesee)];
-    [self.BackgroundB addSubview:_favButton];
-    
-    
-    CGFloat size = 44;
+    self.favButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.favButton.accessibilityLabel = kLang(@"Share");
+    [self pp_styleUtilityButton:self.favButton];
+
+    CGFloat size = 48.0;
     [_favButton.widthAnchor constraintEqualToConstant:size].active = YES;
     [_favButton.heightAnchor constraintEqualToConstant:size].active = YES;
-    // === Constraints ===
-    _favButton.layer.cornerRadius = 22.0;
-    _favButton.clipsToBounds = YES;
-    self.semanticContentAttribute = GM.setSemantic;
+
     self.cartItemquantity = 1;
-    
-    
-    [self.BackgroundB bringSubviewToFront:_addToCartButton];
-    
-    _addToCartButton.configurationUpdateHandler = ^(UIButton *btn) {
-        if (btn.isHighlighted) {
-            btn.configuration.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.6];
-        } else {
-            btn.configuration.baseBackgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.9];
-        }
-    };
-    
-    
-    // === Fixed size constants ===
-    CGFloat qtyWidth = 140.0;
-    CGFloat qtyHeight = 50;
-    [self addSubview:totalStack];
-    // === Constraints ===
-    [NSLayoutConstraint activateConstraints:@[
-        
-        
-        
-        // FAV BTN
-        [_favButton.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-(PP_Padding+0)],
-        [_favButton.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:PP_Padding],
-     
-        
-        
-        // qtyStack
-        [totalStack.centerYAnchor constraintEqualToAnchor:_favButton.centerYAnchor constant:0],
-        [totalStack.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PP_Padding+10],
-
-      
-        // qtyStack
-        [qtyStack.topAnchor constraintEqualToAnchor:_qtyContainer.topAnchor constant:0],
-        [qtyStack.bottomAnchor constraintEqualToAnchor:_qtyContainer.bottomAnchor constant:-0],
-        [qtyStack.leadingAnchor constraintEqualToAnchor:_qtyContainer.leadingAnchor],
-        [qtyStack.trailingAnchor constraintEqualToAnchor:_qtyContainer.trailingAnchor],
-        
-        
-        // Container position & size
-        [_qtyContainer.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PP_Padding],
-        [_qtyContainer.topAnchor constraintEqualToAnchor:self.favButton.bottomAnchor constant:PP_Padding],
-        [_qtyContainer.widthAnchor constraintEqualToConstant:qtyWidth],
-        [_qtyContainer.heightAnchor constraintEqualToConstant:qtyHeight],
-        
-        
-        // Add To Card Button
-        [_addToCartButton.leadingAnchor constraintEqualToAnchor:_qtyContainer.trailingAnchor  constant:8],
-        [_addToCartButton.topAnchor constraintEqualToAnchor:self.favButton.bottomAnchor constant:PP_Padding],
-        [_addToCartButton.heightAnchor constraintEqualToConstant:50.0],
-        [_addToCartButton.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PP_Padding],
-
-    ]];
-    
-    UIButtonConfiguration *cfg = _favButton.configuration;
-    cfg.background.backgroundColor = UIColor.whiteColor; // use background.backgroundColor
-    cfg.baseBackgroundColor = UIColor.whiteColor;        // optional: backup for fallback
-  //  _favButton.configuration = cfg;                      // reassign always!
-   // [_favButton updateConfiguration];
+    [self pp_buildLayoutRows];
+    [self updateQuantityUI];
 
 
 }
@@ -496,7 +418,7 @@
 }
 //NSString *FavCollection = context == PPCellForAds ? @"favoritesAds" : context == PPCellForMarket? @"favoritesAccess" : context == PPCellForVets ? @"favoritesVets" : @"favoritesServices" ;
 //[self setFavForCollection:FavCollection andID:vm.ModelID andButton:self.favButton];
--(void)setFavForCollection:(NSString *)collection andID:(NSString *)ID andButton:(FavoriteFloatingButton *)favButton
+-(void)setFavForCollection:(NSString *)collection andID:(NSString *)ID andButton:(FavoriteFixedSizeButton *)favButton
 {//favoritesAds
     
     if(!UserManager.sharedManager.isUserLoggedIn) return;
@@ -510,62 +432,385 @@
 #pragma mark - Button Factory
 
 - (UIButton *)circleButtonWithTitle:(NSString *)title {
-    // === Circle background view (below button) ===
-    UIView *circleView = [[UIView alloc] init];
-    circleView.translatesAutoresizingMaskIntoConstraints = NO;
-    circleView.layer.cornerRadius = 14;
-    circleView.layer.masksToBounds = YES;
-    circleView.backgroundColor = [UIColor clearColor]; // placeholder color, can update later
-
-    // === Button ===
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-   
     btn.translatesAutoresizingMaskIntoConstraints = NO;
-  
+    btn.accessibilityTraits = UIAccessibilityTraitButton;
 
-    if (@available(iOS 26.0, *)) {
-        // ✅ Use Apple's Glass button style if available
-        UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-
-       // config.baseForegroundColor =  [AppPrimaryClr colorWithAlphaComponent:1.2];
-        
-        config.baseBackgroundColor = [UIColor clearColor];
-      //  config.background.strokeColor = [AppPrimaryClr colorWithAlphaComponent:0.3];
-      //   config.background.strokeWidth = 1.0;
-        
-        //config.baseBackgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+        config.baseForegroundColor = PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
+        config.baseBackgroundColor = UIColor.clearColor;
         config.title = title;
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey, id> * (NSDictionary<NSAttributedStringKey, id> *attrs) {
             NSMutableDictionary *m = [attrs mutableCopy];
-            m[NSFontAttributeName] = [UIFont systemFontOfSize:20];
-            m[NSForegroundColorAttributeName] = [AppPrimaryClr colorWithAlphaComponent:1.2];
+            m[NSFontAttributeName] = [UIFont systemFontOfSize:21.0 weight:UIFontWeightSemibold];
+            m[NSForegroundColorAttributeName] = PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
             return m;
         };
-        
-        [btn setConfiguration:config];
+        btn.configuration = config;
     } else {
-        // ✅ Fallback for older iOS versions
-        btn.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
-        btn.layer.cornerRadius = 14;
-        btn.layer.masksToBounds = YES;
-        btn.tintColor = [UIColor labelColor];
         [btn setTitle:title forState:UIControlStateNormal];
-        btn.titleLabel.font = [GM MidFontWithSize:22];
+        [btn setTitleColor:PPBBCartColor(AppPrimaryClr, UIColor.labelColor) forState:UIControlStateNormal];
+        btn.titleLabel.font = [UIFont systemFontOfSize:21.0 weight:UIFontWeightSemibold];
     }
 
-    // === Size constraints ===
-    CGFloat size = 44.0;
+    btn.backgroundColor = UIColor.clearColor;
+    PPApplyContinuousCorners(btn, 22.0);
+    CGFloat size = 42.0;
     [btn.widthAnchor constraintEqualToConstant:size].active = YES;
     [btn.heightAnchor constraintEqualToConstant:size].active = YES;
-    [circleView.widthAnchor constraintEqualToConstant:size].active = YES;
-    [circleView.heightAnchor constraintEqualToConstant:size].active = YES;
- 
-    // 💡 Store reference for later use
-    circleView.tag = 900; // or you can create a property to track it if needed
 
     return btn;
+}
+
+- (void)pp_buildSurface {
+    self.BackgroundB = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleLarge configType:PPButtonConfigrationGlass];
+    self.BackgroundB.translatesAutoresizingMaskIntoConstraints = NO;
+    self.BackgroundB.userInteractionEnabled = YES;
+    self.BackgroundB.isAccessibilityElement = NO;
+    self.BackgroundB.backgroundColor = PPBBCartSurfaceFillColor();
+    PPApplyContinuousCorners(self.BackgroundB, PPBBCartBarCornerRadius());
+    [self.BackgroundB pp_setBorderColor:PPBBCartSurfaceStrokeColor()];
+    self.BackgroundB.layer.borderWidth = PPIOS26() ? 0.9 : 0.8;
+    self.BackgroundB.clipsToBounds = YES;
+    [self addSubview:self.BackgroundB];
+
+    if (!PPIOS26()) {
+        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        self.blurBackground = [[UIVisualEffectView alloc] initWithEffect:blur];
+        self.blurBackground.translatesAutoresizingMaskIntoConstraints = NO;
+        self.blurBackground.userInteractionEnabled = NO;
+        self.blurBackground.clipsToBounds = YES;
+        PPApplyContinuousCorners(self.blurBackground, PPBBCartBarCornerRadius());
+        [self.BackgroundB addSubview:self.blurBackground];
+    }
+
+    self.surfaceTintView = [[UIView alloc] init];
+    self.surfaceTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.surfaceTintView.userInteractionEnabled = NO;
+    self.surfaceTintView.backgroundColor = PPBBCartSurfaceTintColor();
+    self.surfaceTintView.clipsToBounds = YES;
+    PPApplyContinuousCorners(self.surfaceTintView, PPBBCartBarCornerRadius());
+    [self.BackgroundB addSubview:self.surfaceTintView];
+
+    self.surfaceGradientLayer = [CAGradientLayer layer];
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.18, 0.0);
+    self.surfaceGradientLayer.endPoint = CGPointMake(0.82, 1.0);
+    self.surfaceGradientLayer.colors = @[
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.30 : 0.22].CGColor,
+        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:PPIOS26() ? 0.08 : 0.045].CGColor,
+        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:PPIOS26() ? 0.045 : 0.035].CGColor
+    ];
+    self.surfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
+    [self.surfaceTintView.layer addSublayer:self.surfaceGradientLayer];
+
+    self.surfaceHighlightView = [[UIView alloc] init];
+    self.surfaceHighlightView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.surfaceHighlightView.userInteractionEnabled = NO;
+    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.34 : 0.22];
+    [self.BackgroundB addSubview:self.surfaceHighlightView];
+
+    self.separator = [[UIView alloc] init];
+    self.separator.translatesAutoresizingMaskIntoConstraints = NO;
+    self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.18];
+    [self.BackgroundB addSubview:self.separator];
+
+    NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray array];
+    if (self.blurBackground) {
+        [constraints addObjectsFromArray:@[
+            [self.blurBackground.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
+            [self.blurBackground.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor],
+            [self.blurBackground.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor],
+            [self.blurBackground.bottomAnchor constraintEqualToAnchor:self.BackgroundB.bottomAnchor]
+        ]];
+    }
+
+    [constraints addObjectsFromArray:@[
+        [self.BackgroundB.topAnchor constraintEqualToAnchor:self.topAnchor constant:0.0],
+        [self.BackgroundB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPSpaceMD],
+        [self.BackgroundB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPSpaceMD],
+        [self.BackgroundB.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPSpaceMD],
+
+        [self.surfaceTintView.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
+        [self.surfaceTintView.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor],
+        [self.surfaceTintView.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor],
+        [self.surfaceTintView.bottomAnchor constraintEqualToAnchor:self.BackgroundB.bottomAnchor],
+
+        [self.surfaceHighlightView.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
+        [self.surfaceHighlightView.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceXL],
+        [self.surfaceHighlightView.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PPSpaceXL],
+        [self.surfaceHighlightView.heightAnchor constraintEqualToConstant:0.8],
+
+        [self.separator.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
+        [self.separator.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceXL],
+        [self.separator.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PPSpaceXL],
+        [self.separator.heightAnchor constraintEqualToConstant:0.6]
+    ]];
+
+    [NSLayoutConstraint activateConstraints:constraints];
+}
+
+- (void)pp_buildLayoutRows {
+    [NSLayoutConstraint activateConstraints:@[
+        [self.priceStack.topAnchor constraintEqualToAnchor:self.totalContainer.topAnchor constant:PPSpaceSM],
+        [self.priceStack.bottomAnchor constraintEqualToAnchor:self.totalContainer.bottomAnchor constant:-PPSpaceSM],
+        [self.priceStack.leadingAnchor constraintEqualToAnchor:self.totalContainer.leadingAnchor constant:PPSpaceMD],
+        [self.priceStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.addToCartButton.leadingAnchor constant:-PPSpaceSM],
+
+        [self.addToCartButton.centerYAnchor constraintEqualToAnchor:self.totalContainer.centerYAnchor],
+        [self.addToCartButton.trailingAnchor constraintEqualToAnchor:self.totalContainer.trailingAnchor constant:-4.0],
+        [self.addToCartButton.widthAnchor constraintEqualToConstant:PPBBCartBadgeCartButtonSize()],
+        [self.addToCartButton.heightAnchor constraintEqualToConstant:PPBBCartBadgeCartButtonSize()],
+
+        [self.qtyStack.topAnchor constraintEqualToAnchor:self.qtyContainer.topAnchor constant:PPSpaceSM],
+        [self.qtyStack.bottomAnchor constraintEqualToAnchor:self.qtyContainer.bottomAnchor constant:-PPSpaceSM],
+        [self.qtyStack.leadingAnchor constraintEqualToAnchor:self.qtyContainer.leadingAnchor constant:PPSpaceSM],
+        [self.qtyStack.trailingAnchor constraintEqualToAnchor:self.qtyContainer.trailingAnchor constant:-PPSpaceSM],
+
+        [self.qtyContainer.widthAnchor constraintEqualToConstant:136.0],
+        [self.qtyContainer.heightAnchor constraintEqualToConstant:PPButtonHeightLG],
+        [self.totalContainer.heightAnchor constraintEqualToConstant:52.0]
+    ]];
+
+    topRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.totalContainer
+    ]];
+    topRow.axis = UILayoutConstraintAxisHorizontal;
+    topRow.spacing = 0.0;
+    topRow.alignment = UIStackViewAlignmentCenter;
+    topRow.distribution = UIStackViewDistributionFill;
+    topRow.semanticContentAttribute = GM.setSemantic;
+    topRow.translatesAutoresizingMaskIntoConstraints = NO;
+
+    bottomRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.qtyContainer,
+        self.favButton
+    ]];
+    bottomRow.axis = UILayoutConstraintAxisHorizontal;
+    bottomRow.spacing = PPSpaceMD;
+    bottomRow.alignment = UIStackViewAlignmentCenter;
+    bottomRow.distribution = UIStackViewDistributionEqualSpacing;
+    bottomRow.semanticContentAttribute = GM.setSemantic;
+    bottomRow.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [self.totalContainer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.totalContainer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.addToCartButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.addToCartButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+
+    self.contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        topRow,
+        bottomRow
+    ]];
+    self.contentStack.axis = UILayoutConstraintAxisVertical;
+    self.contentStack.spacing = PPSpaceSM;
+    self.contentStack.alignment = UIStackViewAlignmentFill;
+    self.contentStack.distribution = UIStackViewDistributionFill;
+    self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.BackgroundB addSubview:self.contentStack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:PPSpaceSM],
+        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceMD],
+        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PPSpaceMD],
+        [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.BackgroundB.bottomAnchor constant:-PPSpaceSM]
+    ]];
+}
+
+- (void)pp_styleUtilityButton:(UIButton *)button {
+    button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.78];
+    button.tintColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
+    PPApplyContinuousCorners(button, 24.0);
+    [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.30]];
+    button.layer.borderWidth = 0.8;
+    button.clipsToBounds = YES;
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = button.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        cfg.baseForegroundColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
+        cfg.baseBackgroundColor = UIColor.clearColor;
+        cfg.background.backgroundColor = UIColor.clearColor;
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        button.configuration = cfg;
+    }
+}
+
+- (NSString *)pp_priceStringFromAmount:(CGFloat)amount {
+    NSNumberFormatter *formatter = [[NSNumberFormatter alloc] init];
+    formatter.numberStyle = NSNumberFormatterDecimalStyle;
+    formatter.minimumFractionDigits = 2;
+    formatter.maximumFractionDigits = 2;
+    formatter.locale = NSLocale.currentLocale;
+    return [formatter stringFromNumber:@(amount)] ?: [NSString stringWithFormat:@"%.2f", amount];
+}
+
+- (void)pp_setAddToCartTitle:(NSString *)title
+                   imageName:(NSString *)imageName
+                  foreground:(UIColor *)foreground
+                  background:(UIColor *)background {
+    NSString *resolvedTitle = title.length ? title : kLang(@"addToCart");
+    UIColor *resolvedForeground = PPBBCartColor(foreground, UIColor.whiteColor);
+    UIColor *resolvedBackground = PPBBCartColor(background, UIColor.systemBlueColor);
+    BOOL compact = self.usesCompactCartButton;
+    UIImage *image = PPBBCartSymbol(imageName ?: @"cart.badge.plus",
+                                    compact ? 19.0 : 18.0,
+                                    UIImageSymbolWeightSemibold,
+                                    resolvedForeground);
+    self.addToCartButton.accessibilityLabel = resolvedTitle;
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config;
+        if (compact && PPIOS26()) {
+            if (@available(iOS 26.0, *)) {
+                config = [UIButtonConfiguration prominentGlassButtonConfiguration];
+            } else {
+                config = [UIButtonConfiguration filledButtonConfiguration];
+            }
+        } else {
+            config = [UIButtonConfiguration filledButtonConfiguration];
+        }
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.buttonSize = UIButtonConfigurationSizeLarge;
+        config.baseForegroundColor = resolvedForeground;
+        config.baseBackgroundColor = resolvedBackground;
+        config.background.backgroundColor = [resolvedBackground colorWithAlphaComponent:(compact && PPIOS26()) ? 0.74 : 1.0];
+        config.background.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPButtonHeightLG) * 0.5;
+        config.background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.22 : 0.30];
+        config.background.strokeWidth = 0.8;
+        config.title = compact ? nil : resolvedTitle;
+        config.image = image;
+        config.imagePlacement = NSDirectionalRectEdgeLeading;
+        config.imagePadding = compact ? 0.0 : PPSpaceSM;
+        config.contentInsets = compact
+        ? NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0)
+        : NSDirectionalEdgeInsetsMake(0.0, PPSpaceBase, 0.0, PPSpaceBase);
+        config.titleTextAttributesTransformer =
+        ^NSDictionary<NSAttributedStringKey, id> * (NSDictionary<NSAttributedStringKey, id> *attrs) {
+            NSMutableDictionary *m = [attrs mutableCopy];
+            m[NSFontAttributeName] = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+            m[NSForegroundColorAttributeName] = resolvedForeground;
+            return m;
+        };
+        self.addToCartButton.configuration = config;
+    } else {
+        self.addToCartButton.backgroundColor = resolvedBackground;
+        [self.addToCartButton setTitle:compact ? nil : resolvedTitle forState:UIControlStateNormal];
+        [self.addToCartButton setTitleColor:resolvedForeground forState:UIControlStateNormal];
+        [self.addToCartButton setImage:image forState:UIControlStateNormal];
+        self.addToCartButton.titleLabel.font = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+        self.addToCartButton.contentEdgeInsets = compact
+        ? UIEdgeInsetsZero
+        : UIEdgeInsetsMake(0.0, PPSpaceBase, 0.0, PPSpaceBase);
+        self.addToCartButton.layer.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPButtonHeightLG) * 0.5;
+        if (@available(iOS 13.0, *)) {
+            self.addToCartButton.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+    }
+}
+
+- (void)pp_animateViewTap:(UIView *)view completion:(void (^ _Nullable)(void))completion {
+    [UIView animateWithDuration:PPAnimDurationFast
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        view.transform = CGAffineTransformMakeScale(0.965, 0.965);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.34
+                              delay:0.0
+             usingSpringWithDamping:0.72
+              initialSpringVelocity:0.45
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            view.transform = CGAffineTransformIdentity;
+        } completion:^(__unused BOOL done) {
+            if (completion) completion();
+        }];
+    }];
+}
+
+- (void)pp_runConfirmedSheen {
+    [self.buttonSheenLayer removeFromSuperlayer];
+    self.buttonSheenLayer = [CAGradientLayer layer];
+    self.buttonSheenLayer.colors = @[
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.30].CGColor,
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.0].CGColor
+    ];
+    self.buttonSheenLayer.locations = @[@0.0, @0.48, @1.0];
+    self.buttonSheenLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.buttonSheenLayer.endPoint = CGPointMake(1.0, 0.5);
+    self.buttonSheenLayer.frame = self.addToCartButton.bounds;
+    self.buttonSheenLayer.transform = CATransform3DMakeTranslation(-CGRectGetWidth(self.addToCartButton.bounds), 0.0, 0.0);
+    [self.addToCartButton.layer addSublayer:self.buttonSheenLayer];
+
+    CABasicAnimation *sweep = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    sweep.fromValue = @(-CGRectGetWidth(self.addToCartButton.bounds));
+    sweep.toValue = @(CGRectGetWidth(self.addToCartButton.bounds));
+    sweep.duration = 0.72;
+    sweep.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.buttonSheenLayer addAnimation:sweep forKey:@"pp_add_to_cart_sheen"];
+}
+
+- (void)pp_runSuccessHalo {
+    [self.successHaloView removeFromSuperview];
+    self.successHaloView = [[UIView alloc] initWithFrame:self.addToCartButton.frame];
+    self.successHaloView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.successHaloView.userInteractionEnabled = NO;
+    self.successHaloView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.16];
+    PPApplyContinuousCorners(self.successHaloView, PPButtonHeightLG * 0.5);
+
+    UIView *hostView = self.addToCartButton.superview ?: self.BackgroundB;
+    if (self.addToCartButton.superview == hostView) {
+        [hostView insertSubview:self.successHaloView belowSubview:self.addToCartButton];
+    } else {
+        [hostView addSubview:self.successHaloView];
+    }
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.successHaloView.topAnchor constraintEqualToAnchor:self.addToCartButton.topAnchor],
+        [self.successHaloView.bottomAnchor constraintEqualToAnchor:self.addToCartButton.bottomAnchor],
+        [self.successHaloView.leadingAnchor constraintEqualToAnchor:self.addToCartButton.leadingAnchor],
+        [self.successHaloView.trailingAnchor constraintEqualToAnchor:self.addToCartButton.trailingAnchor]
+    ]];
+
+    self.successHaloView.alpha = 0.0;
+    self.successHaloView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    [UIView animateWithDuration:0.54
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        self.successHaloView.alpha = 1.0;
+        self.successHaloView.transform = CGAffineTransformMakeScale(1.045, 1.08);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.28
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn
+                         animations:^{
+            self.successHaloView.alpha = 0.0;
+        } completion:^(__unused BOOL done) {
+            [self.successHaloView removeFromSuperview];
+            self.successHaloView = nil;
+        }];
+    }];
+}
+
+- (void)pp_restoreAddToCartButton {
+    self.restoringButton = YES;
+    [self pp_setAddToCartTitle:self.idleAddToCartTitle
+                     imageName:@"cart.badge.plus"
+                    foreground:PPBBCartColor(AppForgroundColr, UIColor.whiteColor)
+                    background:PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)];
+    [UIView transitionWithView:self.addToCartButton
+                      duration:0.22
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+        self.addToCartButton.alpha = 1.0;
+    } completion:^(__unused BOOL finished) {
+        self.addToCartButton.userInteractionEnabled = YES;
+        self.restoringButton = NO;
+    }];
 }
 
 
@@ -573,35 +818,136 @@
 
 - (void)increaseQuantity {
     self.cartItemquantity++;
+    [self pp_animateViewTap:self.qtyContainer completion:nil];
     [self updateQuantityUI];
 }
 
 - (void)decreaseQuantity {
     if (self.cartItemquantity > 1) self.cartItemquantity--;
+    [self pp_animateViewTap:self.qtyContainer completion:nil];
     [self updateQuantityUI];
 }
 
 - (void)addToCartTapped {
-    if (self.onAddToCart) self.onAddToCart(self.cartItemquantity);
+    self.addToCartButton.userInteractionEnabled = NO;
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(pp_restoreAddToCartButton) object:nil];
+
+    [self pp_animateViewTap:self.addToCartButton completion:^{
+        self.addToCartButton.userInteractionEnabled = YES;
+        if (self.onAddToCart) {
+            self.onAddToCart(MAX(self.cartItemquantity, 1));
+        } else {
+            [self performAddToCartSuccessAnimation];
+        }
+    }];
 }
 
 #pragma mark - Update UI
 
 - (void)updateQuantityUI {
-    self.countLabel.text = [NSString stringWithFormat:@"%ld", (long)self.cartItemquantity];
+    NSInteger safeQuantity = MAX(self.cartItemquantity, 1);
+    _cartItemquantity = safeQuantity;
+    NSString *nextText = [NSString stringWithFormat:@"%ld", (long)safeQuantity];
+
+    if (![self.countLabel.text isEqualToString:nextText]) {
+        [UIView transitionWithView:self.countLabel
+                          duration:0.18
+                           options:UIViewAnimationOptionTransitionCrossDissolve
+                        animations:^{
+            self.countLabel.text = nextText;
+        } completion:nil];
+    } else {
+        self.countLabel.text = nextText;
+    }
+
+    self.minusButton.enabled = safeQuantity > 1;
+    self.minusButton.alpha = safeQuantity > 1 ? 1.0 : 0.36;
+
     if (self.onQuantityChanged) self.onQuantityChanged(self.cartItemquantity);
 }
 
 - (void)setInitItemAmount:(CGFloat)amount {
-    //_totalAmount = totalAmount;
-    _amountLabel.text = [NSString stringWithFormat:@"%.2f",amount];
+    _itemAmount = amount;
+    [self setTotalAmount:amount * MAX(self.cartItemquantity, 1)];
 
 }
 
 
 - (void)setTotalAmount:(CGFloat)totalAmount {
     _totalAmount = totalAmount;
-    _amountLabel.text = [NSString stringWithFormat:@"%.2f",totalAmount];
+    NSString *price = [self pp_priceStringFromAmount:totalAmount];
+    [UIView transitionWithView:self.amountLabel
+                      duration:0.18
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+        self.amountLabel.text = price;
+    } completion:nil];
+
+}
+
+- (void)setItemAmount:(CGFloat)itemAmount {
+    _itemAmount = itemAmount;
+}
+
+- (void)performAddToCartSuccessAnimation {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(pp_restoreAddToCartButton) object:nil];
+        self.addToCartButton.userInteractionEnabled = NO;
+
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
+        [self pp_setAddToCartTitle:kLang(@"AddedToCart")
+                         imageName:@"checkmark.circle.fill"
+                        foreground:PPBBCartColor(AppForgroundColr, UIColor.whiteColor)
+                        background:PPBBCartColor(AppSuccessClr, PPBBCartColor(AppPrimaryClr, UIColor.systemGreenColor))];
+        [self pp_runSuccessHalo];
+        [self pp_runConfirmedSheen];
+
+        self.addToCartButton.transform = CGAffineTransformMakeScale(0.97, 0.97);
+        self.qtyContainer.transform = CGAffineTransformMakeScale(0.985, 0.985);
+
+        [UIView animateWithDuration:0.44
+                              delay:0.0
+             usingSpringWithDamping:0.70
+              initialSpringVelocity:0.60
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.addToCartButton.transform = CGAffineTransformIdentity;
+            self.qtyContainer.transform = CGAffineTransformIdentity;
+            self.totalContainer.transform = CGAffineTransformMakeScale(1.012, 1.012);
+        } completion:^(__unused BOOL finished) {
+            [UIView animateWithDuration:0.18 animations:^{
+                self.totalContainer.transform = CGAffineTransformIdentity;
+            }];
+        }];
+
+        UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, kLang(@"ItemAddedToCart"));
+        [self performSelector:@selector(pp_restoreAddToCartButton) withObject:nil afterDelay:1.05];
+    });
+}
+
+- (void)performAddToCartFailureAnimation {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(pp_restoreAddToCartButton) object:nil];
+        [self.buttonSheenLayer removeFromSuperlayer];
+        self.addToCartButton.userInteractionEnabled = YES;
+
+        CAKeyframeAnimation *shake = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.x"];
+        shake.values = @[@0, @(-8), @(7), @(-5), @(3), @0];
+        shake.duration = 0.34;
+        shake.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+        [self.addToCartButton.layer addAnimation:shake forKey:@"pp_add_to_cart_failure"];
+
+        [UIView animateWithDuration:0.20
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.addToCartButton.alpha = 0.88;
+        } completion:^(__unused BOOL finished) {
+            [UIView animateWithDuration:0.20 animations:^{
+                self.addToCartButton.alpha = 1.0;
+            }];
+        }];
+    });
 
 }
 
@@ -1854,10 +2200,4 @@
 
 
 @end
-
-
-
-
-
-
 

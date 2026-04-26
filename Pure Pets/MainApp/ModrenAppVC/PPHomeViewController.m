@@ -7556,27 +7556,30 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeCartButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart", @"Shopping cart");
     self.homeCartButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_hint", @"Double-tap to open your cart");
 
-    BOOL didNormalizeCartButtonSize = NO;
-    for (NSLayoutConstraint *constraint in self.homeCartButton.constraints) {
+    NSMutableArray<NSLayoutConstraint *> *sizeConstraints = [NSMutableArray array];
+    for (NSLayoutConstraint *constraint in self.homeCartButton.constraints.copy) {
         if (constraint.firstItem == self.homeCartButton &&
             (constraint.firstAttribute == NSLayoutAttributeWidth ||
-             constraint.firstAttribute == NSLayoutAttributeHeight) &&
-            constraint.constant == 44.0) {
-            constraint.constant = 36.0;
-            didNormalizeCartButtonSize = YES;
+             constraint.firstAttribute == NSLayoutAttributeHeight)) {
+            [sizeConstraints addObject:constraint];
         }
     }
+    [NSLayoutConstraint deactivateConstraints:sizeConstraints];
 
-    if (didNormalizeCartButtonSize) {
-        if (@available(iOS 15.0, *)) {
-            UIButtonConfiguration *configuration = self.homeCartButton.configuration;
-            if (configuration) {
-                configuration.background.cornerRadius = 18.0;
-                self.homeCartButton.configuration = configuration;
-            }
-        } else {
-            self.homeCartButton.layer.cornerRadius = 18.0;
+    CGFloat cartButtonSide = 35.0;
+    self.homeCartButton.translatesAutoresizingMaskIntoConstraints = YES;
+    self.homeCartButton.frame = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
+    self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
+    self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = self.homeCartButton.configuration;
+        if (configuration) {
+            configuration.background.cornerRadius = cartButtonSide * 0.5;
+            self.homeCartButton.configuration = configuration;
         }
+    } else {
+        self.homeCartButton.layer.cornerRadius = cartButtonSide * 0.5;
     }
 
     return [[UIBarButtonItem alloc] initWithCustomView:self.homeCartButton];

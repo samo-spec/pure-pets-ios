@@ -144,7 +144,7 @@ static NSString *PPVetNormalizedTypeString(id value) {
     model.animalTypes = PPVetStringArray(dict[@"animalTypes"]);
     model.readyToContact = [dict[@"readyToContact"] boolValue] || model.phone.length > 0 || model.whatsapp.length > 0;
     model.isDisabled = [dict[@"isDisabled"] boolValue];
-    model.verificationStatus = PPVetSafeString(dict[@"verificationStatus"]).length > 0 ? PPVetSafeString(dict[@"verificationStatus"]) : @"pending";
+    model.verificationStatus = PPVetSafeString(dict[@"verificationStatus"]).length > 0 ? PPVetSafeString(dict[@"verificationStatus"]) : @"approved";
     model.subscriptionActive = [dict[@"subscriptionActive"] boolValue];
     model.subscriptionTier = [dict[@"subscriptionTier"] integerValue];
     model.subscriptionStartDate = PPVetDateFromValue(dict[@"subscriptionStartDate"]);

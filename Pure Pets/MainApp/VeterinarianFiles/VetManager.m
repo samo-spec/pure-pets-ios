@@ -89,6 +89,32 @@ static NSString *PPVetManagerOwnerIdentifierForDocument(NSDictionary *dict) {
     return @"";
 }
 
+static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
+                                                    NSString *logContext,
+                                                    void (^completion)(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error)) {
+    [query getDocumentsWithSource:FIRFirestoreSourceServer
+                       completion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (!error && snapshot) {
+            if (completion) completion(snapshot, nil);
+            return;
+        }
+
+        NSLog(@"[VetManager] %@ server fetch failed, trying cache: %@",
+              logContext ?: @"query",
+              error.localizedDescription ?: @"Unknown error");
+
+        [query getDocumentsWithSource:FIRFirestoreSourceCache
+                           completion:^(FIRQuerySnapshot * _Nullable cacheSnapshot, NSError * _Nullable cacheError) {
+            if (cacheSnapshot) {
+                if (completion) completion(cacheSnapshot, nil);
+                return;
+            }
+
+            if (completion) completion(nil, cacheError ?: error);
+        }];
+    }];
+}
+
 @implementation VetMedicineModel
 
 - (instancetype)init {
@@ -311,30 +337,62 @@ static NSString *PPVetManagerOwnerIdentifierForDocument(NSDictionary *dict) {
 }
 
 - (void)fetchAllVetsWithCompletion:(void (^)(NSArray<VetModel *> *vetsArray, NSError * _Nullable error))completion {
-    [[self vetsCollection] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    PPVetManagerGetDocumentsServerThenCache([self vetsCollection], @"fetchAllVets", ^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         NSMutableArray *vets = [NSMutableArray array];
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             VetModel *vet = [VetModel fromDictionary:doc.data withID:doc.documentID];
             [vets addObject:vet];
         }
-        completion(vets, error);
-    }];
+        if (completion) completion(vets.copy, error);
+    });
 }
 
 - (void)fetchAllPetMedicinesWithCompletion:(void (^)(NSArray<VetMedicineModel *> *medicinesArray, NSError * _Nullable error))completion {
-    [[self.petAccessoriesCollection queryWhereField:@"accessKindType" isEqualTo:@(PPVetMedicineAccessKindType)] getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        NSMutableArray<VetMedicineModel *> *medicines = [NSMutableArray array];
-        for (FIRDocumentSnapshot *doc in snapshot.documents) {
-            if (!PPVetManagerIsMedicineDocument(doc.data ?: @{})) {
-                continue;
+    NSArray<FIRQuery *> *queries = @[
+        [self.petAccessoriesCollection queryWhereField:@"accessKindType" isEqualTo:@(PPVetMedicineAccessKindType)],
+        [self.petAccessoriesCollection queryWhereField:@"type" isEqualTo:@(PPVetMedicineAccessKindType)]
+    ];
+
+    dispatch_group_t group = dispatch_group_create();
+    dispatch_queue_t syncQueue = dispatch_queue_create("com.purepets.vetmanager.medicines", DISPATCH_QUEUE_SERIAL);
+    __block NSMutableDictionary<NSString *, VetMedicineModel *> *medicinesByID = [NSMutableDictionary dictionary];
+    __block NSError *firstError = nil;
+
+    [queries enumerateObjectsUsingBlock:^(FIRQuery * _Nonnull query, NSUInteger idx, BOOL * _Nonnull stop) {
+        dispatch_group_enter(group);
+        NSString *logContext = idx == 0 ? @"fetchAllPetMedicines:accessKindType" : @"fetchAllPetMedicines:type";
+        PPVetManagerGetDocumentsServerThenCache(query, logContext, ^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (snapshot) {
+                for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                    NSDictionary *data = doc.data ?: @{};
+                    if (!PPVetManagerIsMedicineDocument(data)) {
+                        continue;
+                    }
+                    VetMedicineModel *medicine = [VetMedicineModel fromDictionary:data withID:doc.documentID];
+                    if (!medicine) {
+                        continue;
+                    }
+                    dispatch_sync(syncQueue, ^{
+                        medicinesByID[doc.documentID] = medicine;
+                    });
+                }
+            } else if (error) {
+                dispatch_sync(syncQueue, ^{
+                    if (!firstError) {
+                        firstError = error;
+                    }
+                });
             }
-            VetMedicineModel *medicine = [VetMedicineModel fromDictionary:doc.data ?: @{} withID:doc.documentID];
-            [medicines addObject:medicine];
-        }
-        if (completion) {
-            completion(medicines.copy, error);
-        }
+            dispatch_group_leave(group);
+        });
     }];
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        NSArray<VetMedicineModel *> *medicines = medicinesByID.allValues ?: @[];
+        if (completion) {
+            completion(medicines, medicines.count > 0 ? nil : firstError);
+        }
+    });
 }
 
 - (void)addVetsListenerWithCompletion:(void (^)(NSArray<VetModel *> *vets))onChange {

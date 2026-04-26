@@ -11,6 +11,7 @@
 #import "CartManager.h"
 #import "PPCommerceFeedbackManager.h"
 #import "PPAlertHelper.h"
+#import "PPHUD.h"
 #import "PPImageLoaderManager.h"
 #import "PPPetsTitleView.h"
 #import "ChManager.h"
@@ -175,7 +176,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.barBackgroundImageView = [[UIImageView alloc] init];
     self.barBackgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.barBackgroundImageView.contentMode = UIViewContentModeScaleToFill;
-    self.barBackgroundImageView.alpha = 1.0;
+    self.barBackgroundImageView.alpha = 0.0;
     self.barBackgroundImageView.clipsToBounds = YES;
     self.barBackgroundImageView.userInteractionEnabled = NO;
     self.barBackgroundImageView.backgroundColor = AppForgroundColr;
@@ -234,7 +235,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [self.scrollView.topAnchor      constraintEqualToAnchor:self.view.topAnchor],
         [self.scrollView.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.bottomBar.topAnchor],
+        [self.scrollView.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor],
 
         // Content view == scrollable content
         [self.contentView.topAnchor      constraintEqualToAnchor:contentGuide.topAnchor],
@@ -1202,6 +1203,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)addToCartButtonTapped:(NSInteger)quantity{
     // M-11: Offline pre-check — prevent Firestore writes when offline
     if (![PPNetworkRetryHelper isNetworkAvailable]) {
+        [self.bottomBar performAddToCartFailureAnimation];
         [PPAlertHelper showWarningIn:self
                                title:kLang(@"offline_action_title")
                             subtitle:kLang(@"offline_action_message")
@@ -1211,6 +1213,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     // H-01: Auth gate — prevent unauthenticated users from creating orphaned cart documents
     if (![self pp_ensureSignedInForAction]) {
+        [self.bottomBar performAddToCartFailureAnimation];
         return;
     }
 
@@ -1220,6 +1223,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     NSInteger availableToAdd = MAX(0, stockQty - existingQty);
 
     if (stockQty <= 0 || availableToAdd <= 0) {
+        [self.bottomBar performAddToCartFailureAnimation];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
         UIAlertController *outOfStockAlert =
             [UIAlertController alertControllerWithTitle:kLang(@"Out of stock")
@@ -1236,6 +1240,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     CartItem *item = [[CartItem alloc] initWithAccessory:self.accessAds quantity:safeQty];
     BOOL didAdd = [[CartManager sharedManager] addItem:item];
     if (!didAdd) {
+        [self.bottomBar performAddToCartFailureAnimation];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
         UIAlertController *outOfStockAlert =
             [UIAlertController alertControllerWithTitle:kLang(@"Out of stock")
@@ -1258,14 +1263,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         message = kLang(@"ItemAddedToYourCart");
     }
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"AddedToCart")
-                                                                   message:message
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [self presentViewController:alert animated:YES completion:^{
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-            [alert dismissViewControllerAnimated:YES completion:nil];
-        });
-    }];
+    [self.bottomBar performAddToCartSuccessAnimation];
+    [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];
     
     [self.QtyDelegate updateCartAndReloadCollection];
     [self loadItemsCountInBadge];

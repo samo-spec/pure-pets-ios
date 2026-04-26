@@ -532,6 +532,14 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
             if (!strongSelf) return;
             if (error) {
                 NSLog(@"Error fetching banner documents: %@", error);
+                NSArray<MainBannerModel *> *cachedGroups = [strongSelf loadbannerGroupsFromCache];
+                if (cachedGroups.count > 0) {
+                    strongSelf.bannerGroups = cachedGroups;
+                    if (completion) {
+                        completion(strongSelf.bannerGroups, nil);
+                    }
+                    return;
+                }
                 if (completion) {
                     completion(nil, error);
                 }
@@ -617,6 +625,12 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     [collection getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error) {
             NSLog(@"❌ Error fetching banners once: %@", error);
+            NSArray<MainBannerModel *> *cachedGroups = [self loadbannerGroupsFromCache];
+            if (cachedGroups.count > 0) {
+                self.bannerGroups = cachedGroups;
+                if (completion) completion(self.bannerGroups, nil);
+                return;
+            }
             if (completion) completion(nil, error);
             return;
         }

@@ -48,24 +48,56 @@
         [self.contentView addSubview:_topGradientView];
 
         _titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-        _titleLabel.font = [GM MidFontWithSize:17];
+        _titleLabel.font = [GM boldFontWithSize:18];
         _titleLabel.numberOfLines = 1;
         _titleLabel.textColor = UIColor.whiteColor;
         _titleLabel.adjustsFontSizeToFitWidth = YES;
         _titleLabel.minimumScaleFactor = 0.82;
         [self.contentView addSubview:_titleLabel];
 
+        _categoryLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _categoryLabel.font = [GM MidFontWithSize:12];
+        _categoryLabel.numberOfLines = 1;
+        _categoryLabel.textColor = [UIColor.whiteColor colorWithAlphaComponent:0.82];
+        _categoryLabel.adjustsFontSizeToFitWidth = YES;
+        _categoryLabel.minimumScaleFactor = 0.85;
+        [self.contentView addSubview:_categoryLabel];
+
         _priceLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-        _priceLabel.font = [GM MidFontWithSize:13];
+        _priceLabel.font = [GM boldFontWithSize:14];
         _priceLabel.numberOfLines = 1;
-        _priceLabel.textColor = UIColor.whiteColor;
+        _priceLabel.textColor = AppPrimaryClr ?: [UIColor colorWithRed:0.93 green:0.16 blue:0.45 alpha:1.0];
         _priceLabel.adjustsFontSizeToFitWidth = YES;
         _priceLabel.minimumScaleFactor = 0.88;
         [self.contentView addSubview:_priceLabel];
 
+        _statusLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _statusLabel.font = [GM boldFontWithSize:11];
+        _statusLabel.textAlignment = NSTextAlignmentCenter;
+        _statusLabel.numberOfLines = 1;
+        _statusLabel.layer.cornerRadius = 12.0;
+        _statusLabel.layer.masksToBounds = YES;
+        [self.contentView addSubview:_statusLabel];
+
+        _ratingLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+        _ratingLabel.font = [GM boldFontWithSize:12];
+        _ratingLabel.textAlignment = NSTextAlignmentCenter;
+        _ratingLabel.numberOfLines = 1;
+        _ratingLabel.textColor = [UIColor colorWithRed:0.64 green:0.42 blue:0.08 alpha:1.0];
+        _ratingLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.86];
+        _ratingLabel.layer.cornerRadius = 13.0;
+        _ratingLabel.layer.masksToBounds = YES;
+        [self.contentView addSubview:_ratingLabel];
+
         _shareButton = [self pp_actionButtonWithSystemName:@"square.and.arrow.up" selector:@selector(shareTapped)];
         _favButton = [[FavoriteButton alloc] initWithFrame:CGRectZero];
         [_favButton setTintColor:UIColor.whiteColor];
+        UIVisualEffectView *favBlurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleLight]];
+        favBlurView.userInteractionEnabled = NO;
+        favBlurView.frame = _favButton.bounds;
+        favBlurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        favBlurView.alpha = 0.72;
+        [_favButton insertSubview:favBlurView atIndex:0];
         _deleteButton = [self pp_actionButtonWithSystemName:@"trash.fill" selector:@selector(deleteTapped)];
         _deleteButton.hidden = YES;
         _editButton = [self pp_actionButtonWithSystemName:@"square.and.pencil" selector:@selector(editTapped)];
@@ -96,10 +128,11 @@
     CGFloat cornerRadius = width >= 220.0 ? 28.0 : 24.0;
     CGFloat horizontalPadding = isCompact ? 12.0 : 16.0;
     CGFloat buttonPadding = isCompact ? 8.0 : 10.0;
-    CGFloat buttonSize = isCompact ? 30.0 : 32.0;
+    CGFloat buttonSize = isCompact ? 34.0 : 36.0;
     CGFloat topChromeHeight = isCompact ? 50.0 : 54.0;
-    CGFloat bottomChromeHeight = isCompact ? 62.0 : 68.0;
+    CGFloat bottomChromeHeight = isCompact ? 82.0 : 90.0;
     CGFloat labelHeight = ceil(self.titleLabel.font.lineHeight);
+    CGFloat categoryHeight = ceil(self.categoryLabel.font.lineHeight);
     CGFloat priceHeight = ceil(self.priceLabel.font.lineHeight);
 
     self.contentView.layer.cornerRadius = cornerRadius;
@@ -113,28 +146,49 @@
     CGFloat trailingButtonX = width - horizontalPadding - buttonSize;
 
     if (isRTL) {
-        self.shareButton.frame = CGRectMake(trailingButtonX, buttonPadding, buttonSize, buttonSize);
-        self.favButton.frame = CGRectMake(CGRectGetMinX(self.shareButton.frame) - buttonPadding - buttonSize, buttonPadding, buttonSize, buttonSize);
+        self.shareButton.frame = CGRectMake(leadingButtonX, buttonPadding, buttonSize, buttonSize);
+        self.favButton.frame = CGRectMake(trailingButtonX, buttonPadding, buttonSize, buttonSize);
         self.deleteButton.frame = CGRectMake(leadingButtonX, buttonPadding, buttonSize, buttonSize);
         self.editButton.frame = CGRectMake(CGRectGetMaxX(self.deleteButton.frame) + buttonPadding, buttonPadding, buttonSize, buttonSize);
     } else {
         self.shareButton.frame = CGRectMake(leadingButtonX, buttonPadding, buttonSize, buttonSize);
-        self.favButton.frame = CGRectMake(CGRectGetMaxX(self.shareButton.frame) + buttonPadding, buttonPadding, buttonSize, buttonSize);
+        self.favButton.frame = CGRectMake(trailingButtonX, buttonPadding, buttonSize, buttonSize);
         self.deleteButton.frame = CGRectMake(trailingButtonX, buttonPadding, buttonSize, buttonSize);
         self.editButton.frame = CGRectMake(CGRectGetMinX(self.deleteButton.frame) - buttonPadding - buttonSize, buttonPadding, buttonSize, buttonSize);
     }
 
     self.titleLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    self.categoryLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
     self.priceLabel.textAlignment = isRTL ? NSTextAlignmentRight : NSTextAlignmentLeft;
 
-    CGFloat titleY = height - horizontalPadding - priceHeight - 4.0 - labelHeight;
+    CGFloat statusWidth = MIN(MAX([self.statusLabel.text sizeWithAttributes:@{NSFontAttributeName: self.statusLabel.font}].width + 20.0, 58.0), 96.0);
+    CGFloat statusX = width - horizontalPadding - statusWidth;
+    self.statusLabel.frame = CGRectMake(statusX, CGRectGetMaxY(self.favButton.frame) + 6.0, statusWidth, 24.0);
+
+    CGFloat ratingWidth = 58.0;
+    self.ratingLabel.frame = CGRectMake(horizontalPadding,
+                                        height - horizontalPadding - 26.0,
+                                        ratingWidth,
+                                        26.0);
+
+    CGFloat textWidth = width - (horizontalPadding * 2.0);
+    CGFloat priceY = height - horizontalPadding - priceHeight;
+    CGFloat categoryY = priceY - 4.0 - categoryHeight;
+    CGFloat titleY = categoryY - 4.0 - labelHeight;
     self.titleLabel.frame = CGRectMake(horizontalPadding,
                                        titleY,
-                                       width - (horizontalPadding * 2.0),
+                                       textWidth,
                                        labelHeight);
-    self.priceLabel.frame = CGRectMake(horizontalPadding,
-                                       CGRectGetMaxY(self.titleLabel.frame) + 4.0,
-                                       width - (horizontalPadding * 2.0),
+    self.categoryLabel.frame = CGRectMake(horizontalPadding,
+                                          categoryY,
+                                          textWidth,
+                                          categoryHeight);
+
+    CGFloat priceX = self.ratingLabel.hidden ? horizontalPadding : CGRectGetMaxX(self.ratingLabel.frame) + 8.0;
+    CGFloat priceWidth = self.ratingLabel.hidden ? textWidth : width - priceX - horizontalPadding;
+    self.priceLabel.frame = CGRectMake(priceX,
+                                       priceY,
+                                       priceWidth,
                                        priceHeight);
 }
 
@@ -145,6 +199,9 @@
     [button setImage:[UIImage systemImageNamed:systemName] forState:UIControlStateNormal];
     [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
     [button setTintColor:UIColor.whiteColor];
+    button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    button.layer.cornerRadius = 18.0;
+    button.layer.masksToBounds = YES;
     return button;
 }
 
@@ -204,11 +261,30 @@
 - (void)configureWithService:(ServiceModel *)service {
     [GM setImageFromUrlString:service.imageURL imageView:self.imageView phImage:@"placeholder"];
     self.titleLabel.text = service.title;
-    self.priceLabel.text = [NSString stringWithFormat:@"%.2f", service.price];
+    self.categoryLabel.text = service.category.length > 0 ? service.category : [service localizedTypeName];
+    NSString *currencyCode = service.currency.length > 0 ? service.currency : kLang(@"Rials");
+    NSString *priceText = [GM formatPrice:@(service.price) currencyCode:currencyCode];
+    self.priceLabel.text = priceText.length > 0 ? priceText : [NSString stringWithFormat:@"%.2f %@", service.price, currencyCode];
+
+    self.statusLabel.text = [service localizedAvailabilityStatus];
+    UIColor *statusColor = service.isLive
+        ? [UIColor colorWithRed:0.16 green:0.55 blue:0.34 alpha:1.0]
+        : [UIColor colorWithRed:0.72 green:0.18 blue:0.22 alpha:1.0];
+    self.statusLabel.textColor = statusColor;
+    self.statusLabel.backgroundColor = [statusColor colorWithAlphaComponent:0.16];
+
+    BOOL hasRating = [service hasDisplayableRating];
+    self.ratingLabel.hidden = !hasRating;
+    self.ratingLabel.text = hasRating ? [service localizedRatingBadgeText] : @"";
+
+    self.favButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.24];
+    self.favButton.layer.cornerRadius = 18.0;
+    self.favButton.layer.masksToBounds = YES;
 
     self.favButton.adID = service.serviceID ?: @"";
     self.favButton.collection = @"favoritesServices";
     [self.favButton initValue];
+    [self setNeedsLayout];
 }
 
 

@@ -3784,13 +3784,16 @@ static char kUIViewTapActionKey;
 {
     UIButton *btn;
     UIButtonConfiguration *cfg = config;
-    UIImage *icon;
+    UIImage *icon = nil;
+    NSString *trimmedImageName = [imageName isKindOfClass:NSString.class]
+        ? [imageName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
+        : @"";
     
     // --- Image handling ---
-    if (imageName.length > 0) {
-        UIImage *icon = [UIImage systemImageNamed:imageName];
+    if (trimmedImageName.length > 0) {
+        icon = [UIImage systemImageNamed:trimmedImageName];
         if (!icon) {
-            icon = [UIImage imageNamed:imageName];
+            icon = [UIImage imageNamed:trimmedImageName];
             if (icon) icon = [UIImage pp_resizedImage:icon toPointSize:18];
         }
     }
@@ -3810,8 +3813,8 @@ static char kUIViewTapActionKey;
             }];
         }
         
-        if (imageName) {
-            cfg.image = [UIImage systemImageNamed:imageName];
+        if (trimmedImageName.length > 0) {
+            cfg.image = icon ?: [UIImage systemImageNamed:trimmedImageName];
             cfg.baseForegroundColor = AppPrimaryTextClr;
             cfg.preferredSymbolConfigurationForImage  = [PPColorUtils imageConfig:14 weight:UIImageSymbolWeightMedium scale:UIImageSymbolScaleLarge palette:@[UIColor.lightGrayColor,AppPrimaryClr] fallbackTint:AppPrimaryClr renderOriginal:YES];
             if(Language.isRTL)
@@ -3820,8 +3823,8 @@ static char kUIViewTapActionKey;
             }
         }
         
-        if ([imageName isEqualToString:@"glassButtonWithTitle"]) {
-            cfg.image = [UIImage systemImageNamed:imageName];
+        if ([trimmedImageName isEqualToString:@"glassButtonWithTitle"]) {
+            cfg.image = [UIImage systemImageNamed:trimmedImageName];
             cfg.baseForegroundColor = UIColor.lightGrayColor;
             cfg.preferredSymbolConfigurationForImage  = [UIImageSymbolConfiguration configurationWithHierarchicalColor:UIColor.lightGrayColor];
             if(Language.isRTL)

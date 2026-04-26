@@ -421,8 +421,38 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
     query = [[query queryOrderedByField:@"createdAt" descending:YES]
              queryLimitedTo:limit];
 
-    [query getDocumentsWithSource:FIRFirestoreSourceServer
-                       completion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    void (^executeWithSource)(FIRFirestoreSource, void (^)(FIRQuerySnapshot * _Nullable, NSError * _Nullable)) =
+    ^(FIRFirestoreSource source, void (^handler)(FIRQuerySnapshot * _Nullable, NSError * _Nullable)) {
+        [query getDocumentsWithSource:source completion:handler];
+    };
+
+    executeWithSource(FIRFirestoreSourceServer, ^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error || !snapshot) {
+            NSLog(@"[PetAdManager] fetchNearByAdsWithLimit server fetch failed, trying cache: %@",
+                  error.localizedDescription ?: @"Unknown error");
+            executeWithSource(FIRFirestoreSourceCache, ^(FIRQuerySnapshot * _Nullable cacheSnapshot, NSError * _Nullable cacheError) {
+                FIRQuerySnapshot *resolvedSnapshot = cacheSnapshot;
+                NSError *resolvedError = cacheError ?: error;
+                if (!resolvedSnapshot) {
+                    if (completion) completion(@[]);
+                    return;
+                }
+
+                NSMutableArray<PetAd *> *cachedAds = [NSMutableArray arrayWithCapacity:resolvedSnapshot.documents.count];
+                for (FIRDocumentSnapshot *doc in resolvedSnapshot.documents) {
+                    PetAd *ad = [PetAd adFromFirestoreData:doc.data documentID:doc.documentID];
+                    if (!ad || ad.isDeleted || ad.isBlocked) continue;
+                    if (ad.expiresAt && [ad.expiresAt compare:[NSDate date]] != NSOrderedDescending) continue;
+                    [cachedAds addObject:ad];
+                }
+                if (resolvedError) {
+                    NSLog(@"[PetAdManager] fetchNearByAdsWithLimit using cached data after server error.");
+                }
+                if (completion) completion(PPFilterAdsByVisibleCategories(cachedAds));
+            });
+            return;
+        }
+
         if (error || !snapshot) {
             if (completion) completion(@[]);
             return;
@@ -436,7 +466,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             [ads addObject:ad];
         }
         if (completion) completion(PPFilterAdsByVisibleCategories(ads));
-    }];
+    });
 }
 
 - (void)fetchNearbyAdsAtCoordinate:(CLLocationCoordinate2D)coordinate
@@ -489,8 +519,8 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
         query = [query queryOrderedByField:@"createdAt" descending:YES];
         query = [query queryLimitedTo:perQueryLimit];
 
-        [query getDocumentsWithSource:FIRFirestoreSourceServer
-                           completion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        void (^handleSnapshot)(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) =
+        ^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
             if (!error && snapshot) {
                 for (FIRDocumentSnapshot *doc in snapshot.documents) {
                     PetAd *ad = [PetAd adFromFirestoreData:doc.data documentID:doc.documentID];
@@ -524,6 +554,27 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_group_leave(group);
+        };
+
+        [query getDocumentsWithSource:FIRFirestoreSourceServer
+                           completion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+            if (!error && snapshot) {
+                handleSnapshot(snapshot, nil);
+                return;
+            }
+
+            NSLog(@"[PetAdManager] fetchNearbyAdsAtCoordinate prefix(%@) server fetch failed, trying cache: %@",
+                  prefix,
+                  error.localizedDescription ?: @"Unknown error");
+
+            [query getDocumentsWithSource:FIRFirestoreSourceCache
+                               completion:^(FIRQuerySnapshot * _Nullable cacheSnapshot, NSError * _Nullable cacheError) {
+                if (cacheSnapshot) {
+                    handleSnapshot(cacheSnapshot, nil);
+                    return;
+                }
+                handleSnapshot(nil, cacheError ?: error);
+            }];
         }];
     }
 

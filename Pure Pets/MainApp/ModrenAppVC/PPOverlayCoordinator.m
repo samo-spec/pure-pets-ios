@@ -14,6 +14,7 @@
 #import "PPOverlayCoordinator.h"
 #import "AccessViewerVC.h"
 #import "ChMessagingController.h"
+#import "PetCare/PPPetCareVetViewrVC.h"
 #define PPLog(fmt, ...) NSLog((@"[Overlay] " fmt), ##__VA_ARGS__)
 
 @interface PPOverlayCoordinator ()
@@ -319,8 +320,8 @@
 
     // 🏥 Vet
     else if ([object isKindOfClass:[VetModel class]]) {
-        VetViewerViewController *viewer = [VetViewerViewController new];
-        viewer.vet = (VetModel *)object;
+        PPPetCareVetViewrVC *viewer = [[PPPetCareVetViewrVC alloc] initWithVet:(VetModel *)object
+                                                                  mainKindName:nil];
         targetVC = viewer;
         [PPFunc presentSheetFrom:presentingVC sheetVC:targetVC detentStyle:PPSheetDetentStyleLargeOnly];
     }

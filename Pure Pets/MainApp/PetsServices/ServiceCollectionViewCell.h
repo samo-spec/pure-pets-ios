@@ -22,7 +22,10 @@
 @property (nonatomic, strong) UIViewController *ParentVC;
 @property (nonatomic, strong) UIImageView *imageView;
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *categoryLabel;
 @property (nonatomic, strong) UILabel *priceLabel;
+@property (nonatomic, strong) UILabel *statusLabel;
+@property (nonatomic, strong) UILabel *ratingLabel;
 @property (nonatomic, assign) BOOL isOwnedByUser;
 
 @property (nonatomic, strong) UIButton *shareButton;

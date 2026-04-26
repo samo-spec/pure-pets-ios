@@ -14,6 +14,11 @@
 #import "PPNavigationController.h"
 #import "PPHomeHelper.h"
 #import "UIView+Badge.h"
+#import "PPPetCareVetCell.h"
+
+#import "PPPetCareMedicineCell.h"
+#import "PPPetCareViewerVC.h"
+#import "PPPetCareVetViewrVC.h"
 
 typedef NS_ENUM(NSInteger, PPPetCareMedicineFilter) {
     PPPetCareMedicineFilterAll = 0,
@@ -29,8 +34,7 @@ typedef NS_ENUM(NSInteger, PPPetCareVetFilter) {
     PPPetCareVetFilterPersonal
 };
 
-static NSString * const PPPetCareMedicineCellID = @"PPPetCareMedicineCellID";
-static NSString * const PPPetCareVetCellID = @"PPPetCareVetCellID";
+
 
 static CGFloat PPPetCareNavigationSegmentWidth(void)
 {
@@ -39,57 +43,7 @@ static CGFloat PPPetCareNavigationSegmentWidth(void)
     return floor(MIN(278.0, MAX(224.0, availableWidth)));
 }
 
-static NSString *PPPetCareLocalized(NSString *key, NSString *fallback)
-{
-    NSString *value = key.length ? kLang(key) : nil;
-    return value.length > 0 ? value : fallback;
-}
 
-static NSString *PPPetCareSafeString(id value)
-{
-    return [value isKindOfClass:NSString.class] ? (NSString *)value : @"";
-}
-
-static UIColor *PPPetCareTextColor(void)
-{
-    return AppPrimaryTextClr ?: UIColor.labelColor;
-}
-
-static UIColor *PPPetCareSecondaryTextColor(void)
-{
-    return AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-}
-
-static UIColor *PPPetCareAccentColor(void)
-{
-    return AppPrimaryClr ?: UIColor.systemTealColor;
-}
-
-static UIColor *PPPetCareSurfaceColor(void)
-{
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-            BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark
-            ? [AppBackgroundClr colorWithAlphaComponent:0.075]
-            : [AppBackgroundClrLigter colorWithAlphaComponent:0.76];
-        }];
-    }
-    return [UIColor colorWithWhite:1.0 alpha:0.76];
-}
-
-static UIColor *PPPetCareBorderColor(void)
-{
-    if (@available(iOS 13.0, *)) {
-        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-            BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-            return dark
-                ? [UIColor colorWithWhite:1.0 alpha:0.11]
-                : [UIColor colorWithRed:0.72 green:0.66 blue:0.62 alpha:0.22];
-        }];
-    }
-    return [UIColor colorWithRed:0.72 green:0.66 blue:0.62 alpha:0.22];
-}
 
 static UIColor *PPPetCareSearchSurfaceColor(void)
 {
@@ -127,425 +81,8 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     return normalized.lowercaseString;
 }
 
-@interface PPPetCareVetCell : UICollectionViewCell
-@property (nonatomic, copy, nullable) void (^onDetailsTap)(void);
-@property (nonatomic, copy, nullable) void (^onCallTap)(void);
-+ (NSString *)reuseIdentifier;
-- (void)configureWithVet:(VetModel *)vet mainKindName:(NSString *)mainKindName;
-@end
-@implementation PPPetCareVetCell {
-    UIView *_surfaceView;
-    UIView *_surfaceFill;
-    UIView *_decorativeOrbView;
-    UIView *_logoShellView;
-    UIImageView *_logoImageView;
-    UILabel *_titleLabel;
-    UILabel *_descriptionLabel;
 
-    UIView *_kindPillView;
-    UILabel *_kindPillLabel;
-    UIImageView *_kindPillIcon;
 
-    UIView *_typePillView;
-    UILabel *_typePillLabel;
-    UIImageView *_typePillIcon;
-
-    UIView *_contactPillView;
-    UILabel *_contactPillLabel;
-    UIImageView *_contactPillIcon;
-
-    UIButton *_detailsButton;
-    UIButton *_callButton;
-    UIStackView *_pillStackView;
-}
-
-+ (NSString *)reuseIdentifier
-{
-    return PPPetCareVetCellID;
-}
-
-- (instancetype)initWithFrame:(CGRect)frame
-{
-    self = [super initWithFrame:frame];
-    if (!self) {
-        return nil;
-    }
-
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-
-    _surfaceView = [[UIView alloc] init];
-    _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.clipsToBounds = NO;
-    _surfaceView.layer.cornerRadius = 28.0;
-    _surfaceView.layer.borderWidth = 0.8;
-    if (@available(iOS 13.0, *)) {
-        _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    _surfaceView.layer.shadowRadius = 24.0;
-    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    [self.contentView addSubview:_surfaceView];
-
-    _surfaceFill = [[UIView alloc] init];
-    _surfaceFill.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceFill.backgroundColor = PPPetCareSurfaceColor();
-    _surfaceFill.layer.cornerRadius = 28.0;
-    _surfaceFill.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        _surfaceFill.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView addSubview:_surfaceFill];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_surfaceFill.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor],
-        [_surfaceFill.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor],
-        [_surfaceFill.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor],
-        [_surfaceFill.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor],
-    ]];
-
-    _decorativeOrbView = [[UIView alloc] init];
-    _decorativeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    _decorativeOrbView.layer.cornerRadius = 40.0;
-    [_surfaceFill addSubview:_decorativeOrbView];
-
-    _logoShellView = [[UIView alloc] init];
-    _logoShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    _logoShellView.layer.cornerRadius = 32.0;
-    _logoShellView.layer.borderWidth = 0.8;
-    _logoShellView.clipsToBounds = NO;
-    [_logoShellView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    _logoShellView.layer.shadowOpacity = 0.12;
-    _logoShellView.layer.shadowRadius = 10.0;
-    _logoShellView.layer.shadowOffset = CGSizeMake(0, 6);
-    if (@available(iOS 13.0, *)) {
-        _logoShellView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceFill addSubview:_logoShellView];
-
-    _logoImageView = [[UIImageView alloc] init];
-    _logoImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    _logoImageView.contentMode = UIViewContentModeScaleAspectFill;
-    _logoImageView.clipsToBounds = YES;
-    _logoImageView.layer.cornerRadius = 32.0;
-    _logoImageView.tintColor = PPPetCareAccentColor();
-    [_logoShellView addSubview:_logoImageView];
-
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightSemibold];
-    _titleLabel.textColor = PPPetCareTextColor();
-    _titleLabel.numberOfLines = 1;
-    _titleLabel.adjustsFontSizeToFitWidth = YES;
-    _titleLabel.minimumScaleFactor = 0.82;
-    _titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [_surfaceFill addSubview:_titleLabel];
-
-    _descriptionLabel = [[UILabel alloc] init];
-    _descriptionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _descriptionLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    _descriptionLabel.textColor = PPPetCareSecondaryTextColor();
-    _descriptionLabel.numberOfLines = 2;
-    _descriptionLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [_surfaceFill addSubview:_descriptionLabel];
-
-    _pillStackView = [[UIStackView alloc] init];
-    _pillStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    _pillStackView.axis = UILayoutConstraintAxisHorizontal;
-    _pillStackView.alignment = UIStackViewAlignmentCenter;
-    _pillStackView.spacing = 7.0;
-    _pillStackView.distribution = UIStackViewDistributionFillProportionally;
-    [_surfaceFill addSubview:_pillStackView];
-
-    UILabel *kindLabel = nil;
-    UIImageView *kindIcon = nil;
-    _kindPillView = [self pp_makePillViewWithLabel:&kindLabel icon:&kindIcon];
-    _kindPillLabel = kindLabel;
-    _kindPillIcon = kindIcon;
-
-    UILabel *typeLabel = nil;
-    UIImageView *typeIcon = nil;
-    _typePillView = [self pp_makePillViewWithLabel:&typeLabel icon:&typeIcon];
-    _typePillLabel = typeLabel;
-    _typePillIcon = typeIcon;
-
-    UILabel *contactLabel = nil;
-    UIImageView *contactIcon = nil;
-    _contactPillView = [self pp_makePillViewWithLabel:&contactLabel icon:&contactIcon];
-    _contactPillLabel = contactLabel;
-    _contactPillIcon = contactIcon;
-
-    [_pillStackView addArrangedSubview:_kindPillView];
-    [_pillStackView addArrangedSubview:_typePillView];
-    [_pillStackView addArrangedSubview:_contactPillView];
-
-    _detailsButton = [self pp_makeActionButtonPrimary:YES];
-    [_detailsButton setTitle:PPPetCareLocalized(@"pet_care_details", @"Details") forState:UIControlStateNormal];
-    [_detailsButton addTarget:self action:@selector(pp_detailsTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_surfaceFill addSubview:_detailsButton];
-
-    _callButton = [self pp_makeActionButtonPrimary:NO];
-    [_callButton setTitle:PPPetCareLocalized(@"pet_care_call", @"Call") forState:UIControlStateNormal];
-    [_callButton addTarget:self action:@selector(pp_callTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_surfaceFill addSubview:_callButton];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
-        [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6.0],
-
-        [_decorativeOrbView.trailingAnchor constraintEqualToAnchor:_surfaceFill.trailingAnchor constant:16.0],
-        [_decorativeOrbView.topAnchor constraintEqualToAnchor:_surfaceFill.topAnchor constant:-16.0],
-        [_decorativeOrbView.widthAnchor constraintEqualToConstant:80.0],
-        [_decorativeOrbView.heightAnchor constraintEqualToConstant:80.0],
-
-        [_logoShellView.leadingAnchor constraintEqualToAnchor:_surfaceFill.leadingAnchor constant:16.0],
-        [_logoShellView.topAnchor constraintEqualToAnchor:_surfaceFill.topAnchor constant:16.0],
-        [_logoShellView.widthAnchor constraintEqualToConstant:64.0],
-        [_logoShellView.heightAnchor constraintEqualToConstant:64.0],
-
-        [_logoImageView.topAnchor constraintEqualToAnchor:_logoShellView.topAnchor],
-        [_logoImageView.leadingAnchor constraintEqualToAnchor:_logoShellView.leadingAnchor],
-        [_logoImageView.trailingAnchor constraintEqualToAnchor:_logoShellView.trailingAnchor],
-        [_logoImageView.bottomAnchor constraintEqualToAnchor:_logoShellView.bottomAnchor],
-
-        [_titleLabel.topAnchor constraintEqualToAnchor:_surfaceFill.topAnchor constant:20.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_logoShellView.trailingAnchor constant:14.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_surfaceFill.trailingAnchor constant:-16.0],
-
-        [_descriptionLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
-        [_descriptionLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_descriptionLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-
-        [_pillStackView.leadingAnchor constraintEqualToAnchor:_surfaceFill.leadingAnchor constant:16.0],
-        [_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceFill.trailingAnchor constant:-16.0],
-        [_pillStackView.topAnchor constraintEqualToAnchor:_logoShellView.bottomAnchor constant:18.0],
-        [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
-
-        [_detailsButton.leadingAnchor constraintEqualToAnchor:_surfaceFill.leadingAnchor constant:16.0],
-        [_detailsButton.bottomAnchor constraintEqualToAnchor:_surfaceFill.bottomAnchor constant:-16.0],
-        [_detailsButton.heightAnchor constraintEqualToConstant:42.0],
-
-        [_callButton.leadingAnchor constraintEqualToAnchor:_detailsButton.trailingAnchor constant:12.0],
-        [_callButton.trailingAnchor constraintEqualToAnchor:_surfaceFill.trailingAnchor constant:-16.0],
-        [_callButton.widthAnchor constraintEqualToAnchor:_detailsButton.widthAnchor],
-        [_callButton.centerYAnchor constraintEqualToAnchor:_detailsButton.centerYAnchor],
-        [_callButton.heightAnchor constraintEqualToAnchor:_detailsButton.heightAnchor],
-    ]];
-
-    [self pp_applyTheme];
-    return self;
-}
-
-- (UIView *)pp_makePillViewWithLabel:(UILabel **)labelRef icon:(UIImageView **)iconRef
-{
-    UIView *container = [[UIView alloc] init];
-    container.translatesAutoresizingMaskIntoConstraints = NO;
-    container.layer.cornerRadius = 15.0;
-    container.layer.borderWidth = 0.8;
-    if (@available(iOS 13.0, *)) {
-        container.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-
-    UIStackView *stack = [[UIStackView alloc] init];
-    stack.translatesAutoresizingMaskIntoConstraints = NO;
-    stack.axis = UILayoutConstraintAxisHorizontal;
-    stack.alignment = UIStackViewAlignmentCenter;
-    stack.spacing = 5.0;
-    [container addSubview:stack];
-
-    UIImageView *iconView = [[UIImageView alloc] init];
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    [iconView.widthAnchor constraintEqualToConstant:12.0].active = YES;
-    [iconView.heightAnchor constraintEqualToConstant:12.0].active = YES;
-    [stack addArrangedSubview:iconView];
-    *iconRef = iconView;
-
-    UILabel *label = [[UILabel alloc] init];
-    label.translatesAutoresizingMaskIntoConstraints = NO;
-    label.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    label.textAlignment = NSTextAlignmentCenter;
-    label.lineBreakMode = NSLineBreakByTruncatingTail;
-    label.adjustsFontSizeToFitWidth = YES;
-    label.minimumScaleFactor = 0.78;
-    [stack addArrangedSubview:label];
-    *labelRef = label;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [stack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:8.0],
-        [stack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-8.0],
-        [stack.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
-        [container.heightAnchor constraintEqualToConstant:30.0],
-        [container.widthAnchor constraintGreaterThanOrEqualToConstant:76.0]
-    ]];
-
-    return container;
-}
-
-- (UIButton *)pp_makeActionButtonPrimary:(BOOL)primary
-{
-    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
-    button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
-    button.layer.cornerRadius = 21.0;
-    button.layer.borderWidth = primary ? 0.0 : 0.8;
-    if (@available(iOS 13.0, *)) {
-        button.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    return button;
-}
-
-- (void)prepareForReuse
-{
-    [super prepareForReuse];
-    [[PPImageLoaderManager shared] cancelImageLoadForImageView:_logoImageView];
-    _logoImageView.image = nil;
-    _titleLabel.text = nil;
-    _descriptionLabel.text = nil;
-    _kindPillLabel.text = nil;
-    _typePillLabel.text = nil;
-    _contactPillLabel.text = nil;
-    self.onDetailsTap = nil;
-    self.onCallTap = nil;
-    self.transform = CGAffineTransformIdentity;
-    self.alpha = 1.0;
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
-}
-
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
-{
-    [super traitCollectionDidChange:previousTraitCollection];
-    if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applyTheme];
-        }
-    }
-}
-
-- (void)pp_applyTheme
-{
-    BOOL dark = NO;
-    if (@available(iOS 13.0, *)) {
-        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    }
-    _surfaceView.backgroundColor = UIColor.clearColor;
-    [_surfaceView pp_setBorderColor:PPPetCareBorderColor()];
-    _surfaceView.layer.shadowOpacity = dark ? 0.12 : 0.08;
-    _surfaceView.layer.shadowRadius = 24.0;
-    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
-
-    _surfaceFill.backgroundColor = PPPetCareSurfaceColor();
-
-    UIColor *accent = PPPetCareAccentColor();    _decorativeOrbView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.05 : 0.08];
-
-    _logoShellView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.13 : 0.09];
-    [_logoShellView pp_setBorderColor:PPPetCareBorderColor()];
-
-    _titleLabel.textColor = PPPetCareTextColor();
-    _descriptionLabel.textColor = PPPetCareSecondaryTextColor();
-
-    // Distinct colors for badges
-    UIColor *kindColor = dark ? [UIColor colorWithRed:0.28 green:0.82 blue:0.68 alpha:1.0] : [UIColor colorWithRed:0.0 green:0.6 blue:0.4 alpha:1.0];
-    UIColor *typeColor = dark ? [UIColor colorWithRed:0.65 green:0.45 blue:0.95 alpha:1.0] : [UIColor colorWithRed:0.45 green:0.25 blue:0.8 alpha:1.0];
-    UIColor *contactColor = dark ? [UIColor colorWithRed:0.98 green:0.68 blue:0.25 alpha:1.0] : [UIColor colorWithRed:0.9 green:0.45 blue:0.0 alpha:1.0];
-
-    _kindPillView.backgroundColor = [kindColor colorWithAlphaComponent:dark ? 0.15 : 0.08];
-    [_kindPillView pp_setBorderColor:[kindColor colorWithAlphaComponent:0.25]];
-    _kindPillLabel.textColor = kindColor;
-    _kindPillIcon.tintColor = kindColor;
-
-    _typePillView.backgroundColor = [typeColor colorWithAlphaComponent:dark ? 0.15 : 0.08];
-    [_typePillView pp_setBorderColor:[typeColor colorWithAlphaComponent:0.25]];
-    _typePillLabel.textColor = typeColor;
-    _typePillIcon.tintColor = typeColor;
-
-    _contactPillView.backgroundColor = [contactColor colorWithAlphaComponent:dark ? 0.15 : 0.08];
-    [_contactPillView pp_setBorderColor:[contactColor colorWithAlphaComponent:0.25]];
-    _contactPillLabel.textColor = contactColor;
-    _contactPillIcon.tintColor = contactColor;
-
-    [_detailsButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    _detailsButton.backgroundColor = accent;
-    [_callButton setTitleColor:PPPetCareTextColor() forState:UIControlStateNormal];
-    _callButton.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.13 : 0.08];
-    [_callButton pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.15]];
-}
-
-- (void)configureWithVet:(VetModel *)vet mainKindName:(NSString *)mainKindName
-{
-    [self pp_applyTheme];
-    self.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
-    _titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    _descriptionLabel.textAlignment = [Language alignmentForCurrentLanguage];
-
-    _titleLabel.text = vet.title.length > 0 ? vet.title : PPPetCareLocalized(@"pet_care_vet_untitled", @"Veterinarian");
-    _descriptionLabel.text = vet.descriptionText.length > 0
-        ? vet.descriptionText
-        : PPPetCareLocalized(@"pet_care_vet_default_subtitle", @"Care provider ready for pet health support.");
-
-    _kindPillLabel.text = mainKindName.length > 0 ? mainKindName : PPPetCareLocalized(@"pet_care_all_pets", @"All pets");
-    _kindPillIcon.image = [[UIImage systemImageNamed:@"pawprint.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-
-    _typePillLabel.text = vet.type == VetTypeCompany
-        ? PPPetCareLocalized(@"pet_care_vet_company", @"Clinic")
-        : PPPetCareLocalized(@"pet_care_vet_personal", @"Doctor");
-    _typePillIcon.image = [[UIImage systemImageNamed:vet.type == VetTypeCompany ? @"building.2.fill" : @"stethoscope"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-
-    _contactPillLabel.text = (vet.phone.length > 0 || vet.whatsapp.length > 0)
-        ? PPPetCareLocalized(@"pet_care_vet_contact_ready", @"Contact ready")
-        : PPPetCareLocalized(@"pet_care_vet_no_phone", @"Details only");
-    _contactPillIcon.image = [[UIImage systemImageNamed:(vet.phone.length > 0 || vet.whatsapp.length > 0) ? @"phone.fill" : @"info.circle.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-
-    [_detailsButton setTitle:PPPetCareLocalized(@"pet_care_details", @"Details") forState:UIControlStateNormal];
-    [_callButton setTitle:PPPetCareLocalized(@"pet_care_call", @"Call") forState:UIControlStateNormal];
-    _callButton.enabled = (vet.phone.length > 0 || vet.whatsapp.length > 0);
-    _callButton.alpha = _callButton.enabled ? 1.0 : 0.52;
-
-    UIImageSymbolConfiguration *config =
-        [UIImageSymbolConfiguration configurationWithPointSize:28.0
-                                                        weight:UIImageSymbolWeightSemibold];
-    UIImage *placeholder =
-        [[UIImage systemImageNamed:@"cross.case.fill" withConfiguration:config] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    _logoImageView.image = placeholder;
-    _logoImageView.tintColor = PPPetCareAccentColor();
-    _logoImageView.backgroundColor = [PPPetCareAccentColor() colorWithAlphaComponent:0.08];
-
-    if (vet.logoURL.length > 0) {
-        [[PPImageLoaderManager shared] setImageOnImageView:_logoImageView
-                                                       url:vet.logoURL
-                                               placeholder:placeholder
-                                          transitionStyle:PPImageTransitionStyleFade
-                                                complation:nil];
-    }
-
-    self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@. %@",
-                               _titleLabel.text ?: @"",
-                               _descriptionLabel.text ?: @"",
-                               _kindPillLabel.text ?: @""];
-}
-
-- (void)pp_detailsTapped
-{
-    if (self.onDetailsTap) {
-        self.onDetailsTap();
-    }
-}
-
-- (void)pp_callTapped
-{
-    if (self.onCallTap) {
-        self.onCallTap();
-    }
-}
-
-@end
 
 @interface PPPetCareViewController () <UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UITextFieldDelegate, PPUniversalCellDelegate>
 @property (nonatomic, assign) PPPetCareInitialSection selectedSection;
@@ -593,223 +130,12 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 - (void)pp_updateCartBadge;
 - (void)pp_applyKeyboardManagerOverridesIfNeeded;
 - (void)pp_restoreKeyboardManagerOverridesIfNeeded;
+- (void)pp_presentMedicineDetails:(VetMedicineModel *)medicine;
+- (void)pp_presentVetDetails:(VetModel *)vet;
+- (void)pp_openPetCareViewer:(UIViewController *)viewer;
 @end
 
-@interface PPPetCareMedicineCell : UICollectionViewCell
-@property (nonatomic, copy, nullable) void (^onDetailsTap)(void);
-+ (NSString *)reuseIdentifier;
-- (void)configureWithMedicine:(VetMedicineModel *)medicine mainKindName:(NSString *)mainKindName;
-@end
 
-@implementation PPPetCareMedicineCell {
-    UIView *_surfaceView;
-    UIView *_surfaceFill;
-    UIView *_imageShellView;
-    UIImageView *_imageView;
-    UILabel *_titleLabel;
-    UILabel *_descriptionLabel;
-    UILabel *_priceLabel;
-    UILabel *_statusLabel;
-    UILabel *_categoryLabel;
-    UIButton *_detailsButton;
-}
-
-+ (NSString *)reuseIdentifier
-{
-    return PPPetCareMedicineCellID;
-}
-
-- (instancetype)initWithFrame:(CGRect)frame
-{
-    self = [super initWithFrame:frame];
-    if (!self) {
-        return nil;
-    }
-
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-
-    _surfaceView = [[UIView alloc] init];
-    _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.layer.cornerRadius = 28.0;
-    _surfaceView.layer.borderWidth = 0.8;
-    if (@available(iOS 13.0, *)) {
-        _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    _surfaceView.layer.shadowOpacity = 0.10;
-    _surfaceView.layer.shadowRadius = 20.0;
-    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    [self.contentView addSubview:_surfaceView];
-
-    _surfaceFill = [[UIView alloc] init];
-    _surfaceFill.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceFill.backgroundColor = PPPetCareSurfaceColor();
-    _surfaceFill.layer.cornerRadius = 28.0;
-    _surfaceFill.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        _surfaceFill.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView addSubview:_surfaceFill];
-
-    _imageShellView = [[UIView alloc] init];
-    _imageShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    _imageShellView.layer.cornerRadius = 22.0;
-    _imageShellView.layer.borderWidth = 0.8;
-    _imageShellView.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        _imageShellView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceFill addSubview:_imageShellView];
-
-    _imageView = [[UIImageView alloc] init];
-    _imageView.translatesAutoresizingMaskIntoConstraints = NO;
-    _imageView.contentMode = UIViewContentModeScaleAspectFill;
-    _imageView.clipsToBounds = YES;
-    _imageView.tintColor = PPPetCareAccentColor();
-    [_imageShellView addSubview:_imageView];
-
-    _statusLabel = [[UILabel alloc] init];
-    _statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _statusLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    _statusLabel.textAlignment = NSTextAlignmentCenter;
-    _statusLabel.layer.cornerRadius = 13.0;
-    _statusLabel.layer.masksToBounds = YES;
-    [_surfaceFill addSubview:_statusLabel];
-
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
-    _titleLabel.textColor = PPPetCareTextColor();
-    _titleLabel.numberOfLines = 2;
-    [_surfaceFill addSubview:_titleLabel];
-
-    _descriptionLabel = [[UILabel alloc] init];
-    _descriptionLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _descriptionLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    _descriptionLabel.textColor = PPPetCareSecondaryTextColor();
-    _descriptionLabel.numberOfLines = 3;
-    [_surfaceFill addSubview:_descriptionLabel];
-
-    _categoryLabel = [[UILabel alloc] init];
-    _categoryLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _categoryLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    _categoryLabel.textColor = PPPetCareSecondaryTextColor();
-    [_surfaceFill addSubview:_categoryLabel];
-
-    _priceLabel = [[UILabel alloc] init];
-    _priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _priceLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
-    _priceLabel.textColor = PPPetCareTextColor();
-    [_surfaceFill addSubview:_priceLabel];
-
-    _detailsButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    _detailsButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _detailsButton.layer.cornerRadius = 18.0;
-    _detailsButton.clipsToBounds = YES;
-    _detailsButton.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    [_detailsButton addTarget:self action:@selector(pp_detailsTapped) forControlEvents:UIControlEventTouchUpInside];
-    [_surfaceFill addSubview:_detailsButton];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-
-        [_surfaceFill.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor],
-        [_surfaceFill.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor],
-        [_surfaceFill.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor],
-        [_surfaceFill.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor],
-
-        [_imageShellView.topAnchor constraintEqualToAnchor:_surfaceFill.topAnchor constant:16.0],
-        [_imageShellView.leadingAnchor constraintEqualToAnchor:_surfaceFill.leadingAnchor constant:16.0],
-        [_imageShellView.trailingAnchor constraintEqualToAnchor:_surfaceFill.trailingAnchor constant:-16.0],
-        [_imageShellView.heightAnchor constraintEqualToConstant:136.0],
-
-        [_imageView.topAnchor constraintEqualToAnchor:_imageShellView.topAnchor],
-        [_imageView.leadingAnchor constraintEqualToAnchor:_imageShellView.leadingAnchor],
-        [_imageView.trailingAnchor constraintEqualToAnchor:_imageShellView.trailingAnchor],
-        [_imageView.bottomAnchor constraintEqualToAnchor:_imageShellView.bottomAnchor],
-
-        [_statusLabel.topAnchor constraintEqualToAnchor:_surfaceFill.topAnchor constant:16.0],
-        [_statusLabel.trailingAnchor constraintEqualToAnchor:_surfaceFill.trailingAnchor constant:-16.0],
-        [_statusLabel.heightAnchor constraintEqualToConstant:26.0],
-        [_statusLabel.widthAnchor constraintGreaterThanOrEqualToConstant:88.0],
-
-        [_titleLabel.topAnchor constraintEqualToAnchor:_imageShellView.bottomAnchor constant:14.0],
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_surfaceFill.leadingAnchor constant:16.0],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_surfaceFill.trailingAnchor constant:-16.0],
-
-        [_descriptionLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
-        [_descriptionLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_descriptionLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-
-        [_categoryLabel.topAnchor constraintEqualToAnchor:_descriptionLabel.bottomAnchor constant:10.0],
-        [_categoryLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_categoryLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-
-        [_priceLabel.topAnchor constraintEqualToAnchor:_categoryLabel.bottomAnchor constant:10.0],
-        [_priceLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_priceLabel.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-
-        [_detailsButton.topAnchor constraintEqualToAnchor:_priceLabel.bottomAnchor constant:14.0],
-        [_detailsButton.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_detailsButton.trailingAnchor constraintEqualToAnchor:_titleLabel.trailingAnchor],
-        [_detailsButton.heightAnchor constraintEqualToConstant:44.0],
-        [_detailsButton.bottomAnchor constraintEqualToAnchor:_surfaceFill.bottomAnchor constant:-16.0],
-    ]];
-    return self;
-}
-
-- (void)configureWithMedicine:(VetMedicineModel *)medicine mainKindName:(NSString *)mainKindName
-{
-    UIColor *accentColor = PPPetCareAccentColor();
-    _surfaceView.layer.borderColor = PPPetCareBorderColor().CGColor;
-    _imageShellView.layer.borderColor = [accentColor colorWithAlphaComponent:0.12].CGColor;
-    _imageShellView.backgroundColor = [accentColor colorWithAlphaComponent:0.08];
-
-    _titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    _descriptionLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    _categoryLabel.textAlignment = [Language alignmentForCurrentLanguage];
-    _priceLabel.textAlignment = [Language alignmentForCurrentLanguage];
-
-    _titleLabel.text = medicine.title.length > 0 ? medicine.title : PPPetCareLocalized(@"pet_care_medicine_untitled", @"Medicine");
-    _descriptionLabel.text = medicine.medicineDescription.length > 0 ? medicine.medicineDescription : PPPetCareLocalized(@"pet_care_medicine_default_subtitle", @"Care essentials prepared by approved veterinary partners.");
-    _categoryLabel.text = mainKindName.length > 0 ? mainKindName : PPPetCareLocalized(@"pet_care_all_pets", @"All pets");
-    _priceLabel.text = [NSString stringWithFormat:@"%.2f %@", medicine.price, medicine.currency.length > 0 ? medicine.currency : @"QAR"];
-
-    BOOL prescriptionRequired = medicine.requiresPrescription;
-    _statusLabel.text = prescriptionRequired
-        ? PPPetCareLocalized(@"pet_care_medicine_prescription_required", @"Prescription required")
-        : PPPetCareLocalized(@"pet_care_medicine_ready", @"Ready to order");
-    _statusLabel.backgroundColor = [accentColor colorWithAlphaComponent:prescriptionRequired ? 0.14 : 0.09];
-    _statusLabel.textColor = prescriptionRequired ? [UIColor systemOrangeColor] : accentColor;
-
-    [_detailsButton setTitle:PPPetCareLocalized(@"pet_care_details_button", @"Details") forState:UIControlStateNormal];
-    [_detailsButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    _detailsButton.backgroundColor = accentColor;
-    _detailsButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-
-    UIImage *placeholder = [UIImage systemImageNamed:@"pills.fill"];
-    _imageView.image = placeholder;
-    if (medicine.imageUrl.length > 0) {
-        [[PPImageLoaderManager shared] setImageOnImageView:_imageView
-                                                       url:medicine.imageUrl
-                                               placeholder:placeholder
-                                          transitionStyle:PPImageTransitionStyleNone
-                                                complation:nil];
-    }
-}
-
-- (void)pp_detailsTapped
-{
-    if (self.onDetailsTap) {
-        self.onDetailsTap();
-    }
-}
-
-@end
 
 @implementation PPPetCareViewController
 
@@ -1696,11 +1022,7 @@ static NSString *PPPetCareNormalizedText(NSString *value)
     if (vet.isDisabled) {
         return NO;
     }
-    NSString *verificationStatus = PPPetCareSafeString(vet.verificationStatus).lowercaseString;
-    if (verificationStatus.length == 0) {
-        verificationStatus = @"pending";
-    }
-    if (![verificationStatus isEqualToString:@"approved"]) {
+    if (![self pp_vetIsApprovedForListing:vet]) {
         return NO;
     }
     switch (filter) {
@@ -1714,6 +1036,22 @@ static NSString *PPPetCareNormalizedText(NSString *value)
         default:
             return YES;
     }
+}
+
+- (BOOL)pp_vetIsApprovedForListing:(VetModel *)vet
+{
+    NSString *verificationStatus = PPPetCareSafeString(vet.verificationStatus).lowercaseString;
+    if (verificationStatus.length == 0) {
+        return YES;
+    }
+
+    static NSSet<NSString *> *approvedStatuses = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        approvedStatuses = [NSSet setWithArray:@[@"approved", @"active", @"verified"]];
+    });
+
+    return [approvedStatuses containsObject:verificationStatus];
 }
 
 - (BOOL)pp_animalTypes:(NSArray<NSString *> *)animalTypes matchMainKind:(MainKindsModel *)mainKind
@@ -2031,6 +1369,10 @@ static NSString *PPPetCareNormalizedText(NSString *value)
         [self pp_presentMedicineDetails:(VetMedicineModel *)object];
         return;
     }
+    if ([object isKindOfClass:VetModel.class]) {
+        [self pp_presentVetDetails:(VetModel *)object];
+        return;
+    }
     [PPOverlayCoordinator pp_openDetailForObject:object
                                          fromVC:self
                                      routingNav:(PPNavigationController *)self.navigationController];
@@ -2038,28 +1380,36 @@ static NSString *PPPetCareNormalizedText(NSString *value)
 
 - (void)pp_presentMedicineDetails:(VetMedicineModel *)medicine
 {
-    NSString *title = medicine.title.length > 0 ? medicine.title : PPPetCareLocalized(@"pet_care_medicine_untitled", @"Medicine");
-    NSMutableArray<NSString *> *lines = [NSMutableArray array];
-    if (medicine.medicineDescription.length > 0) {
-        [lines addObject:medicine.medicineDescription];
-    }
-    [lines addObject:[NSString stringWithFormat:@"%@: %.2f %@", PPPetCareLocalized(@"pet_care_medicine_price", @"Price"), medicine.price, medicine.currency.length > 0 ? medicine.currency : @"QAR"]];
-    [lines addObject:[NSString stringWithFormat:@"%@: %ld", PPPetCareLocalized(@"pet_care_medicine_stock", @"Stock"), (long)medicine.stockQuantity]];
-    [lines addObject:medicine.requiresPrescription
-        ? PPPetCareLocalized(@"pet_care_medicine_prescription_required", @"Prescription required")
-        : PPPetCareLocalized(@"pet_care_medicine_ready", @"Ready to order")];
+    NSString *mainKindName = self.selectedMainKind
+        ? [self pp_mainKindNameForID:self.selectedMainKind.ID]
+        : PPPetCareLocalized(@"pet_care_all_pets", @"All pets");
+    PPPetCareViewerVC *viewer = [[PPPetCareViewerVC alloc] initWithMedicine:medicine
+                                                               mainKindName:mainKindName];
+    [self pp_openPetCareViewer:viewer];
+}
 
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                   message:[lines componentsJoinedByString:@"\n\n"]
-                                                            preferredStyle:UIAlertControllerStyleActionSheet];
-    [alert addAction:[UIAlertAction actionWithTitle:PPPetCareLocalized(@"OK_Title", @"OK")
-                                              style:UIAlertActionStyleCancel
-                                            handler:nil]];
-    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        alert.popoverPresentationController.sourceView = self.view;
-        alert.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds), CGRectGetMidY(self.view.bounds), 1.0, 1.0);
+- (void)pp_presentVetDetails:(VetModel *)vet
+{
+    PPPetCareVetViewrVC *viewer = [[PPPetCareVetViewrVC alloc] initWithVet:vet
+                                                              mainKindName:[self pp_mainKindNameForID:vet.petMainKindID]];
+    [self pp_openPetCareViewer:viewer];
+}
+
+- (void)pp_openPetCareViewer:(UIViewController *)viewer
+{
+    if (!viewer) {
+        return;
     }
-    [self presentViewController:alert animated:YES completion:nil];
+    viewer.hidesBottomBarWhenPushed = YES;
+    UINavigationController *nav = self.navigationController;
+    if (nav) {
+        [nav pushViewController:viewer animated:YES];
+        return;
+    }
+
+    PPNavigationController *wrapped = [[PPNavigationController alloc] initWithRootViewController:viewer];
+    wrapped.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:wrapped animated:YES completion:nil];
 }
 
 - (void)pp_callVet:(VetModel *)vet

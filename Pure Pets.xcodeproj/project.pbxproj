@@ -22,6 +22,7 @@
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
 		A5F24EC30FDD2E32DEF8A382 /* PPImageUploadValidator.m in Sources */ = {isa = PBXBuildFile; fileRef = B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */; };
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
+		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
 		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
 		F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A06D2EFE20330048D4C2 /* PPHomeCell.m */; };
@@ -117,7 +118,6 @@
 		F21A622F2D0AF21400A28792 /* eggDatesCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21A622E2D0AF21400A28792 /* eggDatesCell.m */; };
 		F21C2B0F2CD01E3A00B2373D /* XLFormCustomCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21C2B0E2CD01E3A00B2373D /* XLFormCustomCell.m */; };
 		F21D1B5F2E9C72B600220F72 /* PPUniversalCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F21D1B5E2E9C72B600220F72 /* PPUniversalCell.m */; };
-		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
 		F21D1B732E9D640C00220F72 /* AKPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21D1B712E9D640C00220F72 /* AKPickerView.m */; };
 		F21E09322E451A4B00690BC5 /* Language.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09302E451A4B00690BC5 /* Language.m */; };
 		F21E09352E452D8F00690BC5 /* ISO8601DateFormatter.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09342E452D8F00690BC5 /* ISO8601DateFormatter.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
@@ -282,7 +282,6 @@
 		F25100932F73C2D8008F6AFE /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = F25100922F73C2D8008F6AFE /* FirebasePerformance */; };
 		F25100952F73C2D8008F6AFE /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = F25100942F73C2D8008F6AFE /* FirebaseRemoteConfig */; };
 		F25100972F73C2D8008F6AFE /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F25100962F73C2D8008F6AFE /* FirebaseStorage */; };
-		F25100992F73C4D6008F6AFE /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F25100982F73C4D6008F6AFE /* GoogleService-Info.plist */; };
 		F251F8DA2E948EC6000B5CF3 /* PPNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */; };
 		F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */; };
 		F253FA662F07182800323CB4 /* PetAdoptView.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA652F07182800323CB4 /* PetAdoptView.m */; };
@@ -411,6 +410,7 @@
 		F278185B2F7B5D3200BCE07F /* PickerSheetViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F278185A2F7B5D3200BCE07F /* PickerSheetViewController.m */; };
 		F27818602F7B5E1700BCE07F /* FullScreenVideoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F278185F2F7B5E1700BCE07F /* FullScreenVideoViewController.m */; };
 		F27818612F7B5E1700BCE07F /* FullscreenImageViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F278185D2F7B5E1700BCE07F /* FullscreenImageViewController.m */; };
+		F278DA612F9DCB0E00FEFA94 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = F278DA602F9DCB0E00FEFA94 /* GoogleService-Info.plist */; };
 		F279075C2C9AC7F300F2F07B /* trashChildCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F279075B2C9AC7F300F2F07B /* trashChildCell.m */; };
 		F27A48292EE07CAA0044040E /* PPCoreBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27A48282EE07CAA0044040E /* PPCoreBridge.swift */; };
 		F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F27A482B2EE07D540044040E /* PPPhotoBrowserBridge.swift */; };
@@ -559,6 +559,10 @@
 		F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACB2F88781B00930857 /* PPNavigationController.m */; };
 		F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC72F88781B00930857 /* PPBottomBarManager.m */; };
 		F2A83AD72F88781C00930857 /* UITabBarItem+PPAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */; };
+		F2A903422F9E7AF00097485B /* PPPetCareMedicineCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A903412F9E7AEF0097485B /* PPPetCareMedicineCell.m */; };
+		F2A903452F9E7B680097485B /* PPPetCareVetCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A903442F9E7B680097485B /* PPPetCareVetCell.m */; };
+		F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */; };
+		F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */; };
 		F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */; };
 		F2AAEDA92EF9E249006E0A6F /* UITabBarItem+PPAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */; };
 		F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB487F2C72CF3C00D88603 /* JGProgressHUD.m */; };
@@ -809,6 +813,7 @@
 		34EB94CDEF4BA97E5841D65E /* PPPetProfileManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPPetProfileManager.h; sourceTree = "<group>"; };
 		389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSectionHeader.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
+		40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareViewController.h; sourceTree = "<group>"; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
 		471B98E18FD0A42C1B1F054F /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 		47BCF0A8B4C22E6EED3D854F /* PPUserPermissionsManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserPermissionsManager.h; sourceTree = "<group>"; };
@@ -825,6 +830,7 @@
 		B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageUploadValidator.m; sourceTree = "<group>"; };
 		B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageUploadValidator.h; sourceTree = "<group>"; };
 		BD6324FB89C4241DA8E7EA45 /* PPPermissionHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPermissionHelper.h; sourceTree = "<group>"; };
+		C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareViewController.m; sourceTree = "<group>"; };
 		CD265F6B6EB1BDC3367DBB26 /* PPOfflineBannerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOfflineBannerView.h; sourceTree = "<group>"; };
 		DFCBF41EFDF6EF662DE3A38B /* PPPetProfilesUIStyle.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetProfilesUIStyle.h; sourceTree = "<group>"; };
 		EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPDiscountBadge.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPDiscountBadge.m"; sourceTree = SOURCE_ROOT; };
@@ -1281,7 +1287,6 @@
 		F24F9BAD2EE653F2002AAD27 /* PPAdsBrowser.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAdsBrowser.m; sourceTree = "<group>"; };
 		F25082F32DB647250082FF75 /* ItemModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ItemModel.h; sourceTree = "<group>"; };
 		F25082F42DB647250082FF75 /* ItemModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ItemModel.m; sourceTree = "<group>"; };
-		F25100982F73C4D6008F6AFE /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPNavigationController.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPNavigationController.m"; sourceTree = SOURCE_ROOT; };
 		F25373D52E32E3B400CD93E7 /* LeaveFeedbackViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LeaveFeedbackViewController.h; sourceTree = "<group>"; };
 		F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LeaveFeedbackViewController.m; sourceTree = "<group>"; };
@@ -1531,6 +1536,7 @@
 		F278185D2F7B5E1700BCE07F /* FullscreenImageViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FullscreenImageViewController.m; sourceTree = "<group>"; };
 		F278185E2F7B5E1700BCE07F /* FullScreenVideoViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FullScreenVideoViewController.h; sourceTree = "<group>"; };
 		F278185F2F7B5E1700BCE07F /* FullScreenVideoViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FullScreenVideoViewController.m; sourceTree = "<group>"; };
+		F278DA602F9DCB0E00FEFA94 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		F279075A2C9AC7F300F2F07B /* trashChildCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = trashChildCell.h; sourceTree = "<group>"; };
 		F279075B2C9AC7F300F2F07B /* trashChildCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = trashChildCell.m; sourceTree = "<group>"; };
 		F27A48282EE07CAA0044040E /* PPCoreBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPCoreBridge.swift; sourceTree = "<group>"; };
@@ -1817,6 +1823,15 @@
 		F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPAdditions.m"; sourceTree = "<group>"; };
 		F2A83ACE2F88781B00930857 /* UIViewController+PPNavBar.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+PPNavBar.h"; sourceTree = "<group>"; };
 		F2A83ACF2F88781B00930857 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+PPNavBar.m"; sourceTree = "<group>"; };
+		F2A903402F9E7AEF0097485B /* PPPetCareMedicineCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareMedicineCell.h; sourceTree = "<group>"; };
+		F2A903412F9E7AEF0097485B /* PPPetCareMedicineCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareMedicineCell.m; sourceTree = "<group>"; };
+		F2A903432F9E7B4E0097485B /* PPPetCareVetCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareVetCell.h; sourceTree = "<group>"; };
+		F2A903442F9E7B680097485B /* PPPetCareVetCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareVetCell.m; sourceTree = "<group>"; };
+		F2A903462F9E84120097485B /* PetCareHelpers.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PetCareHelpers.h; sourceTree = "<group>"; };
+		F2A903492F9E84F30097485B /* PPPetCareViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareViewerVC.h; sourceTree = "<group>"; };
+		F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareViewerVC.m; sourceTree = "<group>"; };
+		F2A9034B2F9E84F50097485B /* PPPetCareVetViewrVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareVetViewrVC.h; sourceTree = "<group>"; };
+		F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareVetViewrVC.m; sourceTree = "<group>"; };
 		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPFactory.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m"; sourceTree = SOURCE_ROOT; };
 		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPAdditions.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m"; sourceTree = SOURCE_ROOT; };
 		F2AB48702C72CF3C00D88603 /* JGProgressHUD-Defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "JGProgressHUD-Defines.h"; sourceTree = "<group>"; };
@@ -2097,8 +2112,6 @@
 		F2DF5DCF2EFC8E80009C7B6F /* PPRootTabBarController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRootTabBarController.m; sourceTree = "<group>"; };
 		F2DF5DD22EFC9145009C7B6F /* PPHomeViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeViewController.h; sourceTree = "<group>"; };
 		F2DF5DD32EFC917F009C7B6F /* PPHomeViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeViewController.m; sourceTree = "<group>"; };
-		40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareViewController.h; sourceTree = "<group>"; };
-		C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareViewController.m; sourceTree = "<group>"; };
 		F2DF5DD52EFC92BA009C7B6F /* PPOverlayCoordinator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPOverlayCoordinator.h; sourceTree = "<group>"; };
 		F2DF5DD62EFC92C2009C7B6F /* PPOverlayCoordinator.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOverlayCoordinator.m; sourceTree = "<group>"; };
 		F2E0E8702E7A16D400F0C084 /* UIViewController+PPNavBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UIViewController+PPNavBar.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UIViewController+PPNavBar.m"; sourceTree = SOURCE_ROOT; };
@@ -2255,6 +2268,24 @@
 				389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		3378F680D53C80BADF309B7D /* PetCare */ = {
+			isa = PBXGroup;
+			children = (
+				F2A903432F9E7B4E0097485B /* PPPetCareVetCell.h */,
+				F2A903442F9E7B680097485B /* PPPetCareVetCell.m */,
+				40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */,
+				C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */,
+				F2A903402F9E7AEF0097485B /* PPPetCareMedicineCell.h */,
+				F2A903412F9E7AEF0097485B /* PPPetCareMedicineCell.m */,
+				F2A903492F9E84F30097485B /* PPPetCareViewerVC.h */,
+				F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */,
+				F2A9034B2F9E84F50097485B /* PPPetCareVetViewrVC.h */,
+				F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */,
+				F2A903462F9E84120097485B /* PetCareHelpers.h */,
+			);
+			path = PetCare;
 			sourceTree = "<group>";
 		};
 		55922808B0CC35822235274F /* Frameworks */ = {
@@ -4673,10 +4704,10 @@
 				F2BAF93E2DCC9C91006AC874 /* MainApp */,
 				F2D0C5E92C4BE1BB0023CE53 /* Info.plist */,
 				F2D0C5E42C4BE1BB0023CE53 /* Assets.xcassets */,
-				F25100982F73C4D6008F6AFE /* GoogleService-Info.plist */,
 				F2D0C5D82C4BE1B80023CE53 /* AppDelegate.h */,
 				F2D0C5D92C4BE1B80023CE53 /* AppDelegate.m */,
 				F2D0C5DB2C4BE1B80023CE53 /* SceneDelegate.h */,
+				F278DA602F9DCB0E00FEFA94 /* GoogleService-Info.plist */,
 				F2D0C5DC2C4BE1B80023CE53 /* SceneDelegate.m */,
 				F2449C3E2D0DBACA00DB6BBC /* AppManager.h */,
 				F2449C3F2D0DBACA00DB6BBC /* AppManager.m */,
@@ -4825,15 +4856,6 @@
 				F2DF5DCD2EFC8E70009C7B6F /* NewAppVC.m */,
 			);
 			path = ModrenAppVC;
-			sourceTree = "<group>";
-		};
-		3378F680D53C80BADF309B7D /* PetCare */ = {
-			isa = PBXGroup;
-			children = (
-				40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */,
-				C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */,
-			);
-			path = PetCare;
 			sourceTree = "<group>";
 		};
 		F2E1345A2DDC6CBD006770E5 /* Accessories */ = {
@@ -5093,8 +5115,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				F25D68BE2F82761700700694 /* PrivacyInfo.xcprivacy in Resources */,
+				F278DA612F9DCB0E00FEFA94 /* GoogleService-Info.plist in Resources */,
 				F260D3292C7B36EF0098C8F0 /* blank_button@2x.png in Resources */,
-				F25100992F73C4D6008F6AFE /* GoogleService-Info.plist in Resources */,
 				F20E9D6E2CF3193B00B810EB /* button_background_icloud_normal@2x.png in Resources */,
 				F20E9D6F2CF3193B00B810EB /* button_background_icloud_highlight@2x.png in Resources */,
 				F20E9D702CF3193B00B810EB /* placeholder_vesper@2x.png in Resources */,
@@ -5599,6 +5621,8 @@
 				F20ACAB72EFB86FD009B4FA2 /* MainController_Func.m in Sources */,
 				F21E09492E45360C00690BC5 /* NSString+Size.m in Sources */,
 				F21E094A2E45360C00690BC5 /* FBKVOController+Extension.m in Sources */,
+				F2A903452F9E7B680097485B /* PPPetCareVetCell.m in Sources */,
+				F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */,
 				F2A0BBD02F203D81003715F0 /* ChMessagingController+Video.m in Sources */,
 				F21E094B2E45360C00690BC5 /* WJFloatingAnimatedTextField.m in Sources */,
 				F20956822F856845007C4ABA /* PPPetRemindersViewController.m in Sources */,
@@ -5840,6 +5864,8 @@
 				F2D0C5EB2C4BE1BB0023CE53 /* main.m in Sources */,
 				F28CB3962E4C9749009DD547 /* OptionTableViewCell.m in Sources */,
 				F27FAE592D2F2B7700EA6B56 /* VideoCollectionViewCell.m in Sources */,
+				F2A903422F9E7AF00097485B /* PPPetCareMedicineCell.m in Sources */,
+				F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */,
 				F21391D32D8BC18300B59E5B /* UIButton+PressAnimation.m in Sources */,
 				F2A2F1BD2EB1797400BD1261 /* CitiesManager.m in Sources */,
 				F2977D5A2E4ABB12003A7005 /* SearchManager.m in Sources */,
@@ -6155,14 +6181,14 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController/TZImagePickerController.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets needs access to your camera to take photos for pet ads, chat messages, and your profile picture.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to take pet photos and capture images for listings";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to suggest the right country and nearby services.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The application needs access to the microphone so that you can add voice recordings to chats.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Allow saving captured photos to your library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow photo library access to choose photos for your ad.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to show nearby pet services and stores";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed for voice messages in chat";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images to your photo library";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo library access is needed to select images for pet profiles and listings";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -6268,14 +6294,14 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController/TZImagePickerController.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
-				INFOPLIST_KEY_NSCameraUsageDescription = "Pure Pets needs access to your camera to take photos for pet ads, chat messages, and your profile picture.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to take pet photos and capture images for listings";
 				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Pure Pets uses the local network to improve location accuracy for maps and nearby services.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "Your location helps us deliver to the correct address and show nearby services.";
 				INFOPLIST_KEY_NSLocationUsageDescription = "The app needs to access your location so you can share it with users within the app.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Pure Pets uses your location to suggest the right country and nearby services.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "The application needs access to the microphone so that you can add voice recordings to chats.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Allow saving captured photos to your library.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Allow photo library access to choose photos for your ad.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Location is used to show nearby pet services and stores";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Microphone access is needed for voice messages in chat";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save images to your photo library";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo library access is needed to select images for pet profiles and listings";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;

@@ -84,6 +84,12 @@ typedef void(^PPPaymentTabSelectionBlock)(PPPaymentTab selectedTab);
 
 - (void)setTotalAmount:(CGFloat)totalAmount;
 
+/// Plays the confirmed add-to-cart animation after the cart write succeeds.
+- (void)performAddToCartSuccessAnimation;
+
+/// Plays a restrained failure animation and restores the button.
+- (void)performAddToCartFailureAnimation;
+
 - (void)updateQuantityUI;
 
 -(void)setFavForCollection:(NSString *)collection andID:(NSString *)ID andButton:(FavoriteFixedSizeButton *)favButton;

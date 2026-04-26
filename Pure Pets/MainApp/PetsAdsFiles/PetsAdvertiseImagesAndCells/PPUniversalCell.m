@@ -877,7 +877,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     [NSLayoutConstraint activateConstraints:@[
         [self.favoriteButton.leadingAnchor constraintEqualToAnchor:self.imageContainer.leadingAnchor constant:10.0],
-        [self.favoriteButton.bottomAnchor constraintEqualToAnchor:self.imageContainer.bottomAnchor constant:-10.0],
+        [self.favoriteButton.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:10.0],
 
         [self.shareButton.centerYAnchor constraintEqualToAnchor:self.favoriteButton.centerYAnchor],
         [self.shareButton.leadingAnchor constraintEqualToAnchor:self.favoriteButton.trailingAnchor constant:8.0],
@@ -1229,7 +1229,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.priceTopToSubtitleConstraint.active = !shouldHideSubtitle;
     self.subtitleHeightConstraint.active = shouldHideSubtitle;
 
-    BOOL showsDiscountedPrice = (vm.price.doubleValue > 0.0 &&
+    BOOL showsDiscountedPrice = ([self pp_showsAccessoryDiscountPresentation] &&
+                                 vm.price.doubleValue > 0.0 &&
                                  vm.finalPrice.doubleValue > 0.0 &&
                                  fabs(vm.price.doubleValue - vm.finalPrice.doubleValue) > 0.009);
     if (showsDiscountedPrice) {
@@ -1268,7 +1269,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         reasonText = PPUniversalCellSafeString(vm.location);
     }
     NSString *badgeText = PPUniversalTemporarilyHideCategoryBadge ? @"" : PPUniversalCellSafeString(vm.badgeText);
-    NSString *discountText = (self.discountStyle == PPDiscountStyleBadge) ? PPUniversalCellSafeString(vm.discountText) : @"";
+    NSString *discountText = ([self pp_showsAccessoryDiscountPresentation] &&
+                              self.discountStyle == PPDiscountStyleBadge)
+        ? PPUniversalCellSafeString(vm.discountText)
+        : @"";
 
     [self pp_applyBadgeLabel:self.reasonBadgeLabel
                         text:reasonText
@@ -2300,6 +2304,17 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         return accessory.isFood || accessory.isPetMedicine;
     }
     return self.context == PPCellForFood;
+}
+
+- (BOOL)pp_showsAccessoryDiscountPresentation
+{
+    if ([self pp_isFoodOrMedicineContext]) {
+        return NO;
+    }
+
+    return [self.vm.ModelObject isKindOfClass:[PetAccessory class]] ||
+           self.context == PPCellForMarket ||
+           self.context == PPCellForContextAccessory;
 }
 
 - (BOOL)pp_isAdContext

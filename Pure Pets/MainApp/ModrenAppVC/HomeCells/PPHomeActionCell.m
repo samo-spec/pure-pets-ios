@@ -208,7 +208,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         [self.actionButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.actionButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [self.actionButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-        [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:68.0],
+        [self.actionButton.heightAnchor constraintGreaterThanOrEqualToConstant:64.0],
 
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.actionButton.topAnchor],
         [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.actionButton.leadingAnchor],

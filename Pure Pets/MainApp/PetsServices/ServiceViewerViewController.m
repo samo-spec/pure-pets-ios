@@ -47,6 +47,11 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 @property (nonatomic, strong) UILabel *factsTitleLabel;
 @property (nonatomic, strong) UIStackView *factsStackView;
 
+@property (nonatomic, strong) UIView *reviewsSectionView;
+@property (nonatomic, strong) UILabel *reviewsTitleLabel;
+@property (nonatomic, strong) UILabel *reviewsSummaryLabel;
+@property (nonatomic, strong) UIStackView *reviewsStackView;
+
 @property (nonatomic, strong) UIView *descriptionSectionView;
 @property (nonatomic, strong) UILabel *descriptionTitleLabel;
 @property (nonatomic, strong) UILabel *descriptionBodyLabel;
@@ -150,6 +155,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self buildHeroSection];
     [self buildProviderSection];
     [self buildFactsSection];
+    [self buildReviewsSection];
     [self buildDescriptionSection];
     [self buildActionsSection];
     [self pp_prepareEntranceState];
@@ -360,6 +366,47 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     ]];
 }
 
+- (void)buildReviewsSection {
+    self.reviewsSectionView = [self pp_surfaceSectionView];
+    [self.contentView addSubview:self.reviewsSectionView];
+
+    self.reviewsTitleLabel = [self pp_sectionTitleLabelWithText:kLang(@"service_view_reviews_title")];
+    [self.reviewsSectionView addSubview:self.reviewsTitleLabel];
+
+    self.reviewsSummaryLabel = [[UILabel alloc] init];
+    self.reviewsSummaryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reviewsSummaryLabel.font = [GM boldFontWithSize:16];
+    self.reviewsSummaryLabel.numberOfLines = 0;
+    self.reviewsSummaryLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.reviewsSummaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.reviewsSectionView addSubview:self.reviewsSummaryLabel];
+
+    self.reviewsStackView = [[UIStackView alloc] init];
+    self.reviewsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reviewsStackView.axis = UILayoutConstraintAxisVertical;
+    self.reviewsStackView.spacing = 10.0;
+    [self.reviewsSectionView addSubview:self.reviewsStackView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.reviewsSectionView.topAnchor constraintEqualToAnchor:self.factsSectionView.bottomAnchor constant:PPServiceViewerSectionSpacing],
+        [self.reviewsSectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPServiceViewerSideInset],
+        [self.reviewsSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPServiceViewerSideInset],
+
+        [self.reviewsTitleLabel.topAnchor constraintEqualToAnchor:self.reviewsSectionView.topAnchor constant:20.0],
+        [self.reviewsTitleLabel.leadingAnchor constraintEqualToAnchor:self.reviewsSectionView.leadingAnchor constant:20.0],
+        [self.reviewsTitleLabel.trailingAnchor constraintEqualToAnchor:self.reviewsSectionView.trailingAnchor constant:-20.0],
+
+        [self.reviewsSummaryLabel.topAnchor constraintEqualToAnchor:self.reviewsTitleLabel.bottomAnchor constant:10.0],
+        [self.reviewsSummaryLabel.leadingAnchor constraintEqualToAnchor:self.reviewsSectionView.leadingAnchor constant:20.0],
+        [self.reviewsSummaryLabel.trailingAnchor constraintEqualToAnchor:self.reviewsSectionView.trailingAnchor constant:-20.0],
+
+        [self.reviewsStackView.topAnchor constraintEqualToAnchor:self.reviewsSummaryLabel.bottomAnchor constant:14.0],
+        [self.reviewsStackView.leadingAnchor constraintEqualToAnchor:self.reviewsSectionView.leadingAnchor constant:16.0],
+        [self.reviewsStackView.trailingAnchor constraintEqualToAnchor:self.reviewsSectionView.trailingAnchor constant:-16.0],
+        [self.reviewsStackView.bottomAnchor constraintEqualToAnchor:self.reviewsSectionView.bottomAnchor constant:-16.0]
+    ]];
+}
+
 - (void)buildDescriptionSection {
     self.descriptionSectionView = [self pp_surfaceSectionView];
     [self.contentView addSubview:self.descriptionSectionView];
@@ -376,7 +423,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self.descriptionSectionView addSubview:self.descriptionBodyLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.descriptionSectionView.topAnchor constraintEqualToAnchor:self.factsSectionView.bottomAnchor constant:PPServiceViewerSectionSpacing],
+        [self.descriptionSectionView.topAnchor constraintEqualToAnchor:self.reviewsSectionView.bottomAnchor constant:PPServiceViewerSectionSpacing],
         [self.descriptionSectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPServiceViewerSideInset],
         [self.descriptionSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPServiceViewerSideInset],
 
@@ -442,6 +489,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 
     [self pp_updateProviderSection];
     [self pp_reloadFacts];
+    [self pp_reloadReviews];
     [self pp_updateActionAvailability];
     [self pp_updateUnavailableBanner];
 }
@@ -536,6 +584,25 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self.factsStackView addArrangedSubview:rowFour];
 }
 
+- (void)pp_reloadReviews {
+    for (UIView *view in self.reviewsStackView.arrangedSubviews) {
+        [self.reviewsStackView removeArrangedSubview:view];
+        [view removeFromSuperview];
+    }
+
+    self.reviewsSummaryLabel.text = [self.service localizedRatingSummaryText];
+
+    if (self.service.reviews.count == 0) {
+        [self.reviewsStackView addArrangedSubview:[self pp_emptyReviewsView]];
+        return;
+    }
+
+    NSUInteger maxVisibleReviews = MIN(self.service.reviews.count, 5);
+    for (NSUInteger idx = 0; idx < maxVisibleReviews; idx++) {
+        [self.reviewsStackView addArrangedSubview:[self pp_reviewViewForDictionary:self.service.reviews[idx]]];
+    }
+}
+
 - (void)pp_rebuildActions {
     for (UIView *view in self.actionsStackView.arrangedSubviews) {
         [self.actionsStackView removeArrangedSubview:view];
@@ -591,9 +658,8 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     }
 
     // Rating pill
-    if (self.service.ratingValue != nil && self.service.ratingValue.doubleValue > 0) {
-        NSString *ratingStr = [NSString stringWithFormat:@"%.1f ★", self.service.ratingValue.doubleValue];
-        [items addObject:[PPInfoPill itemWithIcon:@"star.fill" text:ratingStr]];
+    if ([self.service hasDisplayableRating]) {
+        [items addObject:[PPInfoPill itemWithIcon:@"star.fill" text:[self.service localizedRatingBadgeText]]];
     }
 
     NSString *postedDateText = [self pp_postedDateText];
@@ -633,13 +699,10 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 }
 
 - (NSString *)pp_ratingText {
-    if (self.service.ratingValue != nil && self.service.ratingValue.doubleValue > 0) {
-        if (self.service.reviewCount > 0) {
-            return [NSString stringWithFormat:@"%.1f (%ld)",
-                    self.service.ratingValue.doubleValue,
-                    (long)self.service.reviewCount];
-        }
-        return [NSString stringWithFormat:@"%.1f", self.service.ratingValue.doubleValue];
+    if ([self.service hasDisplayableRating]) {
+        return [NSString stringWithFormat:@"%.1f (%ld)",
+                self.service.ratingValue.doubleValue,
+                (long)self.service.reviewCount];
     }
     return kLang(@"service_view_no_reviews");
 }
@@ -807,6 +870,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     NSArray<UIView *> *animatedSections = @[
         self.providerSectionView,
         self.factsSectionView,
+        self.reviewsSectionView,
         self.descriptionSectionView,
         self.actionsSectionView
     ];
@@ -828,6 +892,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     NSArray<UIView *> *animatedSections = @[
         self.providerSectionView,
         self.factsSectionView,
+        self.reviewsSectionView,
         self.descriptionSectionView,
         self.actionsSectionView
     ];
@@ -1209,6 +1274,124 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     ]];
 
     return tile;
+}
+
+- (UIView *)pp_emptyReviewsView {
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.font = [GM MidFontWithSize:15];
+    label.numberOfLines = 0;
+    label.text = kLang(@"service_view_no_reviews");
+    label.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.68];
+    label.textAlignment = Language.alignmentForCurrentLanguage;
+    label.backgroundColor = [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.04];
+    label.layer.cornerRadius = 18.0;
+    label.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        label.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [NSLayoutConstraint activateConstraints:@[
+        [label.heightAnchor constraintGreaterThanOrEqualToConstant:54.0]
+    ]];
+    return label;
+}
+
+- (UIView *)pp_reviewViewForDictionary:(NSDictionary<NSString *, id> *)review {
+    UIView *view = [[UIView alloc] init];
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    view.backgroundColor = [AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.035];
+    view.layer.cornerRadius = 18.0;
+    view.layer.borderWidth = 1.0;
+    [view pp_setBorderColor:[AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.06]];
+    if (@available(iOS 13.0, *)) {
+        view.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UILabel *nameLabel = [[UILabel alloc] init];
+    nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    nameLabel.font = [GM boldFontWithSize:14];
+    nameLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    nameLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    nameLabel.text = [self pp_reviewStringFromDictionary:review keys:@[@"reviewerName", @"userName", @"name", @"displayName"]] ?: kLang(@"service_view_review_anonymous");
+
+    UILabel *ratingLabel = [[UILabel alloc] init];
+    ratingLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    ratingLabel.font = [GM boldFontWithSize:13];
+    ratingLabel.textColor = [UIColor colorWithRed:0.72 green:0.46 blue:0.08 alpha:1.0];
+    ratingLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    NSNumber *rating = [self pp_reviewNumberFromDictionary:review keys:@[@"rating", @"ratingValue", @"averageRating"]];
+    ratingLabel.text = rating.doubleValue > 0.0 ? [NSString stringWithFormat:@"★ %.1f", rating.doubleValue] : @"";
+
+    UILabel *commentLabel = [[UILabel alloc] init];
+    commentLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    commentLabel.font = [GM MidFontWithSize:14];
+    commentLabel.numberOfLines = 0;
+    commentLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.78];
+    commentLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    commentLabel.text = [self pp_reviewStringFromDictionary:review keys:@[@"comment", @"text", @"review", @"commentText"]] ?: kLang(@"service_view_review_comment_empty");
+
+    UILabel *dateLabel = [[UILabel alloc] init];
+    dateLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    dateLabel.font = [GM MidFontWithSize:12];
+    dateLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.52];
+    dateLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    NSDate *date = [self pp_reviewDateFromValue:review[@"createdAt"] ?: review[@"date"] ?: review[@"timestamp"]];
+    dateLabel.text = date ? [GM formattedDate:date] : @"";
+
+    [view addSubview:nameLabel];
+    [view addSubview:ratingLabel];
+    [view addSubview:commentLabel];
+    [view addSubview:dateLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [nameLabel.topAnchor constraintEqualToAnchor:view.topAnchor constant:14.0],
+        [nameLabel.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:14.0],
+        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:ratingLabel.leadingAnchor constant:-10.0],
+
+        [ratingLabel.topAnchor constraintEqualToAnchor:view.topAnchor constant:14.0],
+        [ratingLabel.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-14.0],
+
+        [commentLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:8.0],
+        [commentLabel.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:14.0],
+        [commentLabel.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-14.0],
+
+        [dateLabel.topAnchor constraintEqualToAnchor:commentLabel.bottomAnchor constant:8.0],
+        [dateLabel.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:14.0],
+        [dateLabel.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-14.0],
+        [dateLabel.bottomAnchor constraintEqualToAnchor:view.bottomAnchor constant:-14.0]
+    ]];
+
+    return view;
+}
+
+- (nullable NSString *)pp_reviewStringFromDictionary:(NSDictionary<NSString *, id> *)dict keys:(NSArray<NSString *> *)keys {
+    for (NSString *key in keys) {
+        id value = dict[key];
+        if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+            return value;
+        }
+    }
+    return nil;
+}
+
+- (nullable NSNumber *)pp_reviewNumberFromDictionary:(NSDictionary<NSString *, id> *)dict keys:(NSArray<NSString *> *)keys {
+    for (NSString *key in keys) {
+        id value = dict[key];
+        if ([value isKindOfClass:NSNumber.class]) {
+            return value;
+        }
+        if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+            return @([(NSString *)value doubleValue]);
+        }
+    }
+    return nil;
+}
+
+- (nullable NSDate *)pp_reviewDateFromValue:(id)value {
+    if (!value || [value isKindOfClass:NSNull.class]) return nil;
+    if ([value isKindOfClass:NSDate.class]) return value;
+    if ([value respondsToSelector:@selector(dateValue)]) return [value dateValue];
+    return nil;
 }
 
 - (UIButton *)pp_actionTileButtonWithSymbol:(NSString *)symbol
