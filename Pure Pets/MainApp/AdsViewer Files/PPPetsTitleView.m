@@ -53,10 +53,12 @@
 - (void)setupView
 {
     self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.backgroundColor = UIColor.clearColor;
  
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:18];
+    self.titleLabel.font = [GM boldFontWithSize:21];
     self.titleLabel.textColor = UIColor.labelColor;
     self.titleLabel.numberOfLines = 2;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -65,33 +67,34 @@
     self.titleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.locationLabel = [[UILabel alloc] init];
     self.locationLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.locationLabel.font = [GM MidFontWithSize:14];
+    self.locationLabel.font = [GM MidFontWithSize:13];
     self.locationLabel.textColor = UIColor.secondaryLabelColor;
     self.locationLabel.numberOfLines = 1;
     self.locationLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.locationLabel.adjustsFontForContentSizeCategory = YES;
     self.locationLabel.textAlignment = GM.setAligment;
-
-    [self.titleLabel.heightAnchor constraintEqualToConstant:22].active = YES;
-    [self.locationLabel.heightAnchor constraintEqualToConstant:22].active = YES;
+    self.locationLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     self.categoryLabel = [[UILabel alloc] init];
     self.categoryLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.categoryLabel.font = [GM boldFontWithSize:11.5];
-    self.categoryLabel.textColor = [AppPrimaryClr colorWithAlphaComponent:0.9];
+    self.categoryLabel.font = [GM boldFontWithSize:11.0];
+    self.categoryLabel.textColor = AppPrimaryClr ?: UIColor.labelColor;
     self.categoryLabel.textAlignment = NSTextAlignmentCenter;
-    self.categoryLabel.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
-    self.categoryLabel.layer.cornerRadius = 10;
+    self.categoryLabel.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.34];
+    self.categoryLabel.layer.cornerRadius = 12;
+    self.categoryLabel.layer.borderWidth = 0.5;
+    [self.categoryLabel pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     self.categoryLabel.layer.masksToBounds = YES;
     self.categoryLabel.hidden = YES;
 
     self.metaPillsStack = [[UIStackView alloc] init];
     self.metaPillsStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.metaPillsStack.axis = UILayoutConstraintAxisHorizontal;
-    self.metaPillsStack.spacing = 8;
+    self.metaPillsStack.spacing = 6;
     self.metaPillsStack.alignment = UIStackViewAlignmentCenter;
     self.metaPillsStack.distribution = UIStackViewDistributionFillProportionally;
     self.metaPillsStack.hidden = YES;
+    self.metaPillsStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     self.textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.titleLabel,
@@ -99,10 +102,11 @@
         self.metaPillsStack
     ]];
     self.textStack.axis = UILayoutConstraintAxisVertical;
-    self.textStack.spacing = 6;
+    self.textStack.spacing = 4;
     self.textStack.alignment = UIStackViewAlignmentFill;
     self.textStack.distribution = UIStackViewDistributionFill;
     self.textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.textStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     [self addSubview:self.textStack];
 
@@ -112,22 +116,23 @@
     self.trailingStack.spacing = 6;
     self.trailingStack.alignment = UIStackViewAlignmentCenter;
     self.trailingStack.distribution = UIStackViewDistributionFill;
+    self.trailingStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     [self addSubview:self.trailingStack];
 
     self.textTrailingConstraint =
-        [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingStack.leadingAnchor constant:-12];
+        [self.textStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.trailingStack.leadingAnchor constant:-14];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.textStack.topAnchor constraintEqualToAnchor:self.topAnchor constant:10],
-        [self.textStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:16],
+        [self.textStack.topAnchor constraintEqualToAnchor:self.topAnchor constant:12],
+        [self.textStack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:18],
         self.textTrailingConstraint,
-        [self.textStack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-10],
+        [self.textStack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-12],
         [self.metaPillsStack.heightAnchor constraintGreaterThanOrEqualToConstant:24],
 
-        [self.trailingStack.topAnchor constraintEqualToAnchor:self.topAnchor constant:6],
-        [self.trailingStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-4],
-        [self.trailingStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-6],
-        [self.trailingStack.widthAnchor constraintEqualToConstant:120]
+        [self.trailingStack.topAnchor constraintEqualToAnchor:self.topAnchor constant:8],
+        [self.trailingStack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-8],
+        [self.trailingStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.bottomAnchor constant:-8],
+        [self.trailingStack.widthAnchor constraintEqualToConstant:126]
     ]];
 }
 
@@ -135,6 +140,8 @@
 {
     [super layoutSubviews];
     [Styling applyCornerMaskToView:self.priceView tl:28 tr:8 bl:28 br:28];
+    self.priceView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.priceView.bounds
+                                                                 cornerRadius:self.priceView.layer.cornerRadius].CGPath;
 }
 
 #pragma mark - Public API
@@ -164,8 +171,8 @@
     [self.trailingStack addArrangedSubview:self.priceView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.priceView.widthAnchor constraintEqualToConstant:120],
-        [self.priceView.heightAnchor constraintGreaterThanOrEqualToConstant:50]
+        [self.priceView.widthAnchor constraintEqualToConstant:126],
+        [self.priceView.heightAnchor constraintGreaterThanOrEqualToConstant:56]
     ]];
 
     if (category.length > 0) {
@@ -173,8 +180,8 @@
         self.categoryLabel.hidden = NO;
         [self.trailingStack addArrangedSubview:self.categoryLabel];
         [NSLayoutConstraint activateConstraints:@[
-            [self.categoryLabel.heightAnchor constraintEqualToConstant:24],
-            [self.categoryLabel.widthAnchor constraintEqualToConstant:120]
+            [self.categoryLabel.heightAnchor constraintEqualToConstant:26],
+            [self.categoryLabel.widthAnchor constraintEqualToConstant:126]
         ]];
     } else {
         self.categoryLabel.hidden = YES;
@@ -245,24 +252,20 @@
 
 - (void)animatePillsIn
 {
-    NSTimeInterval baseDelay = 0.20;
+    NSTimeInterval baseDelay = 0.10;
 
-    [UIView animateWithDuration:0.45
+    [UIView animateWithDuration:0.36
                           delay:baseDelay
-         usingSpringWithDamping:0.85
-          initialSpringVelocity:0.6
-                        options:UIViewAnimationOptionAllowUserInteraction
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.priceView.alpha = 1.0;
         self.priceView.transform = CGAffineTransformIdentity;
     } completion:nil];
 
     [self.metaPillsStack.arrangedSubviews enumerateObjectsUsingBlock:^(UIView *badge, NSUInteger idx, BOOL *stop) {
-        [UIView animateWithDuration:0.35
-                              delay:0.08 + (0.05 * idx)
-             usingSpringWithDamping:0.9
-              initialSpringVelocity:0.6
-                            options:UIViewAnimationOptionAllowUserInteraction
+        [UIView animateWithDuration:0.28
+                              delay:0.06 + (0.04 * idx)
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             badge.alpha = 1.0;
             badge.transform = CGAffineTransformIdentity;
@@ -275,10 +278,18 @@
 - (UIView *)pillViewForItem:(PPInfoPill *)item
 {
     UIView *pill = [[UIView alloc] init];
-    pill.backgroundColor = UIColor.systemGray6Color;
+    pill.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.64];
     pill.translatesAutoresizingMaskIntoConstraints = NO;
     pill.alpha = 0.0;
-    pill.transform = CGAffineTransformMakeTranslation(0, 10);
+    pill.transform = CGAffineTransformMakeTranslation(0, 8);
+    pill.layer.cornerRadius = 24.0;
+    pill.layer.cornerCurve = kCACornerCurveContinuous;
+    pill.layer.shadowOpacity = 0.12;
+    pill.layer.shadowRadius = 16.0;
+    pill.layer.shadowOffset = CGSizeMake(0, 10);
+    pill.layer.borderWidth = 0.6;
+    [pill pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
+    [pill pp_setShadowColor:UIColor.blackColor];
 
     UIImageView *icon = [[UIImageView alloc] initWithImage:PPImage(item.iconName)];
     icon.translatesAutoresizingMaskIntoConstraints = NO;
@@ -287,20 +298,22 @@
     UILabel *label = [[UILabel alloc] init];
     label.text = item.text;
     label.textColor = UIColor.labelColor;
-    label.font = [GM boldFontWithSize:18];
+    label.font = [GM boldFontWithSize:19];
     label.numberOfLines = 1;
     label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.textAlignment = NSTextAlignmentCenter;
 
     UILabel *requirelabel = [[UILabel alloc] init];
     requirelabel.text = kLang(@"Required");
     requirelabel.textColor = UIColor.secondaryLabelColor;
-    requirelabel.font = [GM MidFontWithSize:12];
+    requirelabel.font = [GM MidFontWithSize:10.5];
     requirelabel.numberOfLines = 1;
     requirelabel.translatesAutoresizingMaskIntoConstraints = NO;
+    requirelabel.textAlignment = NSTextAlignmentCenter;
 
     UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[requirelabel, label]];
     content.axis = UILayoutConstraintAxisVertical;
-    content.spacing = 2;
+    content.spacing = 3;
     content.alignment = UIStackViewAlignmentCenter;
     content.translatesAutoresizingMaskIntoConstraints = NO;
 
@@ -317,17 +330,12 @@
         [content.trailingAnchor constraintLessThanOrEqualToAnchor:pill.trailingAnchor constant:-4],
     ]];
 
-    UIColor *tint = [UIColor colorWithRed:0.65 green:0.85 blue:0.70 alpha:1.0];
-    pill.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
-    icon.tintColor = [tint colorWithAlphaComponent:1.2];
+    UIColor *tint = AppPrimaryClr ?: UIColor.systemBlueColor;
+    pill.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.68];
+    icon.tintColor = tint;
     label.textColor = UIColor.labelColor;
-
-    if ([item.iconName isEqualToString:@"dollarsColors"]) {
-        pill.accessibilityIdentifier = @"pricePill";
-    }
-
-    pill.layer.cornerCurve = kCACornerCurveContinuous;
-    pill.clipsToBounds = YES;
+    pill.clipsToBounds = NO;
+    pill.accessibilityIdentifier = @"pricePill";
 
     return pill;
 }
@@ -337,8 +345,8 @@
     UIView *badge = [[UIView alloc] init];
     badge.translatesAutoresizingMaskIntoConstraints = NO;
     badge.alpha = 0.0;
-    badge.transform = CGAffineTransformMakeTranslation(0, 8);
-    badge.layer.cornerRadius = 12;
+    badge.transform = CGAffineTransformMakeTranslation(0, 6);
+    badge.layer.cornerRadius = 13;
     badge.layer.cornerCurve = kCACornerCurveContinuous;
     badge.clipsToBounds = YES;
 
@@ -371,18 +379,10 @@
         [stack.trailingAnchor constraintEqualToAnchor:badge.trailingAnchor constant:-9],
     ]];
 
-    UIColor *tint = UIColor.secondaryLabelColor;
-    if ([item.iconName isEqualToString:@"figure.dress.line.vertical.figure"]) {
-        tint = [UIColor colorWithRed:0.45 green:0.65 blue:0.95 alpha:1.0];
-    } else if ([item.iconName isEqualToString:@"clock"]) {
-        tint = [UIColor colorWithRed:0.95 green:0.75 blue:0.45 alpha:1.0];
-    } else if ([item.iconName isEqualToString:@"pawprint.fill"]) {
-        tint = [UIColor colorWithRed:0.55 green:0.75 blue:0.55 alpha:1.0];
-    }
-
-    badge.backgroundColor = [tint colorWithAlphaComponent:0.16];
+    UIColor *tint = AppPrimaryClr ?: UIColor.systemBlueColor;
+    badge.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.42];
     badge.layer.borderWidth = 0.5;
-    [badge pp_setBorderColor:[tint colorWithAlphaComponent:0.24]];
+    [badge pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     icon.tintColor = tint;
 
     return badge;
@@ -444,7 +444,7 @@
     self.locationLabel.alpha = 0.0;
     self.locationLabel.transform = CGAffineTransformMakeScale(0.9, 0.9);
 
-    [UIView animateWithDuration:0.18
+    [UIView animateWithDuration:0.22
                           delay:0
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{

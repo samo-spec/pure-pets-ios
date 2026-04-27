@@ -168,6 +168,10 @@ static UIColor *PPPetCareVetViewerQuietRowColor(void)
                                                                 cornerRadius:self.heroView.layer.cornerRadius].CGPath;
     self.actionsSectionView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.actionsSectionView.bounds
                                                                           cornerRadius:self.actionsSectionView.layer.cornerRadius].CGPath;
+
+    if (self.view.window) {
+        [self pp_beginEntranceAnimationIfNeeded];
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection

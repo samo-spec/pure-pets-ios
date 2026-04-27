@@ -36,17 +36,16 @@
     self.semanticContentAttribute = UISemanticContentAttributeUnspecified;
 
     _stack = [[UIStackView alloc] init];
-    _stack.spacing = items.count > 1 ? 10 : 0;
     _stack.translatesAutoresizingMaskIntoConstraints = NO;
     _stack.semanticContentAttribute = UISemanticContentAttributeUnspecified;
     
     _stack.axis = UILayoutConstraintAxisHorizontal;
     _stack.alignment = UIStackViewAlignmentFill;
     _stack.distribution = UIStackViewDistributionFillEqually;
-    _stack.spacing = items.count > 1 ? 10 : 0;
+    _stack.spacing = items.count > 1 ? 12 : 0;
     
     _stack.layoutMarginsRelativeArrangement = YES;
-    _stack.layoutMargins = UIEdgeInsetsMake(4, 0, 4, 0);
+    _stack.layoutMargins = UIEdgeInsetsMake(6, 0, 6, 0);
 
     [self addSubview:_stack];
 
@@ -74,15 +73,22 @@
 - (UIView *)pillViewForItem:(PPInfoPill *)item {
 
     UIView *pill = [[UIView alloc] init];
-    pill.backgroundColor = UIColor.tertiarySystemFillColor;
-    pill.layer.cornerRadius = 18;
+    pill.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.82];
+    pill.layer.cornerRadius = 20;
+    pill.layer.cornerCurve = kCACornerCurveContinuous;
+    pill.layer.borderWidth = 0.5;
+    [pill pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    [pill pp_setShadowColor:UIColor.blackColor];
+    pill.layer.shadowOpacity = 0.05;
+    pill.layer.shadowRadius = 12.0;
+    pill.layer.shadowOffset = CGSizeMake(0, 8);
     pill.translatesAutoresizingMaskIntoConstraints = NO;
     pill.alpha = 0.0;
-    pill.transform = CGAffineTransformMakeTranslation(0, 10);
+    pill.transform = CGAffineTransformMakeTranslation(0, 12);
 
     UIImageView *icon = [[UIImageView alloc] initWithImage:
         [UIImage systemImageNamed:item.iconName]];
-    icon.tintColor = UIColor.secondaryLabelColor;
+    icon.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
     icon.contentMode = UIViewContentModeScaleAspectFit;
     icon.translatesAutoresizingMaskIntoConstraints = NO;
 
@@ -93,7 +99,7 @@
     UILabel *label = [[UILabel alloc] init];
     label.text = item.text;
     label.textColor = UIColor.labelColor;
-    label.font = [GM MidFontWithSize:16];
+    label.font = [GM boldFontWithSize:14];
     label.adjustsFontForContentSizeCategory = YES;
     label.numberOfLines = 1;
     label.translatesAutoresizingMaskIntoConstraints = NO;
@@ -117,33 +123,17 @@
         [content.trailingAnchor constraintEqualToAnchor:pill.trailingAnchor constant:-12],
     ]];
 
-    // --- Soft, interactive, per-pill color styling ---
-    UIColor *tint = UIColor.secondaryLabelColor;
-
-    if ([item.iconName isEqualToString:@"figure.dress.line.vertical.figure"]) {
-        tint = [UIColor colorWithRed:0.45 green:0.65 blue:0.95 alpha:1.0]; // soft blue
-    } else if ([item.iconName isEqualToString:@"pawprint.fill"]) {
-        tint = [UIColor colorWithRed:0.55 green:0.75 blue:0.55 alpha:1.0]; // soft green
-    } else if ([item.iconName isEqualToString:@"clock"]) {
-        tint = [UIColor colorWithRed:0.95 green:0.75 blue:0.45 alpha:1.0]; // soft amber
-    } else if ([item.iconName isEqualToString:@"banknote"]) {
-        tint = [UIColor colorWithRed:0.65 green:0.85 blue:0.70 alpha:1.0]; // money mint
-    }
-
-    pill.backgroundColor = [tint colorWithAlphaComponent:0.14];
-    pill.layer.borderWidth = 0.5;
-    [pill pp_setBorderColor:[tint colorWithAlphaComponent:0.28]];
+    UIColor *tint = AppPrimaryClr ?: UIColor.systemBlueColor;
+    pill.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.70];
+    [pill pp_setBorderColor:[tint colorWithAlphaComponent:0.14]];
     icon.tintColor = tint;
     label.textColor = UIColor.labelColor;
-    // --- End color styling ---
 
     if ([item.iconName isEqualToString:@"banknote"]) {
         pill.accessibilityIdentifier = @"pricePill";
     }
 
-    // Optional polish: interactive feel (iOS 16+ best practices)
-    pill.layer.cornerCurve = kCACornerCurveContinuous;
-    pill.clipsToBounds = YES;
+    pill.clipsToBounds = NO;
 
     return pill;
 }
@@ -162,11 +152,9 @@
     NSTimeInterval baseDelay = 0.05;
 
     [pills enumerateObjectsUsingBlock:^(UIView *pill, NSUInteger idx, BOOL *stop) {
-        [UIView animateWithDuration:0.45
+        [UIView animateWithDuration:0.40
                               delay:baseDelay * idx
-             usingSpringWithDamping:0.85
-              initialSpringVelocity:0.6
-                            options:UIViewAnimationOptionAllowUserInteraction
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             pill.alpha = 1.0;
             pill.transform = CGAffineTransformIdentity;

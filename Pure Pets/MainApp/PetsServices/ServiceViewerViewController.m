@@ -381,8 +381,8 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 
 - (void)prepareForEntrance {
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
-    self.alpha = 0.0;
-    self.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0), CGAffineTransformMakeScale(0.96, 0.96));
+    self.alpha = reduceMotion ? 1.0 : 0.72;
+    self.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 14.0), CGAffineTransformMakeScale(0.985, 0.985));
 
     NSArray<UIView *> *primaryViews = @[
         self.categoryBadgeView,
@@ -394,30 +394,42 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     ];
     [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
-        view.alpha = 0.0;
         if (reduceMotion) {
+            view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
             return;
         }
 
+        CGFloat initialAlpha = 0.0;
+        if (view == self.providerStackView) {
+            initialAlpha = 0.34;
+        } else if (view == self.metaPillsStackView) {
+            initialAlpha = 0.26;
+        } else if (view == self.categoryBadgeView) {
+            initialAlpha = 0.18;
+        } else if (view == self.priceCardView) {
+            initialAlpha = 0.12;
+        }
+        view.alpha = initialAlpha;
+
         switch (idx) {
             case 0:
-                view.transform = CGAffineTransformMakeTranslation(-10.0, 6.0);
+                view.transform = CGAffineTransformMakeTranslation(-8.0, 4.0);
                 break;
             case 1:
-                view.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+                view.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
                 break;
             case 2:
-                view.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+                view.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
                 break;
             case 3:
-                view.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(10.0, 12.0), CGAffineTransformMakeScale(0.92, 0.92));
+                view.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(8.0, 8.0), CGAffineTransformMakeScale(0.95, 0.95));
                 break;
             case 4:
-                view.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+                view.transform = CGAffineTransformMakeTranslation(0.0, 4.0);
                 break;
             default:
-                view.transform = CGAffineTransformMakeScale(0.86, 0.86);
+                view.transform = CGAffineTransformMakeScale(0.92, 0.92);
                 break;
         }
     }];
@@ -444,12 +456,12 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
         self.transform = CGAffineTransformIdentity;
     } completion:nil];
 
-    [self pp_animateView:self.ambientOrbView delay:0.04 duration:(reduceMotion ? 0.16 : 0.50) damping:0.90 velocity:0.12];
-    [self pp_animateView:self.categoryBadgeView delay:0.10 duration:(reduceMotion ? 0.16 : 0.46) damping:0.84 velocity:0.22];
-    [self pp_animateView:self.priceCardView delay:0.12 duration:(reduceMotion ? 0.16 : 0.56) damping:0.74 velocity:0.30];
-    [self pp_animateView:self.titleLabel delay:0.16 duration:(reduceMotion ? 0.16 : 0.54) damping:0.86 velocity:0.18];
-    [self pp_animateView:self.providerStackView delay:0.21 duration:(reduceMotion ? 0.16 : 0.46) damping:0.88 velocity:0.16];
-    [self pp_animateView:self.metaPillsStackView delay:0.26 duration:(reduceMotion ? 0.16 : 0.44) damping:0.90 velocity:0.14];
+    [self pp_animateView:self.ambientOrbView delay:0.02 duration:(reduceMotion ? 0.16 : 0.40) damping:0.92 velocity:0.10];
+    [self pp_animateView:self.providerStackView delay:0.03 duration:(reduceMotion ? 0.16 : 0.30) damping:0.90 velocity:0.12];
+    [self pp_animateView:self.metaPillsStackView delay:0.05 duration:(reduceMotion ? 0.16 : 0.30) damping:0.92 velocity:0.10];
+    [self pp_animateView:self.categoryBadgeView delay:0.06 duration:(reduceMotion ? 0.16 : 0.34) damping:0.86 velocity:0.18];
+    [self pp_animateView:self.priceCardView delay:0.08 duration:(reduceMotion ? 0.16 : 0.42) damping:0.78 velocity:0.26];
+    [self pp_animateView:self.titleLabel delay:0.11 duration:(reduceMotion ? 0.16 : 0.38) damping:0.88 velocity:0.16];
     [self animatePillsIn];
     [self pp_beginAmbientMotionIfNeeded];
 }
@@ -459,8 +471,8 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     [self.metaPillsStackView.arrangedSubviews enumerateObjectsUsingBlock:^(UIView * _Nonnull badgeView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
-        [UIView animateWithDuration:(reduceMotion ? 0.16 : 0.34)
-                              delay:(reduceMotion ? 0.0 : (0.28 + (0.04 * idx)))
+        [UIView animateWithDuration:(reduceMotion ? 0.16 : 0.24)
+                              delay:(reduceMotion ? 0.0 : (0.09 + (0.025 * idx)))
              usingSpringWithDamping:(reduceMotion ? 1.0 : 0.88)
               initialSpringVelocity:(reduceMotion ? 0.0 : 0.22)
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
@@ -697,6 +709,10 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     self.heroHeightConstraint.constant = [self pp_heroHeight];
     self.topGlowView.layer.cornerRadius = CGRectGetWidth(self.topGlowView.bounds) / 2.0;
     self.bottomGlowView.layer.cornerRadius = CGRectGetWidth(self.bottomGlowView.bounds) / 2.0;
+
+    if (self.view.window) {
+        [self pp_beginEntranceAnimationsIfNeeded];
+    }
 }
 
 - (void)dealloc {

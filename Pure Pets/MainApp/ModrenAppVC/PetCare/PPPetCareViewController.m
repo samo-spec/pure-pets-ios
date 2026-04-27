@@ -2111,7 +2111,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     vm.currencyCode = currency;
     vm.imageURL = medicine.imageUrl ?: @"";
     vm.blurHash = medicine.blurHash ?: @"";
-    vm.placeholder = [[UIImage systemImageNamed:@"pills.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    vm.placeholder = [UIImage imageNamed:@"petcare_placeholder"];
     vm.preferredAspectRatio = 0.78;
     vm.imageSize = CGSizeMake(1.0, 0.78);
     vm.itemQuantitiy = MAX(medicine.stockQuantity, 0);

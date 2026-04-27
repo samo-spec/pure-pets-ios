@@ -206,6 +206,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     UIImageView *_ctaIconView;
     NSString *_currentCareAnimationName;
     NSInteger _careAnimationLoadToken;
+    BOOL _didRevealCurrentCareAnimation;
 }
 
 + (NSString *)reuseIdentifier
@@ -546,6 +547,8 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     if ([_currentCareAnimationName isEqualToString:safeName]) {
         BOOL needsReveal = _careAnimationView.hidden
             || _careAnimationView.alpha < 0.99
+            || _iconImageView.hidden == NO
+            || _iconImageView.alpha > 0.01
             || !CGAffineTransformEqualToTransform(_careAnimationView.transform, CGAffineTransformIdentity);
         if (needsReveal && _careAnimationView.sceneModel) {
             [self pp_revealConfiguredCareAnimation];
@@ -560,13 +563,15 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     _currentCareAnimationName = safeName;
     _careAnimationLoadToken += 1;
     NSInteger token = _careAnimationLoadToken;
+    _didRevealCurrentCareAnimation = NO;
 
     [_careAnimationView stop];
     _careAnimationView.hidden = YES;
     _careAnimationView.alpha = 0.0;
-    _careAnimationView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    _careAnimationView.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
     _iconImageView.hidden = NO;
     _iconImageView.alpha = 1.0;
+    _iconImageView.transform = CGAffineTransformIdentity;
 
     __weak typeof(self) weakSelf = self;
     [AppClasses setAnimationNamed:safeName
@@ -592,28 +597,59 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 
 - (void)pp_revealConfiguredCareAnimation
 {
+    BOOL isAlreadyRevealed =
+        _didRevealCurrentCareAnimation
+        && !_careAnimationView.hidden
+        && _careAnimationView.alpha >= 0.99
+        && CGAffineTransformEqualToTransform(_careAnimationView.transform, CGAffineTransformIdentity);
+    if (isAlreadyRevealed) {
+        if (!_careAnimationView.isAnimationPlaying) {
+            [_careAnimationView play];
+        }
+        _iconImageView.hidden = YES;
+        _iconImageView.alpha = 0.0;
+        _iconImageView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    _didRevealCurrentCareAnimation = YES;
     if (UIAccessibilityIsReduceMotionEnabled()) {
         _careAnimationView.hidden = NO;
         _careAnimationView.alpha = 1.0;
         _careAnimationView.transform = CGAffineTransformIdentity;
         _iconImageView.hidden = YES;
+        _iconImageView.alpha = 0.0;
+        _iconImageView.transform = CGAffineTransformIdentity;
+        if (!_careAnimationView.isAnimationPlaying) {
+            [_careAnimationView play];
+        }
         return;
     }
 
     _careAnimationView.loopAnimation = YES;
     _careAnimationView.hidden = NO;
-    _iconImageView.hidden = YES;
     [_careAnimationView setNeedsLayout];
     [_careAnimationView layoutIfNeeded];
     [_careAnimationView play];
 
-    [UIView animateWithDuration:0.28
-                          delay:0.0
+    _careAnimationView.alpha = 0.0;
+    _careAnimationView.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
+    _iconImageView.hidden = NO;
+    _iconImageView.alpha = 1.0;
+    _iconImageView.transform = CGAffineTransformIdentity;
+
+    [UIView animateWithDuration:0.32
+                          delay:0.02
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                      animations:^{
         self->_careAnimationView.alpha = 1.0;
         self->_careAnimationView.transform = CGAffineTransformIdentity;
-    } completion:nil];
+        self->_iconImageView.alpha = 0.0;
+        self->_iconImageView.transform = CGAffineTransformMakeTranslation(0.0, -4.0);
+    } completion:^(__unused BOOL finished) {
+        self->_iconImageView.hidden = YES;
+        self->_iconImageView.transform = CGAffineTransformIdentity;
+    }];
 }
 
 @end
@@ -1919,6 +1955,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL didPrefetchHomeEntranceAnimations;
 @property (nonatomic, assign) BOOL didPreparePremiumHomeEntrance;
 @property (nonatomic, assign) BOOL didRunPremiumHomeEntranceAnimation;
+@property (nonatomic, assign) BOOL isPremiumHomeEntranceAnimating;
 @property (nonatomic, assign) BOOL didStartPremiumBackgroundGlowMotion;
 @property (nonatomic, assign) NSInteger premiumCareAnimationCursor;
 @property (nonatomic, copy, nullable) NSString *currentPremiumCareAnimationName;
@@ -1962,9 +1999,17 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_animateHomeCell:(UICollectionViewCell *)cell highlighted:(BOOL)highlighted;
 - (BOOL)pp_shouldReduceHomeMotion;
 - (void)pp_preparePremiumHomeEntranceStateIfNeeded;
+- (void)pp_prepareVisibleHomeEntranceContentIfNeeded;
 - (void)pp_beginPremiumHomeEntranceIfNeeded;
 - (void)pp_beginPremiumBackgroundGlowMotionIfNeeded;
 - (void)pp_animateVisibleHomeEntranceContentIfNeeded;
+- (void)pp_configureHomeEntranceInitialStateForCell:(UICollectionViewCell *)cell
+                                        atIndexPath:(NSIndexPath *)indexPath
+                                     lateAppearance:(BOOL)isLateAppearance;
+- (void)pp_configureHomeEntranceInitialStateForSupplementaryView:(UICollectionReusableView *)supplementaryView
+                                                            kind:(NSString *)kind
+                                                     atIndexPath:(NSIndexPath *)indexPath
+                                                  lateAppearance:(BOOL)isLateAppearance;
 - (void)pp_animateHomeEntranceForCell:(UICollectionViewCell *)cell
                           atIndexPath:(NSIndexPath *)indexPath
                        initialOrdinal:(NSUInteger)initialOrdinal;
@@ -7464,18 +7509,69 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    self.collectionView.alpha = 0.0;
-    self.collectionView.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
+    self.collectionView.alpha = 1.0;
+    self.collectionView.transform = CGAffineTransformIdentity;
 
     for (UIView *glowView in glowViews) {
-        glowView.alpha = 0.0;
-        glowView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+        glowView.alpha = 0.18;
+        glowView.transform = CGAffineTransformMakeScale(0.96, 0.96);
     }
 
     for (UIView *chromeView in chromeViews) {
-        chromeView.alpha = 0.0;
-        chromeView.transform = CGAffineTransformMakeTranslation(0.0, -10.0);
+        chromeView.alpha = 0.22;
+        chromeView.transform = CGAffineTransformMakeTranslation(0.0, -6.0);
     }
+}
+
+- (void)pp_prepareVisibleHomeEntranceContentIfNeeded
+{
+    if (!self.collectionView || [self pp_shouldReduceHomeMotion] || self.didRunPremiumHomeEntranceAnimation) {
+        return;
+    }
+
+    NSArray<NSIndexPath *> *visibleIndexPaths =
+        [self.collectionView.indexPathsForVisibleItems sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *obj1, NSIndexPath *obj2) {
+        if (obj1.section < obj2.section) {
+            return NSOrderedAscending;
+        }
+        if (obj1.section > obj2.section) {
+            return NSOrderedDescending;
+        }
+        if (obj1.item < obj2.item) {
+            return NSOrderedAscending;
+        }
+        if (obj1.item > obj2.item) {
+            return NSOrderedDescending;
+        }
+        return NSOrderedSame;
+    }];
+
+    NSMutableOrderedSet<NSNumber *> *sectionIndexes = [NSMutableOrderedSet orderedSet];
+    for (NSIndexPath *indexPath in visibleIndexPaths) {
+        [sectionIndexes addObject:@(indexPath.section)];
+    }
+
+    [sectionIndexes.array enumerateObjectsUsingBlock:^(NSNumber * _Nonnull sectionNumber, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)idx;
+        (void)stop;
+        NSIndexPath *headerIndexPath = [NSIndexPath indexPathForItem:0 inSection:sectionNumber.integerValue];
+        UICollectionReusableView *header =
+            [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
+                                                     atIndexPath:headerIndexPath];
+        [self pp_configureHomeEntranceInitialStateForSupplementaryView:header
+                                                                  kind:UICollectionElementKindSectionHeader
+                                                           atIndexPath:headerIndexPath
+                                                        lateAppearance:NO];
+    }];
+
+    [visibleIndexPaths enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull indexPath, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)idx;
+        (void)stop;
+        UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
+        [self pp_configureHomeEntranceInitialStateForCell:cell
+                                              atIndexPath:indexPath
+                                           lateAppearance:NO];
+    }];
 }
 
 - (void)pp_beginPremiumBackgroundGlowMotionIfNeeded
@@ -7516,6 +7612,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
     self.didRunPremiumHomeEntranceAnimation = YES;
+    self.isPremiumHomeEntranceAnimating = YES;
 
     NSArray<UIView *> *glowViews = @[
         self.pp_premiumBackgroundGlowViewTop ?: [UIView new],
@@ -7535,6 +7632,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     if ([self pp_shouldReduceHomeMotion]) {
+        self.isPremiumHomeEntranceAnimating = NO;
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
         for (UIView *glowView in glowViews) {
@@ -7552,7 +7650,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull glowView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
-        [UIView animateWithDuration:0.82
+        [UIView animateWithDuration:0.68
                               delay:0.04 * idx
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
@@ -7563,7 +7661,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [chromeViews enumerateObjectsUsingBlock:^(UIView * _Nonnull chromeView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
-        [UIView animateWithDuration:0.42
+        [UIView animateWithDuration:0.30
                               delay:0.03 * idx
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
@@ -7572,21 +7670,19 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         } completion:nil];
     }];
 
-    [UIView animateWithDuration:0.60
-                          delay:0.02
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.18
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:^{
-        self.collectionView.alpha = 1.0;
-        self.collectionView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
-
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)),
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
         [self pp_animateVisibleHomeEntranceContentIfNeeded];
+    });
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.80 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
+    });
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.86 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        self.isPremiumHomeEntranceAnimating = NO;
     });
 }
 
@@ -7660,6 +7756,15 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [cell.layer removeAllAnimations];
     [cell.contentView.layer removeAllAnimations];
 
+    BOOL isLateAppearance = (initialOrdinal == NSNotFound);
+    if (isLateAppearance && self.isPremiumHomeEntranceAnimating) {
+        // Diffable snapshot inserts can arrive while the collection itself is still settling.
+        // Jump straight to the final state to avoid a second alpha reset and visible flicker.
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        return;
+    }
+
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     BOOL isHero = (section == PPHomeSectionHero);
     BOOL isPrimarySurface = isHero
@@ -7668,20 +7773,17 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         || section == PPHomeSectionPetProfile
         || section == PPHomeSectionPremiumCare;
 
-    CGFloat translateY = isHero ? 34.0 : (isPrimarySurface ? 24.0 : 16.0);
-    CGFloat scale = isHero ? 0.965 : (isPrimarySurface ? 0.978 : 0.988);
-    NSTimeInterval duration = isHero ? 0.70 : (isPrimarySurface ? 0.56 : 0.44);
-    NSTimeInterval delay = (initialOrdinal == NSNotFound) ? 0.0 : MIN(0.04 + (0.028 * initialOrdinal), 0.24);
+    NSTimeInterval duration = isLateAppearance
+        ? (isHero ? 0.26 : (isPrimarySurface ? 0.22 : 0.18))
+        : (isHero ? 0.52 : (isPrimarySurface ? 0.40 : 0.30));
+    NSTimeInterval delay = isLateAppearance ? 0.0 : MIN(0.05 + (0.028 * initialOrdinal), 0.22);
 
-    cell.alpha = 0.0;
-    cell.transform = CGAffineTransformIdentity;
-    cell.transform = CGAffineTransformTranslate(cell.transform, 0.0, translateY);
-    cell.transform = CGAffineTransformScale(cell.transform, scale, scale);
+    [self pp_configureHomeEntranceInitialStateForCell:cell
+                                          atIndexPath:indexPath
+                                       lateAppearance:isLateAppearance];
 
     [UIView animateWithDuration:duration
                           delay:delay
-         usingSpringWithDamping:isHero ? 0.84 : 0.90
-          initialSpringVelocity:0.16
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         cell.alpha = 1.0;
@@ -7712,11 +7814,22 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [supplementaryView.layer removeAllAnimations];
-    supplementaryView.alpha = 0.0;
-    supplementaryView.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+    BOOL isLateAppearance = (initialOrdinal == NSNotFound);
+    if (isLateAppearance && self.isPremiumHomeEntranceAnimating) {
+        supplementaryView.alpha = 1.0;
+        supplementaryView.transform = CGAffineTransformIdentity;
+        return;
+    }
 
-    NSTimeInterval delay = (initialOrdinal == NSNotFound) ? 0.0 : MIN(0.03 + (0.022 * initialOrdinal), 0.16);
-    [UIView animateWithDuration:0.42
+    NSTimeInterval delay = isLateAppearance ? 0.0 : MIN(0.04 + (0.024 * initialOrdinal), 0.18);
+    NSTimeInterval duration = isLateAppearance ? 0.18 : 0.28;
+
+    [self pp_configureHomeEntranceInitialStateForSupplementaryView:supplementaryView
+                                                              kind:kind
+                                                       atIndexPath:indexPath
+                                                    lateAppearance:isLateAppearance];
+
+    [UIView animateWithDuration:duration
                           delay:delay
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
@@ -7746,6 +7859,50 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         cell.transform = highlighted ? CGAffineTransformMakeScale(0.975, 0.975) : CGAffineTransformIdentity;
         cell.alpha = highlighted ? 0.96 : 1.0;
     } completion:nil];
+}
+
+- (void)pp_configureHomeEntranceInitialStateForCell:(UICollectionViewCell *)cell
+                                        atIndexPath:(NSIndexPath *)indexPath
+                                     lateAppearance:(BOOL)isLateAppearance
+{
+    if (!cell || !indexPath) {
+        return;
+    }
+
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    BOOL isHero = (section == PPHomeSectionHero);
+    BOOL isPrimarySurface = isHero
+        || section == PPHomeSectionQuickActions
+        || section == PPHomeSectionCurrentOrders
+        || section == PPHomeSectionPetProfile
+        || section == PPHomeSectionPremiumCare;
+
+    CGFloat translateY = isLateAppearance ? (isHero ? 8.0 : (isPrimarySurface ? 6.0 : 4.0))
+                                          : (isHero ? 24.0 : (isPrimarySurface ? 16.0 : 10.0));
+    CGFloat scale = isLateAppearance ? (isHero ? 0.994 : (isPrimarySurface ? 0.996 : 0.998))
+                                     : (isHero ? 0.986 : (isPrimarySurface ? 0.990 : 0.994));
+    CGFloat initialAlpha = isLateAppearance ? 0.0 : (isHero ? 0.0 : 0.02);
+
+    [cell.layer removeAllAnimations];
+    [cell.contentView.layer removeAllAnimations];
+
+    cell.alpha = initialAlpha;
+    CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0, translateY);
+    cell.transform = CGAffineTransformScale(transform, scale, scale);
+}
+
+- (void)pp_configureHomeEntranceInitialStateForSupplementaryView:(UICollectionReusableView *)supplementaryView
+                                                            kind:(NSString *)kind
+                                                     atIndexPath:(NSIndexPath *)indexPath
+                                                  lateAppearance:(BOOL)isLateAppearance
+{
+    if (!supplementaryView || !indexPath || ![kind isEqualToString:UICollectionElementKindSectionHeader]) {
+        return;
+    }
+
+    [supplementaryView.layer removeAllAnimations];
+    supplementaryView.alpha = 0.0;
+    supplementaryView.transform = CGAffineTransformMakeTranslation(0.0, isLateAppearance ? 4.0 : 10.0);
 }
 
 
@@ -7809,6 +7966,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [self updateCartQuantityBadge];
     [self pp_preparePremiumHomeEntranceStateIfNeeded];
+    [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 }
 
 - (void)viewDidDisappear:(BOOL)animated
@@ -9068,6 +9226,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+    [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 }
 
 

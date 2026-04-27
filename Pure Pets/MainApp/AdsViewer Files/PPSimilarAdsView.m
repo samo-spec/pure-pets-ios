@@ -12,8 +12,8 @@
 #import "GM.h"
 #import "PPImageLoaderManager.h"
 static const CGFloat kPPSimilarSectionCollectionHeight = 318.0;
-static const CGFloat kPPSimilarSectionTitleHeight = 30.0;
-static const CGFloat kPPSimilarSectionSpacing = 12.0;
+static const CGFloat kPPSimilarSectionTitleHeight = 32.0;
+static const CGFloat kPPSimilarSectionSpacing = 14.0;
 
 @interface PPSimilarAdsView () <UICollectionViewDelegate, UICollectionViewDataSource>
 
@@ -37,6 +37,7 @@ static const CGFloat kPPSimilarSectionSpacing = 12.0;
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.items = @[];
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.clipsToBounds = NO;
     [self buildUI];
     
     self.layer.masksToBounds = NO;
@@ -51,10 +52,11 @@ static const CGFloat kPPSimilarSectionSpacing = 12.0;
     
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.text = _titleString;
-    self.titleLabel.font = [GM boldFontWithSize:18];
+    self.titleLabel.font = [GM boldFontWithSize:20];
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.titleLabel.textColor = UIColor.labelColor;
     self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.titleLabel.alpha = 0.96;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     
     UICollectionViewCompositionalLayout *layout =
@@ -72,6 +74,8 @@ static const CGFloat kPPSimilarSectionSpacing = 12.0;
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
     self.collectionView.showsHorizontalScrollIndicator = NO;
+    self.collectionView.decelerationRate = UIScrollViewDecelerationRateFast;
+    self.collectionView.clipsToBounds = NO;
     self.collectionView.delegate = self;
     self.collectionView.dataSource = self;
     if (@available(iOS 15.0, *)) {
@@ -93,8 +97,8 @@ static const CGFloat kPPSimilarSectionSpacing = 12.0;
 
     [NSLayoutConstraint activateConstraints:@[
         [self.titleLabel.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:22],
-        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:24],
+        [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-24],
         [self.titleLabel.heightAnchor constraintEqualToConstant:kPPSimilarSectionTitleHeight],
         
         [self.collectionView.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:kPPSimilarSectionSpacing],
@@ -139,8 +143,8 @@ static const CGFloat kPPSimilarSectionSpacing = 12.0;
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
     
-    section.interGroupSpacing = 12;
-    section.contentInsets = NSDirectionalEdgeInsetsMake(4, 14, 0, 14);
+    section.interGroupSpacing = 14;
+    section.contentInsets = NSDirectionalEdgeInsetsMake(6, 16, 0, 16);
     
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
@@ -154,10 +158,13 @@ static const CGFloat kPPSimilarSectionSpacing = 12.0;
         CGFloat containerCenterX = contentOffset.x + containerWidth / 2.0;
         for (id<NSCollectionLayoutVisibleItem> item in visibleItems) {
               CGFloat distance = fabs(item.center.x - containerCenterX);
-              CGFloat normalized = MIN(1.0, distance / containerWidth);
-              CGFloat scale = 1.0 - (normalized * 0.08);
-              item.transform = CGAffineTransformMakeScale(MAX(0.92, scale),
-                                                          MAX(0.92, scale));
+              CGFloat normalized = MIN(1.0, distance / (containerWidth * 0.86));
+              CGFloat scale = 1.0 - (normalized * 0.06);
+              CGAffineTransform transform = CGAffineTransformIdentity;
+              transform = CGAffineTransformTranslate(transform, 0.0, normalized * 8.0);
+              transform = CGAffineTransformScale(transform, MAX(0.94, scale), MAX(0.94, scale));
+              item.transform = transform;
+              item.alpha = 1.0 - (normalized * 0.20);
           }
         
     };

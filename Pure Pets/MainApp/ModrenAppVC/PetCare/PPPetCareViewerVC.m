@@ -243,6 +243,11 @@ static UIColor *PPPetCareViewerQuietTileColor(void)
                                                                          cornerRadius:self.storySectionView.layer.cornerRadius].CGPath;
     self.careSectionView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.careSectionView.bounds
                                                                         cornerRadius:self.careSectionView.layer.cornerRadius].CGPath;
+
+    if (self.view.window) {
+        [self pp_beginEntranceAnimationIfNeeded];
+        [self pp_beginAmbientGlowAnimationIfNeeded];
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
