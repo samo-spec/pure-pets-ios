@@ -76,7 +76,7 @@
 }
 
 - (void)setTitleFont:(UIFont *)titleFont {
-    if (!_titleFont != titleFont) {
+    if (_titleFont != titleFont) {
         _titleFont           = titleFont;
         self.titleLabel.font = titleFont;
     }

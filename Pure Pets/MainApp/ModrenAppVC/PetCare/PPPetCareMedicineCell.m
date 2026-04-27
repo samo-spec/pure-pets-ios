@@ -189,12 +189,13 @@ NS_ASSUME_NONNULL_BEGIN
     _categoryLabel.text = mainKindName.length > 0 ? mainKindName : PPPetCareLocalized(@"pet_care_all_pets", @"All pets");
     _priceLabel.text = [NSString stringWithFormat:@"%.2f %@", medicine.price, medicine.currency.length > 0 ? medicine.currency : @"QAR"];
 
-    BOOL prescriptionRequired = medicine.requiresPrescription;
-    _statusLabel.text = prescriptionRequired
-        ? PPPetCareLocalized(@"pet_care_medicine_prescription_required", @"Prescription required")
-        : PPPetCareLocalized(@"pet_care_medicine_ready", @"Ready to order");
-    _statusLabel.backgroundColor = [accentColor colorWithAlphaComponent:prescriptionRequired ? 0.14 : 0.09];
-    _statusLabel.textColor = prescriptionRequired ? [UIColor systemOrangeColor] : accentColor;
+    BOOL isAvailable = medicine.isAvailable && medicine.stockQuantity > 0;
+    UIColor *statusTint = isAvailable ? accentColor : UIColor.systemRedColor;
+    _statusLabel.text = isAvailable
+        ? PPPetCareLocalized(@"pet_care_medicine_available", @"Available")
+        : PPPetCareLocalized(@"pet_care_medicine_not_available", @"Not available");
+    _statusLabel.backgroundColor = [statusTint colorWithAlphaComponent:isAvailable ? 0.09 : 0.12];
+    _statusLabel.textColor = statusTint;
 
     [_detailsButton setTitle:PPPetCareLocalized(@"pet_care_details_button", @"Details") forState:UIControlStateNormal];
     [_detailsButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];

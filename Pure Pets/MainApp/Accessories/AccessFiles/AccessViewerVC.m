@@ -41,7 +41,7 @@ static const CGFloat kAVSectionInset         = 20.0;    // horizontal screen mar
 static const CGFloat kAVCardPadding          = 20.0;    // inner section padding
 static const CGFloat kAVActionBarHeight      = 50.0;    // action button height
 static const CGFloat kAVDetailRowMinHeight   = 66.0;    // minimum detail row height
-static const CGFloat kAVBottomBarBase        = 146.0;   // sticky bottom bar base height
+static const CGFloat kAVBottomBarBase        = 106.0;   // sticky bottom bar base height
 static const CGFloat kAVSectionSpacing       = 20.0;    // section gap
 static const CGFloat kAVSuggestionBottomInset = 32.0;   // breathing room below collection
 static const CGFloat kAVSellerAvatarSize     = 56.0;    // seller identity avatar size
@@ -222,7 +222,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         // Bottom bar
         [self.bottomBar.leadingAnchor  constraintEqualToAnchor:self.view.leadingAnchor],
         [self.bottomBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.bottomBar.bottomAnchor   constraintEqualToAnchor:self.view.bottomAnchor constant:12],
+        [self.bottomBar.bottomAnchor   constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:PPIOS26() ? 22 : 10],
         self.bottomBarHeightConstraint,
 
         // Bar background mirrors bottom bar exactly
@@ -1686,7 +1686,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceView.backgroundColor = AppForgroundColr;
+    self.surfaceView.backgroundColor = AppBackgroundClrDarker;
     self.surfaceView.layer.cornerRadius = kAVCardCornerRadius;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = kAVSectionBorderWidth;

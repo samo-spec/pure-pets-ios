@@ -20,6 +20,7 @@
 @property (nonatomic, assign) BOOL didAnimate;
 @property (nonatomic, strong) UIScrollView *contentScrollView;
 @property (nonatomic, strong) UIView *contentContainer;
+@property (nonatomic, strong) UIView *titleCard;
 @property (nonatomic, strong) UIVisualEffectView *titleBlurView;
 @property PetAdCardView *petCard;
 // Layout constraints
@@ -104,17 +105,17 @@
     
     
     // --- Title Card Container ---
-    UIView *titleCard = [[UIView alloc] init];
-    titleCard.translatesAutoresizingMaskIntoConstraints = NO;
-    titleCard.backgroundColor = UIColor.clearColor;
-    titleCard.layer.cornerRadius = 22;
-    titleCard.layer.masksToBounds = NO;
+    self.titleCard = [[UIView alloc] init];
+    self.titleCard.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleCard.backgroundColor = UIColor.clearColor;
+    self.titleCard.layer.cornerRadius = 22;
+    self.titleCard.layer.masksToBounds = NO;
 
     // Soft, modern shadow (Apple-style)
-    [titleCard pp_setShadowColor:UIColor.blackColor];
-    titleCard.layer.shadowOpacity = 0.12;
-    titleCard.layer.shadowRadius = 22;
-    titleCard.layer.shadowOffset = CGSizeMake(0, 10);
+    [self.titleCard pp_setShadowColor:UIColor.blackColor];
+    self.titleCard.layer.shadowOpacity = 0.12;
+    self.titleCard.layer.shadowRadius = 22;
+    self.titleCard.layer.shadowOffset = CGSizeMake(0, 10);
 
     // ---- Blur background ----
     UIBlurEffect *blurEffect;
@@ -137,14 +138,14 @@
         [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.25];
 
     [self.titleBlurView.contentView addSubview:tintView];
-    [titleCard addSubview:self.titleBlurView];
+    [self.titleCard addSubview:self.titleBlurView];
 
     // Blur constraints
     [NSLayoutConstraint activateConstraints:@[
-        [self.titleBlurView.topAnchor constraintEqualToAnchor:titleCard.topAnchor],
-        [self.titleBlurView.leadingAnchor constraintEqualToAnchor:titleCard.leadingAnchor],
-        [self.titleBlurView.trailingAnchor constraintEqualToAnchor:titleCard.trailingAnchor],
-        [self.titleBlurView.bottomAnchor constraintEqualToAnchor:titleCard.bottomAnchor],
+        [self.titleBlurView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor],
+        [self.titleBlurView.leadingAnchor constraintEqualToAnchor:self.titleCard.leadingAnchor],
+        [self.titleBlurView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
+        [self.titleBlurView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor],
     ]];
 
     // Tint constraints
@@ -155,7 +156,7 @@
         [tintView.bottomAnchor constraintEqualToAnchor:self.titleBlurView.contentView.bottomAnchor],
     ]];
 
-    [self.view addSubview:titleCard];
+    [self.view addSubview:self.titleCard];
     
     self.petsTitleView = [[PPPetsTitleView alloc] init];
     [self.petsTitleView configureWithTitle:self.ad.adTitle
@@ -208,30 +209,30 @@
     }
     
     
-    [titleCard addSubview:self.petsTitleView];
-    
+    [self.titleCard addSubview:self.petsTitleView];
+
     // Constraints for titleCard
     [NSLayoutConstraint activateConstraints:@[
-        [titleCard.bottomAnchor constraintEqualToAnchor:self.imageGallery.bottomAnchor constant:-40],
-        [titleCard.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
-        [titleCard.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [titleCard.heightAnchor constraintEqualToConstant:64]
+        [self.titleCard.bottomAnchor constraintEqualToAnchor:self.imageGallery.bottomAnchor constant:-40],
+        [self.titleCard.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
+        [self.titleCard.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
+        [self.titleCard.heightAnchor constraintEqualToConstant:64]
     ]];
     
     
     // Constraints for petsTitleView inside titleCard
     [NSLayoutConstraint activateConstraints:@[
-        [self.petsTitleView.topAnchor constraintEqualToAnchor:titleCard.topAnchor constant:0],
-        [self.petsTitleView.leadingAnchor constraintEqualToAnchor:titleCard.leadingAnchor constant:0],
-        [self.petsTitleView.trailingAnchor constraintEqualToAnchor:titleCard.trailingAnchor constant:-0],
-        [self.petsTitleView.bottomAnchor constraintEqualToAnchor:titleCard.bottomAnchor constant:-0]
+        [self.petsTitleView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor constant:0],
+        [self.petsTitleView.leadingAnchor constraintEqualToAnchor:self.titleCard.leadingAnchor constant:0],
+        [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-0],
+        [self.petsTitleView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor constant:-0]
     ]];
     
     
     
    
     //[self.view bringSubviewToFront:self.imageGallery];
-    [self.view bringSubviewToFront:titleCard];
+    [self.view bringSubviewToFront:self.titleCard];
     // --- Gallery Overlay Controls ---
     
     
@@ -243,6 +244,7 @@
     [self initSimilarAds];
     [self initSimilarAccess];
     [self initButtons];
+    [self pp_prepareEntranceAnimationState];
 }
 
 
@@ -250,7 +252,7 @@
 -(void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    [self.petsTitleView animatePillsIn];
+    [self pp_beginEntranceAnimationsIfNeeded];
     if (!self.didTrackViewInteraction) {
         self.didTrackViewInteraction = YES;
         [self trackAdInteraction:PPItemInteractionTypeView];
@@ -709,6 +711,217 @@
     [super viewDidLayoutSubviews];
     
     
+}
+
+#pragma mark - Motion
+
+- (NSArray<UIView *> *)pp_primaryEntranceViews
+{
+    NSMutableArray<UIView *> *views = [NSMutableArray array];
+
+    if (self.titleCard) {
+        [views addObject:self.titleCard];
+    }
+    if (self.infoView) {
+        [views addObject:self.infoView];
+    }
+    if (self.descriptionTextView) {
+        [views addObject:self.descriptionTextView];
+    }
+    if (self.contactView) {
+        [views addObject:self.contactView];
+    }
+    if (self.similarAdsView) {
+        [views addObject:self.similarAdsView];
+    }
+    if (self.similarAccessView) {
+        [views addObject:self.similarAccessView];
+    }
+
+    return views.copy;
+}
+
+- (NSArray<UIView *> *)pp_secondaryEntranceViews
+{
+    NSMutableArray<UIView *> *views = [NSMutableArray array];
+
+    if (self.petsTitleView) {
+        [views addObject:self.petsTitleView];
+    }
+
+    if (self.contactLockOverlayView && !self.contactLockOverlayView.hidden) {
+        [views addObject:self.contactLockOverlayView];
+    } else {
+        if (self.contactView.avatarImageView) {
+            [views addObject:self.contactView.avatarImageView];
+        }
+        if (self.contactView.nameLabel) {
+            [views addObject:self.contactView.nameLabel];
+        }
+        if (self.contactView.callButton) {
+            [views addObject:self.contactView.callButton];
+        }
+        if (self.contactView.chatButton) {
+            [views addObject:self.contactView.chatButton];
+        }
+    }
+
+    return views.copy;
+}
+
+- (NSArray<UIView *> *)pp_galleryEntranceViews
+{
+    NSMutableArray<UIView *> *views = [NSMutableArray array];
+
+    for (UIView *button in self.galleryLeadingStack.arrangedSubviews) {
+        [views addObject:button];
+    }
+    if (self.galleryDismissButton) {
+        [views addObject:self.galleryDismissButton];
+    }
+
+    return views.copy;
+}
+
+- (void)pp_prepareView:(UIView *)view
+      translationY:(CGFloat)translationY
+             scale:(CGFloat)scale
+      reduceMotion:(BOOL)reduceMotion
+{
+    if (!view) {
+        return;
+    }
+
+    view.alpha = 0.0;
+    if (reduceMotion) {
+        view.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    CGAffineTransform translate = CGAffineTransformMakeTranslation(0.0, translationY);
+    CGAffineTransform shrink = CGAffineTransformMakeScale(scale, scale);
+    view.transform = CGAffineTransformConcat(translate, shrink);
+}
+
+- (void)pp_prepareEntranceAnimationState
+{
+    if (self.didAnimate) {
+        return;
+    }
+
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    NSArray<UIView *> *primaryViews = [self pp_primaryEntranceViews];
+    [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        CGFloat translationY = 22.0 + MIN((CGFloat)idx * 4.0, 14.0);
+        [self pp_prepareView:view
+                translationY:translationY
+                       scale:0.96
+                reduceMotion:reduceMotion];
+    }];
+
+    for (UIView *view in [self pp_secondaryEntranceViews]) {
+        [self pp_prepareView:view
+                translationY:14.0
+                       scale:0.94
+                reduceMotion:reduceMotion];
+    }
+
+    for (UIView *view in [self pp_galleryEntranceViews]) {
+        [self pp_prepareView:view
+                translationY:-18.0
+                       scale:0.82
+                reduceMotion:reduceMotion];
+    }
+}
+
+- (void)pp_beginEntranceAnimationsIfNeeded
+{
+    if (self.didAnimate) {
+        return;
+    }
+    self.didAnimate = YES;
+
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    [self.view layoutIfNeeded];
+
+    NSArray<UIView *> *primaryViews = [self pp_primaryEntranceViews];
+    [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSTimeInterval delay = 0.04 + (0.06 * idx);
+        if (reduceMotion) {
+            [UIView animateWithDuration:0.20
+                                  delay:delay
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                             animations:^{
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            } completion:nil];
+            return;
+        }
+
+        [UIView animateWithDuration:0.52
+                              delay:delay
+             usingSpringWithDamping:0.74
+              initialSpringVelocity:0.28
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    NSArray<UIView *> *secondaryViews = [self pp_secondaryEntranceViews];
+    [secondaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSTimeInterval delay = 0.14 + (0.05 * idx);
+        if (reduceMotion) {
+            [UIView animateWithDuration:0.18
+                                  delay:delay
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                             animations:^{
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            } completion:nil];
+            return;
+        }
+
+        [UIView animateWithDuration:0.42
+                              delay:delay
+             usingSpringWithDamping:0.68
+              initialSpringVelocity:0.52
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    NSArray<UIView *> *galleryViews = [self pp_galleryEntranceViews];
+    [galleryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        NSTimeInterval delay = 0.09 + (0.04 * idx);
+        if (reduceMotion) {
+            [UIView animateWithDuration:0.16
+                                  delay:delay
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                             animations:^{
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            } completion:nil];
+            return;
+        }
+
+        [UIView animateWithDuration:0.34
+                              delay:delay
+             usingSpringWithDamping:0.62
+              initialSpringVelocity:0.78
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.16 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.petsTitleView animatePillsIn];
+    });
 }
 
 #pragma mark - Contact Access

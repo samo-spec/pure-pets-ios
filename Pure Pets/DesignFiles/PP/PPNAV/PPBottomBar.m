@@ -259,7 +259,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
     self.clipsToBounds = NO;
     [self pp_setShadowColor:AppShadowClr];
-    self.layer.shadowOpacity = PPIOS26() ? 0.08 : 0.10;
+    self.layer.shadowOpacity = PPIOS26() ? 0.12 : 0.10;
     self.layer.shadowRadius = 22.0;
     self.layer.shadowOffset = CGSizeMake(0.0, -10.0);
     self.layer.shadowPath =
@@ -321,7 +321,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
     _amountLabel = [[PPInsetLabel alloc] init];
     _amountLabel.text = [self pp_priceStringFromAmount:_itemAmount];
-    _amountLabel.font = [GM boldFontWithSize:24] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    _amountLabel.font = [GM boldFontWithSize:28] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
     _amountLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
     _amountLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _amountLabel.adjustsFontSizeToFitWidth = YES;
@@ -350,7 +350,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     _totalContainer.isAccessibilityElement = NO;
     _totalContainer.backgroundColor = PPBBCartBadgeFillColor();
     PPApplyContinuousCorners(_totalContainer, 22.0);
-    [_totalContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.20 : 0.30]];
+    [_totalContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.40 : 0.50]];
     _totalContainer.layer.borderWidth = 0.7;
     [_totalContainer addSubview:_priceStack];
 
@@ -365,18 +365,25 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
                forControlEvents:UIControlEventTouchUpInside];
     self.idleAddToCartTitle = kLang(@"addToCart");
     self.idleAddToCartImage = PPBBCartSymbol(@"cart.badge.plus", 18.0, UIImageSymbolWeightSemibold, AppForgroundColr);
+    
+    // Layout change: No longer compact in the second row
+    self.usesCompactCartButton = NO; 
+    
     [self pp_setAddToCartTitle:self.idleAddToCartTitle
                      imageName:@"cart.badge.plus"
                     foreground:PPBBCartColor(AppForgroundColr, UIColor.whiteColor)
                     background:PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)];
     PPApplyButtonShadow(_addToCartButton);
-    [_totalContainer addSubview:_addToCartButton];
-    _totalContainer.accessibilityElements = @[
-        _totalLabel,
-        _amountLabel,
-        _currencyLabel,
-        _addToCartButton
-    ];
+    
+    _showCartButton = [PPButtonHelper buttonWithSystemName:@"cart" target:self action:@selector(cartClick)];
+    _showCartButton.translatesAutoresizingMaskIntoConstraints = NO;
+   
+    _showCartButton.accessibilityLabel = kLang(@"Cart");
+    [self pp_styleUtilityButton:_showCartButton];
+    
+    CGFloat utilitySize = 48.0;
+    [_showCartButton.widthAnchor constraintEqualToConstant:utilitySize].active = YES;
+    [_showCartButton.heightAnchor constraintEqualToConstant:utilitySize].active = YES;
 
     _qtyStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         _minusButton, _countLabel, _plusButton
@@ -402,16 +409,36 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     self.favButton.accessibilityLabel = kLang(@"Share");
     [self pp_styleUtilityButton:self.favButton];
 
-    CGFloat size = 48.0;
-    [_favButton.widthAnchor constraintEqualToConstant:size].active = YES;
-    [_favButton.heightAnchor constraintEqualToConstant:size].active = YES;
+    [_favButton.widthAnchor constraintEqualToConstant:utilitySize].active = YES;
+    [_favButton.heightAnchor constraintEqualToConstant:utilitySize].active = YES;
 
     self.cartItemquantity = 1;
     [self pp_buildLayoutRows];
     [self updateQuantityUI];
-
-
 }
+
+- (void)cartClick
+{
+    NSLog(@"[Cart] Tap");
+
+    if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return; }
+
+    CartViewController *vc = [[CartViewController alloc] init];
+    vc.pp_transitionStyle = PPTransitionStyleFade;
+
+    // Embed in nav
+    PPNavigationController *nav =
+        [[PPNavigationController alloc] initWithRootViewController:vc];
+    nav.modalPresentationStyle = UIModalPresentationFullScreen;
+
+    // ✅ PRESENT THE NAV — NOT vc
+    [PPHomeHelper presentViewControllerSafely:nav
+                                         from:self.parentContainerViewController
+                                     animated:YES
+                                   completion:nil];
+}
+
+
 -(void)sharaAccesee
 {
     
@@ -470,7 +497,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     self.BackgroundB.translatesAutoresizingMaskIntoConstraints = NO;
     self.BackgroundB.userInteractionEnabled = YES;
     self.BackgroundB.isAccessibilityElement = NO;
-    self.BackgroundB.backgroundColor = PPBBCartSurfaceFillColor();
+    self.BackgroundB.backgroundColor = PPIOS26() ? AppClearClr : PPBBCartSurfaceFillColor();
     PPApplyContinuousCorners(self.BackgroundB, PPBBCartBarCornerRadius());
     [self.BackgroundB pp_setBorderColor:PPBBCartSurfaceStrokeColor()];
     self.BackgroundB.layer.borderWidth = PPIOS26() ? 0.9 : 0.8;
@@ -490,7 +517,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     self.surfaceTintView = [[UIView alloc] init];
     self.surfaceTintView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceTintView.userInteractionEnabled = NO;
-    self.surfaceTintView.backgroundColor = PPBBCartSurfaceTintColor();
+    self.surfaceTintView.backgroundColor =  PPIOS26() ? AppClearClr :PPBBCartSurfaceTintColor();
     self.surfaceTintView.clipsToBounds = YES;
     PPApplyContinuousCorners(self.surfaceTintView, PPBBCartBarCornerRadius());
     [self.BackgroundB addSubview:self.surfaceTintView];
@@ -553,16 +580,14 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 }
 
 - (void)pp_buildLayoutRows {
+    [self.addToCartButton removeFromSuperview];
+    [self.favButton removeFromSuperview];
+    [self.showCartButton removeFromSuperview];
+    
     [NSLayoutConstraint activateConstraints:@[
         [self.priceStack.topAnchor constraintEqualToAnchor:self.totalContainer.topAnchor constant:PPSpaceSM],
         [self.priceStack.bottomAnchor constraintEqualToAnchor:self.totalContainer.bottomAnchor constant:-PPSpaceSM],
-        [self.priceStack.leadingAnchor constraintEqualToAnchor:self.totalContainer.leadingAnchor constant:PPSpaceMD],
-        [self.priceStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.addToCartButton.leadingAnchor constant:-PPSpaceSM],
-
-        [self.addToCartButton.centerYAnchor constraintEqualToAnchor:self.totalContainer.centerYAnchor],
-        [self.addToCartButton.trailingAnchor constraintEqualToAnchor:self.totalContainer.trailingAnchor constant:-4.0],
-        [self.addToCartButton.widthAnchor constraintEqualToConstant:PPBBCartBadgeCartButtonSize()],
-        [self.addToCartButton.heightAnchor constraintEqualToConstant:PPBBCartBadgeCartButtonSize()],
+        [self.priceStack.centerXAnchor constraintEqualToAnchor:self.totalContainer.centerXAnchor],
 
         [self.qtyStack.topAnchor constraintEqualToAnchor:self.qtyContainer.topAnchor constant:PPSpaceSM],
         [self.qtyStack.bottomAnchor constraintEqualToAnchor:self.qtyContainer.bottomAnchor constant:-PPSpaceSM],
@@ -575,31 +600,38 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     ]];
 
     topRow = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.totalContainer
+        self.favButton,
+        self.totalContainer,
+        self.showCartButton
     ]];
     topRow.axis = UILayoutConstraintAxisHorizontal;
-    topRow.spacing = 0.0;
+    topRow.spacing = PPSpaceMD;
     topRow.alignment = UIStackViewAlignmentCenter;
     topRow.distribution = UIStackViewDistributionFill;
     topRow.semanticContentAttribute = GM.setSemantic;
     topRow.translatesAutoresizingMaskIntoConstraints = NO;
 
     bottomRow = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.qtyContainer,
-        self.favButton
+        self.addToCartButton,
+        self.qtyContainer
     ]];
     bottomRow.axis = UILayoutConstraintAxisHorizontal;
-    bottomRow.spacing = PPSpaceMD;
+    bottomRow.spacing = 8.0;
     bottomRow.alignment = UIStackViewAlignmentCenter;
-    bottomRow.distribution = UIStackViewDistributionEqualSpacing;
+    bottomRow.distribution = UIStackViewDistributionFill;
     bottomRow.semanticContentAttribute = GM.setSemantic;
     bottomRow.translatesAutoresizingMaskIntoConstraints = NO;
 
     [self.totalContainer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.totalContainer setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-    [self.addToCartButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    
+    [self.favButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.showCartButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    
+    [self.addToCartButton setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.addToCartButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-
+    [self.qtyContainer setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.addToCartButton.heightAnchor constraintEqualToConstant:48].active = YES;
     self.contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         topRow,
         bottomRow

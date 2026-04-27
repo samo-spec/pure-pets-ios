@@ -32,11 +32,11 @@ static NSUInteger PPPinterestAutomaticColumnCount(CGFloat collectionWidth)
 - (instancetype)init {
     self = [super init];
     if (self) {
-        _spacing = 16;
+        _spacing = 12;
         // Set default values
         _columnCount = 0; // 0 means "automatic" column count
-        _minimumInteritemSpacing = 16;
-        _minimumLineSpacing = 16;
+        _minimumInteritemSpacing = 12;
+        _minimumLineSpacing = 12;
         _sectionInset = UIEdgeInsetsMake(90, 16, 16, 16);
         _attrsDictionary = [NSMutableDictionary dictionary];
     }
@@ -46,11 +46,11 @@ static NSUInteger PPPinterestAutomaticColumnCount(CGFloat collectionWidth)
 - (instancetype)initWithCoder:(NSCoder *)coder {
     self = [super initWithCoder:coder];
     if (self) {
-        _spacing = 16;
+        _spacing = 12;
         // Same default initialization for storyboards/nibs.
         _columnCount = 0;
-        _minimumInteritemSpacing = 16;
-        _minimumLineSpacing = 16;
+        _minimumInteritemSpacing = 12;
+        _minimumLineSpacing = 12;
         _sectionInset = UIEdgeInsetsMake(90, 16, 16, 16);
         _attrsDictionary = [NSMutableDictionary dictionary];
     }

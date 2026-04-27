@@ -23,9 +23,9 @@
 
 static CGFloat const PPUniversalCardCornerRadius = 26.0;
 static CGFloat const PPUniversalImageCornerRadius = 22.0;
-static CGFloat const PPUniversalOuterInset = 14.0;
+static CGFloat const PPUniversalOuterInset = 16.0;
 static CGFloat const PPUniversalInnerSpacing = 12.0;
-static CGFloat const PPUniversalButtonHeight = 34.0;
+static CGFloat const PPUniversalButtonHeight = 36.0;
 static CGFloat const PPUniversalPillHeight = 34.0;
 static CGFloat const PPUniversalCompactTitleHeight = 24.0;
 static CGFloat const PPUniversalCompactPriceHeight = 26.0;
@@ -64,8 +64,8 @@ static UIColor *PPUniversalCellSoftSurfaceColor(void)
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([AppForgroundColr colorWithAlphaComponent:0.92],
-                                       [AppBackgroundClrDarker colorWithAlphaComponent:0.20]);
+    return PPUniversalCellDynamicColor([AppBackgroundClr colorWithAlphaComponent:0.92],
+                                       [AppBackgroundClr colorWithAlphaComponent:0.20]);
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)
@@ -524,6 +524,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @property (nonatomic, strong) NSTimer *stepperCollapseTimer;
 
 - (void)pp_resetReusableVisualState;
+- (NSString *)pp_cartLookupIdentifierForViewModel:(PPUniversalCellViewModel *)vm;
+- (BOOL)pp_supportsSelectionAccent;
+- (void)pp_applySelectionAppearanceAnimated:(BOOL)animated;
 
 @end
 
@@ -654,6 +657,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)refreshThemeAppearance
 {
     [self pp_refreshAppearanceForCurrentTraits];
+}
+
+- (void)setSelected:(BOOL)selected
+{
+    [super setSelected:selected];
+    [self pp_applySelectionAppearanceAnimated:YES];
 }
 
 - (void)pp_resetReusableVisualState
@@ -1019,7 +1028,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     self.cardView.backgroundColor = PPUniversalCellSoftSurfaceColor();
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
-    self.cardView.layer.borderWidth = isDark ? 0.55 : 0.75;
+    self.cardView.layer.borderWidth = isDark ? 0.55 : 0.95;
     [self.cardView pp_setBorderColor:PPUniversalCellSoftCardBorderColor()];
     [self.cardView pp_setShadowColor:PPUniversalCellSoftShadowColor()];
     self.cardView.layer.shadowOpacity = isDark ? 0.22 : 0.12;
@@ -1072,6 +1081,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         button.layer.shadowRadius = isDark ? 12.0 : 9.0;
         button.layer.shadowOffset = CGSizeMake(0.0, isDark ? 6.0 : 4.0);
     }
+
+    [self pp_applySelectionAppearanceAnimated:NO];
 }
 
 - (void)pp_refreshAppearanceForCurrentTraits
@@ -1408,7 +1419,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     ServiceModel *service = [vm.ModelObject isKindOfClass:[ServiceModel class]]
         ? (ServiceModel *)vm.ModelObject
         : nil;
-    BOOL showsServiceMeta = [self pp_isServiceLikeContext];
+    BOOL showsServiceMeta = [self pp_isServiceLikeContext] &&
+                            service != nil &&
+                            [service hasDisplayableRating];
     NSString *weightText = [self pp_weightBadgeTextForViewModel:vm];
     BOOL showsWeightMeta = !showsServiceMeta && weightText.length > 0;
     BOOL showsMeta = showsServiceMeta || showsWeightMeta;
@@ -1434,10 +1447,17 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     NSInteger quantity = 0;
     if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
         quantity = [CartManager.sharedManager quantityForAccessory:(PetAccessory *)vm.ModelObject];
-        NSInteger stock = [self pp_stockLimitForCurrentItem];
-        if (stock > 0) {
-            quantity = MIN(quantity, stock);
+    } else {
+        NSString *itemID = [self pp_cartLookupIdentifierForViewModel:vm];
+        if (itemID.length > 0) {
+            CartItem *existingItem = [CartManager.sharedManager getCartItemForItemID:itemID];
+            quantity = MAX(existingItem.quantity, 0);
         }
+    }
+
+    NSInteger stock = [self pp_stockLimitForCurrentItem];
+    if (stock > 0) {
+        quantity = MIN(quantity, stock);
     }
 
     self.isEditingQuantity = NO;
@@ -1590,7 +1610,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         config.baseBackgroundColor = background;
         config.baseForegroundColor = foreground;
-        config.background.cornerRadius = 14.0;
+        config.background.cornerRadius = 16.0;
         config.background.strokeWidth = (usesQuantity && (isOutOfStock || isInCart)) ? 1.0 : 0.0;
         config.background.strokeColor = border;
         config.image = [UIImage systemImageNamed:imageName];
@@ -1618,7 +1638,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.addButton pp_setBorderColor:border];
     }
 
-    self.addButton.layer.cornerRadius = 17.0;
+    self.addButton.layer.cornerRadius = 18.0;
     [self.addButton pp_setShadowColor:AppPrimaryClr];
     self.addButton.layer.shadowOpacity = (usesQuantity && (isOutOfStock || isInCart)) ? 0.0 : 0.10;
     self.addButton.layer.shadowRadius = 12.0;
@@ -1751,7 +1771,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [UIImageSymbolConfiguration configurationWithPointSize:11.0
                                                     weight:UIImageSymbolWeightBold
                                                      scale:UIImageSymbolScaleMedium];
-    UIImage *symbol = [UIImage systemImageNamed:@"scalemass.fill" withConfiguration:symbolConfig];
+    NSString *assetIconName = [self pp_isFoodOrMedicineContext] ? @"weight" : @"zoom-in";
+    UIImage *symbol = [[UIImage imageNamed:assetIconName] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    if (!symbol) {
+        symbol = [UIImage systemImageNamed:@"scalemass.fill" withConfiguration:symbolConfig];
+    }
     if (!symbol) {
         symbol = [UIImage systemImageNamed:@"shippingbox.fill" withConfiguration:symbolConfig];
     }
@@ -2289,12 +2313,74 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return MAX(self.vm.itemQuantitiy, 0);
 }
 
+- (NSString *)pp_cartLookupIdentifierForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if ([vm.ModelObject isKindOfClass:[PetAccessory class]]) {
+        return ((PetAccessory *)vm.ModelObject).accessoryID ?: @"";
+    }
+    return vm.ModelID ?: @"";
+}
+
 - (BOOL)pp_usesQuantityControl
 {
     return [self.vm.ModelObject isKindOfClass:[PetAccessory class]] ||
            self.context == PPCellForMarket ||
            self.context == PPCellForFood ||
            self.context == PPCellForContextAccessory;
+}
+
+- (BOOL)pp_supportsSelectionAccent
+{
+    if (!self.vm || !self.vm.ModelObject) {
+        return NO;
+    }
+    return [NSStringFromClass([self.vm.ModelObject class]) isEqualToString:@"VetMedicineModel"];
+}
+
+- (void)pp_applySelectionAppearanceAnimated:(BOOL)animated
+{
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    BOOL showsSelection = [self pp_supportsSelectionAccent] && self.isSelected;
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIColor *baseCardBorder = PPUniversalCellSoftCardBorderColor();
+    UIColor *baseImageBorder = PPUniversalCellSoftImageBorderColor();
+    CGFloat baseCardBorderWidth = isDark ? 0.55 : 0.75;
+    CGFloat baseImageBorderWidth = isDark ? 0.65 : 0.85;
+    CGFloat baseShadowOpacity = isDark ? 0.22 : 0.12;
+    CGFloat baseShadowRadius = isDark ? 22.0 : 26.0;
+    CGSize baseShadowOffset = CGSizeMake(0.0, isDark ? 12.0 : 14.0);
+
+    void (^changes)(void) = ^{
+        self.cardView.layer.borderWidth = showsSelection ? (isDark ? 1.05 : 1.18) : baseCardBorderWidth;
+        [self.cardView pp_setBorderColor:showsSelection
+         ? [accent colorWithAlphaComponent:isDark ? 0.36 : 0.28]
+         : baseCardBorder];
+        self.cardView.layer.shadowOpacity = showsSelection ? (isDark ? 0.30 : 0.18) : baseShadowOpacity;
+        self.cardView.layer.shadowRadius = showsSelection ? (isDark ? 28.0 : 30.0) : baseShadowRadius;
+        self.cardView.layer.shadowOffset = showsSelection ? CGSizeMake(0.0, isDark ? 14.0 : 16.0) : baseShadowOffset;
+
+        self.imageContainer.layer.borderWidth = showsSelection ? (isDark ? 1.0 : 1.1) : baseImageBorderWidth;
+        [self.imageContainer pp_setBorderColor:showsSelection
+         ? [accent colorWithAlphaComponent:isDark ? 0.30 : 0.24]
+         : baseImageBorder];
+        self.imageScrimView.backgroundColor = showsSelection
+            ? [accent colorWithAlphaComponent:isDark ? 0.10 : 0.05]
+            : PPUniversalCellSoftImageScrimColor();
+    };
+
+    if (animated && self.window) {
+        [UIView animateWithDuration:0.20
+                              delay:0.0
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
+                         animations:changes
+                         completion:nil];
+    } else {
+        changes();
+    }
 }
 
 - (BOOL)pp_isFoodOrMedicineContext

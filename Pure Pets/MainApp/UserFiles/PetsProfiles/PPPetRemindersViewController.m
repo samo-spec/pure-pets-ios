@@ -14,7 +14,7 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
-#import "PPPetProfilesUIStyle.h"
+ 
 #import "PPReminderNotificationManager.h"
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -146,7 +146,7 @@ static NSString * PPRemRepeatDisplayText(NSString *rule) {
     _titleLabel = [UILabel new];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _titleLabel.font          = [GM boldFontWithSize:PPFontHeadline];
-    _titleLabel.textColor     = PPPetsUIPrimaryTextColor();
+    _titleLabel.textColor     = AppPrimaryTextClr;
     _titleLabel.numberOfLines = 1;
     [_cardContainer addSubview:_titleLabel];
 
@@ -530,7 +530,7 @@ static NSString *const kRemEmptyID = @"PPReminderEmptyCell";
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
-    titleLabel.textColor = PPPetsUIPrimaryTextColor();
+    titleLabel.textColor = AppPrimaryTextClr;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
     [cardView addSubview:titleLabel];

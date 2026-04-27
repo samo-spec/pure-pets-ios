@@ -725,7 +725,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 - (void)pp_applyPremiumDataViewBackgroundAppearance
 {
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBackgroundClrDarker;
     if (!self.collectionView) {
         return;
     }

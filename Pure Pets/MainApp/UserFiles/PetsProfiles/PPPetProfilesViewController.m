@@ -13,7 +13,7 @@
 #import "PPModernAvatarRenderer.h"
 #import "UserManager.h"
 #import "Language.h"
-#import "PPPetProfilesUIStyle.h"
+ 
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -189,7 +189,7 @@ static void PPLoadPetImage(UIImageView *iv, NSString *url, UIImage *placeholder)
     _nameLabel = [UILabel new];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _nameLabel.font          = [GM boldFontWithSize:PPFontHeadline];
-    _nameLabel.textColor     = PPPetsUIPrimaryTextColor();
+    _nameLabel.textColor     = AppPrimaryTextClr;
     _nameLabel.numberOfLines = 1;
     [_cardContainer addSubview:_nameLabel];
 
@@ -553,7 +553,7 @@ static NSString *const kEmptyCellID    = @"PPPetProfileEmptyCell";
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
-    titleLabel.textColor = PPPetsUIPrimaryTextColor();
+    titleLabel.textColor = AppPrimaryTextClr;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
     [cardView addSubview:titleLabel];
@@ -738,7 +738,7 @@ static NSString *const kEmptyCellID    = @"PPPetProfileEmptyCell";
     UILabel *title = [[UILabel alloc] init];
     title.translatesAutoresizingMaskIntoConstraints = NO;
     title.font = [GM boldFontWithSize:20.0] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightBold];
-    title.textColor = PPPetsUIPrimaryTextColor();
+    title.textColor = AppPrimaryTextClr;
     title.textAlignment = Language.alignmentForCurrentLanguage;
     title.numberOfLines = 2;
     [card addSubview:title];

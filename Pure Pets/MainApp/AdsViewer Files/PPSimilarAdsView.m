@@ -11,7 +11,7 @@
 #import "PPUniversalCellViewModel.h"
 #import "GM.h"
 #import "PPImageLoaderManager.h"
-static const CGFloat kPPSimilarSectionCollectionHeight = 178.0;
+static const CGFloat kPPSimilarSectionCollectionHeight = 318.0;
 static const CGFloat kPPSimilarSectionTitleHeight = 30.0;
 static const CGFloat kPPSimilarSectionSpacing = 12.0;
 

@@ -74,6 +74,8 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 {
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
+    self.clipsToBounds = NO;
+    self.layer.masksToBounds = NO;
 
    
     
@@ -90,9 +92,9 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchUpOutside];
     [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchCancel];
     [self.actionButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    self.actionButton.layer.shadowOpacity = 0.08f;
-    self.actionButton.layer.shadowRadius = 22.0f;
-    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    self.actionButton.layer.shadowOpacity = 0.10f;
+    self.actionButton.layer.shadowRadius = 18.0f;
+    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     if (@available(iOS 13.0, *)) {
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -473,6 +475,11 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     UIColor *orbBorder = [resolvedAccent colorWithAlphaComponent:0.18];
     UIColor *chevronSurface = [primaryText colorWithAlphaComponent:0.05];
     UIColor *chevronBorder = [primaryText colorWithAlphaComponent:0.08];
+
+    [self.actionButton pp_setShadowColor:PPQuickActionDeepenedColor(resolvedAccent, 0.36)];
+    self.actionButton.layer.shadowOpacity = 0.12f;
+    self.actionButton.layer.shadowRadius = 20.0f;
+    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 11.0);
 
     [self.surfaceView pp_setBorderColor:borderColor];
     self.surfaceGradientLayer.colors = @[

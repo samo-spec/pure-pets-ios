@@ -9,9 +9,9 @@
 #import "PetAdManager.h"
 #import "PPAlertHelper.h"
 #import "PPCommerceFeedbackManager.h"
+#import "PPHUD.h"
 #import "AppClasses.h"
 #import "UserModel.h"
-#import "PPPetsTitleView.h"
 #import "PPInfoPillsView.h"
 #import "UserContactView.h"
 #import "PPModernAvatarRenderer.h"
@@ -22,8 +22,570 @@ static CGFloat const PPServiceViewerSideInset = 16.0;
 static CGFloat const PPServiceViewerSectionSpacing = 14.0;
 static CGFloat const PPServiceViewerHeroBottomInset = 20.0;
 static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
+static CGFloat const PPServiceViewerTitleChromeRadius = 30.0;
+static CGFloat const PPServiceViewerTitlePriceWidth = 126.0;
 
-@interface ServiceViewerViewController ()
+static NSString *PPServiceViewerLocalized(NSString *key, NSString *fallback) {
+    NSString *value = key.length > 0 ? kLang(key) : nil;
+    if (value.length == 0 || [value isEqualToString:key]) {
+        return fallback ?: @"";
+    }
+    return value;
+}
+
+static UIColor *PPServiceViewerAccentColor(void) {
+    return AppPrimaryClr ?: [UIColor colorWithRed:0.14 green:0.67 blue:0.68 alpha:1.0];
+}
+
+static UIColor *PPServiceViewerWarmAccentColor(void) {
+    return [UIColor colorWithRed:0.96 green:0.76 blue:0.44 alpha:1.0];
+}
+
+@interface PPServiceViewerPremiumTitleView : UIView
+
+- (void)configureWithTitle:(NSString *)title
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price;
+
+- (void)configureWithTitle:(NSString *)title
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price
+                  category:(nullable NSString *)category;
+
+- (void)updateMetaPillsWithItems:(NSArray<PPInfoPill *> *)items;
+- (void)enableBlurBackgroundWithStyle:(UIBlurEffectStyle)style;
+- (void)prepareForEntrance;
+- (void)animateEntranceIfNeeded;
+- (void)animatePillsIn;
+
+@end
+
+@interface PPServiceViewerPremiumTitleView ()
+@property (nonatomic, strong) UIView *chromeView;
+@property (nonatomic, strong) UIVisualEffectView *blurView;
+@property (nonatomic, strong) UIView *overlayView;
+@property (nonatomic, strong) UIView *ambientOrbView;
+@property (nonatomic, strong) UIView *categoryBadgeView;
+@property (nonatomic, strong) UIImageView *categoryIconView;
+@property (nonatomic, strong) UILabel *categoryLabel;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UIStackView *providerStackView;
+@property (nonatomic, strong) UIImageView *providerIconView;
+@property (nonatomic, strong) UILabel *providerLabel;
+@property (nonatomic, strong) UIView *priceCardView;
+@property (nonatomic, strong) CAGradientLayer *priceGradientLayer;
+@property (nonatomic, strong) UILabel *priceCaptionLabel;
+@property (nonatomic, strong) UILabel *priceLabel;
+@property (nonatomic, strong) UIStackView *metaPillsStackView;
+@property (nonatomic, strong) CAGradientLayer *backgroundGradientLayer;
+@property (nonatomic, assign) BOOL didAnimateEntrance;
+@property (nonatomic, assign) BOOL didStartAmbientMotion;
+@end
+
+@implementation PPServiceViewerPremiumTitleView
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self pp_setupView];
+    }
+    return self;
+}
+
+- (instancetype)initWithCoder:(NSCoder *)coder {
+    self = [super initWithCoder:coder];
+    if (self) {
+        [self pp_setupView];
+    }
+    return self;
+}
+
+- (void)pp_setupView {
+    self.translatesAutoresizingMaskIntoConstraints = NO;
+    self.backgroundColor = UIColor.clearColor;
+    self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.layer.shadowOpacity = 0.22f;
+    self.layer.shadowRadius = 28.0f;
+    self.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    [self pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.34]];
+
+    self.chromeView = [[UIView alloc] init];
+    self.chromeView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.chromeView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+    self.chromeView.layer.cornerRadius = PPServiceViewerTitleChromeRadius;
+    self.chromeView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.chromeView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.chromeView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.18]];
+    self.chromeView.layer.borderWidth = 1.0;
+    [self addSubview:self.chromeView];
+
+    self.blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark]];
+    self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.chromeView addSubview:self.blurView];
+
+    self.overlayView = [[UIView alloc] init];
+    self.overlayView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.overlayView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
+    [self.chromeView addSubview:self.overlayView];
+
+    self.backgroundGradientLayer = [CAGradientLayer layer];
+    self.backgroundGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.backgroundGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    [self.overlayView.layer addSublayer:self.backgroundGradientLayer];
+
+    self.ambientOrbView = [[UIView alloc] init];
+    self.ambientOrbView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.ambientOrbView.userInteractionEnabled = NO;
+    self.ambientOrbView.backgroundColor = [PPServiceViewerWarmAccentColor() colorWithAlphaComponent:0.22];
+    self.ambientOrbView.alpha = 0.85;
+    self.ambientOrbView.layer.shadowRadius = 42.0;
+    self.ambientOrbView.layer.shadowOpacity = 0.32;
+    self.ambientOrbView.layer.shadowOffset = CGSizeZero;
+    [self.ambientOrbView pp_setShadowColor:PPServiceViewerWarmAccentColor()];
+    [self.chromeView addSubview:self.ambientOrbView];
+
+    self.categoryBadgeView = [[UIView alloc] init];
+    self.categoryBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.categoryBadgeView.backgroundColor = [PPServiceViewerAccentColor() colorWithAlphaComponent:0.18];
+    self.categoryBadgeView.layer.cornerRadius = 14.0;
+    self.categoryBadgeView.layer.borderWidth = 0.8;
+    [self.categoryBadgeView pp_setBorderColor:[PPServiceViewerAccentColor() colorWithAlphaComponent:0.26]];
+    if (@available(iOS 13.0, *)) {
+        self.categoryBadgeView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.chromeView addSubview:self.categoryBadgeView];
+
+    UIImageSymbolConfiguration *badgeSymbolConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightSemibold];
+    self.categoryIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"sparkles" withConfiguration:badgeSymbolConfig] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    self.categoryIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.categoryIconView.tintColor = PPServiceViewerAccentColor();
+    self.categoryIconView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.categoryBadgeView addSubview:self.categoryIconView];
+
+    self.categoryLabel = [[UILabel alloc] init];
+    self.categoryLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.categoryLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    self.categoryLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.94];
+    self.categoryLabel.numberOfLines = 1;
+    self.categoryLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.categoryBadgeView addSubview:self.categoryLabel];
+
+    self.titleLabel = [[UILabel alloc] init];
+    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleLabel.font = [GM boldFontWithSize:24.0] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    self.titleLabel.textColor = UIColor.whiteColor;
+    self.titleLabel.numberOfLines = 2;
+    self.titleLabel.adjustsFontForContentSizeCategory = YES;
+    self.titleLabel.minimumScaleFactor = 0.82;
+    self.titleLabel.adjustsFontSizeToFitWidth = YES;
+    self.titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [self.chromeView addSubview:self.titleLabel];
+
+    self.providerIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"building.2.crop.circle.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    self.providerIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.providerIconView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.82];
+    self.providerIconView.contentMode = UIViewContentModeScaleAspectFit;
+
+    self.providerLabel = [[UILabel alloc] init];
+    self.providerLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.providerLabel.font = [GM MidFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightMedium];
+    self.providerLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.84];
+    self.providerLabel.numberOfLines = 1;
+    self.providerLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.providerLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    self.providerStackView = [[UIStackView alloc] initWithArrangedSubviews:@[self.providerIconView, self.providerLabel]];
+    self.providerStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.providerStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.providerStackView.spacing = 8.0;
+    self.providerStackView.alignment = UIStackViewAlignmentCenter;
+    self.providerStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.chromeView addSubview:self.providerStackView];
+
+    self.priceCardView = [[UIView alloc] init];
+    self.priceCardView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.priceCardView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
+    self.priceCardView.layer.cornerRadius = 22.0;
+    self.priceCardView.layer.borderWidth = 0.8;
+    [self.priceCardView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.14]];
+    if (@available(iOS 13.0, *)) {
+        self.priceCardView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.chromeView addSubview:self.priceCardView];
+
+    self.priceGradientLayer = [CAGradientLayer layer];
+    self.priceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.priceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    [self.priceCardView.layer insertSublayer:self.priceGradientLayer atIndex:0];
+
+    self.priceCaptionLabel = [[UILabel alloc] init];
+    self.priceCaptionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.priceCaptionLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    self.priceCaptionLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.72];
+    self.priceCaptionLabel.textAlignment = NSTextAlignmentCenter;
+    self.priceCaptionLabel.text = PPServiceViewerLocalized(@"Price", @"Price");
+    [self.priceCardView addSubview:self.priceCaptionLabel];
+
+    self.priceLabel = [[UILabel alloc] init];
+    self.priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.priceLabel.font = [GM boldFontWithSize:19.0] ?: [UIFont systemFontOfSize:19.0 weight:UIFontWeightBold];
+    self.priceLabel.textColor = UIColor.whiteColor;
+    self.priceLabel.numberOfLines = 2;
+    self.priceLabel.adjustsFontForContentSizeCategory = YES;
+    self.priceLabel.textAlignment = NSTextAlignmentCenter;
+    [self.priceCardView addSubview:self.priceLabel];
+
+    self.metaPillsStackView = [[UIStackView alloc] init];
+    self.metaPillsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.metaPillsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.metaPillsStackView.spacing = 8.0;
+    self.metaPillsStackView.alignment = UIStackViewAlignmentCenter;
+    self.metaPillsStackView.distribution = UIStackViewDistributionFillProportionally;
+    self.metaPillsStackView.hidden = YES;
+    self.metaPillsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.chromeView addSubview:self.metaPillsStackView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.chromeView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.chromeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.chromeView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+
+        [self.blurView.topAnchor constraintEqualToAnchor:self.chromeView.topAnchor],
+        [self.blurView.leadingAnchor constraintEqualToAnchor:self.chromeView.leadingAnchor],
+        [self.blurView.trailingAnchor constraintEqualToAnchor:self.chromeView.trailingAnchor],
+        [self.blurView.bottomAnchor constraintEqualToAnchor:self.chromeView.bottomAnchor],
+
+        [self.overlayView.topAnchor constraintEqualToAnchor:self.chromeView.topAnchor],
+        [self.overlayView.leadingAnchor constraintEqualToAnchor:self.chromeView.leadingAnchor],
+        [self.overlayView.trailingAnchor constraintEqualToAnchor:self.chromeView.trailingAnchor],
+        [self.overlayView.bottomAnchor constraintEqualToAnchor:self.chromeView.bottomAnchor],
+
+        [self.ambientOrbView.widthAnchor constraintEqualToConstant:132.0],
+        [self.ambientOrbView.heightAnchor constraintEqualToConstant:132.0],
+        [self.ambientOrbView.topAnchor constraintEqualToAnchor:self.chromeView.topAnchor constant:-38.0],
+        [self.ambientOrbView.trailingAnchor constraintEqualToAnchor:self.chromeView.trailingAnchor constant:-18.0],
+
+        [self.categoryBadgeView.topAnchor constraintEqualToAnchor:self.chromeView.topAnchor constant:16.0],
+        [self.categoryBadgeView.leadingAnchor constraintEqualToAnchor:self.chromeView.leadingAnchor constant:16.0],
+        [self.categoryBadgeView.heightAnchor constraintGreaterThanOrEqualToConstant:30.0],
+
+        [self.categoryIconView.leadingAnchor constraintEqualToAnchor:self.categoryBadgeView.leadingAnchor constant:11.0],
+        [self.categoryIconView.centerYAnchor constraintEqualToAnchor:self.categoryBadgeView.centerYAnchor],
+        [self.categoryIconView.widthAnchor constraintEqualToConstant:13.0],
+        [self.categoryIconView.heightAnchor constraintEqualToConstant:13.0],
+
+        [self.categoryLabel.topAnchor constraintEqualToAnchor:self.categoryBadgeView.topAnchor constant:7.0],
+        [self.categoryLabel.leadingAnchor constraintEqualToAnchor:self.categoryIconView.trailingAnchor constant:7.0],
+        [self.categoryLabel.trailingAnchor constraintEqualToAnchor:self.categoryBadgeView.trailingAnchor constant:-12.0],
+        [self.categoryLabel.bottomAnchor constraintEqualToAnchor:self.categoryBadgeView.bottomAnchor constant:-7.0],
+
+        [self.priceCardView.topAnchor constraintEqualToAnchor:self.chromeView.topAnchor constant:16.0],
+        [self.priceCardView.trailingAnchor constraintEqualToAnchor:self.chromeView.trailingAnchor constant:-16.0],
+        [self.priceCardView.widthAnchor constraintEqualToConstant:PPServiceViewerTitlePriceWidth],
+        [self.priceCardView.heightAnchor constraintGreaterThanOrEqualToConstant:88.0],
+
+        [self.priceCaptionLabel.topAnchor constraintEqualToAnchor:self.priceCardView.topAnchor constant:14.0],
+        [self.priceCaptionLabel.leadingAnchor constraintEqualToAnchor:self.priceCardView.leadingAnchor constant:10.0],
+        [self.priceCaptionLabel.trailingAnchor constraintEqualToAnchor:self.priceCardView.trailingAnchor constant:-10.0],
+
+        [self.priceLabel.topAnchor constraintEqualToAnchor:self.priceCaptionLabel.bottomAnchor constant:5.0],
+        [self.priceLabel.leadingAnchor constraintEqualToAnchor:self.priceCardView.leadingAnchor constant:12.0],
+        [self.priceLabel.trailingAnchor constraintEqualToAnchor:self.priceCardView.trailingAnchor constant:-12.0],
+        [self.priceLabel.bottomAnchor constraintEqualToAnchor:self.priceCardView.bottomAnchor constant:-14.0],
+
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.categoryBadgeView.bottomAnchor constant:12.0],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.chromeView.leadingAnchor constant:16.0],
+        [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.priceCardView.leadingAnchor constant:-14.0],
+
+        [self.providerStackView.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:10.0],
+        [self.providerStackView.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
+        [self.providerStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.priceCardView.leadingAnchor constant:-12.0],
+
+        [self.providerIconView.widthAnchor constraintEqualToConstant:16.0],
+        [self.providerIconView.heightAnchor constraintEqualToConstant:16.0],
+
+        [self.metaPillsStackView.topAnchor constraintEqualToAnchor:self.providerStackView.bottomAnchor constant:14.0],
+        [self.metaPillsStackView.leadingAnchor constraintEqualToAnchor:self.chromeView.leadingAnchor constant:16.0],
+        [self.metaPillsStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.chromeView.trailingAnchor constant:-16.0],
+        [self.metaPillsStackView.bottomAnchor constraintEqualToAnchor:self.chromeView.bottomAnchor constant:-16.0],
+        [self.metaPillsStackView.heightAnchor constraintGreaterThanOrEqualToConstant:30.0]
+    ]];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    self.backgroundGradientLayer.frame = self.overlayView.bounds;
+    self.backgroundGradientLayer.colors = @[
+        (__bridge id)[[UIColor colorWithWhite:0.02 alpha:0.06] CGColor],
+        (__bridge id)[[PPServiceViewerAccentColor() colorWithAlphaComponent:0.12] CGColor],
+        (__bridge id)[[PPServiceViewerWarmAccentColor() colorWithAlphaComponent:0.18] CGColor],
+        (__bridge id)[[UIColor colorWithWhite:1.0 alpha:0.08] CGColor]
+    ];
+    self.priceGradientLayer.frame = self.priceCardView.bounds;
+    self.priceGradientLayer.colors = @[
+        (__bridge id)[[PPServiceViewerAccentColor() colorWithAlphaComponent:0.96] CGColor],
+        (__bridge id)[[PPServiceViewerWarmAccentColor() colorWithAlphaComponent:0.92] CGColor]
+    ];
+    self.priceGradientLayer.cornerRadius = self.priceCardView.layer.cornerRadius;
+    self.ambientOrbView.layer.cornerRadius = CGRectGetWidth(self.ambientOrbView.bounds) / 2.0;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:PPServiceViewerTitleChromeRadius].CGPath;
+}
+
+- (void)configureWithTitle:(NSString *)title
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price {
+    [self configureWithTitle:title location:location price:price category:nil];
+}
+
+- (void)configureWithTitle:(NSString *)title
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price
+                  category:(nullable NSString *)category {
+    self.titleLabel.text = title.length > 0 ? title : PPServiceViewerLocalized(@"service_view_default_title", @"Service");
+    self.providerLabel.text = location.length > 0 ? location : PPServiceViewerLocalized(@"service_view_owner", @"Provider");
+    self.priceLabel.text = price.length > 0 ? price : PPServiceViewerLocalized(@"not available", @"Not available");
+    self.categoryLabel.text = category.length > 0 ? category : PPServiceViewerLocalized(@"service_view_category", @"Category");
+    self.categoryBadgeView.hidden = category.length == 0;
+    self.accessibilityLabel = [@[self.titleLabel.text ?: @"", self.providerLabel.text ?: @"", self.priceLabel.text ?: @""] componentsJoinedByString:@", "];
+}
+
+- (void)updateMetaPillsWithItems:(NSArray<PPInfoPill *> *)items {
+    for (UIView *view in self.metaPillsStackView.arrangedSubviews) {
+        [self.metaPillsStackView removeArrangedSubview:view];
+        [view removeFromSuperview];
+    }
+
+    NSMutableArray<PPInfoPill *> *filteredItems = [NSMutableArray array];
+    for (PPInfoPill *item in items) {
+        if (item.text.length > 0 || item.iconName.length > 0) {
+            [filteredItems addObject:item];
+        }
+    }
+
+    self.metaPillsStackView.hidden = filteredItems.count == 0;
+    for (PPInfoPill *item in filteredItems) {
+        [self.metaPillsStackView addArrangedSubview:[self pp_metaBadgeForItem:item]];
+    }
+
+    if (self.didAnimateEntrance) {
+        [self animatePillsIn];
+    }
+}
+
+- (void)enableBlurBackgroundWithStyle:(UIBlurEffectStyle)style {
+    self.blurView.effect = [UIBlurEffect effectWithStyle:style];
+}
+
+- (void)prepareForEntrance {
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    self.alpha = 0.0;
+    self.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 24.0), CGAffineTransformMakeScale(0.96, 0.96));
+
+    NSArray<UIView *> *primaryViews = @[
+        self.categoryBadgeView,
+        self.titleLabel,
+        self.providerStackView,
+        self.priceCardView,
+        self.metaPillsStackView,
+        self.ambientOrbView
+    ];
+    [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        view.alpha = 0.0;
+        if (reduceMotion) {
+            view.transform = CGAffineTransformIdentity;
+            return;
+        }
+
+        switch (idx) {
+            case 0:
+                view.transform = CGAffineTransformMakeTranslation(-10.0, 6.0);
+                break;
+            case 1:
+                view.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+                break;
+            case 2:
+                view.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+                break;
+            case 3:
+                view.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(10.0, 12.0), CGAffineTransformMakeScale(0.92, 0.92));
+                break;
+            case 4:
+                view.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+                break;
+            default:
+                view.transform = CGAffineTransformMakeScale(0.86, 0.86);
+                break;
+        }
+    }];
+
+    [self pp_prepareMetaBadgeViews];
+}
+
+- (void)animateEntranceIfNeeded {
+    if (self.didAnimateEntrance) {
+        return;
+    }
+    self.didAnimateEntrance = YES;
+
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    NSTimeInterval cardDuration = reduceMotion ? 0.18 : 0.62;
+
+    [UIView animateWithDuration:cardDuration
+                          delay:0.0
+         usingSpringWithDamping:reduceMotion ? 1.0 : 0.84
+          initialSpringVelocity:reduceMotion ? 0.0 : 0.22
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.alpha = 1.0;
+        self.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [self pp_animateView:self.ambientOrbView delay:0.04 duration:(reduceMotion ? 0.16 : 0.50) damping:0.90 velocity:0.12];
+    [self pp_animateView:self.categoryBadgeView delay:0.10 duration:(reduceMotion ? 0.16 : 0.46) damping:0.84 velocity:0.22];
+    [self pp_animateView:self.priceCardView delay:0.12 duration:(reduceMotion ? 0.16 : 0.56) damping:0.74 velocity:0.30];
+    [self pp_animateView:self.titleLabel delay:0.16 duration:(reduceMotion ? 0.16 : 0.54) damping:0.86 velocity:0.18];
+    [self pp_animateView:self.providerStackView delay:0.21 duration:(reduceMotion ? 0.16 : 0.46) damping:0.88 velocity:0.16];
+    [self pp_animateView:self.metaPillsStackView delay:0.26 duration:(reduceMotion ? 0.16 : 0.44) damping:0.90 velocity:0.14];
+    [self animatePillsIn];
+    [self pp_beginAmbientMotionIfNeeded];
+}
+
+- (void)animatePillsIn {
+    [self pp_prepareMetaBadgeViews];
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    [self.metaPillsStackView.arrangedSubviews enumerateObjectsUsingBlock:^(UIView * _Nonnull badgeView, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        [UIView animateWithDuration:(reduceMotion ? 0.16 : 0.34)
+                              delay:(reduceMotion ? 0.0 : (0.28 + (0.04 * idx)))
+             usingSpringWithDamping:(reduceMotion ? 1.0 : 0.88)
+              initialSpringVelocity:(reduceMotion ? 0.0 : 0.22)
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            badgeView.alpha = 1.0;
+            badgeView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+}
+
+- (UIView *)pp_metaBadgeForItem:(PPInfoPill *)item {
+    UIColor *tintColor = [self pp_tintColorForMetaItem:item];
+
+    UIView *badgeView = [[UIView alloc] init];
+    badgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeView.backgroundColor = [tintColor colorWithAlphaComponent:0.16];
+    badgeView.layer.cornerRadius = 14.0;
+    badgeView.layer.borderWidth = 0.8;
+    [badgeView pp_setBorderColor:[tintColor colorWithAlphaComponent:0.24]];
+    if (@available(iOS 13.0, *)) {
+        badgeView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIImage *iconImage = nil;
+    if (item.iconName.length > 0) {
+        UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:12.0 weight:UIImageSymbolWeightSemibold];
+        iconImage = [UIImage systemImageNamed:item.iconName withConfiguration:iconConfig];
+        if (!iconImage) {
+            iconImage = [UIImage imageNamed:item.iconName];
+        }
+    }
+
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[iconImage imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = tintColor;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.hidden = iconImage == nil;
+
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
+    label.textColor = UIColor.whiteColor;
+    label.numberOfLines = 1;
+    label.text = item.text ?: @"";
+    label.textAlignment = Language.alignmentForCurrentLanguage;
+
+    UIStackView *stackView = [[UIStackView alloc] initWithArrangedSubviews:iconImage ? @[iconView, label] : @[label]];
+    stackView.translatesAutoresizingMaskIntoConstraints = NO;
+    stackView.axis = UILayoutConstraintAxisHorizontal;
+    stackView.spacing = 7.0;
+    stackView.alignment = UIStackViewAlignmentCenter;
+    stackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [badgeView addSubview:stackView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [iconView.widthAnchor constraintEqualToConstant:13.0],
+        [iconView.heightAnchor constraintEqualToConstant:13.0],
+        [stackView.topAnchor constraintEqualToAnchor:badgeView.topAnchor constant:7.0],
+        [stackView.leadingAnchor constraintEqualToAnchor:badgeView.leadingAnchor constant:10.0],
+        [stackView.trailingAnchor constraintEqualToAnchor:badgeView.trailingAnchor constant:-10.0],
+        [stackView.bottomAnchor constraintEqualToAnchor:badgeView.bottomAnchor constant:-7.0]
+    ]];
+
+    return badgeView;
+}
+
+- (UIColor *)pp_tintColorForMetaItem:(PPInfoPill *)item {
+    NSString *iconName = item.iconName ?: @"";
+    if ([iconName isEqualToString:@"checkmark.seal.fill"]) {
+        return [UIColor colorWithRed:0.36 green:0.82 blue:0.63 alpha:1.0];
+    }
+    if ([iconName isEqualToString:@"exclamationmark.triangle.fill"]) {
+        return [UIColor colorWithRed:0.99 green:0.68 blue:0.32 alpha:1.0];
+    }
+    if ([iconName isEqualToString:@"pawprint.fill"]) {
+        return [UIColor colorWithRed:0.56 green:0.80 blue:0.62 alpha:1.0];
+    }
+    if ([iconName isEqualToString:@"clock"]) {
+        return PPServiceViewerWarmAccentColor();
+    }
+    return [UIColor colorWithWhite:1.0 alpha:0.82];
+}
+
+- (void)pp_prepareMetaBadgeViews {
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    for (UIView *badgeView in self.metaPillsStackView.arrangedSubviews) {
+        badgeView.alpha = 0.0;
+        badgeView.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 8.0), CGAffineTransformMakeScale(0.97, 0.97));
+    }
+}
+
+- (void)pp_animateView:(UIView *)view
+                 delay:(NSTimeInterval)delay
+              duration:(NSTimeInterval)duration
+               damping:(CGFloat)damping
+              velocity:(CGFloat)velocity {
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    [UIView animateWithDuration:duration
+                          delay:delay
+         usingSpringWithDamping:(reduceMotion ? 1.0 : damping)
+          initialSpringVelocity:(reduceMotion ? 0.0 : velocity)
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        view.alpha = 1.0;
+        view.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_beginAmbientMotionIfNeeded {
+    if (self.didStartAmbientMotion || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    self.didStartAmbientMotion = YES;
+
+    [UIView animateWithDuration:6.4
+                          delay:0.0
+                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.ambientOrbView.transform = CGAffineTransformMakeTranslation(-10.0, 12.0);
+    } completion:nil];
+}
+
+@end
+
+@interface ServiceViewerViewController () <UITextViewDelegate>
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UIView *topGlowView;
@@ -34,7 +596,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
 @property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
-@property (nonatomic, strong) PPPetsTitleView *titleView;
+@property (nonatomic, strong) PPServiceViewerPremiumTitleView *titleView;
 
 @property (nonatomic, strong) UIView *providerSectionView;
 @property (nonatomic, strong) UILabel *providerTitleLabel;
@@ -50,6 +612,27 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 @property (nonatomic, strong) UIView *reviewsSectionView;
 @property (nonatomic, strong) UILabel *reviewsTitleLabel;
 @property (nonatomic, strong) UILabel *reviewsSummaryLabel;
+@property (nonatomic, strong) UIView *reviewComposerView;
+@property (nonatomic, strong) UILabel *reviewComposerTitleLabel;
+@property (nonatomic, strong) UILabel *reviewComposerSubtitleLabel;
+@property (nonatomic, strong) UIStackView *reviewStarsStackView;
+@property (nonatomic, strong) UITextView *reviewTextView;
+@property (nonatomic, strong) UIButton *submitReviewButton;
+@property (nonatomic, strong) NSLayoutConstraint *reviewStarsTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *reviewTextTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *reviewTextMinHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *submitReviewTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *submitReviewHeightConstraint;
+@property (nonatomic, strong) NSMutableArray<UIButton *> *reviewStarButtons;
+@property (nonatomic, copy) NSString *reviewPlaceholderText;
+@property (nonatomic, assign) NSInteger selectedReviewRating;
+@property (nonatomic, assign) BOOL isSubmittingReview;
+@property (nonatomic, assign) BOOL hasSubmittedProviderReview;
+@property (nonatomic, assign) BOOL isCheckingProviderReviewStatus;
+@property (nonatomic, assign) BOOL didCompleteLegacyProviderReviewScan;
+@property (nonatomic, copy) NSString *lastReviewStatusUID;
+@property (nonatomic, copy) NSArray<NSDictionary<NSString *, id> *> *providerScopedReviews;
+@property (nonatomic, copy) NSArray<NSDictionary<NSString *, id> *> *legacyServiceScopedReviews;
 @property (nonatomic, strong) UIStackView *reviewsStackView;
 
 @property (nonatomic, strong) UIView *descriptionSectionView;
@@ -67,7 +650,10 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 @property (nonatomic, strong) UserModel *ownerModel;
 @property (nonatomic, assign) BOOL didTrackViewInteraction;
 @property (nonatomic, assign) BOOL isResolvingOwner;
+@property (nonatomic, assign) BOOL didAttemptOwnerLoad;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
+@property (nonatomic, strong) id<FIRListenerRegistration> providerReviewsListener;
+@property (nonatomic, strong) id<FIRListenerRegistration> reviewsListener;
 @end
 
 @implementation ServiceViewerViewController
@@ -87,10 +673,14 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self setupLayout];
     [self applyModelContent];
     [self loadOwnerIfNeeded];
+    [self startReviewsListenerIfNeeded];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
+
+    [self pp_refreshCurrentUserReviewStatusIfNeeded];
+    [self pp_updateReviewComposerState];
 
     if (!self.didTrackViewInteraction) {
         self.didTrackViewInteraction = YES;
@@ -107,6 +697,11 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     self.heroHeightConstraint.constant = [self pp_heroHeight];
     self.topGlowView.layer.cornerRadius = CGRectGetWidth(self.topGlowView.bounds) / 2.0;
     self.bottomGlowView.layer.cornerRadius = CGRectGetWidth(self.bottomGlowView.bounds) / 2.0;
+}
+
+- (void)dealloc {
+    [self.providerReviewsListener remove];
+    [self.reviewsListener remove];
 }
 
 #pragma mark - Layout
@@ -230,19 +825,11 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 
     self.closeButton = [self pp_topChromeButtonWithSystemName:@"xmark" selector:@selector(closeTapped)];
 
-    self.titleView = [[PPPetsTitleView alloc] init];
+    self.titleView = [[PPServiceViewerPremiumTitleView alloc] init];
     self.titleView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleView.layer.cornerRadius = 28.0;
-    [self.titleView enableBlurBackgroundWithStyle:UIBlurEffectStyleExtraLight];
-    self.titleView.layer.borderWidth = 1.0;
-    [self.titleView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
-    [self.titleView pp_setShadowColor:UIColor.blackColor];
-    self.titleView.layer.shadowOpacity = 0.12f;
-    self.titleView.layer.shadowRadius = 22.0f;
-    self.titleView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    if (@available(iOS 13.0, *)) {
-        self.titleView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    [self.titleView enableBlurBackgroundWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+    
+    
 
     [self.contentView addSubview:self.heroContainerView];
     [self.heroContainerView addSubview:self.heroImageView];
@@ -381,6 +968,9 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     self.reviewsSummaryLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.reviewsSectionView addSubview:self.reviewsSummaryLabel];
 
+    self.reviewComposerView = [self pp_reviewComposerView];
+    [self.reviewsSectionView addSubview:self.reviewComposerView];
+
     self.reviewsStackView = [[UIStackView alloc] init];
     self.reviewsStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.reviewsStackView.axis = UILayoutConstraintAxisVertical;
@@ -400,7 +990,11 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
         [self.reviewsSummaryLabel.leadingAnchor constraintEqualToAnchor:self.reviewsSectionView.leadingAnchor constant:20.0],
         [self.reviewsSummaryLabel.trailingAnchor constraintEqualToAnchor:self.reviewsSectionView.trailingAnchor constant:-20.0],
 
-        [self.reviewsStackView.topAnchor constraintEqualToAnchor:self.reviewsSummaryLabel.bottomAnchor constant:14.0],
+        [self.reviewComposerView.topAnchor constraintEqualToAnchor:self.reviewsSummaryLabel.bottomAnchor constant:14.0],
+        [self.reviewComposerView.leadingAnchor constraintEqualToAnchor:self.reviewsSectionView.leadingAnchor constant:16.0],
+        [self.reviewComposerView.trailingAnchor constraintEqualToAnchor:self.reviewsSectionView.trailingAnchor constant:-16.0],
+
+        [self.reviewsStackView.topAnchor constraintEqualToAnchor:self.reviewComposerView.bottomAnchor constant:14.0],
         [self.reviewsStackView.leadingAnchor constraintEqualToAnchor:self.reviewsSectionView.leadingAnchor constant:16.0],
         [self.reviewsStackView.trailingAnchor constraintEqualToAnchor:self.reviewsSectionView.trailingAnchor constant:-16.0],
         [self.reviewsStackView.bottomAnchor constraintEqualToAnchor:self.reviewsSectionView.bottomAnchor constant:-16.0]
@@ -490,6 +1084,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self pp_updateProviderSection];
     [self pp_reloadFacts];
     [self pp_reloadReviews];
+    [self pp_updateReviewComposerState];
     [self pp_updateActionAvailability];
     [self pp_updateUnavailableBanner];
 }
@@ -513,8 +1108,8 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
         self.providerContactView.avatarImageView.image = placeholderAvatar ?: PPSYSImage(@"person.crop.circle.fill");
         self.providerContactView.callButton.enabled = NO;
         self.providerContactView.chatButton.enabled = NO;
-        self.providerContactView.callButton.alpha = 0.55;
-        self.providerContactView.chatButton.alpha = 0.55;
+        self.providerContactView.callButton.alpha = self.isResolvingOwner ? 0.35 : 0.55;
+        self.providerContactView.chatButton.alpha = self.isResolvingOwner ? 0.35 : 0.55;
     }
 
     self.providerMetaLabel.text = [self pp_providerMetaText];
@@ -591,6 +1186,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     }
 
     self.reviewsSummaryLabel.text = [self.service localizedRatingSummaryText];
+    [self pp_updateReviewComposerState];
 
     if (self.service.reviews.count == 0) {
         [self.reviewsStackView addArrangedSubview:[self pp_emptyReviewsView]];
@@ -601,6 +1197,333 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     for (NSUInteger idx = 0; idx < maxVisibleReviews; idx++) {
         [self.reviewsStackView addArrangedSubview:[self pp_reviewViewForDictionary:self.service.reviews[idx]]];
     }
+}
+
+- (void)startReviewsListenerIfNeeded {
+    [self pp_startProviderReviewsListenerIfNeeded];
+    [self pp_startLegacyServiceReviewsListenerIfNeeded];
+    [self pp_refreshCurrentUserReviewStatusIfNeeded];
+}
+
+- (void)pp_startProviderReviewsListenerIfNeeded {
+    if (self.providerReviewsListener || self.service.serviceOwnerID.length == 0) {
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRCollectionReference *reviewsRef =
+        [[[db collectionWithPath:@"UsersCol"] documentWithPath:self.service.serviceOwnerID]
+         collectionWithPath:@"providerReviews"];
+
+    FIRQuery *query = [[reviewsRef queryOrderedByField:@"updatedAt" descending:YES] queryLimitedTo:25];
+
+    __weak typeof(self) weakSelf = self;
+    self.providerReviewsListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || error || !snapshot) {
+                return;
+            }
+
+            NSMutableArray<NSDictionary<NSString *, id> *> *reviews = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
+            for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                NSMutableDictionary *review = [doc.data mutableCopy] ?: [NSMutableDictionary dictionary];
+                review[@"reviewID"] = doc.documentID;
+                NSNumber *rating = [strongSelf pp_reviewNumberFromDictionary:review
+                                                                        keys:@[@"rating", @"ratingValue", @"averageRating"]];
+                if (rating.doubleValue > 0.0) {
+                    [reviews addObject:review.copy];
+                }
+            }
+
+            strongSelf.providerScopedReviews = reviews.copy;
+            [strongSelf pp_refreshMergedReviews];
+        });
+    }];
+}
+
+- (void)pp_startLegacyServiceReviewsListenerIfNeeded {
+    if (self.reviewsListener || self.service.serviceID.length == 0) {
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRCollectionReference *reviewsRef =
+        [[[db collectionWithPath:@"serviceOffers"] documentWithPath:self.service.serviceID]
+         collectionWithPath:@"reviews"];
+
+    FIRQuery *query = [[reviewsRef queryOrderedByField:@"updatedAt" descending:YES] queryLimitedTo:25];
+
+    __weak typeof(self) weakSelf = self;
+    self.reviewsListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || error || !snapshot) {
+                return;
+            }
+
+            NSMutableArray<NSDictionary<NSString *, id> *> *reviews = [NSMutableArray arrayWithCapacity:snapshot.documents.count];
+            for (FIRDocumentSnapshot *doc in snapshot.documents) {
+                NSMutableDictionary *review = [doc.data mutableCopy] ?: [NSMutableDictionary dictionary];
+                review[@"reviewID"] = doc.documentID;
+                NSNumber *rating = [strongSelf pp_reviewNumberFromDictionary:review
+                                                                        keys:@[@"rating", @"ratingValue", @"averageRating"]];
+                if (rating.doubleValue > 0.0) {
+                    [reviews addObject:review.copy];
+                }
+            }
+
+            strongSelf.legacyServiceScopedReviews = reviews.copy;
+            [strongSelf pp_refreshMergedReviews];
+        });
+    }];
+}
+
+- (void)pp_refreshMergedReviews {
+    NSMutableArray<NSDictionary<NSString *, id> *> *mergedReviews = [NSMutableArray array];
+    NSMutableSet<NSString *> *seenReviewerIDs = [NSMutableSet set];
+
+    for (NSArray<NSDictionary<NSString *, id> *> *source in @[
+        self.providerScopedReviews ?: @[],
+        self.legacyServiceScopedReviews ?: @[]
+    ]) {
+        for (NSDictionary<NSString *, id> *review in source) {
+            NSNumber *rating = [self pp_reviewNumberFromDictionary:review
+                                                              keys:@[@"rating", @"ratingValue", @"averageRating"]];
+            if (rating.doubleValue <= 0.0) {
+                continue;
+            }
+
+            NSString *reviewerID = [self pp_reviewIdentifierForDictionary:review];
+            if (reviewerID.length > 0) {
+                if ([seenReviewerIDs containsObject:reviewerID]) {
+                    continue;
+                }
+                [seenReviewerIDs addObject:reviewerID];
+            }
+
+            [mergedReviews addObject:review];
+        }
+    }
+
+    [mergedReviews sortUsingComparator:^NSComparisonResult(NSDictionary<NSString *,id> * _Nonnull left,
+                                                           NSDictionary<NSString *,id> * _Nonnull right) {
+        NSDate *leftDate = [self pp_reviewSortDateForDictionary:left];
+        NSDate *rightDate = [self pp_reviewSortDateForDictionary:right];
+        if (!leftDate && !rightDate) return NSOrderedSame;
+        if (!leftDate) return NSOrderedDescending;
+        if (!rightDate) return NSOrderedAscending;
+        return [rightDate compare:leftDate];
+    }];
+
+    double ratingTotal = 0.0;
+    NSInteger ratingCount = 0;
+    for (NSDictionary<NSString *, id> *review in mergedReviews) {
+        NSNumber *rating = [self pp_reviewNumberFromDictionary:review
+                                                          keys:@[@"rating", @"ratingValue", @"averageRating"]];
+        if (rating.doubleValue > 0.0) {
+            ratingTotal += rating.doubleValue;
+            ratingCount += 1;
+        }
+    }
+
+    self.service.reviews = mergedReviews.copy;
+    self.service.reviewCount = ratingCount;
+    self.service.ratingValue = ratingCount > 0 ? @(ratingTotal / (double)ratingCount) : nil;
+
+    NSString *currentReviewerUID = [self pp_currentReviewerUID];
+    if (currentReviewerUID.length > 0 && [self pp_reviewsArray:mergedReviews containsReviewerUID:currentReviewerUID]) {
+        self.hasSubmittedProviderReview = YES;
+        self.didCompleteLegacyProviderReviewScan = YES;
+        self.isCheckingProviderReviewStatus = NO;
+    }
+
+    [self.titleView updateMetaPillsWithItems:[self pp_summaryPills]];
+    [self pp_reloadFacts];
+    [self pp_reloadReviews];
+    [self pp_refreshCurrentUserReviewStatusIfNeeded];
+}
+
+- (void)pp_refreshCurrentUserReviewStatusIfNeeded {
+    NSString *reviewerUID = [self pp_currentReviewerUID];
+    if (reviewerUID.length == 0) {
+        self.lastReviewStatusUID = @"";
+        self.hasSubmittedProviderReview = NO;
+        self.isCheckingProviderReviewStatus = NO;
+        self.didCompleteLegacyProviderReviewScan = NO;
+        [self pp_updateReviewComposerState];
+        return;
+    }
+
+    if (![self.lastReviewStatusUID isEqualToString:reviewerUID]) {
+        self.lastReviewStatusUID = reviewerUID;
+        self.hasSubmittedProviderReview = NO;
+        self.isCheckingProviderReviewStatus = NO;
+        self.didCompleteLegacyProviderReviewScan = NO;
+    }
+
+    if ([self pp_reviewsArray:self.providerScopedReviews containsReviewerUID:reviewerUID] ||
+        [self pp_reviewsArray:self.legacyServiceScopedReviews containsReviewerUID:reviewerUID]) {
+        self.hasSubmittedProviderReview = YES;
+        self.didCompleteLegacyProviderReviewScan = YES;
+        self.isCheckingProviderReviewStatus = NO;
+        [self pp_updateReviewComposerState];
+        return;
+    }
+
+    if (self.service.serviceOwnerID.length == 0 ||
+        [self pp_isOwnedByCurrentUser] ||
+        self.didCompleteLegacyProviderReviewScan ||
+        self.isCheckingProviderReviewStatus) {
+        [self pp_updateReviewComposerState];
+        return;
+    }
+
+    self.isCheckingProviderReviewStatus = YES;
+    [self pp_updateReviewComposerState];
+
+    __weak typeof(self) weakSelf = self;
+    [self pp_scanLegacyProviderReviewsForReviewerUID:reviewerUID completion:^(BOOL found, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || ![strongSelf.lastReviewStatusUID isEqualToString:reviewerUID]) {
+                return;
+            }
+
+            strongSelf.isCheckingProviderReviewStatus = NO;
+            strongSelf.didCompleteLegacyProviderReviewScan = YES;
+            if (found) {
+                strongSelf.hasSubmittedProviderReview = YES;
+            }
+
+            [strongSelf pp_updateReviewComposerState];
+        });
+    }];
+}
+
+- (void)pp_scanLegacyProviderReviewsForReviewerUID:(NSString *)reviewerUID
+                                        completion:(void (^)(BOOL found, NSError * _Nullable error))completion {
+    if (reviewerUID.length == 0 || self.service.serviceOwnerID.length == 0) {
+        if (completion) {
+            completion(NO, nil);
+        }
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRQuery *servicesQuery =
+        [[db collectionWithPath:@"serviceOffers"] queryWhereField:@"serviceOwnerID" isEqualTo:self.service.serviceOwnerID];
+
+    [servicesQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        if (error || !snapshot) {
+            if (completion) {
+                completion(NO, error);
+            }
+            return;
+        }
+
+        NSArray<FIRDocumentSnapshot *> *documents = snapshot.documents ?: @[];
+        if (documents.count == 0) {
+            if (completion) {
+                completion(NO, nil);
+            }
+            return;
+        }
+
+        __block NSUInteger index = 0;
+        __weak typeof(self) weakSelf = self;
+        __block void (^checkNextReview)(void) = nil;
+        checkNextReview = ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) {
+                if (completion) {
+                    completion(NO, nil);
+                }
+                return;
+            }
+
+            if (index >= documents.count) {
+                if (completion) {
+                    completion(NO, nil);
+                }
+                return;
+            }
+
+            FIRDocumentSnapshot *serviceDoc = documents[index++];
+            NSString *serviceID = serviceDoc.documentID ?: @"";
+            if (serviceID.length == 0) {
+                checkNextReview();
+                return;
+            }
+
+            if ([serviceID isEqualToString:strongSelf.service.serviceID]) {
+                if ([strongSelf pp_reviewsArray:strongSelf.legacyServiceScopedReviews containsReviewerUID:reviewerUID]) {
+                    if (completion) {
+                        completion(YES, nil);
+                    }
+                    return;
+                }
+                checkNextReview();
+                return;
+            }
+
+            FIRDocumentReference *legacyReviewRef =
+                [[[[db collectionWithPath:@"serviceOffers"] documentWithPath:serviceID]
+                  collectionWithPath:@"reviews"] documentWithPath:reviewerUID];
+
+            [legacyReviewRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable reviewSnapshot, NSError * _Nullable reviewError) {
+                if (reviewError) {
+                    if (completion) {
+                        completion(NO, reviewError);
+                    }
+                    return;
+                }
+
+                if (reviewSnapshot.exists) {
+                    if (completion) {
+                        completion(YES, nil);
+                    }
+                    return;
+                }
+
+                checkNextReview();
+            }];
+        };
+
+        checkNextReview();
+    }];
+}
+
+- (NSString *)pp_currentReviewerUID {
+    UserModel *currentUser = [UserManager sharedManager].currentUser;
+    NSString *authUID = PPCurrentFIRAuthUser.uid ?: @"";
+    if (authUID.length > 0) {
+        return authUID;
+    }
+    return [currentUser.ID isKindOfClass:NSString.class] ? currentUser.ID : @"";
+}
+
+- (BOOL)pp_reviewsArray:(NSArray<NSDictionary<NSString *, id> *> *)reviews containsReviewerUID:(NSString *)reviewerUID {
+    if (reviewerUID.length == 0) {
+        return NO;
+    }
+
+    for (NSDictionary<NSString *, id> *review in reviews) {
+        if ([[self pp_reviewIdentifierForDictionary:review] isEqualToString:reviewerUID]) {
+            return YES;
+        }
+    }
+
+    return NO;
+}
+
+- (NSString *)pp_reviewIdentifierForDictionary:(NSDictionary<NSString *, id> *)review {
+    NSString *identifier = [self pp_reviewStringFromDictionary:review keys:@[@"userID", @"reviewID", @"uid", @"reviewerID"]];
+    return identifier.length > 0 ? identifier : @"";
+}
+
+- (NSDate *)pp_reviewSortDateForDictionary:(NSDictionary<NSString *, id> *)review {
+    return [self pp_reviewDateFromValue:review[@"updatedAt"] ?: review[@"createdAt"] ?: review[@"date"] ?: review[@"timestamp"]];
 }
 
 - (void)pp_rebuildActions {
@@ -637,37 +1560,38 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 #pragma mark - Content Helpers
 
 - (NSArray<PPInfoPill *> *)pp_summaryPills {
-    NSMutableArray<PPInfoPill *> *items = [NSMutableArray array];
-
-    // Availability status pill
-    NSString *availText = [self.service localizedAvailabilityStatus];
-    if (availText.length > 0) {
-        NSString *availIcon = self.service.isLive ? @"checkmark.circle.fill" : @"exclamationmark.triangle.fill";
-        [items addObject:[PPInfoPill itemWithIcon:availIcon text:availText]];
+    NSString *importantText = [self pp_heroImportantInfoText];
+    if (importantText.length == 0) {
+        return @[];
     }
 
-    // Service type pill
-    NSString *typeName = [self.service localizedTypeName];
-    if (typeName.length > 0) {
-        [items addObject:[PPInfoPill itemWithIcon:@"tag.fill" text:typeName]];
+    NSString *iconName = self.service.isLive ? @"checkmark.seal.fill" : @"exclamationmark.triangle.fill";
+    return @[[PPInfoPill itemWithIcon:iconName text:importantText]];
+}
+
+- (NSString *)pp_heroImportantInfoText {
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+
+    NSString *availabilityText = [self.service localizedAvailabilityStatus];
+    if (availabilityText.length > 0) {
+        [parts addObject:availabilityText];
+    }
+
+    NSString *typeName = [self pp_serviceTypeName];
+    if (typeName.length > 0 && ![typeName isEqualToString:kLang(@"Not specified")]) {
+        [parts addObject:typeName];
     }
 
     NSString *petKindText = [self pp_petKindText];
     if (petKindText.length > 0 && ![petKindText isEqualToString:kLang(@"Not specified")]) {
-        [items addObject:[PPInfoPill itemWithIcon:@"pawprint.fill" text:petKindText]];
+        [parts addObject:petKindText];
     }
 
-    // Rating pill
-    if ([self.service hasDisplayableRating]) {
-        [items addObject:[PPInfoPill itemWithIcon:@"star.fill" text:[self.service localizedRatingBadgeText]]];
+    if (parts.count == 0) {
+        return kLang(@"service_view_important_info_default");
     }
 
-    NSString *postedDateText = [self pp_postedDateText];
-    if (postedDateText.length > 0 && ![postedDateText isEqualToString:kLang(@"Not specified")]) {
-        [items addObject:[PPInfoPill itemWithIcon:@"clock" text:postedDateText]];
-    }
-
-    return items.copy;
+    return [parts componentsJoinedByString:@" • "];
 }
 
 - (NSString *)pp_serviceTitle {
@@ -724,7 +1648,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
         providerName = self.ownerModel.UserName ?: @"";
     }
     if (providerName.length == 0 && self.service.serviceOwnerID.length > 0) {
-        return kLang(@"service_view_owner_pending");
+        return self.didAttemptOwnerLoad ? kLang(@"service_view_owner") : kLang(@"service_view_owner_pending");
     }
     if (providerName.length == 0) {
         return kLang(@"service_view_owner");
@@ -734,6 +1658,9 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 
 - (NSString *)pp_providerMetaText {
     if (!self.ownerModel) {
+        if (self.service.serviceOwnerID.length == 0 || self.didAttemptOwnerLoad) {
+            return kLang(@"service_view_provider_unavailable");
+        }
         return kLang(@"service_view_provider_loading");
     }
 
@@ -769,6 +1696,9 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
         return self.ownerModel.UserAbout;
     }
     if (!self.ownerModel) {
+        if (self.service.serviceOwnerID.length == 0 || self.didAttemptOwnerLoad) {
+            return kLang(@"service_view_provider_contact_pending");
+        }
         return kLang(@"service_view_contact_loading");
     }
     return kLang(@"service_view_provider_about_empty");
@@ -867,6 +1797,8 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
 #pragma mark - Motion
 
 - (void)pp_prepareEntranceState {
+    [self.titleView prepareForEntrance];
+
     NSArray<UIView *> *animatedSections = @[
         self.providerSectionView,
         self.factsSectionView,
@@ -887,7 +1819,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     }
     self.didAnimateEntrance = YES;
 
-    [self.titleView animatePillsIn];
+    [self.titleView animateEntranceIfNeeded];
 
     NSArray<UIView *> *animatedSections = @[
         self.providerSectionView,
@@ -988,7 +1920,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     if (!self.ownerModel) {
         [PPAlertHelper showInfoIn:self
                             title:kLang(@"service_view_provider_title")
-                         subtitle:kLang(@"service_view_contact_loading")];
+                         subtitle:[self pp_contactUnavailableMessage]];
         return;
     }
 
@@ -1014,7 +1946,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     if (!self.ownerModel) {
         [PPAlertHelper showInfoIn:self
                             title:kLang(@"service_view_provider_title")
-                         subtitle:kLang(@"service_view_contact_loading")];
+                         subtitle:[self pp_contactUnavailableMessage]];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
         return;
     }
@@ -1040,8 +1972,8 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [self loadOwnerIfNeeded];
     if (!self.ownerModel) {
         [PPAlertHelper showInfoIn:self
-                            title:kLang(@"error")
-                         subtitle:kLang(@"service_view_contact_loading")];
+                            title:kLang(@"service_view_provider_title")
+                         subtitle:[self pp_contactUnavailableMessage]];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
         return;
     }
@@ -1049,6 +1981,268 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
     [GM chatWith:self.ownerModel FromController:self];
     [self trackServiceInteraction:PPItemInteractionTypeChat];
+}
+
+#pragma mark - Reviews
+
+- (void)reviewStarTapped:(UIButton *)sender {
+    self.selectedReviewRating = MAX(1, MIN(sender.tag, 5));
+    [self pp_updateReviewStars];
+    [self pp_updateReviewComposerState];
+}
+
+- (void)submitReviewTapped {
+    if (![UserManager sharedManager].isUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
+    if ([self pp_isOwnedByCurrentUser]) {
+        [PPHUD showInfo:kLang(@"service_rate_sheet_owner_block")];
+        return;
+    }
+
+    if (self.service.serviceID.length == 0 || self.service.serviceOwnerID.length == 0) {
+        [PPHUD showError:kLang(@"service_rate_sheet_failed")
+                subtitle:kLang(@"service_view_provider_contact_pending")];
+        return;
+    }
+
+    UserManager *userManager = [UserManager sharedManager];
+    UserModel *currentUser = userManager.currentUser;
+    NSString *uid = [self pp_currentReviewerUID];
+    if (uid.length == 0) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
+    if (self.isCheckingProviderReviewStatus) {
+        return;
+    }
+
+    if (self.hasSubmittedProviderReview) {
+        [PPHUD showInfo:kLang(@"service_review_existing_title")
+               subtitle:kLang(@"service_review_existing_subtitle")];
+        return;
+    }
+
+    if (currentUser.isBlocked || [userManager isCurrentUserBlocked]) {
+        [PPHUD showError:kLang(@"error") subtitle:kLang(@"service_review_blocked_account")];
+        return;
+    }
+
+    if (self.selectedReviewRating <= 0) {
+        [PPHUD showInfo:kLang(@"service_review_select_rating")];
+        return;
+    }
+
+    NSString *comment = [self pp_currentReviewComment];
+    if (comment.length > 600) {
+        comment = [comment substringToIndex:600];
+    }
+
+    NSString *displayName = @"";
+    if ([currentUser respondsToSelector:@selector(PPBestDisplayName)]) {
+        displayName = currentUser.PPBestDisplayName ?: @"";
+    }
+    if (displayName.length == 0) {
+        displayName = currentUser.UserName ?: @"";
+    }
+    if (displayName.length == 0) {
+        displayName = kLang(@"service_view_review_anonymous");
+    }
+
+    self.isSubmittingReview = YES;
+    [self pp_updateReviewComposerState];
+    [PPHUD showLoading:kLang(@"service_rate_sheet_submitting")];
+
+    FIRDocumentReference *reviewRef =
+        [[[[[FIRFirestore firestore] collectionWithPath:@"UsersCol"]
+           documentWithPath:self.service.serviceOwnerID]
+          collectionWithPath:@"providerReviews"]
+         documentWithPath:uid];
+
+    __weak typeof(self) weakSelf = self;
+    [reviewRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) {
+            return;
+        }
+
+        if (error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                strongSelf.isSubmittingReview = NO;
+                [strongSelf pp_updateReviewComposerState];
+                [PPHUD showError:kLang(@"service_rate_sheet_failed") subtitle:error.localizedDescription];
+            });
+            return;
+        }
+
+        if (snapshot.exists) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                strongSelf.isSubmittingReview = NO;
+                strongSelf.hasSubmittedProviderReview = YES;
+                strongSelf.didCompleteLegacyProviderReviewScan = YES;
+                [strongSelf pp_updateReviewComposerState];
+                [PPHUD showInfo:kLang(@"service_review_existing_title")
+                       subtitle:kLang(@"service_review_existing_subtitle")];
+            });
+            return;
+        }
+
+        NSMutableDictionary *payload = [@{
+            @"reviewID": uid,
+            @"serviceID": strongSelf.service.serviceID ?: @"",
+            @"serviceOwnerID": strongSelf.service.serviceOwnerID ?: @"",
+            @"userID": uid,
+            @"reviewerName": displayName ?: @"",
+            @"rating": @(strongSelf.selectedReviewRating),
+            @"comment": comment ?: @"",
+            @"platform": @"ios",
+            @"createdAt": [FIRFieldValue fieldValueForServerTimestamp],
+            @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+        } mutableCopy];
+        NSMutableDictionary *localReview = [@{
+            @"reviewID": uid,
+            @"serviceID": strongSelf.service.serviceID ?: @"",
+            @"serviceOwnerID": strongSelf.service.serviceOwnerID ?: @"",
+            @"userID": uid,
+            @"reviewerName": displayName ?: @"",
+            @"rating": @(strongSelf.selectedReviewRating),
+            @"comment": comment ?: @"",
+            @"platform": @"ios",
+            @"createdAt": [NSDate date],
+            @"updatedAt": [NSDate date]
+        } mutableCopy];
+
+        [reviewRef setData:payload completion:^(NSError * _Nullable writeError) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                strongSelf.isSubmittingReview = NO;
+                if (writeError) {
+                    [strongSelf pp_updateReviewComposerState];
+                    [PPHUD showError:kLang(@"service_rate_sheet_failed") subtitle:writeError.localizedDescription];
+                    return;
+                }
+
+                if (strongSelf.reviewTextView.text.length > 0 &&
+                    ![strongSelf.reviewTextView.text isEqualToString:strongSelf.reviewPlaceholderText]) {
+                    strongSelf.reviewTextView.text = strongSelf.reviewPlaceholderText;
+                    strongSelf.reviewTextView.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.46];
+                }
+                strongSelf.selectedReviewRating = 0;
+                strongSelf.hasSubmittedProviderReview = YES;
+                strongSelf.didCompleteLegacyProviderReviewScan = YES;
+                [strongSelf pp_updateReviewStars];
+
+                NSMutableArray<NSDictionary<NSString *, id> *> *providerReviews =
+                    [strongSelf.providerScopedReviews mutableCopy] ?: [NSMutableArray array];
+                NSIndexSet *existingIndexes =
+                    [providerReviews indexesOfObjectsPassingTest:^BOOL(NSDictionary<NSString *,id> * _Nonnull review,
+                                                                       NSUInteger idx,
+                                                                       BOOL * _Nonnull stop) {
+                        return [[strongSelf pp_reviewIdentifierForDictionary:review] isEqualToString:uid];
+                    }];
+                if (existingIndexes.count > 0) {
+                    [providerReviews removeObjectsAtIndexes:existingIndexes];
+                }
+                [providerReviews insertObject:localReview.copy atIndex:0];
+                strongSelf.providerScopedReviews = providerReviews.copy;
+                [strongSelf pp_refreshMergedReviews];
+
+                [PPHUD showSuccess:kLang(@"service_rate_sheet_success")
+                            subtitle:kLang(@"service_review_success_subtitle")];
+            });
+        }];
+    }];
+}
+
+- (void)pp_updateReviewStars {
+    UIColor *selectedColor = [UIColor colorWithRed:0.95 green:0.63 blue:0.20 alpha:1.0];
+    UIColor *idleColor = [selectedColor colorWithAlphaComponent:0.42];
+
+    for (UIButton *button in self.reviewStarButtons) {
+        BOOL selected = button.tag <= self.selectedReviewRating;
+        button.tintColor = selected ? selectedColor : idleColor;
+        button.backgroundColor = selected
+            ? [selectedColor colorWithAlphaComponent:0.15]
+            : [UIColor colorWithWhite:1.0 alpha:0.52];
+        [button pp_setBorderColor:[selectedColor colorWithAlphaComponent:(selected ? 0.28 : 0.14)]];
+        button.transform = selected ? CGAffineTransformMakeScale(1.02, 1.02) : CGAffineTransformIdentity;
+    }
+}
+
+- (void)pp_updateReviewComposerState {
+    BOOL loggedIn = [UserManager sharedManager].isUserLoggedIn;
+    BOOL isOwner = [self pp_isOwnedByCurrentUser];
+    BOOL hasExistingReview = loggedIn && self.hasSubmittedProviderReview;
+    BOOL isCheckingProviderReview = loggedIn && !isOwner && !hasExistingReview && self.isCheckingProviderReviewStatus;
+    BOOL canTapButton = !isOwner && !hasExistingReview && !self.isSubmittingReview && !isCheckingProviderReview;
+    BOOL canSubmit = loggedIn && canTapButton && self.selectedReviewRating > 0;
+
+    self.reviewComposerTitleLabel.text = hasExistingReview
+        ? kLang(@"service_review_existing_title")
+        : kLang(@"service_review_composer_title");
+    self.reviewComposerSubtitleLabel.text = hasExistingReview
+        ? kLang(@"service_review_existing_subtitle")
+        : kLang(@"service_review_composer_subtitle");
+    self.reviewStarsStackView.hidden = hasExistingReview;
+    self.reviewTextView.hidden = hasExistingReview;
+    self.submitReviewButton.hidden = hasExistingReview;
+    self.reviewStarsTopConstraint.constant = hasExistingReview ? 0.0 : 14.0;
+    self.reviewTextTopConstraint.constant = hasExistingReview ? 0.0 : 12.0;
+    self.reviewTextMinHeightConstraint.constant = hasExistingReview ? 0.0 : 82.0;
+    self.submitReviewTopConstraint.constant = hasExistingReview ? 0.0 : 12.0;
+    self.submitReviewHeightConstraint.constant = hasExistingReview ? 0.0 : 44.0;
+
+    self.reviewTextView.editable = loggedIn && !isOwner && !hasExistingReview && !self.isSubmittingReview && !isCheckingProviderReview;
+    self.reviewStarsStackView.userInteractionEnabled = loggedIn && !isOwner && !hasExistingReview && !self.isSubmittingReview && !isCheckingProviderReview;
+    self.submitReviewButton.enabled = canTapButton;
+    self.submitReviewButton.alpha = canSubmit ? 1.0 : (canTapButton ? 0.74 : 0.56);
+
+    if (self.isSubmittingReview) {
+        [self.submitReviewButton setTitle:kLang(@"service_rate_sheet_submitting") forState:UIControlStateNormal];
+    } else if (hasExistingReview) {
+        [self.submitReviewButton setTitle:kLang(@"service_review_existing_title") forState:UIControlStateNormal];
+    } else if (isOwner) {
+        [self.submitReviewButton setTitle:kLang(@"service_rate_sheet_owner_block") forState:UIControlStateNormal];
+    } else if (!loggedIn) {
+        [self.submitReviewButton setTitle:kLang(@"service_review_sign_in_action") forState:UIControlStateNormal];
+    } else {
+        [self.submitReviewButton setTitle:kLang(@"service_review_submit") forState:UIControlStateNormal];
+    }
+}
+
+- (NSString *)pp_currentReviewComment {
+    NSString *text = self.reviewTextView.text ?: @"";
+    if ([text isEqualToString:self.reviewPlaceholderText]) {
+        return @"";
+    }
+    return [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+}
+
+#pragma mark - UITextViewDelegate
+
+- (void)textViewDidBeginEditing:(UITextView *)textView {
+    if (textView != self.reviewTextView) {
+        return;
+    }
+
+    if ([textView.text isEqualToString:self.reviewPlaceholderText]) {
+        textView.text = @"";
+        textView.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    }
+}
+
+- (void)textViewDidEndEditing:(UITextView *)textView {
+    if (textView != self.reviewTextView) {
+        return;
+    }
+
+    NSString *trimmed = [textView.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        textView.text = self.reviewPlaceholderText;
+        textView.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.46];
+    }
 }
 
 #pragma mark - Owner
@@ -1059,6 +2253,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     }
 
     self.isResolvingOwner = YES;
+    self.didAttemptOwnerLoad = NO;
     __weak typeof(self) weakSelf = self;
     [UsrMgr getOtherUserModelFromFirestoreWithUID:self.service.serviceOwnerID completion:^(UserModel * _Nullable user, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1068,8 +2263,9 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
             }
 
             strongSelf.isResolvingOwner = NO;
+            strongSelf.didAttemptOwnerLoad = YES;
             if (error || !user) {
-                [strongSelf pp_updateProviderSection];
+                [strongSelf applyModelContent];
                 return;
             }
 
@@ -1087,6 +2283,13 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
     [UserManager showPromptOnTopController];
     return NO;
+}
+
+- (NSString *)pp_contactUnavailableMessage {
+    if (self.service.serviceOwnerID.length == 0 || self.didAttemptOwnerLoad) {
+        return kLang(@"service_view_provider_contact_pending");
+    }
+    return kLang(@"service_view_contact_loading");
 }
 
 #pragma mark - Tracking
@@ -1174,7 +2377,7 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
     UIImage *icon = [[UIImage systemImageNamed:systemName] imageByApplyingSymbolConfiguration:configuration];
     [button setImage:icon forState:UIControlStateNormal];
     button.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.86];
+    button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.86];
     button.layer.cornerRadius = 20.0;
     button.layer.borderWidth = 1.0;
     [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.14]];
@@ -1294,6 +2497,146 @@ static CGFloat const PPServiceViewerSurfaceRadius = 26.0;
         [label.heightAnchor constraintGreaterThanOrEqualToConstant:54.0]
     ]];
     return label;
+}
+
+- (UIView *)pp_reviewComposerView {
+    UIView *view = [[UIView alloc] init];
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    view.backgroundColor = [accentColor colorWithAlphaComponent:0.08];
+    view.layer.cornerRadius = 22.0;
+    view.layer.borderWidth = 1.0;
+    [view pp_setBorderColor:[accentColor colorWithAlphaComponent:0.14]];
+    [view pp_setShadowColor:UIColor.blackColor];
+    view.layer.shadowOpacity = 0.04f;
+    view.layer.shadowRadius = 14.0f;
+    view.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    if (@available(iOS 13.0, *)) {
+        view.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.reviewComposerTitleLabel = [[UILabel alloc] init];
+    self.reviewComposerTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reviewComposerTitleLabel.font = [GM boldFontWithSize:16];
+    self.reviewComposerTitleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.reviewComposerTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.reviewComposerTitleLabel.text = kLang(@"service_review_composer_title");
+
+    self.reviewComposerSubtitleLabel = [[UILabel alloc] init];
+    self.reviewComposerSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reviewComposerSubtitleLabel.font = [GM MidFontWithSize:13];
+    self.reviewComposerSubtitleLabel.numberOfLines = 0;
+    self.reviewComposerSubtitleLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.66];
+    self.reviewComposerSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.reviewComposerSubtitleLabel.text = kLang(@"service_review_composer_subtitle");
+
+    self.reviewStarsStackView = [[UIStackView alloc] init];
+    self.reviewStarsStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reviewStarsStackView.axis = UILayoutConstraintAxisHorizontal;
+    self.reviewStarsStackView.alignment = UIStackViewAlignmentCenter;
+    self.reviewStarsStackView.distribution = UIStackViewDistributionFillEqually;
+    self.reviewStarsStackView.spacing = 6.0;
+    self.reviewStarsStackView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.reviewStarButtons = [NSMutableArray arrayWithCapacity:5];
+
+    for (NSInteger idx = 1; idx <= 5; idx++) {
+        UIButton *starButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        starButton.translatesAutoresizingMaskIntoConstraints = NO;
+        starButton.tag = idx;
+        starButton.tintColor = [[UIColor colorWithRed:0.95 green:0.63 blue:0.20 alpha:1.0] colorWithAlphaComponent:0.42];
+        starButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.52];
+        starButton.layer.cornerRadius = 17.0;
+        starButton.layer.borderWidth = 1.0;
+        [starButton pp_setBorderColor:[[UIColor colorWithRed:0.95 green:0.63 blue:0.20 alpha:1.0] colorWithAlphaComponent:0.14]];
+        if (@available(iOS 13.0, *)) {
+            starButton.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        UIImageSymbolConfiguration *cfg =
+            [UIImageSymbolConfiguration configurationWithPointSize:16 weight:UIImageSymbolWeightSemibold];
+        [starButton setPreferredSymbolConfiguration:cfg forImageInState:UIControlStateNormal];
+        [starButton setImage:[UIImage systemImageNamed:@"star.fill"] forState:UIControlStateNormal];
+        [starButton addTarget:self action:@selector(reviewStarTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [NSLayoutConstraint activateConstraints:@[
+            [starButton.heightAnchor constraintEqualToConstant:34.0]
+        ]];
+        [self.reviewStarsStackView addArrangedSubview:starButton];
+        [self.reviewStarButtons addObject:starButton];
+    }
+
+    self.reviewPlaceholderText = kLang(@"service_review_placeholder");
+    self.reviewTextView = [[UITextView alloc] init];
+    self.reviewTextView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.reviewTextView.delegate = self;
+    self.reviewTextView.font = [GM MidFontWithSize:14];
+    self.reviewTextView.textAlignment = Language.alignmentForCurrentLanguage;
+    self.reviewTextView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.58];
+    self.reviewTextView.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.46];
+    self.reviewTextView.text = self.reviewPlaceholderText;
+    self.reviewTextView.textContainerInset = UIEdgeInsetsMake(10.0, 12.0, 10.0, 12.0);
+    self.reviewTextView.layer.cornerRadius = 16.0;
+    self.reviewTextView.layer.borderWidth = 1.0;
+    [self.reviewTextView pp_setBorderColor:[AppPrimaryTextClr ?: UIColor.labelColor colorWithAlphaComponent:0.08]];
+    if (@available(iOS 13.0, *)) {
+        self.reviewTextView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.submitReviewButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.submitReviewButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.submitReviewButton.titleLabel.font = [GM boldFontWithSize:14];
+    self.submitReviewButton.layer.cornerRadius = 18.0;
+    self.submitReviewButton.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        self.submitReviewButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.submitReviewButton setTitle:kLang(@"service_review_submit") forState:UIControlStateNormal];
+    [self.submitReviewButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    self.submitReviewButton.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    [self.submitReviewButton addTarget:self action:@selector(submitReviewTapped) forControlEvents:UIControlEventTouchUpInside];
+
+    [view addSubview:self.reviewComposerTitleLabel];
+    [view addSubview:self.reviewComposerSubtitleLabel];
+    [view addSubview:self.reviewStarsStackView];
+    [view addSubview:self.reviewTextView];
+    [view addSubview:self.submitReviewButton];
+
+    self.reviewStarsTopConstraint =
+        [self.reviewStarsStackView.topAnchor constraintEqualToAnchor:self.reviewComposerSubtitleLabel.bottomAnchor constant:14.0];
+    self.reviewTextTopConstraint =
+        [self.reviewTextView.topAnchor constraintEqualToAnchor:self.reviewStarsStackView.bottomAnchor constant:12.0];
+    self.reviewTextMinHeightConstraint =
+        [self.reviewTextView.heightAnchor constraintGreaterThanOrEqualToConstant:82.0];
+    self.submitReviewTopConstraint =
+        [self.submitReviewButton.topAnchor constraintEqualToAnchor:self.reviewTextView.bottomAnchor constant:12.0];
+    self.submitReviewHeightConstraint =
+        [self.submitReviewButton.heightAnchor constraintEqualToConstant:44.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.reviewComposerTitleLabel.topAnchor constraintEqualToAnchor:view.topAnchor constant:16.0],
+        [self.reviewComposerTitleLabel.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:16.0],
+        [self.reviewComposerTitleLabel.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-16.0],
+
+        [self.reviewComposerSubtitleLabel.topAnchor constraintEqualToAnchor:self.reviewComposerTitleLabel.bottomAnchor constant:5.0],
+        [self.reviewComposerSubtitleLabel.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:16.0],
+        [self.reviewComposerSubtitleLabel.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-16.0],
+
+        self.reviewStarsTopConstraint,
+        [self.reviewStarsStackView.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:16.0],
+        [self.reviewStarsStackView.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-16.0],
+
+        self.reviewTextTopConstraint,
+        [self.reviewTextView.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:16.0],
+        [self.reviewTextView.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-16.0],
+        self.reviewTextMinHeightConstraint,
+
+        self.submitReviewTopConstraint,
+        [self.submitReviewButton.leadingAnchor constraintEqualToAnchor:view.leadingAnchor constant:16.0],
+        [self.submitReviewButton.trailingAnchor constraintEqualToAnchor:view.trailingAnchor constant:-16.0],
+        self.submitReviewHeightConstraint,
+        [self.submitReviewButton.bottomAnchor constraintEqualToAnchor:view.bottomAnchor constant:-16.0]
+    ]];
+
+    [self pp_updateReviewStars];
+    return view;
 }
 
 - (UIView *)pp_reviewViewForDictionary:(NSDictionary<NSString *, id> *)review {

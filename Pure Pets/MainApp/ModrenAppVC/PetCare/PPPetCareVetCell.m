@@ -6,7 +6,7 @@
 //
 
 #import "PPPetCareVetCell.h"
-
+#import "PPImageLoaderManager.h"
 @implementation PPPetCareVetCell {
     UIView *_surfaceView;
     UIView *_surfaceFill;

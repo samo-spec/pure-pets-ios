@@ -22,7 +22,7 @@
 #define ABSOLUTE(x) [NSCollectionLayoutDimension absoluteDimension:x]
 #define ESTIMATED(x) [NSCollectionLayoutDimension estimatedDimension:x]
 
-static CGFloat const PPUniversalAdsPinterestOuterInset = 14.0;
+static CGFloat const PPUniversalAdsPinterestOuterInset = 12.0;
 static CGFloat const PPUniversalAdsPinterestInnerSpacing = 12.0;
 static CGFloat const PPUniversalAdsPinterestButtonHeight = 34.0;
 static CGFloat const PPUniversalAdsPinterestCompactTitleHeight = 24.0;
@@ -189,10 +189,10 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
         NSLog(@"[PPCollectionLayoutManager] ERROR: newLayout is nil for mode");
         return nil;
     }
-    const CGFloat horizontalSpacing = 16.0;
-    const CGFloat verticalSpacing = 16.0;
-    const CGFloat topInset = 8.0;
-    const CGFloat bottomInset = 16.0;
+    const CGFloat horizontalSpacing = 14.0;
+    const CGFloat verticalSpacing = 12.0;
+    const CGFloat topInset = 12.0;
+    const CGFloat bottomInset = 12.0;
     // Create an appropriate layout for the given mode.
     UICollectionViewLayout *layout = nil;
    

@@ -14,7 +14,7 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
-#import "PPPetProfilesUIStyle.h"
+ 
 @import PhotosUI;
 
 // ─── Image cache ──────────────────────────────────────────
@@ -130,7 +130,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     _titleLabel = [UILabel new];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _titleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    _titleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _titleLabel.textColor = AppPrimaryTextClr;
     _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.contentView addSubview:_titleLabel];
 
@@ -138,7 +138,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     _textField.translatesAutoresizingMaskIntoConstraints = NO;
     _textField.borderStyle       = UITextBorderStyleNone;
     _textField.backgroundColor   = UIColor.clearColor;
-    _textField.textColor         = PPPetsUIPrimaryTextColor();
+    _textField.textColor         = AppPrimaryTextClr;
     _textField.font              = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
     _textField.clearButtonMode   = UITextFieldViewModeWhileEditing;
     _textField.autocorrectionType = UITextAutocorrectionTypeNo;
@@ -215,7 +215,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     _nameLabel = [UILabel new];
     _nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _nameLabel.font      = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
-    _nameLabel.textColor = PPPetsUIPrimaryTextColor();
+    _nameLabel.textColor = AppPrimaryTextClr;
     [self.contentView addSubview:_nameLabel];
 
     _notesLabel = [UILabel new];
@@ -544,7 +544,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
-    titleLabel.textColor = PPPetsUIPrimaryTextColor();
+    titleLabel.textColor = AppPrimaryTextClr;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
     [cardView addSubview:titleLabel];
@@ -897,7 +897,7 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
             PPPetEditorActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"toggle" forIndexPath:indexPath];
             cell.textLabel.text          = kLang(@"pet_default_toggle") ?: @"Set as default pet";
             cell.textLabel.font          = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:PPFontBody weight:UIFontWeightMedium];
-            cell.textLabel.textColor     = PPPetsUIPrimaryTextColor();
+            cell.textLabel.textColor     = AppPrimaryTextClr;
             cell.textLabel.textAlignment = Language.alignmentForCurrentLanguage;
             cell.selectionStyle          = UITableViewCellSelectionStyleNone;
             cell.imageView.image         = [[UIImage systemImageNamed:@"star.circle"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];

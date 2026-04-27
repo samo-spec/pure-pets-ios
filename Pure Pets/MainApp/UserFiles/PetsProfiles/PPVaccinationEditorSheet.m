@@ -9,7 +9,7 @@
 
 #import "PPVaccinationEditorSheet.h"
 #import "PPPetProfile.h"
-#import "PPPetProfilesUIStyle.h"
+ 
 #import "Language.h"
 #import "GM.h"
 
@@ -31,7 +31,7 @@ static const CGFloat kCorner      = 16.0;
     if (!self) return nil;
     self.translatesAutoresizingMaskIntoConstraints = NO;
     self.font            = [GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
-    self.textColor       = PPPetsUIPrimaryTextColor();
+    self.textColor       = AppPrimaryTextClr;
     self.backgroundColor = PPPetsUISurfaceColor();
     self.layer.cornerRadius = kCorner;
     self.layer.borderWidth  = 1.0;
@@ -254,7 +254,7 @@ static const CGFloat kCorner      = 16.0;
     UILabel *sheetTitle = [UILabel new];
     sheetTitle.translatesAutoresizingMaskIntoConstraints = NO;
     sheetTitle.font      = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
-    sheetTitle.textColor = PPPetsUIPrimaryTextColor();
+    sheetTitle.textColor = AppPrimaryTextClr;
     sheetTitle.textAlignment = Language.alignmentForCurrentLanguage;
     sheetTitle.text = self.isNewRecord
         ? (kLang(@"pet_vaccine_add") ?: @"Add Vaccination")

@@ -49,10 +49,7 @@ static inline UIColor *PPPetsUISurfaceBorderColor(void) {
 static inline UIColor *PPPetsUIBrandColor(void) {
     return AppPrimaryClr ?: UIColor.systemOrangeColor;
 }
-
-static inline UIColor *PPPetsUIPrimaryTextColor(void) {
-    return AppPrimaryTextClr ?: UIColor.labelColor;
-}
+ 
 
 static inline UIColor *PPPetsUISecondaryTextColor(void) {
     return [UIColor.secondaryLabelColor colorWithAlphaComponent:0.92];
@@ -196,7 +193,7 @@ static inline UIView *PPPetsBuildSectionHeaderView(NSString * _Nullable title, N
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
-    titleLabel.textColor = PPPetsUIPrimaryTextColor();
+    titleLabel.textColor = AppPrimaryTextClr;
     titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     titleLabel.text = title ?: @"";
     [container addSubview:titleLabel];

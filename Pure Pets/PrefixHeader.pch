@@ -62,7 +62,7 @@
 #import "Styling.h"
 #import "PPDesignTokens.h"
 #import "Language.h"
- 
+
 #import "PaymentMethod.h"
 #import "PPDefaultLocationView.h"
 #import "UserPaymentInstrumentManager.h"
@@ -262,7 +262,7 @@
 
 #define AppPrimaryTextClr           [UIColor colorNamed:@"PrimaryTextColor"]
 #define AppSecondaryTextClr         [UIColor colorNamed:@"SecondaryTextColor"]
-#define AppForgroundColr            UIColor.secondarySystemBackgroundColor //[UIColor colorNamed:@"AppForegroundColor"]
+#define AppForgroundColr            [UIColor colorNamed:@"AppForegroundColor"] //UIColor.secondarySystemBackgroundColor //[UIColor colorNamed:@"AppForegroundColor"]
 #define AppButtonMixColorClr         [UIColor colorNamed:@"AppButtonMixColor"]
 
 #define AppCardColor                [[UIColor colorNamed:@"AppCardColor"] colorWithAlphaComponent:1.0]
@@ -377,7 +377,7 @@
 #define AppMgr AppManager.sharedInstance
 #define PPUsersArr AppManager.sharedInstance.usersArray
 #define MAX_BUBBLE_WIDTH(view) ((view.frame.size.width))
-
+ 
 #define PPCorners42 42.0
 #define PPMaxScreen (UIScreen.mainScreen.bounds.size.height >= 812.0)
 #define PPNavBarHeight (44.0 + PPStatusBarHeight)
@@ -409,6 +409,8 @@ static inline BOOL PPIsSmallScreen(void) {
 // =====================================================
 // Helpers
 // =====================================================
+#import "PPPetProfilesUIStyle.h"
+#import "PetCareHelpers.h"
 NS_ASSUME_NONNULL_BEGIN
 
 static inline BOOL PPIOS26(void) {
@@ -693,7 +695,7 @@ static inline CGFloat PPScreenCornerRadius(void) {
 
 static NSString * const kCategoryCellId = @"PPCategoryCell";
 
- 
+
 
 #define PPChatBubblePad                   2.0
 

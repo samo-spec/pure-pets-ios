@@ -69,6 +69,7 @@ typedef void(^PPPaymentTabSelectionBlock)(PPPaymentTab selectedTab);
 @property (nonatomic, strong, readonly) PPInsetLabel *currencyLabel;
 @property (nonatomic, strong, readonly) PPInsetLabel *amountLabel;
 @property (nonatomic, strong, readonly) UIButton *addToCartButton;
+@property (nonatomic, strong, readonly) UIButton *showCartButton;
 @property (nonatomic, strong, readonly) UIStackView *qtyStack;
 
 @property (nonatomic, assign) NSInteger cartItemquantity;

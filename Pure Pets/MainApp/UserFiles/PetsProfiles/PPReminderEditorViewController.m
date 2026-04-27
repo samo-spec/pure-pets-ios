@@ -13,7 +13,7 @@
 #import "UserManager.h"
 #import "Language.h"
 #import "GM.h"
-#import "PPPetProfilesUIStyle.h"
+ 
 #import "PPReminderNotificationManager.h"
 
 // ─── Constants (ProfileVC pattern) ────────────────────────
@@ -106,7 +106,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     _cellTitleLabel = [UILabel new];
     _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _cellTitleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textColor = AppPrimaryTextClr ;
     _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.contentView addSubview:_cellTitleLabel];
 
@@ -114,7 +114,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     _cellTextField.translatesAutoresizingMaskIntoConstraints = NO;
     _cellTextField.borderStyle       = UITextBorderStyleNone;
     _cellTextField.backgroundColor   = UIColor.clearColor;
-    _cellTextField.textColor         = PPPetsUIPrimaryTextColor();
+    _cellTextField.textColor         = AppPrimaryTextClr;
     _cellTextField.font              = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
     _cellTextField.clearButtonMode   = UITextFieldViewModeWhileEditing;
     _cellTextField.autocorrectionType = UITextAutocorrectionTypeNo;
@@ -242,7 +242,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     _cellTitleLabel = [UILabel new];
     _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _cellTitleLabel.font      = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textColor = AppPrimaryTextClr;
     _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.contentView addSubview:_cellTitleLabel];
 
@@ -255,7 +255,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     _valueLabel = [UILabel new];
     _valueLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _valueLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _valueLabel.textColor = PPPetsUIPrimaryTextColor();
+    _valueLabel.textColor = AppPrimaryTextClr;
     _valueLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _valueLabel.numberOfLines = 2;
     [self.contentView addSubview:_valueLabel];
@@ -334,7 +334,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     _cellTitleLabel = [UILabel new];
     _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _cellTitleLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textColor = AppPrimaryTextClr;
     _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.contentView addSubview:_cellTitleLabel];
 
@@ -404,7 +404,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     _cellTitleLabel = [UILabel new];
     _cellTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _cellTitleLabel.font = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _cellTitleLabel.textColor = PPPetsUIPrimaryTextColor();
+    _cellTitleLabel.textColor = AppPrimaryTextClr;
     _cellTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     [self.contentView addSubview:_cellTitleLabel];
 
@@ -630,7 +630,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     _titleField.placeholder    = kLang(@"pet_reminder_title") ?: @"Reminder title";
     _titleField.text           = self.reminder.title;
     _titleField.font           = [GM MidFontWithSize:16.0] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
-    _titleField.textColor      = PPPetsUIPrimaryTextColor();
+    _titleField.textColor      = AppPrimaryTextClr;
     _titleField.textAlignment  = Language.alignmentForCurrentLanguage;
     _titleField.clearButtonMode = UITextFieldViewModeWhileEditing;
     _titleField.returnKeyType  = UIReturnKeyDone;
@@ -654,7 +654,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
                                            NSForegroundColorAttributeName: UIColor.whiteColor}
                                 forState:UIControlStateSelected];
     [_typeControl setTitleTextAttributes:@{NSFontAttributeName: segFont,
-                                           NSForegroundColorAttributeName: PPPetsUIPrimaryTextColor()}
+                                           NSForegroundColorAttributeName: AppPrimaryTextClr}
                                 forState:UIControlStateNormal];
     [_typeControl addTarget:self action:@selector(pp_controlValueChanged:) forControlEvents:UIControlEventValueChanged];
 
@@ -754,7 +754,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
-    titleLabel.textColor = PPPetsUIPrimaryTextColor();
+    titleLabel.textColor = AppPrimaryTextClr;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
     [cardView addSubview:titleLabel];
@@ -1077,7 +1077,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
             PPRemEdSelectorCell *cell = [tableView dequeueReusableCellWithIdentifier:kPPRemEdSelectorCellID forIndexPath:indexPath];
 
             NSString *value = nil;
-            UIColor *valueColor = PPPetsUIPrimaryTextColor();
+            UIColor *valueColor = AppPrimaryTextClr;
 
             if (self.petsLoaded && self.selectedPetIndex != NSNotFound && self.selectedPetIndex < (NSInteger)self.pets.count) {
                 PPPetProfile *pet = self.pets[self.selectedPetIndex];
@@ -1116,7 +1116,7 @@ typedef NS_ENUM(NSInteger, PPRemEdSection) {
             [cell configureWithTitle:(kLang(@"pet_reminder_repeat_label") ?: @"Repeat")
                                value:ruleDisplay
                             iconName:@"repeat"];
-            cell.valueLabel.textColor = (self.reminder.repeatRule.length > 0) ? PPPetsUIBrandColor() : PPPetsUIPrimaryTextColor();
+            cell.valueLabel.textColor = (self.reminder.repeatRule.length > 0) ? PPPetsUIBrandColor() : AppPrimaryTextClr;
             return cell;
         }
         default:

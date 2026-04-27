@@ -53,8 +53,7 @@
 - (void)setupView
 {
     self.translatesAutoresizingMaskIntoConstraints = NO;
-    self.semanticContentAttribute = GM.setSemantic;
-
+ 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.font = [GM boldFontWithSize:18];
@@ -63,7 +62,7 @@
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.titleLabel.textAlignment = GM.setAligment;
-
+    self.titleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.locationLabel = [[UILabel alloc] init];
     self.locationLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationLabel.font = [GM MidFontWithSize:14];
@@ -135,7 +134,7 @@
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    [Styling applyCornerMaskToView:self.priceView tl:28 tr:12 bl:28 br:28];
+    [Styling applyCornerMaskToView:self.priceView tl:28 tr:8 bl:28 br:28];
 }
 
 #pragma mark - Public API

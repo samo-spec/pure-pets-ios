@@ -70,9 +70,22 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
     return [UIColor colorWithWhite:0.0 alpha:0.08];
 }
 
+static UIColor *PPPetCareVetViewerQuietRowColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+            return dark ? [UIColor colorWithWhite:1.0 alpha:0.045] : [UIColor colorWithWhite:0.0 alpha:0.026];
+        }];
+    }
+    return [UIColor colorWithWhite:0.0 alpha:0.026];
+}
+
 @interface PPPetCareVetViewrVC ()
 @property (nonatomic, strong) VetModel *vet;
 @property (nonatomic, copy) NSString *mainKindName;
+@property (nonatomic, strong) UIView *backgroundGlowTopView;
+@property (nonatomic, strong) UIView *backgroundGlowBottomView;
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
 @property (nonatomic, strong) UIView *heroView;
@@ -93,7 +106,11 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
 @property (nonatomic, strong) UIStackView *actionsStackView;
 @property (nonatomic, strong) UIButton *callButton;
 @property (nonatomic, strong) UIButton *whatsappButton;
+@property (nonatomic, strong) UIButton *shareButton;
+@property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
+- (void)pp_buildBackgroundAtmosphere;
+- (UIView *)pp_backgroundGlowViewWithRadius:(CGFloat)radius;
 @end
 
 @implementation PPPetCareVetViewrVC
@@ -138,6 +155,21 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
     [self pp_beginEntranceAnimationIfNeeded];
 }
 
+- (void)viewWillLayoutSubviews
+{
+    [super viewWillLayoutSubviews];
+    [self pp_updateViewportLayout];
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    self.heroView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroView.bounds
+                                                                cornerRadius:self.heroView.layer.cornerRadius].CGPath;
+    self.actionsSectionView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.actionsSectionView.bounds
+                                                                          cornerRadius:self.actionsSectionView.layer.cornerRadius].CGPath;
+}
+
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
 {
     [super traitCollectionDidChange:previousTraitCollection];
@@ -157,11 +189,13 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
 
 - (void)pp_setupLayout
 {
+    [self pp_buildBackgroundAtmosphere];
+
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
     self.scrollView.backgroundColor = UIColor.clearColor;
     self.scrollView.alwaysBounceVertical = YES;
-    self.scrollView.showsVerticalScrollIndicator = NO;
+    self.scrollView.showsVerticalScrollIndicator = YES;
     self.scrollView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     if (@available(iOS 11.0, *)) {
         self.scrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -175,8 +209,9 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
     [self.view addSubview:self.scrollView];
     [self.scrollView addSubview:self.contentView];
 
+    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.scrollView.topAnchor constraintEqualToAnchor:safe.topAnchor],
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
@@ -206,24 +241,58 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
     [self pp_buildActionsSection];
 }
 
+- (void)pp_buildBackgroundAtmosphere
+{
+    self.backgroundGlowTopView = [self pp_backgroundGlowViewWithRadius:132.0];
+    self.backgroundGlowBottomView = [self pp_backgroundGlowViewWithRadius:154.0];
+    [self.view addSubview:self.backgroundGlowTopView];
+    [self.view addSubview:self.backgroundGlowBottomView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.backgroundGlowTopView.widthAnchor constraintEqualToConstant:264.0],
+        [self.backgroundGlowTopView.heightAnchor constraintEqualToConstant:264.0],
+        [self.backgroundGlowTopView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-88.0],
+        [self.backgroundGlowTopView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:92.0],
+
+        [self.backgroundGlowBottomView.widthAnchor constraintEqualToConstant:308.0],
+        [self.backgroundGlowBottomView.heightAnchor constraintEqualToConstant:308.0],
+        [self.backgroundGlowBottomView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-134.0],
+        [self.backgroundGlowBottomView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:78.0]
+    ]];
+}
+
+- (UIView *)pp_backgroundGlowViewWithRadius:(CGFloat)radius
+{
+    UIView *view = [[UIView alloc] init];
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    view.userInteractionEnabled = NO;
+    view.alpha = 0.0;
+    view.layer.cornerRadius = radius;
+    view.layer.shadowRadius = 56.0;
+    view.layer.shadowOpacity = 0.32;
+    view.layer.shadowOffset = CGSizeZero;
+    view.clipsToBounds = NO;
+    return view;
+}
+
 - (void)pp_buildHeroSection
 {
     self.heroView = [[UIView alloc] init];
     self.heroView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroView.layer.cornerRadius = 34.0;
+    self.heroView.layer.cornerRadius = 30.0;
     self.heroView.layer.borderWidth = 0.8;
     self.heroView.clipsToBounds = NO;
     [self.heroView pp_setShadowColor:UIColor.blackColor];
-    self.heroView.layer.shadowOpacity = 0.10;
-    self.heroView.layer.shadowRadius = 24.0;
-    self.heroView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.heroView.layer.shadowOpacity = 0.08;
+    self.heroView.layer.shadowRadius = 22.0;
+    self.heroView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
     if (@available(iOS 13.0, *)) {
         self.heroView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
     self.heroFillView = [[UIView alloc] init];
     self.heroFillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroFillView.layer.cornerRadius = 34.0;
+    self.heroFillView.layer.cornerRadius = 30.0;
     self.heroFillView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.heroFillView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -231,8 +300,8 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
 
     self.logoPlateView = [[UIView alloc] init];
     self.logoPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.logoPlateView.layer.cornerRadius = 42.0;
-    self.logoPlateView.layer.borderWidth = 0.8;
+    self.logoPlateView.layer.cornerRadius = 58.0;
+    self.logoPlateView.layer.borderWidth = 1.0;
     self.logoPlateView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.logoPlateView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -249,7 +318,7 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
                                          lines:1];
     self.eyebrowLabel.text = PPPetCareVetViewerLocalized(@"pet_care_eyebrow", @"Premium care");
 
-    self.titleLabel = [self pp_labelWithFont:[GM boldFontWithSize:28.0] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold]
+    self.titleLabel = [self pp_labelWithFont:[GM boldFontWithSize:31.0] ?: [UIFont systemFontOfSize:31.0 weight:UIFontWeightBold]
                                        color:PPPetCareVetViewerTextColor()
                                        lines:2];
     self.titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -275,23 +344,22 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
     [self.heroFillView addSubview:self.subtitleLabel];
     [self.heroFillView addSubview:self.statusLabel];
 
-    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
+    self.heroHeightConstraint = [self.heroView.heightAnchor constraintEqualToConstant:226.0];
     [NSLayoutConstraint activateConstraints:@[
         [self.heroView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12.0],
         [self.heroView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareVetViewerSideInset],
         [self.heroView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareVetViewerSideInset],
-        [self.heroView.heightAnchor constraintGreaterThanOrEqualToConstant:286.0],
-        [self.heroView.topAnchor constraintGreaterThanOrEqualToAnchor:safe.topAnchor constant:4.0],
+        self.heroHeightConstraint,
 
         [self.heroFillView.topAnchor constraintEqualToAnchor:self.heroView.topAnchor],
         [self.heroFillView.leadingAnchor constraintEqualToAnchor:self.heroView.leadingAnchor],
         [self.heroFillView.trailingAnchor constraintEqualToAnchor:self.heroView.trailingAnchor],
         [self.heroFillView.bottomAnchor constraintEqualToAnchor:self.heroView.bottomAnchor],
 
-        [self.logoPlateView.topAnchor constraintEqualToAnchor:self.heroFillView.topAnchor constant:22.0],
         [self.logoPlateView.leadingAnchor constraintEqualToAnchor:self.heroFillView.leadingAnchor constant:22.0],
-        [self.logoPlateView.widthAnchor constraintEqualToConstant:84.0],
-        [self.logoPlateView.heightAnchor constraintEqualToConstant:84.0],
+        [self.logoPlateView.centerYAnchor constraintEqualToAnchor:self.heroFillView.centerYAnchor],
+        [self.logoPlateView.widthAnchor constraintEqualToConstant:116.0],
+        [self.logoPlateView.heightAnchor constraintEqualToConstant:116.0],
 
         [self.logoImageView.topAnchor constraintEqualToAnchor:self.logoPlateView.topAnchor],
         [self.logoImageView.leadingAnchor constraintEqualToAnchor:self.logoPlateView.leadingAnchor],
@@ -308,14 +376,42 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
 
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.titleLabel.trailingAnchor],
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:8.0],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:7.0],
 
-        [self.statusLabel.leadingAnchor constraintEqualToAnchor:self.heroFillView.leadingAnchor constant:22.0],
+        [self.statusLabel.leadingAnchor constraintEqualToAnchor:self.titleLabel.leadingAnchor],
         [self.statusLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroFillView.trailingAnchor constant:-22.0],
-        [self.statusLabel.bottomAnchor constraintEqualToAnchor:self.heroFillView.bottomAnchor constant:-22.0],
-        [self.statusLabel.heightAnchor constraintEqualToConstant:28.0],
-        [self.statusLabel.widthAnchor constraintGreaterThanOrEqualToConstant:112.0]
+        [self.statusLabel.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:14.0],
+        [self.statusLabel.bottomAnchor constraintLessThanOrEqualToAnchor:self.heroFillView.bottomAnchor constant:-24.0],
+        [self.statusLabel.heightAnchor constraintEqualToConstant:30.0],
+        [self.statusLabel.widthAnchor constraintGreaterThanOrEqualToConstant:124.0]
     ]];
+}
+
+- (void)pp_updateViewportLayout
+{
+    if (!self.heroHeightConstraint) {
+        return;
+    }
+
+    CGFloat width = CGRectGetWidth(self.view.bounds) - (PPPetCareVetViewerSideInset * 2.0);
+    if (width <= 0.0) {
+        return;
+    }
+
+    BOOL isPad = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad;
+    CGFloat targetHeight = isPad
+        ? MIN(MAX(width * 0.34, 236.0), 292.0)
+        : MIN(MAX(width * 0.58, 220.0), 248.0);
+    if (fabs(self.heroHeightConstraint.constant - targetHeight) > 0.5) {
+        self.heroHeightConstraint.constant = targetHeight;
+    }
+
+    CGFloat bottomInset = MAX(self.view.safeAreaInsets.bottom, 18.0) + 112.0;
+    UIEdgeInsets inset = self.scrollView.contentInset;
+    if (fabs(inset.bottom - bottomInset) > 0.5 || inset.top != 0.0) {
+        self.scrollView.contentInset = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
+        self.scrollView.scrollIndicatorInsets = self.scrollView.contentInset;
+    }
 }
 
 - (void)pp_buildProfileSection
@@ -379,16 +475,49 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
 
 - (void)pp_buildActionsSection
 {
-    self.actionsSectionView = [self pp_surfaceSectionView];
-    [self.contentView addSubview:self.actionsSectionView];
+    self.actionsSectionView = [[UIView alloc] init];
+    self.actionsSectionView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.actionsSectionView.layer.cornerRadius = 30.0;
+    self.actionsSectionView.layer.borderWidth = 0.8;
+    self.actionsSectionView.clipsToBounds = NO;
+    [self.actionsSectionView pp_setShadowColor:UIColor.blackColor];
+    self.actionsSectionView.layer.shadowRadius = 24.0;
+    self.actionsSectionView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    if (@available(iOS 13.0, *)) {
+        self.actionsSectionView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.view addSubview:self.actionsSectionView];
+
+    UIView *dockFillView = [[UIView alloc] init];
+    dockFillView.translatesAutoresizingMaskIntoConstraints = NO;
+    dockFillView.layer.cornerRadius = 30.0;
+    dockFillView.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        dockFillView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.actionsSectionView addSubview:dockFillView];
+
+    if (@available(iOS 13.0, *)) {
+        UIVisualEffectView *materialView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+        materialView.translatesAutoresizingMaskIntoConstraints = NO;
+        materialView.userInteractionEnabled = NO;
+        [dockFillView addSubview:materialView];
+        [NSLayoutConstraint activateConstraints:@[
+            [materialView.topAnchor constraintEqualToAnchor:dockFillView.topAnchor],
+            [materialView.leadingAnchor constraintEqualToAnchor:dockFillView.leadingAnchor],
+            [materialView.trailingAnchor constraintEqualToAnchor:dockFillView.trailingAnchor],
+            [materialView.bottomAnchor constraintEqualToAnchor:dockFillView.bottomAnchor]
+        ]];
+    }
 
     self.actionsStackView = [[UIStackView alloc] init];
     self.actionsStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionsStackView.axis = UILayoutConstraintAxisVertical;
+    self.actionsStackView.axis = UILayoutConstraintAxisHorizontal;
     self.actionsStackView.alignment = UIStackViewAlignmentFill;
-    self.actionsStackView.distribution = UIStackViewDistributionFillEqually;
-    self.actionsStackView.spacing = 12.0;
-    [self.actionsSectionView addSubview:self.actionsStackView];
+    self.actionsStackView.distribution = UIStackViewDistributionFill;
+    self.actionsStackView.spacing = 10.0;
+    self.actionsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [dockFillView addSubview:self.actionsStackView];
 
     self.callButton = [self pp_actionButtonWithTitle:PPPetCareVetViewerLocalized(@"pet_care_call", @"Call")
                                               symbol:@"phone.fill"
@@ -398,27 +527,39 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
                                                   symbol:@"message.fill"
                                                  primary:NO
                                                 selector:@selector(pp_whatsappTapped)];
-    UIButton *shareButton = [self pp_actionButtonWithTitle:PPPetCareVetViewerLocalized(@"pet_care_viewer_share", @"Share")
-                                                     symbol:@"square.and.arrow.up"
-                                                    primary:NO
-                                                   selector:@selector(pp_shareTapped)];
+    self.shareButton = [self pp_actionButtonWithTitle:PPPetCareVetViewerLocalized(@"pet_care_viewer_share", @"Share")
+                                               symbol:@"square.and.arrow.up"
+                                              primary:NO
+                                             selector:@selector(pp_shareTapped)];
 
     [self.actionsStackView addArrangedSubview:self.callButton];
     [self.actionsStackView addArrangedSubview:self.whatsappButton];
-    [self.actionsStackView addArrangedSubview:shareButton];
+    [self.actionsStackView addArrangedSubview:self.shareButton];
 
+    UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     [NSLayoutConstraint activateConstraints:@[
-        [self.actionsSectionView.topAnchor constraintEqualToAnchor:self.aboutSectionView.bottomAnchor constant:PPPetCareVetViewerSectionSpacing],
-        [self.actionsSectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:PPPetCareVetViewerSideInset],
-        [self.actionsSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-PPPetCareVetViewerSideInset],
-        [self.actionsSectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-28.0],
+        [self.aboutSectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-28.0],
 
-        [self.actionsStackView.topAnchor constraintEqualToAnchor:self.actionsSectionView.topAnchor constant:16.0],
-        [self.actionsStackView.leadingAnchor constraintEqualToAnchor:self.actionsSectionView.leadingAnchor constant:16.0],
-        [self.actionsStackView.trailingAnchor constraintEqualToAnchor:self.actionsSectionView.trailingAnchor constant:-16.0],
-        [self.actionsStackView.bottomAnchor constraintEqualToAnchor:self.actionsSectionView.bottomAnchor constant:-16.0],
-        [self.actionsStackView.heightAnchor constraintEqualToConstant:180.0]
+        [self.actionsSectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPPetCareVetViewerSideInset],
+        [self.actionsSectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPPetCareVetViewerSideInset],
+        [self.actionsSectionView.bottomAnchor constraintEqualToAnchor:safe.bottomAnchor constant:-12.0],
+        [self.actionsSectionView.heightAnchor constraintEqualToConstant:78.0],
+
+        [dockFillView.topAnchor constraintEqualToAnchor:self.actionsSectionView.topAnchor],
+        [dockFillView.leadingAnchor constraintEqualToAnchor:self.actionsSectionView.leadingAnchor],
+        [dockFillView.trailingAnchor constraintEqualToAnchor:self.actionsSectionView.trailingAnchor],
+        [dockFillView.bottomAnchor constraintEqualToAnchor:self.actionsSectionView.bottomAnchor],
+
+        [self.actionsStackView.topAnchor constraintEqualToAnchor:dockFillView.topAnchor constant:10.0],
+        [self.actionsStackView.leadingAnchor constraintEqualToAnchor:dockFillView.leadingAnchor constant:10.0],
+        [self.actionsStackView.trailingAnchor constraintEqualToAnchor:dockFillView.trailingAnchor constant:-10.0],
+        [self.actionsStackView.bottomAnchor constraintEqualToAnchor:dockFillView.bottomAnchor constant:-10.0],
+
+        [self.whatsappButton.widthAnchor constraintEqualToConstant:58.0],
+        [self.shareButton.widthAnchor constraintEqualToConstant:58.0]
     ]];
+
+    [self.view bringSubviewToFront:self.actionsSectionView];
 }
 
 #pragma mark - Content
@@ -550,6 +691,15 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
         dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
     UIColor *accent = PPPetCareVetViewerAccentColor();
+    UIColor *secondaryGlow = [UIColor colorWithRed:0.30 green:0.62 blue:0.48 alpha:1.0];
+    self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemGroupedBackgroundColor;
+    self.backgroundGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.16 : 0.11];
+    self.backgroundGlowTopView.layer.shadowColor = accent.CGColor;
+    self.backgroundGlowTopView.alpha = 1.0;
+    self.backgroundGlowBottomView.backgroundColor = [secondaryGlow colorWithAlphaComponent:dark ? 0.13 : 0.09];
+    self.backgroundGlowBottomView.layer.shadowColor = secondaryGlow.CGColor;
+    self.backgroundGlowBottomView.alpha = 1.0;
+
     [self.heroView pp_setBorderColor:PPPetCareVetViewerBorderColor()];
     self.heroView.layer.shadowOpacity = dark ? 0.14 : 0.09;
     self.heroFillView.backgroundColor = PPPetCareVetViewerSurfaceColor();
@@ -566,6 +716,15 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
     [self pp_applySectionTheme:self.profileSectionView];
     [self pp_applySectionTheme:self.aboutSectionView];
     [self pp_applySectionTheme:self.actionsSectionView];
+    self.actionsSectionView.layer.shadowOpacity = dark ? 0.18 : 0.10;
+    self.callButton.backgroundColor = accent;
+    self.callButton.tintColor = UIColor.whiteColor;
+    [self.callButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    for (UIButton *button in @[self.whatsappButton, self.shareButton]) {
+        button.tintColor = accent;
+        button.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.15 : 0.09];
+        [button pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.28 : 0.18]];
+    }
     self.profileTitleLabel.textColor = PPPetCareVetViewerTextColor();
     self.aboutTitleLabel.textColor = PPPetCareVetViewerTextColor();
     self.aboutBodyLabel.textColor = PPPetCareVetViewerTextColor();
@@ -687,12 +846,20 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
 {
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
-    container.backgroundColor = [accent colorWithAlphaComponent:0.075];
-    container.layer.cornerRadius = 20.0;
-    container.layer.borderWidth = 0.8;
-    [container pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
+    container.backgroundColor = PPPetCareVetViewerQuietRowColor();
+    container.layer.cornerRadius = 18.0;
+    container.layer.borderWidth = 0.7;
+    [container pp_setBorderColor:[accent colorWithAlphaComponent:0.11]];
     if (@available(iOS 13.0, *)) {
         container.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIView *iconShellView = [[UIView alloc] init];
+    iconShellView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconShellView.backgroundColor = [accent colorWithAlphaComponent:0.11];
+    iconShellView.layer.cornerRadius = 17.0;
+    if (@available(iOS 13.0, *)) {
+        iconShellView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
     UIImageView *iconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:symbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
@@ -715,20 +882,26 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
     textStack.axis = UILayoutConstraintAxisVertical;
     textStack.spacing = 3.0;
 
-    [container addSubview:iconView];
+    [container addSubview:iconShellView];
+    [iconShellView addSubview:iconView];
     [container addSubview:textStack];
 
     [NSLayoutConstraint activateConstraints:@[
-        [container.heightAnchor constraintGreaterThanOrEqualToConstant:68.0],
-        [iconView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:16.0],
-        [iconView.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:22.0],
-        [iconView.heightAnchor constraintEqualToConstant:22.0],
+        [container.heightAnchor constraintGreaterThanOrEqualToConstant:62.0],
+        [iconShellView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:14.0],
+        [iconShellView.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
+        [iconShellView.widthAnchor constraintEqualToConstant:34.0],
+        [iconShellView.heightAnchor constraintEqualToConstant:34.0],
 
-        [textStack.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:14.0],
+        [iconView.centerXAnchor constraintEqualToAnchor:iconShellView.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconShellView.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:17.0],
+        [iconView.heightAnchor constraintEqualToConstant:17.0],
+
+        [textStack.leadingAnchor constraintEqualToAnchor:iconShellView.trailingAnchor constant:12.0],
         [textStack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor constant:-16.0],
-        [textStack.topAnchor constraintGreaterThanOrEqualToAnchor:container.topAnchor constant:12.0],
-        [textStack.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-12.0],
+        [textStack.topAnchor constraintGreaterThanOrEqualToAnchor:container.topAnchor constant:10.0],
+        [textStack.bottomAnchor constraintLessThanOrEqualToAnchor:container.bottomAnchor constant:-10.0],
         [textStack.centerYAnchor constraintEqualToAnchor:container.centerYAnchor]
     ]];
     return container;
@@ -741,15 +914,15 @@ static UIColor *PPPetCareVetViewerBorderColor(void)
 {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
-    button.layer.cornerRadius = 22.0;
-    button.layer.borderWidth = primary ? 0.0 : 0.8;
+    button.layer.cornerRadius = primary ? 24.0 : 22.0;
+    button.layer.borderWidth = primary ? 0.0 : 1.0;
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    button.titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:14.0 weight:UIFontWeightSemibold];
+    button.titleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
     button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 14.0, 0.0, 14.0);
-    [button setTitle:title forState:UIControlStateNormal];
+    button.contentEdgeInsets = primary ? UIEdgeInsetsMake(0.0, 18.0, 0.0, 18.0) : UIEdgeInsetsZero;
+    [button setTitle:primary ? title : nil forState:UIControlStateNormal];
     [button setImage:[[UIImage systemImageNamed:symbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
     button.tintColor = primary ? UIColor.whiteColor : PPPetCareVetViewerAccentColor();
     [button setTitleColor:(primary ? UIColor.whiteColor : PPPetCareVetViewerTextColor()) forState:UIControlStateNormal];

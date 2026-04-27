@@ -261,7 +261,7 @@
     if ([self pp_isDarkMode]) {
         return [UIColor colorWithWhite:1.0 alpha:0.045];
     }
-    UIColor *baseColor = AppForgroundColr ?: UIColor.secondarySystemGroupedBackgroundColor;
+    UIColor *baseColor = AppBackgroundClr ?: UIColor.secondarySystemGroupedBackgroundColor;
     return [baseColor colorWithAlphaComponent:0.78];
 }
 
