@@ -1169,10 +1169,9 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     for (NSInteger i = 0; i < maxLines; i++) {
         NSDictionary *issue = issues[i];
         NSString *name = issue[@"name"];
-        NSString *itemID = issue[@"itemID"];
         NSInteger requested = [issue[@"requestedQty"] integerValue];
         NSInteger available = [issue[@"availableQty"] integerValue];
-        NSString *title = name.length > 0 ? name : (itemID.length > 0 ? itemID : kLang(@"checkout_item_fallback"));
+        NSString *title = name.length > 0 ? name : kLang(@"checkout_item_fallback");
 
         NSString *line = nil;
         if (available <= 0) {

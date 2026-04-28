@@ -5,7 +5,7 @@
 //  Created by Mohammed Ahmed on 29/06/2025.
 
 #import "CartViewController.h"
-#import "BBCheckoutSummaryView.h"
+
 #import "CartManager.h"
 #import "PPCartCalculator.h"
 #import "PPOrderManager.h"
@@ -25,6 +25,11 @@ static CGFloat const kCartHeaderTopInset = 8.0;
 static CGFloat const kCartHeaderTableSpacing = 18.0;
 static CGFloat const kCartTableBottomInset = 26.0;
 static CGFloat const kCartHeaderStretchLimit = 34.0;
+
+static UIColor *PPCartScreenBackgroundColor(void)
+{
+    return AppBackgroundClrDarker;
+}
 
 @interface CustomTextViewCell : XLFormTextViewCell @end
 
@@ -75,9 +80,10 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 @property (nonatomic, strong) PPSPinnerView *spinner;
 
 @property (nonatomic, strong) UITableView *cartTableView;
-@property (nonatomic, strong) BBCheckoutSummaryView *summaryView;
+@property (nonatomic, strong) PPPremuimChekoutView *summaryView;
 @property (nonatomic, strong) UIView *topGlowView;
 @property (nonatomic, strong) UIView *bottomGlowView;
+@property (nonatomic, strong) UIView *bottomSecondaryGlowView;
 @property (nonatomic, strong) UIView *headerChromeContainerView;
 @property (nonatomic, strong) UIVisualEffectView *headerChromeView;
 @property (nonatomic, strong) UIView *headerTintOverlayView;
@@ -89,7 +95,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 @property (nonatomic, strong) UILabel *headerTitleLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
 @property (nonatomic, strong) UILabel *headerCompactSummaryLabel;
-@property (nonatomic, strong) UIButton *headerSupportButton;
+@property (nonatomic, strong) UIButton *headerEditButton;
 @property (nonatomic, strong) UIStackView *headerMetricsStack;
 @property (nonatomic, strong) UILabel *itemsMetricLabel;
 @property (nonatomic, strong) UILabel *subtotalMetricLabel;
@@ -108,6 +114,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
            nullable) NSLayoutConstraint *tableBottomConstraint;
 @property (nonatomic, strong, readonly) PPEmptyStateConfig *config;
 @property (nonatomic, assign) BOOL isPerformingTableMutation;
+@property (nonatomic, assign) BOOL cartEditingModeActive;
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @property (nonatomic, assign) BOOL didPrimeInitialCartScrollPosition;
 @property (nonatomic, assign) CGFloat headerCollapseProgress;
@@ -118,7 +125,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    [self pp_applyCartScreenBackgroundColor];
     [self pp_buildBackgroundDecor];
 
     self.cartTableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
@@ -178,7 +185,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
 - (void)setSummuryViewAtBottom
 {
-    self.summaryView = [[BBCheckoutSummaryView alloc] init];
+    self.summaryView = [[PPPremuimChekoutView alloc] init];
     
     [self.view addSubview:self.summaryView];
     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
@@ -199,7 +206,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     [UIView performWithoutAnimation:^{
         [self.summaryView updateTotalsWithItems:initSummary.subtotal shipping:initSummary.shippingFee showTitle:NO];
-        self.summaryView.showDetails = NO;
+        self.summaryView.showDetails = YES;
         [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
         self.summaryView.showsItemsPreview = NO;
         [self.summaryView setCheckoutBTNTitle:kLang(@"Checkout")
@@ -229,6 +236,15 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         self.undoContainerView.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.undoContainerView.bounds
                                       cornerRadius:self.undoContainerView.layer.cornerRadius].CGPath;
+    }
+
+    if (!CGRectIsEmpty(self.bottomGlowView.bounds)) {
+        self.bottomGlowView.layer.shadowPath =
+            [UIBezierPath bezierPathWithOvalInRect:self.bottomGlowView.bounds].CGPath;
+    }
+    if (!CGRectIsEmpty(self.bottomSecondaryGlowView.bounds)) {
+        self.bottomSecondaryGlowView.layer.shadowPath =
+            [UIBezierPath bezierPathWithOvalInRect:self.bottomSecondaryGlowView.bounds].CGPath;
     }
 
     if (!self.didPrimeInitialCartScrollPosition && self.cartTableView) {
@@ -296,12 +312,58 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [self presentViewController:menu animated:YES completion:nil];
 }
 
+- (BOOL)pp_hasEditableCartItems
+{
+    return [CartManager sharedManager].cartItems.count > 0;
+}
+
+- (void)pp_toggleCartEditMode
+{
+    [self pp_setCartEditing:!self.cartTableView.isEditing animated:YES];
+}
+
+- (void)pp_setCartEditing:(BOOL)editing animated:(BOOL)animated
+{
+    BOOL shouldEdit = editing && [self pp_hasEditableCartItems];
+    self.cartEditingModeActive = shouldEdit;
+    [self.cartTableView setEditing:shouldEdit animated:animated];
+    [self pp_refreshCartEditControls];
+}
+
+- (void)pp_refreshCartEditControls
+{
+    BOOL isEditing = self.cartTableView.isEditing || self.cartEditingModeActive;
+    BOOL hasItems = [self pp_hasEditableCartItems];
+    NSString *title = isEditing ? kLang(@"Done") : kLang(@"Edit");
+    UIButton *editButton =
+    [PPButtonHelper pp_buttonWithTitle:title
+                                  font:[GM fontWithSize:17]
+                             imageName:@""
+                                target:self
+                                config:[UIButtonConfiguration tintedButtonConfiguration]
+                                action:@selector(pp_toggleCartEditMode)];
+    editButton.enabled = hasItems || isEditing;
+    editButton.alpha = editButton.enabled ? 1.0 : 0.46;
+    editButton.accessibilityLabel = title;
+    editButton.accessibilityHint = kLang(@"editing_mode");
+
+    UIBarButtonItem *editItem =
+    [[UIBarButtonItem alloc] initWithCustomView:editButton];
+    editItem.enabled = hasItems || isEditing;
+    editItem.accessibilityLabel = title;
+    editItem.accessibilityHint = kLang(@"editing_mode");
+    self.navigationItem.rightBarButtonItem = editItem;
+
+    [self pp_styleHeaderEditButton:self.headerEditButton];
+}
+
 -(void)viewWillAppear:(BOOL)animated
 {
     [CartManager.sharedManager refreshPricingConfiguration];
     [super viewWillAppear:animated];
 
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"cartTitle") showBack:NO];
+    [self pp_applyCartScreenBackgroundColor];
 
     NSString *leadingSymbol = [self pp_cartCanNavigateBackInStack] ? PPChevronName : @"house.fill";
     self.navigationItem.leftBarButtonItem =
@@ -314,17 +376,21 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     ? NSLocalizedString(@"Back", @"Navigate back")
     : NSLocalizedString(@"Home", @"Navigate home");
 
-    self.navigationItem.rightBarButtonItem =
-    [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"headphones.dots")
-                                     style:UIBarButtonItemStylePlain
-                                    target:self
-                                    action:@selector(startEditingCartItems)];
-    self.navigationItem.rightBarButtonItem.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
-    self.navigationItem.rightBarButtonItem.accessibilityHint  = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
+    [self pp_refreshCartEditControls];
 
     [self.summaryView setCheckoutLoading:NO];
     [self updateTotalLabel];
     [self.summaryView layoutIfNeeded];
+    [self pp_startBackgroundGlowMotionIfNeeded];
+}
+
+- (void)pp_applyCartScreenBackgroundColor
+{
+    UIColor *backgroundColor = PPCartScreenBackgroundColor();
+    self.view.backgroundColor = backgroundColor;
+    self.navigationController.view.backgroundColor = backgroundColor;
+    self.cartTableView.backgroundColor = UIColor.clearColor;
+    self.cartTableView.backgroundView.backgroundColor = UIColor.clearColor;
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -377,6 +443,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [super viewWillDisappear:animated];
     //[[NSNotificationCenter defaultCenter]   postNotificationName:PPExpandSystemTabBarNotification  object:nil];
     [_summaryView pp_stopTrustBannerShimmer];
+    [self pp_stopBackgroundGlowMotion];
     [self pp_hideUndoBarAnimated:NO clearPayload:NO];
 }
 
@@ -387,7 +454,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
 - (void)pp_buildBackgroundDecor
 {
-    if (self.topGlowView || self.bottomGlowView) return;
+    if (self.topGlowView || self.bottomGlowView || self.bottomSecondaryGlowView) return;
 
     UIView *topGlow = [[UIView alloc] init];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
@@ -399,11 +466,27 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     UIView *bottomGlow = [[UIView alloc] init];
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [[UIColor systemOrangeColor] colorWithAlphaComponent:0.05];
-    bottomGlow.layer.cornerRadius = 130.0;
-    bottomGlow.alpha = 0.38;
+    bottomGlow.backgroundColor = [(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.075];
+    bottomGlow.layer.cornerRadius = 165.0;
+    bottomGlow.alpha = 0.50;
+    [bottomGlow pp_setShadowColor:(AppPrimaryClr ?: UIColor.systemPinkColor)];
+    bottomGlow.layer.shadowOpacity = 0.22;
+    bottomGlow.layer.shadowRadius = 46.0;
+    bottomGlow.layer.shadowOffset = CGSizeZero;
+
+    UIView *bottomSecondaryGlow = [[UIView alloc] init];
+    bottomSecondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomSecondaryGlow.userInteractionEnabled = NO;
+    bottomSecondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.22];
+    bottomSecondaryGlow.layer.cornerRadius = 130.0;
+    bottomSecondaryGlow.alpha = 0.36;
+    [bottomSecondaryGlow pp_setShadowColor:[UIColor whiteColor]];
+    bottomSecondaryGlow.layer.shadowOpacity = 0.18;
+    bottomSecondaryGlow.layer.shadowRadius = 34.0;
+    bottomSecondaryGlow.layer.shadowOffset = CGSizeZero;
 
     [self.view addSubview:topGlow];
+    [self.view addSubview:bottomSecondaryGlow];
     [self.view addSubview:bottomGlow];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -412,14 +495,84 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [topGlow.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-76.0],
         [topGlow.rightAnchor constraintEqualToAnchor:self.view.rightAnchor constant:96.0],
 
-        [bottomGlow.widthAnchor constraintEqualToConstant:260.0],
-        [bottomGlow.heightAnchor constraintEqualToConstant:260.0],
-        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:106.0],
-        [bottomGlow.leftAnchor constraintEqualToAnchor:self.view.leftAnchor constant:-118.0]
+        [bottomSecondaryGlow.widthAnchor constraintEqualToConstant:260.0],
+        [bottomSecondaryGlow.heightAnchor constraintEqualToConstant:260.0],
+        [bottomSecondaryGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:78.0],
+        [bottomSecondaryGlow.rightAnchor constraintEqualToAnchor:self.view.rightAnchor constant:88.0],
+
+        [bottomGlow.widthAnchor constraintEqualToConstant:330.0],
+        [bottomGlow.heightAnchor constraintEqualToConstant:330.0],
+        [bottomGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:118.0],
+        [bottomGlow.leftAnchor constraintEqualToAnchor:self.view.leftAnchor constant:-132.0]
     ]];
 
     self.topGlowView = topGlow;
     self.bottomGlowView = bottomGlow;
+    self.bottomSecondaryGlowView = bottomSecondaryGlow;
+    [self pp_startBackgroundGlowMotionIfNeeded];
+}
+
+- (void)pp_startBackgroundGlowMotionIfNeeded
+{
+    if (!self.bottomGlowView && !self.bottomSecondaryGlowView) return;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self.bottomGlowView.layer removeAnimationForKey:@"pp_cart_bottom_glow_breath"];
+        [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_cart_bottom_secondary_glow_breath"];
+        self.bottomGlowView.transform = CGAffineTransformIdentity;
+        self.bottomSecondaryGlowView.transform = CGAffineTransformIdentity;
+        self.bottomGlowView.alpha = 0.50;
+        self.bottomSecondaryGlowView.alpha = 0.36;
+        return;
+    }
+
+    [self pp_addBreathingGlowToView:self.bottomGlowView
+                                 key:@"pp_cart_bottom_glow_breath"
+                           fromAlpha:0.40
+                             toAlpha:0.58
+                           fromScale:0.95
+                             toScale:1.08
+                            duration:6.8];
+    [self pp_addBreathingGlowToView:self.bottomSecondaryGlowView
+                                 key:@"pp_cart_bottom_secondary_glow_breath"
+                           fromAlpha:0.28
+                             toAlpha:0.43
+                           fromScale:1.04
+                             toScale:0.96
+                            duration:7.6];
+}
+
+- (void)pp_addBreathingGlowToView:(UIView *)view
+                               key:(NSString *)key
+                         fromAlpha:(CGFloat)fromAlpha
+                           toAlpha:(CGFloat)toAlpha
+                         fromScale:(CGFloat)fromScale
+                           toScale:(CGFloat)toScale
+                          duration:(CFTimeInterval)duration
+{
+    if (!view || [view.layer animationForKey:key]) return;
+
+    CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacity.fromValue = @(fromAlpha);
+    opacity.toValue = @(toAlpha);
+
+    CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    scale.fromValue = @(fromScale);
+    scale.toValue = @(toScale);
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[opacity, scale];
+    group.duration = duration;
+    group.autoreverses = YES;
+    group.repeatCount = HUGE_VALF;
+    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [view.layer addAnimation:group forKey:key];
+}
+
+- (void)pp_stopBackgroundGlowMotion
+{
+    [self.bottomGlowView.layer removeAnimationForKey:@"pp_cart_bottom_glow_breath"];
+    [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_cart_bottom_secondary_glow_breath"];
 }
 
 - (UILabel *)pp_buildMetricLabel
@@ -511,6 +664,60 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     button.accessibilityLabel = NSLocalizedString(@"a11y_btn_cart_support", @"Contact support");
     button.accessibilityHint = NSLocalizedString(@"a11y_btn_cart_support_hint", @"Double-tap to contact customer support");
+}
+
+- (void)pp_styleHeaderEditButton:(UIButton *)button
+{
+    if (!button) return;
+
+    BOOL isEditing = self.cartTableView.isEditing || self.cartEditingModeActive;
+    BOOL hasItems = [CartManager sharedManager].cartItems.count > 0;
+    NSString *title = isEditing ? kLang(@"Done") : kLang(@"Edit");
+    NSString *symbolName = isEditing ? @"checkmark" : @"pencil";
+    UIColor *foregroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    UIColor *backgroundColor = [UIColor colorWithWhite:1.0 alpha:(hasItems || isEditing) ? 0.14 : 0.07];
+    UIColor *borderColor = [UIColor colorWithWhite:1.0 alpha:(hasItems || isEditing) ? 0.10 : 0.06];
+    UIImage *editImage = [UIImage pp_symbolNamed:symbolName
+                                       pointSize:14
+                                          weight:UIImageSymbolWeightSemibold
+                                           scale:UIImageSymbolScaleMedium
+                                         palette:@[foregroundColor, foregroundColor]
+                                    makeTemplate:YES];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.image = editImage;
+        config.imagePlacement = NSDirectionalRectEdgeLeading;
+        config.imagePadding = 6.0;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
+        config.baseForegroundColor = foregroundColor;
+        config.background.backgroundColor = backgroundColor;
+        config.background.strokeColor = borderColor;
+        config.background.strokeWidth = 0.8;
+        config.attributedTitle = [[NSAttributedString alloc] initWithString:title
+                                                                  attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:13],
+            NSForegroundColorAttributeName: foregroundColor
+        }];
+        button.configuration = config;
+    } else {
+        [button setTitle:title forState:UIControlStateNormal];
+        [button setImage:editImage forState:UIControlStateNormal];
+        [button setTitleColor:foregroundColor forState:UIControlStateNormal];
+        button.tintColor = foregroundColor;
+        button.titleLabel.font = [GM boldFontWithSize:13];
+        button.backgroundColor = backgroundColor;
+        button.layer.cornerRadius = 19.0;
+        button.layer.borderWidth = 0.8;
+        [button pp_setBorderColor:borderColor];
+        button.contentEdgeInsets = UIEdgeInsetsMake(10.0, 14.0, 10.0, 14.0);
+    }
+
+    button.enabled = hasItems || isEditing;
+    button.alpha = button.enabled ? 1.0 : 0.46;
+    button.accessibilityLabel = title;
+    button.accessibilityHint = kLang(@"editing_mode");
 }
 
 - (void)pp_setUndoButtonTitle:(NSString *)title
@@ -700,10 +907,10 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     [compactSummaryLabel setContentHuggingPriority:UILayoutPriorityDefaultLow
                                            forAxis:UILayoutConstraintAxisHorizontal];
 
-    UIButton *supportButton = [UIButton buttonWithType:UIButtonTypeSystem];
-    supportButton.translatesAutoresizingMaskIntoConstraints = NO;
-    [self pp_styleHeaderSupportButton:supportButton];
-    [supportButton addTarget:self action:@selector(startEditingCartItems) forControlEvents:UIControlEventTouchUpInside];
+    UIButton *editButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    editButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [self pp_styleHeaderEditButton:editButton];
+    [editButton addTarget:self action:@selector(pp_toggleCartEditMode) forControlEvents:UIControlEventTouchUpInside];
 
     UILabel *itemsMetricLabel = [self pp_buildMetricLabel];
     UILabel *subtotalMetricLabel = [self pp_buildMetricLabel];
@@ -728,7 +935,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     UIStackView *topRow = [[UIStackView alloc] initWithArrangedSubviews:@[
         badgeLabel,
         spacer,
-        supportButton
+        editButton
     ]];
     topRow.translatesAutoresizingMaskIntoConstraints = NO;
     topRow.axis = UILayoutConstraintAxisHorizontal;
@@ -810,9 +1017,9 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [topRow.trailingAnchor constraintEqualToAnchor:chromeView.contentView.trailingAnchor constant:-18.0],
 
         [compactSummaryLabel.centerXAnchor constraintEqualToAnchor:chromeView.contentView.centerXAnchor],
-        [compactSummaryLabel.centerYAnchor constraintEqualToAnchor:supportButton.centerYAnchor],
+        [compactSummaryLabel.centerYAnchor constraintEqualToAnchor:editButton.centerYAnchor],
         [compactSummaryLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:badgeLabel.trailingAnchor constant:10.0],
-        [compactSummaryLabel.trailingAnchor constraintLessThanOrEqualToAnchor:supportButton.leadingAnchor constant:-10.0],
+        [compactSummaryLabel.trailingAnchor constraintLessThanOrEqualToAnchor:editButton.leadingAnchor constant:-10.0],
         [compactSummaryLabel.widthAnchor constraintLessThanOrEqualToAnchor:chromeView.contentView.widthAnchor multiplier:0.42],
         [compactSummaryLabel.heightAnchor constraintEqualToConstant:30.0],
 
@@ -821,7 +1028,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [iconView.centerXAnchor constraintEqualToAnchor:iconContainer.centerXAnchor],
         [iconView.centerYAnchor constraintEqualToAnchor:iconContainer.centerYAnchor],
 
-        [supportButton.heightAnchor constraintEqualToConstant:40.0],
+        [editButton.heightAnchor constraintEqualToConstant:40.0],
 
         [heroRow.topAnchor constraintEqualToAnchor:topRow.bottomAnchor constant:18.0],
         [heroRow.leadingAnchor constraintEqualToAnchor:chromeView.contentView.leadingAnchor constant:18.0],
@@ -847,7 +1054,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
     self.headerTitleLabel = titleLabel;
     self.headerSubtitleLabel = subtitleLabel;
     self.headerCompactSummaryLabel = compactSummaryLabel;
-    self.headerSupportButton = supportButton;
+    self.headerEditButton = editButton;
     self.headerMetricsStack = metricsStack;
     self.itemsMetricLabel = itemsMetricLabel;
     self.subtotalMetricLabel = subtotalMetricLabel;
@@ -937,7 +1144,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         self.headerSubtitleLabel.transform = CGAffineTransformIdentity;
         self.headerCompactSummaryLabel.transform = CGAffineTransformIdentity;
         self.headerIconContainerView.transform = CGAffineTransformIdentity;
-        self.headerSupportButton.transform = CGAffineTransformIdentity;
+        self.headerEditButton.transform = CGAffineTransformIdentity;
         self.headerBadgeLabel.transform = CGAffineTransformIdentity;
         self.headerPrimaryOrbView.transform = CGAffineTransformIdentity;
         self.headerSecondaryOrbView.transform = CGAffineTransformIdentity;
@@ -976,8 +1183,8 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
                                 CGAffineTransformMakeScale(1.0 - (0.10 * progress),
                                                            1.0 - (0.10 * progress)));
 
-    self.headerSupportButton.transform = CGAffineTransformMakeScale(1.0 - (0.05 * progress),
-                                                                     1.0 - (0.05 * progress));
+    self.headerEditButton.transform = CGAffineTransformMakeScale(1.0 - (0.05 * progress),
+                                                                 1.0 - (0.05 * progress));
     self.headerBadgeLabel.transform = CGAffineTransformMakeTranslation(0.0, -4.0 * progress);
     self.headerBadgeLabel.alpha = 1.0 - (0.18 * progress);
 
@@ -1198,6 +1405,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 - (void)updateTotalLabel {
     PPCartSummary *summary = [PPCartCalculator currentSummary];
 
+    self.summaryView.showDetails = YES;
     [self.summaryView updateTotalsWithItems:summary.subtotal shipping:summary.shippingFee showTitle:NO];
     [self.summaryView updatePreviewItems:CartManager.sharedManager.cartItems];
 
@@ -1215,6 +1423,12 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
         [self.summaryView pp_startTrustBannerShimmer];
     } else {
         [self.summaryView pp_stopTrustBannerShimmer];
+    }
+
+    if (summary.uniqueItems == 0 && (self.cartTableView.isEditing || self.cartEditingModeActive)) {
+        [self pp_setCartEditing:NO animated:YES];
+    } else {
+        [self pp_refreshCartEditControls];
     }
 
     [self pp_applyEmptyStateIfNeeded];
@@ -1441,7 +1655,9 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
     if ([CartManager sharedManager].cartItems.count == 0) {
         [self.summaryView setCheckoutLoading:NO];
-        [PPHUD showError:kLang(@"empty_cart_title")];
+        [PPAlertHelper showWarningIn:self
+                               title:kLang(@"checkout_cart_empty")
+                            subtitle:kLang(@"checkout_cart_empty_message")];
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
         return;
     }
@@ -1486,13 +1702,6 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
             [self updateTotalLabel];
             return;
         }
-        if ([action isEqualToString:@"remove"]) {
-            __strong typeof(weakCell) cell = weakCell;
-            NSIndexPath *currentIndexPath =
-                [tableView indexPathForCell:cell];
-            if (!currentIndexPath) return;
-            [self pp_removeItemAtIndexPath:currentIndexPath];
-        }
     };
 
     cell.layer.masksToBounds = NO;
@@ -1504,12 +1713,18 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 {
     (void)tableView;
     (void)indexPath;
-    return 144.0;
+    return 134.0;
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
     (void)scrollView;
+}
+
+- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    (void)tableView;
+    return indexPath.row < CartManager.sharedManager.cartItems.count;
 }
 
 // Enable swipe-to-delete (SAFE)

@@ -204,11 +204,8 @@ static NSString *PPPaymentSelectionNormalizedMethodID(NSString *methodID)
                                                   forIndexPath:indexPath];
         [header configureWithTitle:kLang(@"payment_section_methods_title")
                           subtitle:kLang(@"payment_section_methods_subtitle")
-                       actionTitle:kLang(@"payment_add_method")];
-        __weak typeof(self) weakSelf = self;
-        header.actionHandler = ^{
-            [weakSelf showPaymentSheetFull:YES];
-        };
+                       actionTitle:nil];
+        header.actionHandler = nil;
         return header;
     }
     
@@ -785,6 +782,11 @@ didChangeSelectedDetentIdentifier:(UISheetPresentationControllerDetentIdentifier
         [self.actionButton setTitle:actionTitle forState:UIControlStateNormal];
         [self.actionButton setImage:plusIcon forState:UIControlStateNormal];
         self.actionButton.imageEdgeInsets = UIEdgeInsetsMake(0.0, 0.0, 0.0, 6.0);
+        self.actionButton.accessibilityElementsHidden = NO;
+    } else {
+        [self.actionButton setTitle:nil forState:UIControlStateNormal];
+        [self.actionButton setImage:nil forState:UIControlStateNormal];
+        self.actionButton.accessibilityElementsHidden = YES;
     }
 }
 

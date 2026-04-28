@@ -137,7 +137,7 @@ NS_ASSUME_NONNULL_BEGIN
 + (CGFloat)bottomPadding;
 
 + (FTPopOverMenuConfiguration *)configMenu:(FTPopOverMenuConfiguration *)configuration;
-
++ (UIFont *)BlackFontWithSize:(float)fontSize;
 + (UIFont *)fontWithSize:(float)fontSize;
 + (UIFont *)MidFontWithSize:(float)fontSize;
 + (UIFont *)boldFontWithSize:(float)fontSize;

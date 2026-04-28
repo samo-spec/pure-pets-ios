@@ -15,7 +15,7 @@
 #define DLog(fmt, ...) NSLog((@"[PPCartCell] " fmt), ##__VA_ARGS__)
 #endif
 
-static CGFloat const kPPCartCellOuterVerticalInset = 4.0;
+static CGFloat const kPPCartCellOuterVerticalInset = 8.0;
 static CGFloat const kPPCartCellOuterHorizontalInset = 16.0;
 static CGFloat const kPPCartCellCardCornerRadius = 26.0;
 static CGFloat const kPPCartCellImageShellWidth = 92.0;
@@ -24,7 +24,6 @@ static CGFloat const kPPCartCellStepperHeight = 40.0;
 typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     PPCartActionButtonKindNeutral = 0,
     PPCartActionButtonKindAccent = 1,
-    PPCartActionButtonKindDestructive = 2,
 };
 
 @interface PPCartInsetLabel : UILabel
@@ -82,7 +81,6 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 @property (nonatomic, strong) UIButton *minusButton;
 @property (nonatomic, strong) UIButton *plusButton;
-@property (nonatomic, strong) UIButton *removeButton;
 
 @property (nonatomic, strong) CartItem *currentItem;
 
@@ -116,7 +114,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     cardContainer.backgroundColor = UIColor.clearColor;
     cardContainer.layer.cornerRadius = kPPCartCellCardCornerRadius;
     [cardContainer pp_setShadowColor:UIColor.blackColor];
-    cardContainer.layer.shadowOpacity = 0.11;
+    cardContainer.layer.shadowOpacity = 0.12;
     cardContainer.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     cardContainer.layer.shadowRadius = 24.0;
     cardContainer.layer.masksToBounds = NO;
@@ -128,7 +126,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UIView *surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92] ?: [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.92];
+    surfaceView.backgroundColor = AppForgroundColr ?: [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.99];
     surfaceView.layer.cornerRadius = kPPCartCellCardCornerRadius;
     surfaceView.layer.borderWidth = 0.8;
     [surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
@@ -183,10 +181,11 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     PPCartInsetLabel *eyebrowLabel = [self pp_buildCapsuleLabelWithFont:[GM MidFontWithSize:10.5]
                                                               textColor:AppPrimaryClr ?: UIColor.labelColor
                                                         backgroundColor:[(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.12]
-                                                            borderColor:[(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.18]];
+                                                            borderColor:[(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.18] corners:9];
     eyebrowLabel.textInsets = UIEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
     eyebrowLabel.adjustsFontSizeToFitWidth = YES;
     eyebrowLabel.minimumScaleFactor = 0.80;
+    eyebrowLabel.layer.cornerRadius = 14.0;
     self.eyebrowLabel = eyebrowLabel;
 
     UILabel *nameLabel = [[UILabel alloc] init];
@@ -222,7 +221,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     PPCartInsetLabel *savingsPillLabel = [self pp_buildCapsuleLabelWithFont:[GM boldFontWithSize:11.0]
                                                                   textColor:[UIColor systemRedColor]
                                                             backgroundColor:[[UIColor systemRedColor] colorWithAlphaComponent:0.10]
-                                                                borderColor:[[UIColor systemRedColor] colorWithAlphaComponent:0.12]];
+                                                                borderColor:[[UIColor systemRedColor] colorWithAlphaComponent:0.12] corners:9];
     savingsPillLabel.textInsets = UIEdgeInsetsMake(5.0, 9.0, 5.0, 9.0);
     savingsPillLabel.hidden = YES;
     savingsPillLabel.textAlignment = NSTextAlignmentCenter;
@@ -231,11 +230,6 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     [imageShellView addSubview:eyebrowLabel];
 
-    UIButton *removeButton = [self pp_createIconButtonWithSystemName:@"trash" kind:PPCartActionButtonKindDestructive];
-    [removeButton addTarget:self action:@selector(didTapRemove) forControlEvents:UIControlEventTouchUpInside];
-    [self pp_applyPressTargetsToButton:removeButton];
-    self.removeButton = removeButton;
-    self.removeButton.alpha = 0;
     UIView *headerSpacer = [[UIView alloc] initWithFrame:CGRectZero];
     headerSpacer.translatesAutoresizingMaskIntoConstraints = NO;
     [headerSpacer setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
@@ -243,13 +237,12 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UIStackView *headerRow = [[UIStackView alloc] initWithArrangedSubviews:@[
         nameLabel,
-        headerSpacer,
-        removeButton
+        headerSpacer
     ]];
     headerRow.translatesAutoresizingMaskIntoConstraints = NO;
     headerRow.axis = UILayoutConstraintAxisHorizontal;
-    headerRow.alignment = UIStackViewAlignmentTop;
-    headerRow.spacing = 10.0;
+    headerRow.alignment = UIStackViewAlignmentFill;
+    headerRow.spacing = 12.0;
 
     UIStackView *priceRow = [[UIStackView alloc] initWithArrangedSubviews:@[
         priceLabel,
@@ -264,7 +257,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     PPCartInsetLabel *subtotalPillLabel = [self pp_buildCapsuleLabelWithFont:[GM MidFontWithSize:11.5]
                                                                    textColor:[UIColor.labelColor colorWithAlphaComponent:0.78]
                                                              backgroundColor:[UIColor colorWithWhite:1.0 alpha:0.15]
-                                                                 borderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
+                                                                 borderColor:[UIColor colorWithWhite:1.0 alpha:0.12] corners:14];
     subtotalPillLabel.textInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
     subtotalPillLabel.numberOfLines = 1;
     subtotalPillLabel.adjustsFontSizeToFitWidth = YES;
@@ -385,9 +378,6 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         [contentStack.leadingAnchor constraintEqualToAnchor:imageShellView.trailingAnchor constant:14.0],
         [contentStack.trailingAnchor constraintEqualToAnchor:surfaceView.trailingAnchor constant:-12.0],
 
-        [removeButton.widthAnchor constraintEqualToConstant:28.0],
-        [removeButton.heightAnchor constraintEqualToConstant:28.0],
-
         [stepperPillView.heightAnchor constraintEqualToConstant:kPPCartCellStepperHeight],
         [stepperPillView.widthAnchor constraintGreaterThanOrEqualToConstant:118.0],
 
@@ -403,27 +393,25 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         [quantityLabel.widthAnchor constraintGreaterThanOrEqualToConstant:28.0],
     ]];
 
-    self.removeButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_remove_cart_item", @"Remove item");
-    self.removeButton.accessibilityHint = NSLocalizedString(@"a11y_btn_remove_cart_item_hint", @"Double-tap to remove this item from your cart");
     self.minusButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_decrease_qty", @"Decrease quantity");
     self.plusButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_increase_qty", @"Increase quantity");
 
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:YES];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:YES];
-    [self pp_styleActionButton:self.removeButton kind:PPCartActionButtonKindDestructive enabled:YES];
 }
 
 - (PPCartInsetLabel *)pp_buildCapsuleLabelWithFont:(UIFont *)font
                                          textColor:(UIColor *)textColor
                                    backgroundColor:(UIColor *)backgroundColor
                                        borderColor:(UIColor *)borderColor
+                                           corners:(float)corners
 {
     PPCartInsetLabel *label = [[PPCartInsetLabel alloc] init];
     label.translatesAutoresizingMaskIntoConstraints = NO;
     label.font = font;
     label.textColor = textColor;
     label.backgroundColor = backgroundColor;
-    label.layer.cornerRadius = 14.0;
+    label.layer.cornerRadius = corners;
     label.layer.borderWidth = 0.8;
     [label pp_setBorderColor:borderColor];
     label.layer.masksToBounds = YES;
@@ -458,14 +446,11 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     self.minusButton.transform = CGAffineTransformIdentity;
     self.plusButton.transform = CGAffineTransformIdentity;
-    self.removeButton.transform = CGAffineTransformIdentity;
     self.minusButton.alpha = 1.0;
     self.plusButton.alpha = 1.0;
-    self.removeButton.alpha = 1.0;
 
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:YES];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:YES];
-    [self pp_styleActionButton:self.removeButton kind:PPCartActionButtonKindDestructive enabled:YES];
 }
 
 - (void)layoutSubviews
@@ -548,7 +533,6 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:canDecrease];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:canIncrease];
-    [self pp_styleActionButton:self.removeButton kind:PPCartActionButtonKindDestructive enabled:YES];
 }
 
 #pragma mark - Actions
@@ -582,16 +566,6 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     if (self.onAction) {
         self.onAction(self.currentItem, @"plus");
-    }
-}
-
-- (void)didTapRemove
-{
-    if (!self.currentItem) return;
-
-    DLog(@"Remove tapped for %@", self.currentItem.name);
-    if (self.onAction) {
-        self.onAction(self.currentItem, @"remove");
     }
 }
 
@@ -638,11 +612,6 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
             foregroundColor = AppPrimaryClr ?: UIColor.labelColor;
             backgroundColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:enabled ? 0.15 : 0.06];
             borderColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:enabled ? 0.20 : 0.08];
-            break;
-        case PPCartActionButtonKindDestructive:
-            foregroundColor = UIColor.systemRedColor;
-            backgroundColor = [UIColor.systemRedColor colorWithAlphaComponent:enabled ? 0.12 : 0.05];
-            borderColor = [UIColor.systemRedColor colorWithAlphaComponent:enabled ? 0.14 : 0.08];
             break;
         case PPCartActionButtonKindNeutral:
         default:

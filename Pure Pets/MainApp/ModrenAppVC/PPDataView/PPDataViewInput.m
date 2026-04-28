@@ -29,6 +29,7 @@
     input.sourceTarget = sourceTarget;
     input.source = source;
     input.title = mainKind.KindName ?: @"";
+    input.initialSectionOverride = nil;
     return input;
 }
 
@@ -47,6 +48,7 @@
     input.sourceTarget = sourceTarget;
     input.source = source;
     input.title = input.mainKind.KindName ?: @"";
+    input.initialSectionOverride = nil;
     return input;
 }
 

@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) PPDeepLinkTarget sourceTarget;
 @property (nonatomic, assign) PPInputSource source;
 @property (nonatomic, copy, nullable) NSString *title;
+@property (nonatomic, strong, nullable) NSNumber *initialSectionOverride;
 
 @property (nonatomic, strong, nullable) NSArray<MainKindsModel *> *mainKindsArr;
 

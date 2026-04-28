@@ -1288,6 +1288,24 @@ static CGFloat PPHomeSmoothStep(CGFloat value)
 @implementation PPHomeHeaderConfig
 @end
 
+@interface PPHomeBuyAgainSnapshotItem : NSObject
+@property (nonatomic, copy) NSString *itemID;
+@property (nonatomic, copy) NSString *title;
+@property (nonatomic, copy) NSString *imageURL;
+@property (nonatomic, assign) NSInteger mainKindID;
+@property (nonatomic, assign) NSInteger accessKindType;
+@end
+
+@implementation PPHomeBuyAgainSnapshotItem
+@end
+
+@interface PPHomeUnavailableBuyAgainButton : UIButton
+@property (nonatomic, strong) PPHomeBuyAgainSnapshotItem *buyAgainItem;
+@end
+
+@implementation PPHomeUnavailableBuyAgainButton
+@end
+
 @interface PPHomeSmartSearchTitleView : UIControl
 @property (nonatomic, strong, readonly) UILabel *placeholderLabel;
 @property (nonatomic, assign) BOOL showSmartPillBackground;
@@ -1881,6 +1899,7 @@ static double const PPNearbyDefaultRadiusKm = 8.0;
 static double const PPNearbyExpandedRadiusKm = 15.0;
 static NSInteger const PPCurrentOrdersVisibleLimit = 4;
 static NSInteger const PPBuyAgainVisibleLimit = 10;
+static NSInteger const PPHomeUnavailableBuyAgainCoverTag = 551021;
 static NSInteger const PPNearbyRecentLocationsLimit = 4;
 static CLLocationCoordinate2D const PPNearbyDebugSimulatorCoordinate = {25.285447, 51.531040};
 
@@ -1925,7 +1944,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) NSArray<MainKindsModel *> *mainKinds;
 @property (nonatomic, strong) NSArray<PPCategoryItem *> *categories;
 @property (nonatomic, strong) NSArray<PetAccessory *> *accessories;
-@property (nonatomic, strong) NSArray<PetAccessory *> *buyAgainAccessories;
+@property (nonatomic, strong) NSArray *buyAgainEntries;
 @property (nonatomic, strong) NSArray<PetAccessory *> *lastFoodAccessories;
 @property (nonatomic, strong) NSArray<PPPetProfile *> *petProfiles;
 @property (nonatomic, strong) NSArray<PetAd *> *nearbyAds;
@@ -2090,16 +2109,22 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (nullable PPOrder *)pp_featuredHomeOrder;
 - (NSArray<PPHomeItem *> *)pp_homeCurrentOrderItems;
 - (NSArray<PPHomeItem *> *)pp_homeBuyAgainItems;
+- (NSArray<PPHomeBuyAgainSnapshotItem *> *)pp_buyAgainSnapshotItemsFromOrders:(NSArray<PPOrder *> *)orders
+                                                                        limit:(NSInteger)limit;
 - (void)pp_refreshPetProfilesSection;
 - (nullable PPPetProfile *)pp_homeEntryPetProfile;
 - (void)pp_openPetProfilesEntryPoint;
 - (NSString *)pp_homeOrderItemIdentifier:(id)rawItem;
 - (NSArray<NSString *> *)pp_buyAgainAccessoryIDsFromOrders:(NSArray<PPOrder *> *)orders
                                                      limit:(NSInteger)limit;
-- (NSArray<PetAccessory *> *)pp_orderedBuyAgainAccessoriesFromResolvedByID:(NSDictionary<NSString *, PetAccessory *> *)resolvedByID
-                                                                 orderedIDs:(NSArray<NSString *> *)orderedIDs
-                                                                      limit:(NSInteger)limit;
+- (NSArray *)pp_orderedBuyAgainEntriesFromResolvedByID:(NSDictionary<NSString *, PetAccessory *> *)resolvedByID
+                                         snapshotItems:(NSArray<PPHomeBuyAgainSnapshotItem *> *)snapshotItems
+                                                 limit:(NSInteger)limit;
 - (void)pp_refreshBuyAgainSection;
+- (void)pp_clearUnavailableBuyAgainCoverFromCell:(UICollectionViewCell *)cell;
+- (void)pp_applyUnavailableBuyAgainCoverToCell:(UICollectionViewCell *)cell
+                                  snapshotItem:(PPHomeBuyAgainSnapshotItem *)snapshotItem;
+- (void)pp_openSimilarItemsForUnavailableBuyAgainItem:(PPHomeBuyAgainSnapshotItem *)snapshotItem;
 - (void)pp_centerNearbySectionIfPossible;
 - (void)pp_openOrderDetailsForOrder:(PPOrder *)order;
 
@@ -3146,7 +3171,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.defaultPetProfile = nil;
     self.petProfilesLoading = YES;
     self.petProfilesLoaded = NO;
-    self.buyAgainAccessories = @[];
+    self.buyAgainEntries = @[];
     self.lastFoodAccessories = @[];
     self.isCurrentOrdersExpanded = NO;
     self.currentOrdersRequestToken = 0;
@@ -3944,20 +3969,194 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 {
     NSMutableArray<PPHomeItem *> *items = [NSMutableArray array];
 
-    for (PetAccessory *accessory in self.buyAgainAccessories ?: @[]) {
-        if (![accessory isKindOfClass:PetAccessory.class]) {
+    for (id entry in self.buyAgainEntries ?: @[]) {
+        PPUniversalCellViewModel *vm = nil;
+        if ([entry isKindOfClass:PetAccessory.class]) {
+            PetAccessory *accessory = (PetAccessory *)entry;
+            PPCellContext context = accessory.accessKindType == AccessTypeFood ? PPCellForFood : PPCellForMarket;
+            vm = [[PPUniversalCellViewModel alloc] initWithModel:accessory
+                                                         context:context];
+            vm.ModelObject = accessory;
+        } else if ([entry isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
+            PPHomeBuyAgainSnapshotItem *snapshotItem = (PPHomeBuyAgainSnapshotItem *)entry;
+            PPCellContext context = snapshotItem.accessKindType == AccessTypeFood ? PPCellForFood : PPCellForMarket;
+            vm = [[PPUniversalCellViewModel alloc] initWithModel:nil
+                                                         context:context];
+            vm.ModelID = snapshotItem.itemID.length > 0 ? snapshotItem.itemID : [NSUUID UUID].UUIDString;
+            vm.ModelObject = snapshotItem;
+            vm.modelContext = context;
+            vm.title = snapshotItem.title.length > 0 ? snapshotItem.title : (kLang(@"Home_BuyAgainUnavailableFallbackTitle") ?: @"");
+            vm.subtitle = kLang(@"Home_BuyAgainUnavailableSubtitle") ?: @"";
+            vm.imageURL = snapshotItem.imageURL;
+            vm.availabilityText = kLang(@"Home_BuyAgainUnavailableBadge") ?: @"";
+            vm.badgeText = vm.availabilityText;
+            vm.contextualReasonText = vm.availabilityText;
+            vm.contextualReasonIconName = @"exclamationmark.circle.fill";
+            vm.priceText = @"";
+            vm.preferredAspectRatio = 0.78;
+            vm.imageSize = CGSizeMake(1.0, 0.78);
+        }
+        if (!vm) {
             continue;
         }
-
-        PPUniversalCellViewModel *vm =
-            [[PPUniversalCellViewModel alloc] initWithModel:accessory
-                                                    context:PPCellForMarket];
-        vm.ModelObject = accessory;
 
         PPHomeItem *item =
             [[PPHomeItem alloc] initWithType:PPHomeItemTypeBuyAgain
                                universalModel:vm];
         [items addObject:item];
+    }
+
+    return items.copy;
+}
+
+- (NSString *)pp_buyAgainStringFromValue:(id)value
+{
+    if ([value isKindOfClass:NSString.class]) {
+        return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
+    if ([value respondsToSelector:@selector(stringValue)]) {
+        return [[value stringValue] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
+    return @"";
+}
+
+- (NSInteger)pp_buyAgainIntegerFromValue:(id)value fallback:(NSInteger)fallback
+{
+    if ([value respondsToSelector:@selector(integerValue)]) {
+        return [value integerValue];
+    }
+    return fallback;
+}
+
+- (id)pp_buyAgainValueForKeys:(NSArray<NSString *> *)keys rawItem:(id)rawItem
+{
+    if (![rawItem isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+
+    NSDictionary *item = (NSDictionary *)rawItem;
+    for (NSString *key in keys) {
+        id value = item[key];
+        if (value && ![value isKindOfClass:NSNull.class]) {
+            return value;
+        }
+    }
+
+    NSArray<NSString *> *nestedKeys = @[@"product", @"item", @"accessory", @"snapshot"];
+    for (NSString *nestedKey in nestedKeys) {
+        NSDictionary *nested = [item[nestedKey] isKindOfClass:NSDictionary.class] ? item[nestedKey] : nil;
+        if (!nested) {
+            continue;
+        }
+        for (NSString *key in keys) {
+            id value = nested[key];
+            if (value && ![value isKindOfClass:NSNull.class]) {
+                return value;
+            }
+        }
+    }
+
+    return nil;
+}
+
+- (NSInteger)pp_buyAgainAccessKindTypeFromRawItem:(id)rawItem
+{
+    id value = [self pp_buyAgainValueForKeys:@[@"accessKindType",
+                                               @"itemSection",
+                                               @"section",
+                                               @"ppDataSection",
+                                               @"dataSection",
+                                               @"type"]
+                                      rawItem:rawItem];
+    NSInteger numericValue = [self pp_buyAgainIntegerFromValue:value fallback:0];
+    if (numericValue > 0) {
+        return numericValue;
+    }
+
+    NSString *section = [[self pp_buyAgainStringFromValue:value] lowercaseString];
+    if ([section containsString:@"food"]) {
+        return AccessTypeFood;
+    }
+    if ([section containsString:@"medicine"] || [section containsString:@"pharmacy"]) {
+        return AccessTypePetMedicine;
+    }
+    if ([section containsString:@"live"]) {
+        return AccessTypeLivePet;
+    }
+    return AccessTypeAccessory;
+}
+
+- (PPHomeBuyAgainSnapshotItem *)pp_buyAgainSnapshotItemFromRawOrderItem:(id)rawItem
+{
+    NSString *itemID = [self pp_homeOrderItemIdentifier:rawItem];
+    if (itemID.length == 0) {
+        return nil;
+    }
+
+    PPHomeBuyAgainSnapshotItem *snapshotItem = [PPHomeBuyAgainSnapshotItem new];
+    snapshotItem.itemID = itemID;
+    snapshotItem.title = [self pp_buyAgainStringFromValue:
+                          [self pp_buyAgainValueForKeys:@[@"name",
+                                                          @"title",
+                                                          @"itemName",
+                                                          @"productName"]
+                                                 rawItem:rawItem]];
+    NSString *imageURL = [self pp_buyAgainStringFromValue:
+                          [self pp_buyAgainValueForKeys:@[@"imageURL",
+                                                          @"imageUrl",
+                                                          @"image",
+                                                          @"photo",
+                                                          @"icon"]
+                                                 rawItem:rawItem]];
+    if (imageURL.length == 0) {
+        imageURL = [self pp_homeOrderImageURLFromItemData:
+                    [rawItem isKindOfClass:NSDictionary.class] ? (NSDictionary *)rawItem : @{}];
+    }
+    snapshotItem.imageURL = imageURL;
+    snapshotItem.mainKindID = [self pp_buyAgainIntegerFromValue:
+                               [self pp_buyAgainValueForKeys:@[@"petMainCategoryID",
+                                                               @"mainKindID",
+                                                               @"mainKindId",
+                                                               @"mainKind",
+                                                               @"categoryID",
+                                                               @"categoryId",
+                                                               @"category"]
+                                                      rawItem:rawItem]
+                                                     fallback:0];
+    snapshotItem.accessKindType = [self pp_buyAgainAccessKindTypeFromRawItem:rawItem];
+    return snapshotItem;
+}
+
+- (NSArray<PPHomeBuyAgainSnapshotItem *> *)pp_buyAgainSnapshotItemsFromOrders:(NSArray<PPOrder *> *)orders
+                                                                        limit:(NSInteger)limit
+{
+    NSMutableArray<PPHomeBuyAgainSnapshotItem *> *items = [NSMutableArray array];
+    NSMutableSet<NSString *> *seenIDs = [NSMutableSet set];
+
+    for (PPOrder *order in orders ?: @[]) {
+        if (![order isKindOfClass:PPOrder.class]) {
+            continue;
+        }
+
+        NSString *statusKey = [self pp_homeOrderStatusKey:order];
+        if ([self pp_isFailureHomeOrderStatusKey:statusKey]) {
+            continue;
+        }
+
+        for (id rawItem in order.items ?: @[]) {
+            PPHomeBuyAgainSnapshotItem *snapshotItem =
+                [self pp_buyAgainSnapshotItemFromRawOrderItem:rawItem];
+            if (!snapshotItem || snapshotItem.itemID.length == 0 ||
+                [seenIDs containsObject:snapshotItem.itemID]) {
+                continue;
+            }
+
+            [seenIDs addObject:snapshotItem.itemID];
+            [items addObject:snapshotItem];
+            if (limit > 0 && items.count >= limit) {
+                return items.copy;
+            }
+        }
     }
 
     return items.copy;
@@ -4004,6 +4203,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     NSDictionary *item = (NSDictionary *)rawItem;
     NSArray<NSString *> *candidateKeys = @[@"id", @"itemID", @"productId", @"productID"];
+    NSString *nestedValue = [self pp_buyAgainStringFromValue:[self pp_buyAgainValueForKeys:candidateKeys
+                                                                                   rawItem:item]];
+    if (nestedValue.length > 0) {
+        return nestedValue;
+    }
+
     for (NSString *key in candidateKeys) {
         NSString *value = [item[key] isKindOfClass:NSString.class] ? item[key] : @"";
         value = [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -4018,78 +4223,82 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 - (NSArray<NSString *> *)pp_buyAgainAccessoryIDsFromOrders:(NSArray<PPOrder *> *)orders
                                                      limit:(NSInteger)limit
 {
-    NSMutableOrderedSet<NSString *> *orderedIDs = [NSMutableOrderedSet orderedSet];
-
-    for (PPOrder *order in orders ?: @[]) {
-        if (![order isKindOfClass:PPOrder.class]) {
-            continue;
-        }
-
-        NSString *statusKey = [self pp_homeOrderStatusKey:order];
-        if ([self pp_isFailureHomeOrderStatusKey:statusKey]) {
-            continue;
-        }
-
-        for (id rawItem in order.items ?: @[]) {
-            NSString *itemID = [self pp_homeOrderItemIdentifier:rawItem];
-            if (itemID.length == 0) {
-                continue;
-            }
-
-            [orderedIDs addObject:itemID];
-            if (limit > 0 && orderedIDs.count >= limit) {
-                return orderedIDs.array;
-            }
+    NSArray<PPHomeBuyAgainSnapshotItem *> *snapshotItems =
+        [self pp_buyAgainSnapshotItemsFromOrders:orders limit:limit];
+    NSMutableArray<NSString *> *orderedIDs = [NSMutableArray arrayWithCapacity:snapshotItems.count];
+    for (PPHomeBuyAgainSnapshotItem *snapshotItem in snapshotItems) {
+        if (snapshotItem.itemID.length > 0) {
+            [orderedIDs addObject:snapshotItem.itemID];
         }
     }
 
-    return orderedIDs.array;
+    return orderedIDs.copy;
 }
 
-- (NSArray<PetAccessory *> *)pp_orderedBuyAgainAccessoriesFromResolvedByID:(NSDictionary<NSString *, PetAccessory *> *)resolvedByID
-                                                                 orderedIDs:(NSArray<NSString *> *)orderedIDs
-                                                                      limit:(NSInteger)limit
+- (NSArray *)pp_orderedBuyAgainEntriesFromResolvedByID:(NSDictionary<NSString *, PetAccessory *> *)resolvedByID
+                                         snapshotItems:(NSArray<PPHomeBuyAgainSnapshotItem *> *)snapshotItems
+                                                 limit:(NSInteger)limit
 {
-    NSMutableArray<PetAccessory *> *orderedAccessories = [NSMutableArray array];
+    NSMutableArray *orderedEntries = [NSMutableArray array];
     NSMutableSet<NSString *> *seenAccessoryIDs = [NSMutableSet set];
 
-    for (NSString *itemID in orderedIDs ?: @[]) {
-        PetAccessory *accessory = resolvedByID[itemID];
-        if (![accessory isKindOfClass:PetAccessory.class]) {
+    for (PPHomeBuyAgainSnapshotItem *snapshotItem in snapshotItems ?: @[]) {
+        if (![snapshotItem isKindOfClass:PPHomeBuyAgainSnapshotItem.class] ||
+            snapshotItem.itemID.length == 0 ||
+            [seenAccessoryIDs containsObject:snapshotItem.itemID]) {
             continue;
         }
 
-        NSString *accessoryID = PPSafeString(accessory.accessoryID);
-        if (accessoryID.length == 0 || [seenAccessoryIDs containsObject:accessoryID]) {
-            continue;
+        PetAccessory *accessory = resolvedByID[snapshotItem.itemID];
+        if ([accessory isKindOfClass:PetAccessory.class]) {
+            NSString *accessoryID = PPSafeString(accessory.accessoryID);
+            if (accessoryID.length == 0) {
+                continue;
+            }
+
+            [seenAccessoryIDs addObject:accessoryID];
+            if (accessory.quantity > 0) {
+                [orderedEntries addObject:accessory];
+            } else {
+                if (snapshotItem.mainKindID <= 0) {
+                    snapshotItem.mainKindID = accessory.petMainCategoryID;
+                }
+                if (snapshotItem.accessKindType <= 0) {
+                    snapshotItem.accessKindType = accessory.accessKindType;
+                }
+                if (snapshotItem.title.length == 0) {
+                    snapshotItem.title = accessory.name ?: @"";
+                }
+                if (snapshotItem.imageURL.length == 0 &&
+                    [accessory.imageURLsArray isKindOfClass:NSArray.class]) {
+                    snapshotItem.imageURL = PPSafeString(accessory.imageURLsArray.firstObject);
+                }
+                [orderedEntries addObject:snapshotItem];
+            }
+        } else {
+            [seenAccessoryIDs addObject:snapshotItem.itemID];
+            [orderedEntries addObject:snapshotItem];
         }
 
-        if (accessory.quantity <= 0) {
-            continue;
-        }
-
-        [seenAccessoryIDs addObject:accessoryID];
-        [orderedAccessories addObject:accessory];
-
-        if (limit > 0 && orderedAccessories.count >= limit) {
+        if (limit > 0 && orderedEntries.count >= limit) {
             break;
         }
     }
 
-    return orderedAccessories.copy;
+    return orderedEntries.copy;
 }
 
 - (void)pp_refreshBuyAgainSection
 {
-    NSArray<NSString *> *orderedIDs =
-        [self pp_buyAgainAccessoryIDsFromOrders:self.recentOrders
-                                          limit:MAX(PPBuyAgainVisibleLimit * 2, PPBuyAgainVisibleLimit)];
+    NSArray<PPHomeBuyAgainSnapshotItem *> *snapshotItems =
+        [self pp_buyAgainSnapshotItemsFromOrders:self.recentOrders
+                                           limit:MAX(PPBuyAgainVisibleLimit * 2, PPBuyAgainVisibleLimit)];
 
     self.buyAgainRequestToken += 1;
     NSInteger requestToken = self.buyAgainRequestToken;
 
-    if (orderedIDs.count == 0) {
-        self.buyAgainAccessories = @[];
+    if (snapshotItems.count == 0) {
+        self.buyAgainEntries = @[];
         if (self.dataSource) {
             [self reloadSection:PPHomeSectionBuyAgain];
         }
@@ -4110,27 +4319,28 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     }
 
     NSMutableArray<NSString *> *missingIDs = [NSMutableArray array];
-    for (NSString *itemID in orderedIDs) {
+    for (PPHomeBuyAgainSnapshotItem *snapshotItem in snapshotItems) {
+        NSString *itemID = snapshotItem.itemID ?: @"";
         if (itemID.length == 0 || resolvedByID[itemID] != nil) {
             continue;
         }
         [missingIDs addObject:itemID];
     }
 
-    void (^applyResolvedAccessories)(NSDictionary<NSString *, PetAccessory *> *) =
+    void (^applyResolvedEntries)(NSDictionary<NSString *, PetAccessory *> *) =
     ^(NSDictionary<NSString *, PetAccessory *> *resolved) {
-        NSArray<PetAccessory *> *orderedAccessories =
-            [self pp_orderedBuyAgainAccessoriesFromResolvedByID:resolved
-                                                      orderedIDs:orderedIDs
-                                                           limit:PPBuyAgainVisibleLimit];
-        self.buyAgainAccessories = orderedAccessories;
+        NSArray *orderedEntries =
+            [self pp_orderedBuyAgainEntriesFromResolvedByID:resolved
+                                              snapshotItems:snapshotItems
+                                                      limit:PPBuyAgainVisibleLimit];
+        self.buyAgainEntries = orderedEntries;
         if (self.dataSource) {
             [self reloadSection:PPHomeSectionBuyAgain];
         }
     };
 
     if (missingIDs.count == 0) {
-        applyResolvedAccessories(resolvedByID.copy);
+        applyResolvedEntries(resolvedByID.copy);
         return;
     }
 
@@ -4156,8 +4366,249 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             mergedByID[accessoryID] = accessory;
         }
 
-        applyResolvedAccessories(mergedByID.copy);
+        applyResolvedEntries(mergedByID.copy);
     }];
+}
+
+- (void)pp_clearUnavailableBuyAgainCoverFromCell:(UICollectionViewCell *)cell
+{
+    UIView *cover = [cell.contentView viewWithTag:PPHomeUnavailableBuyAgainCoverTag];
+    [cover.layer removeAllAnimations];
+    [cover removeFromSuperview];
+    cell.accessibilityElements = nil;
+}
+
+- (void)pp_applyUnavailableBuyAgainCoverToCell:(UICollectionViewCell *)cell
+                                  snapshotItem:(PPHomeBuyAgainSnapshotItem *)snapshotItem
+{
+    if (!cell || ![snapshotItem isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
+        return;
+    }
+
+    [self pp_clearUnavailableBuyAgainCoverFromCell:cell];
+
+    UIView *cover = [[UIView alloc] init];
+    cover.translatesAutoresizingMaskIntoConstraints = NO;
+    cover.tag = PPHomeUnavailableBuyAgainCoverTag;
+    cover.clipsToBounds = YES;
+    cover.userInteractionEnabled = YES;
+    cover.isAccessibilityElement = YES;
+    cover.accessibilityTraits = UIAccessibilityTraitButton;
+    cover.accessibilityLabel = kLang(@"Home_BuyAgainUnavailableTitle") ?: @"";
+    cover.accessibilityHint = kLang(@"Home_BuyAgainDiscoverSimilars") ?: @"";
+    cover.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    cover.layer.cornerRadius = 24.0;
+    if (@available(iOS 13.0, *)) {
+        cover.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIBlurEffectStyle blurStyle = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+        ? UIBlurEffectStyleSystemUltraThinMaterialDark
+        : UIBlurEffectStyleSystemUltraThinMaterialLight;
+    UIVisualEffectView *blurView =
+        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.userInteractionEnabled = NO;
+    [cover addSubview:blurView];
+
+    UIView *tintView = [[UIView alloc] init];
+    tintView.translatesAutoresizingMaskIntoConstraints = NO;
+    tintView.userInteractionEnabled = NO;
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    tintView.backgroundColor = isDark
+        ? [UIColor colorWithWhite:0.02 alpha:0.74]
+        : [UIColor colorWithWhite:1.0 alpha:0.72];
+    [cover addSubview:tintView];
+
+    UIStackView *stackView = [[UIStackView alloc] init];
+    stackView.translatesAutoresizingMaskIntoConstraints = NO;
+    stackView.axis = UILayoutConstraintAxisVertical;
+    stackView.alignment = UIStackViewAlignmentCenter;
+    stackView.distribution = UIStackViewDistributionFill;
+    stackView.spacing = 8.0;
+    stackView.userInteractionEnabled = YES;
+    stackView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    [cover addSubview:stackView];
+
+    UIImageView *iconView =
+        [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"exclamationmark.circle.fill"
+                                                         pointSize:22.0
+                                                            weight:UIImageSymbolWeightSemibold
+                                                             scale:UIImageSymbolScaleMedium
+                                                           palette:@[UIColor.secondaryLabelColor]
+                                                      makeTemplate:YES]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.tintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:isDark ? 0.86 : 0.70];
+    [stackView addArrangedSubview:iconView];
+    [iconView.widthAnchor constraintEqualToConstant:24.0].active = YES;
+    [iconView.heightAnchor constraintEqualToConstant:24.0].active = YES;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.text = kLang(@"Home_BuyAgainUnavailableTitle") ?: @"";
+    titleLabel.textColor = UIColor.labelColor;
+    titleLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
+    titleLabel.textAlignment = PPHomeCurrentTextAlignment();
+    titleLabel.numberOfLines = 2;
+    titleLabel.adjustsFontSizeToFitWidth = YES;
+    titleLabel.minimumScaleFactor = 0.82;
+    titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    [stackView addArrangedSubview:titleLabel];
+    [titleLabel.widthAnchor constraintLessThanOrEqualToConstant:150.0].active = YES;
+
+    PPHomeUnavailableBuyAgainButton *button =
+        [PPHomeUnavailableBuyAgainButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.buyAgainItem = snapshotItem;
+    button.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    button.accessibilityLabel = kLang(@"Home_BuyAgainDiscoverSimilars") ?: @"";
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = 0.82;
+    button.titleLabel.numberOfLines = 1;
+    button.layer.cornerRadius = 16.0;
+    button.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration filledButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.baseBackgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+        configuration.baseForegroundColor = UIColor.whiteColor;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
+        configuration.title = kLang(@"Home_BuyAgainDiscoverSimilars") ?: @"";
+        configuration.image = [UIImage systemImageNamed:Language.isRTL ? @"chevron.left" : @"chevron.right"];
+        configuration.imagePlacement = NSDirectionalRectEdgeTrailing;
+        configuration.imagePadding = 5.0;
+        button.configuration = configuration;
+    } else {
+        [button setTitle:kLang(@"Home_BuyAgainDiscoverSimilars") ?: @""
+                forState:UIControlStateNormal];
+        button.titleLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+        button.contentEdgeInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
+        button.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    }
+
+    [button addTarget:self action:@selector(pp_unavailableBuyAgainDiscoverTapped:)
+     forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_unavailableBuyAgainButtonTouchDown:)
+     forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_unavailableBuyAgainButtonTouchUp:)
+     forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    [stackView addArrangedSubview:button];
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:32.0].active = YES;
+    [button.widthAnchor constraintLessThanOrEqualToConstant:156.0].active = YES;
+
+    [cell.contentView addSubview:cover];
+    [NSLayoutConstraint activateConstraints:@[
+        [cover.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:6.0],
+        [cover.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:6.0],
+        [cover.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-6.0],
+        [cover.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-6.0],
+
+        [blurView.topAnchor constraintEqualToAnchor:cover.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:cover.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:cover.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:cover.bottomAnchor],
+
+        [tintView.topAnchor constraintEqualToAnchor:cover.topAnchor],
+        [tintView.leadingAnchor constraintEqualToAnchor:cover.leadingAnchor],
+        [tintView.trailingAnchor constraintEqualToAnchor:cover.trailingAnchor],
+        [tintView.bottomAnchor constraintEqualToAnchor:cover.bottomAnchor],
+
+        [stackView.centerXAnchor constraintEqualToAnchor:cover.centerXAnchor],
+        [stackView.centerYAnchor constraintEqualToAnchor:cover.centerYAnchor],
+        [stackView.leadingAnchor constraintGreaterThanOrEqualToAnchor:cover.leadingAnchor constant:12.0],
+        [stackView.trailingAnchor constraintLessThanOrEqualToAnchor:cover.trailingAnchor constant:-12.0]
+    ]];
+
+    cell.accessibilityElements = @[cover];
+
+    if ([self pp_shouldReduceHomeMotion]) {
+        cover.alpha = 1.0;
+        return;
+    }
+
+    cover.alpha = 0.0;
+    stackView.transform = CGAffineTransformMakeTranslation(0.0, 4.0);
+    [UIView animateWithDuration:0.30
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        cover.alpha = 1.0;
+        stackView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_unavailableBuyAgainButtonTouchDown:(UIButton *)button
+{
+    if ([self pp_shouldReduceHomeMotion]) {
+        return;
+    }
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformMakeScale(0.96, 0.96);
+        button.alpha = 0.92;
+    } completion:nil];
+}
+
+- (void)pp_unavailableBuyAgainButtonTouchUp:(UIButton *)button
+{
+    if ([self pp_shouldReduceHomeMotion]) {
+        button.transform = CGAffineTransformIdentity;
+        button.alpha = 1.0;
+        return;
+    }
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+         usingSpringWithDamping:0.78
+          initialSpringVelocity:0.24
+                        options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformIdentity;
+        button.alpha = 1.0;
+    } completion:nil];
+}
+
+- (void)pp_unavailableBuyAgainDiscoverTapped:(PPHomeUnavailableBuyAgainButton *)button
+{
+    [self pp_emitSoftImpactHaptic];
+    [self pp_openSimilarItemsForUnavailableBuyAgainItem:button.buyAgainItem];
+}
+
+- (PPDeepLinkTarget)pp_buyAgainTargetForAccessKindType:(NSInteger)accessKindType
+{
+    return accessKindType == AccessTypeFood ? PPDeepLinkTargetFood : PPDeepLinkTargetAccessories;
+}
+
+- (void)pp_openSimilarItemsForUnavailableBuyAgainItem:(PPHomeBuyAgainSnapshotItem *)snapshotItem
+{
+    if (![snapshotItem isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
+        return;
+    }
+
+    PPDeepLinkTarget target = [self pp_buyAgainTargetForAccessKindType:snapshotItem.accessKindType];
+    MainKindsModel *mainKind = snapshotItem.mainKindID > 0
+        ? [self resolveMainKindWithID:snapshotItem.mainKindID]
+        : nil;
+
+    PPDataViewInput *input =
+        [PPDataViewInput inputWithMainKind:mainKind
+                              sourceTarget:target
+                                    source:PPInputSourceHomeAccessoriesSection];
+    input.mainKindsArr = self.mainKinds ?: @[];
+    input.initialSectionOverride = @([PPHomeHelper sectionFromSourceTarget:target]);
+
+    PPDataViewVC *vc = [[PPDataViewVC alloc] initWithInput:input];
+    vc.pp_transitionStyle = PPTransitionStyleNone;
+    [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
 }
 
 - (void)pp_openOrderDetailsForOrder:(PPOrder *)order
@@ -4180,7 +4631,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         [self pp_stopCurrentOrdersListener];
         self.currentOrders = @[];
         self.recentOrders = @[];
-        self.buyAgainAccessories = @[];
+        self.buyAgainEntries = @[];
         self.currentOrdersLoading = NO;
         self.currentOrdersLoaded = YES;
         self.lastCurrentOrdersRefreshAt = nil;
@@ -4974,7 +5425,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
         case PPHomeSectionBuyAgain: {
-            cfg.hidden = self.buyAgainAccessories.count == 0;
+            cfg.hidden = self.buyAgainEntries.count == 0;
             cfg.title = kLang(@"Home_BuyAgainTitle");
             cfg.subtitle = kLang(@"Home_BuyAgainSubtitle");
             cfg.actionTitle = kLang(@"ShowAll");
@@ -5395,6 +5846,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 [collectionView dequeueReusableCellWithReuseIdentifier:
                     PPUniversalCell.reuseIdentifier
                                                         forIndexPath:indexPath];
+            [strongSelf pp_clearUnavailableBuyAgainCoverFromCell:cell];
             cell.delegate = strongSelf;
 
             PPUniversalCellViewModel *vm = item.universalViewModel;
@@ -5568,7 +6020,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 
             PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier forIndexPath:indexPath];
-                cell.delegate = strongSelf;
+            [strongSelf pp_clearUnavailableBuyAgainCoverFromCell:cell];
+            cell.delegate = strongSelf;
             cell.delegate = self;
         if (item.universalViewModel) {
 
@@ -5619,6 +6072,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                             complation:nil];
             }];
 
+            if (section == PPHomeSectionBuyAgain &&
+                [vm.ModelObject isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
+                [strongSelf pp_applyUnavailableBuyAgainCoverToCell:cell
+                                                      snapshotItem:(PPHomeBuyAgainSnapshotItem *)vm.ModelObject];
+            } else {
+                [strongSelf pp_clearUnavailableBuyAgainCoverFromCell:cell];
+            }
 
         }
 
@@ -6829,6 +7289,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                   NSStringFromClass([model class]));
 
             if (!model) return;
+            if ([model isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
+                [self pp_openSimilarItemsForUnavailableBuyAgainItem:(PPHomeBuyAgainSnapshotItem *)model];
+                return;
+            }
 
             [self pp_openOverlayForObject:model];
             break;

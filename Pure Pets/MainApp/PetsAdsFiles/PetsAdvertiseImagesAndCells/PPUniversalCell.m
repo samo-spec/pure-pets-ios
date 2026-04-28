@@ -64,14 +64,14 @@ static UIColor *PPUniversalCellSoftSurfaceColor(void)
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([AppBackgroundClr colorWithAlphaComponent:0.92],
-                                       [AppBackgroundClr colorWithAlphaComponent:0.20]);
+    return PPUniversalCellDynamicColor([AppBackgroundClrDarker colorWithAlphaComponent:0.92],
+                                       [AppBackgroundClrDarker colorWithAlphaComponent:0.20]);
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([AppForgroundColr colorWithAlphaComponent:0.92],
-                                       [AppForgroundColr colorWithAlphaComponent:0.62]);
+    return PPUniversalCellDynamicColor([AppBackgroundClrDarker colorWithAlphaComponent:0.92],
+                                       [AppBackgroundClrDarker colorWithAlphaComponent:0.62]);
 }
 
 static UIColor *PPUniversalCellSoftShadowColor(void)
@@ -94,8 +94,8 @@ static UIFont *PPUniversalCellMediumFont(CGFloat size)
 
 static UIFont *PPUniversalCellBoldFont(CGFloat size)
 {
-    UIFont *font = [GM boldFontWithSize:size];
-    return font ?: [UIFont systemFontOfSize:size weight:UIFontWeightBold];
+    UIFont *font = [GM BlackFontWithSize:size];
+    return font ?: [UIFont systemFontOfSize:size weight:UIFontWeightBlack];
 }
 
 static NSString *PPUniversalCellSafeString(NSString *value)

@@ -2031,6 +2031,12 @@ CGSize getImageSizeSafely(UIImage *image) {
 }
 
 
++(UIFont *)BlackFontWithSize:(float)fontSize
+{
+    return [UIFont fontWithName:@"Beiruti-Black" size:fontSize + 1];
+}
+
+
 +(UIFont *)fontWithSize:(float)fontSize
 {
     return [UIFont fontWithName:@"Beiruti-Regular" size:fontSize + 1];

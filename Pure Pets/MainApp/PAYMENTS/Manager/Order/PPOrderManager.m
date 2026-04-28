@@ -246,6 +246,20 @@ static NSString *PPOrderLocalizedKnownBackendMessage(NSString *message) {
     if (trimmed.length == 0) return @"";
 
     NSString *lowercase = trimmed.lowercaseString;
+    if (([lowercase containsString:@"item "] || [lowercase containsString:@"cart item"]) &&
+        ([lowercase containsString:@"unavailable"] ||
+         [lowercase containsString:@"not available"] ||
+         [lowercase containsString:@"no longer available"] ||
+         [lowercase containsString:@"out of stock"])) {
+        return kLang(@"checkout_item_unavailable_review_cart");
+    }
+    if ([lowercase containsString:@"inventory"] || [lowercase containsString:@"stock"]) {
+        return kLang(@"checkout_items_unavailable_review_cart");
+    }
+    if ([lowercase containsString:@"must be a positive number"] ||
+        [lowercase containsString:@"invalid price"]) {
+        return kLang(@"checkout_item_price_invalid");
+    }
     if ([lowercase containsString:@"order not found"]) {
         return kLang(@"payment_backend_order_not_found");
     }
@@ -790,7 +804,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             NSError *resolvedError = PPOrderWrappedCallableError(error);
             NSError *finalError = resolvedError ?: [NSError errorWithDomain:@"PPOrder"
                                                                        code:500
-                                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong")}];
+                                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_generic_error")}];
             PPORDERLog(@"Create pending order failed | paymentMethod=%@ | error=%@",
                        resolvedPaymentMethodID ?: @"",
                        finalError.localizedDescription ?: @"Unknown");
@@ -937,7 +951,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         if (error || !snapshot) {
             if (completion) completion(nil, error ?: [NSError errorWithDomain:@"PPOrder"
                                                                          code:500
-                                                                     userInfo:@{NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong")}]);
+                                                                     userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_generic_error")}]);
             return;
         }
 
@@ -977,7 +991,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             if (failedError || !failedSnapshot) {
                 if (completion) completion(nil, failedError ?: [NSError errorWithDomain:@"PPOrder"
                                                                                    code:500
-                                                                               userInfo:@{NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong")}]);
+                                                                               userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_generic_error")}]);
                 return;
             }
 
@@ -1166,7 +1180,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
             NSError *wrapped = [NSError errorWithDomain:PPOrderInventoryErrorDomain
                                                    code:101
                                                userInfo:@{
-                NSLocalizedDescriptionKey: kLang(@"SomethingWentWrong"),
+                NSLocalizedDescriptionKey: kLang(@"checkout_generic_error"),
                 NSUnderlyingErrorKey: firstError
             }];
             if (completion) completion(NO, @[], wrapped);

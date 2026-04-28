@@ -20,6 +20,7 @@
 #import "OrderDetailsViewController.h"
 
 #import "PPSelectAddressVC.h"
+#import <QuartzCore/QuartzCore.h>
 
 @import FirebaseAuth;
 
@@ -44,7 +45,8 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 @property (nonatomic, strong) UIView *heroTintView;
 @property (nonatomic, strong) UIView *heroAmbientGlow;
 @property (nonatomic, strong) UIView *heroSecondaryGlow;
-@property (nonatomic, strong) UIView *heroAccentBar;
+@property (nonatomic, strong) UIView *bottomGlowView;
+@property (nonatomic, strong) UIView *bottomSecondaryGlowView;
 @property (nonatomic, strong) UILabel *heroEyebrowLabel;
 @property (nonatomic, strong) UILabel *heroTitleLabel;
 @property (nonatomic, strong) UILabel *heroSubtitleLabel;
@@ -63,6 +65,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
 
     [self pp_configureNavigationChrome];
+    [self pp_buildSummaryBottomGlowIfNeeded];
     [self pp_setupHeroSection];
     [self setlocViewViewAtTop];
     [self setSummuryViewAtBottom];
@@ -107,6 +110,122 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         self.heroCardView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroCardView.bounds
                                                                         cornerRadius:self.heroCardView.layer.cornerRadius].CGPath;
     }
+    if (!CGRectIsEmpty(self.bottomGlowView.bounds)) {
+        self.bottomGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomGlowView.bounds].CGPath;
+    }
+    if (!CGRectIsEmpty(self.bottomSecondaryGlowView.bounds)) {
+        self.bottomSecondaryGlowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.bottomSecondaryGlowView.bounds].CGPath;
+    }
+}
+
+- (void)pp_buildSummaryBottomGlowIfNeeded
+{
+    if (self.bottomGlowView || self.bottomSecondaryGlowView) return;
+
+    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIView *glow = [[UIView alloc] init];
+    glow.translatesAutoresizingMaskIntoConstraints = NO;
+    glow.userInteractionEnabled = NO;
+    glow.backgroundColor = [brandColor colorWithAlphaComponent:0.080];
+    glow.alpha = 0.52;
+    glow.layer.cornerRadius = 170.0;
+    glow.layer.shadowColor = [brandColor colorWithAlphaComponent:0.55].CGColor;
+    glow.layer.shadowOpacity = 0.24;
+    glow.layer.shadowRadius = 48.0;
+    glow.layer.shadowOffset = CGSizeZero;
+
+    UIView *secondaryGlow = [[UIView alloc] init];
+    secondaryGlow.translatesAutoresizingMaskIntoConstraints = NO;
+    secondaryGlow.userInteractionEnabled = NO;
+    secondaryGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.22];
+    secondaryGlow.alpha = 0.36;
+    secondaryGlow.layer.cornerRadius = 128.0;
+    secondaryGlow.layer.shadowColor = UIColor.whiteColor.CGColor;
+    secondaryGlow.layer.shadowOpacity = 0.18;
+    secondaryGlow.layer.shadowRadius = 34.0;
+    secondaryGlow.layer.shadowOffset = CGSizeZero;
+
+    [self.view addSubview:secondaryGlow];
+    [self.view addSubview:glow];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [secondaryGlow.widthAnchor constraintEqualToConstant:256.0],
+        [secondaryGlow.heightAnchor constraintEqualToConstant:256.0],
+        [secondaryGlow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:72.0],
+        [secondaryGlow.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:86.0],
+
+        [glow.widthAnchor constraintEqualToConstant:340.0],
+        [glow.heightAnchor constraintEqualToConstant:340.0],
+        [glow.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:116.0],
+        [glow.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-134.0]
+    ]];
+
+    self.bottomGlowView = glow;
+    self.bottomSecondaryGlowView = secondaryGlow;
+    [self pp_startSummaryBottomGlowMotionIfNeeded];
+}
+
+- (void)pp_startSummaryBottomGlowMotionIfNeeded
+{
+    if (!self.bottomGlowView && !self.bottomSecondaryGlowView) return;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self.bottomGlowView.layer removeAnimationForKey:@"pp_payment_bottom_glow_breath"];
+        [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_payment_bottom_secondary_glow_breath"];
+        self.bottomGlowView.transform = CGAffineTransformIdentity;
+        self.bottomSecondaryGlowView.transform = CGAffineTransformIdentity;
+        self.bottomGlowView.alpha = 0.52;
+        self.bottomSecondaryGlowView.alpha = 0.36;
+        return;
+    }
+
+    [self pp_addBreathingGlowToView:self.bottomGlowView
+                                 key:@"pp_payment_bottom_glow_breath"
+                           fromAlpha:0.42
+                             toAlpha:0.62
+                           fromScale:0.95
+                             toScale:1.08
+                            duration:6.4];
+    [self pp_addBreathingGlowToView:self.bottomSecondaryGlowView
+                                 key:@"pp_payment_bottom_secondary_glow_breath"
+                           fromAlpha:0.28
+                             toAlpha:0.43
+                           fromScale:1.04
+                             toScale:0.96
+                            duration:7.4];
+}
+
+- (void)pp_addBreathingGlowToView:(UIView *)view
+                               key:(NSString *)key
+                         fromAlpha:(CGFloat)fromAlpha
+                           toAlpha:(CGFloat)toAlpha
+                         fromScale:(CGFloat)fromScale
+                           toScale:(CGFloat)toScale
+                          duration:(CFTimeInterval)duration
+{
+    if (!view || [view.layer animationForKey:key]) return;
+
+    CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacity.fromValue = @(fromAlpha);
+    opacity.toValue = @(toAlpha);
+
+    CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    scale.fromValue = @(fromScale);
+    scale.toValue = @(toScale);
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[opacity, scale];
+    group.duration = duration;
+    group.autoreverses = YES;
+    group.repeatCount = HUGE_VALF;
+    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [view.layer addAnimation:group forKey:key];
+}
+
+- (void)pp_stopSummaryBottomGlowMotion
+{
+    [self.bottomGlowView.layer removeAnimationForKey:@"pp_payment_bottom_glow_breath"];
+    [self.bottomSecondaryGlowView.layer removeAnimationForKey:@"pp_payment_bottom_secondary_glow_breath"];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -130,16 +249,13 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
 - (void)pp_configureNavigationChrome
 {
-    UIButton *backButton = [PPButtonHelper pp_buttonWithTitleForBar:nil
-                                                          imageName:PPChevronName
-                                                             target:self
-                                                             action:@selector(onBack:)];
-    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:backButton];
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.rightBarButtonItem = nil;
 }
 
 - (void)setSummuryViewAtBottom
 {
-    self.summaryView = [[BBCheckoutSummaryView alloc] init];
+    self.summaryView = [[PPPremuimChekoutView alloc] init];
     [self.view addSubview:self.summaryView];
     self.summaryView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.summaryView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor].active = YES;
@@ -194,7 +310,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
     // Re-anchor the address picker below the hero card instead of safe-area top
     self.locView.topConstraint.active = NO;
-    self.locView.topConstraint = [self.locView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:14.0];
+    self.locView.topConstraint = [self.locView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:10.0];
     self.locView.topConstraint.active = YES;
 
     [self pp_setupInitialAddressState];
@@ -270,12 +386,6 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     self.heroSecondaryGlow.layer.shadowOffset = CGSizeZero;
     [self.heroCardView addSubview:self.heroSecondaryGlow];
 
-    self.heroAccentBar = [[UIView alloc] init];
-    self.heroAccentBar.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroAccentBar.backgroundColor = brandColor;
-    self.heroAccentBar.layer.cornerRadius = 3.0;
-    [self.heroCardView addSubview:self.heroAccentBar];
-
     UIView *eyebrowContainer = [[UIView alloc] init];
     eyebrowContainer.translatesAutoresizingMaskIntoConstraints = NO;
     eyebrowContainer.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
@@ -287,28 +397,78 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     eyebrowContainer.layer.borderWidth = 1.0;
     [eyebrowContainer pp_setBorderColor:[brandColor colorWithAlphaComponent:0.10]];
     eyebrowContainer.layer.masksToBounds = YES;
-    [self.heroCardView addSubview:eyebrowContainer];
 
     self.heroEyebrowLabel = [[UILabel alloc] init];
     self.heroEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroEyebrowLabel.font = [GM MidFontWithSize:12.0];
     self.heroEyebrowLabel.textColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-    self.heroEyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.heroEyebrowLabel.textAlignment = NSTextAlignmentCenter;
+    self.heroEyebrowLabel.numberOfLines = 1;
+    self.heroEyebrowLabel.adjustsFontSizeToFitWidth = YES;
+    self.heroEyebrowLabel.minimumScaleFactor = 0.82;
     self.heroEyebrowLabel.text = kLang(@"payment_screen_eyebrow");
     [eyebrowContainer addSubview:self.heroEyebrowLabel];
 
-    UIView *iconSurface = [[UIView alloc] init];
-    iconSurface.translatesAutoresizingMaskIntoConstraints = NO;
-    iconSurface.backgroundColor = [AppForgroundColr ?: UIColor.whiteColor colorWithAlphaComponent:0.75];
-    iconSurface.layer.cornerRadius = 22.0;
-    iconSurface.layer.cornerCurve = kCACornerCurveContinuous;
-    [self.heroCardView addSubview:iconSurface];
+    UIButton *heroBackButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    heroBackButton.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImage *backImage = [UIImage pp_symbolNamed:PPChevronName
+                                       pointSize:18.0
+                                          weight:UIImageSymbolWeightSemibold
+                                           scale:UIImageSymbolScaleMedium
+                                         palette:@[UIColor.labelColor, UIColor.labelColor]
+                                    makeTemplate:YES];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.image = backImage;
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 10.0, 10.0, 10.0);
+        config.baseForegroundColor = UIColor.labelColor;
+        config.background.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.76];
+        config.background.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.52];
+        config.background.strokeWidth = 1.0;
+        heroBackButton.configuration = config;
+    } else {
+        [heroBackButton setImage:backImage forState:UIControlStateNormal];
+        heroBackButton.tintColor = UIColor.labelColor;
+        heroBackButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.76];
+        heroBackButton.layer.cornerRadius = 20.0;
+        heroBackButton.layer.borderWidth = 1.0;
+        [heroBackButton pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.52]];
+    }
+    heroBackButton.accessibilityLabel = NSLocalizedString(@"Back", @"Navigate back");
+    [heroBackButton addTarget:self action:@selector(onBack:) forControlEvents:UIControlEventTouchUpInside];
 
-    UIImageView *heroIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"creditcard.and.123"]];
-    heroIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    heroIconView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-    heroIconView.contentMode = UIViewContentModeScaleAspectFit;
-    [iconSurface addSubview:heroIconView];
+    UILabel *heroNavTitleLabel = [[UILabel alloc] init];
+    heroNavTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    heroNavTitleLabel.font = [GM boldFontWithSize:17.0];
+    heroNavTitleLabel.textColor = UIColor.labelColor;
+    heroNavTitleLabel.textAlignment = NSTextAlignmentCenter;
+    heroNavTitleLabel.numberOfLines = 2;
+    heroNavTitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
+    heroNavTitleLabel.adjustsFontSizeToFitWidth = YES;
+    heroNavTitleLabel.minimumScaleFactor = 0.72;
+    heroNavTitleLabel.text = kLang(@"SelectPaymentMethod");
+    heroNavTitleLabel.accessibilityTraits = UIAccessibilityTraitHeader;
+    [heroNavTitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
+                                                       forAxis:UILayoutConstraintAxisHorizontal];
+    [heroNavTitleLabel setContentHuggingPriority:UILayoutPriorityDefaultLow
+                                         forAxis:UILayoutConstraintAxisHorizontal];
+    [eyebrowContainer setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                      forAxis:UILayoutConstraintAxisHorizontal];
+    [heroBackButton setContentCompressionResistancePriority:UILayoutPriorityRequired
+                                                    forAxis:UILayoutConstraintAxisHorizontal];
+
+    UIStackView *heroTopRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        heroBackButton,
+        heroNavTitleLabel,
+        eyebrowContainer
+    ]];
+    heroTopRow.translatesAutoresizingMaskIntoConstraints = NO;
+    heroTopRow.axis = UILayoutConstraintAxisHorizontal;
+    heroTopRow.alignment = UIStackViewAlignmentCenter;
+    heroTopRow.spacing = 10.0;
+    heroTopRow.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    [self.heroCardView addSubview:heroTopRow];
 
     self.heroTitleLabel = [[UILabel alloc] init];
     self.heroTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -346,7 +506,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     [self.heroCardView addSubview:deliverySubtitleLabel];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.heroCardView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
+        [self.heroCardView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:4.0],
         [self.heroCardView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
         [self.heroCardView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
 
@@ -365,30 +525,21 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
         [self.heroSecondaryGlow.bottomAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:34.0],
         [self.heroSecondaryGlow.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:-26.0],
 
-        [self.heroAccentBar.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:12.0],
-        [self.heroAccentBar.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
-        [self.heroAccentBar.widthAnchor constraintEqualToConstant:56.0],
-        [self.heroAccentBar.heightAnchor constraintEqualToConstant:5.0],
+        [heroTopRow.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:14.0],
+        [heroTopRow.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
+        [heroTopRow.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
 
-        [eyebrowContainer.topAnchor constraintEqualToAnchor:self.heroAccentBar.bottomAnchor constant:12.0],
-        [eyebrowContainer.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
+        [heroBackButton.widthAnchor constraintEqualToConstant:40.0],
+        [heroBackButton.heightAnchor constraintEqualToConstant:40.0],
+        [eyebrowContainer.heightAnchor constraintGreaterThanOrEqualToConstant:32.0],
+        [eyebrowContainer.widthAnchor constraintLessThanOrEqualToConstant:136.0],
 
         [self.heroEyebrowLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.topAnchor constant:7.0],
         [self.heroEyebrowLabel.bottomAnchor constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:-7.0],
         [self.heroEyebrowLabel.leadingAnchor constraintEqualToAnchor:eyebrowContainer.leadingAnchor constant:12.0],
         [self.heroEyebrowLabel.trailingAnchor constraintEqualToAnchor:eyebrowContainer.trailingAnchor constant:-12.0],
 
-        [iconSurface.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
-        [iconSurface.centerYAnchor constraintEqualToAnchor:eyebrowContainer.centerYAnchor],
-        [iconSurface.widthAnchor constraintEqualToConstant:40.0],
-        [iconSurface.heightAnchor constraintEqualToConstant:40.0],
-
-        [heroIconView.centerXAnchor constraintEqualToAnchor:iconSurface.centerXAnchor],
-        [heroIconView.centerYAnchor constraintEqualToAnchor:iconSurface.centerYAnchor],
-        [heroIconView.widthAnchor constraintEqualToConstant:20.0],
-        [heroIconView.heightAnchor constraintEqualToConstant:20.0],
-
-        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:eyebrowContainer.bottomAnchor constant:12.0],
+        [self.heroTitleLabel.topAnchor constraintEqualToAnchor:heroTopRow.bottomAnchor constant:14.0],
         [self.heroTitleLabel.leadingAnchor constraintEqualToAnchor:self.heroCardView.leadingAnchor constant:20.0],
         [self.heroTitleLabel.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-20.0],
 
@@ -634,7 +785,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     [self.view addSubview:self.paymentCollection];
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:14.0],
+        [self.paymentCollection.topAnchor constraintEqualToAnchor:self.locView.bottomAnchor constant:10.0],
         [self.paymentCollection.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.paymentCollection.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.paymentCollection.bottomAnchor constraintEqualToAnchor:self.summaryView.topAnchor constant:-10.0]
@@ -789,6 +940,160 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
     }];
 }
 
+- (NSString *)pp_trimmedCheckoutMessage:(NSString *)message
+{
+    if (![message isKindOfClass:NSString.class]) return @"";
+    return [message stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+- (BOOL)pp_checkoutMessage:(NSString *)message containsAnyToken:(NSArray<NSString *> *)tokens
+{
+    NSString *lowercase = [self pp_trimmedCheckoutMessage:message].lowercaseString;
+    if (lowercase.length == 0) return NO;
+    for (NSString *token in tokens ?: @[]) {
+        if (![token isKindOfClass:NSString.class] || token.length == 0) continue;
+        if ([lowercase containsString:token.lowercaseString]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (BOOL)pp_checkoutMessageContainsTechnicalIdentifier:(NSString *)message
+{
+    NSString *trimmed = [self pp_trimmedCheckoutMessage:message];
+    if (trimmed.length == 0) return NO;
+
+    static NSRegularExpression *uuidExpression;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        uuidExpression = [NSRegularExpression regularExpressionWithPattern:@"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}"
+                                                                    options:0
+                                                                      error:nil];
+    });
+    NSRange fullRange = NSMakeRange(0, trimmed.length);
+    if ([uuidExpression firstMatchInString:trimmed options:0 range:fullRange]) {
+        return YES;
+    }
+
+    return [self pp_checkoutMessage:trimmed containsAnyToken:@[
+        @"firebase",
+        @"functions",
+        @"exception",
+        @"qibsessionid",
+        @"paymentattemptid",
+        @"backend response",
+        @"payload",
+        @"domain=",
+        @"code="
+    ]];
+}
+
+- (NSString *)pp_userFacingCheckoutFailureMessageForError:(NSError *)error retryable:(BOOL)retryable
+{
+    NSString *rawReason = [self pp_trimmedCheckoutMessage:error.localizedDescription];
+    if (rawReason.length == 0) {
+        return retryable ? kLang(@"payment_retryable_failure_message") : kLang(@"checkout_generic_error");
+    }
+
+    if ([error.domain isEqualToString:@"Checkout"] && error.code == 1001) {
+        return kLang(@"checkout_cart_empty_message");
+    }
+
+    if ([error.domain isEqualToString:@"Checkout"] && error.code == 1005) {
+        return kLang(@"checkout_invalid_address");
+    }
+
+    if ([error.domain isEqualToString:@"Checkout"] && error.code == 1003 &&
+        [self pp_checkoutMessageContainsTechnicalIdentifier:rawReason]) {
+        return kLang(@"checkout_items_unavailable_review_cart");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"must be a positive number", @"invalid price"]]) {
+        return kLang(@"checkout_item_price_invalid");
+    }
+
+    BOOL mentionsItem = [self pp_checkoutMessage:rawReason containsAnyToken:@[@"item ", @"cart item", @"product"]];
+    BOOL unavailable = [self pp_checkoutMessage:rawReason containsAnyToken:@[@"unavailable", @"not available", @"no longer available", @"out of stock"]];
+    if (mentionsItem && unavailable) {
+        return kLang(@"checkout_item_unavailable_review_cart");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"inventory", @"stock"]]) {
+        return kLang(@"checkout_items_unavailable_review_cart");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"cart is empty", @"empty cart"]]) {
+        return kLang(@"checkout_cart_empty_message");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"address"]]) {
+        return kLang(@"checkout_invalid_address");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"phone"]]) {
+        return kLang(@"payment_phone_required");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"payment request already", @"already in progress"]]) {
+        return kLang(@"payment_request_in_progress");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"payment method"]]) {
+        return kLang(@"checkout_payment_method_unavailable");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"offline", @"internet", @"network"]]) {
+        return kLang(@"offline_action_message");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"permission denied", @"not allowed"]]) {
+        return kLang(@"payment_backend_permission_denied");
+    }
+
+    if ([self pp_checkoutMessageContainsTechnicalIdentifier:rawReason]) {
+        return retryable ? kLang(@"payment_retryable_failure_message") : kLang(@"checkout_generic_error");
+    }
+
+    if (retryable && [self pp_checkoutMessage:rawReason containsAnyToken:@[@"payment failed", @"gateway", @"sdk"]]) {
+        return kLang(@"payment_retryable_failure_message");
+    }
+
+    return rawReason;
+}
+
+- (NSString *)pp_userFacingCheckoutPendingMessageForError:(NSError *)error
+{
+    NSString *rawReason = [self pp_trimmedCheckoutMessage:error.localizedDescription];
+    if (rawReason.length == 0 || [self pp_checkoutMessageContainsTechnicalIdentifier:rawReason]) {
+        return kLang(@"checkout_payment_verification_pending");
+    }
+    return rawReason;
+}
+
+- (BOOL)pp_checkoutFailureNeedsCartReviewForError:(NSError *)error userMessage:(NSString *)message
+{
+    NSString *rawReason = [self pp_trimmedCheckoutMessage:error.localizedDescription];
+    NSString *safeMessage = [self pp_trimmedCheckoutMessage:message];
+    if ([error.domain isEqualToString:@"Checkout"] && (error.code == 1001 || error.code == 1003)) {
+        return YES;
+    }
+    if ([safeMessage isEqualToString:kLang(@"checkout_item_unavailable_review_cart")] ||
+        [safeMessage isEqualToString:kLang(@"checkout_items_unavailable_review_cart")] ||
+        [safeMessage isEqualToString:kLang(@"checkout_item_price_invalid")] ||
+        [safeMessage isEqualToString:kLang(@"checkout_cart_empty_message")]) {
+        return YES;
+    }
+    return [self pp_checkoutMessage:rawReason containsAnyToken:@[
+        @"item ",
+        @"cart item",
+        @"inventory",
+        @"stock",
+        @"invalid price",
+        @"positive number"
+    ]];
+}
+
 
 - (void)finishPayments
 {
@@ -827,7 +1132,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
             if (addressError) {
                 [PPAlertHelper showErrorIn:self
                                      title:kLang(@"checkout_failed_title")
-                                  subtitle:addressError.localizedDescription ?: kLang(@"SomethingWentWrong")];
+                                  subtitle:kLang(@"checkout_address_refresh_failed")];
                 [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
                 PPORDERLog(@"Checkout blocked | reason=address_refresh_failed | error=%@",
                            addressError.localizedDescription ?: @"Unknown");
@@ -854,7 +1159,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
                     : kLang(@"checkout_failed_title");
                 [PPAlertHelper showWarningIn:self
                                        title:title
-                                    subtitle:validationError.localizedDescription ?: kLang(@"SomethingWentWrong")];
+                                    subtitle:validationError.localizedDescription ?: kLang(@"checkout_generic_error")];
                 [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
                 PPORDERLog(@"Checkout blocked | reason=preflight_failed | paymentMethod=%@ | error=%@",
                            selectedPaymentMethodID,
@@ -938,9 +1243,7 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
         // H-07: Offer retry for timeout / pending-verification states.
         BOOL isRetryable = [error.userInfo[PPCheckoutErrorIsRetryableKey] boolValue];
-        NSString *pendingMessage = error.localizedDescription.length > 0
-            ? error.localizedDescription
-            : kLang(@"checkout_payment_verification_pending");
+        NSString *pendingMessage = [self pp_userFacingCheckoutPendingMessageForError:error];
 
         if (isRetryable) {
             __weak typeof(self) weakRetry = self;
@@ -996,21 +1299,13 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
     } else {
         // PPCheckoutResultFailed
-        NSString *rawReason = error.localizedDescription ?: @"";
-        NSString *reason;
-        if ([rawReason rangeOfString:@"must be a positive number" options:NSCaseInsensitiveSearch].location != NSNotFound) {
-            reason = kLang(@"checkout_item_price_invalid") ?: @"One or more items have an invalid price. Please remove them and try again.";
-        } else if (rawReason.length > 0 && [rawReason rangeOfString:@"-" options:0].location != NSNotFound && rawReason.length > 30) {
-            // Raw SDK error with UUIDs — show generic user-friendly message
-            reason = kLang(@"checkout_generic_error") ?: kLang(@"SomethingWentWrong");
-        } else {
-            reason = rawReason.length > 0 ? rawReason : kLang(@"SomethingWentWrong");
-        }
-
         // H-07: Offer retry for QIB payment failures (SDK error, verification
         // failure, Firestore-confirmed decline).  Validation errors (out-of-stock,
         // invalid address, etc.) remain non-retryable.
         BOOL isRetryable = [error.userInfo[PPCheckoutErrorIsRetryableKey] boolValue];
+        NSString *rawReason = error.localizedDescription ?: @"";
+        NSString *reason = [self pp_userFacingCheckoutFailureMessageForError:error retryable:isRetryable];
+        BOOL needsCartReview = [self pp_checkoutFailureNeedsCartReviewForError:error userMessage:reason];
         PPORDERLog(@"Checkout failed | rawError=%@ | retryable=%d", rawReason, isRetryable);
 
         if (isRetryable) {
@@ -1026,6 +1321,20 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
                 if (!retryStrong) return;
                 PPORDERLog(@"User chose retry after payment failure | paymentMethod=%@", paymentMethodId);
                 [retryStrong pp_startCheckoutWithPaymentMethodId:paymentMethodId];
+            }
+                                  cancelBlock:nil];
+        } else if (needsCartReview) {
+            __weak typeof(self) weakReview = self;
+            [PPAlertHelper showConfirmationIn:self
+                                        title:kLang(@"checkout_review_cart_title")
+                                     subtitle:reason
+                                confirmButton:kLang(@"checkout_review_cart_action")
+                                 cancelButton:kLang(@"OK")
+                                         icon:nil
+                                 confirmBlock:^(NSString * _Nullable text, BOOL didConfirm) {
+                if (!didConfirm) return;
+                __strong typeof(weakReview) strongReview = weakReview;
+                [strongReview.navigationController popViewControllerAnimated:YES];
             }
                                   cancelBlock:nil];
         } else {
@@ -1047,9 +1356,11 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 -(void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
     [self pp_configureNavigationChrome];
     [[CartManager sharedManager] refreshPricingConfiguration];
     [self.summaryView setCheckoutLoading:self.isCheckoutInProgress];
+    [self pp_startSummaryBottomGlowMotionIfNeeded];
     [_summaryView pp_startTrustBannerShimmer];
     [self pp_setupInitialAddressState];
     [self pp_refreshCheckoutCallToAction];
@@ -1059,6 +1370,8 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 -(void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    [self.navigationController setNavigationBarHidden:NO animated:animated];
+    [self pp_stopSummaryBottomGlowMotion];
   // [_summaryView pp_stopTrustBannerShimmer];
 }
 

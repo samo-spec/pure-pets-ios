@@ -972,7 +972,10 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     PPDataSection section;
 
-    if ([defaults objectForKey:key] != nil) {
+    if ([self.input.initialSectionOverride respondsToSelector:@selector(integerValue)]) {
+        section = (PPDataSection)self.input.initialSectionOverride.integerValue;
+        PPDataViewLog(@"[Route] Forced section %ld from input override", (long)section);
+    } else if ([defaults objectForKey:key] != nil) {
         section = (PPDataSection)[defaults integerForKey:key];
         PPDataViewLog(@"[Route] Restored section %ld for key %@", (long)section, key);
     } else {

@@ -19,7 +19,7 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-/// ✅ Callback for cell actions (add/remove/change quantity/delete)
+/// Callback for quantity actions.
 typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 
 @interface PPCartTableCell : UITableViewCell
@@ -29,7 +29,7 @@ typedef void(^PPCartCellActionBlock)(CartItem *item, NSString *action);
 @property (nonatomic, strong, readonly) UILabel *priceLabel;
 @property (nonatomic, strong, readonly) UILabel *quantityLabel;
 
-/// Called when any of the buttons are tapped
+/// Called when the quantity buttons are tapped.
 @property (nonatomic, copy, nullable) PPCartCellActionBlock onAction;
 
 /// Configure the cell with a cart item

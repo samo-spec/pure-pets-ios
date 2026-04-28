@@ -1,7 +1,7 @@
 #import "PPSelectPaymentVC.h"
 #import "PPPaymentFormViewController.h"
 #import "PPPaymentMethodCell.h"
-#import "BBCheckoutSummaryView.h"
+ 
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -13,7 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, strong, nullable) PPPaymentFormViewController *paymentFormVC;
 @property (nonatomic, strong) NSArray<PaymentMethod *> *availableMethods;
-@property (nonatomic, strong) BBCheckoutSummaryView *summaryView;
+@property (nonatomic, strong) PPPremuimChekoutView *summaryView;
 @property (nonatomic, strong) UICollectionView *paymentCollection;
 @property (nonatomic, strong) UserPaymentInstrumentManager *instrumentManager;
 @property (nonatomic, strong) NSArray<UserPaymentInstrument *> *userInstruments;
