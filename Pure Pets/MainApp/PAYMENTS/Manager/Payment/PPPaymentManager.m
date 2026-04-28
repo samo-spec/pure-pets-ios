@@ -320,13 +320,30 @@ static BOOL PPPaymentResponseHasTerminalResult(NSDictionary *response)
     return transactionId.length > 0;
 }
 
+static BOOL PPPaymentIsSupportedCheckoutCurrency(NSString *currencyCode)
+{
+    NSString *normalized = [PPPaymentTrimmedString(currencyCode).uppercaseString copy];
+    if (normalized.length != 3) {
+        return NO;
+    }
+
+    static NSSet<NSString *> *supportedCurrencies;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        supportedCurrencies = [NSSet setWithArray:@[@"QAR", @"USD", @"EUR", @"GBP", @"SAR", @"AED", @"KWD", @"BHD", @"OMR"]];
+    });
+    return [supportedCurrencies containsObject:normalized];
+}
+
+static NSString *PPPaymentCheckoutCurrencyOrDefault(NSString *currencyCode)
+{
+    NSString *normalized = [PPPaymentTrimmedString(currencyCode).uppercaseString copy];
+    return PPPaymentIsSupportedCheckoutCurrency(normalized) ? normalized : @"QAR";
+}
+
 static NSString *PPPaymentResolvedCurrencyCode(void)
 {
-    NSString *currencyCode = [[CountryModel safeCurrentCurrencyCode] uppercaseString];
-    if (currencyCode.length == 3) {
-        return currencyCode;
-    }
-    return @"QAR";
+    return PPPaymentCheckoutCurrencyOrDefault([CountryModel safeCurrentCurrencyCode]);
 }
 
 static NSString *PPPaymentResolvedCountryISOCode(void)
@@ -337,17 +354,12 @@ static NSString *PPPaymentResolvedCountryISOCode(void)
 
 static NSString *PPPaymentEffectiveCurrencyForOrder(PPOrder *order)
 {
-    // Payment currency must follow the currently selected country (not a stale pending order snapshot).
-    NSString *currentCurrency = PPPaymentResolvedCurrencyCode();
-    if (currentCurrency.length == 3) {
+    NSString *currentCurrency = [PPPaymentTrimmedString([CountryModel safeCurrentCurrencyCode]).uppercaseString copy];
+    if (PPPaymentIsSupportedCheckoutCurrency(currentCurrency)) {
         return currentCurrency;
     }
 
-    NSString *orderCurrency = PPPaymentTrimmedString(order.currency).uppercaseString;
-    if (orderCurrency.length == 3) {
-        return orderCurrency;
-    }
-    return @"QAR";
+    return PPPaymentCheckoutCurrencyOrDefault(order.currency);
 }
 
 static NSString *PPPaymentFirstValidString(NSArray *values)

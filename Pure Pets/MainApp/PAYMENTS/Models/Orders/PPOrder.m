@@ -79,8 +79,18 @@ static NSString *PPOrderNormalizedStatusString(id value)
 
 static NSString *PPOrderResolvedDefaultCurrencyCode(void)
 {
-    NSString *currencyCode = [[CountryModel safeCurrentCurrencyCode] uppercaseString];
-    return currencyCode.length == 3 ? currencyCode : @"QAR";
+    NSString *currencyCode = [PPOrderTrimmedString([CountryModel safeCurrentCurrencyCode]).uppercaseString copy];
+    if (currencyCode.length != 3) {
+        return @"QAR";
+    }
+
+    static NSSet<NSString *> *supportedCurrencies;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        supportedCurrencies = [NSSet setWithArray:@[@"QAR", @"USD", @"EUR", @"GBP", @"SAR", @"AED", @"KWD", @"BHD", @"OMR"]];
+    });
+
+    return [supportedCurrencies containsObject:currencyCode] ? currencyCode : @"QAR";
 }
 
 static NSString *PPOrderNormalizedPaymentMethodString(id value, id provider)

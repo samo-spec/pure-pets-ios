@@ -2558,7 +2558,7 @@
 "pet_care_search_vets" = "ابحث عن طبيب بيطري";
 "pet_care_all_pets" = "كل الحيوانات";
 "pet_care_filter_all" = "الكل";
-"pet_care_filter_offers" = "العروض";
+"pet_care_filter_available" = "متاح";
 "pet_care_filter_in_stock" = "متوفر";
 "pet_care_filter_new" = "جديد";
 "pet_care_kind_filter" = "نوع الحيوان";

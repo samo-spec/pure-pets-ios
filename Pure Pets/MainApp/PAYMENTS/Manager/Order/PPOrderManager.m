@@ -315,12 +315,27 @@ static NSError *PPOrderWrappedCallableError(NSError *error) {
     return [NSError errorWithDomain:error.domain code:error.code userInfo:userInfo];
 }
 
-static NSString *PPOrderResolvedCurrencyCode(void) {
-    NSString *currencyCode = [CountryModel safeCurrentCurrencyCode];
-    if (currencyCode.length == 3) {
-        return currencyCode;
+static BOOL PPOrderIsSupportedCheckoutCurrency(NSString *currencyCode) {
+    NSString *normalized = [PPOrderTrimmedString(currencyCode).uppercaseString copy];
+    if (normalized.length != 3) {
+        return NO;
     }
-    return @"QAR";
+
+    static NSSet<NSString *> *supportedCurrencies;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        supportedCurrencies = [NSSet setWithArray:@[@"QAR", @"USD", @"EUR", @"GBP", @"SAR", @"AED", @"KWD", @"BHD", @"OMR"]];
+    });
+    return [supportedCurrencies containsObject:normalized];
+}
+
+static NSString *PPOrderCheckoutCurrencyOrDefault(NSString *currencyCode) {
+    NSString *normalized = [PPOrderTrimmedString(currencyCode).uppercaseString copy];
+    return PPOrderIsSupportedCheckoutCurrency(normalized) ? normalized : @"QAR";
+}
+
+static NSString *PPOrderResolvedCurrencyCode(void) {
+    return PPOrderCheckoutCurrencyOrDefault([CountryModel safeCurrentCurrencyCode]);
 }
 
 static NSString *PPOrderAddressEffectiveID(PPAddressModel *address) {

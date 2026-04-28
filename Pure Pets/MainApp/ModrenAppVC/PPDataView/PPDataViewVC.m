@@ -24,6 +24,17 @@
 
 static const CGFloat kPPSectionsTabBarHeight = 64.0;
 static const CGFloat kPPAccessoryFilterHeight = 42.0;
+static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
+static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
+static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
+
+typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
+    PPDataViewMotionReasonNone = 0,
+    PPDataViewMotionReasonInitialLoad,
+    PPDataViewMotionReasonSectionChange,
+    PPDataViewMotionReasonSubKindChange,
+    PPDataViewMotionReasonMainKindChange
+};
 
 static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
@@ -178,6 +189,14 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, copy) NSString *lastSubKindsTitle;
 @property (nonatomic, assign) CGSize lastSectionsIndicatorSize;
 @property (nonatomic, copy) NSArray<PPUniversalCellViewModel *> *presentedItems;
+@property (nonatomic, assign) PPDataViewMotionReason pendingMotionReason;
+@property (nonatomic, assign) NSInteger pendingMotionDirection;
+@property (nonatomic, assign) BOOL isAwaitingTransitionData;
+@property (nonatomic, strong) NSMutableSet<NSString *> *animatedCellEntranceKeys;
+@property (nonatomic, assign) NSInteger cellEntranceAnimationGeneration;
+@property (nonatomic, assign) NSInteger pendingCellEntranceAnimationLimit;
+@property (nonatomic, assign) PPDataViewMotionReason pendingCellEntranceMotionReason;
+@property (nonatomic, assign) NSInteger pendingCellEntranceDirection;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit;
 - (void)updateSectionsTabBarSelectionIndicatorIfNeeded;
@@ -211,6 +230,28 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
 - (void)pp_layoutPremiumBackgroundGlowViews;
 - (void)pp_updatePremiumBackgroundGlowAppearance;
+- (BOOL)pp_allowsPremiumMotion;
+- (void)pp_beginMotionTransition:(PPDataViewMotionReason)reason direction:(NSInteger)direction;
+- (NSInteger)pp_directionForSubKindID:(NSInteger)newSubKindID comparedToCurrentSubKindID:(NSInteger)currentSubKindID;
+- (void)updateSectionsTabBarSelectionForSection:(PPDataSection)section animated:(BOOL)animated;
+- (void)updateSubKindsButtonTitle:(NSString *)title animated:(BOOL)animated;
+- (void)updateSubKindsButtonTitle:(NSString *)title
+                          subKind:(nullable SubKindModel *)subKind
+                         animated:(BOOL)animated;
+- (void)pp_applyNavigationChangeAnimationToButton:(UIButton *)button updates:(dispatch_block_t)updates;
+- (void)pp_applyFeedbackPulseToView:(UIView *)view;
+- (NSArray<UICollectionViewCell *> *)pp_sortedVisibleCollectionCells;
+- (NSString *)pp_cellAnimationKeyForIndexPath:(NSIndexPath *)indexPath;
+- (void)pp_prepareCellEntranceAnimationsForReason:(PPDataViewMotionReason)reason direction:(NSInteger)direction;
+- (void)pp_animatePreparedVisibleCellsIfNeeded;
+- (void)pp_animateCellIfNeeded:(UICollectionViewCell *)cell atIndexPath:(NSIndexPath *)indexPath;
+- (void)pp_applyPresentedItemsAnimated:(BOOL)animated
+                           scrollToTop:(BOOL)scrollToTop
+                          motionReason:(PPDataViewMotionReason)motionReason
+                       motionDirection:(NSInteger)motionDirection;
+- (void)pp_performPremiumContentTransitionForReason:(PPDataViewMotionReason)motionReason
+                                    motionDirection:(NSInteger)motionDirection
+                                        scrollToTop:(BOOL)scrollToTop;
 @end
 @implementation PPDataViewVC
 -(void)viewWillLayoutSubviews
@@ -243,6 +284,10 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     if (self.collectionView) {
         self.collectionView.userInteractionEnabled = YES;
         self.collectionView.alpha = 1.0;
+        for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+            cell.alpha = 1.0;
+            cell.transform = CGAffineTransformIdentity;
+        }
     }
     [self pp_restoreNavigationOwnership];
     [self pp_refreshVisibleUniversalCellsAppearance];
@@ -268,9 +313,18 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
     [super viewDidDisappear:animated];
     self.isPerformingCrossFade = NO;
+    self.isAwaitingTransitionData = NO;
+    self.pendingMotionReason = PPDataViewMotionReasonNone;
+    self.pendingCellEntranceAnimationLimit = 0;
+    self.pendingCellEntranceMotionReason = PPDataViewMotionReasonNone;
+    [self.animatedCellEntranceKeys removeAllObjects];
     if (self.collectionView) {
         self.collectionView.userInteractionEnabled = YES;
         self.collectionView.alpha = 1.0;
+        for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+            cell.alpha = 1.0;
+            cell.transform = CGAffineTransformIdentity;
+        }
     }
 }
 
@@ -376,6 +430,14 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     dispatch_queue_create("com.purepets.blurhash.decode", DISPATCH_QUEUE_CONCURRENT);
     self.isPerformingCrossFade = NO;
     self.presentedItems = @[];
+    self.pendingMotionReason = PPDataViewMotionReasonNone;
+    self.pendingMotionDirection = 0;
+    self.isAwaitingTransitionData = NO;
+    self.animatedCellEntranceKeys = [NSMutableSet set];
+    self.cellEntranceAnimationGeneration = 0;
+    self.pendingCellEntranceAnimationLimit = 0;
+    self.pendingCellEntranceMotionReason = PPDataViewMotionReasonNone;
+    self.pendingCellEntranceDirection = 0;
     [self pp_applyPremiumDataViewBackgroundAppearance];
     [self emptyStateInit];
     [self setupSectionsTabBar];
@@ -522,6 +584,320 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     }
 }
 
+- (BOOL)pp_allowsPremiumMotion
+{
+    return self.view.window != nil && !UIAccessibilityIsReduceMotionEnabled();
+}
+
+- (void)pp_beginMotionTransition:(PPDataViewMotionReason)reason direction:(NSInteger)direction
+{
+    if (reason == PPDataViewMotionReasonNone) {
+        return;
+    }
+
+    self.pendingMotionReason = reason;
+    self.pendingMotionDirection = (direction > 0) ? 1 : ((direction < 0) ? -1 : 0);
+    self.isAwaitingTransitionData = YES;
+}
+
+- (NSInteger)pp_directionForSubKindID:(NSInteger)newSubKindID comparedToCurrentSubKindID:(NSInteger)currentSubKindID
+{
+    if (newSubKindID == currentSubKindID) {
+        return 0;
+    }
+
+    NSArray<SubKindModel *> *subKinds = self.input.mainKind.SubKindsArray ?: @[];
+    NSInteger newIndex = (newSubKindID == 0) ? 0 : NSNotFound;
+    NSInteger currentIndex = (currentSubKindID == 0) ? 0 : NSNotFound;
+
+    for (NSInteger idx = 0; idx < (NSInteger)subKinds.count; idx++) {
+        SubKindModel *candidate = subKinds[idx];
+        NSInteger resolvedIndex = idx + 1; // Reserve 0 for the "All" state.
+        if (candidate.ID == newSubKindID) {
+            newIndex = resolvedIndex;
+        }
+        if (candidate.ID == currentSubKindID) {
+            currentIndex = resolvedIndex;
+        }
+    }
+
+    if (newIndex == NSNotFound || currentIndex == NSNotFound) {
+        return (newSubKindID > currentSubKindID) ? 1 : -1;
+    }
+
+    if (newIndex == currentIndex) {
+        return 0;
+    }
+
+    return (newIndex > currentIndex) ? 1 : -1;
+}
+
+- (void)pp_applyNavigationChangeAnimationToButton:(UIButton *)button updates:(dispatch_block_t)updates
+{
+    if (!button || !updates) {
+        if (updates) {
+            updates();
+        }
+        return;
+    }
+
+    if (![self pp_allowsPremiumMotion]) {
+        updates();
+        return;
+    }
+
+    [UIView transitionWithView:button
+                      duration:0.24
+                       options:UIViewAnimationOptionTransitionCrossDissolve |
+                               UIViewAnimationOptionBeginFromCurrentState |
+                               UIViewAnimationOptionAllowUserInteraction
+                    animations:updates
+                    completion:nil];
+}
+
+- (void)pp_applyFeedbackPulseToView:(UIView *)view
+{
+    if (!view) {
+        return;
+    }
+
+    [view.layer removeAllAnimations];
+    if (![self pp_allowsPremiumMotion]) {
+        view.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.14
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        view.transform = CGAffineTransformMakeScale(0.985, 0.985);
+    } completion:^(__unused BOOL finished) {
+        [UIView animateWithDuration:0.38
+                              delay:0.0
+             usingSpringWithDamping:0.78
+              initialSpringVelocity:0.16
+                            options:UIViewAnimationOptionBeginFromCurrentState |
+                                    UIViewAnimationOptionCurveEaseInOut |
+                                    UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+}
+
+- (NSArray<UICollectionViewCell *> *)pp_sortedVisibleCollectionCells
+{
+    if (!self.collectionView) {
+        return @[];
+    }
+
+    return [self.collectionView.visibleCells sortedArrayUsingComparator:^NSComparisonResult(UICollectionViewCell * _Nonnull firstCell, UICollectionViewCell * _Nonnull secondCell) {
+        NSIndexPath *firstIndexPath = [self.collectionView indexPathForCell:firstCell];
+        NSIndexPath *secondIndexPath = [self.collectionView indexPathForCell:secondCell];
+        if (!firstIndexPath || !secondIndexPath) {
+            return NSOrderedSame;
+        }
+        if (firstIndexPath.section != secondIndexPath.section) {
+            return (firstIndexPath.section < secondIndexPath.section) ? NSOrderedAscending : NSOrderedDescending;
+        }
+        if (firstIndexPath.item == secondIndexPath.item) {
+            return NSOrderedSame;
+        }
+        return (firstIndexPath.item < secondIndexPath.item) ? NSOrderedAscending : NSOrderedDescending;
+    }];
+}
+
+- (NSString *)pp_cellAnimationKeyForIndexPath:(NSIndexPath *)indexPath
+{
+    if (!indexPath) {
+        return @"";
+    }
+
+    return [NSString stringWithFormat:@"%ld.%ld.%ld",
+            (long)self.cellEntranceAnimationGeneration,
+            (long)indexPath.section,
+            (long)indexPath.item];
+}
+
+- (void)pp_prepareCellEntranceAnimationsForReason:(PPDataViewMotionReason)reason direction:(NSInteger)direction
+{
+    self.cellEntranceAnimationGeneration += 1;
+    [self.animatedCellEntranceKeys removeAllObjects];
+    self.pendingCellEntranceMotionReason = reason;
+    self.pendingCellEntranceDirection = (direction > 0) ? 1 : ((direction < 0) ? -1 : 0);
+    self.pendingCellEntranceAnimationLimit = (reason == PPDataViewMotionReasonNone)
+        ? 0
+        : MIN((NSInteger)self.presentedItems.count, kPPPremiumVisibleCellAnimationLimit);
+}
+
+- (void)pp_animatePreparedVisibleCellsIfNeeded
+{
+    if (self.pendingCellEntranceAnimationLimit <= 0 || ![self pp_allowsPremiumMotion]) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.collectionView layoutIfNeeded];
+        for (UICollectionViewCell *cell in [self pp_sortedVisibleCollectionCells]) {
+            NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
+            [self pp_animateCellIfNeeded:cell atIndexPath:indexPath];
+        }
+    });
+}
+
+- (void)pp_animateCellIfNeeded:(UICollectionViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
+{
+    if (!cell || !indexPath || self.pendingCellEntranceAnimationLimit <= 0) {
+        return;
+    }
+
+    if (indexPath.item >= self.pendingCellEntranceAnimationLimit) {
+        return;
+    }
+
+    NSString *key = [self pp_cellAnimationKeyForIndexPath:indexPath];
+    if (key.length == 0 || [self.animatedCellEntranceKeys containsObject:key]) {
+        return;
+    }
+    [self.animatedCellEntranceKeys addObject:key];
+
+    if (![self pp_allowsPremiumMotion]) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    CGFloat directionX = 0.0;
+    if (self.pendingCellEntranceMotionReason == PPDataViewMotionReasonSectionChange) {
+        directionX = (CGFloat)self.pendingCellEntranceDirection * kPPPremiumCellSectionEntranceXOffset;
+    } else if (self.pendingCellEntranceMotionReason == PPDataViewMotionReasonMainKindChange) {
+        directionX = (CGFloat)self.pendingCellEntranceDirection * 10.0;
+    }
+
+    CGFloat directionY = kPPPremiumCellBaseEntranceYOffset + (CGFloat)MIN((NSInteger)indexPath.item, 4) * 3.0;
+    if (self.pendingCellEntranceMotionReason == PPDataViewMotionReasonInitialLoad) {
+        directionY += 6.0;
+    }
+
+    CGAffineTransform startTransform = CGAffineTransformTranslate(CGAffineTransformIdentity,
+                                                                  directionX,
+                                                                  directionY);
+    startTransform = CGAffineTransformScale(startTransform, 0.985, 0.985);
+
+    cell.alpha = 0.0;
+    cell.transform = startTransform;
+
+    NSTimeInterval delay = MIN((NSTimeInterval)indexPath.item * 0.035, 0.28);
+    [UIView animateWithDuration:0.50
+                          delay:delay
+         usingSpringWithDamping:0.84
+          initialSpringVelocity:0.16
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_applyPresentedItemsAnimated:(BOOL)animated
+                           scrollToTop:(BOOL)scrollToTop
+                          motionReason:(PPDataViewMotionReason)motionReason
+                       motionDirection:(NSInteger)motionDirection
+{
+    BOOL shouldUsePremiumTransition =
+        motionReason != PPDataViewMotionReasonNone &&
+        animated &&
+        !self.isShowingSkeleton &&
+        self.presentedItems.count <= 120 &&
+        [self pp_allowsPremiumMotion];
+
+    if (shouldUsePremiumTransition) {
+        [self pp_performPremiumContentTransitionForReason:motionReason
+                                          motionDirection:motionDirection
+                                              scrollToTop:scrollToTop];
+        return;
+    }
+
+    self.layoutManager.items = self.presentedItems;
+    [self applySnapshotAnimated:animated];
+    [self refreshFilterChipTitles];
+    [self pp_prepareCellEntranceAnimationsForReason:motionReason direction:motionDirection];
+    [self pp_animatePreparedVisibleCellsIfNeeded];
+
+    if (scrollToTop) {
+        [self scrollCollectionViewToTopAfterReload:YES];
+    }
+
+    [self updateEmptyState];
+}
+
+- (void)pp_performPremiumContentTransitionForReason:(PPDataViewMotionReason)motionReason
+                                    motionDirection:(NSInteger)motionDirection
+                                        scrollToTop:(BOOL)scrollToTop
+{
+    NSArray<UICollectionViewCell *> *outgoingCells = [self pp_sortedVisibleCollectionCells];
+    if (outgoingCells.count == 0 || self.isPerformingCrossFade) {
+        self.layoutManager.items = self.presentedItems;
+        [self applySnapshotAnimated:NO];
+        [self refreshFilterChipTitles];
+        [self pp_prepareCellEntranceAnimationsForReason:motionReason direction:motionDirection];
+        [self pp_animatePreparedVisibleCellsIfNeeded];
+        if (scrollToTop) {
+            [self scrollCollectionViewToTopAfterReload:YES];
+        }
+        [self updateEmptyState];
+        return;
+    }
+
+    self.isPerformingCrossFade = YES;
+    self.collectionView.userInteractionEnabled = NO;
+
+    CGFloat normalizedDirection = (motionDirection > 0) ? 1.0 : ((motionDirection < 0) ? -1.0 : 0.0);
+    CGFloat exitX = (motionReason == PPDataViewMotionReasonSectionChange) ? (-normalizedDirection * 14.0) : 0.0;
+    CGFloat exitY = (motionReason == PPDataViewMotionReasonMainKindChange) ? -16.0 : -10.0;
+
+    [UIView animateKeyframesWithDuration:0.18
+                                   delay:0.0
+                                 options:UIViewKeyframeAnimationOptionBeginFromCurrentState |
+                                         UIViewAnimationOptionAllowUserInteraction |
+                                         UIViewKeyframeAnimationOptionCalculationModeCubic
+                              animations:^{
+        [outgoingCells enumerateObjectsUsingBlock:^(UICollectionViewCell * _Nonnull cell, NSUInteger idx, BOOL * _Nonnull stop) {
+            NSTimeInterval relativeStart = MIN((NSTimeInterval)idx * 0.03, 0.12) / 0.18;
+            [UIView addKeyframeWithRelativeStartTime:relativeStart
+                                    relativeDuration:0.86
+                                          animations:^{
+                CGFloat stagedY = exitY - (CGFloat)MIN((NSInteger)idx, 4) * 2.0;
+                CGAffineTransform transition = CGAffineTransformTranslate(CGAffineTransformIdentity,
+                                                                          exitX,
+                                                                          stagedY);
+                cell.transform = CGAffineTransformScale(transition, 0.985, 0.985);
+                cell.alpha = 0.0;
+            }];
+        }];
+    } completion:^(__unused BOOL finished) {
+        self.layoutManager.items = self.presentedItems;
+        [self applySnapshotAnimated:NO];
+        [self.collectionView layoutIfNeeded];
+        [self refreshFilterChipTitles];
+        [self pp_prepareCellEntranceAnimationsForReason:motionReason direction:motionDirection];
+        [self pp_animatePreparedVisibleCellsIfNeeded];
+
+        if (scrollToTop) {
+            [self scrollCollectionViewToTopAfterReload:YES];
+        }
+
+        self.collectionView.userInteractionEnabled = YES;
+        self.isPerformingCrossFade = NO;
+        [self updateEmptyState];
+    }];
+}
+
 
 - (void)pp_handleAdDidUpload:(NSNotification *)note
 {
@@ -662,7 +1038,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 }
  
  - (void)updateEmptyState {
-    if (self.isShowingSkeleton) return;
+    if (self.isShowingSkeleton || self.isPerformingCrossFade) return;
     if (![NSThread isMainThread]) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [self updateEmptyState];
@@ -950,10 +1326,25 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         PPDataViewLog(@"[VC] currentSection = %ld", (long)weakSelf.viewModel.currentSection);
         PPDataViewLog(@"[VC] items.count = %ld", (long)weakSelf.viewModel.items.count);
 
+        BOOL isTransitionResetPhase =
+            weakSelf.isAwaitingTransitionData &&
+            weakSelf.viewModel.isLoading &&
+            weakSelf.viewModel.items.count == 0;
+
+        if (isTransitionResetPhase) {
+            [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
+            [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
+            [weakSelf syncFilterChipsForCurrentSection];
+            [weakSelf persistCurrentSection];
+            [weakSelf updateCollectionContentInset];
+            [weakSelf updateCartButtonVisibility];
+            return;
+        }
+
         [weakSelf refreshPresentedItemsAnimated:weakSelf.didApplyInitialSnapshot
                                      scrollToTop:NO];
         weakSelf.didApplyInitialSnapshot = YES;
-        [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection];
+        [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
         [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
         [weakSelf syncFilterChipsForCurrentSection];
         // ✅ THIS IS THE FIX
@@ -1482,6 +1873,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [[PPImageLoaderManager shared] cancelAllPrefetching];
 }
 
+- (void)collectionView:(UICollectionView *)collectionView
+      willDisplayCell:(UICollectionViewCell *)cell
+    forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    (void)collectionView;
+    [self pp_animateCellIfNeeded:cell atIndexPath:indexPath];
+}
+
 - (void)applySnapshotAnimated:(BOOL)animated
 {
     if (!self.viewModel || !self.dataSource) return;
@@ -1533,13 +1932,22 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     // presentation-only price filtering and sorting for the accessories experience.
     NSArray<PPUniversalCellViewModel *> *sourceItems = self.viewModel.items ?: @[];
     self.presentedItems = [self filteredPresentedItemsFromSourceItems:sourceItems];
-    self.layoutManager.items = self.presentedItems;
-    [self applySnapshotAnimated:animated];
-    [self refreshFilterChipTitles];
-
-    if (scrollToTop) {
-        [self scrollCollectionViewToTopAfterReload:YES];
+    PPDataViewMotionReason motionReason = self.pendingMotionReason;
+    if (motionReason == PPDataViewMotionReasonNone &&
+        !self.didApplyInitialSnapshot &&
+        self.presentedItems.count > 0) {
+        motionReason = PPDataViewMotionReasonInitialLoad;
     }
+
+    NSInteger motionDirection = self.pendingMotionDirection;
+    [self pp_applyPresentedItemsAnimated:animated
+                             scrollToTop:scrollToTop
+                            motionReason:motionReason
+                         motionDirection:motionDirection];
+
+    self.isAwaitingTransitionData = NO;
+    self.pendingMotionReason = PPDataViewMotionReasonNone;
+    self.pendingMotionDirection = 0;
 }
 
 - (void)refreshFilterChipTitles
@@ -1724,6 +2132,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 - (void)updateSectionsTabBarSelectionForSection:(PPDataSection)section
 {
+    [self updateSectionsTabBarSelectionForSection:section animated:NO];
+}
+
+- (void)updateSectionsTabBarSelectionForSection:(PPDataSection)section animated:(BOOL)animated
+{
     if (!self.sectionsSegmentedControl || self.sectionsSegmentedControl.numberOfSegments == 0) {
         return;
     }
@@ -1733,7 +2146,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         selectedIndex = PPDataSectionAds;
     }
 
-    [self.sectionsSegmentedControl setSelectedIndex:selectedIndex animated:NO];
+    [self.sectionsSegmentedControl setSelectedIndex:selectedIndex animated:animated];
 }
 
 - (void)activateSection:(PPDataSection)section userInitiated:(BOOL)userInitiated
@@ -1745,13 +2158,16 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     BOOL isSameSection = (section == self.viewModel.currentSection);
     BOOL shouldSwitchSection = !isSameSection || self.viewModel.items.count == 0;
 
-    [self updateSectionsTabBarSelectionForSection:section];
+    [self updateSectionsTabBarSelectionForSection:section animated:userInitiated];
 
     if (userInitiated) {
         [PPFunc triggerLightHaptic];
     }
 
     if (!shouldSwitchSection) {
+        if (userInitiated) {
+            [self pp_applyFeedbackPulseToView:self.sectionsSegmentedControl];
+        }
         [self scrollCollectionViewToTopAfterReload:YES];
         return;
     }
@@ -1759,6 +2175,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (!isSameSection) {
         [self saveCurrentSectionScrollOffset];
     }
+
+    PPDataViewMotionReason motionReason =
+        (!self.didApplyInitialSnapshot && self.presentedItems.count == 0)
+        ? PPDataViewMotionReasonInitialLoad
+        : PPDataViewMotionReasonSectionChange;
+    NSInteger motionDirection = (section > self.viewModel.currentSection) ? 1 : ((section < self.viewModel.currentSection) ? -1 : 0);
+    [self pp_beginMotionTransition:motionReason direction:motionDirection];
 
     [self persistSectionSelection:section];
     [self updateCartButtonVisibilityForSection:section animated:userInitiated];
@@ -1885,7 +2308,14 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) return;
 
     UIImage *icon = [PPImageButtonHelper imageFor44ptButton:PPImage(self.input.mainKind.KindImageNamed)];
-    [self.KindsButton  setImage:icon forState:UIControlStateNormal];
+    if (self.pendingMotionReason == PPDataViewMotionReasonMainKindChange && [self pp_allowsPremiumMotion]) {
+        [self pp_applyNavigationChangeAnimationToButton:self.KindsButton updates:^{
+            [self.KindsButton setImage:icon forState:UIControlStateNormal];
+        }];
+        [self pp_applyFeedbackPulseToView:self.KindsButton];
+    } else {
+        [self.KindsButton setImage:icon forState:UIControlStateNormal];
+    }
     
      
 }
@@ -1909,12 +2339,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
          SubKindModel *savedSubKind =
          [model subKindForID:savedSubKindID];
 
+         [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
          if (savedSubKind) {
              self.viewModel.currentSubKindID = savedSubKind.ID;
-             [self updateSubKindsButtonTitle:savedSubKind.SubKindName subKind:savedSubKind];
+             [self updateSubKindsButtonTitle:savedSubKind.SubKindName subKind:savedSubKind animated:YES];
          } else {
              self.viewModel.currentSubKindID = 0; // All
-             [self updateSubKindsButtonTitle:model.KindName];
+             [self updateSubKindsButtonTitle:model.KindName animated:YES];
          }
          [self refreshsubKindsMenu];
          
@@ -2007,14 +2438,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
          SubKindModel *savedSubKind =
          [model subKindForID:savedSubKindID];
 
+         [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
          if (savedSubKind) {
              self.viewModel.currentSubKindID = savedSubKind.ID;
-             [self updateSubKindsButtonTitle:savedSubKind.SubKindName subKind:savedSubKind];
-          
-             
+             [self updateSubKindsButtonTitle:savedSubKind.SubKindName subKind:savedSubKind animated:YES];
          } else {
              self.viewModel.currentSubKindID = 0; // All
-             [self updateSubKindsButtonTitle:model.KindName];
+             [self updateSubKindsButtonTitle:model.KindName animated:YES];
          }
          [self refreshsubKindsMenu];
          
@@ -2347,10 +2777,22 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 #pragma mark - SubKinds Button
 - (void)updateSubKindsButtonTitle:(NSString *)title
 {
-    [self updateSubKindsButtonTitle:title subKind:nil];
+    [self updateSubKindsButtonTitle:title subKind:nil animated:NO];
+}
+
+- (void)updateSubKindsButtonTitle:(NSString *)title animated:(BOOL)animated
+{
+    [self updateSubKindsButtonTitle:title subKind:nil animated:animated];
 }
 // Update subKindsButton styling: Use light appearance only when current interface style is Light
 - (void)updateSubKindsButtonTitle:(NSString *)title subKind:(nullable SubKindModel *)subKind
+{
+    [self updateSubKindsButtonTitle:title subKind:subKind animated:NO];
+}
+
+- (void)updateSubKindsButtonTitle:(NSString *)title
+                          subKind:(nullable SubKindModel *)subKind
+                         animated:(BOOL)animated
 {
     if (!self.subKindsButton) return;
     if (!title || title.length == 0) return;
@@ -2367,33 +2809,47 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         ? [GM boldFontWithSize:17]
         : [GM MidFontWithSize:17];
 
-    UIButtonConfiguration *config = self.subKindsButton.configuration;
+    void (^applyButtonTitleChange)(void) = ^{
+        UIButtonConfiguration *config = self.subKindsButton.configuration;
+        config.attributedTitle =
+        [[NSAttributedString alloc] initWithString:title
+                                        attributes:@{
+            NSFontAttributeName : titleFont,
+            NSForegroundColorAttributeName : titleColor
+        }];
+        config.baseForegroundColor = titleColor;
+        self.subKindsButton.configuration = config;
+        [self.subKindsButton invalidateIntrinsicContentSize];
 
-    config.attributedTitle =
-    [[NSAttributedString alloc] initWithString:title
-                                    attributes:@{
-        NSFontAttributeName : titleFont,
-        NSForegroundColorAttributeName : titleColor
-    }];
+        if (animated && [self pp_allowsPremiumMotion]) {
+            [self reloadNavigationCenterViewLayout];
+        } else {
+            [UIView performWithoutAnimation:^{
+                [self reloadNavigationCenterViewLayout];
+            }];
+        }
+    };
 
-    config.baseForegroundColor = titleColor;
-    self.subKindsButton.configuration = config;
+    if (animated) {
+        [self pp_applyNavigationChangeAnimationToButton:self.subKindsButton updates:applyButtonTitleChange];
+        [self pp_applyFeedbackPulseToView:self.subKindsButton];
+    } else {
+        applyButtonTitleChange();
+    }
 
-    // Force size + nav refresh (no animation)
-    [self.subKindsButton invalidateIntrinsicContentSize];
-    [UIView performWithoutAnimation:^{
-        [self reloadNavigationCenterViewLayout];
-    }];
-    
-    if(subKind)
-    {
+    if (subKind) {
         PPDataViewLog(@"subKind %ld %@ %@ ",subKind.ID,subKind.SubKindName,subKind.SubKindImageName);
         UIImage *btnImg =
         [PPImageButtonHelper imageFor44ptButton:PPImage(subKind.SubKindImageName)];
-        [self.KindsButton setImage:btnImg forState:UIControlStateNormal];
+        if (animated) {
+            [self pp_applyNavigationChangeAnimationToButton:self.KindsButton updates:^{
+                [self.KindsButton setImage:btnImg forState:UIControlStateNormal];
+            }];
+            [self pp_applyFeedbackPulseToView:self.KindsButton];
+        } else {
+            [self.KindsButton setImage:btnImg forState:UIControlStateNormal];
+        }
     }
-    
-    
 }
 
 /// Shows or hides the chevron-down image on the subKindsButton.
@@ -2993,8 +3449,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             [[NSUserDefaults standardUserDefaults] setInteger:subKind.ID forKey:key];
 
             [self.scrollOffsetsBySection removeAllObjects];
+            NSInteger direction =
+            [self pp_directionForSubKindID:subKind.ID
+                comparedToCurrentSubKindID:self.viewModel.currentSubKindID];
+            [self pp_beginMotionTransition:PPDataViewMotionReasonSubKindChange
+                                  direction:direction];
             [self.viewModel reloadForSubKind:subKind];
-            [self updateSubKindsButtonTitle:subKind.SubKindName subKind:subKind];
+            [self updateSubKindsButtonTitle:subKind.SubKindName
+                                    subKind:subKind
+                                   animated:YES];
              self.subKindsButton.menu = [self subKindsMenu];
         }];
 
@@ -3046,6 +3509,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         NSString *key = [self subKindKeyForMainKind:self.input.mainKind];
         [[NSUserDefaults standardUserDefaults] setInteger:0 forKey:key];
 
+        NSInteger previousSubKindID = self.viewModel.currentSubKindID;
         // Clear filter in ViewModel
         self.viewModel.currentSubKindID = 0;
 
@@ -3053,12 +3517,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [self.scrollOffsetsBySection removeAllObjects];
 
         // Reload current section WITHOUT subkind constraint
+        NSInteger direction =
+        [self pp_directionForSubKindID:0
+            comparedToCurrentSubKindID:previousSubKindID];
+        [self pp_beginMotionTransition:PPDataViewMotionReasonSubKindChange
+                              direction:direction];
         [self.viewModel reloadDataWithCompletion:^(NSError * _Nullable error) {
             
         }];
 
         // Update button title back to MainKind name
-        [self updateSubKindsButtonTitle:self.input.mainKind.KindName];
+        [self updateSubKindsButtonTitle:self.input.mainKind.KindName animated:YES];
 
         // Refresh menu states
         self.subKindsButton.menu = [self subKindsMenu];

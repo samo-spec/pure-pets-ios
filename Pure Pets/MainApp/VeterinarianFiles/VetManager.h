@@ -19,7 +19,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *userId;
 @property (nonatomic, copy) NSArray<NSString *> *animalTypes;
 @property (nonatomic, copy) NSString *category;
-@property (nonatomic, assign) BOOL requiresPrescription;
 @property (nonatomic, assign) double price;
 @property (nonatomic, copy) NSString *currency;
 @property (nonatomic, assign) NSInteger stockQuantity;

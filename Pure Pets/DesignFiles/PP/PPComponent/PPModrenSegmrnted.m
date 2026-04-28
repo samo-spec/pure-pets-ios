@@ -344,9 +344,13 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     UIButtonConfiguration *config = self.containerBlurView.configuration;
     config.baseBackgroundColor = UIColor.clearColor;
     config.background.backgroundColor = UIColor.clearColor;
+    config.background.strokeColor = UIColor.clearColor;
+    config.background.strokeWidth = 0.0;
     self.containerBlurView.configuration = config;
     self.containerBlurView.translatesAutoresizingMaskIntoConstraints = NO;
     self.containerBlurView.userInteractionEnabled = NO;
+    self.containerBlurView.layer.borderWidth = 0.0;
+    self.containerBlurView.layer.borderColor = UIColor.clearColor.CGColor;
     [self.containerFillView addSubview:self.containerBlurView];
 
     self.containerTintOverlay = [[UIView alloc] init];
@@ -593,14 +597,21 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     {
         self.containerTintOverlay.backgroundColor =
             [surfaceColor colorWithAlphaComponent:dark ? 0.28 : 0.14];
-        self.containerFillView.layer.borderWidth = dark ? 0.78f : 0.92f;
-        [self.containerFillView pp_setBorderColor:[liquidBorderColor colorWithAlphaComponent:dark ? 0.30 : 0.58]];
+        self.containerFillView.layer.borderWidth = dark ? 0.0f : 0.92f;
+        [self.containerFillView pp_setBorderColor:dark
+         ? UIColor.clearColor
+         : [liquidBorderColor colorWithAlphaComponent:0.58]];
 
         [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:1.0]];
         self.layer.shadowOpacity = dark ? 0.16f : 0.08f;
         self.layer.shadowRadius = 14.0f;
         self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
 
+    }
+    else
+    {
+        self.containerFillView.layer.borderWidth = 0.0f;
+        [self.containerFillView pp_setBorderColor:UIColor.clearColor];
     }
   
    

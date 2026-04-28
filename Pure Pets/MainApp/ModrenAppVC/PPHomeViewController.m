@@ -178,6 +178,22 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     PPHomeApplyFallbackPromoPalette(card, idx);
 }
 
+static CGFloat PPHomeClampValue(CGFloat value, CGFloat minValue, CGFloat maxValue)
+{
+    return fmax(minValue, fmin(maxValue, value));
+}
+
+static CGFloat PPHomeClampUnitValue(CGFloat value)
+{
+    return PPHomeClampValue(value, 0.0, 1.0);
+}
+
+static CGFloat PPHomeSmoothStep(CGFloat value)
+{
+    CGFloat clamped = PPHomeClampUnitValue(value);
+    return (clamped * clamped) * (3.0 - (2.0 * clamped));
+}
+
 
 
 @interface PPHomePremiumCareCell : UICollectionViewCell
@@ -1954,9 +1970,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, copy, nullable) NSString *lastObservedHomeOrderStatusKey;
 @property (nonatomic, assign) BOOL didPrefetchHomeEntranceAnimations;
 @property (nonatomic, assign) BOOL didPreparePremiumHomeEntrance;
+@property (nonatomic, assign) BOOL didPrepareVisibleHomeEntranceContent;
 @property (nonatomic, assign) BOOL didRunPremiumHomeEntranceAnimation;
 @property (nonatomic, assign) BOOL isPremiumHomeEntranceAnimating;
 @property (nonatomic, assign) BOOL didStartPremiumBackgroundGlowMotion;
+@property (nonatomic, assign) CGSize lastPreparedHomeEntranceBoundsSize;
+@property (nonatomic, assign) NSUInteger lastPreparedHomeEntranceItemCount;
+@property (nonatomic, assign) NSUInteger lastPreparedHomeEntranceSectionCount;
 @property (nonatomic, assign) NSInteger premiumCareAnimationCursor;
 @property (nonatomic, copy, nullable) NSString *currentPremiumCareAnimationName;
 - (void)handleSeeAllForSection:(PPHomeSection)section;
@@ -1998,6 +2018,20 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_emitSoftImpactHaptic;
 - (void)pp_animateHomeCell:(UICollectionViewCell *)cell highlighted:(BOOL)highlighted;
 - (BOOL)pp_shouldReduceHomeMotion;
+- (BOOL)pp_shouldApplyPremiumCarouselRevealToSection:(PPHomeSection)section;
+- (BOOL)pp_shouldUseAccessoriesStylePremiumRevealForSection:(PPHomeSection)section;
+- (BOOL)pp_shouldApplyPremiumScrollMotionToSection:(PPHomeSection)section;
+- (CGFloat)pp_premiumScrollMotionWeightForSection:(PPHomeSection)section;
+- (void)pp_applyPremiumScrollMotionToVisibleContent;
+- (void)pp_applyPremiumScrollMotionToCell:(UICollectionViewCell *)cell
+                              atIndexPath:(NSIndexPath *)indexPath;
+- (void)pp_applyPremiumScrollMotionToSupplementaryView:(UICollectionReusableView *)supplementaryView
+                                                  kind:(NSString *)kind
+                                           atIndexPath:(NSIndexPath *)indexPath;
+- (void)pp_applyPremiumScrollMotionToView:(UIView *)view
+                            frameInScroll:(CGRect)frame
+                                  section:(PPHomeSection)section
+                                 isHeader:(BOOL)isHeader;
 - (void)pp_preparePremiumHomeEntranceStateIfNeeded;
 - (void)pp_prepareVisibleHomeEntranceContentIfNeeded;
 - (void)pp_beginPremiumHomeEntranceIfNeeded;
@@ -4767,6 +4801,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 
     [self refreshHeroSectionAppearance];
+    [self pp_applyPremiumScrollMotionToVisibleContent];
     if (self.homeLocationManager) {
         CLAuthorizationStatus status;
         if (@available(iOS 14.0, *)) {
@@ -6823,6 +6858,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
        willDisplayCell:(UICollectionViewCell *)cell
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
+    (void)collectionView;
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumCare ||
@@ -6841,6 +6877,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                                 atIndexPath:indexPath
                              initialOrdinal:NSNotFound];
     }
+
+    [self pp_applyPremiumScrollMotionToCell:cell atIndexPath:indexPath];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -6850,6 +6888,9 @@ willDisplaySupplementaryView:(UICollectionReusableView *)view
 {
     (void)collectionView;
     if (!self.didRunPremiumHomeEntranceAnimation) {
+        [self pp_applyPremiumScrollMotionToSupplementaryView:view
+                                                        kind:elementKind
+                                                 atIndexPath:indexPath];
         return;
     }
 
@@ -6857,6 +6898,9 @@ willDisplaySupplementaryView:(UICollectionReusableView *)view
                                                 kind:elementKind
                                          atIndexPath:indexPath
                                       initialOrdinal:NSNotFound];
+    [self pp_applyPremiumScrollMotionToSupplementaryView:view
+                                                    kind:elementKind
+                                             atIndexPath:indexPath];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -6878,6 +6922,15 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UICollectionViewCell *cell = [collectionView cellForItemAtIndexPath:indexPath];
     [self pp_animateHomeCell:cell highlighted:NO];
+}
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+
+    [self pp_applyPremiumScrollMotionToVisibleContent];
 }
 
 #pragma mark - Overlay Routing (Home → OverlayCoordinator)
@@ -7449,6 +7502,238 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return UIAccessibilityIsReduceMotionEnabled();
 }
 
+- (BOOL)pp_shouldApplyPremiumCarouselRevealToSection:(PPHomeSection)section
+{
+    switch (section) {
+        case PPHomeSectionAccessories:
+        case PPHomeSectionAdsNearBy:
+        case PPHomeSectionBuyAgain:
+            return YES;
+
+        default:
+            return NO;
+    }
+}
+
+- (BOOL)pp_shouldUseAccessoriesStylePremiumRevealForSection:(PPHomeSection)section
+{
+    switch (section) {
+        case PPHomeSectionAccessories:
+        case PPHomeSectionAdsNearBy:
+        case PPHomeSectionBuyAgain:
+            return YES;
+
+        default:
+            return NO;
+    }
+}
+
+- (BOOL)pp_shouldApplyPremiumScrollMotionToSection:(PPHomeSection)section
+{
+    switch (section) {
+        case PPHomeSectionQuickActions:
+        case PPHomeSectionCarousel:
+            return NO;
+
+        case PPHomeSectionHero:
+        case PPHomeSectionCurrentOrders:
+        case PPHomeSectionServices:
+        case PPHomeSectionMainKinds:
+        case PPHomeSectionSuggestions:
+        case PPHomeSectionAccessories:
+        case PPHomeSectionPetProfile:
+        case PPHomeSectionPremiumCare:
+        case PPHomeSectionLastFood:
+        case PPHomeSectionNearbyServices:
+        case PPHomeSectionAdsNearBy:
+        case PPHomeSectionAdopt:
+        case PPHomeSectionBuyAgain:
+            return YES;
+    }
+
+    return NO;
+}
+
+- (CGFloat)pp_premiumScrollMotionWeightForSection:(PPHomeSection)section
+{
+    switch (section) {
+        case PPHomeSectionHero:
+            return 1.18;
+
+        case PPHomeSectionCurrentOrders:
+        case PPHomeSectionPetProfile:
+        case PPHomeSectionPremiumCare:
+        case PPHomeSectionAdopt:
+            return 1.06;
+
+        case PPHomeSectionServices:
+        case PPHomeSectionMainKinds:
+        case PPHomeSectionAccessories:
+        case PPHomeSectionBuyAgain:
+            return 1.0;
+
+        case PPHomeSectionSuggestions:
+        case PPHomeSectionLastFood:
+        case PPHomeSectionNearbyServices:
+        case PPHomeSectionAdsNearBy:
+            return 0.94;
+
+        case PPHomeSectionQuickActions:
+        case PPHomeSectionCarousel:
+            return 0.0;
+    }
+
+    return 1.0;
+}
+
+- (void)pp_applyPremiumScrollMotionToVisibleContent
+{
+    if (!self.collectionView || !self.isViewLoaded) {
+        return;
+    }
+
+    NSArray<UICollectionViewCell *> *visibleCells = self.collectionView.visibleCells ?: @[];
+    NSArray<NSIndexPath *> *visibleIndexPaths =
+        [self.collectionView.indexPathsForVisibleItems sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *obj1, NSIndexPath *obj2) {
+        if (obj1.section < obj2.section) {
+            return NSOrderedAscending;
+        }
+        if (obj1.section > obj2.section) {
+            return NSOrderedDescending;
+        }
+        if (obj1.item < obj2.item) {
+            return NSOrderedAscending;
+        }
+        if (obj1.item > obj2.item) {
+            return NSOrderedDescending;
+        }
+        return NSOrderedSame;
+    }];
+
+    NSMutableOrderedSet<NSNumber *> *visibleSections = [NSMutableOrderedSet orderedSet];
+    for (NSIndexPath *indexPath in visibleIndexPaths) {
+        [visibleSections addObject:@(indexPath.section)];
+    }
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+
+    for (UICollectionViewCell *cell in visibleCells) {
+        NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
+        if (!indexPath) {
+            continue;
+        }
+
+        [self pp_applyPremiumScrollMotionToCell:cell atIndexPath:indexPath];
+    }
+
+    for (NSNumber *sectionNumber in visibleSections.array) {
+        NSIndexPath *headerIndexPath =
+            [NSIndexPath indexPathForItem:0 inSection:sectionNumber.integerValue];
+        UICollectionReusableView *header =
+            [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
+                                                     atIndexPath:headerIndexPath];
+        [self pp_applyPremiumScrollMotionToSupplementaryView:header
+                                                        kind:UICollectionElementKindSectionHeader
+                                                 atIndexPath:headerIndexPath];
+    }
+
+    [CATransaction commit];
+}
+
+- (void)pp_applyPremiumScrollMotionToCell:(UICollectionViewCell *)cell
+                              atIndexPath:(NSIndexPath *)indexPath
+{
+    if (!cell || !indexPath) {
+        return;
+    }
+
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    UIView *motionView = cell.contentView ?: cell;
+    if (![self pp_shouldApplyPremiumScrollMotionToSection:section] ||
+        [self pp_shouldReduceHomeMotion]) {
+        motionView.layer.transform = CATransform3DIdentity;
+        motionView.layer.opacity = 1.0f;
+        motionView.layer.zPosition = 0.0f;
+        return;
+    }
+
+    [self pp_applyPremiumScrollMotionToView:motionView
+                              frameInScroll:cell.frame
+                                    section:section
+                                   isHeader:NO];
+}
+
+- (void)pp_applyPremiumScrollMotionToSupplementaryView:(UICollectionReusableView *)supplementaryView
+                                                  kind:(NSString *)kind
+                                           atIndexPath:(NSIndexPath *)indexPath
+{
+    if (!supplementaryView || !indexPath || ![kind isEqualToString:UICollectionElementKindSectionHeader]) {
+        return;
+    }
+
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    if (![self pp_shouldApplyPremiumScrollMotionToSection:section] ||
+        [self pp_shouldReduceHomeMotion]) {
+        supplementaryView.layer.transform = CATransform3DIdentity;
+        supplementaryView.layer.opacity = 1.0f;
+        supplementaryView.layer.zPosition = 0.0f;
+        return;
+    }
+
+    [self pp_applyPremiumScrollMotionToView:supplementaryView
+                              frameInScroll:supplementaryView.frame
+                                    section:section
+                                   isHeader:YES];
+}
+
+- (void)pp_applyPremiumScrollMotionToView:(UIView *)view
+                            frameInScroll:(CGRect)frame
+                                  section:(PPHomeSection)section
+                                 isHeader:(BOOL)isHeader
+{
+    if (!view || !self.collectionView || CGRectIsEmpty(frame)) {
+        return;
+    }
+
+    CGRect visibleBounds = self.collectionView.bounds;
+    CGFloat visibleHeight = CGRectGetHeight(visibleBounds);
+    if (visibleHeight <= 1.0) {
+        view.layer.transform = CATransform3DIdentity;
+        view.layer.opacity = 1.0f;
+        view.layer.zPosition = 0.0f;
+        return;
+    }
+
+    CGFloat focalY = CGRectGetMinY(visibleBounds) + (visibleHeight * 0.42);
+    CGFloat midY = CGRectGetMidY(frame);
+    CGFloat normalizedDistance =
+        PPHomeClampValue((midY - focalY) / MAX(visibleHeight * 0.92, 1.0), -1.0, 1.0);
+    CGFloat focus = PPHomeSmoothStep(1.0 - fabs(normalizedDistance));
+    CGFloat weight = [self pp_premiumScrollMotionWeightForSection:section];
+
+    CGFloat translationAmplitude = (isHeader ? 8.0 : 14.0) * weight;
+    CGFloat scaleDrop = (isHeader ? 0.014 : 0.022) * weight;
+    CGFloat rotation = normalizedDistance * (isHeader ? 0.010 : 0.018) * weight;
+    CGFloat opacityFloor = isHeader ? 0.80 : (section == PPHomeSectionHero ? 0.92 : 0.86);
+
+    CGFloat translationY = -normalizedDistance * translationAmplitude;
+    CGFloat scale = 1.0 - ((1.0 - focus) * scaleDrop);
+    CGFloat opacity = opacityFloor + ((1.0 - opacityFloor) * focus);
+
+    CATransform3D transform = CATransform3DIdentity;
+    transform.m34 = -1.0 / 1400.0;
+    transform = CATransform3DTranslate(transform, 0.0, translationY, 0.0);
+    if (!isHeader) {
+        transform = CATransform3DRotate(transform, rotation, 1.0, 0.0, 0.0);
+    }
+    transform = CATransform3DScale(transform, scale, scale, 1.0);
+
+    view.layer.transform = transform;
+    view.layer.opacity = opacity;
+    view.layer.zPosition = isHeader ? (focus * 6.0) : (focus * 10.0);
+}
+
 - (nullable NSString *)pp_homeEntranceKeyForIndexPath:(NSIndexPath *)indexPath
                                                  kind:(nullable NSString *)kind
 {
@@ -7529,6 +7814,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
+    CGSize boundsSize = self.collectionView.bounds.size;
+    if (boundsSize.width <= 1.0 || boundsSize.height <= 1.0) {
+        return;
+    }
+
     NSArray<NSIndexPath *> *visibleIndexPaths =
         [self.collectionView.indexPathsForVisibleItems sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *obj1, NSIndexPath *obj2) {
         if (obj1.section < obj2.section) {
@@ -7550,6 +7840,25 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     for (NSIndexPath *indexPath in visibleIndexPaths) {
         [sectionIndexes addObject:@(indexPath.section)];
     }
+
+    NSUInteger visibleItemCount = visibleIndexPaths.count;
+    NSUInteger visibleSectionCount = sectionIndexes.count;
+    if (visibleItemCount == 0 && visibleSectionCount == 0) {
+        return;
+    }
+
+    BOOL sameBounds = fabs(boundsSize.width - self.lastPreparedHomeEntranceBoundsSize.width) <= 0.5
+        && fabs(boundsSize.height - self.lastPreparedHomeEntranceBoundsSize.height) <= 0.5;
+    BOOL sameVisibleCounts = self.lastPreparedHomeEntranceItemCount == visibleItemCount
+        && self.lastPreparedHomeEntranceSectionCount == visibleSectionCount;
+    if (self.didPrepareVisibleHomeEntranceContent && sameBounds && sameVisibleCounts) {
+        return;
+    }
+
+    self.didPrepareVisibleHomeEntranceContent = YES;
+    self.lastPreparedHomeEntranceBoundsSize = boundsSize;
+    self.lastPreparedHomeEntranceItemCount = visibleItemCount;
+    self.lastPreparedHomeEntranceSectionCount = visibleSectionCount;
 
     [sectionIndexes.array enumerateObjectsUsingBlock:^(NSNumber * _Nonnull sectionNumber, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)idx;
@@ -7757,9 +8066,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [cell.contentView.layer removeAllAnimations];
 
     BOOL isLateAppearance = (initialOrdinal == NSNotFound);
-    if (isLateAppearance && self.isPremiumHomeEntranceAnimating) {
-        // Diffable snapshot inserts can arrive while the collection itself is still settling.
-        // Jump straight to the final state to avoid a second alpha reset and visible flicker.
+    if (isLateAppearance) {
+        // After the first home entrance finishes, visible sections can be refreshed on later
+        // appearances (orders, suggestions, profiles, theme refreshes). Replaying the
+        // entrance reset here causes the whole surface to shake/flicker, so any late or
+        // re-displayed cell should snap directly to its final state.
         cell.alpha = 1.0;
         cell.transform = CGAffineTransformIdentity;
         return;
@@ -7767,20 +8078,50 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     BOOL isHero = (section == PPHomeSectionHero);
+    BOOL usesPremiumCarouselReveal =
+        isLateAppearance && [self pp_shouldApplyPremiumCarouselRevealToSection:section];
     BOOL isPrimarySurface = isHero
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
         || section == PPHomeSectionPetProfile
         || section == PPHomeSectionPremiumCare;
+    BOOL usesAccessoriesStylePremiumReveal = [self pp_shouldUseAccessoriesStylePremiumRevealForSection:section];
 
-    NSTimeInterval duration = isLateAppearance
-        ? (isHero ? 0.26 : (isPrimarySurface ? 0.22 : 0.18))
-        : (isHero ? 0.52 : (isPrimarySurface ? 0.40 : 0.30));
+    NSTimeInterval duration = usesPremiumCarouselReveal
+        ? (usesAccessoriesStylePremiumReveal ? 0.42 : 0.38)
+        : (isLateAppearance
+            ? (isHero ? 0.26 : (isPrimarySurface ? 0.22 : 0.18))
+            : (isHero ? 0.52 : (isPrimarySurface ? 0.40 : 0.30)));
     NSTimeInterval delay = isLateAppearance ? 0.0 : MIN(0.05 + (0.028 * initialOrdinal), 0.22);
 
     [self pp_configureHomeEntranceInitialStateForCell:cell
                                           atIndexPath:indexPath
                                        lateAppearance:isLateAppearance];
+
+    if (usesPremiumCarouselReveal) {
+        [UIView animateKeyframesWithDuration:duration
+                                       delay:delay
+                                     options:UIViewKeyframeAnimationOptionCalculationModeCubic |
+                                             UIViewAnimationOptionBeginFromCurrentState |
+                                             UIViewAnimationOptionAllowUserInteraction
+                                  animations:^{
+            [UIView addKeyframeWithRelativeStartTime:0.0
+                                    relativeDuration:0.76
+                                          animations:^{
+                cell.alpha = 1.0;
+                CGAffineTransform settleTransform = CGAffineTransformMakeTranslation(0.0, -4.0);
+                cell.transform = CGAffineTransformScale(settleTransform, 1.012, 1.012);
+            }];
+
+            [UIView addKeyframeWithRelativeStartTime:0.58
+                                    relativeDuration:0.42
+                                          animations:^{
+                cell.alpha = 1.0;
+                cell.transform = CGAffineTransformIdentity;
+            }];
+        } completion:nil];
+        return;
+    }
 
     [UIView animateWithDuration:duration
                           delay:delay
@@ -7815,7 +8156,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [supplementaryView.layer removeAllAnimations];
     BOOL isLateAppearance = (initialOrdinal == NSNotFound);
-    if (isLateAppearance && self.isPremiumHomeEntranceAnimating) {
+    if (isLateAppearance) {
+        // Section headers should also avoid replaying the entrance reset after the initial
+        // home reveal, otherwise the section stack visibly jitters when the screen reappears.
         supplementaryView.alpha = 1.0;
         supplementaryView.transform = CGAffineTransformIdentity;
         return;
@@ -7871,23 +8214,47 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     BOOL isHero = (section == PPHomeSectionHero);
+    BOOL usesPremiumCarouselReveal =
+        isLateAppearance && [self pp_shouldApplyPremiumCarouselRevealToSection:section];
     BOOL isPrimarySurface = isHero
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
         || section == PPHomeSectionPetProfile
         || section == PPHomeSectionPremiumCare;
+    BOOL usesAccessoriesStylePremiumReveal = [self pp_shouldUseAccessoriesStylePremiumRevealForSection:section];
 
+    CGFloat translateX = 0.0;
     CGFloat translateY = isLateAppearance ? (isHero ? 8.0 : (isPrimarySurface ? 6.0 : 4.0))
                                           : (isHero ? 24.0 : (isPrimarySurface ? 16.0 : 10.0));
     CGFloat scale = isLateAppearance ? (isHero ? 0.994 : (isPrimarySurface ? 0.996 : 0.998))
                                      : (isHero ? 0.986 : (isPrimarySurface ? 0.990 : 0.994));
     CGFloat initialAlpha = isLateAppearance ? 0.0 : (isHero ? 0.0 : 0.02);
 
+    if (usesPremiumCarouselReveal) {
+        CGRect visibleBounds = self.collectionView.bounds;
+        CGFloat cellMidX = CGRectGetMidX(cell.frame);
+        CGFloat visibleMidX = CGRectGetMidX(visibleBounds);
+        CGFloat revealDirection = 0.0;
+
+        if (cellMidX > visibleMidX + 4.0) {
+            revealDirection = 1.0;
+        } else if (cellMidX < visibleMidX - 4.0) {
+            revealDirection = -1.0;
+        } else {
+            revealDirection = Language.isRTL ? -1.0 : 1.0;
+        }
+
+        translateX = revealDirection * (usesAccessoriesStylePremiumReveal ? 30.0 : 24.0);
+        translateY = (usesAccessoriesStylePremiumReveal ? 14.0 : 10.0);
+        scale = (usesAccessoriesStylePremiumReveal ? 0.952 : 0.964);
+        initialAlpha = 0.0;
+    }
+
     [cell.layer removeAllAnimations];
     [cell.contentView.layer removeAllAnimations];
 
     cell.alpha = initialAlpha;
-    CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0, translateY);
+    CGAffineTransform transform = CGAffineTransformMakeTranslation(translateX, translateY);
     cell.transform = CGAffineTransformScale(transform, scale, scale);
 }
 
@@ -9227,6 +9594,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
+    [self pp_applyPremiumScrollMotionToVisibleContent];
 }
 
 

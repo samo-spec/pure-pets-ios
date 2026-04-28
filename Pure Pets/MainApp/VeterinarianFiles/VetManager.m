@@ -168,7 +168,6 @@ static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
         @"ownerID": ownerID,
         @"animalTypes": self.animalTypes ?: @[],
         @"category": self.category ?: @"",
-        @"requiresPrescription": @(self.requiresPrescription),
         @"price": @(self.price),
         @"finalPrice": @(self.price),
         @"currency": self.currency.length > 0 ? self.currency : @"QAR",
@@ -208,7 +207,6 @@ static void PPVetManagerGetDocumentsServerThenCache(FIRQuery *query,
     model.userId = userId.length > 0 ? userId : ownerID;
     model.animalTypes = PPVetManagerStringArray(dict[@"animalTypes"]);
     model.category = PPVetManagerSafeString(dict[@"category"]);
-    model.requiresPrescription = [dict[@"requiresPrescription"] boolValue];
     model.price = [dict[@"price"] respondsToSelector:@selector(doubleValue)] ? [dict[@"price"] doubleValue] : ([dict[@"finalPrice"] respondsToSelector:@selector(doubleValue)] ? [dict[@"finalPrice"] doubleValue] : 0.0);
     model.currency = PPVetManagerSafeString(dict[@"currency"]).length > 0 ? PPVetManagerSafeString(dict[@"currency"]) : @"QAR";
     model.stockQuantity = [dict[@"stockQuantity"] respondsToSelector:@selector(integerValue)] ? [dict[@"stockQuantity"] integerValue] : ([dict[@"quantity"] respondsToSelector:@selector(integerValue)] ? [dict[@"quantity"] integerValue] : 0);

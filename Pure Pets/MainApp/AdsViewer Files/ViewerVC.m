@@ -716,7 +716,11 @@
 
 -(void)dismiss
 {
-    [self dismissViewControllerAnimated:YES completion:^{ }];
+    if (self.navigationController && self.navigationController.viewControllers.count > 1) {
+        [self.navigationController popViewControllerAnimated:YES];
+    } else {
+        [self dismissViewControllerAnimated:YES completion:nil];
+    }
 }
 
 - (void)viewWillAppear:(BOOL)animated {

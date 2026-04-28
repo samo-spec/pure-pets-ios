@@ -143,7 +143,7 @@
     self.latestRawResults = @[];
     self.currentPage = 0;
     self.hasMore = YES;
-    self.isLoading = NO;
+    self.isLoading = YES;
 
     // 🔥 ALWAYS notify VC
     [self pp_dispatchMain:^{
@@ -272,7 +272,7 @@
     // Reset pagination
     self.currentPage = 0;
     self.hasMore = YES;
-    self.isLoading = NO;
+    self.isLoading = YES;
 
     // Reset filters
     self.filterState = nil;
@@ -313,7 +313,7 @@
     // Reset pagination
     self.currentPage = 0;
     self.hasMore = YES;
-    self.isLoading = NO;
+    self.isLoading = YES;
 
     // Clear items
     [self.mutableItems removeAllObjects];

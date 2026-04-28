@@ -26,7 +26,7 @@
 
 typedef NS_ENUM(NSInteger, PPPetCareMedicineFilter) {
     PPPetCareMedicineFilterAll = 0,
-    PPPetCareMedicineFilterOffers,
+    PPPetCareMedicineFilterAvailable,
     PPPetCareMedicineFilterInStock,
     PPPetCareMedicineFilterNew
 };
@@ -1459,7 +1459,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
         NSArray<NSDictionary *> *items = self.selectedSection == PPPetCareInitialSectionMedicines
             ? @[
                 @{@"title": PPPetCareLocalized(@"pet_care_filter_all", @"All"), @"tag": @(PPPetCareMedicineFilterAll)},
-                @{@"title": PPPetCareLocalized(@"pet_care_filter_offers", @"Offers"), @"tag": @(PPPetCareMedicineFilterOffers)},
+                @{@"title": PPPetCareLocalized(@"pet_care_filter_available", @"Available"), @"tag": @(PPPetCareMedicineFilterAvailable)},
                 @{@"title": PPPetCareLocalized(@"pet_care_filter_in_stock", @"In stock"), @"tag": @(PPPetCareMedicineFilterInStock)},
                 @{@"title": PPPetCareLocalized(@"pet_care_filter_new", @"New"), @"tag": @(PPPetCareMedicineFilterNew)}
             ]
@@ -1586,12 +1586,12 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
 - (BOOL)pp_medicine:(VetMedicineModel *)medicine matchesFilter:(PPPetCareMedicineFilter)filter
 {
-    if (medicine.isPublished == NO || medicine.isDisabled || medicine.isAvailable == NO) {
+    if (medicine.isPublished == NO || medicine.isDisabled) {
         return NO;
     }
     switch (filter) {
-        case PPPetCareMedicineFilterOffers:
-            return medicine.requiresPrescription == NO;
+        case PPPetCareMedicineFilterAvailable:
+            return medicine.isAvailable && medicine.stockQuantity > 0;
         case PPPetCareMedicineFilterInStock:
             return medicine.stockQuantity > 0;
         case PPPetCareMedicineFilterNew:

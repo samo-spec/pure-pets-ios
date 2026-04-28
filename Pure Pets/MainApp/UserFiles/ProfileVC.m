@@ -71,6 +71,11 @@
 @property (nonatomic, strong) UIView *backgroundGlowViewTop;
 @property (nonatomic, strong) UIView *backgroundGlowViewBottom;
 @property (nonatomic, strong, nullable) UIImage *pendingAvatarImage;
+@property (nonatomic, strong) NSMutableSet<NSString *> *animatedCellKeys;
+@property (nonatomic, assign) BOOL needsProfileEntranceAnimation;
+@property (nonatomic, assign) BOOL isRunningProfileEntranceAnimation;
+@property (nonatomic, assign) BOOL allowsCellDisplayAnimation;
+@property (nonatomic, assign) NSUInteger profileEntranceAnimationToken;
 
 @property (nonatomic, strong) UIBarButtonItem *saveDataBarButton;
 @property (nonatomic, strong) UIBarButtonItem *logoutBarButton;
@@ -141,6 +146,7 @@
     [super viewDidLoad];
 
     self.formDataArray = [NSMutableDictionary dictionary];
+    self.animatedCellKeys = [NSMutableSet set];
     self.addresses = PPCurrentUser.Addresses ?: @[];
     self.suppressEditTracking = YES;
 
@@ -162,6 +168,11 @@
     [super viewWillAppear:animated];
     self.view.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.tableView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+    [self.animatedCellKeys removeAllObjects];
+    self.profileEntranceAnimationToken += 1;
+    self.needsProfileEntranceAnimation = YES;
+    self.isRunningProfileEntranceAnimation = NO;
+    self.allowsCellDisplayAnimation = NO;
 
     if (!UserManager.sharedManager.isUserLoggedIn) {
         [UserManager showPromptOnTopController];
@@ -201,11 +212,14 @@
     [super viewDidAppear:animated];
     self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
     self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    [self pp_runProfileEntranceAnimationIfNeeded];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    self.isRunningProfileEntranceAnimation = NO;
+    self.allowsCellDisplayAnimation = NO;
     [PPHUD dismiss];
     [[NSNotificationCenter defaultCenter] postNotificationName:PPShowSystemTabBarNotification object:nil];
 }
@@ -283,6 +297,142 @@
 {
     [self.addressListener remove];
     self.addressListener = nil;
+}
+
+#pragma mark - Motion
+
+- (BOOL)pp_profileReduceMotionEnabled
+{
+    return UIAccessibilityIsReduceMotionEnabled();
+}
+
+- (NSString *)pp_animationKeyForIndexPath:(NSIndexPath *)indexPath
+{
+    if (!indexPath) {
+        return @"";
+    }
+    return [NSString stringWithFormat:@"%ld-%ld", (long)indexPath.section, (long)indexPath.row];
+}
+
+- (NSArray<UITableViewCell *> *)pp_sortedVisibleProfileCells
+{
+    NSArray<UITableViewCell *> *visibleCells = self.tableView.visibleCells ?: @[];
+    return [visibleCells sortedArrayUsingComparator:^NSComparisonResult(UITableViewCell *cell1, UITableViewCell *cell2) {
+        CGFloat y1 = CGRectGetMinY(cell1.frame);
+        CGFloat y2 = CGRectGetMinY(cell2.frame);
+        if (fabs(y1 - y2) < 0.5) {
+            NSIndexPath *indexPath1 = [self.tableView indexPathForCell:cell1];
+            NSIndexPath *indexPath2 = [self.tableView indexPathForCell:cell2];
+            if (indexPath1.section == indexPath2.section) {
+                if (indexPath1.row == indexPath2.row) {
+                    return NSOrderedSame;
+                }
+                return indexPath1.row < indexPath2.row ? NSOrderedAscending : NSOrderedDescending;
+            }
+            return indexPath1.section < indexPath2.section ? NSOrderedAscending : NSOrderedDescending;
+        }
+        return y1 < y2 ? NSOrderedAscending : NSOrderedDescending;
+    }];
+}
+
+- (void)pp_finishDisplayAnimationStateForCell:(UITableViewCell *)cell
+{
+    if (!cell) {
+        return;
+    }
+
+    cell.alpha = 1.0;
+    cell.transform = CGAffineTransformIdentity;
+}
+
+- (void)pp_prepareDisplayAnimationStateForCell:(UITableViewCell *)cell
+{
+    if (!cell) {
+        return;
+    }
+
+    cell.alpha = 0.0;
+    cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 18.0),
+                                             CGAffineTransformMakeScale(0.985, 0.985));
+}
+
+- (void)pp_animateProfileDisplayCell:(UITableViewCell *)cell
+                         atIndexPath:(NSIndexPath *)indexPath
+                               delay:(NSTimeInterval)delay
+{
+    if (!cell || !indexPath) {
+        return;
+    }
+
+    NSString *animationKey = [self pp_animationKeyForIndexPath:indexPath];
+    if (animationKey.length == 0) {
+        [self pp_finishDisplayAnimationStateForCell:cell];
+        return;
+    }
+
+    if ([self.animatedCellKeys containsObject:animationKey]) {
+        [self pp_finishDisplayAnimationStateForCell:cell];
+        return;
+    }
+
+    [self.animatedCellKeys addObject:animationKey];
+
+    if ([self pp_profileReduceMotionEnabled]) {
+        [self pp_finishDisplayAnimationStateForCell:cell];
+        return;
+    }
+
+    [self pp_prepareDisplayAnimationStateForCell:cell];
+    [UIView animateWithDuration:0.40
+                          delay:delay
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.08
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        [self pp_finishDisplayAnimationStateForCell:cell];
+    } completion:nil];
+}
+
+- (void)pp_runProfileEntranceAnimationIfNeeded
+{
+    if (!self.needsProfileEntranceAnimation || !self.isViewLoaded || !self.view.window) {
+        return;
+    }
+
+    self.needsProfileEntranceAnimation = NO;
+    self.isRunningProfileEntranceAnimation = YES;
+    self.allowsCellDisplayAnimation = NO;
+
+    NSArray<UITableViewCell *> *visibleCells = [self pp_sortedVisibleProfileCells];
+    NSUInteger animationToken = self.profileEntranceAnimationToken;
+
+    if ([self pp_profileReduceMotionEnabled]) {
+        for (UITableViewCell *cell in visibleCells) {
+            NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+            NSString *animationKey = [self pp_animationKeyForIndexPath:indexPath];
+            if (animationKey.length > 0) {
+                [self.animatedCellKeys addObject:animationKey];
+            }
+            [self pp_finishDisplayAnimationStateForCell:cell];
+        }
+        self.isRunningProfileEntranceAnimation = NO;
+        self.allowsCellDisplayAnimation = YES;
+        return;
+    }
+
+    [visibleCells enumerateObjectsUsingBlock:^(UITableViewCell *cell, NSUInteger idx, BOOL *stop) {
+        NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+        [self pp_animateProfileDisplayCell:cell atIndexPath:indexPath delay:(0.04 + (idx * 0.045))];
+    }];
+
+    NSTimeInterval completionDelay = MAX(0.40, 0.04 + (MAX((NSInteger)visibleCells.count - 1, 0) * 0.045) + 0.40);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(completionDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.profileEntranceAnimationToken != animationToken) {
+            return;
+        }
+        self.isRunningProfileEntranceAnimation = NO;
+        self.allowsCellDisplayAnimation = YES;
+    });
 }
 
 #pragma mark - Setup
@@ -1137,6 +1287,17 @@
     cell.layer.shadowRadius = 12.0;
     cell.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     cell.layer.masksToBounds = NO;
+
+    if (self.isRunningProfileEntranceAnimation) {
+        return;
+    }
+
+    if (!self.allowsCellDisplayAnimation) {
+        [self pp_finishDisplayAnimationStateForCell:cell];
+        return;
+    }
+
+    [self pp_animateProfileDisplayCell:cell atIndexPath:indexPath delay:0.0];
 }
 
 - (BOOL)tableView:(UITableView *)tableView shouldHighlightRowAtIndexPath:(NSIndexPath *)indexPath

@@ -18,6 +18,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) NSInteger currentSubKindID;
 @property (nonatomic, assign) PPDataSection pendingRestoreSection;
 @property (nonatomic, assign) PPDeepLinkTarget currentDeepLinkTarget;
+@property (nonatomic, assign, readonly) BOOL isLoading;
 
 // Data access
 @property (nonatomic, strong, readonly) NSArray<PPUniversalCellViewModel *> *items;

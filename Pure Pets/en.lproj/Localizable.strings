@@ -2570,7 +2570,7 @@
 "pet_care_search_vets" = "Search veterinarians";
 "pet_care_all_pets" = "All pets";
 "pet_care_filter_all" = "All";
-"pet_care_filter_offers" = "Offers";
+"pet_care_filter_available" = "Available";
 "pet_care_filter_in_stock" = "In stock";
 "pet_care_filter_new" = "New";
 "pet_care_kind_filter" = "Pet Kind";
