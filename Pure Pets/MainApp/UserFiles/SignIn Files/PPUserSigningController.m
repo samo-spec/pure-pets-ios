@@ -18,6 +18,13 @@ static NSString * const kPPSheetCustomMediumDetentIdentifier = @"pp_auth_custom_
 static NSUInteger const kPPMinimumPhoneDigits = 6;
 static NSTimeInterval const kPPSMSCooldownSeconds = 30.0;
 static NSInteger const kPPAppleSignInMaxRetryCount = 1;
+static NSInteger const kPPGoogleSignInConfigMissingCode = 1010;
+static NSString * const kPPGoogleSignInClientIDKey = @"GIDClientID";
+static NSString * const kPPGoogleSignInServerClientIDKey = @"GIDServerClientID";
+static NSString * const kPPGoogleClientIDSuffix = @".apps.googleusercontent.com";
+static NSString * const kPPGoogleReversedClientIDPrefix = @"com.googleusercontent.apps.";
+static NSString * const kPPGoogleSignInAppCheckKVCKey = @"appCheck";
+static NSString * const kPPGoogleSignInAppCheckPreparedDefaultsKey = @"com.google.GIDAppCheckPreparedKey";
 
 #if DEBUG
 #define PPAuthDebugLog(...) NSLog(__VA_ARGS__)
@@ -121,7 +128,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     [self animateAuthEntranceIfNeeded];
     if (self.shouldFocusPhoneFieldOnAppear) {
         self.shouldFocusPhoneFieldOnAppear = NO;
-        [self.phoneNumberField becomeFirstResponder];
+        //[self.phoneNumberField becomeFirstResponder];
     }
 }
 
@@ -409,21 +416,19 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.backgroundBottomGlowView.backgroundColor = [[UIColor systemBlueColor] colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.08];
 
     if (self.heroBadgeView) {
-        [Styling addLiquidGlassBorderToView:self.heroBadgeView cornerRadius:20 color:[[UIColor whiteColor] colorWithAlphaComponent:0.20]];
+        [Styling addLiquidGlassBorderToView:self.heroBadgeView cornerRadius:20 color:[AppBackgroundClr colorWithAlphaComponent:0.20]];
     }
     if (self.phoneSectionCard) {
-        [Styling addLiquidGlassBorderToView:self.phoneSectionCard cornerRadius:28 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+        [Styling addLiquidGlassBorderToView:self.phoneSectionCard cornerRadius:28 color:[AppBackgroundClr colorWithAlphaComponent:0.18]];
     }
     if (self.socialSectionCard) {
-        [Styling addLiquidGlassBorderToView:self.socialSectionCard cornerRadius:26 color:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+        [Styling addLiquidGlassBorderToView:self.socialSectionCard cornerRadius:26 color:[AppBackgroundClr colorWithAlphaComponent:0.16]];
     }
     if (self.appleSignInButton) {
-        [Styling addLiquidGlassBorderToView:self.appleSignInButton cornerRadius:20 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
-        self.appleSignInButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.appleSignInButton.bounds cornerRadius:20.0].CGPath;
+         self.appleSignInButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.appleSignInButton.bounds cornerRadius:20.0].CGPath;
     }
     if (self.googleSignInButton) {
-        [Styling addLiquidGlassBorderToView:self.googleSignInButton cornerRadius:20 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
-        self.googleSignInButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.googleSignInButton.bounds cornerRadius:20.0].CGPath;
+         self.googleSignInButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.googleSignInButton.bounds cornerRadius:20.0].CGPath;
     }
     if (self.countryCodePickerBtn) {
         [Styling addLiquidGlassBorderToView:self.countryCodePickerBtn cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
@@ -505,7 +510,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.phoneNumberField = [self createGlassTextField];
     self.phoneNumberField.placeholder = kLang(@"mobileNoField");
     self.phoneNumberField.keyboardType = UIKeyboardTypeASCIICapableNumberPad;
-    self.phoneNumberField.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.94];
+    self.phoneNumberField.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.94];
     self.phoneNumberField.delegate = self;
     [self.phoneNumberField addTarget:self action:@selector(handlePhoneFieldChanged:) forControlEvents:UIControlEventEditingChanged];
     // Phone Stack
@@ -712,8 +717,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
     config.imagePlacement = NSDirectionalRectEdgeLeading;
     config.imagePadding = 12;
     config.title = title;
-    config.baseForegroundColor = isPrimary ? [UIColor whiteColor] : [UIColor labelColor];
-    config.background.backgroundColor = isPrimary ? [UIColor colorWithWhite:0.08 alpha:0.96] : [UIColor colorWithWhite:1.0 alpha:0.98];
+    config.baseForegroundColor = isPrimary ? UIColor.whiteColor : AppPrimaryTextClr;
+    config.background.backgroundColor = isPrimary ? AppShadowClr  : AppBackgroundClr;
     config.background.cornerRadius = 20;
     config.contentInsets = NSDirectionalEdgeInsetsMake(16, 16, 16, 16);
     config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
@@ -1200,15 +1205,85 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
 - (nullable NSString *)pp_googleClientIDFromReversedScheme:(NSString *)scheme
 {
-    NSString *prefix = @"com.googleusercontent.apps.";
-    if (![scheme isKindOfClass:[NSString class]] || ![scheme hasPrefix:prefix]) {
+    if (![scheme isKindOfClass:[NSString class]] || ![scheme hasPrefix:kPPGoogleReversedClientIDPrefix]) {
         return nil;
     }
-    NSString *suffix = [scheme substringFromIndex:prefix.length];
+    NSString *suffix = [scheme substringFromIndex:kPPGoogleReversedClientIDPrefix.length];
     if (suffix.length == 0) {
         return nil;
     }
-    return [NSString stringWithFormat:@"%@.apps.googleusercontent.com", suffix];
+    return [NSString stringWithFormat:@"%@%@", suffix, kPPGoogleClientIDSuffix];
+}
+
+- (NSString *)pp_trimmedGoogleConfigString:(id)value
+{
+    if (![value isKindOfClass:NSString.class]) {
+        return @"";
+    }
+    return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+- (nullable NSString *)pp_googleServerClientID
+{
+    NSDictionary *info = NSBundle.mainBundle.infoDictionary ?: @{};
+    NSString *serverClientID = [self pp_trimmedGoogleConfigString:info[kPPGoogleSignInServerClientIDKey]];
+    if ([serverClientID hasSuffix:kPPGoogleClientIDSuffix]) {
+        return serverClientID;
+    }
+    return nil;
+}
+
+- (nullable GIDConfiguration *)pp_googleConfigurationForClientID:(NSString *)clientID
+{
+    NSString *safeClientID = [self pp_trimmedGoogleConfigString:clientID];
+    if (safeClientID.length == 0) {
+        return nil;
+    }
+
+    NSString *serverClientID = [self pp_googleServerClientID];
+    if (serverClientID.length > 0 && ![serverClientID isEqualToString:safeClientID]) {
+        return [[GIDConfiguration alloc] initWithClientID:safeClientID serverClientID:serverClientID];
+    }
+    return [[GIDConfiguration alloc] initWithClientID:safeClientID];
+}
+
+- (void)pp_disableGoogleSignInAppCheckClientAssertionForOAuth
+{
+    if (@available(iOS 14.0, *)) {
+        // Firebase App Check stays enabled. This only prevents GoogleSignIn's optional
+        // OAuth client_assertion from opening accounts.google.com with "Token failed".
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        if ([defaults boolForKey:kPPGoogleSignInAppCheckPreparedDefaultsKey]) {
+            [defaults removeObjectForKey:kPPGoogleSignInAppCheckPreparedDefaultsKey];
+        }
+
+        @try {
+            [GIDSignIn.sharedInstance setValue:nil forKey:kPPGoogleSignInAppCheckKVCKey];
+            PPAuthDebugLog(@"[GoogleSignIn] OAuth App Check client assertion disabled for native sign-in.");
+        } @catch (NSException *exception) {
+            PPAuthDebugLog(@"[GoogleSignIn] Unable to disable OAuth App Check assertion: %@", exception.reason ?: exception.name);
+        }
+    }
+}
+
+- (BOOL)pp_configureGoogleSignInForClientID:(NSString *)clientID
+{
+    GIDConfiguration *configuration = [self pp_googleConfigurationForClientID:clientID];
+    if (!configuration) {
+        return NO;
+    }
+    GIDSignIn.sharedInstance.configuration = configuration;
+    [self pp_disableGoogleSignInAppCheckClientAssertionForOAuth];
+    return YES;
+}
+
+- (NSString *)pp_redactedGoogleClientIDForLog:(NSString *)clientID
+{
+    NSString *safeClientID = [self pp_trimmedGoogleConfigString:clientID];
+    if (safeClientID.length <= 12) {
+        return safeClientID.length ? @"configured" : @"missing";
+    }
+    return [NSString stringWithFormat:@"...%@", [safeClientID substringFromIndex:safeClientID.length - 12]];
 }
 
 - (NSArray<NSString *> *)pp_googleClientIDCandidates
@@ -1216,13 +1291,13 @@ static inline void PPDispatchMain(void (^block)(void)) {
     NSDictionary *info = NSBundle.mainBundle.infoDictionary ?: @{};
     NSMutableOrderedSet<NSString *> *candidates = [NSMutableOrderedSet orderedSet];
 
-    NSString *gidClientID = [info[@"GIDClientID"] isKindOfClass:[NSString class]] ? info[@"GIDClientID"] : nil;
+    NSString *gidClientID = [self pp_trimmedGoogleConfigString:info[kPPGoogleSignInClientIDKey]];
     if (gidClientID.length > 0) {
-        [candidates addObject:[gidClientID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+        [candidates addObject:gidClientID];
     }
-    NSString *firebaseClientID = [FIRApp defaultApp].options.clientID;
+    NSString *firebaseClientID = [self pp_trimmedGoogleConfigString:[FIRApp defaultApp].options.clientID];
     if (firebaseClientID.length > 0) {
-        [candidates addObject:[firebaseClientID stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+        [candidates addObject:firebaseClientID];
     }
 
     NSMutableSet<NSString *> *urlTypeSchemes = [NSMutableSet set];
@@ -1239,11 +1314,11 @@ static inline void PPDispatchMain(void (^block)(void)) {
                     continue;
                 }
                 NSString *scheme = (NSString *)schemeObj;
-                if ([scheme hasPrefix:@"com.googleusercontent.apps."]) {
+                if ([scheme hasPrefix:kPPGoogleReversedClientIDPrefix]) {
                     [urlTypeSchemes addObject:scheme];
                     NSString *candidate = [self pp_googleClientIDFromReversedScheme:scheme];
                     if (candidate.length > 0) {
-                        [candidates addObject:[candidate stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]];
+                        [candidates addObject:[self pp_trimmedGoogleConfigString:candidate]];
                     }
                 }
             }
@@ -1252,12 +1327,15 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
     NSMutableArray<NSString *> *result = [NSMutableArray array];
     for (NSString *candidate in candidates) {
-        NSString *trimmed = [candidate stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        NSString *trimmed = [self pp_trimmedGoogleConfigString:candidate];
         if (trimmed.length == 0) {
             continue;
         }
-        NSString *prefix = [trimmed stringByReplacingOccurrencesOfString:@".apps.googleusercontent.com" withString:@""];
-        NSString *reversedScheme = [NSString stringWithFormat:@"com.googleusercontent.apps.%@", prefix];
+        if (![trimmed hasSuffix:kPPGoogleClientIDSuffix]) {
+            continue;
+        }
+        NSString *prefix = [trimmed stringByReplacingOccurrencesOfString:kPPGoogleClientIDSuffix withString:@""];
+        NSString *reversedScheme = [NSString stringWithFormat:@"%@%@", kPPGoogleReversedClientIDPrefix, prefix];
         if (![urlTypeSchemes containsObject:reversedScheme]) {
             continue;
         }
@@ -1266,6 +1344,28 @@ static inline void PPDispatchMain(void (^block)(void)) {
         }
     }
     return result.copy;
+}
+
+- (BOOL)pp_googleErrorIndicatesOAuthAssertionFailure:(NSError *)error
+{
+    if (!error) {
+        return NO;
+    }
+    NSMutableArray<NSString *> *messages = [NSMutableArray array];
+    if (error.localizedDescription.length > 0) {
+        [messages addObject:error.localizedDescription];
+    }
+    for (id value in (error.userInfo ?: @{}).allValues) {
+        if ([value isKindOfClass:NSString.class]) {
+            [messages addObject:(NSString *)value];
+        }
+    }
+    NSString *joined = [[messages componentsJoinedByString:@" "] lowercaseString];
+    return ([joined containsString:@"token failed"] ||
+            [joined containsString:@"authenticity"] ||
+            [joined containsString:@"client_assertion"] ||
+            [joined containsString:@"client assertion"] ||
+            [joined containsString:@"app check"]);
 }
 
 - (BOOL)pp_googleErrorIndicatesWrongClientType:(NSError *)error
@@ -1291,16 +1391,39 @@ static inline void PPDispatchMain(void (^block)(void)) {
     return NO;
 }
 
-- (void)pp_finishGoogleSignInWithError:(NSError *)error
+- (BOOL)pp_isGoogleSignInCancellationError:(NSError *)error
+{
+    return (error &&
+            [error.domain isEqualToString:kGIDSignInErrorDomain] &&
+            error.code == kGIDSignInErrorCodeCanceled);
+}
+
+- (NSString *)pp_googleDisplayMessageForError:(NSError *)error
+{
+    if (error.code == kPPGoogleSignInConfigMissingCode) {
+        return kLang(@"error_google_signin_client_config_missing");
+    }
+    if ([self pp_googleErrorIndicatesOAuthAssertionFailure:error]) {
+        return kLang(@"auth_google_failed_message");
+    }
+    return error.localizedDescription.length > 0 ? error.localizedDescription : kLang(@"auth_google_failed_message");
+}
+
+- (void)pp_resetGoogleSignInLoadingState
 {
     [PPHUD dismiss];
     self.isAuthenticating = NO;
     [self setInteractionEnabled:YES];
     [self updateContinuePhoneButtonState];
+}
+
+- (void)pp_finishGoogleSignInWithError:(NSError *)error
+{
+    [self pp_resetGoogleSignInLoadingState];
     [self notifySignInFailure:error];
     [PPAlertHelper showErrorIn:self
                          title:kLang(@"auth_google_failed_title")
-                      subtitle:error.localizedDescription ?: kLang(@"auth_google_failed_subtitle")];
+                      subtitle:[self pp_googleDisplayMessageForError:error]];
 }
 
 - (void)pp_startGoogleSignInWithCandidates:(NSArray<NSString *> *)candidates
@@ -1308,20 +1431,23 @@ static inline void PPDispatchMain(void (^block)(void)) {
 {
     if (index >= candidates.count) {
         NSError *missingConfigError = [NSError errorWithDomain:@"PPAuth"
-                                                          code:1010
+                                                          code:kPPGoogleSignInConfigMissingCode
                                                       userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_google_signin_client_config_missing")}];
         [self pp_finishGoogleSignInWithError:missingConfigError];
         return;
     }
 
-    NSString *clientID = [candidates[index] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *clientID = [self pp_trimmedGoogleConfigString:candidates[index]];
     if (clientID.length == 0) {
         [self pp_startGoogleSignInWithCandidates:candidates index:index + 1];
         return;
     }
+    if (![self pp_configureGoogleSignInForClientID:clientID]) {
+        [self pp_startGoogleSignInWithCandidates:candidates index:index + 1];
+        return;
+    }
 
-    PPAuthDebugLog(@"[GoogleSignIn] Attempt %lu using client ID: %@", (unsigned long)(index + 1), clientID);
-    GIDSignIn.sharedInstance.configuration = [[GIDConfiguration alloc] initWithClientID:clientID];
+    PPAuthDebugLog(@"[GoogleSignIn] Attempt %lu using client ID %@", (unsigned long)(index + 1), [self pp_redactedGoogleClientIDForLog:clientID]);
 
     __weak typeof(self) weakSelf = self;
     [GIDSignIn.sharedInstance signInWithPresentingViewController:self
@@ -1334,6 +1460,10 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 return;
             }
             if (error) {
+                if ([self pp_isGoogleSignInCancellationError:error]) {
+                    [self pp_resetGoogleSignInLoadingState];
+                    return;
+                }
                 if ([self pp_googleErrorIndicatesWrongClientType:error] && (index + 1) < candidates.count) {
                     [self pp_startGoogleSignInWithCandidates:candidates index:index + 1];
                     return;
@@ -1344,7 +1474,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
             if (!signInResult.user) {
                 NSError *googleUserError = [NSError errorWithDomain:@"PPAuth"
                                                                code:1006
-                                                           userInfo:@{NSLocalizedDescriptionKey: kLang(@"Google account data was unavailable. Please try again.")}];
+                                                           userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_google_account_unavailable_message")}];
                 [self pp_finishGoogleSignInWithError:googleUserError];
                 return;
             }
@@ -1360,12 +1490,12 @@ static inline void PPDispatchMain(void (^block)(void)) {
     NSArray<NSString *> *candidates = [self pp_googleClientIDCandidates];
     if (candidates.count == 0) {
         NSError *missingConfigError = [NSError errorWithDomain:@"PPAuth"
-                                                          code:1010
+                                                          code:kPPGoogleSignInConfigMissingCode
                                                       userInfo:@{NSLocalizedDescriptionKey: kLang(@"error_google_signin_client_config_missing")}];
         [self notifySignInFailure:missingConfigError];
         [PPAlertHelper showErrorIn:self
                              title:kLang(@"auth_google_failed_title")
-                          subtitle:missingConfigError.localizedDescription];
+                          subtitle:[self pp_googleDisplayMessageForError:missingConfigError]];
         return;
     }
 

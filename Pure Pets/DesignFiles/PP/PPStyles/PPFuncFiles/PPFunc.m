@@ -3782,118 +3782,117 @@ static char kUIViewTapActionKey;
                          btnSize:(CGFloat)btnSize
                           action:(nullable SEL)action
 {
-    UIButton *btn;
-    UIButtonConfiguration *cfg = config;
-    UIImage *icon = nil;
+    UIFont *resolvedFont = font ?: ([GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold]);
+    UIColor *resolvedTextColor = textColor ?: (AppPrimaryClr ?: UIColor.labelColor);
+    UIColor *brandColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    UIColor *surfaceColor = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    BOOL hasTitle = [title isKindOfClass:NSString.class] && title.length > 0;
     NSString *trimmedImageName = [imageName isKindOfClass:NSString.class]
         ? [imageName stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]]
         : @"";
-    
-    // --- Image handling ---
+    BOOL hasIcon = trimmedImageName.length > 0;
+
+    UIImage *icon = nil;
     if (trimmedImageName.length > 0) {
-        icon = [UIImage systemImageNamed:trimmedImageName];
+        CGFloat iconPointSize = (btnSize > 0.0 && !hasTitle) ? 18.0 : 15.0;
+        UIImageSymbolConfiguration *symbolConfig =
+            [UIImageSymbolConfiguration configurationWithPointSize:iconPointSize
+                                                            weight:UIImageSymbolWeightSemibold
+                                                             scale:UIImageSymbolScaleMedium];
+        icon = [UIImage systemImageNamed:trimmedImageName withConfiguration:symbolConfig];
         if (!icon) {
             icon = [UIImage imageNamed:trimmedImageName];
-            if (icon) icon = [UIImage pp_resizedImage:icon toPointSize:18];
+            if (icon) {
+                icon = [UIImage pp_resizedImage:icon toPointSize:(btnSize > 0.0 && !hasTitle) ? 20.0 : 18.0];
+            }
         }
+        icon = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     }
-    
-    
-    // --- Build configuration style ---
-    if (@available(iOS 26.0, *)) {
-        
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 6, 6, 6);
+
+    CGFloat resolvedCornerRadius = corners > 0.0
+        ? corners
+        : ((btnSize > 0.0 ? btnSize : PPButtonHeightLG) * 0.5);
+    CGFloat verticalInset = hasTitle ? 8.0 : 0.0;
+    CGFloat horizontalInset = hasTitle ? 14.0 : 0.0;
+    UIColor *resolvedSurface = btnSize == 0.0
+        ? UIColor.clearColor
+        : [surfaceColor colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.88];
+    UIColor *strokeColor = [brandColor colorWithAlphaComponent:PPIOS26() ? 0.20 : 0.14];
+
+    UIButton *btn = nil;
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *cfg = config ? [config copy] : [UIButtonConfiguration tintedButtonConfiguration];
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        //cfg.background.cornerRadius = corners /2;
-        if (title) {
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(verticalInset, horizontalInset, verticalInset, horizontalInset);
+        cfg.baseForegroundColor = resolvedTextColor;
+        cfg.baseBackgroundColor = resolvedSurface;
+        cfg.background.backgroundColor = resolvedSurface;
+        cfg.background.cornerRadius = resolvedCornerRadius;
+        cfg.background.strokeColor = strokeColor;
+        cfg.background.strokeWidth = btnSize == 0.0 ? 0.0 : 0.8;
+        cfg.imagePadding = hasTitle && hasIcon ? 7.0 : 0.0;
+        cfg.titlePadding = hasTitle && hasIcon ? 4.0 : 0.0;
+        cfg.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+        cfg.imagePlacement = Language.isRTL ? NSDirectionalRectEdgeTrailing : NSDirectionalRectEdgeLeading;
+
+        if (hasTitle) {
             cfg.attributedTitle = [[NSAttributedString alloc] initWithString:title
                                                                   attributes:@{
-                NSFontAttributeName: font,
-                NSForegroundColorAttributeName: textColor
+                NSFontAttributeName: resolvedFont,
+                NSForegroundColorAttributeName: resolvedTextColor
             }];
         }
-        
-        if (trimmedImageName.length > 0) {
-            cfg.image = icon ?: [UIImage systemImageNamed:trimmedImageName];
-            cfg.baseForegroundColor = AppPrimaryTextClr;
-            cfg.preferredSymbolConfigurationForImage  = [PPColorUtils imageConfig:14 weight:UIImageSymbolWeightMedium scale:UIImageSymbolScaleLarge palette:@[UIColor.lightGrayColor,AppPrimaryClr] fallbackTint:AppPrimaryClr renderOriginal:YES];
-            if(Language.isRTL)
-            {
-                cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-            }
-        }
-        
-        if ([trimmedImageName isEqualToString:@"glassButtonWithTitle"]) {
-            cfg.image = [UIImage systemImageNamed:trimmedImageName];
-            cfg.baseForegroundColor = UIColor.lightGrayColor;
-            cfg.preferredSymbolConfigurationForImage  = [UIImageSymbolConfiguration configurationWithHierarchicalColor:UIColor.lightGrayColor];
-            if(Language.isRTL)
-            {
-                cfg.imagePlacement = NSDirectionalRectEdgeTrailing;
-            }
-        }
-        
-        if(btnSize == 0)
-        {
-            
-            cfg.background.backgroundColor = UIColor.clearColor;
-            cfg.baseBackgroundColor = UIColor.clearColor;
-        }
-        cfg.imagePadding = 6;
-        cfg.titlePadding = 6;
-        btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
-    }
-    else if (@available(iOS 15.0, *)) {
-        cfg = [UIButtonConfiguration plainButtonConfiguration];
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(6, 10, 6, 10);
-        cfg.background.backgroundColor = AppBackgroundClr ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        cfg.background.cornerRadius = corners > 0 ? corners : 0;
+
         if (icon) {
-            if (@available(iOS 15.0, *)) {
-                cfg.image = icon;
-                cfg.baseForegroundColor = AppPrimaryClr;
-            }
+            cfg.image = icon;
+            cfg.preferredSymbolConfigurationForImage =
+                [UIImageSymbolConfiguration configurationWithPointSize:(btnSize > 0.0 && !hasTitle) ? 18.0 : 15.0
+                                                                weight:UIImageSymbolWeightSemibold
+                                                                 scale:UIImageSymbolScaleMedium];
         }
-        if (title) {
-            cfg.attributedTitle = [[NSAttributedString alloc] initWithString:title
-                                                                  attributes:@{
-                NSFontAttributeName: [GM MidFontWithSize:14],
-                NSForegroundColorAttributeName: textColor
-            }];
-        }
+
         btn = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
-        btn.clipsToBounds = YES;
     } else {
         btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        btn.layer.cornerRadius = corners /2;
-        btn.clipsToBounds = YES;
-        btn.backgroundColor = AppBackgroundClr ?: [UIColor colorWithWhite:0.95 alpha:1.0];
-        if (title) {
-            [btn setTitle:title forState:UIControlStateNormal];
-            [btn setTitleColor:textColor forState:UIControlStateNormal];
-            btn.titleLabel.font = [GM MidFontWithSize:14];
-            [btn.titleLabel setFont:[GM MidFontWithSize:16]];
+        btn.backgroundColor = resolvedSurface;
+        [btn setTitle:hasTitle ? title : nil forState:UIControlStateNormal];
+        [btn setTitleColor:resolvedTextColor forState:UIControlStateNormal];
+        btn.titleLabel.font = resolvedFont;
+        btn.tintColor = resolvedTextColor;
+        if (icon) {
+            [btn setImage:icon forState:UIControlStateNormal];
+        }
+        if (hasTitle && hasIcon) {
+            btn.contentEdgeInsets = UIEdgeInsetsMake(verticalInset, horizontalInset, verticalInset, horizontalInset);
+            CGFloat imageInset = Language.isRTL ? 6.0 : -6.0;
+            btn.imageEdgeInsets = UIEdgeInsetsMake(0.0, imageInset, 0.0, -imageInset);
         }
     }
-    
-    
-    
-    if(btnSize > 0)
-    {
+
+    btn.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    btn.tintColor = resolvedTextColor;
+    btn.adjustsImageWhenHighlighted = NO;
+    btn.clipsToBounds = YES;
+    btn.layer.cornerRadius = resolvedCornerRadius;
+    btn.layer.borderWidth = btnSize == 0.0 ? 0.0 : 0.8;
+    [btn pp_setBorderColor:strokeColor];
+    if (@available(iOS 13.0, *)) {
+        btn.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    if (btnSize > 0) {
         btn.translatesAutoresizingMaskIntoConstraints = NO;
         [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
-        if (!title) { // icon-only
+        if (!hasTitle) {
             [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
-        }
-        else
-        {
-            [btn.widthAnchor constraintEqualToConstant:btnSize * 2].active = YES;
+        } else {
+            CGFloat minimumWidth = btnSize * (hasIcon ? 2.25 : 1.85);
+            [btn.widthAnchor constraintGreaterThanOrEqualToConstant:minimumWidth].active = YES;
         }
     }
-    // iOS <26: prioritize clipsToBounds for capsule corners
+
     btn.layer.masksToBounds = YES;
-    
-    // --- Target/action ---
+
     if (target && action) {
         [btn addTarget:target action:action forControlEvents:UIControlEventTouchUpInside];
     }

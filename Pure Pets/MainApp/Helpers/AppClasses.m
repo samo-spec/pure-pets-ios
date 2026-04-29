@@ -479,6 +479,10 @@
             if (!chosen) chosen = anims.firstObject;
         }
         NSString *jsonRelPath = [chosen isKindOfClass:[NSDictionary class]] ? (chosen[@"json"] ?: @"") : @"";
+        NSString *animationID = [chosen isKindOfClass:[NSDictionary class]] ? (chosen[@"id"] ?: @"") : @"";
+        if (jsonRelPath.length == 0 && animationID.length > 0) {
+            jsonRelPath = [NSString stringWithFormat:@"animations/%@.json", animationID];
+        }
         if (jsonRelPath.length == 0) {
             // Fallback: try common location
             jsonRelPath = @"animations/animation.json";
@@ -486,6 +490,22 @@
 
         NSString *jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
         NSData *jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
+        if (!jsonData) {
+            NSString *animationsDir = [unzipDir stringByAppendingPathComponent:@"animations"];
+            NSArray<NSString *> *animationFiles =
+                [[NSFileManager defaultManager] contentsOfDirectoryAtPath:animationsDir error:nil];
+            for (NSString *fileName in animationFiles) {
+                if (![fileName.lowercaseString hasSuffix:@".json"]) {
+                    continue;
+                }
+                jsonRelPath = [@"animations" stringByAppendingPathComponent:fileName];
+                jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
+                jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
+                if (jsonData) {
+                    break;
+                }
+            }
+        }
         if (!jsonData) {
             if (completion) completion(nil, [NSError errorWithDomain:@"LottieFetch" code:-7 userInfo:@{NSLocalizedDescriptionKey:[NSString stringWithFormat:@"Animation JSON not found at %@", jsonRelPath]}]);
             return;
@@ -687,7 +707,6 @@
 }
 
 @end
-
 
 
 

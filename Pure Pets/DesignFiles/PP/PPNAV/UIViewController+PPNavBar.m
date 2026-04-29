@@ -941,13 +941,64 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 #pragma mark - Visibility
 
 - (void)pp_navBarSetVisible:(BOOL)visible animated:(BOOL)animated {
-    UIView *bar = PPBarForVC(self); if (!bar) return;
-    if (!animated) { bar.hidden = !visible; return; }
+    
+    UIView *bar = PPBarForVC(self);
+    UINavigationBar *navBar = self.navigationController.navigationBar;
+    
     if (visible) {
-        bar.hidden = NO; bar.alpha = 0;
-        [UIView animateWithDuration:0.2 animations:^{ bar.alpha = 1; }];
+        
+        // 🔹 Show system nav bar
+        [self.navigationController setNavigationBarHidden:NO animated:animated];
+        
+        // Reset appearance
+        navBar.alpha = 1.0;
+        navBar.backgroundColor = nil;
+        navBar.translucent = YES;
+        
+        // Custom bar
+        if (bar) {
+            if (!animated) {
+                bar.hidden = NO;
+                bar.alpha = 1.0;
+            } else {
+                bar.hidden = NO;
+                bar.alpha = 0;
+                [UIView animateWithDuration:0.25 animations:^{
+                    bar.alpha = 1.0;
+                }];
+            }
+        }
+        
     } else {
-        [UIView animateWithDuration:0.2 animations:^{ bar.alpha = 0; } completion:^(BOOL f){ bar.hidden = YES; }];
+        
+        // 🔻 Make system nav bar transparent BEFORE hiding
+        navBar.alpha = 0.0;
+        navBar.backgroundColor = UIColor.clearColor;
+        
+        // iOS 13+ clean transparent appearance
+        if (@available(iOS 13.0, *)) {
+            UINavigationBarAppearance *appearance = [UINavigationBarAppearance new];
+            [appearance configureWithTransparentBackground];
+            navBar.standardAppearance = appearance;
+            navBar.scrollEdgeAppearance = appearance;
+        }
+        
+        // Hide system nav bar
+        [self.navigationController setNavigationBarHidden:YES animated:animated];
+        
+        // Custom bar
+        if (bar) {
+            if (!animated) {
+                bar.alpha = 0;
+                bar.hidden = YES;
+            } else {
+                [UIView animateWithDuration:0.25 animations:^{
+                    bar.alpha = 0;
+                } completion:^(BOOL finished) {
+                    bar.hidden = YES;
+                }];
+            }
+        }
     }
 }
 

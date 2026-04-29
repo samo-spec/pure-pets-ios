@@ -486,10 +486,33 @@
         
         NSArray *anims = manifest[@"animations"];
         NSDictionary *chosen = anims.count ? anims.firstObject : nil;
-        NSString *jsonRelPath = chosen[@"json"] ?: @"animations/animation.json";
+        NSString *jsonRelPath = [chosen isKindOfClass:NSDictionary.class] ? (chosen[@"json"] ?: @"") : @"";
+        NSString *animationID = [chosen isKindOfClass:NSDictionary.class] ? (chosen[@"id"] ?: @"") : @"";
+        if (jsonRelPath.length == 0 && animationID.length > 0) {
+            jsonRelPath = [NSString stringWithFormat:@"animations/%@.json", animationID];
+        }
+        if (jsonRelPath.length == 0) {
+            jsonRelPath = @"animations/animation.json";
+        }
         NSString *jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
         
         NSData *jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
+        if (!jsonData) {
+            NSString *animationsDir = [unzipDir stringByAppendingPathComponent:@"animations"];
+            NSArray<NSString *> *animationFiles =
+                [[NSFileManager defaultManager] contentsOfDirectoryAtPath:animationsDir error:nil];
+            for (NSString *fileName in animationFiles) {
+                if (![fileName.lowercaseString hasSuffix:@".json"]) {
+                    continue;
+                }
+                jsonRelPath = [@"animations" stringByAppendingPathComponent:fileName];
+                jsonAbsPath = [unzipDir stringByAppendingPathComponent:jsonRelPath];
+                jsonData = [NSData dataWithContentsOfFile:jsonAbsPath];
+                if (jsonData) {
+                    break;
+                }
+            }
+        }
         NSDictionary *json = jsonData ? [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:nil] : nil;
         
         if (json) {

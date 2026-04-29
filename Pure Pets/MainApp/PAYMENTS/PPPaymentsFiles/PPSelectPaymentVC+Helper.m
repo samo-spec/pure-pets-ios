@@ -314,7 +314,7 @@ referenceSizeForHeaderInSection:(NSInteger)section {
     // But let's check `PPSelectPaymentVC.m` for section inset, wait it has `layout.minimumInteritemSpacing = 0.0`.
     // We should make width = (availableWidth - spacing) / 2.0; and use itemHeight = 120.0
     CGFloat itemWidth = (availableWidth - 32.0 - spacing) / 2.0; // 32 is 16 on each side maybe?
-    return CGSizeMake(MAX(0.0, itemWidth), 130.0);
+    return CGSizeMake(MAX(0.0, itemWidth), 146.0);
 }
 
 

@@ -9,9 +9,64 @@
 
 
  
- static CGFloat const kLockThreshold   = 60.0;
+static CGFloat const kLockThreshold   = 60.0;
 static CGFloat const kCancelThreshold = 120.0;
 static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
+
+static BOOL PPChatInputBarIsDark(UITraitCollection *traitCollection)
+{
+    if (@available(iOS 13.0, *)) {
+        return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return NO;
+}
+
+static UIColor *PPChatInputBarTextColor(UITraitCollection *traitCollection)
+{
+    return PPChatInputBarIsDark(traitCollection)
+        ? [UIColor colorWithWhite:1.0 alpha:0.94]
+        : (AppPrimaryTextClr ?: UIColor.labelColor);
+}
+
+static UIColor *PPChatInputBarSecondaryTextColor(UITraitCollection *traitCollection)
+{
+    return PPChatInputBarIsDark(traitCollection)
+        ? [UIColor colorWithWhite:1.0 alpha:0.54]
+        : UIColor.secondaryLabelColor;
+}
+
+static UIColor *PPChatInputBarSurfaceColor(UITraitCollection *traitCollection)
+{
+    BOOL isDark = PPChatInputBarIsDark(traitCollection);
+    UIColor *lightSurface = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    return isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.085]
+        : [lightSurface colorWithAlphaComponent:0.94];
+}
+
+static UIColor *PPChatInputBarControlSurfaceColor(UITraitCollection *traitCollection)
+{
+    BOOL isDark = PPChatInputBarIsDark(traitCollection);
+    return isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.10]
+        : [UIColor.labelColor colorWithAlphaComponent:0.075];
+}
+
+static UIColor *PPChatInputBarBorderColor(UITraitCollection *traitCollection)
+{
+    BOOL isDark = PPChatInputBarIsDark(traitCollection);
+    return isDark
+        ? [UIColor colorWithWhite:1.0 alpha:0.12]
+        : [UIColor.labelColor colorWithAlphaComponent:0.055];
+}
+
+static UIColor *PPChatInputBarControlTintColor(UITraitCollection *traitCollection)
+{
+    return PPChatInputBarIsDark(traitCollection)
+        ? [UIColor colorWithWhite:1.0 alpha:0.88]
+        : (AppPrimaryTextClr ?: UIColor.labelColor);
+}
+
 @interface PPChatInputBarView () <UITextViewDelegate,UIGestureRecognizerDelegate,PPRecordingBarViewDelegate>
 
 @property (nonatomic, strong) UITextView *textView;
@@ -33,6 +88,8 @@ static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
 @property (nonatomic, assign) BOOL recordingSessionEnded;
 @property (nonatomic, strong) NSLayoutConstraint *textViewHeightConstraint;
 @property (nonatomic, strong) UIButton *textBackgroundView;
+- (void)pp_applyCurrentTheme;
+- (void)pp_applyIconButtonTheme:(UIButton *)button systemName:(NSString *)systemName active:(BOOL)active;
 @end
 
 @implementation PPChatInputBarView
@@ -89,11 +146,13 @@ static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
     // Text background container
     self.textBackgroundView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
     self.textBackgroundView.translatesAutoresizingMaskIntoConstraints = NO;
-    UIButtonConfiguration *config = self.textBackgroundView.configuration;
-    config.background.cornerRadius = 16;
-    config.background.backgroundColor = UIColor.clearColor;
-    config.baseBackgroundColor = UIColor.clearColor;
-    self.textBackgroundView.configuration = config;
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.textBackgroundView.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        config.background.cornerRadius = 16;
+        config.background.backgroundColor = UIColor.clearColor;
+        config.baseBackgroundColor = UIColor.clearColor;
+        self.textBackgroundView.configuration = config;
+    }
     
     
    //self.textBackgroundView.layer.cornerRadius = 12;
@@ -105,6 +164,9 @@ static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
     self.textView.font = [GM MidFontWithSize:16];
     self.textView.delegate = self;
     self.textView.backgroundColor = UIColor.clearColor;
+    self.textView.textColor = PPChatInputBarTextColor(self.traitCollection);
+    self.textView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.textView.keyboardAppearance = PPChatInputBarIsDark(self.traitCollection) ? UIKeyboardAppearanceDark : UIKeyboardAppearanceDefault;
     self.textView.layer.cornerRadius = 0;
     self.textView.translatesAutoresizingMaskIntoConstraints = NO;
     // Normalize text sizing and constraints
@@ -140,7 +202,7 @@ static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
     self.placeholderLabel = [[UILabel alloc] init];
     self.placeholderLabel.text = kLang(@"Message…");
     self.placeholderLabel.font = self.textView.font;
-    self.placeholderLabel.textColor = UIColor.secondaryLabelColor;
+    self.placeholderLabel.textColor = PPChatInputBarSecondaryTextColor(self.traitCollection);
     self.placeholderLabel.backgroundColor = UIColor.clearColor;
 
     self.placeholderLabel.userInteractionEnabled = NO;
@@ -245,6 +307,7 @@ static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
     //[self.recordingBar setRecordingState:PPRecordingBarStateRecording animated:NO];
     self.textView.clipsToBounds = YES;
     self.textView.layer.cornerRadius = 12;
+    [self pp_applyCurrentTheme];
 
 }
 -(void)layoutSubviews
@@ -255,7 +318,128 @@ static NSString * const kPPDidShowRecordHintKey = @"PPDidShowRecordHint";
     
     self.contentContainer.clipsToBounds = NO;
     self.contentContainer.layer.masksToBounds = NO;
-    
+
+    if (!CGRectIsEmpty(self.textBackgroundView.bounds)) {
+        self.textBackgroundView.layer.shadowPath =
+            [UIBezierPath bezierPathWithRoundedRect:self.textBackgroundView.bounds
+                                      cornerRadius:16.0].CGPath;
+    }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_applyCurrentTheme];
+        }
+    }
+}
+
+- (void)pp_applyCurrentTheme
+{
+    BOOL isDark = PPChatInputBarIsDark(self.traitCollection);
+    UIColor *surfaceColor = PPChatInputBarSurfaceColor(self.traitCollection);
+    UIColor *borderColor = PPChatInputBarBorderColor(self.traitCollection);
+
+    self.backgroundColor = UIColor.clearColor;
+    self.contentContainer.backgroundColor = UIColor.clearColor;
+
+    self.textView.textColor = PPChatInputBarTextColor(self.traitCollection);
+    self.textView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.textView.keyboardAppearance = isDark ? UIKeyboardAppearanceDark : UIKeyboardAppearanceDefault;
+
+    self.placeholderLabel.textColor = PPChatInputBarSecondaryTextColor(self.traitCollection);
+    self.placeholderLabel.backgroundColor = UIColor.clearColor;
+
+    self.textBackgroundView.backgroundColor = surfaceColor;
+    self.textBackgroundView.tintColor = self.textView.tintColor;
+    self.textBackgroundView.clipsToBounds = NO;
+    self.textBackgroundView.layer.masksToBounds = NO;
+    self.textBackgroundView.layer.cornerRadius = 16.0;
+    self.textBackgroundView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.textBackgroundView.layer.borderColor = borderColor.CGColor;
+    self.textBackgroundView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.textBackgroundView.layer.shadowOpacity = isDark ? 0.18 : 0.06;
+    self.textBackgroundView.layer.shadowRadius = isDark ? 14.0 : 10.0;
+    self.textBackgroundView.layer.shadowOffset = CGSizeMake(0.0, isDark ? 8.0 : 5.0);
+    if (@available(iOS 13.0, *)) {
+        self.textBackgroundView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.textView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.textBackgroundView.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        config.background.cornerRadius = 16.0;
+        config.background.backgroundColor = surfaceColor;
+        config.baseBackgroundColor = surfaceColor;
+        config.baseForegroundColor = self.textView.tintColor;
+        self.textBackgroundView.configuration = config;
+    }
+
+    [self pp_applyIconButtonTheme:self.mediaButton systemName:@"paperclip" active:NO];
+    NSString *actionName = (self.actionMode == PPActionButtonModeSend) ? @"arrow.up" : @"mic.fill";
+    [self pp_applyIconButtonTheme:self.actionsButton
+                       systemName:actionName
+                           active:(self.actionMode == PPActionButtonModeSend)];
+}
+
+- (void)pp_applyIconButtonTheme:(UIButton *)button systemName:(NSString *)systemName active:(BOOL)active
+{
+    if (!button) return;
+
+    BOOL isDark = PPChatInputBarIsDark(self.traitCollection);
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *foregroundColor = active ? accentColor : PPChatInputBarControlTintColor(self.traitCollection);
+    UIColor *surfaceColor = active
+        ? [accentColor colorWithAlphaComponent:(isDark ? 0.22 : 0.13)]
+        : PPChatInputBarControlSurfaceColor(self.traitCollection);
+    UIColor *borderColor = active
+        ? [accentColor colorWithAlphaComponent:(isDark ? 0.34 : 0.20)]
+        : PPChatInputBarBorderColor(self.traitCollection);
+
+    UIImageSymbolConfiguration *symbolConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:(active ? 17.0 : 18.0)
+                                                        weight:UIImageSymbolWeightMedium
+                                                         scale:UIImageSymbolScaleMedium];
+    UIImage *image = [[UIImage systemImageNamed:systemName] imageByApplyingSymbolConfiguration:symbolConfig];
+
+    BOOL usesSystemGlass = NO;
+    if (@available(iOS 26.0, *)) {
+        usesSystemGlass = YES;
+    }
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = nil;
+        if (@available(iOS 26.0, *)) {
+            config = [UIButtonConfiguration glassButtonConfiguration];
+        } else {
+            config = [UIButtonConfiguration plainButtonConfiguration];
+            config.background.backgroundColor = surfaceColor;
+            config.baseBackgroundColor = surfaceColor;
+            config.background.cornerRadius = 22.0;
+        }
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(8.0, 8.0, 8.0, 8.0);
+        config.image = image;
+        config.baseForegroundColor = foregroundColor;
+        button.configuration = config;
+    } else {
+        [button setImage:image forState:UIControlStateNormal];
+    }
+
+    button.tintColor = foregroundColor;
+    button.imageView.tintColor = foregroundColor;
+    button.backgroundColor = usesSystemGlass ? UIColor.clearColor : surfaceColor;
+    button.clipsToBounds = YES;
+    button.layer.cornerRadius = 22.0;
+    button.layer.borderWidth = usesSystemGlass ? 0.0 : (1.0 / UIScreen.mainScreen.scale);
+    button.layer.borderColor = borderColor.CGColor;
+    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    button.layer.shadowOpacity = (!usesSystemGlass && isDark) ? 0.16 : 0.0;
+    button.layer.shadowRadius = (!usesSystemGlass && isDark) ? 8.0 : 0.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 4.0);
 }
 
 - (void)setMicVisible:(BOOL)visible animated:(BOOL)animated {
@@ -630,9 +814,13 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     // 3️⃣ Preferences (modern, compact, WhatsApp-like)
     ZMJPreferences *preferences = [ZMJPreferences new];
 
-    preferences.drawing.backgroundColor =
-        [AppPrimaryClr colorWithAlphaComponent:0.92];
-    preferences.drawing.foregroundColor = AppForgroundColr;
+    BOOL isDark = PPChatInputBarIsDark(self.traitCollection);
+    preferences.drawing.backgroundColor = isDark
+        ? [UIColor colorWithWhite:0.10 alpha:0.96]
+        : [(AppPrimaryClr ?: UIColor.systemBlueColor) colorWithAlphaComponent:0.92];
+    preferences.drawing.foregroundColor = isDark
+        ? UIColor.whiteColor
+        : (AppForgroundColr ?: UIColor.whiteColor);
     preferences.drawing.textAlignment = NSTextAlignmentCenter;
     preferences.drawing.font = [GM MidFontWithSize:15];
     preferences.drawing.cornerRadius = 14;
@@ -691,21 +879,14 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
 }
 
 - (void)updateActionButtonUIAnimated:(BOOL)animated {
-    
-    
-     
+    BOOL isSendMode = (self.actionMode == PPActionButtonModeSend);
+    NSString *systemName = isSendMode ? @"arrow.up" : @"mic.fill";
     UIImage *image =
-        (self.actionMode == PPActionButtonModeSend)
-        ? [UIImage systemImageNamed:@"arrow.up"]
-        : [UIImage systemImageNamed:@"mic.fill"];
+        [UIImage systemImageNamed:systemName];
 
     void (^changes)(void) = ^{
-        //[self.actionsButton setImage:image forState:UIControlStateNormal];
-        self.actionsButton.tintColor =
-            (self.actionMode == PPActionButtonModeSend)
-            ? AppPrimaryClr
-        : AppPrimaryTextClr;
-        
+        [self pp_applyIconButtonTheme:self.actionsButton systemName:systemName active:isSendMode];
+
         if (@available(iOS 18.0, *)) {
             [self.actionsButton.imageView setSymbolImage:image withContentTransition:[NSSymbolReplaceContentTransition magicTransitionWithFallback: NSSymbolReplaceContentTransition.replaceDownUpTransition.transitionWithByLayer] options: [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodic]]];
         }
@@ -729,24 +910,27 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     UIButton *b = [UIButton buttonWithType:UIButtonTypeSystem];
     [b setImage:[UIImage systemImageNamed:systemName]
         forState:UIControlStateNormal];
-    b.tintColor = AppPrimaryTextClr;
+    b.tintColor = PPChatInputBarControlTintColor(self.traitCollection);
     b.translatesAutoresizingMaskIntoConstraints = NO;
     [b.widthAnchor constraintEqualToConstant:44.0].active = YES;
     [b.heightAnchor constraintEqualToConstant:44.0].active = YES;
-    UIButtonConfiguration *config;
-    
-    
-    
-    if (@available(iOS 26.0, *)) {
-        config = [UIButtonConfiguration glassButtonConfiguration];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = nil;
+        if (@available(iOS 26.0, *)) {
+            config = [UIButtonConfiguration glassButtonConfiguration];
+        } else {
+            config = [UIButtonConfiguration plainButtonConfiguration];
+            config.background.backgroundColor = UIColor.clearColor;
+            config.baseBackgroundColor = UIColor.clearColor;
+            config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        }
+        b.configuration = config;
     } else {
-        config = [UIButtonConfiguration filledButtonConfiguration];
-        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        b.backgroundColor = PPChatInputBarControlSurfaceColor(self.traitCollection);
     }
-    
+
     b.clipsToBounds = YES;
     b.layer.cornerRadius = 22;
-    b.configuration = config;
     return b;
 }
 

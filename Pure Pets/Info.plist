@@ -12,18 +12,16 @@
 		</dict>
 		<dict>
 			<key>CFBundleTypeRole</key>
-			<string>Editor</string>
+			<string>None</string>
 			<key>CFBundleURLSchemes</key>
-			<array>
-				<string>app-1-646051621158-ios-0346d1923005c9d0ad39e7</string>
-			</array>
+			<array/>
 		</dict>
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.646051621158-8mrtmqi04u6t4iu7ob7uq3gnt1jg2jia</string>
+				<string>com.googleusercontent.apps.646051621158-s8fj3lcm8ho5llsuitgh83tmea2vk0tq</string>
 			</array>
 		</dict>
 	</array>
@@ -34,7 +32,7 @@
 	<key>FirebaseAutomaticScreenReportingEnabled</key>
 	<false/>
 	<key>GIDClientID</key>
-	<string>646051621158-8mrtmqi04u6t4iu7ob7uq3gnt1jg2jia.apps.googleusercontent.com</string>
+	<string>646051621158-s8fj3lcm8ho5llsuitgh83tmea2vk0tq.apps.googleusercontent.com</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>

@@ -2073,6 +2073,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (nullable NSString *)pp_homeEntranceKeyForIndexPath:(NSIndexPath *)indexPath
                                                  kind:(nullable NSString *)kind;
 - (void)pp_refreshThemeSensitiveHomeContent;
+- (void)pp_refreshHomeAppearanceChromeWithoutCollectionReload;
+- (void)pp_refreshSuggestionsForAppearanceIfNeeded;
+- (NSString *)pp_homeSuggestionsRefreshSignature;
+- (NSString *)pp_homePetProfilesSignatureForProfiles:(NSArray<PPPetProfile *> *)profiles
+                                           defaultPet:(nullable PPPetProfile *)defaultPet
+                                              loading:(BOOL)loading;
 - (void)handleThemePreferenceDidChange:(NSNotification *)notification;
 - (void)pp_applyCurrentLanguageDirectionToHomeUI;
 - (void)pp_forceHomeCollectionLayoutRefresh;
@@ -2133,6 +2139,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL didAutoScrollSuggestions;
 @property (nonatomic, assign) BOOL didAutoScrollNearbyServices;
 @property (nonatomic, assign) BOOL didFillSuggestionsOnce;
+@property (nonatomic, assign) BOOL didApplyInitialHomeAppearanceRefresh;
+@property (nonatomic, copy, nullable) NSString *lastHomeSuggestionsAppearanceSignature;
+@property (nonatomic, copy, nullable) NSString *lastPetProfilesSectionSignature;
 @property (nonatomic, strong) UIView *profileCard;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeProfileItem;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeCartItem;
@@ -2307,6 +2316,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (void)pp_centerNearbySectionIfPossible
 {
+    if (self.didSelectInitialNearby || self.isPremiumHomeEntranceAnimating) {
+        return;
+    }
+
     NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionAdsNearBy];
     if (sectionIndex == NSNotFound || !self.collectionView) {
         return;
@@ -2321,10 +2334,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     NSIndexPath *centerIndexPath = [NSIndexPath indexPathForItem:targetItem inSection:sectionIndex];
 
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (self.didSelectInitialNearby || self.isPremiumHomeEntranceAnimating) {
+            return;
+        }
         [self.collectionView layoutIfNeeded];
         if ([self.collectionView numberOfItemsInSection:sectionIndex] <= targetItem) {
             return;
         }
+        self.didSelectInitialNearby = YES;
         [self.collectionView scrollToItemAtIndexPath:centerIndexPath
                                     atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
                                             animated:NO];
@@ -2890,6 +2907,106 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self pp_applyCurrentLanguageDirectionToHomeUI];
 }
 
+- (void)pp_refreshHomeAppearanceChromeWithoutCollectionReload
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_refreshHomeAppearanceChromeWithoutCollectionReload];
+        });
+        return;
+    }
+
+    if (!self.isViewLoaded) {
+        return;
+    }
+
+    [self pp_applyOrderDetailsBackgroundAppearance];
+    if ([self pp_canOwnHomeNavigationChrome]) {
+        [self configureNavigationBar];
+    } else {
+        [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+    }
+    [self refreshHeroSectionAppearance];
+    [self setNeedsStatusBarAppearanceUpdate];
+
+    NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
+    [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
+    [self pp_applyCurrentLanguageDirectionToHomeUI];
+}
+
+- (NSString *)pp_homeSuggestionsRefreshSignature
+{
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    [parts addObject:[NSString stringWithFormat:@"nearby:%lu", (unsigned long)self.nearbyAds.count]];
+    for (PetAd *ad in self.nearbyAds ?: @[]) {
+        NSString *adID = PPSafeString(ad.adID);
+        if (adID.length == 0) {
+            adID = [NSString stringWithFormat:@"%ld:%@", (long)ad.category, PPSafeString(ad.adTitle)];
+        }
+        [parts addObject:[NSString stringWithFormat:@"ad:%@", adID]];
+    }
+
+    [parts addObject:[NSString stringWithFormat:@"accessories:%lu", (unsigned long)self.accessories.count]];
+    for (PetAccessory *accessory in self.accessories ?: @[]) {
+        NSString *accessoryID = PPSafeString(accessory.accessoryID);
+        if (accessoryID.length == 0) {
+            accessoryID = [NSString stringWithFormat:@"%ld:%@", (long)accessory.petMainCategoryID, PPSafeString(accessory.name)];
+        }
+        [parts addObject:[NSString stringWithFormat:@"acc:%@", accessoryID]];
+    }
+
+    [parts addObject:[NSString stringWithFormat:@"orders:%lu", (unsigned long)self.recentOrders.count]];
+    for (PPOrder *order in self.recentOrders ?: @[]) {
+        [parts addObject:[NSString stringWithFormat:@"order:%@", PPSafeString(order.orderId)]];
+    }
+
+    NSDictionary *latestEvent = [[PPBrowseHistoryManager shared] latestEvent];
+    id eventType = latestEvent[@"type"];
+    id eventKind = latestEvent[@"kind"];
+    [parts addObject:[NSString stringWithFormat:@"event:%@:%@",
+                      [eventType respondsToSelector:@selector(description)] ? [eventType description] : @"",
+                      [eventKind respondsToSelector:@selector(description)] ? [eventKind description] : @""]];
+
+    return [parts componentsJoinedByString:@"|"];
+}
+
+- (void)pp_refreshSuggestionsForAppearanceIfNeeded
+{
+    if (!(self.accessoriesLoaded || self.nearbyLoaded)) {
+        return;
+    }
+
+    NSString *signature = [self pp_homeSuggestionsRefreshSignature];
+    if (signature.length > 0 &&
+        [signature isEqualToString:PPSafeString(self.lastHomeSuggestionsAppearanceSignature)]) {
+        return;
+    }
+
+    self.lastHomeSuggestionsAppearanceSignature = signature;
+    [self reloadSection:PPHomeSectionSuggestions];
+}
+
+- (NSString *)pp_homePetProfilesSignatureForProfiles:(NSArray<PPPetProfile *> *)profiles
+                                           defaultPet:(nullable PPPetProfile *)defaultPet
+                                              loading:(BOOL)loading
+{
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    [parts addObject:[NSString stringWithFormat:@"loading:%d", loading]];
+    [parts addObject:[NSString stringWithFormat:@"default:%@", PPSafeString(defaultPet.petID)]];
+    for (PPPetProfile *profile in profiles ?: @[]) {
+        NSTimeInterval updatedAt = profile.updatedAt ? profile.updatedAt.timeIntervalSince1970 : 0.0;
+        [parts addObject:[NSString stringWithFormat:@"pet:%@:%@:%@:%ld:%@:%d:%.0f",
+                          PPSafeString(profile.petID),
+                          PPSafeString(profile.name),
+                          PPSafeString(profile.breed),
+                          (long)profile.ageInMonths,
+                          PPSafeString(profile.imageURL),
+                          profile.isDefaultPet,
+                          updatedAt]];
+    }
+    return [parts componentsJoinedByString:@"|"];
+}
+
 - (void)reloadSection:(PPHomeSection)section
 {
     NSNumber *sectionIdentifier = @(section);
@@ -3120,6 +3237,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     [self.dataSource applySnapshot:snapshot animatingDifferences:animate];
+    if (section == PPHomeSectionSuggestions) {
+        self.lastHomeSuggestionsAppearanceSignature = [self pp_homeSuggestionsRefreshSignature];
+    }
 
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumCare ||
@@ -7055,18 +7175,33 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 {
     NSString *userID = [self pp_currentOrdersUserID];
     if (userID.length == 0 || !UserManager.sharedManager.isUserLoggedIn) {
+        NSString *nextSignature = [self pp_homePetProfilesSignatureForProfiles:@[]
+                                                                     defaultPet:nil
+                                                                        loading:NO];
+        BOOL shouldReload = ![nextSignature isEqualToString:PPSafeString(self.lastPetProfilesSectionSignature)];
         self.petProfiles = @[];
         self.defaultPetProfile = nil;
         self.petProfilesLoading = NO;
         self.petProfilesLoaded = YES;
-        [self reloadSection:PPHomeSectionPetProfile];
+        self.lastPetProfilesSectionSignature = nextSignature;
+        if (shouldReload) {
+            [self reloadSection:PPHomeSectionPetProfile];
+        }
         return;
     }
 
     self.petProfilesRequestToken += 1;
     NSInteger requestToken = self.petProfilesRequestToken;
+    BOOL wasLoaded = self.petProfilesLoaded;
+    NSString *previousSignature = [self pp_homePetProfilesSignatureForProfiles:self.petProfiles
+                                                                    defaultPet:self.defaultPetProfile
+                                                                       loading:NO];
     self.petProfilesLoading = YES;
     if (!self.petProfilesLoaded) {
+        self.lastPetProfilesSectionSignature =
+            [self pp_homePetProfilesSignatureForProfiles:self.petProfiles
+                                              defaultPet:self.defaultPetProfile
+                                                 loading:YES];
         [self reloadSection:PPHomeSectionPetProfile];
     }
 
@@ -7098,7 +7233,17 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
             self.petProfilesLoading = NO;
             self.petProfilesLoaded = YES;
-            [self reloadSection:PPHomeSectionPetProfile];
+            NSString *nextSignature =
+                [self pp_homePetProfilesSignatureForProfiles:self.petProfiles
+                                                  defaultPet:self.defaultPetProfile
+                                                     loading:NO];
+            BOOL shouldReload = !wasLoaded ||
+                                ![nextSignature isEqualToString:previousSignature] ||
+                                ![nextSignature isEqualToString:PPSafeString(self.lastPetProfilesSectionSignature)];
+            self.lastPetProfilesSectionSignature = nextSignature;
+            if (shouldReload) {
+                [self reloadSection:PPHomeSectionPetProfile];
+            }
         });
     }];
 }
@@ -7336,13 +7481,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [CATransaction commit];
     }
 
-    if (self.didRunPremiumHomeEntranceAnimation) {
+    if (self.didRunPremiumHomeEntranceAnimation && !self.isPremiumHomeEntranceAnimating) {
         [self pp_animateHomeEntranceForCell:cell
                                 atIndexPath:indexPath
                              initialOrdinal:NSNotFound];
     }
 
-    [self pp_applyPremiumScrollMotionToCell:cell atIndexPath:indexPath];
+    if (!self.isPremiumHomeEntranceAnimating) {
+        [self pp_applyPremiumScrollMotionToCell:cell atIndexPath:indexPath];
+    }
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -7351,6 +7498,10 @@ willDisplaySupplementaryView:(UICollectionReusableView *)view
          atIndexPath:(NSIndexPath *)indexPath
 {
     (void)collectionView;
+    if (self.isPremiumHomeEntranceAnimating) {
+        return;
+    }
+
     if (!self.didRunPremiumHomeEntranceAnimation) {
         [self pp_applyPremiumScrollMotionToSupplementaryView:view
                                                         kind:elementKind
@@ -8052,7 +8203,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyPremiumScrollMotionToVisibleContent
 {
-    if (!self.collectionView || !self.isViewLoaded) {
+    if (!self.collectionView || !self.isViewLoaded || self.isPremiumHomeEntranceAnimating) {
         return;
     }
 
@@ -8443,19 +8594,34 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         } completion:nil];
     }];
 
+    __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.06 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.isViewLoaded) {
+            return;
+        }
         [self pp_animateVisibleHomeEntranceContentIfNeeded];
     });
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.80 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.isViewLoaded) {
+            return;
+        }
         [self pp_beginPremiumBackgroundGlowMotionIfNeeded];
     });
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.86 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.isViewLoaded) {
+            return;
+        }
         self.isPremiumHomeEntranceAnimating = NO;
+        [self pp_applyPremiumScrollMotionToVisibleContent];
+        [self pp_centerNearbySectionIfPossible];
     });
 }
 
@@ -8769,14 +8935,14 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [super viewWillAppear:animated];
 
-    [self configureNavigationBar];
-    [self pp_applyCurrentLanguageDirectionToHomeUI];
-    [self pp_refreshThemeSensitiveHomeContent];
-    [self pp_refreshPetProfilesSection];
-
-    if (self.accessoriesLoaded || self.nearbyLoaded) {
-        [self reloadSection:PPHomeSectionSuggestions];
+    if (!self.didApplyInitialHomeAppearanceRefresh) {
+        self.didApplyInitialHomeAppearanceRefresh = YES;
+        [self pp_refreshThemeSensitiveHomeContent];
+    } else {
+        [self pp_refreshHomeAppearanceChromeWithoutCollectionReload];
     }
+    [self pp_refreshPetProfilesSection];
+    [self pp_refreshSuggestionsForAppearanceIfNeeded];
     [self refreshCurrentOrdersForce:NO];
     [self refreshHeroSectionAppearance];
 

@@ -28,7 +28,7 @@ static CGFloat const kCartHeaderStretchLimit = 34.0;
 
 static UIColor *PPCartScreenBackgroundColor(void)
 {
-    return AppBackgroundClrDarker;
+    return PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
 @interface CustomTextViewCell : XLFormTextViewCell @end
@@ -38,7 +38,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
     [super configure];
     self.textView.layer.cornerRadius = 12;
     self.textView.layer.masksToBounds = YES;
-    self.textView.backgroundColor = GM.AppForegroundColor;
+    self.textView.backgroundColor = AppBackgroundClr;
 }
 
 @end

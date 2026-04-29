@@ -363,9 +363,9 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroShadowView.backgroundColor = UIColor.clearColor;
     [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:1.0]];
-    self.heroShadowView.layer.shadowOpacity = 0.08;
-    self.heroShadowView.layer.shadowRadius = 18.0;
-    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.heroShadowView.layer.shadowOpacity = 0.12;
+    self.heroShadowView.layer.shadowRadius = 26.0;
+    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     if (@available(iOS 13.0, *)) {
         self.heroShadowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -500,11 +500,12 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationIconPlateView.userInteractionEnabled = NO;
     self.locationIconPlateView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.16];
-    self.locationIconPlateView.layer.cornerRadius = PPCornerMedium;
+    self.locationIconPlateView.layer.cornerRadius = 19.0;
     self.locationIconPlateView.layer.borderWidth = 1.0;
+    self.locationIconPlateView.layer.masksToBounds = YES;
     [self.locationIconPlateView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
     if (@available(iOS 13.0, *)) {
-        self.locationIconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
+        self.locationIconPlateView.layer.cornerCurve = kCACornerCurveCircular;
     }
     [self.locationControl addSubview:self.locationIconPlateView];
 
@@ -841,6 +842,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroShadowView.layer.cornerRadius = self.heroSurfaceView.layer.cornerRadius;
     self.heroShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroShadowView.bounds
                                                                       cornerRadius:self.heroSurfaceView.layer.cornerRadius].CGPath;
+    self.locationIconPlateView.layer.cornerRadius = CGRectGetHeight(self.locationIconPlateView.bounds) * 0.5;
 
     self.orbViewA.layer.cornerRadius = CGRectGetWidth(self.orbViewA.bounds) * 0.5;
     self.orbViewB.layer.cornerRadius = CGRectGetWidth(self.orbViewB.bounds) * 0.5;
@@ -1294,7 +1296,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     if (@available(iOS 13.0, *)) {
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
-    [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:1.0]];
+    [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:(isDark ? 0.56 : 0.34)]];
+    self.heroShadowView.layer.shadowOpacity = isDark ? 0.18 : 0.12;
+    self.heroShadowView.layer.shadowRadius = 26.0;
+    self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
 }
 
 #pragma mark - State Styling

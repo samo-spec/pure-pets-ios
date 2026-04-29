@@ -89,7 +89,6 @@ static NSString *PPPetCareHeroAnimationName(PPPetCareInitialSection section)
 {
     return section == PPPetCareInitialSectionVeterinarians ? @"Femaleveterinarian" : @"pet-care4";
 }
-
 static NSString *PPPetCarePremiumMedicineHeroAnimationBase64(void)
 {
     return

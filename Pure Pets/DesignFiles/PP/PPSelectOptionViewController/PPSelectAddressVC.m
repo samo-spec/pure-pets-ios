@@ -18,7 +18,11 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
 @property (nonatomic, strong) UISearchBar *searchBar;
 @property (nonatomic, strong) UIView *headerContainer;
+@property (nonatomic, strong) UILabel *headerTitleLabel;
+@property (nonatomic, strong) UILabel *headerSubtitleLabel;
 @property (nonatomic, strong) UIView *bottomActionsContainer;
+@property (nonatomic, strong) UIVisualEffectView *bottomActionsBlurView;
+@property (nonatomic, strong) UIView *bottomActionsTintView;
 @property (nonatomic, strong) UIButton *deliverAnotherLocationButton;
 @property (nonatomic, strong) UIButton *deliverCurrentLocationButton;
 
@@ -103,8 +107,8 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     [super viewDidLoad];
 
     BOOL usesTransparentSurface = PPIOS26();
-    self.view.backgroundColor = PPBackgroundColorForIOS26(usesTransparentSurface ? [AppForgroundColr colorWithAlphaComponent:0.6] : AppBackgroundClr);
-    self.tableView.backgroundColor = usesTransparentSurface ? UIColor.clearColor : AppBackgroundClr;
+    self.view.backgroundColor = [self pp_sheetBackgroundColor];
+    self.tableView.backgroundColor = usesTransparentSurface ? UIColor.clearColor : [self pp_sheetBackgroundColor];
     self.tableView.rowHeight = PPAddressCellHeight;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
@@ -121,6 +125,7 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     [self pp_configureBottomActions];
     [self pp_applySheetStyleIfNeeded];
     [self pp_configureBackgroundDismissTap];
+    [self pp_refreshVisibleColors];
 
     if (!self.filteredOptions) {
         self.filteredOptions = self.allOptions ?: @[];
@@ -192,6 +197,166 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     return [self pp_localizedStringForKey:@"unable_detect_current_location" fallback:@"Unable to detect current location."];
 }
 
+- (BOOL)pp_isDarkMode
+{
+    if (@available(iOS 13.0, *)) {
+        return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return NO;
+}
+
+- (UIColor *)pp_sheetBackgroundColor
+{
+    if ([self pp_isDarkMode]) {
+        return [UIColor colorWithRed:0.036 green:0.034 blue:0.042 alpha:1.0];
+    }
+    return PPBackgroundColorForIOS26(PPIOS26()
+                                    ? [AppForgroundColr colorWithAlphaComponent:0.64]
+                                    : AppBackgroundClr);
+}
+
+- (UIColor *)pp_sheetSurfaceColor
+{
+    if ([self pp_isDarkMode]) {
+        return [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.075];
+    }
+    return PPIOS26()
+        ? [AppForgroundColr colorWithAlphaComponent:0.48]
+        : [UIColor colorWithWhite:1.0 alpha:0.96];
+}
+
+- (UIColor *)pp_sheetElevatedSurfaceColor
+{
+    if ([self pp_isDarkMode]) {
+        return [UIColor colorWithRed:0.118 green:0.112 blue:0.128 alpha:0.96];
+    }
+    return PPIOS26()
+        ? [AppForgroundColr colorWithAlphaComponent:0.72]
+        : AppForgroundColr;
+}
+
+- (UIColor *)pp_sheetTintOverlayColor
+{
+    if ([self pp_isDarkMode]) {
+        return [UIColor colorWithRed:0.050 green:0.047 blue:0.056 alpha:PPIOS26() ? 0.72 : 0.94];
+    }
+    return [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.30 : 0.86];
+}
+
+- (UIColor *)pp_sheetTextColor
+{
+    if ([self pp_isDarkMode]) {
+        return [UIColor colorWithWhite:1.0 alpha:0.96];
+    }
+    return AppPrimaryTextClr;
+}
+
+- (UIColor *)pp_sheetSecondaryTextColor
+{
+    if ([self pp_isDarkMode]) {
+        return [UIColor colorWithWhite:1.0 alpha:0.64];
+    }
+    return [AppPrimaryTextClr colorWithAlphaComponent:0.64];
+}
+
+- (UIColor *)pp_sheetStrokeColor
+{
+    if ([self pp_isDarkMode]) {
+        return [UIColor colorWithWhite:1.0 alpha:0.12];
+    }
+    return [UIColor colorWithWhite:0.0 alpha:0.075];
+}
+
+- (UIColor *)pp_sheetAccentSurfaceColor
+{
+    return [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.20 : 0.12];
+}
+
+- (UIBlurEffectStyle)pp_bottomActionsBlurStyle
+{
+    if (@available(iOS 13.0, *)) {
+        if ([self pp_isDarkMode]) {
+            return PPIOS26() ? UIBlurEffectStyleSystemThinMaterialDark : UIBlurEffectStyleSystemMaterialDark;
+        }
+        return PPIOS26() ? UIBlurEffectStyleSystemThinMaterialLight : UIBlurEffectStyleSystemUltraThinMaterialLight;
+    }
+    return UIBlurEffectStyleExtraLight;
+}
+
+- (void)pp_refreshSearchBarColors
+{
+    if (!self.searchBar) {
+        return;
+    }
+
+    self.searchBar.tintColor = AppPrimaryClr;
+    self.searchBar.barTintColor = UIColor.clearColor;
+
+    if (@available(iOS 13.0, *)) {
+        UITextField *textField = self.searchBar.searchTextField;
+        textField.textColor = [self pp_sheetTextColor];
+        textField.tintColor = AppPrimaryClr;
+        textField.backgroundColor = [self pp_sheetSurfaceColor];
+        textField.layer.cornerRadius = 16.0;
+        textField.layer.masksToBounds = YES;
+        textField.font = [GM MidFontWithSize:14.5];
+        textField.textAlignment = [Language alignmentForCurrentLanguage];
+
+        NSString *placeholder = self.searchBar.placeholder ?: [self pp_localizedStringForKey:@"SearchHere" fallback:@"Search addresses"];
+        textField.attributedPlaceholder =
+            [[NSAttributedString alloc] initWithString:placeholder
+                                            attributes:@{
+            NSForegroundColorAttributeName: [self pp_sheetSecondaryTextColor],
+            NSFontAttributeName: [GM MidFontWithSize:14.5]
+        }];
+
+        if ([textField.leftView respondsToSelector:@selector(setTintColor:)]) {
+            textField.leftView.tintColor = [self pp_sheetSecondaryTextColor];
+        }
+    }
+}
+
+- (void)pp_refreshActionButton:(UIButton *)button primary:(BOOL)primary
+{
+    if (!button) {
+        return;
+    }
+
+    if (primary) {
+        button.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.92 : 0.96];
+        button.layer.borderWidth = 0.0;
+        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    } else {
+        button.backgroundColor = [self pp_sheetElevatedSurfaceColor];
+        button.layer.borderWidth = 1.0;
+        [button pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.34 : 0.24]];
+        [button setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    }
+}
+
+- (void)pp_refreshVisibleColors
+{
+    BOOL usesTransparentSurface = PPIOS26();
+    self.view.backgroundColor = [self pp_sheetBackgroundColor];
+    self.tableView.backgroundColor = usesTransparentSurface ? UIColor.clearColor : [self pp_sheetBackgroundColor];
+
+    self.headerTitleLabel.textColor = [self pp_sheetTextColor];
+    self.headerSubtitleLabel.textColor = [self pp_sheetSecondaryTextColor];
+    [self pp_refreshSearchBarColors];
+
+    self.bottomActionsBlurView.effect = [UIBlurEffect effectWithStyle:[self pp_bottomActionsBlurStyle]];
+    self.bottomActionsTintView.backgroundColor = [self pp_sheetTintOverlayColor];
+    [self.bottomActionsContainer pp_setBorderColor:[self pp_sheetStrokeColor]];
+    self.bottomActionsContainer.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.bottomActionsContainer.layer.shadowOpacity = [self pp_isDarkMode] ? 0.24 : 0.10;
+    self.bottomActionsContainer.layer.shadowRadius = 18.0;
+    self.bottomActionsContainer.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+
+    [self pp_refreshActionButton:self.deliverAnotherLocationButton primary:YES];
+    [self pp_refreshActionButton:self.deliverCurrentLocationButton primary:NO];
+    [self pp_refreshCurrentLocationButtonTitle];
+}
+
 - (void)pp_configureHeader
 {
     CGFloat headerHeight = self.showSearchBar ? 168.0 : 116.0;
@@ -202,16 +367,18 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     titleLabel.font = [GM boldFontWithSize:28];
-    titleLabel.textColor = AppPrimaryTextClr;
+    titleLabel.textColor = [self pp_sheetTextColor];
     titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     titleLabel.text = [self pp_savedAddressesTitleText];
 
     UILabel *subtitleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.font = [GM MidFontWithSize:15];
-    subtitleLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.74];
+    subtitleLabel.textColor = [self pp_sheetSecondaryTextColor];
     subtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     subtitleLabel.text = [self pp_deliverAddressesSubtitleText];
+    self.headerTitleLabel = titleLabel;
+    self.headerSubtitleLabel = subtitleLabel;
 
     [header addSubview:titleLabel];
     [header addSubview:subtitleLabel];
@@ -234,12 +401,9 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         searchBar.placeholder = [self pp_localizedStringForKey:@"SearchHere" fallback:@"Search addresses"];
         searchBar.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
-        if (@available(iOS 13.0, *)) {
-            searchBar.searchTextField.textColor = AppPrimaryTextClr;
-        }
-
         [header addSubview:searchBar];
         self.searchBar = searchBar;
+        [self pp_refreshSearchBarColors];
 
         [NSLayoutConstraint activateConstraints:@[
             [searchBar.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:22.0],
@@ -272,19 +436,8 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     button.contentEdgeInsets = UIEdgeInsetsMake(14, 16, 14, 16);
     button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
-    if (primary) {
-        button.backgroundColor = PPIOS26() ? [AppPrimaryClr colorWithAlphaComponent:0.94] : AppPrimaryClr;
-        [button setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    } else {
-        button.backgroundColor = PPIOS26()
-            ? [AppForgroundColr colorWithAlphaComponent:0.20]
-            : AppForgroundColr;
-        button.layer.borderWidth = 1.0;
-        [button pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.35 : 0.22]];
-        [button setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
-    }
-
     [button setTitle:title forState:UIControlStateNormal];
+    [self pp_refreshActionButton:button primary:primary];
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
     return button;
 }
@@ -299,20 +452,28 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     if (@available(iOS 13.0, *)) {
         container.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    container.layer.masksToBounds = YES;
-    container.layer.borderWidth = PPIOS26() ? 0.8 : 0.0;
-    [container pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.10]];
+    container.layer.masksToBounds = NO;
+    container.layer.borderWidth = 0.8;
+    [container pp_setBorderColor:[self pp_sheetStrokeColor]];
 
-    UIBlurEffectStyle blurStyle = PPIOS26() ? UIBlurEffectStyleSystemThinMaterial : UIBlurEffectStyleSystemUltraThinMaterial;
+    UIBlurEffectStyle blurStyle = [self pp_bottomActionsBlurStyle];
     UIBlurEffect *blur = [UIBlurEffect effectWithStyle:blurStyle];
     UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
     blurView.translatesAutoresizingMaskIntoConstraints = NO;
     blurView.layer.cornerRadius = 24.0;
+    if (@available(iOS 13.0, *)) {
+        blurView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     blurView.layer.masksToBounds = YES;
 
     UIView *tintView = [[UIView alloc] initWithFrame:CGRectZero];
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.28 : 0.82];
+    tintView.backgroundColor = [self pp_sheetTintOverlayColor];
+    tintView.layer.cornerRadius = 24.0;
+    if (@available(iOS 13.0, *)) {
+        tintView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    tintView.layer.masksToBounds = YES;
 
     UIButton *anotherButton = [self pp_createActionButtonWithTitle:[self pp_deliverToAnotherLocationText]
                                                             primary:YES
@@ -329,6 +490,8 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
     [self.view addSubview:container];
     self.bottomActionsContainer = container;
+    self.bottomActionsBlurView = blurView;
+    self.bottomActionsTintView = tintView;
     self.deliverAnotherLocationButton = anotherButton;
     self.deliverCurrentLocationButton = currentButton;
 
@@ -347,8 +510,7 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
         [tintView.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
         [tintView.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
-        
-        // Horizontal layout for two buttons
+
         [anotherButton.topAnchor constraintEqualToAnchor:container.topAnchor constant:14.0],
         [anotherButton.bottomAnchor constraintEqualToAnchor:container.bottomAnchor constant:-14.0],
         [anotherButton.leadingAnchor constraintEqualToAnchor:container.leadingAnchor constant:14.0],
@@ -640,6 +802,8 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     if (![item isKindOfClass:PPAddressModel.class]) {
         [cell configureWithTitle:@"" subtitle:@" " imageNamed:@"mappin.and.ellipse.circle.fill"];
         cell.accessoryType = UITableViewCellAccessoryNone;
+        cell.backgroundColor = UIColor.clearColor;
+        cell.contentView.backgroundColor = UIColor.clearColor;
         return cell;
     }
 
@@ -668,10 +832,10 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     cell.subtitleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     cell.titleLabel.font = [GM MidFontWithSize:17];
     cell.subtitleLabel.font = [GM MidFontWithSize:14];
-    cell.titleLabel.textColor = AppPrimaryTextClr;
-    cell.subtitleLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.72];
+    cell.titleLabel.textColor = [self pp_sheetTextColor];
+    cell.subtitleLabel.textColor = [self pp_sheetSecondaryTextColor];
     cell.circleImageView.tintColor = AppPrimaryClr;
-    cell.circleImageView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.14];
+    cell.circleImageView.backgroundColor = [self pp_sheetAccentSurfaceColor];
     cell.circleImageView.layer.cornerRadius = 20.0;
     cell.circleImageView.layer.masksToBounds = YES;
     BOOL isSelected = [self pp_isAddressSelected:address];
@@ -682,21 +846,18 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     if (@available(iOS 14.0, *)) {
         UIBackgroundConfiguration *backgroundConfig = [UIBackgroundConfiguration clearConfiguration];
         backgroundConfig.cornerRadius = 22.0;
-        backgroundConfig.backgroundColor = PPIOS26() ? [AppForgroundColr colorWithAlphaComponent:0.48]
-            : [UIColor whiteColor];
+        backgroundConfig.backgroundColor = [self pp_sheetSurfaceColor];
         if (@available(iOS 15.0, *)) {
             backgroundConfig.backgroundInsets = NSDirectionalEdgeInsetsMake(6.0, 14.0, 6.0, 14.0);
-            backgroundConfig.strokeColor = [AppBackgroundClrDarker colorWithAlphaComponent:0.62];
+            backgroundConfig.strokeColor = [self pp_sheetStrokeColor];
             backgroundConfig.strokeWidth = 1.0;
         }
         cell.backgroundConfiguration = backgroundConfig;
 
         UIBackgroundConfiguration *selectedConfig = [backgroundConfig copy];
-        selectedConfig.backgroundColor = PPIOS26()
-            ? [AppPrimaryClr colorWithAlphaComponent:0.16]
-            : [AppPrimaryClr colorWithAlphaComponent:0.08];
+        selectedConfig.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.22 : 0.10];
         if (@available(iOS 15.0, *)) {
-            selectedConfig.strokeColor = [AppPrimaryClr colorWithAlphaComponent:0.84];
+            selectedConfig.strokeColor = [AppPrimaryClr colorWithAlphaComponent:[self pp_isDarkMode] ? 0.92 : 0.84];
             selectedConfig.strokeWidth = 2.0;
         }
         cell.backgroundConfiguration = isSelected ? selectedConfig : backgroundConfig;
@@ -872,7 +1033,7 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
 
     NSDictionary *subtitleAttrs = @{
         NSFontAttributeName: [GM MidFontWithSize:12],
-        NSForegroundColorAttributeName: [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.74],
+        NSForegroundColorAttributeName: [self pp_isDarkMode] ? [UIColor colorWithWhite:1.0 alpha:0.68] : [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.74],
         NSParagraphStyleAttributeName: style
     };
 
@@ -1009,6 +1170,17 @@ static const CGFloat PPAddressBottomActionsHeight = 88.0;
     (void)manager;
     (void)status;
     [self pp_startResolvingCurrentLocation];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_refreshVisibleColors];
+            [self.tableView reloadData];
+        }
+    }
 }
 
 @end

@@ -10,6 +10,7 @@
 
 #import "Styling.h"
 #import "PPCommerceFeedbackManager.h"
+#import "CartManager.h"
 
 @interface PPPaymentTabBar ()
 @property (nonatomic, strong) NSArray<UIButton *> *tabButtons;
@@ -182,7 +183,12 @@
 /* **********************************************************************************************************************************************************************************************************/
 #pragma mark - BBCartBottomBar
 
+static BOOL PPBBCartUsesLegacyIPadBelowIOS18(void);
+
 static CGFloat PPBBCartBarCornerRadius(void) {
+    if (PPBBCartUsesLegacyIPadBelowIOS18()) {
+        return 30.0;
+    }
     return PPIOS26() ? 34.0 : 28.0;
 }
 
@@ -194,21 +200,109 @@ static UIColor *PPBBCartColor(UIColor *color, UIColor *fallback) {
     return color ?: fallback ?: UIColor.systemBackgroundColor;
 }
 
+static BOOL PPBBCartUsesLegacyIPadBelowIOS18(void) {
+    return UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad && !PPIOS18();
+}
+
+static UIColor *PPBBCartAdaptiveColor(UIColor *darkColor, UIColor *lightColor) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? PPBBCartColor(darkColor, UIColor.secondarySystemBackgroundColor)
+                : PPBBCartColor(lightColor, UIColor.secondarySystemBackgroundColor);
+        }];
+    }
+    return PPBBCartColor(lightColor, darkColor);
+}
+
+static UIColor *PPBBCartControlFillColor(void) {
+    if (PPBBCartUsesLegacyIPadBelowIOS18()) {
+        return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.070],
+                                     [UIColor colorWithWhite:1.0 alpha:0.64]);
+    }
+    UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.78];
+}
+
+static UIColor *PPBBCartControlStrokeColor(void) {
+    if (PPBBCartUsesLegacyIPadBelowIOS18()) {
+        return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.16],
+                                     [UIColor colorWithWhite:0.0 alpha:0.09]);
+    }
+    return [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.30];
+}
+
+static CGFloat PPBBCartSurfaceBottomInset(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 4.0 : PPSpaceMD;
+}
+
+static CGFloat PPBBCartSurfaceHorizontalInset(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? PPSpaceSM : PPSpaceMD;
+}
+
+static CGFloat PPBBCartContentInset(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 6.0 : PPSpaceSM;
+}
+
+static CGFloat PPBBCartRowSpacing(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 6.0 : PPSpaceSM;
+}
+
+static CGFloat PPBBCartUtilityButtonSize(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 42.0 : 48.0;
+}
+
+static CGFloat PPBBCartStepperButtonSize(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 34.0 : 42.0;
+}
+
+static CGFloat PPBBCartQuantityWidth(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 116.0 : 136.0;
+}
+
+static CGFloat PPBBCartControlHeight(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 40.0 : PPButtonHeightLG;
+}
+
+static CGFloat PPBBCartTotalHeight(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 44.0 : 52.0;
+}
+
+static CGFloat PPBBCartAddButtonHeight(void) {
+    return PPBBCartUsesLegacyIPadBelowIOS18() ? 40.0 : 48.0;
+}
+
 static UIColor *PPBBCartSurfaceFillColor(void) {
+    if (PPBBCartUsesLegacyIPadBelowIOS18()) {
+        return PPBBCartAdaptiveColor([UIColor colorWithWhite:0.115 alpha:0.92],
+                                     [UIColor colorWithWhite:1.0 alpha:0.78]);
+    }
     UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
     return [base colorWithAlphaComponent:PPIOS26() ? 0.24 : 0.92];
 }
 
 static UIColor *PPBBCartSurfaceTintColor(void) {
+    if (PPBBCartUsesLegacyIPadBelowIOS18()) {
+        return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.035],
+                                     [UIColor colorWithWhite:1.0 alpha:0.10]);
+    }
     UIColor *base = PPBBCartColor(AppBackgroundClr, UIColor.systemBackgroundColor);
     return [base colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.18];
 }
 
 static UIColor *PPBBCartSurfaceStrokeColor(void) {
+    if (PPBBCartUsesLegacyIPadBelowIOS18()) {
+        return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.16],
+                                     [UIColor colorWithWhite:0.0 alpha:0.10]);
+    }
     return [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.24 : 0.32];
 }
 
 static UIColor *PPBBCartBadgeFillColor(void) {
+    if (PPBBCartUsesLegacyIPadBelowIOS18()) {
+        return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.070],
+                                     [UIColor colorWithWhite:1.0 alpha:0.66]);
+    }
     UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
     return [base colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.80];
 }
@@ -221,6 +315,118 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     UIImage *image = [UIImage systemImageNamed:name withConfiguration:size];
     UIColor *resolved = color ?: UIColor.labelColor;
     return [[image imageWithTintColor:resolved] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+}
+
+static NSArray<NSNumber *> *PPBBCartLottieRGBA(UIColor *color) {
+    UIColor *resolved = color ?: UIColor.labelColor;
+    CGFloat r = 0.0, g = 0.0, b = 0.0, a = 1.0;
+    if (![resolved getRed:&r green:&g blue:&b alpha:&a]) {
+        const CGFloat *components = CGColorGetComponents(resolved.CGColor);
+        size_t count = CGColorGetNumberOfComponents(resolved.CGColor);
+        if (components && count >= 3) {
+            r = components[0];
+            g = components[1];
+            b = components[2];
+            a = (count >= 4) ? components[3] : 1.0;
+        } else if (components && count >= 2) {
+            r = components[0];
+            g = components[0];
+            b = components[0];
+            a = components[1];
+        }
+    }
+    return @[@(r), @(g), @(b), @(a)];
+}
+
+static BOOL PPBBCartLottieColorArrayIsLight(NSArray *colorArray) {
+    if (![colorArray isKindOfClass:NSArray.class] || colorArray.count < 3) {
+        return NO;
+    }
+    CGFloat r = [colorArray[0] doubleValue];
+    CGFloat g = [colorArray[1] doubleValue];
+    CGFloat b = [colorArray[2] doubleValue];
+    return ((r + g + b) / 3.0) > 0.86;
+}
+
+static void PPBBCartApplyLottieRGBA(NSMutableArray *colorArray, NSArray<NSNumber *> *rgba) {
+    if (![colorArray isKindOfClass:NSMutableArray.class] || colorArray.count < 3) {
+        return;
+    }
+    colorArray[0] = rgba[0];
+    colorArray[1] = rgba[1];
+    colorArray[2] = rgba[2];
+}
+
+static void PPBBCartRetintLottieColorObject(NSMutableDictionary *colorObject,
+                                            NSArray<NSNumber *> *primaryRGBA,
+                                            NSArray<NSNumber *> *highlightRGBA) {
+    if (![colorObject isKindOfClass:NSMutableDictionary.class]) {
+        return;
+    }
+
+    id k = colorObject[@"k"];
+    if ([k isKindOfClass:NSMutableArray.class]) {
+        NSMutableArray *array = (NSMutableArray *)k;
+        if (array.count >= 3 && [array[0] isKindOfClass:NSNumber.class]) {
+            PPBBCartApplyLottieRGBA(array, PPBBCartLottieColorArrayIsLight(array) ? highlightRGBA : primaryRGBA);
+            return;
+        }
+
+        for (id frame in array) {
+            if (![frame isKindOfClass:NSMutableDictionary.class]) {
+                continue;
+            }
+            NSMutableDictionary *frameDict = (NSMutableDictionary *)frame;
+            for (NSString *key in @[@"s", @"e", @"k"]) {
+                id value = frameDict[key];
+                if ([value isKindOfClass:NSMutableArray.class]) {
+                    NSMutableArray *colorArray = (NSMutableArray *)value;
+                    PPBBCartApplyLottieRGBA(colorArray, PPBBCartLottieColorArrayIsLight(colorArray) ? highlightRGBA : primaryRGBA);
+                }
+            }
+        }
+    }
+}
+
+static void PPBBCartRetintLottieNode(id node,
+                                     NSArray<NSNumber *> *primaryRGBA,
+                                     NSArray<NSNumber *> *highlightRGBA) {
+    if ([node isKindOfClass:NSMutableDictionary.class]) {
+        NSMutableDictionary *dict = (NSMutableDictionary *)node;
+        NSString *type = [dict[@"ty"] isKindOfClass:NSString.class] ? dict[@"ty"] : nil;
+        if (([type isEqualToString:@"fl"] || [type isEqualToString:@"st"]) &&
+            [dict[@"c"] isKindOfClass:NSMutableDictionary.class]) {
+            PPBBCartRetintLottieColorObject(dict[@"c"], primaryRGBA, highlightRGBA);
+        }
+        for (id value in dict.allValues) {
+            PPBBCartRetintLottieNode(value, primaryRGBA, highlightRGBA);
+        }
+    } else if ([node isKindOfClass:NSMutableArray.class]) {
+        for (id value in (NSMutableArray *)node) {
+            PPBBCartRetintLottieNode(value, primaryRGBA, highlightRGBA);
+        }
+    }
+}
+
+static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
+    if (![jsonDict isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    NSData *data = [NSJSONSerialization dataWithJSONObject:jsonDict options:0 error:nil];
+    if (!data) {
+        return jsonDict;
+    }
+    id mutableJSON = [NSJSONSerialization JSONObjectWithData:data
+                                                     options:NSJSONReadingMutableContainers
+                                                       error:nil];
+    if (![mutableJSON isKindOfClass:NSMutableDictionary.class]) {
+        return jsonDict;
+    }
+
+    UIColor *primary = PPBBCartColor(AppPrimaryClr, UIColor.systemOrangeColor);
+    UIColor *highlight = UIColor.whiteColor;
+    PPBBCartRetintLottieNode(mutableJSON, PPBBCartLottieRGBA(primary), PPBBCartLottieRGBA(highlight));
+    return mutableJSON;
 }
 
 @interface BBCartBottomBar ()
@@ -243,6 +449,12 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @property (nonatomic, assign, getter=isRestoringButton) BOOL restoringButton;
 @property (nonatomic, assign) BOOL usesCompactCartButton;
+@property (nonatomic, strong) LOTAnimationView *showCartAnimationView;
+@property (nonatomic, assign) BOOL showCartAnimationLoaded;
+@property (nonatomic, assign) BOOL pendingShowCartAnimationPlayback;
+@property (nonatomic, assign) NSInteger showCartAnimationToken;
+@property (nonatomic, strong) PPInsetLabel *showCartBadgeLabel;
+@property (nonatomic, assign) NSInteger showCartBadgeCount;
 @end
 @implementation BBCartBottomBar
 
@@ -272,6 +484,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     self.surfaceTintView.layer.cornerRadius = surfaceRadius;
     self.surfaceGradientLayer.frame = self.BackgroundB.bounds;
     self.buttonSheenLayer.frame = self.addToCartButton.bounds;
+    [self pp_bringShowCartBadgeToFront];
     if (!self.didRunEntranceAnimation && self.bounds.size.height > 0.0) {
         self.didRunEntranceAnimation = YES;
         self.alpha = 0.0;
@@ -288,11 +501,51 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     }
 }
 
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if (![self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            return;
+        }
+    }
+    [self pp_refreshChromeColors];
+}
+
+- (void)pp_refreshChromeColors
+{
+    BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
+    self.BackgroundB.backgroundColor = PPIOS26() ? AppClearClr : PPBBCartSurfaceFillColor();
+    [self.BackgroundB pp_setBorderColor:PPBBCartSurfaceStrokeColor()];
+    self.surfaceTintView.backgroundColor = PPIOS26() ? AppClearClr : PPBBCartSurfaceTintColor();
+    self.surfaceGradientLayer.colors = @[
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.30 : 0.22)].CGColor,
+        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:legacyIPadBar ? 0.035 : (PPIOS26() ? 0.08 : 0.045)].CGColor,
+        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:legacyIPadBar ? 0.020 : (PPIOS26() ? 0.045 : 0.035)].CGColor
+    ];
+    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.34 : 0.22)];
+    self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:legacyIPadBar ? 0.12 : (PPIOS26() ? 0.12 : 0.18)];
+
+    self.totalContainer.backgroundColor = PPBBCartBadgeFillColor();
+    [self.totalContainer pp_setBorderColor:PPBBCartControlStrokeColor()];
+    self.qtyContainer.backgroundColor = PPBBCartControlFillColor();
+    [self.qtyContainer pp_setBorderColor:PPBBCartControlStrokeColor()];
+    [self pp_styleUtilityButton:self.showCartButton];
+    [self pp_styleUtilityButton:self.favButton];
+    [self pp_updateShowCartBadgeStyle];
+
+    self.countLabel.textColor = PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
+    self.amountLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
+    self.totalLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
+    self.currencyLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
+}
+
 
 - (void)setupUI {
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = GM.setSemantic;
     self.usesCompactCartButton = YES;
+    BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
 
     [self pp_buildSurface];
 
@@ -304,24 +557,24 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
     _countLabel = [[UILabel alloc] init];
     _countLabel.text = @"1";
-    _countLabel.font = [GM boldFontWithSize:18] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightSemibold];
+    _countLabel.font = [GM boldFontWithSize:(legacyIPadBar ? 16.0 : 18.0)] ?: [UIFont systemFontOfSize:(legacyIPadBar ? 16.0 : 18.0) weight:UIFontWeightSemibold];
     _countLabel.textAlignment = NSTextAlignmentCenter;
     _countLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _countLabel.textColor = PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
     _countLabel.adjustsFontSizeToFitWidth = YES;
     _countLabel.minimumScaleFactor = 0.72;
-    [_countLabel.widthAnchor constraintGreaterThanOrEqualToConstant:34.0].active = YES;
+    [_countLabel.widthAnchor constraintGreaterThanOrEqualToConstant:(legacyIPadBar ? 28.0 : 34.0)].active = YES;
 
     _totalLabel = [[PPInsetLabel alloc] init];
     _totalLabel.text = kLang(@"OrderTotal");
-    _totalLabel.font = [GM MidFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _totalLabel.font = [GM MidFontWithSize:(legacyIPadBar ? 11.5 : 13.0)] ?: [UIFont systemFontOfSize:(legacyIPadBar ? 11.5 : 13.0) weight:UIFontWeightMedium];
     _totalLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
     _totalLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _totalLabel.textAlignment = Language.alignmentForCurrentLanguage;
 
     _amountLabel = [[PPInsetLabel alloc] init];
     _amountLabel.text = [self pp_priceStringFromAmount:_itemAmount];
-    _amountLabel.font = [GM boldFontWithSize:28] ?: [UIFont systemFontOfSize:24.0 weight:UIFontWeightBold];
+    _amountLabel.font = [GM boldFontWithSize:(legacyIPadBar ? 24.0 : 28.0)] ?: [UIFont systemFontOfSize:(legacyIPadBar ? 22.0 : 24.0) weight:UIFontWeightBold];
     _amountLabel.textColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
     _amountLabel.translatesAutoresizingMaskIntoConstraints = NO;
     _amountLabel.adjustsFontSizeToFitWidth = YES;
@@ -329,7 +582,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
     _currencyLabel = [[PPInsetLabel alloc] init];
     _currencyLabel.text = kLang(@"Rials");
-    _currencyLabel.font = [GM MidFontWithSize:13] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _currencyLabel.font = [GM MidFontWithSize:(legacyIPadBar ? 11.5 : 13.0)] ?: [UIFont systemFontOfSize:(legacyIPadBar ? 11.5 : 13.0) weight:UIFontWeightMedium];
     _currencyLabel.textColor = PPBBCartColor(AppSecondaryTextClr, UIColor.secondaryLabelColor);
     _currencyLabel.translatesAutoresizingMaskIntoConstraints = NO;
 
@@ -350,7 +603,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     _totalContainer.isAccessibilityElement = NO;
     _totalContainer.backgroundColor = PPBBCartBadgeFillColor();
     PPApplyContinuousCorners(_totalContainer, 22.0);
-    [_totalContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.40 : 0.50]];
+    [_totalContainer pp_setBorderColor:PPBBCartControlStrokeColor()];
     _totalContainer.layer.borderWidth = 0.7;
     [_totalContainer addSubview:_priceStack];
 
@@ -358,20 +611,23 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     _addToCartButton.translatesAutoresizingMaskIntoConstraints = NO;
     _addToCartButton.clipsToBounds = YES;
     _addToCartButton.layer.masksToBounds = YES;
+    _addToCartButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+    _addToCartButton.titleLabel.minimumScaleFactor = 0.74;
+    _addToCartButton.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     _addToCartButton.accessibilityTraits = UIAccessibilityTraitButton;
     _addToCartButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_add_to_cart", @"Add to cart");
     _addToCartButton.accessibilityHint = NSLocalizedString(@"a11y_btn_add_to_cart_hint", @"Double-tap to add this item to your cart");
     [_addToCartButton addTarget:self action:@selector(addToCartTapped)
                forControlEvents:UIControlEventTouchUpInside];
     self.idleAddToCartTitle = kLang(@"addToCart");
-    self.idleAddToCartImage = PPBBCartSymbol(@"cart.badge.plus", 18.0, UIImageSymbolWeightSemibold, AppForgroundColr);
+    self.idleAddToCartImage = PPBBCartSymbol(@"cart.badge.plus", 18.0, UIImageSymbolWeightSemibold, UIColor.whiteColor);
     
     // Layout change: No longer compact in the second row
     self.usesCompactCartButton = NO; 
     
     [self pp_setAddToCartTitle:self.idleAddToCartTitle
-                     imageName:@"cart.badge.plus"
-                    foreground:PPBBCartColor(AppForgroundColr, UIColor.whiteColor)
+                    imageName:@"cart.badge.plus"
+                    foreground:UIColor.whiteColor
                     background:PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)];
     PPApplyButtonShadow(_addToCartButton);
     
@@ -381,9 +637,11 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     _showCartButton.accessibilityLabel = kLang(@"Cart");
     [self pp_styleUtilityButton:_showCartButton];
     
-    CGFloat utilitySize = 48.0;
+    CGFloat utilitySize = PPBBCartUtilityButtonSize();
     [_showCartButton.widthAnchor constraintEqualToConstant:utilitySize].active = YES;
     [_showCartButton.heightAnchor constraintEqualToConstant:utilitySize].active = YES;
+    [self pp_setupShowCartLottieAnimation];
+    [self pp_setupShowCartBadge];
 
     _qtyStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         _minusButton, _countLabel, _plusButton
@@ -397,9 +655,9 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
     _qtyContainer = [UIButton buttonWithType:UIButtonTypeCustom];
     _qtyContainer.translatesAutoresizingMaskIntoConstraints = NO;
-    _qtyContainer.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.82];
+    _qtyContainer.backgroundColor = PPBBCartControlFillColor();
     PPApplyContinuousCorners(_qtyContainer, 25.0);
-    [_qtyContainer pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.20 : 0.34]];
+    [_qtyContainer pp_setBorderColor:PPBBCartControlStrokeColor()];
     _qtyContainer.layer.borderWidth = 0.8;
     _qtyContainer.accessibilityLabel = NSLocalizedString(@"a11y_cart_qty_stepper", @"Item quantity");
     [_qtyContainer addSubview:_qtyStack];
@@ -414,7 +672,19 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
     self.cartItemquantity = 1;
     [self pp_buildLayoutRows];
+    [self pp_refreshChromeColors];
     [self updateQuantityUI];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handleCartUpdatedNotification:)
+                                                 name:kCartUpdatedNotification
+                                               object:nil];
+    [self pp_refreshShowCartBadgeAnimated:NO];
+}
+
+- (void)dealloc
+{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [NSObject cancelPreviousPerformRequestsWithTarget:self selector:@selector(pp_restoreAddToCartButton) object:nil];
 }
 
 - (void)cartClick
@@ -436,6 +706,284 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
                                          from:self.parentContainerViewController
                                      animated:YES
                                    completion:nil];
+}
+
+- (void)pp_setupShowCartLottieAnimation
+{
+    if (self.showCartAnimationView || !self.showCartButton) {
+        return;
+    }
+
+    LOTAnimationView *animationView = [[LOTAnimationView alloc] init];
+    animationView.translatesAutoresizingMaskIntoConstraints = NO;
+    animationView.userInteractionEnabled = NO;
+    animationView.contentMode = UIViewContentModeScaleAspectFit;
+    animationView.backgroundColor = UIColor.clearColor;
+    animationView.opaque = NO;
+    animationView.loopAnimation = NO;
+    animationView.hidden = YES;
+    animationView.alpha = 0.0;
+    [self.showCartButton addSubview:animationView];
+    [NSLayoutConstraint activateConstraints:@[
+        [animationView.centerXAnchor constraintEqualToAnchor:self.showCartButton.centerXAnchor],
+        [animationView.centerYAnchor constraintEqualToAnchor:self.showCartButton.centerYAnchor],
+        [animationView.widthAnchor constraintEqualToConstant:44.0],
+        [animationView.heightAnchor constraintEqualToConstant:44.0]
+    ]];
+    self.showCartAnimationView = animationView;
+
+    __weak typeof(self) weakSelf = self;
+    [AppClasses fetchLottieJSONFromFirebasePath:@"LottieAnimations/Cart.lottie"
+                                     completion:^(NSDictionary * _Nonnull jsonDict, NSError * _Nonnull error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
+                NSLog(@"BBCartBottomBar Lottie failed: %@", error.localizedDescription ?: @"Invalid JSON");
+                self.pendingShowCartAnimationPlayback = NO;
+                return;
+            }
+
+            NSDictionary *visibleJSON = PPBBCartRetintedLottieJSON(jsonDict) ?: jsonDict;
+            LOTComposition *composition = [LOTComposition animationFromJSON:visibleJSON];
+            if (!composition) {
+                self.pendingShowCartAnimationPlayback = NO;
+                return;
+            }
+
+            self.showCartAnimationLoaded = YES;
+            [self.showCartAnimationView setSceneModel:composition];
+            self.showCartAnimationView.animationSpeed = 1.15;
+            self.showCartAnimationView.animationProgress = 0.0;
+
+            if (self.pendingShowCartAnimationPlayback) {
+                self.pendingShowCartAnimationPlayback = NO;
+                [self pp_playShowCartLottieAnimation];
+            }
+        });
+    }];
+}
+
+- (void)pp_flashShowCartButton
+{
+    [UIView animateWithDuration:0.12
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.showCartButton.transform = CGAffineTransformMakeScale(1.07, 1.07);
+        self.showCartButton.alpha = 0.92;
+    } completion:^(__unused BOOL finished) {
+        [UIView animateWithDuration:0.24
+                              delay:0.0
+             usingSpringWithDamping:0.70
+              initialSpringVelocity:0.36
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.showCartButton.transform = CGAffineTransformIdentity;
+            self.showCartButton.alpha = 1.0;
+        } completion:nil];
+    }];
+}
+
+- (void)pp_playShowCartLottieAnimation
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (UIAccessibilityIsReduceMotionEnabled()) {
+            [self pp_flashShowCartButton];
+            return;
+        }
+
+        if (!self.showCartAnimationLoaded || !self.showCartAnimationView.sceneModel) {
+            self.pendingShowCartAnimationPlayback = YES;
+            [self pp_flashShowCartButton];
+            return;
+        }
+
+        self.showCartAnimationToken += 1;
+        NSInteger token = self.showCartAnimationToken;
+        LOTAnimationView *animationView = self.showCartAnimationView;
+
+        [animationView stop];
+        animationView.loopAnimation = NO;
+        animationView.animationProgress = 0.0;
+        animationView.hidden = NO;
+        animationView.alpha = 1.0;
+        animationView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+        [self.showCartButton bringSubviewToFront:animationView];
+        [self pp_bringShowCartBadgeToFront];
+        self.showCartButton.imageView.alpha = 0.22;
+
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            animationView.transform = CGAffineTransformIdentity;
+            self.showCartButton.transform = CGAffineTransformMakeScale(1.045, 1.045);
+        } completion:^(__unused BOOL finished) {
+            [UIView animateWithDuration:0.26
+                                  delay:0.0
+                 usingSpringWithDamping:0.72
+                  initialSpringVelocity:0.38
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                self.showCartButton.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }];
+
+        __weak typeof(self) weakSelf = self;
+        [animationView playWithCompletion:^(BOOL finished) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || self.showCartAnimationToken != token) {
+                    return;
+                }
+
+                [UIView animateWithDuration:0.18
+                                      delay:finished ? 0.04 : 0.0
+                                    options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                                 animations:^{
+                    self.showCartAnimationView.alpha = 0.0;
+                    self.showCartAnimationView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+                    self.showCartButton.imageView.alpha = 1.0;
+                    self.showCartButton.alpha = 1.0;
+                } completion:^(__unused BOOL done) {
+                    self.showCartAnimationView.hidden = YES;
+                    self.showCartAnimationView.transform = CGAffineTransformIdentity;
+                    self.showCartAnimationView.animationProgress = 0.0;
+                    [self pp_bringShowCartBadgeToFront];
+                }];
+            });
+        }];
+    });
+}
+
+- (void)pp_setupShowCartBadge
+{
+    if (self.showCartBadgeLabel || !self.showCartButton) {
+        return;
+    }
+
+    PPInsetLabel *badgeLabel = [[PPInsetLabel alloc] init];
+    badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    badgeLabel.textAlignment = NSTextAlignmentCenter;
+    badgeLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightBold];
+    badgeLabel.textColor = UIColor.whiteColor;
+    badgeLabel.textInsets = UIEdgeInsetsMake(1.0, 5.0, 1.0, 5.0);
+    badgeLabel.adjustsFontSizeToFitWidth = YES;
+    badgeLabel.minimumScaleFactor = 0.72;
+    badgeLabel.hidden = YES;
+    badgeLabel.alpha = 0.0;
+    badgeLabel.userInteractionEnabled = NO;
+    badgeLabel.layer.cornerRadius = 9.0;
+    badgeLabel.layer.masksToBounds = YES;
+    badgeLabel.layer.borderWidth = 1.0;
+    [self.showCartButton addSubview:badgeLabel];
+    [NSLayoutConstraint activateConstraints:@[
+        [badgeLabel.topAnchor constraintEqualToAnchor:self.showCartButton.topAnchor constant:2.0],
+        [badgeLabel.trailingAnchor constraintEqualToAnchor:self.showCartButton.trailingAnchor constant:-2.0],
+        [badgeLabel.heightAnchor constraintEqualToConstant:18.0],
+        [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:18.0]
+    ]];
+
+    self.showCartBadgeLabel = badgeLabel;
+    [self pp_updateShowCartBadgeStyle];
+    [self pp_bringShowCartBadgeToFront];
+}
+
+- (void)pp_updateShowCartBadgeStyle
+{
+    if (!self.showCartBadgeLabel) {
+        return;
+    }
+    UIColor *badgeColor = PPBBCartColor(AppPrimaryClr, UIColor.systemRedColor);
+    self.showCartBadgeLabel.backgroundColor = badgeColor;
+    [self.showCartBadgeLabel pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:0.72]];
+}
+
+- (NSString *)pp_showCartBadgeTextForCount:(NSInteger)count
+{
+    if (count <= 0) {
+        return nil;
+    }
+    return count > 99 ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count];
+}
+
+- (void)pp_handleCartUpdatedNotification:(NSNotification *)notification
+{
+    (void)notification;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self pp_refreshShowCartBadgeAnimated:YES];
+    });
+}
+
+- (void)pp_refreshShowCartBadgeAnimated:(BOOL)animated
+{
+    NSInteger totalCount = MAX([[CartManager sharedManager] totalItemsCount], 0);
+    NSString *badgeText = [self pp_showCartBadgeTextForCount:totalCount];
+    BOOL shouldShow = badgeText.length > 0;
+    BOOL wasHidden = self.showCartBadgeLabel.hidden || self.showCartBadgeLabel.alpha <= 0.01;
+    BOOL countChanged = (self.showCartBadgeCount != totalCount);
+    self.showCartBadgeCount = totalCount;
+    self.showCartBadgeLabel.text = badgeText;
+    [self.showCartBadgeLabel invalidateIntrinsicContentSize];
+    [self pp_bringShowCartBadgeToFront];
+
+    self.showCartButton.accessibilityLabel = kLang(@"Cart");
+    self.showCartButton.accessibilityValue = shouldShow ? badgeText : nil;
+
+    if (!shouldShow) {
+        if (!animated || wasHidden) {
+            self.showCartBadgeLabel.hidden = YES;
+            self.showCartBadgeLabel.alpha = 0.0;
+            self.showCartBadgeLabel.transform = CGAffineTransformIdentity;
+            return;
+        }
+
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            self.showCartBadgeLabel.alpha = 0.0;
+            self.showCartBadgeLabel.transform = CGAffineTransformMakeScale(0.78, 0.78);
+        } completion:^(__unused BOOL finished) {
+            self.showCartBadgeLabel.hidden = YES;
+            self.showCartBadgeLabel.transform = CGAffineTransformIdentity;
+        }];
+        return;
+    }
+
+    self.showCartBadgeLabel.hidden = NO;
+    if (!animated) {
+        self.showCartBadgeLabel.alpha = 1.0;
+        self.showCartBadgeLabel.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    if (wasHidden) {
+        self.showCartBadgeLabel.alpha = 0.0;
+        self.showCartBadgeLabel.transform = CGAffineTransformMakeScale(0.72, 0.72);
+    } else if (countChanged) {
+        self.showCartBadgeLabel.transform = CGAffineTransformMakeScale(1.16, 1.16);
+    }
+
+    [UIView animateWithDuration:0.30
+                          delay:0.0
+         usingSpringWithDamping:0.68
+          initialSpringVelocity:0.44
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.showCartBadgeLabel.alpha = 1.0;
+        self.showCartBadgeLabel.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_bringShowCartBadgeToFront
+{
+    if (self.showCartBadgeLabel.superview) {
+        [self.showCartBadgeLabel.superview bringSubviewToFront:self.showCartBadgeLabel];
+    }
 }
 
 
@@ -462,6 +1010,8 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     btn.translatesAutoresizingMaskIntoConstraints = NO;
     btn.accessibilityTraits = UIAccessibilityTraitButton;
+    CGFloat buttonSize = PPBBCartStepperButtonSize();
+    CGFloat symbolFontSize = PPBBCartUsesLegacyIPadBelowIOS18() ? 19.0 : 21.0;
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
@@ -472,7 +1022,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey, id> * (NSDictionary<NSAttributedStringKey, id> *attrs) {
             NSMutableDictionary *m = [attrs mutableCopy];
-            m[NSFontAttributeName] = [UIFont systemFontOfSize:21.0 weight:UIFontWeightSemibold];
+            m[NSFontAttributeName] = [UIFont systemFontOfSize:symbolFontSize weight:UIFontWeightSemibold];
             m[NSForegroundColorAttributeName] = PPBBCartColor(AppPrimaryClr, UIColor.labelColor);
             return m;
         };
@@ -480,14 +1030,13 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     } else {
         [btn setTitle:title forState:UIControlStateNormal];
         [btn setTitleColor:PPBBCartColor(AppPrimaryClr, UIColor.labelColor) forState:UIControlStateNormal];
-        btn.titleLabel.font = [UIFont systemFontOfSize:21.0 weight:UIFontWeightSemibold];
+        btn.titleLabel.font = [UIFont systemFontOfSize:symbolFontSize weight:UIFontWeightSemibold];
     }
 
     btn.backgroundColor = UIColor.clearColor;
     PPApplyContinuousCorners(btn, 22.0);
-    CGFloat size = 42.0;
-    [btn.widthAnchor constraintEqualToConstant:size].active = YES;
-    [btn.heightAnchor constraintEqualToConstant:size].active = YES;
+    [btn.widthAnchor constraintEqualToConstant:buttonSize].active = YES;
+    [btn.heightAnchor constraintEqualToConstant:buttonSize].active = YES;
 
     return btn;
 }
@@ -505,7 +1054,10 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     [self addSubview:self.BackgroundB];
 
     if (!PPIOS26()) {
-        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        UIBlurEffectStyle blurStyle = PPBBCartUsesLegacyIPadBelowIOS18()
+            ? UIBlurEffectStyleSystemChromeMaterial
+            : UIBlurEffectStyleSystemUltraThinMaterial;
+        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:blurStyle];
         self.blurBackground = [[UIVisualEffectView alloc] initWithEffect:blur];
         self.blurBackground.translatesAutoresizingMaskIntoConstraints = NO;
         self.blurBackground.userInteractionEnabled = NO;
@@ -525,10 +1077,11 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     self.surfaceGradientLayer = [CAGradientLayer layer];
     self.surfaceGradientLayer.startPoint = CGPointMake(0.18, 0.0);
     self.surfaceGradientLayer.endPoint = CGPointMake(0.82, 1.0);
+    BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
     self.surfaceGradientLayer.colors = @[
-        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.30 : 0.22].CGColor,
-        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:PPIOS26() ? 0.08 : 0.045].CGColor,
-        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:PPIOS26() ? 0.045 : 0.035].CGColor
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.30 : 0.22)].CGColor,
+        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:legacyIPadBar ? 0.035 : (PPIOS26() ? 0.08 : 0.045)].CGColor,
+        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:legacyIPadBar ? 0.020 : (PPIOS26() ? 0.045 : 0.035)].CGColor
     ];
     self.surfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
     [self.surfaceTintView.layer addSublayer:self.surfaceGradientLayer];
@@ -536,14 +1089,16 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     self.surfaceHighlightView = [[UIView alloc] init];
     self.surfaceHighlightView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceHighlightView.userInteractionEnabled = NO;
-    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.34 : 0.22];
+    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.34 : 0.22)];
     [self.BackgroundB addSubview:self.surfaceHighlightView];
 
     self.separator = [[UIView alloc] init];
     self.separator.translatesAutoresizingMaskIntoConstraints = NO;
-    self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.18];
+    self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:legacyIPadBar ? 0.12 : (PPIOS26() ? 0.12 : 0.18)];
     [self.BackgroundB addSubview:self.separator];
 
+    CGFloat horizontalInset = PPBBCartSurfaceHorizontalInset();
+    CGFloat bottomInset = PPBBCartSurfaceBottomInset();
     NSMutableArray<NSLayoutConstraint *> *constraints = [NSMutableArray array];
     if (self.blurBackground) {
         [constraints addObjectsFromArray:@[
@@ -556,9 +1111,9 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
     [constraints addObjectsFromArray:@[
         [self.BackgroundB.topAnchor constraintEqualToAnchor:self.topAnchor constant:0.0],
-        [self.BackgroundB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:PPSpaceMD],
-        [self.BackgroundB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-PPSpaceMD],
-        [self.BackgroundB.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-PPSpaceMD],
+        [self.BackgroundB.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:horizontalInset],
+        [self.BackgroundB.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-horizontalInset],
+        [self.BackgroundB.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-bottomInset],
 
         [self.surfaceTintView.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
         [self.surfaceTintView.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor],
@@ -583,20 +1138,26 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     [self.addToCartButton removeFromSuperview];
     [self.favButton removeFromSuperview];
     [self.showCartButton removeFromSuperview];
+    BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
+    CGFloat contentInset = PPBBCartContentInset();
+    CGFloat controlHeight = PPBBCartControlHeight();
+    CGFloat rowSpacing = PPBBCartRowSpacing();
     
     [NSLayoutConstraint activateConstraints:@[
-        [self.priceStack.topAnchor constraintEqualToAnchor:self.totalContainer.topAnchor constant:PPSpaceSM],
-        [self.priceStack.bottomAnchor constraintEqualToAnchor:self.totalContainer.bottomAnchor constant:-PPSpaceSM],
+        [self.priceStack.topAnchor constraintEqualToAnchor:self.totalContainer.topAnchor constant:(legacyIPadBar ? 4.0 : PPSpaceSM)],
+        [self.priceStack.bottomAnchor constraintEqualToAnchor:self.totalContainer.bottomAnchor constant:-(legacyIPadBar ? 4.0 : PPSpaceSM)],
         [self.priceStack.centerXAnchor constraintEqualToAnchor:self.totalContainer.centerXAnchor],
+        [self.priceStack.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.totalContainer.leadingAnchor constant:12.0],
+        [self.priceStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.totalContainer.trailingAnchor constant:-12.0],
 
-        [self.qtyStack.topAnchor constraintEqualToAnchor:self.qtyContainer.topAnchor constant:PPSpaceSM],
-        [self.qtyStack.bottomAnchor constraintEqualToAnchor:self.qtyContainer.bottomAnchor constant:-PPSpaceSM],
-        [self.qtyStack.leadingAnchor constraintEqualToAnchor:self.qtyContainer.leadingAnchor constant:PPSpaceSM],
-        [self.qtyStack.trailingAnchor constraintEqualToAnchor:self.qtyContainer.trailingAnchor constant:-PPSpaceSM],
+        [self.qtyStack.topAnchor constraintEqualToAnchor:self.qtyContainer.topAnchor constant:(legacyIPadBar ? 3.0 : PPSpaceSM)],
+        [self.qtyStack.bottomAnchor constraintEqualToAnchor:self.qtyContainer.bottomAnchor constant:-(legacyIPadBar ? 3.0 : PPSpaceSM)],
+        [self.qtyStack.leadingAnchor constraintEqualToAnchor:self.qtyContainer.leadingAnchor constant:(legacyIPadBar ? 6.0 : PPSpaceSM)],
+        [self.qtyStack.trailingAnchor constraintEqualToAnchor:self.qtyContainer.trailingAnchor constant:-(legacyIPadBar ? 6.0 : PPSpaceSM)],
 
-        [self.qtyContainer.widthAnchor constraintEqualToConstant:136.0],
-        [self.qtyContainer.heightAnchor constraintEqualToConstant:PPButtonHeightLG],
-        [self.totalContainer.heightAnchor constraintEqualToConstant:52.0]
+        [self.qtyContainer.widthAnchor constraintEqualToConstant:PPBBCartQuantityWidth()],
+        [self.qtyContainer.heightAnchor constraintEqualToConstant:controlHeight],
+        [self.totalContainer.heightAnchor constraintEqualToConstant:PPBBCartTotalHeight()]
     ]];
 
     topRow = [[UIStackView alloc] initWithArrangedSubviews:@[
@@ -616,7 +1177,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
         self.qtyContainer
     ]];
     bottomRow.axis = UILayoutConstraintAxisHorizontal;
-    bottomRow.spacing = 8.0;
+    bottomRow.spacing = rowSpacing;
     bottomRow.alignment = UIStackViewAlignmentCenter;
     bottomRow.distribution = UIStackViewDistributionFill;
     bottomRow.semanticContentAttribute = GM.setSemantic;
@@ -631,31 +1192,34 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     [self.addToCartButton setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.addToCartButton setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self.qtyContainer setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.addToCartButton.heightAnchor constraintEqualToConstant:48].active = YES;
+    [self.addToCartButton.heightAnchor constraintEqualToConstant:PPBBCartAddButtonHeight()].active = YES;
     self.contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         topRow,
         bottomRow
     ]];
     self.contentStack.axis = UILayoutConstraintAxisVertical;
-    self.contentStack.spacing = PPSpaceSM;
+    self.contentStack.spacing = rowSpacing;
     self.contentStack.alignment = UIStackViewAlignmentFill;
     self.contentStack.distribution = UIStackViewDistributionFill;
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     [self.BackgroundB addSubview:self.contentStack];
 
+    NSLayoutConstraint *contentBottomConstraint = legacyIPadBar
+        ? [self.contentStack.bottomAnchor constraintEqualToAnchor:self.BackgroundB.bottomAnchor constant:-contentInset]
+        : [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.BackgroundB.bottomAnchor constant:-contentInset];
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:PPSpaceSM],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor constant:contentInset],
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceMD],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PPSpaceMD],
-        [self.contentStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.BackgroundB.bottomAnchor constant:-PPSpaceSM]
+        contentBottomConstraint
     ]];
 }
 
 - (void)pp_styleUtilityButton:(UIButton *)button {
-    button.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.78];
+    button.backgroundColor = PPBBCartControlFillColor();
     button.tintColor = PPBBCartColor(AppPrimaryTextClr, UIColor.labelColor);
     PPApplyContinuousCorners(button, 24.0);
-    [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.30]];
+    [button pp_setBorderColor:PPBBCartControlStrokeColor()];
     button.layer.borderWidth = 0.8;
     button.clipsToBounds = YES;
 
@@ -686,6 +1250,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     UIColor *resolvedForeground = PPBBCartColor(foreground, UIColor.whiteColor);
     UIColor *resolvedBackground = PPBBCartColor(background, UIColor.systemBlueColor);
     BOOL compact = self.usesCompactCartButton;
+    BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
     UIImage *image = PPBBCartSymbol(imageName ?: @"cart.badge.plus",
                                     compact ? 19.0 : 18.0,
                                     UIImageSymbolWeightSemibold,
@@ -704,24 +1269,24 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
             config = [UIButtonConfiguration filledButtonConfiguration];
         }
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        config.buttonSize = UIButtonConfigurationSizeLarge;
+        config.buttonSize = legacyIPadBar ? UIButtonConfigurationSizeMedium : UIButtonConfigurationSizeLarge;
         config.baseForegroundColor = resolvedForeground;
         config.baseBackgroundColor = resolvedBackground;
         config.background.backgroundColor = [resolvedBackground colorWithAlphaComponent:(compact && PPIOS26()) ? 0.74 : 1.0];
-        config.background.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPButtonHeightLG) * 0.5;
-        config.background.strokeColor = [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.22 : 0.30];
+        config.background.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPBBCartControlHeight()) * 0.5;
+        config.background.strokeColor = PPBBCartControlStrokeColor();
         config.background.strokeWidth = 0.8;
         config.title = compact ? nil : resolvedTitle;
         config.image = image;
         config.imagePlacement = NSDirectionalRectEdgeLeading;
-        config.imagePadding = compact ? 0.0 : PPSpaceSM;
+        config.imagePadding = compact ? 0.0 : (legacyIPadBar ? 6.0 : PPSpaceSM);
         config.contentInsets = compact
         ? NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0)
-        : NSDirectionalEdgeInsetsMake(0.0, PPSpaceBase, 0.0, PPSpaceBase);
+        : NSDirectionalEdgeInsetsMake(0.0, legacyIPadBar ? PPSpaceMD : PPSpaceBase, 0.0, legacyIPadBar ? PPSpaceMD : PPSpaceBase);
         config.titleTextAttributesTransformer =
         ^NSDictionary<NSAttributedStringKey, id> * (NSDictionary<NSAttributedStringKey, id> *attrs) {
             NSMutableDictionary *m = [attrs mutableCopy];
-            m[NSFontAttributeName] = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+            m[NSFontAttributeName] = [GM boldFontWithSize:(legacyIPadBar ? 15.0 : 16.0)] ?: [UIFont systemFontOfSize:(legacyIPadBar ? 15.0 : 16.0) weight:UIFontWeightSemibold];
             m[NSForegroundColorAttributeName] = resolvedForeground;
             return m;
         };
@@ -731,11 +1296,11 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
         [self.addToCartButton setTitle:compact ? nil : resolvedTitle forState:UIControlStateNormal];
         [self.addToCartButton setTitleColor:resolvedForeground forState:UIControlStateNormal];
         [self.addToCartButton setImage:image forState:UIControlStateNormal];
-        self.addToCartButton.titleLabel.font = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+        self.addToCartButton.titleLabel.font = [GM boldFontWithSize:(legacyIPadBar ? 15.0 : 16.0)] ?: [UIFont systemFontOfSize:(legacyIPadBar ? 15.0 : 16.0) weight:UIFontWeightSemibold];
         self.addToCartButton.contentEdgeInsets = compact
         ? UIEdgeInsetsZero
-        : UIEdgeInsetsMake(0.0, PPSpaceBase, 0.0, PPSpaceBase);
-        self.addToCartButton.layer.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPButtonHeightLG) * 0.5;
+        : UIEdgeInsetsMake(0.0, legacyIPadBar ? PPSpaceMD : PPSpaceBase, 0.0, legacyIPadBar ? PPSpaceMD : PPSpaceBase);
+        self.addToCartButton.layer.cornerRadius = (compact ? PPBBCartBadgeCartButtonSize() : PPBBCartControlHeight()) * 0.5;
         if (@available(iOS 13.0, *)) {
             self.addToCartButton.layer.cornerCurve = kCACornerCurveContinuous;
         }
@@ -832,7 +1397,7 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
     self.restoringButton = YES;
     [self pp_setAddToCartTitle:self.idleAddToCartTitle
                      imageName:@"cart.badge.plus"
-                    foreground:PPBBCartColor(AppForgroundColr, UIColor.whiteColor)
+                    foreground:UIColor.whiteColor
                     background:PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor)];
     [UIView transitionWithView:self.addToCartButton
                       duration:0.22
@@ -929,8 +1494,10 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
         [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
         [self pp_setAddToCartTitle:kLang(@"AddedToCart")
                          imageName:@"checkmark.circle.fill"
-                        foreground:PPBBCartColor(AppForgroundColr, UIColor.whiteColor)
+                        foreground:UIColor.whiteColor
                         background:PPBBCartColor(AppSuccessClr, PPBBCartColor(AppPrimaryClr, UIColor.systemGreenColor))];
+        [self pp_refreshShowCartBadgeAnimated:YES];
+        [self pp_playShowCartLottieAnimation];
         [self pp_runSuccessHalo];
         [self pp_runConfirmedSheen];
 
@@ -2232,4 +2799,3 @@ static UIImage *PPBBCartSymbol(NSString *name, CGFloat pointSize, UIImageSymbolW
 
 
 @end
-

@@ -14,6 +14,7 @@
 
 @import FirebaseAnalytics;
 @import FirebaseCrashlytics;
+@import GoogleSignIn;
 @interface AppDelegate ()
 
 @end
@@ -109,6 +110,9 @@
 #endif
         [FIRMessaging messaging].delegate = self;
     });
+    
+    [FIRFirestore enableLogging:YES];
+    [[FIRConfiguration sharedInstance] setLoggerLevel:FIRLoggerLevelMin];
 
     // ✅ Register global Firestore error observer (non-blocking banner)
     [PPFirestoreErrorNotifier registerGlobalObserver];
@@ -212,6 +216,31 @@
     #endif
 
     return YES;
+}
+
+- (BOOL)application:(UIApplication *)app
+            openURL:(NSURL *)url
+            options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options
+{
+    if (!url) {
+        return NO;
+    }
+
+    if ([self.currentAuthorizationFlow resumeExternalUserAgentFlowWithURL:url]) {
+        self.currentAuthorizationFlow = nil;
+        return YES;
+    }
+
+    if ([GIDSignIn.sharedInstance handleURL:url]) {
+        return YES;
+    }
+
+    if ([url.scheme isEqualToString:@"purepets"]) {
+        [[DeepLinkRouter shared] handleURL:url];
+        return YES;
+    }
+
+    return NO;
 }
 
 

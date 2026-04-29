@@ -446,8 +446,8 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
      constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.inputbar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.inputbar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.inputbar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-2],
+        [self.inputbar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:2],
         self.inputBarBottomConstraint
     ]];
     /*self.bottomFill = [UIView new];

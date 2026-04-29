@@ -94,6 +94,12 @@ static UIFont *PPUniversalCellMediumFont(CGFloat size)
 
 static UIFont *PPUniversalCellBoldFont(CGFloat size)
 {
+    UIFont *font = [GM boldFontWithSize:size];
+    return font ?: [UIFont systemFontOfSize:size weight:UIFontWeightBlack];
+}
+
+static UIFont *PPUniversalCellBlackFont(CGFloat size)
+{
     UIFont *font = [GM BlackFontWithSize:size];
     return font ?: [UIFont systemFontOfSize:size weight:UIFontWeightBlack];
 }
@@ -1049,7 +1055,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.subtitleLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.43 green:0.45 blue:0.52 alpha:1.0],
                                                                [UIColor colorWithWhite:0.74 alpha:1.0]);
 
-    self.priceLabel.font = PPUniversalCellBoldFont(28.0);
+    self.priceLabel.font = PPUniversalCellBlackFont(30.0);
     self.priceLabel.textColor = AppPrimaryClr;
     self.oldPriceLabel.font = PPUniversalCellMediumFont(12.0);
     self.oldPriceLabel.textColor = PPUniversalCellDynamicColor([UIColor colorWithRed:0.57 green:0.59 blue:0.65 alpha:1.0],
@@ -1262,10 +1268,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 
     BOOL fullWidth = [self pp_isFullWidthLayout];
-    CGFloat compactPriceFontSize = [self pp_isServiceLikeContext] ? 21.0 : 23.0;
+    CGFloat compactPriceFontSize = [self pp_isServiceLikeContext] ? 23.0 : 25.0;
     self.titleLabel.font = fullWidth ? PPUniversalCellBoldFont(16.0) : PPUniversalCellBoldFont(13.0);
     self.subtitleLabel.font = fullWidth ? PPUniversalCellMediumFont(12.5) : PPUniversalCellMediumFont(13.0);
-    self.priceLabel.font = fullWidth ? PPUniversalCellBoldFont(21.0) : PPUniversalCellBoldFont(compactPriceFontSize);
+    self.priceLabel.font = fullWidth ? PPUniversalCellBlackFont(23.0) : PPUniversalCellBlackFont(compactPriceFontSize);
     if (hasPrice) {
         self.priceLabel.attributedText = [self pp_attributedPriceForViewModel:vm];
     }
@@ -1667,7 +1673,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             return nil;
         }
         return [[NSAttributedString alloc] initWithString:plainPrice attributes:@{
-            NSFontAttributeName : self.priceLabel.font ?: PPUniversalCellBoldFont(21.0),
+            NSFontAttributeName : self.priceLabel.font ?: PPUniversalCellBlackFont(23.0),
             NSForegroundColorAttributeName : self.priceLabel.textColor ?: AppPrimaryClr
         }];
     }
@@ -1677,7 +1683,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     NSArray<NSString *> *parts = [formattedAmount componentsSeparatedByString:@"."];
     NSString *integerPart = parts.firstObject.length > 0 ? parts.firstObject : @"0";
     NSString *fractionPart = parts.count > 1 ? parts.lastObject : @"00";
-    UIFont *integerFont = self.priceLabel.font ?: PPUniversalCellBoldFont(21.0);
+    UIFont *integerFont = self.priceLabel.font ?: PPUniversalCellBlackFont(23.0);
     CGFloat currencySize = MAX(9.0, floor(integerFont.pointSize * 0.40));
     CGFloat fractionSize = MAX(9.0, floor(integerFont.pointSize * 0.46));
     UIFont *currencyFont = PPUniversalCellBoldFont(currencySize);

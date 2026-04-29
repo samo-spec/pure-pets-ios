@@ -20,6 +20,15 @@ private enum PPPremiumCheckoutFont {
         scaled(named: "Beiruti-Bold", size: size, weight: .bold, textStyle: textStyle)
     }
 
+    static func black(_ size: CGFloat, textStyle: UIFont.TextStyle = .body) -> UIFont {
+        scaled(
+            named: "Beiruti-Black",
+            size: size,
+            weight: .black,
+            textStyle: textStyle
+        )
+    }
+
     private static func scaled(named name: String,
                                size: CGFloat,
                                weight: UIFont.Weight,
@@ -78,9 +87,9 @@ private final class PPPremiumCheckoutButton: UIControl {
         layer.cornerRadius = 22
         layer.cornerCurve = .continuous
         layer.borderWidth = 1
-        layer.shadowOpacity = 0.18
-        layer.shadowRadius = 17
-        layer.shadowOffset = CGSize(width: 0, height: 10)
+        layer.shadowOpacity = 0
+        layer.shadowRadius = 0
+        layer.shadowOffset = .zero
 
         stackView.translatesAutoresizingMaskIntoConstraints = false
         stackView.axis = .horizontal
@@ -90,7 +99,7 @@ private final class PPPremiumCheckoutButton: UIControl {
         stackView.isUserInteractionEnabled = false
         addSubview(stackView)
 
-        titleLabel.font = PPPremiumCheckoutFont.bold(16, textStyle: .headline)
+        titleLabel.font = UIFont(name: "GM BlackFont", size: 18) ?? PPPremiumCheckoutFont.bold(18, textStyle: .headline)
         titleLabel.textColor = .white
         titleLabel.textAlignment = .center
         titleLabel.adjustsFontSizeToFitWidth = true
@@ -151,8 +160,8 @@ private final class PPPremiumCheckoutButton: UIControl {
         let brand = PPPremiumCheckoutStyle.brand
         backgroundColor = isEnabled ? brand : brand.withAlphaComponent(0.55)
         layer.borderColor = UIColor.white.withAlphaComponent(0.20).cgColor
-        layer.shadowColor = brand.cgColor
-        layer.shadowOpacity = isEnabled ? 0.18 : 0.08
+        layer.shadowColor = UIColor.clear.cgColor
+        layer.shadowOpacity = 0
     }
 }
 
@@ -161,8 +170,8 @@ private enum PPPremiumCheckoutStyle {
 
     static let surface = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.105, green: 0.098, blue: 0.105, alpha: 0.97)
-            : UIColor(white: 1.0, alpha: 0.985)
+            ? UIColor(red: 0.128, green: 0.120, blue: 0.128, alpha: 1.0)
+            : UIColor(white: 1.0, alpha: 1.0)
     }
 
     static let surfaceAlt = UIColor { trait in
@@ -173,14 +182,14 @@ private enum PPPremiumCheckoutStyle {
 
     static let glassTint = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.12, green: 0.105, blue: 0.12, alpha: 0.54)
-            : UIColor.white.withAlphaComponent(0.34)
+            ? UIColor.clear
+            : UIColor.clear
     }
 
     static let softPink = UIColor { trait in
         trait.userInterfaceStyle == .dark
-            ? UIColor(red: 0.36, green: 0.12, blue: 0.205, alpha: 0.0)
-            : UIColor(red: 1.00, green: 0.925, blue: 0.955, alpha: 0.0)
+            ? PPPremiumCheckoutStyle.brand.withAlphaComponent(0.16)
+            : PPPremiumCheckoutStyle.brand.withAlphaComponent(0.075)
     }
 
     static let mutedFill = UIColor { trait in
@@ -327,18 +336,19 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     }
     public var onTapCheckOut: (() -> Void)?
 
-    private let outerGlowView = UIView()
     private let glowContainerView = UIView()
     private let primaryGlowView = UIView()
     private let secondaryGlowView = UIView()
     private let cardView = UIView()
-    private let glassMaterialView = UIVisualEffectView(effect: UIBlurEffect(style: .systemUltraThinMaterial))
+    private let glassMaterialView = UIVisualEffectView(effect: nil)
     private let glassTintView = UIView()
     private let contentStack = UIStackView()
     private let headerRow = UIStackView()
     private let iconShell = UIView()
     private let iconView = UIImageView()
+    private let headerTextStack = UIStackView()
     private let titleLabel = UILabel()
+    private let headerMetaLabel = UILabel()
     private let countLabel = UILabel()
     private let amountRow = UIStackView()
     private let amountStack = UIStackView()
@@ -426,19 +436,11 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     public override func layoutSubviews() {
         super.layoutSubviews()
 
-        outerGlowView.layer.cornerRadius = outerGlowView.bounds.height * 0.38
-        outerGlowView.layer.shadowPath = UIBezierPath(
-            roundedRect: outerGlowView.bounds,
-            cornerRadius: outerGlowView.layer.cornerRadius
-        ).cgPath
         glassMaterialView.layer.cornerRadius = cardView.layer.cornerRadius
         glowContainerView.layer.cornerRadius = cardView.layer.cornerRadius
         primaryGlowView.layer.cornerRadius = primaryGlowView.bounds.width * 0.5
         secondaryGlowView.layer.cornerRadius = secondaryGlowView.bounds.width * 0.5
-        cardView.layer.shadowPath = UIBezierPath(
-            roundedRect: cardView.bounds,
-            cornerRadius: cardView.layer.cornerRadius
-        ).cgPath
+        updateTopOuterShadowPath()
 
         if !didRunEntrance, cardView.bounds.height > 0 {
             didRunEntrance = true
@@ -455,22 +457,15 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     }
 
     private func buildView() {
-        outerGlowView.translatesAutoresizingMaskIntoConstraints = false
-        outerGlowView.isUserInteractionEnabled = false
-        outerGlowView.alpha = 0.76
-        outerGlowView.layer.shadowRadius = 34
-        outerGlowView.layer.shadowOffset = .zero
-        addSubview(outerGlowView)
-
         cardView.translatesAutoresizingMaskIntoConstraints = false
-        cardView.backgroundColor = .clear
+        cardView.backgroundColor = PPPremiumCheckoutStyle.surface
         cardView.clipsToBounds = false
         cardView.layer.cornerRadius = 34
         cardView.layer.cornerCurve = .continuous
         cardView.layer.borderWidth = 1
-        cardView.layer.shadowOpacity = 0.14
-        cardView.layer.shadowRadius = 34
-        cardView.layer.shadowOffset = CGSize(width: 0, height: 12)
+        cardView.layer.shadowOpacity = 0.10
+        cardView.layer.shadowRadius = 18
+        cardView.layer.shadowOffset = CGSize(width: 0, height: -8)
         addSubview(cardView)
 
         glassMaterialView.translatesAutoresizingMaskIntoConstraints = false
@@ -491,20 +486,24 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
         primaryGlowView.translatesAutoresizingMaskIntoConstraints = false
         primaryGlowView.isUserInteractionEnabled = false
-        primaryGlowView.layer.shadowRadius = 28
+        primaryGlowView.isHidden = false
+        primaryGlowView.alpha = 1
+        primaryGlowView.layer.shadowRadius = 0
         primaryGlowView.layer.shadowOffset = .zero
         glowContainerView.addSubview(primaryGlowView)
 
         secondaryGlowView.translatesAutoresizingMaskIntoConstraints = false
         secondaryGlowView.isUserInteractionEnabled = false
-        secondaryGlowView.layer.shadowRadius = 24
+        secondaryGlowView.isHidden = false
+        secondaryGlowView.alpha = 1
+        secondaryGlowView.layer.shadowRadius = 0
         secondaryGlowView.layer.shadowOffset = .zero
         glowContainerView.addSubview(secondaryGlowView)
 
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         contentStack.axis = .vertical
         contentStack.alignment = .fill
-        contentStack.spacing = 12
+        contentStack.spacing = 13
         cardView.addSubview(contentStack)
 
         buildHeader()
@@ -521,7 +520,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         headerRow.spacing = 10
 
         iconShell.translatesAutoresizingMaskIntoConstraints = false
-        iconShell.layer.cornerRadius = 17
+        iconShell.layer.cornerRadius = 19
         iconShell.layer.cornerCurve = .continuous
         iconShell.layer.borderWidth = 1
         iconShell.layer.masksToBounds = true
@@ -539,6 +538,21 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         titleLabel.adjustsFontForContentSizeCategory = true
         titleLabel.minimumScaleFactor = 0.78
 
+        headerMetaLabel.font = PPPremiumCheckoutFont.medium(11.5, textStyle: .caption1)
+        headerMetaLabel.textColor = .secondaryLabel
+        headerMetaLabel.textAlignment = .natural
+        headerMetaLabel.text = NSLocalizedString("Subtotal", comment: "")
+        headerMetaLabel.adjustsFontSizeToFitWidth = true
+        headerMetaLabel.adjustsFontForContentSizeCategory = true
+        headerMetaLabel.minimumScaleFactor = 0.74
+        headerMetaLabel.numberOfLines = 1
+
+        headerTextStack.axis = .vertical
+        headerTextStack.alignment = .fill
+        headerTextStack.spacing = 1
+        headerTextStack.addArrangedSubview(titleLabel)
+        headerTextStack.addArrangedSubview(headerMetaLabel)
+
         let spacer = UIView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
 
@@ -552,7 +566,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         countLabel.isHidden = true
 
         headerRow.addArrangedSubview(iconShell)
-        headerRow.addArrangedSubview(titleLabel)
+        headerRow.addArrangedSubview(headerTextStack)
         headerRow.addArrangedSubview(spacer)
         headerRow.addArrangedSubview(countLabel)
         contentStack.addArrangedSubview(headerRow)
@@ -573,7 +587,7 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         amountCaptionLabel.adjustsFontForContentSizeCategory = true
         amountCaptionLabel.text = NSLocalizedString("Subtotal", comment: "")
 
-        amountLabel.font = PPPremiumCheckoutFont.bold(38, textStyle: .largeTitle)
+        amountLabel.font = UIFont(name: "GM BlackFont", size: 38) ?? PPPremiumCheckoutFont.black(34, textStyle: .largeTitle)
         amountLabel.textColor = .label
         amountLabel.textAlignment = .natural
         amountLabel.adjustsFontSizeToFitWidth = true
@@ -690,11 +704,6 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
     private func buildLayout() {
         NSLayoutConstraint.activate([
-            outerGlowView.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 24),
-            outerGlowView.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 12),
-            outerGlowView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -12),
-            outerGlowView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -2),
-
             cardView.topAnchor.constraint(equalTo: topAnchor),
             cardView.leadingAnchor.constraint(equalTo: leadingAnchor),
             cardView.trailingAnchor.constraint(equalTo: trailingAnchor),
@@ -715,23 +724,23 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
             glowContainerView.trailingAnchor.constraint(equalTo: cardView.trailingAnchor),
             glowContainerView.bottomAnchor.constraint(equalTo: cardView.bottomAnchor),
 
-            primaryGlowView.widthAnchor.constraint(equalToConstant: 172),
+            primaryGlowView.widthAnchor.constraint(equalToConstant: 118),
             primaryGlowView.heightAnchor.constraint(equalTo: primaryGlowView.widthAnchor),
-            primaryGlowView.topAnchor.constraint(equalTo: glowContainerView.topAnchor, constant: -62),
-            primaryGlowView.trailingAnchor.constraint(equalTo: glowContainerView.trailingAnchor, constant: 64),
+            primaryGlowView.topAnchor.constraint(equalTo: glowContainerView.topAnchor, constant: -34),
+            primaryGlowView.trailingAnchor.constraint(equalTo: glowContainerView.trailingAnchor, constant: 34),
 
-            secondaryGlowView.widthAnchor.constraint(equalToConstant: 126),
+            secondaryGlowView.widthAnchor.constraint(equalToConstant: 104),
             secondaryGlowView.heightAnchor.constraint(equalTo: secondaryGlowView.widthAnchor),
-            secondaryGlowView.bottomAnchor.constraint(equalTo: glowContainerView.bottomAnchor, constant: 44),
-            secondaryGlowView.leadingAnchor.constraint(equalTo: glowContainerView.leadingAnchor, constant: -44),
+            secondaryGlowView.bottomAnchor.constraint(equalTo: glowContainerView.bottomAnchor, constant: 32),
+            secondaryGlowView.leadingAnchor.constraint(equalTo: glowContainerView.leadingAnchor, constant: -32),
 
             contentStack.topAnchor.constraint(equalTo: cardView.topAnchor, constant: 18),
             contentStack.leadingAnchor.constraint(equalTo: cardView.leadingAnchor, constant: 20),
             contentStack.trailingAnchor.constraint(equalTo: cardView.trailingAnchor, constant: -20),
-            contentStack.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -16),
+            contentStack.bottomAnchor.constraint(equalTo: cardView.bottomAnchor, constant: -30),
 
-            iconShell.widthAnchor.constraint(equalToConstant: 34),
-            iconShell.heightAnchor.constraint(equalToConstant: 34),
+            iconShell.widthAnchor.constraint(equalToConstant: 38),
+            iconShell.heightAnchor.constraint(equalToConstant: 38),
             iconView.centerXAnchor.constraint(equalTo: iconShell.centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: iconShell.centerYAnchor),
             iconView.widthAnchor.constraint(equalToConstant: 17),
@@ -761,25 +770,33 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
     private func refreshColors() {
         let brand = PPPremiumCheckoutStyle.brand
-        cardView.backgroundColor = .clear
+        cardView.backgroundColor = PPPremiumCheckoutStyle.surface
         cardView.layer.borderColor = PPPremiumCheckoutStyle.stroke.cgColor
         cardView.layer.shadowColor = UIColor.black.cgColor
-        cardView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.28 : 0.13
+        cardView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.26 : 0.10
+        cardView.layer.shadowRadius = 18
+        cardView.layer.shadowOffset = CGSize(width: 0, height: -8)
 
-        glassMaterialView.effect = UIBlurEffect(style: traitCollection.userInterfaceStyle == .dark ? .systemThinMaterial : .systemUltraThinMaterial)
+        glassMaterialView.effect = nil
         glassTintView.backgroundColor = PPPremiumCheckoutStyle.glassTint
 
-        outerGlowView.backgroundColor = brand.withAlphaComponent(traitCollection.userInterfaceStyle == .dark ? 0.080 : 0.055)
-        outerGlowView.layer.shadowColor = brand.cgColor
-        outerGlowView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.16 : 0.12
-
+        let isDark = traitCollection.userInterfaceStyle == .dark
         glowContainerView.backgroundColor = .clear
-        primaryGlowView.backgroundColor = brand.withAlphaComponent(traitCollection.userInterfaceStyle == .dark ? 0.13 : 0.10)
-        primaryGlowView.layer.shadowColor = brand.cgColor
-        primaryGlowView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.14 : 0.18
-        secondaryGlowView.backgroundColor = UIColor.white.withAlphaComponent(traitCollection.userInterfaceStyle == .dark ? 0.040 : 0.42)
-        secondaryGlowView.layer.shadowColor = UIColor.white.cgColor
-        secondaryGlowView.layer.shadowOpacity = traitCollection.userInterfaceStyle == .dark ? 0.04 : 0.16
+        primaryGlowView.isHidden = false
+        primaryGlowView.alpha = 1
+        primaryGlowView.backgroundColor = brand.withAlphaComponent(isDark ? 0.16 : 0.10)
+        primaryGlowView.layer.shadowColor = UIColor.clear.cgColor
+        primaryGlowView.layer.shadowOpacity = 0
+        primaryGlowView.layer.shadowRadius = 0
+        primaryGlowView.layer.shadowOffset = .zero
+
+        secondaryGlowView.isHidden = false
+        secondaryGlowView.alpha = 0.95
+        secondaryGlowView.backgroundColor = brand.withAlphaComponent(isDark ? 0.13 : 0.08)
+        secondaryGlowView.layer.shadowColor = UIColor.clear.cgColor
+        secondaryGlowView.layer.shadowOpacity = 0
+        secondaryGlowView.layer.shadowRadius = 0
+        secondaryGlowView.layer.shadowOffset = .zero
 
         iconShell.backgroundColor = PPPremiumCheckoutStyle.softPink
         iconShell.layer.borderColor = brand.withAlphaComponent(0.14).cgColor
@@ -805,15 +822,27 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         }
     }
 
+    private func updateTopOuterShadowPath() {
+        guard cardView.bounds.width > 0 else {
+            cardView.layer.shadowPath = nil
+            return
+        }
+
+        let shadowWidth = max(cardView.bounds.width - 56, 0)
+        let shadowX = (cardView.bounds.width - shadowWidth) * 0.5
+        let shadowRect = CGRect(x: shadowX, y: -1, width: shadowWidth, height: 2)
+        cardView.layer.shadowPath = UIBezierPath(roundedRect: shadowRect, cornerRadius: 1).cgPath
+    }
+
     @objc(updateTotalsWithItems:shipping:showTitle:)
-    func updateTotalsWithItems(_ itemsTotal: CGFloat, shipping shippingFee: CGFloat, showTitle: Bool) {
+    func updateTotalsWithItems(_ itemsTotal: CGFloat, shipping shippingFee: CGFloat, showTitle _: Bool) {
         self.itemsTotal = itemsTotal
         self.shippingFee = shippingFee
         self.subtotal = itemsTotal + shippingFee
 
         itemsValueLabel.text = PPPremiumCheckoutCurrency.format(itemsTotal)
         shippingValueLabel.text = PPPremiumCheckoutCurrency.format(shippingFee)
-        amountCaptionLabel.isHidden = !showTitle
+        amountCaptionLabel.isHidden = false
 
         let newText = PPPremiumCheckoutCurrency.format(subtotal)
         let oldText = amountLabel.text
@@ -990,40 +1019,39 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         }
     }
 
+    private func startGlowBreathingIfNeeded() {
+        primaryGlowView.layer.removeAnimation(forKey: "pp_checkout_primary_glow_breath")
+        secondaryGlowView.layer.removeAnimation(forKey: "pp_checkout_secondary_glow_breath")
+
+        let primaryPulse = CABasicAnimation(keyPath: "opacity")
+        primaryPulse.fromValue = 0.82
+        primaryPulse.toValue = 1.0
+        primaryPulse.duration = 5.8
+        primaryPulse.autoreverses = true
+        primaryPulse.repeatCount = .greatestFiniteMagnitude
+        primaryPulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        primaryGlowView.layer.add(primaryPulse, forKey: "pp_checkout_primary_glow_breath")
+
+        let secondaryPulse = CABasicAnimation(keyPath: "opacity")
+        secondaryPulse.fromValue = 0.68
+        secondaryPulse.toValue = 0.95
+        secondaryPulse.duration = 6.6
+        secondaryPulse.autoreverses = true
+        secondaryPulse.repeatCount = .greatestFiniteMagnitude
+        secondaryPulse.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        secondaryGlowView.layer.add(secondaryPulse, forKey: "pp_checkout_secondary_glow_breath")
+    }
+
     private func startLivingEffectsIfNeeded() {
         guard window != nil, !liveEffectsRunning else { return }
-        guard !UIAccessibility.isReduceMotionEnabled else {
-            outerGlowView.alpha = 0.76
-            primaryGlowView.alpha = 1
-            secondaryGlowView.alpha = 1
-            return
-        }
+        primaryGlowView.isHidden = false
+        secondaryGlowView.isHidden = false
+        primaryGlowView.alpha = 1
+        secondaryGlowView.alpha = 0.95
+        guard !UIAccessibility.isReduceMotionEnabled else { return }
 
         liveEffectsRunning = true
-        addBreathingGlow(to: outerGlowView,
-                         key: "pp_checkout_outer_glow_breath",
-                         fromOpacity: 0.62,
-                         toOpacity: 0.88,
-                         fromScale: 0.985,
-                         toScale: 1.012,
-                         duration: 6.4,
-                         delay: 0)
-        addBreathingGlow(to: primaryGlowView,
-                         key: "pp_checkout_primary_glow_breath",
-                         fromOpacity: 0.78,
-                         toOpacity: 1.0,
-                         fromScale: 0.96,
-                         toScale: 1.08,
-                         duration: 5.8,
-                         delay: 0.25)
-        addBreathingGlow(to: secondaryGlowView,
-                         key: "pp_checkout_secondary_glow_breath",
-                         fromOpacity: 0.56,
-                         toOpacity: 0.86,
-                         fromScale: 0.94,
-                         toScale: 1.05,
-                         duration: 6.9,
-                         delay: 0.55)
+        startGlowBreathingIfNeeded()
         if wantsTrustAccent {
             startTrustPulseIfNeeded()
         }
@@ -1031,39 +1059,14 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
     private func stopLivingEffects() {
         liveEffectsRunning = false
-        [outerGlowView, primaryGlowView, secondaryGlowView].forEach { view in
+        [primaryGlowView, secondaryGlowView].forEach { view in
             view.layer.removeAllAnimations()
             view.transform = .identity
+            view.isHidden = false
         }
+        primaryGlowView.alpha = 1
+        secondaryGlowView.alpha = 0.95
         removeTrustPulse()
-    }
-
-    private func addBreathingGlow(to view: UIView,
-                                  key: String,
-                                  fromOpacity: Float,
-                                  toOpacity: Float,
-                                  fromScale: CGFloat,
-                                  toScale: CGFloat,
-                                  duration: CFTimeInterval,
-                                  delay: CFTimeInterval) {
-        view.layer.removeAnimation(forKey: key)
-
-        let opacity = CABasicAnimation(keyPath: "opacity")
-        opacity.fromValue = fromOpacity
-        opacity.toValue = toOpacity
-
-        let scale = CABasicAnimation(keyPath: "transform.scale")
-        scale.fromValue = fromScale
-        scale.toValue = toScale
-
-        let group = CAAnimationGroup()
-        group.animations = [opacity, scale]
-        group.duration = duration
-        group.beginTime = CACurrentMediaTime() + delay
-        group.autoreverses = true
-        group.repeatCount = .greatestFiniteMagnitude
-        group.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        view.layer.add(group, forKey: key)
     }
 
     @objc private func didTapCheckout() {

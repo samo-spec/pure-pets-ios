@@ -347,8 +347,8 @@
 #define PPChatTimePrimary      [UIColor.secondaryLabelColor colorWithAlphaComponent:1.0]//[UIColor colorWithWhite:0.75 alpha:1.0]
 #define PPChatTimeSecondary    [UIColor colorWithWhite:0.55 alpha:1.0]
 
-#define PPNewCorner                  24.0
-#define PPNewCornerMin                   24.0
+#define PPNewCorner                  26.0
+#define PPNewCornerMin                   26.0
 
 #define PPCorners                   22.0
 #define PPCornersHome               22.0

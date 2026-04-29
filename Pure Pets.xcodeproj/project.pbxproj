@@ -695,6 +695,7 @@
 		F2D639712ECB4E2500FEBCBB /* PPUserSigningManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */; };
 		F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */; };
 		F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D7F0ED2F135F9100105778 /* NoResult.json */; };
+		F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */ = {isa = PBXBuildFile; fileRef = F2F9C0012F9C000000000001 /* payment_checkout.json */; };
 		F2D894852D5534D000256152 /* CoreTelephony.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F2D894842D5534D000256152 /* CoreTelephony.framework */; };
 		F2D99F7A2E2849E400CD4552 /* ServiceViewerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D99F792E2849D300CD4552 /* ServiceViewerViewController.m */; };
 		F2DEF00B2D6FEF2B0015B7FB /* ODRefreshControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DEF0092D6FEF2B0015B7FB /* ODRefreshControl.m */; };
@@ -2098,6 +2099,7 @@
 		F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserSigningManager.m; sourceTree = "<group>"; };
 		F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BBCheckoutSummaryView.m; path = "Pure Pets/DesignFiles/PP/PPNAV/BBCheckoutSummaryView.m"; sourceTree = SOURCE_ROOT; };
 		F2D7F0ED2F135F9100105778 /* NoResult.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NoResult.json; sourceTree = "<group>"; };
+		F2F9C0012F9C000000000001 /* payment_checkout.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = payment_checkout.json; sourceTree = "<group>"; };
 		F2D894842D5534D000256152 /* CoreTelephony.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreTelephony.framework; path = System/Library/Frameworks/CoreTelephony.framework; sourceTree = SDKROOT; };
 		F2D99F782E2849C800CD4552 /* ServiceViewerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServiceViewerViewController.h; sourceTree = "<group>"; };
 		F2D99F792E2849D300CD4552 /* ServiceViewerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ServiceViewerViewController.m; sourceTree = "<group>"; };
@@ -4981,6 +4983,7 @@
 			isa = PBXGroup;
 			children = (
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
+				F2F9C0012F9C000000000001 /* payment_checkout.json */,
 				F2D44D1F2F3D611200999337 /* map_dark_style.json */,
 				F2C6385F2E5132A3007E4CE4 /* cities.json */,
 				F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */,
@@ -5126,6 +5129,7 @@
 				F27FAEAF2D2F363200EA6B56 /* JPVideoPlayer.bundle in Resources */,
 				F22CD3852C6709650098B6E9 /* star.png in Resources */,
 				F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */,
+				F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
 				F260D32A2C7B36EF0098C8F0 /* blank_button@3x.png in Resources */,
 				F22CD3822C6709650098B6E9 /* checkmark-round.png in Resources */,

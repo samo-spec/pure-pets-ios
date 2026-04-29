@@ -75,10 +75,10 @@ static UIViewController *ppAlertRootViewController = nil;
             [self addSubview:backgroundView];
             bg= backgroundView;
             [NSLayoutConstraint activateConstraints:@[
-                [backgroundView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-                [backgroundView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-                [backgroundView.topAnchor constraintEqualToAnchor:self.topAnchor],
-                [backgroundView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor]
+                [backgroundView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:-3],
+                [backgroundView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:3],
+                [backgroundView.topAnchor constraintEqualToAnchor:self.topAnchor constant:-3],
+                [backgroundView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:3],
             ]];
         }
         else

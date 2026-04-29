@@ -1078,6 +1078,10 @@
 "auth_google_connecting_title" = "جاري الاتصال بجوجل…";
 "auth_google_failed_title" = "فشل تسجيل الدخول عبر جوجل";
 "auth_google_failed_message" = "تعذر التحقق من حساب جوجل. يرجى المحاولة مرة أخرى.";
+"auth_google_account_unavailable_message" = "تعذر قراءة بيانات حساب جوجل. يرجى المحاولة مرة أخرى.";
+"error_google_signin_client_config_missing" = "إعداد تسجيل الدخول عبر جوجل غير مكتمل لهذا التطبيق.";
+"google_no_token_title" = "فشل تسجيل الدخول عبر جوجل";
+"google_no_token_message" = "لم يرسل جوجل رمز تسجيل الدخول المطلوب. يرجى المحاولة مرة أخرى.";
 
 /* ---------------------------- */
 /* Generic Auth Errors */

@@ -1107,6 +1107,10 @@
 "auth_google_connecting_title" = "Connecting to Google…";
 "auth_google_failed_title" = "Google Sign-In Failed";
 "auth_google_failed_message" = "We couldn’t verify your Google account. Please try again.";
+"auth_google_account_unavailable_message" = "Google account data was unavailable. Please try again.";
+"error_google_signin_client_config_missing" = "Google Sign-In is not configured correctly for this app.";
+"google_no_token_title" = "Google Sign-In Failed";
+"google_no_token_message" = "Google did not return the required sign-in token. Please try again.";
 
 /* ---------------------------- */
 /* Generic Auth Errors */

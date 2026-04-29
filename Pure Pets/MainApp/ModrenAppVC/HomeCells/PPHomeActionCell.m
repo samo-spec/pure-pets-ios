@@ -77,10 +77,35 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.clipsToBounds = NO;
     self.layer.masksToBounds = NO;
 
-   
-    
-    
+    if(PPIOS26())
+    {
+    }
+
     self.actionButton = [UIButton new];
+
+    if (@available(iOS 26.0, *))
+    {
+        UIButtonConfiguration *glass;
+        glass = [UIButtonConfiguration glassButtonConfiguration];
+        glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        glass.background.cornerRadius  = PPNewCorner + 2;
+
+        self.actionButton.configuration = glass;
+
+        [self.actionButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.16]];
+        self.actionButton.layer.shadowOpacity =  0.006f;
+        self.actionButton.layer.shadowRadius =   10.0f;
+        self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+
+        //self.actionButton.clipsToBounds = YES;
+    }
+    else
+    {
+        [self.actionButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.68]];
+        self.actionButton.layer.shadowOpacity =  0.045f;
+        self.actionButton.layer.shadowRadius =   10.0f;
+        self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    }
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionButton.backgroundColor = UIColor.clearColor;
     self.actionButton.adjustsImageWhenHighlighted = NO;
@@ -91,10 +116,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchUpInside];
     [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchUpOutside];
     [self.actionButton addTarget:self action:@selector(handleTouchUp) forControlEvents:UIControlEventTouchCancel];
-    [self.actionButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    self.actionButton.layer.shadowOpacity = 0.10f;
-    self.actionButton.layer.shadowRadius = 18.0f;
-    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+
     if (@available(iOS 13.0, *)) {
         self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -103,7 +125,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = PPNewCorner;
+    self.surfaceView.layer.cornerRadius = PPNewCorner + 2;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = 1.0;
     if (@available(iOS 13.0, *)) {
@@ -350,7 +372,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     [super layoutSubviews];
     [self pp_updateLayerFrames];
     
-    
+     [Styling applyCornerMaskToView:self.surfaceView tl:12 tr:20 bl:12 br:20];
 }
 
 - (void)didMoveToWindow
@@ -391,7 +413,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self.actionButton.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.actionButton.bounds cornerRadius:PPNewCorner].CGPath;
+        [UIBezierPath bezierPathWithRoundedRect:self.actionButton.bounds cornerRadius:PPNewCorner + 2].CGPath;
     self.surfaceGradientLayer.frame = surfaceBounds;
     self.surfaceSheenLayer.frame = surfaceBounds;
     self.accentWashLayer.frame = self.accentWashView.bounds;
@@ -476,10 +498,10 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     UIColor *chevronSurface = [primaryText colorWithAlphaComponent:0.05];
     UIColor *chevronBorder = [primaryText colorWithAlphaComponent:0.08];
 
-    [self.actionButton pp_setShadowColor:PPQuickActionDeepenedColor(resolvedAccent, 0.36)];
-    self.actionButton.layer.shadowOpacity = 0.12f;
-    self.actionButton.layer.shadowRadius = 20.0f;
-    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 11.0);
+    [self.actionButton pp_setShadowColor:PPQuickActionDeepenedColor(resolvedAccent, 0.24)];
+    self.actionButton.layer.shadowOpacity = 0.055f;
+    self.actionButton.layer.shadowRadius = 12.0f;
+    self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
 
     [self.surfaceView pp_setBorderColor:borderColor];
     self.surfaceGradientLayer.colors = @[
