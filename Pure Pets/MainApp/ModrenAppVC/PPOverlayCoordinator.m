@@ -167,7 +167,9 @@
         if (ViewerVCClass) {
             ViewerVC *vc = [[ViewerVCClass alloc] init];
             vc.ad = (PetAd *)object;
+            vc.hidesBottomBarWhenPushed = YES;
             detailVC = vc;
+            return detailVC;
         }
     } else if ([object isKindOfClass:NSClassFromString(@"PetAccessory")]) {
         // AccessViewerVC for PetAccessory — returned bare for push navigation
@@ -280,10 +282,23 @@
     if ([object isKindOfClass:[PetAd class]]) {
         ViewerVC *viewer = [ViewerVC new];
         viewer.ad = (PetAd *)object;
+        viewer.hidesBottomBarWhenPushed = YES;
         targetVC = viewer;
         targetVC.view.backgroundColor =AppBackgroundClrDarker;
 
-        [PPFunc presentSheetFrom:presentingVC sheetVC:targetVC detentStyle:PPSheetDetentStyleAdsView];
+        UINavigationController *nav = routingNav ?: presentingVC.navigationController;
+        if (!nav && vc.navigationController) {
+            nav = vc.navigationController;
+        }
+
+        if (nav) {
+            [nav pushViewController:targetVC animated:YES];
+        } else {
+            PPNavigationController *newNav =
+                [[PPNavigationController alloc] initWithRootViewController:targetVC];
+            newNav.modalPresentationStyle = UIModalPresentationFullScreen;
+            [presentingVC presentViewController:newNav animated:YES completion:nil];
+        }
     }
 
     // 🧩 PetAccessory → AccessViewerVC (push navigation)

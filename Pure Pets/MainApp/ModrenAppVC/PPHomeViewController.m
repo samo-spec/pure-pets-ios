@@ -16,7 +16,7 @@
 #import "PPDataViewVC.h"
 #import "PPPetProfile.h"
 #import "PPPetProfileEditorViewController.h"
- 
+#import "PPHomePremiumCareCell.h"
 #import "PPPetProfilesViewController.h"
 #import "PetCare/PPPetCareViewController.h"
 #import "PPVetLocator.h"
@@ -196,479 +196,7 @@ static CGFloat PPHomeSmoothStep(CGFloat value)
 
 
 
-@interface PPHomePremiumCareCell : UICollectionViewCell
-+ (NSString *)reuseIdentifier;
-- (void)configure;
-- (void)configureWithAnimationName:(NSString *)animationName;
-- (void)pp_configureCareAnimationNamed:(NSString *)animationName;
-- (void)pp_revealConfiguredCareAnimation;
-@end
 
-@implementation PPHomePremiumCareCell {
-    UIView *_surfaceView;
-    CAGradientLayer *_gradientLayer;
-    UIView *_bottomLeadingGlowView;
-    UIView *_iconPlateView;
-    UIImageView *_iconImageView;
-    LOTAnimationView *_careAnimationView;
-    UILabel *_eyebrowLabel;
-    UILabel *_titleLabel;
-    UILabel *_subtitleLabel;
-    UIStackView *_pillStackView;
-    UILabel *_medicinePillLabel;
-    UILabel *_vetPillLabel;
-    UIView *_ctaView;
-    UILabel *_ctaLabel;
-    UIImageView *_ctaIconView;
-    NSString *_currentCareAnimationName;
-    NSInteger _careAnimationLoadToken;
-    BOOL _didRevealCurrentCareAnimation;
-}
-
-+ (NSString *)reuseIdentifier
-{
-    return @"PPHomePremiumCareCell";
-}
-
-- (instancetype)initWithFrame:(CGRect)frame
-{
-    self = [super initWithFrame:frame];
-    if (!self) {
-        return nil;
-    }
-
-    self.backgroundColor = UIColor.clearColor;
-    self.contentView.backgroundColor = UIColor.clearColor;
-    self.isAccessibilityElement = YES;
-    self.accessibilityTraits = UIAccessibilityTraitButton;
-
-    _surfaceView = [[UIView alloc] init];
-    _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.layer.cornerRadius = 30.0;
-    _surfaceView.layer.borderWidth = 1.0;
-    _surfaceView.clipsToBounds = NO;
-    if (@available(iOS 13.0, *)) {
-        _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    _surfaceView.layer.shadowRadius = 24.0;
-    _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
-    [self.contentView addSubview:_surfaceView];
-
-    _gradientLayer = [CAGradientLayer layer];
-    _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    [_surfaceView.layer insertSublayer:_gradientLayer atIndex:0];
-
-    _bottomLeadingGlowView = [[UIView alloc] init];
-    _bottomLeadingGlowView.translatesAutoresizingMaskIntoConstraints = NO;
-    _bottomLeadingGlowView.layer.cornerRadius = 36.0;
-    _bottomLeadingGlowView.userInteractionEnabled = NO;
-    [_surfaceView insertSubview:_bottomLeadingGlowView atIndex:1];
-
-    _iconPlateView = [[UIView alloc] init];
-    _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconPlateView.layer.cornerRadius = 38.0;
-    _iconPlateView.layer.borderWidth = 0.8;
-    _iconPlateView.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        _iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView addSubview:_iconPlateView];
-
-    _iconImageView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"cross.case.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    _iconImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconImageView.contentMode = UIViewContentModeScaleAspectFit;
-    [_surfaceView addSubview:_iconImageView];
-
-    _careAnimationView = [[LOTAnimationView alloc] init];
-    _careAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
-    _careAnimationView.backgroundColor = UIColor.clearColor;
-    _careAnimationView.userInteractionEnabled = NO;
-    _careAnimationView.contentMode = UIViewContentModeScaleAspectFit;
-    _careAnimationView.loopAnimation = YES;
-    _careAnimationView.animationSpeed = 0.82;
-    _careAnimationView.hidden = YES;
-    [_surfaceView addSubview:_careAnimationView];
-
-    _eyebrowLabel = [[UILabel alloc] init];
-    _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    _eyebrowLabel.numberOfLines = 1;
-    [_surfaceView addSubview:_eyebrowLabel];
-
-    _titleLabel = [[UILabel alloc] init];
-    _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:28.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
-    _titleLabel.numberOfLines = 1;
-    _titleLabel.adjustsFontSizeToFitWidth = YES;
-    _titleLabel.minimumScaleFactor = 0.8;
-    [_surfaceView addSubview:_titleLabel];
-
-    _subtitleLabel = [[UILabel alloc] init];
-    _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
-    _subtitleLabel.numberOfLines = 2;
-    [_surfaceView addSubview:_subtitleLabel];
-
-    _pillStackView = [[UIStackView alloc] init];
-    _pillStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    _pillStackView.axis = UILayoutConstraintAxisHorizontal;
-    _pillStackView.alignment = UIStackViewAlignmentFill;
-    _pillStackView.spacing = 8.0;
-    _pillStackView.distribution = UIStackViewDistributionFillProportionally;
-    [_surfaceView addSubview:_pillStackView];
-
-    _medicinePillLabel = [self pp_makePillLabel];
-    _vetPillLabel = [self pp_makePillLabel];
-    [_pillStackView addArrangedSubview:_medicinePillLabel];
-    [_pillStackView addArrangedSubview:_vetPillLabel];
-
-    _ctaView = [[UIView alloc] init];
-    _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
-    _ctaView.layer.cornerRadius = 20.0;
-    _ctaView.layer.borderWidth = 0.8;
-    if (@available(iOS 13.0, *)) {
-        _ctaView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [_surfaceView addSubview:_ctaView];
-
-    _ctaLabel = [[UILabel alloc] init];
-    _ctaLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _ctaLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
-    [_ctaView addSubview:_ctaLabel];
-
-    NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
-    _ctaIconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:forwardSymbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate]];
-    _ctaIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    _ctaIconView.contentMode = UIViewContentModeScaleAspectFit;
-    [_ctaView addSubview:_ctaIconView];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
-
-        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-14.0],
-        [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:14.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant:76.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:76.0],
-
-        [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
-        [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_iconImageView.widthAnchor constraintEqualToConstant:25.0],
-        [_iconImageView.heightAnchor constraintEqualToConstant:25.0],
-
-        [_careAnimationView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
-        [_careAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_careAnimationView.widthAnchor constraintEqualToConstant:114.0],
-        [_careAnimationView.heightAnchor constraintEqualToConstant:114.0],
-
-        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
-        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
-        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:7.0],
-
-        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
-
-        [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
-        [_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
-
-        [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
-        [_ctaView.heightAnchor constraintEqualToConstant:40.0],
-        [_ctaView.topAnchor constraintEqualToAnchor:_pillStackView.bottomAnchor constant:10.0],
-
-        [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
-        [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
-        [_ctaLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_ctaIconView.leadingAnchor constant:-10.0],
-
-        [_ctaIconView.trailingAnchor constraintEqualToAnchor:_ctaView.trailingAnchor constant:-14.0],
-        [_ctaIconView.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
-        [_ctaIconView.widthAnchor constraintEqualToConstant:14.0],
-        [_ctaIconView.heightAnchor constraintEqualToConstant:14.0],
-
-        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-20.0],
-        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:18.0],
-        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:72.0],
-        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:72.0],
-    ]];
-
-    [self pp_applyTheme];
-    return self;
-}
-
-- (UILabel *)pp_makePillLabel
-{
-    PPHomeInsetLabel *label = [[PPHomeInsetLabel alloc] init];
-    label.translatesAutoresizingMaskIntoConstraints = NO;
-    label.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
-    label.textAlignment = NSTextAlignmentCenter;
-    label.numberOfLines = 1;
-    label.adjustsFontSizeToFitWidth = YES;
-    label.minimumScaleFactor = 0.82;
-    label.contentInsets = UIEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
-    label.layer.cornerRadius = 15.0;
-    label.layer.masksToBounds = YES;
-    label.layer.borderWidth = 0.8;
-    if (@available(iOS 13.0, *)) {
-        label.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [label.heightAnchor constraintEqualToConstant:30.0].active = YES;
-    [label.widthAnchor constraintGreaterThanOrEqualToConstant:92.0].active = YES;
-    [label setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    [label setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    return label;
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    _gradientLayer.frame = _surfaceView.bounds;
-    _gradientLayer.cornerRadius = _surfaceView.layer.cornerRadius;
-    _iconPlateView.layer.cornerRadius = CGRectGetHeight(_iconPlateView.bounds) * 0.5;
-    
-    _surfaceView.layer.shadowRadius = 28.0;
-    _surfaceView.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:_surfaceView.bounds
-                                   cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
-    
-    _bottomLeadingGlowView.layer.shadowPath =
-        [UIBezierPath bezierPathWithOvalInRect:_bottomLeadingGlowView.bounds].CGPath;
-}
-
-- (void)prepareForReuse
-{
-    [super prepareForReuse];
-    _careAnimationLoadToken += 1;
-    [_careAnimationView stop];
-    _careAnimationView.hidden = YES;
-    _careAnimationView.alpha = 0.0;
-    _iconImageView.hidden = NO;
-    _currentCareAnimationName = nil;
-    _eyebrowLabel.text = nil;
-    _titleLabel.text = nil;
-    _subtitleLabel.text = nil;
-    _medicinePillLabel.text = nil;
-    _vetPillLabel.text = nil;
-    _ctaLabel.text = nil;
-}
-
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
-{
-    [super traitCollectionDidChange:previousTraitCollection];
-    if (@available(iOS 13.0, *)) {
-        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-            [self pp_applyTheme];
-        }
-    }
-}
-
-- (void)pp_applyTheme
-{
-    BOOL isDark = NO;
-    if (@available(iOS 13.0, *)) {
-        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    }
-
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
-    UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *secondaryColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    UIColor *borderColor = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.10]
-        : [UIColor colorWithRed:0.72 green:0.66 blue:0.62 alpha:0.22];
-    UIColor *surfaceColor = isDark
-        ? [UIColor colorWithWhite:1.0 alpha:0.07]
-        : [UIColor colorWithWhite:1.0 alpha:0.78];
-
-    _surfaceView.backgroundColor = surfaceColor;
-    [_surfaceView pp_setBorderColor:borderColor];
-    _surfaceView.layer.shadowOpacity = isDark ? 0.0 : 0.11;
-    _gradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.16].CGColor,
-        (id)[UIColor clearColor].CGColor
-    ];
-    
-    _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.22 : 0.14];
-    [_bottomLeadingGlowView pp_setShadowColor:accent];
-    _bottomLeadingGlowView.layer.shadowOpacity = isDark ? 0.16 : 0.10;
-    _bottomLeadingGlowView.layer.shadowRadius = 32.0;
-    _bottomLeadingGlowView.layer.shadowOffset = CGSizeZero;
-    
-    _iconPlateView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.18 : 0.11];
-    [_iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
-    _iconImageView.tintColor = accent;
-    _eyebrowLabel.textColor = [accent colorWithAlphaComponent:isDark ? 0.92 : 0.82];
-    _titleLabel.textColor = titleColor;
-    _subtitleLabel.textColor = secondaryColor;
-    _ctaView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.18 : 0.10];
-    [_ctaView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
-    _ctaLabel.textColor = titleColor;
-    _ctaIconView.tintColor = titleColor;
-
-    for (UILabel *pill in @[_medicinePillLabel, _vetPillLabel]) {
-        pill.textColor = titleColor;
-        pill.backgroundColor = [UIColor colorWithWhite:isDark ? 1.0 : 0.0
-                                                alpha:isDark ? 0.06 : 0.035];
-        [pill pp_setBorderColor:borderColor];
-    }
-}
-
-- (void)configure
-{
-    [self configureWithAnimationName:@"pet-care1"];
-}
-
-- (void)configureWithAnimationName:(NSString *)animationName
-{
-    [self pp_applyTheme];
-    self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
-    _surfaceView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
-    _eyebrowLabel.textAlignment = PPHomeCurrentTextAlignment();
-    _titleLabel.textAlignment = PPHomeCurrentTextAlignment();
-    _subtitleLabel.textAlignment = PPHomeCurrentTextAlignment();
-    _ctaLabel.textAlignment = PPHomeCurrentTextAlignment();
-
-    _eyebrowLabel.text = kLang(@"home_premium_care_eyebrow") ?: @"Premium care";
-    _titleLabel.text = kLang(@"home_premium_care_title") ?: @"Medicines and vets";
-    _subtitleLabel.text = kLang(@"home_premium_care_subtitle") ?: @"Pet medicine and veterinarian care in one refined place.";
-    _medicinePillLabel.text = kLang(@"pet_care_medicines") ?: @"Medicines";
-    _vetPillLabel.text = kLang(@"pet_care_veterinarians") ?: @"Veterinarians";
-    _ctaLabel.text = kLang(@"home_premium_care_cta") ?: @"Open care center";
-
-    NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
-    _ctaIconView.image = [[UIImage systemImageNamed:forwardSymbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    [self pp_configureCareAnimationNamed:animationName];
-    self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",
-                               _titleLabel.text ?: @"",
-                               _subtitleLabel.text ?: @""];
-}
-
-- (void)pp_configureCareAnimationNamed:(NSString *)animationName
-{
-    NSString *safeName = PPSafeString(animationName);
-    if (safeName.length == 0) {
-        safeName = @"pet-care1";
-    }
-
-    if ([_currentCareAnimationName isEqualToString:safeName]) {
-        BOOL needsReveal = _careAnimationView.hidden
-            || _careAnimationView.alpha < 0.99
-            || _iconImageView.hidden == NO
-            || _iconImageView.alpha > 0.01
-            || !CGAffineTransformEqualToTransform(_careAnimationView.transform, CGAffineTransformIdentity);
-        if (needsReveal && _careAnimationView.sceneModel) {
-            [self pp_revealConfiguredCareAnimation];
-            return;
-        }
-        if (!_careAnimationView.hidden && !_careAnimationView.isAnimationPlaying) {
-            [_careAnimationView play];
-        }
-        return;
-    }
-
-    _currentCareAnimationName = safeName;
-    _careAnimationLoadToken += 1;
-    NSInteger token = _careAnimationLoadToken;
-    _didRevealCurrentCareAnimation = NO;
-
-    [_careAnimationView stop];
-    _careAnimationView.hidden = YES;
-    _careAnimationView.alpha = 0.0;
-    _careAnimationView.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
-    _iconImageView.hidden = NO;
-    _iconImageView.alpha = 1.0;
-    _iconImageView.transform = CGAffineTransformIdentity;
-
-    __weak typeof(self) weakSelf = self;
-    [AppClasses setAnimationNamed:safeName
-                            ToView:_careAnimationView
-                         withSpeed:0.82
-                        completion:^(BOOL success) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || strongSelf->_careAnimationLoadToken != token) {
-                return;
-            }
-
-            if (!success) {
-                strongSelf->_careAnimationView.hidden = YES;
-                strongSelf->_iconImageView.hidden = NO;
-                return;
-            }
-
-            [strongSelf pp_revealConfiguredCareAnimation];
-        });
-    }];
-}
-
-- (void)pp_revealConfiguredCareAnimation
-{
-    BOOL isAlreadyRevealed =
-        _didRevealCurrentCareAnimation
-        && !_careAnimationView.hidden
-        && _careAnimationView.alpha >= 0.99
-        && CGAffineTransformEqualToTransform(_careAnimationView.transform, CGAffineTransformIdentity);
-    if (isAlreadyRevealed) {
-        if (!_careAnimationView.isAnimationPlaying) {
-            [_careAnimationView play];
-        }
-        _iconImageView.hidden = YES;
-        _iconImageView.alpha = 0.0;
-        _iconImageView.transform = CGAffineTransformIdentity;
-        return;
-    }
-
-    _didRevealCurrentCareAnimation = YES;
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        _careAnimationView.hidden = NO;
-        _careAnimationView.alpha = 1.0;
-        _careAnimationView.transform = CGAffineTransformIdentity;
-        _iconImageView.hidden = YES;
-        _iconImageView.alpha = 0.0;
-        _iconImageView.transform = CGAffineTransformIdentity;
-        if (!_careAnimationView.isAnimationPlaying) {
-            [_careAnimationView play];
-        }
-        return;
-    }
-
-    _careAnimationView.loopAnimation = YES;
-    _careAnimationView.hidden = NO;
-    [_careAnimationView setNeedsLayout];
-    [_careAnimationView layoutIfNeeded];
-    [_careAnimationView play];
-
-    _careAnimationView.alpha = 0.0;
-    _careAnimationView.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
-    _iconImageView.hidden = NO;
-    _iconImageView.alpha = 1.0;
-    _iconImageView.transform = CGAffineTransformIdentity;
-
-    [UIView animateWithDuration:0.32
-                          delay:0.02
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self->_careAnimationView.alpha = 1.0;
-        self->_careAnimationView.transform = CGAffineTransformIdentity;
-        self->_iconImageView.alpha = 0.0;
-        self->_iconImageView.transform = CGAffineTransformMakeTranslation(0.0, -4.0);
-    } completion:^(__unused BOOL finished) {
-        self->_iconImageView.hidden = YES;
-        self->_iconImageView.transform = CGAffineTransformIdentity;
-    }];
-}
-
-@end
 
 @interface PPHomePetProfileCardCell : UICollectionViewCell
 + (NSString *)reuseIdentifier;
@@ -2215,7 +1743,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     static NSArray<NSString *> *names = nil;
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
-        names = @[@"pet-care1", @"pet-care2", @"pet-care3", @"pet-care4", @"pet-care5"];
+        names = @[@"Health1"]; // @"pet-care2", @"pet-care3", @"pet-care4", @"pet-care5"
     });
     return names;
 }
@@ -2223,14 +1751,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (NSString *)pp_currentPremiumCareAnimationName
 {
     NSString *name = PPSafeString(self.currentPremiumCareAnimationName);
-    return name.length > 0 ? name : @"pet-care1";
+    return name.length > 0 ? name : @"Health1";
 }
 
 - (void)pp_advancePremiumCareAnimationForAppearance
 {
     NSArray<NSString *> *names = [self pp_premiumCareAnimationNames];
     if (names.count == 0) {
-        self.currentPremiumCareAnimationName = @"pet-care1";
+        self.currentPremiumCareAnimationName = @"Health1";
         return;
     }
 
@@ -2566,10 +2094,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     ] mutableCopy];
     [sections addObjectsFromArray:@[
         @(PPHomeSectionCurrentOrders),
-        @(PPHomeSectionPremiumCare),
+        @(PPHomeSectionCarousel),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
-        @(PPHomeSectionCarousel),
+        @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
@@ -10233,7 +9761,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyOrderDetailsBackgroundAppearance
 {
-    self.view.backgroundColor = [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    self.view.backgroundColor = AppBackgroundClr;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
     self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     [self pp_updatePremiumBackgroundGlowAppearance];
@@ -10310,8 +9838,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     }
 
-    UIColor *primaryColor = [GM appPrimaryColor] ?: AppPrimaryClr ?: UIColor.systemPinkColor;
-    UIColor *secondaryColor = AppPrimaryClrShiner ?: [primaryColor colorWithAlphaComponent:1.0];
+    UIColor *primaryColor = NewBgColor ?: AppPrimaryClr ?: UIColor.systemPinkColor;
+    UIColor *secondaryColor = AppPrimaryClr ?: [primaryColor colorWithAlphaComponent:1.0];
     UIColor *ambientColor = isDark ? UIColor.whiteColor : UIColor.blackColor;
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop

@@ -524,6 +524,8 @@ static UIColor *PPCheckoutSoftStrokeColor(void) {
     self.cardView.layer.shadowOpacity = 0.16f;
     self.cardView.layer.shadowRadius = 30.0f;
     self.cardView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    
+    
     if (@available(iOS 13.0, *)) {
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }

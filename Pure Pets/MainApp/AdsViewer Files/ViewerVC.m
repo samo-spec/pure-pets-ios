@@ -14,6 +14,10 @@
 @interface ViewerVC()<UIGestureRecognizerDelegate,UIScrollViewDelegate>
 @property (nonatomic, strong) CAGradientLayer *contactGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *galleryScrimLayer;
+@property (nonatomic, strong) CAGradientLayer *contentSurfaceGradientLayer;
+@property (nonatomic, strong) CAGradientLayer *descriptionSurfaceGradientLayer;
+@property (nonatomic, strong) UIView *ambientGlowTopView;
+@property (nonatomic, strong) UIView *ambientGlowBottomView;
 @property PetImageGalleryView *imageGallery;
 @property UserModel *ownerModel;
 @property PPSimilarAdsView *similarAdsView;
@@ -21,6 +25,7 @@
 @property (nonatomic, assign) BOOL didAnimate;
 @property (nonatomic, strong) UIScrollView *contentScrollView;
 @property (nonatomic, strong) UIView *contentContainer;
+@property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIView *titleCard;
 @property (nonatomic, strong) UIVisualEffectView *titleBlurView;
 @property PetAdCardView *petCard;
@@ -28,6 +33,7 @@
 @property (nonatomic, strong) NSLayoutConstraint *tableViewTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *tableViewHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *imageGalleryHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
 
 @property (nonatomic, assign) BOOL isFavorite;
 @property (nonatomic, strong) UserContactView *contactView;
@@ -41,6 +47,7 @@
 @property (nonatomic, strong) UIButton *galleryFavoriteButton;
 @property (nonatomic, strong) UIButton *galleryDismissButton;
 @property (nonatomic, strong) UIButton *galleryReportButton;
+@property (nonatomic, strong) UIView *descriptionSurfaceView;
 @property (nonatomic, strong) UITextView *descriptionTextView;
 @property (nonatomic, strong) NSLayoutConstraint *descriptionHeightConstraint;
 @property (nonatomic, assign) CGFloat galleryMinHeight;
@@ -53,10 +60,17 @@
 @property (nonatomic, strong) UIView *similarAccessoriesSeparator;
 @property (nonatomic, assign) BOOL didTrackViewInteraction;
 @property (nonatomic, strong) NSLayoutConstraint *contactViewHeightConstraint;
+@property (nonatomic, strong) UIView *contactDockView;
+@property (nonatomic, strong) NSLayoutConstraint *contactDockHeightConstraint;
 @property (nonatomic, strong) UIVisualEffectView *contactLockOverlayView;
 @property (nonatomic, strong) UIButton *contactLockButton;
 @property (nonatomic, assign) BOOL isLoadingOwnerModel;
 @property (nonatomic, strong) UIView *galleryScrimView;
+@property (nonatomic, assign) BOOL didCaptureNavigationBarState;
+@property (nonatomic, assign) BOOL previousNavigationBarHidden;
+@property (nonatomic, strong) UIBarButtonItem *favBarButtonItem;
+@property (nonatomic, strong) UIBarButtonItem *shareBarButtonItem;
+@property (nonatomic, strong) UIBarButtonItem *reportBarButtonItem;
 
 @end
 
@@ -67,22 +81,144 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.actionPadding = 20.00;
-    
+
     self.isFavorite = NO; // default
     [self initData];
     NSLog(@"USER ------>>> %@",self.ad.ownerID);
     NSLog(@"adID ------>>> %@",self.ad.adID);
 }
 
+- (UIView *)pp_makeAmbientGlowViewWithRadius:(CGFloat)radius
+{
+    UIView *view = [[UIView alloc] init];
+    view.translatesAutoresizingMaskIntoConstraints = NO;
+    view.userInteractionEnabled = NO;
+    view.layer.cornerRadius = radius;
+    view.layer.shadowRadius = 58.0;
+    view.layer.shadowOpacity = 0.22;
+    view.layer.shadowOffset = CGSizeZero;
+    return view;
+}
+
+- (void)pp_buildLiveBackgroundIfNeeded
+{
+    if (self.ambientGlowTopView || self.ambientGlowBottomView) {
+        return;
+    }
+
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    self.ambientGlowTopView = [self pp_makeAmbientGlowViewWithRadius:132.0];
+    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.13 : 0.16];
+    [self.ambientGlowTopView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.22 : 0.18]];
+    [self.view addSubview:self.ambientGlowTopView];
+
+    self.ambientGlowBottomView = [self pp_makeAmbientGlowViewWithRadius:156.0];
+    self.ambientGlowBottomView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.09 : 0.11];
+    [self.ambientGlowBottomView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.18 : 0.15]];
+    [self.view addSubview:self.ambientGlowBottomView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.ambientGlowTopView.widthAnchor constraintEqualToConstant:264.0],
+        [self.ambientGlowTopView.heightAnchor constraintEqualToConstant:264.0],
+        [self.ambientGlowTopView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-74.0],
+        [self.ambientGlowTopView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:92.0],
+
+        [self.ambientGlowBottomView.widthAnchor constraintEqualToConstant:312.0],
+        [self.ambientGlowBottomView.heightAnchor constraintEqualToConstant:312.0],
+        [self.ambientGlowBottomView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-128.0],
+        [self.ambientGlowBottomView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:122.0],
+    ]];
+}
+
+- (void)pp_styleSeparator:(UIView *)separator
+{
+    if (!separator) {
+        return;
+    }
+
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
+    separator.backgroundColor = [accent colorWithAlphaComponent:0.16];
+    separator.alpha = 1.0;
+}
+
+- (void)pp_applyViewerTheme
+{
+    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *surfaceColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);
+
+    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.15];
+    self.ambientGlowBottomView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.08 : 0.10];
+    [self.ambientGlowTopView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.20 : 0.17]];
+    [self.ambientGlowBottomView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.18 : 0.14]];
+
+    self.contentScrollView.backgroundColor = UIColor.clearColor;
+    [self.contentScrollView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.08 : 0.18]];
+    self.contentSurfaceGradientLayer.colors = @[
+        (__bridge id)[surfaceColor colorWithAlphaComponent:dark ? 0.76 : 0.94].CGColor,
+        (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.58 : 0.86].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.035 : 0.060].CGColor
+    ];
+    self.contentSurfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
+    self.contentSurfaceGradientLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.contentSurfaceGradientLayer.endPoint = CGPointMake(0.5, 1.0);
+
+    self.titleCard.layer.shadowOpacity = dark ? 0.28 : 0.18;
+    self.titleCard.layer.shadowRadius = dark ? 34.0 : 30.0;
+    [self.titleCard pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.10 : 0.18]];
+
+    self.descriptionSurfaceView.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.34 : 0.64];
+    [self.descriptionSurfaceView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.13 : 0.10]];
+    [self.descriptionSurfaceView pp_setShadowColor:UIColor.blackColor];
+    self.descriptionSurfaceView.layer.shadowOpacity = dark ? 0.18 : 0.07;
+    self.descriptionSurfaceView.layer.shadowRadius = dark ? 22.0 : 18.0;
+    self.descriptionSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    self.descriptionSurfaceGradientLayer.colors = @[
+        (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.16 : 0.42].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.045 : 0.065].CGColor
+    ];
+    self.descriptionSurfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.descriptionSurfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+
+    [self pp_styleSeparator:self.similarAdsSeparator];
+    [self pp_styleSeparator:self.similarAccessoriesSeparator];
+
+    self.contactDockView.layer.shadowOpacity = dark ? 0.26 : 0.18;
+    self.contactDockView.layer.shadowRadius = dark ? 32.0 : 28.0;
+    self.contactView.backgroundColor = [surfaceColor colorWithAlphaComponent:dark ? 0.52 : 0.74];
+    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.12 : 0.18]];
+    self.contactGradientLayer.colors = @[
+        (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.42 : 0.90].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.13 : 0.16].CGColor,
+        (__bridge id)[surfaceColor colorWithAlphaComponent:dark ? 0.24 : 0.46].CGColor
+    ];
+
+    self.contactLockOverlayView.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.14 : 0.08];
+    [self.contactLockOverlayView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.12 : 0.18]];
+    [self pp_styleContactActionButtons];
+}
+
 - (void)initData {
-    
+    self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);
+    [self pp_buildLiveBackgroundIfNeeded];
+
     self.imageGallery = [[PetImageGalleryView alloc] initWithFrame:CGRectZero
                                                         imageItems:self.ad.imageItems
                                                        galleryType:PetImageGalleryTypePetAd
                                                         itemHeight:0
                                                           parentVC:self
                                                                obj:self.ad];
-    
+
     self.imageGallery.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:self.imageGallery];
     self.imageGallery.layer.cornerRadius = 41.0;
@@ -92,16 +228,16 @@
     self.imageGallery.clipsToBounds = YES;
     self.imageGallery.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
     self.imageGallery.currentAd = self.ad;
-    
+
     CGFloat galleryMaxHeight = self.view.hx_h * 0.5;
     CGFloat galleryHeight = self.view.bounds.size.height * 0.5;
     galleryHeight = MAX(galleryMaxHeight, 380);
     galleryHeight = MIN(galleryHeight, 540);
     self.galleryMaxHeight = galleryHeight;
     self.galleryMinHeight = MAX(320.0, galleryHeight - 84.0);
-    
+
     // Setup imageGallery constraints
-    
+
     self.imageGalleryHeightConstraint = [self.imageGallery.heightAnchor constraintEqualToConstant:galleryHeight];
     [NSLayoutConstraint activateConstraints:@[
         [self.imageGallery.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:0.5],
@@ -138,8 +274,8 @@
         (__bridge id)[[UIColor blackColor] colorWithAlphaComponent:0.34].CGColor
     ];
     [self.galleryScrimView.layer addSublayer:self.galleryScrimLayer];
-    
-    
+
+
     // --- Title Card Container ---
     self.titleCard = [[UIView alloc] init];
     self.titleCard.translatesAutoresizingMaskIntoConstraints = NO;
@@ -201,7 +337,7 @@
     ]];
 
     [self.view addSubview:self.titleCard];
-    
+
     self.petsTitleView = [[PPPetsTitleView alloc] init];
     [self.petsTitleView configureWithTitle:self.ad.adTitle
                                   location:(self.ad.adLocation > 0
@@ -209,35 +345,39 @@
                                             : nil) price:[GM formatPrice:self.ad.price
                                                             currencyCode:kLang(@"Rials")]];
     self.petsTitleView.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    
+
+
     self.contentScrollView = [[UIScrollView alloc] init];
     self.contentScrollView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentScrollView.showsVerticalScrollIndicator = NO;
     self.contentScrollView.alwaysBounceVertical = YES;
     self.contentScrollView.delegate = self;
     self.contentScrollView.decelerationRate = UIScrollViewDecelerationRateNormal;
-    self.contentScrollView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98];
+    self.contentScrollView.backgroundColor = UIColor.clearColor;
     self.contentScrollView.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
     self.contentScrollView.layer.cornerRadius = 34.0;
     if (@available(iOS 13.0, *)) {
         self.contentScrollView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    self.contentScrollView.clipsToBounds = YES;
     self.contentScrollView.layer.borderWidth = 0.5;
     [self.contentScrollView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    self.contentSurfaceGradientLayer = [CAGradientLayer layer];
+    self.contentSurfaceGradientLayer.cornerRadius = self.contentScrollView.layer.cornerRadius;
+    [self.contentScrollView.layer insertSublayer:self.contentSurfaceGradientLayer atIndex:0];
     [self.view addSubview:self.contentScrollView];
-    
+
     [NSLayoutConstraint activateConstraints:@[
         [self.contentScrollView.topAnchor constraintEqualToAnchor:self.imageGallery.bottomAnchor constant:-36],
         [self.contentScrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.contentScrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.contentScrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
-    
+
     self.contentContainer = [[UIView alloc] init];
     self.contentContainer.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentScrollView addSubview:self.contentContainer];
-    
+
     if (@available(iOS 11.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
             [self.contentContainer.topAnchor constraintEqualToAnchor:self.contentScrollView.contentLayoutGuide.topAnchor],
@@ -255,8 +395,8 @@
             [self.contentContainer.widthAnchor constraintEqualToAnchor:self.contentScrollView.widthAnchor]
         ]];
     }
-    
-    
+
+
     [self.titleCard addSubview:self.petsTitleView];
 
     // Constraints for titleCard
@@ -266,8 +406,8 @@
         [self.titleCard.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-18],
         [self.titleCard.heightAnchor constraintEqualToConstant:86]
     ]];
-    
-    
+
+
     // Constraints for petsTitleView inside titleCard
     [NSLayoutConstraint activateConstraints:@[
         [self.petsTitleView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor constant:0],
@@ -275,23 +415,24 @@
         [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-0],
         [self.petsTitleView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor constant:-0]
     ]];
-    
-    
-    
-   
+
+
+
+
     //[self.view bringSubviewToFront:self.imageGallery];
     [self.view bringSubviewToFront:self.titleCard];
     // --- Gallery Overlay Controls ---
-    
-    
-    
-    
+
+
+
+
     [self initInfoView];
     [self initdescriptionTextView];
     [self initUserContactView];
     [self initSimilarAds];
     [self initSimilarAccess];
     [self initButtons];
+    [self pp_applyViewerTheme];
     [self pp_prepareEntranceAnimationState];
 }
 
@@ -301,6 +442,7 @@
 {
     [super viewDidAppear:animated];
     [self pp_beginEntranceAnimationsIfNeeded];
+    [self pp_startLiveMotionIfNeeded];
     if (!self.didTrackViewInteraction) {
         self.didTrackViewInteraction = YES;
         [self trackAdInteraction:PPItemInteractionTypeView];
@@ -312,7 +454,7 @@
 
 -(void)initInfoView
 {
-    
+
     NSString *ageString;
     if (Language.isRTL)
         ageString = [NSString stringWithFormat:@"%@ شهر",
@@ -321,12 +463,12 @@
         ageString = [NSString stringWithFormat:@"%@ month %@",
                      self.ad.petAgeMonths,
                      self.ad.petAgeMonths .integerValue> 1 ? @"s" : @""];
-    
+
     NSString *gender = self.ad.isFemale ? kLang(@"female") :  kLang(@"male");
     NSString *SubKindName = [SubKindModel getSubKindName:self.ad.subcategory subKindsArrayLocal:[MKM getSubKindArray:self.ad.category]];
     // --- Actions Container StackView ---
-    
-    
+
+
     self.infoView =
     [[PPInfoPillsView alloc] initWithItems:@[
         [PPInfoPill itemWithIcon:@"figure.dress.line.vertical.figure"
@@ -335,20 +477,34 @@
                             text:ageString],
         [PPInfoPill itemWithIcon:@"pawprint.fill"
                             text:SubKindName],
-        
+
     ]];
     [self.contentContainer addSubview:self.infoView];
-    
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.infoView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:18],
+        [self.infoView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:20],
         [self.infoView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:18],
         [self.infoView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-18],
-        [self.infoView.heightAnchor constraintGreaterThanOrEqualToConstant:64]
+        [self.infoView.heightAnchor constraintGreaterThanOrEqualToConstant:66]
     ]];
 }
 
 
 - (void)initdescriptionTextView {
+    self.descriptionSurfaceView = [[UIView alloc] init];
+    self.descriptionSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.descriptionSurfaceView.layer.cornerRadius = 26.0;
+    if (@available(iOS 13.0, *)) {
+        self.descriptionSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    self.descriptionSurfaceView.layer.borderWidth = 0.75;
+    self.descriptionSurfaceView.clipsToBounds = NO;
+    [self.contentContainer addSubview:self.descriptionSurfaceView];
+
+    self.descriptionSurfaceGradientLayer = [CAGradientLayer layer];
+    self.descriptionSurfaceGradientLayer.cornerRadius = self.descriptionSurfaceView.layer.cornerRadius;
+    [self.descriptionSurfaceView.layer insertSublayer:self.descriptionSurfaceGradientLayer atIndex:0];
+
     self.descriptionTextView = [[UITextView alloc] init];
     self.descriptionTextView.translatesAutoresizingMaskIntoConstraints = NO;
     self.descriptionTextView.scrollEnabled = NO;   // ✅ key
@@ -357,7 +513,7 @@
     self.descriptionTextView.backgroundColor = UIColor.clearColor;
     self.descriptionTextView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
     self.descriptionTextView.textAlignment = NSTextAlignmentNatural;
-    self.descriptionTextView.textContainerInset = UIEdgeInsetsMake(12, 0, 14, 0);
+    self.descriptionTextView.textContainerInset = UIEdgeInsetsMake(8, 0, 10, 0);
     self.descriptionTextView.textContainer.lineFragmentPadding = 0;
     self.descriptionTextView.font = [GM MidFontWithSize:16];
     self.descriptionTextView.adjustsFontForContentSizeCategory = YES;
@@ -365,9 +521,9 @@
         NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.systemBlueColor,
         NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle)
     };
-    
+
     NSString *desc = self.ad.adDescription;
-    
+
     if (desc.length > 0) {
         self.descriptionTextView.attributedText =
         [self pp_styledDescriptionFromText:desc];
@@ -382,94 +538,111 @@
                 UIColor.secondaryLabelColor
         }];
     }
-    [self.contentContainer addSubview:self.descriptionTextView];
-    
-    
+    [self.descriptionSurfaceView addSubview:self.descriptionTextView];
+
+
     self.descriptionHeightConstraint =
     [self.descriptionTextView.heightAnchor
      constraintGreaterThanOrEqualToConstant:44];
     self.descriptionHeightConstraint.priority = UILayoutPriorityDefaultHigh;
-    
+
     [NSLayoutConstraint activateConstraints:@[
+        [self.descriptionSurfaceView.topAnchor
+         constraintEqualToAnchor:self.infoView.bottomAnchor constant:16],
+        [self.descriptionSurfaceView.leadingAnchor
+         constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:18],
+        [self.descriptionSurfaceView.trailingAnchor
+         constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-18],
+
         [self.descriptionTextView.topAnchor
-         constraintEqualToAnchor:self.infoView.bottomAnchor constant:14],
+         constraintEqualToAnchor:self.descriptionSurfaceView.topAnchor constant:12],
         [self.descriptionTextView.leadingAnchor
-         constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:24],
+         constraintEqualToAnchor:self.descriptionSurfaceView.leadingAnchor constant:18],
         [self.descriptionTextView.trailingAnchor
-         constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-24],
+         constraintEqualToAnchor:self.descriptionSurfaceView.trailingAnchor constant:-18],
+        [self.descriptionTextView.bottomAnchor
+         constraintEqualToAnchor:self.descriptionSurfaceView.bottomAnchor constant:-12],
         self.descriptionHeightConstraint
     ]];
-   
+
 }
 
 
 - (void)initUserContactView {
-   
+    self.contactDockView = [[UIView alloc] init];
+    self.contactDockView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.contactDockView.backgroundColor = UIColor.clearColor;
+    self.contactDockView.layer.cornerRadius = 32.0;
+    if (@available(iOS 13.0, *)) {
+        self.contactDockView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.contactDockView pp_setShadowColor:UIColor.blackColor];
+    self.contactDockView.layer.shadowOpacity = 0.18;
+    self.contactDockView.layer.shadowRadius = 28.0;
+    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    [self.view addSubview:self.contactDockView];
+
     self.contactView = [[UserContactView alloc] initWithFrame:CGRectZero];
     self.contactView.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.contentContainer addSubview:self.contactView];
-    
-    // Style
+    [self.contactDockView addSubview:self.contactView];
+
     self.contactView.layer.cornerRadius = 26.0;
     if (@available(iOS 13.0, *)) {
         self.contactView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    self.contactView.layer.shadowOpacity = 0.08;
-    self.contactView.layer.shadowRadius = 18;
-    self.contactView.layer.shadowOffset = CGSizeMake(0, 12);
-    self.contactView.layer.borderWidth = 0.5;
-    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
-    
-    // ✅ NOW add gradient
+    self.contactView.clipsToBounds = YES;
+    self.contactView.layer.borderWidth = 0.75;
+    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.14]];
+
     self.contactGradientLayer = [CAGradientLayer layer];
     self.contactGradientLayer.colors = @[
         (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:0.92].CGColor,
-        (__bridge id)[AppPrimaryClr ?: UIColor.systemPinkColor colorWithAlphaComponent:0.18].CGColor
+        (__bridge id)[(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.18].CGColor
     ];
     self.contactGradientLayer.startPoint = CGPointMake(0.0, 0.0);
     self.contactGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     self.contactGradientLayer.cornerRadius = 26.0;
-    
     [self.contactView.layer insertSublayer:self.contactGradientLayer atIndex:0];
-    
-    
+
     self.contactView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
     self.contactView.semanticContentAttribute = GM.setSemantic;
-    // Style
     self.contactViewHeightConstraint = [self.contactView.heightAnchor constraintEqualToConstant:64];
-    
+    self.contactDockHeightConstraint = [self.contactDockView.heightAnchor constraintEqualToConstant:84.0];
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.contactView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:18],
-        [self.contactView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-18],
-        [self.contactView.topAnchor constraintEqualToAnchor:self.descriptionTextView.bottomAnchor constant:16],
+        [self.contactDockView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:12],
+        [self.contactDockView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
+        [self.contactDockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-10],
+        self.contactDockHeightConstraint,
+
+        [self.contactView.leadingAnchor constraintEqualToAnchor:self.contactDockView.leadingAnchor constant:8],
+        [self.contactView.trailingAnchor constraintEqualToAnchor:self.contactDockView.trailingAnchor constant:-8],
+        [self.contactView.topAnchor constraintEqualToAnchor:self.contactDockView.topAnchor constant:10],
         self.contactViewHeightConstraint,
     ]];
-    self.contactView.layer.shouldRasterize = YES;
-    self.contactView.layer.rasterizationScale = UIScreen.mainScreen.scale;
+    [self.view bringSubviewToFront:self.contactDockView];
     [self pp_styleContactActionButtons];
 
     [self pp_updateContactAccessStateAnimated:NO];
 }
 - (void)initSimilarAds {
-    
+
     UIView *separator = [[UIView alloc] init];
     separator.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    // Dynamic separator color (Apple-style)
-    separator.backgroundColor = [UIColor separatorColor];
-    separator.alpha = 0.9;
+
+    [self pp_styleSeparator:separator];
     [self.contentContainer addSubview:separator];
     self.similarAdsSeparator = separator;
     self.similarAdsSeparator.hidden = YES;
     [NSLayoutConstraint activateConstraints:@[
-        [separator.topAnchor constraintEqualToAnchor:self.contactView.bottomAnchor constant:24],
+        [separator.topAnchor constraintEqualToAnchor:self.descriptionSurfaceView.bottomAnchor constant:26],
         [separator.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:28],
         [separator.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-28],
-        
+
         // Hairline thickness (1px, not 1pt)
         [separator.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
     ]];
-    
+
     // petsTitleView,infoView,contactView,descriptionTextView,similarAdsView
     self.similarAdsView = [[PPSimilarAdsView alloc] initWithFrame:CGRectZero];
     self.similarAdsView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -488,16 +661,16 @@
     };
     // ✅ MUST be added before constraints
     [self.contentContainer addSubview:self.similarAdsView];
-    
+
     [NSLayoutConstraint activateConstraints:@[
         [self.similarAdsView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:0],
         [self.similarAdsView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-0],
-        
+
         // ⛔️ also fix this (see below)
         [self.similarAdsView.topAnchor constraintEqualToAnchor:separator.bottomAnchor constant:18],
     ]];
-    
-    
+
+
     PetAd *ad = [[PetAd alloc]init];
     ad.adID = self.ad.adID;
     ad.category = self.ad.category;
@@ -513,13 +686,11 @@
 
 
 - (void)initSimilarAccess {
-    
+
     UIView *separator = [[UIView alloc] init];
     separator.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    // Dynamic separator color (Apple-style)
-    separator.backgroundColor = [UIColor separatorColor];
-    separator.alpha = 0.9;
+
+    [self pp_styleSeparator:separator];
     [self.contentContainer addSubview:separator];
     self.similarAccessoriesSeparator = separator;
     self.similarAccessoriesSeparator.hidden = YES;
@@ -527,11 +698,11 @@
         [separator.topAnchor constraintEqualToAnchor:self.similarAdsView.bottomAnchor constant:24],
         [separator.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:28],
         [separator.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-28],
-        
+
         // Hairline thickness (1px, not 1pt)
         [separator.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
     ]];
-   
+
 
     // petsTitleView,infoView,contactView,descriptionTextView,similarAdsView
     self.similarAccessView = [[PPSimilarAdsView alloc] initWithFrame:CGRectZero];
@@ -551,27 +722,27 @@
     };
     // ✅ MUST be added before constraints
     [self.contentContainer addSubview:self.similarAccessView];
-    
+
     [NSLayoutConstraint activateConstraints:@[
         [self.similarAccessView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:0],
         [self.similarAccessView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-0],
-        
+
         // ⛔️ also fix this (see below)
         [self.similarAccessView.topAnchor constraintEqualToAnchor:separator.bottomAnchor constant:18],
-        
+
         [self.similarAccessView.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:-28],
     ]];
-    
-    
+
+
     PetAd *ad = [[PetAd alloc]init];
     ad.adID = self.ad.adID;
     ad.category = self.ad.category;
     ad.adTitle = self.ad.adTitle;
     ad.subcategory = 0;
-    
-    
+
+
     [[PetAccessoryManager sharedManager] fetchAccessoriesForMainCategoryID:self.ad.category subCategoryID:0 limit:15 completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
-          
+
         NSArray<PPUniversalCellViewModel *> *models = [self buildViewModelsFromModels:accessories];
         //NSLog(@"models %@",[models modelToJSONString]);
         [self.similarAccessView updateWithViewModels:models];
@@ -582,13 +753,13 @@
 - (NSArray<PPUniversalCellViewModel *> *) buildViewModelsFromModels:(NSArray *)models
 {
     NSMutableArray *result = [NSMutableArray arrayWithCapacity:models.count];
-    
+
     for (id model in models) {
         PPUniversalCellViewModel *vm =
         [[PPUniversalCellViewModel alloc] initWithModel:model context:PPCellForAds];
         if (vm) [result addObject:vm];
     }
-    
+
     return result;
 }
 
@@ -599,25 +770,25 @@
                                       action:@selector(shareAdBTN:)];
     self.galleryShareButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_share_ad", @"Share ad");
     self.galleryShareButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_share_ad_hint", @"Double-tap to share this ad");
-    
+
     self.galleryFavoriteButton =
     [self pp_makeGlassCircleButtonWithSymbol:@"heart"
                                       action:@selector(toggleFavorite)];
     self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
     self.galleryFavoriteButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_favorite_hint", @"Double-tap to add or remove from favorites");
-    
+
     self.galleryReportButton =
     [self pp_makeGlassCircleButtonWithSymbol:@"flag"
                                       action:@selector(reportAdBTN:)];
     self.galleryReportButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_report_ad", @"Report ad");
     self.galleryReportButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_report_ad_hint", @"Double-tap to report this ad");
-    
+
     self.galleryDismissButton =
     [self pp_makeGlassCircleButtonWithSymbol:@"xmark"
                                       action:@selector(dismiss)];
     self.galleryDismissButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_close", @"Close");
     self.galleryDismissButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_close_hint", @"Double-tap to close this screen");
-    
+
     NSMutableArray *leadingButtons = [NSMutableArray arrayWithObjects:
         self.galleryShareButton,
         self.galleryFavoriteButton,
@@ -632,20 +803,20 @@
 
     self.galleryLeadingStack =
     [[UIStackView alloc] initWithArrangedSubviews:leadingButtons];
-    
+
     self.galleryLeadingStack.axis = UILayoutConstraintAxisVertical;
     self.galleryLeadingStack.spacing = 12;
     self.galleryLeadingStack.alignment = UIStackViewAlignmentCenter;
     self.galleryLeadingStack.translatesAutoresizingMaskIntoConstraints = NO;
-    
+
     [self.view addSubview:self.galleryLeadingStack];
     [self.view addSubview:self.galleryDismissButton];
-    
+
     [NSLayoutConstraint activateConstraints:@[
         // Leading vertical buttons
         [self.galleryLeadingStack.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-18],
         [self.galleryLeadingStack.topAnchor constraintEqualToAnchor:self.imageGallery.topAnchor constant:18],
-        
+
         // Trailing dismiss
         [self.galleryDismissButton.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:18],
         [self.galleryDismissButton.topAnchor constraintEqualToAnchor:self.imageGallery.topAnchor constant:18],
@@ -675,30 +846,30 @@
 - (void)setSymbol:(NSString *)symbol
         forButton:(UIButton *)button
            filled:(BOOL)filled {
-    
+
     if (!button) return;
-    
+
     UIButtonConfiguration *config = button.configuration;
     if (!config) return;
-    
+
     NSString *finalSymbol = filled
     ? [symbol stringByAppendingString:@".fill"]
     : symbol;
-    
+
     config.image = [UIImage systemImageNamed:finalSymbol];
-    
+
     // Keep symbol size consistent
     config.preferredSymbolConfigurationForImage =
     [UIImageSymbolConfiguration configurationWithPointSize:16
                                                     weight:UIImageSymbolWeightSemibold];
-    
+
     // Apply back (IMPORTANT – configuration is copied)
     button.configuration = config;
 }
 - (void)toggleFavorite {
-    
+
     self.isFavorite = !self.isFavorite;
-    
+
     if (self.isFavorite) {
         [self setSymbol:@"heart" forButton:self.galleryFavoriteButton filled:YES];
         self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_unfavorite", @"Remove from favorites");
@@ -711,7 +882,7 @@
         [PetAdManager removeFavoriteAdWithID:self.ad.adID collection:@"favoritesAds" forUserID:[UserManager sharedManager].currentUser.ID];
         NSLog(@"❌ Removed from favorites");
     }
-    
+
 }
 
 -(void)dismiss
@@ -725,10 +896,16 @@
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    if (self.navigationController && !self.didCaptureNavigationBarState) {
+        self.previousNavigationBarHidden = self.navigationController.navigationBarHidden;
+        self.didCaptureNavigationBarState = YES;
+    }
+    [self.navigationController setNavigationBarHidden:YES animated:animated];
     [self initValue];
-    self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);//[AppForgroundColr colorWithAlphaComponent:0.6];
+    [self pp_applyViewerTheme];
     self.modalInPresentation = NO;
     [self pp_updateContactAccessStateAnimated:NO];
+    [self pp_startLiveMotionIfNeeded];
 }
 
 
@@ -751,14 +928,21 @@
                 : NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
         }];
     }
-    
+
 }
 
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
     self.view.semanticContentAttribute = GM.setSemantic;
     self.imageGallery.semanticContentAttribute = GM.setSemantic;
+    self.contentScrollView.semanticContentAttribute = GM.setSemantic;
+    self.contentContainer.semanticContentAttribute = GM.setSemantic;
+    self.descriptionSurfaceView.semanticContentAttribute = GM.setSemantic;
+    self.descriptionTextView.semanticContentAttribute = GM.setSemantic;
+    self.contactDockView.semanticContentAttribute = GM.setSemantic;
     self.galleryLeadingStack.semanticContentAttribute = GM.setSemantic;
+    self.similarAdsView.semanticContentAttribute = GM.setSemantic;
+    self.similarAccessView.semanticContentAttribute = GM.setSemantic;
     if (self.descriptionTextView && self.descriptionTextView.bounds.size.width > 0) {
         CGSize fittingSize =
         [self.descriptionTextView sizeThatFits:
@@ -768,15 +952,31 @@
     }
     if (self.contactGradientLayer) {
         self.contactGradientLayer.frame = self.contactView.bounds;
+        self.contactGradientLayer.cornerRadius = self.contactView.layer.cornerRadius;
     }
     if (self.galleryScrimLayer) {
         self.galleryScrimLayer.frame = self.galleryScrimView.bounds;
     }
+    if (self.contentSurfaceGradientLayer) {
+        self.contentSurfaceGradientLayer.frame = self.contentScrollView.bounds;
+        self.contentSurfaceGradientLayer.cornerRadius = self.contentScrollView.layer.cornerRadius;
+    }
+    if (self.descriptionSurfaceGradientLayer) {
+        self.descriptionSurfaceGradientLayer.frame = self.descriptionSurfaceView.bounds;
+        self.descriptionSurfaceGradientLayer.cornerRadius = self.descriptionSurfaceView.layer.cornerRadius;
+    }
     self.titleCard.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.titleCard.bounds
                                                                  cornerRadius:self.titleCard.layer.cornerRadius].CGPath;
+    self.descriptionSurfaceView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.descriptionSurfaceView.bounds
+                                                                              cornerRadius:self.descriptionSurfaceView.layer.cornerRadius].CGPath;
     self.contactView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.contactView.bounds
                                                                     cornerRadius:self.contactView.layer.cornerRadius].CGPath;
-  
+    self.contactDockView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.contactDockView.bounds
+                                                                       cornerRadius:self.contactDockView.layer.cornerRadius].CGPath;
+    self.ambientGlowTopView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.ambientGlowTopView.bounds].CGPath;
+    self.ambientGlowBottomView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.ambientGlowBottomView.bounds].CGPath;
+    [self pp_updatePinnedContactInsets];
+
     [Styling applyCornerMaskToView:self.titleBlurView tl:32 tr:16 bl:32 br:28];
 }
 
@@ -786,10 +986,101 @@
 
     if (self.view.window) {
         [self pp_beginEntranceAnimationsIfNeeded];
+        [self pp_startLiveMotionIfNeeded];
+    }
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_applyViewerTheme];
+            [self.view setNeedsLayout];
+        }
     }
 }
 
 #pragma mark - Motion
+
+- (void)pp_addAmbientTranslationToView:(UIView *)view
+                                   key:(NSString *)key
+                                     x:(CGFloat)x
+                                     y:(CGFloat)y
+                              duration:(NSTimeInterval)duration
+{
+    if (!view || key.length == 0 || [view.layer animationForKey:key]) {
+        return;
+    }
+
+    CABasicAnimation *xAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    xAnimation.fromValue = @0.0;
+    xAnimation.toValue = @(x);
+
+    CABasicAnimation *yAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    yAnimation.fromValue = @0.0;
+    yAnimation.toValue = @(y);
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[xAnimation, yAnimation];
+    group.duration = duration;
+    group.autoreverses = YES;
+    group.repeatCount = HUGE_VALF;
+    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [view.layer addAnimation:group forKey:key];
+}
+
+- (void)pp_startLiveMotionIfNeeded
+{
+    if (!self.view.window || UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopLiveMotion];
+        return;
+    }
+
+    [self pp_addAmbientTranslationToView:self.ambientGlowTopView
+                                     key:@"pp.viewer.ambient.top"
+                                       x:-18.0
+                                       y:14.0
+                                duration:6.8];
+    [self pp_addAmbientTranslationToView:self.ambientGlowBottomView
+                                     key:@"pp.viewer.ambient.bottom"
+                                       x:18.0
+                                       y:-16.0
+                                duration:7.6];
+
+    if (self.contactDockView && ![self.contactDockView.layer animationForKey:@"pp.viewer.contactDock.breathe"]) {
+        CABasicAnimation *shadowPulse = [CABasicAnimation animationWithKeyPath:@"shadowOpacity"];
+        shadowPulse.fromValue = @0.14;
+        shadowPulse.toValue = @0.22;
+        shadowPulse.duration = 4.8;
+        shadowPulse.autoreverses = YES;
+        shadowPulse.repeatCount = HUGE_VALF;
+        shadowPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.contactDockView.layer addAnimation:shadowPulse forKey:@"pp.viewer.contactDock.breathe"];
+    }
+
+    if (self.descriptionSurfaceView && ![self.descriptionSurfaceView.layer animationForKey:@"pp.viewer.descriptionSurface.breathe"]) {
+        CABasicAnimation *surfacePulse = [CABasicAnimation animationWithKeyPath:@"shadowRadius"];
+        surfacePulse.fromValue = @(self.descriptionSurfaceView.layer.shadowRadius);
+        surfacePulse.toValue = @(self.descriptionSurfaceView.layer.shadowRadius + 4.0);
+        surfacePulse.duration = 5.4;
+        surfacePulse.autoreverses = YES;
+        surfacePulse.repeatCount = HUGE_VALF;
+        surfacePulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.descriptionSurfaceView.layer addAnimation:surfacePulse forKey:@"pp.viewer.descriptionSurface.breathe"];
+    }
+}
+
+- (void)pp_stopLiveMotion
+{
+    [self.ambientGlowTopView.layer removeAnimationForKey:@"pp.viewer.ambient.top"];
+    [self.ambientGlowBottomView.layer removeAnimationForKey:@"pp.viewer.ambient.bottom"];
+    [self.contactDockView.layer removeAnimationForKey:@"pp.viewer.contactDock.breathe"];
+    [self.descriptionSurfaceView.layer removeAnimationForKey:@"pp.viewer.descriptionSurface.breathe"];
+    self.ambientGlowTopView.transform = CGAffineTransformIdentity;
+    self.ambientGlowBottomView.transform = CGAffineTransformIdentity;
+}
 
 - (NSArray<UIView *> *)pp_primaryEntranceViews
 {
@@ -801,11 +1092,11 @@
     if (self.infoView) {
         [views addObject:self.infoView];
     }
-    if (self.descriptionTextView) {
-        [views addObject:self.descriptionTextView];
+    if (self.descriptionSurfaceView) {
+        [views addObject:self.descriptionSurfaceView];
     }
-    if (self.contactView) {
-        [views addObject:self.contactView];
+    if (self.contactDockView) {
+        [views addObject:self.contactDockView];
     }
     if (self.similarAdsView) {
         [views addObject:self.similarAdsView];
@@ -872,13 +1163,13 @@
     if (view == self.infoView) {
         return 0.42;
     }
-    if (view == self.descriptionTextView) {
+    if (view == self.descriptionSurfaceView) {
         return 0.28;
     }
     if (view == self.petsTitleView) {
         return 0.20;
     }
-    if (view == self.contactView) {
+    if (view == self.contactDockView) {
         return 0.12;
     }
 
@@ -912,6 +1203,12 @@
     }
 
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    for (UIView *glowView in @[self.ambientGlowTopView ?: [UIView new],
+                               self.ambientGlowBottomView ?: [UIView new]]) {
+        glowView.alpha = reduceMotion ? 1.0 : 0.0;
+        glowView.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.94, 0.94);
+    }
+
     NSArray<UIView *> *primaryViews = [self pp_primaryEntranceViews];
     [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
         CGFloat translationY = 16.0 + MIN((CGFloat)idx * 2.0, 8.0);
@@ -922,10 +1219,10 @@
         } else if (view == self.infoView) {
             translationY = 10.0;
             scale = 0.988;
-        } else if (view == self.descriptionTextView) {
+        } else if (view == self.descriptionSurfaceView) {
             translationY = 8.0;
             scale = 0.992;
-        } else if (view == self.contactView) {
+        } else if (view == self.contactDockView) {
             translationY = 12.0;
             scale = 0.986;
         }
@@ -962,6 +1259,19 @@
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     [self.view layoutIfNeeded];
 
+    NSArray<UIView *> *glowViews = @[self.ambientGlowTopView ?: [UIView new],
+                                     self.ambientGlowBottomView ?: [UIView new]];
+    [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        [UIView animateWithDuration:reduceMotion ? 0.16 : 0.62
+                              delay:0.02 + (0.04 * idx)
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            view.alpha = 1.0;
+            view.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+
     NSArray<UIView *> *primaryViews = [self pp_primaryEntranceViews];
     [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
         NSTimeInterval delay = 0.08 + (0.05 * idx);
@@ -973,10 +1283,10 @@
         } else if (view == self.infoView) {
             delay = 0.03;
             duration = 0.34;
-        } else if (view == self.descriptionTextView) {
+        } else if (view == self.descriptionSurfaceView) {
             delay = 0.06;
             duration = 0.36;
-        } else if (view == self.contactView) {
+        } else if (view == self.contactDockView) {
             delay = 0.10;
             duration = 0.40;
         }
@@ -1056,10 +1366,30 @@
 
 #pragma mark - Contact Access
 
+- (void)pp_updatePinnedContactInsets
+{
+    if (!self.contentScrollView || !self.contactDockHeightConstraint) {
+        return;
+    }
+
+    CGFloat dockHeight = MAX(self.contactDockHeightConstraint.constant, 84.0);
+    CGFloat bottomInset = dockHeight + 26.0;
+    UIEdgeInsets inset = self.contentScrollView.contentInset;
+    inset.bottom = bottomInset;
+    self.contentScrollView.contentInset = inset;
+
+    UIEdgeInsets indicatorInset = self.contentScrollView.scrollIndicatorInsets;
+    indicatorInset.bottom = bottomInset;
+    self.contentScrollView.scrollIndicatorInsets = indicatorInset;
+}
+
 - (void)pp_updateContactAccessStateAnimated:(BOOL)animated
 {
     BOOL isLoggedIn = UserManager.sharedManager.isUserLoggedIn;
-    self.contactViewHeightConstraint.constant = isLoggedIn ? 64.0 : 86.0;
+    CGFloat contactHeight = isLoggedIn ? 64.0 : 86.0;
+    self.contactViewHeightConstraint.constant = contactHeight;
+    self.contactDockHeightConstraint.constant = contactHeight + 20.0;
+    [self pp_updatePinnedContactInsets];
 
     if (isLoggedIn) {
         self.contactLockOverlayView.hidden = YES;
@@ -1274,17 +1604,17 @@
 - (IBAction)dissmissMe:(id)sender {
     if (self.navigationController &&
            self.navigationController.viewControllers.count > 1) {
-           
+
            // Pushed → pop
            [self.navigationController popViewControllerAnimated:YES];
-           
+
        } else {
-           
+
            // Presented (modal / sheet / popover) → dismiss
            [self dismissViewControllerAnimated:YES completion:nil];
        }
 }
- 
+
 #pragma mark - Chat Methods
 - (void)startChatWith:(UserModel *)user
 {
@@ -1321,7 +1651,7 @@
         });
     }];
 }
- 
+
 
 #pragma mark - Memory Management
 
@@ -1352,14 +1682,21 @@
 -(void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    [self pp_stopLiveMotion];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        self.navigationController &&
+        self.didCaptureNavigationBarState) {
+        [self.navigationController setNavigationBarHidden:self.previousNavigationBarHidden animated:animated];
+        self.didCaptureNavigationBarState = NO;
+    }
     self.modalInPresentation = YES;
 }
 
 - (UIButton *)pp_makeGlassCircleButtonWithSymbol:(NSString *)symbol
                                           action:(SEL)action {
-    
+
     UIButtonConfiguration *config;
-    
+
     if (@available(iOS 26.0, *)) {
         config = [UIButtonConfiguration glassButtonConfiguration];
         config.baseForegroundColor = UIColor.whiteColor;
@@ -1367,33 +1704,34 @@
     } else {
         config = [UIButtonConfiguration filledButtonConfiguration];
         config.baseForegroundColor = UIColor.whiteColor;
-        config.baseBackgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.18];
+        config.baseBackgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.20];
         UIBackgroundConfiguration *background = config.background;
         background.visualEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterialDark];
-        background.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.18];
+        background.strokeColor = [UIColor colorWithWhite:1.0 alpha:0.22];
         background.strokeWidth = 0.8;
         config.background = background;
         config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
     }
-    
+
     config.image = [UIImage systemImageNamed:symbol];
     config.preferredSymbolConfigurationForImage =
-    [UIImageSymbolConfiguration configurationWithPointSize:16
+    [UIImageSymbolConfiguration configurationWithPointSize:16.5
                                                     weight:UIImageSymbolWeightSemibold];
-    
+    config.contentInsets = NSDirectionalEdgeInsetsMake(12.0, 12.0, 12.0, 12.0);
+
     UIButton *btn =
     [UIButton buttonWithConfiguration:config primaryAction:nil];
     btn.translatesAutoresizingMaskIntoConstraints = NO;
     btn.clipsToBounds = NO;
     btn.adjustsImageWhenHighlighted = YES;
-    
+
     [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
-    
+
     [NSLayoutConstraint activateConstraints:@[
-        [btn.widthAnchor constraintEqualToConstant:44],
-        [btn.heightAnchor constraintEqualToConstant:44],
+        [btn.widthAnchor constraintEqualToConstant:46],
+        [btn.heightAnchor constraintEqualToConstant:46],
     ]];
-    
+
     return btn;
 }
 
@@ -1499,6 +1837,11 @@
 
     self.titleCard.transform = CGAffineTransformMakeTranslation(0.0, -(upwardTravel * 0.18));
     self.titleCard.alpha = 1.0 - MIN(0.16, upwardTravel / 460.0);
+
+    if (self.didAnimate && self.contactDockView) {
+        CGFloat dockLift = MIN(upwardTravel, 80.0) * 0.035;
+        self.contactDockView.transform = CGAffineTransformMakeTranslation(0.0, -dockLift);
+    }
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -1513,34 +1856,34 @@
 #pragma mark - Description Styling Helper
 
 - (NSAttributedString *)pp_styledDescriptionFromText:(NSString *)text {
-    
+
     UIFont *bodyFont = [GM MidFontWithSize:17];
     UIColor *textColor = UIColor.labelColor;
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
     paragraphStyle.lineSpacing = 5.0;
     paragraphStyle.paragraphSpacing = 10.0;
     paragraphStyle.alignment = NSTextAlignmentNatural;
-    
+
     NSMutableAttributedString *attr =
     [[NSMutableAttributedString alloc] initWithString:text ?: @""];
-    
+
     [attr addAttributes:@{
         NSFontAttributeName: bodyFont,
         NSForegroundColorAttributeName: textColor,
         NSParagraphStyleAttributeName: paragraphStyle
     } range:NSMakeRange(0, attr.length)];
-    
+
     // Detect links automatically
     NSDataDetector *detector =
     [NSDataDetector dataDetectorWithTypes:NSTextCheckingTypeLink error:nil];
-    
+
     [detector enumerateMatchesInString:attr.string
                                options:0
                                  range:NSMakeRange(0, attr.length)
                             usingBlock:^(NSTextCheckingResult *result,
                                          NSMatchingFlags flags,
                                          BOOL *stop) {
-        
+
         if (result.resultType == NSTextCheckingTypeLink) {
             [attr addAttributes:@{
                 NSForegroundColorAttributeName: AppPrimaryClr,
@@ -1548,30 +1891,30 @@
             } range:result.range];
         }
     }];
-    
+
     // Very light markdown: **bold**
     NSRegularExpression *boldRegex =
     [NSRegularExpression regularExpressionWithPattern:@"\\*\\*(.*?)\\*\\*"
                                               options:0 error:nil];
-    
+
     NSArray *matches =
     [boldRegex matchesInString:attr.string
                        options:0
                          range:NSMakeRange(0, attr.length)];
-    
+
     for (NSTextCheckingResult *match in matches.reverseObjectEnumerator) {
         NSRange boldRange = [match rangeAtIndex:1];
         [attr addAttribute:NSFontAttributeName
                      value:[UIFont boldSystemFontOfSize:bodyFont.pointSize]
                      range:boldRange];
-        
+
         // Remove ** markers
         [attr replaceCharactersInRange:NSMakeRange(match.range.location, 2)
                             withString:@""];
         [attr replaceCharactersInRange:NSMakeRange(match.range.location + boldRange.length, 2)
                             withString:@""];
     }
-    
+
     return attr;
 }
 
@@ -1583,17 +1926,17 @@
          [UserManager showPromptOnTopController];
         return;
     }
-    
+
     NSString *currentUID = [self trackingUserID];
     if ([currentUID isEqualToString:self.ad.ownerID]) {
         return;
     }
-    
+
     UIAlertController *sheet = [UIAlertController
         alertControllerWithTitle:kLang(@"report_alert_title")
         message:kLang(@"report_alert_message")
         preferredStyle:UIAlertControllerStyleActionSheet];
-    
+
     NSDictionary *reasons = @{
         @"inappropriate_content": kLang(@"report_reason_inappropriate"),
         @"scam_fraud": kLang(@"report_reason_fraud"),
@@ -1601,7 +1944,7 @@
         @"spam": kLang(@"report_reason_spam"),
         @"other": kLang(@"report_reason_other")
     };
-    
+
     for (NSString *code in @[@"inappropriate_content", @"scam_fraud", @"wrong_category", @"spam", @"other"]) {
         [sheet addAction:[UIAlertAction actionWithTitle:reasons[code]
             style:UIAlertActionStyleDefault
@@ -1609,15 +1952,15 @@
                 [self submitAdReportWithReason:code collection:kPetAdsCollection documentID:self.ad.adID];
             }]];
     }
-    
+
     [sheet addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
         style:UIAlertActionStyleCancel handler:nil]];
-    
+
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
         sheet.popoverPresentationController.sourceView = sender;
         sheet.popoverPresentationController.sourceRect = sender.bounds;
     }
-    
+
     [self presentViewController:sheet animated:YES completion:nil];
 }
 
@@ -1625,16 +1968,16 @@
                       collection:(NSString *)collection
                       documentID:(NSString *)docID {
     if (docID.length == 0) return;
-    
+
     NSString *currentUID = [self trackingUserID];
     if (currentUID.length == 0) return;
-    
+
     FIRFirestore *db = [FIRFirestore firestore];
 
     // 1. Flag on the content document (array-union for multi-reporter support)
     FIRDocumentReference *docRef =
         [[db collectionWithPath:collection] documentWithPath:docID];
-    
+
     [docRef updateData:@{
         @"reportedBy"    : [FIRFieldValue fieldValueForArrayUnion:@[currentUID]],
         @"reportCount"   : [FIRFieldValue fieldValueForIntegerIncrement:1],

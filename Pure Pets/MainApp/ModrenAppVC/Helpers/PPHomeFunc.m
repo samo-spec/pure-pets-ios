@@ -193,13 +193,13 @@ static inline CGFloat PPHomePetProfileHeight(CGFloat width)
 static inline CGFloat PPHomeQuickActionWidth(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 214.0;
+        return 204.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 208.0;
+        return 198.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 182.0;
+        return 172.0;
     }
     return 176.0;
 }

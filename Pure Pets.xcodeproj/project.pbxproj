@@ -447,6 +447,7 @@
 		F283FABC2E542933001EF0BA /* UserContactView.m in Sources */ = {isa = PBXBuildFile; fileRef = F283FABB2E542933001EF0BA /* UserContactView.m */; };
 		F2844F002EB76ED200D9A49C /* PPSelectPaymentVC+Helper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844EFF2EB76DF500D9A49C /* PPSelectPaymentVC+Helper.m */; };
 		F2844F032EB7BA2000D9A49C /* PPPaymentFormViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */; };
+		F28476862FA240B8009AE4CE /* PPHomePremiumCareCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */; };
 		F2856C432E96BA65004B0344 /* PPBirdSummaryCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */; };
 		F286536A2D7E6B8E006EDEDE /* UIActivityIndicator.m in Sources */ = {isa = PBXBuildFile; fileRef = F28653692D7E6B8E006EDEDE /* UIActivityIndicator.m */; };
 		F286BA8A2F207A4D0069CD5C /* PPFullscreenVideoController.m in Sources */ = {isa = PBXBuildFile; fileRef = F286BA892F207A3F0069CD5C /* PPFullscreenVideoController.m */; };
@@ -695,7 +696,6 @@
 		F2D639712ECB4E2500FEBCBB /* PPUserSigningManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */; };
 		F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */; };
 		F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D7F0ED2F135F9100105778 /* NoResult.json */; };
-		F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */ = {isa = PBXBuildFile; fileRef = F2F9C0012F9C000000000001 /* payment_checkout.json */; };
 		F2D894852D5534D000256152 /* CoreTelephony.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F2D894842D5534D000256152 /* CoreTelephony.framework */; };
 		F2D99F7A2E2849E400CD4552 /* ServiceViewerViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D99F792E2849D300CD4552 /* ServiceViewerViewController.m */; };
 		F2DEF00B2D6FEF2B0015B7FB /* ODRefreshControl.m in Sources */ = {isa = PBXBuildFile; fileRef = F2DEF0092D6FEF2B0015B7FB /* ODRefreshControl.m */; };
@@ -746,6 +746,7 @@
 		F2F807CC2E8BEBE90034FF2D /* PPBannersCollection.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807C02E8BEBE90034FF2D /* PPBannersCollection.m */; };
 		F2F807CD2E8BEBE90034FF2D /* PPBannersManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807C22E8BEBE90034FF2D /* PPBannersManager.m */; };
 		F2F807D12E8BEE5D0034FF2D /* PPBannerCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807D02E8BEE5D0034FF2D /* PPBannerCollectionCell.m */; };
+		F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */ = {isa = PBXBuildFile; fileRef = F2F9C0012F9C000000000001 /* payment_checkout.json */; };
 		F2FBFEDD2C82935300E84C14 /* FTPopOverMenu.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FBFEDC2C82935200E84C14 /* FTPopOverMenu.m */; };
 		F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */; };
 		F2FCEBAF2ECD09BF002A9F67 /* PPCompleteProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */; };
@@ -1617,6 +1618,8 @@
 		F2844EFF2EB76DF500D9A49C /* PPSelectPaymentVC+Helper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "PPSelectPaymentVC+Helper.m"; sourceTree = "<group>"; };
 		F2844F012EB7BA1500D9A49C /* PPPaymentFormViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPaymentFormViewController.h; sourceTree = "<group>"; };
 		F2844F022EB7BA2000D9A49C /* PPPaymentFormViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPaymentFormViewController.m; sourceTree = "<group>"; };
+		F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumCareCell.h; sourceTree = "<group>"; };
+		F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumCareCell.m; sourceTree = "<group>"; };
 		F2856C412E96BA41004B0344 /* PPBirdSummaryCollectionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBirdSummaryCollectionCell.h; sourceTree = "<group>"; };
 		F2856C422E96BA50004B0344 /* PPBirdSummaryCollectionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBirdSummaryCollectionCell.m; sourceTree = "<group>"; };
 		F28653682D7E6B8E006EDEDE /* UIActivityIndicator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIActivityIndicator.h; sourceTree = "<group>"; };
@@ -2099,7 +2102,6 @@
 		F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserSigningManager.m; sourceTree = "<group>"; };
 		F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BBCheckoutSummaryView.m; path = "Pure Pets/DesignFiles/PP/PPNAV/BBCheckoutSummaryView.m"; sourceTree = SOURCE_ROOT; };
 		F2D7F0ED2F135F9100105778 /* NoResult.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NoResult.json; sourceTree = "<group>"; };
-		F2F9C0012F9C000000000001 /* payment_checkout.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = payment_checkout.json; sourceTree = "<group>"; };
 		F2D894842D5534D000256152 /* CoreTelephony.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreTelephony.framework; path = System/Library/Frameworks/CoreTelephony.framework; sourceTree = SDKROOT; };
 		F2D99F782E2849C800CD4552 /* ServiceViewerViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ServiceViewerViewController.h; sourceTree = "<group>"; };
 		F2D99F792E2849D300CD4552 /* ServiceViewerViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ServiceViewerViewController.m; sourceTree = "<group>"; };
@@ -2196,6 +2198,7 @@
 		F2F807CE2E8BECA10034FF2D /* Banners.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Banners.h; sourceTree = "<group>"; };
 		F2F807CF2E8BEE3E0034FF2D /* PPBannerCollectionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannerCollectionCell.h; sourceTree = "<group>"; };
 		F2F807D02E8BEE5D0034FF2D /* PPBannerCollectionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBannerCollectionCell.m; sourceTree = "<group>"; };
+		F2F9C0012F9C000000000001 /* payment_checkout.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = payment_checkout.json; sourceTree = "<group>"; };
 		F2FBFEDB2C82935200E84C14 /* FTPopOverMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FTPopOverMenu.h; sourceTree = "<group>"; };
 		F2FBFEDC2C82935200E84C14 /* FTPopOverMenu.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FTPopOverMenu.m; sourceTree = "<group>"; };
 		F2FCEBAA2ECCCD64002A9F67 /* PPVerificationCodeViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVerificationCodeViewController.h; sourceTree = "<group>"; };
@@ -2298,6 +2301,8 @@
 		F202A0722EFF15B30048D4C2 /* HomeCells */ = {
 			isa = PBXGroup;
 			children = (
+				F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */,
+				F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */,
 				F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */,
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
 				F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */,
@@ -5645,6 +5650,7 @@
 				F2B116B32C51E48E00A77F4A /* selectTableViewController.m in Sources */,
 				F2D99F7A2E2849E400CD4552 /* ServiceViewerViewController.m in Sources */,
 				F28DD5B02F04EE6500FF2671 /* PPFilterSheetVC.m in Sources */,
+				F28476862FA240B8009AE4CE /* PPHomePremiumCareCell.m in Sources */,
 				F26EDCEB2F26ECEF00AE10ED /* PPWaveformView.m in Sources */,
 				F2DEF00B2D6FEF2B0015B7FB /* ODRefreshControl.m in Sources */,
 				F2977D5D2E4ABB2E003A7005 /* AppSearchResultsVC.m in Sources */,

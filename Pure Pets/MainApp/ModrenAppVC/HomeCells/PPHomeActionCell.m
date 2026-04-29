@@ -39,8 +39,9 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 @interface PPHomeActionCell ()
 
 @property (nonatomic, strong) UIView *surfaceView;
-@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
+
 @property (nonatomic, strong) CAGradientLayer *surfaceSheenLayer;
+@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
 @property (nonatomic, strong) UIView *accentBarView;
 @property (nonatomic, strong) UIView *accentWashView;
 @property (nonatomic, strong) CAGradientLayer *accentWashLayer;
@@ -76,9 +77,14 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.contentView.clipsToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.masksToBounds = NO;
-
+    float corners = 26;
     if(PPIOS26())
     {
+        
+        //[self pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.26]];
+        //self.layer.shadowOpacity =  0.28f;
+        //self.layer.shadowRadius =   10.0f;
+        //self.layer.shadowOffset = CGSizeMake(0.0, 4.0);
     }
 
     self.actionButton = [UIButton new];
@@ -88,16 +94,15 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         UIButtonConfiguration *glass;
         glass = [UIButtonConfiguration glassButtonConfiguration];
         glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        glass.background.cornerRadius  = PPNewCorner + 0;
+        glass.background.cornerRadius  = corners;
+        glass.background.backgroundColor = UIColor.clearColor;
+        glass.baseBackgroundColor = UIColor.clearColor;
 
         self.actionButton.configuration = glass;
+ 
+        self.actionButton.clipsToBounds = NO;
+        self.actionButton.layer.masksToBounds = NO;
 
-        [self.actionButton pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.16]];
-        self.actionButton.layer.shadowOpacity =  0.006f;
-        self.actionButton.layer.shadowRadius =   10.0f;
-        self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 4.0);
-
-        //self.actionButton.clipsToBounds = YES;
     }
     else
     {
@@ -107,7 +112,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     }
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionButton.backgroundColor = UIColor.clearColor;
+    self.actionButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.4 : 0.72];
     self.actionButton.adjustsImageWhenHighlighted = NO;
     self.actionButton.showsMenuAsPrimaryAction = NO;
     self.actionButton.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
@@ -125,23 +130,24 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = PPNewCorner + 0;
+    self.surfaceView.layer.cornerRadius = corners;
     self.surfaceView.layer.masksToBounds = YES;
-    self.surfaceView.layer.borderWidth = 1.0;
+    self.surfaceView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.actionButton addSubview:self.surfaceView];
 
-    self.surfaceGradientLayer = [CAGradientLayer layer];
-    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
-    [self.surfaceView.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
-
+    
     self.surfaceSheenLayer = [CAGradientLayer layer];
     self.surfaceSheenLayer.startPoint = CGPointMake(0.0, 0.5);
     self.surfaceSheenLayer.endPoint = CGPointMake(1.0, 0.5);
     [self.surfaceView.layer addSublayer:self.surfaceSheenLayer];
+    
+    
+    self.surfaceGradientLayer = [CAGradientLayer layer];
+    self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 0.5);
 
     self.accentWashView = [[UIView alloc] init];
     self.accentWashView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -494,10 +500,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     UIColor *lowerSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.05);
     UIColor *borderColor = [PPQuickActionElevatedColor(AppForgroundColr, 0.18) colorWithAlphaComponent:0.58];
     UIColor *orbSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.10);
-    UIColor *orbBorder = [resolvedAccent colorWithAlphaComponent:0.18];
-    UIColor *chevronSurface = [primaryText colorWithAlphaComponent:0.05];
-    UIColor *chevronBorder = [primaryText colorWithAlphaComponent:0.08];
-
+   
     [self.actionButton pp_setShadowColor:PPQuickActionDeepenedColor(resolvedAccent, 0.24)];
     self.actionButton.layer.shadowOpacity = 0.055f;
     self.actionButton.layer.shadowRadius = 12.0f;
@@ -505,9 +508,9 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 
     [self.surfaceView pp_setBorderColor:borderColor];
     self.surfaceGradientLayer.colors = @[
-        (__bridge id)[upperSurface colorWithAlphaComponent:1.0].CGColor,
-        (__bridge id)[surfaceBase colorWithAlphaComponent:1.0].CGColor,
-        (__bridge id)[lowerSurface colorWithAlphaComponent:1.0].CGColor
+        (__bridge id)[upperSurface colorWithAlphaComponent:00.0].CGColor,
+        (__bridge id)[surfaceBase colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)[lowerSurface colorWithAlphaComponent:0.0].CGColor
     ];
     self.surfaceGradientLayer.locations = @[@0.0, @0.46, @1.0];
 
@@ -520,30 +523,31 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 
     self.accentWashLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
     self.accentWashLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
+    /*self.accentWashLayer.colors = @[
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.98].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.40].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.22].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.12].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.04].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.03].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.02].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.00].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.00].CGColor,
+        (__bridge id)[UIColor.clearColor CGColor]
+    ];*/
+    
     self.accentWashLayer.colors = @[
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.48].CGColor,
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.20].CGColor,
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.12].CGColor,
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.04].CGColor,
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.03].CGColor,
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.02].CGColor,
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.00].CGColor,
-        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.00].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.74].CGColor,
+        (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.30].CGColor,
+         (__bridge id)[AppSurfSecColor colorWithAlphaComponent:0.05].CGColor,
         (__bridge id)[UIColor.clearColor CGColor]
     ];
-    /*
-    self.accentWashLayer.colors = @[
-        (__bridge id)[AppLightGrayColor colorWithAlphaComponent:0.24].CGColor,
-        (__bridge id)[AppLightGrayColor colorWithAlphaComponent:0.15].CGColor,
-        (__bridge id)[AppLightGrayColor colorWithAlphaComponent:0.05].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
-    */
-    self.accentWashLayer.locations = @[@0.0, @0.25, @0.45, @0.65, @0.85, @0.95, @1.0];
+    
+    self.accentWashLayer.locations = @[@0.0, @0.25, @0.75, @1.0];
 
-    self.accentBarView.backgroundColor = resolvedAccent;
-    self.iconOrbView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.72];
-    [self.iconOrbView pp_setBorderColor:[AppBackgroundClrDarker colorWithAlphaComponent:0.26]];
+    self.accentBarView.backgroundColor = [accent colorWithAlphaComponent:0.90];
+    self.iconOrbView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:1.0];
+    [self.iconOrbView pp_setBorderColor:[AppBackgroundClrDarker colorWithAlphaComponent:0.96]];
     self.chevronOrbView.backgroundColor = [orbSurface colorWithAlphaComponent:0.0];
     [self.chevronOrbView pp_setBorderColor:AppClearClr];
 
@@ -562,7 +566,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
                       pointSize:19
                          weight:UIImageSymbolWeightSemibold
                           scale:UIImageSymbolScaleMedium
-                        palette:@[AppPrimaryTextClr, PPQuickActionDeepenedColor(resolvedAccent, 0.12)]
+                        palette:@[AppPrimaryTextClr, AppPrimaryTextClr]
                    makeTemplate:YES];
 
     [self setNeedsUpdateConstraints];

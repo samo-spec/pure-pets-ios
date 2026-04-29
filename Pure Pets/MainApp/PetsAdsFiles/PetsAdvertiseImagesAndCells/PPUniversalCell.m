@@ -35,6 +35,11 @@ static CGFloat const PPUniversalCompactCardVerticalInset = 4.0;
 static CGFloat const PPUniversalCompactTitleToPriceSpacing = 4.0;
 static CGFloat const PPUniversalCompactPriceToActionSpacing = 6.0;
 static NSTimeInterval const PPUniversalStepperAutoCollapseDelay = 3.5;
+static NSTimeInterval const PPUniversalCardTapPressDuration = 0.11;
+static NSTimeInterval const PPUniversalCardTapReleaseDuration = 0.28;
+static CGFloat const PPUniversalCardTapPressedScale = 0.975;
+static CGFloat const PPUniversalCardTapPressedTranslationY = 1.5;
+static CGFloat const PPUniversalCardTapPressedAlpha = 0.965;
 static BOOL const PPUniversalTemporarilyHideSubtitle = NO;
 static BOOL const PPUniversalTemporarilyHideShareButton = YES;
 static BOOL const PPUniversalTemporarilyHideCategoryBadge = YES;
@@ -530,6 +535,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_resetReusableVisualState;
 - (NSString *)pp_cartLookupIdentifierForViewModel:(PPUniversalCellViewModel *)vm;
 - (BOOL)pp_supportsSelectionAccent;
+- (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated;
+- (void)pp_runContainerTapImpulse;
 - (void)pp_applySelectionAppearanceAnimated:(BOOL)animated;
 
 @end
@@ -667,6 +674,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 {
     [super setSelected:selected];
     [self pp_applySelectionAppearanceAnimated:YES];
+}
+
+- (void)setHighlighted:(BOOL)highlighted
+{
+    [super setHighlighted:highlighted];
+    [self pp_applyContainerTapTransformPressed:highlighted animated:YES];
 }
 
 - (void)pp_resetReusableVisualState
@@ -1972,13 +1985,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         return;
     }
 
-    [UIView animateWithDuration:0.10 animations:^{
-        self.cardView.transform = CGAffineTransformMakeScale(0.985, 0.985);
-    } completion:^(__unused BOOL finished) {
-        [UIView animateWithDuration:0.16 animations:^{
-            self.cardView.transform = CGAffineTransformIdentity;
-        }];
-    }];
+    [self pp_runContainerTapImpulse];
 
     if (self.onTap) {
         self.onTap();
@@ -2339,6 +2346,76 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         return NO;
     }
     return [NSStringFromClass([self.vm.ModelObject class]) isEqualToString:@"VetMedicineModel"];
+}
+
+- (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated
+{
+    if (!self.cardView) {
+        return;
+    }
+
+    BOOL canPress = (self.vm != nil && !self.vm.isSkeleton);
+    BOOL effectivePressed = pressed && canPress;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    CGAffineTransform targetTransform = CGAffineTransformIdentity;
+    if (effectivePressed && !reduceMotion) {
+        targetTransform = CGAffineTransformTranslate(targetTransform, 0.0, PPUniversalCardTapPressedTranslationY);
+        targetTransform = CGAffineTransformScale(targetTransform,
+                                                 PPUniversalCardTapPressedScale,
+                                                 PPUniversalCardTapPressedScale);
+    }
+
+    CGFloat targetAlpha = effectivePressed ? PPUniversalCardTapPressedAlpha : 1.0;
+    void (^changes)(void) = ^{
+        self.cardView.transform = targetTransform;
+        self.cardView.alpha = targetAlpha;
+    };
+
+    if (!animated || !self.window) {
+        changes();
+        return;
+    }
+
+    UIViewAnimationOptions options = UIViewAnimationOptionAllowUserInteraction |
+                                     UIViewAnimationOptionBeginFromCurrentState;
+    if (effectivePressed || reduceMotion) {
+        [UIView animateWithDuration:reduceMotion ? 0.08 : PPUniversalCardTapPressDuration
+                              delay:0.0
+                            options:options | UIViewAnimationOptionCurveEaseOut
+                         animations:changes
+                         completion:nil];
+        return;
+    }
+
+    [UIView animateWithDuration:PPUniversalCardTapReleaseDuration
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.42
+                        options:options
+                     animations:changes
+                     completion:nil];
+}
+
+- (void)pp_runContainerTapImpulse
+{
+    if (!self.vm || self.vm.isSkeleton) {
+        return;
+    }
+
+    [self pp_applyContainerTapTransformPressed:YES animated:YES];
+
+    NSTimeInterval delay = UIAccessibilityIsReduceMotionEnabled()
+        ? 0.06
+        : PPUniversalCardTapPressDuration;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.isHighlighted) {
+            return;
+        }
+        [self pp_applyContainerTapTransformPressed:NO animated:YES];
+    });
 }
 
 - (void)pp_applySelectionAppearanceAnimated:(BOOL)animated

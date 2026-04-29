@@ -9,6 +9,7 @@
 #import "PPBannersManager.h"
 #import "Language.h"
 #import <SDWebImage/SDWebImage.h>
+#import <math.h>
 
 static NSString * const kPPHomePromoCarouselPageCellReuseID = @"PPHomePromoCarouselPageCell";
 static const CGFloat kPPHomeBannerSectionHeight = 188.0;
@@ -17,12 +18,20 @@ static const CGFloat kPPHomeBannerSectionHorizontalInset = 16.0;
 static const CGFloat kPPHomeBannerSectionBottomInset = 14.0;
 static const CGFloat kPPHomeBannerCellVerticalPadding = 2.0;
 static const CGFloat kPPHomePromoCarouselCardWidthFraction = 0.905;
-static const CGFloat kPPHomePromoCarouselLineSpacing = 10.0;
+static const CGFloat kPPHomePromoCarouselLineSpacing = -34.0;
 static const CGFloat kPPHomePromoCarouselPageControlBottomInset = 10.0;
 static const CGFloat kPPHomePromoCarouselPageControlHeight = 20.0;
 static const CGFloat kPPHomePromoCarouselViewportEpsilon = 1.0;
-static const CGFloat kPPHomePromoCarouselMinScale = 0.965;
-static const CGFloat kPPHomePromoCarouselMaxTranslateY = 3.0;
+static const CGFloat kPPHomePromoCarouselMinScale = 0.875;
+static const CGFloat kPPHomePromoCarouselMaxTranslateY = 8.0;
+static const CGFloat kPPHomePromoCarouselMaxDepth = 78.0;
+static const CGFloat kPPHomePromoCarouselMaxRotation = 0.18;
+static const CGFloat kPPHomePromoCarouselPerspective = 680.0;
+
+static CGFloat PPCinematicClamp(CGFloat value, CGFloat lower, CGFloat upper)
+{
+    return MIN(MAX(value, lower), upper);
+}
 
 static UIColor *PPPromoColorFromHex(NSString *hexString, UIColor *fallback)
 {
@@ -137,6 +146,220 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     return nil;
 }
 
+@interface PPCinematicDepthCarouselLayout : UICollectionViewLayout
+@property (nonatomic, assign) CGFloat itemWidthFraction;
+@property (nonatomic, assign) CGFloat itemSpacing;
+@property (nonatomic, assign) CGFloat minimumScale;
+@property (nonatomic, assign) CGFloat maxTranslateY;
+@property (nonatomic, assign) CGFloat maxDepth;
+@property (nonatomic, assign) CGFloat maxRotation;
+@property (nonatomic, assign) CGFloat perspective;
+@property (nonatomic, assign, getter=isReduceMotionEnabled) BOOL reduceMotionEnabled;
+@property (nonatomic, assign, readonly) CGSize cinematicItemSize;
+- (CGFloat)pp_cardStride;
+- (CGFloat)pp_targetContentOffsetXForItem:(NSInteger)item;
+- (NSInteger)pp_nearestItemIndexForContentOffsetX:(CGFloat)contentOffsetX;
+- (CGPoint)pp_targetContentOffsetForProposedContentOffset:(CGPoint)proposedContentOffset
+                                                 velocity:(CGPoint)velocity;
+@end
+
+@implementation PPCinematicDepthCarouselLayout {
+    CGSize _cinematicItemSize;
+    CGSize _contentSize;
+    CGFloat _sideInset;
+    CGFloat _stride;
+}
+
+- (instancetype)init
+{
+    self = [super init];
+    if (!self) return nil;
+
+    _itemWidthFraction = kPPHomePromoCarouselCardWidthFraction;
+    _itemSpacing = kPPHomePromoCarouselLineSpacing;
+    _minimumScale = kPPHomePromoCarouselMinScale;
+    _maxTranslateY = kPPHomePromoCarouselMaxTranslateY;
+    _maxDepth = kPPHomePromoCarouselMaxDepth;
+    _maxRotation = kPPHomePromoCarouselMaxRotation;
+    _perspective = kPPHomePromoCarouselPerspective;
+    _cinematicItemSize = CGSizeZero;
+    _contentSize = CGSizeZero;
+    _sideInset = 0.0;
+    _stride = 1.0;
+
+    return self;
+}
+
+- (CGSize)cinematicItemSize
+{
+    return _cinematicItemSize;
+}
+
+- (void)prepareLayout
+{
+    [super prepareLayout];
+
+    UICollectionView *collectionView = self.collectionView;
+    if (!collectionView) return;
+
+    CGSize viewportSize = collectionView.bounds.size;
+    CGFloat viewportWidth = MAX(1.0, floor(viewportSize.width));
+    CGFloat viewportHeight = MAX(1.0, floor(viewportSize.height));
+    CGFloat cardWidth = floor(viewportWidth * PPCinematicClamp(self.itemWidthFraction, 0.72, 1.0));
+    cardWidth = PPCinematicClamp(cardWidth, 1.0, viewportWidth);
+
+    _cinematicItemSize = CGSizeMake(cardWidth, viewportHeight);
+    _sideInset = floor((viewportWidth - cardWidth) * 0.5);
+    _stride = MAX(1.0, cardWidth + self.itemSpacing);
+
+    NSInteger itemCount = [collectionView numberOfItemsInSection:0];
+    if (itemCount <= 0) {
+        _contentSize = viewportSize;
+        return;
+    }
+
+    CGFloat contentWidth = (_sideInset * 2.0) + cardWidth + (MAX(0, itemCount - 1) * _stride);
+    _contentSize = CGSizeMake(MAX(viewportWidth, ceil(contentWidth)), viewportHeight);
+}
+
+- (CGSize)collectionViewContentSize
+{
+    return _contentSize;
+}
+
+- (NSArray<UICollectionViewLayoutAttributes *> *)layoutAttributesForElementsInRect:(CGRect)rect
+{
+    UICollectionView *collectionView = self.collectionView;
+    NSInteger itemCount = [collectionView numberOfItemsInSection:0];
+    if (!collectionView || itemCount <= 0) return @[];
+
+    CGRect expandedRect = CGRectInset(rect, -(_cinematicItemSize.width * 1.4), 0.0);
+    CGFloat stride = MAX(1.0, _stride);
+    NSInteger firstItem = (NSInteger)floor((CGRectGetMinX(expandedRect) - _sideInset - _cinematicItemSize.width) / stride);
+    NSInteger lastItem = (NSInteger)ceil((CGRectGetMaxX(expandedRect) - _sideInset) / stride);
+    firstItem = MAX(0, firstItem);
+    lastItem = MIN(itemCount - 1, lastItem);
+
+    NSMutableArray<UICollectionViewLayoutAttributes *> *attributes = [NSMutableArray arrayWithCapacity:(NSUInteger)MAX(0, lastItem - firstItem + 1)];
+    for (NSInteger item = firstItem; item <= lastItem; item++) {
+        NSIndexPath *indexPath = [NSIndexPath indexPathForItem:item inSection:0];
+        UICollectionViewLayoutAttributes *itemAttributes = [self layoutAttributesForItemAtIndexPath:indexPath];
+        if (itemAttributes) {
+            [attributes addObject:itemAttributes];
+        }
+    }
+    return attributes;
+}
+
+- (UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    UICollectionView *collectionView = self.collectionView;
+    if (!collectionView) return nil;
+
+    UICollectionViewLayoutAttributes *attributes =
+        [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+    attributes.size = _cinematicItemSize;
+
+    CGFloat baseCenterX = _sideInset + (_cinematicItemSize.width * 0.5) + (indexPath.item * _stride);
+    CGFloat visibleCenterX = collectionView.contentOffset.x + (CGRectGetWidth(collectionView.bounds) * 0.5);
+    CGFloat distance = baseCenterX - visibleCenterX;
+    CGFloat normalizedDistance = PPCinematicClamp(distance / MAX(1.0, _stride), -2.0, 2.0);
+    CGFloat absoluteDistance = fabs(normalizedDistance);
+    CGFloat primaryDepth = MIN(1.0, absoluteDistance);
+    CGFloat easedDepth = pow(primaryDepth, 0.72);
+    CGFloat overflowDepth = MAX(0.0, absoluteDistance - 1.0);
+
+    CGFloat centerY = CGRectGetMidY(collectionView.bounds);
+    attributes.center = CGPointMake(baseCenterX, centerY);
+    attributes.zIndex = 10000 - (NSInteger)llround(absoluteDistance * 1000.0);
+
+    CGFloat scale = 1.0 - ((1.0 - self.minimumScale) * easedDepth) - (0.025 * overflowDepth);
+    scale = PPCinematicClamp(scale, 0.82, 1.0);
+
+    CGFloat alpha = 1.0 - (0.15 * easedDepth) - (0.08 * overflowDepth);
+    attributes.alpha = PPCinematicClamp(alpha, 0.72, 1.0);
+
+    CATransform3D transform = CATransform3DIdentity;
+    if (!self.isReduceMotionEnabled) {
+        transform.m34 = -1.0 / MAX(1.0, self.perspective);
+        CGFloat signedDepth = PPCinematicClamp(normalizedDistance, -1.0, 1.0);
+        CGFloat parallaxX = -signedDepth * 10.0 * easedDepth;
+        CGFloat translateY = self.maxTranslateY * easedDepth;
+        CGFloat translateZ = -(self.maxDepth * easedDepth);
+        CGFloat rotation = -signedDepth * self.maxRotation * easedDepth;
+        transform = CATransform3DTranslate(transform, parallaxX, translateY, translateZ);
+        transform = CATransform3DRotate(transform, rotation, 0.0, 1.0, 0.0);
+    } else {
+        transform = CATransform3DTranslate(transform, 0.0, self.maxTranslateY * 0.35 * easedDepth, 0.0);
+        scale = PPCinematicClamp(1.0 - (0.045 * easedDepth), 0.94, 1.0);
+        attributes.alpha = PPCinematicClamp(1.0 - (0.06 * easedDepth), 0.88, 1.0);
+    }
+    transform = CATransform3DScale(transform, scale, scale, 1.0);
+    attributes.transform3D = transform;
+
+    return attributes;
+}
+
+- (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
+{
+    (void)newBounds;
+    return YES;
+}
+
+- (CGPoint)targetContentOffsetForProposedContentOffset:(CGPoint)proposedContentOffset
+                                 withScrollingVelocity:(CGPoint)velocity
+{
+    return [self pp_targetContentOffsetForProposedContentOffset:proposedContentOffset velocity:velocity];
+}
+
+- (CGFloat)pp_cardStride
+{
+    return MAX(1.0, _stride);
+}
+
+- (CGFloat)pp_targetContentOffsetXForItem:(NSInteger)item
+{
+    UICollectionView *collectionView = self.collectionView;
+    if (!collectionView) return 0.0;
+
+    CGFloat targetX = _sideInset + (item * [self pp_cardStride]) + (_cinematicItemSize.width * 0.5) - (CGRectGetWidth(collectionView.bounds) * 0.5);
+    CGFloat maxOffsetX = MAX(0.0, _contentSize.width - CGRectGetWidth(collectionView.bounds));
+    return PPCinematicClamp(targetX, 0.0, maxOffsetX);
+}
+
+- (NSInteger)pp_nearestItemIndexForContentOffsetX:(CGFloat)contentOffsetX
+{
+    UICollectionView *collectionView = self.collectionView;
+    NSInteger itemCount = [collectionView numberOfItemsInSection:0];
+    if (!collectionView || itemCount <= 0) return 0;
+
+    CGFloat viewportCenterX = contentOffsetX + (CGRectGetWidth(collectionView.bounds) * 0.5);
+    CGFloat rawIndex = (viewportCenterX - _sideInset - (_cinematicItemSize.width * 0.5)) / [self pp_cardStride];
+    NSInteger item = (NSInteger)llround(rawIndex);
+    return MAX(0, MIN(item, itemCount - 1));
+}
+
+- (CGPoint)pp_targetContentOffsetForProposedContentOffset:(CGPoint)proposedContentOffset
+                                                 velocity:(CGPoint)velocity
+{
+    UICollectionView *collectionView = self.collectionView;
+    NSInteger itemCount = [collectionView numberOfItemsInSection:0];
+    if (!collectionView || itemCount <= 0) return proposedContentOffset;
+
+    CGFloat currentX = collectionView.contentOffset.x;
+    NSInteger targetItem = [self pp_nearestItemIndexForContentOffsetX:proposedContentOffset.x];
+
+    if (fabs(velocity.x) > 0.28) {
+        NSInteger currentItem = [self pp_nearestItemIndexForContentOffsetX:currentX];
+        targetItem = currentItem + (velocity.x > 0.0 ? 1 : -1);
+    }
+
+    targetItem = MAX(0, MIN(targetItem, itemCount - 1));
+    return CGPointMake([self pp_targetContentOffsetXForItem:targetItem], proposedContentOffset.y);
+}
+
+@end
+
 @interface PPHomePromoCarouselPageCell : UICollectionViewCell
 @property (nonatomic, strong) UIView *shadowContainer;
 @property (nonatomic, strong) UIView *cardSurface;
@@ -181,8 +404,9 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
                        tapAction:(PPBannerOnTapAction)tapAction;
 @end
 
-@interface PPHomePromoCarouselView : UIView <UICollectionViewDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout>
+@interface PPHomePromoCarouselView : UIView <UICollectionViewDelegate, UICollectionViewDataSource>
 @property (nonatomic, strong) UICollectionView *collectionView;
+@property (nonatomic, strong) PPCinematicDepthCarouselLayout *cinematicLayout;
 @property (nonatomic, strong) UIPageControl *pageControl;
 @property (nonatomic, strong) NSArray<PPHomePromoCarouselCard *> *cards;
 @property (nonatomic, strong) NSTimer *autoScrollTimer;
@@ -210,7 +434,6 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 - (void)pp_updateCarouselMetricsPreservingIndex;
 - (void)pp_applyCarouselTransforms;
 - (CGFloat)pp_cardStride;
-- (UIEdgeInsets)pp_collectionInsets;
 - (CGFloat)pp_targetContentOffsetXForVirtualIndex:(NSInteger)virtualIndex;
 - (CGFloat)pp_viewportWidth;
 @end
@@ -924,10 +1147,16 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.layer.masksToBounds = NO;
     self.cards = @[];
 
-    UICollectionViewFlowLayout *layout = [UICollectionViewFlowLayout new];
-    layout.scrollDirection = UICollectionViewScrollDirectionHorizontal;
-    layout.minimumLineSpacing = kPPHomePromoCarouselLineSpacing;
-    layout.minimumInteritemSpacing = 0;
+    PPCinematicDepthCarouselLayout *layout = [PPCinematicDepthCarouselLayout new];
+    layout.itemWidthFraction = kPPHomePromoCarouselCardWidthFraction;
+    layout.itemSpacing = kPPHomePromoCarouselLineSpacing;
+    layout.minimumScale = kPPHomePromoCarouselMinScale;
+    layout.maxTranslateY = kPPHomePromoCarouselMaxTranslateY;
+    layout.maxDepth = kPPHomePromoCarouselMaxDepth;
+    layout.maxRotation = kPPHomePromoCarouselMaxRotation;
+    layout.perspective = kPPHomePromoCarouselPerspective;
+    layout.reduceMotionEnabled = UIAccessibilityIsReduceMotionEnabled();
+    self.cinematicLayout = layout;
 
     _collectionView = [[UICollectionView alloc] initWithFrame:CGRectZero collectionViewLayout:layout];
     _collectionView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1007,6 +1236,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
             onSecondaryTap:(PPHomePromoCarouselTapBlock)onSecondaryTap
 {
     [self stopAutoScroll];
+    [self.collectionView.layer removeAllAnimations];
     self.cards = cards ?: @[];
     self.onCardTap = onCardTap;
     self.onPrimaryTap = onPrimaryTap;
@@ -1080,17 +1310,11 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     return cell;
 }
 
-- (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout *)layout sizeForItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    (void)layout;
-    (void)indexPath;
-    return CGSizeMake([self pp_cardWidth], collectionView.bounds.size.height);
-}
-
 - (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
 {
     (void)scrollView;
     [self stopAutoScroll];
+    [self.collectionView.layer removeAllAnimations];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -1112,7 +1336,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 {
     (void)scrollView;
     if (!decelerate) {
-        [self pp_recenterIfNeeded];
+        [self pp_scrollToVirtualIndex:[self pp_centeredVirtualIndex] animated:YES];
         [self startAutoScroll];
     }
 }
@@ -1127,24 +1351,15 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
                      withVelocity:(CGPoint)velocity
               targetContentOffset:(inout CGPoint *)targetContentOffset
 {
+    (void)scrollView;
     NSInteger totalItems = [self pp_virtualItemCount];
     if (totalItems == 0) return;
 
-    CGFloat stride = [self pp_cardStride];
-    if (stride <= 0.0) return;
+    CGPoint target = [self.cinematicLayout pp_targetContentOffsetForProposedContentOffset:*targetContentOffset
+                                                                                 velocity:velocity];
+    targetContentOffset->x = target.x;
 
-    CGFloat leftInset = self.collectionView.contentInset.left;
-    CGFloat proposed = targetContentOffset->x;
-    CGFloat rawIndex = (proposed + leftInset) / stride;
-
-    NSInteger index;
-    if (fabs(velocity.x) > 0.25) {
-        NSInteger current = [self pp_centeredVirtualIndex];
-        index = current + (velocity.x > 0 ? 1 : -1);
-    } else {
-        index = (NSInteger)llround(rawIndex);
-    }
-
+    NSInteger index = [self.cinematicLayout pp_nearestItemIndexForContentOffsetX:target.x];
     index = MAX(0, MIN(index, totalItems - 1));
     targetContentOffset->x = [self pp_targetContentOffsetXForVirtualIndex:index];
     self.pageControl.currentPage = [self pp_realIndexForVirtualIndex:index];
@@ -1152,6 +1367,11 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
 - (CGFloat)pp_cardWidth
 {
+    CGFloat layoutWidth = self.cinematicLayout.cinematicItemSize.width;
+    if (layoutWidth > 0.0) {
+        return layoutWidth;
+    }
+
     CGFloat width = [self pp_viewportWidth];
     return floor(width * kPPHomePromoCarouselCardWidthFraction);
 }
@@ -1170,18 +1390,12 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
 - (CGFloat)pp_cardStride
 {
-    return [self pp_cardWidth] + [self pp_lineSpacing];
-}
-
-- (UIEdgeInsets)pp_collectionInsets
-{
-    CGFloat inset = [self pp_sidePeekInset];
-    return UIEdgeInsetsMake(0.0, inset, 0.0, inset);
+    return [self.cinematicLayout pp_cardStride];
 }
 
 - (CGFloat)pp_targetContentOffsetXForVirtualIndex:(NSInteger)virtualIndex
 {
-    return (-self.collectionView.contentInset.left) + (virtualIndex * [self pp_cardStride]);
+    return [self.cinematicLayout pp_targetContentOffsetXForItem:virtualIndex];
 }
 
 - (CGFloat)pp_viewportWidth
@@ -1241,11 +1455,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     NSInteger total = [self pp_virtualItemCount];
     if (total == 0) return 0;
 
-    CGFloat stride = [self pp_cardStride];
-    if (stride <= 0.0) return 0;
-    CGFloat leftInset = self.collectionView.contentInset.left;
-    CGFloat raw = (self.collectionView.contentOffset.x + leftInset) / stride;
-    NSInteger idx = (NSInteger)llround(raw);
+    NSInteger idx = [self.cinematicLayout pp_nearestItemIndexForContentOffsetX:self.collectionView.contentOffset.x];
     return MAX(0, MIN(idx, total - 1));
 }
 
@@ -1263,12 +1473,29 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     virtualIndex = MAX(0, MIN(virtualIndex, total - 1));
 
     CGPoint target = CGPointMake([self pp_targetContentOffsetXForVirtualIndex:virtualIndex], 0);
-
-    [self.collectionView setContentOffset:target animated:animated];
     self.pageControl.currentPage = [self pp_realIndexForVirtualIndex:virtualIndex];
-    if (!animated) {
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        [self.collectionView setContentOffset:target animated:NO];
         [self pp_applyCarouselTransforms];
+        return;
     }
+
+    [self.collectionView.layer removeAllAnimations];
+    [UIView animateWithDuration:0.62
+                          delay:0.0
+         usingSpringWithDamping:0.84
+          initialSpringVelocity:0.18
+                        options:(UIViewAnimationOptionAllowUserInteraction |
+                                 UIViewAnimationOptionBeginFromCurrentState |
+                                 UIViewAnimationOptionCurveEaseInOut)
+                     animations:^{
+        self.collectionView.contentOffset = target;
+        [self pp_applyCarouselTransforms];
+    } completion:^(BOOL finished) {
+        if (!finished) return;
+        [self pp_recenterIfNeeded];
+    }];
 }
 
 - (void)pp_recenterIfNeeded
@@ -1294,16 +1521,13 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 - (void)pp_updateCarouselMetricsPreservingIndex
 {
     NSInteger current = [self pp_centeredIndex];
-    UIEdgeInsets contentInset = [self pp_collectionInsets];
-    self.collectionView.contentInset = contentInset;
-    self.collectionView.scrollIndicatorInsets = contentInset;
+    self.collectionView.contentInset = UIEdgeInsetsZero;
+    self.collectionView.scrollIndicatorInsets = UIEdgeInsetsZero;
 
-    UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.collectionView.collectionViewLayout;
-    if ([layout isKindOfClass:UICollectionViewFlowLayout.class]) {
-        layout.minimumLineSpacing = [self pp_lineSpacing];
-        layout.minimumInteritemSpacing = 0.0;
-        [layout invalidateLayout];
-    }
+    self.cinematicLayout.itemWidthFraction = kPPHomePromoCarouselCardWidthFraction;
+    self.cinematicLayout.itemSpacing = [self pp_lineSpacing];
+    self.cinematicLayout.reduceMotionEnabled = UIAccessibilityIsReduceMotionEnabled();
+    [self.cinematicLayout invalidateLayout];
 
     if (self.cards.count > 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1314,21 +1538,8 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 
 - (void)pp_applyCarouselTransforms
 {
-    CGFloat centerX = self.collectionView.contentOffset.x + (CGRectGetWidth(self.collectionView.bounds) * 0.5);
-    CGFloat maxDistance = MAX(1.0, [self pp_cardStride]);
-
-    for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
-        CGFloat distance = MIN(fabs(cell.center.x - centerX), maxDistance);
-        CGFloat progress = 1.0 - (distance / maxDistance);
-        CGFloat scale = kPPHomePromoCarouselMinScale + ((1.0 - kPPHomePromoCarouselMinScale) * progress);
-        CGFloat translateY = (1.0 - progress) * kPPHomePromoCarouselMaxTranslateY;
-        CGAffineTransform transform = CGAffineTransformIdentity;
-        transform = CGAffineTransformTranslate(transform, 0.0, translateY);
-        transform = CGAffineTransformScale(transform, scale, scale);
-        cell.transform = transform;
-        cell.alpha = 0.80 + (0.20 * progress);
-        cell.layer.zPosition = progress * 10.0;
-    }
+    self.cinematicLayout.reduceMotionEnabled = UIAccessibilityIsReduceMotionEnabled();
+    [self.cinematicLayout invalidateLayout];
 }
 
 - (void)dealloc {

@@ -118,7 +118,7 @@ static const CGFloat kPPSimilarSectionSpacing = 14.0;
     CGFloat availableWidth = environment.container.effectiveContentSize.width;
     CGFloat cardWidth = 168.0;
     if (availableWidth > 0) {
-        cardWidth = MAX(150.0, MIN(230.0, availableWidth * 0.64));
+        cardWidth = MAX(150.0, MIN(200.0, availableWidth * 0.64));
     }
     
     NSCollectionLayoutSize *itemSize =
