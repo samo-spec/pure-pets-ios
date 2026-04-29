@@ -24,7 +24,9 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 
 @end
 
-
+@interface PPUniversalGradientView : UIView
+- (void)applyContextPaletteForContext:(PPCellContext)context;
+@end
 
 @interface PPUniversalCell : UICollectionViewCell
 @property (nonatomic, weak) id<PPUniversalCellDelegate> delegate;
@@ -55,7 +57,8 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 
 /// Shows the subtitle label when set to YES (default NO — subtitle hidden).
 @property (nonatomic, assign) BOOL showsSubtitle;
-
+@property (nonatomic, strong) UIImageView *imageView;
+@property (nonatomic, strong) PPUniversalGradientView *imageContainer;
 @end
 
 NS_ASSUME_NONNULL_END

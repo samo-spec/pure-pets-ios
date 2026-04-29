@@ -20,6 +20,7 @@
 #import "CountryModel.h"
 #import "CartManager.h"
 #import "PPHomeViewController.h"
+#import "Styling.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import <math.h>
 @import FirebaseFirestore;
@@ -1998,6 +1999,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UIView *loadingOverlay;
 @property (nonatomic, strong) UIActivityIndicatorView *loadingIndicator;
 @property (nonatomic, copy, nullable) dispatch_block_t loadingTimeoutBlock;
+@property (nonatomic, strong) UIView *checkoutConfettiContainerView;
+@property (nonatomic, strong) LOTAnimationView *checkoutConfettiAnimationView;
 
 @property (nonatomic, strong) NSDateFormatter *dateFormatter;
 @property (nonatomic, strong) NSMutableArray<NSMutableDictionary *> *lineItems;
@@ -2015,9 +2018,15 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, assign) BOOL isOrderDetailsScreenVisible;
 @property (nonatomic, copy, nullable) NSString *lastObservedOrderStatusKey;
 @property (nonatomic, assign) BOOL didShowEntryPresentation;
+@property (nonatomic, assign) BOOL didPlayCheckoutSuccessConfetti;
 @property (nonatomic, assign) BOOL isProgressTimelineExpanded;
 @property (nonatomic, assign) BOOL prefersBackToMainScreen;
 @property (nonatomic, assign) BOOL isResolvingAddress;
+@property (nonatomic, assign) NSInteger checkoutConfettiLoadToken;
+
+- (void)pp_playCheckoutSuccessConfettiIfNeeded;
+- (void)pp_stopCheckoutSuccessConfetti;
+- (void)pp_removeCheckoutSuccessConfettiAnimated:(BOOL)animated;
 
 @end
 
@@ -2089,6 +2098,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 {
     [super viewWillDisappear:animated];
     self.isOrderDetailsScreenVisible = NO;
+    [self pp_stopCheckoutSuccessConfetti];
 }
 
 - (void)viewDidLayoutSubviews
@@ -2138,6 +2148,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.orderManager = [PPOrderManager shared];
     self.isResolvingAddress = NO;
     self.didShowEntryPresentation = NO;
+    self.didPlayCheckoutSuccessConfetti = NO;
+    self.checkoutConfettiLoadToken = 0;
     self.prefersBackToMainScreen = NO;
     self.isOrderDetailsScreenVisible = NO;
     self.isProgressTimelineExpanded = NO;
@@ -4483,6 +4495,150 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.timelineListener = nil;
 }
 
+- (void)pp_prepareCheckoutConfettiViewIfNeeded
+{
+    if (self.checkoutConfettiContainerView && self.checkoutConfettiAnimationView) {
+        [self.view bringSubviewToFront:self.checkoutConfettiContainerView];
+        return;
+    }
+
+    UIView *container = [[UIView alloc] init];
+    container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.userInteractionEnabled = NO;
+    container.backgroundColor = UIColor.clearColor;
+    container.hidden = YES;
+    container.alpha = 0.0;
+    container.accessibilityElementsHidden = YES;
+    [self.view addSubview:container];
+
+    LOTAnimationView *animationView = [[LOTAnimationView alloc] init];
+    animationView.translatesAutoresizingMaskIntoConstraints = NO;
+    animationView.userInteractionEnabled = NO;
+    animationView.backgroundColor = UIColor.clearColor;
+    animationView.opaque = NO;
+    animationView.contentMode = UIViewContentModeScaleAspectFit;
+    animationView.loopAnimation = NO;
+    animationView.animationSpeed = 1.04;
+    animationView.hidden = YES;
+    animationView.alpha = 1.0;
+    animationView.accessibilityElementsHidden = YES;
+    [container addSubview:animationView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [container.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [container.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [container.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [container.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [animationView.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
+        [animationView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:-74.0],
+        [animationView.widthAnchor constraintEqualToAnchor:container.widthAnchor multiplier:1.38],
+        [animationView.heightAnchor constraintEqualToAnchor:animationView.widthAnchor]
+    ]];
+
+    self.checkoutConfettiContainerView = container;
+    self.checkoutConfettiAnimationView = animationView;
+}
+
+- (void)pp_playCheckoutSuccessConfettiIfNeeded
+{
+    if (self.didPlayCheckoutSuccessConfetti || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    self.didPlayCheckoutSuccessConfetti = YES;
+    [self pp_prepareCheckoutConfettiViewIfNeeded];
+
+    self.checkoutConfettiLoadToken += 1;
+    NSInteger token = self.checkoutConfettiLoadToken;
+
+    self.checkoutConfettiContainerView.hidden = NO;
+    self.checkoutConfettiContainerView.alpha = 0.0;
+    self.checkoutConfettiAnimationView.hidden = YES;
+    self.checkoutConfettiAnimationView.alpha = 1.0;
+    self.checkoutConfettiAnimationView.transform = CGAffineTransformIdentity;
+    [self.checkoutConfettiAnimationView stop];
+
+    __weak typeof(self) weakSelf = self;
+    [Styling setAnimationNamed:@"Confetti.lottie"
+                        toView:self.checkoutConfettiAnimationView
+                     withSpeed:1.04
+                 loopAnimation:NO
+                      autoplay:NO
+                    completion:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || self.checkoutConfettiLoadToken != token) {
+                return;
+            }
+
+            if (!success || !self.isOrderDetailsScreenVisible) {
+                [self pp_removeCheckoutSuccessConfettiAnimated:NO];
+                return;
+            }
+
+            [self.view bringSubviewToFront:self.checkoutConfettiContainerView];
+            self.checkoutConfettiAnimationView.hidden = NO;
+            self.checkoutConfettiAnimationView.loopAnimation = NO;
+            self.checkoutConfettiAnimationView.animationProgress = 0.0;
+
+            [UIView animateWithDuration:0.18
+                                  delay:0.0
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                self.checkoutConfettiContainerView.alpha = 1.0;
+            } completion:nil];
+
+            __weak typeof(self) innerWeakSelf = self;
+            [self.checkoutConfettiAnimationView playWithCompletion:^(__unused BOOL finished) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    __strong typeof(innerWeakSelf) innerSelf = innerWeakSelf;
+                    if (!innerSelf || innerSelf.checkoutConfettiLoadToken != token) {
+                        return;
+                    }
+                    [innerSelf pp_removeCheckoutSuccessConfettiAnimated:YES];
+                });
+            }];
+        });
+    }];
+}
+
+- (void)pp_stopCheckoutSuccessConfetti
+{
+    self.checkoutConfettiLoadToken += 1;
+    [self.checkoutConfettiAnimationView stop];
+    [self pp_removeCheckoutSuccessConfettiAnimated:NO];
+}
+
+- (void)pp_removeCheckoutSuccessConfettiAnimated:(BOOL)animated
+{
+    if (!self.checkoutConfettiContainerView) {
+        return;
+    }
+
+    void (^cleanup)(void) = ^{
+        [self.checkoutConfettiAnimationView stop];
+        [self.checkoutConfettiAnimationView removeFromSuperview];
+        [self.checkoutConfettiContainerView removeFromSuperview];
+        self.checkoutConfettiAnimationView = nil;
+        self.checkoutConfettiContainerView = nil;
+    };
+
+    if (!animated) {
+        cleanup();
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.checkoutConfettiContainerView.alpha = 0.0;
+    } completion:^(__unused BOOL finished) {
+        cleanup();
+    }];
+}
+
 - (void)showEntryPresentationIfNeeded
 {
     if (self.didShowEntryPresentation || self.entryPresentationState == PPOrderDetailsEntryPresentationStateNone) return;
@@ -4490,6 +4646,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.didShowEntryPresentation = YES;
     NSString *message = self.entryPresentationMessage.length > 0 ? self.entryPresentationMessage : kLang(@"order_paid_success_subtitle");
     if (self.entryPresentationState == PPOrderDetailsEntryPresentationStateCheckoutSuccess) {
+        if ([self pp_isPushedFromPaymentSelectionViewController]) {
+            [self pp_playCheckoutSuccessConfettiIfNeeded];
+        }
         [self showSuccessMessage:message];
     } else if (self.entryPresentationState == PPOrderDetailsEntryPresentationStateVerificationPending) {
         [self showInfoMessage:message];
@@ -4580,6 +4739,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:kCartPricingConfigurationDidChangeNotification
                                                   object:nil];
+    [self pp_stopCheckoutSuccessConfetti];
     [self stopRealtimeObservers];
 }
 

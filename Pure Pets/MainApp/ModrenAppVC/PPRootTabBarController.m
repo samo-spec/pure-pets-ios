@@ -300,6 +300,44 @@ static NSInteger const PPRootTabIndexSettings = 4;
     }];
 }
 
+- (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    NSMutableArray<UIView *> *bottomNavigationViews = [NSMutableArray array];
+    if (self.tabBar) [bottomNavigationViews addObject:self.tabBar];
+    if (self.bottomBar) [bottomNavigationViews addObject:self.bottomBar];
+    if (self.emptyCard) [bottomNavigationViews addObject:self.emptyCard];
+
+    if (!hidden) {
+        for (UIView *view in bottomNavigationViews) {
+            view.hidden = NO;
+        }
+    }
+
+    void (^changes)(void) = ^{
+        for (UIView *view in bottomNavigationViews) {
+            view.alpha = hidden ? 0.0 : 1.0;
+        }
+    };
+
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        for (UIView *view in bottomNavigationViews) {
+            view.hidden = hidden;
+        }
+    };
+
+    if (!animated) {
+        changes();
+        completion(YES);
+        return;
+    }
+
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                     animations:changes
+                     completion:completion];
+}
+
 -(void)viewWillLayoutSubviews
 {
     [super viewWillLayoutSubviews];

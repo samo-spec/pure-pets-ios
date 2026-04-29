@@ -100,7 +100,7 @@ static UIFont *PPUniversalCellBoldFont(CGFloat size)
 
 static UIFont *PPUniversalCellBlackFont(CGFloat size)
 {
-    UIFont *font = [GM BlackFontWithSize:size];
+    UIFont *font = [GM BlackFontWithSize:size + 4];
     return font ?: [UIFont systemFontOfSize:size weight:UIFontWeightBlack];
 }
 
@@ -306,9 +306,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return ceil(imageHeight + bodyHeight + verticalChrome);
 }
 
-@interface PPUniversalGradientView : UIView
-- (void)applyContextPaletteForContext:(PPCellContext)context;
-@end
+
 
 @implementation PPUniversalGradientView
 
@@ -478,8 +476,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @interface PPUniversalCell () <UIGestureRecognizerDelegate>
 
 @property (nonatomic, strong) UIView *cardView;
-@property (nonatomic, strong) PPUniversalGradientView *imageContainer;
-@property (nonatomic, strong) UIImageView *imageView;
+
+
 @property (nonatomic, strong) UIView *imageScrimView;
 @property (nonatomic, strong) PPUniversalInsetLabel *reasonBadgeLabel;
 @property (nonatomic, strong) PPUniversalInsetLabel *discountBadgeLabel;

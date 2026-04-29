@@ -82,15 +82,15 @@ static inline CGFloat PPHomeHorizontalInset(CGFloat width)
 static inline CGFloat PPHomeHeroHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 280.0;
+        return 270.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 268.0;
+        return 258.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 244.0;
+        return 234.0;
     }
-    return (PPIOS26() ? 246.0 : 260.0);
+    return (PPIOS26() ? 236.0 : 250.0);
 }
 
 static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)
@@ -667,7 +667,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                                     count:columnCount];
 
     group.interItemSpacing =
-    [NSCollectionLayoutSpacing fixedSpacing:(PPHomeWidthIsTablet(availableWidth) ? 8.0 : PPSize6)];
+    [NSCollectionLayoutSpacing fixedSpacing:(PPHomeWidthIsTablet(availableWidth) ? 12 : PPSize12)];
 
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];

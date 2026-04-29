@@ -1272,7 +1272,17 @@
 }
 
 - (IBAction)dissmissMe:(id)sender {
-    [self.navigationController popViewControllerAnimated:YES];
+    if (self.navigationController &&
+           self.navigationController.viewControllers.count > 1) {
+           
+           // Pushed → pop
+           [self.navigationController popViewControllerAnimated:YES];
+           
+       } else {
+           
+           // Presented (modal / sheet / popover) → dismiss
+           [self dismissViewControllerAnimated:YES completion:nil];
+       }
 }
  
 #pragma mark - Chat Methods

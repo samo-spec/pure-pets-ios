@@ -86,6 +86,13 @@ NS_ASSUME_NONNULL_BEGIN
                 withSpeed:(float)animationSpeed
                completion:(void (^)(BOOL success))completion;
 
++ (void)setAnimationNamed:(NSString *)fileName
+                   toView:(LOTAnimationView *)lot
+                withSpeed:(float)animationSpeed
+            loopAnimation:(BOOL)loopAnimation
+                 autoplay:(BOOL)autoplay
+               completion:(void (^)(BOOL success))completion;
+
 + (void)fetchLottieJSONFromFirebasePath:(NSString *)storagePath
                              completion:(void (^)(NSDictionary *jsonDict, NSError *error))completion;
 

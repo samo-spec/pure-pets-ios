@@ -2076,6 +2076,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_refreshHomeAppearanceChromeWithoutCollectionReload;
 - (void)pp_refreshSuggestionsForAppearanceIfNeeded;
 - (NSString *)pp_homeSuggestionsRefreshSignature;
+- (NSString *)pp_homeDateSignaturePart:(nullable NSDate *)date;
+- (NSString *)pp_homeOrderSignaturePart:(nullable PPOrder *)order;
+- (NSString *)pp_homeCurrentOrdersSectionSignatureWithLoading:(BOOL)loading;
+- (NSString *)pp_homeBuyAgainSignatureForEntries:(NSArray *)entries;
+- (void)pp_refreshPetProfilesSectionForAppearanceIfNeeded;
 - (NSString *)pp_homePetProfilesSignatureForProfiles:(NSArray<PPPetProfile *> *)profiles
                                            defaultPet:(nullable PPPetProfile *)defaultPet
                                               loading:(BOOL)loading;
@@ -2141,7 +2146,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL didFillSuggestionsOnce;
 @property (nonatomic, assign) BOOL didApplyInitialHomeAppearanceRefresh;
 @property (nonatomic, copy, nullable) NSString *lastHomeSuggestionsAppearanceSignature;
+@property (nonatomic, copy, nullable) NSString *lastCurrentOrdersSectionSignature;
+@property (nonatomic, copy, nullable) NSString *lastBuyAgainSectionSignature;
 @property (nonatomic, copy, nullable) NSString *lastPetProfilesSectionSignature;
+@property (nonatomic, copy, nullable) NSString *lastPetProfilesUserID;
+@property (nonatomic, assign) BOOL shouldRefreshPetProfilesOnNextAppearance;
 @property (nonatomic, strong) UIView *profileCard;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeProfileItem;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeCartItem;
@@ -2557,10 +2566,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     ] mutableCopy];
     [sections addObjectsFromArray:@[
         @(PPHomeSectionCurrentOrders),
-        @(PPHomeSectionCarousel),
+        @(PPHomeSectionPremiumCare),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
-        @(PPHomeSectionPremiumCare),
+        @(PPHomeSectionCarousel),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
@@ -2984,6 +2993,120 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     self.lastHomeSuggestionsAppearanceSignature = signature;
     [self reloadSection:PPHomeSectionSuggestions];
+}
+
+- (NSString *)pp_homeDateSignaturePart:(nullable NSDate *)date
+{
+    if (![date isKindOfClass:NSDate.class]) {
+        return @"0";
+    }
+    return [NSString stringWithFormat:@"%.0f", date.timeIntervalSince1970];
+}
+
+- (NSString *)pp_homeOrderSignaturePart:(nullable PPOrder *)order
+{
+    if (![order isKindOfClass:PPOrder.class]) {
+        return @"none";
+    }
+
+    return [@[
+        PPSafeString(order.orderId),
+        PPSafeString(order.orderNumber),
+        PPSafeString(order.rawStatus),
+        PPSafeString(order.deliveryStatus),
+        PPSafeString(order.paymentStatus),
+        PPSafeString(order.verificationStatus),
+        PPSafeString(order.paymentMethodId),
+        PPSafeString([self pp_homeOrderStatusKey:order]),
+        [NSString stringWithFormat:@"%.2f", order.amount],
+        [NSString stringWithFormat:@"%.2f", order.shippingFee],
+        [NSString stringWithFormat:@"%.2f", order.totalAmount],
+        [NSString stringWithFormat:@"%lu", (unsigned long)(order.items ?: @[]).count],
+        [self pp_homeDateSignaturePart:order.updatedAt],
+        [self pp_homeDateSignaturePart:order.statusUpdatedAt],
+        [self pp_homeDateSignaturePart:order.paymentConfirmedAt],
+        [self pp_homeDateSignaturePart:order.completedAt],
+        [self pp_homeDateSignaturePart:order.cancelledAt]
+    ] componentsJoinedByString:@":"];
+}
+
+- (NSString *)pp_homeCurrentOrdersSectionSignatureWithLoading:(BOOL)loading
+{
+    PPOrder *featuredOrder = [self pp_featuredHomeOrder];
+    return [NSString stringWithFormat:@"loading:%d|featured:%@",
+            loading && !featuredOrder,
+            [self pp_homeOrderSignaturePart:featuredOrder]];
+}
+
+- (NSString *)pp_homeBuyAgainSignatureForEntries:(NSArray *)entries
+{
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    [parts addObject:[NSString stringWithFormat:@"count:%lu", (unsigned long)(entries ?: @[]).count]];
+
+    for (id entry in entries ?: @[]) {
+        if ([entry isKindOfClass:PetAccessory.class]) {
+            PetAccessory *accessory = (PetAccessory *)entry;
+            NSNumber *price = accessory.finalPrice ?: accessory.price ?: @0;
+            NSString *imageURL = @"";
+            if ([accessory.imageURLsArray isKindOfClass:NSArray.class]) {
+                imageURL = PPSafeString(accessory.imageURLsArray.firstObject);
+            }
+            [parts addObject:[NSString stringWithFormat:@"accessory:%@:%@:%ld:%ld:%@:%ld:%@",
+                              PPSafeString(accessory.accessoryID),
+                              PPSafeString(accessory.name),
+                              (long)accessory.accessKindType,
+                              (long)accessory.petMainCategoryID,
+                              price.stringValue ?: @"0",
+                              (long)accessory.quantity,
+                              imageURL]];
+            continue;
+        }
+
+        if ([entry isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
+            PPHomeBuyAgainSnapshotItem *snapshotItem = (PPHomeBuyAgainSnapshotItem *)entry;
+            [parts addObject:[NSString stringWithFormat:@"snapshot:%@:%@:%ld:%ld:%@",
+                              PPSafeString(snapshotItem.itemID),
+                              PPSafeString(snapshotItem.title),
+                              (long)snapshotItem.accessKindType,
+                              (long)snapshotItem.mainKindID,
+                              PPSafeString(snapshotItem.imageURL)]];
+            continue;
+        }
+
+        [parts addObject:NSStringFromClass([entry class]) ?: @"unknown"];
+    }
+
+    return [parts componentsJoinedByString:@"|"];
+}
+
+- (void)pp_refreshPetProfilesSectionForAppearanceIfNeeded
+{
+    NSString *userID = [self pp_currentOrdersUserID];
+    BOOL isLoggedIn = userID.length > 0 && UserManager.sharedManager.isUserLoggedIn;
+    if (!isLoggedIn) {
+        self.shouldRefreshPetProfilesOnNextAppearance = NO;
+        BOOL hasStaleProfileState =
+            self.lastPetProfilesUserID.length > 0 ||
+            self.petProfiles.count > 0 ||
+            self.defaultPetProfile != nil ||
+            self.petProfilesLoading ||
+            !self.petProfilesLoaded;
+        if (hasStaleProfileState) {
+            [self pp_refreshPetProfilesSection];
+        }
+        return;
+    }
+
+    if (self.shouldRefreshPetProfilesOnNextAppearance) {
+        self.shouldRefreshPetProfilesOnNextAppearance = NO;
+        [self pp_refreshPetProfilesSection];
+        return;
+    }
+
+    BOOL userChanged = ![userID isEqualToString:PPSafeString(self.lastPetProfilesUserID)];
+    if (!self.petProfilesLoaded || userChanged) {
+        [self pp_refreshPetProfilesSection];
+    }
 }
 
 - (NSString *)pp_homePetProfilesSignatureForProfiles:(NSArray<PPPetProfile *> *)profiles
@@ -4419,8 +4542,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     if (snapshotItems.count == 0) {
         self.buyAgainEntries = @[];
+        NSString *nextSignature = [self pp_homeBuyAgainSignatureForEntries:@[]];
+        BOOL shouldReload =
+            ![nextSignature isEqualToString:PPSafeString(self.lastBuyAgainSectionSignature)];
+        self.lastBuyAgainSectionSignature = nextSignature;
         if (self.dataSource) {
-            [self reloadSection:PPHomeSectionBuyAgain];
+            if (shouldReload) {
+                [self reloadSection:PPHomeSectionBuyAgain];
+            }
         }
         return;
     }
@@ -4454,8 +4583,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                               snapshotItems:snapshotItems
                                                       limit:PPBuyAgainVisibleLimit];
         self.buyAgainEntries = orderedEntries;
+        NSString *nextSignature = [self pp_homeBuyAgainSignatureForEntries:orderedEntries];
+        BOOL shouldReload =
+            ![nextSignature isEqualToString:PPSafeString(self.lastBuyAgainSectionSignature)];
+        self.lastBuyAgainSectionSignature = nextSignature;
         if (self.dataSource) {
-            [self reloadSection:PPHomeSectionBuyAgain];
+            if (shouldReload) {
+                [self reloadSection:PPHomeSectionBuyAgain];
+            }
         }
     };
 
@@ -4498,7 +4633,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     cell.accessibilityElements = nil;
 }
 
-- (void)pp_applyUnavailableBuyAgainCoverToCell:(UICollectionViewCell *)cell
+- (void)pp_applyUnavailableBuyAgainCoverToCell:(PPUniversalCell *)cell
                                   snapshotItem:(PPHomeBuyAgainSnapshotItem *)snapshotItem
 {
     if (!cell || ![snapshotItem isKindOfClass:PPHomeBuyAgainSnapshotItem.class]) {
@@ -4529,6 +4664,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
     blurView.translatesAutoresizingMaskIntoConstraints = NO;
     blurView.userInteractionEnabled = NO;
+    blurView.alpha = 0.75;
     [cover addSubview:blurView];
 
     UIView *tintView = [[UIView alloc] init];
@@ -4569,7 +4705,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     titleLabel.text = kLang(@"Home_BuyAgainUnavailableTitle") ?: @"";
     titleLabel.textColor = UIColor.labelColor;
     titleLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
-    titleLabel.textAlignment = PPHomeCurrentTextAlignment();
+    titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
     titleLabel.adjustsFontSizeToFitWidth = YES;
     titleLabel.minimumScaleFactor = 0.82;
@@ -4594,7 +4730,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = [UIButtonConfiguration filledButtonConfiguration];
-        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleLarge;
         configuration.baseBackgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
         configuration.baseForegroundColor = UIColor.whiteColor;
         configuration.contentInsets = NSDirectionalEdgeInsetsMake(7.0, 12.0, 7.0, 12.0);
@@ -4621,10 +4757,10 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [stackView addArrangedSubview:button];
     [button.heightAnchor constraintGreaterThanOrEqualToConstant:32.0].active = YES;
     [button.widthAnchor constraintLessThanOrEqualToConstant:156.0].active = YES;
-
+    cell.imageView.alpha = 0.7;
     [cell.contentView addSubview:cover];
     [NSLayoutConstraint activateConstraints:@[
-        [cover.topAnchor constraintEqualToAnchor:cell.contentView.topAnchor constant:6.0],
+        [cover.topAnchor constraintEqualToAnchor:cell.imageContainer.bottomAnchor constant:9.0],
         [cover.leadingAnchor constraintEqualToAnchor:cell.contentView.leadingAnchor constant:6.0],
         [cover.trailingAnchor constraintEqualToAnchor:cell.contentView.trailingAnchor constant:-6.0],
         [cover.bottomAnchor constraintEqualToAnchor:cell.contentView.bottomAnchor constant:-6.0],
@@ -4755,9 +4891,27 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         self.currentOrdersLoading = NO;
         self.currentOrdersLoaded = YES;
         self.lastCurrentOrdersRefreshAt = nil;
+        self.lastObservedHomeOrderID = nil;
+        self.lastObservedHomeOrderStatusKey = nil;
+        NSString *nextCurrentSignature =
+            [self pp_homeCurrentOrdersSectionSignatureWithLoading:NO];
+        BOOL shouldReloadCurrentOrders =
+            ![nextCurrentSignature isEqualToString:PPSafeString(self.lastCurrentOrdersSectionSignature)];
+        self.lastCurrentOrdersSectionSignature = nextCurrentSignature;
+
+        NSString *nextBuyAgainSignature =
+            [self pp_homeBuyAgainSignatureForEntries:@[]];
+        BOOL shouldReloadBuyAgain =
+            ![nextBuyAgainSignature isEqualToString:PPSafeString(self.lastBuyAgainSectionSignature)];
+        self.lastBuyAgainSectionSignature = nextBuyAgainSignature;
+
         if (self.dataSource) {
-            [self reloadSection:PPHomeSectionCurrentOrders];
-            [self reloadSection:PPHomeSectionBuyAgain];
+            if (shouldReloadCurrentOrders) {
+                [self reloadSection:PPHomeSectionCurrentOrders];
+            }
+            if (shouldReloadBuyAgain) {
+                [self reloadSection:PPHomeSectionBuyAgain];
+            }
         }
         return;
     }
@@ -4777,7 +4931,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     self.currentOrdersLoaded = NO;
 
     if (self.currentOrders.count == 0 && self.dataSource) {
-        [self reloadSection:PPHomeSectionCurrentOrders];
+        NSString *loadingSignature =
+            [self pp_homeCurrentOrdersSectionSignatureWithLoading:YES];
+        if (![loadingSignature isEqualToString:PPSafeString(self.lastCurrentOrdersSectionSignature)]) {
+            self.lastCurrentOrdersSectionSignature = loadingSignature;
+            [self reloadSection:PPHomeSectionCurrentOrders];
+        }
     }
 
     [self pp_startCurrentOrdersListenerForUserID:userID requestToken:requestToken];
@@ -4878,8 +5037,16 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     self.lastObservedHomeOrderID = nextObservedOrderID;
     self.lastObservedHomeOrderStatusKey = nextObservedStatusKey;
-    [self reloadSection:PPHomeSectionCurrentOrders];
+    NSString *nextCurrentSignature =
+        [self pp_homeCurrentOrdersSectionSignatureWithLoading:NO];
+    BOOL shouldReloadCurrentOrders =
+        ![nextCurrentSignature isEqualToString:PPSafeString(self.lastCurrentOrdersSectionSignature)];
+    self.lastCurrentOrdersSectionSignature = nextCurrentSignature;
+    if (shouldReloadCurrentOrders) {
+        [self reloadSection:PPHomeSectionCurrentOrders];
+    }
     [self pp_refreshBuyAgainSection];
+    [self pp_refreshSuggestionsForAppearanceIfNeeded];
     // Refresh hero peek strip to reflect order changes
     [self refreshHeroSectionAppearance];
 }
@@ -5056,7 +5223,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     [self refreshHeroSectionAppearance];
     [self startNearbyRefreshTimerIfNeeded];
-    BOOL shouldForceRefresh = (self.nearbyAds.count == 0);
+    BOOL shouldForceRefresh = (!self.nearbyLoaded && self.nearbyAds.count == 0);
     [self refreshNearbyAdsForce:shouldForceRefresh
                          reason:@"viewDidAppear"];
 }
@@ -5150,6 +5317,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 - (void)openHomeLocationPicker
 {
     LocationPickerViewController *picker = [[LocationPickerViewController alloc] init];
+    picker.hidesBottomBarWhenPushed = YES;
     if (self.hasSelectedNearbyCoordinate && CLLocationCoordinate2DIsValid(self.selectedNearbyCoordinate)) {
         picker.initialCoordinate = self.selectedNearbyCoordinate;
     }
@@ -5372,7 +5540,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 
     [self refreshHeroSectionAppearance];
-    [self pp_applyPremiumScrollMotionToVisibleContent];
     if (self.homeLocationManager) {
         CLAuthorizationStatus status;
         if (@available(iOS 14.0, *)) {
@@ -6438,12 +6605,19 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 {
     if (!self.hasSelectedNearbyCoordinate ||
         !CLLocationCoordinate2DIsValid(self.selectedNearbyCoordinate)) {
+        BOOL shouldReloadEmptyNearby =
+            self.nearbyLoading ||
+            !self.nearbyLoaded ||
+            self.nearbyAds.count > 0 ||
+            self.nearbyShowingRecentlyAdded;
         self.nearbyAds = @[];
         self.nearbyLoading = NO;
         self.nearbyLoaded = YES;
         self.nearbyShowingRecentlyAdded = NO;
-        [self reloadSection:PPHomeSectionAdsNearBy];
-        [self reloadSection:PPHomeSectionSuggestions];
+        if (shouldReloadEmptyNearby) {
+            [self reloadSection:PPHomeSectionAdsNearBy];
+            [self pp_refreshSuggestionsForAppearanceIfNeeded];
+        }
         [self tryApplySnapshot];
         return;
     }
@@ -7175,6 +7349,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 {
     NSString *userID = [self pp_currentOrdersUserID];
     if (userID.length == 0 || !UserManager.sharedManager.isUserLoggedIn) {
+        self.lastPetProfilesUserID = @"";
         NSString *nextSignature = [self pp_homePetProfilesSignatureForProfiles:@[]
                                                                      defaultPet:nil
                                                                         loading:NO];
@@ -7190,6 +7365,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
 
+    self.lastPetProfilesUserID = userID;
     self.petProfilesRequestToken += 1;
     NSInteger requestToken = self.petProfilesRequestToken;
     BOOL wasLoaded = self.petProfilesLoaded;
@@ -7271,6 +7447,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         return;
     }
 
+    self.shouldRefreshPetProfilesOnNextAppearance = YES;
     [PPHomeHelper pushViewControllerSafely:destination from:self animated:YES];
 }
 
@@ -8941,7 +9118,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     } else {
         [self pp_refreshHomeAppearanceChromeWithoutCollectionReload];
     }
-    [self pp_refreshPetProfilesSection];
+    [self pp_refreshPetProfilesSectionForAppearanceIfNeeded];
     [self pp_refreshSuggestionsForAppearanceIfNeeded];
     [self refreshCurrentOrdersForce:NO];
     [self refreshHeroSectionAppearance];
@@ -8970,9 +9147,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     [super viewDidDisappear:animated];
     self.isHomeScreenVisible = NO;
-    self.lastObservedHomeOrderID = nil;
-    self.lastObservedHomeOrderStatusKey = nil;
-    [self pp_stopCurrentOrdersListener];
+    // Keep the active order listener warm across tab/push transitions. Restarting it
+    // on every return replays the cached snapshot and restages the visible Home cells.
     [self stopNearbyRefreshTimer];
     [self pp_stopHomeSmartSearchTimer];
     [self pp_detachHomeSmartSearchTitleViewIfNeeded];
@@ -10139,7 +10315,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     UIColor *ambientColor = isDark ? UIColor.whiteColor : UIColor.blackColor;
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
-                            color:primaryColor
+                            color:AppSurfColor
                      surfaceAlpha:isDark ? 0.13 : 0.075
                     shadowOpacity:isDark ? 0.16f : 0.10f
                      shadowRadius:isDark ? 82.0 : 74.0];

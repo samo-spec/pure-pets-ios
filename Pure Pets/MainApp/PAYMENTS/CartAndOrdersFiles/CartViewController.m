@@ -114,6 +114,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
            nullable) NSLayoutConstraint *tableBottomConstraint;
 @property (nonatomic, strong, readonly) PPEmptyStateConfig *config;
 @property (nonatomic, assign) BOOL isPerformingTableMutation;
+@property (nonatomic, assign) NSUInteger pendingQuantitySyncReloadSkips;
 @property (nonatomic, assign) BOOL cartEditingModeActive;
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
 @property (nonatomic, assign) BOOL didPrimeInitialCartScrollPosition;
@@ -337,7 +338,7 @@ static UIColor *PPCartScreenBackgroundColor(void)
     NSString *title = isEditing ? kLang(@"Done") : kLang(@"Edit");
     UIButton *editButton =
     [PPButtonHelper pp_buttonWithTitle:title
-                                  font:[GM fontWithSize:17]
+                                  font:[GM MidFontWithSize:16]
                              imageName:@""
                                 target:self
                                 config:[UIButtonConfiguration tintedButtonConfiguration]
@@ -1434,9 +1435,22 @@ static UIColor *PPCartScreenBackgroundColor(void)
     [self pp_applyEmptyStateIfNeeded];
 }
 
-// Guard: Only reload if not mutating table (prevents reload/deleteRows conflict)
+// Guard: avoid structural table reloads during local quantity taps or row mutations.
 - (void)updateViewFromSync
 {
+    if (self.pendingQuantitySyncReloadSkips > 0) {
+        NSInteger displayedRows = [self.cartTableView numberOfSections] > 0
+            ? [self.cartTableView numberOfRowsInSection:0]
+            : 0;
+        NSInteger currentRows = CartManager.sharedManager.cartItems.count;
+        if (displayedRows == currentRows) {
+            self.pendingQuantitySyncReloadSkips -= 1;
+            [self updateTotalLabel];
+            return;
+        }
+        self.pendingQuantitySyncReloadSkips = 0;
+    }
+
     if (self.isPerformingTableMutation) {
         NSLog(@"[CART] 🔁 Skipping reload during table mutation");
         return;
@@ -1678,28 +1692,30 @@ static UIColor *PPCartScreenBackgroundColor(void)
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
 
     PPCartTableCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPCartTableCell"];
-        if (!cell) cell = [[PPCartTableCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPCartTableCell"];
+    if (!cell) cell = [[PPCartTableCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"PPCartTableCell"];
 
-        NSArray<CartItem *> *items = [CartManager sharedManager].cartItems;
-        if (indexPath.row >= (NSInteger)items.count) {
-            return cell;
-        }
-        CartItem *item = items[indexPath.row];
-        [cell configureWithItem:item];
-    __weak typeof(cell) weakCell = cell;
+    NSArray<CartItem *> *items = [CartManager sharedManager].cartItems;
+    if (indexPath.row >= (NSInteger)items.count) {
+        return cell;
+    }
+    CartItem *item = items[indexPath.row];
+    [cell configureWithItem:item];
+    __weak typeof(self) weakSelf = self;
     cell.onAction = ^(CartItem *item, NSString *action) {
-        if ([action isEqualToString:@"plus"] || [action isEqualToString:@"minus"]) {
-            __strong typeof(weakCell) strongCell = weakCell;
-            NSIndexPath *currentIndexPath = [tableView indexPathForCell:strongCell];
-            if (currentIndexPath) {
-                [tableView reloadRowsAtIndexPaths:@[currentIndexPath]
-                                 withRowAnimation:UITableViewRowAnimationAutomatic];
-            }
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
 
+        if ([action isEqualToString:@"plus"] || [action isEqualToString:@"minus"]) {
+            NSUInteger previousSkipCount = strongSelf.pendingQuantitySyncReloadSkips;
+            strongSelf.pendingQuantitySyncReloadSkips = MIN(previousSkipCount + 2, 8);
             [[CartManager sharedManager] updateQuantity:item.quantity
                                                 forItem:item
-                                             completion:nil];
-            [self updateTotalLabel];
+                                             completion:^(BOOL success) {
+                if (!success) {
+                    strongSelf.pendingQuantitySyncReloadSkips = previousSkipCount;
+                }
+            }];
+            [strongSelf updateTotalLabel];
             return;
         }
     };

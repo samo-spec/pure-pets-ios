@@ -3430,7 +3430,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     CGFloat height = safeSubtitle.length ? 50.0 : 42.0;
 
     UIView *container = [[UIView alloc] initWithFrame:CGRectMake(0, 0, width, height)];
-    container.backgroundColor = [self pp_adSurfaceColor];
+    container.backgroundColor = AppClearClr;
     container.userInteractionEnabled = NO;
     container.semanticContentAttribute =
     Language.isRTL ? UISemanticContentAttributeForceRightToLeft
@@ -3438,12 +3438,12 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
     CGFloat cornerRadius = height / 2.0;
     container.layer.cornerRadius = cornerRadius;
-    container.layer.borderWidth = 1.0;
-    [container pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.52]];
-    [container pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
-    container.layer.shadowOffset = CGSizeMake(0, 6);
-    container.layer.shadowOpacity = 0.06;
-    container.layer.shadowRadius = 14.0;
+    container.layer.borderWidth = 0.0;
+    [container pp_setBorderColor:[[UIColor clearColor] colorWithAlphaComponent:0.0]];
+    [container pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:0.0]];
+    container.layer.shadowOffset = CGSizeMake(0, 0);
+    container.layer.shadowOpacity = 0.00;
+    container.layer.shadowRadius = 0.0;
 
     UIStackView *stack = [[UIStackView alloc] init];
     stack.axis = UILayoutConstraintAxisVertical;
@@ -3568,7 +3568,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 -(void)ios26Bar
 {
     NSString *buttonTitle = (self.mode == AdEditorModeEdit) ? kLang(@"saveChanges") : kLang(@"postAd");
-    UIButton *savBtn = [PPButtonHelper pp_buttonWithTitle:buttonTitle font:[GM fontWithSize:17] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveFormData:)];
+    UIButton *savBtn = [PPButtonHelper pp_buttonWithTitle:buttonTitle font:[GM MidFontWithSize:16] imageName:@"" target:self config:[UIButtonConfiguration tintedButtonConfiguration] action:@selector(saveFormData:)];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:savBtn];
 
     self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:PPSYSImage(PPChevronName) style:UIBarButtonItemStylePlain target:self action:@selector(onBack:)];

@@ -372,6 +372,8 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
     private var checkoutLoading = false
     private var checkoutTitle = NSLocalizedString("Checkout", comment: "")
     private var checkoutImage: UIImage? = UIImage(systemName: "arrow.forward")
+    private weak var activeAmountTransitionLabel: UILabel?
+    private var amountChangeAnimator: UIViewPropertyAnimator?
 
     @objc public override init(frame: CGRect) {
         let layout = UICollectionViewFlowLayout()
@@ -836,6 +838,9 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
 
     @objc(updateTotalsWithItems:shipping:showTitle:)
     func updateTotalsWithItems(_ itemsTotal: CGFloat, shipping shippingFee: CGFloat, showTitle _: Bool) {
+        let previousSubtotal = self.subtotal
+        let oldText = amountLabel.text
+
         self.itemsTotal = itemsTotal
         self.shippingFee = shippingFee
         self.subtotal = itemsTotal + shippingFee
@@ -845,23 +850,106 @@ public final class PPPremuimChekoutView: UIView, UICollectionViewDataSource, UIC
         amountCaptionLabel.isHidden = false
 
         let newText = PPPremiumCheckoutCurrency.format(subtotal)
-        let oldText = amountLabel.text
-        amountLabel.text = newText
-
-        if oldText != nil, oldText != newText, !UIAccessibility.isReduceMotionEnabled {
-            amountLabel.transform = CGAffineTransform(scaleX: 0.985, y: 0.985)
-            UIView.animate(
-                withDuration: 0.24,
-                delay: 0,
-                usingSpringWithDamping: 0.80,
-                initialSpringVelocity: 0,
-                options: [.beginFromCurrentState, .allowUserInteraction]
-            ) {
-                self.amountLabel.transform = .identity
-            }
+        if let oldText = oldText, oldText != newText {
+            animateAmountChange(
+                from: oldText,
+                to: newText,
+                increasing: subtotal >= previousSubtotal
+            )
+        } else {
+            amountLabel.text = newText
         }
 
         updateVisibility(animated: window != nil)
+    }
+
+    private func animateAmountChange(from oldText: String, to newText: String, increasing: Bool) {
+        amountChangeAnimator?.stopAnimation(true)
+        amountChangeAnimator = nil
+        activeAmountTransitionLabel?.removeFromSuperview()
+        activeAmountTransitionLabel = nil
+        amountLabel.layer.removeAllAnimations()
+
+        guard window != nil, !UIAccessibility.isReduceMotionEnabled else {
+            amountLabel.text = newText
+            amountLabel.alpha = 1
+            amountLabel.transform = .identity
+            return
+        }
+
+        amountStack.layoutIfNeeded()
+
+        let oldValueLabel = UILabel()
+        oldValueLabel.translatesAutoresizingMaskIntoConstraints = false
+        oldValueLabel.font = amountLabel.font
+        oldValueLabel.textColor = amountLabel.textColor
+        oldValueLabel.textAlignment = amountLabel.textAlignment
+        oldValueLabel.adjustsFontSizeToFitWidth = amountLabel.adjustsFontSizeToFitWidth
+        oldValueLabel.adjustsFontForContentSizeCategory = amountLabel.adjustsFontForContentSizeCategory
+        oldValueLabel.minimumScaleFactor = amountLabel.minimumScaleFactor
+        oldValueLabel.numberOfLines = amountLabel.numberOfLines
+        oldValueLabel.text = oldText
+        oldValueLabel.isAccessibilityElement = false
+        amountStack.addSubview(oldValueLabel)
+        NSLayoutConstraint.activate([
+            oldValueLabel.leadingAnchor.constraint(equalTo: amountLabel.leadingAnchor),
+            oldValueLabel.trailingAnchor.constraint(equalTo: amountLabel.trailingAnchor),
+            oldValueLabel.topAnchor.constraint(equalTo: amountLabel.topAnchor),
+            oldValueLabel.bottomAnchor.constraint(equalTo: amountLabel.bottomAnchor)
+        ])
+        activeAmountTransitionLabel = oldValueLabel
+
+        let travel: CGFloat = 13
+        let oldExitY = increasing ? -travel : travel
+        let newEntryY = increasing ? travel : -travel
+        let originalColor = amountLabel.textColor ?? .label
+
+        amountLabel.text = newText
+        amountLabel.alpha = 0
+        amountLabel.transform = CGAffineTransform(translationX: 0, y: newEntryY)
+            .scaledBy(x: 0.992, y: 0.992)
+
+        UIView.animate(
+            withDuration: 0.11,
+            delay: 0,
+            options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseOut],
+            animations: {
+                self.amountLabel.textColor = PPPremiumCheckoutStyle.brand
+                self.amountCaptionLabel.textColor = PPPremiumCheckoutStyle.brand
+            },
+            completion: { _ in
+                UIView.animate(
+                    withDuration: 0.24,
+                    delay: 0.06,
+                    options: [.beginFromCurrentState, .allowUserInteraction, .curveEaseOut],
+                    animations: {
+                        self.amountLabel.textColor = originalColor
+                        self.amountCaptionLabel.textColor = .secondaryLabel
+                    },
+                    completion: nil
+                )
+            }
+        )
+
+        let animator = UIViewPropertyAnimator(duration: 0.30, dampingRatio: 0.82) {
+            oldValueLabel.alpha = 0
+            oldValueLabel.transform = CGAffineTransform(translationX: 0, y: oldExitY)
+                .scaledBy(x: 0.992, y: 0.992)
+            self.amountLabel.alpha = 1
+            self.amountLabel.transform = .identity
+        }
+        animator.addCompletion { [weak self, weak oldValueLabel] _ in
+            oldValueLabel?.removeFromSuperview()
+            guard let self = self else { return }
+            self.activeAmountTransitionLabel = nil
+            self.amountChangeAnimator = nil
+            self.amountLabel.alpha = 1
+            self.amountLabel.transform = .identity
+            self.amountLabel.textColor = originalColor
+            self.amountCaptionLabel.textColor = .secondaryLabel
+        }
+        amountChangeAnimator = animator
+        animator.startAnimation()
     }
 
     @objc(setShowsItemsPreview:)

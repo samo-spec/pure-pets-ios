@@ -5,6 +5,10 @@
 #import <float.h>
 #import <CoreLocation/CoreLocation.h>
 
+@protocol PPBottomNavigationVisibilityControlling <NSObject>
+- (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated;
+@end
+
 static inline BOOL PPLocationPickerCoordinateIsUsable(CLLocationCoordinate2D coordinate)
 {
     return CLLocationCoordinate2DIsValid(coordinate) &&
@@ -65,6 +69,7 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
 @property(nonatomic,strong) UILabel *bottomTitleLabel;
 @property(nonatomic,strong) UILabel *bottomSubtitleLabel;
 @property(nonatomic,assign) BOOL chromeHiddenForDrag;
+@property(nonatomic,assign) BOOL managesHomeBottomNavigationVisibility;
 
 @end
 /*
@@ -695,7 +700,95 @@ static inline UIColor *PPLocationPickerSecondaryTextColor(void)
 {
     [super viewWillAppear:animated];
     [self pp_setupNavigationChrome];
+    self.managesHomeBottomNavigationVisibility = [self pp_isPushedFromHomeViewController];
+    if (self.managesHomeBottomNavigationVisibility) {
+        [self pp_setHomeBottomNavigationHidden:YES animated:animated];
+    }
 }
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    if (!self.managesHomeBottomNavigationVisibility) {
+        return;
+    }
+
+    BOOL isLeavingPicker =
+        self.isMovingFromParentViewController ||
+        self.isBeingDismissed ||
+        self.navigationController.isBeingDismissed;
+    if (!isLeavingPicker) {
+        return;
+    }
+
+    [self pp_setHomeBottomNavigationHidden:NO animated:animated];
+    id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
+    if (coordinator) {
+        __weak typeof(self) weakSelf = self;
+        [coordinator animateAlongsideTransition:nil
+                                     completion:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+            if (!context.isCancelled) {
+                return;
+            }
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            [self pp_setHomeBottomNavigationHidden:YES animated:YES];
+        }];
+    }
+}
+
+- (BOOL)pp_isPushedFromHomeViewController
+{
+    NSArray<UIViewController *> *viewControllers = self.navigationController.viewControllers ?: @[];
+    NSUInteger currentIndex = [viewControllers indexOfObject:self];
+    if (currentIndex == NSNotFound || currentIndex == 0) {
+        return NO;
+    }
+
+    Class homeClass = NSClassFromString(@"PPHomeViewController");
+    UIViewController *previousViewController = viewControllers[currentIndex - 1];
+    return homeClass != Nil && [previousViewController isKindOfClass:homeClass];
+}
+
+- (void)pp_setHomeBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    UITabBarController *tabBarController = self.tabBarController;
+    if ([tabBarController respondsToSelector:@selector(pp_setBottomNavigationHidden:animated:)]) {
+        [(id<PPBottomNavigationVisibilityControlling>)tabBarController pp_setBottomNavigationHidden:hidden animated:animated];
+        return;
+    }
+
+    UITabBar *tabBar = tabBarController.tabBar;
+    if (!tabBar) {
+        return;
+    }
+
+    if (!hidden) {
+        tabBar.hidden = NO;
+    }
+
+    void (^changes)(void) = ^{
+        tabBar.alpha = hidden ? 0.0 : 1.0;
+    };
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        tabBar.hidden = hidden;
+    };
+
+    if (!animated) {
+        changes();
+        completion(YES);
+        return;
+    }
+
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                     animations:changes
+                     completion:completion];
+}
+
 #pragma mark – CLLocationManagerDelegate
 
 - (void)locationManager:(CLLocationManager *)mgr didUpdateLocations:(NSArray<CLLocation *>*)locations {

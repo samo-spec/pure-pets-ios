@@ -18,7 +18,7 @@
 #import "UserManager.h"
 #import "PPCommerceFeedbackManager.h"
 #import "OrderDetailsViewController.h"
-#import "AppClasses.h"
+#import "Styling.h"
 #import "PetCareHelpers.h"
 
 #import "PPSelectAddressVC.h"
@@ -32,12 +32,11 @@ static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutP
 
 static NSString *PPPaymentHeroAnimationName(void)
 {
-    return @"payment_checkout";
+    return @"PurePetsCard3";
 }
 
 static NSDictionary *PPPaymentHeroLocalJSON(void)
 {
-    // Bundled from https://lottie.host/77232167-e399-49c2-aee0-084ad186e8d7/UvoxIiZfa5.lottie.
     NSURL *url = [[NSBundle mainBundle] URLForResource:PPPaymentHeroAnimationName() withExtension:@"json"];
     if (!url) {
         return nil;
@@ -790,7 +789,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroIconPlateView = [[UIView alloc] init];
     self.heroIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroIconPlateView.layer.cornerRadius = 24.0;
-    self.heroIconPlateView.layer.borderWidth = 0.8;
+    self.heroIconPlateView.layer.borderWidth = 0.0;
     self.heroIconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     [self.heroCardView addSubview:self.heroIconPlateView];
 
@@ -808,7 +807,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     self.heroAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroAnimationView.contentMode = UIViewContentModeScaleAspectFit;
     self.heroAnimationView.loopAnimation = YES;
-    self.heroAnimationView.animationSpeed = 0.84;
+    self.heroAnimationView.animationSpeed = 0.44;
     self.heroAnimationView.userInteractionEnabled = NO;
     self.heroAnimationView.backgroundColor = UIColor.clearColor;
     self.heroAnimationView.opaque = NO;
@@ -874,7 +873,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
         [self.heroBackButton.widthAnchor constraintEqualToConstant:40.0],
         [self.heroBackButton.heightAnchor constraintEqualToConstant:40.0],
 
-        [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-18.0],
+        [self.heroIconPlateView.trailingAnchor constraintEqualToAnchor:self.heroCardView.trailingAnchor constant:-28.0],
         [self.heroIconPlateView.topAnchor constraintEqualToAnchor:self.heroCardView.topAnchor constant:18.0],
         [self.heroIconPlateView.widthAnchor constraintEqualToConstant:48.0],
         [self.heroIconPlateView.heightAnchor constraintEqualToConstant:48.0],
@@ -1135,17 +1134,19 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     LOTComposition *localComposition = PPPaymentPremiumHeroCompositionWithTint(resolvedAccent, highlight);
     if (localComposition) {
-        self.heroAnimationView.animationSpeed = 0.84;
+        self.heroAnimationView.animationSpeed = 0.44;
         [self.heroAnimationView setSceneModel:localComposition];
         [self pp_revealPaymentHeroAnimation];
         return;
     }
 
     __weak typeof(self) weakSelf = self;
-    [AppClasses setAnimationNamed:animationName
-                            ToView:self.heroAnimationView
-                         withSpeed:0.84
-                        completion:^(BOOL success) {
+    [Styling setAnimationNamed:animationName
+                        toView:self.heroAnimationView
+                     withSpeed:0.44
+                 loopAnimation:YES
+                      autoplay:NO
+                    completion:^(BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self || self.heroAnimationLoadToken != token) {

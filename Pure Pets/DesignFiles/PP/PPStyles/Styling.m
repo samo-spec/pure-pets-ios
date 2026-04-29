@@ -24,6 +24,33 @@
 #define PP_HAS_LOTTIE 0
 #endif
 
+#if __has_include(<SSZipArchive/SSZipArchive.h>)
+#import <SSZipArchive/SSZipArchive.h>
+#endif
+
+@import FirebaseStorage;
+
+static NSString *PPLottieStoragePathForAnimationName(NSString *fileName)
+{
+    if (![fileName isKindOfClass:NSString.class]) {
+        return @"";
+    }
+
+    NSString *trimmedName = [fileName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmedName.length == 0) {
+        return @"";
+    }
+
+    NSString *extension = trimmedName.pathExtension.lowercaseString;
+    BOOL hasSupportedExtension = [extension isEqualToString:@"json"] || [extension isEqualToString:@"lottie"];
+    BOOL includesStorageFolder = [trimmedName containsString:@"/"];
+    NSString *resolvedName = hasSupportedExtension ? trimmedName : [trimmedName stringByAppendingPathExtension:@"json"];
+
+    return includesStorageFolder
+        ? resolvedName
+        : [@"LottieAnimations" stringByAppendingPathComponent:resolvedName];
+}
+
 
 @implementation UIView (CornerMask)
 
@@ -364,8 +391,29 @@
                 withSpeed:(float)animationSpeed
                completion:(void (^)(BOOL success))completion
 {
+    [Styling setAnimationNamed:fileName
+                        toView:lot
+                     withSpeed:animationSpeed
+                 loopAnimation:YES
+                      autoplay:YES
+                    completion:completion];
+}
+
++ (void)setAnimationNamed:(NSString *)fileName
+                   toView:(LOTAnimationView *)lot
+                withSpeed:(float)animationSpeed
+            loopAnimation:(BOOL)loopAnimation
+                 autoplay:(BOOL)autoplay
+               completion:(void (^)(BOOL success))completion
+{
 #if PP_HAS_LOTTIE
-    [Styling fetchLottieJSONFromFirebasePath:[NSString stringWithFormat:@"LottieAnimations/%@.json", fileName]
+    NSString *storagePath = PPLottieStoragePathForAnimationName(fileName);
+    if (storagePath.length == 0 || !lot) {
+        if (completion) completion(NO);
+        return;
+    }
+
+    [Styling fetchLottieJSONFromFirebasePath:storagePath
                                   completion:^(NSDictionary * _Nonnull jsonDict, NSError * _Nonnull error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
@@ -373,38 +421,42 @@
                 if (completion) completion(NO);
                 return;
             }
-            
+
             LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
             if (!composition) {
                 NSLog(@"❌ Lottie: Failed to build LOTComposition");
                 if (completion) completion(NO);
                 return;
             }
-            
+
             // Apply composition
             [lot setSceneModel:composition];
             lot.animationSpeed = animationSpeed;
-            lot.loopAnimation  = YES;
-            lot.hidden         = NO;
-            
-            // Prepare for a smooth reveal
-            lot.alpha = 0.0;
-            lot.transform = CGAffineTransformMakeScale(0.96, 0.96);
-            
-            // Start playing immediately
-            [lot play];
-            
-            // Fade + gentle pop-in
-            [UIView animateWithDuration:0.35
-                                  delay:0
-                 usingSpringWithDamping:0.90
-                  initialSpringVelocity:0.20
-                                options:UIViewAnimationOptionCurveEaseOut
-                             animations:^{
-                lot.alpha = 1.0;
-                lot.transform = CGAffineTransformIdentity;
+            lot.loopAnimation  = loopAnimation;
+            lot.animationProgress = 0.0;
+
+            if (autoplay) {
+                lot.hidden = NO;
+
+                // Prepare for a smooth reveal
+                lot.alpha = 0.0;
+                lot.transform = CGAffineTransformMakeScale(0.96, 0.96);
+
+                // Start playing immediately
+                [lot play];
+
+                // Fade + gentle pop-in
+                [UIView animateWithDuration:0.35
+                                      delay:0
+                     usingSpringWithDamping:0.90
+                      initialSpringVelocity:0.20
+                                    options:UIViewAnimationOptionCurveEaseOut
+                                 animations:^{
+                    lot.alpha = 1.0;
+                    lot.transform = CGAffineTransformIdentity;
+                }
+                                 completion:nil];
             }
-                             completion:nil];
             
             if (completion) completion(YES);
         });

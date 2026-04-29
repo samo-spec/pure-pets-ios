@@ -88,7 +88,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         UIButtonConfiguration *glass;
         glass = [UIButtonConfiguration glassButtonConfiguration];
         glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
-        glass.background.cornerRadius  = PPNewCorner + 2;
+        glass.background.cornerRadius  = PPNewCorner + 0;
 
         self.actionButton.configuration = glass;
 
@@ -125,7 +125,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = PPNewCorner + 2;
+    self.surfaceView.layer.cornerRadius = PPNewCorner + 0;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = 1.0;
     if (@available(iOS 13.0, *)) {
@@ -171,7 +171,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.iconOrbView.hidden = NO;
     self.iconOrbView.layer.cornerRadius = 20.0;
     self.iconOrbView.layer.masksToBounds = YES;
-    self.iconOrbView.layer.borderWidth = 1.0;
+    self.iconOrbView.layer.borderWidth = 0.0;
     if (@available(iOS 13.0, *)) {
         self.iconOrbView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -195,8 +195,8 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     [self.surfaceView addSubview:self.titleLabel];
 
     UIImage *chevronImage =
-        [UIImage pp_symbolNamed:(Language.isRTL ? @"arrow.left" : @"arrow.right")
-                      pointSize:15
+        [UIImage pp_symbolNamed:(Language.isRTL ? @"chevron.left" : @"chevron.right")
+                      pointSize:16
                          weight:UIImageSymbolWeightSemibold
                           scale:UIImageSymbolScaleMedium
                         palette:@[[AppPrimaryTextClr colorWithAlphaComponent:0.7] ?: UIColor.secondaryLabelColor]
@@ -239,7 +239,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.actionButton.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.actionButton.bottomAnchor],
 
-        [self.accentWashView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:10.0],
+        [self.accentWashView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:PPIsRL ? 6.0 : 6.0],
         [self.accentWashView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         [self.accentWashView.widthAnchor constraintEqualToConstant:126.0],
         [self.accentWashView.heightAnchor constraintEqualToConstant:52.0],
@@ -266,8 +266,8 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 
         [self.chevronView.centerXAnchor constraintEqualToAnchor:self.chevronOrbView.centerXAnchor],
         [self.chevronView.centerYAnchor constraintEqualToAnchor:self.chevronOrbView.centerYAnchor],
-        [self.chevronView.widthAnchor constraintEqualToConstant:12.0],
-        [self.chevronView.heightAnchor constraintEqualToConstant:12.0],
+        [self.chevronView.widthAnchor constraintEqualToConstant:14.0],
+        [self.chevronView.heightAnchor constraintEqualToConstant:14.0],
 
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconOrbView.trailingAnchor constant:8.0],
         [self.titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.chevronOrbView.leadingAnchor constant:-6.0],
@@ -487,7 +487,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.chevronView.hidden = NO;
 
     UIColor *resolvedAccent = accent ?: [self pp_quickActionAccentColor];
-    UIColor *surfaceBase = [AppBageColor() colorWithAlphaComponent:0.98] ?: UIColor.secondarySystemBackgroundColor;
+    UIColor *surfaceBase = [AppBageColor() colorWithAlphaComponent:0.58] ?: UIColor.secondarySystemBackgroundColor;
     UIColor *primaryText = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *secondaryText = [primaryText colorWithAlphaComponent:0.54];
     UIColor *upperSurface = PPQuickActionElevatedColor(surfaceBase, 0.06);
@@ -521,16 +521,30 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.accentWashLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.5) : CGPointMake(0.0, 0.5);
     self.accentWashLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 0.5) : CGPointMake(1.0, 0.5);
     self.accentWashLayer.colors = @[
-        (__bridge id)[resolvedAccent colorWithAlphaComponent:0.14].CGColor,
-        (__bridge id)[resolvedAccent colorWithAlphaComponent:0.05].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.48].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.20].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.12].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.04].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.03].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.02].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.00].CGColor,
+        (__bridge id)[AppForgroundColr colorWithAlphaComponent:0.00].CGColor,
         (__bridge id)[UIColor.clearColor CGColor]
     ];
-    self.accentWashLayer.locations = @[@0.0, @0.55, @1.0];
+    /*
+    self.accentWashLayer.colors = @[
+        (__bridge id)[AppLightGrayColor colorWithAlphaComponent:0.24].CGColor,
+        (__bridge id)[AppLightGrayColor colorWithAlphaComponent:0.15].CGColor,
+        (__bridge id)[AppLightGrayColor colorWithAlphaComponent:0.05].CGColor,
+        (__bridge id)[UIColor.clearColor CGColor]
+    ];
+    */
+    self.accentWashLayer.locations = @[@0.0, @0.25, @0.45, @0.65, @0.85, @0.95, @1.0];
 
     self.accentBarView.backgroundColor = resolvedAccent;
-    self.iconOrbView.backgroundColor = orbSurface;
-    [self.iconOrbView pp_setBorderColor:[orbBorder colorWithAlphaComponent:0.07]];
-    self.chevronOrbView.backgroundColor = [orbSurface colorWithAlphaComponent:0.3];
+    self.iconOrbView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.72];
+    [self.iconOrbView pp_setBorderColor:[AppBackgroundClrDarker colorWithAlphaComponent:0.26]];
+    self.chevronOrbView.backgroundColor = [orbSurface colorWithAlphaComponent:0.0];
     [self.chevronOrbView pp_setBorderColor:AppClearClr];
 
     NSDictionary *attributes = @{
@@ -542,13 +556,13 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.titleLabel.textColor = primaryText;
 
     self.chevronView.tintColor = secondaryText;
-    self.iconView.tintColor = resolvedAccent;
+    self.iconView.tintColor = AppPrimaryTextClr;
     self.iconView.image =
         [UIImage pp_symbolNamed:(self.currentIconName.length > 0 ? self.currentIconName : @"sparkles")
                       pointSize:19
                          weight:UIImageSymbolWeightSemibold
                           scale:UIImageSymbolScaleMedium
-                        palette:@[resolvedAccent, PPQuickActionDeepenedColor(resolvedAccent, 0.12)]
+                        palette:@[AppPrimaryTextClr, PPQuickActionDeepenedColor(resolvedAccent, 0.12)]
                    makeTemplate:YES];
 
     [self setNeedsUpdateConstraints];

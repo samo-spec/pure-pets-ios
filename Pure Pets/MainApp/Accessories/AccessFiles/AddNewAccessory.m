@@ -759,13 +759,13 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         [c addSubview:bv];
         UIView *tv = [[UIView alloc] initWithFrame:bv.bounds];
         tv.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
-        tv.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.08];
+        tv.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.0 : 0.00];
         [bv.contentView addSubview:tv];
     } else { c.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.12]; }
     c.layer.cornerRadius = cr; c.layer.borderWidth = 1.0;
-    [c pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.16 : 0.10]];
-    [c pp_setShadowColor:[AppShadowClr colorWithAlphaComponent:0.18]];
-    c.layer.shadowOffset = CGSizeMake(0,8); c.layer.shadowOpacity = 1.0; c.layer.shadowRadius = 18.0;
+    [c pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0]];
+    [c pp_setShadowColor:[AppShadowClr colorWithAlphaComponent:0]];
+    c.layer.shadowOffset = CGSizeMake(0,0); c.layer.shadowOpacity = 0; c.layer.shadowRadius = 0;
     UIStackView *sk = [[UIStackView alloc] init];
     sk.axis = UILayoutConstraintAxisVertical; sk.alignment = UIStackViewAlignmentCenter;
     sk.spacing = ss.length ? 1.0 : 0.0; sk.translatesAutoresizingMaskIntoConstraints = NO; sk.userInteractionEnabled = NO;

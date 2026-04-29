@@ -16,10 +16,55 @@
 #endif
 
 static CGFloat const kPPCartCellOuterVerticalInset = 8.0;
-static CGFloat const kPPCartCellOuterHorizontalInset = 16.0;
-static CGFloat const kPPCartCellCardCornerRadius = 26.0;
-static CGFloat const kPPCartCellImageShellWidth = 92.0;
-static CGFloat const kPPCartCellStepperHeight = 40.0;
+static CGFloat const kPPCartCellOuterHorizontalInset = 15.0;
+static CGFloat const kPPCartCellCardCornerRadius = 24.0;
+static CGFloat const kPPCartCellImageShellWidth = 94.0;
+static CGFloat const kPPCartCellStepperHeight = 38.0;
+static CGFloat const kPPCartCellAccentRailWidth = 3.0;
+
+static UIColor *PPCartCellAccentColor(void)
+{
+    return AppPrimaryClr ?: UIColor.systemOrangeColor;
+}
+
+static UIColor *PPCartCellSurfaceColor(void)
+{
+    return AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+}
+
+static UIColor *PPCartCellPrimaryTextColor(void)
+{
+    return AppPrimaryTextClr ?: UIColor.labelColor;
+}
+
+static UIColor *PPCartCellSecondaryTextColor(void)
+{
+    return AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+}
+
+static UIColor *PPCartCellHairlineColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:1.0 alpha:0.10]
+                : [UIColor colorWithWhite:0.0 alpha:0.055];
+        }];
+    }
+    return [UIColor colorWithWhite:0.0 alpha:0.06];
+}
+
+static UIColor *PPCartCellSoftFillColor(void)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+                ? [UIColor colorWithWhite:1.0 alpha:0.075]
+                : [UIColor colorWithWhite:0.0 alpha:0.035];
+        }];
+    }
+    return [UIColor colorWithWhite:0.0 alpha:0.035];
+}
 
 typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     PPCartActionButtonKindNeutral = 0,
@@ -63,6 +108,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 @property (nonatomic, strong) UIView *cardContainer;
 @property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) UIView *accentRailView;
 @property (nonatomic, strong) UIView *imageShellView;
 @property (nonatomic, strong) UIView *stepperPillView;
 
@@ -114,9 +160,9 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     cardContainer.backgroundColor = UIColor.clearColor;
     cardContainer.layer.cornerRadius = kPPCartCellCardCornerRadius;
     [cardContainer pp_setShadowColor:UIColor.blackColor];
-    cardContainer.layer.shadowOpacity = 0.12;
-    cardContainer.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    cardContainer.layer.shadowRadius = 24.0;
+    cardContainer.layer.shadowOpacity = 0.10;
+    cardContainer.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    cardContainer.layer.shadowRadius = 22.0;
     cardContainer.layer.masksToBounds = NO;
     if (@available(iOS 13.0, *)) {
         cardContainer.layer.cornerCurve = kCACornerCurveContinuous;
@@ -126,10 +172,10 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UIView *surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    surfaceView.backgroundColor = AppForgroundColr ?: [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.99];
+    surfaceView.backgroundColor = PPCartCellSurfaceColor();
     surfaceView.layer.cornerRadius = kPPCartCellCardCornerRadius;
     surfaceView.layer.borderWidth = 0.8;
-    [surfaceView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
+    [surfaceView pp_setBorderColor:PPCartCellHairlineColor()];
     surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -137,28 +183,35 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     [cardContainer addSubview:surfaceView];
     self.surfaceView = surfaceView;
 
+    UIView *accentRailView = [[UIView alloc] initWithFrame:CGRectZero];
+    accentRailView.translatesAutoresizingMaskIntoConstraints = NO;
+    accentRailView.userInteractionEnabled = NO;
+    accentRailView.backgroundColor = [PPCartCellAccentColor() colorWithAlphaComponent:0.72];
+    [surfaceView addSubview:accentRailView];
+    self.accentRailView = accentRailView;
+
     UIView *topGlow = [[UIView alloc] initWithFrame:CGRectZero];
     topGlow.translatesAutoresizingMaskIntoConstraints = NO;
     topGlow.userInteractionEnabled = NO;
-    topGlow.backgroundColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.07];
+    topGlow.backgroundColor = [PPCartCellAccentColor() colorWithAlphaComponent:0.075];
     topGlow.layer.cornerRadius = 78.0;
-    topGlow.alpha = 0.38;
+    topGlow.alpha = 0.26;
     [surfaceView addSubview:topGlow];
 
     UIView *bottomGlow = [[UIView alloc] initWithFrame:CGRectZero];
     bottomGlow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomGlow.userInteractionEnabled = NO;
-    bottomGlow.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.05];
+    bottomGlow.backgroundColor = [UIColor.systemTealColor colorWithAlphaComponent:0.035];
     bottomGlow.layer.cornerRadius = 70.0;
-    bottomGlow.alpha = 0.26;
+    bottomGlow.alpha = 0.22;
     [surfaceView addSubview:bottomGlow];
 
     UIView *imageShellView = [[UIView alloc] initWithFrame:CGRectZero];
     imageShellView.translatesAutoresizingMaskIntoConstraints = NO;
-    imageShellView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.12];
-    imageShellView.layer.cornerRadius = 24.0;
+    imageShellView.backgroundColor = PPCartCellSoftFillColor();
+    imageShellView.layer.cornerRadius = 22.0;
     imageShellView.layer.borderWidth = 0.8;
-    [imageShellView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
+    [imageShellView pp_setBorderColor:PPCartCellHairlineColor()];
     imageShellView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         imageShellView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -168,7 +221,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UIImageView *itemImageView = [[UIImageView alloc] initWithFrame:CGRectZero];
     itemImageView.translatesAutoresizingMaskIntoConstraints = NO;
-    itemImageView.layer.cornerRadius = 20.0;
+    itemImageView.layer.cornerRadius = 18.0;
     itemImageView.clipsToBounds = YES;
     itemImageView.contentMode = UIViewContentModeScaleAspectFill;
     itemImageView.backgroundColor = UIColor.secondarySystemBackgroundColor;
@@ -179,10 +232,10 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     self.itemImageView = itemImageView;
 
     PPCartInsetLabel *eyebrowLabel = [self pp_buildCapsuleLabelWithFont:[GM MidFontWithSize:10.5]
-                                                              textColor:AppPrimaryClr ?: UIColor.labelColor
-                                                        backgroundColor:[(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.12]
-                                                            borderColor:[(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.18] corners:9];
-    eyebrowLabel.textInsets = UIEdgeInsetsMake(5.0, 10.0, 5.0, 10.0);
+                                                              textColor:PPCartCellAccentColor()
+                                                        backgroundColor:[PPCartCellAccentColor() colorWithAlphaComponent:0.13]
+                                                            borderColor:[PPCartCellAccentColor() colorWithAlphaComponent:0.16] corners:9];
+    eyebrowLabel.textInsets = UIEdgeInsetsMake(5.0, 9.0, 5.0, 9.0);
     eyebrowLabel.adjustsFontSizeToFitWidth = YES;
     eyebrowLabel.minimumScaleFactor = 0.80;
     eyebrowLabel.layer.cornerRadius = 14.0;
@@ -190,8 +243,8 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    nameLabel.font = [GM boldFontWithSize:17.0];
-    nameLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    nameLabel.font = [GM boldFontWithSize:16.5];
+    nameLabel.textColor = PPCartCellPrimaryTextColor();
     nameLabel.numberOfLines = 2;
     nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     nameLabel.textAlignment = NSTextAlignmentNatural;
@@ -201,8 +254,8 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UILabel *priceLabel = [[UILabel alloc] init];
     priceLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    priceLabel.font = [GM boldFontWithSize:18.0];
-    priceLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    priceLabel.font = [GM boldFontWithSize:17.5];
+    priceLabel.textColor = PPCartCellPrimaryTextColor();
     priceLabel.numberOfLines = 1;
     priceLabel.textAlignment = NSTextAlignmentNatural;
     [priceLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
@@ -212,7 +265,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     UILabel *originalPriceLabel = [[UILabel alloc] init];
     originalPriceLabel.translatesAutoresizingMaskIntoConstraints = NO;
     originalPriceLabel.font = [GM fontWithSize:12.5];
-    originalPriceLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.36];
+    originalPriceLabel.textColor = [PPCartCellSecondaryTextColor() colorWithAlphaComponent:0.62];
     originalPriceLabel.numberOfLines = 1;
     originalPriceLabel.textAlignment = NSTextAlignmentNatural;
     originalPriceLabel.hidden = YES;
@@ -255,10 +308,10 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     priceRow.spacing = 8.0;
 
     PPCartInsetLabel *subtotalPillLabel = [self pp_buildCapsuleLabelWithFont:[GM MidFontWithSize:11.5]
-                                                                   textColor:[UIColor.labelColor colorWithAlphaComponent:0.78]
-                                                             backgroundColor:[UIColor colorWithWhite:1.0 alpha:0.15]
-                                                                 borderColor:[UIColor colorWithWhite:1.0 alpha:0.12] corners:14];
-    subtotalPillLabel.textInsets = UIEdgeInsetsMake(7.0, 10.0, 7.0, 10.0);
+                                                                   textColor:PPCartCellSecondaryTextColor()
+                                                             backgroundColor:PPCartCellSoftFillColor()
+                                                                 borderColor:PPCartCellHairlineColor() corners:14];
+    subtotalPillLabel.textInsets = UIEdgeInsetsMake(6.0, 10.0, 6.0, 10.0);
     subtotalPillLabel.numberOfLines = 1;
     subtotalPillLabel.adjustsFontSizeToFitWidth = YES;
     subtotalPillLabel.minimumScaleFactor = 0.78;
@@ -273,9 +326,9 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UILabel *quantityLabel = [[UILabel alloc] init];
     quantityLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    quantityLabel.font = [GM boldFontWithSize:15.5];
+    quantityLabel.font = [GM boldFontWithSize:15.0];
     quantityLabel.textAlignment = NSTextAlignmentCenter;
-    quantityLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    quantityLabel.textColor = PPCartCellPrimaryTextColor();
     quantityLabel.numberOfLines = 1;
     quantityLabel.adjustsFontSizeToFitWidth = YES;
     quantityLabel.minimumScaleFactor = 0.80;
@@ -288,10 +341,10 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     UIView *stepperPillView = [[UIView alloc] initWithFrame:CGRectZero];
     stepperPillView.translatesAutoresizingMaskIntoConstraints = NO;
-    stepperPillView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
-    stepperPillView.layer.cornerRadius = 21.0;
+    stepperPillView.backgroundColor = PPCartCellSoftFillColor();
+    stepperPillView.layer.cornerRadius = kPPCartCellStepperHeight * 0.5;
     stepperPillView.layer.borderWidth = 0.8;
-    [stepperPillView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
+    [stepperPillView pp_setBorderColor:PPCartCellHairlineColor()];
     stepperPillView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         stepperPillView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -306,7 +359,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     stepperStack.translatesAutoresizingMaskIntoConstraints = NO;
     stepperStack.axis = UILayoutConstraintAxisHorizontal;
     stepperStack.alignment = UIStackViewAlignmentCenter;
-    stepperStack.spacing = 8.0;
+    stepperStack.spacing = 7.0;
     [stepperPillView addSubview:stepperStack];
     self.stepperStack = stepperStack;
 
@@ -323,7 +376,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     bottomRow.translatesAutoresizingMaskIntoConstraints = NO;
     bottomRow.axis = UILayoutConstraintAxisHorizontal;
     bottomRow.alignment = UIStackViewAlignmentCenter;
-    bottomRow.spacing = 10.0;
+    bottomRow.spacing = 9.0;
 
     UIStackView *contentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         headerRow,
@@ -333,7 +386,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     contentStack.axis = UILayoutConstraintAxisVertical;
     contentStack.alignment = UIStackViewAlignmentFill;
-    contentStack.spacing = 6.0;
+    contentStack.spacing = 7.0;
     contentStack.distribution = UIStackViewDistributionFill;
     [surfaceView addSubview:contentStack];
     self.textStack = contentStack;
@@ -348,6 +401,11 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         [surfaceView.bottomAnchor constraintEqualToAnchor:cardContainer.bottomAnchor],
         [surfaceView.leadingAnchor constraintEqualToAnchor:cardContainer.leadingAnchor],
         [surfaceView.trailingAnchor constraintEqualToAnchor:cardContainer.trailingAnchor],
+
+        [accentRailView.topAnchor constraintEqualToAnchor:surfaceView.topAnchor constant:18.0],
+        [accentRailView.bottomAnchor constraintEqualToAnchor:surfaceView.bottomAnchor constant:-18.0],
+        [accentRailView.leadingAnchor constraintEqualToAnchor:surfaceView.leadingAnchor],
+        [accentRailView.widthAnchor constraintEqualToConstant:kPPCartCellAccentRailWidth],
 
         [topGlow.widthAnchor constraintEqualToConstant:156.0],
         [topGlow.heightAnchor constraintEqualToConstant:156.0],
@@ -398,6 +456,56 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:YES];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:YES];
+    [self pp_applyVisualTheme];
+}
+
+- (void)pp_applyVisualTheme
+{
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    UIColor *accent = PPCartCellAccentColor();
+    UIColor *surfaceColor = PPCartCellSurfaceColor();
+
+    self.cardContainer.layer.shadowOpacity = dark ? 0.18 : 0.08;
+    self.cardContainer.layer.shadowRadius = dark ? 18.0 : 22.0;
+    self.cardContainer.layer.shadowOffset = CGSizeMake(0.0, dark ? 8.0 : 12.0);
+
+    self.surfaceView.backgroundColor = surfaceColor;
+    [self.surfaceView pp_setBorderColor:PPCartCellHairlineColor()];
+
+    self.accentRailView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.62 : 0.72];
+    self.imageShellView.backgroundColor = PPCartCellSoftFillColor();
+    [self.imageShellView pp_setBorderColor:PPCartCellHairlineColor()];
+    self.itemImageView.backgroundColor = dark ? UIColor.tertiarySystemBackgroundColor : UIColor.secondarySystemBackgroundColor;
+
+    self.nameLabel.textColor = PPCartCellPrimaryTextColor();
+    self.priceLabel.textColor = PPCartCellPrimaryTextColor();
+    self.originalPriceLabel.textColor = [PPCartCellSecondaryTextColor() colorWithAlphaComponent:0.62];
+    self.quantityLabel.textColor = PPCartCellPrimaryTextColor();
+
+    self.eyebrowLabel.textColor = accent;
+    self.eyebrowLabel.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.12];
+    [self.eyebrowLabel pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.22 : 0.16]];
+
+    self.stepperPillView.backgroundColor = PPCartCellSoftFillColor();
+    [self.stepperPillView pp_setBorderColor:PPCartCellHairlineColor()];
+
+    if (self.currentItem.hasDiscount) {
+        self.subtotalPillLabel.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.20 : 0.14];
+        [self.subtotalPillLabel pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.24 : 0.18]];
+        self.subtotalPillLabel.textColor = accent;
+    } else {
+        self.subtotalPillLabel.backgroundColor = PPCartCellSoftFillColor();
+        [self.subtotalPillLabel pp_setBorderColor:PPCartCellHairlineColor()];
+        self.subtotalPillLabel.textColor = PPCartCellSecondaryTextColor();
+    }
+
+    if (self.currentItem) {
+        [self pp_updateActionAvailability];
+    }
 }
 
 - (PPCartInsetLabel *)pp_buildCapsuleLabelWithFont:(UIFont *)font
@@ -444,11 +552,20 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
     [self pp_setCardHighlighted:NO animated:NO];
 
+    [self.cardContainer.layer removeAllAnimations];
+    [self.surfaceView.layer removeAllAnimations];
+    [self.stepperPillView.layer removeAllAnimations];
+    [self.quantityLabel.layer removeAllAnimations];
+    self.cardContainer.transform = CGAffineTransformIdentity;
+    self.surfaceView.transform = CGAffineTransformIdentity;
+    self.stepperPillView.transform = CGAffineTransformIdentity;
+    self.quantityLabel.transform = CGAffineTransformIdentity;
     self.minusButton.transform = CGAffineTransformIdentity;
     self.plusButton.transform = CGAffineTransformIdentity;
     self.minusButton.alpha = 1.0;
     self.plusButton.alpha = 1.0;
 
+    [self pp_applyVisualTheme];
     [self pp_styleActionButton:self.minusButton kind:PPCartActionButtonKindNeutral enabled:YES];
     [self pp_styleActionButton:self.plusButton kind:PPCartActionButtonKindAccent enabled:YES];
 }
@@ -462,6 +579,13 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
             [UIBezierPath bezierPathWithRoundedRect:self.cardContainer.bounds
                                       cornerRadius:self.cardContainer.layer.cornerRadius].CGPath;
     }
+    self.accentRailView.layer.cornerRadius = kPPCartCellAccentRailWidth * 0.5;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self pp_applyVisualTheme];
 }
 
 #pragma mark - Configuration
@@ -497,7 +621,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         NSString *originalText = [PPChatsFunc formattedCurrency:item.originalPrice];
         NSDictionary *attributes = @{
             NSStrikethroughStyleAttributeName: @(NSUnderlineStyleSingle),
-            NSForegroundColorAttributeName: [UIColor.labelColor colorWithAlphaComponent:0.38],
+            NSForegroundColorAttributeName: [PPCartCellSecondaryTextColor() colorWithAlphaComponent:0.62],
             NSFontAttributeName: self.originalPriceLabel.font
         };
         self.originalPriceLabel.attributedText = [[NSAttributedString alloc] initWithString:originalText
@@ -506,19 +630,14 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
         self.savingsPillLabel.text = [NSString stringWithFormat:@"-%@",
                                       [PPChatsFunc formattedCurrency:item.discountPerUnit]];
         self.savingsPillLabel.hidden = NO;
-        self.subtotalPillLabel.backgroundColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.16];
-        [self.subtotalPillLabel pp_setBorderColor:[(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.18]];
-        self.subtotalPillLabel.textColor = AppPrimaryClr ?: UIColor.labelColor;
     } else {
         self.originalPriceLabel.attributedText = nil;
         self.originalPriceLabel.hidden = YES;
         self.savingsPillLabel.text = @"";
         self.savingsPillLabel.hidden = YES;
-        self.subtotalPillLabel.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
-        [self.subtotalPillLabel pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
-        self.subtotalPillLabel.textColor = [UIColor.labelColor colorWithAlphaComponent:0.78];
     }
 
+    [self pp_applyVisualTheme];
     [GM setImageFromUrlString:item.imageURL imageView:self.itemImageView phImage:@"placeholder"];
     [self pp_updateActionAvailability];
 }
@@ -544,6 +663,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     DLog(@"Minus tapped for %@", self.currentItem.name);
     self.currentItem.quantity -= 1;
     [self pp_refreshContentForCurrentItem];
+    [self pp_animateQuantityChangeWithIncreasing:NO];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
 
     if (self.onAction) {
@@ -562,6 +682,7 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
     DLog(@"Plus tapped for %@", self.currentItem.name);
     self.currentItem.quantity += 1;
     [self pp_refreshContentForCurrentItem];
+    [self pp_animateQuantityChangeWithIncreasing:YES];
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventCartQuantityChanged];
 
     if (self.onAction) {
@@ -603,21 +724,21 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 {
     if (!button) return;
 
-    UIColor *foregroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.10];
-    UIColor *borderColor = [UIColor colorWithWhite:1.0 alpha:0.12];
+    UIColor *foregroundColor = PPCartCellPrimaryTextColor();
+    UIColor *backgroundColor = PPCartCellSoftFillColor();
+    UIColor *borderColor = PPCartCellHairlineColor();
 
     switch (kind) {
         case PPCartActionButtonKindAccent:
-            foregroundColor = AppPrimaryClr ?: UIColor.labelColor;
-            backgroundColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:enabled ? 0.15 : 0.06];
-            borderColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:enabled ? 0.20 : 0.08];
+            foregroundColor = PPCartCellAccentColor();
+            backgroundColor = [PPCartCellAccentColor() colorWithAlphaComponent:enabled ? 0.15 : 0.06];
+            borderColor = [PPCartCellAccentColor() colorWithAlphaComponent:enabled ? 0.20 : 0.08];
             break;
         case PPCartActionButtonKindNeutral:
         default:
-            foregroundColor = AppPrimaryTextClr ?: UIColor.labelColor;
-            backgroundColor = [UIColor colorWithWhite:1.0 alpha:enabled ? 0.10 : 0.05];
-            borderColor = [UIColor colorWithWhite:1.0 alpha:enabled ? 0.12 : 0.06];
+            foregroundColor = PPCartCellPrimaryTextColor();
+            backgroundColor = PPCartCellSoftFillColor();
+            borderColor = PPCartCellHairlineColor();
             break;
     }
 
@@ -658,9 +779,14 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 - (void)pp_setCardHighlighted:(BOOL)highlighted animated:(BOOL)animated
 {
     UIView *target = self.cardContainer ?: self.contentView;
-    CGFloat scale = highlighted ? 0.985 : 1.0;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    CGFloat scale = (highlighted && !reduceMotion) ? 0.985 : 1.0;
     CGFloat alpha = highlighted ? 0.97 : 1.0;
-    CGFloat shadowOpacity = highlighted ? 0.07 : 0.11;
+    CGFloat shadowOpacity = highlighted ? 0.06 : (dark ? 0.18 : 0.08);
 
     void (^changes)(void) = ^{
         target.transform = CGAffineTransformMakeScale(scale, scale);
@@ -692,6 +818,11 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 - (void)pp_buttonTouchDown:(UIButton *)button
 {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        button.alpha = button.userInteractionEnabled ? 0.90 : button.alpha;
+        return;
+    }
+
     [UIView animateWithDuration:0.08
                           delay:0.0
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
@@ -703,6 +834,12 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
 
 - (void)pp_buttonTouchUp:(UIButton *)button
 {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        button.transform = CGAffineTransformIdentity;
+        button.alpha = button.userInteractionEnabled ? 1.0 : 0.46;
+        return;
+    }
+
     [UIView animateWithDuration:0.34
                           delay:0.0
          usingSpringWithDamping:0.60
@@ -711,6 +848,28 @@ typedef NS_ENUM(NSInteger, PPCartActionButtonKind) {
                      animations:^{
         button.transform = CGAffineTransformIdentity;
         button.alpha = button.userInteractionEnabled ? 1.0 : 0.46;
+    } completion:nil];
+}
+
+- (void)pp_animateQuantityChangeWithIncreasing:(BOOL)increasing
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    CGFloat direction = increasing ? -3.0 : 3.0;
+    self.quantityLabel.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, direction),
+                                                           CGAffineTransformMakeScale(1.16, 1.16));
+    self.stepperPillView.transform = CGAffineTransformMakeScale(1.018, 1.018);
+
+    [UIView animateWithDuration:0.38
+                          delay:0.0
+         usingSpringWithDamping:0.68
+          initialSpringVelocity:0.12
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.quantityLabel.transform = CGAffineTransformIdentity;
+        self.stepperPillView.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 

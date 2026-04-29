@@ -264,6 +264,7 @@
 #define AppSecondaryTextClr         [UIColor colorNamed:@"SecondaryTextColor"]
 #define AppForgroundColr            [UIColor colorNamed:@"AppForegroundColor"] //UIColor.secondarySystemBackgroundColor //[UIColor colorNamed:@"AppForegroundColor"]
 #define AppButtonMixColorClr         [UIColor colorNamed:@"AppButtonMixColor"]
+#define AppSurfColor                [[UIColor colorNamed:@"AppSurfColor"] colorWithAlphaComponent:1.0]
 
 #define AppCardColor                [[UIColor colorNamed:@"AppCardColor"] colorWithAlphaComponent:1.0]
 
