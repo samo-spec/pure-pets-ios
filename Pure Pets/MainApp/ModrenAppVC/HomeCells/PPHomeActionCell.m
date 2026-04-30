@@ -77,7 +77,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.contentView.clipsToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.masksToBounds = NO;
-    float corners = 26;
+    float corners = 22;
     if(PPIOS26())
     {
         
@@ -95,8 +95,8 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         glass = [UIButtonConfiguration glassButtonConfiguration];
         glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         glass.background.cornerRadius  = corners;
-        glass.background.backgroundColor = UIColor.clearColor;
-        glass.baseBackgroundColor = UIColor.clearColor;
+        glass.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.7 : 0.72];;
+        glass.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.7: 0.72];
 
         self.actionButton.configuration = glass;
  

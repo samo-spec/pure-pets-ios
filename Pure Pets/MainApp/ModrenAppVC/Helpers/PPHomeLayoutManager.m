@@ -44,10 +44,12 @@
                 @(PPHomeSectionHero),
                 @(PPHomeSectionQuickActions),
                 @(PPHomeSectionCurrentOrders),
-                @(PPHomeSectionCarousel),
+                @(PPHomeSectionPremiumCare),
+                
                 @(PPHomeSectionMainKinds),
                 @(PPHomeSectionSuggestions),
-                @(PPHomeSectionPremiumCare),
+                
+                @(PPHomeSectionCarousel),
                 @(PPHomeSectionAccessories),
                 @(PPHomeSectionLastFood),
                 @(PPHomeSectionNearbyServices),

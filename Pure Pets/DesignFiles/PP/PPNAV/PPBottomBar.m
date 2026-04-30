@@ -287,7 +287,7 @@ static UIColor *PPBBCartSurfaceTintColor(void) {
                                      [UIColor colorWithWhite:1.0 alpha:0.10]);
     }
     UIColor *base = PPBBCartColor(AppBackgroundClr, UIColor.systemBackgroundColor);
-    return [base colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.18];
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.22];
 }
 
 static UIColor *PPBBCartSurfaceStrokeColor(void) {
@@ -300,7 +300,7 @@ static UIColor *PPBBCartSurfaceStrokeColor(void) {
 
 static UIColor *PPBBCartBadgeFillColor(void) {
     if (PPBBCartUsesLegacyIPadBelowIOS18()) {
-        return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.070],
+        return PPBBCartAdaptiveColor([UIColor colorWithWhite:1.0 alpha:0.02],
                                      [UIColor colorWithWhite:1.0 alpha:0.66]);
     }
     UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);

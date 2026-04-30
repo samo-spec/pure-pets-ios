@@ -24,9 +24,6 @@
 
 static const CGFloat kPPSectionsTabBarHeight = 64.0;
 static const CGFloat kPPAccessoryFilterHeight = 42.0;
-static const NSInteger kPPPremiumVisibleCellAnimationLimit = 12;
-static const CGFloat kPPPremiumCellBaseEntranceYOffset = 18.0;
-static const CGFloat kPPPremiumCellSectionEntranceXOffset = 18.0;
 
 typedef NS_ENUM(NSInteger, PPDataViewMotionReason) {
     PPDataViewMotionReasonNone = 0,
@@ -148,8 +145,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) UIStackView *filterChipStackView;
 @property (nonatomic, strong) NSMutableArray<PPDropdownFilterChipButton *> *filterChips;
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, PPFilterState *> *filterStates;
-// Scroll restore
-@property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSValue *> *scrollOffsetsBySection;
 @property (nonatomic, strong) id imageLoader;
 
 @property (nonatomic, strong) PPModrenSegmrnted *sectionsSegmentedControl;
@@ -158,8 +153,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
 
 
-@property (nonatomic, assign) CGFloat lastContentOffsetY;
-@property (nonatomic, assign) BOOL isRestoringScrollOffset;
 // Custom navigation bar center view
 @property (nonatomic, strong) UIButton *navContainerView;
 @property (nonatomic, strong) UIButton *KindsButton;
@@ -182,7 +175,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
 @property (nonatomic, assign) BOOL didApplyInitialSnapshot;
 @property (nonatomic, assign) BOOL didlayout;
-@property (nonatomic, assign) BOOL didFixInitialScroll;
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *blurHashCache;
 @property (nonatomic, strong) dispatch_queue_t blurHashQueue;
 @property (nonatomic, assign) BOOL isPerformingCrossFade;
@@ -192,17 +184,9 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, assign) PPDataViewMotionReason pendingMotionReason;
 @property (nonatomic, assign) NSInteger pendingMotionDirection;
 @property (nonatomic, assign) BOOL isAwaitingTransitionData;
-@property (nonatomic, strong) NSMutableSet<NSString *> *animatedCellEntranceKeys;
-@property (nonatomic, assign) NSInteger cellEntranceAnimationGeneration;
-@property (nonatomic, assign) NSInteger pendingCellEntranceAnimationLimit;
-@property (nonatomic, assign) PPDataViewMotionReason pendingCellEntranceMotionReason;
-@property (nonatomic, assign) NSInteger pendingCellEntranceDirection;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit;
 - (void)updateSectionsTabBarSelectionIndicatorIfNeeded;
-- (void)saveCurrentSectionScrollOffset;
-- (void)restoreScrollOffsetForCurrentSection;
-- (CGFloat)preferredTopContentOffsetY;
 - (void)pp_handleCartUpdated:(NSNotification *)note;
 - (NSInteger)currentCartItemCount;
 - (void)updateCartBadge;
@@ -215,7 +199,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (BOOL)shouldShowFilterChipBarForSection:(PPDataSection)section;
 - (void)syncFilterChipsForCurrentSection;
 - (void)updateFilterChipVisibilityForSection:(PPDataSection)section animated:(BOOL)animated;
-- (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop;
+- (void)refreshPresentedItemsAnimated:(BOOL)animated;
 - (void)refreshFilterChipTitles;
 - (void)sectionsSegmentedControlChanged:(PPModrenSegmrnted *)sender;
 - (void)onCartTapped;
@@ -241,17 +225,11 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)pp_applyNavigationChangeAnimationToButton:(UIButton *)button updates:(dispatch_block_t)updates;
 - (void)pp_applyFeedbackPulseToView:(UIView *)view;
 - (NSArray<UICollectionViewCell *> *)pp_sortedVisibleCollectionCells;
-- (NSString *)pp_cellAnimationKeyForIndexPath:(NSIndexPath *)indexPath;
-- (void)pp_prepareCellEntranceAnimationsForReason:(PPDataViewMotionReason)reason direction:(NSInteger)direction;
-- (void)pp_animatePreparedVisibleCellsIfNeeded;
-- (void)pp_animateCellIfNeeded:(UICollectionViewCell *)cell atIndexPath:(NSIndexPath *)indexPath;
 - (void)pp_applyPresentedItemsAnimated:(BOOL)animated
-                           scrollToTop:(BOOL)scrollToTop
                           motionReason:(PPDataViewMotionReason)motionReason
                        motionDirection:(NSInteger)motionDirection;
 - (void)pp_performPremiumContentTransitionForReason:(PPDataViewMotionReason)motionReason
-                                    motionDirection:(NSInteger)motionDirection
-                                        scrollToTop:(BOOL)scrollToTop;
+                                    motionDirection:(NSInteger)motionDirection;
 @end
 @implementation PPDataViewVC
 -(void)viewWillLayoutSubviews
@@ -315,9 +293,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     self.isPerformingCrossFade = NO;
     self.isAwaitingTransitionData = NO;
     self.pendingMotionReason = PPDataViewMotionReasonNone;
-    self.pendingCellEntranceAnimationLimit = 0;
-    self.pendingCellEntranceMotionReason = PPDataViewMotionReasonNone;
-    [self.animatedCellEntranceKeys removeAllObjects];
     if (self.collectionView) {
         self.collectionView.userInteractionEnabled = YES;
         self.collectionView.alpha = 1.0;
@@ -422,7 +397,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.didFixInitialScroll = NO;
     _didlayout = NO;
     self.blurHashCache = [NSCache new];
     self.blurHashCache.countLimit = 200;
@@ -433,11 +407,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     self.pendingMotionReason = PPDataViewMotionReasonNone;
     self.pendingMotionDirection = 0;
     self.isAwaitingTransitionData = NO;
-    self.animatedCellEntranceKeys = [NSMutableSet set];
-    self.cellEntranceAnimationGeneration = 0;
-    self.pendingCellEntranceAnimationLimit = 0;
-    self.pendingCellEntranceMotionReason = PPDataViewMotionReasonNone;
-    self.pendingCellEntranceDirection = 0;
     [self pp_applyPremiumDataViewBackgroundAppearance];
     [self emptyStateInit];
     [self setupSectionsTabBar];
@@ -710,102 +679,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     }];
 }
 
-- (NSString *)pp_cellAnimationKeyForIndexPath:(NSIndexPath *)indexPath
-{
-    if (!indexPath) {
-        return @"";
-    }
-
-    return [NSString stringWithFormat:@"%ld.%ld.%ld",
-            (long)self.cellEntranceAnimationGeneration,
-            (long)indexPath.section,
-            (long)indexPath.item];
-}
-
-- (void)pp_prepareCellEntranceAnimationsForReason:(PPDataViewMotionReason)reason direction:(NSInteger)direction
-{
-    self.cellEntranceAnimationGeneration += 1;
-    [self.animatedCellEntranceKeys removeAllObjects];
-    self.pendingCellEntranceMotionReason = reason;
-    self.pendingCellEntranceDirection = (direction > 0) ? 1 : ((direction < 0) ? -1 : 0);
-    self.pendingCellEntranceAnimationLimit = (reason == PPDataViewMotionReasonNone)
-        ? 0
-        : MIN((NSInteger)self.presentedItems.count, kPPPremiumVisibleCellAnimationLimit);
-}
-
-- (void)pp_animatePreparedVisibleCellsIfNeeded
-{
-    if (self.pendingCellEntranceAnimationLimit <= 0 || ![self pp_allowsPremiumMotion]) {
-        return;
-    }
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.collectionView layoutIfNeeded];
-        for (UICollectionViewCell *cell in [self pp_sortedVisibleCollectionCells]) {
-            NSIndexPath *indexPath = [self.collectionView indexPathForCell:cell];
-            [self pp_animateCellIfNeeded:cell atIndexPath:indexPath];
-        }
-    });
-}
-
-- (void)pp_animateCellIfNeeded:(UICollectionViewCell *)cell atIndexPath:(NSIndexPath *)indexPath
-{
-    if (!cell || !indexPath || self.pendingCellEntranceAnimationLimit <= 0) {
-        return;
-    }
-
-    if (indexPath.item >= self.pendingCellEntranceAnimationLimit) {
-        return;
-    }
-
-    NSString *key = [self pp_cellAnimationKeyForIndexPath:indexPath];
-    if (key.length == 0 || [self.animatedCellEntranceKeys containsObject:key]) {
-        return;
-    }
-    [self.animatedCellEntranceKeys addObject:key];
-
-    if (![self pp_allowsPremiumMotion]) {
-        cell.alpha = 1.0;
-        cell.transform = CGAffineTransformIdentity;
-        return;
-    }
-
-    CGFloat directionX = 0.0;
-    if (self.pendingCellEntranceMotionReason == PPDataViewMotionReasonSectionChange) {
-        directionX = (CGFloat)self.pendingCellEntranceDirection * kPPPremiumCellSectionEntranceXOffset;
-    } else if (self.pendingCellEntranceMotionReason == PPDataViewMotionReasonMainKindChange) {
-        directionX = (CGFloat)self.pendingCellEntranceDirection * 10.0;
-    }
-
-    CGFloat directionY = kPPPremiumCellBaseEntranceYOffset + (CGFloat)MIN((NSInteger)indexPath.item, 4) * 3.0;
-    if (self.pendingCellEntranceMotionReason == PPDataViewMotionReasonInitialLoad) {
-        directionY += 6.0;
-    }
-
-    CGAffineTransform startTransform = CGAffineTransformTranslate(CGAffineTransformIdentity,
-                                                                  directionX,
-                                                                  directionY);
-    startTransform = CGAffineTransformScale(startTransform, 0.985, 0.985);
-
-    cell.alpha = 0.0;
-    cell.transform = startTransform;
-
-    NSTimeInterval delay = MIN((NSTimeInterval)indexPath.item * 0.035, 0.28);
-    [UIView animateWithDuration:0.50
-                          delay:delay
-         usingSpringWithDamping:0.84
-          initialSpringVelocity:0.16
-                        options:UIViewAnimationOptionBeginFromCurrentState |
-                                UIViewAnimationOptionCurveEaseOut |
-                                UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        cell.alpha = 1.0;
-        cell.transform = CGAffineTransformIdentity;
-    } completion:nil];
-}
-
 - (void)pp_applyPresentedItemsAnimated:(BOOL)animated
-                           scrollToTop:(BOOL)scrollToTop
                           motionReason:(PPDataViewMotionReason)motionReason
                        motionDirection:(NSInteger)motionDirection
 {
@@ -818,38 +692,24 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
     if (shouldUsePremiumTransition) {
         [self pp_performPremiumContentTransitionForReason:motionReason
-                                          motionDirection:motionDirection
-                                              scrollToTop:scrollToTop];
+                                          motionDirection:motionDirection];
         return;
     }
 
     self.layoutManager.items = self.presentedItems;
     [self applySnapshotAnimated:animated];
     [self refreshFilterChipTitles];
-    [self pp_prepareCellEntranceAnimationsForReason:motionReason direction:motionDirection];
-    [self pp_animatePreparedVisibleCellsIfNeeded];
-
-    if (scrollToTop) {
-        [self scrollCollectionViewToTopAfterReload:YES];
-    }
-
     [self updateEmptyState];
 }
 
 - (void)pp_performPremiumContentTransitionForReason:(PPDataViewMotionReason)motionReason
                                     motionDirection:(NSInteger)motionDirection
-                                        scrollToTop:(BOOL)scrollToTop
 {
     NSArray<UICollectionViewCell *> *outgoingCells = [self pp_sortedVisibleCollectionCells];
     if (outgoingCells.count == 0 || self.isPerformingCrossFade) {
         self.layoutManager.items = self.presentedItems;
         [self applySnapshotAnimated:NO];
         [self refreshFilterChipTitles];
-        [self pp_prepareCellEntranceAnimationsForReason:motionReason direction:motionDirection];
-        [self pp_animatePreparedVisibleCellsIfNeeded];
-        if (scrollToTop) {
-            [self scrollCollectionViewToTopAfterReload:YES];
-        }
         [self updateEmptyState];
         return;
     }
@@ -885,12 +745,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         [self applySnapshotAnimated:NO];
         [self.collectionView layoutIfNeeded];
         [self refreshFilterChipTitles];
-        [self pp_prepareCellEntranceAnimationsForReason:motionReason direction:motionDirection];
-        [self pp_animatePreparedVisibleCellsIfNeeded];
-
-        if (scrollToTop) {
-            [self scrollCollectionViewToTopAfterReload:YES];
-        }
 
         self.collectionView.userInteractionEnabled = YES;
         self.isPerformingCrossFade = NO;
@@ -925,11 +779,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     [self.viewModel reloadDataWithCompletion:^(NSError * _Nullable error) {
         
         PPDataViewLog(@"✅ [PPDataViewVC] Ads reload finished");
-
-        // Scroll to top ONLY if new ad was created
-        if (!isEditing) {
-            [self scrollCollectionViewToTopAfterReload:YES];
-        }
     }];
 }
 
@@ -954,7 +803,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     self.emptyStateConfig.action       = @selector(retryReloadData);
     self.emptyStateConfig.isNetworkFile = YES;
     self.didInitialReload = NO;
-    self.scrollOffsetsBySection = [NSMutableDictionary dictionary];
 }
 
 #pragma mark - Routing
@@ -1016,10 +864,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         }
     }
 
-    [self.scrollOffsetsBySection removeAllObjects];
-    PPDataViewLog(@"[VC] scrollOffsetsBySection cleared");
-    
-   
 }
 
 #pragma mark - Setup
@@ -1078,15 +922,8 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     self.collectionView.translatesAutoresizingMaskIntoConstraints = NO;
     self.collectionView.backgroundColor = UIColor.clearColor;
     self.collectionView.delegate = self;
-    self.collectionView.showsHorizontalScrollIndicator = NO;
-    self.collectionView.showsVerticalScrollIndicator = NO;
-    self.collectionView.alwaysBounceVertical = YES;
     self.collectionView.prefetchingEnabled = YES;
     self.collectionView.prefetchDataSource = self;
-    self.collectionView.decelerationRate = UIScrollViewDecelerationRateNormal;
-    if (@available(iOS 13.0, *)) {
-       // self.collectionView.automaticallyAdjustsScrollIndicatorInsets = NO;
-    }
     [self.collectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:@"PPUniversalCell"];
     [self configureDataSource];
     [self.view insertSubview:self.collectionView atIndex:0];
@@ -1278,25 +1115,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 }
 
 
-/// Smoothly scrolls collection view to top (safe and async)
-- (void)scrollCollectionViewToTopAfterReload:(BOOL)animated
-{
-    UICollectionView *cv = self.collectionView;
-    if (!cv) return;
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        // Force layout pass (CRITICAL for Pinterest)
-        [cv layoutIfNeeded];
-
-        if (cv.contentSize.height <= cv.bounds.size.height) {
-            return; // nothing to scroll
-        }
-
-        CGPoint topOffset = CGPointMake(0, [self preferredTopContentOffsetY]);
-        [cv setContentOffset:topOffset animated:animated];
-    });
-}
-
 - (void)persistCurrentSection
 {
     PPDataSection section = self.viewModel.currentSection;
@@ -1344,8 +1162,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
             return;
         }
 
-        [weakSelf refreshPresentedItemsAnimated:weakSelf.didApplyInitialSnapshot
-                                     scrollToTop:NO];
+        [weakSelf refreshPresentedItemsAnimated:weakSelf.didApplyInitialSnapshot];
         weakSelf.didApplyInitialSnapshot = YES;
         [weakSelf updateSectionsTabBarSelectionForSection:weakSelf.viewModel.currentSection animated:NO];
         [weakSelf updateFilterChipVisibilityForSection:weakSelf.viewModel.currentSection animated:NO];
@@ -1361,19 +1178,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         
         [weakSelf updateCollectionContentInset];
 
-        if (!weakSelf.didFixInitialScroll) {
-            weakSelf.didFixInitialScroll = YES;
-
-            dispatch_async(dispatch_get_main_queue(), ^{
-                [weakSelf updateCollectionContentInset];
-                [weakSelf.collectionView layoutIfNeeded];
-                CGPoint topOffset =
-                CGPointMake(0, [weakSelf preferredTopContentOffsetY]);
-                [weakSelf.collectionView setContentOffset:topOffset animated:NO];
-            });
-        } else {
-            [weakSelf restoreScrollOffsetForCurrentSection];
-        }
         [weakSelf updateCartButtonVisibility];
         [weakSelf pp_prefetchTopImagesWithLimit:16];
         
@@ -1390,7 +1194,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         PPDataViewLog(@"[VC] items.count BEFORE = %ld", (long)weakSelf.viewModel.items.count);
         PPDataViewLog(@"[VC] didInitialReload = %@", weakSelf.didInitialReload ? @"YES" : @"NO");
 
-        [weakSelf refreshPresentedItemsAnimated:YES scrollToTop:NO];
+        [weakSelf refreshPresentedItemsAnimated:YES];
         [weakSelf updateEmptyState];
         [weakSelf syncFilterChipsForCurrentSection];
         //[weakSelf updateNavSectionTitle];
@@ -1411,7 +1215,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 #pragma mark - Collection Content Inset Fix
 
-// Ensures collectionView has proper bottom inset for tab bar & safe area, and always bounces vertically.
+// Keeps collection content clear of the floating controls and safe area.
 - (void)updateCollectionContentInset
 {
     if (!self.collectionView) { return; }
@@ -1451,7 +1255,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
     // Account for safe area
     bottomInset += self.view.safeAreaInsets.bottom;
-
+    targetTopInset += 72;
     CGFloat targetBottomInset = bottomInset + 16.0;
     UIEdgeInsets currentInset = self.collectionView.contentInset;
     CGFloat topDelta = currentInset.top - targetTopInset;
@@ -1467,76 +1271,6 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     inset.bottom = targetBottomInset; // breathing space
 
     self.collectionView.contentInset = inset;
-    self.collectionView.scrollIndicatorInsets = inset;
-}
-
-- (void)saveCurrentSectionScrollOffset
-{
-    if (!self.collectionView) { return; }
-    CGPoint currentOffset = self.collectionView.contentOffset;
-    CGFloat preferredTopY = [self preferredTopContentOffsetY];
-    if (currentOffset.y < preferredTopY) {
-        currentOffset.y = preferredTopY;
-    }
-    self.scrollOffsetsBySection[@(self.viewModel.currentSection)] =
-    [NSValue valueWithCGPoint:currentOffset];
-}
-
-- (void)restoreScrollOffsetForCurrentSection
-{
-    if (!self.collectionView) { return; }
-
-    NSValue *savedOffset =
-    self.scrollOffsetsBySection[@(self.viewModel.currentSection)];
-    CGPoint targetOffset = CGPointMake(0, [self preferredTopContentOffsetY]);
-    if (savedOffset) {
-        targetOffset = savedOffset.CGPointValue;
-    }
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.collectionView layoutIfNeeded];
-
-        CGFloat minY = -self.collectionView.adjustedContentInset.top;
-        CGFloat maxY = self.collectionView.contentSize.height -
-        self.collectionView.bounds.size.height +
-        self.collectionView.adjustedContentInset.bottom;
-        if (maxY < minY) {
-            maxY = minY;
-        }
-
-        CGFloat preferredTopY = [self preferredTopContentOffsetY];
-        CGFloat clampedY = targetOffset.y;
-        if (clampedY < preferredTopY) { clampedY = preferredTopY; }
-        if (clampedY < minY) { clampedY = minY; }
-        if (clampedY > maxY) { clampedY = maxY; }
-        CGPoint clampedOffset = CGPointMake(0, clampedY);
-        self.isRestoringScrollOffset = YES;
-        [self.collectionView setContentOffset:clampedOffset animated:NO];
-        self.isRestoringScrollOffset = NO;
-        self.scrollOffsetsBySection[@(self.viewModel.currentSection)] =
-        [NSValue valueWithCGPoint:clampedOffset];
-        self.lastContentOffsetY = clampedY;
-    });
-}
-
-- (CGFloat)preferredTopContentOffsetY
-{
-    if (!self.collectionView) {
-        return 0.0;
-    }
-    return -self.collectionView.adjustedContentInset.top;
-}
-
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView
-{
-    if (scrollView != self.collectionView) { return; }
-    if (self.isRestoringScrollOffset) { return; }
-    if (self.layoutManager.items.count == 0) { return; }
-    if (!scrollView.isTracking && !scrollView.isDragging && !scrollView.isDecelerating) { return; }
-    CGFloat y = scrollView.contentOffset.y;
-    if (ABS(y - self.lastContentOffsetY) < 6.0) { return; }
-    self.lastContentOffsetY = y;
-    [self saveCurrentSectionScrollOffset];
 }
 
 - (void)pp_handleCartUpdated:(NSNotification *)note
@@ -1707,7 +1441,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         [strongSelf.viewModel applyFilterState:applied];
         [strongSelf syncFilterChipsForCurrentSection];
         [strongSelf refreshFilterChipTitles];
-        [strongSelf refreshPresentedItemsAnimated:YES scrollToTop:YES];
+        [strongSelf refreshPresentedItemsAnimated:YES];
 
     };
     [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle80 ];
@@ -1876,14 +1610,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [[PPImageLoaderManager shared] cancelAllPrefetching];
 }
 
-- (void)collectionView:(UICollectionView *)collectionView
-      willDisplayCell:(UICollectionViewCell *)cell
-    forItemAtIndexPath:(NSIndexPath *)indexPath
-{
-    (void)collectionView;
-    [self pp_animateCellIfNeeded:cell atIndexPath:indexPath];
-}
-
 - (void)applySnapshotAnimated:(BOOL)animated
 {
     if (!self.viewModel || !self.dataSource) return;
@@ -1929,7 +1655,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     return sourceItems ?: @[];
 }
 
-- (void)refreshPresentedItemsAnimated:(BOOL)animated scrollToTop:(BOOL)scrollToTop
+- (void)refreshPresentedItemsAnimated:(BOOL)animated
 {
     // Keep the server-backed view model intact while the screen applies lightweight
     // presentation-only price filtering and sorting for the accessories experience.
@@ -1944,7 +1670,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     NSInteger motionDirection = self.pendingMotionDirection;
     [self pp_applyPresentedItemsAnimated:animated
-                             scrollToTop:scrollToTop
                             motionReason:motionReason
                          motionDirection:motionDirection];
 
@@ -2171,12 +1896,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         if (userInitiated) {
             [self pp_applyFeedbackPulseToView:self.sectionsSegmentedControl];
         }
-        [self scrollCollectionViewToTopAfterReload:YES];
         return;
-    }
-
-    if (!isSameSection) {
-        [self saveCurrentSectionScrollOffset];
     }
 
     PPDataViewMotionReason motionReason =
@@ -2285,7 +2005,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
     [PPFunc triggerLightHaptic];
     [self.viewModel applyFilterState:state];
-    [self refreshPresentedItemsAnimated:YES scrollToTop:YES];
+    [self refreshPresentedItemsAnimated:YES];
     [self pp_prefetchTopImagesWithLimit:12];
     [self updateEmptyState];
 }
@@ -2363,13 +2083,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
          
         [self reloadNavigationCenterViewLayout];
 
-        // 4️⃣ Clear saved scroll positions (VERY IMPORTANT)
-        [self.scrollOffsetsBySection removeAllObjects];
-
-        // 5️⃣ Reset layout cache (Pinterest safety)
+        // 4️⃣ Reset layout cache (Pinterest safety)
         [self resetLayoutForSectionChange];
 
-        // 6️⃣ Restore last selected section for this MainKind
+        // 5️⃣ Restore last selected section for this MainKind
         NSString *key = [self sectionKeyForMainKind:model];
         PPDataSection lastSection =
         (PPDataSection)[[NSUserDefaults standardUserDefaults] integerForKey:key];
@@ -2462,13 +2179,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
          
         [self reloadNavigationCenterViewLayout];
 
-        // 4️⃣ Clear saved scroll positions (VERY IMPORTANT)
-        [self.scrollOffsetsBySection removeAllObjects];
-
-        // 5️⃣ Reset layout cache (Pinterest safety)
+        // 4️⃣ Reset layout cache (Pinterest safety)
         [self resetLayoutForSectionChange];
 
-        // 6️⃣ Restore last selected section for this MainKind
+        // 5️⃣ Restore last selected section for this MainKind
         NSString *key = [self sectionKeyForMainKind:model];
         PPDataSection lastSection =
         (PPDataSection)[[NSUserDefaults standardUserDefaults] integerForKey:key];
@@ -3282,8 +2996,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     sectionsControl.selectedSegmentColor = AppPrimaryClr;
     sectionsControl.normalFont = [GM MidFontWithSize:15];
     sectionsControl.selectedFont = [GM boldFontWithSize:15];
-    sectionsControl.layer.cornerRadius = 17.0;
-    sectionsControl.layer.borderWidth = 0.4;
+     sectionsControl.layer.borderWidth = 0.0;
     [sectionsControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.20]];
     if (@available(iOS 13.0, *)) {
         sectionsControl.layer.cornerCurve = kCACornerCurveContinuous;
@@ -3451,7 +3164,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             NSString *key = [self subKindKeyForMainKind:self.input.mainKind];
             [[NSUserDefaults standardUserDefaults] setInteger:subKind.ID forKey:key];
 
-            [self.scrollOffsetsBySection removeAllObjects];
             NSInteger direction =
             [self pp_directionForSubKindID:subKind.ID
                 comparedToCurrentSubKindID:self.viewModel.currentSubKindID];
@@ -3515,9 +3227,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         NSInteger previousSubKindID = self.viewModel.currentSubKindID;
         // Clear filter in ViewModel
         self.viewModel.currentSubKindID = 0;
-
-        // Reset scroll cache
-        [self.scrollOffsetsBySection removeAllObjects];
 
         // Reload current section WITHOUT subkind constraint
         NSInteger direction =

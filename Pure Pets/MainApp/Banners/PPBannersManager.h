@@ -40,6 +40,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *startColorHex;
 @property (nonatomic, copy) NSString *endColorHex;
 @property (nonatomic, copy) NSString *accentColorHex;
+@property (nonatomic, assign) PPBannerTextStyle textStyle;
 
 @property (nonatomic, assign) PPBannerOnTapAction cardTapAction;
 @property (nonatomic, copy) NSString *cardTapValue;

@@ -14,6 +14,11 @@
 @property (nonatomic, copy) dispatch_block_t chatBlock;
 @property (nonatomic, copy) dispatch_block_t callBlock;
 @property (nonatomic, strong) UIImageView *verifiedBadgeView;
+@property (nonatomic, strong) UIView *statusIndicatorView;
+@property (nonatomic, strong) UIView *surfaceView;
+@property (nonatomic, strong) UIView *topGlowView;
+@property (nonatomic, strong) UIView *bottomGlowView;
+@property (nonatomic, strong) UILabel *eyebrowLabel;
 
 @end
 
@@ -43,94 +48,154 @@
 
 - (void)commonInit
 {
-    //self.backgroundColor = AppForgroundColr;
+    self.backgroundColor = UIColor.clearColor;
+    self.clipsToBounds = NO;
     self.adjustsImageWhenHighlighted = NO;
+    
 
-    // ---- Glass Container ----
-    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
-    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-    blurView.translatesAutoresizingMaskIntoConstraints = NO;
-    blurView.layer.cornerRadius = 22.0;
-    blurView.layer.masksToBounds = YES;
-    [self addSubview:blurView];
-
-    // Subtle border (liquid glass look)
-    blurView.layer.borderWidth = 0.3;
-    [blurView pp_setBorderColor:UIColor.separatorColor];
-
-    // ---- Shadow ----
     [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.04;
-    self.layer.shadowRadius = 4;
-    self.layer.shadowOffset = CGSizeMake(0, 10);
+    self.layer.shadowOpacity = 0.08;
+    self.layer.shadowRadius = 24.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 14.0);
 
-    // ---- Avatar ----
+    self.surfaceView = [[UIView alloc] init];
+    self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.surfaceView.backgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    self.surfaceView.layer.cornerRadius = 28.0;
+    self.surfaceView.layer.masksToBounds = YES;
+    self.surfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0.05]];
+    if (@available(iOS 13.0, *)) {
+        self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self addSubview:self.surfaceView];
+
+    self.topGlowView = [[UIView alloc] init];
+    self.topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.topGlowView.userInteractionEnabled = NO;
+    self.topGlowView.backgroundColor = [(AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"]) colorWithAlphaComponent:0.10];
+    [self.surfaceView addSubview:self.topGlowView];
+
+    self.bottomGlowView = [[UIView alloc] init];
+    self.bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.bottomGlowView.userInteractionEnabled = NO;
+    self.bottomGlowView.backgroundColor = [[UIColor colorWithHexString:@"#F3C46A"] colorWithAlphaComponent:0.10];
+    [self.surfaceView addSubview:self.bottomGlowView];
+
     self.avatarImageView = [[UIImageView alloc] init];
     self.avatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
     self.avatarImageView.contentMode = UIViewContentModeScaleAspectFill;
-    self.avatarImageView.layer.cornerRadius = 22;
+    self.avatarImageView.layer.cornerRadius = 26.0;
     self.avatarImageView.layer.masksToBounds = YES;
     self.avatarImageView.image = PPSYSImage(@"person.circle.fill");
-    self.avatarImageView.tintColor = AppLightGrayColor;;
+    self.avatarImageView.tintColor = AppLightGrayColor;
+    self.avatarImageView.backgroundColor = [[UIColor colorWithWhite:0.0 alpha:0.05] colorWithAlphaComponent:0.06];
+    [self.surfaceView addSubview:self.avatarImageView];
 
-    [blurView.contentView addSubview:self.avatarImageView];
-    // ---- Name ----
+    self.eyebrowLabel = [[UILabel alloc] init];
+    self.eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.eyebrowLabel.font = [GM MidFontWithSize:11.0];
+    self.eyebrowLabel.textColor = UIColor.secondaryLabelColor;
+    self.eyebrowLabel.text = kLang(@"Contact Advertiser");
+    self.eyebrowLabel.numberOfLines = 1;
+    self.eyebrowLabel.textAlignment = GM.setAligment;
+ 
     self.nameLabel = [[UILabel alloc] init];
     self.nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.nameLabel.font = [GM boldFontWithSize:17];
+    self.nameLabel.font = [GM boldFontWithSize:18.0];
     self.nameLabel.textColor = UIColor.labelColor;
-    self.nameLabel.text = kLang(@"Contact Advertiser");
-    [blurView.contentView addSubview:self.nameLabel];
+    self.nameLabel.text = @"";
+    self.nameLabel.numberOfLines = 1;
+    self.nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.nameLabel.textAlignment = GM.setAligment;
+ 
+    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.eyebrowLabel,
+        self.nameLabel
+    ]];
+    textStack.translatesAutoresizingMaskIntoConstraints = NO;
+    textStack.axis = UILayoutConstraintAxisVertical;
+    textStack.spacing = 3.0;
+    textStack.alignment = UIStackViewAlignmentFill;
+     [self.surfaceView addSubview:textStack];
 
     // ---- Verified Badge (on avatar corner) ----
     self.verifiedBadgeView = [PPVerifiedBadgeHelper addBadgeToAvatarView:self.avatarImageView
-                                                            inSuperview:blurView.contentView
+                                                            inSuperview:self.surfaceView
                                                               badgeSize:16];
 
-    // ---- Call Button ----
+    self.statusIndicatorView = [[UIView alloc] init];
+    self.statusIndicatorView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.statusIndicatorView.backgroundColor = [UIColor colorWithHexString:@"#2FA36B"];
+    self.statusIndicatorView.layer.cornerRadius = 5.0;
+    self.statusIndicatorView.layer.borderWidth = 1.5;
+    [self.statusIndicatorView pp_setBorderColor:UIColor.whiteColor];
+    [self.surfaceView addSubview:self.statusIndicatorView];
+
     self.callButton = [self actionButtonWithSymbol:@"phone.fill"];
     self.callButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_call_advertiser", @"Call advertiser");
     self.callButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_call_advertiser_hint", @"Double-tap to call this person");
     [self.callButton addTarget:self action:@selector(callTapped) forControlEvents:UIControlEventTouchUpInside];
-    [blurView.contentView addSubview:self.callButton];
 
-    // ---- Chat Button ----
     self.chatButton = [self actionButtonWithSymbol:@"message.fill"];
     self.chatButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_chat_advertiser", @"Chat with advertiser");
     self.chatButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_chat_advertiser_hint", @"Double-tap to start a chat with this person");
     [self.chatButton addTarget:self action:@selector(chatTapped) forControlEvents:UIControlEventTouchUpInside];
-    [blurView.contentView addSubview:self.chatButton];
+
+    UIStackView *actionsStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.callButton,
+        self.chatButton
+    ]];
+    actionsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    actionsStack.axis = UILayoutConstraintAxisHorizontal;
+    actionsStack.spacing = 10.0;
+    actionsStack.alignment = UIStackViewAlignmentCenter;
+    actionsStack.distribution = UIStackViewDistributionFill;
+     [self.surfaceView addSubview:actionsStack];
+    self.emptyCardBellowButtons = actionsStack;
+
     self.callButton.enabled = NO;
     self.chatButton.enabled = NO;
     self.callButton.alpha = 0.55;
     self.chatButton.alpha = 0.55;
 
-    // ---- Layout ----
     [NSLayoutConstraint activateConstraints:@[
-        [blurView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [blurView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [blurView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [blurView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor],
+        [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+        [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+        [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
 
-        [self.avatarImageView.leadingAnchor constraintEqualToAnchor:blurView.contentView.leadingAnchor constant:14],
-        [self.avatarImageView.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],
-        [self.avatarImageView.widthAnchor constraintEqualToConstant:44],
-        [self.avatarImageView.heightAnchor constraintEqualToConstant:44],
+        [self.topGlowView.widthAnchor constraintEqualToConstant:132.0],
+        [self.topGlowView.heightAnchor constraintEqualToConstant:132.0],
+        [self.topGlowView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:-54.0],
+        [self.topGlowView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:-64.0],
 
-        [self.nameLabel.leadingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:12],
-        [self.nameLabel.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],
+        [self.bottomGlowView.widthAnchor constraintEqualToConstant:146.0],
+        [self.bottomGlowView.heightAnchor constraintEqualToConstant:146.0],
+        [self.bottomGlowView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:52.0],
+        [self.bottomGlowView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:64.0],
 
+        [self.avatarImageView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
+        [self.avatarImageView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [self.avatarImageView.widthAnchor constraintEqualToConstant:52.0],
+        [self.avatarImageView.heightAnchor constraintEqualToConstant:52.0],
 
+        [self.statusIndicatorView.trailingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:0],
+        [self.statusIndicatorView.bottomAnchor constraintEqualToAnchor:self.avatarImageView.bottomAnchor constant:0],
+        [self.statusIndicatorView.widthAnchor constraintEqualToConstant:10],
+        [self.statusIndicatorView.heightAnchor constraintEqualToConstant:10],
 
-        [self.chatButton.trailingAnchor constraintEqualToAnchor:blurView.contentView.trailingAnchor constant:-14],
-        [self.chatButton.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],
-        [self.chatButton.widthAnchor constraintEqualToConstant:40],
-        [self.chatButton.heightAnchor constraintEqualToConstant:40],
+        [textStack.leadingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:14.0],
+        [textStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        [textStack.trailingAnchor constraintLessThanOrEqualToAnchor:actionsStack.leadingAnchor constant:-12.0],
 
-        [self.callButton.trailingAnchor constraintEqualToAnchor:self.chatButton.leadingAnchor constant:-12],
-        [self.callButton.centerYAnchor constraintEqualToAnchor:blurView.contentView.centerYAnchor],
-        [self.callButton.widthAnchor constraintEqualToConstant:40],
-        [self.callButton.heightAnchor constraintEqualToConstant:40],
+        [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
+        [actionsStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+
+        [self.callButton.widthAnchor constraintGreaterThanOrEqualToConstant:78.0],
+        [self.callButton.heightAnchor constraintEqualToConstant:44.0],
+        [self.chatButton.widthAnchor constraintGreaterThanOrEqualToConstant:78.0],
+        [self.chatButton.heightAnchor constraintEqualToConstant:44.0],
     ]];
 }
 
@@ -149,12 +214,43 @@
     UIImage *img = [UIImage imageNamed:symbol] ?: [UIImage systemImageNamed:symbol withConfiguration:cfg];
     [btn setImage:img forState:UIControlStateNormal];
     btn.tintColor = UIColor.labelColor;
+    btn.titleLabel.font = [GM boldFontWithSize:13.0];
+    btn.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+    btn.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+    btn.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+    if ([symbol containsString:@"phone"]) {
+        [btn setTitle:kLang(@"Call") forState:UIControlStateNormal];
+    } else {
+        [btn setTitle:kLang(@"Chat") forState:UIControlStateNormal];
+    }
+    [btn setTitleColor:UIColor.labelColor forState:UIControlStateNormal];
 
-    btn.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.6];
-    btn.layer.cornerRadius = 20;
+    BOOL primary = [symbol containsString:@"phone"];
+    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"];
+    btn.backgroundColor = primary ? [accent colorWithAlphaComponent:0.78] : UIColor.clearColor;
+    btn.tintColor = primary ? UIColor.whiteColor : accent;
+    [btn setTitleColor:(primary ? UIColor.whiteColor : accent) forState:UIControlStateNormal];
+    btn.layer.cornerRadius = 22.0;
     btn.layer.masksToBounds = YES;
+    btn.layer.borderWidth = primary ? 0.0 : 1.4;
+    [btn pp_setBorderColor:primary ? UIColor.clearColor : [accent colorWithAlphaComponent:0.48]];
+    btn.contentEdgeInsets = UIEdgeInsetsMake(0.0, 12.0, 0.0, 12.0);
 
     return btn;
+}
+
+- (void)layoutSubviews
+{
+    [super layoutSubviews];
+ 
+    self.nameLabel.textAlignment = GM.setAligment;
+    self.eyebrowLabel.textAlignment = GM.setAligment;
+    self.callButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+    self.chatButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+    self.topGlowView.layer.cornerRadius = CGRectGetWidth(self.topGlowView.bounds) * 0.5;
+    self.bottomGlowView.layer.cornerRadius = CGRectGetWidth(self.bottomGlowView.bounds) * 0.5;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                                        cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
 }
 
 #pragma mark - Configure

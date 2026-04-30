@@ -11,6 +11,7 @@
 #define PPDesignTokens_h
 
 #import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
 
 #pragma mark - Spacing (8pt Grid)
 
@@ -120,35 +121,53 @@
 
 #pragma mark - Convenience Helpers
 
-/// Apply card shadow to a view
-static inline void PPApplyCardShadow(UIView *view) {
-    view.layer.shadowColor = [UIColor blackColor].CGColor;
-    view.layer.shadowOpacity = PPShadowCardOpacity;
-    view.layer.shadowRadius = PPShadowCardRadius;
-    view.layer.shadowOffset = CGSizeMake(0, PPShadowCardOffsetY);
+static inline CALayer *PPLayerForDesignTokenTarget(id target) {
+    if ([target isKindOfClass:[UIView class]]) {
+        return ((UIView *)target).layer;
+    }
+    if ([target isKindOfClass:[CALayer class]]) {
+        return (CALayer *)target;
+    }
+    return nil;
 }
 
-/// Apply elevated shadow to a view
-static inline void PPApplyElevatedShadow(UIView *view) {
-    view.layer.shadowColor = [UIColor blackColor].CGColor;
-    view.layer.shadowOpacity = PPShadowElevatedOpacity;
-    view.layer.shadowRadius = PPShadowElevatedRadius;
-    view.layer.shadowOffset = CGSizeMake(0, PPShadowElevatedOffsetY);
+/// Apply card shadow to a view or layer
+static inline void PPApplyCardShadow(id target) {
+    CALayer *layer = PPLayerForDesignTokenTarget(target);
+    if (!layer) { return; }
+    layer.shadowColor = [UIColor blackColor].CGColor;
+    layer.shadowOpacity = PPShadowCardOpacity;
+    layer.shadowRadius = PPShadowCardRadius;
+    layer.shadowOffset = CGSizeMake(0, PPShadowCardOffsetY);
 }
 
-/// Apply button shadow to a view
-static inline void PPApplyButtonShadow(UIView *view) {
-    view.layer.shadowColor = [UIColor blackColor].CGColor;
-    view.layer.shadowOpacity = PPShadowButtonOpacity;
-    view.layer.shadowRadius = PPShadowButtonRadius;
-    view.layer.shadowOffset = CGSizeMake(0, PPShadowButtonOffsetY);
+/// Apply elevated shadow to a view or layer
+static inline void PPApplyElevatedShadow(id target) {
+    CALayer *layer = PPLayerForDesignTokenTarget(target);
+    if (!layer) { return; }
+    layer.shadowColor = [UIColor blackColor].CGColor;
+    layer.shadowOpacity = PPShadowElevatedOpacity;
+    layer.shadowRadius = PPShadowElevatedRadius;
+    layer.shadowOffset = CGSizeMake(0, PPShadowElevatedOffsetY);
+}
+
+/// Apply button shadow to a view or layer
+static inline void PPApplyButtonShadow(id target) {
+    CALayer *layer = PPLayerForDesignTokenTarget(target);
+    if (!layer) { return; }
+    layer.shadowColor = [UIColor blackColor].CGColor;
+    layer.shadowOpacity = PPShadowButtonOpacity;
+    layer.shadowRadius = PPShadowButtonRadius;
+    layer.shadowOffset = CGSizeMake(0, PPShadowButtonOffsetY);
 }
 
 /// Apply continuous corner curve (iOS 13+)
-static inline void PPApplyContinuousCorners(UIView *view, CGFloat radius) {
-    view.layer.cornerRadius = radius;
+static inline void PPApplyContinuousCorners(id target, CGFloat radius) {
+    CALayer *layer = PPLayerForDesignTokenTarget(target);
+    if (!layer) { return; }
+    layer.cornerRadius = radius;
     if (@available(iOS 13.0, *)) {
-        view.layer.cornerCurve = kCACornerCurveContinuous;
+        layer.cornerCurve = kCACornerCurveContinuous;
     }
 }
 

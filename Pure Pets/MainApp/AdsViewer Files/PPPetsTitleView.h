@@ -20,11 +20,19 @@ NS_ASSUME_NONNULL_BEGIN
 /// Main title (e.g. ad title)
 @property (nonatomic, copy) NSString *title;
 
+/// Subtitle / category line (e.g. "طيور كنيور") — sits between title and location.
+@property (nonatomic, copy, nullable) NSString *subtitle;
+
 /// Secondary location text (e.g. city name)
 @property (nonatomic, copy) NSString *location;
 
 /// Configure in one call (recommended)
 - (void)configureWithTitle:(NSString *)title
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price;
+
+- (void)configureWithTitle:(NSString *)title
+                  subtitle:(nullable NSString *)subtitle
                   location:(nullable NSString *)location
                      price:(nullable NSString *)price;
 
@@ -36,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateMetaPillsWithItems:(NSArray<PPInfoPill *> *)items;
 
 - (void)enableBlurBackgroundWithStyle:(UIBlurEffectStyle)style;
+- (void)applyHeroOverlayStyle;
 
 @end
 

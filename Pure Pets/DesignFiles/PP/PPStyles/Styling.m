@@ -1113,7 +1113,7 @@ static NSString *PPLottieStoragePathForAnimationName(NSString *fileName)
         view.layer.cornerCurve = kCACornerCurveContinuous;
     }
     view.clipsToBounds = NO;
-    PPApplyElevatedShadow(view.layer);
+    PPApplyElevatedShadow(view);
 }
 
 + (void)applySubtleCardStyleToView:(UIView *)view {
@@ -1123,7 +1123,7 @@ static NSString *PPLottieStoragePathForAnimationName(NSString *fileName)
         view.layer.cornerCurve = kCACornerCurveContinuous;
     }
     view.clipsToBounds = NO;
-    PPApplyCardShadow(view.layer);
+    PPApplyCardShadow(view);
 }
 
 + (void)applyPrimaryCTAStyleToButton:(UIButton *)button {
@@ -1135,7 +1135,7 @@ static NSString *PPLottieStoragePathForAnimationName(NSString *fileName)
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
     button.clipsToBounds = YES;
-    PPApplyButtonShadow(button.layer);
+    PPApplyButtonShadow(button);
 
     NSLayoutConstraint *height = [button.heightAnchor constraintGreaterThanOrEqualToConstant:PPButtonHeightLG];
     height.priority = UILayoutPriorityDefaultHigh;

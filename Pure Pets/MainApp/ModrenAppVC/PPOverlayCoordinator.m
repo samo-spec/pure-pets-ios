@@ -284,7 +284,6 @@
         viewer.ad = (PetAd *)object;
         viewer.hidesBottomBarWhenPushed = YES;
         targetVC = viewer;
-        targetVC.view.backgroundColor =AppBackgroundClrDarker;
 
         UINavigationController *nav = routingNav ?: presentingVC.navigationController;
         if (!nav && vc.navigationController) {

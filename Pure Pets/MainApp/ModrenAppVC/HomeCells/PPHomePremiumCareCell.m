@@ -24,9 +24,9 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     UILabel *_eyebrowLabel;
     UILabel *_titleLabel;
     UILabel *_subtitleLabel;
-    UIStackView *_pillStackView;
-    UILabel *_medicinePillLabel;
-    UILabel *_vetPillLabel;
+   // UIStackView *_pillStackView;
+    //UILabel *_medicinePillLabel;
+    //UILabel *_vetPillLabel;
     UIView *_ctaView;
     UILabel *_ctaLabel;
     UIImageView *_ctaIconView;
@@ -138,7 +138,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:28.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    _titleLabel.font = [GM boldFontWithSize:26.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     _titleLabel.numberOfLines = 1;
     _titleLabel.adjustsFontSizeToFitWidth = YES;
     _titleLabel.minimumScaleFactor = 0.8;
@@ -150,7 +150,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _subtitleLabel.numberOfLines = 2;
     [_surfaceView addSubview:_subtitleLabel];
 
-    _pillStackView = [[UIStackView alloc] init];
+    /*_pillStackView = [[UIStackView alloc] init];
     _pillStackView.translatesAutoresizingMaskIntoConstraints = NO;
     _pillStackView.axis = UILayoutConstraintAxisHorizontal;
     _pillStackView.alignment = UIStackViewAlignmentFill;
@@ -160,9 +160,17 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     _medicinePillLabel = [self pp_makePillLabel];
     _vetPillLabel = [self pp_makePillLabel];
+    
+    _medicinePillLabel.hidden = YES;
+    _medicinePillLabel.alpha = 0;
+    
+    _vetPillLabel.hidden = YES;
+    _vetPillLabel.alpha = 0;
+    
+    
     [_pillStackView addArrangedSubview:_medicinePillLabel];
     [_pillStackView addArrangedSubview:_vetPillLabel];
-
+*/
     _ctaView = [[UIView alloc] init];
     _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
     _ctaView.layer.cornerRadius = 20.0;
@@ -199,8 +207,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         [_middleBackgroundGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
         [_middleBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:68.0],
 
-        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:136.0],
-        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:136.0],
+        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:156.0],
+        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:156.0],
         [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-106.0],
         [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:102.0],
 
@@ -392,7 +400,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     UIColor *titleColor = PPPetCareTextColor();
     UIColor *secondaryColor = PPPetCareSecondaryTextColor();
     UIColor *borderColor = PPPetCareBorderColor();
-    UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.10];
+    UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.4];
     UIColor *controlFillColor = [accent colorWithAlphaComponent:isDark ? 0.15 : 0.09];
     UIColor *controlBorderColor = borderColor;
 
@@ -405,23 +413,23 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
     _gradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor,
+        (id)[AppPrimaryClrShiner colorWithAlphaComponent:isDark ? 0.20 : 0.16].CGColor,
         (id)[UIColor clearColor].CGColor
     ];
     _gradientLayer.locations = @[@0.0, @1.0];
 
-    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.17];
-    [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.22]];
-    _topBackgroundGlowView.layer.shadowOpacity = 0.28;
-    _topBackgroundGlowView.layer.shadowRadius = 68.0;
+    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.06];
+    [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.12]];
+    _topBackgroundGlowView.layer.shadowOpacity = 0.16;
+    _topBackgroundGlowView.layer.shadowRadius = 48.0;
     _topBackgroundGlowView.layer.shadowOffset = CGSizeZero;
 
     _middleBackgroundGlowView.backgroundColor = glowHighlight;
     [_middleBackgroundGlowView pp_setShadowColor:glowHighlight];
-    _middleBackgroundGlowView.layer.shadowOpacity = 0.28;
+    _middleBackgroundGlowView.layer.shadowOpacity = 0.18;
     _middleBackgroundGlowView.layer.shadowRadius = 68.0;
     _middleBackgroundGlowView.layer.shadowOffset = CGSizeZero;
-
+    _middleBackgroundGlowView.alpha=0.4;
     _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
     [_bottomLeadingGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.16 : 0.18]];
     _bottomLeadingGlowView.layer.shadowOpacity = 0.28;

@@ -7,6 +7,9 @@
 @import UIKit;  // <— needed for UIApplication/scenes
 
 static NSBundle *bundle = nil;
+static NSString *cachedLanguageCode = nil;
+static BOOL isSettingLanguage = NO;
+static BOOL isReloadingLanguageRoot = NO;
 NSString *const LanguageCodeIdIndentifier = @"AppLanguage";
 // You already use this in your app:
 static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNotification";
@@ -47,36 +50,72 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
     return @"en";
 }
 
-+ (void)setLanguage:(NSString *)language {
++ (void)pp_loadLanguage:(NSString *)language notifyChange:(BOOL)notifyChange {
     NSString *norm = [self _normalize:language];
     NSString *path = [[NSBundle mainBundle] pathForResource:norm ofType:@"lproj"];
 
-    DLog(@"[Language] setLanguage: %@ → normalized=%@ (path=%@)", language, norm, path ?: @"<main bundle>");
+    DLog(@"[Language] loadLanguage: %@ -> normalized=%@ (path=%@ notify=%d)", language, norm, path ?: @"<main bundle>", (int)notifyChange);
 
     if (path) {
         bundle = [NSBundle bundleWithPath:path];
     } else {
         bundle = [NSBundle mainBundle];
     }
+    cachedLanguageCode = norm;
 
     // Cache selection
     [[NSUserDefaults standardUserDefaults] setObject:norm forKey:LanguageCodeIdIndentifier];
     [[NSUserDefaults standardUserDefaults] setObject:@[norm] forKey:@"AppleLanguages"];
     [[NSUserDefaults standardUserDefaults] synchronize];
 
+    if (!notifyChange) {
+        return;
+    }
+
     // Notify app
     [[NSNotificationCenter defaultCenter] postNotificationName:kLanguageDidChangeNotification object:nil];
     DLog(@"[Language] posted %@ (isRTL=%d)", kLanguageDidChangeNotification, (int)[self isRTL]);
 }
 
++ (void)setLanguage:(NSString *)language {
+    NSString *norm = [self _normalize:language];
+    BOOL didChange = ![norm isEqualToString:[self currentLanguageCode]];
+    BOOL needsBundle = (bundle == nil);
+
+    if (isSettingLanguage) {
+        [self pp_loadLanguage:norm notifyChange:NO];
+        return;
+    }
+
+    isSettingLanguage = YES;
+    [self pp_loadLanguage:norm notifyChange:(didChange && !needsBundle)];
+    isSettingLanguage = NO;
+}
+
 + (NSString *)currentLanguageCode {
-    NSString *saved = [[NSUserDefaults standardUserDefaults] objectForKey:LanguageCodeIdIndentifier];
-    if (saved.length) {
+    if (cachedLanguageCode.length > 0) {
+        return cachedLanguageCode;
+    }
+
+    id savedObject = [[NSUserDefaults standardUserDefaults] objectForKey:LanguageCodeIdIndentifier];
+    NSString *saved = [savedObject isKindOfClass:NSString.class] ? (NSString *)savedObject : nil;
+    if (!saved && [savedObject isKindOfClass:NSArray.class]) {
+        saved = [(NSArray *)savedObject firstObject];
+    }
+    if (![saved isKindOfClass:NSString.class]) {
+        saved = nil;
+    }
+
+    if (saved.length > 0) {
         NSString *norm = [self _normalize:saved];
+        cachedLanguageCode = norm;
         return norm;
     }
+
     NSString *system = [NSLocale preferredLanguages].firstObject ?: @"en";
-    return [self _normalize:system];
+    NSString *norm = [self _normalize:system];
+    cachedLanguageCode = norm;
+    return norm;
 }
 
 + (NSInteger)languageVal {
@@ -87,13 +126,22 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
 
 + (void)userSelectedLanguage:(NSString *)selectedLanguage {
     DLog(@"[Language] userSelectedLanguage: %@", selectedLanguage);
+    NSString *norm = [self _normalize:selectedLanguage];
+    BOOL didChange = ![norm isEqualToString:[self currentLanguageCode]];
 
     // 1) Persist & load bundle, post notification
-    [self setLanguage:selectedLanguage];
+    [self setLanguage:norm];
     [self pp_applySemanticAppearance];
+    if (!didChange || isReloadingLanguageRoot) {
+        return;
+    }
 
+    isReloadingLanguageRoot = YES;
     dispatch_async(dispatch_get_main_queue(), ^{
         BOOL reloadedViaSceneDelegate = NO;
+        void (^finishReload)(void) = ^{
+            isReloadingLanguageRoot = NO;
+        };
 
         if (@available(iOS 13.0, *)) {
             for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
@@ -119,12 +167,14 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
         }
 
         if (reloadedViaSceneDelegate) {
+            finishReload();
             return;
         }
 
         UIWindow *window = [self pp_transitionWindow];
         if (!window) {
             NSLog(@"[Language] No active window available yet; semantic appearance updated for next scene.");
+            finishReload();
             return;
         }
 
@@ -133,6 +183,7 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
         PPRootTabBarController *rootVC = [[PPRootTabBarController alloc] init];
         rootVC.view.semanticContentAttribute = [self semanticAttributeForCurrentLanguage];
         [self pp_swapRootViewController:rootVC onWindow:window];
+        finishReload();
     });
 }
 
@@ -209,7 +260,7 @@ static NSString * const kLanguageDidChangeNotification = @"LanguageDidChangeNoti
 + (NSString *)get:(NSString *)key alter:(NSString *)alternate {
     if (!bundle) {
         // Ensure bundle loads cached language at first call
-        [self setLanguage:[self currentLanguageCode]];
+        [self pp_loadLanguage:[self currentLanguageCode] notifyChange:NO];
     }
     NSString *val = [bundle localizedStringForKey:key value:alternate table:nil];
     // Optional debug (comment out if noisy)

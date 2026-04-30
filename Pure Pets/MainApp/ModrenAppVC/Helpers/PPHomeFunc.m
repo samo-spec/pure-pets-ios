@@ -82,15 +82,15 @@ static inline CGFloat PPHomeHorizontalInset(CGFloat width)
 static inline CGFloat PPHomeHeroHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 270.0;
+        return 264.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 258.0;
+        return 252.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 234.0;
+        return 230.0;
     }
-    return (PPIOS26() ? 236.0 : 250.0);
+    return (PPIOS26() ? 230.0 : 250.0);
 }
 
 static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)
@@ -190,19 +190,6 @@ static inline CGFloat PPHomePetProfileHeight(CGFloat width)
     return 240.0;
 }
 
-static inline CGFloat PPHomeQuickActionWidth(CGFloat width)
-{
-    if (PPHomeWidthIsTablet(width)) {
-        return 204.0;
-    }
-    if (PPHomeWidthIsWidePhone(width)) {
-        return 198.0;
-    }
-    if (PPHomeWidthIsCompactPhone(width)) {
-        return 172.0;
-    }
-    return 176.0;
-}
 
 static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
 {
@@ -497,7 +484,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.interGroupSpacing = 0.0;
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(10.0, horizontalInset, 26.0, horizontalInset);
+    NSDirectionalEdgeInsetsMake(10.0, horizontalInset, 16.0, horizontalInset);
 
     return section;
 }
@@ -943,12 +930,16 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
 + (NSCollectionLayoutSection *)quickActionsSectionForWidth:(CGFloat)availableWidth {
    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+   CGFloat contentWidth = MAX(0.0, availableWidth - (2.0 * horizontalInset));
+    CGFloat ClearWidth = contentWidth - horizontalInset;
+   CGFloat itemWidth  = floor(ClearWidth / 2.0);
+   CGFloat itemHeight = PPHomeQuickActionHeight(availableWidth);
 
    NSCollectionLayoutSize *itemSize =
    [NSCollectionLayoutSize sizeWithWidthDimension:
-    [NSCollectionLayoutDimension absoluteDimension:PPHomeQuickActionWidth(availableWidth)]
+    [NSCollectionLayoutDimension absoluteDimension:itemWidth]
                                     heightDimension:
-    [NSCollectionLayoutDimension absoluteDimension:PPHomeQuickActionHeight(availableWidth)]];
+    [NSCollectionLayoutDimension absoluteDimension:itemHeight]];
 
    NSCollectionLayoutItem *item =
    [NSCollectionLayoutItem itemWithLayoutSize:itemSize];

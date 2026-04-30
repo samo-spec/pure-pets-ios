@@ -628,8 +628,8 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
                 [titleView.centerXAnchor constraintEqualToAnchor:bar.centerXAnchor],
                 [titleView.centerYAnchor constraintEqualToAnchor:bar.centerYAnchor constant:0],
                 // keep clear of the left/right stacks
-                [titleView.leadingAnchor constraintEqualToAnchor:left.leadingAnchor constant:65.0],
-                [titleView.trailingAnchor constraintEqualToAnchor:right.trailingAnchor constant:-65.0],
+                [titleView.leadingAnchor constraintGreaterThanOrEqualToAnchor:left.trailingAnchor constant:8.0],
+                [titleView.trailingAnchor constraintLessThanOrEqualToAnchor:right.leadingAnchor constant:-8.0],
             ]];
             [titleView setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
             [titleView setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
@@ -686,7 +686,10 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 
     UIView *bar = PPBarForVC(self);
     if (bar) {
-        [self pp_navBarSetTitle:titleString];
+        UILabel *titleLabel = PPTitleForVC(self);
+        if (titleLabel) {
+            titleLabel.text = titleString ?: (self.title ?: @"");
+        }
         return bar;
     }
 
@@ -762,8 +765,8 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         // Title label constraints
         [titleLbl.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
         [titleLbl.centerYAnchor constraintEqualToAnchor:container.centerYAnchor],
-        [titleLbl.leadingAnchor constraintGreaterThanOrEqualToAnchor:left.trailingAnchor constant:0],
-        [titleLbl.trailingAnchor constraintLessThanOrEqualToAnchor:right.leadingAnchor constant:-0],
+        [titleLbl.leadingAnchor constraintGreaterThanOrEqualToAnchor:left.trailingAnchor constant:-15],
+        [titleLbl.trailingAnchor constraintLessThanOrEqualToAnchor:right.leadingAnchor constant:15],
     ]];
     
     navBar.backgroundColor =[UIColor.brownColor colorWithAlphaComponent:0.0];
@@ -836,7 +839,15 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
  
 - (void)pp_navBarSetTitle:(NSString *)titleString {
     UILabel *lbl = PPTitleForVC(self);
-    if (!lbl) { [self pp_navBarAttachWithTitle:titleString]; lbl = PPTitleForVC(self); }
+    if (!lbl) {
+        if (!PPBarForVC(self)) {
+            [self pp_navBarAttachWithTitle:titleString];
+            lbl = PPTitleForVC(self);
+        }
+        if (!lbl) {
+            return;
+        }
+    }
     lbl.text = titleString ?: (self.title ?: @"");
 }
 
@@ -2455,7 +2466,13 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
      navBar.tintColor = UIColor.clearColor;
      navBar.backgroundColor = UIColor.clearColor;
      UIView *bar = PPBarForVC(self);
-     if (bar) { [self pp_navBarSetTitle:titleString]; return bar; }
+     if (bar) {
+         UILabel *titleLabel = PPTitleForVC(self);
+         if (titleLabel) {
+             titleLabel.text = titleString ?: (self.title ?: @"");
+         }
+         return bar;
+     }
      
      bar = [UIView new];
      bar.translatesAutoresizingMaskIntoConstraints = NO;
@@ -2556,11 +2573,19 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
 
 
 
- - (void)pp_navBarSetTitle:(NSString *)titleString {
-     UILabel *lbl = PPTitleForVC(self);
-     if (!lbl) { [self pp_navBarAttachWithTitle:titleString]; lbl = PPTitleForVC(self); }
-     lbl.text = titleString ?: (self.title ?: @"");
- }
+	 - (void)pp_navBarSetTitle:(NSString *)titleString {
+	     UILabel *lbl = PPTitleForVC(self);
+	     if (!lbl) {
+	         if (!PPBarForVC(self)) {
+	             [self pp_navBarAttachWithTitle:titleString];
+	             lbl = PPTitleForVC(self);
+	         }
+	         if (!lbl) {
+	             return;
+	         }
+	     }
+	     lbl.text = titleString ?: (self.title ?: @"");
+	 }
 
  #pragma mark - Your original API (compat)
 

@@ -42,10 +42,10 @@
     _stack.axis = UILayoutConstraintAxisHorizontal;
     _stack.alignment = UIStackViewAlignmentFill;
     _stack.distribution = UIStackViewDistributionFillEqually;
-    _stack.spacing = items.count > 1 ? 12 : 0;
+    _stack.spacing = items.count > 1 ? 10 : 0;
     
     _stack.layoutMarginsRelativeArrangement = YES;
-    _stack.layoutMargins = UIEdgeInsetsMake(6, 0, 6, 0);
+    _stack.layoutMargins = UIEdgeInsetsMake(2, 0, 2, 0);
 
     [self addSubview:_stack];
 
@@ -70,27 +70,39 @@
 
 #pragma mark - Pill UI
 
+- (BOOL)pp_isDarkMode
+{
+    if (@available(iOS 13.0, *)) {
+        return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    return NO;
+}
+
 - (UIView *)pillViewForItem:(PPInfoPill *)item {
 
+    UIColor *tint = AppPrimaryClr ?: [UIColor colorWithHexString:@"#0F5138"];
+    BOOL dark = [self pp_isDarkMode];
+
     UIView *pill = [[UIView alloc] init];
-    pill.backgroundColor = [[UIColor secondarySystemBackgroundColor] colorWithAlphaComponent:0.82];
-    pill.layer.cornerRadius = 20;
+    pill.backgroundColor = dark ? [UIColor colorWithWhite:0.14 alpha:1.0] : [UIColor whiteColor];
+    pill.layer.cornerRadius = 18.0;
     pill.layer.cornerCurve = kCACornerCurveContinuous;
-    pill.layer.borderWidth = 0.5;
-    [pill pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    pill.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [pill pp_setBorderColor:[UIColor colorWithWhite:dark ? 1.0 : 0.0 alpha:dark ? 0.08 : 0.06]];
     [pill pp_setShadowColor:UIColor.blackColor];
-    pill.layer.shadowOpacity = 0.05;
-    pill.layer.shadowRadius = 12.0;
+    pill.layer.shadowOpacity = 0.04;
+    pill.layer.shadowRadius = 14.0;
     pill.layer.shadowOffset = CGSizeMake(0, 8);
     pill.translatesAutoresizingMaskIntoConstraints = NO;
     pill.alpha = 0.0;
-    pill.transform = CGAffineTransformMakeTranslation(0, 12);
+    pill.transform = CGAffineTransformMakeTranslation(0, 10);
 
     UIImageView *icon = [[UIImageView alloc] initWithImage:
         [UIImage systemImageNamed:item.iconName]];
-    icon.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    icon.tintColor = tint;
     icon.contentMode = UIViewContentModeScaleAspectFit;
     icon.translatesAutoresizingMaskIntoConstraints = NO;
+    icon.preferredSymbolConfiguration = [UIImageSymbolConfiguration configurationWithPointSize:14 weight:UIImageSymbolWeightSemibold];
 
     if (item.iconName.length == 0) {
         icon.hidden = YES;
@@ -98,36 +110,32 @@
 
     UILabel *label = [[UILabel alloc] init];
     label.text = item.text;
-    label.textColor = UIColor.labelColor;
-    label.font = [GM boldFontWithSize:14];
+    label.textColor = dark ? UIColor.labelColor : [UIColor colorWithWhite:0.07 alpha:1.0];
+    label.font = [GM boldFontWithSize:12.5];
     label.adjustsFontForContentSizeCategory = YES;
     label.numberOfLines = 1;
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.85;
     label.translatesAutoresizingMaskIntoConstraints = NO;
     label.textAlignment = NSTextAlignmentCenter;
 
     UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[icon, label]];
     content.axis = UILayoutConstraintAxisHorizontal;
-    content.spacing = 6;
+    content.spacing = 8;
     content.alignment = UIStackViewAlignmentCenter;
     content.translatesAutoresizingMaskIntoConstraints = NO;
 
     [pill addSubview:content];
 
     [NSLayoutConstraint activateConstraints:@[
-        [icon.widthAnchor constraintEqualToConstant:16],
-        [icon.heightAnchor constraintEqualToConstant:16],
+        [icon.widthAnchor constraintEqualToConstant:14],
+        [icon.heightAnchor constraintEqualToConstant:14],
 
-        [content.topAnchor constraintEqualToAnchor:pill.topAnchor constant:10],
-        [content.bottomAnchor constraintEqualToAnchor:pill.bottomAnchor constant:-10],
+        [content.topAnchor constraintEqualToAnchor:pill.topAnchor constant:14],
+        [content.bottomAnchor constraintEqualToAnchor:pill.bottomAnchor constant:-14],
         [content.leadingAnchor constraintEqualToAnchor:pill.leadingAnchor constant:12],
         [content.trailingAnchor constraintEqualToAnchor:pill.trailingAnchor constant:-12],
     ]];
-
-    UIColor *tint = AppPrimaryClr ?: UIColor.systemBlueColor;
-    pill.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.70];
-    [pill pp_setBorderColor:[tint colorWithAlphaComponent:0.14]];
-    icon.tintColor = tint;
-    label.textColor = UIColor.labelColor;
 
     if ([item.iconName isEqualToString:@"banknote"]) {
         pill.accessibilityIdentifier = @"pricePill";
@@ -150,10 +158,11 @@
 - (void)animatePillsIn {
     NSArray<UIView *> *pills = self.stack.arrangedSubviews;
     NSTimeInterval baseDelay = 0.05;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
 
     [pills enumerateObjectsUsingBlock:^(UIView *pill, NSUInteger idx, BOOL *stop) {
-        [UIView animateWithDuration:0.40
-                              delay:baseDelay * idx
+        [UIView animateWithDuration:reduceMotion ? 0.16 : 0.28
+                              delay:reduceMotion ? 0.0 : (baseDelay * idx)
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             pill.alpha = 1.0;

@@ -1602,6 +1602,7 @@
 "home_nav_search_example_pharmacy_compact" = "Meds";
 "ShowAll"  = "Show all";
 "ShowLess" = "Show less";
+"ReadMore" = "Read more";
 "search" = "Search";
 "Home_NearbyAds"        = "Nearby";
 "Home_NearbyAds_Sub"    = "Ads close to you";
@@ -1667,6 +1668,7 @@
 "NoResultsFound" = "No matches for your search";
 "Required" = "Required";
 "Similar Ads" = "Similar Ads";
+"No description added for this pet." = "No description added for this pet.";
 
 "Message…" = "Message…";
 "SimilarAaccess" = "You May Also Need"; //Accessories for This Pet";
@@ -2657,3 +2659,4 @@
 "pet_care_vet_viewer_subscription_tier_format" = "Tier %ld active";
 "pet_care_vet_viewer_whatsapp" = "WhatsApp";
 "pet_care_vet_viewer_contact_unavailable" = "Contact unavailable";
+"AdViewerLocationSelectedFallback" = "Location selected for this ad";

@@ -276,13 +276,25 @@ PPUniversalCellDelegate>
     secondaryGlow.alpha = 0.0;
 }
 
+- (void)BackToMain
+{
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+
 - (void)setupNavigation
 {
     self.navigationItem.title = kLang(@"searchOnly");
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
-
-    BBNavigationBar *bar = [BBNavigationBar new];
-    [bar attachTo:self];
+    self.navigationItem.hidesBackButton = YES;
+     
+    
+    if(PPIsRL)
+        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
+    else
+        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
+    //BBNavigationBar *bar = [BBNavigationBar new];
+    //[bar attachTo:self];
 
     // Add dismiss button when presented modally (not pushed)
     BOOL isModal = (self.navigationController.viewControllers.firstObject == self &&
@@ -647,7 +659,7 @@ PPUniversalCellDelegate>
     [heroCard addSubview:segmentRowView];
     [segmentRowView addSubview:segmentScrollView];
 
-    // Collapse/expand toggle chevron
+    // Collapse/expand toggle
     UIButton *toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
     toggleButton.translatesAutoresizingMaskIntoConstraints = NO;
     UIImageSymbolConfiguration *toggleCfg =
@@ -1136,7 +1148,7 @@ PPUniversalCellDelegate>
         self.segmentRowTopExpandedConstraint.active = YES;
     }
 
-    // Flip toggle chevron direction
+    // Flip toggle direction
     UIImageSymbolConfiguration *toggleCfg =
         [UIImageSymbolConfiguration configurationWithPointSize:10.0 weight:UIImageSymbolWeightBold];
     NSString *chevronName = collapsed ? @"chevron.down" : @"chevron.up";

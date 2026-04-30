@@ -98,6 +98,33 @@ static UIColor *PPPromoBlendColor(UIColor *fromColor, UIColor *toColor, CGFloat 
                            alpha:(fa + ((ta - fa) * progress))];
 }
 
+static BOOL PPPromoUsesDarkText(PPBannerTextStyle style)
+{
+    return style == PPBannerTextStyleBlack;
+}
+
+static UIColor *PPPromoTitleColor(PPBannerTextStyle style)
+{
+    if (PPPromoUsesDarkText(style)) {
+        return [UIColor colorWithRed:0.08 green:0.075 blue:0.07 alpha:1.0];
+    }
+    return AppForgroundColr ?: UIColor.whiteColor;
+}
+
+static UIColor *PPPromoSecondaryTextColor(PPBannerTextStyle style)
+{
+    if (PPPromoUsesDarkText(style)) {
+        return [UIColor colorWithRed:0.16 green:0.14 blue:0.12 alpha:0.76];
+    }
+    return [(AppForgroundColr ?: UIColor.whiteColor) colorWithAlphaComponent:0.88];
+}
+
+static UIColor *PPPromoHairlineColor(PPBannerTextStyle style)
+{
+    UIColor *base = PPPromoUsesDarkText(style) ? UIColor.blackColor : UIColor.whiteColor;
+    return [base colorWithAlphaComponent:PPPromoUsesDarkText(style) ? 0.10 : 0.16];
+}
+
 static void PPPickRandomModernGradient(UIColor **outStart, UIColor **outEnd, UIColor **outAccent) {
     static NSArray<NSArray<NSString *> *> *palettes = nil;
     static dispatch_once_t onceToken;
@@ -401,7 +428,8 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
 - (void)pp_applyPromoButtonStyle:(UIButton *)button
                            title:(NSString *)title
                          primary:(BOOL)isPrimary
-                       tapAction:(PPBannerOnTapAction)tapAction;
+                       tapAction:(PPBannerOnTapAction)tapAction
+                       textStyle:(PPBannerTextStyle)textStyle;
 @end
 
 @interface PPHomePromoCarouselView : UIView <UICollectionViewDelegate, UICollectionViewDataSource>
@@ -584,7 +612,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _titleLabel = [UILabel new];
     _titleLabel.numberOfLines = 2;
     _titleLabel.font = [GM boldFontWithSize:20.0];
-    _titleLabel.textColor = UIColor.whiteColor;
+    _titleLabel.textColor = PPPromoTitleColor(PPBannerTextStyleWhite);
     _titleLabel.adjustsFontForContentSizeCategory = YES;
     _titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -593,7 +621,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     _subtitleLabel = [UILabel new];
     _subtitleLabel.numberOfLines = 2;
     _subtitleLabel.font = [GM MidFontWithSize:13.5];
-    _subtitleLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.88];
+    _subtitleLabel.textColor = PPPromoSecondaryTextColor(PPBannerTextStyleWhite);
     _subtitleLabel.adjustsFontForContentSizeCategory = YES;
     _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -888,6 +916,15 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     self.contentPanelView.backgroundColor = UIColor.clearColor;
     self.contentTintView.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.10];
     [self.contentPanelView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+    self.contentBlurView.effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleLight];
+    if (@available(iOS 13.0, *)) {
+        self.contentBlurView.effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+    }
+    self.badgeContainer.backgroundColor = [UIColor colorWithWhite:1 alpha:0.18];
+    [self.badgeContainer pp_setBorderColor:PPPromoHairlineColor(PPBannerTextStyleWhite)];
+    self.badgeLabel.textColor = PPPromoTitleColor(PPBannerTextStyleWhite);
+    self.titleLabel.textColor = PPPromoTitleColor(PPBannerTextStyleWhite);
+    self.subtitleLabel.textColor = PPPromoSecondaryTextColor(PPBannerTextStyleWhite);
     [self.shadowContainer pp_setShadowColor:[UIColor colorWithWhite:0 alpha:1]];
     self.transform = CGAffineTransformIdentity;
     self.alpha = 1.0;
@@ -975,12 +1012,30 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         self.backgroundImageView.image = nil;
     }
 
+    BOOL usesDarkText = PPPromoUsesDarkText(card.textStyle);
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleLight;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = usesDarkText ? UIBlurEffectStyleSystemUltraThinMaterialLight : UIBlurEffectStyleSystemUltraThinMaterialDark;
+    }
+    self.contentBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+    self.contentTintView.backgroundColor = usesDarkText
+        ? [UIColor colorWithWhite:1.0 alpha:(hasBackgroundImage ? 0.68 : 0.22)]
+        : [UIColor colorWithWhite:(hasBackgroundImage ? 0.0 : 1.0) alpha:(hasBackgroundImage ? 0.18 : 0.08)];
+    [self.contentPanelView pp_setBorderColor:PPPromoHairlineColor(card.textStyle)];
+    self.badgeContainer.backgroundColor = usesDarkText
+        ? [UIColor colorWithWhite:0.0 alpha:0.06]
+        : [UIColor colorWithWhite:1.0 alpha:0.18];
+    [self.badgeContainer pp_setBorderColor:PPPromoHairlineColor(card.textStyle)];
+
     NSString *badgeText = [card localizedBadgeText];
     self.badgeLabel.text = badgeText;
+    self.badgeLabel.textColor = PPPromoTitleColor(card.textStyle);
     [self pp_setBadgeVisible:(badgeText.length > 0)];
 
     self.titleLabel.text = [card localizedTitleText];
+    self.titleLabel.textColor = PPPromoTitleColor(card.textStyle);
     self.subtitleLabel.text = [card localizedSubtitleText];
+    self.subtitleLabel.textColor = PPPromoSecondaryTextColor(card.textStyle);
     self.subtitleLabel.hidden = (self.subtitleLabel.text.length == 0);
 
     BOOL showPrimary = [card showsPrimaryButton];
@@ -993,13 +1048,15 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         [self pp_applyPromoButtonStyle:self.primaryButton
                                 title:[card localizedPrimaryButtonTitle]
                               primary:YES
-                            tapAction:card.primaryButtonTapAction];
+                            tapAction:card.primaryButtonTapAction
+                            textStyle:card.textStyle];
     }
     if (showSecondary) {
         [self pp_applyPromoButtonStyle:self.secondaryButton
                                 title:[card localizedSecondaryButtonTitle]
                               primary:NO
-                            tapAction:card.secondaryButtonTapAction];
+                            tapAction:card.secondaryButtonTapAction
+                            textStyle:card.textStyle];
     }
 
     UIImage *fallbackCharacter = PPPromoFallbackIllustration(card.cardTapAction);
@@ -1018,6 +1075,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
                           title:(NSString *)title
                         primary:(BOOL)isPrimary
                       tapAction:(PPBannerOnTapAction)tapAction
+                      textStyle:(PPBannerTextStyle)textStyle
 {
     NSString *safeTitle = title ?: @"";
     if (safeTitle.length == 0) {
@@ -1025,7 +1083,12 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     }
 
     UIColor *primaryText = AppPrimaryTextClr ?: [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0];
-    UIColor *secondaryText = AppForgroundColr;
+    UIColor *secondaryText = PPPromoUsesDarkText(textStyle) ? PPPromoTitleColor(textStyle) : (AppForgroundColr ?: UIColor.whiteColor);
+    UIColor *primaryBackground = [AppBackgroundClr colorWithAlphaComponent:PPPromoUsesDarkText(textStyle) ? 0.88 : 0.62];
+    UIColor *secondaryBackground = PPPromoUsesDarkText(textStyle)
+        ? [UIColor.blackColor colorWithAlphaComponent:0.06]
+        : [UIColor.whiteColor colorWithAlphaComponent:0.14];
+    UIColor *buttonBorderColor = PPPromoHairlineColor(textStyle);
     NSString *symbolName = PPPromoSymbolNameForTapAction(tapAction, isPrimary);
 
     UIImage *icon = nil;
@@ -1059,10 +1122,10 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         }];
 
         if (isPrimary) {
-            cfg.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.67];
+            cfg.baseBackgroundColor = PPIOS26() ? AppClearClr : primaryBackground;
             cfg.baseForegroundColor = primaryText;
         } else {
-            cfg.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.14];
+            cfg.baseBackgroundColor = secondaryBackground;
             cfg.baseForegroundColor = secondaryText;
         }
 
@@ -1085,12 +1148,12 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         : UISemanticContentAttributeForceLeftToRight;
 
         button.backgroundColor = isPrimary
-        ? [UIColor colorWithWhite:1 alpha:0.97]
-        : [UIColor colorWithWhite:1 alpha:0.14];
+        ? primaryBackground
+        : secondaryBackground;
 
         button.layer.cornerRadius = 18.0;
         button.layer.borderWidth = isPrimary ? 0.0 : 1.0;
-        [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+        [button pp_setBorderColor:buttonBorderColor];
         button.layer.masksToBounds = NO;
         button.contentEdgeInsets = UIEdgeInsetsMake(8, 12, 8, 12);
     }
@@ -1100,7 +1163,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
     }
     if (!isPrimary) {
         button.layer.borderWidth = 1.0;
-        [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+        [button pp_setBorderColor:buttonBorderColor];
     } else {
         button.layer.borderWidth = 0.0;
     }

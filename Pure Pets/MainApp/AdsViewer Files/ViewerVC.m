@@ -5,12 +5,18 @@
 //
 
 #import "ViewerVC.h"
-#import "PPPetsTitleView.h"
 #import "PPAdSharingHelper.h"
 #import "PPInfoPillsView.h"
 #import "PPSimilarAdsView.h"
 #import "PPOverlayCoordinator.h"
 #import "PPUserSigningManager.h"
+#import "UIViewController+PPNavBar.h"
+#import "PPCommerceFeedbackManager.h"
+
+// 0.70 means the expanded meta sheet occupies 70% of the screen height.
+static const CGFloat kViewerVcMetaSheetHeight = 0.85;
+static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
+
 @interface ViewerVC()<UIGestureRecognizerDelegate,UIScrollViewDelegate>
 @property (nonatomic, strong) CAGradientLayer *contactGradientLayer;
 @property (nonatomic, strong) CAGradientLayer *galleryScrimLayer;
@@ -18,6 +24,9 @@
 @property (nonatomic, strong) CAGradientLayer *descriptionSurfaceGradientLayer;
 @property (nonatomic, strong) UIView *ambientGlowTopView;
 @property (nonatomic, strong) UIView *ambientGlowBottomView;
+@property BOOL isAdFavoritedLoaded;
+@property BOOL isUserContactViewUpdated;
+
 @property PetImageGalleryView *imageGallery;
 @property UserModel *ownerModel;
 @property PPSimilarAdsView *similarAdsView;
@@ -26,34 +35,46 @@
 @property (nonatomic, strong) UIScrollView *contentScrollView;
 @property (nonatomic, strong) UIView *contentContainer;
 @property (nonatomic, strong) UIView *heroContainerView;
+@property (nonatomic, strong) UIView *sheetGripContainerView;
+@property (nonatomic, strong) UIView *sheetGripView;
 @property (nonatomic, strong) UIView *titleCard;
 @property (nonatomic, strong) UIVisualEffectView *titleBlurView;
+@property (nonatomic, strong) UIStackView *titleContentStack;
+@property (nonatomic, strong) UIStackView *titleLocationStack;
+@property (nonatomic, strong) UILabel *titleCardTitleLabel;
+@property (nonatomic, strong) UILabel *titleCardLocationLabel;
+@property (nonatomic, strong) UIImageView *titleCardLocationIconView;
+@property (nonatomic, strong) UIView *titlePricePillView;
+@property (nonatomic, strong) UILabel *titlePriceLabel;
+@property (nonatomic, strong) UIView *titleAccentRuleView;
 @property PetAdCardView *petCard;
 // Layout constraints
 @property (nonatomic, strong) NSLayoutConstraint *tableViewTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *tableViewHeightConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *imageGalleryHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *contentSheetTopConstraint;
+@property (nonatomic, assign) CGFloat contentSheetRestingTopConstant;
+@property (nonatomic, assign) CGFloat contentSheetExpandedTopConstant;
+@property (nonatomic, assign) BOOL isUpdatingContentSheetFromScroll;
 
 @property (nonatomic, assign) BOOL isFavorite;
 @property (nonatomic, strong) UserContactView *contactView;
 @property (nonatomic, assign) float actionPadding;
-@property (nonatomic, strong) PPPetsTitleView *petsTitleView;
 @property (nonatomic, strong) PPQuickActionsView *actionsViewTop;
 @property (nonatomic, strong) PPQuickActionsView *actionsViewBottom;
 
-@property (nonatomic, strong) UIStackView *galleryLeadingStack;
-@property (nonatomic, strong) UIButton *galleryShareButton;
-@property (nonatomic, strong) UIButton *galleryFavoriteButton;
-@property (nonatomic, strong) UIButton *galleryDismissButton;
+// @property (nonatomic, strong) UIButton *galleryShareButton;
 @property (nonatomic, strong) UIButton *galleryReportButton;
 @property (nonatomic, strong) UIView *descriptionSurfaceView;
 @property (nonatomic, strong) UITextView *descriptionTextView;
 @property (nonatomic, strong) NSLayoutConstraint *descriptionHeightConstraint;
-@property (nonatomic, assign) CGFloat galleryMinHeight;
+@property (nonatomic, strong) UIButton *descriptionToggleButton;
+@property (nonatomic, strong) NSLayoutConstraint *descriptionToggleHeightConstraint;
+@property (nonatomic, copy) NSString *fullDescriptionText;
+@property (nonatomic, assign) BOOL isDescriptionExpanded;
+@property (nonatomic, assign) BOOL shouldCollapseDescription;
 @property (nonatomic, assign) CGFloat galleryMaxHeight;
-@property (nonatomic, assign) CGFloat lastScrollOffsetY;
-@property (nonatomic, assign) BOOL isConsumingScroll;
+@property (nonatomic, assign) BOOL isHeroReadMorePulseActive;
 
 @property (nonatomic, strong) PPInfoPillsView *infoView;
 @property (nonatomic, strong) UIView *similarAdsSeparator;
@@ -73,19 +94,376 @@
 @property (nonatomic, strong) UIBarButtonItem *reportBarButtonItem;
 
 @end
-
+/*
+ please bro complete
+ shareBarButtonItem
+ */
 @implementation ViewerVC
 
 
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.actionPadding = 20.00;
 
+    self.isUserContactViewUpdated =NO;
+    self.actionPadding = 20.00;
+    _isAdFavoritedLoaded = NO;
     self.isFavorite = NO; // default
     [self initData];
     NSLog(@"USER ------>>> %@",self.ad.ownerID);
     NSLog(@"adID ------>>> %@",self.ad.adID);
+}
+
+- (UIColor *)pp_luxuryBackgroundColor
+{
+    if (@available(iOS 13.0, *)) {
+        if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithHexString:@"#0E0E0C"];
+        }
+    }
+    return [UIColor colorWithHexString:@"#FAF8F2"];
+}
+
+- (UIColor *)pp_luxurySurfaceColor
+{
+    if (@available(iOS 13.0, *)) {
+        if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithWhite:0.10 alpha:1.0];
+        }
+    }
+    return [UIColor colorWithHexString:@"#FFFFFF"];
+}
+
+- (UIColor *)pp_luxuryTextColor
+{
+    return UIColor.labelColor ?: [UIColor colorWithHexString:@"#111111"];
+}
+
+- (UIColor *)pp_luxuryEmeraldColor
+{
+    // Routed through the brand asset so every accent (chips, toggles, CTAs)
+    // tracks the design-system primary color.
+    return AppPrimaryClr ?: [UIColor colorWithHexString:@"#0F5138"];
+}
+
+- (UIColor *)pp_luxuryGoldColor
+{
+    return [UIColor colorWithHexString:@"#C59A35"];
+}
+
+- (NSString *)pp_titleCardLocationText
+{
+    if (self.ad.adLocation <= 0) {
+        return @"fguyhiojpk[l;trges";
+    }
+
+    NSString *cityName = [[CitiesManager.shared cityNameForID:self.ad.adLocation]
+                          stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (cityName.length > 0) {
+        return cityName;
+    }
+
+    return kLang(@"AdViewerLocationSelectedFallback");
+}
+
+- (NSString *)pp_titleCardPriceText
+{
+    NSString *price = [GM formatPrice:self.ad.price currencyCode:kLang(@"Rials")];
+    return price.length > 0 ? price : @"";
+}
+
+- (UILabel *)pp_makeTitleCardLabelWithFont:(UIFont *)font
+                                      color:(UIColor *)color
+                              numberOfLines:(NSInteger)numberOfLines
+{
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.font = font;
+    label.textColor = color;
+    label.numberOfLines = numberOfLines;
+    label.lineBreakMode = NSLineBreakByTruncatingTail;
+    label.adjustsFontForContentSizeCategory = YES;
+    label.textAlignment = [Language alignmentForCurrentLanguage];
+    label.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    return label;
+}
+
+- (void)pp_buildLocalTitleCardContent
+{
+    if (!self.titleCard || self.titleCardTitleLabel) {
+        return;
+    }
+
+    self.titleCard.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.titleCard.backgroundColor = UIColor.clearColor;
+    self.titleCard.userInteractionEnabled = YES;
+    self.titleCard.isAccessibilityElement = YES;
+    self.titleCard.accessibilityTraits = UIAccessibilityTraitStaticText;
+    self.titleCard.layer.cornerRadius = 28.0;
+    self.titleCard.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.titleCard.layer.shadowRadius = 26.0;
+    self.titleCard.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    if (@available(iOS 13.0, *)) {
+        self.titleCard.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    self.titleBlurView = [[UIVisualEffectView alloc] initWithEffect:nil];
+    self.titleBlurView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleBlurView.userInteractionEnabled = NO;
+    self.titleBlurView.clipsToBounds = YES;
+    self.titleBlurView.layer.cornerRadius = self.titleCard.layer.cornerRadius;
+    if (@available(iOS 13.0, *)) {
+        self.titleBlurView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.titleCard addSubview:self.titleBlurView];
+
+    self.titleCardTitleLabel = [self pp_makeTitleCardLabelWithFont:[GM boldFontWithSize:25.0]
+                                                              color:[self pp_luxuryTextColor]
+                                                      numberOfLines:2];
+    self.titleCardTitleLabel.text = self.ad.adTitle.length > 0 ? self.ad.adTitle : @"";
+    [self.titleCardTitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+                                                              forAxis:UILayoutConstraintAxisVertical];
+
+    UIImageSymbolConfiguration *locationConfig =
+    [UIImageSymbolConfiguration configurationWithPointSize:13.0 weight:UIImageSymbolWeightSemibold];
+    self.titleCardLocationIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"mappin.and.ellipse"
+                                                                                withConfiguration:locationConfig]];
+    self.titleCardLocationIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleCardLocationIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.titleCardLocationIconView.tintColor = [[self pp_luxuryEmeraldColor] colorWithAlphaComponent:0.70];
+    self.titleCardLocationIconView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    self.titleCardLocationLabel = [self pp_makeTitleCardLabelWithFont:[GM MidFontWithSize:14.0]
+                                                                 color:UIColor.secondaryLabelColor
+                                                         numberOfLines:2];
+    self.titleCardLocationLabel.text = [self pp_titleCardLocationText];
+
+    self.titleLocationStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.titleCardLocationIconView,
+        self.titleCardLocationLabel
+    ]];
+    self.titleLocationStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleLocationStack.axis = UILayoutConstraintAxisHorizontal;
+    self.titleLocationStack.spacing = 7.0;
+    self.titleLocationStack.alignment = UIStackViewAlignmentCenter;
+    self.titleLocationStack.distribution = UIStackViewDistributionFill;
+    self.titleLocationStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.titleLocationStack.hidden = self.titleCardLocationLabel.text.length == 0;
+
+    self.titleContentStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.titleCardTitleLabel,
+        self.titleLocationStack
+    ]];
+    self.titleContentStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleContentStack.axis = UILayoutConstraintAxisVertical;
+    self.titleContentStack.spacing = 9.0;
+    self.titleContentStack.alignment = UIStackViewAlignmentFill;
+    self.titleContentStack.distribution = UIStackViewDistributionFill;
+    self.titleContentStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.titleCard addSubview:self.titleContentStack];
+
+    self.titlePricePillView = [[UIView alloc] init];
+    self.titlePricePillView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titlePricePillView.layer.cornerRadius = 23.0;
+    self.titlePricePillView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.titlePricePillView.clipsToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        self.titlePricePillView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.titleCard addSubview:self.titlePricePillView];
+
+    self.titlePriceLabel = [self pp_makeTitleCardLabelWithFont:[GM boldFontWithSize:15.0]
+                                                          color:UIColor.whiteColor
+                                                  numberOfLines:1];
+    self.titlePriceLabel.text = [self pp_titleCardPriceText];
+    self.titlePriceLabel.textAlignment = NSTextAlignmentCenter;
+    self.titlePriceLabel.adjustsFontSizeToFitWidth = YES;
+    self.titlePriceLabel.minimumScaleFactor = 0.72;
+    [self.titlePricePillView addSubview:self.titlePriceLabel];
+
+    self.titleAccentRuleView = [[UIView alloc] init];
+    self.titleAccentRuleView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleAccentRuleView.layer.cornerRadius = 0.5;
+    self.titleAccentRuleView.userInteractionEnabled = NO;
+    [self.titleCard addSubview:self.titleAccentRuleView];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.titleBlurView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor],
+        [self.titleBlurView.leadingAnchor constraintEqualToAnchor:self.titleCard.leadingAnchor],
+        [self.titleBlurView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
+        [self.titleBlurView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor],
+
+        [self.titleContentStack.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor constant:22.0],
+        [self.titleContentStack.leadingAnchor constraintEqualToAnchor:self.titleCard.leadingAnchor constant:22.0],
+        [self.titleContentStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.titlePricePillView.leadingAnchor constant:-16.0],
+        [self.titleContentStack.bottomAnchor constraintEqualToAnchor:self.titleAccentRuleView.topAnchor constant:-15.0],
+
+        [self.titleCardLocationIconView.widthAnchor constraintEqualToConstant:16.0],
+        [self.titleCardLocationIconView.heightAnchor constraintEqualToConstant:16.0],
+
+        [self.titlePricePillView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor constant:22.0],
+        [self.titlePricePillView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-20.0],
+        [self.titlePricePillView.bottomAnchor constraintLessThanOrEqualToAnchor:self.titleCard.bottomAnchor constant:-22.0],
+        [self.titlePricePillView.widthAnchor constraintGreaterThanOrEqualToConstant:118.0],
+        [self.titlePricePillView.widthAnchor constraintLessThanOrEqualToConstant:154.0],
+        [self.titlePricePillView.heightAnchor constraintGreaterThanOrEqualToConstant:46.0],
+
+        [self.titlePriceLabel.topAnchor constraintEqualToAnchor:self.titlePricePillView.topAnchor constant:8.0],
+        [self.titlePriceLabel.leadingAnchor constraintEqualToAnchor:self.titlePricePillView.leadingAnchor constant:12.0],
+        [self.titlePriceLabel.trailingAnchor constraintEqualToAnchor:self.titlePricePillView.trailingAnchor constant:-12.0],
+        [self.titlePriceLabel.bottomAnchor constraintEqualToAnchor:self.titlePricePillView.bottomAnchor constant:-8.0],
+
+        [self.titleAccentRuleView.leadingAnchor constraintEqualToAnchor:self.titleCard.leadingAnchor constant:22.0],
+        [self.titleAccentRuleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-22.0],
+        [self.titleAccentRuleView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor constant:-18.0],
+        [self.titleAccentRuleView.heightAnchor constraintEqualToConstant:1.0],
+    ]];
+}
+
+- (void)pp_applyLocalTitleCardTheme
+{
+    if (!self.titleCard || !self.titleCardTitleLabel) {
+        return;
+    }
+
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    UIColor *accent = [self pp_luxuryEmeraldColor];
+    UIColor *surface = dark
+    ? [[UIColor colorWithHexString:@"#141415"] colorWithAlphaComponent:0.82]
+    : [UIColor colorWithWhite:1.0 alpha:0.76];
+
+    self.titleCard.backgroundColor = surface;
+    [self.titleCard pp_setBorderColor:[UIColor colorWithWhite:dark ? 1.0 : 0.0 alpha:dark ? 0.08 : 0.055]];
+    [self.titleCard pp_setShadowColor:UIColor.blackColor];
+    self.titleCard.layer.shadowOpacity = dark ? 0.26 : 0.075;
+    self.titleCard.layer.shadowRadius = dark ? 30.0 : 26.0;
+    self.titleCard.layer.shadowOffset = CGSizeMake(0.0, dark ? 16.0 : 14.0);
+
+    UIBlurEffectStyle blurStyle = dark ? UIBlurEffectStyleSystemChromeMaterialDark : UIBlurEffectStyleSystemThinMaterialLight;
+    self.titleBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+    self.titleBlurView.backgroundColor = [surface colorWithAlphaComponent:dark ? 0.30 : 0.20];
+
+    self.titleCardTitleLabel.textColor = [self pp_luxuryTextColor];
+    self.titleCardTitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.titleCardLocationLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:dark ? 0.86 : 0.78];
+    self.titleCardLocationLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    self.titleCardLocationIconView.tintColor = [accent colorWithAlphaComponent:dark ? 0.88 : 0.72];
+
+    self.titlePricePillView.backgroundColor = accent;
+    [self.titlePricePillView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:dark ? 0.16 : 0.22]];
+    [self.titlePricePillView pp_setShadowColor:accent];
+    self.titlePricePillView.layer.shadowOpacity = dark ? 0.22 : 0.16;
+    self.titlePricePillView.layer.shadowRadius = 18.0;
+    self.titlePricePillView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.titlePriceLabel.textColor = UIColor.whiteColor;
+    self.titleAccentRuleView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.26 : 0.18];
+
+    self.titleCard.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.titleContentStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.titleLocationStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    NSMutableArray<NSString *> *accessibilityParts = [NSMutableArray array];
+    if (self.titleCardTitleLabel.text.length > 0) {
+        [accessibilityParts addObject:self.titleCardTitleLabel.text];
+    }
+    if (self.titleCardLocationLabel.text.length > 0) {
+        [accessibilityParts addObject:self.titleCardLocationLabel.text];
+    }
+    if (self.titlePriceLabel.text.length > 0) {
+        [accessibilityParts addObject:self.titlePriceLabel.text];
+    }
+    self.titleCard.accessibilityLabel = [accessibilityParts componentsJoinedByString:@", "];
+}
+
+- (void)pp_refreshLocalTitleCardTexts
+{
+    if (!self.titleCardTitleLabel) {
+        return;
+    }
+
+    self.titleCardTitleLabel.text = self.ad.adTitle.length > 0 ? self.ad.adTitle : @"";
+    self.titlePriceLabel.text = [self pp_titleCardPriceText];
+
+    NSString *locationText = [self pp_titleCardLocationText];
+    self.titleCardLocationLabel.text = locationText;
+    BOOL hasLocationText = locationText.length > 0;
+    self.titleLocationStack.hidden = !hasLocationText;
+    self.titleCardLocationIconView.hidden = !hasLocationText;
+
+    [self pp_applyLocalTitleCardTheme];
+}
+
+- (void)pp_buildSheetGripCueIfNeeded
+{
+    if (self.sheetGripContainerView || !self.contentScrollView) {
+        return;
+    }
+
+    self.sheetGripContainerView = [[UIView alloc] init];
+    self.sheetGripContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sheetGripContainerView.userInteractionEnabled = NO;
+    self.sheetGripContainerView.isAccessibilityElement = NO;
+    [self.contentScrollView addSubview:self.sheetGripContainerView];
+
+    self.sheetGripView = [[UIView alloc] init];
+    self.sheetGripView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sheetGripView.userInteractionEnabled = NO;
+    self.sheetGripView.layer.cornerRadius = 2.5;
+    if (@available(iOS 13.0, *)) {
+        self.sheetGripView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.sheetGripContainerView addSubview:self.sheetGripView];
+
+    if (@available(iOS 11.0, *)) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.sheetGripContainerView.topAnchor constraintEqualToAnchor:self.contentScrollView.frameLayoutGuide.topAnchor constant:7.0],
+            [self.sheetGripContainerView.centerXAnchor constraintEqualToAnchor:self.contentScrollView.frameLayoutGuide.centerXAnchor],
+            [self.sheetGripContainerView.widthAnchor constraintEqualToConstant:74.0],
+            [self.sheetGripContainerView.heightAnchor constraintEqualToConstant:18.0],
+        ]];
+    } else {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.sheetGripContainerView.topAnchor constraintEqualToAnchor:self.contentScrollView.topAnchor constant:7.0],
+            [self.sheetGripContainerView.centerXAnchor constraintEqualToAnchor:self.contentScrollView.centerXAnchor],
+            [self.sheetGripContainerView.widthAnchor constraintEqualToConstant:74.0],
+            [self.sheetGripContainerView.heightAnchor constraintEqualToConstant:18.0],
+        ]];
+    }
+
+    [NSLayoutConstraint activateConstraints:@[
+        [self.sheetGripView.centerXAnchor constraintEqualToAnchor:self.sheetGripContainerView.centerXAnchor],
+        [self.sheetGripView.centerYAnchor constraintEqualToAnchor:self.sheetGripContainerView.centerYAnchor],
+        [self.sheetGripView.widthAnchor constraintEqualToConstant:42.0],
+        [self.sheetGripView.heightAnchor constraintEqualToConstant:5.0],
+    ]];
+
+    [self pp_applySheetGripTheme];
+}
+
+- (void)pp_applySheetGripTheme
+{
+    if (!self.sheetGripView) {
+        return;
+    }
+
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    UIColor *accent = [self pp_luxuryEmeraldColor];
+    self.sheetGripContainerView.backgroundColor = UIColor.clearColor;
+    self.sheetGripView.backgroundColor = dark
+        ? [UIColor.whiteColor colorWithAlphaComponent:0.36]
+        : [accent colorWithAlphaComponent:0.30];
+    [self.sheetGripView pp_setShadowColor:dark ? UIColor.blackColor : accent];
+    self.sheetGripView.layer.shadowOpacity = dark ? 0.20 : 0.14;
+    self.sheetGripView.layer.shadowRadius = 8.0;
+    self.sheetGripView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
 }
 
 - (UIView *)pp_makeAmbientGlowViewWithRadius:(CGFloat)radius
@@ -102,36 +480,40 @@
 
 - (void)pp_buildLiveBackgroundIfNeeded
 {
-    if (self.ambientGlowTopView || self.ambientGlowBottomView) {
+    if (self.ambientGlowTopView || self.ambientGlowBottomView || !self.contentContainer) {
         return;
     }
 
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemPinkColor;
     BOOL dark = NO;
     if (@available(iOS 13.0, *)) {
         dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    self.ambientGlowTopView = [self pp_makeAmbientGlowViewWithRadius:132.0];
-    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.13 : 0.16];
-    [self.ambientGlowTopView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.22 : 0.18]];
-    [self.view addSubview:self.ambientGlowTopView];
+    UIColor *accent = [self pp_luxuryEmeraldColor];
+    UIColor *gold = [self pp_luxuryGoldColor];
 
-    self.ambientGlowBottomView = [self pp_makeAmbientGlowViewWithRadius:156.0];
-    self.ambientGlowBottomView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.09 : 0.11];
-    [self.ambientGlowBottomView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.18 : 0.15]];
-    [self.view addSubview:self.ambientGlowBottomView];
+    self.ambientGlowTopView = [self pp_makeAmbientGlowViewWithRadius:140.0];
+    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
+    self.ambientGlowTopView.layer.shadowOpacity = 0.0;
+    [self.contentContainer addSubview:self.ambientGlowTopView];
+
+    self.ambientGlowBottomView = [self pp_makeAmbientGlowViewWithRadius:168.0];
+    self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
+    self.ambientGlowBottomView.layer.shadowOpacity = 0.0;
+    [self.contentContainer addSubview:self.ambientGlowBottomView];
+    [self.contentContainer sendSubviewToBack:self.ambientGlowBottomView];
+    [self.contentContainer sendSubviewToBack:self.ambientGlowTopView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.ambientGlowTopView.widthAnchor constraintEqualToConstant:264.0],
-        [self.ambientGlowTopView.heightAnchor constraintEqualToConstant:264.0],
-        [self.ambientGlowTopView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:-74.0],
-        [self.ambientGlowTopView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:92.0],
+        [self.ambientGlowTopView.widthAnchor constraintEqualToConstant:280.0],
+        [self.ambientGlowTopView.heightAnchor constraintEqualToConstant:280.0],
+        [self.ambientGlowTopView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:-132.0],
+        [self.ambientGlowTopView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:-92.0],
 
-        [self.ambientGlowBottomView.widthAnchor constraintEqualToConstant:312.0],
-        [self.ambientGlowBottomView.heightAnchor constraintEqualToConstant:312.0],
-        [self.ambientGlowBottomView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-128.0],
-        [self.ambientGlowBottomView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:122.0],
+        [self.ambientGlowBottomView.widthAnchor constraintEqualToConstant:336.0],
+        [self.ambientGlowBottomView.heightAnchor constraintEqualToConstant:336.0],
+        [self.ambientGlowBottomView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:138.0],
+        [self.ambientGlowBottomView.bottomAnchor constraintEqualToAnchor:self.contentContainer.bottomAnchor constant:110.0],
     ]];
 }
 
@@ -141,210 +523,141 @@
         return;
     }
 
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIColor *accent = [self pp_luxuryEmeraldColor];
     separator.backgroundColor = [accent colorWithAlphaComponent:0.16];
     separator.alpha = 1.0;
 }
 
 - (void)pp_applyViewerTheme
 {
-    UIColor *accent = AppPrimaryClr ?: UIColor.systemBlueColor;
-    UIColor *surfaceColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    UIColor *surfaceColor = [self pp_luxurySurfaceColor];
     BOOL dark = NO;
     if (@available(iOS 13.0, *)) {
         dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);
+    self.view.backgroundColor = [self pp_luxuryBackgroundColor];
+    self.contentScrollView.backgroundColor = [self pp_luxuryBackgroundColor];
+    self.ambientGlowTopView.backgroundColor = [[self pp_luxuryEmeraldColor] colorWithAlphaComponent:dark ? 0.10 : 0.075];
+    self.ambientGlowBottomView.backgroundColor = [[self pp_luxuryGoldColor] colorWithAlphaComponent:dark ? 0.10 : 0.085];
 
-    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.12 : 0.15];
-    self.ambientGlowBottomView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.08 : 0.10];
-    [self.ambientGlowTopView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.20 : 0.17]];
-    [self.ambientGlowBottomView pp_setShadowColor:[accent colorWithAlphaComponent:dark ? 0.18 : 0.14]];
-
-    self.contentScrollView.backgroundColor = UIColor.clearColor;
-    [self.contentScrollView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.08 : 0.18]];
     self.contentSurfaceGradientLayer.colors = @[
-        (__bridge id)[surfaceColor colorWithAlphaComponent:dark ? 0.76 : 0.94].CGColor,
-        (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.58 : 0.86].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.035 : 0.060].CGColor
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[UIColor.clearColor CGColor]
     ];
-    self.contentSurfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
-    self.contentSurfaceGradientLayer.startPoint = CGPointMake(0.5, 0.0);
-    self.contentSurfaceGradientLayer.endPoint = CGPointMake(0.5, 1.0);
 
-    self.titleCard.layer.shadowOpacity = dark ? 0.28 : 0.18;
-    self.titleCard.layer.shadowRadius = dark ? 34.0 : 30.0;
-    [self.titleCard pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.10 : 0.18]];
-
-    self.descriptionSurfaceView.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.34 : 0.64];
-    [self.descriptionSurfaceView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.13 : 0.10]];
+    [self pp_applySheetGripTheme];
+    self.descriptionSurfaceView.backgroundColor = surfaceColor;
+    [self.descriptionSurfaceView pp_setBorderColor:[UIColor colorWithWhite:dark ? 1.0 : 0.0 alpha:dark ? 0.08 : 0.06]];
     [self.descriptionSurfaceView pp_setShadowColor:UIColor.blackColor];
-    self.descriptionSurfaceView.layer.shadowOpacity = dark ? 0.18 : 0.07;
-    self.descriptionSurfaceView.layer.shadowRadius = dark ? 22.0 : 18.0;
+    self.descriptionSurfaceView.layer.shadowOpacity = dark ? 0.18 : 0.05;
+    self.descriptionSurfaceView.layer.shadowRadius = dark ? 22.0 : 24.0;
     self.descriptionSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
     self.descriptionSurfaceGradientLayer.colors = @[
-        (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.16 : 0.42].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.045 : 0.065].CGColor
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[UIColor.clearColor CGColor]
     ];
-    self.descriptionSurfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
-    self.descriptionSurfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
 
+    [self pp_applyLocalTitleCardTheme];
     [self pp_styleSeparator:self.similarAdsSeparator];
     [self pp_styleSeparator:self.similarAccessoriesSeparator];
 
-    self.contactDockView.layer.shadowOpacity = dark ? 0.26 : 0.18;
-    self.contactDockView.layer.shadowRadius = dark ? 32.0 : 28.0;
-    self.contactView.backgroundColor = [surfaceColor colorWithAlphaComponent:dark ? 0.52 : 0.74];
-    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.12 : 0.18]];
+    self.contactDockView.layer.shadowOpacity = dark ? 0.28 : 0.10;
+    self.contactDockView.layer.shadowRadius = dark ? 28.0 : 24.0;
+    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.contactView.backgroundColor = dark
+        ? [surfaceColor colorWithAlphaComponent:0.86]
+        : [surfaceColor colorWithAlphaComponent:0.96];
+    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:dark ? 1.0 : 0.0 alpha:dark ? 0.08 : 0.05]];
     self.contactGradientLayer.colors = @[
-        (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.42 : 0.90].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:dark ? 0.13 : 0.16].CGColor,
-        (__bridge id)[surfaceColor colorWithAlphaComponent:dark ? 0.24 : 0.46].CGColor
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[UIColor.clearColor CGColor]
     ];
 
     self.contactLockOverlayView.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:dark ? 0.14 : 0.08];
     [self.contactLockOverlayView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:dark ? 0.12 : 0.18]];
+
     [self pp_styleContactActionButtons];
 }
 
 - (void)initData {
-    self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);
-    [self pp_buildLiveBackgroundIfNeeded];
+    self.view.backgroundColor = [self pp_luxuryBackgroundColor];
+
+    self.heroContainerView = [[UIView alloc] init];
+    self.heroContainerView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.heroContainerView.backgroundColor = [UIColor colorWithWhite:0.06 alpha:1.0];
+    self.heroContainerView.layer.cornerRadius = 0;
+    self.heroContainerView.layer.masksToBounds = YES;
+    [self.view addSubview:self.heroContainerView];
 
     self.imageGallery = [[PetImageGalleryView alloc] initWithFrame:CGRectZero
                                                         imageItems:self.ad.imageItems
-                                                       galleryType:PetImageGalleryTypePetAd
-                                                        itemHeight:0
+                                                       galleryType:PetImageGalleryTypeAccessory
+                                                        itemHeight:[self pp_heroHeight]
                                                           parentVC:self
                                                                obj:self.ad];
 
     self.imageGallery.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.view addSubview:self.imageGallery];
-    self.imageGallery.layer.cornerRadius = 41.0;
+    [self.heroContainerView addSubview:self.imageGallery];
+    self.imageGallery.layer.cornerRadius = 0;
     if (@available(iOS 13.0, *)) {
         self.imageGallery.layer.cornerCurve = kCACornerCurveContinuous;
     }
     self.imageGallery.clipsToBounds = YES;
-    self.imageGallery.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
+    self.imageGallery.layer.maskedCorners = self.heroContainerView.layer.maskedCorners;
     self.imageGallery.currentAd = self.ad;
 
-    CGFloat galleryMaxHeight = self.view.hx_h * 0.5;
-    CGFloat galleryHeight = self.view.bounds.size.height * 0.5;
-    galleryHeight = MAX(galleryMaxHeight, 380);
-    galleryHeight = MIN(galleryHeight, 540);
+    CGFloat galleryHeight = [self pp_heroHeight];
     self.galleryMaxHeight = galleryHeight;
-    self.galleryMinHeight = MAX(320.0, galleryHeight - 84.0);
 
-    // Setup imageGallery constraints
-
-    self.imageGalleryHeightConstraint = [self.imageGallery.heightAnchor constraintEqualToConstant:galleryHeight];
+    self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:galleryHeight];
     [NSLayoutConstraint activateConstraints:@[
-        [self.imageGallery.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:0.5],
-        [self.imageGallery.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:0.5],
-        [self.imageGallery.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-0.5],
-        self.imageGalleryHeightConstraint
+        [self.heroContainerView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.heroContainerView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.heroContainerView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        self.heroHeightConstraint,
+
+        [self.imageGallery.topAnchor constraintEqualToAnchor:self.heroContainerView.topAnchor],
+        [self.imageGallery.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor],
+        [self.imageGallery.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
+        [self.imageGallery.bottomAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
     ]];
 
     self.galleryScrimView = [[UIView alloc] init];
     self.galleryScrimView.translatesAutoresizingMaskIntoConstraints = NO;
     self.galleryScrimView.userInteractionEnabled = NO;
     self.galleryScrimView.backgroundColor = UIColor.clearColor;
-    self.galleryScrimView.layer.cornerRadius = self.imageGallery.layer.cornerRadius;
-    self.galleryScrimView.layer.maskedCorners = self.imageGallery.layer.maskedCorners;
+    self.galleryScrimView.layer.cornerRadius = self.heroContainerView.layer.cornerRadius;
+    self.galleryScrimView.layer.maskedCorners = self.heroContainerView.layer.maskedCorners;
     if (@available(iOS 13.0, *)) {
         self.galleryScrimView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     self.galleryScrimView.clipsToBounds = YES;
+    self.galleryScrimView.hidden = YES;
     [self.view addSubview:self.galleryScrimView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.galleryScrimView.topAnchor constraintEqualToAnchor:self.imageGallery.topAnchor],
-        [self.galleryScrimView.leadingAnchor constraintEqualToAnchor:self.imageGallery.leadingAnchor],
-        [self.galleryScrimView.trailingAnchor constraintEqualToAnchor:self.imageGallery.trailingAnchor],
-        [self.galleryScrimView.bottomAnchor constraintEqualToAnchor:self.imageGallery.bottomAnchor],
+        [self.galleryScrimView.topAnchor constraintEqualToAnchor:self.heroContainerView.topAnchor],
+        [self.galleryScrimView.leadingAnchor constraintEqualToAnchor:self.heroContainerView.leadingAnchor],
+        [self.galleryScrimView.trailingAnchor constraintEqualToAnchor:self.heroContainerView.trailingAnchor],
+        [self.galleryScrimView.bottomAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor],
     ]];
 
     self.galleryScrimLayer = [CAGradientLayer layer];
     self.galleryScrimLayer.startPoint = CGPointMake(0.5, 0.0);
     self.galleryScrimLayer.endPoint = CGPointMake(0.5, 1.0);
     self.galleryScrimLayer.colors = @[
-        (__bridge id)[[UIColor blackColor] colorWithAlphaComponent:0.16].CGColor,
-        (__bridge id)[[UIColor blackColor] colorWithAlphaComponent:0.05].CGColor,
-        (__bridge id)[[UIColor blackColor] colorWithAlphaComponent:0.34].CGColor
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[UIColor.clearColor CGColor]
     ];
+    self.galleryScrimLayer.locations = @[@0.0, @1.0];
     [self.galleryScrimView.layer addSublayer:self.galleryScrimLayer];
 
-
-    // --- Title Card Container ---
     self.titleCard = [[UIView alloc] init];
     self.titleCard.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleCard.backgroundColor = UIColor.clearColor;
-    self.titleCard.layer.cornerRadius = 30.0;
-    if (@available(iOS 13.0, *)) {
-        self.titleCard.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    self.titleCard.layer.masksToBounds = NO;
-
-    // Soft editorial lift above the hero.
-    [self.titleCard pp_setShadowColor:UIColor.blackColor];
-    self.titleCard.layer.shadowOpacity = 0.18;
-    self.titleCard.layer.shadowRadius = 30;
-    self.titleCard.layer.shadowOffset = CGSizeMake(0, 18);
-    self.titleCard.layer.borderWidth = 0.75;
-    [self.titleCard pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.16]];
-
-    // ---- Blur background ----
-    UIBlurEffect *blurEffect;
-    if (@available(iOS 17.0, *)) {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
-    } else {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-    }
-
-    self.titleBlurView =
-        [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    self.titleBlurView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleBlurView.layer.cornerRadius = 30.0;
-    self.titleBlurView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.titleBlurView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-
-    // Optional subtle tint to stabilize contrast
-    UIView *tintView = [[UIView alloc] init];
-    tintView.translatesAutoresizingMaskIntoConstraints = NO;
-    tintView.backgroundColor =
-        [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.18];
-
-    [self.titleBlurView.contentView addSubview:tintView];
-    [self.titleCard addSubview:self.titleBlurView];
-
-    // Blur constraints
-    [NSLayoutConstraint activateConstraints:@[
-        [self.titleBlurView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor],
-        [self.titleBlurView.leadingAnchor constraintEqualToAnchor:self.titleCard.leadingAnchor],
-        [self.titleBlurView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor],
-        [self.titleBlurView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor],
-    ]];
-
-    // Tint constraints
-    [NSLayoutConstraint activateConstraints:@[
-        [tintView.topAnchor constraintEqualToAnchor:self.titleBlurView.contentView.topAnchor],
-        [tintView.leadingAnchor constraintEqualToAnchor:self.titleBlurView.contentView.leadingAnchor],
-        [tintView.trailingAnchor constraintEqualToAnchor:self.titleBlurView.contentView.trailingAnchor],
-        [tintView.bottomAnchor constraintEqualToAnchor:self.titleBlurView.contentView.bottomAnchor],
-    ]];
-
-    [self.view addSubview:self.titleCard];
-
-    self.petsTitleView = [[PPPetsTitleView alloc] init];
-    [self.petsTitleView configureWithTitle:self.ad.adTitle
-                                  location:(self.ad.adLocation > 0
-                                            ? [CitiesManager.shared cityNameForID:self.ad.adLocation]
-                                            : nil) price:[GM formatPrice:self.ad.price
-                                                            currencyCode:kLang(@"Rials")]];
-    self.petsTitleView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleCard.userInteractionEnabled = YES;
+    [self pp_buildLocalTitleCardContent];
 
 
     self.contentScrollView = [[UIScrollView alloc] init];
@@ -353,22 +666,26 @@
     self.contentScrollView.alwaysBounceVertical = YES;
     self.contentScrollView.delegate = self;
     self.contentScrollView.decelerationRate = UIScrollViewDecelerationRateNormal;
-    self.contentScrollView.backgroundColor = UIColor.clearColor;
+    self.contentScrollView.backgroundColor = [self pp_luxuryBackgroundColor];
     self.contentScrollView.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
-    self.contentScrollView.layer.cornerRadius = 34.0;
+    self.contentScrollView.layer.cornerRadius = 28.0;
     if (@available(iOS 13.0, *)) {
         self.contentScrollView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     self.contentScrollView.clipsToBounds = YES;
-    self.contentScrollView.layer.borderWidth = 0.5;
-    [self.contentScrollView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.08]];
+    self.contentScrollView.layer.borderWidth = 0.0;
+
     self.contentSurfaceGradientLayer = [CAGradientLayer layer];
     self.contentSurfaceGradientLayer.cornerRadius = self.contentScrollView.layer.cornerRadius;
     [self.contentScrollView.layer insertSublayer:self.contentSurfaceGradientLayer atIndex:0];
     [self.view addSubview:self.contentScrollView];
 
+    self.contentSheetRestingTopConstant = -24.0;
+    self.contentSheetExpandedTopConstant = [self pp_contentSheetExpandedTopConstantForHeroHeight:galleryHeight];
+    self.contentSheetTopConstraint = [self.contentScrollView.topAnchor constraintEqualToAnchor:self.heroContainerView.bottomAnchor
+                                                                                       constant:self.contentSheetRestingTopConstant];
     [NSLayoutConstraint activateConstraints:@[
-        [self.contentScrollView.topAnchor constraintEqualToAnchor:self.imageGallery.bottomAnchor constant:-36],
+        self.contentSheetTopConstraint,
         [self.contentScrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.contentScrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.contentScrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
@@ -396,58 +713,32 @@
         ]];
     }
 
+    [self pp_buildSheetGripCueIfNeeded];
+    [self pp_buildLiveBackgroundIfNeeded];
+    [self.contentContainer addSubview:self.titleCard];
 
-    [self.titleCard addSubview:self.petsTitleView];
-
-    // Constraints for titleCard
     [NSLayoutConstraint activateConstraints:@[
-        [self.titleCard.bottomAnchor constraintEqualToAnchor:self.imageGallery.bottomAnchor constant:-28],
-        [self.titleCard.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:18],
-        [self.titleCard.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-18],
-        [self.titleCard.heightAnchor constraintEqualToConstant:86]
+        [self.titleCard.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:24.0],
+        [self.titleCard.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:20.0],
+        [self.titleCard.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-20.0],
+        [self.titleCard.heightAnchor constraintGreaterThanOrEqualToConstant:kViewerVcTitleCardMinHeight],
     ]];
-
-
-    // Constraints for petsTitleView inside titleCard
-    [NSLayoutConstraint activateConstraints:@[
-        [self.petsTitleView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor constant:0],
-        [self.petsTitleView.leadingAnchor constraintEqualToAnchor:self.titleCard.leadingAnchor constant:0],
-        [self.petsTitleView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-0],
-        [self.petsTitleView.bottomAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor constant:-0]
-    ]];
-
-
-
-
-    //[self.view bringSubviewToFront:self.imageGallery];
-    [self.view bringSubviewToFront:self.titleCard];
-    // --- Gallery Overlay Controls ---
-
-
-
 
     [self initInfoView];
-    [self initdescriptionTextView];
     [self initUserContactView];
+    [self initdescriptionTextView];
     [self initSimilarAds];
     [self initSimilarAccess];
-    [self initButtons];
     [self pp_applyViewerTheme];
+    [self pp_updateHeroDepthForScrollOffset:0.0];
     [self pp_prepareEntranceAnimationState];
 }
 
-
-
--(void)viewDidAppear:(BOOL)animated
-{
-    [super viewDidAppear:animated];
-    [self pp_beginEntranceAnimationsIfNeeded];
-    [self pp_startLiveMotionIfNeeded];
-    if (!self.didTrackViewInteraction) {
-        self.didTrackViewInteraction = YES;
-        [self trackAdInteraction:PPItemInteractionTypeView];
-    }
+- (CGFloat)pp_heroHeight {
+    CGFloat width = UIScreen.mainScreen.bounds.size.width;
+    return MIN(MAX(width * 1.06, 360.0), 500.0) + 30.0;
 }
+
 
 #pragma mark - Quick actions header
 
@@ -466,26 +757,29 @@
 
     NSString *gender = self.ad.isFemale ? kLang(@"female") :  kLang(@"male");
     NSString *SubKindName = [SubKindModel getSubKindName:self.ad.subcategory subKindsArrayLocal:[MKM getSubKindArray:self.ad.category]];
+    NSString *typeText = [NSString stringWithFormat:@"%@: %@", kLang(@"Type"), SubKindName.length > 0 ? SubKindName : @"-"];
+    NSString *ageText = [NSString stringWithFormat:@"%@: %@", kLang(@"Age"), ageString.length > 0 ? ageString : @"-"];
+    NSString *genderText = [NSString stringWithFormat:@"%@: %@", kLang(@"Gender"), gender.length > 0 ? gender : @"-"];
     // --- Actions Container StackView ---
 
 
     self.infoView =
     [[PPInfoPillsView alloc] initWithItems:@[
-        [PPInfoPill itemWithIcon:@"figure.dress.line.vertical.figure"
-                            text:gender],
-        [PPInfoPill itemWithIcon:@"clock"
-                            text:ageString],
-        [PPInfoPill itemWithIcon:@"pawprint.fill"
-                            text:SubKindName],
+        [PPInfoPill itemWithIcon:@"pawprint"
+                            text:typeText],
+        [PPInfoPill itemWithIcon:@"calendar"
+                            text:ageText],
+        [PPInfoPill itemWithIcon:@"person"
+                            text:genderText],
 
     ]];
     [self.contentContainer addSubview:self.infoView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.infoView.topAnchor constraintEqualToAnchor:self.contentContainer.topAnchor constant:20],
-        [self.infoView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:18],
-        [self.infoView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-18],
-        [self.infoView.heightAnchor constraintGreaterThanOrEqualToConstant:66]
+        [self.infoView.topAnchor constraintEqualToAnchor:self.titleCard.bottomAnchor constant:18],
+        [self.infoView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:20],
+        [self.infoView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-20],
+        [self.infoView.heightAnchor constraintGreaterThanOrEqualToConstant:64]
     ]];
 }
 
@@ -497,7 +791,7 @@
     if (@available(iOS 13.0, *)) {
         self.descriptionSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    self.descriptionSurfaceView.layer.borderWidth = 0.75;
+    self.descriptionSurfaceView.layer.borderWidth = 0.5;
     self.descriptionSurfaceView.clipsToBounds = NO;
     [self.contentContainer addSubview:self.descriptionSurfaceView];
 
@@ -511,57 +805,58 @@
     self.descriptionTextView.editable = NO;
     self.descriptionTextView.selectable = YES;
     self.descriptionTextView.backgroundColor = UIColor.clearColor;
-    self.descriptionTextView.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.descriptionTextView.tintColor = [self pp_luxuryEmeraldColor];
     self.descriptionTextView.textAlignment = NSTextAlignmentNatural;
-    self.descriptionTextView.textContainerInset = UIEdgeInsetsMake(8, 0, 10, 0);
+    self.descriptionTextView.textContainerInset = UIEdgeInsetsMake(8, 0, 8, 0);
     self.descriptionTextView.textContainer.lineFragmentPadding = 0;
     self.descriptionTextView.font = [GM MidFontWithSize:16];
     self.descriptionTextView.adjustsFontForContentSizeCategory = YES;
     self.descriptionTextView.linkTextAttributes = @{
-        NSForegroundColorAttributeName: AppPrimaryClr ?: UIColor.systemBlueColor,
+        NSForegroundColorAttributeName: [self pp_luxuryEmeraldColor],
         NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle)
     };
 
-    NSString *desc = self.ad.adDescription;
-
-    if (desc.length > 0) {
-        self.descriptionTextView.attributedText =
-        [self pp_styledDescriptionFromText:desc];
-    } else {
-        self.descriptionTextView.attributedText =
-        [[NSAttributedString alloc] initWithString:
-         kLang(@"No description added for this pet.")
-                                        attributes:@{
-            NSFontAttributeName:
-                [UIFont preferredFontForTextStyle:UIFontTextStyleBody],
-            NSForegroundColorAttributeName:
-                UIColor.secondaryLabelColor
-        }];
-    }
+    self.fullDescriptionText = [self pp_normalizedDescriptionText:self.ad.adDescription];
+    self.shouldCollapseDescription = self.fullDescriptionText.length > 260;
+    self.isDescriptionExpanded = !self.shouldCollapseDescription;
     [self.descriptionSurfaceView addSubview:self.descriptionTextView];
 
+    self.descriptionToggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.descriptionToggleButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.descriptionToggleButton.titleLabel.font = [GM boldFontWithSize:14.0];
+    self.descriptionToggleButton.contentHorizontalAlignment = Language.isRTL ? UIControlContentHorizontalAlignmentRight : UIControlContentHorizontalAlignmentLeft;
+    [self.descriptionToggleButton setTitleColor:[self pp_luxuryEmeraldColor] forState:UIControlStateNormal];
+    [self.descriptionToggleButton addTarget:self action:@selector(pp_toggleDescriptionExpanded:) forControlEvents:UIControlEventTouchUpInside];
+    [self.descriptionSurfaceView addSubview:self.descriptionToggleButton];
+    [self pp_styleInteractiveButton:self.descriptionToggleButton];
+    [self pp_refreshDescriptionTextAnimated:NO];
 
     self.descriptionHeightConstraint =
     [self.descriptionTextView.heightAnchor
      constraintGreaterThanOrEqualToConstant:44];
     self.descriptionHeightConstraint.priority = UILayoutPriorityDefaultHigh;
+    self.descriptionToggleHeightConstraint = [self.descriptionToggleButton.heightAnchor constraintEqualToConstant:self.shouldCollapseDescription ? 34.0 : 0.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.descriptionSurfaceView.topAnchor
-         constraintEqualToAnchor:self.infoView.bottomAnchor constant:16],
+         constraintEqualToAnchor:self.contactDockView.bottomAnchor constant:24],
         [self.descriptionSurfaceView.leadingAnchor
-         constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:18],
+         constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:20],
         [self.descriptionSurfaceView.trailingAnchor
-         constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-18],
+         constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-20],
 
         [self.descriptionTextView.topAnchor
-         constraintEqualToAnchor:self.descriptionSurfaceView.topAnchor constant:12],
+         constraintEqualToAnchor:self.descriptionSurfaceView.topAnchor constant:22],
         [self.descriptionTextView.leadingAnchor
-         constraintEqualToAnchor:self.descriptionSurfaceView.leadingAnchor constant:18],
+         constraintEqualToAnchor:self.descriptionSurfaceView.leadingAnchor constant:22],
         [self.descriptionTextView.trailingAnchor
-         constraintEqualToAnchor:self.descriptionSurfaceView.trailingAnchor constant:-18],
+         constraintEqualToAnchor:self.descriptionSurfaceView.trailingAnchor constant:-22],
         [self.descriptionTextView.bottomAnchor
-         constraintEqualToAnchor:self.descriptionSurfaceView.bottomAnchor constant:-12],
+         constraintEqualToAnchor:self.descriptionToggleButton.topAnchor constant:-6],
+        [self.descriptionToggleButton.leadingAnchor constraintEqualToAnchor:self.descriptionTextView.leadingAnchor],
+        [self.descriptionToggleButton.trailingAnchor constraintEqualToAnchor:self.descriptionTextView.trailingAnchor],
+        [self.descriptionToggleButton.bottomAnchor constraintEqualToAnchor:self.descriptionSurfaceView.bottomAnchor constant:-18],
+        self.descriptionToggleHeightConstraint,
         self.descriptionHeightConstraint
     ]];
 
@@ -572,15 +867,15 @@
     self.contactDockView = [[UIView alloc] init];
     self.contactDockView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contactDockView.backgroundColor = UIColor.clearColor;
-    self.contactDockView.layer.cornerRadius = 32.0;
+    self.contactDockView.layer.cornerRadius = 30.0;
     if (@available(iOS 13.0, *)) {
         self.contactDockView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.contactDockView pp_setShadowColor:UIColor.blackColor];
-    self.contactDockView.layer.shadowOpacity = 0.18;
-    self.contactDockView.layer.shadowRadius = 28.0;
-    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
-    [self.view addSubview:self.contactDockView];
+    self.contactDockView.layer.shadowOpacity = 0.10;
+    self.contactDockView.layer.shadowRadius = 24.0;
+    self.contactDockView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    [self.contentContainer addSubview:self.contactDockView];
 
     self.contactView = [[UserContactView alloc] initWithFrame:CGRectZero];
     self.contactView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -591,36 +886,36 @@
         self.contactView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     self.contactView.clipsToBounds = YES;
-    self.contactView.layer.borderWidth = 0.75;
-    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.14]];
+    self.contactView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [self.contactView pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0.05]];
 
     self.contactGradientLayer = [CAGradientLayer layer];
     self.contactGradientLayer.colors = @[
-        (__bridge id)[[UIColor systemBackgroundColor] colorWithAlphaComponent:0.92].CGColor,
-        (__bridge id)[(AppPrimaryClr ?: UIColor.systemPinkColor) colorWithAlphaComponent:0.18].CGColor
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[UIColor.clearColor CGColor]
     ];
     self.contactGradientLayer.startPoint = CGPointMake(0.0, 0.0);
     self.contactGradientLayer.endPoint = CGPointMake(1.0, 1.0);
     self.contactGradientLayer.cornerRadius = 26.0;
     [self.contactView.layer insertSublayer:self.contactGradientLayer atIndex:0];
 
-    self.contactView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.78];
+    self.contactView.backgroundColor = [self pp_luxurySurfaceColor];
     self.contactView.semanticContentAttribute = GM.setSemantic;
-    self.contactViewHeightConstraint = [self.contactView.heightAnchor constraintEqualToConstant:64];
-    self.contactDockHeightConstraint = [self.contactDockView.heightAnchor constraintEqualToConstant:84.0];
+    self.contactViewHeightConstraint = [self.contactView.heightAnchor constraintEqualToConstant:88.0];
+    self.contactDockHeightConstraint = [self.contactDockView.heightAnchor constraintEqualToConstant:88.0];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.contactDockView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:12],
-        [self.contactDockView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12],
-        [self.contactDockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-10],
+        [self.contactDockView.topAnchor constraintEqualToAnchor:self.infoView.bottomAnchor constant:22.0],
+        [self.contactDockView.leadingAnchor constraintEqualToAnchor:self.contentContainer.leadingAnchor constant:20.0],
+        [self.contactDockView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-20.0],
         self.contactDockHeightConstraint,
 
-        [self.contactView.leadingAnchor constraintEqualToAnchor:self.contactDockView.leadingAnchor constant:8],
-        [self.contactView.trailingAnchor constraintEqualToAnchor:self.contactDockView.trailingAnchor constant:-8],
-        [self.contactView.topAnchor constraintEqualToAnchor:self.contactDockView.topAnchor constant:10],
+        [self.contactView.leadingAnchor constraintEqualToAnchor:self.contactDockView.leadingAnchor],
+        [self.contactView.trailingAnchor constraintEqualToAnchor:self.contactDockView.trailingAnchor],
+        [self.contactView.topAnchor constraintEqualToAnchor:self.contactDockView.topAnchor],
+        [self.contactView.bottomAnchor constraintEqualToAnchor:self.contactDockView.bottomAnchor],
         self.contactViewHeightConstraint,
     ]];
-    [self.view bringSubviewToFront:self.contactDockView];
     [self pp_styleContactActionButtons];
 
     [self pp_updateContactAccessStateAnimated:NO];
@@ -643,7 +938,7 @@
         [separator.heightAnchor constraintEqualToConstant:1.0 / UIScreen.mainScreen.scale],
     ]];
 
-    // petsTitleView,infoView,contactView,descriptionTextView,similarAdsView
+    // titleCard,infoView,contactView,descriptionTextView,similarAdsView
     self.similarAdsView = [[PPSimilarAdsView alloc] initWithFrame:CGRectZero];
     self.similarAdsView.translatesAutoresizingMaskIntoConstraints = NO;
     self.similarAdsView.titleString =  kLang(@"Similar Ads");
@@ -704,7 +999,7 @@
     ]];
 
 
-    // petsTitleView,infoView,contactView,descriptionTextView,similarAdsView
+    // titleCard,infoView,contactView,descriptionTextView,similarAdsView
     self.similarAccessView = [[PPSimilarAdsView alloc] initWithFrame:CGRectZero];
     self.similarAccessView.translatesAutoresizingMaskIntoConstraints = NO;
     self.similarAccessView.titleString =  kLang(@"SimilarAaccess");
@@ -763,79 +1058,71 @@
     return result;
 }
 
--(void)initButtons
-{
-    self.galleryShareButton =
-    [self pp_makeGlassCircleButtonWithSymbol:@"square.and.arrow.up"
-                                      action:@selector(shareAdBTN:)];
-    self.galleryShareButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_share_ad", @"Share ad");
-    self.galleryShareButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_share_ad_hint", @"Double-tap to share this ad");
 
-    self.galleryFavoriteButton =
-    [self pp_makeGlassCircleButtonWithSymbol:@"heart"
-                                      action:@selector(toggleFavorite)];
-    self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
-    self.galleryFavoriteButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_favorite_hint", @"Double-tap to add or remove from favorites");
 
-    self.galleryReportButton =
-    [self pp_makeGlassCircleButtonWithSymbol:@"flag"
-                                      action:@selector(reportAdBTN:)];
-    self.galleryReportButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_report_ad", @"Report ad");
-    self.galleryReportButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_report_ad_hint", @"Double-tap to report this ad");
-
-    self.galleryDismissButton =
-    [self pp_makeGlassCircleButtonWithSymbol:@"xmark"
-                                      action:@selector(dismiss)];
-    self.galleryDismissButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_close", @"Close");
-    self.galleryDismissButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_close_hint", @"Double-tap to close this screen");
-
-    NSMutableArray *leadingButtons = [NSMutableArray arrayWithObjects:
-        self.galleryShareButton,
-        self.galleryFavoriteButton,
-        nil
-    ];
-
-    // Only show report button if user is NOT the ad owner
-    NSString *currentUID = [self trackingUserID];
-    if (currentUID.length > 0 && ![currentUID isEqualToString:self.ad.ownerID]) {
-        [leadingButtons addObject:self.galleryReportButton];
+- (NSString *)pp_categorySummary {
+    MainKindsModel *mainModel = [MainKindsModel mainKindModelForID:self.ad.category];
+    if (mainModel.KindName.length > 0) {
+        return mainModel.KindName;
     }
-
-    self.galleryLeadingStack =
-    [[UIStackView alloc] initWithArrangedSubviews:leadingButtons];
-
-    self.galleryLeadingStack.axis = UILayoutConstraintAxisVertical;
-    self.galleryLeadingStack.spacing = 12;
-    self.galleryLeadingStack.alignment = UIStackViewAlignmentCenter;
-    self.galleryLeadingStack.translatesAutoresizingMaskIntoConstraints = NO;
-
-    [self.view addSubview:self.galleryLeadingStack];
-    [self.view addSubview:self.galleryDismissButton];
-
-    [NSLayoutConstraint activateConstraints:@[
-        // Leading vertical buttons
-        [self.galleryLeadingStack.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-18],
-        [self.galleryLeadingStack.topAnchor constraintEqualToAnchor:self.imageGallery.topAnchor constant:18],
-
-        // Trailing dismiss
-        [self.galleryDismissButton.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:18],
-        [self.galleryDismissButton.topAnchor constraintEqualToAnchor:self.imageGallery.topAnchor constant:18],
-    ]];
-
-    for (UIButton *button in self.galleryLeadingStack.arrangedSubviews) {
-        [self pp_styleInteractiveButton:button];
-    }
-    [self pp_styleInteractiveButton:self.galleryDismissButton];
+    return @"";
 }
+
+- (NSString *)pp_navigationSubtitle {
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    NSString *categoryText = [self pp_categorySummary];
+    NSString *subKindText =
+        [SubKindModel getSubKindName:self.ad.subcategory
+                 subKindsArrayLocal:[MKM getSubKindArray:self.ad.category]];
+
+    if (categoryText.length > 0) {
+        [parts addObject:categoryText];
+    }
+    if (subKindText.length > 0) {
+        [parts addObject:subKindText];
+    }
+    if (parts.count == 0 && self.ad.locationName.length > 0) {
+        [parts addObject:self.ad.locationName];
+    }
+    if (parts.count == 0) {
+        return @"";
+    }
+    return [NSString stringWithFormat:@"(%@)", [parts componentsJoinedByString:@", "]];
+}
+
+- (UIBarButtonItem *)pp_barButtonItemWithSystemName:(NSString *)systemName
+                                             action:(SEL)action
+                                  accessibilityText:(NSString *)accessibilityText
+{
+    UIImage *image = [[UIImage systemImageNamed:systemName] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIBarButtonItem *item = [[UIBarButtonItem alloc] initWithImage:image
+                                                             style:UIBarButtonItemStylePlain
+                                                            target:self
+                                                            action:action];
+    item.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    item.accessibilityLabel = accessibilityText;
+    return item;
+}
+
+- (BOOL)pp_shouldShowReportAction {
+    NSString *currentUID = [self trackingUserID];
+    if (currentUID.length == 0) {
+        return YES;
+    }
+    return ![currentUID isEqualToString:self.ad.ownerID];
+}
+
+
+
 
 
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
-    return UIStatusBarStyleDarkContent; // ✅ Always dark text
+    return UIStatusBarStyleDarkContent;
 }
 -(BOOL)prefersStatusBarHidden
 {
-    return YES;
+    return NO;
 }
 
 - (void)favButtonTapped {
@@ -867,46 +1154,106 @@
     button.configuration = config;
 }
 - (void)toggleFavorite {
+    if (!UserManager.sharedManager.isUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
 
     self.isFavorite = !self.isFavorite;
 
     if (self.isFavorite) {
-        [self setSymbol:@"heart" forButton:self.galleryFavoriteButton filled:YES];
-        self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_unfavorite", @"Remove from favorites");
+        [self pp_updateFavoriteNavigationAppearance];
         [GM triggerHapticFeedback]; // if you have haptic util
         [PetAdManager addFavoriteAdWithID:self.ad.adID collection:@"favoritesAds" forUserID:[UserManager sharedManager].currentUser.ID];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentSuccess];
         NSLog(@"✅ Added to favorites");
     } else {
-        [self setSymbol:@"heart" forButton:self.galleryFavoriteButton filled:NO];
-        self.galleryFavoriteButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
+        [self pp_updateFavoriteNavigationAppearance];
         [PetAdManager removeFavoriteAdWithID:self.ad.adID collection:@"favoritesAds" forUserID:[UserManager sharedManager].currentUser.ID];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
         NSLog(@"❌ Removed from favorites");
     }
 
 }
 
--(void)dismiss
+- (void)setupNavigation
 {
-    if (self.navigationController && self.navigationController.viewControllers.count > 1) {
-        [self.navigationController popViewControllerAnimated:YES];
-    } else {
-        [self dismissViewControllerAnimated:YES completion:nil];
-    }
+    UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+    self.view.semanticContentAttribute = semantic;
+    self.navigationController.navigationBar.semanticContentAttribute = semantic;
+
+    UIBarButtonItem *backItem =
+    [[UIBarButtonItem alloc]
+     initWithImage:[UIImage systemImageNamed:PPChevronName]
+     style:UIBarButtonItemStylePlain
+     target:self
+     action:@selector(onBack)];
+    backItem.accessibilityLabel = kLang(@"Back");
+
+    _favBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"heart"]  style:UIBarButtonItemStylePlain target:self action:@selector(toggleFavorite)];
+    _shareBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"heart"]  style:UIBarButtonItemStylePlain target:self action:@selector(toggleFavorite)];
+    _reportBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"heart"]  style:UIBarButtonItemStylePlain target:self action:@selector(toggleFavorite)];
+
+    self.navigationItem.leftBarButtonItem = backItem;
+    self.navigationItem.rightBarButtonItem = _favBarButtonItem;
+
+    [self pp_updateFavoriteNavigationAppearance];
+
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    if (self.navigationController && !self.didCaptureNavigationBarState) {
-        self.previousNavigationBarHidden = self.navigationController.navigationBarHidden;
-        self.didCaptureNavigationBarState = YES;
-    }
-    [self.navigationController setNavigationBarHidden:YES animated:animated];
+    [self setupNavigation];
     [self initValue];
+    [self pp_refreshLocalTitleCardTexts];
     [self pp_applyViewerTheme];
-    self.modalInPresentation = NO;
     [self pp_updateContactAccessStateAnimated:NO];
-    [self pp_startLiveMotionIfNeeded];
 }
+
+//self.isUserContactViewUpdated
+-(void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self pp_beginEntranceAnimationsIfNeeded];
+    [self pp_startLiveMotionIfNeeded];
+    if (!self.didTrackViewInteraction) {
+        self.didTrackViewInteraction = YES;
+        [self trackAdInteraction:PPItemInteractionTypeView];
+    }
+}
+
+
+- (void)pp_updateFavoriteNavigationAppearance {
+    UIImage *favoriteImage = [UIImage systemImageNamed:self.isFavorite ? @"heart.fill" : @"heart"];
+    UIColor *favoriteColor = self.isFavorite
+        ? [self pp_luxuryGoldColor]
+        : (AppPrimaryTextClr ?: UIColor.labelColor);
+
+    self.favBarButtonItem.image = favoriteImage;
+    self.favBarButtonItem.tintColor = favoriteColor;
+    NSString *favoriteLabel = self.isFavorite
+        ? NSLocalizedString(@"a11y_btn_unfavorite", @"Remove from favorites")
+        : NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
+    self.favBarButtonItem.accessibilityLabel = favoriteLabel;
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 - (IBAction)shareAdBTN:(id)sender {
@@ -916,16 +1263,14 @@
 
 -(void)initValue
 {
-    if (PPCurrentUser && PPCurrentFIRAuthUser  ) {
+    if (PPCurrentUser && PPCurrentFIRAuthUser  && !self.isAdFavoritedLoaded) {
+        self.isAdFavoritedLoaded = YES;
         [PetAdManager isAdFavorited:self.ad.adID
                             forUser:PPCurrentUser.ID
                          collection:@"favoritesAds"
                          completion:^(BOOL favorited) {
             self.isFavorite = favorited;
-            [self setSymbol:@"heart" forButton:self.galleryFavoriteButton filled:self.isFavorite];
-            self.galleryFavoriteButton.accessibilityLabel = self.isFavorite
-                ? NSLocalizedString(@"a11y_btn_unfavorite", @"Remove from favorites")
-                : NSLocalizedString(@"a11y_btn_favorite", @"Favorite");
+            [self pp_updateFavoriteNavigationAppearance];
         }];
     }
 
@@ -933,16 +1278,7 @@
 
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
-    self.view.semanticContentAttribute = GM.setSemantic;
-    self.imageGallery.semanticContentAttribute = GM.setSemantic;
-    self.contentScrollView.semanticContentAttribute = GM.setSemantic;
-    self.contentContainer.semanticContentAttribute = GM.setSemantic;
-    self.descriptionSurfaceView.semanticContentAttribute = GM.setSemantic;
-    self.descriptionTextView.semanticContentAttribute = GM.setSemantic;
-    self.contactDockView.semanticContentAttribute = GM.setSemantic;
-    self.galleryLeadingStack.semanticContentAttribute = GM.setSemantic;
-    self.similarAdsView.semanticContentAttribute = GM.setSemantic;
-    self.similarAccessView.semanticContentAttribute = GM.setSemantic;
+    [self pp_refreshContentSheetMetricsPreservingPosition];
     if (self.descriptionTextView && self.descriptionTextView.bounds.size.width > 0) {
         CGSize fittingSize =
         [self.descriptionTextView sizeThatFits:
@@ -965,19 +1301,19 @@
         self.descriptionSurfaceGradientLayer.frame = self.descriptionSurfaceView.bounds;
         self.descriptionSurfaceGradientLayer.cornerRadius = self.descriptionSurfaceView.layer.cornerRadius;
     }
+    self.sheetGripView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.sheetGripView.bounds
+                                                                     cornerRadius:self.sheetGripView.layer.cornerRadius].CGPath;
     self.titleCard.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.titleCard.bounds
                                                                  cornerRadius:self.titleCard.layer.cornerRadius].CGPath;
+    self.titlePricePillView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.titlePricePillView.bounds
+                                                                          cornerRadius:self.titlePricePillView.layer.cornerRadius].CGPath;
     self.descriptionSurfaceView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.descriptionSurfaceView.bounds
                                                                               cornerRadius:self.descriptionSurfaceView.layer.cornerRadius].CGPath;
     self.contactView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.contactView.bounds
                                                                     cornerRadius:self.contactView.layer.cornerRadius].CGPath;
     self.contactDockView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.contactDockView.bounds
                                                                        cornerRadius:self.contactDockView.layer.cornerRadius].CGPath;
-    self.ambientGlowTopView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.ambientGlowTopView.bounds].CGPath;
-    self.ambientGlowBottomView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:self.ambientGlowBottomView.bounds].CGPath;
     [self pp_updatePinnedContactInsets];
-
-    [Styling applyCornerMaskToView:self.titleBlurView tl:32 tr:16 bl:32 br:28];
 }
 
 - (void)viewDidLayoutSubviews
@@ -1033,59 +1369,57 @@
 
 - (void)pp_startLiveMotionIfNeeded
 {
-    if (!self.view.window || UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopLiveMotion];
+    if (!self.sheetGripView) {
         return;
     }
 
-    [self pp_addAmbientTranslationToView:self.ambientGlowTopView
-                                     key:@"pp.viewer.ambient.top"
-                                       x:-18.0
-                                       y:14.0
-                                duration:6.8];
-    [self pp_addAmbientTranslationToView:self.ambientGlowBottomView
-                                     key:@"pp.viewer.ambient.bottom"
-                                       x:18.0
-                                       y:-16.0
-                                duration:7.6];
-
-    if (self.contactDockView && ![self.contactDockView.layer animationForKey:@"pp.viewer.contactDock.breathe"]) {
-        CABasicAnimation *shadowPulse = [CABasicAnimation animationWithKeyPath:@"shadowOpacity"];
-        shadowPulse.fromValue = @0.14;
-        shadowPulse.toValue = @0.22;
-        shadowPulse.duration = 4.8;
-        shadowPulse.autoreverses = YES;
-        shadowPulse.repeatCount = HUGE_VALF;
-        shadowPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.contactDockView.layer addAnimation:shadowPulse forKey:@"pp.viewer.contactDock.breathe"];
+    NSString *animationKey = @"pp.sheetGrip.breathing";
+    if ([self.sheetGripView.layer animationForKey:animationKey]) {
+        return;
     }
 
-    if (self.descriptionSurfaceView && ![self.descriptionSurfaceView.layer animationForKey:@"pp.viewer.descriptionSurface.breathe"]) {
-        CABasicAnimation *surfacePulse = [CABasicAnimation animationWithKeyPath:@"shadowRadius"];
-        surfacePulse.fromValue = @(self.descriptionSurfaceView.layer.shadowRadius);
-        surfacePulse.toValue = @(self.descriptionSurfaceView.layer.shadowRadius + 4.0);
-        surfacePulse.duration = 5.4;
-        surfacePulse.autoreverses = YES;
-        surfacePulse.repeatCount = HUGE_VALF;
-        surfacePulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.descriptionSurfaceView.layer addAnimation:surfacePulse forKey:@"pp.viewer.descriptionSurface.breathe"];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self.sheetGripView.layer removeAnimationForKey:animationKey];
+        self.sheetGripView.alpha = 0.72;
+        self.sheetGripView.transform = CGAffineTransformIdentity;
+        return;
     }
+
+    self.sheetGripView.alpha = 0.82;
+
+    CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform.scale.x"];
+    scaleAnimation.fromValue = @0.92;
+    scaleAnimation.toValue = @1.16;
+
+    CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    opacityAnimation.fromValue = @0.44;
+    opacityAnimation.toValue = @0.86;
+
+    CABasicAnimation *liftAnimation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    liftAnimation.fromValue = @0.0;
+    liftAnimation.toValue = @(-1.2);
+
+    CAAnimationGroup *group = [CAAnimationGroup animation];
+    group.animations = @[scaleAnimation, opacityAnimation, liftAnimation];
+    group.duration = 2.4;
+    group.autoreverses = YES;
+    group.repeatCount = HUGE_VALF;
+    group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.sheetGripView.layer addAnimation:group forKey:animationKey];
 }
 
 - (void)pp_stopLiveMotion
 {
-    [self.ambientGlowTopView.layer removeAnimationForKey:@"pp.viewer.ambient.top"];
-    [self.ambientGlowBottomView.layer removeAnimationForKey:@"pp.viewer.ambient.bottom"];
-    [self.contactDockView.layer removeAnimationForKey:@"pp.viewer.contactDock.breathe"];
-    [self.descriptionSurfaceView.layer removeAnimationForKey:@"pp.viewer.descriptionSurface.breathe"];
-    self.ambientGlowTopView.transform = CGAffineTransformIdentity;
-    self.ambientGlowBottomView.transform = CGAffineTransformIdentity;
+    [self.sheetGripView.layer removeAnimationForKey:@"pp.sheetGrip.breathing"];
 }
 
 - (NSArray<UIView *> *)pp_primaryEntranceViews
 {
     NSMutableArray<UIView *> *views = [NSMutableArray array];
 
+    if (self.sheetGripContainerView) {
+        [views addObject:self.sheetGripContainerView];
+    }
     if (self.titleCard) {
         [views addObject:self.titleCard];
     }
@@ -1112,8 +1446,11 @@
 {
     NSMutableArray<UIView *> *views = [NSMutableArray array];
 
-    if (self.petsTitleView) {
-        [views addObject:self.petsTitleView];
+    if (self.titleContentStack) {
+        [views addObject:self.titleContentStack];
+    }
+    if (self.titlePricePillView) {
+        [views addObject:self.titlePricePillView];
     }
 
     if (self.contactLockOverlayView && !self.contactLockOverlayView.hidden) {
@@ -1136,19 +1473,6 @@
     return views.copy;
 }
 
-- (NSArray<UIView *> *)pp_galleryEntranceViews
-{
-    NSMutableArray<UIView *> *views = [NSMutableArray array];
-
-    for (UIView *button in self.galleryLeadingStack.arrangedSubviews) {
-        [views addObject:button];
-    }
-    if (self.galleryDismissButton) {
-        [views addObject:self.galleryDismissButton];
-    }
-
-    return views.copy;
-}
 
 - (CGFloat)pp_initialEntranceAlphaForView:(UIView *)view
                              reduceMotion:(BOOL)reduceMotion
@@ -1160,13 +1484,16 @@
     if (view == self.titleCard) {
         return 0.76;
     }
+    if (view == self.sheetGripContainerView) {
+        return 0.34;
+    }
     if (view == self.infoView) {
         return 0.42;
     }
     if (view == self.descriptionSurfaceView) {
         return 0.28;
     }
-    if (view == self.petsTitleView) {
+    if (view == self.titleContentStack || view == self.titlePricePillView) {
         return 0.20;
     }
     if (view == self.contactDockView) {
@@ -1203,17 +1530,15 @@
     }
 
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
-    for (UIView *glowView in @[self.ambientGlowTopView ?: [UIView new],
-                               self.ambientGlowBottomView ?: [UIView new]]) {
-        glowView.alpha = reduceMotion ? 1.0 : 0.0;
-        glowView.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.94, 0.94);
-    }
 
     NSArray<UIView *> *primaryViews = [self pp_primaryEntranceViews];
     [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
         CGFloat translationY = 16.0 + MIN((CGFloat)idx * 2.0, 8.0);
         CGFloat scale = 0.985;
-        if (view == self.titleCard) {
+        if (view == self.sheetGripContainerView) {
+            translationY = 3.0;
+            scale = 0.98;
+        } else if (view == self.titleCard) {
             translationY = 8.0;
             scale = 0.992;
         } else if (view == self.infoView) {
@@ -1233,20 +1558,15 @@
     }];
 
     for (UIView *view in [self pp_secondaryEntranceViews]) {
-        CGFloat translationY = (view == self.petsTitleView) ? 5.0 : 8.0;
-        CGFloat scale = (view == self.petsTitleView) ? 0.992 : 0.97;
+        BOOL isTitleDetail = (view == self.titleContentStack || view == self.titlePricePillView);
+        CGFloat translationY = isTitleDetail ? 5.0 : 8.0;
+        CGFloat scale = isTitleDetail ? 0.992 : 0.97;
         [self pp_prepareView:view
                 translationY:translationY
                        scale:scale
                 reduceMotion:reduceMotion];
     }
 
-    for (UIView *view in [self pp_galleryEntranceViews]) {
-        [self pp_prepareView:view
-                translationY:-12.0
-                       scale:0.92
-                reduceMotion:reduceMotion];
-    }
 }
 
 - (void)pp_beginEntranceAnimationsIfNeeded
@@ -1259,36 +1579,26 @@
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     [self.view layoutIfNeeded];
 
-    NSArray<UIView *> *glowViews = @[self.ambientGlowTopView ?: [UIView new],
-                                     self.ambientGlowBottomView ?: [UIView new]];
-    [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)stop;
-        [UIView animateWithDuration:reduceMotion ? 0.16 : 0.62
-                              delay:0.02 + (0.04 * idx)
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
-
     NSArray<UIView *> *primaryViews = [self pp_primaryEntranceViews];
     [primaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
         NSTimeInterval delay = 0.08 + (0.05 * idx);
-        NSTimeInterval duration = 0.46;
+        NSTimeInterval duration = 0.28;
 
-        if (view == self.titleCard) {
+        if (view == self.sheetGripContainerView) {
             delay = 0.0;
-            duration = 0.40;
+            duration = 0.20;
+        } else if (view == self.titleCard) {
+            delay = 0.0;
+            duration = 0.26;
         } else if (view == self.infoView) {
             delay = 0.03;
-            duration = 0.34;
+            duration = 0.24;
         } else if (view == self.descriptionSurfaceView) {
             delay = 0.06;
-            duration = 0.36;
+            duration = 0.26;
         } else if (view == self.contactDockView) {
             delay = 0.10;
-            duration = 0.40;
+            duration = 0.28;
         }
 
         if (reduceMotion) {
@@ -1313,8 +1623,9 @@
 
     NSArray<UIView *> *secondaryViews = [self pp_secondaryEntranceViews];
     [secondaryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        NSTimeInterval delay = (view == self.petsTitleView) ? 0.02 : (0.12 + (0.04 * idx));
-        NSTimeInterval duration = (view == self.petsTitleView) ? 0.26 : 0.32;
+        BOOL isTitleDetail = (view == self.titleContentStack || view == self.titlePricePillView);
+        NSTimeInterval delay = isTitleDetail ? (view == self.titleContentStack ? 0.02 : 0.055) : (0.12 + (0.04 * idx));
+        NSTimeInterval duration = isTitleDetail ? 0.24 : 0.28;
         if (reduceMotion) {
             [UIView animateWithDuration:0.16
                                   delay:delay
@@ -1334,46 +1645,21 @@
             view.transform = CGAffineTransformIdentity;
         } completion:nil];
     }];
-
-    NSArray<UIView *> *galleryViews = [self pp_galleryEntranceViews];
-    [galleryViews enumerateObjectsUsingBlock:^(UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        NSTimeInterval delay = 0.08 + (0.035 * idx);
-        if (reduceMotion) {
-            [UIView animateWithDuration:0.16
-                                  delay:delay
-                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
-                             animations:^{
-                view.alpha = 1.0;
-                view.transform = CGAffineTransformIdentity;
-            } completion:nil];
-            return;
-        }
-
-        [UIView animateWithDuration:0.30
-                              delay:delay
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            view.alpha = 1.0;
-            view.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
-
-    NSTimeInterval pillsDelay = reduceMotion ? 0.04 : 0.08;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(pillsDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        [self.petsTitleView animatePillsIn];
-    });
 }
 
 #pragma mark - Contact Access
 
 - (void)pp_updatePinnedContactInsets
 {
-    if (!self.contentScrollView || !self.contactDockHeightConstraint) {
+    if (!self.contentScrollView) {
         return;
     }
 
-    CGFloat dockHeight = MAX(self.contactDockHeightConstraint.constant, 84.0);
-    CGFloat bottomInset = dockHeight + 26.0;
+    CGFloat safeBottom = 0.0;
+    if (@available(iOS 11.0, *)) {
+        safeBottom = self.view.safeAreaInsets.bottom;
+    }
+    CGFloat bottomInset = 28.0 + safeBottom;
     UIEdgeInsets inset = self.contentScrollView.contentInset;
     inset.bottom = bottomInset;
     self.contentScrollView.contentInset = inset;
@@ -1386,9 +1672,9 @@
 - (void)pp_updateContactAccessStateAnimated:(BOOL)animated
 {
     BOOL isLoggedIn = UserManager.sharedManager.isUserLoggedIn;
-    CGFloat contactHeight = isLoggedIn ? 64.0 : 86.0;
+    CGFloat contactHeight = isLoggedIn ? 88.0 : 108.0;
     self.contactViewHeightConstraint.constant = contactHeight;
-    self.contactDockHeightConstraint.constant = contactHeight + 20.0;
+    self.contactDockHeightConstraint.constant = contactHeight;
     [self pp_updatePinnedContactInsets];
 
     if (isLoggedIn) {
@@ -1454,13 +1740,13 @@
 
     UIView *iconBadge = [[UIView alloc] init];
     iconBadge.translatesAutoresizingMaskIntoConstraints = NO;
-    iconBadge.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.16];
+    iconBadge.backgroundColor = [[self pp_luxuryEmeraldColor] colorWithAlphaComponent:0.12];
     iconBadge.layer.cornerRadius = 18.0;
     [contentView addSubview:iconBadge];
 
     UIImageView *lockIcon = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"lock.fill"]];
     lockIcon.translatesAutoresizingMaskIntoConstraints = NO;
-    lockIcon.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    lockIcon.tintColor = [self pp_luxuryEmeraldColor];
     lockIcon.contentMode = UIViewContentModeScaleAspectFit;
     [iconBadge addSubview:lockIcon];
 
@@ -1485,7 +1771,7 @@
     self.contactLockButton = [UIButton buttonWithType:UIButtonTypeSystem];
     [self.contactLockButton setTitle:kLang(@"AdOwnerInfoGuestCTA") forState:UIControlStateNormal];
     [self.contactLockButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
-    self.contactLockButton.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    self.contactLockButton.backgroundColor = [self pp_luxuryEmeraldColor];
     self.contactLockButton.layer.cornerRadius = 18.0;
     self.contactLockButton.layer.masksToBounds = YES;
     self.contactLockButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1580,7 +1866,7 @@
             }];
             [self pp_styleContactActionButtons];
 
-            [UIView animateWithDuration:0.30 animations:^{
+            [UIView animateWithDuration:0.26 animations:^{
                 self.contactView.alpha = 1.0;
             }];
         });
@@ -1601,19 +1887,7 @@
     [self trackAdInteraction:PPItemInteractionTypeShare];
 }
 
-- (IBAction)dissmissMe:(id)sender {
-    if (self.navigationController &&
-           self.navigationController.viewControllers.count > 1) {
 
-           // Pushed → pop
-           [self.navigationController popViewControllerAnimated:YES];
-
-       } else {
-
-           // Presented (modal / sheet / popover) → dismiss
-           [self dismissViewControllerAnimated:YES completion:nil];
-       }
-}
 
 #pragma mark - Chat Methods
 - (void)startChatWith:(UserModel *)user
@@ -1683,13 +1957,7 @@
 {
     [super viewWillDisappear:animated];
     [self pp_stopLiveMotion];
-    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
-        self.navigationController &&
-        self.didCaptureNavigationBarState) {
-        [self.navigationController setNavigationBarHidden:self.previousNavigationBarHidden animated:animated];
-        self.didCaptureNavigationBarState = NO;
-    }
-    self.modalInPresentation = YES;
+
 }
 
 - (UIButton *)pp_makeGlassCircleButtonWithSymbol:(NSString *)symbol
@@ -1741,6 +2009,17 @@
         return;
     }
 
+    if (button == self.descriptionToggleButton) {
+        button.layer.shadowOpacity = 0.0;
+        button.layer.borderWidth = 0.0;
+        [button pp_setBorderColor:UIColor.clearColor];
+        [button removeTarget:self action:@selector(pp_interactiveButtonTouchDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+        [button removeTarget:self action:@selector(pp_interactiveButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+        [button addTarget:self action:@selector(pp_interactiveButtonTouchDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+        [button addTarget:self action:@selector(pp_interactiveButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+        return;
+    }
+
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1757,7 +2036,7 @@
         if (config) {
             UIBackgroundConfiguration *background = config.background;
             if (button == self.contactLockButton) {
-                background.backgroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+                background.backgroundColor = [self pp_luxuryEmeraldColor];
                 background.visualEffect = nil;
                 background.strokeColor = UIColor.clearColor;
                 background.strokeWidth = 0.0;
@@ -1776,36 +2055,38 @@
 
 - (void)pp_styleContactActionButtons
 {
-    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
-    if (self.contactView.callButton) {
-        [buttons addObject:self.contactView.callButton];
-    }
-    if (self.contactView.chatButton) {
-        [buttons addObject:self.contactView.chatButton];
-    }
-    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemBlueColor;
+    UIButton *callButton = self.contactView.callButton;
+    UIButton *chatButton = self.contactView.chatButton;
 
-    for (UIButton *button in buttons) {
-        button.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.50];
-        button.tintColor = accentColor;
-        button.layer.cornerRadius = 18.0;
-        if (@available(iOS 13.0, *)) {
-            button.layer.cornerCurve = kCACornerCurveContinuous;
-        }
-        button.layer.borderWidth = 0.5;
-        [button pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.12]];
-        [self pp_styleInteractiveButton:button];
+    if (callButton) {
+        [callButton setTitle:kLang(@"Call") forState:UIControlStateNormal];
+        callButton.semanticContentAttribute = GM.setSemantic;
+        [self pp_attachPressFeedbackToButton:callButton];
     }
+    if (chatButton) {
+        [chatButton setTitle:kLang(@"Chat") forState:UIControlStateNormal];
+        chatButton.semanticContentAttribute = GM.setSemantic;
+        [self pp_attachPressFeedbackToButton:chatButton];
+    }
+}
+
+- (void)pp_attachPressFeedbackToButton:(UIButton *)button
+{
+    [button removeTarget:self action:@selector(pp_interactiveButtonTouchDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+    [button removeTarget:self action:@selector(pp_interactiveButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+    [button addTarget:self action:@selector(pp_interactiveButtonTouchDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+    [button addTarget:self action:@selector(pp_interactiveButtonTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
 }
 
 - (void)pp_interactiveButtonTouchDown:(UIButton *)sender
 {
-    [UIView animateWithDuration:0.14
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    [UIView animateWithDuration:0.10
                           delay:0.0
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                      animations:^{
-        sender.transform = CGAffineTransformMakeScale(0.94, 0.94);
-        sender.alpha = 0.96;
+        sender.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.96, 0.96);
+        sender.alpha = 0.94;
     } completion:nil];
 }
 
@@ -1813,8 +2094,6 @@
 {
     [UIView animateWithDuration:0.22
                           delay:0.0
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.28
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut
                      animations:^{
         sender.transform = CGAffineTransformIdentity;
@@ -1822,26 +2101,187 @@
     } completion:nil];
 }
 
+- (CGFloat)pp_unitProgressForValue:(CGFloat)value
+{
+    return MIN(MAX(value, 0.0), 1.0);
+}
+
+- (CGFloat)pp_smoothedScrollProgress:(CGFloat)progress
+{
+    CGFloat p = [self pp_unitProgressForValue:progress];
+    return p * p * (3.0 - (2.0 * p));
+}
+
+- (CGFloat)pp_viewerScreenHeightForSheetMetrics
+{
+    CGFloat screenHeight = CGRectGetHeight(self.view.bounds);
+    if (screenHeight <= 0.0) {
+        screenHeight = UIScreen.mainScreen.bounds.size.height;
+    }
+    return MAX(screenHeight, 1.0);
+}
+
+- (CGFloat)pp_visibleTitleCardHeight
+{
+    CGFloat height = CGRectGetHeight(self.titleCard.bounds);
+    if (height <= 1.0 && self.titleCard) {
+        CGSize fittingSize = [self.titleCard systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
+        height = fittingSize.height;
+    }
+    return MIN(MAX(height, 76.0), 132.0);
+}
+
+- (CGFloat)pp_navigationStopHeight
+{
+    CGFloat safeTop = 0.0;
+    if (@available(iOS 11.0, *)) {
+        safeTop = self.view.safeAreaInsets.top;
+    }
+
+    CGFloat navHeight = 0.0;
+    if (self.navigationController && !self.navigationController.navigationBarHidden) {
+        navHeight = CGRectGetHeight(self.navigationController.navigationBar.bounds);
+    }
+    if (navHeight <= 0.0) {
+        navHeight = 44.0;
+    }
+
+    return safeTop + navHeight + [self pp_visibleTitleCardHeight] + 10.0;
+}
+
+- (CGFloat)pp_contentSheetExpandedTopConstantForHeroHeight:(CGFloat)heroHeight
+{
+    CGFloat screenHeight = [self pp_viewerScreenHeightForSheetMetrics];
+    CGFloat targetSheetHeight = screenHeight * [self pp_unitProgressForValue:kViewerVcMetaSheetHeight];
+    CGFloat targetSheetTop = screenHeight - targetSheetHeight;
+    CGFloat expandedConstant = targetSheetTop - heroHeight;
+    return MIN(self.contentSheetRestingTopConstant, expandedConstant);
+}
+
+- (CGFloat)pp_currentContentSheetProgress
+{
+    CGFloat travel = self.contentSheetRestingTopConstant - self.contentSheetExpandedTopConstant;
+    if (travel <= 0.0 || !self.contentSheetTopConstraint) {
+        return 0.0;
+    }
+    return [self pp_unitProgressForValue:(self.contentSheetRestingTopConstant - self.contentSheetTopConstraint.constant) / travel];
+}
+
+- (CGFloat)pp_clampedContentSheetConstant:(CGFloat)constant
+{
+    CGFloat lowerBound = MIN(self.contentSheetExpandedTopConstant, self.contentSheetRestingTopConstant);
+    CGFloat upperBound = MAX(self.contentSheetExpandedTopConstant, self.contentSheetRestingTopConstant);
+    return MIN(MAX(constant, lowerBound), upperBound);
+}
+
+- (void)pp_setContentSheetTopConstant:(CGFloat)constant
+{
+    if (!self.contentSheetTopConstraint) {
+        return;
+    }
+
+    CGFloat clampedConstant = [self pp_clampedContentSheetConstant:constant];
+    self.contentSheetTopConstraint.constant = clampedConstant;
+
+    CGFloat progress = [self pp_smoothedScrollProgress:[self pp_currentContentSheetProgress]];
+    self.contentScrollView.layer.cornerRadius = 28.0 - (progress * 8.0);
+}
+
+- (void)pp_refreshContentSheetMetricsPreservingPosition
+{
+    CGFloat progress = [self pp_currentContentSheetProgress];
+    CGFloat heroHeight = [self pp_heroHeight];
+    self.galleryMaxHeight = heroHeight;
+    self.heroHeightConstraint.constant = heroHeight;
+    self.contentSheetRestingTopConstant = -24.0;
+    self.contentSheetExpandedTopConstant = [self pp_contentSheetExpandedTopConstantForHeroHeight:heroHeight];
+
+    CGFloat travel = self.contentSheetRestingTopConstant - self.contentSheetExpandedTopConstant;
+    CGFloat targetConstant = self.contentSheetRestingTopConstant - (travel * progress);
+    [self pp_setContentSheetTopConstant:targetConstant];
+}
+
 - (void)pp_updateHeroDepthForScrollOffset:(CGFloat)offsetY
 {
-    CGFloat upwardTravel = MIN(MAX(offsetY, 0.0), 96.0);
-    CGFloat pullDownTravel = MIN(fabs(MIN(offsetY, 0.0)), 72.0);
-    CGFloat heroScale = 1.0 + (pullDownTravel / 720.0);
-    CGFloat heroLift = upwardTravel * 0.12;
-
-    CGAffineTransform heroTransform = CGAffineTransformIdentity;
-    heroTransform = CGAffineTransformTranslate(heroTransform, 0.0, -heroLift);
-    heroTransform = CGAffineTransformScale(heroTransform, heroScale, heroScale);
-    self.imageGallery.transform = heroTransform;
-    self.galleryScrimView.transform = heroTransform;
-
-    self.titleCard.transform = CGAffineTransformMakeTranslation(0.0, -(upwardTravel * 0.18));
-    self.titleCard.alpha = 1.0 - MIN(0.16, upwardTravel / 460.0);
-
-    if (self.didAnimate && self.contactDockView) {
-        CGFloat dockLift = MIN(upwardTravel, 80.0) * 0.035;
-        self.contactDockView.transform = CGAffineTransformMakeTranslation(0.0, -dockLift);
+    if (!self.contentSheetTopConstraint || self.isUpdatingContentSheetFromScroll) {
+        return;
     }
+
+    self.galleryScrimView.hidden = YES;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.galleryScrimLayer.colors = @[
+        (__bridge id)[UIColor.clearColor CGColor],
+        (__bridge id)[UIColor.clearColor CGColor]
+    ];
+    self.galleryScrimLayer.locations = @[@0.0, @1.0];
+    [CATransaction commit];
+
+    CGFloat topInset = 0.0;
+    if (@available(iOS 11.0, *)) {
+        topInset = self.contentScrollView.adjustedContentInset.top;
+    }
+    CGFloat normalizedOffset = offsetY + topInset;
+    CGFloat currentConstant = self.contentSheetTopConstraint.constant;
+
+    if (normalizedOffset > 0.0 && currentConstant > self.contentSheetExpandedTopConstant + 0.5) {
+        CGFloat availableTravel = currentConstant - self.contentSheetExpandedTopConstant;
+        CGFloat consumedOffset = MIN(normalizedOffset, availableTravel);
+        CGFloat remainingOffset = normalizedOffset - consumedOffset;
+
+        self.isUpdatingContentSheetFromScroll = YES;
+        [self pp_setContentSheetTopConstant:currentConstant - consumedOffset];
+        self.contentScrollView.contentOffset = CGPointMake(self.contentScrollView.contentOffset.x,
+                                                           -topInset + MAX(remainingOffset, 0.0));
+        [self.view layoutIfNeeded];
+        self.isUpdatingContentSheetFromScroll = NO;
+        return;
+    }
+
+    if (normalizedOffset < 0.0 && currentConstant < self.contentSheetRestingTopConstant - 0.5) {
+        CGFloat availableTravel = self.contentSheetRestingTopConstant - currentConstant;
+        CGFloat consumedOffset = MIN(fabs(normalizedOffset), availableTravel);
+
+        self.isUpdatingContentSheetFromScroll = YES;
+        [self pp_setContentSheetTopConstant:currentConstant + consumedOffset];
+        self.contentScrollView.contentOffset = CGPointMake(self.contentScrollView.contentOffset.x, -topInset);
+        [self.view layoutIfNeeded];
+        self.isUpdatingContentSheetFromScroll = NO;
+        return;
+    }
+
+    [self pp_setContentSheetTopConstant:currentConstant];
+}
+
+- (void)pp_snapContentSheetWithVelocity:(CGFloat)velocityY
+{
+    if (!self.contentSheetTopConstraint) {
+        return;
+    }
+
+    CGFloat progress = [self pp_currentContentSheetProgress];
+    if (progress <= 0.02 || progress >= 0.98) {
+        CGFloat target = progress >= 0.5 ? self.contentSheetExpandedTopConstant : self.contentSheetRestingTopConstant;
+        [self pp_setContentSheetTopConstant:target];
+        return;
+    }
+
+    BOOL shouldExpand = fabs(velocityY) > 0.08 ? (velocityY > 0.0) : (progress >= 0.5);
+    CGFloat targetConstant = shouldExpand ? self.contentSheetExpandedTopConstant : self.contentSheetRestingTopConstant;
+    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.24;
+
+    self.isUpdatingContentSheetFromScroll = YES;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        [self pp_setContentSheetTopConstant:targetConstant];
+        [self.view layoutIfNeeded];
+    } completion:^(__unused BOOL finished) {
+        self.isUpdatingContentSheetFromScroll = NO;
+    }];
 }
 
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
@@ -1853,16 +2293,173 @@
     [self pp_updateHeroDepthForScrollOffset:scrollView.contentOffset.y];
 }
 
+- (void)scrollViewWillEndDragging:(UIScrollView *)scrollView
+                      withVelocity:(CGPoint)velocity
+               targetContentOffset:(inout CGPoint *)targetContentOffset
+{
+    if (scrollView != self.contentScrollView || !self.contentSheetTopConstraint) {
+        return;
+    }
+
+    CGFloat progress = [self pp_currentContentSheetProgress];
+    if (progress > 0.02 && progress < 0.98) {
+        CGFloat topInset = 0.0;
+        if (@available(iOS 11.0, *)) {
+            topInset = scrollView.adjustedContentInset.top;
+        }
+        targetContentOffset->y = -topInset;
+        [self pp_snapContentSheetWithVelocity:velocity.y];
+    }
+}
+
 #pragma mark - Description Styling Helper
+
+- (NSString *)pp_normalizedDescriptionText:(NSString *)text
+{
+    NSString *trimmed = [PPSafeString(text) stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *paragraphs = [NSMutableArray array];
+    for (NSString *line in [trimmed componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet]) {
+        NSString *cleanLine = [line stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (cleanLine.length > 0) {
+            [paragraphs addObject:cleanLine];
+        }
+    }
+
+    if (paragraphs.count > 1) {
+        return [paragraphs componentsJoinedByString:@"\n\n"];
+    }
+
+    if (trimmed.length < 190) {
+        return trimmed;
+    }
+
+    NSMutableString *balanced = [NSMutableString string];
+    __block NSUInteger lastBreak = 0;
+    NSCharacterSet *sentenceEnders = [NSCharacterSet characterSetWithCharactersInString:@".!?؟،"];
+    [trimmed enumerateSubstringsInRange:NSMakeRange(0, trimmed.length)
+                                options:NSStringEnumerationByComposedCharacterSequences
+                             usingBlock:^(NSString * _Nullable substring, NSRange substringRange, NSRange enclosingRange, BOOL * _Nonnull stop) {
+        (void)enclosingRange;
+        if (!substring) {
+            return;
+        }
+        [balanced appendString:substring];
+        if ([substring rangeOfCharacterFromSet:sentenceEnders].location != NSNotFound &&
+            substringRange.location - lastBreak > 135 &&
+            substringRange.location + 1 < trimmed.length) {
+            [balanced appendString:@"\n\n"];
+            lastBreak = substringRange.location;
+        }
+    }];
+
+    return balanced.copy;
+}
+
+- (NSString *)pp_visibleDescriptionText
+{
+    if (self.fullDescriptionText.length == 0) {
+        return kLang(@"No description added for this pet.");
+    }
+    if (!self.shouldCollapseDescription || self.isDescriptionExpanded) {
+        return self.fullDescriptionText;
+    }
+
+    NSUInteger maxLength = MIN((NSUInteger)220, self.fullDescriptionText.length);
+    NSString *prefix = [self.fullDescriptionText substringToIndex:maxLength];
+    NSRange lastSpace = [prefix rangeOfCharacterFromSet:NSCharacterSet.whitespaceAndNewlineCharacterSet
+                                                options:NSBackwardsSearch];
+    if (lastSpace.location != NSNotFound && lastSpace.location > 120) {
+        prefix = [prefix substringToIndex:lastSpace.location];
+    }
+    return [prefix stringByAppendingString:@"..."];
+}
+
+- (void)pp_refreshDescriptionTextAnimated:(BOOL)animated
+{
+    NSAttributedString *updatedText = [self pp_styledDescriptionFromText:[self pp_visibleDescriptionText]];
+    void (^updates)(void) = ^{
+        self.descriptionTextView.attributedText = updatedText;
+        NSString *toggleTitle = self.isDescriptionExpanded ? kLang(@"ShowLess") : kLang(@"ReadMore");
+        [self.descriptionToggleButton setTitle:toggleTitle forState:UIControlStateNormal];
+        self.descriptionToggleButton.alpha = self.shouldCollapseDescription ? 1.0 : 0.0;
+        self.descriptionToggleHeightConstraint.constant = self.shouldCollapseDescription ? 34.0 : 0.0;
+        [self.view setNeedsLayout];
+        [self.view layoutIfNeeded];
+    };
+
+    if (!animated) {
+        updates();
+        return;
+    }
+
+    [UIView transitionWithView:self.descriptionTextView
+                      duration:UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.28
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                    animations:updates
+                    completion:nil];
+}
+
+- (void)pp_performReadMoreHeroPulse
+{
+    if (self.isHeroReadMorePulseActive || UIAccessibilityIsReduceMotionEnabled() || !self.descriptionSurfaceView) {
+        [self pp_updateHeroDepthForScrollOffset:self.contentScrollView.contentOffset.y];
+        return;
+    }
+
+    self.isHeroReadMorePulseActive = YES;
+    CGFloat originalAlpha = self.descriptionSurfaceView.alpha > 0.0 ? self.descriptionSurfaceView.alpha : 1.0;
+
+    [UIView animateKeyframesWithDuration:0.34
+                                   delay:0.0
+                                 options:UIViewKeyframeAnimationOptionBeginFromCurrentState |
+                                         UIViewAnimationOptionAllowUserInteraction |
+                                         UIViewKeyframeAnimationOptionCalculationModeCubic
+                              animations:^{
+        [UIView addKeyframeWithRelativeStartTime:0.0
+                                relativeDuration:0.38
+                                      animations:^{
+            self.descriptionSurfaceView.alpha = MAX(originalAlpha * 0.92, 0.82);
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.38
+                                relativeDuration:0.62
+                                      animations:^{
+            self.descriptionSurfaceView.alpha = originalAlpha;
+        }];
+    } completion:^(__unused BOOL finished) {
+        self.isHeroReadMorePulseActive = NO;
+        [self pp_updateHeroDepthForScrollOffset:self.contentScrollView.contentOffset.y];
+    }];
+}
+
+- (void)pp_toggleDescriptionExpanded:(UIButton *)sender
+{
+    (void)sender;
+    if (!self.shouldCollapseDescription) {
+        return;
+    }
+    self.isDescriptionExpanded = !self.isDescriptionExpanded;
+    [self pp_performReadMoreHeroPulse];
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.28
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        [self pp_refreshDescriptionTextAnimated:NO];
+    } completion:nil];
+}
 
 - (NSAttributedString *)pp_styledDescriptionFromText:(NSString *)text {
 
     UIFont *bodyFont = [GM MidFontWithSize:17];
-    UIColor *textColor = UIColor.labelColor;
+    UIColor *textColor = [self pp_luxuryTextColor];
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
-    paragraphStyle.lineSpacing = 5.0;
-    paragraphStyle.paragraphSpacing = 10.0;
+    paragraphStyle.lineSpacing = 7.0;
+    paragraphStyle.paragraphSpacing = 13.0;
     paragraphStyle.alignment = NSTextAlignmentNatural;
+    paragraphStyle.baseWritingDirection = Language.isRTL ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
 
     NSMutableAttributedString *attr =
     [[NSMutableAttributedString alloc] initWithString:text ?: @""];
@@ -1886,7 +2483,7 @@
 
         if (result.resultType == NSTextCheckingTypeLink) {
             [attr addAttributes:@{
-                NSForegroundColorAttributeName: AppPrimaryClr,
+                NSForegroundColorAttributeName: [self pp_luxuryEmeraldColor],
                 NSUnderlineStyleAttributeName: @(NSUnderlineStyleSingle)
             } range:result.range];
         }
@@ -1921,7 +2518,7 @@
 
 #pragma mark - Report Ad
 
-- (void)reportAdBTN:(UIButton *)sender {
+- (void)reportAdBTN:(id)sender {
     if (![UserManager sharedManager].isUserLoggedIn) {
          [UserManager showPromptOnTopController];
         return;
@@ -1957,8 +2554,13 @@
         style:UIAlertActionStyleCancel handler:nil]];
 
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
-        sheet.popoverPresentationController.sourceView = sender;
-        sheet.popoverPresentationController.sourceRect = sender.bounds;
+        if ([sender isKindOfClass:UIBarButtonItem.class]) {
+            sheet.popoverPresentationController.barButtonItem = (UIBarButtonItem *)sender;
+        } else {
+            UIView *sourceView = [sender isKindOfClass:UIView.class] ? (UIView *)sender : self.view;
+            sheet.popoverPresentationController.sourceView = sourceView;
+            sheet.popoverPresentationController.sourceRect = sourceView.bounds;
+        }
     }
 
     [self presentViewController:sheet animated:YES completion:nil];

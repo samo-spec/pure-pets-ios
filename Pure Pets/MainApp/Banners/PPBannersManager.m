@@ -57,6 +57,11 @@ static NSInteger PPHomePromoIntegerValue(id value, NSInteger defaultValue) {
     return defaultValue;
 }
 
+static PPBannerTextStyle PPHomePromoTextStyleValue(id value, PPBannerTextStyle defaultValue) {
+    NSInteger raw = PPHomePromoIntegerValue(value, defaultValue);
+    return (raw == PPBannerTextStyleBlack) ? PPBannerTextStyleBlack : PPBannerTextStyleWhite;
+}
+
 static NSURL * _Nullable PPHomePromoURLValue(id value) {
     NSString *raw = PPHomePromoSafeString(value);
     if (raw.length == 0) return nil;
@@ -119,6 +124,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         _startColorHex = @"#F6A43A";
         _endColorHex = @"#F08A2A";
         _accentColorHex = @"#FFD08A";
+        _textStyle = PPBannerTextStyleWhite;
         _cardTapAction = PPBannerOnTapOpenUrl;
         _cardTapValue = @"";
         _primaryButtonTapAction = PPBannerOnTapOpenUrl;
@@ -190,6 +196,8 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     if (_endColorHex.length == 0) _endColorHex = @"#F08A2A";
     _accentColorHex = PPHomePromoSafeString(dict[@"accentColorHex"] ?: dict[@"shapeColorHex"]);
     if (_accentColorHex.length == 0) _accentColorHex = @"#FFD08A";
+    _textStyle = PPHomePromoTextStyleValue(dict[@"pannerTextStyle"] ?: dict[@"textStyle"] ?: dict[@"bannerTextStyle"],
+                                           _textStyle);
 
     _cardTapAction = PPHomePromoTapActionValue(dict[@"cardTapAction"], PPBannerOnTapOpenUrl);
     if (dict[@"pannerOnTapAction"] != nil) {
@@ -245,6 +253,7 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
     d[@"startColorHex"] = PPHomePromoSafeString(self.startColorHex);
     d[@"endColorHex"] = PPHomePromoSafeString(self.endColorHex);
     d[@"accentColorHex"] = PPHomePromoSafeString(self.accentColorHex);
+    d[@"pannerTextStyle"] = @(self.textStyle);
     d[@"cardTapAction"] = @(self.cardTapAction);
     d[@"cardTapValue"] = PPHomePromoSafeString(self.cardTapValue);
     d[@"primaryButtonTapAction"] = @(self.primaryButtonTapAction);

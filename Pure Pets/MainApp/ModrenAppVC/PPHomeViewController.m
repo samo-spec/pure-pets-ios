@@ -899,6 +899,15 @@ static CGFloat PPHomeSmoothStep(CGFloat value)
     return CGSizeMake(UIViewNoIntrinsicMetric, 44.0);
 }
 
+- (CGSize)sizeThatFits:(CGSize)size
+{
+    CGFloat width = CGRectGetWidth(self.bounds);
+    if (width <= 0.0 && isfinite(size.width) && size.width > 0.0) {
+        width = size.width;
+    }
+    return CGSizeMake(MAX(width, 1.0), 44.0);
+}
+
 - (instancetype)initWithFrame:(CGRect)frame
 {
     CGRect initialFrame = CGRectEqualToRect(frame, CGRectZero)
@@ -1152,7 +1161,8 @@ static CGFloat PPHomeSmoothStep(CGFloat value)
 {
     [super layoutSubviews];
     CGFloat width = CGRectGetWidth(self.bounds);
-    BOOL compact = width < 224.0;
+    BOOL compact = width < 280.0;
+    _signalRowView.hidden = compact;
     _textStackView.spacing = compact ? 0.0 : 0.5;
     _signalLabel.font = compact
         ? ([GM MidFontWithSize:8.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold])
@@ -1564,6 +1574,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_emitSelectionHaptic;
 - (void)pp_emitSoftImpactHaptic;
 - (void)pp_animateHomeCell:(UICollectionViewCell *)cell highlighted:(BOOL)highlighted;
+- (BOOL)pp_isInitialHomeRevealSettled;
 - (BOOL)pp_shouldReduceHomeMotion;
 - (BOOL)pp_shouldApplyPremiumCarouselRevealToSection:(PPHomeSection)section;
 - (BOOL)pp_shouldUseAccessoriesStylePremiumRevealForSection:(PPHomeSection)section;
@@ -1685,6 +1696,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong, nullable) UIButton *homeCartButton;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
 @property (nonatomic, strong, nullable) PPHomeSmartSearchTitleView *homeSmartSearchView;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchWidthConstraint;
 @property (nonatomic, strong, nullable) NSTimer *homeSmartSearchTimer;
 @property (nonatomic, copy) NSArray<NSString *> *homeSmartSearchPlaceholders;
 @property (nonatomic, assign) NSInteger homeSmartSearchPlaceholderIndex;
@@ -1718,7 +1730,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_installPremiumBackgroundGlowViewsIfNeeded;
 - (void)pp_layoutPremiumBackgroundGlowViews;
 - (void)pp_updatePremiumBackgroundGlowAppearance;
+- (CGFloat)preferredNavigationCenterViewWidth;
+- (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
 - (CGFloat)pp_preferredNavigationSearchWidth;
+- (void)pp_updateHomeSmartSearchTitleViewWidth;
 - (BOOL)pp_canOwnHomeNavigationChrome;
 - (void)pp_detachHomeSmartSearchTitleViewIfNeeded;
 - (UIView *)pp_navigationSmartSearchTitleView;
@@ -1732,6 +1747,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_advanceHomeSmartSearchPlaceholder;
 - (void)pp_stabilizeHomeCollectionLayoutIfNeeded;
 - (void)pp_refreshVisibleHomeCardsForSections:(NSArray<NSNumber *> *)sections;
+- (void)pp_refreshInitialHomeRevealDependentContent;
 
 @end
 
@@ -1774,6 +1790,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (void)pp_refreshVisiblePremiumCareAnimation
 {
+    if (![self pp_isInitialHomeRevealSettled]) {
+        return;
+    }
+
     NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
     if (sectionIndex == NSNotFound || !self.collectionView) {
         return;
@@ -1787,6 +1807,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     PPHomePremiumCareCell *cell = (PPHomePremiumCareCell *)rawCell;
     [cell configureWithAnimationName:[self pp_currentPremiumCareAnimationName]];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [cell setNeedsLayout];
+    [cell.contentView setNeedsLayout];
+    [cell.contentView layoutIfNeeded];
+    [cell layoutIfNeeded];
+    [CATransaction commit];
 }
 
 - (void)pp_prefetchHomeEntranceAnimationsIfNeeded
@@ -2003,6 +2030,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     card.startColorHex = @"#F5A63A";
     card.endColorHex = @"#EF8628";
     card.accentColorHex = @"#FFC86D";
+    card.textStyle = PPBannerTextStyleWhite;
     card.cardTapAction = PPBannerOnTapViewAccessory;
     card.cardTapValue = @"";
     card.primaryButtonTapAction = PPBannerOnTapViewAccessory;
@@ -2073,6 +2101,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         card.characterImageURL = vm.sampleImageURL;
         card.backgroundImageURL = vm.backgroundImageURL;
         card.autoScrollInterval = 5.0;
+        card.textStyle = (vm.textStyle == PPBannerTextStyleBlack) ? PPBannerTextStyleBlack : PPBannerTextStyleWhite;
 
         PPHomeApplyPromoGradientPalette(card, vm.backgroundGradientColors, idx);
 
@@ -2094,10 +2123,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     ] mutableCopy];
     [sections addObjectsFromArray:@[
         @(PPHomeSectionCurrentOrders),
-        @(PPHomeSectionCarousel),
+        @(PPHomeSectionPremiumCare),
+
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionSuggestions),
-        @(PPHomeSectionPremiumCare),
+
+        @(PPHomeSectionCarousel),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
@@ -2291,6 +2322,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         if (!self || !self.isViewLoaded || !self.collectionView) {
             return;
         }
+        if (![self pp_isInitialHomeRevealSettled]) {
+            return;
+        }
 
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
@@ -2316,6 +2350,28 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             }
         }];
         [CATransaction commit];
+    });
+}
+
+- (void)pp_refreshInitialHomeRevealDependentContent
+{
+    if (![self pp_isInitialHomeRevealSettled] || !self.isViewLoaded || !self.collectionView) {
+        return;
+    }
+
+    [self pp_refreshVisibleHomeCardsForSections:@[
+        @(PPHomeSectionPetProfile),
+        @(PPHomeSectionPremiumCare),
+        @(PPHomeSectionAdopt)
+    ]];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || ![self pp_isInitialHomeRevealSettled]) {
+            return;
+        }
+        [self pp_refreshVisiblePremiumCareAnimation];
     });
 }
 
@@ -7177,13 +7233,15 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        [cell setNeedsLayout];
-        [cell.contentView setNeedsLayout];
-        [cell.contentView layoutIfNeeded];
-        [cell layoutIfNeeded];
-        [CATransaction commit];
+        if ([self pp_isInitialHomeRevealSettled]) {
+            [CATransaction begin];
+            [CATransaction setDisableActions:YES];
+            [cell setNeedsLayout];
+            [cell.contentView setNeedsLayout];
+            [cell.contentView layoutIfNeeded];
+            [cell layoutIfNeeded];
+            [CATransaction commit];
+        }
     }
 
     if (self.didRunPremiumHomeEntranceAnimation && !self.isPremiumHomeEntranceAnimating) {
@@ -7192,7 +7250,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                              initialOrdinal:NSNotFound];
     }
 
-    if (!self.isPremiumHomeEntranceAnimating) {
+    if ([self pp_isInitialHomeRevealSettled]) {
         [self pp_applyPremiumScrollMotionToCell:cell atIndexPath:indexPath];
     }
 }
@@ -7203,14 +7261,7 @@ willDisplaySupplementaryView:(UICollectionReusableView *)view
          atIndexPath:(NSIndexPath *)indexPath
 {
     (void)collectionView;
-    if (self.isPremiumHomeEntranceAnimating) {
-        return;
-    }
-
-    if (!self.didRunPremiumHomeEntranceAnimation) {
-        [self pp_applyPremiumScrollMotionToSupplementaryView:view
-                                                        kind:elementKind
-                                                 atIndexPath:indexPath];
+    if (![self pp_isInitialHomeRevealSettled]) {
         return;
     }
 
@@ -7822,6 +7873,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return UIAccessibilityIsReduceMotionEnabled();
 }
 
+- (BOOL)pp_isInitialHomeRevealSettled
+{
+    return self.didRunPremiumHomeEntranceAnimation && !self.isPremiumHomeEntranceAnimating;
+}
+
 - (BOOL)pp_shouldApplyPremiumCarouselRevealToSection:(PPHomeSection)section
 {
     switch (section) {
@@ -7908,7 +7964,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyPremiumScrollMotionToVisibleContent
 {
-    if (!self.collectionView || !self.isViewLoaded || self.isPremiumHomeEntranceAnimating) {
+    if (!self.collectionView || !self.isViewLoaded || ![self pp_isInitialHomeRevealSettled]) {
         return;
     }
 
@@ -7970,7 +8026,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     UIView *motionView = cell.contentView ?: cell;
-    if (![self pp_shouldApplyPremiumScrollMotionToSection:section] ||
+    if (![self pp_isInitialHomeRevealSettled] ||
+        ![self pp_shouldApplyPremiumScrollMotionToSection:section] ||
         [self pp_shouldReduceHomeMotion]) {
         motionView.layer.transform = CATransform3DIdentity;
         motionView.layer.opacity = 1.0f;
@@ -7993,7 +8050,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
-    if (![self pp_shouldApplyPremiumScrollMotionToSection:section] ||
+    if (![self pp_isInitialHomeRevealSettled] ||
+        ![self pp_shouldApplyPremiumScrollMotionToSection:section] ||
         [self pp_shouldReduceHomeMotion]) {
         supplementaryView.layer.transform = CATransform3DIdentity;
         supplementaryView.layer.opacity = 1.0f;
@@ -8167,11 +8225,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    BOOL sameBounds = fabs(boundsSize.width - self.lastPreparedHomeEntranceBoundsSize.width) <= 0.5
-        && fabs(boundsSize.height - self.lastPreparedHomeEntranceBoundsSize.height) <= 0.5;
-    BOOL sameVisibleCounts = self.lastPreparedHomeEntranceItemCount == visibleItemCount
-        && self.lastPreparedHomeEntranceSectionCount == visibleSectionCount;
-    if (self.didPrepareVisibleHomeEntranceContent && sameBounds && sameVisibleCounts) {
+    if (self.didPrepareVisibleHomeEntranceContent) {
         return;
     }
 
@@ -8240,8 +8294,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.didRunPremiumHomeEntranceAnimation) {
         return;
     }
-    self.didRunPremiumHomeEntranceAnimation = YES;
-    self.isPremiumHomeEntranceAnimating = YES;
+
+    [self.collectionView layoutIfNeeded];
+    [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 
     NSArray<UIView *> *glowViews = @[
         self.pp_premiumBackgroundGlowViewTop ?: [UIView new],
@@ -8261,6 +8316,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     if ([self pp_shouldReduceHomeMotion]) {
+        self.didRunPremiumHomeEntranceAnimation = YES;
         self.isPremiumHomeEntranceAnimating = NO;
         self.collectionView.alpha = 1.0;
         self.collectionView.transform = CGAffineTransformIdentity;
@@ -8272,10 +8328,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             chromeView.alpha = 1.0;
             chromeView.transform = CGAffineTransformIdentity;
         }
+        [self pp_refreshInitialHomeRevealDependentContent];
         return;
     }
 
-    [self.collectionView layoutIfNeeded];
+    self.didRunPremiumHomeEntranceAnimation = YES;
+    self.isPremiumHomeEntranceAnimating = YES;
 
     [glowViews enumerateObjectsUsingBlock:^(UIView * _Nonnull glowView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
@@ -8325,7 +8383,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
         self.isPremiumHomeEntranceAnimating = NO;
-        [self pp_applyPremiumScrollMotionToVisibleContent];
+        [self pp_refreshInitialHomeRevealDependentContent];
         [self pp_centerNearbySectionIfPossible];
     });
 }
@@ -8587,6 +8645,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [cell.layer removeAllAnimations];
     [cell.contentView.layer removeAllAnimations];
+    cell.contentView.layer.transform = CATransform3DIdentity;
+    cell.contentView.layer.opacity = 1.0f;
+    cell.contentView.layer.zPosition = 0.0f;
 
     cell.alpha = initialAlpha;
     CGAffineTransform transform = CGAffineTransformMakeTranslation(translateX, translateY);
@@ -8603,6 +8664,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [supplementaryView.layer removeAllAnimations];
+    supplementaryView.layer.transform = CATransform3DIdentity;
+    supplementaryView.layer.opacity = 1.0f;
+    supplementaryView.layer.zPosition = 0.0f;
     supplementaryView.alpha = 0.0;
     supplementaryView.transform = CGAffineTransformMakeTranslation(0.0, isLateAppearance ? 4.0 : 10.0);
 }
@@ -8802,7 +8866,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_updateHomeSmartSearchPlaceholderAnimated:NO];
     [self pp_startHomeSmartSearchTimerIfNeeded];
 
-    [self pp_navBarSetTitleViewCentered:centerView];
+    // Trigger PPNavBarContainer creation (sets up transparent nav bar appearance),
+    // but don't insert the search pill into it — use UIKit's native titleView instead.
+    // UIKit fills the space between left/right bar items when intrinsicContentSize.width
+    // is UIViewNoIntrinsicMetric, which PPHomeSmartSearchTitleView already returns.
+    [self pp_navBarSetTitleViewCentered:nil];
+    self.navigationItem.titleView = centerView;
+    [self pp_updateHomeSmartSearchTitleViewWidth];
 }
 
 - (UIBarButtonItem *)pp_buildCartBarButtonItem
@@ -9016,8 +9086,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.navigationItem.rightBarButtonItems = PPHomeBarButtonItems(cartItem);
     }
 
-
-
+    [self pp_updateHomeSmartSearchTitleViewWidth];
 }
 
 - (void)pp_applyHomeCartBadgeCount:(NSInteger)count animated:(BOOL)animated
@@ -9067,10 +9136,83 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 }
 
+- (CGFloat)preferredNavigationCenterViewWidth
+{
+    UINavigationBar *navigationBar = self.navigationController.navigationBar;
+    if (!navigationBar) {
+        return 220.0;
+    }
+
+    CGFloat navBarWidth = CGRectGetWidth(navigationBar.bounds);
+    if (navBarWidth <= 0.0) {
+        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 220.0;
+    }
+
+    UIBarButtonItem *leftItem = self.navigationItem.leftBarButtonItem ?: self.navigationItem.leftBarButtonItems.firstObject;
+    UIBarButtonItem *rightItem = self.navigationItem.rightBarButtonItem ?: self.navigationItem.rightBarButtonItems.firstObject;
+    CGFloat leftWidth = [self pp_widthForBarButtonItem:leftItem fallback:40.0];
+    CGFloat rightWidth = [self pp_widthForBarButtonItem:rightItem fallback:40.0];
+    UIEdgeInsets layoutMargins = navigationBar.layoutMargins;
+    CGFloat sideMargins = layoutMargins.left + layoutMargins.right;
+    CGFloat breathingRoom = 20.0;
+
+    CGFloat availableWidth = navBarWidth - sideMargins - leftWidth - rightWidth - breathingRoom;
+    if (availableWidth <= 0.0) {
+        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 220.0;
+    }
+
+    return floor(availableWidth);
+}
+
+- (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback
+{
+    if (!item) {
+        return fallback;
+    }
+
+    UIView *customView = item.customView;
+    if (customView) {
+        CGFloat width = CGRectGetWidth(customView.bounds);
+        if (width <= 0.0) {
+            CGSize fittingSize = [customView systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
+            width = fittingSize.width;
+        }
+        if (width > 0.0) {
+            return ceil(width);
+        }
+    }
+
+    if (item.width > 0.0) {
+        return item.width;
+    }
+
+    return fallback;
+}
+
 - (CGFloat)pp_preferredNavigationSearchWidth
 {
-    CGFloat screenWidth = CGRectGetWidth(UIScreen.mainScreen.bounds);
-    return MIN(MAX(screenWidth - 112.0, 206.0), 320.0);
+    return [self preferredNavigationCenterViewWidth];
+}
+
+- (void)pp_updateHomeSmartSearchTitleViewWidth
+{
+    if (!self.homeSmartSearchView) {
+        return;
+    }
+
+    CGFloat targetWidth = [self preferredNavigationCenterViewWidth];
+    if (targetWidth > 0.0) {
+        self.homeSmartSearchWidthConstraint.constant = targetWidth;
+        CGRect frame = self.homeSmartSearchView.frame;
+        frame.size = CGSizeMake(targetWidth, 42.0);
+        self.homeSmartSearchView.frame = frame;
+        self.homeSmartSearchView.bounds = (CGRect){CGPointZero, frame.size};
+        [self.homeSmartSearchView invalidateIntrinsicContentSize];
+    }
+
+    [self.homeSmartSearchView setNeedsLayout];
+    [self.homeSmartSearchView layoutIfNeeded];
+    [self.navigationController.navigationBar setNeedsLayout];
 }
 
 - (UIView *)pp_navigationSmartSearchTitleView
@@ -9079,6 +9221,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (!self.homeSmartSearchView) {
         self.homeSmartSearchView =
             [[PPHomeSmartSearchTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 42.0)];
+        self.homeSmartSearchView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.homeSmartSearchWidthConstraint =
+            [self.homeSmartSearchView.widthAnchor constraintEqualToConstant:MAX(width, 220.0)];
+        self.homeSmartSearchWidthConstraint.priority = UILayoutPriorityRequired;
+        self.homeSmartSearchWidthConstraint.active = YES;
+        [self.homeSmartSearchView.heightAnchor constraintEqualToConstant:42.0].active = YES;
         self.homeSmartSearchView.showSmartPillBackground = YES;
         [self.homeSmartSearchView addTarget:self
                                      action:@selector(pp_openSmartSearch)
@@ -9089,6 +9237,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     frame.size.width = width;
     frame.size.height = 42.0;
     self.homeSmartSearchView.frame = frame;
+    self.homeSmartSearchView.bounds = (CGRect){CGPointZero, frame.size};
     self.homeSmartSearchView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
     return self.homeSmartSearchView;
 }
@@ -9124,7 +9273,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     NSMutableArray<NSString *> *items = [NSMutableArray array];
-    BOOL prefersExpandedExamples = [self pp_preferredNavigationSearchWidth] >= 232.0;
+    BOOL prefersExpandedExamples = [self pp_preferredNavigationSearchWidth] >= 280.0;
 
     // Base placeholder at index 0 — stays visible longer than rotating examples
     NSString *basePlaceholder = prefersExpandedExamples
@@ -9761,7 +9910,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyOrderDetailsBackgroundAppearance
 {
-    self.view.backgroundColor = AppBackgroundClr;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    self.view.backgroundColor = AppBackgroundClrDarker;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
     self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     [self pp_updatePremiumBackgroundGlowAppearance];
@@ -9919,16 +10068,14 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_applyOrderDetailsBackgroundAppearance];
     [self pp_layoutPremiumBackgroundGlowViews];
 
-    if (self.homeSmartSearchView) {
-        CGRect frame = self.homeSmartSearchView.frame;
-        frame.size.width = [self pp_preferredNavigationSearchWidth];
-        frame.size.height = 42.0;
-        self.homeSmartSearchView.frame = frame;
-    }
+    [self pp_updateHomeSmartSearchTitleViewWidth];
 
     [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
-    [self pp_applyPremiumScrollMotionToVisibleContent];
+    if ([self pp_isInitialHomeRevealSettled] &&
+        (self.collectionView.isDragging || self.collectionView.isDecelerating || self.collectionView.isTracking)) {
+        [self pp_applyPremiumScrollMotionToVisibleContent];
+    }
 }
 
 
@@ -9965,6 +10112,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
         self.lastHomeLayoutBoundsSize = CGSizeZero;
+        [self pp_updateHomeSmartSearchTitleViewWidth];
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     } completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -9972,6 +10120,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
         self.lastHomeLayoutBoundsSize = CGSizeZero;
+        [self pp_updateHomeSmartSearchTitleViewWidth];
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
         [self refreshHeroSectionAppearance];
     }];

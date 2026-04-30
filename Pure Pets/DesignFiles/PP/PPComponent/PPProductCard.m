@@ -51,7 +51,7 @@
         _cardSurface.layer.cornerCurve = kCACornerCurveContinuous;
     }
     _cardSurface.clipsToBounds = YES;
-    PPApplyCardShadow(_cardSurface.layer);
+    PPApplyCardShadow(_cardSurface);
     [self.contentView addSubview:_cardSurface];
 
     // ─── Product Image ───

@@ -1555,6 +1555,7 @@
 "home_nav_search_example_pharmacy_compact" = "أدوية";
 "ShowAll"  = "عرض الكل";
 "ShowLess" = "عرض أقل";
+"ReadMore" = "اقرأ المزيد";
 "Home_NearbyAds"        = "بالقرب منك";
 "Home_NearbyAds_Action"    = "";
 "Home_RecentlyAdded"    = "أُضيفت مؤخراً";
@@ -1615,6 +1616,7 @@
 "NoResultsFound" = "لا توجد نتائج مطابقة لبحثك";
 "Required" = "مطلوب";
 "Similar Ads" = "إعلانات مشابهة";
+"No description added for this pet." = "لم تتم إضافة وصف لهذا الحيوان.";
 "Message…" = "رسالة ...";
 "SimilarAaccess" = "قد تحتاج أيضًا";
 "New Message" = "رسالة جديدة";
@@ -2645,3 +2647,4 @@
 "pet_care_vet_viewer_subscription_tier_format" = "باقة %ld نشطة";
 "pet_care_vet_viewer_whatsapp" = "واتساب";
 "pet_care_vet_viewer_contact_unavailable" = "التواصل غير متاح";
+"AdViewerLocationSelectedFallback" = "تم تحديد موقع الإعلان";

@@ -11,6 +11,7 @@
 
 @interface PPPetsTitleView ()
 @property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UILabel *locationLabel;
 @property (nonatomic, strong) UILabel *categoryLabel;
 @property (nonatomic, strong) UIStackView *textStack;
@@ -22,6 +23,7 @@
 @property (nonatomic, assign) BOOL isFavorite;
 
 @property (nonatomic, assign) BOOL didAnimate;
+@property (nonatomic, assign) BOOL usesHeroOverlayStyle;
 @property (nonatomic, strong) NSLayoutConstraint *textTrailingConstraint;
 @end
 
@@ -65,6 +67,18 @@
     self.titleLabel.adjustsFontForContentSizeCategory = YES;
     self.titleLabel.textAlignment = GM.setAligment;
     self.titleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+
+    self.subtitleLabel = [[UILabel alloc] init];
+    self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.subtitleLabel.font = [GM MidFontWithSize:13.5];
+    self.subtitleLabel.textColor = UIColor.secondaryLabelColor;
+    self.subtitleLabel.numberOfLines = 1;
+    self.subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.subtitleLabel.adjustsFontForContentSizeCategory = YES;
+    self.subtitleLabel.textAlignment = GM.setAligment;
+    self.subtitleLabel.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.subtitleLabel.hidden = YES;
+
     self.locationLabel = [[UILabel alloc] init];
     self.locationLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationLabel.font = [GM MidFontWithSize:13];
@@ -98,6 +112,7 @@
 
     self.textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.titleLabel,
+        self.subtitleLabel,
         self.locationLabel,
         self.metaPillsStack
     ]];
@@ -136,10 +151,25 @@
     ]];
 }
 
+- (UIColor *)pp_luxuryEmeraldColor
+{
+    return [UIColor colorWithHexString:@"#0F3D2E"];
+}
+
+- (UIColor *)pp_luxuryGoldColor
+{
+    return [UIColor colorWithHexString:@"#C7A24A"];
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
-    [Styling applyCornerMaskToView:self.priceView tl:28 tr:8 bl:28 br:28];
+    if (self.usesHeroOverlayStyle) {
+        self.priceView.layer.cornerRadius = 24.0;
+        self.priceView.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner | kCALayerMinXMaxYCorner | kCALayerMaxXMaxYCorner;
+    } else {
+        [Styling applyCornerMaskToView:self.priceView tl:28 tr:8 bl:28 br:28];
+    }
     self.priceView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.priceView.bounds
                                                                  cornerRadius:self.priceView.layer.cornerRadius].CGPath;
 }
@@ -151,6 +181,22 @@
                      price:(nullable NSString *)price
 {
     [self configureWithTitle:title location:location price:price category:nil];
+}
+
+- (void)configureWithTitle:(NSString *)title
+                  subtitle:(nullable NSString *)subtitle
+                  location:(nullable NSString *)location
+                     price:(nullable NSString *)price
+{
+    self.subtitle = subtitle;
+    [self configureWithTitle:title location:location price:price category:nil];
+}
+
+- (void)setSubtitle:(NSString *)subtitle
+{
+    _subtitle = [subtitle copy];
+    self.subtitleLabel.text = _subtitle;
+    self.subtitleLabel.hidden = _subtitle.length == 0;
 }
 
 - (void)configureWithTitle:(NSString *)title
@@ -169,6 +215,7 @@
 
     self.priceView = [self pillViewForItem:[PPInfoPill itemWithIcon:nil text:price ?: @""]];
     [self.trailingStack addArrangedSubview:self.priceView];
+    [self pp_applyHeroOverlayStyleIfNeeded];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.priceView.widthAnchor constraintEqualToConstant:126],
@@ -242,6 +289,43 @@
     self.backgroundColor = UIColor.clearColor;
 }
 
+- (void)applyHeroOverlayStyle
+{
+    self.usesHeroOverlayStyle = YES;
+    [self pp_applyHeroOverlayStyleIfNeeded];
+}
+
+- (void)pp_applyHeroOverlayStyleIfNeeded
+{
+    if (!self.usesHeroOverlayStyle) {
+        return;
+    }
+
+    self.titleLabel.font = [GM boldFontWithSize:24.0];
+    self.titleLabel.textColor = UIColor.whiteColor;
+    self.titleLabel.textAlignment = GM.setAligment;
+    self.subtitleLabel.font = [GM MidFontWithSize:13.5];
+    self.subtitleLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.78];
+    self.subtitleLabel.textAlignment = GM.setAligment;
+    self.locationLabel.font = [GM MidFontWithSize:13.0];
+    self.locationLabel.textColor = [[UIColor whiteColor] colorWithAlphaComponent:0.66];
+    self.locationLabel.textAlignment = GM.setAligment;
+    if (self.location.length > 0) {
+        [self setLocation:self.location];
+    }
+    self.textStack.spacing = 6.0;
+    self.trailingStack.spacing = 4.0;
+
+    self.priceView.backgroundColor = [[UIColor colorWithWhite:0.04 alpha:1.0] colorWithAlphaComponent:0.58];
+    self.priceView.layer.cornerRadius = 24.0;
+    self.priceView.layer.borderWidth = 0.75;
+    [self.priceView pp_setBorderColor:[[self pp_luxuryGoldColor] colorWithAlphaComponent:0.28]];
+    [self.priceView pp_setShadowColor:UIColor.blackColor];
+    self.priceView.layer.shadowOpacity = 0.24;
+    self.priceView.layer.shadowRadius = 18.0;
+    self.priceView.layer.shadowOffset = CGSizeMake(0, 12);
+}
+
 - (void)didMoveToWindow
 {
     [super didMoveToWindow];
@@ -253,9 +337,10 @@
 - (void)animatePillsIn
 {
     NSTimeInterval baseDelay = 0.10;
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
 
-    [UIView animateWithDuration:0.36
-                          delay:baseDelay
+    [UIView animateWithDuration:reduceMotion ? 0.16 : 0.28
+                          delay:reduceMotion ? 0.0 : baseDelay
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.priceView.alpha = 1.0;
@@ -263,8 +348,8 @@
     } completion:nil];
 
     [self.metaPillsStack.arrangedSubviews enumerateObjectsUsingBlock:^(UIView *badge, NSUInteger idx, BOOL *stop) {
-        [UIView animateWithDuration:0.28
-                              delay:0.06 + (0.04 * idx)
+        [UIView animateWithDuration:reduceMotion ? 0.16 : 0.24
+                              delay:reduceMotion ? 0.0 : (0.06 + (0.04 * idx))
                             options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             badge.alpha = 1.0;
@@ -297,7 +382,7 @@
 
     UILabel *label = [[UILabel alloc] init];
     label.text = item.text;
-    label.textColor = UIColor.labelColor;
+    label.textColor = self.usesHeroOverlayStyle ? UIColor.whiteColor : UIColor.labelColor;
     label.font = [GM boldFontWithSize:19];
     label.numberOfLines = 1;
     label.translatesAutoresizingMaskIntoConstraints = NO;
@@ -305,7 +390,7 @@
 
     UILabel *requirelabel = [[UILabel alloc] init];
     requirelabel.text = kLang(@"Required");
-    requirelabel.textColor = UIColor.secondaryLabelColor;
+    requirelabel.textColor = self.usesHeroOverlayStyle ? [[self pp_luxuryGoldColor] colorWithAlphaComponent:0.92] : UIColor.secondaryLabelColor;
     requirelabel.font = [GM MidFontWithSize:10.5];
     requirelabel.numberOfLines = 1;
     requirelabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -330,10 +415,12 @@
         [content.trailingAnchor constraintLessThanOrEqualToAnchor:pill.trailingAnchor constant:-4],
     ]];
 
-    UIColor *tint = AppPrimaryClr ?: UIColor.systemBlueColor;
-    pill.backgroundColor = [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.68];
+    UIColor *tint = self.usesHeroOverlayStyle ? [self pp_luxuryGoldColor] : (AppPrimaryClr ?: UIColor.systemBlueColor);
+    pill.backgroundColor = self.usesHeroOverlayStyle
+        ? [[UIColor colorWithWhite:0.04 alpha:1.0] colorWithAlphaComponent:0.58]
+        : [[UIColor systemBackgroundColor] colorWithAlphaComponent:0.68];
     icon.tintColor = tint;
-    label.textColor = UIColor.labelColor;
+    label.textColor = self.usesHeroOverlayStyle ? UIColor.whiteColor : UIColor.labelColor;
     pill.clipsToBounds = NO;
     pill.accessibilityIdentifier = @"pricePill";
 
@@ -415,7 +502,8 @@
     UIImage *pinImage =
     [[UIImage systemImageNamed:@"mappin.and.ellipse"] imageWithConfiguration:symbolConfig];
 
-    pinImage = [pinImage imageWithTintColor:UIColor.secondaryLabelColor
+    UIColor *locationColor = self.usesHeroOverlayStyle ? [[UIColor whiteColor] colorWithAlphaComponent:0.78] : UIColor.secondaryLabelColor;
+    pinImage = [pinImage imageWithTintColor:locationColor
                               renderingMode:UIImageRenderingModeAlwaysOriginal];
 
     NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
@@ -429,7 +517,7 @@
 
     NSDictionary *textAttrs = @{
         NSFontAttributeName : self.locationLabel.font,
-        NSForegroundColorAttributeName : UIColor.secondaryLabelColor
+        NSForegroundColorAttributeName : locationColor
     };
 
     NSAttributedString *textString =
