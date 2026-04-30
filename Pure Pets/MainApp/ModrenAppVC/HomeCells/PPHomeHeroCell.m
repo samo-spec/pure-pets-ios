@@ -448,7 +448,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.headlineLabel.numberOfLines = 2;
     //self.headlineLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.headlineLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.headlineLabel.font = [GM boldFontWithSize:32] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
+    self.headlineLabel.font = [GM boldFontWithSize:38] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
     self.headlineLabel.textColor = UIColor.whiteColor;
     self.headlineLabel.adjustsFontSizeToFitWidth = YES;
     self.headlineLabel.minimumScaleFactor = 0.76;
@@ -1023,7 +1023,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     if (userName.length > 0) {
         if (Language.isRTL) {
-            return [NSString stringWithFormat:@"%@\n%@", line1, userName];
+            return [NSString stringWithFormat:@"%@\nيا %@", line1, userName];
         }
         return [NSString stringWithFormat:@"%@,\n%@", line1, userName];
     }

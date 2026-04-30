@@ -27,6 +27,7 @@
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
 		F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A06D2EFE20330048D4C2 /* PPHomeCell.m */; };
 		F202A0752EFF15E60048D4C2 /* PPHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */; };
+		F2D5A7B62F95C0A1009B6001 /* PPModerHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */; };
 		F207D0B12F14793300BA6214 /* SearchCacheManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B02F14791300BA6214 /* SearchCacheManager.m */; };
 		F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */; };
 		F207D0BF2F14CE1500BA6214 /* sunflower.jpg in Resources */ = {isa = PBXBuildFile; fileRef = F207D0B52F14CE1500BA6214 /* sunflower.jpg */; };
@@ -835,6 +836,8 @@
 		F202A06D2EFE20330048D4C2 /* PPHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCell.m; sourceTree = "<group>"; };
 		F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeActionCell.h; sourceTree = "<group>"; };
 		F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeActionCell.m; sourceTree = "<group>"; };
+		F2D5A7B42F95C0A1009B6001 /* PPModerHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModerHomeCell.h; sourceTree = "<group>"; };
+		F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModerHomeCell.m; sourceTree = "<group>"; };
 		F207D0AF2F1478BF00BA6214 /* SearchCacheManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchCacheManager.h; sourceTree = "<group>"; };
 		F207D0B02F14791300BA6214 /* SearchCacheManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SearchCacheManager.m; sourceTree = "<group>"; };
 		F207D0B22F14988500BA6214 /* PPImageLoaderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageLoaderManager.h; sourceTree = "<group>"; };
@@ -2324,6 +2327,8 @@
 				F25E7FF12EFF2B970089F659 /* PPHomeModels.m */,
 				F202A06C2EFE202B0048D4C2 /* PPHomeCell.h */,
 				F202A06D2EFE20330048D4C2 /* PPHomeCell.m */,
+				F2D5A7B42F95C0A1009B6001 /* PPModerHomeCell.h */,
+				F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */,
 				F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */,
 				F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */,
 				F253FA642F07182800323CB4 /* PetAdoptView.h */,
@@ -5922,6 +5927,7 @@
 				F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */,
 				F229DCC02D3B0D070015B67D /* FileUploadManager.m in Sources */,
 				F28E28A82DEB2B5C00D774D0 /* MyItemsViewControllerr.m in Sources */,
+				F2D5A7B62F95C0A1009B6001 /* PPModerHomeCell.m in Sources */,
 				F2AB48952C72CF3C00D88603 /* JGProgressHUDRingIndicatorView.m in Sources */,
 				F2D0C5DD2C4BE1B80023CE53 /* SceneDelegate.m in Sources */,
 				F27A50C42EEDF7B0006CBE9D /* TrashCollectionViewCell.m in Sources */,

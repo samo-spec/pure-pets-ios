@@ -77,7 +77,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.contentView.clipsToBounds = NO;
     self.clipsToBounds = NO;
     self.layer.masksToBounds = NO;
-    float corners = 22;
+    float corners = 24;
     if(PPIOS26())
     {
         
@@ -95,8 +95,8 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         glass = [UIButtonConfiguration glassButtonConfiguration];
         glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         glass.background.cornerRadius  = corners;
-        glass.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.7 : 0.72];;
-        glass.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.7: 0.72];
+        glass.background.backgroundColor = [AppBackgroundClrDarker colorWithAlphaComponent:PPIOS26() ? 0.7 : 0.92];;
+        glass.baseBackgroundColor = [AppBackgroundClrDarker colorWithAlphaComponent:PPIOS26() ? 0.7: 0.94];
 
         self.actionButton.configuration = glass;
  
@@ -426,11 +426,43 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     [CATransaction commit];
 }
 
+- (CGFloat)pp_preferredQuickActionWidth
+{
+    NSAttributedString *attributedTitle = self.titleLabel.attributedText;
+    CGFloat titleWidth = 0.0;
+    if (attributedTitle.length > 0) {
+        CGRect titleBounds =
+            [attributedTitle boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
+                                          options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                          context:nil];
+        titleWidth = ceil(CGRectGetWidth(titleBounds));
+    } else if (self.currentTitle.length > 0) {
+        UIFont *font = self.titleLabel.font ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightSemibold];
+        CGRect titleBounds =
+            [self.currentTitle boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
+                                           options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                        attributes:@{ NSFontAttributeName: font }
+                                           context:nil];
+        titleWidth = ceil(CGRectGetWidth(titleBounds));
+    }
+
+    CGFloat fixedChromeWidth = 14.0 + 40.0 + 8.0 + 6.0 + 32.0 + 10.0;
+    CGFloat minimumTitleWidth = self.currentTitle.length > 0 ? 18.0 : 0.0;
+    return ceil(MAX(128.0, fixedChromeWidth + MAX(minimumTitleWidth, titleWidth)));
+}
+
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
 {
+    UICollectionViewLayoutAttributes *attributes = [layoutAttributes copy];
     [self setNeedsLayout];
     [self layoutIfNeeded];
-    return layoutAttributes;
+
+    CGRect frame = attributes.frame;
+    frame.size.width = [self pp_preferredQuickActionWidth];
+    frame.size.height = layoutAttributes.frame.size.height;
+    attributes.frame = frame;
+
+    return attributes;
 }
 
 - (void)prepareForReuse

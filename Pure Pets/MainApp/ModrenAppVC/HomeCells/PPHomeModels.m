@@ -24,21 +24,26 @@
 + (NSArray<PPHomeQuickActionModel *> *)defaultHomeQuickActions
 {
     return @[
+        [self modelWithType:PPHomeQuickActionTypeRequestService
+                      title:(kLang(@"home_quick_action_request_service") ?: @"Request service")
+                   iconName:@"sparkles"],
+        
         [self modelWithType:PPHomeQuickActionTypeNearestVet
                       title:(kLang(@"home_quick_action_nearest_vet") ?: @"Nearest Vet")
                    iconName:@"cross.case"],
-        [self modelWithType:PPHomeQuickActionTypeSellPet
-                      title:(kLang(@"home_quick_action_sell_pet") ?: @"Sell a pet")
-                   iconName:@"pawprint"],
+        
         [self modelWithType:PPHomeQuickActionTypeAdopt
                       title:(kLang(@"home_quick_action_adopt") ?: @"Adopt")
                    iconName:@"heart.fill"],
+        
+        [self modelWithType:PPHomeQuickActionTypeSellPet
+                      title:(kLang(@"home_quick_action_sell_pet") ?: @"Sell a pet")
+                   iconName:@"pawprint"],
+        
         [self modelWithType:PPHomeQuickActionTypeAddAd
                       title:(kLang(@"home_quick_action_add_ad") ?: @"Add ad")
                    iconName:@"plus"],
-        [self modelWithType:PPHomeQuickActionTypeRequestService
-                      title:(kLang(@"home_quick_action_request_service") ?: @"Request service")
-                   iconName:@"sparkles"]
+        
     ];
 }
 

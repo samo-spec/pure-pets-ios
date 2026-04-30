@@ -1122,7 +1122,7 @@ static UIImage *PPPromoFallbackIllustration(PPBannerOnTapAction action)
         }];
 
         if (isPrimary) {
-            cfg.baseBackgroundColor = PPIOS26() ? AppClearClr : primaryBackground;
+            cfg.baseBackgroundColor = PPIOS26() ? [AppForgroundColr colorWithAlphaComponent:0.5] : primaryBackground;
             cfg.baseForegroundColor = primaryText;
         } else {
             cfg.baseBackgroundColor = secondaryBackground;

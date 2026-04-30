@@ -154,7 +154,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 - (NSString *)pp_titleCardLocationText
 {
     if (self.ad.adLocation <= 0) {
-        return @"fguyhiojpk[l;trges";
+        return kLang(@"AdViewerLocationSelectedFallback");
     }
 
     NSString *cityName = [[CitiesManager.shared cityNameForID:self.ad.adLocation]
@@ -206,11 +206,14 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     if (@available(iOS 13.0, *)) {
         self.titleCard.layer.cornerCurve = kCACornerCurveContinuous;
     }
-
-    self.titleBlurView = [[UIVisualEffectView alloc] initWithEffect:nil];
+    
+    UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+    
+    self.titleBlurView = [[UIVisualEffectView alloc] initWithEffect:blur];
     self.titleBlurView.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleBlurView.userInteractionEnabled = NO;
     self.titleBlurView.clipsToBounds = YES;
+    self.titleBlurView.alpha = 0.3;
     self.titleBlurView.layer.cornerRadius = self.titleCard.layer.cornerRadius;
     if (@available(iOS 13.0, *)) {
         self.titleBlurView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -264,7 +267,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 
     self.titlePricePillView = [[UIView alloc] init];
     self.titlePricePillView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titlePricePillView.layer.cornerRadius = 23.0;
+    self.titlePricePillView.layer.cornerRadius = 25.0;
     self.titlePricePillView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     self.titlePricePillView.clipsToBounds = NO;
     if (@available(iOS 13.0, *)) {
@@ -272,7 +275,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     }
     [self.titleCard addSubview:self.titlePricePillView];
 
-    self.titlePriceLabel = [self pp_makeTitleCardLabelWithFont:[GM boldFontWithSize:15.0]
+    self.titlePriceLabel = [self pp_makeTitleCardLabelWithFont:[GM boldFontWithSize:19.0]
                                                           color:UIColor.whiteColor
                                                   numberOfLines:1];
     self.titlePriceLabel.text = [self pp_titleCardPriceText];
@@ -304,9 +307,9 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         [self.titlePricePillView.topAnchor constraintEqualToAnchor:self.titleCard.topAnchor constant:22.0],
         [self.titlePricePillView.trailingAnchor constraintEqualToAnchor:self.titleCard.trailingAnchor constant:-20.0],
         [self.titlePricePillView.bottomAnchor constraintLessThanOrEqualToAnchor:self.titleCard.bottomAnchor constant:-22.0],
-        [self.titlePricePillView.widthAnchor constraintGreaterThanOrEqualToConstant:118.0],
+        [self.titlePricePillView.widthAnchor constraintGreaterThanOrEqualToConstant:120.0],
         [self.titlePricePillView.widthAnchor constraintLessThanOrEqualToConstant:154.0],
-        [self.titlePricePillView.heightAnchor constraintGreaterThanOrEqualToConstant:46.0],
+        [self.titlePricePillView.heightAnchor constraintGreaterThanOrEqualToConstant:50.0],
 
         [self.titlePriceLabel.topAnchor constraintEqualToAnchor:self.titlePricePillView.topAnchor constant:8.0],
         [self.titlePriceLabel.leadingAnchor constraintEqualToAnchor:self.titlePricePillView.leadingAnchor constant:12.0],
@@ -353,13 +356,13 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     self.titleCardLocationLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.titleCardLocationIconView.tintColor = [accent colorWithAlphaComponent:dark ? 0.88 : 0.72];
 
-    self.titlePricePillView.backgroundColor = accent;
-    [self.titlePricePillView pp_setBorderColor:[UIColor.whiteColor colorWithAlphaComponent:dark ? 0.16 : 0.22]];
+    self.titlePricePillView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.14 : 0.09];
+    [self.titlePricePillView pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.36 : 0.28]];
     [self.titlePricePillView pp_setShadowColor:accent];
-    self.titlePricePillView.layer.shadowOpacity = dark ? 0.22 : 0.16;
-    self.titlePricePillView.layer.shadowRadius = 18.0;
-    self.titlePricePillView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-    self.titlePriceLabel.textColor = UIColor.whiteColor;
+    self.titlePricePillView.layer.shadowOpacity = dark ? 0.32 : 0.22;
+    self.titlePricePillView.layer.shadowRadius = 24.0;
+    self.titlePricePillView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.titlePriceLabel.textColor = accent;
     self.titleAccentRuleView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.26 : 0.18];
 
     self.titleCard.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -668,7 +671,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     self.contentScrollView.decelerationRate = UIScrollViewDecelerationRateNormal;
     self.contentScrollView.backgroundColor = [self pp_luxuryBackgroundColor];
     self.contentScrollView.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
-    self.contentScrollView.layer.cornerRadius = 28.0;
+    self.contentScrollView.layer.cornerRadius = 22.0;
     if (@available(iOS 13.0, *)) {
         self.contentScrollView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -1226,7 +1229,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 - (void)pp_updateFavoriteNavigationAppearance {
     UIImage *favoriteImage = [UIImage systemImageNamed:self.isFavorite ? @"heart.fill" : @"heart"];
     UIColor *favoriteColor = self.isFavorite
-        ? [self pp_luxuryGoldColor]
+    ? AppPrimaryClrShiner
         : (AppPrimaryTextClr ?: UIColor.labelColor);
 
     self.favBarButtonItem.image = favoriteImage;
@@ -2184,7 +2187,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     self.contentSheetTopConstraint.constant = clampedConstant;
 
     CGFloat progress = [self pp_smoothedScrollProgress:[self pp_currentContentSheetProgress]];
-    self.contentScrollView.layer.cornerRadius = 28.0 - (progress * 8.0);
+    self.contentScrollView.layer.cornerRadius = 22.0 + (progress * 12.0);
 }
 
 - (void)pp_refreshContentSheetMetricsPreservingPosition
@@ -2268,14 +2271,16 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 
     BOOL shouldExpand = fabs(velocityY) > 0.08 ? (velocityY > 0.0) : (progress >= 0.5);
     CGFloat targetConstant = shouldExpand ? self.contentSheetExpandedTopConstant : self.contentSheetRestingTopConstant;
-    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.24;
+    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.48;
+    CGFloat springVelocity = MIN(fabs(velocityY) / 8.0, 1.0);
 
     self.isUpdatingContentSheetFromScroll = YES;
     [UIView animateWithDuration:duration
                           delay:0.0
+         usingSpringWithDamping:UIAccessibilityIsReduceMotionEnabled() ? 1.0 : 0.80
+          initialSpringVelocity:springVelocity
                         options:UIViewAnimationOptionBeginFromCurrentState |
-                                UIViewAnimationOptionAllowUserInteraction |
-                                UIViewAnimationOptionCurveEaseOut
+                                UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         [self pp_setContentSheetTopConstant:targetConstant];
         [self.view layoutIfNeeded];

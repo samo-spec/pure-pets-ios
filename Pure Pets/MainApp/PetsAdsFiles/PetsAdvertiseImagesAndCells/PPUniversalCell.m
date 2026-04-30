@@ -1045,8 +1045,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     self.cardView.backgroundColor = PPUniversalCellSoftSurfaceColor();
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
-    self.cardView.layer.borderWidth = isDark ? 0.55 : 0.95;
-    [self.cardView pp_setBorderColor:PPUniversalCellSoftCardBorderColor()];
+    self.cardView.layer.borderWidth = isDark ? 0.55 : 1.95;
+    [self.cardView pp_setBorderColor:AppBackgroundClrDarker];
     [self.cardView pp_setShadowColor:PPUniversalCellSoftShadowColor()];
     self.cardView.layer.shadowOpacity = isDark ? 0.22 : 0.12;
     self.cardView.layer.shadowRadius = isDark ? 22.0 : 26.0;

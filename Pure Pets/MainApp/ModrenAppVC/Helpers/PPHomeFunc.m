@@ -85,7 +85,7 @@ static inline CGFloat PPHomeHeroHeight(CGFloat width)
         return 264.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 252.0;
+        return 268.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
         return 230.0;
@@ -203,6 +203,21 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
         return 64.0;
     }
     return 64.0;
+}
+
+
+static inline CGFloat PPHomeCareHeight(CGFloat width)
+{
+    if (PPHomeWidthIsTablet(width)) {
+        return 208.0;
+    }
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 128.0;
+    }
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 116.0;
+    }
+    return 116.0;
 }
 
 static inline CGFloat PPHomeAdoptHeight(CGFloat width)
@@ -468,7 +483,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:PPHomeAdoptHeight(availableWidth) + 44.0]];
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeCareHeight(availableWidth) + 44.0]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -931,13 +946,12 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 + (NSCollectionLayoutSection *)quickActionsSectionForWidth:(CGFloat)availableWidth {
    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
    CGFloat contentWidth = MAX(0.0, availableWidth - (2.0 * horizontalInset));
-    CGFloat ClearWidth = contentWidth - horizontalInset;
-   CGFloat itemWidth  = floor(ClearWidth / 2.0);
+   CGFloat itemWidth  = MAX(156.0, floor(contentWidth * 0.48));
    CGFloat itemHeight = PPHomeQuickActionHeight(availableWidth);
 
    NSCollectionLayoutSize *itemSize =
    [NSCollectionLayoutSize sizeWithWidthDimension:
-    [NSCollectionLayoutDimension absoluteDimension:itemWidth]
+    [NSCollectionLayoutDimension estimatedDimension:itemWidth]
                                     heightDimension:
     [NSCollectionLayoutDimension absoluteDimension:itemHeight]];
 

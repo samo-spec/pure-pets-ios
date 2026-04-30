@@ -1255,7 +1255,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
     // Account for safe area
     bottomInset += self.view.safeAreaInsets.bottom;
-    targetTopInset += 72;
+    //targetTopInset += 72;
     CGFloat targetBottomInset = bottomInset + 16.0;
     UIEdgeInsets currentInset = self.collectionView.contentInset;
     CGFloat topDelta = currentInset.top - targetTopInset;

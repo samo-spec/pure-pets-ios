@@ -61,7 +61,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     }
 
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.layer.cornerRadius = 34.0;
+    _surfaceView.layer.cornerRadius = 32.0;
     _surfaceView.layer.borderWidth = 0.8;
     _surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -249,16 +249,16 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
         [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
 
-        [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
-        [_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
+       // [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
+       // [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
+        //[_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
+       // [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
 
         [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
         [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
         [_ctaView.heightAnchor constraintEqualToConstant:40.0],
-        [_ctaView.topAnchor constraintEqualToAnchor:_pillStackView.bottomAnchor constant:10.0],
+        [_ctaView.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:10.0],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
@@ -363,8 +363,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _eyebrowLabel.text = nil;
     _titleLabel.text = nil;
     _subtitleLabel.text = nil;
-    _medicinePillLabel.text = nil;
-    _vetPillLabel.text = nil;
+    //_medicinePillLabel.text = nil;
+    //_vetPillLabel.text = nil;
     _ctaLabel.text = nil;
 }
 
@@ -450,11 +450,11 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _ctaLabel.textColor = titleColor;
     _ctaIconView.tintColor = titleColor;
 
-    for (UILabel *pill in @[_medicinePillLabel, _vetPillLabel]) {
+   /* for (UILabel *pill in @[_medicinePillLabel, _vetPillLabel]) {
         pill.textColor = titleColor;
         pill.backgroundColor = controlFillColor;
         [pill pp_setBorderColor:controlBorderColor];
-    }
+    } */
 
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
@@ -599,8 +599,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _eyebrowLabel.text = kLang(@"home_premium_care_eyebrow") ?: @"Premium care";
     _titleLabel.text = kLang(@"home_premium_care_title") ?: @"Medicines and vets";
     _subtitleLabel.text = kLang(@"home_premium_care_subtitle") ?: @"Pet medicine and veterinarian care in one refined place.";
-    _medicinePillLabel.text = kLang(@"pet_care_medicines") ?: @"Medicines";
-    _vetPillLabel.text = kLang(@"pet_care_veterinarians") ?: @"Veterinarians";
+    ///_medicinePillLabel.text = kLang(@"pet_care_medicines") ?: @"Medicines";
+    //_vetPillLabel.text = kLang(@"pet_care_veterinarians") ?: @"Veterinarians";
     _ctaLabel.text = kLang(@"home_premium_care_cta") ?: @"Open care center";
 
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";

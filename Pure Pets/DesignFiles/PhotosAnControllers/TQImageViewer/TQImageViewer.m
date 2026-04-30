@@ -1279,19 +1279,17 @@ if ([NSThread isMainThread]) { \
     [self.view addSubview:_pageTextLabel];
     
     // Close Button
-    _closeButton = [AppMgr.topViewController pp_ButtonWithSystemName:@"multiply" action:@selector(dismiss)];
-     _closeButton.contentMode = UIViewContentModeScaleAspectFill;
+    _closeButton = [self pp_ButtonWithSystemName:@"multiply" action:@selector(dismiss)];
+    _closeButton.contentMode = UIViewContentModeScaleAspectFill;
     _closeButton.backgroundColor = [UIColor clearColor];
     _closeButton.tintColor = [UIColor whiteColor];
-    [_closeButton addTarget:self action:@selector(dismiss) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:_closeButton];
     
     // Share Button
-    _shareButton =  [AppMgr.topViewController pp_ButtonWithSystemName:@"square.and.arrow.up" action:@selector(handleShareAction)];
+    _shareButton =  [self pp_ButtonWithSystemName:@"square.and.arrow.up" action:@selector(handleShareAction)];
     _shareButton.contentMode = UIViewContentModeScaleAspectFill;
     _shareButton.backgroundColor = [UIColor clearColor];
     _shareButton.tintColor = [UIColor whiteColor];
-    [_shareButton addTarget:self action:@selector(handleShareAction) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:_shareButton];
 }
 

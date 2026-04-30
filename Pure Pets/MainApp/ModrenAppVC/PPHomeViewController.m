@@ -35,6 +35,7 @@
 #import "PPOrder.h"
 #import "PPRolePermission.h"
 #import "PPHomeHeroCell.h"
+#import "PPModerHomeCell.h"
 #import "PPHomeModels.h"
 #import "PPHUD.h"
 #import "PPCommerceFeedbackManager.h"
@@ -5381,7 +5382,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPHomeOrderStatusCell.reuseIdentifier];
     [self.collectionView registerClass:PPCategoryCardCell.class forCellWithReuseIdentifier:PPCategoryCardCell.reuseIdentifier];
     [self.collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
-    [self.collectionView registerClass:PPHomeCell.class forCellWithReuseIdentifier:@"PPHomeCell"];
+    [self.collectionView registerClass:PPModerHomeCell.class
+            forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
@@ -5777,8 +5779,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
                 if (section == PPHomeSectionMainKinds) {
 
-                PPHomeCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomeCell"
+                PPModerHomeCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier
                                                           forIndexPath:indexPath];
 
                 // ⛔️ HARD GUARD – skeleton or invalid payload
@@ -6400,7 +6402,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     if (!cell) return;
 
     [cell configureWithGreeting:[self heroGreetingText]
-                       userName:nil
+                       userName:[self heroDisplayNameText]
                        location:[self heroCountryText]
                   locationState:(PPHomeHeroLocationState)self.nearbyLocationState
                     actionTitle:[self heroLocationActionTitle]];
@@ -7582,13 +7584,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (NSString *)heroGreetingText
 {
-    PPHomeGreetingModel *model =
-        [PPHomeGreetingProvider modelForDate:NSDate.date
-                                 displayName:[self heroDisplayNameText]];
-    NSString *headline = [self pp_sanitizedHeroLine:model.headlineText];
-    if (headline.length > 0) {
-        return headline;
-    }
     return [self pp_sanitizedHeroLine:[self heroBaseGreetingText]];
 }
 
@@ -8176,7 +8171,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.collectionView.transform = CGAffineTransformIdentity;
 
     for (UIView *glowView in glowViews) {
-        glowView.alpha = 0.18;
+        glowView.alpha = 0.09;
         glowView.transform = CGAffineTransformMakeScale(0.96, 0.96);
     }
 
