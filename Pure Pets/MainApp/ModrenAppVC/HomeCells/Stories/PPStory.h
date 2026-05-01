@@ -33,6 +33,7 @@ extern const NSTimeInterval PPStoryExpiryInterval;
 @property (nonatomic, strong) NSURL *mediaURL;
 @property (nonatomic, assign) BOOL isVideo;
 @property (nonatomic, assign) NSTimeInterval duration;
+@property (nonatomic, copy, nullable) NSString *caption;
 @end
 
 

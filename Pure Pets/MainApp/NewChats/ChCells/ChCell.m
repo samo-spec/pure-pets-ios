@@ -562,7 +562,7 @@ static UIImage *PPSupportLogo(void) {
 }
 
 - (UIColor *)pp_canvasFillColor {
-    UIColor *base = AppForgroundColr ?: UIColor.secondarySystemBackgroundColor;
+    UIColor *base = AppBackgroundClr ?: UIColor.secondarySystemBackgroundColor;
     CGFloat alpha = self.currentUnreadCount > 0 ? 0.98 : 0.92;
     return [base colorWithAlphaComponent:alpha];
 }

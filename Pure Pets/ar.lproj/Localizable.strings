@@ -1828,6 +1828,14 @@
 "story_unavailable" = "القصة غير متاحة.";
 "story_uploading" = "جاري رفع القصة...";
 "story_upload_failed" = "فشل رفع القصة.";
+"story_edit_title" = "تعديل القصة";
+"story_edit_save" = "حفظ";
+"story_edit_saving" = "جاري الحفظ...";
+"story_edit_change_media" = "تغيير الصورة";
+"story_edit_caption_placeholder" = "أضف وصفًا";
+"story_edit_crop_title" = "تحريك وقص";
+"story_edit_failed" = "تعذر تحديث القصة.";
+"story_edit_not_allowed" = "يمكنك تعديل قصصك فقط.";
 "your_story" = "قصتك";
 "chat_stories_title" = "القصص";
 "auth_register_required_title" = "يرجى التسجيل";
@@ -1914,6 +1922,11 @@
 "accessory_view_details_title" = "تفاصيل الإكسسوار";
 "accessory_view_seller_title" = "البائع";
 "accessory_view_seller_pending" = "جارِ تحميل بيانات البائع";
+"accessory_view_store_name" = "متجر بيور بتس";
+"accessory_view_store_badge" = "متجر موثوق";
+"accessory_view_private_seller" = "بائع خاص";
+"accessory_view_seller_contact" = "تواصل مع البائع";
+"accessory_view_store_support" = "دعم المتجر";
 "accessory_view_suggestions_subtitle" = "اقتراحات إضافية من نفس الفئة.";
 "accessory_view_empty_suggestions" = "ستظهر هنا اقتراحات إكسسوارات إضافية قريبًا.";
 "service_view_contact_loading" = "بيانات التواصل قيد التحميل. حاول مرة أخرى.";

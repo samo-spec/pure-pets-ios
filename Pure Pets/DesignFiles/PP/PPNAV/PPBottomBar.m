@@ -53,7 +53,7 @@ static UIColor *PPBBCartControlFillColor(void) {
                                      [UIColor colorWithWhite:1.0 alpha:0.64]);
     }
     UIColor *base = PPBBCartColor(AppForgroundColr, UIColor.secondarySystemBackgroundColor);
-    return [base colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.78];
+    return [base colorWithAlphaComponent:PPIOS26() ? 0.42 : 0.78];
 }
 
 static UIColor *PPBBCartControlStrokeColor(void) {
@@ -347,15 +347,15 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_refreshChromeColors
 {
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
-    self.BackgroundB.backgroundColor = PPIOS26() ? AppClearClr : PPBBCartSurfaceFillColor();
+    self.BackgroundB.backgroundColor = PPIOS26() ? [AppBackgroundClr colorWithAlphaComponent:0.8] : PPBBCartSurfaceFillColor();
     [self.BackgroundB pp_setBorderColor:PPBBCartSurfaceStrokeColor()];
     self.surfaceTintView.backgroundColor = PPIOS26() ? AppClearClr : PPBBCartSurfaceTintColor();
     self.surfaceGradientLayer.colors = @[
-        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.30 : 0.22)].CGColor,
-        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:legacyIPadBar ? 0.035 : (PPIOS26() ? 0.08 : 0.045)].CGColor,
-        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:legacyIPadBar ? 0.020 : (PPIOS26() ? 0.045 : 0.035)].CGColor
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.7 : (PPIOS26() ? 0.60 : 0.22)].CGColor,
+        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:legacyIPadBar ? 0.045 : (PPIOS26() ? 0.08 : 0.045)].CGColor,
+        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:legacyIPadBar ? 0.020 : (PPIOS26() ? 0.065 : 0.035)].CGColor
     ];
-    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.34 : 0.22)];
+    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.44 : 0.22)];
     self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:legacyIPadBar ? 0.12 : (PPIOS26() ? 0.12 : 0.18)];
 
     self.totalContainer.backgroundColor = PPBBCartBadgeFillColor();
@@ -565,7 +565,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.showCartAnimationView = animationView;
 
     __weak typeof(self) weakSelf = self;
-    [AppClasses fetchLottieJSONFromFirebasePath:@"LottieAnimations/Cart.lottie"
+    [AppClasses fetchLottieJSONFromFirebasePath:@"LottieAnimations/Cart.json"
                                      completion:^(NSDictionary * _Nonnull jsonDict, NSError * _Nonnull error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
@@ -714,9 +714,9 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     [self.showCartButton addSubview:badgeLabel];
     [NSLayoutConstraint activateConstraints:@[
         [badgeLabel.topAnchor constraintEqualToAnchor:self.showCartButton.topAnchor constant:2.0],
-        [badgeLabel.trailingAnchor constraintEqualToAnchor:self.showCartButton.trailingAnchor constant:-2.0],
-        [badgeLabel.heightAnchor constraintEqualToConstant:18.0],
-        [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:18.0]
+        [badgeLabel.centerXAnchor constraintEqualToAnchor:self.showCartButton.centerXAnchor constant:0],
+        [badgeLabel.heightAnchor constraintEqualToConstant:14.0],
+        [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:14.0]
     ]];
 
     self.showCartBadgeLabel = badgeLabel;

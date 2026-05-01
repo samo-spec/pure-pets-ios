@@ -5227,6 +5227,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
         [self updateLocationStateForAuthorizationStatus:status];
     }
+    [self.view pp_resolveLayerColorsRecursively];
     [self refreshCurrentOrdersForce:YES];
     [self pp_refreshPetProfilesSection];
     [self refreshNearbyAdsForce:YES reason:@"foreground"];

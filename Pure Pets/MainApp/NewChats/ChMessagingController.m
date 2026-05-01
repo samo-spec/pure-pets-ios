@@ -37,6 +37,8 @@ do { \
 #import "PPStoriesManager.h"
 #import "PPStoryPlayerViewController.h"
 #import "PPPermissionHelper.h"
+#import "PPImageLoaderManager.h"
+#import "PPModernAvatarRenderer.h"
 
 
 static CGFloat ChatMediaHeight(CGFloat maxWidth,
@@ -79,6 +81,59 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
         [[UIGraphicsImageRenderer alloc] initWithSize:targetSize format:format];
     return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
         [image drawInRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
+    }];
+}
+
+static NSString * const PPChatPremiumHeaderSupportAvatarToken = @"purepets://support-logo";
+
+static BOOL PPChatPremiumHeaderUsesSupportLogo(UserModel * _Nullable user)
+{
+    NSString *avatarURL = user.UserImageUrl.absoluteString ?: @"";
+    return [avatarURL hasPrefix:PPChatPremiumHeaderSupportAvatarToken];
+}
+
+static UIImage *PPChatPremiumHeaderSupportLogoImage(void)
+{
+    return [UIImage imageNamed:@"PPLogo"] ?: [UIImage systemImageNamed:@"person.crop.circle.fill"];
+}
+
+static UIColor *PPChatPremiumHeaderSurfaceColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:0.08 alpha:0.78]
+            : [UIColor colorWithWhite:1.0 alpha:0.82];
+    }];
+}
+
+static UIColor *PPChatPremiumHeaderControlSurfaceColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:1.0 alpha:0.10]
+            : [UIColor colorWithWhite:0.0 alpha:0.045];
+    }];
+}
+
+static UIColor *PPChatPremiumHeaderBorderColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:1.0 alpha:0.12]
+            : [UIColor colorWithWhite:0.0 alpha:0.07];
+    }];
+}
+
+static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
+{
+    return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+        BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+        return dark
+            ? [UIColor colorWithWhite:1.0 alpha:0.58]
+            : [UIColor colorWithWhite:0.0 alpha:0.50];
     }];
 }
 
@@ -125,6 +180,21 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
 @property (nonatomic, assign) NSUInteger initialLoadVisibilityToken;
 @property (nonatomic, assign) BOOL pendingBottomScrollAfterLayout;
 @property (nonatomic, assign) BOOL isOpeningHeaderStory;
+@property (nonatomic, strong) UIView *premiumModalHeaderView;
+@property (nonatomic, strong) UIVisualEffectView *premiumModalHeaderBlurView;
+@property (nonatomic, strong) UIButton *premiumModalHeaderCloseButton;
+@property (nonatomic, strong) UIButton *premiumModalHeaderMoreButton;
+@property (nonatomic, strong) UIControl *premiumModalHeaderProfileControl;
+@property (nonatomic, strong) UIImageView *premiumModalHeaderAvatarView;
+@property (nonatomic, strong) UIView *premiumModalHeaderStatusDotView;
+@property (nonatomic, strong) UILabel *premiumModalHeaderNameLabel;
+@property (nonatomic, strong) UILabel *premiumModalHeaderStatusLabel;
+@property (nonatomic, strong) NSLayoutConstraint *premiumModalHeaderTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *premiumModalHeaderHeightConstraint;
+@property (nonatomic, assign) BOOL didCaptureNotificationHandoff;
+@property (nonatomic, assign) BOOL didAnimatePremiumModalHeader;
+@property (nonatomic, copy) NSString *premiumModalHeaderAvatarUserID;
+@property (nonatomic, copy) NSString *premiumModalHeaderAvatarURLString;
 - (NSString *)resolvedOtherUserID;
 - (NSString *)resolvedOtherUserPresenceID;
 @end
@@ -200,6 +270,7 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
     self.lastKnownStatuses = [NSMutableDictionary dictionary];
     self.cachedHeights = [NSMutableDictionary dictionary];
     self.isPresentingFailureAlert = NO;
+    self.didCaptureNotificationHandoff = [ChManager sharedManager].isHandlingNotificationHandoff;
 
     [IQKeyboardManager sharedManager].enable = NO;
     [IQKeyboardManager sharedManager].enableAutoToolbar = NO;
@@ -234,9 +305,6 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
     [self registerAppStateObservers];
     
     [self enableSwipeToDismiss];
-    if ([self isPresentedModally]) {
-        // Modal-specific setup if needed
-    }
     
     [self setupScrollToBottomButton];
     
@@ -260,6 +328,11 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
     self.initialLoadIndicator = indicator;
     [self.initialLoadIndicator startAnimating];
 }
+
+
+
+
+
 
 - (void)setInitialLoadingVisible:(BOOL)visible
 {
@@ -2512,6 +2585,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
  
 - (UITableViewCell *)tableView:(UITableView *)tableView
          cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    __weak typeof(self) weakSelf = self;
     if (indexPath.row >= (NSInteger)self.messages.count) {
         NSLog(@"❌ [Chat] messages out of bounds: row=%ld count=%lu", (long)indexPath.row, (unsigned long)self.messages.count);
         return [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];
@@ -2673,8 +2747,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         
             cell.onPlayTapped = ^{
                 __strong typeof(weakCell) cell = weakCell;
-                // [self.imagePreviewer showImage:image];
-                [self openVideoFullscreen:cell message:msg];
+                [weakSelf openVideoFullscreen:cell message:msg];
             };
             
             return cell;
@@ -2728,7 +2801,6 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 #pragma mark - Cleanup
 
 - (void)dealloc {
-    [self setInitialLoadingVisible:NO];
     [self unregisterKeyboardNotifications];
     [self.typingController stop];
     [self unregisterAppStateObservers];
@@ -2942,105 +3014,544 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
 
     return YES;
 }
+
+#pragma mark - Premium Modal Chat Header
+
+- (BOOL)pp_shouldAttachPremiumModalChatHeader
+{
+    BOOL isSheet =
+        self.sheetPresentationController != nil ||
+        self.navigationController.sheetPresentationController != nil;
+    return [self isPresentedModally] || (self.didCaptureNotificationHandoff && isSheet);
+}
+
+- (CGFloat)pp_premiumModalChatHeaderTopPadding
+{
+    BOOL isSheet =
+        self.sheetPresentationController != nil ||
+        self.navigationController.sheetPresentationController != nil;
+    return isSheet ? 24.0 : 10.0;
+}
+
+- (UIButton *)pp_premiumModalHeaderButtonWithSystemName:(NSString *)systemName
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.adjustsImageWhenHighlighted = NO;
+    button.tintColor = AppPrimaryTextClr;
+    button.backgroundColor = PPChatPremiumHeaderControlSurfaceColor();
+    button.layer.cornerRadius = 20.0;
+    button.layer.cornerCurve = kCACornerCurveContinuous;
+    button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [button pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
+    UIImageSymbolConfiguration *symbolConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:15.0 weight:UIImageSymbolWeightSemibold];
+    UIImage *image = [PPSYSImage(systemName) imageWithConfiguration:symbolConfig];
+    [button setImage:image forState:UIControlStateNormal];
+    [self pp_addPremiumModalHeaderPressMotionToControl:button];
+    return button;
+}
+
+- (void)pp_addPremiumModalHeaderPressMotionToControl:(UIControl *)control
+{
+    [control addTarget:self
+                action:@selector(pp_premiumModalHeaderControlTouchDown:)
+      forControlEvents:UIControlEventTouchDown];
+    [control addTarget:self
+                action:@selector(pp_premiumModalHeaderControlRelease:)
+      forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+}
+
+- (void)pp_premiumModalHeaderControlTouchDown:(UIControl *)control
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        control.alpha = 0.82;
+        return;
+    }
+
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        control.transform = CGAffineTransformMakeScale(0.96, 0.96);
+        control.alpha = 0.86;
+    } completion:nil];
+}
+
+- (void)pp_premiumModalHeaderControlRelease:(UIControl *)control
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        control.alpha = 1.0;
+        return;
+    }
+
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+         usingSpringWithDamping:0.82
+          initialSpringVelocity:0.4
+                        options:UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        control.transform = CGAffineTransformIdentity;
+        control.alpha = 1.0;
+    } completion:nil];
+}
+
+- (void)pp_setupPremiumModalChatHeaderIfNeeded
+{
+    if (self.premiumModalHeaderView) {
+        return;
+    }
+
+    UIView *header = [[UIView alloc] init];
+    header.translatesAutoresizingMaskIntoConstraints = NO;
+    header.backgroundColor = UIColor.clearColor;
+    header.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    header.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    header.layer.shadowRadius = 22.0;
+    header.layer.shadowOpacity = 0.16;
+    [header pp_setShadowColor:UIColor.blackColor];
+
+    UIVisualEffectView *blurView =
+        [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.userInteractionEnabled = NO;
+    blurView.contentView.backgroundColor = PPChatPremiumHeaderSurfaceColor();
+    blurView.clipsToBounds = YES;
+    blurView.layer.cornerRadius = 26.0;
+    blurView.layer.cornerCurve = kCACornerCurveContinuous;
+    blurView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [blurView pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
+    [header addSubview:blurView];
+
+    UIButton *closeButton = [self pp_premiumModalHeaderButtonWithSystemName:@"xmark"];
+    closeButton.accessibilityLabel = kLang(@"Close");
+    [closeButton addTarget:self action:@selector(handleCloseTapped) forControlEvents:UIControlEventTouchUpInside];
+    [header addSubview:closeButton];
+
+    UIButton *moreButton = [self pp_premiumModalHeaderButtonWithSystemName:@"ellipsis"];
+    moreButton.accessibilityLabel = kLang(@"more");
+    moreButton.showsMenuAsPrimaryAction = YES;
+    moreButton.menu = [self pp_chatActionsMenu];
+    [header addSubview:moreButton];
+
+    UIControl *profileControl = [[UIControl alloc] init];
+    profileControl.translatesAutoresizingMaskIntoConstraints = NO;
+    profileControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    profileControl.accessibilityTraits = UIAccessibilityTraitButton;
+    [profileControl addTarget:self
+                       action:@selector(pp_handlePremiumModalChatHeaderProfileTap)
+             forControlEvents:UIControlEventTouchUpInside];
+    [self pp_addPremiumModalHeaderPressMotionToControl:profileControl];
+    [header addSubview:profileControl];
+
+    UIImageView *avatarView = [[UIImageView alloc] init];
+    avatarView.translatesAutoresizingMaskIntoConstraints = NO;
+    avatarView.contentMode = UIViewContentModeScaleAspectFill;
+    avatarView.clipsToBounds = YES;
+    avatarView.layer.cornerRadius = 23.0;
+    avatarView.layer.cornerCurve = kCACornerCurveContinuous;
+    avatarView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    [avatarView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.60]];
+    [profileControl addSubview:avatarView];
+
+    UIView *statusDot = [[UIView alloc] init];
+    statusDot.translatesAutoresizingMaskIntoConstraints = NO;
+    statusDot.backgroundColor = UIColor.systemGreenColor;
+    statusDot.layer.cornerRadius = 5.5;
+    statusDot.layer.borderWidth = 2.0;
+    [statusDot pp_setBorderColor:UIColor.systemBackgroundColor];
+    statusDot.hidden = YES;
+    [profileControl addSubview:statusDot];
+
+    UILabel *nameLabel = [[UILabel alloc] init];
+    nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    nameLabel.font = [GM boldFontWithSize:16.0];
+    nameLabel.textColor = UIColor.labelColor;
+    nameLabel.numberOfLines = 1;
+    nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    nameLabel.minimumScaleFactor = 0.82;
+    nameLabel.adjustsFontSizeToFitWidth = YES;
+    nameLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    UILabel *statusLabel = [[UILabel alloc] init];
+    statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    statusLabel.font = [GM MidFontWithSize:12.0];
+    statusLabel.textColor = PPChatPremiumHeaderSecondaryTextColor();
+    statusLabel.numberOfLines = 1;
+    statusLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    statusLabel.minimumScaleFactor = 0.82;
+    statusLabel.adjustsFontSizeToFitWidth = YES;
+    statusLabel.textAlignment = Language.alignmentForCurrentLanguage;
+
+    UIStackView *labelsStack = [[UIStackView alloc] initWithArrangedSubviews:@[nameLabel, statusLabel]];
+    labelsStack.translatesAutoresizingMaskIntoConstraints = NO;
+    labelsStack.axis = UILayoutConstraintAxisVertical;
+    labelsStack.alignment = UIStackViewAlignmentFill;
+    labelsStack.spacing = 1.0;
+    [profileControl addSubview:labelsStack];
+
+    [self.view addSubview:header];
+
+    self.premiumModalHeaderTopConstraint =
+        [header.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor
+                                         constant:[self pp_premiumModalChatHeaderTopPadding]];
+    self.premiumModalHeaderHeightConstraint =
+        [header.heightAnchor constraintEqualToConstant:72.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        self.premiumModalHeaderTopConstraint,
+        [header.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:14.0],
+        [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-14.0],
+        self.premiumModalHeaderHeightConstraint,
+
+        [blurView.topAnchor constraintEqualToAnchor:header.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:header.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:header.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
+
+        [closeButton.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:14.0],
+        [closeButton.centerYAnchor constraintEqualToAnchor:header.centerYAnchor],
+        [closeButton.widthAnchor constraintEqualToConstant:40.0],
+        [closeButton.heightAnchor constraintEqualToConstant:40.0],
+
+        [moreButton.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-14.0],
+        [moreButton.centerYAnchor constraintEqualToAnchor:header.centerYAnchor],
+        [moreButton.widthAnchor constraintEqualToConstant:40.0],
+        [moreButton.heightAnchor constraintEqualToConstant:40.0],
+
+        [profileControl.leadingAnchor constraintEqualToAnchor:closeButton.trailingAnchor constant:10.0],
+        [profileControl.trailingAnchor constraintEqualToAnchor:moreButton.leadingAnchor constant:-10.0],
+        [profileControl.topAnchor constraintEqualToAnchor:header.topAnchor constant:8.0],
+        [profileControl.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-8.0],
+
+        [avatarView.leadingAnchor constraintEqualToAnchor:profileControl.leadingAnchor],
+        [avatarView.centerYAnchor constraintEqualToAnchor:profileControl.centerYAnchor],
+        [avatarView.widthAnchor constraintEqualToConstant:46.0],
+        [avatarView.heightAnchor constraintEqualToConstant:46.0],
+
+        [statusDot.widthAnchor constraintEqualToConstant:11.0],
+        [statusDot.heightAnchor constraintEqualToConstant:11.0],
+        [statusDot.trailingAnchor constraintEqualToAnchor:avatarView.trailingAnchor constant:-1.0],
+        [statusDot.bottomAnchor constraintEqualToAnchor:avatarView.bottomAnchor constant:-1.0],
+
+        [labelsStack.leadingAnchor constraintEqualToAnchor:avatarView.trailingAnchor constant:12.0],
+        [labelsStack.trailingAnchor constraintEqualToAnchor:profileControl.trailingAnchor],
+        [labelsStack.centerYAnchor constraintEqualToAnchor:profileControl.centerYAnchor]
+    ]];
+
+    self.premiumModalHeaderView = header;
+    self.premiumModalHeaderBlurView = blurView;
+    self.premiumModalHeaderCloseButton = closeButton;
+    self.premiumModalHeaderMoreButton = moreButton;
+    self.premiumModalHeaderProfileControl = profileControl;
+    self.premiumModalHeaderAvatarView = avatarView;
+    self.premiumModalHeaderStatusDotView = statusDot;
+    self.premiumModalHeaderNameLabel = nameLabel;
+    self.premiumModalHeaderStatusLabel = statusLabel;
+
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        header.alpha = 0.0;
+        header.transform = CGAffineTransformMakeTranslation(0.0, -12.0);
+    }
+
+    [self pp_applyPremiumModalChatHeaderTheme];
+}
+
+- (void)pp_applyPremiumModalChatHeaderTheme
+{
+    if (!self.premiumModalHeaderView) {
+        return;
+    }
+
+    BOOL dark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    self.premiumModalHeaderView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.premiumModalHeaderProfileControl.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.premiumModalHeaderView.layer.shadowOpacity = dark ? 0.24 : 0.14;
+    self.premiumModalHeaderBlurView.contentView.backgroundColor = PPChatPremiumHeaderSurfaceColor();
+    [self.premiumModalHeaderBlurView pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
+
+    NSArray<UIButton *> *buttons = @[self.premiumModalHeaderCloseButton, self.premiumModalHeaderMoreButton];
+    for (UIButton *button in buttons) {
+        button.tintColor = AppPrimaryTextClr;
+        button.backgroundColor = PPChatPremiumHeaderControlSurfaceColor();
+        [button pp_setBorderColor:PPChatPremiumHeaderBorderColor()];
+    }
+
+    [self.premiumModalHeaderAvatarView pp_setBorderColor:
+        dark ? [[UIColor whiteColor] colorWithAlphaComponent:0.18] : [[UIColor whiteColor] colorWithAlphaComponent:0.76]];
+    [self.premiumModalHeaderStatusDotView pp_setBorderColor:
+        dark ? [UIColor colorWithWhite:0.10 alpha:1.0] : UIColor.whiteColor];
+    self.premiumModalHeaderNameLabel.textColor = UIColor.labelColor;
+    self.premiumModalHeaderStatusLabel.textColor = PPChatPremiumHeaderSecondaryTextColor();
+    self.premiumModalHeaderNameLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    self.premiumModalHeaderStatusLabel.textAlignment = Language.alignmentForCurrentLanguage;
+}
+
+- (void)pp_updatePremiumModalChatHeaderShadowPath
+{
+    if (!self.premiumModalHeaderView ||
+        CGRectIsEmpty(self.premiumModalHeaderView.bounds)) {
+        return;
+    }
+
+    UIBezierPath *path =
+        [UIBezierPath bezierPathWithRoundedRect:self.premiumModalHeaderView.bounds
+                                   cornerRadius:26.0];
+    self.premiumModalHeaderView.layer.shadowPath = path.CGPath;
+}
+
+- (void)pp_updatePremiumModalChatHeaderContentAnimated:(BOOL)animated
+{
+    if (!self.premiumModalHeaderView) {
+        return;
+    }
+
+    UserModel *user = self.threadOtherUser ?: self.chatThread.otherUser;
+    NSString *displayName = @"";
+    if ([user respondsToSelector:@selector(PPBestDisplayName)]) {
+        displayName = [user PPBestDisplayName] ?: @"";
+    }
+    if (displayName.length == 0) {
+        displayName = user.UserName ?: @"";
+    }
+    if (displayName.length == 0) {
+        displayName = kLang(@"Chat");
+    }
+
+    NSString *statusText = @"";
+    BOOL showOnlineDot = NO;
+    if (user.isOnline) {
+        statusText = kLang(@"chat.online");
+        showOnlineDot = YES;
+    } else if (user.lastSeen) {
+        statusText = [ChManager formattedLastSeen:user.lastSeen] ?: @"";
+    } else {
+        statusText = kLang(@"chat.offline");
+    }
+
+    self.premiumModalHeaderNameLabel.text = displayName;
+    self.premiumModalHeaderProfileControl.accessibilityLabel =
+        statusText.length > 0
+            ? [NSString stringWithFormat:@"%@, %@", displayName, statusText]
+            : displayName;
+
+    void (^statusUpdate)(void) = ^{
+        self.premiumModalHeaderStatusLabel.text = statusText;
+        self.premiumModalHeaderStatusDotView.hidden = !showOnlineDot;
+        self.premiumModalHeaderStatusDotView.alpha = showOnlineDot ? 1.0 : 0.0;
+    };
+
+    if (animated && ![self.premiumModalHeaderStatusLabel.text isEqualToString:statusText]) {
+        [UIView transitionWithView:self.premiumModalHeaderStatusLabel
+                          duration:0.18
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionBeginFromCurrentState
+                        animations:statusUpdate
+                        completion:nil];
+    } else {
+        statusUpdate();
+    }
+
+    self.premiumModalHeaderMoreButton.menu = [self pp_chatActionsMenu];
+
+    NSString *userID = user.ID ?: @"";
+    NSString *avatarURL = user.UserImageUrl.absoluteString ?: @"";
+    BOOL shouldRefreshAvatar =
+        ![self.premiumModalHeaderAvatarUserID isEqualToString:userID] ||
+        ![self.premiumModalHeaderAvatarURLString isEqualToString:avatarURL];
+    if (!shouldRefreshAvatar) {
+        return;
+    }
+
+    self.premiumModalHeaderAvatarUserID = userID;
+    self.premiumModalHeaderAvatarURLString = avatarURL;
+
+    if (PPChatPremiumHeaderUsesSupportLogo(user)) {
+        self.premiumModalHeaderAvatarView.image = PPChatPremiumHeaderSupportLogoImage();
+        self.premiumModalHeaderAvatarView.contentMode = UIViewContentModeScaleAspectFit;
+        self.premiumModalHeaderAvatarView.backgroundColor = UIColor.whiteColor;
+        return;
+    }
+
+    UIImage *placeholder = [PPModernAvatarRenderer avatarImageForName:displayName size:46.0];
+    self.premiumModalHeaderAvatarView.image = placeholder;
+    self.premiumModalHeaderAvatarView.contentMode = UIViewContentModeScaleAspectFill;
+    self.premiumModalHeaderAvatarView.backgroundColor = UIColor.clearColor;
+    if (avatarURL.length > 0) {
+        [[PPImageLoaderManager shared] setImageOnImageView:self.premiumModalHeaderAvatarView
+                                                       url:avatarURL
+                                               placeholder:placeholder
+                                           transitionStyle:PPImageTransitionStyleCrossDissolve
+                                                complation:nil];
+    }
+}
+
+- (void)pp_updatePremiumModalChatHeaderInsets
+{
+    if (!self.tableView) {
+        return;
+    }
+
+    UIEdgeInsets insets = self.tableView.contentInset;
+    UIEdgeInsets indicatorInsets = self.tableView.scrollIndicatorInsets;
+    CGFloat desiredTop = self.baseTableInsets.top;
+
+    if (self.premiumModalHeaderView.superview && !self.premiumModalHeaderView.hidden) {
+        CGRect headerFrame = self.premiumModalHeaderView.frame;
+        if (!CGRectIsEmpty(headerFrame)) {
+            desiredTop = MAX(desiredTop, CGRectGetMaxY(headerFrame) + 10.0);
+        }
+    }
+
+    if (fabs(insets.top - desiredTop) > 0.5) {
+        insets.top = desiredTop;
+        self.tableView.contentInset = insets;
+    }
+    if (fabs(indicatorInsets.top - desiredTop) > 0.5) {
+        indicatorInsets.top = desiredTop;
+        self.tableView.scrollIndicatorInsets = indicatorInsets;
+    }
+}
+
+- (void)pp_updatePremiumModalChatHeaderVisibility
+{
+    if (![self pp_shouldAttachPremiumModalChatHeader]) {
+        self.premiumModalHeaderView.hidden = YES;
+        self.didAnimatePremiumModalHeader = NO;
+        [self pp_updatePremiumModalChatHeaderInsets];
+        return;
+    }
+
+    [self pp_setupPremiumModalChatHeaderIfNeeded];
+    self.premiumModalHeaderView.hidden = NO;
+    self.premiumModalHeaderTopConstraint.constant = [self pp_premiumModalChatHeaderTopPadding];
+    [self pp_applyPremiumModalChatHeaderTheme];
+    [self pp_updatePremiumModalChatHeaderContentAnimated:NO];
+    [self.view bringSubviewToFront:self.premiumModalHeaderView];
+    [self pp_updatePremiumModalChatHeaderInsets];
+    [self pp_animatePremiumModalChatHeaderIfNeeded];
+}
+
+- (void)pp_animatePremiumModalChatHeaderIfNeeded
+{
+    if (!self.premiumModalHeaderView ||
+        self.didAnimatePremiumModalHeader ||
+        !self.premiumModalHeaderView.window) {
+        return;
+    }
+
+    self.didAnimatePremiumModalHeader = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.premiumModalHeaderView.alpha = 1.0;
+        self.premiumModalHeaderView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.42
+                          delay:0.04
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.28
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.premiumModalHeaderView.alpha = 1.0;
+        self.premiumModalHeaderView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_handlePremiumModalChatHeaderProfileTap
+{
+    [self pp_openStoryForCurrentChatUser];
+}
+
+- (void)pp_clearPremiumModalNavigationItems
+{
+    self.navigationItem.titleView = nil;
+    self.navigationItem.leftBarButtonItem = nil;
+    self.navigationItem.leftBarButtonItems = nil;
+    self.navigationItem.rightBarButtonItem = nil;
+    self.navigationItem.rightBarButtonItems = nil;
+}
+
+- (UIMenu *)pp_chatActionsMenu
+{
+    NSMutableArray<UIAction *> *actions = [NSMutableArray new];
+    __weak typeof(self) weakSelf = self;
+
+    BOOL isPinned = self.chatThread.isPinned;
+    if (!isPinned) {
+        UIAction *pinAction =
+        [PPMenuHelper actionWithTitle:kLang(@"chat.pin")
+                    systemImageName:@"pin"
+                               font:[GM MidFontWithSize:16]
+                              color:AppPrimaryTextClr
+                            handler:^(__kindof UIAction * _Nonnull act) {
+            [weakSelf handlePinThread];
+        }];
+        [actions addObject:pinAction];
+    }
+
+    BOOL isMuted = self.chatThread.isMuted;
+    NSString *muteTitle = isMuted ? kLang(@"chat.unmute") : kLang(@"chat.mute");
+    NSString *muteIcon = isMuted ? @"bell" : @"bell.slash";
+    UIAction *muteAction =
+    [PPMenuHelper actionWithTitle:muteTitle
+                systemImageName:muteIcon
+                           font:[GM MidFontWithSize:16]
+                          color:AppPrimaryTextClr
+                        handler:^(__kindof UIAction * _Nonnull act) {
+        [weakSelf handleMuteThread];
+    }];
+    [actions addObject:muteAction];
+
+    BOOL isBinned = self.chatThread.isBinned;
+    NSString *binTitle = isBinned ? kLang(@"chat.unbin") : kLang(@"chat.bin");
+    UIAction *binAction =
+    [PPMenuHelper actionWithTitle:binTitle
+                systemImageName:@"trash"
+                           font:[GM MidFontWithSize:16]
+                          color:UIColor.systemRedColor
+                        handler:^(__kindof UIAction * _Nonnull act) {
+        [weakSelf handleBinThread];
+    }];
+    [actions addObject:binAction];
+
+    NSString *reportTitle =
+        self.chatThread.isReportedByMe ? kLang(@"chat.reported") : kLang(@"chat.report");
+    UIAction *reportAction =
+    [PPMenuHelper actionWithTitle:reportTitle
+                systemImageName:@"exclamationmark.triangle"
+                           font:[GM MidFontWithSize:16]
+                          color:UIColor.systemRedColor
+                        handler:^(__kindof UIAction * _Nonnull act) {
+        [weakSelf presentReportConfirmation];
+    }];
+    if (self.chatThread.isReportedByMe) {
+        reportAction.attributes = UIMenuElementAttributesDisabled;
+    }
+    [actions addObject:reportAction];
+
+    return [UIMenu menuWithChildren:actions];
+}
+
 - (void)configureBackUX
 {
-    // setting
-    BOOL isModal = [self isPresentedModally];
-
     // 🔹 Hide default back button always
     //self.navigationItem.hidesBackButton = YES;
 
-    if (isModal) {
-        UIView *header = [self pp_chatProfileHeaderViewWithUser:self.threadOtherUser];
-        [self pp_attachStoryTapToHeader:header];
-        self.navigationItem.leftBarButtonItems = @[ [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"xmark") style:UIBarButtonItemStylePlain target:self action:@selector(handleCloseTapped)]];
-           ;
-        
-       // [self pp_navBarSetTitleViewCenteredSmallWidth:header];
-        self.navigationItem.titleView = header;
-        // === Add action menu button ===
-        NSMutableArray<UIAction *> *actions = [NSMutableArray<UIAction *> new];
-         
-
-        
-        BOOL isPinned = self.chatThread.isPinned;
-        if (!isPinned) {
-            UIAction *pinAction =
-            [PPMenuHelper actionWithTitle:kLang(@"chat.pin")
-                        systemImageName:@"pin"
-                                   font:[GM MidFontWithSize:16]
-                                  color:AppPrimaryTextClr
-                                handler:^(__kindof UIAction * _Nonnull act) {
-                [self handlePinThread];
-            }];
-
-            [actions addObject:pinAction];
+    if ([self pp_shouldAttachPremiumModalChatHeader]) {
+        [self pp_clearPremiumModalNavigationItems];
+        if (self.navigationController.presentingViewController &&
+            self.navigationController.viewControllers.firstObject == self) {
+            [self.navigationController setNavigationBarHidden:YES animated:NO];
         }
-
-
-        BOOL isMuted = self.chatThread.isMuted;
-        NSString *muteTitle = isMuted ? kLang(@"chat.unmute") : kLang(@"chat.mute");
-        NSString *muteIcon = isMuted ? @"bell" : @"bell.slash";
-        UIAction *muteAction =
-        [PPMenuHelper actionWithTitle:muteTitle
-                    systemImageName:muteIcon
-                               font:[GM MidFontWithSize:16]
-                              color:AppPrimaryTextClr
-                            handler:^(__kindof UIAction * _Nonnull act) {
-            [self handleMuteThread];
-        }];
-        [actions addObject:muteAction];
-        
-        BOOL isBinned = self.chatThread.isBinned;
-        NSString *binTitle = isBinned ? kLang(@"chat.unbin") : kLang(@"chat.bin");
-        UIAction *binAction =
-        [PPMenuHelper actionWithTitle:binTitle
-                    systemImageName:@"trash"
-                               font:[GM MidFontWithSize:16]
-                              color:UIColor.systemRedColor
-                            handler:^(__kindof UIAction * _Nonnull act) {
-            [self handleBinThread];
-        }];
-        [actions addObject:binAction];
-       /*
-        UIAction *backgroundAction =
-        [PPMenuHelper actionWithTitle:kLang(@"chat.background")
-                    systemImageName:@"photo"
-                               font:[GM MidFontWithSize:16]
-                              color:AppPrimaryTextClr
-                            handler:^(__kindof UIAction * _Nonnull act) {
-            [self presentChatBackgroundPicker];
-        }];
-        */
-        //[actions addObject:backgroundAction];
-        NSString *reportTitle =
-            self.chatThread.isReportedByMe ? kLang(@"chat.reported") : kLang(@"chat.report");
-        UIAction *reportAction =
-        [PPMenuHelper actionWithTitle:reportTitle
-                    systemImageName:@"exclamationmark.triangle"
-                               font:[GM MidFontWithSize:16]
-                              color:UIColor.systemRedColor
-                            handler:^(__kindof UIAction * _Nonnull act) {
-
-            [self presentReportConfirmation];
-        }];
-        if (self.chatThread.isReportedByMe) {
-            reportAction.attributes = UIMenuElementAttributesDisabled;
-        }
-        [actions addObject:reportAction];
-        UIMenu *menu =
-        [UIMenu menuWithChildren:actions];
-
-        UIBarButtonItem *moreItem =
-        [[UIBarButtonItem alloc] initWithImage:PPSYSImage(@"ellipsis")
-                                         menu:menu];
-
-        self.navigationItem.rightBarButtonItem = moreItem;
+        [self pp_updatePremiumModalChatHeaderVisibility];
         self.navigationController.interactivePopGestureRecognizer.enabled = YES;
         self.navigationController.interactivePopGestureRecognizer.delegate =
             (id<UIGestureRecognizerDelegate>)self;
+        return;
 
     } else {
+        [self pp_updatePremiumModalChatHeaderVisibility];
         // 🔹 Pushed → enable swipe back, no button
         self.navigationController.interactivePopGestureRecognizer.enabled = YES;
         self.navigationController.interactivePopGestureRecognizer.delegate =
@@ -3178,6 +3689,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                 weakSelf.chatThread.mutedBy = [arr copy];
             }
             [PPHUD showSuccess: nextMuted ? kLang(@"chat.muted") : kLang(@"chat.unmuted")];
+            [weakSelf pp_updatePremiumModalChatHeaderContentAnimated:YES];
         });
     }];
 }
@@ -3216,6 +3728,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
                 weakSelf.chatThread.reportedBy = [arr copy];
             }
             [PPHUD showSuccess:kLang(@"chat.report.success")];
+            [weakSelf pp_updatePremiumModalChatHeaderContentAnimated:YES];
         });
     }];
 }
@@ -3279,8 +3792,21 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [alert addAction:cancel];
 
     // iPad safety
-    alert.popoverPresentationController.barButtonItem =
-        self.navigationItem.rightBarButtonItem;
+    UIPopoverPresentationController *popover = alert.popoverPresentationController;
+    if (popover) {
+        if (self.premiumModalHeaderMoreButton.superview && !self.premiumModalHeaderMoreButton.hidden) {
+            popover.sourceView = self.premiumModalHeaderMoreButton;
+            popover.sourceRect = self.premiumModalHeaderMoreButton.bounds;
+        } else if (self.navigationItem.rightBarButtonItem) {
+            popover.barButtonItem = self.navigationItem.rightBarButtonItem;
+        } else {
+            popover.sourceView = self.view;
+            popover.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                            CGRectGetMidY(self.view.bounds),
+                                            1.0,
+                                            1.0);
+        }
+    }
 
     [self presentViewController:alert animated:YES completion:nil];
 }
@@ -3371,6 +3897,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         if (!strongSelf) return;
         strongSelf.threadOtherUser.isOnline = isOnline;
         strongSelf.threadOtherUser.lastSeen = lastSeen;
+        [strongSelf pp_updatePremiumModalChatHeaderContentAnimated:YES];
     }];
 }
  
@@ -3404,7 +3931,17 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [self.userStatusListener remove];
     self.userStatusListener = nil;
     
+    [self unregisterKeyboardNotifications];
+    [self unregisterAppStateObservers];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidFinish" object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"PPEditorBridgeDidCancel" object:nil];
     
+    if (self.authListenerHandle) {
+        [[FIRAuth auth] removeAuthStateDidChangeListener:self.authListenerHandle];
+        self.authListenerHandle = 0;
+    }
+    
+
 }
 
 - (void)dismissKeyboard {
@@ -3452,6 +3989,16 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
         self.messages.count > 0) {
         [self scrollToBottomAnimated:NO];
     }
+
+    [self pp_updatePremiumModalChatHeaderShadowPath];
+    [self pp_updatePremiumModalChatHeaderInsets];
+    [self pp_animatePremiumModalChatHeaderIfNeeded];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self pp_applyPremiumModalChatHeaderTheme];
 }
 
 - (NSInteger)resolvedChatBackgroundIndex
@@ -3706,6 +4253,7 @@ estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath
     [super viewDidAppear:animated];
     self.isViewVisible = YES;
     [ChManager sharedManager].activeThreadID = self.chatThread.ID;
+    [self pp_animatePremiumModalChatHeaderIfNeeded];
     // ✅ Handoff finished
     [ChManager sharedManager].isHandlingNotificationHandoff = NO;
 

@@ -6,6 +6,8 @@
 #import "PPCheckoutCoordinator.h"
 @import GoogleSignIn;
 #import "ChNotificationRouter.h"
+#import "PPOrder.h"
+#import "OrderDetailsViewController.h"
 
 
 @interface SceneDelegate ()<UNUserNotificationCenterDelegate>
@@ -210,17 +212,84 @@ willConnectToSession:(UISceneSession *)session
     if (!self.pendingChatNotification) return;
     if (!self.window.rootViewController) return;
 
-    UIViewController *topVC =
-    [AppMgr topViewController];
-
-    [[ChNotificationRouter shared]
-        handleChatNotification:self.pendingChatNotification
-          fromViewController:topVC];
-
+    [self pp_handleNotificationTap:self.pendingChatNotification];
     self.pendingChatNotification = nil;
 }
  
 
+
+- (void)pp_handleNotificationTap:(NSDictionary *)userInfo {
+
+    NSString *type = [[userInfo[@"type"] isKindOfClass:NSString.class] ? userInfo[@"type"] : @"" lowercaseString];
+    NSString *threadID = userInfo[@"threadID"] ?: userInfo[@"threadId"];
+    NSString *orderId = [userInfo[@"orderId"] isKindOfClass:NSString.class] ? userInfo[@"orderId"] : @"";
+
+    if (threadID.length > 0 || [type isEqualToString:@"chat"]) {
+        [ChManager sharedManager].isHandlingNotificationHandoff = YES;
+        NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
+        if (uid.length > 0) {
+            [[ChManager sharedManager] syncPendingDeliveriesForUser:nil completion:nil];
+        }
+        UIViewController *topVC = [AppMgr topViewController];
+        [[ChNotificationRouter shared] handleChatNotification:userInfo fromViewController:topVC];
+        return;
+    }
+
+    if (orderId.length > 0 || [type hasPrefix:@"order"]) {
+        if (orderId.length == 0) return;
+        [ChManager sharedManager].isHandlingNotificationHandoff = YES;
+        [self pp_navigateToOrderWithId:orderId];
+        return;
+    }
+}
+
+- (void)pp_navigateToOrderWithId:(NSString *)orderId {
+
+    FIRDocumentReference *orderRef = [[[FIRFirestore firestore] collectionWithPath:@"Orders"] documentWithPath:orderId];
+    __weak typeof(self) weakSelf = self;
+    [orderRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+
+            if (error || !snapshot.exists) {
+                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @"Order data is unavailable right now."];
+                return;
+            }
+
+            PPOrder *order = [PPOrder orderFromSnapshot:snapshot];
+            if (!order) {
+                [PPHUD showError:kLang(@"order_support_unavailable_no_order") ?: @"Order data is unavailable right now."];
+                return;
+            }
+
+            OrderDetailsViewController *detailsVC = [[OrderDetailsViewController alloc] initWithOrder:order];
+            detailsVC.order = order;
+            [strongSelf pp_pushOrderDetails:detailsVC];
+        });
+    }];
+}
+
+- (void)pp_pushOrderDetails:(UIViewController *)vc {
+
+    UIWindow *window = self.window;
+    UIViewController *root = window.rootViewController;
+    UINavigationController *nav = nil;
+
+    if ([root isKindOfClass:UINavigationController.class]) {
+        nav = (UINavigationController *)root;
+    } else {
+        nav = root.navigationController;
+    }
+
+    if (nav) {
+        [nav pushViewController:vc animated:YES];
+    } else {
+        UINavigationController *wrapper = [[UINavigationController alloc] initWithRootViewController:vc];
+        wrapper.modalPresentationStyle = UIModalPresentationFullScreen;
+        [root presentViewController:wrapper animated:YES completion:nil];
+    }
+}
 
 - (void)setNavigationBarAppearance {
     UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
@@ -395,21 +464,8 @@ didReceiveNotificationResponse:(UNNotificationResponse *)response
     NSDictionary *userInfo =
         response.notification.request.content.userInfo;
 
-    UIViewController *topVC = [AppMgr topViewController];
-    
-    // 🔑 Mark handoff
-    [ChManager sharedManager].isHandlingNotificationHandoff = YES;
+    [self pp_handleNotificationTap:userInfo];
 
-    NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
-    if (uid.length > 0) {
-        [[ChManager sharedManager] syncPendingDeliveriesForUser:nil completion:nil];
-    }
-
-     
-        [[ChNotificationRouter shared]
-            handleChatNotification:userInfo
-              fromViewController:topVC];
- 
     completionHandler();
 }
 

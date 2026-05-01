@@ -191,46 +191,108 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     __weak typeof(self) weakSelf = self;
     __weak UIViewController *weakController = controller;
 
-    [self createOrGetChatThreadWithUser:supportUser completion:^(ChatThreadModel * _Nullable thread, NSError * _Nullable error) {
+    [self pp_openSupportChatViaCloudFunctionWithCustomerID:customerID completion:^(NSString * _Nullable threadId, NSError * _Nullable error) {
         UIViewController *strongController = weakController;
-        if (!strongController) {
-            return;
-        }
+        if (!strongController) return;
 
-        if (error || !thread) {
-            NSLog(@"❌ [SupportChat] Failed to create support thread: %@", error.localizedDescription);
+        if (error || !threadId.length) {
+            NSLog(@"❌ [SupportChat] Failed to create support thread: %@", error.localizedDescription ?: @"unknown error");
             PPSupportPresentUnavailableAlert(strongController, kLang(@"Could not open support chat right now.") ?: @"Could not open support chat right now.");
             return;
         }
 
+        // Fetch the created/existing thread
         FIRFirestore *db = weakSelf.firestore ?: [FIRFirestore firestore];
-        NSMutableDictionary *metadata = [@{
-            @"conversationType": @"support",
-            @"threadType": @"support",
-            @"supportThread": @YES,
-            @"supportUserId": supportUser.ID ?: @"",
-            @"customerId": customerID ?: @"",
-            @"sourcePlatform": @"ios",
-            @"supportDisplayName": @"Support",
-            @"supportPhotoUrl": @"",
-            @"supportStatus": @"waiting_for_agent",
-            @"assignedTo": supportUser.ID ?: @"",
-            @"sourceScreen": @"support_chat",
-            @"sourceType": @"general",
-            @"sourceEntityId": @""
-        } mutableCopy];
-
-        // reasonCode, reasonLabel, customMessage will be populated
-        // when reason picker is added in a future iteration
-
-        [[[db collectionWithPath:@"Chats"] documentWithPath:thread.ID] setData:metadata merge:YES completion:^(NSError * _Nullable updateError) {
-            if (updateError) {
-                NSLog(@"⚠️ [SupportChat] Metadata sync failed: %@", updateError.localizedDescription);
+        FIRDocumentReference *threadRef = [[db collectionWithPath:@"Chats"] documentWithPath:threadId];
+        [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable readError) {
+            if (readError || !snapshot.exists) {
+                NSLog(@"❌ [SupportChat] Failed to read support thread after creation: %@", readError.localizedDescription);
+                PPSupportPresentUnavailableAlert(strongController, kLang(@"Could not open support chat right now.") ?: @"Could not open support chat right now.");
+                return;
             }
+
+            ChatThreadModel *thread = [[ChatThreadModel alloc] initWithDictionary:snapshot.data];
+            thread.ID = snapshot.documentID;
+            thread.otherUser = supportUser;
+
             dispatch_async(dispatch_get_main_queue(), ^{
                 [PPOverlayCoordinator pp_openChatThread:thread fromVC:strongController];
             });
         }];
+    }];
+}
+
+- (void)pp_openSupportChatViaCloudFunctionWithCustomerID:(NSString *)customerID
+                                              completion:(void (^)(NSString * _Nullable threadId, NSError * _Nullable error))completion
+{
+    NSURL *url = [NSURL URLWithString:@"https://us-central1-pure-pets-49199.cloudfunctions.net/openSupportChat"];
+    if (!url) {
+        if (completion) completion(nil, [NSError errorWithDomain:@"ChManager" code:400 userInfo:@{NSLocalizedDescriptionKey: @"Invalid function URL"}]);
+        return;
+    }
+
+    NSDictionary *payload = @{ @"customerId": customerID ?: @"" };
+
+    NSError *jsonError = nil;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:payload options:0 error:&jsonError];
+    if (!jsonData || jsonError) {
+        if (completion) completion(nil, jsonError);
+        return;
+    }
+
+    [[FIRAuth auth].currentUser getIDTokenWithCompletion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
+        if (tokenError || !idToken.length) {
+            if (completion) completion(nil, tokenError ?: [NSError errorWithDomain:@"ChManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing auth token"}]);
+
+            return;
+        }
+
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.HTTPMethod = @"POST";
+        request.timeoutInterval = 20;
+        request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+        request.HTTPBody = jsonData;
+        [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+        [request setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
+
+        NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+        NSURLSession *session = [NSURLSession sessionWithConfiguration:config];
+
+        NSURLSessionDataTask *task = [session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            if (error) {
+                if (completion) completion(nil, error);
+                return;
+            }
+
+            NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
+            NSData *responseData = data ?: [NSData data];
+
+            if (http.statusCode >= 400) {
+                NSString *body = [[NSString alloc] initWithData:responseData encoding:NSUTF8StringEncoding];
+                NSLog(@"❌ [SupportChat] Cloud Function returned %ld: %@", (long)http.statusCode, body ?: @"<no body>");
+                NSDictionary *errorDict = nil;
+                if (responseData.length > 0) {
+                    errorDict = [NSJSONSerialization JSONObjectWithData:responseData options:0 error:nil];
+                }
+                NSString *message = [errorDict isKindOfClass:NSDictionary.class] ? (errorDict[@"message"] ?: errorDict[@"error"]) : nil;
+                if (!message.length) message = @"Server error";
+                if (completion) completion(nil, [NSError errorWithDomain:@"ChManager" code:http.statusCode userInfo:@{NSLocalizedDescriptionKey: message}]);
+
+                return;
+            }
+
+            NSDictionary *result = [NSJSONSerialization JSONObjectWithData:responseData options:0 error:nil];
+            NSString *threadId = [result isKindOfClass:NSDictionary.class] ? ([result[@"threadId"] isKindOfClass:NSString.class] ? result[@"threadId"] : @"") : @"";
+
+            if (!threadId.length) {
+                if (completion) completion(nil, [NSError errorWithDomain:@"ChManager" code:500 userInfo:@{NSLocalizedDescriptionKey: @"Invalid response from server"}]);
+
+                return;
+            }
+
+            if (completion) completion(threadId, nil);
+        }];
+        [task resume];
     }];
 }
 

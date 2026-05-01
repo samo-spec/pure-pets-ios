@@ -20,6 +20,25 @@ static NSString *PPStoriesTrimmedString(id value)
     return [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
 }
 
+static NSError *PPStoriesError(NSInteger code, NSString *message)
+{
+    return [NSError errorWithDomain:@"PPStories"
+                               code:code
+                           userInfo:@{NSLocalizedDescriptionKey: message ?: @""}];
+}
+
+static void PPStoriesCompleteUpdate(PPStoriesUpdateCompletion completion,
+                                    PPStoryItem * _Nullable item,
+                                    NSError * _Nullable error)
+{
+    if (!completion) {
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        completion(item, error);
+    });
+}
+
 @implementation PPStoriesManager
 
 + (instancetype)shared {
@@ -227,6 +246,144 @@ static NSString *PPStoriesTrimmedString(id value)
     }];
 }
 
+- (void)updateStoryItemForCurrentUserWithStoryID:(NSString *)storyID
+                                       itemIndex:(NSInteger)itemIndex
+                                         caption:(NSString * _Nullable)caption
+                                        newImage:(UIImage * _Nullable)newImage
+                                      completion:(PPStoriesUpdateCompletion _Nullable)completion
+{
+    NSString *authUID = PPStoriesTrimmedString([FIRAuth auth].currentUser.uid);
+    NSString *trimmedStoryID = PPStoriesTrimmedString(storyID);
+    if (authUID.length == 0) {
+        PPStoriesCompleteUpdate(completion, nil, PPStoriesError(1004, @"Current user is not authenticated."));
+        return;
+    }
+    if (trimmedStoryID.length == 0 || ![trimmedStoryID isEqualToString:authUID]) {
+        PPStoriesCompleteUpdate(completion, nil, PPStoriesError(1005, @"You can edit only your own stories."));
+        return;
+    }
+    if (itemIndex < 0) {
+        PPStoriesCompleteUpdate(completion, nil, PPStoriesError(1006, @"Story item is invalid."));
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    void (^patchStory)(NSString * _Nullable) = ^(NSString * _Nullable mediaURLString) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+        [self pp_patchStoryWithStoryID:trimmedStoryID
+                              itemIndex:itemIndex
+                                caption:caption
+                         mediaURLString:mediaURLString
+                             completion:completion];
+    };
+
+    if ([newImage isKindOfClass:UIImage.class]) {
+        [GM uploadImageToStories:newImage forUserID:authUID completion:^(NSURL * _Nullable url) {
+            if (![url isKindOfClass:NSURL.class] || url.absoluteString.length == 0) {
+                PPStoriesCompleteUpdate(completion, nil, PPStoriesError(1007, @"Failed to upload story media."));
+                return;
+            }
+            patchStory(url.absoluteString);
+        }];
+        return;
+    }
+
+    patchStory(nil);
+}
+
+- (void)pp_patchStoryWithStoryID:(NSString *)storyID
+                        itemIndex:(NSInteger)itemIndex
+                          caption:(NSString * _Nullable)caption
+                   mediaURLString:(NSString * _Nullable)mediaURLString
+                       completion:(PPStoriesUpdateCompletion _Nullable)completion
+{
+    NSString *encodedStoryID =
+        [storyID stringByAddingPercentEncodingWithAllowedCharacters:NSCharacterSet.URLPathAllowedCharacterSet];
+    NSURL *url = [NSURL URLWithString:
+        [NSString stringWithFormat:@"https://us-central1-pure-pets-49199.cloudfunctions.net/stories/%@",
+                                   encodedStoryID ?: @""]];
+    if (!url) {
+        PPStoriesCompleteUpdate(completion, nil, PPStoriesError(1008, @"Invalid story update URL."));
+        return;
+    }
+
+    NSMutableDictionary *payload = [NSMutableDictionary dictionary];
+    payload[@"itemIndex"] = @(itemIndex);
+    payload[@"caption"] = PPStoriesTrimmedString(caption);
+    if (PPStoriesTrimmedString(mediaURLString).length > 0) {
+        payload[@"mediaUrl"] = PPStoriesTrimmedString(mediaURLString);
+        payload[@"mediaType"] = @"image";
+        payload[@"duration"] = @5;
+    }
+
+    NSError *jsonError = nil;
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:payload options:0 error:&jsonError];
+    if (!jsonData || jsonError) {
+        PPStoriesCompleteUpdate(completion, nil, jsonError ?: PPStoriesError(1009, @"Invalid story update payload."));
+        return;
+    }
+
+    [[FIRAuth auth].currentUser getIDTokenWithCompletion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
+        if (tokenError || idToken.length == 0) {
+            PPStoriesCompleteUpdate(completion, nil, tokenError ?: PPStoriesError(1010, @"Missing auth token."));
+            return;
+        }
+
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.HTTPMethod = @"PATCH";
+        request.timeoutInterval = 24.0;
+        request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+        request.HTTPBody = jsonData;
+        [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+        [request setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
+
+        NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
+        NSURLSession *session = [NSURLSession sessionWithConfiguration:config];
+        NSURLSessionDataTask *task =
+            [session dataTaskWithRequest:request
+                        completionHandler:^(NSData * _Nullable data,
+                                            NSURLResponse * _Nullable response,
+                                            NSError * _Nullable error) {
+            if (error) {
+                PPStoriesCompleteUpdate(completion, nil, error);
+                return;
+            }
+
+            NSHTTPURLResponse *http = [response isKindOfClass:NSHTTPURLResponse.class]
+                ? (NSHTTPURLResponse *)response
+                : nil;
+            NSData *responseData = data ?: [NSData data];
+            id resultObject = responseData.length > 0
+                ? [NSJSONSerialization JSONObjectWithData:responseData options:0 error:nil]
+                : nil;
+            NSDictionary *result = [resultObject isKindOfClass:NSDictionary.class] ? resultObject : nil;
+
+            if (http.statusCode >= 400) {
+                NSString *message = [result isKindOfClass:NSDictionary.class]
+                    ? (result[@"message"] ?: result[@"error"])
+                    : nil;
+                NSInteger statusCode = http ? http.statusCode : 1011;
+                PPStoriesCompleteUpdate(completion, nil,
+                                        PPStoriesError(statusCode,
+                                                       message.length ? message : @"Failed to update story."));
+                return;
+            }
+
+            NSDictionary *itemDict = [result[@"item"] isKindOfClass:NSDictionary.class] ? result[@"item"] : nil;
+            PPStoryItem *updatedItem = [self pp_storyItemFromDictionary:itemDict];
+            if (!updatedItem) {
+                PPStoriesCompleteUpdate(completion, nil, PPStoriesError(1012, @"Story update response is invalid."));
+                return;
+            }
+            PPStoriesCompleteUpdate(completion, updatedItem, nil);
+        }];
+        [task resume];
+    }];
+}
+
 - (FIRQuery *)pp_storiesQuery
 {
     FIRTimestamp *cutoff = [FIRTimestamp timestampWithDate:
@@ -298,29 +455,40 @@ static NSString *PPStoriesTrimmedString(id value)
     NSMutableArray<PPStoryItem *> *items = [NSMutableArray array];
     NSArray *rawItems = [data[@"items"] isKindOfClass:[NSArray class]] ? data[@"items"] : @[];
     for (NSDictionary *itemDict in rawItems) {
-        if (![itemDict isKindOfClass:[NSDictionary class]]) {
-            continue;
-        }
-        NSString *mediaURLString = [itemDict[@"mediaUrl"] isKindOfClass:[NSString class]] ? itemDict[@"mediaUrl"] : @"";
-        if (mediaURLString.length == 0) {
-            continue;
-        }
-        NSURL *mediaURL = [NSURL URLWithString:mediaURLString];
-        if (!mediaURL) {
-            continue;
-        }
-        PPStoryItem *item = [PPStoryItem new];
-        item.mediaURL = mediaURL;
-        NSString *mediaType = [itemDict[@"mediaType"] isKindOfClass:[NSString class]] ? itemDict[@"mediaType"] : @"";
-        item.isVideo = [mediaType.lowercaseString isEqualToString:@"video"];
-        item.duration = [itemDict[@"duration"] respondsToSelector:@selector(doubleValue)] ? [itemDict[@"duration"] doubleValue] : 5.0;
-        if (item.duration <= 0.0 || !isfinite(item.duration)) {
-            item.duration = 5.0;
-        }
-        [items addObject:item];
+        PPStoryItem *item = [self pp_storyItemFromDictionary:itemDict];
+        if (item) [items addObject:item];
     }
     story.items = items;
     return story;
+}
+
+- (PPStoryItem * _Nullable)pp_storyItemFromDictionary:(NSDictionary *)itemDict
+{
+    if (![itemDict isKindOfClass:[NSDictionary class]]) {
+        return nil;
+    }
+
+    NSString *mediaURLString = [itemDict[@"mediaUrl"] isKindOfClass:[NSString class]] ? itemDict[@"mediaUrl"] : @"";
+    if (mediaURLString.length == 0) {
+        return nil;
+    }
+
+    NSURL *mediaURL = [NSURL URLWithString:mediaURLString];
+    if (!mediaURL) {
+        return nil;
+    }
+
+    PPStoryItem *item = [PPStoryItem new];
+    item.mediaURL = mediaURL;
+    NSString *mediaType = [itemDict[@"mediaType"] isKindOfClass:[NSString class]] ? itemDict[@"mediaType"] : @"";
+    item.isVideo = [mediaType.lowercaseString isEqualToString:@"video"];
+    item.duration = [itemDict[@"duration"] respondsToSelector:@selector(doubleValue)] ? [itemDict[@"duration"] doubleValue] : 5.0;
+    if (item.duration <= 0.0 || !isfinite(item.duration)) {
+        item.duration = 5.0;
+    }
+    NSString *caption = [itemDict[@"caption"] isKindOfClass:NSString.class] ? itemDict[@"caption"] : @"";
+    item.caption = PPStoriesTrimmedString(caption);
+    return item;
 }
 
 @end

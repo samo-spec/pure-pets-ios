@@ -44,7 +44,10 @@ static const CGFloat kAVDetailRowMinHeight   = 66.0;    // minimum detail row he
 static const CGFloat kAVBottomBarBase        = 106.0;   // sticky bottom bar base height
 static const CGFloat kAVSectionSpacing       = 20.0;    // section gap
 static const CGFloat kAVSuggestionBottomInset = 32.0;   // breathing room below collection
-static const CGFloat kAVSellerAvatarSize     = 56.0;    // seller identity avatar size
+static const CGFloat kAVSellerAvatarSize     = 64.0;    // seller identity avatar size
+static const CGFloat kAVSellerAvatarRingSize = 74.0;    // premium avatar shell size
+static const CGFloat kAVSellerPrimaryBtnHeight = 52.0;  // primary CTA button height
+static const CGFloat kAVSellerStatusPillHeight = 28.0;  // seller badge pill height
 
 // Elevation (shadows)
 static const CGFloat kAVCardShadowOpacity    = 0.2f;
@@ -57,6 +60,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 // ── Scaffold ──
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
+@property (nonatomic, strong) UIView *ambientGlowTopView;
+@property (nonatomic, strong) UIView *ambientGlowBottomView;
 @property (nonatomic, strong) BBCartBottomBar *bottomBar;
 @property (nonatomic, strong) UIImageView *barBackgroundImageView;
 @property (nonatomic, strong) NSLayoutConstraint *bottomBarHeightConstraint;
@@ -75,14 +80,21 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 // ── Seller Section ──
 @property (nonatomic, strong) UIView *sellerSectionView;
+@property (nonatomic, strong) UIView *sellerInnerSurfaceView;
+@property (nonatomic, strong) CAGradientLayer *sellerBackgroundGradientLayer;
+@property (nonatomic, strong) UIView *sellerAvatarRingView;
 @property (nonatomic, strong) UIImageView *sellerAvatarImageView;
+@property (nonatomic, strong) UILabel *sellerEyebrowLabel;
 @property (nonatomic, strong) UILabel *sellerNameLabel;
 @property (nonatomic, strong) UILabel *sellerSubtitleLabel;
+@property (nonatomic, strong) UILabel *sellerStatusBadgeLabel;
 @property (nonatomic, strong) UIStackView *actionStackView;
-@property (nonatomic, strong) UIButton *supportActionButton;
 @property (nonatomic, strong) UIButton *chatActionButton;
 @property (nonatomic, strong) UIButton *callActionButton;
 @property (nonatomic, strong) UIButton *shareActionButton;
+@property (nonatomic, strong) UIButton *supportActionButton;
+@property (nonatomic, strong) NSLayoutConstraint *sellerActionsTopToChatConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *sellerActionsTopToIdentityConstraint;
 
 // ── Details Card ──
 @property (nonatomic, strong) UIView *detailsCardView;
@@ -115,6 +127,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 @property (nonatomic, assign) BOOL didTrackViewInteraction;
 @property (nonatomic, strong) PPPhotoBrowserBridge *brower;
 @property (nonatomic, assign) BOOL isResolvingOwner;
+@property (nonatomic, assign) BOOL didAnimateSellerSection;
 @end
 
 @implementation AccessViewerVC
@@ -159,8 +172,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self pp_buildHeroSection];
     [self pp_buildSummaryCard];
     [self pp_buildDetailsCard];
-    [self pp_buildDescriptionSection];
     [self pp_buildSellerSection];
+    [self pp_buildDescriptionSection];
     [self pp_buildSuggestionsSection];
     [self pp_fetchSuggestions];
 }
@@ -190,7 +203,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     // ── Scroll view ──
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.scrollView.backgroundColor = AppBackgroundClr;
+    self.scrollView.backgroundColor = [self.view.backgroundColor colorWithAlphaComponent:0.5];
     self.scrollView.alwaysBounceVertical = YES;
     self.scrollView.showsVerticalScrollIndicator = YES;
     self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
@@ -204,6 +217,28 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.contentView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentView.backgroundColor = UIColor.clearColor;
     [self.scrollView addSubview:self.contentView];
+
+    // ── Ambient glows ──
+    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithRed:0.81 green:0.22 blue:0.36 alpha:1.0];
+    UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
+    BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+
+    self.ambientGlowTopView = [[UIView alloc] init];
+    self.ambientGlowTopView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.ambientGlowTopView.userInteractionEnabled = NO;
+    self.ambientGlowTopView.layer.cornerRadius = 140.0;
+    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
+    [self.contentView addSubview:self.ambientGlowTopView];
+
+    self.ambientGlowBottomView = [[UIView alloc] init];
+    self.ambientGlowBottomView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.ambientGlowBottomView.userInteractionEnabled = NO;
+    self.ambientGlowBottomView.layer.cornerRadius = 168.0;
+    self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
+    [self.contentView addSubview:self.ambientGlowBottomView];
+
+    [self.contentView sendSubviewToBack:self.ambientGlowBottomView];
+    [self.contentView sendSubviewToBack:self.ambientGlowTopView];
 
     UILayoutGuide *contentGuide;
     UILayoutGuide *frameGuide;
@@ -517,7 +552,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self.contentView addSubview:self.descView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.descView.topAnchor      constraintEqualToAnchor:self.detailsCardView.bottomAnchor   constant:kAVSpace8],
+        [self.descView.topAnchor      constraintEqualToAnchor:self.sellerSectionView.bottomAnchor   constant:kAVSpace8],
         [self.descView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
         [self.descView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
     ]];
@@ -534,8 +569,37 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)pp_buildSellerSection {
 
     self.sellerSectionView = [self pp_surfaceCard];
+    [self.sellerSectionView pp_setShadowColor:UIColor.blackColor];
+    self.sellerSectionView.layer.shadowOpacity = 0.10;
+    self.sellerSectionView.layer.shadowRadius = 22.0;
+    self.sellerSectionView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    self.sellerSectionView.alpha = UIAccessibilityIsReduceMotionEnabled() ? 1.0 : 0.0;
+    self.sellerSectionView.transform = UIAccessibilityIsReduceMotionEnabled() ? CGAffineTransformIdentity : CGAffineTransformMakeTranslation(0.0, 18.0);
     [self.contentView addSubview:self.sellerSectionView];
     UIView *innerSeller = [self pp_innerCardOf:self.sellerSectionView];
+    self.sellerInnerSurfaceView = innerSeller;
+    innerSeller.backgroundColor = AppForgroundColr;
+
+    self.sellerBackgroundGradientLayer = [CAGradientLayer layer];
+    self.sellerBackgroundGradientLayer.startPoint = CGPointMake(0.08, 0.0);
+    self.sellerBackgroundGradientLayer.endPoint = CGPointMake(0.96, 1.0);
+    self.sellerBackgroundGradientLayer.locations = @[@0.0, @0.48, @1.0];
+    [innerSeller.layer insertSublayer:self.sellerBackgroundGradientLayer atIndex:0];
+
+    UIView *accentWash = [[UIView alloc] init];
+    accentWash.translatesAutoresizingMaskIntoConstraints = NO;
+    accentWash.userInteractionEnabled = NO;
+    accentWash.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.08];
+    [innerSeller addSubview:accentWash];
+
+    self.sellerAvatarRingView = [[UIView alloc] init];
+    self.sellerAvatarRingView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sellerAvatarRingView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.09];
+    self.sellerAvatarRingView.layer.cornerRadius = kAVSellerAvatarRingSize / 2.0;
+    self.sellerAvatarRingView.layer.masksToBounds = YES;
+    self.sellerAvatarRingView.layer.borderWidth = 1.0;
+    [self.sellerAvatarRingView pp_setBorderColor:[AppPrimaryClr colorWithAlphaComponent:0.12]];
+    [innerSeller addSubview:self.sellerAvatarRingView];
 
     self.sellerAvatarImageView = [[UIImageView alloc] initWithImage:PPSYSImage(@"person.crop.circle.fill")];
     self.sellerAvatarImageView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -544,76 +608,131 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.sellerAvatarImageView.layer.masksToBounds = YES;
     self.sellerAvatarImageView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.72];
     self.sellerAvatarImageView.tintColor = [AppSecondaryTextClr colorWithAlphaComponent:0.64];
-    [innerSeller addSubview:self.sellerAvatarImageView];
+    self.sellerAvatarImageView.layer.borderWidth = 2.0;
+    [self.sellerAvatarImageView pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.96]];
+    [self.sellerAvatarRingView addSubview:self.sellerAvatarImageView];
+
+    self.sellerEyebrowLabel = [[UILabel alloc] init];
+    self.sellerEyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sellerEyebrowLabel.font = [GM boldFontWithSize:12];
+    self.sellerEyebrowLabel.textColor = [AppPrimaryClr colorWithAlphaComponent:0.88];
+    self.sellerEyebrowLabel.numberOfLines = 1;
 
     self.sellerNameLabel = [[UILabel alloc] init];
     self.sellerNameLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.sellerNameLabel.font = [GM boldFontWithSize:18];
+    self.sellerNameLabel.font = [GM boldFontWithSize:20];
     self.sellerNameLabel.textColor = AppPrimaryTextClr;
     self.sellerNameLabel.numberOfLines = 2;
-    [innerSeller addSubview:self.sellerNameLabel];
 
     self.sellerSubtitleLabel = [[UILabel alloc] init];
     self.sellerSubtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.sellerSubtitleLabel.font = [GM MidFontWithSize:12];
-    self.sellerSubtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.82];
+    self.sellerSubtitleLabel.font = [GM MidFontWithSize:13];
+    self.sellerSubtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.72];
     self.sellerSubtitleLabel.numberOfLines = 2;
-    [innerSeller addSubview:self.sellerSubtitleLabel];
 
-    self.supportActionButton = [self pp_actionButtonWithTitle:kLang(@"Support")
-                                                   systemName:@"headphones"
-                                                     selector:@selector(supportTapped)
-                                                   emphasized:YES];
-    self.chatActionButton  = [self pp_actionButtonWithTitle:kLang(@"Chat")
-                                                systemName:@"message.fill"
-                                                  selector:@selector(chatBTN:)
-                                                emphasized:YES];
-    self.callActionButton  = [self pp_actionButtonWithTitle:kLang(@"Call")
-                                                systemName:@"phone.fill"
-                                                  selector:@selector(callOwnerBtn:)
-                                                emphasized:NO];
-    self.shareActionButton = [self pp_actionButtonWithTitle:kLang(@"Share")
-                                                systemName:@"square.and.arrow.up"
-                                                  selector:@selector(handleShareAction)
-                                                emphasized:NO];
+    UIStackView *sellerTextStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.sellerEyebrowLabel,
+        self.sellerNameLabel,
+        self.sellerSubtitleLabel
+    ]];
+    sellerTextStack.translatesAutoresizingMaskIntoConstraints = NO;
+    sellerTextStack.axis = UILayoutConstraintAxisVertical;
+    sellerTextStack.spacing = 3.0;
+    sellerTextStack.alignment = UIStackViewAlignmentFill;
+    [sellerTextStack setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [innerSeller addSubview:sellerTextStack];
+
+    self.sellerStatusBadgeLabel = [[UILabel alloc] init];
+    self.sellerStatusBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.sellerStatusBadgeLabel.font = [GM boldFontWithSize:12];
+    self.sellerStatusBadgeLabel.textAlignment = NSTextAlignmentCenter;
+    self.sellerStatusBadgeLabel.numberOfLines = 1;
+    self.sellerStatusBadgeLabel.adjustsFontSizeToFitWidth = YES;
+    self.sellerStatusBadgeLabel.minimumScaleFactor = 0.78;
+    self.sellerStatusBadgeLabel.layer.cornerRadius = kAVSellerStatusPillHeight / 2.0;
+    self.sellerStatusBadgeLabel.layer.masksToBounds = YES;
+    [self.sellerStatusBadgeLabel setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.sellerStatusBadgeLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [innerSeller addSubview:self.sellerStatusBadgeLabel];
+
+    self.chatActionButton = [self pp_primaryCTAWithTitle:kLang(@"Chat")
+                                              systemName:@"message.fill"
+                                                selector:@selector(chatBTN:)
+                                              emphasized:YES];
+    [innerSeller addSubview:self.chatActionButton];
+
+    self.callActionButton  = [self pp_secondaryActionWithTitle:kLang(@"Call")
+                                                    systemName:@"phone.fill"
+                                                      selector:@selector(callOwnerBtn:)];
+    self.shareActionButton = [self pp_secondaryActionWithTitle:kLang(@"Share")
+                                                    systemName:@"square.and.arrow.up"
+                                                      selector:@selector(handleShareAction)];
+    self.supportActionButton = [self pp_secondaryActionWithTitle:kLang(@"Support")
+                                                      systemName:@"headphones"
+                                                        selector:@selector(supportTapped)];
 
     self.actionStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.supportActionButton,
-        self.chatActionButton,
         self.callActionButton,
-        self.shareActionButton
+        self.shareActionButton,
+        self.supportActionButton
     ]];
     self.actionStackView.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionStackView.axis         = UILayoutConstraintAxisHorizontal;
     self.actionStackView.spacing      = kAVSpace8;
     self.actionStackView.distribution = UIStackViewDistributionFillEqually;
+    self.actionStackView.alignment    = UIStackViewAlignmentCenter;
     [innerSeller addSubview:self.actionStackView];
 
+    NSLayoutConstraint *chatTopPreferred = [self.chatActionButton.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
+    chatTopPreferred.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *actionsTopPreferred = [self.actionStackView.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.bottomAnchor constant:kAVSpace16];
+    actionsTopPreferred.priority = UILayoutPriorityDefaultHigh;
+    self.sellerActionsTopToChatConstraint = [self.actionStackView.topAnchor constraintEqualToAnchor:self.chatActionButton.bottomAnchor constant:kAVSpace12];
+    self.sellerActionsTopToIdentityConstraint = actionsTopPreferred;
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.sellerSectionView.topAnchor      constraintEqualToAnchor:self.descView.bottomAnchor constant:kAVSectionSpacing],
+        [self.sellerSectionView.topAnchor      constraintEqualToAnchor:self.detailsCardView.bottomAnchor constant:kAVSectionSpacing],
         [self.sellerSectionView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor  constant:kAVSectionInset],
         [self.sellerSectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-kAVSectionInset],
 
-        [self.sellerAvatarImageView.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
-        [self.sellerAvatarImageView.topAnchor constraintEqualToAnchor:innerSeller.topAnchor constant:kAVCardPadding],
+        [accentWash.topAnchor constraintEqualToAnchor:innerSeller.topAnchor],
+        [accentWash.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor],
+        [accentWash.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor],
+        [accentWash.heightAnchor constraintEqualToConstant:106.0],
+
+        [self.sellerAvatarRingView.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
+        [self.sellerAvatarRingView.topAnchor constraintEqualToAnchor:innerSeller.topAnchor constant:kAVCardPadding],
+        [self.sellerAvatarRingView.widthAnchor constraintEqualToConstant:kAVSellerAvatarRingSize],
+        [self.sellerAvatarRingView.heightAnchor constraintEqualToConstant:kAVSellerAvatarRingSize],
+
+        [self.sellerAvatarImageView.centerXAnchor constraintEqualToAnchor:self.sellerAvatarRingView.centerXAnchor],
+        [self.sellerAvatarImageView.centerYAnchor constraintEqualToAnchor:self.sellerAvatarRingView.centerYAnchor],
         [self.sellerAvatarImageView.widthAnchor constraintEqualToConstant:kAVSellerAvatarSize],
         [self.sellerAvatarImageView.heightAnchor constraintEqualToConstant:kAVSellerAvatarSize],
 
-        [self.sellerNameLabel.topAnchor constraintEqualToAnchor:innerSeller.topAnchor constant:kAVCardPadding],
-        [self.sellerNameLabel.leadingAnchor constraintEqualToAnchor:self.sellerAvatarImageView.trailingAnchor constant:kAVSpace12],
-        [self.sellerNameLabel.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
+        [sellerTextStack.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.topAnchor constant:kAVSpace4],
+        [sellerTextStack.leadingAnchor constraintEqualToAnchor:self.sellerAvatarRingView.trailingAnchor constant:kAVSpace16],
+        [sellerTextStack.trailingAnchor constraintLessThanOrEqualToAnchor:self.sellerStatusBadgeLabel.leadingAnchor constant:-kAVSpace8],
 
-        [self.sellerSubtitleLabel.topAnchor constraintEqualToAnchor:self.sellerNameLabel.bottomAnchor constant:kAVSpace4],
-        [self.sellerSubtitleLabel.leadingAnchor constraintEqualToAnchor:self.sellerNameLabel.leadingAnchor],
-        [self.sellerSubtitleLabel.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
+        [self.sellerStatusBadgeLabel.topAnchor constraintEqualToAnchor:self.sellerAvatarRingView.topAnchor constant:kAVSpace4],
+        [self.sellerStatusBadgeLabel.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
+        [self.sellerStatusBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:92.0],
+        [self.sellerStatusBadgeLabel.heightAnchor constraintEqualToConstant:kAVSellerStatusPillHeight],
 
-        [self.actionStackView.topAnchor constraintGreaterThanOrEqualToAnchor:self.sellerAvatarImageView.bottomAnchor constant:kAVSpace16],
-        [self.actionStackView.topAnchor constraintEqualToAnchor:self.sellerSubtitleLabel.bottomAnchor constant:kAVSpace16],
+        chatTopPreferred,
+        [self.chatActionButton.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
+        [self.chatActionButton.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
+        [self.chatActionButton.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
+        [self.chatActionButton.heightAnchor constraintEqualToConstant:kAVSellerPrimaryBtnHeight],
+
+        [self.actionStackView.topAnchor constraintGreaterThanOrEqualToAnchor:sellerTextStack.bottomAnchor constant:kAVSpace16],
         [self.actionStackView.leadingAnchor constraintEqualToAnchor:innerSeller.leadingAnchor constant:kAVCardPadding],
         [self.actionStackView.trailingAnchor constraintEqualToAnchor:innerSeller.trailingAnchor constant:-kAVCardPadding],
-        [self.actionStackView.heightAnchor constraintEqualToConstant:kAVActionBarHeight],
         [self.actionStackView.bottomAnchor constraintEqualToAnchor:innerSeller.bottomAnchor constant:-kAVCardPadding],
     ]];
+
+    self.sellerActionsTopToChatConstraint.active = YES;
+    [self.sellerAvatarRingView.bottomAnchor constraintLessThanOrEqualToAnchor:self.actionStackView.topAnchor constant:-kAVSpace16].active = YES;
 }
 
 /// "You may also like" horizontal collection
@@ -698,13 +817,13 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.contentBottomToSuggestionsConstraint =
         [self.suggestionsContainerView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kAVSuggestionBottomInset];
     self.contentBottomToSellerConstraint =
-        [self.sellerSectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kAVSuggestionBottomInset];
+        [self.descView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-kAVSuggestionBottomInset];
 
-    // Start with seller bottom (suggestions hidden by default)
+    // Start with description bottom (suggestions hidden by default)
     self.contentBottomToSellerConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.suggestionsContainerView.topAnchor      constraintEqualToAnchor:self.sellerSectionView.bottomAnchor constant:kAVSpace32],
+        [self.suggestionsContainerView.topAnchor      constraintEqualToAnchor:self.descView.bottomAnchor constant:kAVSpace32],
         [self.suggestionsContainerView.leadingAnchor  constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.suggestionsContainerView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
     ]];
@@ -797,6 +916,43 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     return label;
 }
 
+- (void)pp_addSellerPressMotionToButton:(UIButton *)button
+{
+    button.titleLabel.adjustsFontSizeToFitWidth = YES;
+    button.titleLabel.minimumScaleFactor = 0.78;
+    button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [button addTarget:self action:@selector(pp_sellerActionTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_sellerActionTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+}
+
+- (void)pp_sellerActionTouchDown:(UIButton *)button
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformMakeScale(0.975, 0.975);
+        button.alpha = 0.92;
+    } completion:nil];
+}
+
+- (void)pp_sellerActionTouchUp:(UIButton *)button
+{
+    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.10 : 0.18;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+         usingSpringWithDamping:UIAccessibilityIsReduceMotionEnabled() ? 1.0 : 0.78
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        button.transform = CGAffineTransformIdentity;
+        button.alpha = button.enabled ? 1.0 : 0.55;
+    } completion:nil];
+}
+
 - (UIButton *)pp_actionButtonWithTitle:(NSString *)title
                             systemName:(NSString *)systemName
                               selector:(SEL)selector
@@ -845,6 +1001,106 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         button.contentEdgeInsets = UIEdgeInsetsMake(12.0, 16.0, 12.0, 16.0);
     }
 
+    [self pp_addSellerPressMotionToButton:button];
+    return button;
+}
+
+/// Premium primary CTA — full-width filled pill, single dominant action
+- (UIButton *)pp_primaryCTAWithTitle:(NSString *)title
+                          systemName:(NSString *)systemName
+                            selector:(SEL)selector
+                          emphasized:(BOOL)emphasized {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
+    button.layer.cornerRadius = kAVSellerPrimaryBtnHeight / 2.0;
+    button.layer.masksToBounds = YES;
+
+    UIImage *icon = [UIImage pp_symbolNamed:systemName
+                                  pointSize:17
+                                     weight:UIImageSymbolWeightSemibold
+                                      scale:UIImageSymbolScaleMedium
+                                    palette:emphasized ? @[UIColor.whiteColor, UIColor.whiteColor] : @[AppPrimaryTextClr, AppPrimaryTextClr]
+                               makeTemplate:NO];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
+        config.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        config.image = icon;
+        config.imagePlacement = NSDirectionalRectEdgeLeading;
+        config.imagePadding = 10.0;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(14.0, 24.0, 14.0, 24.0);
+        config.title = title;
+        config.baseForegroundColor = emphasized ? UIColor.whiteColor : AppPrimaryTextClr;
+        config.baseBackgroundColor = emphasized ? AppPrimaryClr : [AppForgroundColr colorWithAlphaComponent:0.64];
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
+            NSMutableDictionary *attrs = [incoming mutableCopy];
+            attrs[NSFontAttributeName] = [GM boldFontWithSize:15];
+            return attrs;
+        };
+        button.configuration = config;
+    } else {
+        button.backgroundColor = emphasized ? AppPrimaryClr : [AppForgroundColr colorWithAlphaComponent:0.9];
+        [button setTitleColor:emphasized ? UIColor.whiteColor : AppPrimaryTextClr forState:UIControlStateNormal];
+        [button setTitle:title forState:UIControlStateNormal];
+        [button setImage:icon forState:UIControlStateNormal];
+        button.tintColor = emphasized ? UIColor.whiteColor : AppPrimaryTextClr;
+        button.titleLabel.font = [GM boldFontWithSize:15];
+        button.contentEdgeInsets = UIEdgeInsetsMake(14.0, 24.0, 14.0, 24.0);
+    }
+    [self pp_addSellerPressMotionToButton:button];
+    return button;
+}
+
+/// Compact secondary action — icon+text pill, subdued
+- (UIButton *)pp_secondaryActionWithTitle:(NSString *)title
+                               systemName:(NSString *)systemName
+                                 selector:(SEL)selector {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    [button addTarget:self action:selector forControlEvents:UIControlEventTouchUpInside];
+    button.layer.cornerRadius = kAVButtonCornerRadius;
+    button.layer.masksToBounds = YES;
+
+    UIImage *icon = [UIImage pp_symbolNamed:systemName
+                                  pointSize:14
+                                     weight:UIImageSymbolWeightMedium
+                                      scale:UIImageSymbolScaleSmall
+                                    palette:@[AppSecondaryTextClr, AppSecondaryTextClr]
+                               makeTemplate:NO];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration filledButtonConfiguration];
+        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        config.background.cornerRadius = kAVButtonCornerRadius;
+        config.image = icon;
+        config.imagePlacement = NSDirectionalRectEdgeLeading;
+        config.imagePadding = 5.0;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(10.0, 10.0, 10.0, 10.0);
+        config.title = title;
+        config.baseForegroundColor = [AppSecondaryTextClr colorWithAlphaComponent:0.82];
+        config.baseBackgroundColor = [AppPrimaryTextClr colorWithAlphaComponent:0.045];
+        config.background.strokeColor = [AppPrimaryTextClr colorWithAlphaComponent:0.07];
+        config.background.strokeWidth = 1.0;
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
+            NSMutableDictionary *attrs = [incoming mutableCopy];
+            attrs[NSFontAttributeName] = [GM MidFontWithSize:13];
+            return attrs;
+        };
+        button.configuration = config;
+    } else {
+        button.backgroundColor = [AppPrimaryTextClr colorWithAlphaComponent:0.045];
+        button.layer.borderWidth = 1.0;
+        [button pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.07]];
+        [button setTitleColor:[AppSecondaryTextClr colorWithAlphaComponent:0.82] forState:UIControlStateNormal];
+        [button setTitle:title forState:UIControlStateNormal];
+        [button setImage:icon forState:UIControlStateNormal];
+        button.tintColor = [AppSecondaryTextClr colorWithAlphaComponent:0.82];
+        button.titleLabel.font = [GM MidFontWithSize:13];
+        button.contentEdgeInsets = UIEdgeInsetsMake(8.0, 12.0, 8.0, 12.0);
+    }
+    [button.heightAnchor constraintGreaterThanOrEqualToConstant:44.0].active = YES;
+    [self pp_addSellerPressMotionToButton:button];
     return button;
 }
 
@@ -997,7 +1253,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (NSString *)pp_sellerMetaText
 {
     NSMutableArray<NSString *> *parts = [NSMutableArray array];
-    NSString *sellerTitle = kLang(@"accessory_view_seller_title");
+    NSString *sellerTitle = [self pp_isUsedAccessory] ? kLang(@"accessory_view_seller_title") : kLang(@"accessory_view_store_badge");
     NSString *conditionText = [PetAccessory conditionTextForAccessory:self.accessAds];
     if (sellerTitle.length > 0) {
         [parts addObject:sellerTitle];
@@ -1008,9 +1264,30 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     return [parts componentsJoinedByString:@" • "];
 }
 
+- (NSString *)pp_sellerEyebrowText
+{
+    return [self pp_isUsedAccessory] ? kLang(@"accessory_view_seller_contact") : kLang(@"accessory_view_store_support");
+}
+
+- (NSString *)pp_sellerStatusBadgeText
+{
+    return [self pp_isUsedAccessory] ? kLang(@"accessory_view_private_seller") : kLang(@"accessory_view_store_badge");
+}
+
+- (void)pp_updateSellerStatusBadgeStyle
+{
+    BOOL isUsedAccessory = [self pp_isUsedAccessory];
+    UIColor *accent = isUsedAccessory ? AppPrimaryClr : [UIColor systemGreenColor];
+    self.sellerStatusBadgeLabel.text = [self pp_sellerStatusBadgeText];
+    self.sellerStatusBadgeLabel.textColor = accent;
+    self.sellerStatusBadgeLabel.backgroundColor = [accent colorWithAlphaComponent:0.11];
+    self.sellerStatusBadgeLabel.layer.borderWidth = 1.0;
+    [self.sellerStatusBadgeLabel pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
+}
+
 - (void)pp_updateSellerAvatar
 {
-    // For new accessories, show Pure Pets Store branding
+    // For new accessories, show first-party store branding.
     if (![self pp_isUsedAccessory]) {
         self.sellerAvatarImageView.image = [UIImage imageNamed:@"PPLogo"];
         self.sellerAvatarImageView.contentMode = UIViewContentModeScaleAspectFill;
@@ -1037,10 +1314,45 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)pp_updateSellerActions
 {
     BOOL isUsedAccessory = [self pp_isUsedAccessory];
-    self.supportActionButton.hidden = isUsedAccessory;
+
     self.chatActionButton.hidden = !isUsedAccessory;
+
     self.callActionButton.hidden = !isUsedAccessory;
     self.shareActionButton.hidden = NO;
+    self.supportActionButton.hidden = NO;
+
+    self.sellerActionsTopToChatConstraint.active = isUsedAccessory;
+    self.sellerActionsTopToIdentityConstraint.active = !isUsedAccessory;
+}
+
+- (void)pp_applySellerSemanticDirection
+{
+    UISemanticContentAttribute semantic = [Language semanticAttributeForCurrentLanguage];
+    self.sellerSectionView.semanticContentAttribute = semantic;
+    self.sellerAvatarRingView.semanticContentAttribute = semantic;
+    self.actionStackView.semanticContentAttribute = semantic;
+
+    NSArray<UIButton *> *buttons = @[
+        self.chatActionButton,
+        self.callActionButton,
+        self.shareActionButton,
+        self.supportActionButton
+    ];
+    for (UIButton *button in buttons) {
+        button.semanticContentAttribute = semantic;
+        button.titleLabel.textAlignment = NSTextAlignmentCenter;
+    }
+}
+
+- (void)pp_updateSellerAccessibility
+{
+    NSString *sellerName = self.sellerNameLabel.text.length > 0 ? self.sellerNameLabel.text : kLang(@"accessory_view_seller_title");
+    self.sellerAvatarImageView.accessibilityLabel = sellerName;
+    self.sellerStatusBadgeLabel.accessibilityLabel = self.sellerStatusBadgeLabel.text;
+    self.chatActionButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"Chat"), sellerName];
+    self.callActionButton.accessibilityLabel = [NSString stringWithFormat:@"%@ %@", kLang(@"Call"), sellerName];
+    self.shareActionButton.accessibilityLabel = kLang(@"Share");
+    self.supportActionButton.accessibilityLabel = kLang(@"Support");
 }
 
 - (void)pp_updateBottomBarVisibility
@@ -1081,10 +1393,11 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     
     NSString *ownerName;
     if (![self pp_isUsedAccessory]) {
-        ownerName = [Language isRTL] ? @"متجر بيور بتس" : @"Pure Pets Store";
+        ownerName = kLang(@"accessory_view_store_name");
     } else {
         ownerName = [self.ownerModel respondsToSelector:@selector(PPBestDisplayName)] ? [self.ownerModel PPBestDisplayName] : @"";
     }
+    self.sellerEyebrowLabel.text = [self pp_sellerEyebrowText];
     self.sellerNameLabel.text = ownerName.length > 0 ? ownerName : kLang(@"accessory_view_seller_pending");
     self.sellerSubtitleLabel.text = [self pp_sellerMetaText];
     self.categoryValueLabel.text = [self pp_categorySummary];
@@ -1095,9 +1408,13 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.descView.accessory = self.accessAds;
     
     [self pp_updateSellerAvatar];
+    [self pp_updateSellerStatusBadgeStyle];
     [self pp_updateSellerActions];
     [self pp_updateBottomBarVisibility];
+    [self pp_applySellerSemanticDirection];
+    [self pp_updateSellerAccessibility];
 
+    self.sellerEyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.sellerNameLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.sellerSubtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     self.categoryValueLabel.textAlignment = Language.alignmentForCurrentLanguage;
@@ -1497,6 +1814,56 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self pp_navBarSetRightIcon:@"heart" key:@"favButton" target:self action:@selector(toggleFavorite) tap:nil];
 }
 
+- (void)pp_updateSellerCardShadowPath
+{
+    if (CGRectIsEmpty(self.sellerSectionView.bounds)) {
+        return;
+    }
+    self.sellerSectionView.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.sellerSectionView.bounds
+                                   cornerRadius:kAVCardCornerRadius].CGPath;
+}
+
+- (void)pp_updateSellerBackgroundAppearance
+{
+    if (!self.sellerBackgroundGradientLayer || !self.sellerInnerSurfaceView) {
+        return;
+    }
+
+    self.sellerBackgroundGradientLayer.frame = self.sellerInnerSurfaceView.bounds;
+    self.sellerBackgroundGradientLayer.cornerRadius = kAVCardCornerRadius;
+    self.sellerBackgroundGradientLayer.colors = @[
+        (__bridge id)UIColor.clearColor.CGColor,
+        (__bridge id)UIColor.clearColor.CGColor
+    ];
+    self.sellerInnerSurfaceView.backgroundColor = AppForgroundColr;
+    [self.sellerInnerSurfaceView pp_setBorderColor:[AppPrimaryTextClr colorWithAlphaComponent:0.055]];
+}
+
+- (void)pp_animateSellerCardEntranceIfNeeded
+{
+    if (self.didAnimateSellerSection || !self.sellerSectionView || !self.view.window) {
+        return;
+    }
+    self.didAnimateSellerSection = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.sellerSectionView.alpha = 1.0;
+        self.sellerSectionView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.42
+                          delay:0.04
+         usingSpringWithDamping:0.84
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.sellerSectionView.alpha = 1.0;
+        self.sellerSectionView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
 
 - (void)viewDidLayoutSubviews
 {
@@ -1504,9 +1871,30 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self pp_updateBottomBarVisibility];
     self.heroHeightConstraint.constant = [self pp_heroHeight];
     self.heroGradientLayer.frame = self.heroContainerView.bounds;
+    [self pp_updateSellerCardShadowPath];
+    [self pp_updateSellerBackgroundAppearance];
+    [self pp_animateSellerCardEntranceIfNeeded];
+
+    // Position ambient glows off-screen like ViewerVC
+    CGFloat width = CGRectGetWidth(self.contentView.bounds);
+    CGFloat bottomY = MAX(100.0, CGRectGetHeight(self.contentView.bounds) - 336.0 + 110.0);
+    self.ambientGlowTopView.frame = CGRectMake(-132.0, -92.0, 280.0, 280.0);
+    self.ambientGlowBottomView.frame = CGRectMake(width - 336.0 + 138.0, bottomY, 336.0, 336.0);
+
     UICollectionViewFlowLayout *layout = (UICollectionViewFlowLayout *)self.accessoryCollectionView.collectionViewLayout;
     layout.itemSize = [self pp_suggestionItemSize];
     self.accessoryCollectionHeightConstraint.constant = [self pp_suggestionItemSize].height + 12.0;
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    BOOL dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithRed:0.81 green:0.22 blue:0.36 alpha:1.0];
+    UIColor *gold = [UIColor colorWithRed:0.77 green:0.60 blue:0.21 alpha:1.0];
+    self.ambientGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.10 : 0.075];
+    self.ambientGlowBottomView.backgroundColor = [gold colorWithAlphaComponent:dark ? 0.10 : 0.085];
+    [self pp_updateSellerBackgroundAppearance];
 }
 
 - (IBAction)shareAdBTN:(id)sender {
@@ -1569,6 +1957,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 {
     [super viewDidAppear:animated];
     [self.petsTitleView animatePillsIn];
+    [self pp_animateSellerCardEntranceIfNeeded];
     if (!self.didTrackViewInteraction) {
         self.didTrackViewInteraction = YES;
         [self trackAccessoryInteraction:PPItemInteractionTypeView];

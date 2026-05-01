@@ -12,14 +12,409 @@
 #import "Language.h"
 #import "GM.h"
 #import "PPModernAvatarRenderer.h"
+#import "ImagePicker.h"
 #import <FirebaseAuth/FirebaseAuth.h>
 #import <AVFoundation/AVFoundation.h>
 
 static NSString * const PPStoryProgressPulseAnimationKey = @"pp.story.progress.pulse";
 static NSString * const PPStoryProgressSlideAnimationKey = @"pp.story.progress.slide";
+static NSString * const PPStoryCaptionEntranceAnimationKey = @"pp.story.caption.entrance";
+static NSString * const PPStoryContentTransitionAnimationKey = @"pp.story.content.transition";
 static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 
+static CAMediaTimingFunction *PPPremiumEaseOut(void)
+{
+    return [CAMediaTimingFunction functionWithControlPoints:0.4f:0.0f:0.2f:1.0f];
+}
+
+static CAMediaTimingFunction *PPPremiumEaseInOut(void)
+{
+    return [CAMediaTimingFunction functionWithControlPoints:0.4f:0.0f:0.2f:1.0f];
+}
+
+static CAMediaTimingFunction *PPPremiumEaseIn(void)
+{
+    return [CAMediaTimingFunction functionWithControlPoints:0.4f:0.0f:0.6f:1.0f];
+}
+
+@interface PPStoryEditViewController : UIViewController <UITextViewDelegate, TOCropViewControllerDelegate, UIAdaptivePresentationControllerDelegate>
+@property (nonatomic, copy) void (^onSave)(NSString *caption, UIImage * _Nullable newImage, PPStoryEditViewController *editor);
+@property (nonatomic, copy) void (^onCancel)(void);
+- (instancetype)initWithStoryItem:(PPStoryItem *)item;
+- (void)pp_setSaving:(BOOL)saving;
+- (void)pp_showError:(NSString *)message;
+- (void)pp_markFinished;
+@end
+
+@interface PPStoryEditViewController ()
+@property (nonatomic, strong) PPStoryItem *item;
+@property (nonatomic, strong) UIImageView *previewImageView;
+@property (nonatomic, strong) UITextView *captionTextView;
+@property (nonatomic, strong) UILabel *placeholderLabel;
+@property (nonatomic, strong) UILabel *errorLabel;
+@property (nonatomic, strong) UIButton *saveButton;
+@property (nonatomic, strong) UIButton *changeMediaButton;
+@property (nonatomic, strong) ImagePicker *imagePicker;
+@property (nonatomic, strong, nullable) UIImage *selectedImage;
+@property (nonatomic, assign) BOOL isSaving;
+@property (nonatomic, assign) BOOL didFinish;
+@end
+
+@implementation PPStoryEditViewController
+
+- (instancetype)initWithStoryItem:(PPStoryItem *)item
+{
+    self = [super init];
+    if (self) {
+        _item = item;
+    }
+    return self;
+}
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    self.title = kLang(@"story_edit_title");
+    self.navigationItem.leftBarButtonItem =
+        [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:@"xmark"]
+                                         style:UIBarButtonItemStylePlain
+                                        target:self
+                                        action:@selector(pp_cancelTapped)];
+    self.navigationItem.leftBarButtonItem.tintColor = UIColor.labelColor;
+
+    UIButton *saveButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    saveButton.frame = CGRectMake(0, 0, 92.0, 36.0);
+    saveButton.layer.cornerRadius = 18.0;
+    saveButton.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    saveButton.titleLabel.font = [GM boldFontWithSize:14.0];
+    [saveButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [saveButton setImage:[UIImage imageNamed:@""] forState:UIControlStateNormal];
+    [saveButton addTarget:self action:@selector(pp_saveTapped) forControlEvents:UIControlEventTouchUpInside];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveButton];
+    self.saveButton = saveButton;
+
+    UIScrollView *scrollView = [[UIScrollView alloc] init];
+    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    [self.view addSubview:scrollView];
+
+    UIView *contentView = [[UIView alloc] init];
+    contentView.translatesAutoresizingMaskIntoConstraints = NO;
+    [scrollView addSubview:contentView];
+
+    UIView *previewCard = [[UIView alloc] init];
+    previewCard.translatesAutoresizingMaskIntoConstraints = NO;
+    previewCard.backgroundColor = UIColor.blackColor;
+    previewCard.layer.cornerRadius = 22.0;
+    previewCard.clipsToBounds = YES;
+    [contentView addSubview:previewCard];
+
+    UIImageView *preview = [[UIImageView alloc] init];
+    preview.translatesAutoresizingMaskIntoConstraints = NO;
+    preview.contentMode = UIViewContentModeScaleAspectFill;
+    preview.clipsToBounds = YES;
+    preview.backgroundColor = UIColor.blackColor;
+    [previewCard addSubview:preview];
+    self.previewImageView = preview;
+
+    UIButton *changeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    changeButton.translatesAutoresizingMaskIntoConstraints = NO;
+    changeButton.layer.cornerRadius = 18.0;
+    changeButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.55];
+    changeButton.tintColor = UIColor.whiteColor;
+    changeButton.titleLabel.font = [GM MidFontWithSize:13.0];
+    [changeButton setImage:[UIImage systemImageNamed:@"photo.on.rectangle.angled"] forState:UIControlStateNormal];
+    [changeButton setTitle:kLang(@"story_edit_change_media") forState:UIControlStateNormal];
+    [changeButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    changeButton.imageEdgeInsets = UIEdgeInsetsMake(0, -4, 0, 4);
+    [changeButton addTarget:self action:@selector(pp_changeMediaTapped) forControlEvents:UIControlEventTouchUpInside];
+    [previewCard addSubview:changeButton];
+    self.changeMediaButton = changeButton;
+
+    UIView *captionCard = [[UIView alloc] init];
+    captionCard.translatesAutoresizingMaskIntoConstraints = NO;
+    captionCard.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    captionCard.layer.cornerRadius = 18.0;
+    captionCard.layer.borderWidth = 1.0;
+    captionCard.layer.borderColor = [[UIColor separatorColor] colorWithAlphaComponent:0.35].CGColor;
+    [contentView addSubview:captionCard];
+
+    UITextView *captionTextView = [[UITextView alloc] init];
+    captionTextView.translatesAutoresizingMaskIntoConstraints = NO;
+    captionTextView.backgroundColor = UIColor.clearColor;
+    captionTextView.textColor = UIColor.labelColor;
+    captionTextView.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    captionTextView.font = [GM MidFontWithSize:15.0];
+    captionTextView.textContainerInset = UIEdgeInsetsMake(14, 12, 14, 12);
+    captionTextView.delegate = self;
+    captionTextView.textAlignment = [Language alignmentForCurrentLanguage];
+    captionTextView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    captionTextView.text = self.item.caption ?: @"";
+    [captionCard addSubview:captionTextView];
+    self.captionTextView = captionTextView;
+
+    UILabel *placeholder = [[UILabel alloc] init];
+    placeholder.translatesAutoresizingMaskIntoConstraints = NO;
+    placeholder.font = [GM MidFontWithSize:15.0];
+    placeholder.textColor = UIColor.placeholderTextColor;
+    placeholder.text = kLang(@"story_edit_caption_placeholder");
+    placeholder.textAlignment = [Language alignmentForCurrentLanguage];
+    placeholder.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [captionCard addSubview:placeholder];
+    self.placeholderLabel = placeholder;
+
+    UILabel *errorLabel = [[UILabel alloc] init];
+    errorLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    errorLabel.font = [GM MidFontWithSize:13.0];
+    errorLabel.textColor = UIColor.systemRedColor;
+    errorLabel.numberOfLines = 2;
+    errorLabel.hidden = YES;
+    errorLabel.textAlignment = [Language alignmentForCurrentLanguage];
+    errorLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [contentView addSubview:errorLabel];
+    self.errorLabel = errorLabel;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [scrollView.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor],
+
+        [contentView.leadingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.leadingAnchor],
+        [contentView.trailingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.trailingAnchor],
+        [contentView.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor],
+        [contentView.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor constant:-24.0],
+        [contentView.widthAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.widthAnchor],
+
+        [previewCard.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:20.0],
+        [previewCard.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-20.0],
+        [previewCard.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:18.0],
+        [previewCard.heightAnchor constraintEqualToAnchor:previewCard.widthAnchor multiplier:1.16],
+
+        [preview.leadingAnchor constraintEqualToAnchor:previewCard.leadingAnchor],
+        [preview.trailingAnchor constraintEqualToAnchor:previewCard.trailingAnchor],
+        [preview.topAnchor constraintEqualToAnchor:previewCard.topAnchor],
+        [preview.bottomAnchor constraintEqualToAnchor:previewCard.bottomAnchor],
+
+        [changeButton.trailingAnchor constraintEqualToAnchor:previewCard.trailingAnchor constant:-14.0],
+        [changeButton.bottomAnchor constraintEqualToAnchor:previewCard.bottomAnchor constant:-14.0],
+        [changeButton.heightAnchor constraintEqualToConstant:36.0],
+        [changeButton.widthAnchor constraintGreaterThanOrEqualToConstant:146.0],
+
+        [captionCard.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:20.0],
+        [captionCard.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-20.0],
+        [captionCard.topAnchor constraintEqualToAnchor:previewCard.bottomAnchor constant:18.0],
+        [captionCard.heightAnchor constraintEqualToConstant:128.0],
+
+        [captionTextView.leadingAnchor constraintEqualToAnchor:captionCard.leadingAnchor],
+        [captionTextView.trailingAnchor constraintEqualToAnchor:captionCard.trailingAnchor],
+        [captionTextView.topAnchor constraintEqualToAnchor:captionCard.topAnchor],
+        [captionTextView.bottomAnchor constraintEqualToAnchor:captionCard.bottomAnchor],
+
+        [placeholder.leadingAnchor constraintEqualToAnchor:captionCard.leadingAnchor constant:17.0],
+        [placeholder.trailingAnchor constraintEqualToAnchor:captionCard.trailingAnchor constant:-17.0],
+        [placeholder.topAnchor constraintEqualToAnchor:captionCard.topAnchor constant:21.0],
+
+        [errorLabel.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:24.0],
+        [errorLabel.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-24.0],
+        [errorLabel.topAnchor constraintEqualToAnchor:captionCard.bottomAnchor constant:10.0],
+        [errorLabel.bottomAnchor constraintLessThanOrEqualToAnchor:contentView.bottomAnchor]
+    ]];
+
+    [self pp_loadInitialPreview];
+    [self pp_updatePlaceholderVisibility];
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    self.navigationController.presentationController.delegate = self;
+}
+
+- (void)pp_loadInitialPreview
+{
+    UIImage *placeholder = [UIImage imageNamed:@"placeholder"] ?: [UIImage systemImageNamed:@"photo"];
+    if (self.item.isVideo) {
+        self.previewImageView.contentMode = UIViewContentModeCenter;
+        self.previewImageView.tintColor = [UIColor colorWithWhite:1.0 alpha:0.78];
+        self.previewImageView.image = [UIImage systemImageNamed:@"play.rectangle.fill"] ?: placeholder;
+        return;
+    }
+
+    [[PPImageLoaderManager shared] setImageOnImageView:self.previewImageView
+                                                    url:self.item.mediaURL.absoluteString
+                                            placeholder:placeholder
+                                        transitionStyle:PPImageTransitionStyleCrossDissolve
+                                             complation:nil];
+}
+
+- (void)pp_cancelTapped
+{
+    [self pp_markFinished];
+    __weak typeof(self) weakSelf = self;
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (weakSelf.onCancel) weakSelf.onCancel();
+    }];
+}
+
+- (void)pp_saveTapped
+{
+    if (self.isSaving || !self.onSave) {
+        return;
+    }
+    self.errorLabel.hidden = YES;
+    self.onSave(self.captionTextView.text ?: @"", self.selectedImage, self);
+}
+
+- (void)pp_changeMediaTapped
+{
+    if (self.isSaving) {
+        return;
+    }
+    self.imagePicker = [[ImagePicker alloc] initWithPresentingViewController:self];
+    __weak typeof(self) weakSelf = self;
+    [self.imagePicker showImageSourceSelection:^(UIImage * _Nullable image, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || error || ![image isKindOfClass:UIImage.class]) {
+            return;
+        }
+        [self pp_presentStoryCropperWithImage:image];
+    }];
+}
+
+- (void)pp_presentStoryCropperWithImage:(UIImage *)image
+{
+    TOCropViewController *cropVC = [[TOCropViewController alloc] initWithCroppingStyle:TOCropViewCroppingStyleDefault
+                                                                                 image:image];
+    cropVC.delegate = self;
+    cropVC.title = kLang(@"story_edit_crop_title");
+    cropVC.doneButtonTitle = kLang(@"Done");
+    cropVC.cancelButtonTitle = kLang(@"Cancel");
+    cropVC.resetButtonHidden = YES;
+    cropVC.aspectRatioPickerButtonHidden = NO;
+    cropVC.aspectRatioPreset = CGSizeMake(9.0, 16.0);
+    cropVC.aspectRatioLockEnabled = NO;
+    cropVC.modalPresentationStyle = UIModalPresentationFullScreen;
+    [self presentViewController:cropVC animated:YES completion:nil];
+}
+
+- (void)cropViewController:(TOCropViewController *)cropViewController
+            didCropToImage:(UIImage *)image
+                  withRect:(CGRect)cropRect
+                     angle:(NSInteger)angle
+{
+    (void)cropRect;
+    (void)angle;
+    self.selectedImage = image;
+    self.previewImageView.contentMode = UIViewContentModeScaleAspectFill;
+    [UIView transitionWithView:self.previewImageView
+                      duration:0.22
+                       options:UIViewAnimationOptionTransitionCrossDissolve
+                    animations:^{
+        self.previewImageView.image = image;
+    } completion:nil];
+    [cropViewController dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)cropViewController:(TOCropViewController *)cropViewController
+        didFinishCancelled:(BOOL)cancelled
+{
+    (void)cancelled;
+    [cropViewController dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)pp_setSaving:(BOOL)saving
+{
+    self.isSaving = saving;
+    self.captionTextView.editable = !saving;
+    self.changeMediaButton.enabled = !saving;
+    self.saveButton.enabled = !saving;
+    self.saveButton.alpha = saving ? 0.72 : 1.0;
+    [self.saveButton setTitle:kLang(saving ? @"story_edit_saving" : @"story_edit_save")
+                     forState:UIControlStateNormal];
+}
+
+- (void)pp_showError:(NSString *)message
+{
+    self.errorLabel.text = message.length ? message : kLang(@"story_edit_failed");
+    self.errorLabel.hidden = NO;
+}
+
+- (void)pp_markFinished
+{
+    self.didFinish = YES;
+}
+
+- (void)presentationControllerDidDismiss:(UIPresentationController *)presentationController
+{
+    (void)presentationController;
+    if (!self.didFinish && self.onCancel) {
+        self.onCancel();
+    }
+}
+
+- (BOOL)presentationControllerShouldDismiss:(UIPresentationController *)presentationController
+{
+    (void)presentationController;
+    return !self.isSaving;
+}
+
+- (void)textViewDidChange:(UITextView *)textView
+{
+    [self pp_updatePlaceholderVisibility];
+}
+
+- (BOOL)textView:(UITextView *)textView
+shouldChangeTextInRange:(NSRange)range
+ replacementText:(NSString *)text
+{
+    NSString *current = textView.text ?: @"";
+    NSString *next = [current stringByReplacingCharactersInRange:range withString:text ?: @""];
+    return next.length <= 500;
+}
+
+- (void)pp_updatePlaceholderVisibility
+{
+    NSString *caption = [self.captionTextView.text stringByTrimmingCharactersInSet:
+                         NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    self.placeholderLabel.hidden = caption.length > 0;
+}
+
+@end
+
 @interface PPStoryPlayerViewController () <UIGestureRecognizerDelegate>
+
+- (void)loadStory;
+- (void)showItem;
+- (void)nextItem;
+- (void)nextStory;
+- (void)pp_stopAllProgressAnimations;
+- (void)pp_stopCurrentPlaybackAndPreserveProgress:(BOOL)preserve;
+- (void)pp_dismissViewerAnimated:(BOOL)animated;
+- (void)pp_updateMuteButtonAppearance;
+- (void)pp_dismissButtonTapped;
+- (void)pp_muteButtonTapped;
+- (void)pp_editButtonTapped;
+- (void)handleTap:(UITapGestureRecognizer *)tap;
+- (void)pp_handleDismissPan:(UIPanGestureRecognizer *)pan;
+- (void)showImageItem:(PPStoryItem *)item;
+- (void)playVideoItem:(PPStoryItem *)item;
+- (void)pp_animateProgressContainerEntrance;
+- (void)pp_startPulseAnimationForProgressView:(UIProgressView *)progressView;
+- (void)pp_startSlideAnimationForProgressView:(UIProgressView *)progressView;
+- (void)pp_updateUserInfoForCurrentStory;
+- (void)pp_updateControlsForCurrentItem:(PPStoryItem *)item;
+- (NSTimeInterval)pp_safeDuration:(NSTimeInterval)duration fallback:(NSTimeInterval)fallback;
+- (NSString *)pp_itemKeyForCurrentPositionWithItem:(PPStoryItem *)item;
+- (void)pp_handleImageTick:(CADisplayLink *)displayLink;
+- (void)pp_configureProgressBarsForCurrentStory;
+- (PPStory * _Nullable)pp_currentStory;
+- (PPStoryItem * _Nullable)pp_currentStoryItem;
+- (BOOL)pp_canEditCurrentStory;
+- (void)pp_replaceCurrentItemWithItem:(PPStoryItem *)updatedItem;
+- (void)pp_commitStoryEditWithCaption:(NSString *)caption newImage:(UIImage * _Nullable)newImage editor:(id)editor;
+
 @property (nonatomic, strong) NSArray<PPStory *> *stories;
 @property (nonatomic, assign) NSInteger currentStoryIndex;
 @property (nonatomic, assign) NSInteger currentItemIndex;
@@ -31,6 +426,8 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 @property (nonatomic, strong) NSTimer *timer;
 @property (nonatomic, strong) UIButton *dismissButton;
 @property (nonatomic, strong) UIButton *muteButton;
+@property (nonatomic, strong) UIButton *editButton;
+@property (nonatomic, strong) UILabel *captionLabel;
 @property (nonatomic, strong) UIPanGestureRecognizer *dismissPanGesture;
 @property (nonatomic, strong) NSMutableDictionary<NSString *, NSValue *> *videoResumeTimesByItemKey;
 @property (nonatomic, strong, nullable) AVPlayerItem *currentPlayerItem;
@@ -51,6 +448,7 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 @property (nonatomic, strong) UILabel *userNameHeaderLabel;
 @property (nonatomic, strong) UILabel *storyTimeLabel;
 @property (nonatomic, assign) NSTimeInterval pausedImageElapsed;
+@property (nonatomic, assign) BOOL isCommittingStoryEdit;
 @end
 
 @implementation PPStoryPlayerViewController
@@ -179,6 +577,30 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     self.muteButton = muteButton;
     [self pp_updateMuteButtonAppearance];
 
+    UIButton *editButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    editButton.translatesAutoresizingMaskIntoConstraints = NO;
+    editButton.tintColor = UIColor.whiteColor;
+    editButton.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.42];
+    editButton.layer.cornerRadius = 18.0;
+    [editButton setImage:[UIImage systemImageNamed:@"pencil"] forState:UIControlStateNormal];
+    [editButton addTarget:self action:@selector(pp_editButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    editButton.hidden = YES;
+    [self.view addSubview:editButton];
+    self.editButton = editButton;
+
+    UILabel *captionLabel = [[UILabel alloc] init];
+    captionLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    captionLabel.font = [UIFont systemFontOfSize:16.0 weight:UIFontWeightMedium];
+    captionLabel.textColor = UIColor.whiteColor;
+    captionLabel.numberOfLines = 3;
+    captionLabel.textAlignment = NSTextAlignmentCenter;
+    captionLabel.shadowColor = [[UIColor blackColor] colorWithAlphaComponent:0.55];
+    captionLabel.shadowOffset = CGSizeMake(0.0, 1.0);
+    captionLabel.hidden = YES;
+    captionLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view addSubview:captionLabel];
+    self.captionLabel = captionLabel;
+
     [NSLayoutConstraint activateConstraints:@[
         [avatar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
         [avatar.topAnchor constraintEqualToAnchor:self.progressContainer.bottomAnchor constant:10.0],
@@ -197,10 +619,19 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
         [dismissButton.widthAnchor constraintEqualToConstant:36.0],
         [dismissButton.heightAnchor constraintEqualToConstant:36.0],
 
-        [muteButton.trailingAnchor constraintEqualToAnchor:dismissButton.leadingAnchor constant:-8.0],
+        [editButton.trailingAnchor constraintEqualToAnchor:dismissButton.leadingAnchor constant:-8.0],
+        [editButton.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
+        [editButton.widthAnchor constraintEqualToConstant:36.0],
+        [editButton.heightAnchor constraintEqualToConstant:36.0],
+
+        [muteButton.trailingAnchor constraintEqualToAnchor:editButton.leadingAnchor constant:-8.0],
         [muteButton.centerYAnchor constraintEqualToAnchor:avatar.centerYAnchor],
         [muteButton.widthAnchor constraintEqualToConstant:36.0],
-        [muteButton.heightAnchor constraintEqualToConstant:36.0]
+        [muteButton.heightAnchor constraintEqualToConstant:36.0],
+
+        [captionLabel.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:28.0],
+        [captionLabel.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-28.0],
+        [captionLabel.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-26.0]
     ]];
 
     [nameLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
@@ -214,12 +645,14 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self
                                                                            action:@selector(handleTap:)];
     tap.cancelsTouchesInView = NO;
+    tap.delegate = self;
     [self.view addGestureRecognizer:tap];
 
     UILongPressGestureRecognizer *longPress =
         [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleLongPress:)];
     longPress.minimumPressDuration = 0.25;
     longPress.cancelsTouchesInView = NO;
+    longPress.delegate = self;
     [self.view addGestureRecognizer:longPress];
 
     self.dismissPanGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleDismissPan:)];
@@ -306,6 +739,7 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     }
 
     PPStoryItem *item = story.items[self.currentItemIndex];
+    [self pp_updateControlsForCurrentItem:item];
     if (item.isVideo) {
         [self playVideoItem:item];
     } else {
@@ -527,14 +961,20 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
             self.displayLink = nil;
         }
 
-        [UIView animateWithDuration:0.15 animations:^{
+        [UIView animateWithDuration:0.28
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
             self.progressContainer.alpha = 0.0;
             self.userAvatarView.alpha = 0.0;
             self.userNameHeaderLabel.alpha = 0.0;
             self.storyTimeLabel.alpha = 0.0;
             self.dismissButton.alpha = 0.0;
             self.muteButton.alpha = 0.0;
-        }];
+            self.editButton.alpha = 0.0;
+            self.captionLabel.alpha = 0.0;
+            self.imageView.transform = CGAffineTransformMakeScale(0.97, 0.97);
+        } completion:nil];
     }
 
     else if (gesture.state == UIGestureRecognizerStateEnded ||
@@ -556,106 +996,23 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
                                    forMode:NSRunLoopCommonModes];
         }
 
-        [UIView animateWithDuration:0.15 animations:^{
+        [UIView animateWithDuration:0.32
+                              delay:0.0
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
             self.progressContainer.alpha = 1.0;
             self.userAvatarView.alpha = 1.0;
             self.userNameHeaderLabel.alpha = 1.0;
             self.storyTimeLabel.alpha = 1.0;
             self.dismissButton.alpha = 1.0;
             self.muteButton.alpha = 1.0;
-        }];
+            self.editButton.alpha = 1.0;
+            self.captionLabel.alpha = 1.0;
+            self.imageView.transform = CGAffineTransformIdentity;
+        } completion:nil];
     }
-}
-
-
-#pragma mark - Playback Lifecycle
-
-- (void)pp_stopCurrentPlaybackAndPreserveProgress:(BOOL)preserveProgress
-{
-    if (preserveProgress) {
-        [self pp_storeCurrentVideoProgressIfNeeded];
-    }
-
-    [self.timer invalidate];
-    self.timer = nil;
-    [self.player pause];
-    if (self.playerTimeObserver) {
-        [self.player removeTimeObserver:self.playerTimeObserver];
-        self.playerTimeObserver = nil;
-    }
-
-    if (self.displayLink) {
-        [self.displayLink invalidate];
-        self.displayLink = nil;
-    }
-    [self pp_removeCurrentPlayerItemObservers];
-    self.hasStartedCurrentVideoPlayback = NO;
-    self.currentVideoFallbackDuration = 0.0;
-    self.currentVideoItemKey = nil;
-}
-
-- (void)pp_storeCurrentVideoProgressIfNeeded
-{
-    if (self.currentVideoItemKey.length == 0 || !self.player.currentItem) {
-        return;
-    }
-
-    CMTime currentTime = self.player.currentTime;
-    NSTimeInterval seconds = CMTimeGetSeconds(currentTime);
-    if (!isfinite(seconds) || seconds <= 0.1) {
-        [self.videoResumeTimesByItemKey removeObjectForKey:self.currentVideoItemKey];
-        return;
-    }
-
-    self.videoResumeTimesByItemKey[self.currentVideoItemKey] = [NSValue valueWithCMTime:currentTime];
-}
-
-- (void)pp_removeCurrentPlayerItemObservers
-{
-    if (!self.currentPlayerItem) {
-        return;
-    }
-
-    @try {
-        [self.currentPlayerItem removeObserver:self
-                                    forKeyPath:@"status"
-                                       context:PPStoryPlayerItemStatusContext];
-    } @catch (__unused NSException *exception) {
-    }
-
-    [[NSNotificationCenter defaultCenter] removeObserver:self
-                                                    name:AVPlayerItemDidPlayToEndTimeNotification
-                                                  object:self.currentPlayerItem];
-    self.currentPlayerItem = nil;
-}
-
-- (CMTime)pp_resumeTimeForCurrentVideoItemWithDuration:(NSTimeInterval)duration
-{
-    if (self.currentVideoItemKey.length == 0) {
-        return kCMTimeZero;
-    }
-
-    NSValue *value = self.videoResumeTimesByItemKey[self.currentVideoItemKey];
-    if (![value isKindOfClass:NSValue.class]) {
-        return kCMTimeZero;
-    }
-
-    CMTime time = value.CMTimeValue;
-    if (!CMTIME_IS_NUMERIC(time)) {
-        return kCMTimeZero;
-    }
-
-    NSTimeInterval seconds = CMTimeGetSeconds(time);
-    if (!isfinite(seconds) || seconds <= 0.1) {
-        return kCMTimeZero;
-    }
-
-    if (duration > 0.4 && seconds >= duration - 0.2) {
-        [self.videoResumeTimesByItemKey removeObjectForKey:self.currentVideoItemKey];
-        return kCMTimeZero;
-    }
-
-    return time;
 }
 
 #pragma mark - Progress Animations
@@ -672,7 +1029,7 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     pulse.duration = 0.55;
     pulse.autoreverses = YES;
     pulse.repeatCount = HUGE_VALF;
-    pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    pulse.timingFunction = PPPremiumEaseInOut();
     [progressView.layer addAnimation:pulse forKey:PPStoryProgressPulseAnimationKey];
 }
 
@@ -683,11 +1040,11 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     }
 
     CABasicAnimation *slide = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    slide.fromValue = @(-4.0);
+    slide.fromValue = @(-3.0);
     slide.toValue = @(0.0);
-    slide.duration = 0.22;
+    slide.duration = 0.30;
     slide.repeatCount = 1;
-    slide.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut];
+    slide.timingFunction = PPPremiumEaseOut();
     [progressView.layer addAnimation:slide forKey:PPStoryProgressSlideAnimationKey];
 }
 
@@ -709,9 +1066,9 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 - (void)pp_animateProgressContainerEntrance
 {
     self.progressContainer.alpha = 0.0;
-    self.progressContainer.transform = CGAffineTransformMakeTranslation(18.0, -4.0);
-    [UIView animateWithDuration:0.24
-                          delay:0.0
+    self.progressContainer.transform = CGAffineTransformMakeTranslation(12.0, -6.0);
+    [UIView animateWithDuration:0.38
+                          delay:0.06
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
         self.progressContainer.alpha = 1.0;
@@ -767,6 +1124,106 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     [self pp_updateMuteButtonAppearance];
 }
 
+- (void)pp_editButtonTapped
+{
+    if (self.isCommittingStoryEdit) {
+        return;
+    }
+    PPStory *story = [self pp_currentStory];
+    PPStoryItem *item = [self pp_currentStoryItem];
+    if (!story || !item || ![self pp_canEditCurrentStory]) {
+        return;
+    }
+
+    [self pp_stopCurrentPlaybackAndPreserveProgress:YES];
+
+    PPStoryEditViewController *editor = [[PPStoryEditViewController alloc] initWithStoryItem:item];
+    __weak typeof(self) weakSelf = self;
+    editor.onCancel = ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self showItem];
+    };
+    editor.onSave = ^(NSString *caption, UIImage * _Nullable newImage, PPStoryEditViewController *editorVC) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        [self pp_commitStoryEditWithCaption:caption newImage:newImage editor:editorVC];
+    };
+
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:editor];
+    nav.modalPresentationStyle = UIModalPresentationPageSheet;
+    if (@available(iOS 15.0, *)) {
+        nav.sheetPresentationController.detents = @[
+            [UISheetPresentationControllerDetent mediumDetent],
+            [UISheetPresentationControllerDetent largeDetent]
+        ];
+        nav.sheetPresentationController.prefersGrabberVisible = YES;
+    }
+    [self presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)pp_commitStoryEditWithCaption:(NSString *)caption
+                              newImage:(UIImage * _Nullable)newImage
+                                editor:(PPStoryEditViewController *)editor
+{
+    PPStory *story = [self pp_currentStory];
+    PPStoryItem *item = [self pp_currentStoryItem];
+    if (!story || !item || ![self pp_canEditCurrentStory]) {
+        [editor pp_showError:kLang(@"story_edit_not_allowed")];
+        return;
+    }
+
+    PPStoryItem *previousItem = [PPStoryItem new];
+    previousItem.mediaURL = item.mediaURL;
+    previousItem.isVideo = item.isVideo;
+    previousItem.duration = item.duration;
+    previousItem.caption = item.caption;
+
+    NSString *trimmedCaption = [caption stringByTrimmingCharactersInSet:
+                                NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+    self.isCommittingStoryEdit = YES;
+    [editor pp_setSaving:YES];
+
+    item.caption = trimmedCaption;
+    if ([newImage isKindOfClass:UIImage.class]) {
+        item.isVideo = NO;
+        item.duration = 5.0;
+        self.playerLayer.player = nil;
+        self.imageView.hidden = NO;
+        self.imageView.image = newImage;
+    }
+    [self pp_updateControlsForCurrentItem:item];
+
+    __weak typeof(self) weakSelf = self;
+    [[PPStoriesManager shared] updateStoryItemForCurrentUserWithStoryID:story.userID
+                                                              itemIndex:self.currentItemIndex
+                                                                caption:trimmedCaption
+                                                               newImage:newImage
+                                                             completion:^(PPStoryItem * _Nullable updatedItem, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        self.isCommittingStoryEdit = NO;
+        [editor pp_setSaving:NO];
+
+        if (error || !updatedItem) {
+            [self pp_replaceCurrentItemWithItem:previousItem];
+            [self pp_updateControlsForCurrentItem:previousItem];
+            [editor pp_showError:kLang(@"story_edit_failed")];
+            return;
+        }
+
+        [self pp_replaceCurrentItemWithItem:updatedItem];
+        if (self.onStoryUpdated) {
+            self.onStoryUpdated(story);
+        }
+        [editor pp_markFinished];
+        [editor dismissViewControllerAnimated:YES completion:^{
+            [self showItem];
+        }];
+    }];
+}
+
 - (void)pp_updateMuteButtonAppearance
 {
     NSString *imageName = self.isPlayerMuted ? @"speaker.slash.fill" : @"speaker.wave.2.fill";
@@ -803,7 +1260,7 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 
         if (shouldDismiss) {
             [self pp_stopCurrentPlaybackAndPreserveProgress:NO];
-            [UIView animateWithDuration:0.20
+            [UIView animateWithDuration:0.26
                                   delay:0.0
                                 options:UIViewAnimationOptionCurveEaseIn
                              animations:^{
@@ -814,9 +1271,9 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
                 [self dismissViewControllerAnimated:NO completion:nil];
             }];
         } else {
-            [UIView animateWithDuration:0.24
+            [UIView animateWithDuration:0.32
                                   delay:0.0
-                 usingSpringWithDamping:0.86
+                 usingSpringWithDamping:0.82
                   initialSpringVelocity:0.0
                                 options:UIViewAnimationOptionCurveEaseOut
                              animations:^{
@@ -839,7 +1296,42 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
     return YES;
 }
 
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer
+       shouldReceiveTouch:(UITouch *)touch
+{
+    UIView *view = touch.view;
+    while (view && view != self.view) {
+        if ([view isKindOfClass:UIControl.class]) {
+            return NO;
+        }
+        view = view.superview;
+    }
+    return YES;
+}
+
 #pragma mark - Player Events
+
+- (void)pp_stopCurrentPlaybackAndPreserveProgress:(BOOL)preserve
+{
+    [self.timer invalidate];
+    self.timer = nil;
+
+    if (self.displayLink) {
+        [self.displayLink invalidate];
+        self.displayLink = nil;
+    }
+
+    if (self.currentPlayerItem) {
+        if (preserve && self.currentVideoItemKey.length > 0) {
+            CMTime currentTime = self.currentPlayerItem.currentTime;
+            if (CMTIME_IS_VALID(currentTime) && CMTimeGetSeconds(currentTime) > 0.1) {
+                self.videoResumeTimesByItemKey[self.currentVideoItemKey] =
+                    [NSValue valueWithCMTime:currentTime];
+            }
+        }
+        [self.player pause];
+    }
+}
 
 - (void)pp_playerItemDidFinish:(NSNotification *)notification
 {
@@ -868,6 +1360,83 @@ static void *PPStoryPlayerItemStatusContext = &PPStoryPlayerItemStatusContext;
 }
 
 #pragma mark - Helpers
+
+- (PPStory * _Nullable)pp_currentStory
+{
+    if (self.currentStoryIndex < 0 || self.currentStoryIndex >= (NSInteger)self.stories.count) {
+        return nil;
+    }
+    return self.stories[self.currentStoryIndex];
+}
+
+- (PPStoryItem * _Nullable)pp_currentStoryItem
+{
+    PPStory *story = [self pp_currentStory];
+    if (!story || self.currentItemIndex < 0 || self.currentItemIndex >= (NSInteger)story.items.count) {
+        return nil;
+    }
+    return story.items[self.currentItemIndex];
+}
+
+- (NSString *)pp_currentUserID
+{
+    NSString *uid = [FIRAuth auth].currentUser.uid ?: @"";
+    return [uid stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+}
+
+- (BOOL)pp_canEditCurrentStory
+{
+    PPStory *story = [self pp_currentStory];
+    NSString *currentUserID = [self pp_currentUserID];
+    return story.userID.length > 0 &&
+           currentUserID.length > 0 &&
+           [story.userID isEqualToString:currentUserID];
+}
+
+- (void)pp_updateControlsForCurrentItem:(PPStoryItem *)item
+{
+    self.editButton.hidden = ![self pp_canEditCurrentStory];
+
+    NSString *caption = [item.caption stringByTrimmingCharactersInSet:
+                         NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+    BOOL showCaption = caption.length > 0;
+
+    if (showCaption) {
+        self.captionLabel.text = caption;
+        self.captionLabel.textAlignment = [Language alignmentForCurrentLanguage];
+        self.captionLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+        self.captionLabel.hidden = NO;
+
+        [self.captionLabel.layer removeAnimationForKey:PPStoryCaptionEntranceAnimationKey];
+        self.captionLabel.alpha = 0.0;
+        self.captionLabel.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+
+        [UIView animateWithDuration:0.42
+                              delay:0.12
+             usingSpringWithDamping:0.88
+              initialSpringVelocity:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.captionLabel.alpha = 1.0;
+            self.captionLabel.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    } else {
+        self.captionLabel.alpha = 0.0;
+        self.captionLabel.hidden = YES;
+    }
+}
+
+- (void)pp_replaceCurrentItemWithItem:(PPStoryItem *)updatedItem
+{
+    PPStory *story = [self pp_currentStory];
+    if (!story || !updatedItem || self.currentItemIndex < 0 || self.currentItemIndex >= (NSInteger)story.items.count) {
+        return;
+    }
+
+    NSMutableArray<PPStoryItem *> *items = [story.items mutableCopy] ?: [NSMutableArray array];
+    items[self.currentItemIndex] = updatedItem;
+    story.items = items.copy;
+}
 
 - (NSTimeInterval)pp_safeDuration:(NSTimeInterval)duration fallback:(NSTimeInterval)fallback
 {

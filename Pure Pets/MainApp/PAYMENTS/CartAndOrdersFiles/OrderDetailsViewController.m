@@ -2562,7 +2562,15 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.prefersBackToMainScreen = [self pp_isPushedFromPaymentSelectionViewController];
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"order_details_title") showBack:NO];
 
-    NSString *leftButtonImageName = self.prefersBackToMainScreen ? @"house.fill" : PPChevronName;
+    BOOL isPresentedModally = self.presentingViewController != nil;
+    NSString *leftButtonImageName;
+    if (isPresentedModally) {
+        leftButtonImageName = @"xmark";
+    } else if (self.prefersBackToMainScreen) {
+        leftButtonImageName = @"house.fill";
+    } else {
+        leftButtonImageName = PPChevronName;
+    }
     if (@available(iOS 13.0, *)) {
         UIImage *backImage = [UIImage systemImageNamed:leftButtonImageName];
         self.navigationItem.leftBarButtonItem =
@@ -4894,12 +4902,15 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)onBack:(UIButton *)sender
 {
     (void)sender;
-    if (!self.prefersBackToMainScreen) {
-        [self.navigationController popViewControllerAnimated:YES];
+    if (self.presentingViewController) {
+        [self dismissViewControllerAnimated:YES completion:nil];
         return;
     }
-
-    [self pp_showHomeViewControllerAnimated:YES];
+    if (self.prefersBackToMainScreen) {
+        [self pp_showHomeViewControllerAnimated:YES];
+        return;
+    }
+    [self.navigationController popViewControllerAnimated:YES];
 }
 
 - (void)onBackBarButtonTapped

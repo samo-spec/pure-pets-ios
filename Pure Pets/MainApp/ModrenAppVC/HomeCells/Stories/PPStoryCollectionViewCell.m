@@ -361,9 +361,9 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
     self.contentView.transform = CGAffineTransformMakeScale(0.0, 0.0);
     self.contentView.alpha = 0.0;
 
-    [UIView animateWithDuration:0.5
+    [UIView animateWithDuration:0.40
                           delay:delay
-         usingSpringWithDamping:0.72
+         usingSpringWithDamping:0.78
           initialSpringVelocity:0.0
                         options:UIViewAnimationOptionCurveEaseOut
                      animations:^{
@@ -376,18 +376,18 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [super touchesBegan:touches withEvent:event];
-    [UIView animateWithDuration:0.15 delay:0.0
-         usingSpringWithDamping:0.9 initialSpringVelocity:0.0
+    [UIView animateWithDuration:0.12 delay:0.0
+         usingSpringWithDamping:0.94 initialSpringVelocity:0.0
                         options:UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.contentView.transform = CGAffineTransformMakeScale(0.92, 0.92);
+        self.contentView.transform = CGAffineTransformMakeScale(0.95, 0.95);
     } completion:nil];
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [super touchesEnded:touches withEvent:event];
-    [UIView animateWithDuration:0.35 delay:0.0
-         usingSpringWithDamping:0.6 initialSpringVelocity:0.0
+    [UIView animateWithDuration:0.28 delay:0.0
+         usingSpringWithDamping:0.72 initialSpringVelocity:0.0
                         options:UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.contentView.transform = CGAffineTransformIdentity;
@@ -396,8 +396,8 @@ static NSString *const kRingRotationKey    = @"pp_ringRotation";
 
 - (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [super touchesCancelled:touches withEvent:event];
-    [UIView animateWithDuration:0.3 delay:0.0
-         usingSpringWithDamping:0.7 initialSpringVelocity:0.0
+    [UIView animateWithDuration:0.24 delay:0.0
+         usingSpringWithDamping:0.76 initialSpringVelocity:0.0
                         options:UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         self.contentView.transform = CGAffineTransformIdentity;

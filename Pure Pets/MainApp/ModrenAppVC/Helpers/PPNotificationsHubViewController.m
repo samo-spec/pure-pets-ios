@@ -16,7 +16,7 @@
 @import FirebaseFirestore;
 @import UserNotifications;
 
-static CGFloat const kPPHubTopBarHeight = 44.0;
+static CGFloat const kPPHubTopBarHeight = 46.0;
 static CGFloat const kPPHubActionButtonSize = 44.0;
 
 static NSString *PPHubTrimmedString(id value)
@@ -82,7 +82,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
 @interface PPHubTopTabsView : UIView
 @property (nonatomic, strong) UIView *surfaceView;
-@property (nonatomic, strong) UIView *contentClipView;
+@property (nonatomic, strong) UIButton *contentClipView;
 @property (nonatomic, strong) UIView *selectionIndicator;
 @property (nonatomic, strong) NSArray<UIButton *> *tabButtons;
 @property (nonatomic, strong) NSLayoutConstraint *indicatorLeadingConstraint;
@@ -104,12 +104,11 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 
     _surfaceView = [[UIView alloc] initWithFrame:CGRectZero];
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.82 : 0.95];
+    _surfaceView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0 : 0];
     _surfaceView.layer.cornerRadius = 28.0;
     _surfaceView.layer.masksToBounds = NO;
-    _surfaceView.layer.borderWidth = 1.0;
-    [_surfaceView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
-    [_surfaceView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.20]];
+    _surfaceView.layer.borderWidth = 0.0;
+     [_surfaceView pp_setShadowColor:[UIColor.blackColor colorWithAlphaComponent:0.20]];
     _surfaceView.layer.shadowOpacity = 0.12;
     _surfaceView.layer.shadowRadius = 14.0;
     _surfaceView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
@@ -119,11 +118,10 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     [self addSubview:_surfaceView];
 
     // Content clip view — clips indicator within rounded corners while surface keeps shadow
-    _contentClipView = [[UIView alloc] initWithFrame:CGRectZero];
+    _contentClipView =   [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
     _contentClipView.translatesAutoresizingMaskIntoConstraints = NO;
     _contentClipView.backgroundColor = UIColor.clearColor;
-    _contentClipView.layer.cornerRadius = 28.0;
-    _contentClipView.layer.masksToBounds = YES;
+     _contentClipView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         _contentClipView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -196,8 +194,8 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
         [self.contentClipView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor],
 
         self.indicatorLeadingConstraint,
-        [self.selectionIndicator.topAnchor constraintEqualToAnchor:self.contentClipView.topAnchor constant:5.0],
-        [self.selectionIndicator.bottomAnchor constraintEqualToAnchor:self.contentClipView.bottomAnchor constant:-5.0],
+        [self.selectionIndicator.topAnchor constraintEqualToAnchor:self.contentClipView.topAnchor constant:2.0],
+        [self.selectionIndicator.bottomAnchor constraintEqualToAnchor:self.contentClipView.bottomAnchor constant:-2.0],
         self.indicatorWidthConstraint,
 
         [stackView.topAnchor constraintEqualToAnchor:self.contentClipView.topAnchor],
@@ -692,7 +690,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super viewDidLoad];
 
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBackgroundClrDarker;// PPBackgroundColorForIOS26(AppBackgroundClr);
     self.selectedIndex = 0;
 
     self.chatsVC = [UserChatsViewController new];
@@ -732,7 +730,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
     self.backgroundTopGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundTopGlowView.bounds) * 0.5;
     self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
 
-    CGFloat chromeWidth = floor(width * 0.80);
+    CGFloat chromeWidth = floor(width * 0.90);
     self.topChromeContainerView.frame = CGRectMake(0.0, 0.0, chromeWidth, kPPHubTopBarHeight);
     self.actionButton.frame = CGRectMake(0.0, 0.0, kPPHubActionButtonSize, kPPHubActionButtonSize);
     [self pp_applyNavigationItems];
@@ -841,20 +839,20 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 - (void)pp_applyNavigationItems
 {
     if (!self.topChromeContainerView || !self.actionButton) return;
-
-    UIBarButtonItem *tabsItem = [[UIBarButtonItem alloc] initWithCustomView:self.topChromeContainerView];
+    self.navigationItem.titleView = self.topChromeContainerView;
+   /// UIBarButtonItem *tabsItem = [[UIBarButtonItem alloc] initWithCustomView:self.topChromeContainerView];
       
-    UIBarButtonItem *actionItem = [[UIBarButtonItem alloc] initWithCustomView:self.actionButton];
+    //UIBarButtonItem *actionItem = [[UIBarButtonItem alloc] initWithCustomView:self.actionButton];
 
     if(!Language.isRTL)
     {
-        self.navigationItem.rightBarButtonItem = tabsItem;
-        self.navigationItem.leftBarButtonItem = actionItem;
+       // self.navigationItem.rightBarButtonItem = tabsItem;
+       // self.navigationItem.leftBarButtonItem = actionItem;
     }
     else
     {
-        self.navigationItem.leftBarButtonItem = tabsItem;
-        self.navigationItem.rightBarButtonItem = actionItem;
+       // self.navigationItem.leftBarButtonItem = tabsItem;
+        
     }
 }
 

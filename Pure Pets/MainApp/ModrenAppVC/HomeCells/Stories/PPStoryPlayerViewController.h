@@ -10,5 +10,6 @@
 #pragma mark - Story Playback
 
 @interface PPStoryPlayerViewController : UIViewController
+@property (nonatomic, copy, nullable) void (^onStoryUpdated)(PPStory *story);
 - (instancetype)initWithStories:(NSArray<PPStory *> *)stories startIndex:(NSInteger)index;
 @end

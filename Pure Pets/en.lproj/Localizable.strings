@@ -1867,6 +1867,14 @@
 "story_unavailable" = "Story is unavailable.";
 "story_uploading" = "Uploading story...";
 "story_upload_failed" = "Failed to upload story.";
+"story_edit_title" = "Edit Story";
+"story_edit_save" = "Save";
+"story_edit_saving" = "Saving...";
+"story_edit_change_media" = "Change media";
+"story_edit_caption_placeholder" = "Add a caption";
+"story_edit_crop_title" = "Move and Crop";
+"story_edit_failed" = "Could not update story.";
+"story_edit_not_allowed" = "You can edit only your own stories.";
 "your_story" = "Your story";
 "chat_stories_title" = "Stories";
 "auth_register_required_title" = "Please Register";
@@ -1958,6 +1966,11 @@
 "accessory_view_details_title" = "Accessory details";
 "accessory_view_seller_title" = "Seller";
 "accessory_view_seller_pending" = "Loading seller";
+"accessory_view_store_name" = "Pure Pets Store";
+"accessory_view_store_badge" = "Official store";
+"accessory_view_private_seller" = "Private seller";
+"accessory_view_seller_contact" = "Seller contact";
+"accessory_view_store_support" = "Store support";
 "accessory_view_suggestions_subtitle" = "More picks from related accessories.";
 "accessory_view_empty_suggestions" = "More accessory suggestions will appear here soon.";
 "service_view_contact_loading" = "Contact data is still loading. Please try again.";

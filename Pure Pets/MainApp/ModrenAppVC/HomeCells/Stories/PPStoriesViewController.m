@@ -51,17 +51,19 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     _glassBackdrop.translatesAutoresizingMaskIntoConstraints = NO;
     _glassBackdrop.layer.cornerRadius = 24.0;
     _glassBackdrop.layer.masksToBounds = YES;
+    _glassBackdrop.clipsToBounds = YES;
     _glassBackdrop.layer.borderWidth = 1.0;
     [_glassBackdrop pp_setBorderColor:[AppForgroundColr colorWithAlphaComponent:0.18]];
     [_glassBackdrop pp_setShadowColor:[AppForgroundColr colorWithAlphaComponent:0.10]];
-    _glassBackdrop.clipsToBounds = NO;
-    [self.view addSubview:_glassBackdrop];
+     [self.view addSubview:_glassBackdrop];
 
     // Tinted overlay inside the glass for AppForgroundColr warmth
     UIView *tintOverlay = [UIView new];
     tintOverlay.translatesAutoresizingMaskIntoConstraints = NO;
-    tintOverlay.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.06];
+    tintOverlay.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.06];
     tintOverlay.userInteractionEnabled = NO;
+    tintOverlay.layer.cornerRadius = 24.0;
+    tintOverlay.clipsToBounds = YES;
     [_glassBackdrop.contentView addSubview:tintOverlay];
     [NSLayoutConstraint activateConstraints:@[
         [tintOverlay.topAnchor constraintEqualToAnchor:_glassBackdrop.contentView.topAnchor],
@@ -227,6 +229,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
             if (playableStories.count > 0) {
                 PPStoryPlayerViewController *player =
                     [[PPStoryPlayerViewController alloc] initWithStories:playableStories startIndex:0];
+                [self pp_configureStoryPlayerForOptimisticUpdates:player];
                 player.modalPresentationStyle = UIModalPresentationFullScreen;
                 UIViewController *presenter = self.parentViewController ?: self;
                 if (!presenter.presentedViewController) {
@@ -265,6 +268,7 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
 
     PPStoryPlayerViewController *player =
         [[PPStoryPlayerViewController alloc] initWithStories:playableStories startIndex:startIndex];
+    [self pp_configureStoryPlayerForOptimisticUpdates:player];
     player.modalPresentationStyle = UIModalPresentationFullScreen;
 
     UIViewController *presenter = self.parentViewController ?: self;
@@ -379,6 +383,20 @@ static const CGFloat PPStoriesTitleBottomSpacing = 4.0;
     }
     [all addObjectsFromArray:self.stories ?: @[]];
     return all.copy;
+}
+
+- (void)pp_configureStoryPlayerForOptimisticUpdates:(PPStoryPlayerViewController *)player {
+    __weak typeof(self) weakSelf = self;
+    player.onStoryUpdated = ^(PPStory *story) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || ![story isKindOfClass:PPStory.class]) return;
+        NSString *currentUserID = [self pp_currentUserID];
+        if (currentUserID.length == 0 || ![story.userID isEqualToString:currentUserID]) return;
+        self.currentUserStory = story;
+        if ([self pp_hasCurrentUserEntry] && [self.collectionView numberOfItemsInSection:0] > 0) {
+            [self.collectionView reloadItemsAtIndexPaths:@[[NSIndexPath indexPathForItem:0 inSection:0]]];
+        }
+    };
 }
 
 - (void)pp_handleAddStoryTapped {

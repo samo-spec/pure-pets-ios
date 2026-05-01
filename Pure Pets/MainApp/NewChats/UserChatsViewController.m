@@ -117,7 +117,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 #pragma mark - Setup
 
 - (void)pp_configureAppearance {
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppClearClr;// PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
 - (void)pp_configureTableView {
@@ -167,7 +167,8 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
     self.storiesHeaderContainer =
     [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, PPChatStoriesHeaderHiddenHeight)];
     self.storiesHeaderContainer.backgroundColor = UIColor.clearColor;
-    self.storiesHeaderContainer.clipsToBounds = NO;
+    self.storiesHeaderContainer.clipsToBounds = YES;
+    self.storiesHeaderContainer.layer.cornerRadius = 18;
     self.tableView.tableHeaderView = self.storiesHeaderContainer;
 
     PPStoriesViewController *storiesVC = [PPStoriesViewController new];
