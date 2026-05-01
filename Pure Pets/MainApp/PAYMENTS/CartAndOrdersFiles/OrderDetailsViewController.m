@@ -404,7 +404,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 - (void)viewDidLoad
 {
     [super viewDidLoad];
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBackgroundClr;
     self.title = kLang(@"order_tracking_title");
     [self pp_orderApplyChevronBackButton];
     self.dateFormatter = [NSDateFormatter new];
@@ -1207,6 +1207,28 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 @end
 
+static NSString * const PPOrderStepperCurrentDotMotionKey = @"pp_stepper_current_dot_breath";
+static NSString * const PPOrderStepperCurrentHaloScaleKey = @"pp_stepper_current_halo_breath";
+static NSString * const PPOrderStepperCurrentHaloOpacityKey = @"pp_stepper_current_halo_opacity";
+static NSString * const PPOrderStepperCurrentIconMotionKey = @"pp_stepper_current_icon_settle";
+static NSString * const PPOrderStepperCurrentLabelFloatKey = @"pp_stepper_current_label_float";
+static NSString * const PPOrderStepperCurrentLabelOpacityKey = @"pp_stepper_current_label_opacity";
+static NSString * const PPOrderStepperLegacyDotPulseKey = @"pp_stepper_dot_pulse";
+static NSString * const PPOrderStepperLegacyHaloScaleKey = @"pp_stepper_halo_scale";
+static NSString * const PPOrderStepperLegacyHaloOpacityKey = @"pp_stepper_halo_opacity";
+static NSString * const PPOrderTimelineCurrentMarkerMotionKey = @"pp_timeline_current_marker_breath";
+static NSString * const PPOrderTimelineCurrentHaloScaleKey = @"pp_timeline_current_halo_scale";
+static NSString * const PPOrderTimelineCurrentHaloOpacityKey = @"pp_timeline_current_halo_opacity";
+static NSString * const PPOrderTimelineCurrentIconMotionKey = @"pp_timeline_current_icon_breath";
+static NSString * const PPOrderTimelineCurrentTitleFloatKey = @"pp_timeline_current_title_float";
+static NSString * const PPOrderTimelineCurrentTitleOpacityKey = @"pp_timeline_current_title_opacity";
+static NSString * const PPOrderSummaryStatusBadgeMotionKey = @"pp_summary_status_badge_breath";
+static NSString * const PPOrderSummaryStatusHaloScaleKey = @"pp_summary_status_halo_scale";
+static NSString * const PPOrderSummaryStatusHaloOpacityKey = @"pp_summary_status_halo_opacity";
+static NSString * const PPOrderSummaryStatusIconMotionKey = @"pp_summary_status_icon_float";
+static NSString * const PPOrderSummaryProgressChipMotionKey = @"pp_summary_progress_chip_breath";
+static NSString * const PPOrderSummaryTimelineCounterMotionKey = @"pp_summary_timeline_counter_breath";
+
 @implementation PPOrderStatusStepperView
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -1272,7 +1294,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     for (NSInteger i = 0; i < count; i++) {
         UIView *halo = [[UIView alloc] initWithFrame:CGRectZero];
         halo.layer.cornerRadius = 18.0;
-        halo.layer.masksToBounds = YES;
+        halo.layer.masksToBounds = NO;
         halo.hidden = YES;
         [self addSubview:halo];
         [self.haloViews addObject:halo];
@@ -1317,6 +1339,18 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     }
 }
 
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+
+    if (!self.window) {
+        [self stopCurrentStatusMotion];
+        return;
+    }
+
+    [self setNeedsLayout];
+}
+
 - (NSInteger)visualIndexForLogicalIndex:(NSInteger)logicalIndex
 {
     if ([Language languageVal] == 1) {
@@ -1341,30 +1375,154 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     return minCenter + ((maxCenter - minCenter) * progress);
 }
 
-- (void)applyScalePulseToLayer:(CALayer *)layer key:(NSString *)key
+- (BOOL)shouldRunCurrentStatusMotion
+{
+    return (self.window != nil && !UIAccessibilityIsReduceMotionEnabled());
+}
+
+- (void)removeCurrentStatusMotionFromDot:(UIView *)dot
+                                    halo:(UIView *)halo
+                                    icon:(UIImageView *)icon
+                                   label:(UILabel *)label
+{
+    NSArray<NSString *> *dotKeys = @[PPOrderStepperCurrentDotMotionKey, PPOrderStepperLegacyDotPulseKey];
+    for (NSString *key in dotKeys) {
+        [dot.layer removeAnimationForKey:key];
+    }
+
+    NSArray<NSString *> *haloKeys = @[
+        PPOrderStepperCurrentHaloScaleKey,
+        PPOrderStepperCurrentHaloOpacityKey,
+        PPOrderStepperLegacyHaloScaleKey,
+        PPOrderStepperLegacyHaloOpacityKey
+    ];
+    for (NSString *key in haloKeys) {
+        [halo.layer removeAnimationForKey:key];
+    }
+
+    [icon.layer removeAnimationForKey:PPOrderStepperCurrentIconMotionKey];
+    [label.layer removeAnimationForKey:PPOrderStepperCurrentLabelFloatKey];
+    [label.layer removeAnimationForKey:PPOrderStepperCurrentLabelOpacityKey];
+}
+
+- (void)stopCurrentStatusMotion
+{
+    NSInteger count = MIN(self.dotViews.count, self.haloViews.count);
+    for (NSInteger index = 0; index < count; index++) {
+        UIImageView *icon = (index < self.iconViews.count) ? self.iconViews[index] : nil;
+        UILabel *label = (index < self.labelViews.count) ? self.labelViews[index] : nil;
+        [self removeCurrentStatusMotionFromDot:self.dotViews[index]
+                                          halo:self.haloViews[index]
+                                          icon:icon
+                                         label:label];
+    }
+}
+
+- (void)applyScalePulseToLayer:(CALayer *)layer
+                           key:(NSString *)key
+                     fromScale:(CGFloat)fromScale
+                       toScale:(CGFloat)toScale
+                      duration:(CFTimeInterval)duration
+                    beginDelay:(CFTimeInterval)beginDelay
 {
     if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
     CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    anim.fromValue = @(1.0);
-    anim.toValue = @(1.16);
-    anim.duration = 0.82;
+    anim.fromValue = @(fromScale);
+    anim.toValue = @(toScale);
+    anim.duration = duration;
     anim.autoreverses = YES;
     anim.repeatCount = HUGE_VALF;
     anim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    anim.beginTime = CACurrentMediaTime() + beginDelay;
     [layer addAnimation:anim forKey:key];
 }
 
-- (void)applyOpacityPulseToLayer:(CALayer *)layer key:(NSString *)key from:(CGFloat)fromValue to:(CGFloat)toValue
+- (void)applyOpacityPulseToLayer:(CALayer *)layer
+                             key:(NSString *)key
+                            from:(CGFloat)fromValue
+                              to:(CGFloat)toValue
+                        duration:(CFTimeInterval)duration
+                      beginDelay:(CFTimeInterval)beginDelay
 {
     if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
     CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"opacity"];
     anim.fromValue = @(fromValue);
     anim.toValue = @(toValue);
-    anim.duration = 0.95;
+    anim.duration = duration;
     anim.autoreverses = YES;
     anim.repeatCount = HUGE_VALF;
     anim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    anim.beginTime = CACurrentMediaTime() + beginDelay;
     [layer addAnimation:anim forKey:key];
+}
+
+- (void)applyVerticalFloatToLayer:(CALayer *)layer
+                              key:(NSString *)key
+                         distance:(CGFloat)distance
+                         duration:(CFTimeInterval)duration
+                       beginDelay:(CFTimeInterval)beginDelay
+{
+    if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
+    CABasicAnimation *anim = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    anim.fromValue = @(0.0);
+    anim.toValue = @(-fabs(distance));
+    anim.duration = duration;
+    anim.autoreverses = YES;
+    anim.repeatCount = HUGE_VALF;
+    anim.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    anim.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:anim forKey:key];
+}
+
+- (void)applyCurrentStatusMotionToDot:(UIView *)dot
+                                  halo:(UIView *)halo
+                                  icon:(UIImageView *)icon
+                                 label:(UILabel *)label
+                            errorState:(BOOL)isError
+{
+    if (![self shouldRunCurrentStatusMotion]) return;
+
+    [self applyScalePulseToLayer:dot.layer
+                             key:PPOrderStepperCurrentDotMotionKey
+                       fromScale:1.0
+                         toScale:1.055
+                        duration:1.85
+                      beginDelay:0.0];
+
+    [self applyScalePulseToLayer:halo.layer
+                             key:PPOrderStepperCurrentHaloScaleKey
+                       fromScale:1.0
+                         toScale:(isError ? 1.12 : 1.16)
+                        duration:2.65
+                      beginDelay:0.08];
+    [self applyOpacityPulseToLayer:halo.layer
+                               key:PPOrderStepperCurrentHaloOpacityKey
+                              from:0.42
+                                to:(isError ? 0.78 : 0.86)
+                          duration:2.65
+                        beginDelay:0.08];
+
+    [self applyScalePulseToLayer:icon.layer
+                             key:PPOrderStepperCurrentIconMotionKey
+                       fromScale:1.0
+                         toScale:1.08
+                        duration:1.85
+                      beginDelay:0.18];
+
+    [self applyVerticalFloatToLayer:label.layer
+                                key:PPOrderStepperCurrentLabelFloatKey
+                           distance:1.2
+                           duration:2.1
+                         beginDelay:0.16];
+    [self applyOpacityPulseToLayer:label.layer
+                               key:PPOrderStepperCurrentLabelOpacityKey
+                              from:0.82
+                                to:1.0
+                          duration:2.1
+                        beginDelay:0.16];
 }
 
 - (void)layoutSubviews
@@ -1385,6 +1543,7 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
     CGFloat dotY = 10.0;
     CGFloat labelTop = dotY + maxDotSize + 14.0;
     CGFloat labelHeight = 28.0;
+    BOOL shouldAnimateCurrentStatus = [self shouldRunCurrentStatusMotion];
 
     NSMutableArray<NSNumber *> *centersX = [NSMutableArray arrayWithCapacity:count];
     NSMutableArray<NSNumber *> *dotSizes = [NSMutableArray arrayWithCapacity:count];
@@ -1438,11 +1597,20 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
         CGFloat iconInset = (isCurrent || isError) ? 6.0 : 4.5;
         icon.frame = CGRectInset(dot.bounds, iconInset, iconInset);
 
-        [dot.layer removeAnimationForKey:@"pp_stepper_dot_pulse"];
-        [halo.layer removeAnimationForKey:@"pp_stepper_halo_scale"];
-        [halo.layer removeAnimationForKey:@"pp_stepper_halo_opacity"];
+        BOOL isActiveStatus = (isCurrent || isError);
+        BOOL shouldKeepCurrentMotion = (isActiveStatus && shouldAnimateCurrentStatus);
+        if (shouldKeepCurrentMotion) {
+            [dot.layer removeAnimationForKey:PPOrderStepperLegacyDotPulseKey];
+            [halo.layer removeAnimationForKey:PPOrderStepperLegacyHaloScaleKey];
+            [halo.layer removeAnimationForKey:PPOrderStepperLegacyHaloOpacityKey];
+        } else {
+            [self removeCurrentStatusMotionFromDot:dot halo:halo icon:icon label:label];
+        }
         halo.hidden = !(isCurrent || isError);
         halo.frame = CGRectZero;
+        halo.layer.shadowOpacity = 0.0;
+        halo.layer.shadowRadius = 0.0;
+        halo.layer.shadowOffset = CGSizeZero;
 
         if (isError) {
             dot.backgroundColor = errorColor;
@@ -1465,7 +1633,6 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
             icon.tintColor = UIColor.whiteColor;
             label.textColor = accentColor;
             label.font = [GM boldFontWithSize:12];
-            [self applyScalePulseToLayer:dot.layer key:@"pp_stepper_dot_pulse"];
         } else if (isPending) {
             dot.backgroundColor = pendingColor;
             [dot pp_setBorderColor:pendingBorder];
@@ -1486,12 +1653,16 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
             halo.backgroundColor = [haloColor colorWithAlphaComponent:isError ? 0.14 : 0.18];
             halo.layer.borderWidth = 1.2;
             [halo pp_setBorderColor:[haloColor colorWithAlphaComponent:0.28]];
+            halo.layer.shadowColor = haloColor.CGColor;
+            halo.layer.shadowOpacity = shouldAnimateCurrentStatus ? (isError ? 0.16 : 0.18) : 0.08;
+            halo.layer.shadowRadius = shouldAnimateCurrentStatus ? 9.0 : 4.0;
+            halo.layer.shadowOffset = CGSizeZero;
             halo.hidden = NO;
-            [self applyScalePulseToLayer:halo.layer key:@"pp_stepper_halo_scale"];
-            [self applyOpacityPulseToLayer:halo.layer
-                                        key:@"pp_stepper_halo_opacity"
-                                       from:0.52
-                                         to:0.95];
+            [self applyCurrentStatusMotionToDot:dot
+                                           halo:halo
+                                           icon:icon
+                                          label:label
+                                     errorState:isError];
         }
         icon.hidden = (icon.image == nil);
     }
@@ -1513,10 +1684,6 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
             connector.backgroundColor = errorColor;
         } else if (isCurrentConnector) {
             connector.backgroundColor = [accentColor colorWithAlphaComponent:0.38];
-            [self applyOpacityPulseToLayer:connector.layer
-                                        key:@"pp_stepper_connector_pulse"
-                                       from:0.24
-                                         to:0.92];
         } else {
             connector.backgroundColor = isCompletedConnector ? accentColor : [UIColor quaternarySystemFillColor];
         }
@@ -1545,6 +1712,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (CGFloat)preferredHeightForWidth:(CGFloat)width;
 - (CGFloat)markerCenterY;
 - (CGFloat)trackCenterXForWidth:(CGFloat)width;
+- (void)refreshCurrentStatusMotion;
 
 @end
 
@@ -1600,6 +1768,133 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         [self addSubview:_metaLabel];
     }
     return self;
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    [self refreshCurrentStatusMotion];
+}
+
+- (BOOL)pp_shouldRunCurrentStatusMotion
+{
+    BOOL isCurrentLike = (self.rowState == PPOrderProgressTimelineRowStateCurrent ||
+                          self.rowState == PPOrderProgressTimelineRowStateFailure);
+    return (isCurrentLike && self.window != nil && !self.hidden && !UIAccessibilityIsReduceMotionEnabled());
+}
+
+- (void)pp_addScalePulseToLayer:(CALayer *)layer
+                            key:(NSString *)key
+                      fromScale:(CGFloat)fromScale
+                        toScale:(CGFloat)toScale
+                       duration:(CFTimeInterval)duration
+                     beginDelay:(CFTimeInterval)beginDelay
+{
+    if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    animation.fromValue = @(fromScale);
+    animation.toValue = @(toScale);
+    animation.duration = duration;
+    animation.autoreverses = YES;
+    animation.repeatCount = HUGE_VALF;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    animation.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:animation forKey:key];
+}
+
+- (void)pp_addOpacityPulseToLayer:(CALayer *)layer
+                              key:(NSString *)key
+                             from:(CGFloat)fromValue
+                               to:(CGFloat)toValue
+                         duration:(CFTimeInterval)duration
+                       beginDelay:(CFTimeInterval)beginDelay
+{
+    if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    animation.fromValue = @(fromValue);
+    animation.toValue = @(toValue);
+    animation.duration = duration;
+    animation.autoreverses = YES;
+    animation.repeatCount = HUGE_VALF;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    animation.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:animation forKey:key];
+}
+
+- (void)pp_addVerticalFloatToLayer:(CALayer *)layer
+                               key:(NSString *)key
+                          distance:(CGFloat)distance
+                          duration:(CFTimeInterval)duration
+                        beginDelay:(CFTimeInterval)beginDelay
+{
+    if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    animation.fromValue = @(0.0);
+    animation.toValue = @(-fabs(distance));
+    animation.duration = duration;
+    animation.autoreverses = YES;
+    animation.repeatCount = HUGE_VALF;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    animation.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:animation forKey:key];
+}
+
+- (void)pp_stopCurrentStatusMotion
+{
+    [self.markerView.layer removeAnimationForKey:PPOrderTimelineCurrentMarkerMotionKey];
+    [self.markerHaloView.layer removeAnimationForKey:PPOrderTimelineCurrentHaloScaleKey];
+    [self.markerHaloView.layer removeAnimationForKey:PPOrderTimelineCurrentHaloOpacityKey];
+    [self.markerIconView.layer removeAnimationForKey:PPOrderTimelineCurrentIconMotionKey];
+    [self.titleLabel.layer removeAnimationForKey:PPOrderTimelineCurrentTitleFloatKey];
+    [self.titleLabel.layer removeAnimationForKey:PPOrderTimelineCurrentTitleOpacityKey];
+}
+
+- (void)refreshCurrentStatusMotion
+{
+    if (![self pp_shouldRunCurrentStatusMotion]) {
+        [self pp_stopCurrentStatusMotion];
+        return;
+    }
+
+    BOOL isFailure = (self.rowState == PPOrderProgressTimelineRowStateFailure);
+    [self pp_addScalePulseToLayer:self.markerView.layer
+                              key:PPOrderTimelineCurrentMarkerMotionKey
+                        fromScale:1.0
+                          toScale:1.055
+                         duration:1.85
+                       beginDelay:0.0];
+    [self pp_addScalePulseToLayer:self.markerHaloView.layer
+                              key:PPOrderTimelineCurrentHaloScaleKey
+                        fromScale:1.0
+                          toScale:(isFailure ? 1.13 : 1.18)
+                         duration:2.75
+                       beginDelay:0.05];
+    [self pp_addOpacityPulseToLayer:self.markerHaloView.layer
+                                key:PPOrderTimelineCurrentHaloOpacityKey
+                               from:0.30
+                                 to:(isFailure ? 0.72 : 0.82)
+                           duration:2.75
+                         beginDelay:0.05];
+    [self pp_addScalePulseToLayer:self.markerIconView.layer
+                              key:PPOrderTimelineCurrentIconMotionKey
+                        fromScale:1.0
+                          toScale:1.08
+                         duration:1.85
+                       beginDelay:0.14];
+    [self pp_addVerticalFloatToLayer:self.titleLabel.layer
+                                 key:PPOrderTimelineCurrentTitleFloatKey
+                            distance:1.1
+                            duration:2.25
+                          beginDelay:0.12];
+    [self pp_addOpacityPulseToLayer:self.titleLabel.layer
+                                key:PPOrderTimelineCurrentTitleOpacityKey
+                               from:0.82
+                                 to:1.0
+                           duration:2.25
+                         beginDelay:0.12];
 }
 
 - (void)configureWithTitle:(NSString *)title
@@ -1700,6 +1995,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.subtitleLabel.hidden = !showsSecondaryDetails || self.subtitleText.length == 0;
     self.metaLabel.hidden = !showsSecondaryDetails || self.metaText.length == 0;
     [self setNeedsLayout];
+    [self refreshCurrentStatusMotion];
 }
 
 - (CGFloat)preferredHeightForWidth:(CGFloat)width
@@ -1789,6 +2085,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     } else {
         self.metaLabel.frame = CGRectZero;
     }
+
+    [self refreshCurrentStatusMotion];
 }
 
 @end
@@ -1802,6 +2100,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                            tintColor:(nullable UIColor *)tintColor
                             animated:(BOOL)animated;
 - (CGFloat)preferredHeightForWidth:(CGFloat)width;
+- (void)refreshCurrentStatusMotion;
 
 @end
 
@@ -1830,6 +2129,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         _rowViews = [NSMutableArray array];
     }
     return self;
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    [self refreshCurrentStatusMotion];
 }
 
 - (void)ensureRowCount:(NSInteger)count
@@ -1891,6 +2196,15 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         } completion:nil];
     } else {
         [self setNeedsLayout];
+    }
+
+    [self refreshCurrentStatusMotion];
+}
+
+- (void)refreshCurrentStatusMotion
+{
+    for (PPOrderProgressTimelineRowView *row in self.rowViews) {
+        [row refreshCurrentStatusMotion];
     }
 }
 
@@ -1976,6 +2290,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UILabel *paymentProviderLabel;
 @property (nonatomic, strong) UILabel *deliveryAddressLabel;
 @property (nonatomic, strong) UIButton *openMapButton;
+@property (nonatomic, strong) UIView *statusBadgeHaloView;
 @property (nonatomic, strong) UIView *statusBadge;
 @property (nonatomic, strong) UIImageView *statusIconView;
 @property (nonatomic, strong) UIView *summaryPanel;
@@ -2033,8 +2348,19 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)pp_installHeaderHeroLiquidBorderIfNeeded;
 - (void)pp_refreshHeaderHeroLiquidBorderColors;
 - (void)pp_updateHeaderHeroLiquidBorder;
+- (void)pp_updateHeaderHeroLiquidBorderAnimated:(BOOL)animated duration:(NSTimeInterval)duration;
+- (void)pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:(CALayer *)layer
+                                                   keyPath:(NSString *)keyPath
+                                                 fromValue:(id)fromValue
+                                                   toValue:(id)toValue
+                                                  duration:(NSTimeInterval)duration
+                                                       key:(NSString *)key;
 - (void)pp_startHeaderHeroLiquidBorderIfNeeded;
 - (void)pp_stopHeaderHeroLiquidBorder;
+- (void)pp_refreshCurrentStatusSummaryMotionColors;
+- (void)pp_startCurrentStatusSummaryMotionIfNeeded;
+- (void)pp_stopCurrentStatusSummaryMotion;
+- (void)pp_playCurrentStatusChangeFeedback;
 - (void)pp_handleReduceMotionStatusDidChange:(NSNotification *)notification;
 
 @end
@@ -2106,6 +2432,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.isOrderDetailsScreenVisible = YES;
     [self showEntryPresentationIfNeeded];
     [self pp_startHeaderHeroLiquidBorderIfNeeded];
+    [self pp_startCurrentStatusSummaryMotionIfNeeded];
+    [self.progressTimelineView refreshCurrentStatusMotion];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
@@ -2113,6 +2441,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [super viewWillDisappear:animated];
     self.isOrderDetailsScreenVisible = NO;
     [self pp_stopHeaderHeroLiquidBorder];
+    [self pp_stopCurrentStatusSummaryMotion];
+    [self.progressTimelineView refreshCurrentStatusMotion];
     [self pp_stopCheckoutSuccessConfetti];
 }
 
@@ -2130,6 +2460,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     }
     if (self.statusSummaryCard) {
         [Styling addLiquidGlassBorderToView:self.statusSummaryCard cornerRadius:24 color:[[UIColor whiteColor] colorWithAlphaComponent:0.24]];
+        [self pp_refreshCurrentStatusSummaryMotionColors];
+        if (self.isOrderDetailsScreenVisible) {
+            [self pp_startCurrentStatusSummaryMotionIfNeeded];
+        }
     }
     if (self.summaryPanel) {
         [Styling addLiquidGlassBorderToView:self.summaryPanel cornerRadius:22 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
@@ -2319,6 +2653,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.statusSummaryCard.layer.cornerRadius = 24.0;
     self.statusSummaryCard.layer.masksToBounds = YES;
     [self.headerCard addSubview:self.statusSummaryCard];
+
+    self.statusBadgeHaloView = [[UIView alloc] initWithFrame:CGRectZero];
+    self.statusBadgeHaloView.userInteractionEnabled = NO;
+    self.statusBadgeHaloView.layer.masksToBounds = NO;
+    self.statusBadgeHaloView.hidden = YES;
+    [self.statusSummaryCard addSubview:self.statusBadgeHaloView];
 
     self.statusBadge = [[UIView alloc] initWithFrame:CGRectZero];
     self.statusBadge.layer.masksToBounds = YES;
@@ -2690,6 +3030,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGFloat badgeX = isRTL ? statusCardInset : (separatorWidth - statusCardInset - badgeSize);
     self.statusBadge.frame = CGRectMake(badgeX, statusCardInset, badgeSize, badgeSize);
     self.statusBadge.layer.cornerRadius = badgeSize * 0.5;
+    self.statusBadgeHaloView.frame = CGRectInset(self.statusBadge.frame, -9.0, -9.0);
+    self.statusBadgeHaloView.layer.cornerRadius = CGRectGetWidth(self.statusBadgeHaloView.bounds) * 0.5;
     self.statusIconView.frame = CGRectInset(self.statusBadge.bounds, 12.0, 12.0);
 
     CGFloat textX = isRTL ? (statusCardInset + badgeSize + 14.0) : statusCardInset;
@@ -2833,6 +3175,21 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.headerCard.frame = CGRectMake(cardX, 8.0, cardWidth, finalCardHeight);
     self.headerContainer.frame = CGRectMake(0, 0, width, finalCardHeight + 16.0);
     self.tableView.tableHeaderView = self.headerContainer;
+
+    NSTimeInterval inheritedAnimationDuration = [UIView inheritedAnimationDuration];
+    BOOL shouldAnimateLiquidBorder = (inheritedAnimationDuration > 0.0 &&
+                                      !UIAccessibilityIsReduceMotionEnabled());
+    [self pp_updateHeaderHeroLiquidBorderAnimated:shouldAnimateLiquidBorder
+                                         duration:inheritedAnimationDuration];
+
+    if (!CGRectIsEmpty(self.headerCard.bounds)) {
+        UIBezierPath *shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.headerCard.bounds
+                                                               cornerRadius:self.headerCard.layer.cornerRadius];
+        [CATransaction begin];
+        [CATransaction setDisableActions:!shouldAnimateLiquidBorder];
+        self.headerCard.layer.shadowPath = shadowPath.CGPath;
+        [CATransaction commit];
+    }
 }
 
 - (void)pp_installHeaderHeroLiquidBorderIfNeeded
@@ -2845,7 +3202,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         self.headerHeroLiquidHaloLayer.fillColor = UIColor.clearColor.CGColor;
         self.headerHeroLiquidHaloLayer.lineCap = kCALineCapRound;
         self.headerHeroLiquidHaloLayer.lineJoin = kCALineJoinRound;
-        self.headerHeroLiquidHaloLayer.lineWidth = 2.4;
+        self.headerHeroLiquidHaloLayer.lineWidth = 1.4;
         self.headerHeroLiquidHaloLayer.opacity = 0.32;
         self.headerHeroLiquidHaloLayer.shadowOffset = CGSizeZero;
         self.headerHeroLiquidHaloLayer.shadowRadius = 12.0;
@@ -2871,7 +3228,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         self.headerHeroLiquidBorderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
         self.headerHeroLiquidBorderMaskLayer.lineCap = kCALineCapRound;
         self.headerHeroLiquidBorderMaskLayer.lineJoin = kCALineJoinRound;
-        self.headerHeroLiquidBorderMaskLayer.lineWidth = 1.45;
+        self.headerHeroLiquidBorderMaskLayer.lineWidth = 1.05;
         self.headerHeroLiquidBorderLayer.mask = self.headerHeroLiquidBorderMaskLayer;
     }
 
@@ -2886,7 +3243,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     if (!accent) {
         accent = AppPrimaryClr ?: [UIColor colorWithRed:0.81 green:0.22 blue:0.36 alpha:1.0];
     }
-    UIColor *shine = AppPrimaryClrShiner ?: accent;
+    UIColor *shine = AppForgroundColr ?: accent;
     BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     CGFloat accentAlpha = isDark ? 0.50 : 0.38;
     CGFloat shineAlpha = isDark ? 0.42 : 0.32;
@@ -2897,7 +3254,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         (__bridge id)[accent colorWithAlphaComponent:accentAlpha].CGColor,
         (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:whiteAlpha].CGColor,
         (__bridge id)[shine colorWithAlphaComponent:shineAlpha].CGColor,
-        (__bridge id)[accent colorWithAlphaComponent:accentAlpha * 0.78].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:accentAlpha * 0.68].CGColor,
         (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.10].CGColor
     ];
     self.headerHeroLiquidBorderLayer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.70 : 0.84;
@@ -2909,6 +3266,11 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 
 - (void)pp_updateHeaderHeroLiquidBorder
 {
+    [self pp_updateHeaderHeroLiquidBorderAnimated:NO duration:0.0];
+}
+
+- (void)pp_updateHeaderHeroLiquidBorderAnimated:(BOOL)animated duration:(NSTimeInterval)duration
+{
     [self pp_installHeaderHeroLiquidBorderIfNeeded];
     if (!self.headerCard || CGRectIsEmpty(self.headerCard.bounds)) return;
 
@@ -2918,6 +3280,35 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGRect strokeRect = CGRectInset(bounds, strokeInset, strokeInset);
     UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:strokeRect
                                                            cornerRadius:cornerRadius];
+
+    BOOL shouldAnimateResize = (animated &&
+                                duration > 0.0 &&
+                                !UIAccessibilityIsReduceMotionEnabled());
+    CALayer *borderPresentationLayer = self.headerHeroLiquidBorderLayer.presentationLayer;
+    CALayer *maskPresentationLayer = self.headerHeroLiquidBorderMaskLayer.presentationLayer;
+    CALayer *haloPresentationLayer = self.headerHeroLiquidHaloLayer.presentationLayer;
+    CGRect previousBorderBounds = borderPresentationLayer ? borderPresentationLayer.bounds : self.headerHeroLiquidBorderLayer.bounds;
+    CGPoint previousBorderPosition = borderPresentationLayer ? borderPresentationLayer.position : self.headerHeroLiquidBorderLayer.position;
+    CGRect previousMaskBounds = maskPresentationLayer ? maskPresentationLayer.bounds : self.headerHeroLiquidBorderMaskLayer.bounds;
+    CGPoint previousMaskPosition = maskPresentationLayer ? maskPresentationLayer.position : self.headerHeroLiquidBorderMaskLayer.position;
+    CGRect previousHaloBounds = haloPresentationLayer ? haloPresentationLayer.bounds : self.headerHeroLiquidHaloLayer.bounds;
+    CGPoint previousHaloPosition = haloPresentationLayer ? haloPresentationLayer.position : self.headerHeroLiquidHaloLayer.position;
+    CGPathRef previousMaskPath = NULL;
+    CGPathRef previousHaloPath = NULL;
+    if (shouldAnimateResize) {
+        CAShapeLayer *maskPresentationShape = (CAShapeLayer *)self.headerHeroLiquidBorderMaskLayer.presentationLayer;
+        CAShapeLayer *haloPresentationShape = (CAShapeLayer *)self.headerHeroLiquidHaloLayer.presentationLayer;
+        if (maskPresentationShape.path) {
+            previousMaskPath = CGPathRetain(maskPresentationShape.path);
+        } else if (self.headerHeroLiquidBorderMaskLayer.path) {
+            previousMaskPath = CGPathRetain(self.headerHeroLiquidBorderMaskLayer.path);
+        }
+        if (haloPresentationShape.path) {
+            previousHaloPath = CGPathRetain(haloPresentationShape.path);
+        } else if (self.headerHeroLiquidHaloLayer.path) {
+            previousHaloPath = CGPathRetain(self.headerHeroLiquidHaloLayer.path);
+        }
+    }
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -2929,10 +3320,96 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.headerHeroLiquidHaloLayer.shadowPath = strokePath.CGPath;
     [CATransaction commit];
 
+    if (shouldAnimateResize && !CGRectIsEmpty(previousBorderBounds)) {
+        [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidBorderLayer
+                                                         keyPath:@"bounds"
+                                                       fromValue:[NSValue valueWithCGRect:previousBorderBounds]
+                                                         toValue:[NSValue valueWithCGRect:self.headerHeroLiquidBorderLayer.bounds]
+                                                        duration:duration
+                                                             key:@"pp_order_liquid_border_bounds_resize"];
+        [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidBorderLayer
+                                                         keyPath:@"position"
+                                                       fromValue:[NSValue valueWithCGPoint:previousBorderPosition]
+                                                         toValue:[NSValue valueWithCGPoint:self.headerHeroLiquidBorderLayer.position]
+                                                        duration:duration
+                                                             key:@"pp_order_liquid_border_position_resize"];
+        [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidBorderMaskLayer
+                                                         keyPath:@"bounds"
+                                                       fromValue:[NSValue valueWithCGRect:previousMaskBounds]
+                                                         toValue:[NSValue valueWithCGRect:self.headerHeroLiquidBorderMaskLayer.bounds]
+                                                        duration:duration
+                                                             key:@"pp_order_liquid_mask_bounds_resize"];
+        [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidBorderMaskLayer
+                                                         keyPath:@"position"
+                                                       fromValue:[NSValue valueWithCGPoint:previousMaskPosition]
+                                                         toValue:[NSValue valueWithCGPoint:self.headerHeroLiquidBorderMaskLayer.position]
+                                                        duration:duration
+                                                             key:@"pp_order_liquid_mask_position_resize"];
+        if (previousMaskPath) {
+            [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidBorderMaskLayer
+                                                             keyPath:@"path"
+                                                           fromValue:(__bridge id)previousMaskPath
+                                                             toValue:(__bridge id)strokePath.CGPath
+                                                            duration:duration
+                                                                 key:@"pp_order_liquid_mask_path_resize"];
+        }
+        [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidHaloLayer
+                                                         keyPath:@"bounds"
+                                                       fromValue:[NSValue valueWithCGRect:previousHaloBounds]
+                                                         toValue:[NSValue valueWithCGRect:self.headerHeroLiquidHaloLayer.bounds]
+                                                        duration:duration
+                                                             key:@"pp_order_liquid_halo_bounds_resize"];
+        [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidHaloLayer
+                                                         keyPath:@"position"
+                                                       fromValue:[NSValue valueWithCGPoint:previousHaloPosition]
+                                                         toValue:[NSValue valueWithCGPoint:self.headerHeroLiquidHaloLayer.position]
+                                                        duration:duration
+                                                             key:@"pp_order_liquid_halo_position_resize"];
+        if (previousHaloPath) {
+            [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidHaloLayer
+                                                             keyPath:@"path"
+                                                           fromValue:(__bridge id)previousHaloPath
+                                                             toValue:(__bridge id)strokePath.CGPath
+                                                            duration:duration
+                                                                 key:@"pp_order_liquid_halo_path_resize"];
+            [self pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:self.headerHeroLiquidHaloLayer
+                                                             keyPath:@"shadowPath"
+                                                           fromValue:(__bridge id)previousHaloPath
+                                                             toValue:(__bridge id)strokePath.CGPath
+                                                            duration:duration
+                                                                 key:@"pp_order_liquid_halo_shadow_resize"];
+        }
+    }
+    if (previousMaskPath) {
+        CGPathRelease(previousMaskPath);
+    }
+    if (previousHaloPath) {
+        CGPathRelease(previousHaloPath);
+    }
+
     [self pp_refreshHeaderHeroLiquidBorderColors];
     if (self.isOrderDetailsScreenVisible) {
         [self pp_startHeaderHeroLiquidBorderIfNeeded];
     }
+}
+
+- (void)pp_addHeaderHeroLiquidBorderResizeAnimationToLayer:(CALayer *)layer
+                                                   keyPath:(NSString *)keyPath
+                                                 fromValue:(id)fromValue
+                                                   toValue:(id)toValue
+                                                  duration:(NSTimeInterval)duration
+                                                       key:(NSString *)key
+{
+    if (!layer || keyPath.length == 0 || !fromValue || !toValue || duration <= 0.0) return;
+
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:keyPath];
+    animation.fromValue = fromValue;
+    animation.toValue = toValue;
+    animation.duration = duration;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    animation.fillMode = kCAFillModeRemoved;
+    animation.removedOnCompletion = YES;
+    [layer addAnimation:animation forKey:key];
 }
 
 - (void)pp_startHeaderHeroLiquidBorderIfNeeded
@@ -2994,14 +3471,189 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [CATransaction commit];
 }
 
+- (BOOL)pp_shouldRunCurrentStatusSummaryMotion
+{
+    return (self.isOrderDetailsScreenVisible &&
+            self.statusSummaryCard.window != nil &&
+            !UIAccessibilityIsReduceMotionEnabled());
+}
+
+- (void)pp_addSummaryScalePulseToLayer:(CALayer *)layer
+                                   key:(NSString *)key
+                             fromScale:(CGFloat)fromScale
+                               toScale:(CGFloat)toScale
+                              duration:(CFTimeInterval)duration
+                            beginDelay:(CFTimeInterval)beginDelay
+{
+    if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    animation.fromValue = @(fromScale);
+    animation.toValue = @(toScale);
+    animation.duration = duration;
+    animation.autoreverses = YES;
+    animation.repeatCount = HUGE_VALF;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    animation.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:animation forKey:key];
+}
+
+- (void)pp_addSummaryOpacityPulseToLayer:(CALayer *)layer
+                                     key:(NSString *)key
+                                    from:(CGFloat)fromValue
+                                      to:(CGFloat)toValue
+                                duration:(CFTimeInterval)duration
+                              beginDelay:(CFTimeInterval)beginDelay
+{
+    if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    animation.fromValue = @(fromValue);
+    animation.toValue = @(toValue);
+    animation.duration = duration;
+    animation.autoreverses = YES;
+    animation.repeatCount = HUGE_VALF;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    animation.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:animation forKey:key];
+}
+
+- (void)pp_addSummaryVerticalFloatToLayer:(CALayer *)layer
+                                      key:(NSString *)key
+                                 distance:(CGFloat)distance
+                                 duration:(CFTimeInterval)duration
+                               beginDelay:(CFTimeInterval)beginDelay
+{
+    if (!layer || key.length == 0 || [layer animationForKey:key]) return;
+
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    animation.fromValue = @(0.0);
+    animation.toValue = @(-fabs(distance));
+    animation.duration = duration;
+    animation.autoreverses = YES;
+    animation.repeatCount = HUGE_VALF;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    animation.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:animation forKey:key];
+}
+
+- (void)pp_refreshCurrentStatusSummaryMotionColors
+{
+    if (!self.statusBadgeHaloView) return;
+
+    NSString *statusKey = [self customerDisplayStatusKeyForOrder:self.order];
+    UIColor *accent = [self statusAccentColorForStatusKey:statusKey] ?: [GM appPrimaryColor];
+    BOOL failure = [self isFailureStatusKey:statusKey];
+    CGFloat haloAlpha = failure ? 0.16 : (PPIOS26() ? 0.18 : 0.14);
+
+    self.statusBadgeHaloView.backgroundColor = [accent colorWithAlphaComponent:haloAlpha];
+    self.statusBadgeHaloView.layer.borderWidth = 1.0;
+    [self.statusBadgeHaloView pp_setBorderColor:[accent colorWithAlphaComponent:failure ? 0.26 : 0.22]];
+    self.statusBadgeHaloView.layer.shadowColor = accent.CGColor;
+    self.statusBadgeHaloView.layer.shadowOpacity = failure ? 0.13 : 0.16;
+    self.statusBadgeHaloView.layer.shadowRadius = 10.0;
+    self.statusBadgeHaloView.layer.shadowOffset = CGSizeZero;
+    self.statusBadgeHaloView.hidden = UIAccessibilityIsReduceMotionEnabled();
+}
+
+- (void)pp_startCurrentStatusSummaryMotionIfNeeded
+{
+    [self pp_refreshCurrentStatusSummaryMotionColors];
+    if (![self pp_shouldRunCurrentStatusSummaryMotion]) {
+        [self pp_stopCurrentStatusSummaryMotion];
+        return;
+    }
+
+    self.statusBadgeHaloView.hidden = NO;
+
+    [self pp_addSummaryScalePulseToLayer:self.statusBadge.layer
+                                     key:PPOrderSummaryStatusBadgeMotionKey
+                               fromScale:1.0
+                                 toScale:1.045
+                                duration:1.9
+                              beginDelay:0.0];
+    [self pp_addSummaryScalePulseToLayer:self.statusBadgeHaloView.layer
+                                     key:PPOrderSummaryStatusHaloScaleKey
+                               fromScale:0.96
+                                 toScale:1.15
+                                duration:2.85
+                              beginDelay:0.04];
+    [self pp_addSummaryOpacityPulseToLayer:self.statusBadgeHaloView.layer
+                                       key:PPOrderSummaryStatusHaloOpacityKey
+                                      from:0.36
+                                        to:0.82
+                                  duration:2.85
+                                beginDelay:0.04];
+    [self pp_addSummaryVerticalFloatToLayer:self.statusIconView.layer
+                                        key:PPOrderSummaryStatusIconMotionKey
+                                   distance:1.1
+                                   duration:2.05
+                                 beginDelay:0.12];
+    [self pp_addSummaryScalePulseToLayer:self.statusProgressChip.layer
+                                     key:PPOrderSummaryProgressChipMotionKey
+                               fromScale:1.0
+                                 toScale:1.018
+                                duration:2.6
+                              beginDelay:0.18];
+    [self pp_addSummaryOpacityPulseToLayer:self.progressTimelineProgressLabel.layer
+                                       key:PPOrderSummaryTimelineCounterMotionKey
+                                      from:0.76
+                                        to:1.0
+                                  duration:2.15
+                                beginDelay:0.22];
+}
+
+- (void)pp_stopCurrentStatusSummaryMotion
+{
+    [self.statusBadge.layer removeAnimationForKey:PPOrderSummaryStatusBadgeMotionKey];
+    [self.statusBadgeHaloView.layer removeAnimationForKey:PPOrderSummaryStatusHaloScaleKey];
+    [self.statusBadgeHaloView.layer removeAnimationForKey:PPOrderSummaryStatusHaloOpacityKey];
+    [self.statusIconView.layer removeAnimationForKey:PPOrderSummaryStatusIconMotionKey];
+    [self.statusProgressChip.layer removeAnimationForKey:PPOrderSummaryProgressChipMotionKey];
+    [self.progressTimelineProgressLabel.layer removeAnimationForKey:PPOrderSummaryTimelineCounterMotionKey];
+    self.statusBadgeHaloView.hidden = UIAccessibilityIsReduceMotionEnabled();
+}
+
+- (void)pp_playCurrentStatusChangeFeedback
+{
+    if (!self.isOrderDetailsScreenVisible) return;
+
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback prepare];
+    [feedback impactOccurred];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+
+    self.statusSummaryCard.transform = CGAffineTransformIdentity;
+    [UIView animateKeyframesWithDuration:0.46
+                                   delay:0.0
+                                 options:UIViewKeyframeAnimationOptionCalculationModeCubic | UIViewKeyframeAnimationOptionAllowUserInteraction
+                              animations:^{
+        [UIView addKeyframeWithRelativeStartTime:0.0
+                                relativeDuration:0.42
+                                      animations:^{
+            self.statusSummaryCard.transform = CGAffineTransformMakeScale(1.012, 1.012);
+        }];
+        [UIView addKeyframeWithRelativeStartTime:0.42
+                                relativeDuration:0.58
+                                      animations:^{
+            self.statusSummaryCard.transform = CGAffineTransformIdentity;
+        }];
+    } completion:nil];
+}
+
 - (void)pp_handleReduceMotionStatusDidChange:(NSNotification *)notification
 {
     (void)notification;
     [self pp_refreshHeaderHeroLiquidBorderColors];
+    [self pp_refreshCurrentStatusSummaryMotionColors];
+    [self.progressTimelineView refreshCurrentStatusMotion];
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [self pp_stopHeaderHeroLiquidBorder];
+        [self pp_stopCurrentStatusSummaryMotion];
     } else if (self.isOrderDetailsScreenVisible) {
         [self pp_startHeaderHeroLiquidBorderIfNeeded];
+        [self pp_startCurrentStatusSummaryMotionIfNeeded];
     }
 }
 
@@ -3187,6 +3839,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self.openMapButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
     [self.deliveryMapView pp_setBorderColor:[accent colorWithAlphaComponent:0.14]];
     [self refreshActionButtonAppearances];
+    [self pp_refreshCurrentStatusSummaryMotionColors];
+    if (self.isOrderDetailsScreenVisible) {
+        [self pp_startCurrentStatusSummaryMotionIfNeeded];
+    }
 }
 
 - (NSAttributedString *)stackedAttributedTextWithTitle:(NSString *)title
@@ -4649,6 +5305,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
         strongSelf.lastObservedOrderStatusKey = nextStatusKey;
         strongSelf.order = updatedOrder;
         [strongSelf configureWithCurrentOrder];
+        if (shouldPlayStatusFeedback) {
+            [strongSelf pp_playCurrentStatusChangeFeedback];
+        }
     }];
 
     self.requestsListener = [self.orderManager listenToSupportRequestsForOrderID:self.order.orderId
@@ -4833,10 +5492,22 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.didShowEntryPresentation = YES;
     NSString *message = self.entryPresentationMessage.length > 0 ? self.entryPresentationMessage : kLang(@"order_paid_success_subtitle");
     if (self.entryPresentationState == PPOrderDetailsEntryPresentationStateCheckoutSuccess) {
-        if ([self pp_isPushedFromPaymentSelectionViewController]) {
-            [self pp_playCheckoutSuccessConfettiIfNeeded];
+        BOOL shouldPlayCheckoutSuccessConfetti = [self pp_isPushedFromPaymentSelectionViewController];
+        if (shouldPlayCheckoutSuccessConfetti && message.length > 0) {
+            __weak typeof(self) weakSelf = self;
+            [PPAlertHelper showSuccessIn:self
+                                   title:kLang(@"Success")
+                                subtitle:message
+                                OKAction:^(__unused NSString * _Nullable text, __unused BOOL didConfirm) {
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf || !strongSelf.isOrderDetailsScreenVisible) {
+                    return;
+                }
+                [strongSelf pp_playCheckoutSuccessConfettiIfNeeded];
+            }];
+        } else {
+            [self showSuccessMessage:message];
         }
-        [self showSuccessMessage:message];
     } else if (self.entryPresentationState == PPOrderDetailsEntryPresentationStateVerificationPending) {
         [self showInfoMessage:message];
     }

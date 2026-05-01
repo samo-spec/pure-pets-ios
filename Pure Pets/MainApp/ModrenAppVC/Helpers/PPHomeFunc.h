@@ -32,8 +32,6 @@
 + (NSCollectionLayoutSection *)categoriesItemsSection;
 + (NSCollectionLayoutSection *)suggestionsSection;
 
-+ (void)pp_attachHorizontalScrollMotionToSection:(NSCollectionLayoutSection *)section;
-
 + (NSCollectionLayoutSection *)mainKindsHorizontalSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)mainKindsGridSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)carouselSectionForWidth:(CGFloat)availableWidth;

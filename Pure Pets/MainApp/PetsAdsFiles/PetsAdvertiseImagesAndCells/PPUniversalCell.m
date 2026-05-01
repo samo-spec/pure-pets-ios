@@ -63,14 +63,13 @@ static UIColor *PPUniversalCellDynamicColor(UIColor *light, UIColor *dark)
 
 static UIColor *PPUniversalCellSoftSurfaceColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.88],
+    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.68],
                                       [UIColor colorWithWhite:0.12 alpha:0.82]);
 }
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.94 green:0.95 blue:0.98 alpha:0.82],
-                                       [UIColor colorWithWhite:1.0 alpha:0.24]);
+    return [AppLightGrayColor colorWithAlphaComponent:0.82];
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)
@@ -83,6 +82,36 @@ static UIColor *PPUniversalCellSoftShadowColor(void)
 {
     return PPUniversalCellDynamicColor([UIColor colorWithRed:0.16 green:0.13 blue:0.18 alpha:0.48],
                                       [UIColor colorWithRed:0.08 green:0.04 blue:0.05 alpha:0.88]);
+}
+
+static UIColor *PPUniversalCellOuterShadowColor(void)
+{
+    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.15 alpha:0.46],
+                                      [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0.92]);
+}
+
+static CGFloat PPUniversalCellOuterShadowOpacity(BOOL isDark, BOOL selected)
+{
+    if (selected) {
+        return isDark ? 0.30 : 0.18;
+    }
+    return isDark ? 0.22 : 0.14;
+}
+
+static CGFloat PPUniversalCellOuterShadowRadius(BOOL isDark, BOOL selected)
+{
+    if (selected) {
+        return isDark ? 30.0 : 34.0;
+    }
+    return isDark ? 24.0 : 30.0;
+}
+
+static CGSize PPUniversalCellOuterShadowOffset(BOOL isDark, BOOL selected)
+{
+    if (selected) {
+        return CGSizeMake(0.0, isDark ? 15.0 : 18.0);
+    }
+    return CGSizeMake(0.0, isDark ? 12.0 : 16.0);
 }
 
 static UIColor *PPUniversalCellSoftImageScrimColor(void)
@@ -1050,10 +1079,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
     self.cardView.layer.borderWidth = isDark ? 0.72 : 0.88;
     [self.cardView pp_setBorderColor:PPUniversalCellSoftCardBorderColor()];
-    [self.cardView pp_setShadowColor:PPUniversalCellSoftShadowColor()];
-    self.cardView.layer.shadowOpacity = isDark ? 0.22 : 0.12;
-    self.cardView.layer.shadowRadius = isDark ? 22.0 : 26.0;
-    self.cardView.layer.shadowOffset = CGSizeMake(0.0, isDark ? 12.0 : 14.0);
+    [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];
+    self.cardView.layer.shadowOpacity = PPUniversalCellOuterShadowOpacity(isDark, NO);
+    self.cardView.layer.shadowRadius = PPUniversalCellOuterShadowRadius(isDark, NO);
+    self.cardView.layer.shadowOffset = PPUniversalCellOuterShadowOffset(isDark, NO);
     if (@available(iOS 13.0, *)) {
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -2460,18 +2489,16 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     UIColor *baseImageBorder = PPUniversalCellSoftImageBorderColor();
     CGFloat baseCardBorderWidth = isDark ? 0.72 : 0.88;
     CGFloat baseImageBorderWidth = isDark ? 0.56 : 0.72;
-    CGFloat baseShadowOpacity = isDark ? 0.22 : 0.12;
-    CGFloat baseShadowRadius = isDark ? 22.0 : 26.0;
-    CGSize baseShadowOffset = CGSizeMake(0.0, isDark ? 12.0 : 14.0);
 
     void (^changes)(void) = ^{
         self.cardView.layer.borderWidth = showsSelection ? (isDark ? 1.0 : 1.04) : baseCardBorderWidth;
         [self.cardView pp_setBorderColor:showsSelection
          ? [accent colorWithAlphaComponent:isDark ? 0.32 : 0.22]
          : baseCardBorder];
-        self.cardView.layer.shadowOpacity = showsSelection ? (isDark ? 0.30 : 0.18) : baseShadowOpacity;
-        self.cardView.layer.shadowRadius = showsSelection ? (isDark ? 28.0 : 30.0) : baseShadowRadius;
-        self.cardView.layer.shadowOffset = showsSelection ? CGSizeMake(0.0, isDark ? 14.0 : 16.0) : baseShadowOffset;
+        [self.cardView pp_setShadowColor:PPUniversalCellOuterShadowColor()];
+        self.cardView.layer.shadowOpacity = PPUniversalCellOuterShadowOpacity(isDark, showsSelection);
+        self.cardView.layer.shadowRadius = PPUniversalCellOuterShadowRadius(isDark, showsSelection);
+        self.cardView.layer.shadowOffset = PPUniversalCellOuterShadowOffset(isDark, showsSelection);
 
         self.imageContainer.layer.borderWidth = showsSelection ? (isDark ? 0.84 : 0.92) : baseImageBorderWidth;
         [self.imageContainer pp_setBorderColor:showsSelection
