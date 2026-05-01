@@ -195,6 +195,17 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
                         isAll:(BOOL)isAll
                      selected:(BOOL)selected
 {
+    NSString *nextCellID = isAll
+        ? @"pp-main-kind-all"
+        : [NSString stringWithFormat:@"%ld|%@|%@",
+           (long)kind.ID,
+           PPSafeString(kind.KindName),
+           PPSafeString(kind.KindImageUrl)];
+    BOOL shouldRefreshImage =
+        ![PPSafeString(self.boundCellID) isEqualToString:PPSafeString(nextCellID)] ||
+        self.kindImageView.image == nil;
+
+    self.boundCellID = nextCellID;
     self.currentKind = kind;
     self.isAllOption = isAll;
     self.isKindSelected = selected;
@@ -208,7 +219,13 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     self.titleLabel.text = title;
     self.tapButton.accessibilityLabel = title;
 
-    [self pp_configureImageForKind:kind isAll:isAll accent:self.currentAccentColor];
+    if (shouldRefreshImage) {
+        [self pp_configureImageForKind:kind isAll:isAll accent:self.currentAccentColor];
+    } else {
+        self.kindImageView.tintColor = isAll
+            ? (AppPrimaryTextClr ?: UIColor.labelColor)
+            : self.currentAccentColor;
+    }
     [self pp_applyBaseTheme];
     [self pp_applySelection:selected animated:NO];
     [self pp_updateImageSizingForAll:isAll];
@@ -263,7 +280,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
         [[PPImageLoaderManager shared] setImageOnImageView:self.kindImageView
                                                        url:self.currentImageURL
                                                placeholder:self.kindImageView.image
-                                           transitionStyle:PPImageTransitionStyleCrossDissolve
+                                           transitionStyle:PPImageTransitionStyleNone
                                                 complation:nil];
     }
 }
@@ -502,6 +519,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     [self pp_stopLivingMotion];
 
     self.onSelect = nil;
+    self.boundCellID = nil;
     self.currentKind = nil;
     self.currentImageURL = nil;
     self.currentAccentColor = nil;

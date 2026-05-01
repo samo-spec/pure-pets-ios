@@ -1953,6 +1953,9 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *headerContainer;
 @property (nonatomic, strong) UIView *headerCard;
+@property (nonatomic, strong) CAGradientLayer *headerHeroLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *headerHeroLiquidBorderMaskLayer;
+@property (nonatomic, strong) CAShapeLayer *headerHeroLiquidHaloLayer;
 @property (nonatomic, strong) UILabel *orderIDLabel;
 @property (nonatomic, strong) UILabel *orderStatusLabel;
 @property (nonatomic, strong) UIView *statusSummaryCard;
@@ -2027,6 +2030,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 - (void)pp_playCheckoutSuccessConfettiIfNeeded;
 - (void)pp_stopCheckoutSuccessConfetti;
 - (void)pp_removeCheckoutSuccessConfettiAnimated:(BOOL)animated;
+- (void)pp_installHeaderHeroLiquidBorderIfNeeded;
+- (void)pp_refreshHeaderHeroLiquidBorderColors;
+- (void)pp_updateHeaderHeroLiquidBorder;
+- (void)pp_startHeaderHeroLiquidBorderIfNeeded;
+- (void)pp_stopHeaderHeroLiquidBorder;
+- (void)pp_handleReduceMotionStatusDidChange:(NSNotification *)notification;
 
 @end
 
@@ -2074,6 +2083,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
                                              selector:@selector(handleCartPricingConfigurationDidChange:)
                                                  name:kCartPricingConfigurationDidChangeNotification
                                                object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_handleReduceMotionStatusDidChange:)
+                                                 name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                               object:nil];
     [self setupDefaults];
     [self setupViews];
     [self setupNavigationBar];
@@ -2092,12 +2105,14 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [super viewDidAppear:animated];
     self.isOrderDetailsScreenVisible = YES;
     [self showEntryPresentationIfNeeded];
+    [self pp_startHeaderHeroLiquidBorderIfNeeded];
 }
 
 - (void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
     self.isOrderDetailsScreenVisible = NO;
+    [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCheckoutSuccessConfetti];
 }
 
@@ -2107,7 +2122,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [self layoutViews];
     
     if (self.headerCard) {
-        [Styling addLiquidGlassBorderToView:self.headerCard cornerRadius:24 color:AppBackgroundClrDarker];
+        [self pp_updateHeaderHeroLiquidBorder];
         // L-03: Refresh shadowPath after Auto Layout resolves final bounds
         self.headerCard.layer.shadowPath =
             [UIBezierPath bezierPathWithRoundedRect:self.headerCard.bounds
@@ -2280,11 +2295,12 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.headerContainer.backgroundColor = UIColor.clearColor;
     
     self.headerCard = [[UIView alloc] initWithFrame:CGRectZero];
-    self.headerCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
-    self.headerCard.layer.cornerRadius = 24.0;
+    self.headerCard.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:PPIOS26() ? 0.78 : 0.96];
+    self.headerCard.layer.cornerRadius = 34.0;
     self.headerCard.layer.masksToBounds = NO;
     [self applyCardShadow:self.headerCard];
     [self.headerContainer addSubview:self.headerCard];
+    [self pp_updateHeaderHeroLiquidBorder];
 
     self.orderIDLabel = [[UILabel alloc] initWithFrame:CGRectZero];
     self.orderIDLabel.font = [GM MidFontWithSize:12];
@@ -2819,6 +2835,176 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.tableView.tableHeaderView = self.headerContainer;
 }
 
+- (void)pp_installHeaderHeroLiquidBorderIfNeeded
+{
+    if (!self.headerCard) return;
+
+    if (!self.headerHeroLiquidHaloLayer) {
+        self.headerHeroLiquidHaloLayer = [CAShapeLayer layer];
+        self.headerHeroLiquidHaloLayer.name = @"PPOrderHeaderHeroLiquidHalo";
+        self.headerHeroLiquidHaloLayer.fillColor = UIColor.clearColor.CGColor;
+        self.headerHeroLiquidHaloLayer.lineCap = kCALineCapRound;
+        self.headerHeroLiquidHaloLayer.lineJoin = kCALineJoinRound;
+        self.headerHeroLiquidHaloLayer.lineWidth = 2.4;
+        self.headerHeroLiquidHaloLayer.opacity = 0.32;
+        self.headerHeroLiquidHaloLayer.shadowOffset = CGSizeZero;
+        self.headerHeroLiquidHaloLayer.shadowRadius = 12.0;
+        self.headerHeroLiquidHaloLayer.shadowOpacity = 0.34;
+        self.headerHeroLiquidHaloLayer.zPosition = 998.0;
+        [self.headerCard.layer addSublayer:self.headerHeroLiquidHaloLayer];
+    }
+
+    if (!self.headerHeroLiquidBorderLayer) {
+        self.headerHeroLiquidBorderLayer = [CAGradientLayer layer];
+        self.headerHeroLiquidBorderLayer.name = @"PPOrderHeaderHeroLiquidBorder";
+        self.headerHeroLiquidBorderLayer.startPoint = CGPointMake(0.0, 0.15);
+        self.headerHeroLiquidBorderLayer.endPoint = CGPointMake(1.0, 0.85);
+        self.headerHeroLiquidBorderLayer.locations = @[@0.00, @0.18, @0.36, @0.58, @0.78, @1.00];
+        self.headerHeroLiquidBorderLayer.zPosition = 999.0;
+        [self.headerCard.layer addSublayer:self.headerHeroLiquidBorderLayer];
+    }
+
+    if (!self.headerHeroLiquidBorderMaskLayer) {
+        self.headerHeroLiquidBorderMaskLayer = [CAShapeLayer layer];
+        self.headerHeroLiquidBorderMaskLayer.name = @"PPOrderHeaderHeroLiquidBorderMask";
+        self.headerHeroLiquidBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
+        self.headerHeroLiquidBorderMaskLayer.strokeColor = UIColor.blackColor.CGColor;
+        self.headerHeroLiquidBorderMaskLayer.lineCap = kCALineCapRound;
+        self.headerHeroLiquidBorderMaskLayer.lineJoin = kCALineJoinRound;
+        self.headerHeroLiquidBorderMaskLayer.lineWidth = 1.45;
+        self.headerHeroLiquidBorderLayer.mask = self.headerHeroLiquidBorderMaskLayer;
+    }
+
+    [self pp_refreshHeaderHeroLiquidBorderColors];
+}
+
+- (void)pp_refreshHeaderHeroLiquidBorderColors
+{
+    if (!self.headerHeroLiquidBorderLayer && !self.headerHeroLiquidHaloLayer) return;
+
+    UIColor *accent = self.order ? [self statusAccentColorForStatusKey:[self customerDisplayStatusKeyForOrder:self.order]] : [GM appPrimaryColor];
+    if (!accent) {
+        accent = AppPrimaryClr ?: [UIColor colorWithRed:0.81 green:0.22 blue:0.36 alpha:1.0];
+    }
+    UIColor *shine = AppPrimaryClrShiner ?: accent;
+    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    CGFloat accentAlpha = isDark ? 0.50 : 0.38;
+    CGFloat shineAlpha = isDark ? 0.42 : 0.32;
+    CGFloat whiteAlpha = isDark ? 0.72 : 0.58;
+
+    self.headerHeroLiquidBorderLayer.colors = @[
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.08].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:accentAlpha].CGColor,
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:whiteAlpha].CGColor,
+        (__bridge id)[shine colorWithAlphaComponent:shineAlpha].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:accentAlpha * 0.78].CGColor,
+        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.10].CGColor
+    ];
+    self.headerHeroLiquidBorderLayer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.70 : 0.84;
+
+    CGColorRef haloColor = [accent colorWithAlphaComponent:isDark ? 0.44 : 0.30].CGColor;
+    self.headerHeroLiquidHaloLayer.strokeColor = haloColor;
+    self.headerHeroLiquidHaloLayer.shadowColor = haloColor;
+}
+
+- (void)pp_updateHeaderHeroLiquidBorder
+{
+    [self pp_installHeaderHeroLiquidBorderIfNeeded];
+    if (!self.headerCard || CGRectIsEmpty(self.headerCard.bounds)) return;
+
+    CGRect bounds = self.headerCard.bounds;
+    CGFloat strokeInset = 0.55;
+    CGFloat cornerRadius = MAX(0.0, self.headerCard.layer.cornerRadius - strokeInset);
+    CGRect strokeRect = CGRectInset(bounds, strokeInset, strokeInset);
+    UIBezierPath *strokePath = [UIBezierPath bezierPathWithRoundedRect:strokeRect
+                                                           cornerRadius:cornerRadius];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.headerHeroLiquidBorderLayer.frame = bounds;
+    self.headerHeroLiquidBorderMaskLayer.frame = bounds;
+    self.headerHeroLiquidBorderMaskLayer.path = strokePath.CGPath;
+    self.headerHeroLiquidHaloLayer.frame = bounds;
+    self.headerHeroLiquidHaloLayer.path = strokePath.CGPath;
+    self.headerHeroLiquidHaloLayer.shadowPath = strokePath.CGPath;
+    [CATransaction commit];
+
+    [self pp_refreshHeaderHeroLiquidBorderColors];
+    if (self.isOrderDetailsScreenVisible) {
+        [self pp_startHeaderHeroLiquidBorderIfNeeded];
+    }
+}
+
+- (void)pp_startHeaderHeroLiquidBorderIfNeeded
+{
+    if (!self.headerCard || UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopHeaderHeroLiquidBorder];
+        return;
+    }
+
+    [self pp_installHeaderHeroLiquidBorderIfNeeded];
+    if (CGRectIsEmpty(self.headerCard.bounds)) return;
+
+    if (![self.headerHeroLiquidBorderLayer animationForKey:@"pp_order_liquid_border_locations"]) {
+        CABasicAnimation *flow = [CABasicAnimation animationWithKeyPath:@"locations"];
+        flow.fromValue = @[@0.00, @0.08, @0.22, @0.38, @0.64, @1.00];
+        flow.toValue = @[@0.00, @0.28, @0.50, @0.68, @0.88, @1.00];
+        flow.duration = 7.6;
+        flow.autoreverses = YES;
+        flow.repeatCount = HUGE_VALF;
+        flow.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.headerHeroLiquidBorderLayer addAnimation:flow forKey:@"pp_order_liquid_border_locations"];
+    }
+
+    if (![self.headerHeroLiquidBorderLayer animationForKey:@"pp_order_liquid_border_drift"]) {
+        CABasicAnimation *drift = [CABasicAnimation animationWithKeyPath:@"startPoint"];
+        drift.fromValue = [NSValue valueWithCGPoint:CGPointMake(0.0, 0.12)];
+        drift.toValue = [NSValue valueWithCGPoint:CGPointMake(0.32, 0.0)];
+        drift.duration = 6.4;
+        drift.autoreverses = YES;
+        drift.repeatCount = HUGE_VALF;
+        drift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.headerHeroLiquidBorderLayer addAnimation:drift forKey:@"pp_order_liquid_border_drift"];
+    }
+
+    if (![self.headerHeroLiquidHaloLayer animationForKey:@"pp_order_liquid_border_breath"]) {
+        CABasicAnimation *breath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+        breath.fromValue = @0.20;
+        breath.toValue = @0.42;
+        breath.duration = 4.8;
+        breath.autoreverses = YES;
+        breath.repeatCount = HUGE_VALF;
+        breath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.headerHeroLiquidHaloLayer addAnimation:breath forKey:@"pp_order_liquid_border_breath"];
+    }
+}
+
+- (void)pp_stopHeaderHeroLiquidBorder
+{
+    [self.headerHeroLiquidBorderLayer removeAnimationForKey:@"pp_order_liquid_border_locations"];
+    [self.headerHeroLiquidBorderLayer removeAnimationForKey:@"pp_order_liquid_border_drift"];
+    [self.headerHeroLiquidHaloLayer removeAnimationForKey:@"pp_order_liquid_border_breath"];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.headerHeroLiquidBorderLayer.locations = @[@0.00, @0.18, @0.36, @0.58, @0.78, @1.00];
+    self.headerHeroLiquidBorderLayer.startPoint = CGPointMake(0.0, 0.15);
+    self.headerHeroLiquidBorderLayer.endPoint = CGPointMake(1.0, 0.85);
+    self.headerHeroLiquidHaloLayer.opacity = UIAccessibilityIsReduceMotionEnabled() ? 0.22 : 0.32;
+    [CATransaction commit];
+}
+
+- (void)pp_handleReduceMotionStatusDidChange:(NSNotification *)notification
+{
+    (void)notification;
+    [self pp_refreshHeaderHeroLiquidBorderColors];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_stopHeaderHeroLiquidBorder];
+    } else if (self.isOrderDetailsScreenVisible) {
+        [self pp_startHeaderHeroLiquidBorderIfNeeded];
+    }
+}
+
 - (void)layoutFooterView
 {
     CGFloat width = self.view.bounds.size.width;
@@ -2995,6 +3181,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.progressTimelineToggleIconView.tintColor = accent;
     self.backgroundTopGlowView.backgroundColor = [[GM appPrimaryColor] colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.10];
     self.backgroundBottomGlowView.backgroundColor = [accent colorWithAlphaComponent:PPIOS26() ? 0.14 : 0.08];
+    [self pp_refreshHeaderHeroLiquidBorderColors];
     self.openMapButton.backgroundColor = [accent colorWithAlphaComponent:0.12];
     self.openMapButton.tintColor = accent;
     [self.openMapButton pp_setBorderColor:[accent colorWithAlphaComponent:0.16]];
@@ -4739,6 +4926,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     [[NSNotificationCenter defaultCenter] removeObserver:self
                                                     name:kCartPricingConfigurationDidChangeNotification
                                                   object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self
+                                                    name:UIAccessibilityReduceMotionStatusDidChangeNotification
+                                                  object:nil];
+    [self pp_stopHeaderHeroLiquidBorder];
     [self pp_stopCheckoutSuccessConfetti];
     [self stopRealtimeObservers];
 }

@@ -36,6 +36,7 @@
 #import "PPRolePermission.h"
 #import "PPHomeHeroCell.h"
 #import "PPModerHomeCell.h"
+#import "PPModernHomeActionCell.h"
 #import "PPHomeModels.h"
 #import "PPHUD.h"
 #import "PPCommerceFeedbackManager.h"
@@ -1678,6 +1679,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_openSimilarItemsForUnavailableBuyAgainItem:(PPHomeBuyAgainSnapshotItem *)snapshotItem;
 - (void)pp_centerNearbySectionIfPossible;
 - (void)pp_openOrderDetailsForOrder:(PPOrder *)order;
+- (NSString *)pp_stableKeyForHomeItem:(PPHomeItem *)item
+                               section:(PPHomeSection)section
+                                 index:(NSInteger)index;
+- (NSArray<PPHomeItem *> *)pp_homeItemsByReusingExistingItems:(NSArray<PPHomeItem *> *)existingItems
+                                                     newItems:(NSArray<PPHomeItem *> *)newItems
+                                                      section:(PPHomeSection)section;
+- (void)pp_reconfigureHomeItems:(NSArray<PPHomeItem *> *)items
+                      inSnapshot:(NSDiffableDataSourceSnapshot *)snapshot;
 
 - (void)refreshNavigationRightItemsForCartCount:(NSUInteger)count;
 @property (nonatomic, assign) BOOL isMainKindsExpanded;
@@ -2413,6 +2422,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     CGPoint preservedOffset = self.collectionView.contentOffset;
+    NSArray<NSIndexPath *> *visibleIndexPaths = self.collectionView.indexPathsForVisibleItems ?: @[];
+    NSMutableArray<PPHomeItem *> *visibleIdentifiers = [NSMutableArray arrayWithCapacity:visibleIndexPaths.count];
+    for (NSIndexPath *indexPath in visibleIndexPaths) {
+        PPHomeItem *item = [self.dataSource itemIdentifierForIndexPath:indexPath];
+        if (item) {
+            [visibleIdentifiers addObject:item];
+        }
+    }
+
     self.didStabilizeInitialHomeLayout = NO;
     self.lastHomeLayoutBoundsSize = CGSizeZero;
     self.lastHomeLayoutAdjustedInsets = UIEdgeInsetsZero;
@@ -2420,12 +2438,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     [UIView performWithoutAnimation:^{
-        [self.collectionView reloadData];
         [self.collectionView.collectionViewLayout invalidateLayout];
         [self.collectionView setNeedsLayout];
         [self.collectionView layoutIfNeeded];
     }];
     [CATransaction commit];
+
+    if (visibleIdentifiers.count > 0) {
+        NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
+        [self pp_reconfigureHomeItems:visibleIdentifiers inSnapshot:snapshot];
+    }
 
     CGFloat minOffsetY = -self.collectionView.adjustedContentInset.top;
     CGFloat maxOffsetY = MAX(minOffsetY,
@@ -2487,8 +2509,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     if (visibleIdentifiers.count > 0) {
         NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
-        [snapshot reloadItemsWithIdentifiers:visibleIdentifiers];
-        [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+        [self pp_reconfigureHomeItems:visibleIdentifiers inSnapshot:snapshot];
     }
 
     [self pp_refreshVisibleHomeCardsForSections:themeSections];
@@ -2715,6 +2736,139 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     return [parts componentsJoinedByString:@"|"];
 }
 
+- (NSString *)pp_stableKeyForHomeItem:(PPHomeItem *)item
+                               section:(PPHomeSection)section
+                                 index:(NSInteger)index
+{
+    if (![item isKindOfClass:PPHomeItem.class]) {
+        return [NSString stringWithFormat:@"section:%ld:index:%ld:empty", (long)section, (long)index];
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    [parts addObject:[NSString stringWithFormat:@"section:%ld", (long)section]];
+    [parts addObject:[NSString stringWithFormat:@"type:%ld", (long)item.type]];
+
+    PPUniversalCellViewModel *vm = item.universalViewModel;
+    if ([vm isKindOfClass:PPUniversalCellViewModel.class]) {
+        if (vm.isSkeleton) {
+            [parts addObject:[NSString stringWithFormat:@"skeleton:%ld", (long)index]];
+            return [parts componentsJoinedByString:@"|"];
+        }
+
+        NSString *modelID = PPSafeString(vm.ModelID);
+        NSString *modelType = PPSafeString(vm.modelType);
+        NSString *imageURL = PPSafeString(vm.imageURL);
+        if (modelID.length > 0 || imageURL.length > 0 || modelType.length > 0) {
+            [parts addObject:[NSString stringWithFormat:@"model:%@:%@:%@", modelType, modelID, imageURL]];
+            return [parts componentsJoinedByString:@"|"];
+        }
+    }
+
+    id payload = item.payload;
+    if (payload == NSNull.null) {
+        [parts addObject:@"payload:null"];
+        return [parts componentsJoinedByString:@"|"];
+    }
+
+    if ([payload isKindOfClass:MainKindsModel.class]) {
+        MainKindsModel *kind = (MainKindsModel *)payload;
+        [parts addObject:[NSString stringWithFormat:@"kind:%ld:%@", (long)kind.ID, PPSafeString(kind.KindName)]];
+        return [parts componentsJoinedByString:@"|"];
+    }
+
+    if ([payload isKindOfClass:PPHomeQuickActionModel.class]) {
+        PPHomeQuickActionModel *quickAction = (PPHomeQuickActionModel *)payload;
+        [parts addObject:[NSString stringWithFormat:@"quick:%ld", (long)quickAction.type]];
+        return [parts componentsJoinedByString:@"|"];
+    }
+
+    if ([payload isKindOfClass:PPOrder.class]) {
+        PPOrder *order = (PPOrder *)payload;
+        NSString *orderID = PPSafeString(order.orderId);
+        [parts addObject:[NSString stringWithFormat:@"order:%@", orderID.length > 0 ? orderID : PPSafeString(order.orderNumber)]];
+        return [parts componentsJoinedByString:@"|"];
+    }
+
+    if ([payload isKindOfClass:NSString.class]) {
+        [parts addObject:[NSString stringWithFormat:@"token:%@", PPSafeString((NSString *)payload)]];
+        return [parts componentsJoinedByString:@"|"];
+    }
+
+    // Static card sections should keep a single identity even when their payload content changes.
+    if (section == PPHomeSectionHero ||
+        section == PPHomeSectionCarousel ||
+        section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumCare ||
+        section == PPHomeSectionAdopt) {
+        [parts addObject:[NSString stringWithFormat:@"static:%ld", (long)section]];
+        return [parts componentsJoinedByString:@"|"];
+    }
+
+    [parts addObject:[NSString stringWithFormat:@"index:%ld", (long)index]];
+    return [parts componentsJoinedByString:@"|"];
+}
+
+- (NSArray<PPHomeItem *> *)pp_homeItemsByReusingExistingItems:(NSArray<PPHomeItem *> *)existingItems
+                                                     newItems:(NSArray<PPHomeItem *> *)newItems
+                                                      section:(PPHomeSection)section
+{
+    if (existingItems.count == 0 || newItems.count == 0) {
+        return newItems ?: @[];
+    }
+
+    NSMutableDictionary<NSString *, NSMutableArray<PPHomeItem *> *> *existingBuckets = [NSMutableDictionary dictionary];
+    [existingItems enumerateObjectsUsingBlock:^(PPHomeItem * _Nonnull existingItem, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        NSString *key = [self pp_stableKeyForHomeItem:existingItem section:section index:(NSInteger)idx];
+        if (key.length == 0) {
+            return;
+        }
+
+        NSMutableArray<PPHomeItem *> *bucket = existingBuckets[key];
+        if (!bucket) {
+            bucket = [NSMutableArray array];
+            existingBuckets[key] = bucket;
+        }
+        [bucket addObject:existingItem];
+    }];
+
+    NSMutableArray<PPHomeItem *> *resolvedItems = [NSMutableArray arrayWithCapacity:newItems.count];
+    [newItems enumerateObjectsUsingBlock:^(PPHomeItem * _Nonnull newItem, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        NSString *key = [self pp_stableKeyForHomeItem:newItem section:section index:(NSInteger)idx];
+        NSMutableArray<PPHomeItem *> *bucket = key.length > 0 ? existingBuckets[key] : nil;
+        PPHomeItem *reusedItem = bucket.firstObject;
+
+        if (reusedItem) {
+            [bucket removeObjectAtIndex:0];
+            reusedItem.type = newItem.type;
+            reusedItem.payload = newItem.payload;
+            reusedItem.universalViewModel = newItem.universalViewModel;
+            reusedItem.categoryKind = newItem.categoryKind;
+            [resolvedItems addObject:reusedItem];
+        } else if (newItem) {
+            [resolvedItems addObject:newItem];
+        }
+    }];
+
+    return resolvedItems.copy;
+}
+
+- (void)pp_reconfigureHomeItems:(NSArray<PPHomeItem *> *)items
+                      inSnapshot:(NSDiffableDataSourceSnapshot *)snapshot
+{
+    if (items.count == 0 || !snapshot || !self.dataSource) {
+        return;
+    }
+
+    if (@available(iOS 15.0, *)) {
+        [snapshot reconfigureItemsWithIdentifiers:items];
+    } else {
+        [snapshot reloadItemsWithIdentifiers:items];
+    }
+    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+}
+
 - (void)reloadSection:(PPHomeSection)section
 {
     NSNumber *sectionIdentifier = @(section);
@@ -2888,6 +3042,45 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             break;
     }
 
+    NSArray<PPHomeItem *> *stableNewItems =
+        [self pp_homeItemsByReusingExistingItems:items
+                                        newItems:newItems
+                                         section:section];
+
+    BOOL canReconfigureInPlace = sectionExists && items.count == stableNewItems.count;
+    if (canReconfigureInPlace) {
+        for (NSUInteger idx = 0; idx < items.count; idx++) {
+            if (items[idx] != stableNewItems[idx]) {
+                canReconfigureInPlace = NO;
+                break;
+            }
+        }
+    }
+
+    newItems = [stableNewItems mutableCopy];
+
+    if (canReconfigureInPlace && items.count > 0) {
+        [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
+
+        if (section == PPHomeSectionSuggestions) {
+            self.lastHomeSuggestionsAppearanceSignature = [self pp_homeSuggestionsRefreshSignature];
+        }
+
+        if (section == PPHomeSectionPetProfile ||
+            section == PPHomeSectionPremiumCare ||
+            section == PPHomeSectionAdopt) {
+            [self.collectionView setNeedsLayout];
+            [self.collectionView layoutIfNeeded];
+            [self pp_refreshVisibleHomeCardsForSections:@[@(section)]];
+        }
+
+        if (preserveOffset) {
+            self.collectionView.contentOffset = preservedOffset;
+        }
+
+        return;
+    }
+
     if (section == PPHomeSectionCurrentOrders &&
         sectionExists &&
         items.count == newItems.count &&
@@ -2899,8 +3092,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         existingItem.type = replacementItem.type;
         existingItem.payload = replacementItem.payload;
         existingItem.universalViewModel = replacementItem.universalViewModel;
-        [snapshot reloadItemsWithIdentifiers:@[existingItem]];
-        [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+        existingItem.categoryKind = replacementItem.categoryKind;
+        [self pp_reconfigureHomeItems:@[existingItem] inSnapshot:snapshot];
         return;
     }
 
@@ -5384,6 +5577,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self.collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
     [self.collectionView registerClass:PPModerHomeCell.class
             forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
+    [self.collectionView registerClass:PPModernHomeActionCell.class
+            forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
@@ -5412,9 +5607,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionCarousel)];
     if (items.count == 0) return;
 
-    [snapshot reloadItemsWithIdentifiers:items];
-
-    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+    [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
 }
 
 - (void)pp_configureBannerCell:(PPBannerCollectionCell *)cell
@@ -5493,8 +5686,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
         if (section == PPHomeSectionQuickActions) {
-            PPHomeActionCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeActionCell.reuseIdentifier
+            PPModernHomeActionCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier
                                                           forIndexPath:indexPath];
             PPHomeQuickActionModel *quickAction =
                 [item.payload isKindOfClass:PPHomeQuickActionModel.class]
@@ -5838,9 +6031,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                      NSDiffableDataSourceSnapshot *snapshot = strongSelf.dataSource.snapshot;
                      NSArray *items =
                          [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionMainKinds)];
-                     [snapshot reloadItemsWithIdentifiers:items];
-
-                     [strongSelf.dataSource applySnapshot:snapshot animatingDifferences:YES];
+                     [strongSelf pp_reconfigureHomeItems:items inSnapshot:snapshot];
 
 
                 };
@@ -6469,8 +6660,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return;
         }
 
-        [snapshot reloadItemsWithIdentifiers:items];
-        [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+        [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
         self.lastHeroRenderSignature = renderSignature;
     });
 }
@@ -8454,20 +8644,24 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [cell.contentView.layer removeAllAnimations];
 
     BOOL isLateAppearance = (initialOrdinal == NSNotFound);
-    if (isLateAppearance) {
-        // After the first home entrance finishes, visible sections can be refreshed on later
-        // appearances (orders, suggestions, profiles, theme refreshes). Replaying the
-        // entrance reset here causes the whole surface to shake/flicker, so any late or
-        // re-displayed cell should snap directly to its final state.
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    BOOL shouldAnimateLateScrollReveal =
+        isLateAppearance &&
+        [self pp_shouldApplyPremiumCarouselRevealToSection:section] &&
+        (self.collectionView.isDragging ||
+         self.collectionView.isDecelerating ||
+         self.collectionView.isTracking);
+    if (isLateAppearance && !shouldAnimateLateScrollReveal) {
+        // Later app appearances and data refreshes must not restage visible cells. Only
+        // user-driven scrolling gets the horizontal reveal treatment below.
         cell.alpha = 1.0;
         cell.transform = CGAffineTransformIdentity;
         return;
     }
 
-    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     BOOL isHero = (section == PPHomeSectionHero);
     BOOL usesPremiumCarouselReveal =
-        isLateAppearance && [self pp_shouldApplyPremiumCarouselRevealToSection:section];
+        shouldAnimateLateScrollReveal;
     BOOL isPrimarySurface = isHero
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
@@ -9526,8 +9720,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     // Update payload in-place and reload — NO insert/delete, NO layout shift
     existing.payload = promoCards;
-    [snapshot reloadItemsWithIdentifiers:@[existing]];
-    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+    [self pp_reconfigureHomeItems:@[existing] inSnapshot:snapshot];
 }
 
 /*
@@ -9905,7 +10098,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyOrderDetailsBackgroundAppearance
 {
-    self.view.backgroundColor = AppBackgroundClrDarker;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    self.view.backgroundColor = AppBackgroundClr;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
     self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     [self pp_updatePremiumBackgroundGlowAppearance];
@@ -10049,7 +10242,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         glowView.layer.cornerRadius = radius;
         glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
     }
-
+    _pp_premiumBackgroundGlowViewMid.alpha - 0.1;
     if (self.collectionView.superview == self.view) {
         [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
         [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];

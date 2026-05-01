@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)configureWithMainKind:(nullable MainKindsModel *)kind
                         isAll:(BOOL)isAll
                      selected:(BOOL)selected;
+@property (nonatomic, copy, nullable) NSString *boundCellID;
 
 @end
 

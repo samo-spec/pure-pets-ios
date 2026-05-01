@@ -73,6 +73,8 @@ static inline CGSize PPNearbyCardMetrics(CGSize boundsSize)
 @property (nonatomic, assign) NSInteger startIndex;
 @property (nonatomic, assign) CGSize lastResolvedItemSize;
 @property (nonatomic, assign) UIEdgeInsets lastResolvedSectionInset;
+@property (nonatomic, copy, nullable) NSString *itemsSignature;
+@property (nonatomic, assign) BOOL didApplyInitialScrollPosition;
 
 @end
 
@@ -143,23 +145,40 @@ forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
 - (void)configureWithViewModels:(NSArray<PPUniversalCellViewModel *> *)models
                     startIndex:(NSInteger)index {
 
-    self.items = models ?: @[];
-    self.startIndex = MAX(0, MIN(index, self.items.count - 1));
+    NSArray<PPUniversalCellViewModel *> *safeItems = models ?: @[];
+    NSInteger resolvedStartIndex = safeItems.count > 0
+        ? MAX(0, MIN(index, (NSInteger)safeItems.count - 1))
+        : 0;
+    NSString *nextSignature = [self pp_signatureForViewModels:safeItems];
+    BOOL sameData = [PPSafeString(nextSignature) isEqualToString:PPSafeString(self.itemsSignature)];
+    BOOL sameStartIndex = (self.startIndex == resolvedStartIndex);
+    CGPoint preservedOffset = self.collectionView.contentOffset;
 
-    [self.collectionView reloadData];
-    [self pp_updateCarouselLayoutMetricsIfNeeded];
+    self.items = safeItems;
+    self.startIndex = resolvedStartIndex;
+    self.itemsSignature = nextSignature;
+    if (!sameData || !sameStartIndex) {
+        self.didApplyInitialScrollPosition = NO;
+    }
 
-    // 🔥 Ensure layout is ready before scrolling
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self.startIndex < self.items.count) {
-            NSIndexPath *ip =
-            [NSIndexPath indexPathForItem:self.startIndex inSection:0];
-
-            [self.collectionView scrollToItemAtIndexPath:ip
-                                        atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
-                                                animated:NO];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [UIView performWithoutAnimation:^{
+        if (!sameData) {
+            [self.collectionView reloadData];
         }
-    });
+        [self pp_updateCarouselLayoutMetricsIfNeeded];
+        [self.collectionView layoutIfNeeded];
+    }];
+    [CATransaction commit];
+
+    if (sameData && sameStartIndex) {
+        self.collectionView.contentOffset = [self pp_clampedContentOffset:preservedOffset];
+        [self scrollViewDidScroll:self.collectionView];
+        return;
+    }
+
+    [self pp_scrollToStartIndexIfNeeded];
 }
 
 #pragma mark - Reuse
@@ -170,6 +189,8 @@ forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
     self.startIndex = 0;
     self.lastResolvedItemSize = CGSizeZero;
     self.lastResolvedSectionInset = UIEdgeInsetsZero;
+    self.itemsSignature = nil;
+    self.didApplyInitialScrollPosition = NO;
     [self.collectionView setContentOffset:CGPointZero animated:NO];
 }
 
@@ -188,6 +209,9 @@ forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
                                               forIndexPath:indexPath];
 
     PPUniversalCellViewModel *vm = self.items[indexPath.item];
+    cell.alpha = 1.0;
+    cell.transform = CGAffineTransformIdentity;
+    cell.layer.zPosition = 0.0;
 
     [cell applyViewModel:vm
                  context:vm.modelContext
@@ -198,9 +222,13 @@ forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
                            UIImage *placeholder,
                            UIView *card) {
 
-        [[PPImageLoaderManager shared] setImageOnImageView:iv url:url complation:^(UIImage * _Nonnull image, NSString * _Nullable urlString) {
-            
-        }];
+        (void)card;
+        UIImage *resolvedPlaceholder = placeholder ?: iv.image ?: [UIImage imageNamed:@"placeholder"];
+        [[PPImageLoaderManager shared] setImageOnImageView:iv
+                                                       url:url
+                                               placeholder:resolvedPlaceholder
+                                           transitionStyle:PPImageTransitionStyleNone
+                                                complation:nil];
     }];
 
     return cell;
@@ -220,32 +248,33 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
      object:vm];
 }
 
+#pragma mark - UICollectionViewDelegate Motion
+
+- (void)collectionView:(UICollectionView *)collectionView
+       willDisplayCell:(UICollectionViewCell *)cell
+    forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    (void)collectionView;
+    (void)indexPath;
+    [self pp_applyCarouselMotionToCell:cell scrollView:self.collectionView];
+}
+
+- (void)collectionView:(UICollectionView *)collectionView
+ didEndDisplayingCell:(UICollectionViewCell *)cell
+    forItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    (void)collectionView;
+    (void)indexPath;
+    cell.alpha = 1.0;
+    cell.transform = CGAffineTransformIdentity;
+    cell.layer.zPosition = 0.0;
+}
+
 #pragma mark - Scroll Scaling
 - (void)scrollViewDidScroll:(UIScrollView *)scrollView
 {
-    CGFloat centerX = scrollView.contentOffset.x + scrollView.bounds.size.width * 0.5;
-
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
-
-        CGPoint cellCenter =
-        [self.collectionView convertPoint:cell.center toView:self.collectionView];
-
-        if (!isfinite(cellCenter.x) || !isfinite(centerX)) {
-            continue;
-        }
-
-        CGFloat distance = fabs(cellCenter.x - centerX);
-        CGFloat maxDistance = MAX(scrollView.bounds.size.width * 0.6, 1.0);
-        CGFloat ratio = MIN(distance / maxDistance, 1.0);
-
-        CGFloat scale = 1.0 - (ratio * 0.18);
-        CGFloat alpha = 1.0 - (ratio * 0.55);
-
-        cell.transform = CGAffineTransformMakeScale(scale, scale);
-        cell.alpha = alpha;
-
-        // 🔥 Critical: bring focused cell forward
-        cell.layer.zPosition = (1.0 - ratio) * 1000;
+        [self pp_applyCarouselMotionToCell:cell scrollView:scrollView];
     }
 }
 
@@ -278,16 +307,90 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
 
     [self.layout invalidateLayout];
     [self.collectionView.collectionViewLayout invalidateLayout];
-    [self.collectionView layoutIfNeeded];
+}
 
-    if (self.startIndex < self.items.count) {
+- (NSString *)pp_signatureForViewModels:(NSArray<PPUniversalCellViewModel *> *)models
+{
+    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithCapacity:models.count];
+    [models enumerateObjectsUsingBlock:^(PPUniversalCellViewModel * _Nonnull vm, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        if (![vm isKindOfClass:PPUniversalCellViewModel.class]) {
+            [parts addObject:[NSString stringWithFormat:@"invalid:%lu", (unsigned long)idx]];
+            return;
+        }
+        if (vm.isSkeleton) {
+            [parts addObject:[NSString stringWithFormat:@"skeleton:%lu", (unsigned long)idx]];
+            return;
+        }
+        [parts addObject:[NSString stringWithFormat:@"%@:%@:%@:%@",
+                          PPSafeString(vm.modelType),
+                          PPSafeString(vm.ModelID),
+                          PPSafeString(vm.imageURL),
+                          PPSafeString(vm.title)]];
+    }];
+    return [parts componentsJoinedByString:@"|"];
+}
+
+- (CGPoint)pp_clampedContentOffset:(CGPoint)offset
+{
+    CGFloat minX = -self.collectionView.adjustedContentInset.left;
+    CGFloat maxX = MAX(minX,
+                       self.collectionView.contentSize.width -
+                       CGRectGetWidth(self.collectionView.bounds) +
+                       self.collectionView.adjustedContentInset.right);
+    return CGPointMake(MIN(MAX(offset.x, minX), maxX), offset.y);
+}
+
+- (void)pp_scrollToStartIndexIfNeeded
+{
+    if (self.didApplyInitialScrollPosition || self.startIndex >= self.items.count) {
+        [self scrollViewDidScroll:self.collectionView];
+        return;
+    }
+    self.didApplyInitialScrollPosition = YES;
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.startIndex >= self.items.count) {
+            return;
+        }
+
         NSIndexPath *indexPath = [NSIndexPath indexPathForItem:self.startIndex inSection:0];
+        [self.collectionView layoutIfNeeded];
         [self.collectionView scrollToItemAtIndexPath:indexPath
                                     atScrollPosition:UICollectionViewScrollPositionCenteredHorizontally
                                             animated:NO];
+        [self scrollViewDidScroll:self.collectionView];
+    });
+}
+
+- (void)pp_applyCarouselMotionToCell:(UICollectionViewCell *)cell
+                           scrollView:(UIScrollView *)scrollView
+{
+    if (!cell || !scrollView) {
+        return;
     }
 
-    [self scrollViewDidScroll:self.collectionView];
+    CGFloat centerX = scrollView.contentOffset.x + scrollView.bounds.size.width * 0.5;
+    CGPoint cellCenter = cell.center;
+    if (!isfinite(cellCenter.x) || !isfinite(centerX)) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        cell.layer.zPosition = 0.0;
+        return;
+    }
+
+    CGFloat distance = fabs(cellCenter.x - centerX);
+    CGFloat maxDistance = MAX(scrollView.bounds.size.width * 0.6, 1.0);
+    CGFloat ratio = MIN(distance / maxDistance, 1.0);
+
+    CGFloat scale = 1.0 - (ratio * 0.18);
+    CGFloat alpha = 1.0 - (ratio * 0.55);
+
+    cell.transform = CGAffineTransformMakeScale(scale, scale);
+    cell.alpha = alpha;
+    cell.layer.zPosition = (1.0 - ratio) * 1000;
 }
 
 @end

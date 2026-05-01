@@ -15,6 +15,7 @@
 #import "PPSearchViewController.h"
 #import "PPHUD.h"
 #import "UIView+Badge.h"
+#import <math.h>
 
 #if DEBUG
 #define PPDataViewLog(...) NSLog(__VA_ARGS__)
@@ -174,6 +175,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, assign) BOOL isShowingSkeleton;
 @property (nonatomic, strong) UICollectionViewDiffableDataSource<NSNumber *, PPUniversalCellViewModel *> *dataSource;
 @property (nonatomic, assign) BOOL didApplyInitialSnapshot;
+@property (nonatomic, assign) BOOL didApplyInitialCollectionTopOffset;
 @property (nonatomic, assign) BOOL didlayout;
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *blurHashCache;
 @property (nonatomic, strong) dispatch_queue_t blurHashQueue;
@@ -230,6 +232,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
                        motionDirection:(NSInteger)motionDirection;
 - (void)pp_performPremiumContentTransitionForReason:(PPDataViewMotionReason)motionReason
                                     motionDirection:(NSInteger)motionDirection;
+- (void)pp_anchorCollectionViewToInitialTopInsetIfNeeded;
 @end
 @implementation PPDataViewVC
 -(void)viewWillLayoutSubviews
@@ -941,7 +944,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 - (void)pp_applyPremiumDataViewBackgroundAppearance
 {
-    self.view.backgroundColor = AppBackgroundClrDarker;
+    self.view.backgroundColor = AppBackgroundClr;
     if (!self.collectionView) {
         return;
     }
@@ -1243,7 +1246,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         }
 
         targetTopInset =
-        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 8.0);
+        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + PPSpaceBase);
     }
 
     CGFloat bottomInset = 0;
@@ -1263,6 +1266,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     CGFloat bottomDelta = currentInset.bottom - targetBottomInset;
     if (bottomDelta < 0) { bottomDelta = -bottomDelta; }
     if (topDelta < 0.5 && bottomDelta < 0.5) {
+        [self pp_anchorCollectionViewToInitialTopInsetIfNeeded];
         return;
     }
  
@@ -1271,6 +1275,38 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     inset.bottom = targetBottomInset; // breathing space
 
     self.collectionView.contentInset = inset;
+    self.collectionView.scrollIndicatorInsets = inset;
+    [self pp_anchorCollectionViewToInitialTopInsetIfNeeded];
+}
+
+- (void)pp_anchorCollectionViewToInitialTopInsetIfNeeded
+{
+    if (!self.collectionView ||
+        self.didApplyInitialCollectionTopOffset ||
+        !self.didApplyInitialSnapshot ||
+        self.collectionView.isTracking ||
+        self.collectionView.isDragging ||
+        self.collectionView.isDecelerating) {
+        return;
+    }
+
+    CGFloat desiredOffsetY = -self.collectionView.adjustedContentInset.top;
+    if (!isfinite(desiredOffsetY)) {
+        return;
+    }
+
+    CGPoint currentOffset = self.collectionView.contentOffset;
+    if (fabs(currentOffset.y - desiredOffsetY) <= 0.5) {
+        self.didApplyInitialCollectionTopOffset = YES;
+        return;
+    }
+
+    self.didApplyInitialCollectionTopOffset = YES;
+    currentOffset.y = desiredOffsetY;
+    [UIView performWithoutAnimation:^{
+        [self.collectionView setContentOffset:currentOffset animated:NO];
+        [self.collectionView layoutIfNeeded];
+    }];
 }
 
 - (void)pp_handleCartUpdated:(NSNotification *)note
@@ -1316,12 +1352,14 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     };
 
     applyBadge();
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.navigationController.navigationBar setNeedsLayout];
-        [self.navigationController.navigationBar layoutIfNeeded];
-        applyBadge();
-    });
+    [UIView performWithoutAnimation:^{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.navigationController.navigationBar setNeedsLayout];
+            [self.navigationController.navigationBar layoutIfNeeded];
+            applyBadge();
+        });
+    }];
+    
 }
 
 #pragma mark - Actions

@@ -429,7 +429,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _middleBackgroundGlowView.layer.shadowOpacity = 0.18;
     _middleBackgroundGlowView.layer.shadowRadius = 68.0;
     _middleBackgroundGlowView.layer.shadowOffset = CGSizeZero;
-    _middleBackgroundGlowView.alpha=0.4;
+    _middleBackgroundGlowView.alpha=0.0;
     _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
     [_bottomLeadingGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.16 : 0.18]];
     _bottomLeadingGlowView.layer.shadowOpacity = 0.28;
@@ -601,11 +601,11 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _subtitleLabel.text = kLang(@"home_premium_care_subtitle") ?: @"Pet medicine and veterinarian care in one refined place.";
     ///_medicinePillLabel.text = kLang(@"pet_care_medicines") ?: @"Medicines";
     //_vetPillLabel.text = kLang(@"pet_care_veterinarians") ?: @"Veterinarians";
-    _ctaLabel.text = kLang(@"home_premium_care_cta") ?: @"Open care center";
+    _ctaLabel.text = [NSString stringWithFormat:@"%@ .%@ . %@",kLang(@"home_premium_care_cta"),kLang(@"pet_care_medicines"),kLang(@"pet_care_veterinarians")]  ?: @"Open care center";
 
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
     _ctaIconView.image = [[UIImage systemImageNamed:forwardSymbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    _iconImageView.image = [[UIImage systemImageNamed:@"pills.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    //_iconImageView.image = [[UIImage systemImageNamed:@"pills.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     [self pp_configureCareAnimationNamed:PPHomePremiumCareMedicineAnimationName];
     [self pp_startBackgroundMotionIfNeeded];
     self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@",

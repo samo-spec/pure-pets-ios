@@ -247,6 +247,7 @@
         [self applyVisualState];
         return;
     }
+    
     self.boundMessageID = message.ID;
 
     self.isIncoming = isIncoming;

@@ -69,14 +69,14 @@ static UIColor *PPUniversalCellSoftSurfaceColor(void)
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([AppBackgroundClrDarker colorWithAlphaComponent:0.92],
-                                       [AppBackgroundClrDarker colorWithAlphaComponent:0.20]);
+    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.94 green:0.95 blue:0.98 alpha:0.72],
+                                       [UIColor colorWithWhite:1.0 alpha:0.14]);
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([AppBackgroundClrDarker colorWithAlphaComponent:0.92],
-                                       [AppBackgroundClrDarker colorWithAlphaComponent:0.62]);
+    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.62],
+                                       [UIColor colorWithWhite:1.0 alpha:0.12]);
 }
 
 static UIColor *PPUniversalCellSoftShadowColor(void)
@@ -528,11 +528,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *dynamicBadgeConstraints;
 @property (nonatomic, strong) PPUniversalCellViewModel *vm;
 @property (nonatomic, copy) PPImageLoader imageLoader;
+@property (nonatomic, copy) NSString *lastConfiguredImageSignature;
 @property (nonatomic, assign, readwrite) NSInteger quantity;
 @property (nonatomic, assign) BOOL isEditingQuantity;
 @property (nonatomic, strong) NSTimer *stepperCollapseTimer;
 
 - (void)pp_resetReusableVisualState;
+- (NSString *)pp_imageSignatureForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_cartLookupIdentifierForViewModel:(PPUniversalCellViewModel *)vm;
 - (BOOL)pp_supportsSelectionAccent;
 - (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated;
@@ -587,6 +589,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.stepperCollapseTimer = nil;
     self.vm = nil;
     self.imageLoader = nil;
+    self.lastConfiguredImageSignature = nil;
     self.onTap = nil;
     self.isEditingQuantity = NO;
     [self setQuantity:0 animated:NO];
@@ -1045,8 +1048,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
     self.cardView.backgroundColor = PPUniversalCellSoftSurfaceColor();
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
-    self.cardView.layer.borderWidth = isDark ? 0.55 : 1.95;
-    [self.cardView pp_setBorderColor:AppBackgroundClrDarker];
+    self.cardView.layer.borderWidth = isDark ? 0.72 : 0.88;
+    [self.cardView pp_setBorderColor:PPUniversalCellSoftCardBorderColor()];
     [self.cardView pp_setShadowColor:PPUniversalCellSoftShadowColor()];
     self.cardView.layer.shadowOpacity = isDark ? 0.22 : 0.12;
     self.cardView.layer.shadowRadius = isDark ? 22.0 : 26.0;
@@ -1055,7 +1058,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    self.imageContainer.layer.borderWidth = isDark ? 0.65 : 0.85;
+    self.imageContainer.layer.borderWidth = isDark ? 0.56 : 0.72;
     [self.imageContainer pp_setBorderColor:PPUniversalCellSoftImageBorderColor()];
     self.imageScrimView.backgroundColor = PPUniversalCellSoftImageScrimColor();
 
@@ -1155,6 +1158,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     BOOL isSkeleton = vm == nil || vm.isSkeleton;
     [self pp_configureSkeleton:isSkeleton];
     if (isSkeleton) {
+        self.lastConfiguredImageSignature = nil;
         return;
     }
 
@@ -1218,11 +1222,20 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_configureImageWithViewModel:(PPUniversalCellViewModel *)vm
 {
+    NSString *imageSignature = [self pp_imageSignatureForViewModel:vm];
+    if (imageSignature.length > 0 &&
+        [imageSignature isEqualToString:self.lastConfiguredImageSignature] &&
+        self.imageView.image != nil) {
+        self.imageView.alpha = 1.0;
+        return;
+    }
+
     UIImage *placeholder = vm.placeholder ?: [UIImage imageNamed:@"placeholder"];
     self.imageView.image = placeholder;
     self.imageView.alpha = 1.0;
 
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.imageView];
+    self.lastConfiguredImageSignature = imageSignature;
 
     NSString *url = PPUniversalCellSafeString(vm.imageURL);
     if (url.length == 0) {
@@ -1238,6 +1251,22 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                                                    url:url
                                            placeholder:placeholder
                                             complation:nil];
+}
+
+- (NSString *)pp_imageSignatureForViewModel:(PPUniversalCellViewModel *)vm
+{
+    if (![vm isKindOfClass:PPUniversalCellViewModel.class]) {
+        return @"";
+    }
+
+    NSString *modelID = PPUniversalCellSafeString(vm.ModelID);
+    NSString *modelType = PPUniversalCellSafeString(vm.modelType);
+    NSString *imageURL = PPUniversalCellSafeString(vm.imageURL);
+    if (modelID.length == 0 && imageURL.length == 0) {
+        return @"";
+    }
+
+    return [NSString stringWithFormat:@"%@|%@|%@", modelType, modelID, imageURL];
 }
 
 - (void)pp_configureTextsWithViewModel:(PPUniversalCellViewModel *)vm
@@ -2429,24 +2458,24 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     UIColor *accent = AppPrimaryClr ?: UIColor.systemTealColor;
     UIColor *baseCardBorder = PPUniversalCellSoftCardBorderColor();
     UIColor *baseImageBorder = PPUniversalCellSoftImageBorderColor();
-    CGFloat baseCardBorderWidth = isDark ? 0.55 : 0.75;
-    CGFloat baseImageBorderWidth = isDark ? 0.65 : 0.85;
+    CGFloat baseCardBorderWidth = isDark ? 0.72 : 0.88;
+    CGFloat baseImageBorderWidth = isDark ? 0.56 : 0.72;
     CGFloat baseShadowOpacity = isDark ? 0.22 : 0.12;
     CGFloat baseShadowRadius = isDark ? 22.0 : 26.0;
     CGSize baseShadowOffset = CGSizeMake(0.0, isDark ? 12.0 : 14.0);
 
     void (^changes)(void) = ^{
-        self.cardView.layer.borderWidth = showsSelection ? (isDark ? 1.05 : 1.18) : baseCardBorderWidth;
+        self.cardView.layer.borderWidth = showsSelection ? (isDark ? 1.0 : 1.04) : baseCardBorderWidth;
         [self.cardView pp_setBorderColor:showsSelection
-         ? [accent colorWithAlphaComponent:isDark ? 0.36 : 0.28]
+         ? [accent colorWithAlphaComponent:isDark ? 0.32 : 0.22]
          : baseCardBorder];
         self.cardView.layer.shadowOpacity = showsSelection ? (isDark ? 0.30 : 0.18) : baseShadowOpacity;
         self.cardView.layer.shadowRadius = showsSelection ? (isDark ? 28.0 : 30.0) : baseShadowRadius;
         self.cardView.layer.shadowOffset = showsSelection ? CGSizeMake(0.0, isDark ? 14.0 : 16.0) : baseShadowOffset;
 
-        self.imageContainer.layer.borderWidth = showsSelection ? (isDark ? 1.0 : 1.1) : baseImageBorderWidth;
+        self.imageContainer.layer.borderWidth = showsSelection ? (isDark ? 0.84 : 0.92) : baseImageBorderWidth;
         [self.imageContainer pp_setBorderColor:showsSelection
-         ? [accent colorWithAlphaComponent:isDark ? 0.30 : 0.24]
+         ? [accent colorWithAlphaComponent:isDark ? 0.28 : 0.20]
          : baseImageBorder];
         self.imageScrimView.backgroundColor = showsSelection
             ? [accent colorWithAlphaComponent:isDark ? 0.10 : 0.05]

@@ -28,6 +28,7 @@
 		F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A06D2EFE20330048D4C2 /* PPHomeCell.m */; };
 		F202A0752EFF15E60048D4C2 /* PPHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */; };
 		F2D5A7B62F95C0A1009B6001 /* PPModerHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */; };
+		F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */; };
 		F207D0B12F14793300BA6214 /* SearchCacheManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B02F14791300BA6214 /* SearchCacheManager.m */; };
 		F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */; };
 		F207D0BF2F14CE1500BA6214 /* sunflower.jpg in Resources */ = {isa = PBXBuildFile; fileRef = F207D0B52F14CE1500BA6214 /* sunflower.jpg */; };
@@ -838,6 +839,8 @@
 		F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeActionCell.m; sourceTree = "<group>"; };
 		F2D5A7B42F95C0A1009B6001 /* PPModerHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModerHomeCell.h; sourceTree = "<group>"; };
 		F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModerHomeCell.m; sourceTree = "<group>"; };
+		F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModernHomeActionCell.h; sourceTree = "<group>"; };
+		F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModernHomeActionCell.m; sourceTree = "<group>"; };
 		F207D0AF2F1478BF00BA6214 /* SearchCacheManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchCacheManager.h; sourceTree = "<group>"; };
 		F207D0B02F14791300BA6214 /* SearchCacheManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SearchCacheManager.m; sourceTree = "<group>"; };
 		F207D0B22F14988500BA6214 /* PPImageLoaderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageLoaderManager.h; sourceTree = "<group>"; };
@@ -2331,6 +2334,8 @@
 				F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */,
 				F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */,
 				F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */,
+				F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */,
+				F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */,
 				F253FA642F07182800323CB4 /* PetAdoptView.h */,
 				F253FA652F07182800323CB4 /* PetAdoptView.m */,
 			);
@@ -5372,6 +5377,7 @@
 				F27714AA2ED775A700B1D062 /* QBAssetsViewController.m in Sources */,
 				F27714AB2ED775A700B1D062 /* QBVideoIndicatorView.m in Sources */,
 				F202A0752EFF15E60048D4C2 /* PPHomeActionCell.m in Sources */,
+				F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */,
 				F27714AC2ED775A700B1D062 /* QBAssetCell.m in Sources */,
 				F27714AD2ED775A700B1D062 /* QBSlomoIconView.m in Sources */,
 				F27714AE2ED775A700B1D062 /* QBAlbumsViewController.m in Sources */,
