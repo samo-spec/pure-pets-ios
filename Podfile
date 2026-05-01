@@ -8,23 +8,19 @@ target 'Pure Pets' do
   
   pod 'HXPhotoPicker', :path => '../HXPhotoPicker-master'
   pod 'IQKeyboardManager'
-  pod 'TZImagePickerController'
+ 
   pod 'AFNetworking', '~> 4.0'
-  #pod 'SDWebImage', '~> 5.0'
  
   pod 'Masonry'
-  #pod 'GoogleSignIn'
-  #pod 'AppAuth'
+ 
   pod 'KVOController', '1.2.0'
-  pod 'WJFrameLayout'  # only once
+  
   pod 'MMSCameraViewController',  '~> 1.4.0'
   pod 'GoogleMaps'
   pod 'lottie-ios_Oc'
-  #pod 'YYKit'
-  pod 'SSZipArchive'
+   pod 'SSZipArchive'
   pod 'TOCropViewController'
-  #pod 'RNFrostedSidebar', '~> 0.2.0'
-  pod 'MDRadialProgress'
+   pod 'MDRadialProgress'
  
  pod 'RecaptchaEnterprise', '18.9.0-beta02'
 
@@ -37,8 +33,10 @@ post_install do |installer|
     target.build_configurations.each do |config|
       
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'YES'
+      config.build_settings['ENABLE_USER_SCRIPT_SANDBOXING'] = 'NO'
       config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+      config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'
 
       # Enable building for simulator
       config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
@@ -54,6 +52,11 @@ post_install do |installer|
         config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
       end
     end
+  end
+
+  installer.pods_project.build_configurations.each do |config|
+    config.build_settings['CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER'] = 'NO'
+    config.build_settings['ENABLE_MODULE_VERIFIER'] = 'NO'
   end
 
   # Fix AFNetworking private header error: remove #import <netinet6/in6.h> from all implementation files
@@ -79,8 +82,6 @@ post_install do |installer|
     File.write(script_path, patched)
   end
 end
-
-
 
 
 

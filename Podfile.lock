@@ -57,12 +57,6 @@ PODS:
   - SDWebImage/Core (5.21.7)
   - SSZipArchive (2.4.3)
   - TOCropViewController (3.1.1)
-  - TZImagePickerController (3.8.12):
-    - TZImagePickerController/Basic (= 3.8.12)
-    - TZImagePickerController/Location (= 3.8.12)
-  - TZImagePickerController/Basic (3.8.12)
-  - TZImagePickerController/Location (3.8.12)
-  - WJFrameLayout (0.4.1)
 
 DEPENDENCIES:
   - AFNetworking (~> 4.0)
@@ -78,8 +72,6 @@ DEPENDENCIES:
   - SDWebImage (~> 5.0)
   - SSZipArchive
   - TOCropViewController
-  - TZImagePickerController
-  - WJFrameLayout
 
 SPEC REPOS:
   trunk:
@@ -97,8 +89,6 @@ SPEC REPOS:
     - SDWebImage
     - SSZipArchive
     - TOCropViewController
-    - TZImagePickerController
-    - WJFrameLayout
 
 EXTERNAL SOURCES:
   HXPhotoPicker:
@@ -120,9 +110,7 @@ SPEC CHECKSUMS:
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   SSZipArchive: fe6a26b2a54d5a0890f2567b5cc6de5caa600aef
   TOCropViewController: 9002a9b12d8104d7478cdc306d80f0efea7fe2c5
-  TZImagePickerController: 3751b9b850d00802e9f4f7bd8e1365ee5c4f0990
-  WJFrameLayout: ea2bf40ad2795931efb3f116d69d238faf64cd0f
 
-PODFILE CHECKSUM: 4ec551f1bc82c285d67f4bdc84f4c9cc42b43d75
+PODFILE CHECKSUM: cc554b1bed9383adcafba553701902fcd40675cd
 
 COCOAPODS: 1.16.2

@@ -18,7 +18,7 @@ typedef NS_ENUM(NSUInteger, PetImageGalleryType) {
     PetImageGalleryTypeCardsViewer
 };
 
-@interface PetImageGalleryView : UIView <UICollectionViewDelegate, UICollectionViewDataSource,ViewerControllerDelegate>
+@interface PetImageGalleryView : UIView <UICollectionViewDelegate, UICollectionViewDataSource>
 
 @property (nonatomic, assign) PetImageGalleryType galleryType;
 @property (nonatomic, strong) NSArray<PetImageItem *> *imageItems;

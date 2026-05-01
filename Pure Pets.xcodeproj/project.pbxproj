@@ -16,7 +16,6 @@
 		59648CD9531E102EA6D57525 /* PPPermissionHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = 425167313B2C23734EA30648 /* PPPermissionHelper.m */; };
 		681F854AFE262E5D016D4061 /* PPOfflineBannerView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */; };
 		6FA7E2DBFC81AF4F9E6F23DC /* PPReminderNotificationManager.m in Sources */ = {isa = PBXBuildFile; fileRef = 7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */; };
-		7487A7B746BA7354A187635D /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */; };
 		7B7127726B0BF8FEE68D4868 /* PPUserModelCache.m in Sources */ = {isa = PBXBuildFile; fileRef = A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */; };
 		8418632DE9B178A35C3A3121 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = EBF78B40F0B7ED4D2C173E2D /* PPDiscountBadge.m */; };
 		A2C8AD32BDC2C3D68BE883B6 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = 5567B37190496A6732104BBC /* PPRatingView.m */; };
@@ -24,11 +23,10 @@
 		AA0000032F40000100000003 /* PPThemeRefresh.m in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022F40000100000002 /* PPThemeRefresh.m */; };
 		B4E115C70B39702B119B24B5 /* PPPetCareViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = C77C4EBEA7AF6EC505834E8D /* PPPetCareViewController.m */; };
 		E81666FDD5716E2ABFA2DC1F /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = 88157B791FE37AB03DA1B1F5 /* PPProductCard.m */; };
+		E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */; };
 		F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F201B8AF2DA6428200CC46A7 /* lame.framework */; };
 		F202A06E2EFE204A0048D4C2 /* PPHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A06D2EFE20330048D4C2 /* PPHomeCell.m */; };
 		F202A0752EFF15E60048D4C2 /* PPHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */; };
-		F2D5A7B62F95C0A1009B6001 /* PPModerHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */; };
-		F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */; };
 		F207D0B12F14793300BA6214 /* SearchCacheManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B02F14791300BA6214 /* SearchCacheManager.m */; };
 		F207D0B42F14989300BA6214 /* PPImageLoaderManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F207D0B32F14989300BA6214 /* PPImageLoaderManager.m */; };
 		F207D0BF2F14CE1500BA6214 /* sunflower.jpg in Resources */ = {isa = PBXBuildFile; fileRef = F207D0B52F14CE1500BA6214 /* sunflower.jpg */; };
@@ -115,12 +113,6 @@
 		F21D1B732E9D640C00220F72 /* AKPickerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F21D1B712E9D640C00220F72 /* AKPickerView.m */; };
 		F21E09322E451A4B00690BC5 /* Language.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09302E451A4B00690BC5 /* Language.m */; };
 		F21E09352E452D8F00690BC5 /* ISO8601DateFormatter.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09342E452D8F00690BC5 /* ISO8601DateFormatter.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
-		F21E09472E45360C00690BC5 /* WJFloatingAnimatedTextFieldConfig.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09422E45360C00690BC5 /* WJFloatingAnimatedTextFieldConfig.m */; };
-		F21E09482E45360C00690BC5 /* WJTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09442E45360C00690BC5 /* WJTextField.m */; };
-		F21E09492E45360C00690BC5 /* NSString+Size.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E093B2E45360C00690BC5 /* NSString+Size.m */; };
-		F21E094A2E45360C00690BC5 /* FBKVOController+Extension.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09392E45360C00690BC5 /* FBKVOController+Extension.m */; };
-		F21E094B2E45360C00690BC5 /* WJFloatingAnimatedTextField.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E09402E45360C00690BC5 /* WJFloatingAnimatedTextField.m */; };
-		F21E094C2E45360C00690BC5 /* UIViewController+YJKeyBoard.m in Sources */ = {isa = PBXBuildFile; fileRef = F21E093D2E45360C00690BC5 /* UIViewController+YJKeyBoard.m */; };
 		F2201FE82E11D7CA005DBD9F /* CartItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FE72E11D7C9005DBD9F /* CartItem.m */; };
 		F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEC2E11DB7E005DBD9F /* CartViewController.m */; };
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
@@ -276,7 +268,6 @@
 		F25100932F73C2D8008F6AFE /* FirebasePerformance in Frameworks */ = {isa = PBXBuildFile; productRef = F25100922F73C2D8008F6AFE /* FirebasePerformance */; };
 		F25100952F73C2D8008F6AFE /* FirebaseRemoteConfig in Frameworks */ = {isa = PBXBuildFile; productRef = F25100942F73C2D8008F6AFE /* FirebaseRemoteConfig */; };
 		F25100972F73C2D8008F6AFE /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = F25100962F73C2D8008F6AFE /* FirebaseStorage */; };
-		F251F8DA2E948EC6000B5CF3 /* PPNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = F251F8D92E948EC6000B5CF3 /* PPNavigationController.m */; };
 		F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F25373D62E32E3C300CD93E7 /* LeaveFeedbackViewController.m */; };
 		F253FA662F07182800323CB4 /* PetAdoptView.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA652F07182800323CB4 /* PetAdoptView.m */; };
 		F253FA692F07708A00323CB4 /* PPHomeLayoutManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F253FA682F07708A00323CB4 /* PPHomeLayoutManager.m */; };
@@ -294,7 +285,6 @@
 		F25D68CA2F82773300700694 /* PPNetworkRetryHelper.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C42F82773200700694 /* PPNetworkRetryHelper.h */; };
 		F25D68CB2F82773300700694 /* PPOfflineBannerView.h in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C52F82773200700694 /* PPOfflineBannerView.h */; };
 		F25D68CC2F82773300700694 /* PPFirestoreErrorNotifier.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68C62F82773300700694 /* PPFirestoreErrorNotifier.m */; };
-		F25D68CD2F82776C00700694 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 471B98E18FD0A42C1B1F054F /* Network.framework */; };
 		F25D68D02F829B4900700694 /* PPHomeCartNavButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F25D68CF2F829B4900700694 /* PPHomeCartNavButton.m */; };
 		F25DC3092EDDE93300C48787 /* XLFormPhoneCodeItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */; };
 		F25DC30C2EDDE94400C48787 /* XLFormPhoneCodeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F25DC30B2EDDE94400C48787 /* XLFormPhoneCodeCell.m */; };
@@ -547,10 +537,6 @@
 		F2A302F72EBA3D0B005E45F0 /* UserPaymentInstrument.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302F62EBA3D0B005E45F0 /* UserPaymentInstrument.m */; };
 		F2A302F92EBA3EC8005E45F0 /* PaymentMethod.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302F82EBA3EC8005E45F0 /* PaymentMethod.m */; };
 		F2A302FC2EBA41BB005E45F0 /* UserPaymentInstrumentManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A302FB2EBA3F4E005E45F0 /* UserPaymentInstrumentManager.m */; };
-		F2A83AD12F88781C00930857 /* BBCheckoutSummaryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC32F88781B00930857 /* BBCheckoutSummaryView.m */; };
-		F2A83AD22F88781C00930857 /* PPNavBarTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC92F88781B00930857 /* PPNavBarTitleView.m */; };
-		F2A83AD32F88781C00930857 /* PPBottomBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC52F88781B00930857 /* PPBottomBar.m */; };
-		F2A83AD42F88781C00930857 /* UIViewController+PPNavBar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACF2F88781B00930857 /* UIViewController+PPNavBar.m */; };
 		F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACB2F88781B00930857 /* PPNavigationController.m */; };
 		F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83AC72F88781B00930857 /* PPBottomBarManager.m */; };
 		F2A83AD72F88781C00930857 /* UITabBarItem+PPAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A83ACD2F88781B00930857 /* UITabBarItem+PPAdditions.m */; };
@@ -560,7 +546,6 @@
 		F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */; };
 		F2A9034F2F9E98230097485B /* PPHomeInsetLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */; };
 		F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */; };
-		F2AAEDA92EF9E249006E0A6F /* UITabBarItem+PPAdditions.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */; };
 		F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB487F2C72CF3C00D88603 /* JGProgressHUD.m */; };
 		F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48802C72CF3C00D88603 /* JGProgressHUDAnimation.m */; };
 		F2AB488E2C72CF3C00D88603 /* JGProgressHUDErrorIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48812C72CF3C00D88603 /* JGProgressHUDErrorIndicatorView.m */; };
@@ -695,6 +680,9 @@
 		F2D2F94A2E0C9E64001B026B /* AccessoryCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */; };
 		F2D44D202F3D611200999337 /* map_dark_style.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D44D1F2F3D611200999337 /* map_dark_style.json */; };
 		F2D4BC832F985D7500651473 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2D0C5E62C4BE1BB0023CE53 /* LaunchScreen.storyboard */; };
+		F2D5A7B62F95C0A1009B6001 /* PPModerHomeCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */; };
+		F2D5A7C22F95C0A1009B6001 /* PPModernHomeActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */; };
+		F2D5A8E22F970001009B6001 /* FullScreenImageViewerController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D5A8E12F970001009B6001 /* FullScreenImageViewerController.m */; };
 		F2D639712ECB4E2500FEBCBB /* PPUserSigningManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D639702ECB4E2500FEBCBB /* PPUserSigningManager.m */; };
 		F2D7F0EB2F13137400105778 /* BBCheckoutSummaryView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D7F0EA2F13135A00105778 /* BBCheckoutSummaryView.m */; };
 		F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */ = {isa = PBXBuildFile; fileRef = F2D7F0ED2F135F9100105778 /* NoResult.json */; };
@@ -800,28 +788,28 @@
 
 /* Begin PBXFileReference section */
 		0148D5DFAD4AAE07D3F2AAE9 /* PPPetProfileManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPPetProfileManager.m; sourceTree = "<group>"; };
+		05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		0907EA88970486AF72D13359 /* PPUserModelCache.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserModelCache.h; sourceTree = "<group>"; };
 		0EBAC4A826E059903E122487 /* PPReminderNotificationManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPReminderNotificationManager.h; sourceTree = "<group>"; };
-		1BE69E138E85D5FDB3F3E6F6 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
-		1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pure_Pets.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPOfflineBannerView.m; sourceTree = "<group>"; };
 		2262AF902E74B74B005C8EF0 /* PPBottomBar.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPBottomBar.m; path = "Pure Pets/DesignFiles/PP/PPNAV/PPBottomBar.m"; sourceTree = SOURCE_ROOT; };
 		22E169D62E75E75A00F50C9E /* PPFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFunc.h; sourceTree = "<group>"; };
 		22E169D72E75E75A00F50C9E /* PPFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFunc.m; sourceTree = "<group>"; };
 		34EB94CDEF4BA97E5841D65E /* PPPetProfileManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPPetProfileManager.h; sourceTree = "<group>"; };
-		389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.release.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.release.xcconfig"; sourceTree = "<group>"; };
 		3C32792C5C5015883E126EAA /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPSectionHeader.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPSectionHeader.m"; sourceTree = SOURCE_ROOT; };
 		40809FB4C8F28DA33A41FEF6 /* PPPetCareViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPetCareViewController.h; sourceTree = "<group>"; };
 		425167313B2C23734EA30648 /* PPPermissionHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPermissionHelper.m; sourceTree = "<group>"; };
 		471B98E18FD0A42C1B1F054F /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
 		47BCF0A8B4C22E6EED3D854F /* PPUserPermissionsManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPUserPermissionsManager.h; sourceTree = "<group>"; };
 		5567B37190496A6732104BBC /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPRatingView.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPRatingView.m"; sourceTree = SOURCE_ROOT; };
+		5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Pure_Pets.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		78BDBCFB11D05E53A115F3C0 /* PPVaccinationEditorSheet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVaccinationEditorSheet.h; sourceTree = "<group>"; };
 		7B587E8B16A4B9E9190699CD /* PPReminderNotificationManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPReminderNotificationManager.m; sourceTree = "<group>"; };
 		7DBA2C1020294ACC74F51D97 /* PPUserPermissionsManager.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserPermissionsManager.m; sourceTree = "<group>"; };
 		803FAD839D84A01431778949 /* PPDesignTokens.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = PPDesignTokens.h; sourceTree = "<group>"; };
 		88157B791FE37AB03DA1B1F5 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPProductCard.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPProductCard.m"; sourceTree = SOURCE_ROOT; };
 		9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPVaccinationEditorSheet.m; sourceTree = "<group>"; };
+		A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Pure Pets.debug.xcconfig"; path = "Target Support Files/Pods-Pure Pets/Pods-Pure Pets.debug.xcconfig"; sourceTree = "<group>"; };
 		A8E8F85CB80F2C2D98A2A90D /* PPUserModelCache.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = PPUserModelCache.m; sourceTree = "<group>"; };
 		AA0000012F40000100000001 /* PPThemeRefresh.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPThemeRefresh.h; sourceTree = "<group>"; };
 		AA0000022F40000100000002 /* PPThemeRefresh.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPThemeRefresh.m; sourceTree = "<group>"; };
@@ -837,10 +825,6 @@
 		F202A06D2EFE20330048D4C2 /* PPHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeCell.m; sourceTree = "<group>"; };
 		F202A0732EFF15C70048D4C2 /* PPHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeActionCell.h; sourceTree = "<group>"; };
 		F202A0742EFF15D40048D4C2 /* PPHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeActionCell.m; sourceTree = "<group>"; };
-		F2D5A7B42F95C0A1009B6001 /* PPModerHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModerHomeCell.h; sourceTree = "<group>"; };
-		F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModerHomeCell.m; sourceTree = "<group>"; };
-		F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModernHomeActionCell.h; sourceTree = "<group>"; };
-		F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModernHomeActionCell.m; sourceTree = "<group>"; };
 		F207D0AF2F1478BF00BA6214 /* SearchCacheManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SearchCacheManager.h; sourceTree = "<group>"; };
 		F207D0B02F14791300BA6214 /* SearchCacheManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SearchCacheManager.m; sourceTree = "<group>"; };
 		F207D0B22F14988500BA6214 /* PPImageLoaderManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageLoaderManager.h; sourceTree = "<group>"; };
@@ -995,19 +979,6 @@
 		F21E09302E451A4B00690BC5 /* Language.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Language.m; sourceTree = "<group>"; };
 		F21E09332E452D8F00690BC5 /* ISO8601DateFormatter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ISO8601DateFormatter.h; sourceTree = "<group>"; };
 		F21E09342E452D8F00690BC5 /* ISO8601DateFormatter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ISO8601DateFormatter.m; sourceTree = "<group>"; };
-		F21E09362E45360C00690BC5 /* WJDefine.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WJDefine.h; sourceTree = "<group>"; };
-		F21E09382E45360C00690BC5 /* FBKVOController+Extension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "FBKVOController+Extension.h"; sourceTree = "<group>"; };
-		F21E09392E45360C00690BC5 /* FBKVOController+Extension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "FBKVOController+Extension.m"; sourceTree = "<group>"; };
-		F21E093A2E45360C00690BC5 /* NSString+Size.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSString+Size.h"; sourceTree = "<group>"; };
-		F21E093B2E45360C00690BC5 /* NSString+Size.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSString+Size.m"; sourceTree = "<group>"; };
-		F21E093C2E45360C00690BC5 /* UIViewController+YJKeyBoard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIViewController+YJKeyBoard.h"; sourceTree = "<group>"; };
-		F21E093D2E45360C00690BC5 /* UIViewController+YJKeyBoard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIViewController+YJKeyBoard.m"; sourceTree = "<group>"; };
-		F21E093F2E45360C00690BC5 /* WJFloatingAnimatedTextField.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WJFloatingAnimatedTextField.h; sourceTree = "<group>"; };
-		F21E09402E45360C00690BC5 /* WJFloatingAnimatedTextField.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WJFloatingAnimatedTextField.m; sourceTree = "<group>"; };
-		F21E09412E45360C00690BC5 /* WJFloatingAnimatedTextFieldConfig.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WJFloatingAnimatedTextFieldConfig.h; sourceTree = "<group>"; };
-		F21E09422E45360C00690BC5 /* WJFloatingAnimatedTextFieldConfig.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WJFloatingAnimatedTextFieldConfig.m; sourceTree = "<group>"; };
-		F21E09432E45360C00690BC5 /* WJTextField.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = WJTextField.h; sourceTree = "<group>"; };
-		F21E09442E45360C00690BC5 /* WJTextField.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = WJTextField.m; sourceTree = "<group>"; };
 		F2201FE62E11D7BF005DBD9F /* CartItem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CartItem.h; sourceTree = "<group>"; };
 		F2201FE72E11D7C9005DBD9F /* CartItem.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartItem.m; sourceTree = "<group>"; };
 		F2201FEB2E11DB6A005DBD9F /* CartViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CartViewController.h; sourceTree = "<group>"; };
@@ -2102,6 +2073,12 @@
 		F2D2F9482E0C97C2001B026B /* AccessoryCollectionViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessoryCollectionViewCell.h; sourceTree = "<group>"; };
 		F2D2F9492E0C97CA001B026B /* AccessoryCollectionViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AccessoryCollectionViewCell.m; sourceTree = "<group>"; };
 		F2D44D1F2F3D611200999337 /* map_dark_style.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = map_dark_style.json; sourceTree = "<group>"; };
+		F2D5A7B42F95C0A1009B6001 /* PPModerHomeCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModerHomeCell.h; sourceTree = "<group>"; };
+		F2D5A7B52F95C0A1009B6001 /* PPModerHomeCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModerHomeCell.m; sourceTree = "<group>"; };
+		F2D5A7C02F95C0A1009B6001 /* PPModernHomeActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModernHomeActionCell.h; sourceTree = "<group>"; };
+		F2D5A7C12F95C0A1009B6001 /* PPModernHomeActionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModernHomeActionCell.m; sourceTree = "<group>"; };
+		F2D5A8E02F970001009B6001 /* FullScreenImageViewerController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FullScreenImageViewerController.h; sourceTree = "<group>"; };
+		F2D5A8E12F970001009B6001 /* FullScreenImageViewerController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FullScreenImageViewerController.m; sourceTree = "<group>"; };
 		F2D6396C2ECB491D00FEBCBB /* PPUserSigningController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPUserSigningController.m; sourceTree = "<group>"; };
 		F2D6396D2ECB4A4500FEBCBB /* PPUserSigningController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserSigningController.h; sourceTree = "<group>"; };
 		F2D6396F2ECB4E1800FEBCBB /* PPUserSigningManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUserSigningManager.h; sourceTree = "<group>"; };
@@ -2230,7 +2207,6 @@
 				16AFE532B20F126B74BF4140 /* Network.framework in Frameworks */,
 				F251008F2F73C2D8008F6AFE /* FirebaseMLModelDownloader in Frameworks */,
 				F251008B2F73C2D8008F6AFE /* FirebaseFunctions in Frameworks */,
-				F25D68CD2F82776C00700694 /* Network.framework in Frameworks */,
 				F201B8B12DA6438C00CC46A7 /* lame.framework in Frameworks */,
 				F25100932F73C2D8008F6AFE /* FirebasePerformance in Frameworks */,
 				F251008D2F73C2D8008F6AFE /* FirebaseInstallations in Frameworks */,
@@ -2239,8 +2215,8 @@
 				F25100972F73C2D8008F6AFE /* FirebaseStorage in Frameworks */,
 				F25100812F73C2D8008F6AFE /* FirebaseAppCheck in Frameworks */,
 				F25100872F73C2D8008F6AFE /* FirebaseCrashlytics in Frameworks */,
-				7487A7B746BA7354A187635D /* Pods_Pure_Pets.framework in Frameworks */,
 				F25100832F73C2D8008F6AFE /* FirebaseAuth in Frameworks */,
+				E9FFA6DE8F58F43BD8DC04AC /* Pods_Pure_Pets.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2264,8 +2240,8 @@
 		07D577F1CC0A3CD1744A9EF3 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				1BE69E138E85D5FDB3F3E6F6 /* Pods-Pure Pets.debug.xcconfig */,
-				389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */,
+				A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */,
+				05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -2299,7 +2275,7 @@
 				F2A1DD792D043A72009F0B62 /* SystemConfiguration.framework */,
 				F2A1DD732D0439FD009F0B62 /* UserNotifications.framework */,
 				F25D0F4A2CE676D300F66997 /* CoreAudioTypes.framework */,
-				1C01654CEEF8CE3EA53AC0E0 /* Pods_Pure_Pets.framework */,
+				5D1B30DFD70D93C5EE1D52A2 /* Pods_Pure_Pets.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -2548,50 +2524,6 @@
 			path = Language;
 			sourceTree = "<group>";
 		};
-		F21E09372E45360C00690BC5 /* Base */ = {
-			isa = PBXGroup;
-			children = (
-				F21E09362E45360C00690BC5 /* WJDefine.h */,
-			);
-			path = Base;
-			sourceTree = "<group>";
-		};
-		F21E093E2E45360C00690BC5 /* Category */ = {
-			isa = PBXGroup;
-			children = (
-				F21E09382E45360C00690BC5 /* FBKVOController+Extension.h */,
-				F21E09392E45360C00690BC5 /* FBKVOController+Extension.m */,
-				F21E093A2E45360C00690BC5 /* NSString+Size.h */,
-				F21E093B2E45360C00690BC5 /* NSString+Size.m */,
-				F21E093C2E45360C00690BC5 /* UIViewController+YJKeyBoard.h */,
-				F21E093D2E45360C00690BC5 /* UIViewController+YJKeyBoard.m */,
-			);
-			path = Category;
-			sourceTree = "<group>";
-		};
-		F21E09452E45360C00690BC5 /* Core */ = {
-			isa = PBXGroup;
-			children = (
-				F21E093F2E45360C00690BC5 /* WJFloatingAnimatedTextField.h */,
-				F21E09402E45360C00690BC5 /* WJFloatingAnimatedTextField.m */,
-				F21E09412E45360C00690BC5 /* WJFloatingAnimatedTextFieldConfig.h */,
-				F21E09422E45360C00690BC5 /* WJFloatingAnimatedTextFieldConfig.m */,
-				F21E09432E45360C00690BC5 /* WJTextField.h */,
-				F21E09442E45360C00690BC5 /* WJTextField.m */,
-			);
-			path = Core;
-			sourceTree = "<group>";
-		};
-		F21E09462E45360C00690BC5 /* WJFloatingAnimatedTextField */ = {
-			isa = PBXGroup;
-			children = (
-				F21E09372E45360C00690BC5 /* Base */,
-				F21E093E2E45360C00690BC5 /* Category */,
-				F21E09452E45360C00690BC5 /* Core */,
-			);
-			path = WJFloatingAnimatedTextField;
-			sourceTree = "<group>";
-		};
 		F21E094D2E45473A00690BC5 /* PhotosAnControllers */ = {
 			isa = PBXGroup;
 			children = (
@@ -2621,7 +2553,6 @@
 				F28CB3762E4BF64E009DD547 /* PPInsetLabel.h */,
 				F2EB742F2E48EABF00A31008 /* UIButton.m */,
 				F2EB742E2E48EAB300A31008 /* UIButton.h */,
-				F21E09462E45360C00690BC5 /* WJFloatingAnimatedTextField */,
 				F276E5CC2DE383D500926D56 /* ButtonsContainerView.m */,
 				F276E5CB2DE383C600926D56 /* ButtonsContainerView.h */,
 				F276E5C92DE3363E00926D56 /* FavoriteButton.m */,
@@ -3149,6 +3080,8 @@
 			children = (
 				F23686EC2C7624DE001E620C /* TQImageViewer.h */,
 				F23686ED2C7624DE001E620C /* TQImageViewer.m */,
+				F2D5A8E02F970001009B6001 /* FullScreenImageViewerController.h */,
+				F2D5A8E12F970001009B6001 /* FullScreenImageViewerController.m */,
 			);
 			path = TQImageViewer;
 			sourceTree = "<group>";
@@ -5016,15 +4949,15 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = F2D0C6042C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure Pets" */;
 			buildPhases = (
-				B715D1092C82B93BA6A4485D /* [CP] Check Pods Manifest.lock */,
+				A9A88BA485C4EE9E853D172D /* [CP] Check Pods Manifest.lock */,
 				F2D0C5D12C4BE1B80023CE53 /* Sources */,
 				F2D0C5D22C4BE1B80023CE53 /* Frameworks */,
 				F2D0C5D32C4BE1B80023CE53 /* Resources */,
 				F291D19D2C82FDF00055B078 /* Embed Foundation Extensions */,
-				F419239A25BCE454B7C90E99 /* [CP] Embed Pods Frameworks */,
-				24A7D6A7BF4D7C6F1C741FC4 /* [CP] Copy Pods Resources */,
 				F273148F2F31548400FFA0B8 /* Embed Frameworks */,
 				F28F03932D95E399008F962A /* ShellScript */,
+				4F90F3A3874CAF002A1E3F17 /* [CP] Embed Pods Frameworks */,
+				3330C2BDA9866E3956F000A6 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -5078,7 +5011,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 2610;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					F2D0C5D42C4BE1B80023CE53 = {
 						CreatedOnToolsVersion = 15.4;
@@ -5192,7 +5125,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		24A7D6A7BF4D7C6F1C741FC4 /* [CP] Copy Pods Resources */ = {
+		3330C2BDA9866E3956F000A6 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -5213,7 +5146,28 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		B715D1092C82B93BA6A4485D /* [CP] Check Pods Manifest.lock */ = {
+		4F90F3A3874CAF002A1E3F17 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		A9A88BA485C4EE9E853D172D /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -5259,27 +5213,6 @@
 			shellScript = "
 ";
 		};
-		F419239A25BCE454B7C90E99 /* [CP] Embed Pods Frameworks */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
-			);
-			name = "[CP] Embed Pods Frameworks";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -5299,6 +5232,7 @@
 				F2977D602E4ABB6B003A7005 /* AppSearchHelper.m in Sources */,
 				F25E80122F00602E0089F659 /* PPSectionHeaderView.m in Sources */,
 				F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */,
+				F2D5A8E22F970001009B6001 /* FullScreenImageViewerController.m in Sources */,
 				F29F01D12D0D08CB00FF2180 /* StepperCell.m in Sources */,
 				F241C44E2E25354E00CC9BE9 /* ServicesManager.m in Sources */,
 				F2C223C82F061E58006DB76A /* PPHomeItem.m in Sources */,
@@ -5629,17 +5563,11 @@
 				F26024862EB60BA5006534B4 /* PPCartTableCell.m in Sources */,
 				F2E7C8112D7D5584002383C2 /* ArchivesManager.m in Sources */,
 				F2977D572E4ABAC7003A7005 /* SearchResultItem.m in Sources */,
-				F21E09472E45360C00690BC5 /* WJFloatingAnimatedTextFieldConfig.m in Sources */,
-				F21E09482E45360C00690BC5 /* WJTextField.m in Sources */,
 				F20ACAB72EFB86FD009B4FA2 /* MainController_Func.m in Sources */,
-				F21E09492E45360C00690BC5 /* NSString+Size.m in Sources */,
-				F21E094A2E45360C00690BC5 /* FBKVOController+Extension.m in Sources */,
 				F2A903452F9E7B680097485B /* PPPetCareVetCell.m in Sources */,
 				F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */,
 				F2A0BBD02F203D81003715F0 /* ChMessagingController+Video.m in Sources */,
-				F21E094B2E45360C00690BC5 /* WJFloatingAnimatedTextField.m in Sources */,
 				F20956822F856845007C4ABA /* PPPetRemindersViewController.m in Sources */,
-				F21E094C2E45360C00690BC5 /* UIViewController+YJKeyBoard.m in Sources */,
 				F28D58402E1958F00055DAED /* OrderItemCell.m in Sources */,
 				F2A0BBC72F1FDAF2003715F0 /* ChatAudioMessageCell.m in Sources */,
 				F241C4582E255C6B00CC9BE9 /* CategoryModel.m in Sources */,
@@ -5647,11 +5575,7 @@
 				F241C4522E254D3A00CC9BE9 /* ServiceModel.m in Sources */,
 				F2449C402D0DBACA00DB6BBC /* AppManager.m in Sources */,
 				F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */,
-				F2A83AD12F88781C00930857 /* BBCheckoutSummaryView.m in Sources */,
 				F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */,
-				F2A83AD22F88781C00930857 /* PPNavBarTitleView.m in Sources */,
-				F2A83AD32F88781C00930857 /* PPBottomBar.m in Sources */,
-				F2A83AD42F88781C00930857 /* UIViewController+PPNavBar.m in Sources */,
 				F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */,
 				F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */,
 				F2A83AD72F88781C00930857 /* UITabBarItem+PPAdditions.m in Sources */,
@@ -5778,7 +5702,6 @@
 				F22C07D32EF66C2F00C00EAC /* UIView+YYAdd.m in Sources */,
 				F22C07D42EF66C2F00C00EAC /* UIBezierPath+YYAdd.m in Sources */,
 				F22C07D52EF66C2F00C00EAC /* NSArray+YYAdd.m in Sources */,
-				F2AAEDA92EF9E249006E0A6F /* UITabBarItem+PPAdditions.m in Sources */,
 				F28CB3782E4BF658009DD547 /* PPInsetLabel.m in Sources */,
 				F28A0A112EEA431100EE5055 /* CagesManager.m in Sources */,
 				F299FDDD2C61C37B00C63506 /* CircularIndicatorView.m in Sources */,
@@ -5824,7 +5747,6 @@
 				F2C223CC2F061EFD006DB76A /* PPUniversalCellViewModel.m in Sources */,
 				F2C5F7702CA00D3300D7897A /* AAMultiSelectTableViewCell.m in Sources */,
 				F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */,
-				F251F8DA2E948EC6000B5CF3 /* PPNavigationController.m in Sources */,
 				F2C5F7712CA00D3300D7897A /* AAMultiSelectModel.m in Sources */,
 				F2B02B212EF86462001A7B19 /* PPTextField.m in Sources */,
 				F2EDCB272D6ED9DC00C83328 /* ArchCell.m in Sources */,
@@ -6022,7 +5944,6 @@
 		F2D0C6022C4BE1BB0023CE53 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -6092,7 +6013,6 @@
 		F2D0C6032C4BE1BB0023CE53 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
 				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
@@ -6147,6 +6067,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OBJC_BRIDGING_HEADER = "Pure Pets/Pure Pets-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				VALIDATE_PRODUCT = YES;
@@ -6155,7 +6076,7 @@
 		};
 		F2D0C6052C4BE1BB0023CE53 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 1BE69E138E85D5FDB3F3E6F6 /* Pods-Pure Pets.debug.xcconfig */;
+			baseConfigurationReference = A45CC182E429B46A93999705 /* Pods-Pure Pets.debug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -6170,6 +6091,7 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				ENABLE_USER_SELECTED_FILES = "";
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = QIBPayment.framework;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
@@ -6194,7 +6116,6 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager/IQKeyboardManager.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/Masonry/Masonry.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.framework/Headers\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController/TZImagePickerController.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to take pet photos and capture images for listings";
@@ -6243,13 +6164,11 @@
 					"-framework",
 					"\"UIKit\"",
 					"-Obj",
-					"-Wl,-needed_framework,QIBPayment",
 				);
-				OTHER_MODULE_VERIFIER_FLAGS = "$(inherited) \"-F${PODS_CONFIGURATION_BUILD_DIR}/AFNetworking\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppCheckCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/BoringSSL-GRPC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Firebase\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAnalytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAppCheckInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuthInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreExtension\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCrashlytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFunctions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseInstallations\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessaging\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessagingInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseRemoteConfigInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSessions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSharedSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseStorage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMAppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMSessionFetcher\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAdsOnDeviceConversion\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAppMeasurement\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleDataTransport\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleMaps\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleSignIn\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleUtilities\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/HMSegmentedControl\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/JDStatusBarNotification\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/KVOController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/MMSCameraViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Masonry\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesObjC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/RecaptchaInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SSZipArchive\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/TOCropViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/WJFrameLayout\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/abseil\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-C++\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-Core\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/leveldb-library\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/lottie-ios_Oc\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/nanopb\"";
+				OTHER_MODULE_VERIFIER_FLAGS = "$(inherited) \"-F${PODS_CONFIGURATION_BUILD_DIR}/AFNetworking\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppCheckCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/BoringSSL-GRPC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Firebase\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAnalytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAppCheckInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuthInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreExtension\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCrashlytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFunctions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseInstallations\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessaging\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessagingInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseRemoteConfigInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSessions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSharedSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseStorage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMAppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMSessionFetcher\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAdsOnDeviceConversion\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAppMeasurement\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleDataTransport\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleMaps\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleSignIn\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleUtilities\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/HMSegmentedControl\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/JDStatusBarNotification\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/KVOController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/MMSCameraViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Masonry\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesObjC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/RecaptchaInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SSZipArchive\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/TOCropViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/WJFrameLayout\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/abseil\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-C++\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-Core\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/leveldb-library\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/lottie-ios_Oc\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/nanopb\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "Pure Pets";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				STRIP_INSTALLED_PRODUCT = NO;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
@@ -6264,7 +6183,7 @@
 		};
 		F2D0C6062C4BE1BB0023CE53 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 389735AB72DCBA36C2C6AEE8 /* Pods-Pure Pets.release.xcconfig */;
+			baseConfigurationReference = 05379D0C6D2A941CA7A992D0 /* Pods-Pure Pets.release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -6283,6 +6202,7 @@
 				ENABLE_DEBUG_DYLIB = NO;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				ENABLE_USER_SELECTED_FILES = "";
+				"EXCLUDED_SOURCE_FILE_NAMES[sdk=iphonesimulator*]" = QIBPayment.framework;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
@@ -6307,7 +6227,6 @@
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager/IQKeyboardManager.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/Masonry/Masonry.framework/Headers\"",
 					"\"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.framework/Headers\"",
-					"\"${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController/TZImagePickerController.framework/Headers\"",
 				);
 				INFOPLIST_FILE = "Pure Pets/Info.plist";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Camera access is needed to take pet photos and capture images for listings";
@@ -6356,13 +6275,11 @@
 					"-framework",
 					"\"UIKit\"",
 					"-Obj",
-					"-Wl,-needed_framework,QIBPayment",
 				);
-				OTHER_MODULE_VERIFIER_FLAGS = "$(inherited) \"-F${PODS_CONFIGURATION_BUILD_DIR}/AFNetworking\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppCheckCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/BoringSSL-GRPC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Firebase\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAnalytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAppCheckInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuthInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreExtension\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCrashlytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFunctions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseInstallations\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessaging\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessagingInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseRemoteConfigInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSessions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSharedSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseStorage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMAppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMSessionFetcher\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAdsOnDeviceConversion\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAppMeasurement\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleDataTransport\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleMaps\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleSignIn\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleUtilities\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/HMSegmentedControl\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/JDStatusBarNotification\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/KVOController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/MMSCameraViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Masonry\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesObjC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/RecaptchaInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SSZipArchive\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/TOCropViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/TZImagePickerController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/WJFrameLayout\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/abseil\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-C++\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-Core\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/leveldb-library\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/lottie-ios_Oc\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/nanopb\"";
+				OTHER_MODULE_VERIFIER_FLAGS = "$(inherited) \"-F${PODS_CONFIGURATION_BUILD_DIR}/AFNetworking\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/AppCheckCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/BoringSSL-GRPC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Firebase\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAnalytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAppCheckInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseAuthInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreExtension\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCrashlytics\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestore\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFirestoreInternal\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseFunctions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseInstallations\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessaging\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseMessagingInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseRemoteConfigInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSessions\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseSharedSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/FirebaseStorage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMAppAuth\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GTMSessionFetcher\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAdsOnDeviceConversion\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleAppMeasurement\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleDataTransport\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleMaps\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleSignIn\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/GoogleUtilities\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/HMSegmentedControl\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/IQKeyboardManager\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/JDStatusBarNotification\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/KVOController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/MMSCameraViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/Masonry\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesObjC\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/PromisesSwift\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/RecaptchaInterop\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/SSZipArchive\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/TOCropViewController\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/WJFrameLayout\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/abseil\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-C++\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/gRPC-Core\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/leveldb-library\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/lottie-ios_Oc\" \"-F${PODS_CONFIGURATION_BUILD_DIR}/nanopb\"";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.PB.Pure-Bird";
 				PRODUCT_NAME = "Pure Pets";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				STRIP_INSTALLED_PRODUCT = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;

@@ -87,12 +87,15 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _largeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _largeOrbView.userInteractionEnabled = NO;
     _largeOrbView.layer.cornerRadius = 60.0;
+    
     [_surfaceView addSubview:_largeOrbView];
 
     _smallOrbView = [[UIView alloc] init];
     _smallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _smallOrbView.userInteractionEnabled = NO;
     _smallOrbView.layer.cornerRadius = 24.0;
+    _largeOrbView.alpha = 0;
+    _largeOrbView.hidden = YES;
     [_surfaceView addSubview:_smallOrbView];
 
     _backgroundDotViews = [NSMutableArray arrayWithCapacity:5];
@@ -429,8 +432,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _middleBackgroundGlowView.layer.shadowOpacity = 0.18;
     _middleBackgroundGlowView.layer.shadowRadius = 68.0;
     _middleBackgroundGlowView.layer.shadowOffset = CGSizeZero;
-    _middleBackgroundGlowView.alpha=0.0;
-    _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
+     _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
     [_bottomLeadingGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.16 : 0.18]];
     _bottomLeadingGlowView.layer.shadowOpacity = 0.28;
     _bottomLeadingGlowView.layer.shadowRadius = 68.0;
@@ -573,7 +575,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     _topBackgroundGlowView.alpha = 1.0;
     _topBackgroundGlowView.transform = CGAffineTransformIdentity;
-    _middleBackgroundGlowView.alpha = 1.0;
+    _middleBackgroundGlowView.alpha = 0.7;
     _middleBackgroundGlowView.transform = CGAffineTransformIdentity;
     _bottomLeadingGlowView.alpha = 1.0;
     _bottomLeadingGlowView.transform = CGAffineTransformIdentity;

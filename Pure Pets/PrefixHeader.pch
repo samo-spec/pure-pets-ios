@@ -86,8 +86,7 @@
 // =====================================================
 // Third-Party Libraries
 // =====================================================
-#import <TZImagePickerController/TZImagePickerController.h>
-#import <Masonry/Masonry.h>
+ #import <Masonry/Masonry.h>
 #import <IQKeyboardManager/IQKeyboardManager.h>
 #import <SSZipArchive/SSZipArchive.h>
 #import <TOCropViewController/TOCropViewController.h>

@@ -7441,7 +7441,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
                                 atIndexPath:indexPath
                              initialOrdinal:NSNotFound];
     }
-
+    
     if ([self pp_isInitialHomeRevealSettled]) {
         [self pp_applyPremiumScrollMotionToCell:cell atIndexPath:indexPath];
     }
@@ -10220,7 +10220,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                    topSize);
 
     self.pp_premiumBackgroundGlowViewMid.frame =
-        CGRectMake(-(midSize * 0.46),
+        CGRectMake((midSize * 0.54),
                    MAX(168.0, height * 0.30),
                    midSize,
                    midSize);
@@ -10242,7 +10242,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         glowView.layer.cornerRadius = radius;
         glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
     }
-    _pp_premiumBackgroundGlowViewMid.alpha - 0.1;
+    _pp_premiumBackgroundGlowViewMid.alpha = 0.1;
     if (self.collectionView.superview == self.view) {
         [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
         [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];

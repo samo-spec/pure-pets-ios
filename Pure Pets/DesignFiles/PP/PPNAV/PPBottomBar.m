@@ -12,175 +12,7 @@
 #import "PPCommerceFeedbackManager.h"
 #import "CartManager.h"
 
-@interface PPPaymentTabBar ()
-@property (nonatomic, strong) NSArray<UIButton *> *tabButtons;
-@property (nonatomic, assign, readwrite) PPPaymentTab selectedTab;
-@end
-
-@implementation PPPaymentTabBar
-
-#pragma mark - Init
-
-- (instancetype)initWithFrame:(CGRect)frame {
-    self = [super initWithFrame:frame];
-    if (self) {
-        self.translatesAutoresizingMaskIntoConstraints = NO;
-        self.backgroundColor = UIColor.clearColor;
-        self.layer.masksToBounds = NO;
-
-        [self setupTabs];
-        [self setSelectedTab:PPPaymentTabCard animated:NO];
-    }
-    return self;
-}
-
-#pragma mark - Setup
-
-- (void)setupTabs {
-    NSArray *titles = @[ @"Card", @"Ooredoo Money", @"PayPal" ];
-    NSArray *icons  = @[ @"creditcard.fill", @"q.circle.fill", @"p.circle.fill" ];
-    NSArray *colors = @[ UIColor.systemBlueColor, UIColor.systemRedColor, UIColor.systemIndigoColor ];
-
-    NSMutableArray *buttons = [NSMutableArray array];
-
-    for (NSInteger i = 0; i < titles.count; i++) {
-        UIButton *btn = [self createGlassButtonWithTitle:titles[i]
-                                                    icon:icons[i]
-                                                   color:colors[i]];
-        btn.tag = i;
-        [btn addTarget:self action:@selector(tabTapped:) forControlEvents:UIControlEventTouchUpInside];
-        [buttons addObject:btn];
-    }
-
-    self.tabButtons = buttons;
-    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:buttons];
-    stack.axis = UILayoutConstraintAxisHorizontal;
-    stack.spacing = 12;
-    stack.alignment = UIStackViewAlignmentFill;
-    stack.distribution = UIStackViewDistributionFillEqually;
-    stack.translatesAutoresizingMaskIntoConstraints = NO;
-
-    [self addSubview:stack];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [stack.topAnchor constraintEqualToAnchor:self.topAnchor constant:8],
-        [stack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-8],
-        [stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
-        [stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12]
-    ]];
-}
-
-- (UIButton *)createGlassButtonWithTitle:(NSString *)title
-                                    icon:(NSString *)icon
-                                   color:(UIColor *)tint {
-    UIButton *button;
-
-    if (@available(iOS 26.0, *)) {
-        // 🧊 iOS 26 Modern glass button
-        UIButtonConfiguration *cfg = [UIButtonConfiguration prominentGlassButtonConfiguration];
-        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.baseForegroundColor = tint;
-        cfg.image = [UIImage systemImageNamed:icon];
-        cfg.imagePadding = 6;
-        cfg.imagePlacement = NSDirectionalRectEdgeTop;
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(10, 14, 10, 14);
-
-        NSMutableAttributedString *attrTitle = [[NSMutableAttributedString alloc] initWithString:title
-                                                                                       attributes:@{
-            NSFontAttributeName: [GM boldFontWithSize:16],
-            NSForegroundColorAttributeName: UIColor.labelColor
-        }];
-        cfg.attributedTitle = attrTitle;
-
-        button = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
-        button.translatesAutoresizingMaskIntoConstraints = NO;
-        button.configuration = cfg;
-    } else {
-        // 🌫️ Legacy fallback
-        button = [UIButton buttonWithType:UIButtonTypeSystem];
-        button.translatesAutoresizingMaskIntoConstraints = NO;
-        button.layer.cornerRadius = 16;
-        button.layer.masksToBounds = YES;
-
-        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
-        blurView.translatesAutoresizingMaskIntoConstraints = NO;
-        blurView.userInteractionEnabled = NO;
-        [button insertSubview:blurView atIndex:0];
-        [NSLayoutConstraint activateConstraints:@[
-            [blurView.topAnchor constraintEqualToAnchor:button.topAnchor],
-            [blurView.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
-            [blurView.leadingAnchor constraintEqualToAnchor:button.leadingAnchor],
-            [blurView.trailingAnchor constraintEqualToAnchor:button.trailingAnchor]
-        ]];
-
-        [button setTitle:title forState:UIControlStateNormal];
-        [button setImage:[UIImage systemImageNamed:icon] forState:UIControlStateNormal];
-        [button setTintColor:tint];
-        [button.titleLabel setFont:[UIFont boldSystemFontOfSize:15]];
-    }
-
-    return button;
-}
-
-#pragma mark - Actions
-
-- (void)tabTapped:(UIButton *)sender {
-    [self setSelectedTab:(PPPaymentTab)sender.tag animated:YES];
-    if (self.onSelect) self.onSelect(self.selectedTab);
-}
-
-- (void)setSelectedTab:(PPPaymentTab)tab animated:(BOOL)animated {
-    _selectedTab = tab;
-
-    for (UIButton *btn in self.tabButtons) {
-        BOOL isSelected = (btn.tag == tab);
-
-        if (@available(iOS 26.0, *)) {
-            UIButtonConfiguration *cfg = btn.configuration;
-            cfg.baseBackgroundColor = isSelected
-                ? [btn.configuration.baseForegroundColor colorWithAlphaComponent:0.15]
-                : [UIColor clearColor];
-            cfg.baseForegroundColor = btn.configuration.baseForegroundColor;
-            btn.configuration = cfg;
-        } else {
-            btn.alpha = isSelected ? 1.0 : 0.6;
-        }
-
-        if (animated) {
-            [UIView animateWithDuration:0.25 animations:^{
-                btn.transform = isSelected ? CGAffineTransformMakeScale(1.05, 1.05)
-                                           : CGAffineTransformIdentity;
-            }];
-        }
-    }
-}
-
-@end
-
-
-
-
-
-
-
-
-
-
-
-
  
-
-
-
-
-
-
-
-
-
-
-/* **********************************************************************************************************************************************************************************************************/
 #pragma mark - BBCartBottomBar
 
 static BOOL PPBBCartUsesLegacyIPadBelowIOS18(void);
@@ -1046,7 +878,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.BackgroundB.translatesAutoresizingMaskIntoConstraints = NO;
     self.BackgroundB.userInteractionEnabled = YES;
     self.BackgroundB.isAccessibilityElement = NO;
-    self.BackgroundB.backgroundColor = PPIOS26() ? AppClearClr : PPBBCartSurfaceFillColor();
+    self.BackgroundB.backgroundColor = PPIOS26() ? [AppClearClr colorWithAlphaComponent:0.4] : PPBBCartSurfaceFillColor();
     PPApplyContinuousCorners(self.BackgroundB, PPBBCartBarCornerRadius());
     [self.BackgroundB pp_setBorderColor:PPBBCartSurfaceStrokeColor()];
     self.BackgroundB.layer.borderWidth = PPIOS26() ? 0.9 : 0.8;
@@ -2797,5 +2629,196 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     }];
 }
 
+
+@end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+@interface PPPaymentTabBar ()
+@property (nonatomic, strong) NSArray<UIButton *> *tabButtons;
+@property (nonatomic, assign, readwrite) PPPaymentTab selectedTab;
+@end
+
+@implementation PPPaymentTabBar
+
+#pragma mark - Init
+
+- (instancetype)initWithFrame:(CGRect)frame {
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.translatesAutoresizingMaskIntoConstraints = NO;
+        self.backgroundColor = UIColor.clearColor;
+        self.layer.masksToBounds = NO;
+
+        [self setupTabs];
+        [self setSelectedTab:PPPaymentTabCard animated:NO];
+    }
+    return self;
+}
+
+#pragma mark - Setup
+
+- (void)setupTabs {
+    NSArray *titles = @[ @"Card", @"Ooredoo Money", @"PayPal" ];
+    NSArray *icons  = @[ @"creditcard.fill", @"q.circle.fill", @"p.circle.fill" ];
+    NSArray *colors = @[ UIColor.systemBlueColor, UIColor.systemRedColor, UIColor.systemIndigoColor ];
+
+    NSMutableArray *buttons = [NSMutableArray array];
+
+    for (NSInteger i = 0; i < titles.count; i++) {
+        UIButton *btn = [self createGlassButtonWithTitle:titles[i]
+                                                    icon:icons[i]
+                                                   color:colors[i]];
+        btn.tag = i;
+        [btn addTarget:self action:@selector(tabTapped:) forControlEvents:UIControlEventTouchUpInside];
+        [buttons addObject:btn];
+    }
+
+    self.tabButtons = buttons;
+    UIStackView *stack = [[UIStackView alloc] initWithArrangedSubviews:buttons];
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.spacing = 12;
+    stack.alignment = UIStackViewAlignmentFill;
+    stack.distribution = UIStackViewDistributionFillEqually;
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [self addSubview:stack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor constraintEqualToAnchor:self.topAnchor constant:8],
+        [stack.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-8],
+        [stack.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:12],
+        [stack.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-12]
+    ]];
+}
+
+- (UIButton *)createGlassButtonWithTitle:(NSString *)title
+                                    icon:(NSString *)icon
+                                   color:(UIColor *)tint {
+    UIButton *button;
+
+    if (@available(iOS 26.0, *)) {
+        // 🧊 iOS 26 Modern glass button
+        UIButtonConfiguration *cfg = [UIButtonConfiguration prominentGlassButtonConfiguration];
+        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        cfg.baseForegroundColor = tint;
+        cfg.image = [UIImage systemImageNamed:icon];
+        cfg.imagePadding = 6;
+        cfg.imagePlacement = NSDirectionalRectEdgeTop;
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(10, 14, 10, 14);
+
+        NSMutableAttributedString *attrTitle = [[NSMutableAttributedString alloc] initWithString:title
+                                                                                       attributes:@{
+            NSFontAttributeName: [GM boldFontWithSize:16],
+            NSForegroundColorAttributeName: UIColor.labelColor
+        }];
+        cfg.attributedTitle = attrTitle;
+
+        button = [UIButton buttonWithConfiguration:cfg primaryAction:nil];
+        button.translatesAutoresizingMaskIntoConstraints = NO;
+        button.configuration = cfg;
+    } else {
+        // 🌫️ Legacy fallback
+        button = [UIButton buttonWithType:UIButtonTypeSystem];
+        button.translatesAutoresizingMaskIntoConstraints = NO;
+        button.layer.cornerRadius = 16;
+        button.layer.masksToBounds = YES;
+
+        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
+        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
+        blurView.translatesAutoresizingMaskIntoConstraints = NO;
+        blurView.userInteractionEnabled = NO;
+        [button insertSubview:blurView atIndex:0];
+        [NSLayoutConstraint activateConstraints:@[
+            [blurView.topAnchor constraintEqualToAnchor:button.topAnchor],
+            [blurView.bottomAnchor constraintEqualToAnchor:button.bottomAnchor],
+            [blurView.leadingAnchor constraintEqualToAnchor:button.leadingAnchor],
+            [blurView.trailingAnchor constraintEqualToAnchor:button.trailingAnchor]
+        ]];
+
+        [button setTitle:title forState:UIControlStateNormal];
+        [button setImage:[UIImage systemImageNamed:icon] forState:UIControlStateNormal];
+        [button setTintColor:tint];
+        [button.titleLabel setFont:[UIFont boldSystemFontOfSize:15]];
+    }
+
+    return button;
+}
+
+#pragma mark - Actions
+
+- (void)tabTapped:(UIButton *)sender {
+    [self setSelectedTab:(PPPaymentTab)sender.tag animated:YES];
+    if (self.onSelect) self.onSelect(self.selectedTab);
+}
+
+- (void)setSelectedTab:(PPPaymentTab)tab animated:(BOOL)animated {
+    _selectedTab = tab;
+
+    for (UIButton *btn in self.tabButtons) {
+        BOOL isSelected = (btn.tag == tab);
+
+        if (@available(iOS 26.0, *)) {
+            UIButtonConfiguration *cfg = btn.configuration;
+            cfg.baseBackgroundColor = isSelected
+                ? [btn.configuration.baseForegroundColor colorWithAlphaComponent:0.15]
+                : [UIColor clearColor];
+            cfg.baseForegroundColor = btn.configuration.baseForegroundColor;
+            btn.configuration = cfg;
+        } else {
+            btn.alpha = isSelected ? 1.0 : 0.6;
+        }
+
+        if (animated) {
+            [UIView animateWithDuration:0.25 animations:^{
+                btn.transform = isSelected ? CGAffineTransformMakeScale(1.05, 1.05)
+                                           : CGAffineTransformIdentity;
+            }];
+        }
+    }
+}
 
 @end

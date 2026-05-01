@@ -1325,72 +1325,16 @@ if ([NSThread isMainThread]) { \
 
 - (void)dismissAnimated:(BOOL)animated completion:(void (^)(void))completion {
     if (!_isPresenting) return;
-    [self dismissViewControllerAnimated:YES completion:^{ }]; return;
-    // Restore status bar
-    [self setNeedsStatusBarAppearanceUpdate];
-    
-    // Re-enable interactive pop gesture
-    UIGestureRecognizer *popGesture = [self findInteractivePopGestureRecognizer];
-    if (popGesture) {
-        popGesture.enabled = _fromInteractivePopGestureRecognizerEnabled;
+    NSTimeInterval previousDuration = _animateDuration;
+    ViewerAnimationStyle style = animated ? self.animationStyle : ViewerAnimationStyleNone;
+    if (!animated) {
+        _animateDuration = 0.0;
     }
-    
-    if (!animated) _animateDuration = 0;
-    
-    NSInteger currentPage = [self currentPage];
-    ViewerCell *cell = [self cellForPage:currentPage];
-    ViewerAttribute *attribute = _attributes[currentPage];
-    UIView *sourceView = attribute.sourceView;
-    
-    [self cancelAllImageLoads];
-    
-    [UIView animateWithDuration:0.15 animations:^{
-        self->_pageTextLabel.alpha = self->_pageControl.alpha = 0;
-    }];
-    
-    void (^dismissCallback)(void) = ^{
-        self->_isPresenting = NO;
-        [self willMoveToParentViewController:nil];
-        [self.view removeFromSuperview];
-        [self removeFromParentViewController];
-        [self.delegate viewerControllerDidDismiss:self];
+
+    [self dismissWithAnimationStyle:style completion:^{
+        self->_animateDuration = previousDuration;
         if (completion) completion();
-    };
-    
-    
-     if (sourceView) {
-         CGRect fromFrame = [sourceView convertRect:sourceView.bounds toView:cell];
-         
-         if (self.bouncesAnimated) {
-             [UIView animateWithDuration:0.15 animations:^{
-                 self->_containerView.alpha = 0;
-                 self.view.backgroundColor = [UIColor clearColor];
-             }];
-             
-             [UIView animateWithDuration:0.55 delay:0.f usingSpringWithDamping:0.6 initialSpringVelocity:0.2 options:UIViewAnimationOptionCurveLinear animations:^{
-                 cell.imageView.frame = fromFrame;
-             } completion:^(BOOL finished) {
-                 if (finished) dismissCallback();
-             }];
-         } else {
-             [UIView animateWithDuration:_animateDuration delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
-                 cell.imageView.frame = fromFrame;
-                 self->_containerView.alpha = 0;
-                 self.view.backgroundColor = [UIColor clearColor];
-             } completion:^(BOOL finished) {
-                 if (finished) dismissCallback();
-             }];
-         }
-         
-        
-     } else {
-         [UIView animateWithDuration:0.25 animations:^{
-             self.view.alpha = 0;
-         } completion:^(BOOL finished) {
-             if (finished) dismissCallback();
-         }];
-     }
-        
+    }];
 }
 
 #pragma mark - Private Methods
@@ -1535,9 +1479,13 @@ if ([NSThread isMainThread]) { \
     
     NSInteger intPage = floatPage + 0.5;
     intPage = MAX(0, MIN(intPage, _attributes.count - 1));
-    
+    NSInteger previousPage = _pageControl.currentPage;
     _pageControl.currentPage = intPage;
     _pageTextLabel.attributedText = [self attributedTextForPage:intPage + 1 total:_attributes.count];
+    if (previousPage != intPage &&
+        [self.delegate respondsToSelector:@selector(viewerController:didChangeToPage:)]) {
+        [self.delegate viewerController:self didChangeToPage:intPage];
+    }
     
     [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut animations:^{
         self->_pageControl.alpha = 1;
