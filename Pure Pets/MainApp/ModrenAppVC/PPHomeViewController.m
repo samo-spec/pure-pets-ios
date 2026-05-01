@@ -1513,6 +1513,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeItemIdentifiers;
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *animatedHomeHeaderSections;
+@property (nonatomic, strong) NSMutableSet<NSString *> *animatedHorizontalCellKeys;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL petProfilesLoading;
@@ -1607,6 +1608,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_animateHomeEntranceForCell:(UICollectionViewCell *)cell
                           atIndexPath:(NSIndexPath *)indexPath
                        initialOrdinal:(NSUInteger)initialOrdinal;
+- (BOOL)pp_isHorizontalScrollSection:(PPHomeSection)section;
+- (void)pp_applyHorizontalCellAppearanceIfNeeded:(UICollectionViewCell *)cell
+                                     atIndexPath:(NSIndexPath *)indexPath;
 - (void)pp_animateHomeEntranceForSupplementaryView:(UICollectionReusableView *)supplementaryView
                                               kind:(NSString *)kind
                                        atIndexPath:(NSIndexPath *)indexPath
@@ -3205,6 +3209,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.promoCarouselCards = PPHomePromoCarouselManager.sharedManager.cards ?: @[];
     self.animatedHomeItemIdentifiers = [NSMutableSet set];
     self.animatedHomeHeaderSections = [NSMutableSet set];
+    self.animatedHorizontalCellKeys = [NSMutableSet set];
     [self configureLocationStateMachine];
 
 
@@ -7444,6 +7449,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     
     if ([self pp_isInitialHomeRevealSettled]) {
         [self pp_applyPremiumScrollMotionToCell:cell atIndexPath:indexPath];
+        [self pp_applyHorizontalCellAppearanceIfNeeded:cell atIndexPath:indexPath];
     }
 }
 
@@ -8295,6 +8301,84 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     view.layer.transform = transform;
     view.layer.opacity = opacity;
     view.layer.zPosition = isHeader ? (focus * 6.0) : (focus * 10.0);
+}
+
+#pragma mark - Premium Horizontal Cell Entrance
+
+// Section is one of HomeController's horizontally-scrolling carousels?
+// Limited to sections that are NOT already covered by the existing
+// "premium carousel reveal" path (Accessories / AdsNearBy / BuyAgain) so we
+// don't double-animate those cells. MainKinds is only horizontal when
+// collapsed.
+- (BOOL)pp_isHorizontalScrollSection:(PPHomeSection)section
+{
+    switch (section) {
+        case PPHomeSectionSuggestions:
+        case PPHomeSectionNearbyServices:
+        case PPHomeSectionLastFood:
+            return YES;
+
+        case PPHomeSectionMainKinds:
+            return !self.layoutManager.isMainKindsExpanded;
+
+        default:
+            return NO;
+    }
+}
+
+// Subtle scale + fade-in spring entrance the first time a horizontal cell
+// becomes visible. Reuse-safe: explicitly resets transform/alpha before
+// animating, and tracks a per-item key so a recycled cell scrolling back
+// into view does not re-animate. Skipped during initial home reveal,
+// reduce-motion, and for sections the existing carousel reveal already owns.
+//
+// Uses cell.transform / cell.alpha. The horizontal parallax handler in
+// PPHomeFunc writes to the same cell-layer transform, so once this animation
+// settles to identity the parallax handler will pick the cell up on the
+// next orthogonal scroll tick — they hand off cleanly.
+- (void)pp_applyHorizontalCellAppearanceIfNeeded:(UICollectionViewCell *)cell
+                                     atIndexPath:(NSIndexPath *)indexPath
+{
+    if (!cell || !indexPath) {
+        return;
+    }
+    if ([self pp_shouldReduceHomeMotion]) {
+        return;
+    }
+    if (![self pp_isInitialHomeRevealSettled]) {
+        return;
+    }
+
+    PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
+    if (![self pp_isHorizontalScrollSection:section]) {
+        return;
+    }
+
+    NSString *baseKey = [self pp_homeEntranceKeyForIndexPath:indexPath kind:nil];
+    if (baseKey.length == 0) {
+        return;
+    }
+    NSString *key = [@"PPHorzAppear|" stringByAppendingString:baseKey];
+    if ([self.animatedHorizontalCellKeys containsObject:key]) {
+        return;
+    }
+    [self.animatedHorizontalCellKeys addObject:key];
+
+    [cell.layer removeAllAnimations];
+    cell.alpha = 0.0;
+    cell.transform = CGAffineTransformMakeScale(0.94, 0.94);
+
+    [UIView animateWithDuration:0.34
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction |
+                                UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (nullable NSString *)pp_homeEntranceKeyForIndexPath:(NSIndexPath *)indexPath

@@ -15,6 +15,70 @@ NS_ASSUME_NONNULL_BEGIN
 
 @implementation PPHomeFunc
 
+#pragma mark - Premium Horizontal Scroll Motion
+
+// Premium subtle horizontal parallax for orthogonal sections.
+// Uses NSCollectionLayoutSection.visibleItemsInvalidationHandler — the canonical
+// per-section callback. No work runs in the parent collection view's
+// scrollViewDidScroll: this fires only while the orthogonal scroller moves,
+// and only iterates the section's currently visible items (~3–7 items).
+//
+// We write to NSCollectionLayoutVisibleItem.transform / .alpha which the system
+// applies via layout attributes onto the cell itself. This keeps the cell-layer
+// transform / opacity used by the existing vertical premium scroll motion
+// (cell.contentView.layer.transform) untouched — the two effects compose
+// through the view hierarchy without fighting each other.
++ (void)pp_attachHorizontalScrollMotionToSection:(NSCollectionLayoutSection *)section
+{
+    if (!section) {
+        return;
+    }
+    section.visibleItemsInvalidationHandler =
+        ^(NSArray<id<NSCollectionLayoutVisibleItem>> *visibleItems,
+          CGPoint contentOffset,
+          id<NSCollectionLayoutEnvironment> environment) {
+        if (UIAccessibilityIsReduceMotionEnabled()) {
+            for (id<NSCollectionLayoutVisibleItem> item in visibleItems) {
+                if (item.representedElementCategory != UICollectionElementCategoryCell) {
+                    continue;
+                }
+                item.transform = CGAffineTransformIdentity;
+                item.alpha = 1.0;
+            }
+            return;
+        }
+
+        CGFloat viewportWidth = environment.container.contentSize.width;
+        CGFloat halfViewport = MAX(viewportWidth * 0.5, 1.0);
+        CGFloat viewportMidX = contentOffset.x + halfViewport;
+
+        for (id<NSCollectionLayoutVisibleItem> item in visibleItems) {
+            if (item.representedElementCategory != UICollectionElementCategoryCell) {
+                continue;
+            }
+
+            CGFloat itemMidX = CGRectGetMidX(item.frame);
+            CGFloat normalized = (itemMidX - viewportMidX) / halfViewport;
+            if (normalized < -1.0) normalized = -1.0;
+            if (normalized >  1.0) normalized =  1.0;
+            CGFloat absDist = fabs(normalized);
+
+            // Smoothstep so motion eases near center (0..1).
+            CGFloat eased = absDist * absDist * (3.0 - (2.0 * absDist));
+
+            // Tunings kept intentionally subtle — premium, not aggressive.
+            CGFloat tx    = -normalized * 4.0;       // up to ±4pt counter-translation
+            CGFloat scale = 1.0 - eased * 0.035;     // up to 3.5% scale-down at edges
+            CGFloat alpha = 1.0 - eased * 0.12;      // up to 12% fade at edges
+
+            CGAffineTransform t = CGAffineTransformMakeTranslation(tx, 0.0);
+            t = CGAffineTransformScale(t, scale, scale);
+            item.transform = t;
+            item.alpha = alpha;
+        }
+    };
+}
+
 #pragma mark - Design Tokens (2026)
 
 /// Standard spacing unit — every inset/gap derives from this.
@@ -369,6 +433,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                   pinned:NO]];
 
+    [self pp_attachHorizontalScrollMotionToSection:section];
+
     return section;
 }
 
@@ -416,6 +482,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                 horizontalInset);
 
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin]];
+
+    [self pp_attachHorizontalScrollMotionToSection:section];
 
     return section;
 }
@@ -609,6 +677,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSDirectionalEdgeInsetsMake(PPSize12, horizontalInset, PPSize12, horizontalInset);
 
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
+
+    [self pp_attachHorizontalScrollMotionToSection:section];
+
     return section;
 }
 
@@ -887,10 +958,13 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSDirectionalEdgeInsetsMake(PPSize16, horizontalInset, PPSize12, horizontalInset);
     section.interGroupSpacing = 0;
 
-   
-    
+
+
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight
                                                                   pinned:NO]];
+
+    [self pp_attachHorizontalScrollMotionToSection:section];
+
     return section;
 }
 
@@ -931,10 +1005,13 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSDirectionalEdgeInsetsMake(PPSize16, horizontalInset, PPSize16, horizontalInset);
     section.interGroupSpacing = 0;
 
-  
-    
+
+
     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight
                                                                   pinned:NO]];
+
+    [self pp_attachHorizontalScrollMotionToSection:section];
+
     return section;
 }
 
