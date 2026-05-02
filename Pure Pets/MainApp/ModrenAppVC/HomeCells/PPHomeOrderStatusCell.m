@@ -214,7 +214,7 @@ static UIColor *PPHomeOrderResolvedStatusColor(UIColor *fallbackColor,
     self.overlayView = [[UIView alloc] init];
     self.overlayView.translatesAutoresizingMaskIntoConstraints = NO;
     self.overlayView.userInteractionEnabled = NO;
-    self.overlayView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.85];
+    self.overlayView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.85];
     self.overlayView.layer.masksToBounds = YES;
     [self.surfaceView addSubview:self.overlayView];
 

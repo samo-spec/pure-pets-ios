@@ -260,7 +260,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
         [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
-        [_ctaView.heightAnchor constraintEqualToConstant:40.0],
+        [_ctaView.heightAnchor constraintEqualToConstant:42.0],
         [_ctaView.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:10.0],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
@@ -404,7 +404,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     UIColor *secondaryColor = PPPetCareSecondaryTextColor();
     UIColor *borderColor = PPPetCareBorderColor();
     UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.4];
-    UIColor *controlFillColor = [accent colorWithAlphaComponent:isDark ? 0.15 : 0.09];
+    UIColor *controlFillColor = [accent colorWithAlphaComponent:isDark ? 0.35 : 0.09];
     UIColor *controlBorderColor = borderColor;
 
     _surfaceView.backgroundColor = surfaceColor;

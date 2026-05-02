@@ -2095,22 +2095,26 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     // ✅ Sections ALWAYS visible
     NSMutableArray<NSNumber *> *sections = [@[
         @(PPHomeSectionHero),
-        @(PPHomeSectionQuickActions),
-    ] mutableCopy];
-    [sections addObjectsFromArray:@[
         @(PPHomeSectionCurrentOrders),
+        @(PPHomeSectionQuickActions),
+        
         @(PPHomeSectionPremiumCare),
-
         @(PPHomeSectionMainKinds),
-        @(PPHomeSectionSuggestions),
-
         @(PPHomeSectionCarousel),
+       
+        
+       
+        @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
         @(PPHomeSectionPetProfile),
         @(PPHomeSectionAdsNearBy),
         @(PPHomeSectionAdopt),
+    ] mutableCopy];
+    
+    [sections addObjectsFromArray:@[
+       
     ]];
     if (!self.hideServiceSection) {
         [sections addObject:@(PPHomeSectionServices)];

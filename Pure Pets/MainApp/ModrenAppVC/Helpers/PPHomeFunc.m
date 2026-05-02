@@ -82,15 +82,15 @@ static inline CGFloat PPHomeHorizontalInset(CGFloat width)
 static inline CGFloat PPHomeHeroHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 284.0;
+        return 264.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 278.0;
+        return 252.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 240.0;
+        return 230.0;
     }
-    return (PPIOS26() ? 250.0 : 250.0);
+    return (PPIOS26() ? 230.0 : 252.0);
 }
 
 static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)

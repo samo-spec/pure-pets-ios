@@ -619,8 +619,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.supportLabel.widthAnchor constraintLessThanOrEqualToConstant:190.0];
     self.supportTrailingConstraint =
         [self.supportLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-126.0];
-    self.lottieWidthConstraint = [self.lottieHeaderView.widthAnchor constraintEqualToConstant:132.0];
-    self.lottieHeightConstraint = [self.lottieHeaderView.heightAnchor constraintEqualToConstant:132.0];
+    self.lottieWidthConstraint = [self.lottieHeaderView.widthAnchor constraintEqualToConstant:112.0];
+    self.lottieHeightConstraint = [self.lottieHeaderView.heightAnchor constraintEqualToConstant:112.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.heroShadowView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],

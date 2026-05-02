@@ -42,14 +42,13 @@
             // Fallback to old behavior if provider not set (should not happen)
             NSArray<NSNumber *> *renderOrder = @[
                 @(PPHomeSectionHero),
-                @(PPHomeSectionQuickActions),
                 @(PPHomeSectionCurrentOrders),
+                @(PPHomeSectionQuickActions),
                 @(PPHomeSectionPremiumCare),
-                
                 @(PPHomeSectionMainKinds),
-                @(PPHomeSectionSuggestions),
                 
                 @(PPHomeSectionCarousel),
+                @(PPHomeSectionSuggestions),
                 @(PPHomeSectionAccessories),
                 @(PPHomeSectionLastFood),
                 @(PPHomeSectionNearbyServices),
