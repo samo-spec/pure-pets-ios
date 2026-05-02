@@ -63,18 +63,18 @@ static UIColor *PPUniversalCellDynamicColor(UIColor *light, UIColor *dark)
 
 static UIColor *PPUniversalCellSoftSurfaceColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.68],
+    return PPUniversalCellDynamicColor([AppBackgroundClr colorWithAlphaComponent:1],
                                       [UIColor colorWithWhite:0.12 alpha:0.82]);
 }
 
 static UIColor *PPUniversalCellSoftCardBorderColor(void)
 {
-    return [AppLightGrayColor colorWithAlphaComponent:0.82];
+    return [AppLightGrayColor colorWithAlphaComponent:0.84];
 }
 
 static UIColor *PPUniversalCellSoftImageBorderColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.62],
+    return PPUniversalCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.72],
                                        [UIColor colorWithWhite:1.0 alpha:0.12]);
 }
 

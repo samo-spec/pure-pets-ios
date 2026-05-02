@@ -1364,6 +1364,10 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.barBackgroundImageView.alpha = shouldShowCartBar ? 1.0 : 0.0;
     self.bottomBarHeightConstraint.constant = shouldShowCartBar ? (kAVBottomBarBase + self.view.safeAreaInsets.bottom) : 0.0;
 
+    CGFloat bottomInset = shouldShowCartBar ? (kAVBottomBarBase + self.view.safeAreaInsets.bottom) : 0.0;
+    self.scrollView.contentInset = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
+    self.scrollView.verticalScrollIndicatorInsets = UIEdgeInsetsMake(0.0, 0.0, bottomInset, 0.0);
+
     if (!shouldShowCartBar) {
         self.bottomBar.alpha = 0.0;
         self.bottomBar.transform = CGAffineTransformIdentity;
@@ -2047,6 +2051,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 @property (nonatomic, strong) UIView *surfaceView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextView *textView;
+@property (nonatomic, strong) UIButton *moreButton;
+@property (nonatomic, assign) BOOL isExpanded;
 @end
 
 @implementation PPAccessoryDescriptionView
@@ -2105,11 +2111,21 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     _textView.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.78];
     _textView.textAlignment = NSTextAlignmentNatural;
     _textView.adjustsFontForContentSizeCategory = YES;
+    _textView.textContainer.maximumNumberOfLines = 8;
+
+    _moreButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    _moreButton.translatesAutoresizingMaskIntoConstraints = NO;
+    _moreButton.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
+    [_moreButton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    [_moreButton addTarget:self action:@selector(pp_toggleExpanded) forControlEvents:UIControlEventTouchUpInside];
+    _moreButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
+    _moreButton.hidden = YES;
 
     [self addSubview:self.surfaceView];
     [self.surfaceView addSubview:self.titleLabel];
     [self.surfaceView addSubview:divider];
     [self.surfaceView addSubview:_textView];
+    [self.surfaceView addSubview:_moreButton];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.surfaceView.topAnchor      constraintEqualToAnchor:self.topAnchor],
@@ -2129,8 +2145,51 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [_textView.topAnchor      constraintEqualToAnchor:divider.bottomAnchor                constant:kAVSpace12],
         [_textView.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor  constant:kAVCardPadding],
         [_textView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-kAVCardPadding],
-        [_textView.bottomAnchor   constraintEqualToAnchor:self.surfaceView.bottomAnchor   constant:-kAVCardPadding],
+
+        [_moreButton.topAnchor      constraintEqualToAnchor:_textView.bottomAnchor constant:kAVSpace8],
+        [_moreButton.leadingAnchor  constraintEqualToAnchor:_textView.leadingAnchor],
+        [_moreButton.trailingAnchor constraintEqualToAnchor:_textView.trailingAnchor],
+        [_moreButton.heightAnchor   constraintEqualToConstant:28.0],
+        [_moreButton.bottomAnchor   constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-kAVSpace12],
     ]];
+}
+
+#pragma mark - Toggle
+
+- (void)pp_toggleExpanded {
+    self.isExpanded = !self.isExpanded;
+    [self pp_applyLineLimit];
+    [self invalidateIntrinsicContentSize];
+    [self.superview setNeedsLayout];
+    [self.superview layoutIfNeeded];
+}
+
+- (void)pp_applyLineLimit {
+    BOOL needsTruncation = [self pp_needsTruncation];
+    self.moreButton.hidden = !needsTruncation && !self.isExpanded;
+
+    if (self.isExpanded) {
+        _textView.textContainer.maximumNumberOfLines = 0;
+        [_moreButton setTitle:kLang(@"description_show_less") ?: @"Show less" forState:UIControlStateNormal];
+    } else {
+        _textView.textContainer.maximumNumberOfLines = 8;
+        [_moreButton setTitle:kLang(@"description_show_more") ?: @"Show more" forState:UIControlStateNormal];
+    }
+}
+
+- (BOOL)pp_needsTruncation {
+    NSString *text = _textView.text;
+    if (text.length == 0) return NO;
+    UIFont *font = _textView.font ?: [GM MidFontWithSize:15];
+    CGFloat availableWidth = UIScreen.mainScreen.bounds.size.width - (kAVSectionInset * 2.0) - (kAVCardPadding * 2.0);
+    CGFloat lineHeight = font.lineHeight;
+    CGFloat eightLineHeight = lineHeight * 8.0;
+    CGSize constraintSize = CGSizeMake(availableWidth, CGFLOAT_MAX);
+    CGRect textRect = [text boundingRectWithSize:constraintSize
+                                         options:NSStringDrawingUsesLineFragmentOrigin
+                                      attributes:@{NSFontAttributeName: font}
+                                         context:nil];
+    return CGRectGetHeight(textRect) > eightLineHeight;
 }
 
 #pragma mark - Binding
@@ -2138,11 +2197,15 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)setAccessory:(PetAccessory *)accessory {
     _accessory = accessory;
     self.textView.text = accessory.desc.length > 0 ? accessory.desc : kLang(@"accessory_view_no_description");
+    self.isExpanded = NO;
+    [self pp_applyLineLimit];
 }
 
 - (void)setDescriptionText:(NSString *)descriptionText {
     _descriptionText = descriptionText;
     self.textView.text = descriptionText.length > 0 ? descriptionText : kLang(@"accessory_view_no_description");
+    self.isExpanded = NO;
+    [self pp_applyLineLimit];
 }
 
 - (void)handleShareAction {

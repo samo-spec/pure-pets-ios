@@ -9877,7 +9877,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         glowView.layer.cornerRadius = radius;
         glowView.layer.shadowPath = [UIBezierPath bezierPathWithOvalInRect:glowView.bounds].CGPath;
     }
-    _pp_premiumBackgroundGlowViewMid.alpha = 0.9;
+    _pp_premiumBackgroundGlowViewMid.alpha = 0.5;
     if (self.collectionView.superview == self.view) {
         [self.view insertSubview:self.pp_premiumBackgroundGlowViewBottom belowSubview:self.collectionView];
         [self.view insertSubview:self.pp_premiumBackgroundGlowViewMid belowSubview:self.collectionView];

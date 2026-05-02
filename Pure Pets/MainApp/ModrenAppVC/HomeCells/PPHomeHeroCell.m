@@ -1345,7 +1345,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     UIColor *glassBorder = [UIColor colorWithWhite:1.0 alpha:0.10];
     UIColor *iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.17];
     UIColor *iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.10];
-    UIColor *accentWashFill = [liftedAccent colorWithAlphaComponent:0.11];
+    UIColor *accentWashFill = [UIColor colorWithWhite:1.0 alpha:0.08];
     UIColor *chipFill = [UIColor colorWithWhite:1.0 alpha:0.17];
     UIColor *chipBorder = [UIColor colorWithWhite:1.0 alpha:0.11];
     UIColor *chipTextColor = [UIColor colorWithWhite:1.0 alpha:0.96];
@@ -1369,7 +1369,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
             glassBorder = [UIColor colorWithWhite:1.0 alpha:0.08];
             iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.17];
             iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.10];
-            accentWashFill = [liftedAccent colorWithAlphaComponent:0.16];
+            accentWashFill = [UIColor colorWithWhite:1.0 alpha:0.12];
             chipFill = [UIColor colorWithWhite:1.0 alpha:0.20];
             chipBorder = [UIColor colorWithWhite:1.0 alpha:0.12];
             dotColor = [UIColor hx_colorWithHexStr:@"#FFD36B" alpha:1.0];
@@ -1378,11 +1378,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         case PPHomeHeroLocationStateReady:
             glassFill = [UIColor colorWithWhite:1.0 alpha:0.13];
             glassBorder = [UIColor colorWithWhite:1.0 alpha:0.10];
-            iconPlateFill = [liftedAccent colorWithAlphaComponent:0.19];
-            iconPlateBorder = [liftedAccent colorWithAlphaComponent:0.20];
-            accentWashFill = [liftedAccent colorWithAlphaComponent:0.13];
-            chipFill = [liftedAccent colorWithAlphaComponent:0.18];
-            chipBorder = [liftedAccent colorWithAlphaComponent:0.20];
+            iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.20];
+            iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.12];
+            accentWashFill = [UIColor colorWithWhite:1.0 alpha:0.10];
+            chipFill = [UIColor colorWithWhite:1.0 alpha:0.17];
+            chipBorder = [UIColor colorWithWhite:1.0 alpha:0.11];
             dotColor = [UIColor colorWithWhite:1.0 alpha:0.96];
             break;
         case PPHomeHeroLocationStateUnset:
@@ -1391,7 +1391,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
             glassBorder = [UIColor colorWithWhite:1.0 alpha:0.09];
             iconPlateFill = [UIColor colorWithWhite:1.0 alpha:0.15];
             iconPlateBorder = [UIColor colorWithWhite:1.0 alpha:0.08];
-            accentWashFill = [liftedAccent colorWithAlphaComponent:0.12];
+            accentWashFill = [UIColor colorWithWhite:1.0 alpha:0.06];
             chipFill = [UIColor colorWithWhite:1.0 alpha:0.18];
             chipBorder = [UIColor colorWithWhite:1.0 alpha:0.12];
             break;

@@ -711,15 +711,16 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     badgeLabel.layer.cornerRadius = 9.0;
     badgeLabel.layer.masksToBounds = YES;
     badgeLabel.layer.borderWidth = 1.0;
-    [self.showCartButton addSubview:badgeLabel];
+    [self addSubview:badgeLabel];
     [NSLayoutConstraint activateConstraints:@[
-        [badgeLabel.topAnchor constraintEqualToAnchor:self.showCartButton.topAnchor constant:2.0],
-        [badgeLabel.centerXAnchor constraintEqualToAnchor:self.showCartButton.centerXAnchor constant:0],
-        [badgeLabel.heightAnchor constraintEqualToConstant:14.0],
-        [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:14.0]
+        [badgeLabel.bottomAnchor constraintEqualToAnchor:self.showCartButton.topAnchor constant:6.0],
+        [badgeLabel.centerXAnchor constraintEqualToAnchor:self.showCartButton.trailingAnchor constant:-4.0],
+        [badgeLabel.heightAnchor constraintEqualToConstant:18.0],
+        [badgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:18.0]
     ]];
 
     self.showCartBadgeLabel = badgeLabel;
+    self.showCartButton.clipsToBounds = NO;
     [self pp_updateShowCartBadgeStyle];
     [self pp_bringShowCartBadgeToFront];
 }

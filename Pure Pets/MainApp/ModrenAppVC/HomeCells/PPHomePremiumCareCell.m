@@ -72,6 +72,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _gradientLayer = [CAGradientLayer layer];
     _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    _gradientLayer.opacity = 0;
     [_surfaceView.layer insertSublayer:_gradientLayer atIndex:0];
 
     _topBackgroundGlowView = [self pp_makePetCareGlowViewWithRadius:136.0];
@@ -103,7 +104,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         UIView *dotView = [[UIView alloc] init];
         dotView.translatesAutoresizingMaskIntoConstraints = NO;
         dotView.userInteractionEnabled = NO;
-        dotView.layer.cornerRadius = (idx % 2 == 0) ? 2.5 : 2.0;
+        dotView.layer.cornerRadius = (idx % 2 == 0) ? 7.5 : 7.0;
         [_surfaceView addSubview:dotView];
         [_backgroundDotViews addObject:dotView];
     }
@@ -141,7 +142,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:26.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    _titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
     _titleLabel.numberOfLines = 1;
     _titleLabel.adjustsFontSizeToFitWidth = YES;
     _titleLabel.minimumScaleFactor = 0.8;
@@ -174,11 +175,11 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     [_pillStackView addArrangedSubview:_medicinePillLabel];
     [_pillStackView addArrangedSubview:_vetPillLabel];
 */
-    _ctaView = [[UIView alloc] init];
+    _ctaView  = (UIView *)[PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleCapsule configType:PPButtonConfigrationGlass];
+    _ctaView.userInteractionEnabled=NO;
     _ctaView.translatesAutoresizingMaskIntoConstraints = NO;
     _ctaView.layer.cornerRadius = 20.0;
-    _ctaView.layer.borderWidth = 0.8;
-    if (@available(iOS 13.0, *)) {
+     if (@available(iOS 13.0, *)) {
         _ctaView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [_surfaceView addSubview:_ctaView];
@@ -212,8 +213,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
         [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:156.0],
         [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:156.0],
-        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-106.0],
-        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:102.0],
+        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
+        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:92.0],
 
         [_largeOrbView.widthAnchor constraintEqualToConstant:120.0],
         [_largeOrbView.heightAnchor constraintEqualToConstant:120.0],
@@ -227,8 +228,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
         [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-22.0],
         [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:22.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant: 66.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:66.0],
+        [_iconPlateView.widthAnchor constraintEqualToConstant: 72.0],
+        [_iconPlateView.heightAnchor constraintEqualToConstant:72.0],
 
         [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
@@ -246,7 +247,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
         [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
         [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:7.0],
+        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:5.0],
 
         [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
         [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
@@ -261,7 +262,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         [_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
         [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
         [_ctaView.heightAnchor constraintEqualToConstant:42.0],
-        [_ctaView.topAnchor constraintEqualToAnchor:_subtitleLabel.bottomAnchor constant:10.0],
+        [_ctaView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:14.0],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
@@ -338,7 +339,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _smallOrbView.layer.cornerRadius = CGRectGetHeight(_smallOrbView.bounds) * 0.5;
     _iconPlateView.layer.cornerRadius = CGRectGetHeight(_iconPlateView.bounds) * 0.5;
 
-    self.contentView.layer.shadowRadius = 24.0;
+    self.contentView.layer.shadowRadius = 28.0;
     self.contentView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:_surfaceView.bounds
                                    cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
@@ -447,8 +448,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _eyebrowLabel.textColor = [accent colorWithAlphaComponent:isDark ? 0.92 : 0.82];
     _titleLabel.textColor = titleColor;
     _subtitleLabel.textColor = secondaryColor;
-    _ctaView.backgroundColor = controlFillColor;
-    [_ctaView pp_setBorderColor:controlBorderColor];
+   // _ctaView.backgroundColor = controlFillColor;
+    [_ctaView pp_setBorderColor:AppClearClr];
     _ctaLabel.textColor = titleColor;
     _ctaIconView.tintColor = titleColor;
 
