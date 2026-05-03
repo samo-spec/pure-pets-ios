@@ -241,7 +241,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
 }
 
 - (BOOL)shouldUseCompactLayoutForBounds:(CGRect)bounds {
-    return CGRectGetHeight(bounds) < 100.0 || CGRectGetWidth(bounds) < 180.0;
+    return CGRectGetHeight(bounds) < 100.0;
 }
 
 - (void)updateLayoutModeIfNeeded {
@@ -300,6 +300,8 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     
     
     switch (service.type) {
+        case PPHomeServiceTypeMainService:
+            return PPHomeServiceRGBA(255.0, 99.0, 71.0, 1.0); // tomato/orange
         case PPHomeServiceTypeVet:
             return PPHomeServiceRGBA(35.0, 118.0, 171.0, 1.0);
         case PPHomeServiceTypeGrooming:
@@ -316,6 +318,10 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
     BOOL darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
 
     switch (service.type) {
+        case PPHomeServiceTypeMainService:
+            return darkMode
+            ? @[PPHomeServiceRGBA(65.0, 26.0, 22.0, 1.0), PPHomeServiceRGBA(38.0, 15.0, 13.0, 1.0)]
+            : @[PPHomeServiceRGBA(255.0, 240.0, 238.0, 1.0), PPHomeServiceRGBA(255.0, 228.0, 224.0, 1.0)];
         case PPHomeServiceTypeVet:
             return darkMode
             ? @[PPHomeServiceRGBA(33.0, 46.0, 61.0, 1.0), PPHomeServiceRGBA(16.0, 24.0, 32.0, 1.0)]
@@ -468,7 +474,7 @@ static inline UIColor *PPHomeServiceRGBA(CGFloat red, CGFloat green, CGFloat blu
                 self.onTapMenu(service, category);
             }
         }];
-    } else if (service.type == PPHomeServiceTypeVet) {
+    } else if (service.type == PPHomeServiceTypeVet || service.type == PPHomeServiceTypeMainService) {
         [self.cardView addTarget:self action:@selector(handleTap) forControlEvents:UIControlEventTouchUpInside];
     } else {
         menu = [PPHomeHelper accessoriesMenuWithHandler:^(MainKindsModel * _Nonnull category) {

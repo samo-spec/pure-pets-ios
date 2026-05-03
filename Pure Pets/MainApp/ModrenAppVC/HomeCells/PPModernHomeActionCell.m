@@ -260,10 +260,8 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
 
 - (void)pp_applyTheme
 {
-    UIColor *top = PPModernHomeActionDynamicColor([UIColor colorWithWhite:1.0 alpha:0.94],
-                                                  [UIColor colorWithWhite:0.16 alpha:0.94]);
-    UIColor *bottom = PPModernHomeActionDynamicColor([UIColor colorWithWhite:0.94 alpha:0.90],
-                                                     [UIColor colorWithWhite:0.09 alpha:0.94]);
+    UIColor *top = UIColor.whiteColor;
+    UIColor *bottom = UIColor.whiteColor;
     UIColor *border = PPModernHomeActionDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.075]);
     UIColor *plate = PPModernHomeActionDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.70],

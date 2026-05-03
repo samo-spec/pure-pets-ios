@@ -39,9 +39,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *badgeText;
 @property (nonatomic, assign, getter=isSkeleton) BOOL skeleton;
 
-- (instancetype)initWithModel:(id)model
+- (instancetype)initWithModel:(nullable id)model
                       context:(PPCellContext)context;
-- (instancetype)initWithModel:(id)model
+- (instancetype)initWithModel:(nullable id)model
                 ppDataSection:(PPDataSection)ppDataSection;
 - (instancetype)initSkeleton;
 

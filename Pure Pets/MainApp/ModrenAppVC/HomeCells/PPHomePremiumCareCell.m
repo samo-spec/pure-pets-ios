@@ -259,7 +259,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
        // [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
 
         [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
+        //[_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
         [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
         [_ctaView.heightAnchor constraintEqualToConstant:42.0],
         [_ctaView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:14.0],
@@ -604,8 +604,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _subtitleLabel.text = kLang(@"home_premium_care_subtitle") ?: @"Pet medicine and veterinarian care in one refined place.";
     ///_medicinePillLabel.text = kLang(@"pet_care_medicines") ?: @"Medicines";
     //_vetPillLabel.text = kLang(@"pet_care_veterinarians") ?: @"Veterinarians";
-    _ctaLabel.text = [NSString stringWithFormat:@"%@ .%@ . %@",kLang(@"home_premium_care_cta"),kLang(@"pet_care_medicines"),kLang(@"pet_care_veterinarians")]  ?: @"Open care center";
-
+    _ctaLabel.text = [NSString stringWithFormat:@"%@",kLang(@"home_premium_care_cta")]  ?: @"Open care center";
+//,kLang(@"pet_care_medicines"),kLang(@"pet_care_veterinarians")
     NSString *forwardSymbol = Language.isRTL ? @"arrow.left" : @"arrow.right";
     _ctaIconView.image = [[UIImage systemImageNamed:forwardSymbol] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
     //_iconImageView.image = [[UIImage systemImageNamed:@"pills.fill"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];

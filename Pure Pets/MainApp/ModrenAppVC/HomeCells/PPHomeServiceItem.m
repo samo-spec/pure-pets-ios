@@ -30,19 +30,14 @@
 
     return @[
         [[PPHomeServiceItem alloc]
+         initWithType:PPHomeServiceTypeMainService
+         title:kLang(@"services")
+         systemIconName:@"sparkles"],
+
+        [[PPHomeServiceItem alloc]
          initWithType:PPHomeServiceTypeVet
          title:kLang(@"Veterinary")
          systemIconName:@"veterinaryNewColor"],
-
-       /* [[PPHomeServiceItem alloc]
-         initWithType:PPHomeServiceTypeGrooming
-         title:kLang(@"Grooming")
-         systemIconName:@"blind"],
-
-      [[PPHomeServiceItem alloc]
-         initWithType:PPHomeServiceTypeTraining
-         title:kLang(@"Training")
-         systemIconName:@"blind"],*/
 
         [[PPHomeServiceItem alloc]
          initWithType:PPHomeServiceTypeFood

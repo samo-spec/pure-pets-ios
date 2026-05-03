@@ -1755,6 +1755,7 @@
  
 
 "checkout_invalid_address" = "يرجى اختيار عنوان توصيل صالح قبل إتمام الطلب.";
+"checkout_no_address_on_file" = "أضف عنوان توصيل للمتابعة في إتمام الطلب.";
 "checkout_cart_empty" = "السلة فارغة";
 "checkout_cart_empty_message" = "أضف منتجاً واحداً على الأقل إلى السلة قبل إتمام الطلب.";
 "checkout_payment_method_unavailable" = "يرجى اختيار طريقة دفع للمتابعة.";

@@ -43,10 +43,10 @@
             NSArray<NSNumber *> *renderOrder = @[
                 @(PPHomeSectionHero),
                 @(PPHomeSectionCurrentOrders),
+                @(PPHomeSectionPremiumSearch),
                 @(PPHomeSectionQuickActions),
                 @(PPHomeSectionPremiumCare),
                 @(PPHomeSectionMainKinds),
-                
                 @(PPHomeSectionCarousel),
                 @(PPHomeSectionSuggestions),
                 @(PPHomeSectionAccessories),
@@ -84,6 +84,9 @@
 
             case PPHomeSectionHero:
                 return [PPHomeFunc heroSectionForWidth:availableWidth];
+
+            case PPHomeSectionPremiumSearch:
+                return [PPHomeFunc premiumSearchSectionForWidth:availableWidth];
 
             case PPHomeSectionQuickActions:
                 return [PPHomeFunc quickActionsSectionForWidth:availableWidth];

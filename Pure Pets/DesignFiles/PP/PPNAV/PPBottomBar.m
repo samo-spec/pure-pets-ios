@@ -473,7 +473,6 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     [_showCartButton.widthAnchor constraintEqualToConstant:utilitySize].active = YES;
     [_showCartButton.heightAnchor constraintEqualToConstant:utilitySize].active = YES;
     [self pp_setupShowCartLottieAnimation];
-    [self pp_setupShowCartBadge];
 
     _qtyStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         _minusButton, _countLabel, _plusButton
@@ -504,6 +503,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
     self.cartItemquantity = 1;
     [self pp_buildLayoutRows];
+    [self pp_setupShowCartBadge];
     [self pp_refreshChromeColors];
     [self updateQuantityUI];
     [[NSNotificationCenter defaultCenter] addObserver:self

@@ -55,13 +55,13 @@
     self.topGlowView = [[UIView alloc] init];
     self.topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.topGlowView.userInteractionEnabled = NO;
-    self.topGlowView.alpha = 0.0;
+    self.topGlowView.alpha =1.0;
     [self.glassButton addSubview:self.topGlowView];
 
     self.bottomGlowView = [[UIView alloc] init];
     self.bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bottomGlowView.userInteractionEnabled = NO;
-    self.bottomGlowView.alpha = 0.0;
+    self.bottomGlowView.alpha = 1.0;
     [self.glassButton addSubview:self.bottomGlowView];
 
     self.iconBackdropView = [[UIView alloc] init];
@@ -90,8 +90,8 @@
 
         [self.bottomGlowView.widthAnchor constraintEqualToConstant:70],
         [self.bottomGlowView.heightAnchor constraintEqualToConstant:70],
-        [self.bottomGlowView.bottomAnchor constraintEqualToAnchor:self.glassButton.bottomAnchor constant:26],
-        [self.bottomGlowView.leadingAnchor constraintEqualToAnchor:self.glassButton.leadingAnchor constant:-16],
+        [self.bottomGlowView.bottomAnchor constraintEqualToAnchor:self.glassButton.bottomAnchor constant:46],
+        [self.bottomGlowView.leadingAnchor constraintEqualToAnchor:self.glassButton.leadingAnchor constant:-46],
 
         [self.iconBackdropView.centerXAnchor constraintEqualToAnchor:self.glassButton.centerXAnchor],
         self.iconCenterYConstraint,
@@ -165,7 +165,7 @@
                                    cornerRadius:PPNewCorner].CGPath;
     self.topGlowView.layer.cornerRadius = CGRectGetHeight(self.topGlowView.bounds) * 0.5;
     self.bottomGlowView.layer.cornerRadius = CGRectGetHeight(self.bottomGlowView.bounds) * 0.5;
-    self.iconBackdropView.layer.cornerRadius = CGRectGetHeight(self.iconBackdropView.bounds) * 0.5;
+    self.iconBackdropView.layer.cornerRadius = 28;
 
     // Explicitly resize gradient layer to match glassButton bounds
     for (CALayer *l in self.glassButton.layer.sublayers) {
@@ -174,7 +174,12 @@
             break;
         }
     }
-
+   
+    [self setBackgroundGradientFrom:self.activeGradientColors[0]
+                                    middleColor:self.activeGradientColors[1]
+                                              to:self.activeGradientColors[2]
+                                           angle:self.isAll ? 140.0 : 132.0
+                                     cornerRadius:PPNewCorner];
     [self pp_applyGradientIfNeeded];
 
     [CATransaction commit];
@@ -251,8 +256,8 @@
     UIButtonConfiguration *config = self.glassButton.configuration;
     config.background.strokeWidth = 0.0;
     config.background.strokeColor = UIColor.clearColor;
-    config.background.backgroundColor = AppBackgroundClrLigter;
-    config.baseBackgroundColor = AppBackgroundClrLigter;
+    config.background.backgroundColor = UIColor.whiteColor;
+    config.baseBackgroundColor = UIColor.whiteColor;
     self.glassButton.configuration = config;
 
     if (isAll) {
@@ -292,8 +297,8 @@
                        contentColor:contentColor
                               isAll:NO];
         
-        config.background.backgroundColor = [self.activeAccentColor colorWithAlphaComponent:0.42];
-        config.baseBackgroundColor =  [self.activeAccentColor colorWithAlphaComponent:0.42];
+        config.background.backgroundColor = [self.activeAccentColor colorWithAlphaComponent:0.82];
+        config.baseBackgroundColor =  [self.activeAccentColor colorWithAlphaComponent:0.82];
         self.glassButton.configuration = config;
     }
 
@@ -442,6 +447,46 @@
                                      cornerRadius:PPNewCorner];
 }
 
+
+- (void)setBackgroundGradientFrom:(UIColor *)start
+                     middleColor:(UIColor *)middle
+                               to:(UIColor *)end
+                            angle:(CGFloat)degrees
+                      cornerRadius:(CGFloat)radius
+{
+    CAGradientLayer *layer = nil;
+
+    for (CALayer *l in self.layer.sublayers) {
+        if ([l.name isEqualToString:@"PPGradientLayer"]) {
+            layer = (CAGradientLayer *)l;
+            break;
+        }
+    }
+
+    if (!layer) {
+        layer = [CAGradientLayer layer];
+        layer.name = @"PPGradientLayer";
+        [self.layer insertSublayer:layer atIndex:0];
+    }
+
+    layer.frame = self.bounds;
+    layer.cornerRadius = radius;
+    layer.colors = @[
+        (__bridge id)start.CGColor,
+        (__bridge id)middle.CGColor,
+        (__bridge id)end.CGColor
+    ];
+    layer.locations = @[@0.0, @0.5, @1.0];
+
+    CGFloat rad = degrees * M_PI / 180.0;
+    layer.startPoint = CGPointMake(0.5 - cos(rad)/2, 0.5 - sin(rad)/2);
+    layer.endPoint   = CGPointMake(0.5 + cos(rad)/2, 0.5 + sin(rad)/2);
+    
+    CGRect fram = CGRectMake(0, 0, self.contentView.hx_w, self.contentView.hx_h);
+    layer.frame = fram;
+}
+
+
 #pragma mark - Action
 
 - (void)handleTap
@@ -459,8 +504,8 @@
         cfg.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         cfg.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
         cfg.background.cornerRadius = PPNewCornerMin;
-        cfg.background.backgroundColor =NewBgColor;
-        cfg.baseBackgroundColor = NewBgColor;
+        cfg.background.backgroundColor = UIColor.whiteColor;
+        cfg.baseBackgroundColor = UIColor.whiteColor;
 
         bgButton = [UIButton buttonWithType:UIButtonTypeSystem];
         bgButton.configuration = cfg;

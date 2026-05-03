@@ -22,7 +22,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 @property (nonatomic, strong) UIView *selectionIndicatorView;
 @property (nonatomic, strong) UIView *cornerPinView;
 @property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
-@property (nonatomic, strong) CAGradientLayer *livingSheenLayer;
+@property (nonatomic, strong) CAGradientLayer *bottomGlowLayer;
 @property (nonatomic, strong) NSLayoutConstraint *imagePlateWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *imagePlateHeightConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *kindImageWidthConstraint;
@@ -90,13 +90,19 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     self.surfaceGradientLayer = [CAGradientLayer layer];
     self.surfaceGradientLayer.startPoint = CGPointMake(0.0, 0.0);
     self.surfaceGradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.surfaceGradientLayer.opacity = 0;
     [self.surfaceView.layer insertSublayer:self.surfaceGradientLayer atIndex:0];
 
-    self.livingSheenLayer = [CAGradientLayer layer];
-    self.livingSheenLayer.startPoint = CGPointMake(0.0, 0.5);
-    self.livingSheenLayer.endPoint = CGPointMake(1.0, 0.5);
-    self.livingSheenLayer.locations = @[@0.0, @0.45, @1.0];
-    [self.surfaceView.layer insertSublayer:self.livingSheenLayer above:self.surfaceGradientLayer];
+    self.bottomGlowLayer = [CAGradientLayer layer];
+    self.bottomGlowLayer.name = @"PPMainKindsBottomGlowCircleLayer";
+    self.bottomGlowLayer.startPoint = CGPointMake(0.5, 0.5);
+    self.bottomGlowLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.bottomGlowLayer.locations = @[@0.0, @0.56, @1.0];
+    self.bottomGlowLayer.opacity = 0.0;
+    if (@available(iOS 12.0, *)) {
+        self.bottomGlowLayer.type = kCAGradientLayerRadial;
+    }
+    [self.surfaceView.layer insertSublayer:self.bottomGlowLayer above:self.surfaceGradientLayer];
 
     self.imagePlateView = [[UIView alloc] init];
     self.imagePlateView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -117,7 +123,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.font = [GM boldFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
+    self.titleLabel.font = [GM boldFontWithSize:14.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightSemibold];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.numberOfLines = 2;
     self.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -142,8 +148,8 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
     self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:54.0];
     self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:54.0];
-    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:42.0];
-    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:42.0];
+    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:46.0];
+    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:46.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -156,7 +162,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.tapButton.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.tapButton.bottomAnchor],
 
-        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:12.0],
+        [self.imagePlateView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:10.0],
         [self.imagePlateView.centerXAnchor constraintEqualToAnchor:self.surfaceView.centerXAnchor],
         self.imagePlateWidthConstraint,
         self.imagePlateHeightConstraint,
@@ -168,13 +174,13 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:8.0],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-8.0],
-        [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.imagePlateView.bottomAnchor constant:7.0],
+        [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.imagePlateView.bottomAnchor constant:6.0],
         [self.titleLabel.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-14.0],
 
         [self.selectionIndicatorView.centerXAnchor constraintEqualToAnchor:self.surfaceView.centerXAnchor],
-        [self.selectionIndicatorView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-6.0],
+        [self.selectionIndicatorView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-5.0],
         [self.selectionIndicatorView.widthAnchor constraintEqualToConstant:30.0],
-        [self.selectionIndicatorView.heightAnchor constraintEqualToConstant:3.5],
+        [self.selectionIndicatorView.heightAnchor constraintEqualToConstant:3.0],
 
         [self.cornerPinView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:10.0],
         [self.cornerPinView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-10.0],
@@ -233,7 +239,6 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     [self setNeedsLayout];
     [self.contentView setNeedsLayout];
     [self layoutIfNeeded];
-    [self pp_startLivingMotionIfNeeded];
     [self pp_runEntranceIfNeeded];
 }
 
@@ -289,10 +294,8 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 - (void)pp_applyBaseTheme
 {
-    UIColor *surfaceTop = PPModerHomeDynamicColor([UIColor colorWithWhite:1.0 alpha:0.92],
-                                                  [UIColor colorWithWhite:0.16 alpha:0.92]);
-    UIColor *surfaceBottom = PPModerHomeDynamicColor([UIColor colorWithWhite:0.94 alpha:0.90],
-                                                     [UIColor colorWithWhite:0.09 alpha:0.94]);
+    UIColor *surfaceTop = UIColor.whiteColor;
+    UIColor *surfaceBottom = UIColor.whiteColor;
     UIColor *borderColor = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
                                                    [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
@@ -309,11 +312,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     self.surfaceView.backgroundColor = surfaceBottom;
     [self.surfaceView pp_setBorderColor:borderColor];
 
-    self.livingSheenLayer.colors = @[
-        (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.16].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
-    ];
+    [self pp_applyBottomGlowPalette];
 
     self.imagePlateView.backgroundColor = plateColor;
     [self.imagePlateView pp_setBorderColor:plateBorder];
@@ -345,6 +344,9 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
+    CGFloat glowOpacity = selected
+        ? (self.isAllOption ? 0.38 : 0.77)
+        : (self.isAllOption ? 0.24 : 0.52);
 
     void (^changes)(void) = ^{
         self.selectionIndicatorView.alpha = selected ? 1.0 : 0.0;
@@ -356,6 +358,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
         self.layer.shadowOpacity = selected ? 0.095 : 0.055;
         self.layer.shadowRadius = selected ? 16.0 : 12.0;
         self.layer.shadowOffset = selected ? CGSizeMake(0.0, 10.0) : CGSizeMake(0.0, 7.0);
+        self.bottomGlowLayer.opacity = glowOpacity;
         self.tapButton.transform = selected ? CGAffineTransformMakeScale(1.015, 1.015) : CGAffineTransformIdentity;
     };
 
@@ -374,10 +377,10 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 - (void)pp_updateImageSizingForAll:(BOOL)isAll
 {
-    self.imagePlateWidthConstraint.constant = isAll ? 50.0 : 54.0;
-    self.imagePlateHeightConstraint.constant = isAll ? 50.0 : 54.0;
-    self.kindImageWidthConstraint.constant = isAll ? 25.0 : 42.0;
-    self.kindImageHeightConstraint.constant = isAll ? 25.0 : 42.0;
+    self.imagePlateWidthConstraint.constant = isAll ? 48.0 : 52.0;
+    self.imagePlateHeightConstraint.constant = isAll ? 48.0 : 52.0;
+    self.kindImageWidthConstraint.constant = isAll ? 24.0 : 40.0;
+    self.kindImageHeightConstraint.constant = isAll ? 24.0 : 40.0;
 }
 
 #pragma mark - Layout
@@ -386,15 +389,49 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 {
     [super layoutSubviews];
 
+    // Force Auto Layout to resolve surfaceView bounds before reading them
+    [self.tapButton layoutIfNeeded];
+    [self.surfaceView layoutIfNeeded];
+
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     CGRect surfaceBounds = self.surfaceView.bounds;
+    if (CGRectIsEmpty(surfaceBounds)) {
+        [CATransaction commit];
+        return;
+    }
     self.surfaceGradientLayer.frame = surfaceBounds;
-    self.livingSheenLayer.frame = CGRectInset(surfaceBounds, -CGRectGetWidth(surfaceBounds), 0.0);
+    CGFloat glowDiameter = MIN(116.0, MAX(86.0, CGRectGetHeight(surfaceBounds) * 0.90));
+    CGFloat glowX = Language.isRTL
+        ? CGRectGetWidth(surfaceBounds) - glowDiameter + 24.0
+        : -24.0;
+    CGFloat glowY = CGRectGetHeight(surfaceBounds) - glowDiameter + 30.0;
+    self.bottomGlowLayer.frame = CGRectIntegral(CGRectMake(glowX,
+                                                            glowY,
+                                                            glowDiameter,
+                                                            glowDiameter));
+    self.bottomGlowLayer.cornerRadius = glowDiameter * 0.5;
+    [self pp_applyBottomGlowPalette];
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                   cornerRadius:PPNewCornerMin].CGPath;
+                                    cornerRadius:PPNewCornerMin].CGPath;
     [CATransaction commit];
+}
+
+- (void)pp_applyBottomGlowPalette
+{
+    UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
+    if (!accent) {
+        self.bottomGlowLayer.colors = nil;
+        return;
+    }
+
+    BOOL isAll = self.isAllOption;
+    self.bottomGlowLayer.colors = @[
+        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.18 : 0.34].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:isAll ? 0.08 : 0.16].CGColor,
+        (__bridge id)[accent colorWithAlphaComponent:0.0].CGColor
+    ];
 }
 
 - (void)applyLayoutAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
@@ -410,10 +447,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 {
     [super didMoveToWindow];
     if (self.window) {
-        [self pp_startLivingMotionIfNeeded];
         [self pp_runEntranceIfNeeded];
-    } else {
-        [self pp_stopLivingMotion];
     }
 }
 
@@ -441,32 +475,6 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
         self.alpha = 1.0;
         self.contentView.transform = CGAffineTransformIdentity;
     } completion:nil];
-}
-
-- (void)pp_startLivingMotionIfNeeded
-{
-    if (!self.window || UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopLivingMotion];
-        return;
-    }
-    if ([self.livingSheenLayer animationForKey:@"pp_living_sheen"]) {
-        return;
-    }
-
-    CGFloat travel = MAX(CGRectGetWidth(self.surfaceView.bounds), 90.0);
-    CABasicAnimation *move = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    move.fromValue = @(-travel);
-    move.toValue = @(travel);
-    move.duration = 5.8;
-    move.repeatCount = HUGE_VALF;
-    move.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    move.removedOnCompletion = NO;
-    [self.livingSheenLayer addAnimation:move forKey:@"pp_living_sheen"];
-}
-
-- (void)pp_stopLivingMotion
-{
-    [self.livingSheenLayer removeAnimationForKey:@"pp_living_sheen"];
 }
 
 - (void)pp_handleTouchDown
@@ -516,7 +524,6 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 {
     [super prepareForReuse];
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.kindImageView];
-    [self pp_stopLivingMotion];
 
     self.onSelect = nil;
     self.boundCellID = nil;
@@ -537,6 +544,8 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     self.imagePlateView.transform = CGAffineTransformIdentity;
     self.selectionIndicatorView.alpha = 0.0;
     self.cornerPinView.alpha = 0.36;
+    self.bottomGlowLayer.opacity = 0.0;
+    self.bottomGlowLayer.frame = CGRectZero;
     [self pp_applyBaseTheme];
 }
 

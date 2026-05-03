@@ -479,21 +479,37 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 {
     [PPADDRESS getAllAddressesWithCompletion:^(NSArray<PPAddressModel *> * _Nullable addresses, NSError * _Nullable error) {
         if (error) {
+            PPORDERLog(@"Checkout blocked | reason=address_fetch_failed | error=%@",
+                       error.localizedDescription ?: @"unknown");
             if (completion) {
                 completion(PPCheckoutResultFailed, nil, error);
             }
             return;
         }
 
+        if (addresses.count == 0) {
+            PPORDERLog(@"Checkout blocked | reason=no_address_on_file");
+            NSError *noAddressError = [NSError errorWithDomain:@"Checkout"
+                                                          code:1011
+                                                      userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_no_address_on_file")}];
+            if (completion) {
+                completion(PPCheckoutResultFailed, nil, noAddressError);
+            }
+            return;
+        }
+
         PPAddressModel *fallbackAddress = nil;
-        for (PPAddressModel *candidate in addresses ?: @[]) {
+        for (PPAddressModel *candidate in addresses) {
             if (candidate.isDefault) {
                 fallbackAddress = candidate;
                 break;
             }
         }
-        if (!fallbackAddress && addresses.count > 0) {
+        if (!fallbackAddress) {
             fallbackAddress = addresses.firstObject;
+            PPORDERLog(@"Checkout fallback | reason=no_default_address | usingFirst=%@ | totalAddresses=%lu",
+                       fallbackAddress.documentID ?: fallbackAddress.addressID ?: @"",
+                       (unsigned long)addresses.count);
         }
         [self startCheckoutWithAddress:fallbackAddress completion:completion];
     }];

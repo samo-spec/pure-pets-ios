@@ -127,6 +127,7 @@ PPUniversalCellDelegate>
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClrDarker);
     self.results = @[];
@@ -286,13 +287,13 @@ PPUniversalCellDelegate>
 {
     self.navigationItem.title = kLang(@"searchOnly");
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
-    self.navigationItem.hidesBackButton = YES;
+   // self.navigationItem.hidesBackButton = YES;
      
     
-    if(PPIsRL)
-        self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
-    else
-        self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
+    //if(PPIsRL)
+       //self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
+  //  else
+        //self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage systemImageNamed:PPChevronName] //style:UIBarButtonItemStylePlain target:self action:@selector(BackToMain)];
     //BBNavigationBar *bar = [BBNavigationBar new];
     //[bar attachTo:self];
 
@@ -340,14 +341,13 @@ PPUniversalCellDelegate>
 
 - (void)setupSearch
 {
-    UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
+    //UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
 
     UIView *container = [UIView new];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = UIColor.clearColor;
     container.preservesSuperviewLayoutMargins = YES;
-    container.semanticContentAttribute = semanticAttribute;
-    if (@available(iOS 11.0, *)) {
+     if (@available(iOS 11.0, *)) {
         container.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0,
                                                                         kPPSearchHorizontalInset,
                                                                         8.0,
@@ -360,7 +360,7 @@ PPUniversalCellDelegate>
     UIView *chromeView = [UIView new];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
     chromeView.backgroundColor = [[UIColor whiteColor] colorWithAlphaComponent:0.96];
-    chromeView.semanticContentAttribute = semanticAttribute;
+    //chromeView.semanticContentAttribute = semanticAttribute;
     chromeView.layer.cornerRadius = 20.0;
     chromeView.layer.masksToBounds = NO;
     chromeView.layer.borderWidth = 1.0;
@@ -390,7 +390,7 @@ PPUniversalCellDelegate>
     UITextField *textField = [UITextField new];
     textField.translatesAutoresizingMaskIntoConstraints = NO;
     textField.delegate = self;
-    textField.semanticContentAttribute = semanticAttribute;
+  // textField.semanticContentAttribute = semanticAttribute;
     textField.textAlignment = NSTextAlignmentNatural;
     textField.textColor = UIColor.labelColor;
     textField.tintColor = AppPrimaryClr;
@@ -412,7 +412,7 @@ PPUniversalCellDelegate>
     UILabel *placeholderLabel = [UILabel new];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
     placeholderLabel.userInteractionEnabled = NO;
-    placeholderLabel.semanticContentAttribute = semanticAttribute;
+  // placeholderLabel.semanticContentAttribute = semanticAttribute;
     placeholderLabel.text = placeholderText;
     placeholderLabel.font = [GM MidFontWithSize:15.5] ?: [UIFont systemFontOfSize:15.5 weight:UIFontWeightMedium];
     placeholderLabel.textColor = [UIColor colorWithWhite:0.52 alpha:1.0];
@@ -473,13 +473,13 @@ PPUniversalCellDelegate>
 
 - (void)setupHeroHeader
 {
-    UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
+   // UISemanticContentAttribute semanticAttribute = Language.semanticAttributeForCurrentLanguage;
     NSTextAlignment textAlignment = Language.alignmentForCurrentLanguage;
 
     UIView *heroShadowView = [UIView new];
     heroShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     heroShadowView.backgroundColor = UIColor.clearColor;
-    heroShadowView.semanticContentAttribute = semanticAttribute;
+  //  heroShadowView.semanticContentAttribute = semanticAttribute;
     heroShadowView.layer.cornerRadius = PPCornerHero;
     [heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.0 alpha:1.0]];
     heroShadowView.layer.shadowOpacity = 0.18f;
@@ -491,7 +491,7 @@ PPUniversalCellDelegate>
 
     UIView *heroCard = [UIView new];
     heroCard.translatesAutoresizingMaskIntoConstraints = NO;
-    heroCard.semanticContentAttribute = semanticAttribute;
+//    heroCard.semanticContentAttribute = semanticAttribute;
     heroCard.layer.cornerRadius = PPCornerHero;
     heroCard.layer.masksToBounds = YES;
     heroCard.layer.borderWidth = 1.0;
@@ -584,7 +584,7 @@ PPUniversalCellDelegate>
 
     UIView *segmentRowView = [UIView new];
     segmentRowView.translatesAutoresizingMaskIntoConstraints = NO;
-    segmentRowView.semanticContentAttribute = semanticAttribute;
+   // segmentRowView.semanticContentAttribute = semanticAttribute;
     segmentRowView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.05];
     segmentRowView.layer.cornerRadius = 22.0;
     segmentRowView.layer.masksToBounds = NO;
@@ -602,7 +602,7 @@ PPUniversalCellDelegate>
     segmentScrollView.alwaysBounceHorizontal = NO;
     segmentScrollView.delaysContentTouches = NO;
     segmentScrollView.userInteractionEnabled = YES;
-    segmentScrollView.semanticContentAttribute = semanticAttribute;
+  //  segmentScrollView.semanticContentAttribute = semanticAttribute;
     segmentScrollView.clipsToBounds = NO;
     if (@available(iOS 11.0, *)) {
         segmentScrollView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
@@ -614,7 +614,7 @@ PPUniversalCellDelegate>
     segmentStackView.alignment = UIStackViewAlignmentFill;
     segmentStackView.distribution = UIStackViewDistributionFillEqually;
     segmentStackView.spacing = 8.0;
-    segmentStackView.semanticContentAttribute = semanticAttribute;
+  //  segmentStackView.semanticContentAttribute = semanticAttribute;
     [segmentScrollView addSubview:segmentStackView];
 
     NSArray<NSDictionary<NSString *, id> *> *segmentDescriptors = [self pp_searchSegmentDescriptors];
@@ -649,7 +649,7 @@ PPUniversalCellDelegate>
     metaStack.spacing = PPSpaceSM;
     metaStack.alignment = UIStackViewAlignmentCenter;
     metaStack.distribution = UIStackViewDistributionFill;
-    metaStack.semanticContentAttribute = semanticAttribute;
+ //   metaStack.semanticContentAttribute = semanticAttribute;
 
     [heroShadowView addSubview:heroCard];
     [heroCard addSubview:eyebrow];
@@ -1737,7 +1737,7 @@ PPUniversalCellDelegate>
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.tag = segment;
-    button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+   // button.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
     button.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
     button.layer.cornerRadius = 18.0;

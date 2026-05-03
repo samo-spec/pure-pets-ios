@@ -95,8 +95,8 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         glass = [UIButtonConfiguration glassButtonConfiguration];
         glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         glass.background.cornerRadius  = corners;
-        glass.background.backgroundColor = [AppBackgroundClrDarker colorWithAlphaComponent:PPIOS26() ? 0.7 : 0.92];;
-        glass.baseBackgroundColor = [AppBackgroundClrDarker colorWithAlphaComponent:PPIOS26() ? 0.7: 0.94];
+        glass.background.backgroundColor = UIColor.whiteColor;
+        glass.baseBackgroundColor = UIColor.whiteColor;
 
         self.actionButton.configuration = glass;
  
@@ -112,7 +112,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     }
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionButton.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.4 : 0.72];
+    self.actionButton.backgroundColor = UIColor.whiteColor;
     self.actionButton.adjustsImageWhenHighlighted = NO;
     self.actionButton.showsMenuAsPrimaryAction = NO;
     self.actionButton.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
@@ -525,7 +525,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.chevronView.hidden = NO;
 
     UIColor *resolvedAccent = accent ?: [self pp_quickActionAccentColor];
-    UIColor *surfaceBase = [AppBageColor() colorWithAlphaComponent:0.58] ?: UIColor.secondarySystemBackgroundColor;
+    UIColor *surfaceBase = UIColor.whiteColor;
     UIColor *primaryText = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *secondaryText = [primaryText colorWithAlphaComponent:0.54];
     UIColor *upperSurface = PPQuickActionElevatedColor(surfaceBase, 0.06);

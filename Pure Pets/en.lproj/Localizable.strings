@@ -1795,6 +1795,7 @@
 
 
 "checkout_invalid_address" = "Please choose a valid delivery address before checkout.";
+"checkout_no_address_on_file" = "Add a delivery address to continue with checkout.";
 "checkout_cart_empty" = "Your cart is empty";
 "checkout_cart_empty_message" = "Add at least one item to your cart before checkout.";
 "checkout_payment_method_unavailable" = "Please choose a payment method to continue.";

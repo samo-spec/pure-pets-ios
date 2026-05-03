@@ -49,5 +49,6 @@
 + (NSCollectionLayoutSection *)lastFoodSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)adoptSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)suggestionsSectionForWidth:(CGFloat)availableWidth;
++ (NSCollectionLayoutSection *)premiumSearchSectionForWidth:(CGFloat)availableWidth;
 @end
  

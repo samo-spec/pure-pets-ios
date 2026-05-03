@@ -13,6 +13,7 @@
 @property (nonatomic, strong) CAGradientLayer *gradientLayer;
 @property (nonatomic, strong) CAGradientLayer *ambientGlowLayer;
 @property (nonatomic, strong) CAGradientLayer *bottomShadeLayer;
+@property (nonatomic, strong) CAGradientLayer *locationTopFadeLayer;
 @property (nonatomic, strong) UIView *orbViewA;
 @property (nonatomic, strong) UIView *orbViewB;
 @property (nonatomic, strong) UILabel *brandLabel;
@@ -22,7 +23,6 @@
 @property (nonatomic, strong) UILabel *headlineLabel;
 @property (nonatomic, strong) UILabel *supportLabel;
 @property (nonatomic, strong) UIControl *locationControl;
-@property (nonatomic, strong) UIView *locationAccentWashView;
 @property (nonatomic, strong) UIView *locationIconPlateView;
 @property (nonatomic, strong) UIImageView *locationIconView;
 @property (nonatomic, strong) UILabel *locationTitleLabel;
@@ -364,7 +364,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroShadowView.backgroundColor = UIColor.clearColor;
     [self.heroShadowView pp_setShadowColor:[UIColor colorWithWhite:0.03 alpha:1.0]];
     self.heroShadowView.layer.shadowOpacity = 0.12;
-    self.heroShadowView.layer.shadowRadius = 26.0;
+    self.heroShadowView.layer.shadowRadius = 18.0;
     self.heroShadowView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     if (@available(iOS 13.0, *)) {
         self.heroShadowView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -374,7 +374,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.heroSurfaceView = [[UIView alloc] init];
     self.heroSurfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroSurfaceView.backgroundColor = [UIColor hx_colorWithHexStr:@"#17171E" alpha:1.0];
-    self.heroSurfaceView.layer.cornerRadius = PPCornerHero;
+    self.heroSurfaceView.layer.cornerRadius = PPCornerCard+6;
     self.heroSurfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.heroSurfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -427,8 +427,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.statusPillView.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusPillView.layer.cornerRadius = 15.0;
     self.statusPillView.layer.masksToBounds = YES;
-    self.statusPillView.hidden = YES;
-    self.statusPillView.alpha = 0.0;
+    self.statusPillView.hidden = NO;
+    self.brandLabel.alpha = 0.0;
     [self.heroSurfaceView addSubview:self.statusPillView];
 
     self.statusIconView = [[UIImageView alloc] init];
@@ -448,7 +448,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.headlineLabel.numberOfLines = 2;
     //self.headlineLabel.lineBreakMode = NSLineBreakByWordWrapping;
     self.headlineLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    self.headlineLabel.font = [GM boldFontWithSize:38] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
+    self.headlineLabel.font = [GM boldFontWithSize:32] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
     self.headlineLabel.textColor = UIColor.whiteColor;
     self.headlineLabel.adjustsFontSizeToFitWidth = YES;
     self.headlineLabel.minimumScaleFactor = 0.76;
@@ -468,10 +468,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
     self.locationControl = [[UIControl alloc] init];
     self.locationControl.translatesAutoresizingMaskIntoConstraints = NO;
-    self.locationControl.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.13];
-    self.locationControl.layer.cornerRadius = PPCornerCard;
-    self.locationControl.layer.borderWidth = 1.0;
-    [self.locationControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.10]];
+    self.locationControl.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.0];
+    self.locationControl.layer.cornerRadius = 25;
+    self.locationControl.layer.borderWidth = 0.0;
+    [self.locationControl pp_setBorderColor:[UIColor colorWithWhite:1.0 alpha:0.0]];
     self.locationControl.layer.masksToBounds = YES;
     self.locationControl.accessibilityTraits = UIAccessibilityTraitButton;
     self.locationControl.exclusiveTouch = YES;
@@ -485,17 +485,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     [self.locationControl addTarget:self action:@selector(pp_handleInteractiveUp:) forControlEvents:UIControlEventTouchCancel];
     [self.heroSurfaceView addSubview:self.locationControl];
 
-    self.locationAccentWashView = [[UIView alloc] init];
-    self.locationAccentWashView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.locationAccentWashView.userInteractionEnabled = NO;
-    self.locationAccentWashView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.08];
-    self.locationAccentWashView.layer.cornerRadius = PPCornerMedium;
-    self.locationAccentWashView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        self.locationAccentWashView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self.locationControl addSubview:self.locationAccentWashView];
-
+ 
     self.locationIconPlateView = [[UIView alloc] init];
     self.locationIconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.locationIconPlateView.userInteractionEnabled = NO;
@@ -580,7 +570,13 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     [self.locationStatusChipView setContentCompressionResistancePriority:UILayoutPriorityRequired
                                                                  forAxis:UILayoutConstraintAxisHorizontal];
     [self.locationStatusChipView setContentHuggingPriority:UILayoutPriorityRequired
-                                                   forAxis:UILayoutConstraintAxisHorizontal];
+                                                    forAxis:UILayoutConstraintAxisHorizontal];
+
+    self.locationTopFadeLayer = [CAGradientLayer layer];
+    self.locationTopFadeLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.locationTopFadeLayer.endPoint = CGPointMake(0.5, 1.0);
+    self.locationTopFadeLayer.needsDisplayOnBoundsChange = YES;
+    [self.locationControl.layer addSublayer:self.locationTopFadeLayer];
 
     self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
@@ -611,16 +607,16 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     // ── Order Peek Strip (one-line banner below hero card) ──
     [self pp_buildOrderPeekStrip];
 
-    self.orbViewAWidthConstraint = [self.orbViewA.widthAnchor constraintEqualToConstant:168.0];
-    self.orbViewAHeightConstraint = [self.orbViewA.heightAnchor constraintEqualToConstant:168.0];
+    self.orbViewAWidthConstraint = [self.orbViewA.widthAnchor constraintEqualToConstant:178.0];
+    self.orbViewAHeightConstraint = [self.orbViewA.heightAnchor constraintEqualToConstant:178.0];
     self.headlineTrailingConstraint =
-        [self.headlineLabel.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-168.0];
+        [self.headlineLabel.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-178.0];
     self.supportMaxWidthConstraint =
         [self.supportLabel.widthAnchor constraintLessThanOrEqualToConstant:190.0];
     self.supportTrailingConstraint =
         [self.supportLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-126.0];
-    self.lottieWidthConstraint = [self.lottieHeaderView.widthAnchor constraintEqualToConstant:112.0];
-    self.lottieHeightConstraint = [self.lottieHeaderView.heightAnchor constraintEqualToConstant:112.0];
+    self.lottieWidthConstraint = [self.lottieHeaderView.widthAnchor constraintEqualToConstant:86.0];
+    self.lottieHeightConstraint = [self.lottieHeaderView.heightAnchor constraintEqualToConstant:86.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.heroShadowView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
@@ -635,8 +631,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 
         self.orbViewAWidthConstraint,
         self.orbViewAHeightConstraint,
-        [self.orbViewA.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:28.0],
-        [self.orbViewA.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-28.0],
+        [self.orbViewA.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:38.0],
+        [self.orbViewA.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:-38.0],
 
         [self.orbViewB.widthAnchor constraintEqualToConstant:0.0],
         [self.orbViewB.heightAnchor constraintEqualToConstant:0.0],
@@ -644,7 +640,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.orbViewB.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:48.0],
 
         [self.brandLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.brandLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:18.0],
+        [self.brandLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:8.0],
         [self.brandLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-140.0],
 
         [self.statusPillView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-20.0],
@@ -661,7 +657,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.statusLabel.centerYAnchor constraintEqualToAnchor:self.statusPillView.centerYAnchor],
 
         [self.headlineLabel.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:22.0],
-        [self.headlineLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:22.0],
+        [self.headlineLabel.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
         self.headlineTrailingConstraint,
 
         [self.supportLabel.leadingAnchor constraintEqualToAnchor:self.headlineLabel.leadingAnchor],
@@ -669,31 +665,26 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         self.supportMaxWidthConstraint,
         self.supportTrailingConstraint,
 
-        [self.locationControl.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:18.0],
-        [self.locationControl.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-18.0],
-        [self.locationControl.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-18.0],
-        [self.locationControl.heightAnchor constraintEqualToConstant:58.0],
-
-        [self.locationAccentWashView.trailingAnchor constraintEqualToAnchor:self.locationControl.trailingAnchor constant:-12.0],
-        [self.locationAccentWashView.leadingAnchor constraintEqualToAnchor:self.locationStatusChipView.leadingAnchor constant:-8.0],
-        [self.locationAccentWashView.topAnchor constraintEqualToAnchor:self.locationControl.topAnchor constant:11.0],
-        [self.locationAccentWashView.bottomAnchor constraintEqualToAnchor:self.locationControl.bottomAnchor constant:-11.0],
+        [self.locationControl.leadingAnchor constraintEqualToAnchor:self.heroSurfaceView.leadingAnchor constant:12],
+        [self.locationControl.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12],
+        [self.locationControl.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-12],
+        [self.locationControl.heightAnchor constraintEqualToConstant:56.0],
 
         [self.locationIconPlateView.leadingAnchor constraintEqualToAnchor:self.locationControl.leadingAnchor constant:12.0],
         [self.locationIconPlateView.centerYAnchor constraintEqualToAnchor:self.locationControl.centerYAnchor],
-        [self.locationIconPlateView.widthAnchor constraintEqualToConstant:38.0],
-        [self.locationIconPlateView.heightAnchor constraintEqualToConstant:38.0],
+        [self.locationIconPlateView.widthAnchor constraintEqualToConstant:32.0],
+        [self.locationIconPlateView.heightAnchor constraintEqualToConstant:32.0],
 
         [self.locationIconView.centerXAnchor constraintEqualToAnchor:self.locationIconPlateView.centerXAnchor],
         [self.locationIconView.centerYAnchor constraintEqualToAnchor:self.locationIconPlateView.centerYAnchor],
         [self.locationIconView.widthAnchor constraintEqualToConstant:15.0],
         [self.locationIconView.heightAnchor constraintEqualToConstant:15.0],
 
-        [self.locationStatusChipView.trailingAnchor constraintEqualToAnchor:self.locationControl.trailingAnchor constant:-12.0],
+        [self.locationStatusChipView.trailingAnchor constraintEqualToAnchor:self.locationControl.trailingAnchor constant:-10.0],
         [self.locationStatusChipView.centerYAnchor constraintEqualToAnchor:self.locationControl.centerYAnchor],
         [self.locationStatusChipView.heightAnchor constraintEqualToConstant:36.0],
-        [self.locationStatusChipView.widthAnchor constraintGreaterThanOrEqualToConstant:92.0],
-        [self.locationStatusChipView.widthAnchor constraintLessThanOrEqualToAnchor:self.locationControl.widthAnchor multiplier:0.44],
+        [self.locationStatusChipView.widthAnchor constraintEqualToConstant:122.0],
+       // [self.locationStatusChipView.widthAnchor constraintLessThanOrEqualToAnchor:self.locationControl.widthAnchor multiplier:0.44],
 
         [self.locationStatusDotView.leadingAnchor constraintEqualToAnchor:self.locationStatusChipView.leadingAnchor constant:12.0],
         [self.locationStatusDotView.centerYAnchor constraintEqualToAnchor:self.locationStatusChipView.centerYAnchor],
@@ -719,7 +710,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         [self.lottieHeaderView.trailingAnchor constraintEqualToAnchor:self.heroSurfaceView.trailingAnchor constant:-12.0],
         self.lottieWidthConstraint,
         self.lottieHeightConstraint,
-        [self.lottieHeaderView.topAnchor constraintEqualToAnchor:self.heroSurfaceView.topAnchor constant:12.0],
+        [self.lottieHeaderView.bottomAnchor constraintEqualToAnchor:self.heroSurfaceView.bottomAnchor constant:-8.0],
      ]];
 
     // Peek strip constraints — sits below hero surface, overlapping ~14pt behind it
@@ -740,13 +731,14 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.actionButtonWidthConstraint = [self.actionButton.widthAnchor constraintEqualToConstant:0.0];
     self.actionButtonHeightConstraint.active = YES;
     self.actionButtonWidthConstraint.active = YES;
-    self.actionButton.hidden = YES;
+    self.actionButton.hidden = NO;
 
     [self pp_applyPaletteForCurrentTime];
      [self pp_startAmbientAnimationsIfNeeded];
      
     
-    
+    self.locationControl.hidden = YES;
+
     return self;
 }
 
@@ -793,7 +785,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     BOOL widePhone = PPHomeHeroWidthIsWidePhone(width);
     BOOL tablet = PPHomeHeroWidthIsTablet(width);
 
-    CGFloat lottieSize = tablet ? 164.0 : (widePhone ? 142.0 : (compact ? 114.0 : 128.0));
+    CGFloat lottieSize = tablet ? 144.0 : (widePhone ? 122.0 : (compact ? 104.0 : 118.0));
     CGFloat orbSize = tablet ? 196.0 : (widePhone ? 176.0 : (compact ? 136.0 : 168.0));
     CGFloat reservedTrailingWidth = lottieSize + (tablet ? 34.0 : (compact ? 16.0 : 24.0));
     reservedTrailingWidth = MIN(reservedTrailingWidth, MAX(112.0, width - 140.0));
@@ -807,7 +799,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.supportTrailingConstraint.constant = -(MAX(92.0, reservedTrailingWidth - 28.0));
     self.supportMaxWidthConstraint.constant = supportWidth;
 
-    CGFloat primaryHeadlineSize = tablet ? 36.0 : (widePhone ? 34.0 : (compact ? 27.0 : 32.0));
+    CGFloat primaryHeadlineSize = tablet ? 36.0 : (widePhone ? 32.0 : (compact ? 27.0 : 32.0));
     CGFloat supportFontSize = tablet ? 14.0 : (widePhone ? 13.0 : (compact ? 11.5 : 12.5));
     CGFloat locationTitleSize = tablet ? 15.0 : (compact ? 13.0 : 14.0);
     CGFloat locationStatusSize = tablet ? 12.0 : (compact ? 10.5 : 11.5);
@@ -838,6 +830,10 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.gradientLayer.frame = bounds;
     self.ambientGlowLayer.frame = bounds;
     self.bottomShadeLayer.frame = bounds;
+
+    static CGFloat const kLocationFadeHeight = 16.0;
+    CGRect locationBounds = self.locationControl.bounds;
+    self.locationTopFadeLayer.frame = CGRectMake(0.0, 0.0, CGRectGetWidth(locationBounds), MIN(kLocationFadeHeight, CGRectGetHeight(locationBounds) * 0.5));
 
     self.heroShadowView.layer.cornerRadius = self.heroSurfaceView.layer.cornerRadius;
     self.heroShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroShadowView.bounds
@@ -900,9 +896,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationControl.transform = CGAffineTransformIdentity;
     self.actionButton.transform = CGAffineTransformIdentity;
     self.locationStatusDotView.transform = CGAffineTransformIdentity;
-    self.locationAccentWashView.alpha = 1.0;
     [self.locationStatusDotView.layer removeAnimationForKey:@"pp.hero.location.dotPulse"];
-    [self.locationAccentWashView.layer removeAnimationForKey:@"pp.hero.location.washPulse"];
 
     self.lottieLoopToken += 1;
     [self.lottieHeaderView stop];
@@ -1064,8 +1058,8 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     BOOL compact = PPHomeHeroWidthIsCompact(width);
     BOOL widePhone = PPHomeHeroWidthIsWidePhone(width);
     BOOL tablet = PPHomeHeroWidthIsTablet(width);
-    CGFloat firstLineSize = tablet ? 36.0 : (widePhone ? 34.0 : (compact ? 27.0 : 32.0));
-    CGFloat secondLineSize = tablet ? 24.0 : (widePhone ? 23.0 : (compact ? 19.0 : 22.0));
+    CGFloat firstLineSize = tablet ? 36.0 : (widePhone ? 32.0 : (compact ? 26.0 : 32.0));
+    CGFloat secondLineSize = tablet ? 24.0 : (widePhone ? 28.0 : (compact ? 21.0 : 22.0));
 
     UIFont *firstLineFont = [GM boldFontWithSize:firstLineSize] ?: [UIFont systemFontOfSize:firstLineSize weight:UIFontWeightBold];
     UIFont *secondLineFont = [GM boldFontWithSize:secondLineSize] ?: [UIFont systemFontOfSize:secondLineSize weight:UIFontWeightSemibold];
@@ -1398,8 +1392,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     }
 
     self.locationControl.backgroundColor = glassFill;
+    self.locationTopFadeLayer.colors = @[
+        (id)glassFill.CGColor,
+        (id)[glassFill colorWithAlphaComponent:0.0].CGColor
+    ];
     [self.locationControl pp_setBorderColor:glassBorder];
-    self.locationAccentWashView.backgroundColor = accentWashFill;
     self.locationIconPlateView.backgroundColor = iconPlateFill;
     [self.locationIconPlateView pp_setBorderColor:iconPlateBorder];
     self.locationStatusChipView.backgroundColor = chipFill;
@@ -1544,9 +1541,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
 - (void)pp_updateLocationPulseForState:(PPHomeHeroLocationState)state
 {
     [self.locationStatusDotView.layer removeAnimationForKey:@"pp.hero.location.dotPulse"];
-    [self.locationAccentWashView.layer removeAnimationForKey:@"pp.hero.location.washPulse"];
     self.locationStatusDotView.transform = CGAffineTransformIdentity;
-    self.locationAccentWashView.alpha = 1.0;
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         return;
@@ -1572,7 +1567,6 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     washPulse.autoreverses = YES;
     washPulse.repeatCount = HUGE_VALF;
     washPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.locationAccentWashView.layer addAnimation:washPulse forKey:@"pp.hero.location.washPulse"];
 }
 
 - (void)pp_runEntranceAnimationIfNeededWithSignature:(NSString *)signature

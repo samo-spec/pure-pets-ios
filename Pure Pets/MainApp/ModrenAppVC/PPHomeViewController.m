@@ -37,6 +37,7 @@
 #import "PPHomeHeroCell.h"
 #import "PPModerHomeCell.h"
 #import "PPModernHomeActionCell.h"
+#import "PPPremuimSearchbarCell.h"
 #import "PPHomeModels.h"
 #import "PPHUD.h"
 #import "PPCommerceFeedbackManager.h"
@@ -53,6 +54,7 @@
 #import "UIView+Badge.h"
 #import "PPHomeLocationSheetViewController.h"
 #import "PPHomeInsetLabel.h"
+#import "PPHomeLocationTitleView.h"
 extern NSString * const PPThemePreferenceDidChangeNotification;
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -912,7 +914,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 
     [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:1.0]];
     self.layer.shadowOpacity = 0.0f;
-    self.layer.shadowRadius = 14.0f;
+    self.layer.shadowRadius = 0.0f;
     self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
 
     UIView *chromeView = nil;
@@ -1057,8 +1059,6 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     }
     [chromeView addSubview:trailingOrbView];
     _trailingOrbView = trailingOrbView;
-
-    BOOL isRTL = Language.isRTL;
 
         NSString *forwardChevron = Language.isRTL ? @"chevron.left" : @"chevron.right";
     UIImageView *chevronView =
@@ -1219,6 +1219,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     return isDark ? [base colorWithAlphaComponent:0.96] : [base colorWithAlphaComponent:0.88];
 }
 
+
 - (void)setQueryText:(NSString *)text animated:(BOOL)animated
 {
     NSString *safeText = PPSafeString(text);
@@ -1290,7 +1291,6 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     [super setHighlighted:highlighted];
     [self pp_updateInteractiveStateAnimated:YES];
 }
-
 - (void)pp_applyPalette
 {
     UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
@@ -1518,6 +1518,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) NSUInteger lastPreparedHomeEntranceSectionCount;
 @property (nonatomic, assign) NSInteger premiumCareAnimationCursor;
 @property (nonatomic, copy, nullable) NSString *currentPremiumCareAnimationName;
+@property (nonatomic, strong) NSArray<NSDictionary *> *homeConfigSections;
+@property (nonatomic, copy) NSString *homeTitleViewMode; // @"location" (default) or @"search"
+@property (nonatomic, strong, nullable) id<FIRListenerRegistration> homeConfigListener;
 - (void)handleSeeAllForSection:(PPHomeSection)section;
 - (void)openPremiumPetCare;
 - (NSArray<NSString *> *)pp_premiumCareAnimationNames;
@@ -1551,7 +1554,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_applyNearbyLocationRecord:(NSDictionary *)record;
 - (NSDictionary<NSString *, NSString *> *)pp_suggestionReasonForModel:(id)model
                                                       latestEvent:(NSDictionary *)latestEvent
-                                             orderedAccessoryIDs:(NSSet<NSString *> *)orderedAccessoryIDs;
+                                             orderedAccessoryIDs:(NSArray<NSString *> *)orderedAccessoryIDs;
 - (NSString *)pp_browseReasonTextForEvent:(NSDictionary *)event;
 - (void)pp_emitSelectionHaptic;
 - (void)pp_emitSoftImpactHaptic;
@@ -1627,6 +1630,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (nullable PPOrder *)pp_featuredHomeOrder;
 - (NSArray<PPHomeItem *> *)pp_homeCurrentOrderItems;
 - (NSArray<PPHomeItem *> *)pp_homeBuyAgainItems;
+- (NSArray<PPHomeItem *> *)pp_buildItemsForSection:(PPHomeSection)section;
 - (NSArray<PPHomeBuyAgainSnapshotItem *> *)pp_buyAgainSnapshotItemsFromOrders:(NSArray<PPOrder *> *)orders
                                                                         limit:(NSInteger)limit;
 - (void)pp_refreshPetProfilesSection;
@@ -1676,12 +1680,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong, nullable) NSTimer *homeSmartSearchTimer;
 @property (nonatomic, copy) NSArray<NSString *> *homeSmartSearchPlaceholders;
 @property (nonatomic, assign) NSInteger homeSmartSearchPlaceholderIndex;
+@property (nonatomic, strong, nullable) PPHomeLocationTitleView *homeLocationTitleView;
+@property (nonatomic, strong, nullable) NSLayoutConstraint *homeLocationTitleWidthConstraint;
 @property (nonatomic, assign) BOOL didRegisterTimeChangeObserver;
 @property (nonatomic, strong) NSCache<NSString *, UIImage *> *blurHashCache;
 @property (nonatomic, strong) dispatch_queue_t blurHashQueue;
 @property (nonatomic, copy) NSString *lastHeroRenderSignature;
 @property (nonatomic, assign) BOOL heroRefreshScheduled;
 @property (nonatomic, assign) BOOL didStabilizeInitialHomeLayout;
+@property (nonatomic, assign) BOOL didApplyInitialBaseSnapshot;
 @property (nonatomic, assign) BOOL isPresentingHomeLocationSheet;
 @property (nonatomic, assign) CGSize lastHomeLayoutBoundsSize;
 @property (nonatomic, assign) UIEdgeInsets lastHomeLayoutAdjustedInsets;
@@ -1710,8 +1717,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (CGFloat)pp_widthForBarButtonItem:(UIBarButtonItem *)item fallback:(CGFloat)fallback;
 - (CGFloat)pp_preferredNavigationSearchWidth;
 - (void)pp_updateHomeSmartSearchTitleViewWidth;
+- (CGFloat)pp_preferredNavigationLocationTitleWidth;
+- (void)pp_updateHomeLocationTitleViewWidth;
+- (void)pp_refreshHomeLocationTitleViewAnimated:(BOOL)animated;
+- (UIColor *)pp_homeLocationTitleStatusColor;
+- (BOOL)pp_homeLocationTitleShowsLoading;
+- (NSString *)pp_homeLocationTitleAccessibilityHint;
+- (void)pp_detachHomeLocationTitleViewIfNeeded;
 - (BOOL)pp_canOwnHomeNavigationChrome;
 - (void)pp_detachHomeSmartSearchTitleViewIfNeeded;
+- (UIView *)pp_navigationLocationTitleView;
 - (UIView *)pp_navigationSmartSearchTitleView;
 - (void)pp_openSmartSearch;
 - (NSArray<NSString *> *)pp_resolvedHomeSmartSearchPlaceholders;
@@ -2089,135 +2104,162 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 }
 - (void)applyBaseSnapshot
 {
-    NSDiffableDataSourceSnapshot *snapshot =
-        [[NSDiffableDataSourceSnapshot alloc] init];
+    NSDiffableDataSourceSnapshot *snapshot = [[NSDiffableDataSourceSnapshot alloc] init];
+    NSMutableArray<NSNumber *> *sections = [NSMutableArray array];
 
-    // ✅ Sections ALWAYS visible
-    NSMutableArray<NSNumber *> *sections = [@[
+    NSArray *defaultOrder = @[
         @(PPHomeSectionHero),
         @(PPHomeSectionCurrentOrders),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionQuickActions),
-        
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionCarousel),
-       
-        
-       
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
         @(PPHomeSectionPetProfile),
         @(PPHomeSectionAdsNearBy),
-        @(PPHomeSectionAdopt),
-    ] mutableCopy];
-    
-    [sections addObjectsFromArray:@[
-       
-    ]];
-    if (!self.hideServiceSection) {
+        @(PPHomeSectionAdopt)
+    ];
+
+    if (self.homeConfigSections.count > 0) {
+        for (NSDictionary *sectionCfg in self.homeConfigSections) {
+            if (![sectionCfg[@"visible"] boolValue]) {
+                continue;
+            }
+            NSInteger sectionID = [sectionCfg[@"id"] integerValue];
+            // 🔒 Services is force-hidden in this build; including the section
+            // identifier here would leave a stranded header with no items
+            // because the items branch below is gated on hideServiceSection.
+            if (sectionID == PPHomeSectionServices && self.hideServiceSection) {
+                continue;
+            }
+            [sections addObject:@(sectionID)];
+        }
+    } else {
+        [sections addObjectsFromArray:defaultOrder];
+    }
+
+    if (!self.hideServiceSection && ![sections containsObject:@(PPHomeSectionServices)]) {
         [sections addObject:@(PPHomeSectionServices)];
     }
+
+    NSArray<PPHomeItem *> *buyAgainItems = [self pp_homeBuyAgainItems];
+    BOOL buyAgainEnabledInConfig = YES;
+    if (self.homeConfigSections.count > 0) {
+        for (NSDictionary *sectionCfg in self.homeConfigSections) {
+            if ([sectionCfg[@"id"] integerValue] == PPHomeSectionBuyAgain) {
+                buyAgainEnabledInConfig = [sectionCfg[@"visible"] boolValue];
+                break;
+            }
+        }
+    }
+
+    if (buyAgainItems.count > 0 && buyAgainEnabledInConfig && ![sections containsObject:@(PPHomeSectionBuyAgain)]) {
+        [sections addObject:@(PPHomeSectionBuyAgain)];
+    }
+
+    // 🔒 Deduplicate section identifiers to prevent diffable data source crash
+    // when Firestore remote config contains duplicate ids.
+    NSOrderedSet<NSNumber *> *dedupedSections = [NSOrderedSet orderedSetWithArray:sections];
+    if (dedupedSections.count != sections.count) {
+        NSLog(@"[HomeConfig] WARNING: Duplicate section identifiers detected — deduplicated from %lu to %lu",
+              (unsigned long)sections.count, (unsigned long)dedupedSections.count);
+        sections = [dedupedSections.array mutableCopy];
+    }
+
     [snapshot appendSectionsWithIdentifiers:sections];
 
-    // ✅ Hero (always present)
-    PPHomeItem *heroItem = [PPHomeItem new];
-    heroItem.type = PPHomeItemTypeHero;
-    heroItem.payload = [NSNull null];
-    [snapshot appendItemsWithIdentifiers:@[heroItem]
-               intoSectionWithIdentifier:@(PPHomeSectionHero)];
+    void (^safeAppend)(NSArray *, NSNumber *) = ^(NSArray *items, NSNumber *section) {
+        if ([sections containsObject:section]) {
+            [snapshot appendItemsWithIdentifiers:items intoSectionWithIdentifier:section];
+        }
+    };
 
+    // ✅ Hero
+    PPHomeItem *heroItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypeHero payload:@"hero-card"];
+    safeAppend(@[heroItem], @(PPHomeSectionHero));
+
+    // ✅ Premium Search
+    PPHomeItem *premiumSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumSearch payload:@"premium-search-bar"];
+    safeAppend(@[premiumSearchItem], @(PPHomeSectionPremiumSearch));
+
+    // ✅ Quick Actions
     NSMutableArray<PPHomeItem *> *quickActions = [NSMutableArray array];
-    for (PPHomeQuickActionModel *quickAction in [self pp_homeQuickActions]) {
+    for (PPHomeQuickActionModel *qa in [self pp_homeQuickActions]) {
         PPHomeItem *item = [PPHomeItem new];
         item.type = PPHomeItemTypeQuickActions;
-        item.payload = quickAction;
+        item.payload = qa;
         [quickActions addObject:item];
     }
-    [snapshot appendItemsWithIdentifiers:quickActions
-               intoSectionWithIdentifier:@(PPHomeSectionQuickActions)];
+    safeAppend(quickActions, @(PPHomeSectionQuickActions));
 
-    // ✅ Services (at the bottom)
+    // ✅ Services
     if (!self.hideServiceSection) {
-        NSMutableArray *services = [NSMutableArray array];
+        NSMutableArray *servicesItems = [NSMutableArray array];
         for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
             PPHomeItem *item = [PPHomeItem new];
             item.payload = service;
-            [services addObject:item];
+            [servicesItems addObject:item];
         }
-        [snapshot appendItemsWithIdentifiers:services
-                   intoSectionWithIdentifier:@(PPHomeSectionServices)];
+        safeAppend(servicesItems, @(PPHomeSectionServices));
     }
 
-    // ✅ Current Orders (after services)
-    NSArray<PPHomeItem *> *currentOrderItems = [self pp_homeCurrentOrderItems];
-    [snapshot appendItemsWithIdentifiers:currentOrderItems
-               intoSectionWithIdentifier:@(PPHomeSectionCurrentOrders)];
+    // ✅ Current Orders
+    safeAppend([self pp_homeCurrentOrderItems], @(PPHomeSectionCurrentOrders));
 
-    // ✅ Carousel — pre-fill with best available content to avoid placeholder→content jump
+    // ✅ Carousel
     PPHomeItem *carouselItem = [PPHomeItem new];
-    NSArray<PPHomePromoCarouselCard *> *initialPromoCards = self.promoCarouselCards;
-    if (initialPromoCards.count == 0) {
-        MainBannerModel *legacyGroup = [self pp_homeTopCarouselBannerGroup];
-        if (legacyGroup && legacyGroup.childBanners.count > 0) {
-            initialPromoCards = [self pp_promoCardsFromLegacyBannerGroup:legacyGroup];
-        }
-    }
-    if (initialPromoCards.count == 0) {
-        initialPromoCards = [self pp_homePromoFallbackCards];
-    }
-    carouselItem.payload = initialPromoCards.count > 0 ? initialPromoCards : (id)[NSNull null];
+    NSArray *cards = self.promoCarouselCards;
+    if (cards.count == 0) cards = [self pp_homePromoFallbackCards];
+    carouselItem.payload = cards.count > 0 ? cards : (id)[NSNull null];
+    safeAppend(@[carouselItem], @(PPHomeSectionCarousel));
 
-    [snapshot appendItemsWithIdentifiers:@[carouselItem]
-               intoSectionWithIdentifier:@(PPHomeSectionCarousel)];
-
-    // ✅ MainKinds (static)
+    // ✅ MainKinds
     NSMutableArray *kinds = [NSMutableArray array];
     for (MainKindsModel *k in self.mainKinds) {
         PPHomeItem *item = [PPHomeItem new];
         item.payload = k;
         [kinds addObject:item];
     }
-    [snapshot appendItemsWithIdentifiers:kinds
-               intoSectionWithIdentifier:@(PPHomeSectionMainKinds)];
+    safeAppend(kinds, @(PPHomeSectionMainKinds));
 
-    // 🟡 Empty dynamic sections (NO skeletons)
-    // ✅ Suggestions placeholder (height anchor)
+    // ✅ Pet Profile
+    PPHomeItem *petProfileItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
+    safeAppend(@[petProfileItem], @(PPHomeSectionPetProfile));
 
+    // ✅ Premium Care
+    PPHomeItem *premiumCareItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
+    safeAppend(@[premiumCareItem], @(PPHomeSectionPremiumCare));
 
+    // ✅ Adopt
+    PPHomeItem *adoptItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypeAdopt payload:@"adopt"];
+    safeAppend(@[adoptItem], @(PPHomeSectionAdopt));
 
-    [snapshot appendItemsWithIdentifiers:@[]
-               intoSectionWithIdentifier:@(PPHomeSectionAccessories)];
-    PPHomeItem *petProfileItem =
-        [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
-    [snapshot appendItemsWithIdentifiers:@[petProfileItem]
-               intoSectionWithIdentifier:@(PPHomeSectionPetProfile)];
-    PPHomeItem *premiumCareItem =
-        [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
-    [snapshot appendItemsWithIdentifiers:@[premiumCareItem]
-               intoSectionWithIdentifier:@(PPHomeSectionPremiumCare)];
-    [snapshot appendItemsWithIdentifiers:@[]
-               intoSectionWithIdentifier:@(PPHomeSectionLastFood)];
-    [snapshot appendItemsWithIdentifiers:@[]
-               intoSectionWithIdentifier:@(PPHomeSectionNearbyServices)];
-    [snapshot appendItemsWithIdentifiers:@[]
-               intoSectionWithIdentifier:@(PPHomeSectionAdsNearBy)];
+    // ✅ Buy Again
+    safeAppend(buyAgainItems, @(PPHomeSectionBuyAgain));
 
-    // ✅ Adopt (static)
-    PPHomeItem *adoptItem =
-        [[PPHomeItem alloc] initWithType:PPHomeItemTypeAdopt payload:@"adopt"];
-    [snapshot appendItemsWithIdentifiers:@[adoptItem]
-               intoSectionWithIdentifier:@(PPHomeSectionAdopt)];
-
-    NSArray<PPHomeItem *> *buyAgainItems = [self pp_homeBuyAgainItems];
-    if (buyAgainItems.count > 0) {
-        [snapshot appendSectionsWithIdentifiers:@[@(PPHomeSectionBuyAgain)]];
-        [snapshot appendItemsWithIdentifiers:buyAgainItems
-                   intoSectionWithIdentifier:@(PPHomeSectionBuyAgain)];
+    // Dynamic sections (Suggestions, Accessories, LastFood, NearbyServices, AdsNearBy)
+    NSArray<NSNumber *> *dynamicSections = @[
+        @(PPHomeSectionSuggestions),
+        @(PPHomeSectionAccessories),
+        @(PPHomeSectionLastFood),
+        @(PPHomeSectionNearbyServices),
+        @(PPHomeSectionAdsNearBy),
+    ];
+    for (NSNumber *sec in dynamicSections) {
+        safeAppend([self pp_buildItemsForSection:(PPHomeSection)sec.integerValue], sec);
     }
 
-    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+    // 🔒 Config-driven rebuilds may delete sections that currently have visible
+    // cells. Animating that diff can crash mid-transition with
+    // NSInternalInconsistencyException. Animate only the very first apply.
+    BOOL isRebuild = self.didApplyInitialBaseSnapshot;
+    BOOL animate = !isRebuild;
+    self.didApplyInitialBaseSnapshot = YES;
+    [self.dataSource applySnapshot:snapshot animatingDifferences:animate];
 }
 
 - (void)pp_scheduleInitialMainKindsLayoutRefresh
@@ -2364,8 +2406,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     PPHomeApplySemanticToViewTree(self.navigationItem.titleView, semantic);
     PPHomeApplySemanticToViewTree(self.homeSmartSearchView, semantic);
+    PPHomeApplySemanticToViewTree(self.homeLocationTitleView, semantic);
     PPHomeApplySemanticToViewTree(self.homeProfileItem.customView, semantic);
     PPHomeApplySemanticToViewTree(self.homeCartItem.customView, semantic);
+    [self pp_refreshHomeLocationTitleViewAnimated:NO];
 
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
         cell.semanticContentAttribute = semantic;
@@ -2459,6 +2503,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [self configureNavigationBar];
     } else {
         [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+        [self pp_detachHomeLocationTitleViewIfNeeded];
     }
     [self refreshHeroSectionAppearance];
     [self setNeedsStatusBarAppearanceUpdate];
@@ -2510,6 +2555,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [self configureNavigationBar];
     } else {
         [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+        [self pp_detachHomeLocationTitleViewIfNeeded];
     }
     [self refreshHeroSectionAppearance];
     [self setNeedsStatusBarAppearanceUpdate];
@@ -2839,6 +2885,187 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
 }
 
+// 🔒 Safe accessor: returns @[] if the section is not present in the snapshot.
+// UICollectionViewDiffableDataSource throws NSInternalInconsistencyException
+// from -itemIdentifiersInSectionWithIdentifier: when the section was hidden by
+// Home Control config. All home-snapshot reads must go through this helper.
+- (NSArray<PPHomeItem *> *)pp_safeItemsInSection:(PPHomeSection)section
+                                     fromSnapshot:(NSDiffableDataSourceSnapshot *)snapshot
+{
+    if (!snapshot) {
+        return @[];
+    }
+    NSNumber *sectionID = @(section);
+    if (![snapshot.sectionIdentifiers containsObject:sectionID]) {
+        return @[];
+    }
+    return [snapshot itemIdentifiersInSectionWithIdentifier:sectionID] ?: @[];
+}
+
+- (BOOL)pp_isSectionPresent:(PPHomeSection)section
+                 inSnapshot:(NSDiffableDataSourceSnapshot *)snapshot
+{
+    if (!snapshot) {
+        return NO;
+    }
+    return [snapshot.sectionIdentifiers containsObject:@(section)];
+}
+
+// Builds the current items for a reloadable Home section straight from the
+// controller's backing data (self.accessories, self.nearbyAds, etc.).
+// Used by both applyBaseSnapshot (so a Home Control rebuild keeps the
+// already-loaded content in place) and reloadSection: (so the
+// per-section refresh path sees the exact same item shape).
+- (NSArray<PPHomeItem *> *)pp_buildItemsForSection:(PPHomeSection)section
+{
+    NSMutableArray<PPHomeItem *> *items = [NSMutableArray array];
+
+    switch (section) {
+        case PPHomeSectionCurrentOrders:
+            [items addObjectsFromArray:[self pp_homeCurrentOrderItems]];
+            break;
+
+        case PPHomeSectionBuyAgain:
+            [items addObjectsFromArray:[self pp_homeBuyAgainItems]];
+            break;
+
+        case PPHomeSectionAccessories:
+            for (PetAccessory *a in self.accessories) {
+                PPHomeItem *item = [PPHomeItem new];
+                PPUniversalCellViewModel *vm =
+                    [[PPUniversalCellViewModel alloc] initWithModel:a
+                                                            context:PPCellForMarket];
+                vm.ModelObject = a;
+                item.universalViewModel = vm;
+                [items addObject:item];
+            }
+            break;
+
+        case PPHomeSectionPetProfile: {
+            PPHomeItem *item =
+                [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
+            [items addObject:item];
+            break;
+        }
+
+        case PPHomeSectionLastFood:
+            for (PetAccessory *food in self.lastFoodAccessories) {
+                PPHomeItem *item = [PPHomeItem new];
+                PPUniversalCellViewModel *vm =
+                    [[PPUniversalCellViewModel alloc] initWithModel:food
+                                                            context:PPCellForMarket];
+                vm.ModelObject = food;
+                item.universalViewModel = vm;
+                [items addObject:item];
+            }
+            break;
+
+        case PPHomeSectionAdsNearBy:
+            if (self.nearbyLoading && self.nearbyAds.count == 0) {
+                for (NSInteger i = 0; i < 3; i++) {
+                    PPHomeItem *item = [PPHomeItem new];
+                    item.universalViewModel = [[PPUniversalCellViewModel alloc] initSkeleton];
+                    [items addObject:item];
+                }
+            } else if (self.nearbyAds.count == 0) {
+                PPHomeItem *emptyItem = [PPHomeItem new];
+                emptyItem.payload = @"nearby-empty-state";
+                [items addObject:emptyItem];
+            } else {
+                for (PetAd *ad in self.nearbyAds) {
+                    PPHomeItem *item = [PPHomeItem new];
+                    PPUniversalCellViewModel *vm =
+                        [[PPUniversalCellViewModel alloc] initWithModel:ad
+                                                                context:PPCellForHomeAds];
+                    vm.ModelObject = ad;
+                    item.universalViewModel = vm;
+                    [items addObject:item];
+                }
+            }
+            break;
+
+        case PPHomeSectionNearbyServices:
+            if (self.nearbyServicesLoading && self.nearbyServiceProviders.count == 0) {
+                for (NSInteger i = 0; i < 3; i++) {
+                    PPHomeItem *item = [PPHomeItem new];
+                    item.universalViewModel = [[PPUniversalCellViewModel alloc] initSkeleton];
+                    [items addObject:item];
+                }
+            } else if (self.nearbyServiceProviders.count == 0) {
+                PPHomeItem *emptyItem = [PPHomeItem new];
+                emptyItem.payload = @"services-empty-state";
+                [items addObject:emptyItem];
+            } else {
+                for (ServiceModel *svc in self.nearbyServiceProviders) {
+                    PPHomeItem *item = [PPHomeItem new];
+                    PPUniversalCellViewModel *vm =
+                        [[PPUniversalCellViewModel alloc] initWithModel:svc
+                                                                context:PPCellForServices];
+                    vm.ModelObject = svc;
+                    item.universalViewModel = vm;
+                    [items addObject:item];
+                }
+            }
+            break;
+
+        case PPHomeSectionSuggestions: {
+            NSMutableSet<NSString *> *seen = [NSMutableSet set];
+            NSDictionary *latestEvent =
+                [[PPBrowseHistoryManager shared] latestEvent];
+            NSArray<NSString *> *orderedAccessoryIDs =
+                [self pp_buyAgainAccessoryIDsFromOrders:self.recentOrders
+                                                  limit:MAX(PPBuyAgainVisibleLimit * 2, PPBuyAgainVisibleLimit)];
+
+            for (PetAd *ad in self.nearbyAds) {
+                NSString *adID = PPSafeString(ad.adID);
+                NSString *key = [NSString stringWithFormat:@"ad:%@", adID];
+                if (adID.length == 0 || [seen containsObject:key]) continue;
+                [seen addObject:key];
+
+                PPHomeItem *item = [PPHomeItem new];
+                PPUniversalCellViewModel *vm =
+                    [[PPUniversalCellViewModel alloc] initWithModel:ad
+                                                            context:PPCellForAds];
+                vm.ModelObject = ad;
+                NSDictionary<NSString *, NSString *> *reason =
+                    [self pp_suggestionReasonForModel:ad
+                                          latestEvent:latestEvent
+                                    orderedAccessoryIDs:orderedAccessoryIDs];
+                vm.contextualReasonText = PPSafeString(reason[@"text"]);
+                vm.contextualReasonIconName = PPSafeString(reason[@"icon"]);
+                item.universalViewModel = vm;
+                [items addObject:item];
+            }
+            for (PetAccessory *acc in self.accessories) {
+                NSString *accessoryID = PPSafeString(acc.accessoryID);
+                NSString *key = [NSString stringWithFormat:@"acc:%@", accessoryID];
+                if (accessoryID.length == 0 || [seen containsObject:key]) continue;
+                [seen addObject:key];
+
+                PPHomeItem *item = [PPHomeItem new];
+                PPUniversalCellViewModel *vm =
+                    [[PPUniversalCellViewModel alloc] initWithModel:acc
+                                                            context:PPCellForMarket];
+                vm.ModelObject = acc;
+                NSDictionary<NSString *, NSString *> *reason =
+                    [self pp_suggestionReasonForModel:acc
+                                          latestEvent:latestEvent
+                                    orderedAccessoryIDs:orderedAccessoryIDs];
+                vm.contextualReasonText = PPSafeString(reason[@"text"]);
+                vm.contextualReasonIconName = PPSafeString(reason[@"icon"]);
+                item.universalViewModel = vm;
+                [items addObject:item];
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+
+    return items.copy;
+}
+
 - (void)reloadSection:(PPHomeSection)section
 {
     NSNumber *sectionIdentifier = @(section);
@@ -2860,157 +3087,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         ? [snapshot itemIdentifiersInSectionWithIdentifier:sectionIdentifier]
         : @[];
 
-    NSMutableArray *newItems = [NSMutableArray array];
-
-    switch (section) {
-        case PPHomeSectionCurrentOrders:
-            [newItems addObjectsFromArray:[self pp_homeCurrentOrderItems]];
-            break;
-
-        case PPHomeSectionBuyAgain:
-            [newItems addObjectsFromArray:[self pp_homeBuyAgainItems]];
-            break;
-
-        case PPHomeSectionAccessories:
-            for (PetAccessory *a in self.accessories) {
-                PPHomeItem *item = [PPHomeItem new];
-                PPUniversalCellViewModel *vm =
-                    [[PPUniversalCellViewModel alloc] initWithModel:a
-                                                            context:PPCellForMarket];
-                vm.ModelObject = a;
-                item.universalViewModel = vm;
-                [newItems addObject:item];
-            }
-            break;
-
-        case PPHomeSectionPetProfile: {
-            PPHomeItem *item =
-                [[PPHomeItem alloc] initWithType:PPHomeItemTypePetProfile payload:@"pet-profile-card"];
-            [newItems addObject:item];
-            break;
-        }
-
-        case PPHomeSectionLastFood: {
-            for (PetAccessory *food in self.lastFoodAccessories) {
-                PPHomeItem *item = [PPHomeItem new];
-                PPUniversalCellViewModel *vm =
-                    [[PPUniversalCellViewModel alloc] initWithModel:food
-                                                            context:PPCellForMarket];
-                vm.ModelObject = food;
-                item.universalViewModel = vm;
-                [newItems addObject:item];
-            }
-            break;
-        }
-
-        case PPHomeSectionAdsNearBy:
-            if (self.nearbyLoading && self.nearbyAds.count == 0) {
-                NSInteger skeletonCount = 3;
-                for (NSInteger i = 0; i < skeletonCount; i++) {
-                    PPHomeItem *item = [PPHomeItem new];
-                    item.universalViewModel = [[PPUniversalCellViewModel alloc] initSkeleton];
-                    [newItems addObject:item];
-                }
-            } else if (self.nearbyAds.count == 0) {
-                PPHomeItem *emptyItem = [PPHomeItem new];
-                emptyItem.payload = @"nearby-empty-state";
-                [newItems addObject:emptyItem];
-            } else {
-                for (PetAd *ad in self.nearbyAds) {
-                    PPHomeItem *item = [PPHomeItem new];
-                    PPUniversalCellViewModel *vm =
-                        [[PPUniversalCellViewModel alloc] initWithModel:ad
-                                                                context:PPCellForHomeAds];
-                    vm.ModelObject = ad;
-                    item.universalViewModel = vm;
-                    [newItems addObject:item];
-                }
-            }
-            break;
-
-        case PPHomeSectionNearbyServices:
-            if (self.nearbyServicesLoading && self.nearbyServiceProviders.count == 0) {
-                for (NSInteger i = 0; i < 3; i++) {
-                    PPHomeItem *item = [PPHomeItem new];
-                    item.universalViewModel = [[PPUniversalCellViewModel alloc] initSkeleton];
-                    [newItems addObject:item];
-                }
-            } else if (self.nearbyServiceProviders.count == 0) {
-                PPHomeItem *emptyItem = [PPHomeItem new];
-                emptyItem.payload = @"services-empty-state";
-                [newItems addObject:emptyItem];
-            } else {
-                for (ServiceModel *svc in self.nearbyServiceProviders) {
-                    PPHomeItem *item = [PPHomeItem new];
-                    PPUniversalCellViewModel *vm =
-                        [[PPUniversalCellViewModel alloc] initWithModel:svc
-                                                                context:PPCellForServices];
-                    vm.ModelObject = svc;
-                    item.universalViewModel = vm;
-                    [newItems addObject:item];
-                }
-            }
-            break;
-
-        case PPHomeSectionSuggestions: {
-            NSMutableSet<NSString *> *seenSuggestionIDs = [NSMutableSet set];
-            NSDictionary *latestEvent =
-                [[PPBrowseHistoryManager shared] latestEvent];
-            NSArray<NSString *> *orderedAccessoryIDs =
-                [self pp_buyAgainAccessoryIDsFromOrders:self.recentOrders
-                                                  limit:MAX(PPBuyAgainVisibleLimit * 2, PPBuyAgainVisibleLimit)];
-
-            for (PetAd *ad in self.nearbyAds) {
-                NSString *adID = PPSafeString(ad.adID);
-                NSString *key = [NSString stringWithFormat:@"ad:%@", adID];
-                if (adID.length == 0 || [seenSuggestionIDs containsObject:key]) {
-                    continue;
-                }
-                [seenSuggestionIDs addObject:key];
-
-                PPHomeItem *item = [PPHomeItem new];
-                PPUniversalCellViewModel *vm =
-                    [[PPUniversalCellViewModel alloc] initWithModel:ad
-                                                            context:PPCellForAds];
-                vm.ModelObject = ad;
-                NSDictionary<NSString *, NSString *> *reason =
-                    [self pp_suggestionReasonForModel:ad
-                                          latestEvent:latestEvent
-                                    orderedAccessoryIDs:orderedAccessoryIDs];
-                vm.contextualReasonText = PPSafeString(reason[@"text"]);
-                vm.contextualReasonIconName = PPSafeString(reason[@"icon"]);
-                item.universalViewModel = vm;
-                [newItems addObject:item];
-            }
-
-            for (PetAccessory *acc in self.accessories) {
-                NSString *accessoryID = PPSafeString(acc.accessoryID);
-                NSString *key = [NSString stringWithFormat:@"acc:%@", accessoryID];
-                if (accessoryID.length == 0 || [seenSuggestionIDs containsObject:key]) {
-                    continue;
-                }
-                [seenSuggestionIDs addObject:key];
-
-                PPHomeItem *item = [PPHomeItem new];
-                PPUniversalCellViewModel *vm =
-                    [[PPUniversalCellViewModel alloc] initWithModel:acc
-                                                            context:PPCellForMarket];
-                vm.ModelObject = acc;
-                NSDictionary<NSString *, NSString *> *reason =
-                    [self pp_suggestionReasonForModel:acc
-                                          latestEvent:latestEvent
-                                    orderedAccessoryIDs:orderedAccessoryIDs];
-                vm.contextualReasonText = PPSafeString(reason[@"text"]);
-                vm.contextualReasonIconName = PPSafeString(reason[@"icon"]);
-                item.universalViewModel = vm;
-                [newItems addObject:item];
-            }
-            break;
-        }
-
-        default:
-            break;
-    }
+    NSMutableArray *newItems = [[self pp_buildItemsForSection:section] mutableCopy];
 
     NSArray<PPHomeItem *> *stableNewItems =
         [self pp_homeItemsByReusingExistingItems:items
@@ -3072,6 +3149,23 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     if (section == PPHomeSectionBuyAgain) {
+        BOOL enabledInConfig = YES;
+        if (self.homeConfigSections.count > 0) {
+            for (NSDictionary *sectionCfg in self.homeConfigSections) {
+                if ([sectionCfg[@"id"] integerValue] == PPHomeSectionBuyAgain) {
+                    enabledInConfig = [sectionCfg[@"visible"] boolValue];
+                    break;
+                }
+            }
+        }
+        if (!enabledInConfig) {
+            if (sectionExists) {
+                [snapshot deleteSectionsWithIdentifiers:@[sectionIdentifier]];
+                [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+            }
+            return;
+        }
+
         if (!sectionExists && newItems.count > 0) {
             [snapshot appendSectionsWithIdentifiers:@[sectionIdentifier]];
             sectionExists = YES;
@@ -3134,7 +3228,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    self.isMainKindsExpanded = NO; // collapsed = horizontal    self.hideServiceSection = YES;
+    self.isMainKindsExpanded = NO; // collapsed = horizontal
+    self.hideServiceSection = YES;
+    self.homeTitleViewMode = @"location";
     self.nearbyServiceProviders = @[];
     self.nearbyServicesLoaded = NO;
     self.nearbyServicesLoading = NO;
@@ -3201,6 +3297,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }];
 
     [self loadData];
+    [self pp_startHomeConfigListener];
     [self pp_prefetchHomeEntranceAnimationsIfNeeded];
 
     // 🔥 Fill top banner once banners are ready
@@ -3260,11 +3357,144 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
            selector:@selector(handleThemePreferenceDidChange:)
                name:PPThemePreferenceDidChangeNotification
              object:nil];
-
 }
 
+// 🔒 Validates Home Control config rows against the canonical PPHomeSection
+// enum range, drops unknown/duplicate ids, and coerces the visible flag.
+// This is the only entry point that should populate self.homeConfigSections.
+- (NSArray<NSDictionary *> *)pp_sanitizedHomeConfigSections:(id)rawSections
+{
+    if (![rawSections isKindOfClass:NSArray.class]) {
+        return @[];
+    }
+
+    NSArray *sectionsArray = (NSArray *)rawSections;
+    NSMutableArray<NSDictionary *> *sanitized =
+        [NSMutableArray arrayWithCapacity:sectionsArray.count];
+    NSMutableSet<NSNumber *> *seenIDs = [NSMutableSet set];
+    NSInteger maxKnownID = (NSInteger)PPHomeSectionPremiumSearch;
+
+    for (id raw in sectionsArray) {
+        if (![raw isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSDictionary *row = (NSDictionary *)raw;
+        id idValue = row[@"id"];
+        if (![idValue respondsToSelector:@selector(integerValue)]) {
+            continue;
+        }
+        NSInteger sectionID = [idValue integerValue];
+        if (sectionID < 0 || sectionID > maxKnownID) {
+            NSLog(@"[HomeConfig] Dropping unknown section id %ld", (long)sectionID);
+            continue;
+        }
+        NSNumber *boxedID = @(sectionID);
+        if ([seenIDs containsObject:boxedID]) {
+            NSLog(@"[HomeConfig] Dropping duplicate section id %ld", (long)sectionID);
+            continue;
+        }
+        [seenIDs addObject:boxedID];
+
+        BOOL visible = YES;
+        id visibleValue = row[@"visible"];
+        if ([visibleValue respondsToSelector:@selector(boolValue)]) {
+            visible = [visibleValue boolValue];
+        }
+
+        id typeValue = row[@"type"];
+        NSString *type = [typeValue isKindOfClass:NSString.class]
+            ? (NSString *)typeValue
+            : @"";
+
+        [sanitized addObject:@{ @"id" : boxedID,
+                                @"visible" : @(visible),
+                                @"type" : type }];
+    }
+
+    return sanitized.copy;
+}
+
+- (void)pp_startHomeConfigListener {
+    [self.homeConfigListener remove];
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    FIRDocumentReference *docRef = [[db collectionWithPath:@"AppConfigCol"] documentWithPath:@"HomeConfig"];
+
+    __weak typeof(self) weakSelf = self;
+    self.homeConfigListener = [docRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        if (error) {
+            NSLog(@"[HomeConfig] Listener error: %@", error.localizedDescription);
+            return;
+        }
+
+        if (!snapshot.exists) {
+            return;
+        }
+
+        NSDictionary *data = snapshot.data ?: @{};
+        NSArray<NSDictionary *> *sanitized =
+            [self pp_sanitizedHomeConfigSections:data[@"sections"]];
+
+        // Read title-view mode from the remote config doc.
+        NSString *remoteMode = data[@"titleViewMode"];
+        NSString *resolvedTitleViewMode = @"location";
+        if ([remoteMode isKindOfClass:NSString.class] &&
+            ([remoteMode isEqualToString:@"location"] || [remoteMode isEqualToString:@"search"])) {
+            resolvedTitleViewMode = remoteMode;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+
+            if (sanitized.count == 0) {
+                // Empty config means "use defaults" — clear and rebuild.
+                strongSelf.homeConfigSections = @[];
+            } else {
+                strongSelf.homeConfigSections = sanitized;
+            }
+
+            BOOL titleModeChanged =
+                ![strongSelf.homeTitleViewMode isEqualToString:resolvedTitleViewMode];
+            strongSelf.homeTitleViewMode = resolvedTitleViewMode;
+
+            [strongSelf applyBaseSnapshot];
+
+            BOOL expectsSearchTitle =
+                [resolvedTitleViewMode isEqualToString:@"search"];
+            BOOL showingSearchTitle =
+                strongSelf.homeSmartSearchView &&
+                strongSelf.navigationItem.titleView == strongSelf.homeSmartSearchView;
+            BOOL showingLocationTitle =
+                strongSelf.homeLocationTitleView &&
+                strongSelf.navigationItem.titleView == strongSelf.homeLocationTitleView;
+            BOOL titleViewMatchesConfig =
+                expectsSearchTitle ? showingSearchTitle : showingLocationTitle;
+
+            if (titleModeChanged || !titleViewMatchesConfig) {
+                if ([strongSelf pp_canOwnHomeNavigationChrome]) {
+                    [strongSelf configureNavigationBar];
+                } else {
+                    [strongSelf pp_detachHomeSmartSearchTitleViewIfNeeded];
+                    [strongSelf pp_detachHomeLocationTitleViewIfNeeded];
+                }
+            } else if (expectsSearchTitle) {
+                [strongSelf pp_updateHomeSmartSearchTitleViewWidth];
+                [strongSelf pp_updateHomeSmartSearchPlaceholderAnimated:NO];
+                [strongSelf pp_startHomeSmartSearchTimerIfNeeded];
+            } else {
+                [strongSelf pp_refreshHomeLocationTitleViewAnimated:NO];
+                [strongSelf.homeLocationTitleView startLivingMotion];
+            }
+        });
+    }];
+}
 
 - (void)handleBrowseHistoryUpdate
+
 {
     [self reloadSection:PPHomeSectionSuggestions];
 }
@@ -3987,6 +4217,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             vm.preferredAspectRatio = 0.78;
             vm.imageSize = CGSizeMake(1.0, 0.78);
         }
+
         if (!vm) {
             continue;
         }
@@ -4988,10 +5219,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     [self updateLocationStateForAuthorizationStatus:manager.authorizationStatus];
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 - (void)locationManager:(CLLocationManager *)manager didChangeAuthorizationStatus:(CLAuthorizationStatus)status
 {
     [self updateLocationStateForAuthorizationStatus:status];
 }
+#pragma clang diagnostic pop
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray<CLLocation *> *)locations
 {
@@ -5219,6 +5453,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 {
     if (![self pp_canOwnHomeNavigationChrome]) {
         [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+        [self pp_detachHomeLocationTitleViewIfNeeded];
         return;
     }
 
@@ -5550,6 +5785,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
     [self.collectionView registerClass:PPModernHomeActionCell.class
             forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
+    [self.collectionView registerClass:PPPremuimSearchbarCell.class
+            forCellWithReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier];
+    [self.collectionView registerClass:UICollectionViewCell.class
+            forCellWithReuseIdentifier:@"PPHomePremiumSearchSpacerCell"];
+    [self.collectionView registerClass:PPPremuimSearchbarCell.class
+            forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
+                   withReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
@@ -5574,8 +5816,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 {
     NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
 
-    NSArray *items =
-        [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionCarousel)];
+    NSArray *items = [self pp_safeItemsInSection:PPHomeSectionCarousel
+                                     fromSnapshot:snapshot];
     if (items.count == 0) return;
 
     [self pp_reconfigureHomeItems:items inSnapshot:snapshot];
@@ -5584,10 +5826,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 - (void)pp_configureBannerCell:(PPBannerCollectionCell *)cell
                        forItem:(PPHomeItem *)item
 {
-    if (!cell || item.payload == [NSNull null]) {
-        [cell configurePlaceholder];
-        return;
-    }
+    if (!cell) return;
 
     if ([item.payload isKindOfClass:NSArray.class]) {
         NSArray *promoCards = (NSArray *)item.payload;
@@ -5617,6 +5856,11 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
     }
 
+    // 🔒 Fall through to legacy banners when no promo cards (NSNull or
+    // empty array). A short-circuit on NSNull here used to wipe the carousel
+    // after a Home Control rebuild, because applyBaseSnapshot constructs a
+    // fresh carousel item with payload=NSNull when promoCarouselCards hasn't
+    // landed yet — even though the legacy banner data is available.
     MainBannerModel *homeTop = [self pp_homeTopCarouselBannerGroup];
     if (!homeTop || homeTop.childBanners.count == 0) {
         [cell configurePlaceholder];
@@ -5678,6 +5922,17 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 }
                 [self handleQuickActionSelection:quickAction];
             };
+            return cell;
+        }
+
+        if (section == PPHomeSectionPremiumSearch) {
+            UICollectionViewCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomePremiumSearchSpacerCell"
+                                                          forIndexPath:indexPath];
+            cell.hidden = YES;
+            cell.contentView.hidden = YES;
+            cell.backgroundColor = UIColor.clearColor;
+            cell.contentView.backgroundColor = UIColor.clearColor;
             return cell;
         }
 
@@ -6001,7 +6256,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                      // 🔁 Refresh main kinds visuals only
                      NSDiffableDataSourceSnapshot *snapshot = strongSelf.dataSource.snapshot;
                      NSArray *items =
-                         [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionMainKinds)];
+                         [strongSelf pp_safeItemsInSection:PPHomeSectionMainKinds
+                                              fromSnapshot:snapshot];
                      [strongSelf pp_reconfigureHomeItems:items inSnapshot:snapshot];
 
 
@@ -6138,6 +6394,23 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         if (indexPath.section >= (NSInteger)sectionIDs.count) return nil;
         NSNumber *sectionID = sectionIDs[indexPath.section];
         PPHomeSection section = (PPHomeSection)sectionID.integerValue;
+
+        if (section == PPHomeSectionPremiumSearch) {
+            PPPremuimSearchbarCell *searchView =
+                (PPPremuimSearchbarCell *)[collectionView dequeueReusableSupplementaryViewOfKind:kind
+                                                                             withReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier
+                                                                                    forIndexPath:indexPath];
+            [searchView configureWithTrendingQuery:[weakSelf pp_currentHomeSmartSearchPlaceholder]];
+            __weak typeof(weakSelf) weakSearch = weakSelf;
+            searchView.onTap = ^{
+                __strong typeof(weakSearch) self = weakSearch;
+                if (!self) return;
+                [self pp_openSmartSearch];
+            };
+            searchView.hidden = NO;
+            searchView.contentView.hidden = NO;
+            return searchView;
+        }
 
         PPHomeHeaderConfig *cfg =
             [weakSelf headerConfigForSection:section];
@@ -6606,6 +6879,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return;
         }
 
+        [self pp_refreshHomeLocationTitleViewAnimated:YES];
+
         NSString *renderSignature = [self pp_currentHeroRenderSignature];
         NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionHero];
         if (sectionIndex == NSNotFound) {
@@ -6626,7 +6901,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         }
 
         NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
-        NSArray *items = [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionHero)];
+        NSArray *items = [self pp_safeItemsInSection:PPHomeSectionHero
+                                         fromSnapshot:snapshot];
         if (items.count == 0) {
             return;
         }
@@ -7074,6 +7350,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     [self pp_stopCurrentOrdersListener];
     [self stopNearbyRefreshTimer];
     [self pp_stopHomeSmartSearchTimer];
+    [self.homeLocationTitleView stopLivingMotion];
     self.collectionView.prefetchDataSource = nil;
     [[PPImageLoaderManager shared] cancelAllPrefetching];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -7248,6 +7525,12 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     switch (section) {
+        case PPHomeSectionPremiumSearch: {
+            [self pp_emitSelectionHaptic];
+            [self pp_openSmartSearch];
+            return;
+        }
+
         case PPHomeSectionQuickActions:
             return;
 
@@ -7467,6 +7750,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)handleServiceSelection:(PPHomeServiceItem *)service
                  fromIndexPath:(NSIndexPath *)indexPath {
     switch (service.type) {
+        case PPHomeServiceTypeMainService:
+            [self handleDeepLinkWithTarget:PPDeepLinkTargetServices
+                                  mainKind:nil
+                                    source:PPInputSourceHomeServicesSection];
+            break;
+
         case PPHomeServiceTypeVet:
             [self openNearestVet];
             break;
@@ -8568,6 +8857,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self stopNearbyRefreshTimer];
     [self pp_stopHomeSmartSearchTimer];
     [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+    [self pp_detachHomeLocationTitleViewIfNeeded];
 }
 
 // Show bottom card with haptic feedback
@@ -8657,6 +8947,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
+    [self pp_stopHomeSmartSearchTimer];
+
     if (self.navigationItem.titleView == self.homeSmartSearchView) {
         self.navigationItem.titleView = nil;
     }
@@ -8666,17 +8958,45 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 }
 
+- (void)pp_detachHomeLocationTitleViewIfNeeded
+{
+    if (!self.homeLocationTitleView) {
+        return;
+    }
+
+    [self.homeLocationTitleView stopLivingMotion];
+
+    if (self.navigationItem.titleView == self.homeLocationTitleView) {
+        self.navigationItem.titleView = nil;
+    }
+
+    if (self.homeLocationTitleView.superview) {
+        [self.homeLocationTitleView removeFromSuperview];
+    }
+}
+
 - (void)configureNavigationBar {
     if (!self.navigationController) {
         return;
     }
     if (![self pp_canOwnHomeNavigationChrome]) {
         [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+        [self pp_detachHomeLocationTitleViewIfNeeded];
         return;
     }
 
-     self.navigationItem.title = nil;
-    UIView *centerView= [self pp_navigationSmartSearchTitleView];
+    BOOL useSmartSearch = [self.homeTitleViewMode isEqualToString:@"search"];
+
+    if (useSmartSearch) {
+        [self pp_detachHomeLocationTitleViewIfNeeded];
+    } else {
+        [self pp_detachHomeSmartSearchTitleViewIfNeeded];
+    }
+
+    self.navigationItem.title = nil;
+    UIView *centerView = useSmartSearch
+        ? [self pp_navigationSmartSearchTitleView]
+        : [self pp_navigationLocationTitleView];
     self.navigationItem.largeTitleDisplayMode = UINavigationItemLargeTitleDisplayModeNever;
 
     UIBarButtonItem *profileItem = [self pp_buildProfileBarButtonItem];
@@ -8687,16 +9007,21 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     NSInteger cartCount = [CartManager.sharedManager totalItemsCount];
     [self refreshNavigationRightItemsForCartCount:cartCount];
     [self pp_applyHomeCartBadgeCount:cartCount animated:NO];
-    [self pp_updateHomeSmartSearchPlaceholderAnimated:NO];
-    [self pp_startHomeSmartSearchTimerIfNeeded];
 
-    // Trigger PPNavBarContainer creation (sets up transparent nav bar appearance),
-    // but don't insert the search pill into it — use UIKit's native titleView instead.
-    // UIKit fills the space between left/right bar items when intrinsicContentSize.width
-    // is UIViewNoIntrinsicMetric, which PPHomeSmartSearchTitleView already returns.
     [self pp_navBarSetTitleViewCentered:nil];
     self.navigationItem.titleView = centerView;
-    [self pp_updateHomeSmartSearchTitleViewWidth];
+    centerView.hidden = NO;
+
+    if (useSmartSearch) {
+        [self pp_updateHomeSmartSearchTitleViewWidth];
+        [self pp_updateHomeSmartSearchPlaceholderAnimated:NO];
+        [self pp_startHomeSmartSearchTimerIfNeeded];
+    } else {
+        [self pp_refreshHomeLocationTitleViewAnimated:NO];
+        [self.homeLocationTitleView playEntranceIfNeeded];
+        [self.homeLocationTitleView startLivingMotion];
+        [self pp_updateHomeLocationTitleViewWidth];
+    }
 }
 
 - (UIBarButtonItem *)pp_buildCartBarButtonItem
@@ -8720,6 +9045,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeCartButton.frame = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+
+    self.homeCartButton.layer.shadowOpacity = 0.0;
+    self.homeCartButton.layer.shadowOffset = CGSizeMake(0, 0);
+    self.homeCartButton.layer.shadowRadius = 0;
+    self.homeCartButton.clipsToBounds = YES;
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = self.homeCartButton.configuration;
@@ -8794,16 +9124,20 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     static const CGFloat kBadgeOverflow = 0.0;
     static const CGFloat kContainerSize = kSize + kBadgeOverflow;
 
-    // Container — slightly larger than button so badge is never clipped
     UIView *container = [[UIView alloc] init];
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.clipsToBounds = NO;
     container.backgroundColor = UIColor.clearColor;
     container.userInteractionEnabled = YES;
+    container.frame = CGRectMake(0.0, 0.0, kContainerSize, kContainerSize);
+    container.bounds = (CGRect){CGPointZero, CGSizeMake(kContainerSize, kContainerSize)};
+
     [NSLayoutConstraint activateConstraints:@[
         [container.widthAnchor constraintEqualToConstant:kContainerSize],
-        [container.heightAnchor constraintEqualToConstant:kContainerSize]
+        [container.heightAnchor constraintEqualToConstant:kContainerSize],
     ]];
+
+    [container setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
 
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     button.tag = 8801; // tag for lookup in pp_refreshNavigationMenusForCurrentUser
@@ -8814,10 +9148,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     button.layer.cornerRadius = kSize * 0.5;
     button.layer.borderWidth = 0.8;
     [button pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
-    [button pp_setShadowColor:UIColor.blackColor];
-    button.layer.shadowOpacity = 0.06;
-    button.layer.shadowRadius = 10.0;
-    button.layer.shadowOffset = CGSizeMake(0.0, 4.0);
+    [button pp_setShadowColor:UIColor.clearColor];
+    button.layer.shadowOpacity = 0.0;
+    button.layer.shadowRadius = 0.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 0.0);
     button.adjustsImageWhenHighlighted = NO;
     button.accessibilityLabel = kLang(@"Profile") ?: @"Profile";
     button.accessibilityValue = PPCurrentUser.isVerified ? (kLang(@"a11y_profile_verified_value") ?: @"Verified account") : nil;
@@ -8829,7 +9163,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [NSLayoutConstraint activateConstraints:@[
         [button.widthAnchor constraintEqualToConstant:kSize],
         [button.heightAnchor constraintEqualToConstant:kSize],
-        [button.centerXAnchor constraintEqualToAnchor:container.centerXAnchor],
+        [button.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [button.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
         [button.centerYAnchor constraintEqualToAnchor:container.centerYAnchor]
     ]];
 
@@ -8911,6 +9246,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [self pp_updateHomeSmartSearchTitleViewWidth];
+    [self pp_updateHomeLocationTitleViewWidth];
 }
 
 - (void)pp_applyHomeCartBadgeCount:(NSInteger)count animated:(BOOL)animated
@@ -9018,6 +9354,89 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return [self preferredNavigationCenterViewWidth];
 }
 
+- (CGFloat)pp_preferredNavigationLocationTitleWidth
+{
+    CGFloat availableWidth = [self preferredNavigationCenterViewWidth];
+    if (availableWidth <= 0.0) {
+        return 188.0;
+    }
+
+    CGFloat minWidth = 134.0;
+    CGFloat maxWidth = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad ? 238.0 : 222.0;
+    return floor(MIN(MAX(availableWidth, minWidth), maxWidth));
+}
+
+- (void)pp_updateHomeLocationTitleViewWidth
+{
+    if (!self.homeLocationTitleView) {
+        return;
+    }
+
+    CGFloat targetWidth = [self pp_preferredNavigationLocationTitleWidth];
+    if (targetWidth > 0.0) {
+        self.homeLocationTitleWidthConstraint.constant = targetWidth;
+        CGRect frame = self.homeLocationTitleView.frame;
+        frame.size = CGSizeMake(targetWidth, 46.0);
+        self.homeLocationTitleView.frame = frame;
+        self.homeLocationTitleView.bounds = (CGRect){CGPointZero, frame.size};
+        [self.homeLocationTitleView invalidateIntrinsicContentSize];
+    }
+
+    [self.homeLocationTitleView setNeedsLayout];
+    [self.homeLocationTitleView layoutIfNeeded];
+    [self.navigationController.navigationBar setNeedsLayout];
+}
+
+- (UIColor *)pp_homeLocationTitleStatusColor
+{
+    switch (self.nearbyLocationState) {
+        case PPNearbyLocationStateDenied:
+            return UIColor.systemRedColor;
+        case PPNearbyLocationStateLoading:
+            return UIColor.systemOrangeColor;
+        case PPNearbyLocationStateReady:
+            return AppPrimaryClr ?: UIColor.systemGreenColor;
+        case PPNearbyLocationStateUnset:
+        default:
+            return AppSecondaryTextClr ?: UIColor.systemGrayColor;
+    }
+}
+
+- (BOOL)pp_homeLocationTitleShowsLoading
+{
+    return self.nearbyLocationState == PPNearbyLocationStateLoading;
+}
+
+- (NSString *)pp_homeLocationTitleAccessibilityHint
+{
+    NSString *actionTitle = [self heroLocationActionTitle];
+    NSString *safeActionTitle = PPSafeString(actionTitle);
+    if (safeActionTitle.length > 0) {
+        return safeActionTitle;
+    }
+
+    return kLang(@"Hero_LocationCTA") ?: @"Choose area";
+}
+
+- (void)pp_refreshHomeLocationTitleViewAnimated:(BOOL)animated
+{
+    if (!self.homeLocationTitleView) {
+        return;
+    }
+
+    NSString *title = PPSafeString([self heroCountryText]);
+    if (title.length == 0) {
+        title = kLang(@"Select your location") ?: @"Select your location";
+    }
+
+    [self.homeLocationTitleView configureWithTitle:title
+                                       statusColor:[self pp_homeLocationTitleStatusColor]
+                                           loading:[self pp_homeLocationTitleShowsLoading]
+                                 accessibilityHint:[self pp_homeLocationTitleAccessibilityHint]
+                                          animated:animated];
+    [self pp_updateHomeLocationTitleViewWidth];
+}
+
 - (void)pp_updateHomeSmartSearchTitleViewWidth
 {
     if (!self.homeSmartSearchView) {
@@ -9039,6 +9458,33 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self.navigationController.navigationBar setNeedsLayout];
 }
 
+- (UIView *)pp_navigationLocationTitleView
+{
+    CGFloat width = [self pp_preferredNavigationLocationTitleWidth];
+    if (!self.homeLocationTitleView) {
+        self.homeLocationTitleView =
+            [[PPHomeLocationTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 46.0)];
+        self.homeLocationTitleView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.homeLocationTitleWidthConstraint =
+            [self.homeLocationTitleView.widthAnchor constraintEqualToConstant:MAX(width, 134.0)];
+        self.homeLocationTitleWidthConstraint.priority = UILayoutPriorityRequired;
+        self.homeLocationTitleWidthConstraint.active = YES;
+        [self.homeLocationTitleView.heightAnchor constraintEqualToConstant:46.0].active = YES;
+        [self.homeLocationTitleView addTarget:self
+                                       action:@selector(presentHomeLocationOptions)
+                             forControlEvents:UIControlEventTouchUpInside];
+    }
+
+    CGRect frame = self.homeLocationTitleView.frame;
+    frame.size.width = width;
+    frame.size.height = 46.0;
+    self.homeLocationTitleView.frame = frame;
+    self.homeLocationTitleView.bounds = (CGRect){CGPointZero, frame.size};
+    self.homeLocationTitleView.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    [self pp_refreshHomeLocationTitleViewAnimated:NO];
+    return self.homeLocationTitleView;
+}
+
 - (UIView *)pp_navigationSmartSearchTitleView
 {
     CGFloat width = [self pp_preferredNavigationSearchWidth];
@@ -9051,7 +9497,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.homeSmartSearchWidthConstraint.priority = UILayoutPriorityRequired;
         self.homeSmartSearchWidthConstraint.active = YES;
         [self.homeSmartSearchView.heightAnchor constraintEqualToConstant:46.0].active = YES;
-        self.homeSmartSearchView.showSmartPillBackground = YES;
+        self.homeSmartSearchView.showSmartPillBackground = NO;
         [self.homeSmartSearchView addTarget:self
                                      action:@selector(pp_openSmartSearch)
                            forControlEvents:UIControlEventTouchUpInside];
@@ -9168,12 +9614,27 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_updateHomeSmartSearchPlaceholderAnimated:(BOOL)animated
 {
-    if (!self.homeSmartSearchView) {
+    NSString *placeholder = [self pp_currentHomeSmartSearchPlaceholder];
+
+    if (self.homeSmartSearchView) {
+        [self.homeSmartSearchView setQueryText:placeholder
+                                      animated:animated];
+    }
+
+    NSInteger searchSectionIndex = [self sectionIndexForType:PPHomeSectionPremiumSearch];
+    if (searchSectionIndex == NSNotFound || !self.collectionView) {
         return;
     }
 
-    [self.homeSmartSearchView setQueryText:[self pp_currentHomeSmartSearchPlaceholder]
-                                  animated:animated];
+    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:searchSectionIndex];
+    UICollectionReusableView *view =
+        [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
+                                                 atIndexPath:indexPath];
+    if (![view isKindOfClass:PPPremuimSearchbarCell.class]) {
+        return;
+    }
+
+    [(PPPremuimSearchbarCell *)view configureWithTrendingQuery:placeholder];
 }
 
 - (void)pp_startHomeSmartSearchTimerIfNeeded
@@ -9331,8 +9792,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (!self.dataSource) return;
 
     NSDiffableDataSourceSnapshot *snapshot = self.dataSource.snapshot;
-    NSArray *carouselItems =
-        [snapshot itemIdentifiersInSectionWithIdentifier:@(PPHomeSectionCarousel)];
+    NSArray *carouselItems = [self pp_safeItemsInSection:PPHomeSectionCarousel
+                                              fromSnapshot:snapshot];
     if (carouselItems.count == 0) return;
 
     PPHomeItem *existing = carouselItems.firstObject;
@@ -9856,7 +10317,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     self.pp_premiumBackgroundGlowViewMid.frame =
         CGRectMake(-(midSize * 0.44),
-                   MAX(152.0, height * 0.28),
+                   MAX(112.0, height * 0.28),
                    midSize,
                    midSize);
 
@@ -9892,6 +10353,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_layoutPremiumBackgroundGlowViews];
 
     [self pp_updateHomeSmartSearchTitleViewWidth];
+    [self pp_updateHomeLocationTitleViewWidth];
 
     [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];

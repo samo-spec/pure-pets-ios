@@ -29,7 +29,7 @@ PPPetCareHelperInline UIColor *PPPetCareBorderColor(void)
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
             return dark
                 ? [UIColor colorWithWhite:1.0 alpha:0.11]
-                : [UIColor colorWithRed:0.72 green:0.66 blue:0.62 alpha:0.22];
+            : [AppBackgroundClr colorWithAlphaComponent:0.22];
         }];
     }
     return [UIColor colorWithRed:0.72 green:0.66 blue:0.62 alpha:0.22];
@@ -64,7 +64,7 @@ PPPetCareHelperInline UIColor *PPPetCareSurfaceColor(void)
             BOOL dark = traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
             return dark
             ? [AppBackgroundClr colorWithAlphaComponent:0.075]
-            : [AppBackgroundClr colorWithAlphaComponent:0.76];
+            : [AppBackgroundClr colorWithAlphaComponent:1];
         }];
     }
     return [UIColor colorWithWhite:1.0 alpha:0.76];
