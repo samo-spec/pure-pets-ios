@@ -198,6 +198,7 @@
     [coder encodeObject:self.readAt forKey:@"readAt"];
     [coder encodeInteger:self.status forKey:@"status"];
     [coder encodeInteger:self.messageType forKey:@"type"];
+    [coder encodeObject:self.novaProducts forKey:@"novaProducts"];
 
     [coder encodeObject:self.blurHash forKey:@"blurHash"];
     [coder encodeObject:self.fileURL forKey:@"fileURL"];
@@ -239,6 +240,7 @@
         _readAt = [coder decodeObjectOfClass:NSDate.class forKey:@"readAt"];
         _status = [coder decodeIntegerForKey:@"status"];
         _messageType = [coder decodeIntegerForKey:@"type"];
+        _novaProducts = [coder decodeObjectOfClass:[NSArray class] forKey:@"novaProducts"];
 
         _blurHash = [coder decodeObjectOfClass:NSString.class forKey:@"blurHash"];
         _fileURL = [coder decodeObjectOfClass:NSString.class forKey:@"fileURL"];

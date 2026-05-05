@@ -1676,6 +1676,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeCartItem;
 @property (nonatomic, strong, nullable) UIButton *homeCartButton;
 @property (nonatomic, strong) UIButton *novaFloatingButton;
+@property (nonatomic, strong, nullable) LOTAnimationView *novaFloatingLottieView;
+@property (nonatomic, strong, nullable) UIView *novaFloatingHaloView;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
 @property (nonatomic, strong, nullable) PPHomeSmartSearchTitleView *homeSmartSearchView;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchWidthConstraint;
@@ -1839,6 +1841,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         }
         [storagePaths addObject:[NSString stringWithFormat:@"LottieAnimations/%@.json", safeName]];
     }
+
+    // Floating Nova orb — prefetch so the button animates the moment Home appears.
+    [storagePaths addObject:@"LottieAnimations/nova.json"];
 
     for (NSString *storagePath in storagePaths) {
         [AppClasses fetchLottieJSONFromFirebasePath:storagePath
@@ -3364,6 +3369,26 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
 - (void)setupNovaFloatingButton
 {
+    UIColor *brand = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
+
+    // Soft brand halo behind the orb. Breathes when motion is allowed.
+    UIView *halo = [[UIView alloc] init];
+    halo.translatesAutoresizingMaskIntoConstraints = NO;
+    halo.userInteractionEnabled = NO;
+    halo.backgroundColor = [brand colorWithAlphaComponent:0.16];
+    halo.layer.cornerRadius = 36.0;
+    if (@available(iOS 13.0, *)) {
+        halo.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    halo.layer.shadowColor = brand.CGColor;
+    halo.layer.shadowOpacity = 0.45;
+    halo.layer.shadowRadius = 22.0;
+    halo.layer.shadowOffset = CGSizeZero;
+    halo.alpha = 0.0; // revealed by pp_startNovaFloatingHaloBreathing
+    [self.view addSubview:halo];
+    self.novaFloatingHaloView = halo;
+
+    // Glass orb that hosts the Lottie. Continuous-curve circle with a hairline rim.
     UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.layer.cornerRadius = 28.0;
@@ -3371,15 +3396,15 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    button.backgroundColor = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
-
-    UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:22.0
-                                                                                             weight:UIImageSymbolWeightSemibold];
-    UIImage *icon = [UIImage systemImageNamed:@"wand.and.stars" withConfiguration:iconConfig];
-    [button setImage:icon forState:UIControlStateNormal];
-    button.tintColor = UIColor.whiteColor;
+    button.backgroundColor = [brand colorWithAlphaComponent:0.10];
+    button.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+    button.layer.borderColor = [brand colorWithAlphaComponent:0.28].CGColor;
 
     PPApplyCardShadow(button);
+    button.layer.shadowColor = brand.CGColor;
+    button.layer.shadowOpacity = 0.22;
+    button.layer.shadowRadius = 18.0;
+    button.layer.shadowOffset = CGSizeMake(0, 8);
 
     [button addTarget:self
                action:@selector(novaFloatingButtonTapped)
@@ -3392,17 +3417,108 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self.view addSubview:button];
     self.novaFloatingButton = button;
 
+    LOTAnimationView *lot = [[LOTAnimationView alloc] init];
+    lot.translatesAutoresizingMaskIntoConstraints = NO;
+    lot.userInteractionEnabled = NO;
+    lot.contentMode = UIViewContentModeScaleAspectFit;
+    lot.loopAnimation = YES;
+    lot.animationSpeed = 1.0;
+    [button addSubview:lot];
+    self.novaFloatingLottieView = lot;
+
     [NSLayoutConstraint activateConstraints:@[
         [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPSpaceBase],
         [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceBase],
         [button.widthAnchor constraintEqualToConstant:56.0],
         [button.heightAnchor constraintEqualToConstant:56.0],
+
+        [halo.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
+        [halo.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
+        [halo.widthAnchor constraintEqualToConstant:72.0],
+        [halo.heightAnchor constraintEqualToConstant:72.0],
+
+        [lot.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
+        [lot.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
+        [lot.widthAnchor constraintEqualToConstant:46.0],
+        [lot.heightAnchor constraintEqualToConstant:46.0],
     ]];
+
+    // Lottie loads from Firebase Storage path LottieAnimations/nova.json via the project's helper.
+    __weak typeof(self) weakSelf = self;
+    __weak LOTAnimationView *weakLot = lot;
+    [AppClasses setAnimationNamed:@"nova"
+                            ToView:lot
+                         withSpeed:1.0
+                        completion:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            LOTAnimationView *strongLot = weakLot;
+            if (!strongSelf || !strongLot) {
+                return;
+            }
+            if (success) {
+                [strongLot play];
+            } else {
+                // Graceful fallback: use the original SF Symbol so the button never looks empty.
+                strongLot.hidden = YES;
+                UIImageSymbolConfiguration *iconConfig =
+                    [UIImageSymbolConfiguration configurationWithPointSize:22.0
+                                                                    weight:UIImageSymbolWeightSemibold];
+                UIImage *icon = [UIImage systemImageNamed:@"wand.and.stars" withConfiguration:iconConfig];
+                [strongSelf.novaFloatingButton setImage:icon forState:UIControlStateNormal];
+                strongSelf.novaFloatingButton.tintColor = UIColor.whiteColor;
+                strongSelf.novaFloatingButton.backgroundColor =
+                    AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
+            }
+        });
+    }];
+
+    [self pp_startNovaFloatingHaloBreathing];
+}
+
+- (void)pp_startNovaFloatingHaloBreathing
+{
+    UIView *halo = self.novaFloatingHaloView;
+    if (!halo) { return; }
+
+    [halo.layer removeAnimationForKey:@"pp_novaHaloBreath"];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        halo.alpha = 0.55;
+        return;
+    }
+
+    halo.alpha = 0.65;
+
+    CABasicAnimation *breath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    breath.fromValue = @0.42;
+    breath.toValue = @0.85;
+    breath.duration = 5.2;
+    breath.autoreverses = YES;
+    breath.repeatCount = HUGE_VALF;
+    breath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [halo.layer addAnimation:breath forKey:@"pp_novaHaloBreath"];
 }
 
 - (void)novaFloatingButtonTapped
 {
     PPTapFeedbackDown(self.novaFloatingButton);
+
+    UIImpactFeedbackGenerator *haptic =
+        [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+    [haptic prepare];
+    [haptic impactOccurred];
+
+    if (!UIAccessibilityIsReduceMotionEnabled() && self.novaFloatingHaloView) {
+        [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloPulseScale"];
+        CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+        pulse.fromValue = @1.0;
+        pulse.toValue = @1.18;
+        pulse.duration = 0.28;
+        pulse.autoreverses = YES;
+        pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+        [self.novaFloatingHaloView.layer addAnimation:pulse forKey:@"pp_novaHaloPulseScale"];
+    }
 
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.14 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -3411,8 +3527,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         PPTapFeedbackUp(self.novaFloatingButton);
     });
 
-    PPNovaChatViewController *novaVC = [[PPNovaChatViewController alloc] init];
-    [self.navigationController pushViewController:novaVC animated:YES];
+    [PPNovaChatViewController presentNovaFromViewController:self];
 }
 
 // 🔒 Validates Home Control config rows against the canonical PPHomeSection
@@ -3502,9 +3617,19 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             resolvedTitleViewMode = remoteMode;
         }
 
+        BOOL novaVisible = YES;
+        id remoteNova = data[@"novaFloatingVisible"];
+        if ([remoteNova respondsToSelector:@selector(boolValue)]) {
+            novaVisible = [remoteNova boolValue];
+        }
+
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
+
+            if (strongSelf.novaFloatingButton) {
+                strongSelf.novaFloatingButton.hidden = !novaVisible;
+            }
 
             if (sanitized.count == 0) {
                 // Empty config means "use defaults" — clear and rebuild.

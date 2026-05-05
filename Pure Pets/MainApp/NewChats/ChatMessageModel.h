@@ -29,6 +29,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) NSString *receiverID;
 @property (nonatomic, strong) NSDate *timestamp;
 
+// Nova Product integration
+@property (nonatomic, copy, nullable) NSArray<PetAccessory *> *novaProducts;
+
 // Delivery / Read timestamps (set by receiver)
 @property (nonatomic, strong, nullable) NSDate *deliveredAt;
 @property (nonatomic, strong, nullable) NSDate *readAt;
