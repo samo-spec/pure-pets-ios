@@ -76,7 +76,7 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 @property (nonatomic, assign) CGFloat galleryMaxHeight;
 @property (nonatomic, assign) BOOL isHeroReadMorePulseActive;
 
-@property (nonatomic, strong) PPInfoPillsView *infoView;
+@property (nonatomic, strong) UIView *infoView;
 @property (nonatomic, strong) UIView *similarAdsSeparator;
 @property (nonatomic, strong) UIView *similarAccessoriesSeparator;
 @property (nonatomic, assign) BOOL didTrackViewInteraction;
@@ -763,11 +763,8 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     NSString *typeText = [NSString stringWithFormat:@"%@: %@", kLang(@"Type"), SubKindName.length > 0 ? SubKindName : @"-"];
     NSString *ageText = [NSString stringWithFormat:@"%@: %@", kLang(@"Age"), ageString.length > 0 ? ageString : @"-"];
     NSString *genderText = [NSString stringWithFormat:@"%@: %@", kLang(@"Gender"), gender.length > 0 ? gender : @"-"];
-    // --- Actions Container StackView ---
-
-
     self.infoView =
-    [[PPInfoPillsView alloc] initWithItems:@[
+    [self pp_makeViewerMetaBadgesViewWithItems:@[
         [PPInfoPill itemWithIcon:@"pawprint"
                             text:typeText],
         [PPInfoPill itemWithIcon:@"calendar"
@@ -784,6 +781,138 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         [self.infoView.trailingAnchor constraintEqualToAnchor:self.contentContainer.trailingAnchor constant:-20],
         [self.infoView.heightAnchor constraintGreaterThanOrEqualToConstant:64]
     ]];
+}
+
+- (UIView *)pp_makeViewerMetaBadgesViewWithItems:(NSArray<PPInfoPill *> *)items
+{
+    UIView *container = [[UIView alloc] init];
+    container.translatesAutoresizingMaskIntoConstraints = NO;
+    container.backgroundColor = UIColor.clearColor;
+    container.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIStackView *stack = [[UIStackView alloc] init];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.alignment = UIStackViewAlignmentFill;
+    stack.distribution = UIStackViewDistributionFillEqually;
+    stack.spacing = 8.0;
+    stack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [container addSubview:stack];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [stack.topAnchor constraintEqualToAnchor:container.topAnchor],
+        [stack.leadingAnchor constraintEqualToAnchor:container.leadingAnchor],
+        [stack.trailingAnchor constraintEqualToAnchor:container.trailingAnchor],
+        [stack.bottomAnchor constraintEqualToAnchor:container.bottomAnchor],
+    ]];
+
+    NSArray<UIColor *> *accentPalette = @[
+        [self pp_luxuryEmeraldColor],
+        [self pp_luxuryGoldColor],
+        AppPrimaryClr ?: [UIColor systemPinkColor],
+    ];
+
+    [items enumerateObjectsUsingBlock:^(PPInfoPill * _Nonnull item, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)stop;
+        if (item.text.length == 0 && item.iconName.length == 0) {
+            return;
+        }
+
+        UIColor *accent = accentPalette[idx % accentPalette.count];
+        [stack addArrangedSubview:[self pp_makeViewerMetaBadgeWithItem:item accent:accent]];
+    }];
+
+    return container;
+}
+
+- (UIView *)pp_makeViewerMetaBadgeWithItem:(PPInfoPill *)item
+                                    accent:(UIColor *)accent
+{
+    BOOL dark = NO;
+    if (@available(iOS 13.0, *)) {
+        dark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    }
+
+    UIView *badge = [[UIView alloc] init];
+    badge.translatesAutoresizingMaskIntoConstraints = NO;
+    badge.backgroundColor = dark ? [UIColor colorWithWhite:0.13 alpha:1.0] : [UIColor colorWithWhite:1.0 alpha:0.96];
+    badge.layer.cornerRadius = 22.0;
+    badge.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    badge.clipsToBounds = NO;
+    [badge pp_setBorderColor:[accent colorWithAlphaComponent:dark ? 0.22 : 0.13]];
+    [badge pp_setShadowColor:UIColor.blackColor];
+    badge.layer.shadowOpacity = dark ? 0.0 : 0.055;
+    badge.layer.shadowRadius = 16.0;
+    badge.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    badge.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    badge.isAccessibilityElement = YES;
+    badge.accessibilityLabel = item.text;
+    if (@available(iOS 13.0, *)) {
+        badge.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIView *iconPlate = [[UIView alloc] init];
+    iconPlate.translatesAutoresizingMaskIntoConstraints = NO;
+    iconPlate.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.18 : 0.11];
+    iconPlate.layer.cornerRadius = 14.0;
+    iconPlate.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        iconPlate.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+
+    UIImageSymbolConfiguration *symbolConfig =
+        [UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                        weight:UIImageSymbolWeightSemibold
+                                                         scale:UIImageSymbolScaleMedium];
+    NSString *symbolName = item.iconName.length > 0 ? item.iconName : @"sparkles";
+    UIImage *symbolImage = [UIImage systemImageNamed:symbolName
+                                  withConfiguration:symbolConfig];
+    if (!symbolImage) {
+        symbolImage = [UIImage systemImageNamed:@"sparkles"
+                              withConfiguration:symbolConfig];
+    }
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:symbolImage];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    iconView.tintColor = accent;
+    iconView.hidden = item.iconName.length == 0;
+    [iconPlate addSubview:iconView];
+
+    UILabel *label = [[UILabel alloc] init];
+    label.translatesAutoresizingMaskIntoConstraints = NO;
+    label.text = item.text;
+    label.font = [GM boldFontWithSize:12.4] ?: [UIFont systemFontOfSize:12.4 weight:UIFontWeightSemibold];
+    label.textColor = [self pp_luxuryTextColor];
+    label.numberOfLines = 2;
+    label.lineBreakMode = NSLineBreakByTruncatingTail;
+    label.adjustsFontSizeToFitWidth = YES;
+    label.minimumScaleFactor = 0.78;
+    label.textAlignment = NSTextAlignmentNatural;
+    label.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIStackView *content = [[UIStackView alloc] initWithArrangedSubviews:@[iconPlate, label]];
+    content.translatesAutoresizingMaskIntoConstraints = NO;
+    content.axis = UILayoutConstraintAxisHorizontal;
+    content.alignment = UIStackViewAlignmentCenter;
+    content.distribution = UIStackViewDistributionFill;
+    content.spacing = 8.0;
+    content.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [badge addSubview:content];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [iconPlate.widthAnchor constraintEqualToConstant:28.0],
+        [iconPlate.heightAnchor constraintEqualToConstant:28.0],
+        [iconView.centerXAnchor constraintEqualToAnchor:iconPlate.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:iconPlate.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:14.0],
+        [iconView.heightAnchor constraintEqualToConstant:14.0],
+        [content.topAnchor constraintEqualToAnchor:badge.topAnchor constant:10.0],
+        [content.leadingAnchor constraintEqualToAnchor:badge.leadingAnchor constant:10.0],
+        [content.trailingAnchor constraintEqualToAnchor:badge.trailingAnchor constant:-10.0],
+        [content.bottomAnchor constraintEqualToAnchor:badge.bottomAnchor constant:-10.0],
+    ]];
+
+    return badge;
 }
 
 
@@ -1471,6 +1600,9 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         if (self.contactView.chatButton) {
             [views addObject:self.contactView.chatButton];
         }
+        if (self.contactView.whatsappButton && !self.contactView.whatsappButton.hidden) {
+            [views addObject:self.contactView.whatsappButton];
+        }
     }
 
     return views.copy;
@@ -1692,8 +1824,10 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         self.contactView.avatarImageView.image = PPSYSImage(@"person.crop.circle.fill");
         self.contactView.callButton.enabled = NO;
         self.contactView.chatButton.enabled = NO;
+        self.contactView.whatsappButton.enabled = NO;
         self.contactView.callButton.alpha = 0.35;
         self.contactView.chatButton.alpha = 0.35;
+        self.contactView.whatsappButton.alpha = 0.35;
         self.contactView.accessibilityHint = kLang(@"AdOwnerInfoGuestSubtitle");
     }
 
@@ -1866,6 +2000,8 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 
                 [self trackAdInteraction:PPItemInteractionTypeCall];
                 [AppClasses callPhoneNumber:user.MobileNo fromViewController:self];
+            } whatsappCallback:^{
+                [self pp_openWhatsAppForUser:user];
             }];
             [self pp_styleContactActionButtons];
 
@@ -1883,6 +2019,49 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         [self trackAdInteraction:PPItemInteractionTypeCall];
         [AppClasses callPhoneNumber:self.ownerModel.MobileNo fromViewController:self];
     }
+}
+
+- (void)pp_openWhatsAppForUser:(UserModel *)user
+{
+    if (!user.MobileNo.length) {
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"No Number")
+                         subtitle:kLang(@"This user has no phone number")];
+        return;
+    }
+
+    NSString *cleanNumber = [self pp_whatsAppNumberFromRawPhone:user.MobileNo];
+    if (cleanNumber.length == 0) {
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"No Number")
+                         subtitle:kLang(@"This user has no phone number")];
+        return;
+    }
+
+    [self trackAdInteraction:PPItemInteractionTypeChat];
+    [AppClasses startWhatsAppWith:cleanNumber fromViewController:self];
+}
+
+- (NSString *)pp_whatsAppNumberFromRawPhone:(NSString *)rawPhone
+{
+    NSString *trimmed = [rawPhone stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        return @"";
+    }
+
+    NSMutableString *clean = [NSMutableString string];
+    NSCharacterSet *digits = NSCharacterSet.decimalDigitCharacterSet;
+    for (NSUInteger idx = 0; idx < trimmed.length; idx++) {
+        unichar character = [trimmed characterAtIndex:idx];
+        if (character == '+' && clean.length == 0) {
+            [clean appendString:@"+"];
+            continue;
+        }
+        if ([digits characterIsMember:character]) {
+            [clean appendFormat:@"%C", character];
+        }
+    }
+    return [clean stringByReplacingOccurrencesOfString:@"+" withString:@""];
 }
 
 - (void)handleShareAction  {
@@ -2060,16 +2239,22 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
 {
     UIButton *callButton = self.contactView.callButton;
     UIButton *chatButton = self.contactView.chatButton;
+    BOOL compactActions = self.contactView.whatsappButton && !self.contactView.whatsappButton.hidden;
 
     if (callButton) {
-        [callButton setTitle:kLang(@"Call") forState:UIControlStateNormal];
+        [callButton setTitle:compactActions ? nil : kLang(@"Call") forState:UIControlStateNormal];
         callButton.semanticContentAttribute = GM.setSemantic;
         [self pp_attachPressFeedbackToButton:callButton];
     }
     if (chatButton) {
-        [chatButton setTitle:kLang(@"Chat") forState:UIControlStateNormal];
+        [chatButton setTitle:compactActions ? nil : kLang(@"Chat") forState:UIControlStateNormal];
         chatButton.semanticContentAttribute = GM.setSemantic;
         [self pp_attachPressFeedbackToButton:chatButton];
+    }
+    if (self.contactView.whatsappButton) {
+        [self.contactView.whatsappButton setTitle:compactActions ? nil : kLang(@"WhatsApp") forState:UIControlStateNormal];
+        self.contactView.whatsappButton.semanticContentAttribute = GM.setSemantic;
+        [self pp_attachPressFeedbackToButton:self.contactView.whatsappButton];
     }
 }
 

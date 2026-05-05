@@ -4,8 +4,8 @@
 static CGFloat const PPHomeLocationTitleHeight = 46.0;
 static CGFloat const PPHomeLocationChevronSize = 14.0;
 static CGFloat const PPHomeLocationHaloInset = 6.0;
-static CGFloat const PPHomeLocationTitleRestingAlpha = 0.92;
-static CGFloat const PPHomeLocationTitleHighlightedAlpha = 0.78;
+static CGFloat const PPHomeLocationTitleRestingAlpha = 1.0;
+static CGFloat const PPHomeLocationTitleHighlightedAlpha = 0.98;
 
 static BOOL PPHomeLocationTitleShouldReduceMotion(void)
 {
@@ -14,6 +14,7 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
 
 @interface PPHomeLocationTitleView ()
 @property (nonatomic, strong) UIView *haloView;
+@property (nonatomic, strong) UIButton *glassChromeButton;
 @property (nonatomic, strong) UIVisualEffectView *blurView;
 @property (nonatomic, strong) UIView *tintOverlayView;
 @property (nonatomic, strong) UIStackView *contentStackView;
@@ -32,6 +33,50 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
 @end
 
 @implementation PPHomeLocationTitleView
+
+- (BOOL)pp_usesSystemGlassChrome
+{
+    return self.glassChromeButton != nil;
+}
+
+- (void)pp_configureSystemGlassChromeIfNeeded
+{
+    if (!self.glassChromeButton) {
+        return;
+    }
+
+    if (@available(iOS 26.0, *)) {
+        BOOL dark = ([self pp_currentHostInterfaceStyle] == UIUserInterfaceStyleDark);
+        UIColor *surface = AppForgroundColr;
+        if (!surface) {
+            if (@available(iOS 13.0, *)) {
+                surface = UIColor.secondarySystemBackgroundColor;
+            } else {
+                surface = [UIColor colorWithWhite:1.0 alpha:0.90];
+            }
+        }
+        UIColor *liquidBorder = AppForgroundColr ?: surface;
+
+        UIButtonConfiguration *configuration =
+            [UIButtonConfiguration clearGlassButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.contentInsets = NSDirectionalEdgeInsetsZero;
+        configuration.baseForegroundColor = UIColor.clearColor;
+
+        UIBackgroundConfiguration *background =
+            configuration.background ?: [UIBackgroundConfiguration clearConfiguration];
+        background.backgroundInsets = NSDirectionalEdgeInsetsZero;
+        background.backgroundColor = UIColor.clearColor;
+        background.strokeColor = [liquidBorder colorWithAlphaComponent:dark ? 0.34 : 0.68];
+        background.strokeWidth = 0.9;
+        background.visualEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
+        background.cornerRadius =
+            CGRectGetHeight(self.bounds) > 0.0 ? CGRectGetHeight(self.bounds) * 0.5 : PPHomeLocationTitleHeight * 0.5;
+        configuration.background = background;
+
+        self.glassChromeButton.configuration = configuration;
+    }
+}
 
 - (instancetype)initWithFrame:(CGRect)frame
 {
@@ -60,6 +105,7 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     CGFloat radius = CGRectGetHeight(self.bounds) * 0.5;
     self.blurView.layer.cornerRadius = radius;
     self.tintOverlayView.layer.cornerRadius = radius;
+    self.glassChromeButton.layer.cornerRadius = radius;
     self.haloView.layer.cornerRadius = CGRectGetHeight(self.haloView.bounds) * 0.5;
     self.haloView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.haloView.bounds
@@ -67,6 +113,10 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.iconPlateView.layer.cornerRadius = CGRectGetHeight(self.iconPlateView.bounds) * 0.5;
     self.stateDotView.layer.cornerRadius = CGRectGetHeight(self.stateDotView.bounds) * 0.5;
     self.pulseRingView.layer.cornerRadius = CGRectGetHeight(self.pulseRingView.bounds) * 0.5;
+    self.layer.shadowPath =
+        [UIBezierPath bezierPathWithRoundedRect:self.bounds
+                                   cornerRadius:radius].CGPath;
+    [self pp_configureSystemGlassChromeIfNeeded];
 }
 
 - (void)didMoveToWindow
@@ -91,6 +141,12 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
 {
     [super traitCollectionDidChange:previousTraitCollection];
     [self pp_applyForcedInterfaceStyleForCurrentEnvironment];
+    [self pp_applyAppearance];
+}
+
+- (void)tintColorDidChange
+{
+    [super tintColorDidChange];
     [self pp_applyAppearance];
 }
 
@@ -257,17 +313,32 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.alpha = PPHomeLocationTitleRestingAlpha;
     self.clipsToBounds = NO;
     self.layer.masksToBounds = NO;
+    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.layer.shadowRadius = 12.0;
     self.isAccessibilityElement = YES;
 
     self.haloView = [[UIView alloc] init];
     self.haloView.translatesAutoresizingMaskIntoConstraints = NO;
     self.haloView.userInteractionEnabled = NO;
-    self.haloView.alpha = 0.12;
+    self.haloView.alpha = 0.0;
     self.haloView.clipsToBounds = NO;
     self.haloView.layer.masksToBounds = NO;
     self.haloView.layer.shadowOffset = CGSizeZero;
-    self.haloView.layer.shadowRadius = 6.0;
+    self.haloView.layer.shadowRadius = 0.0;
     [self addSubview:self.haloView];
+
+    if (@available(iOS 26.0, *)) {
+        self.glassChromeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        self.glassChromeButton.translatesAutoresizingMaskIntoConstraints = NO;
+        self.glassChromeButton.backgroundColor = UIColor.clearColor;
+        self.glassChromeButton.userInteractionEnabled = NO;
+        self.glassChromeButton.layer.masksToBounds = YES;
+        if (@available(iOS 13.0, *)) {
+            self.glassChromeButton.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        [self addSubview:self.glassChromeButton];
+        [self pp_configureSystemGlassChromeIfNeeded];
+    }
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
     if (@available(iOS 13.0, *)) {
@@ -277,8 +348,9 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.blurView.translatesAutoresizingMaskIntoConstraints = NO;
     self.blurView.userInteractionEnabled = NO;
     self.blurView.clipsToBounds = YES;
-    self.blurView.layer.borderWidth = 0.65;
-     [self addSubview:self.blurView];
+    self.blurView.backgroundColor = UIColor.clearColor;
+    self.blurView.layer.borderWidth = 0.92;
+    [self addSubview:self.blurView];
 
     self.tintOverlayView = [[UIView alloc] init];
     self.tintOverlayView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -290,6 +362,7 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.iconPlateView.clipsToBounds = YES;
     self.iconPlateView.userInteractionEnabled = NO;
+    self.iconPlateView.layer.borderWidth = 1.0;
 
     self.iconView = [[UIImageView alloc] init];
     self.iconView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -337,9 +410,18 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     self.contentStackView.axis = UILayoutConstraintAxisHorizontal;
     self.contentStackView.alignment = UIStackViewAlignmentCenter;
     self.contentStackView.distribution = UIStackViewDistributionFill;
-    self.contentStackView.spacing = 7.0;
+    self.contentStackView.spacing = 10.0;
     self.contentStackView.userInteractionEnabled = NO;
     [self.blurView.contentView addSubview:self.contentStackView];
+
+    if (self.glassChromeButton) {
+        [NSLayoutConstraint activateConstraints:@[
+            [self.glassChromeButton.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
+            [self.glassChromeButton.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
+            [self.glassChromeButton.topAnchor constraintEqualToAnchor:self.topAnchor],
+            [self.glassChromeButton.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
+        ]];
+    }
 
     [NSLayoutConstraint activateConstraints:@[
         [self.heightAnchor constraintEqualToConstant:PPHomeLocationTitleHeight],
@@ -359,16 +441,16 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
         [self.tintOverlayView.topAnchor constraintEqualToAnchor:self.blurView.contentView.topAnchor],
         [self.tintOverlayView.bottomAnchor constraintEqualToAnchor:self.blurView.contentView.bottomAnchor],
 
-        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.blurView.contentView.leadingAnchor constant:11.0],
-        [self.contentStackView.trailingAnchor constraintEqualToAnchor:self.blurView.contentView.trailingAnchor constant:-11.0],
+        [self.contentStackView.leadingAnchor constraintEqualToAnchor:self.blurView.contentView.leadingAnchor constant:7.0],
+        [self.contentStackView.trailingAnchor constraintEqualToAnchor:self.blurView.contentView.trailingAnchor constant:-7.0],
         [self.contentStackView.centerYAnchor constraintEqualToAnchor:self.blurView.contentView.centerYAnchor],
 
-        [self.iconPlateView.widthAnchor constraintEqualToConstant:24.0],
-        [self.iconPlateView.heightAnchor constraintEqualToConstant:24.0],
+        [self.iconPlateView.widthAnchor constraintEqualToConstant:28.0],
+        [self.iconPlateView.heightAnchor constraintEqualToConstant:28.0],
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconPlateView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconPlateView.centerYAnchor],
-        [self.iconView.widthAnchor constraintEqualToConstant:13.0],
-        [self.iconView.heightAnchor constraintEqualToConstant:13.0],
+        [self.iconView.widthAnchor constraintEqualToConstant:14.0],
+        [self.iconView.heightAnchor constraintEqualToConstant:14.0],
 
         [self.stateContainerView.widthAnchor constraintEqualToConstant:10.0],
         [self.stateContainerView.heightAnchor constraintEqualToConstant:10.0],
@@ -405,25 +487,56 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
 
     UIColor *accent = AppPrimaryClr ?: AppPrimaryClrShiner ?: UIColor.systemBlueColor;
     UIColor *text = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *subtle = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-     UIColor *status = self.currentStatusColor ?: accent;
+    UIColor *surface = AppForgroundColr;
+    if (!surface) {
+        if (@available(iOS 13.0, *)) {
+            surface = UIColor.secondarySystemBackgroundColor;
+        } else {
+            surface = [UIColor colorWithWhite:1.0 alpha:0.90];
+        }
+    }
+    UIColor *liquidBorder = AppForgroundColr ?: surface;
+    UIColor *status = self.currentStatusColor ?: accent;
+    BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
 
-    self.tintOverlayView.backgroundColor = AppClearClr;
-    self.haloView.backgroundColor = [status colorWithAlphaComponent:(dark ? 0.14 : 0.10)];
+    if (usesSystemGlassChrome) {
+        [self pp_configureSystemGlassChromeIfNeeded];
+        self.blurView.effect = nil;
+        self.blurView.backgroundColor = UIColor.clearColor;
+        self.blurView.contentView.backgroundColor = UIColor.clearColor;
+        self.tintOverlayView.backgroundColor = UIColor.clearColor;
+        self.blurView.layer.borderWidth = 0.0f;
+        self.blurView.layer.borderColor = UIColor.clearColor.CGColor;
+    } else {
+        UIBlurEffectStyle blurStyle = UIBlurEffectStyleExtraLight;
+        if (@available(iOS 13.0, *)) {
+            blurStyle = dark
+                ? UIBlurEffectStyleSystemThinMaterialDark
+                : UIBlurEffectStyleSystemThinMaterialLight;
+        }
+        self.blurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
+        self.tintOverlayView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.28 : 0.14)];
+        self.blurView.layer.borderWidth = dark ? 0.78f : 0.92f;
+        self.blurView.layer.borderColor =
+            [liquidBorder colorWithAlphaComponent:(dark ? 0.30 : 0.58)].CGColor;
+    }
+
+    self.haloView.backgroundColor = UIColor.clearColor;
     self.haloView.layer.shadowColor = status.CGColor;
-    self.haloView.layer.shadowOpacity = dark ? 0.20f : 0.14f;
-    self.iconPlateView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.16 : 0.11)];
+    self.haloView.layer.shadowOpacity = 0.0f;
+    self.layer.shadowColor = [UIColor colorWithWhite:0.02 alpha:1.0].CGColor;
+    self.layer.shadowOpacity = usesSystemGlassChrome
+        ? (dark ? 0.10f : 0.025f)
+        : (dark ? 0.16f : 0.04f);
+
+    self.iconPlateView.backgroundColor = [accent colorWithAlphaComponent:(dark ? 0.24 : 0.12)];
+    self.iconPlateView.layer.borderColor =
+        [accent colorWithAlphaComponent:(dark ? 0.22 : 0.14)].CGColor;
     self.iconView.tintColor = accent;
     self.titleLabel.textColor = text;
-    self.chevronView.tintColor = [subtle colorWithAlphaComponent:(dark ? 0.62 : 0.52)];
+    self.chevronView.tintColor = [text colorWithAlphaComponent:(dark ? 0.74 : 0.54)];
     self.stateDotView.backgroundColor = status;
     self.pulseRingView.layer.borderColor = [[status colorWithAlphaComponent:0.45] CGColor];
-
-    UIColor *border = dark
-        ? [[UIColor whiteColor] colorWithAlphaComponent:0.12]
-        : [[UIColor whiteColor] colorWithAlphaComponent:0.54];
-    self.blurView.layer.borderColor = border.CGColor;
-
 }
 
 - (void)pp_runEntranceAnimation
@@ -457,28 +570,10 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     [self pp_removeLivingAnimations];
 
     if (PPHomeLocationTitleShouldReduceMotion()) {
-        self.haloView.alpha = 0.12;
+        self.haloView.alpha = 0.0;
         self.pulseRingView.alpha = 0.35;
         return;
     }
-
-    CABasicAnimation *haloOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    haloOpacity.fromValue = @(0.08);
-    haloOpacity.toValue = @(0.22);
-    haloOpacity.duration = 4.8;
-    haloOpacity.autoreverses = YES;
-    haloOpacity.repeatCount = HUGE_VALF;
-    haloOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.haloView.layer addAnimation:haloOpacity forKey:@"pp_location_halo_opacity"];
-
-    CABasicAnimation *haloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    haloScale.fromValue = @(0.985);
-    haloScale.toValue = @(1.025);
-    haloScale.duration = 4.8;
-    haloScale.autoreverses = YES;
-    haloScale.repeatCount = HUGE_VALF;
-    haloScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.haloView.layer addAnimation:haloScale forKey:@"pp_location_halo_scale"];
 
     CAAnimationGroup *pulse = [CAAnimationGroup animation];
     CABasicAnimation *ringScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
@@ -510,7 +605,7 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
     [self.haloView.layer removeAnimationForKey:@"pp_location_halo_scale"];
     [self.pulseRingView.layer removeAnimationForKey:@"pp_location_state_pulse"];
     [self.iconView.layer removeAnimationForKey:@"pp_location_loading_rotation"];
-    self.haloView.alpha = 0.12;
+    self.haloView.alpha = 0.0;
     self.pulseRingView.alpha = 1.0;
     self.iconView.transform = CGAffineTransformIdentity;
 }

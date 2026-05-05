@@ -10,6 +10,38 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     return lightColor;
 }
 
+static inline UIColor *PPModernHomeActionLightSurfaceColor(void)
+{
+    return [UIColor colorWithWhite:1.0 alpha:1.0];
+}
+
+static inline UIColor *PPModernHomeActionResolvedColor(UIColor *color, UITraitCollection *traitCollection)
+{
+    if (!color) {
+        return UIColor.clearColor;
+    }
+    if (@available(iOS 13.0, *)) {
+        return [color resolvedColorWithTraitCollection:traitCollection];
+    }
+    return color;
+}
+
+static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor *overlayColor, CGFloat amount)
+{
+    CGFloat baseRed = 0.0, baseGreen = 0.0, baseBlue = 0.0, baseAlpha = 0.0;
+    CGFloat overlayRed = 0.0, overlayGreen = 0.0, overlayBlue = 0.0, overlayAlpha = 0.0;
+    if (![baseColor getRed:&baseRed green:&baseGreen blue:&baseBlue alpha:&baseAlpha] ||
+        ![overlayColor getRed:&overlayRed green:&overlayGreen blue:&overlayBlue alpha:&overlayAlpha]) {
+        return baseColor ?: overlayColor ?: UIColor.clearColor;
+    }
+
+    CGFloat t = MIN(MAX(amount, 0.0), 1.0);
+    return [UIColor colorWithRed:(baseRed * (1.0 - t)) + (overlayRed * t)
+                           green:(baseGreen * (1.0 - t)) + (overlayGreen * t)
+                            blue:(baseBlue * (1.0 - t)) + (overlayBlue * t)
+                           alpha:(baseAlpha * (1.0 - t)) + (overlayAlpha * t)];
+}
+
 @interface PPModernHomeActionCell ()
 
 @property (nonatomic, strong) UIButton *tapButton;
@@ -21,7 +53,7 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
 @property (nonatomic, strong) UIView *pinView;
 @property (nonatomic, strong) UIImageView *chevronView;
 @property (nonatomic, strong) CAGradientLayer *surfaceLayer;
-@property (nonatomic, strong) CAGradientLayer *livingLayer;
+  @property (nonatomic, strong) CAGradientLayer *signalMotionLayer;
 @property (nonatomic, copy) NSString *currentTitle;
 @property (nonatomic, copy) NSString *currentIconName;
 @property (nonatomic, strong) UIColor *currentSignalColor;
@@ -74,8 +106,8 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = 24.0;
-    self.surfaceView.layer.borderWidth = 1.0;
+    self.surfaceView.layer.cornerRadius = 22.0;
+    self.surfaceView.layer.borderWidth = 0.0;
     self.surfaceView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -87,24 +119,27 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     self.surfaceLayer.endPoint = CGPointMake(1.0, 1.0);
     [self.surfaceView.layer insertSublayer:self.surfaceLayer atIndex:0];
 
-    self.livingLayer = [CAGradientLayer layer];
-    self.livingLayer.startPoint = CGPointMake(0.0, 0.5);
-    self.livingLayer.endPoint = CGPointMake(1.0, 0.5);
-    self.livingLayer.locations = @[@0.0, @0.48, @1.0];
-    [self.surfaceView.layer insertSublayer:self.livingLayer above:self.surfaceLayer];
-
+  
+   
+ 
     self.signalLineView = [[UIView alloc] init];
     self.signalLineView.translatesAutoresizingMaskIntoConstraints = NO;
     self.signalLineView.userInteractionEnabled = NO;
     self.signalLineView.layer.cornerRadius = 1.5;
-    self.signalLineView.layer.masksToBounds = YES;
+    self.signalLineView.layer.masksToBounds = NO;
     [self.surfaceView addSubview:self.signalLineView];
+
+    self.signalMotionLayer = [CAGradientLayer layer];
+    self.signalMotionLayer.startPoint = CGPointMake(0.5, 0.0);
+    self.signalMotionLayer.endPoint = CGPointMake(0.5, 1.0);
+    self.signalMotionLayer.locations = @[@0.0, @0.42, @1.0];
+    [self.signalLineView.layer addSublayer:self.signalMotionLayer];
 
     self.iconPlateView = [[UIView alloc] init];
     self.iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.iconPlateView.userInteractionEnabled = NO;
-    self.iconPlateView.layer.cornerRadius = 18.0;
-    self.iconPlateView.layer.borderWidth = 1.0;
+    self.iconPlateView.layer.cornerRadius = 0.0;
+    self.iconPlateView.layer.borderWidth = 0.0;
     self.iconPlateView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -171,12 +206,12 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
 
         [self.iconPlateView.leadingAnchor constraintEqualToAnchor:self.signalLineView.trailingAnchor constant:9.0],
         [self.iconPlateView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [self.iconPlateView.widthAnchor constraintEqualToConstant:38.0],
-        [self.iconPlateView.heightAnchor constraintEqualToConstant:38.0],
+        [self.iconPlateView.widthAnchor constraintEqualToConstant:18.0],
+        [self.iconPlateView.heightAnchor constraintEqualToConstant:18.0],
 
         [self.iconView.centerXAnchor constraintEqualToAnchor:self.iconPlateView.centerXAnchor],
         [self.iconView.centerYAnchor constraintEqualToAnchor:self.iconPlateView.centerYAnchor],
-        [self.iconView.widthAnchor constraintEqualToConstant:18.0],
+        [self.iconView.widthAnchor constraintEqualToConstant:20.0],
         [self.iconView.heightAnchor constraintEqualToConstant:18.0],
 
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.iconPlateView.trailingAnchor constant:9.0],
@@ -252,7 +287,7 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     [self setNeedsLayout];
     [self.contentView setNeedsLayout];
     [self layoutIfNeeded];
-    [self pp_startLivingMotionIfNeeded];
+    [self pp_startSignalMotionIfNeeded];
     [self pp_runEntranceIfNeeded];
 }
 
@@ -260,44 +295,54 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
 
 - (void)pp_applyTheme
 {
-    UIColor *top = UIColor.whiteColor;
-    UIColor *bottom = UIColor.whiteColor;
-    UIColor *border = PPModernHomeActionDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
-                                                     [[UIColor whiteColor] colorWithAlphaComponent:0.075]);
-    UIColor *plate = PPModernHomeActionDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.70],
-                                                    [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
-    UIColor *plateBorder = PPModernHomeActionDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.04],
-                                                          [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
-    UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *secondaryColor = AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
-    UIColor *signal = self.currentSignalColor ?: [self pp_neutralSignalColor];
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
 
+    UIColor *signal = PPModernHomeActionResolvedColor(self.currentSignalColor ?: [self pp_neutralSignalColor],
+                                                      self.traitCollection);
+    UIColor *surfaceBase = isDark
+        ? [UIColor colorWithRed:0.075 green:0.083 blue:0.105 alpha:1.0]
+        : PPModernHomeActionLightSurfaceColor();
+    UIColor *top = PPModernHomeActionBlendColors(surfaceBase, signal, isDark ? 0.10 : 0.011);
+    UIColor *bottom = PPModernHomeActionBlendColors(surfaceBase, signal, isDark ? 0.18 : 0.025);
+    UIColor *titleColor = AppPrimaryTextClr ?: UIColor.labelColor;
+ 
     self.surfaceLayer.colors = @[
         (__bridge id)top.CGColor,
         (__bridge id)bottom.CGColor
     ];
     self.surfaceView.backgroundColor = bottom;
-    [self.surfaceView pp_setBorderColor:border];
+    [self.surfaceView pp_setBorderColor:UIColor.clearColor];
 
-    self.livingLayer.colors = @[
-        (__bridge id)[UIColor.clearColor CGColor],
-        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:0.14].CGColor,
-        (__bridge id)[UIColor.clearColor CGColor]
+  
+    self.signalMotionLayer.colors = @[
+        (__bridge id)[signal colorWithAlphaComponent:0.24].CGColor,
+        (__bridge id)[signal colorWithAlphaComponent:1.0].CGColor,
+        (__bridge id)[signal colorWithAlphaComponent:0.34].CGColor
     ];
 
-    self.iconPlateView.backgroundColor = plate;
-    [self.iconPlateView pp_setBorderColor:plateBorder];
+    self.iconPlateView.backgroundColor = AppClearClr;
+    [self.iconPlateView pp_setBorderColor:[signal colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
     self.titleLabel.textColor = titleColor;
     self.iconView.tintColor = signal;
-    self.signalLineView.backgroundColor = [signal colorWithAlphaComponent:0.75];
-    self.pinView.backgroundColor = [secondaryColor colorWithAlphaComponent:0.18];
-    self.chevronView.tintColor = [secondaryColor colorWithAlphaComponent:0.74];
+    self.signalLineView.backgroundColor = [signal colorWithAlphaComponent:isDark ? 0.24 : 0.17];
+    self.signalLineView.alpha = 0.94;
+    self.signalLineView.layer.shadowColor = signal.CGColor;
+    self.signalLineView.layer.shadowOpacity = isDark ? 0.30 : 0.18;
+    self.signalLineView.layer.shadowRadius = isDark ? 7.0 : 5.5;
+    self.signalLineView.layer.shadowOffset = CGSizeMake(0.0, 2.0);
+    self.pinView.backgroundColor = [signal colorWithAlphaComponent:isDark ? 0.34 : 0.22];
+    self.chevronView.tintColor = [signal colorWithAlphaComponent:isDark ? 0.76 : 0.58];
+    [self pp_setShadowColor:signal];
+    self.layer.shadowOpacity = isDark ? 0.12f : 0.07f;
 }
 
 - (UIColor *)pp_neutralSignalColor
 {
-    return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.38 green:0.42 blue:0.48 alpha:1.0],
-                                          [UIColor colorWithRed:0.72 green:0.75 blue:0.80 alpha:1.0]);
+    return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.37 green:0.47 blue:0.67 alpha:1.0],
+                                          [UIColor colorWithRed:0.66 green:0.76 blue:0.96 alpha:1.0]);
 }
 
 - (UIColor *)pp_signalColorForTitle:(NSString *)title
@@ -310,20 +355,20 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
 {
     switch (type) {
         case PPHomeQuickActionTypeNearestVet:
-            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.26 green:0.50 blue:0.46 alpha:1.0],
-                                                  [UIColor colorWithRed:0.56 green:0.76 blue:0.72 alpha:1.0]);
+            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.00 green:0.58 blue:0.48 alpha:1.0],
+                                                  [UIColor colorWithRed:0.32 green:0.88 blue:0.72 alpha:1.0]);
         case PPHomeQuickActionTypeSellPet:
-            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.54 green:0.42 blue:0.30 alpha:1.0],
-                                                  [UIColor colorWithRed:0.78 green:0.67 blue:0.54 alpha:1.0]);
+            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.84 green:0.46 blue:0.14 alpha:1.0],
+                                                  [UIColor colorWithRed:1.00 green:0.68 blue:0.30 alpha:1.0]);
         case PPHomeQuickActionTypeAdopt:
-            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.58 green:0.36 blue:0.46 alpha:1.0],
-                                                  [UIColor colorWithRed:0.80 green:0.60 blue:0.68 alpha:1.0]);
+            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.43 green:0.44 blue:0.73 alpha:1.0],
+                                                  [UIColor colorWithRed:1.00 green:0.50 blue:0.66 alpha:1.0]);
         case PPHomeQuickActionTypeAddAd:
-            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.34 green:0.42 blue:0.60 alpha:1.0],
-                                                  [UIColor colorWithRed:0.62 green:0.68 blue:0.84 alpha:1.0]);
+            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.43 green:0.30 blue:0.92 alpha:1.0],
+                                                  [UIColor colorWithRed:0.72 green:0.58 blue:1.00 alpha:1.0]);
         case PPHomeQuickActionTypeRequestService:
-            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.42 green:0.44 blue:0.49 alpha:1.0],
-                                                  [UIColor colorWithRed:0.72 green:0.74 blue:0.80 alpha:1.0]);
+            return PPModernHomeActionDynamicColor([UIColor colorWithRed:0.16 green:0.43 blue:0.92 alpha:1.0],
+                                                  [UIColor colorWithRed:0.48 green:0.70 blue:1.00 alpha:1.0]);
     }
     return [self pp_neutralSignalColor];
 }
@@ -335,14 +380,19 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     [super layoutSubviews];
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    CGRect bounds = self.surfaceView.bounds;
+    CGRect bounds = self.contentView.bounds;
     self.surfaceLayer.frame = bounds;
-    self.livingLayer.frame = CGRectInset(bounds, -MAX(CGRectGetWidth(bounds), 90.0), 0.0);
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                   cornerRadius:24.0].CGPath;
+    //self.liquidBorderLayer.frame = bounds;
+    self.surfaceLayer.borderColor = AppBackgroundClr.CGColor;
+    self.surfaceLayer.borderWidth = 0.7;
+    self.surfaceLayer.cornerRadius = 22;
+    self.surfaceLayer.opacity = 0.7;
+    self.signalMotionLayer.frame = self.signalLineView.bounds;
+    self.signalMotionLayer.cornerRadius = 22;
+    self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds cornerRadius:22].CGPath;
     [CATransaction commit];
-}
+    
+ }
 
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
 {
@@ -366,9 +416,9 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
         titleWidth = ceil(CGRectGetWidth(titleRect));
     }
 
-    CGFloat fixedWidth = 10.0 + 3.0 + 9.0 + 38.0 + 9.0 + 8.0 + 11.0 + 12.0;
+    CGFloat fixedWidth = 10.0 + 3.0 + 9.0 + 18.0 + 9.0 + 8.0 + 11.0 + 12.0;
     CGFloat naturalWidth = fixedWidth + MAX(22.0, titleWidth);
-    return ceil(MIN(MAX(130.0, naturalWidth), 310.0));
+    return ceil(MIN(MAX(96.0, naturalWidth), 310.0));
 }
 
 #pragma mark - Motion
@@ -377,10 +427,10 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
 {
     [super didMoveToWindow];
     if (self.window) {
-        [self pp_startLivingMotionIfNeeded];
+        [self pp_startSignalMotionIfNeeded];
         [self pp_runEntranceIfNeeded];
     } else {
-        [self pp_stopLivingMotion];
+        [self pp_stopSignalMotion];
     }
 }
 
@@ -410,39 +460,44 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     } completion:nil];
 }
 
-- (void)pp_startLivingMotionIfNeeded
+- (void)pp_startSignalMotionIfNeeded
 {
     if (!self.window || UIAccessibilityIsReduceMotionEnabled()) {
-        [self pp_stopLivingMotion];
+        [self pp_stopSignalMotion];
         return;
     }
-    if ([self.livingLayer animationForKey:@"pp_quick_action_living"]) {
+    if ([self.signalMotionLayer animationForKey:@"pp_quick_action_signal_scan"] ) {
         return;
     }
 
-    CGFloat travel = MAX(CGRectGetWidth(self.surfaceView.bounds), 96.0);
-    CABasicAnimation *motion = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
-    motion.fromValue = @(-travel);
-    motion.toValue = @(travel);
-    motion.duration = 6.2;
-    motion.repeatCount = HUGE_VALF;
-    motion.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    motion.removedOnCompletion = NO;
-    [self.livingLayer addAnimation:motion forKey:@"pp_quick_action_living"];
+    [self pp_stopSignalMotion];
+
+    
+ 
+    CABasicAnimation *signalScan = [CABasicAnimation animationWithKeyPath:@"locations"];
+    signalScan.fromValue = @[@0.0, @0.16, @0.34];
+    signalScan.toValue = @[@0.66, @0.84, @1.0];
+    signalScan.duration = 3.15;
+    signalScan.autoreverses = YES;
+    signalScan.repeatCount = HUGE_VALF;
+    signalScan.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    signalScan.removedOnCompletion = NO;
+    [self.signalMotionLayer addAnimation:signalScan forKey:@"pp_quick_action_signal_scan"];
 
     CABasicAnimation *pin = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    pin.fromValue = @0.18;
-    pin.toValue = @0.52;
-    pin.duration = 3.8;
+    pin.fromValue = @0.24;
+    pin.toValue = @0.62;
+    pin.duration = 4.6;
     pin.autoreverses = YES;
     pin.repeatCount = HUGE_VALF;
     pin.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.pinView.layer addAnimation:pin forKey:@"pp_quick_action_pin_breathe"];
 }
 
-- (void)pp_stopLivingMotion
+- (void)pp_stopSignalMotion
 {
-    [self.livingLayer removeAnimationForKey:@"pp_quick_action_living"];
+   
+    [self.signalMotionLayer removeAnimationForKey:@"pp_quick_action_signal_scan"];
     [self.pinView.layer removeAnimationForKey:@"pp_quick_action_pin_breathe"];
 }
 
@@ -467,7 +522,7 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.tapButton.transform = CGAffineTransformIdentity;
         self.iconPlateView.transform = CGAffineTransformIdentity;
-        self.signalLineView.alpha = 1.0;
+        self.signalLineView.alpha = 0.94;
         return;
     }
 
@@ -479,7 +534,7 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
                      animations:^{
         self.tapButton.transform = CGAffineTransformIdentity;
         self.iconPlateView.transform = CGAffineTransformIdentity;
-        self.signalLineView.alpha = 0.92;
+        self.signalLineView.alpha = 0.94;
     } completion:nil];
 }
 
@@ -495,7 +550,7 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
 - (void)prepareForReuse
 {
     [super prepareForReuse];
-    [self pp_stopLivingMotion];
+    [self pp_stopSignalMotion];
     self.onTap = nil;
     self.currentTitle = nil;
     self.currentIconName = nil;
@@ -508,7 +563,7 @@ static inline UIColor *PPModernHomeActionDynamicColor(UIColor *lightColor, UICol
     self.contentView.transform = CGAffineTransformIdentity;
     self.tapButton.transform = CGAffineTransformIdentity;
     self.iconPlateView.transform = CGAffineTransformIdentity;
-    self.signalLineView.alpha = 0.92;
+    self.signalLineView.alpha = 0.94;
     [self pp_applyTheme];
 }
 

@@ -57,6 +57,8 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 - (void)prepareForEntrance;
 - (void)animateEntranceIfNeeded;
 - (void)animatePillsIn;
+- (void)startLiveMotionIfNeeded;
+- (void)stopLiveMotion;
 
 @end
 
@@ -595,6 +597,16 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     } completion:nil];
 }
 
+- (void)startLiveMotionIfNeeded {
+    [self pp_beginAmbientMotionIfNeeded];
+}
+
+- (void)stopLiveMotion {
+    self.didStartAmbientMotion = NO;
+    [self.ambientOrbView.layer removeAllAnimations];
+    self.ambientOrbView.transform = CGAffineTransformIdentity;
+}
+
 @end
 
 @interface ServiceViewerViewController () <UITextViewDelegate>
@@ -605,8 +617,7 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 
 @property (nonatomic, strong) UIView *heroContainerView;
 @property (nonatomic, strong) UIImageView *heroImageView;
-@property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
-@property (nonatomic, strong) UIButton *closeButton;
+ @property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, strong) NSLayoutConstraint *heroHeightConstraint;
 @property (nonatomic, strong) PPServiceViewerPremiumTitleView *titleView;
 
@@ -664,6 +675,7 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 @property (nonatomic, assign) BOOL isResolvingOwner;
 @property (nonatomic, assign) BOOL didAttemptOwnerLoad;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
+@property (nonatomic, assign) BOOL didStartLiveBackgroundMotion;
 @property (nonatomic, strong) id<FIRListenerRegistration> providerReviewsListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> reviewsListener;
 @end
@@ -700,13 +712,18 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     }
 
     [self pp_beginEntranceAnimationsIfNeeded];
+    [self pp_startLiveBackgroundMotionIfNeeded];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    [self pp_stopLiveBackgroundMotion];
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    self.heroGradientLayer.frame = self.heroContainerView.bounds;
-    self.heroHeightConstraint.constant = [self pp_heroHeight];
+     self.heroHeightConstraint.constant = [self pp_heroHeight];
     self.topGlowView.layer.cornerRadius = CGRectGetWidth(self.topGlowView.bounds) / 2.0;
     self.bottomGlowView.layer.cornerRadius = CGRectGetWidth(self.bottomGlowView.bounds) / 2.0;
 
@@ -826,18 +843,10 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     self.heroImageView.clipsToBounds = YES;
     self.heroImageView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.48];
 
-    self.heroGradientLayer = [CAGradientLayer layer];
+    
     UIColor *surfaceColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
     UIColor *accentColor = AppPrimaryClr ?: UIColor.systemBlueColor;
-    self.heroGradientLayer.colors = @[
-        (__bridge id)[UIColor colorWithWhite:0.04 alpha:0.06].CGColor,
-        (__bridge id)[UIColor colorWithWhite:0.04 alpha:0.18].CGColor,
-        (__bridge id)[accentColor colorWithAlphaComponent:0.20].CGColor,
-        (__bridge id)[surfaceColor colorWithAlphaComponent:0.96].CGColor
-    ];
-    self.heroGradientLayer.locations = @[@0.0, @0.42, @0.74, @1.0];
-    self.heroGradientLayer.startPoint = CGPointMake(0.5, 0.0);
-    self.heroGradientLayer.endPoint = CGPointMake(0.5, 1.0);
+    
 
     self.closeButton = [self pp_topChromeButtonWithSystemName:@"xmark" selector:@selector(closeTapped)];
 
@@ -849,8 +858,7 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 
     [self.contentView addSubview:self.heroContainerView];
     [self.heroContainerView addSubview:self.heroImageView];
-    [self.heroContainerView.layer addSublayer:self.heroGradientLayer];
-    [self.heroContainerView addSubview:self.closeButton];
+     [self.heroContainerView addSubview:self.closeButton];
     [self.heroContainerView addSubview:self.titleView];
 
     self.heroHeightConstraint = [self.heroContainerView.heightAnchor constraintEqualToConstant:[self pp_heroHeight]];
@@ -885,6 +893,7 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 
     self.providerContactView = [[UserContactView alloc] init];
     self.providerContactView.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.providerContactView setContactTitleText:kLang(@"service_view_provider_title")];
     [self.providerSectionView addSubview:self.providerContactView];
 
     self.providerMetaLabel = [[UILabel alloc] init];
@@ -923,7 +932,7 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
         [self.providerContactView.topAnchor constraintEqualToAnchor:self.providerTitleLabel.bottomAnchor constant:14.0],
         [self.providerContactView.leadingAnchor constraintEqualToAnchor:self.providerSectionView.leadingAnchor constant:18.0],
         [self.providerContactView.trailingAnchor constraintEqualToAnchor:self.providerSectionView.trailingAnchor constant:-18.0],
-        [self.providerContactView.heightAnchor constraintEqualToConstant:76.0],
+        [self.providerContactView.heightAnchor constraintEqualToConstant:84.0],
 
         [self.providerMetaLabel.topAnchor constraintEqualToAnchor:self.providerContactView.bottomAnchor constant:14.0],
         [self.providerMetaLabel.leadingAnchor constraintEqualToAnchor:self.providerSectionView.leadingAnchor constant:20.0],
@@ -1118,14 +1127,21 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
         } callCallback:^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             [strongSelf callTapped];
+        } whatsappCallback:^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            [strongSelf whatsappTapped];
         }];
+        [self.providerContactView setContactTitleText:kLang(@"service_view_provider_title")];
     } else {
+        [self.providerContactView setContactTitleText:kLang(@"service_view_provider_title")];
         self.providerContactView.nameLabel.text = providerName;
         self.providerContactView.avatarImageView.image = placeholderAvatar ?: PPSYSImage(@"person.crop.circle.fill");
         self.providerContactView.callButton.enabled = NO;
         self.providerContactView.chatButton.enabled = NO;
+        self.providerContactView.whatsappButton.enabled = NO;
         self.providerContactView.callButton.alpha = self.isResolvingOwner ? 0.35 : 0.55;
         self.providerContactView.chatButton.alpha = self.isResolvingOwner ? 0.35 : 0.55;
+        self.providerContactView.whatsappButton.alpha = self.isResolvingOwner ? 0.35 : 0.55;
     }
 
     self.providerMetaLabel.text = [self pp_providerMetaText];
@@ -1858,6 +1874,31 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     }];
 }
 
+- (void)pp_startLiveBackgroundMotionIfNeeded {
+    if (self.didStartLiveBackgroundMotion || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    self.didStartLiveBackgroundMotion = YES;
+    [self.titleView startLiveMotionIfNeeded];
+
+    [UIView animateWithDuration:7.2
+                          delay:0.0
+                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.topGlowView.transform = CGAffineTransformMakeTranslation(12.0, 8.0);
+        self.bottomGlowView.transform = CGAffineTransformMakeTranslation(-10.0, -9.0);
+    } completion:nil];
+}
+
+- (void)pp_stopLiveBackgroundMotion {
+    self.didStartLiveBackgroundMotion = NO;
+    [self.topGlowView.layer removeAllAnimations];
+    [self.bottomGlowView.layer removeAllAnimations];
+    self.topGlowView.transform = CGAffineTransformIdentity;
+    self.bottomGlowView.transform = CGAffineTransformIdentity;
+    [self.titleView stopLiveMotion];
+}
+
 #pragma mark - Actions
 
 - (void)closeTapped {
@@ -1996,6 +2037,42 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 
     [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
     [GM chatWith:self.ownerModel FromController:self];
+    [self trackServiceInteraction:PPItemInteractionTypeChat];
+}
+
+- (void)whatsappTapped {
+    if (![self ensureSignedInForContactAction]) {
+        return;
+    }
+
+    [self loadOwnerIfNeeded];
+    if (!self.ownerModel) {
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"service_view_provider_title")
+                         subtitle:[self pp_contactUnavailableMessage]];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+        return;
+    }
+
+    if (self.ownerModel.MobileNo.length == 0) {
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"No Number")
+                         subtitle:kLang(@"service_view_copy_number_missing")];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+        return;
+    }
+
+    NSString *cleanNumber = [self pp_whatsAppNumberFromRawPhone:self.ownerModel.MobileNo];
+    if (cleanNumber.length == 0) {
+        [PPAlertHelper showInfoIn:self
+                            title:kLang(@"No Number")
+                         subtitle:kLang(@"service_view_copy_number_missing")];
+        [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+        return;
+    }
+
+    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentAction];
+    [AppClasses startWhatsAppWith:cleanNumber fromViewController:self];
     [self trackServiceInteraction:PPItemInteractionTypeChat];
 }
 
@@ -2306,6 +2383,27 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
         return kLang(@"service_view_provider_contact_pending");
     }
     return kLang(@"service_view_contact_loading");
+}
+
+- (NSString *)pp_whatsAppNumberFromRawPhone:(NSString *)rawPhone {
+    NSString *trimmed = [rawPhone stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        return @"";
+    }
+
+    NSMutableString *clean = [NSMutableString string];
+    NSCharacterSet *digits = NSCharacterSet.decimalDigitCharacterSet;
+    for (NSUInteger idx = 0; idx < trimmed.length; idx++) {
+        unichar character = [trimmed characterAtIndex:idx];
+        if (character == '+' && clean.length == 0) {
+            [clean appendString:@"+"];
+            continue;
+        }
+        if ([digits characterIsMember:character]) {
+            [clean appendFormat:@"%C", character];
+        }
+    }
+    return [clean stringByReplacingOccurrencesOfString:@"+" withString:@""];
 }
 
 #pragma mark - Tracking

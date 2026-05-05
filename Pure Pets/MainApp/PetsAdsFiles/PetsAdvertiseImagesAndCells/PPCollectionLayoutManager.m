@@ -273,7 +273,13 @@ static CGFloat PPUniversalAdsPinterestBodyHeight(CGFloat cellWidth,
                 PPPinterestLayout *pinterestLayout = [[PPPinterestLayout alloc] init];
                 pinterestLayout.delegate = self;
                 PPUniversalCellViewModel *firstVM = [self pp_firstUniversalViewModel];
-                pinterestLayout.columnCount = [self pp_isAdsContextForViewModel:firstVM] ? 0 : 2;
+                if ([self pp_isAdsContextForViewModel:firstVM]) {
+                    pinterestLayout.columnCount = 0;
+                } else if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                    pinterestLayout.columnCount = 3;
+                } else {
+                    pinterestLayout.columnCount = 2;
+                }
                 pinterestLayout.minimumInteritemSpacing = horizontalSpacing;
                 pinterestLayout.minimumLineSpacing = verticalSpacing;
                 pinterestLayout.sectionInset =  UIEdgeInsetsMake(topInset,

@@ -104,7 +104,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         UIView *dotView = [[UIView alloc] init];
         dotView.translatesAutoresizingMaskIntoConstraints = NO;
         dotView.userInteractionEnabled = NO;
-        dotView.layer.cornerRadius = (idx % 2 == 0) ? 7.5 : 7.0;
+        dotView.layer.cornerRadius = (idx % 2 == 0) ? 12 : 8;
         [_surfaceView addSubview:dotView];
         [_backgroundDotViews addObject:dotView];
     }

@@ -71,6 +71,9 @@ static NSDate * PPDateFromValue(id value) {
     _petID = [PPSafeString(dictionary[@"petID"]) copy];
     _name = [PPSafeString(dictionary[@"name"]) copy];
     _breed = [PPSafeString(dictionary[@"breed"]) copy];
+    _categoryId = [dictionary[@"categoryId"] respondsToSelector:@selector(integerValue)]
+                  ? [dictionary[@"categoryId"] integerValue] : 0;
+    _categoryName = [PPSafeString(dictionary[@"categoryName"]) copy];
     _ageInMonths = [dictionary[@"ageInMonths"] respondsToSelector:@selector(integerValue)]
                    ? [dictionary[@"ageInMonths"] integerValue] : 0;
     _imageURL = [PPSafeString(dictionary[@"imageURL"]) copy];

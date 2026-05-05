@@ -189,7 +189,7 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
     [logoPlateView addSubview:logoInnerSurfaceView];
     self.logoInnerSurfaceView = logoInnerSurfaceView;
 
-    UIImage *logoImage = [[UIImage imageNamed:@"PureIconTransFilledV3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIImage *logoImage = [[UIImage imageNamed:@"PureIconTransFilledV3"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
     UIImageView *logoView = [[UIImageView alloc] initWithImage:logoImage];
     logoView.translatesAutoresizingMaskIntoConstraints = NO;
     logoView.contentMode = UIViewContentModeScaleAspectFit;

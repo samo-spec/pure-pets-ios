@@ -2335,8 +2335,11 @@
 "a11y_btn_call_advertiser_hint" = "انقر مرتين للاتصال بهذا الشخص";
 "a11y_btn_chat_advertiser" = "محادثة مع المعلن";
 "a11y_btn_chat_advertiser_hint" = "انقر مرتين لبدء محادثة مع هذا الشخص";
+"a11y_btn_whatsapp_advertiser" = "واتساب مع المعلن";
+"a11y_btn_whatsapp_advertiser_hint" = "انقر مرتين لفتح واتساب مع هذا الشخص";
 "a11y_btn_call_user_format" = "اتصال بـ %@";
 "a11y_btn_chat_user_format" = "محادثة مع %@";
+"a11y_btn_whatsapp_user_format" = "واتساب مع %@";
 
 /* Pet Ad Cell – خلية الإعلان */
 "a11y_cell_discount_format" = "خصم: %@";
@@ -2662,3 +2665,4 @@
 "pet_care_vet_viewer_whatsapp" = "واتساب";
 "pet_care_vet_viewer_contact_unavailable" = "التواصل غير متاح";
 "AdViewerLocationSelectedFallback" = "تم تحديد موقع الإعلان";
+"OrderCanceled" = "تم إلغاء الطلب";

@@ -12,6 +12,11 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
     return lightColor;
 }
 
+static inline UIColor *PPModerHomeLightSurfaceColor(void)
+{
+    return AppForgroundColr ?: [UIColor colorWithWhite:0.955 alpha:1.0];
+}
+
 @interface PPModerHomeCell ()
 
 @property (nonatomic, strong) UIButton *tapButton;
@@ -294,8 +299,10 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 - (void)pp_applyBaseTheme
 {
-    UIColor *surfaceTop = UIColor.whiteColor;
-    UIColor *surfaceBottom = UIColor.whiteColor;
+    UIColor *surfaceTop = PPModerHomeDynamicColor(PPModerHomeLightSurfaceColor(),
+                                                  [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
+    UIColor *surfaceBottom = PPModerHomeDynamicColor(PPModerHomeLightSurfaceColor(),
+                                                     [UIColor colorWithRed:0.07 green:0.08 blue:0.10 alpha:1.0]);
     UIColor *borderColor = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
                                                    [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],

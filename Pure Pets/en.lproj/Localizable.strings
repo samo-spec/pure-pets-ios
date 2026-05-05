@@ -2345,8 +2345,11 @@
 "a11y_btn_call_advertiser_hint" = "Double-tap to call this person";
 "a11y_btn_chat_advertiser" = "Chat with advertiser";
 "a11y_btn_chat_advertiser_hint" = "Double-tap to start a chat with this person";
+"a11y_btn_whatsapp_advertiser" = "WhatsApp advertiser";
+"a11y_btn_whatsapp_advertiser_hint" = "Double-tap to open WhatsApp with this person";
 "a11y_btn_call_user_format" = "Call %@";
 "a11y_btn_chat_user_format" = "Chat with %@";
+"a11y_btn_whatsapp_user_format" = "WhatsApp %@";
 
 /* Pet Ad Cell */
 "a11y_cell_discount_format" = "Discount: %@";
@@ -2674,3 +2677,4 @@
 "pet_care_vet_viewer_whatsapp" = "WhatsApp";
 "pet_care_vet_viewer_contact_unavailable" = "Contact unavailable";
 "AdViewerLocationSelectedFallback" = "Location selected for this ad";
+"OrderCanceled" = "OrderCanceled";

@@ -422,6 +422,9 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 - (void)viewDidLoad
 {
     [super viewDidLoad];
+    if (@available(iOS 13.0, *)) {
+        self.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+    }
     self.didFixInitialScroll = NO;
     _didlayout = NO;
     self.blurHashCache = [NSCache new];

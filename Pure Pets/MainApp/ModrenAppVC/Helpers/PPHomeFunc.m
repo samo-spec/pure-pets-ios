@@ -208,15 +208,15 @@ static inline CGFloat PPHomePetProfileHeight(CGFloat width)
 static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 72.0;
-    }
-    if (PPHomeWidthIsWidePhone(width)) {
         return 68.0;
     }
-    if (PPHomeWidthIsCompactPhone(width)) {
-        return 64.0;
+    if (PPHomeWidthIsWidePhone(width)) {
+        return 62.0;
     }
-    return 64.0;
+    if (PPHomeWidthIsCompactPhone(width)) {
+        return 62.0;
+    }
+    return 62.0;
 }
 
 
@@ -729,9 +729,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension estimatedDimension:itemWidth]
+     [NSCollectionLayoutDimension estimatedDimension:itemWidth + 6]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:itemHeight]];
+     [NSCollectionLayoutDimension absoluteDimension:itemHeight - 4]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -793,7 +793,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      CGFloat cardWidth  = PPHomeAccessoryCardWidth(availableWidth);
-     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 100.0;
+     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 40.0;
      CGFloat interGroupSpacing = PPHomeWidthIsTablet(availableWidth) ? 18.0 : 12.0;
 
      NSCollectionLayoutSize *itemSize =

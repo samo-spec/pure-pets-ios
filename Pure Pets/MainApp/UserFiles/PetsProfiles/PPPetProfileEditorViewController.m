@@ -9,6 +9,8 @@
 
 #import "PPPetProfileEditorViewController.h"
 #import "PPPetProfile.h"
+#import "MainKindsModel.h"
+#import "PPSelectOptionViewController.h"
 #import "PPModernAvatarRenderer.h"
 #import "PPVaccinationEditorSheet.h"
 #import "UserManager.h"
@@ -873,12 +875,13 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
                     break;
                 case PPEditorInfoRowBreed:
                     [cell configureWithTitle:(kLang(@"pet_field_breed") ?: @"Breed")
-                                       text:self.pet.breed
+                                       text:(self.pet.categoryName.length > 0 ? self.pet.categoryName : self.pet.breed)
                                 placeholder:(kLang(@"pet_breed_placeholder") ?: @"Enter breed")
                                keyboardType:UIKeyboardTypeDefault
                                   fieldKind:PPEditorFieldBreed
                                      target:self action:@selector(pp_fieldChanged:) delegate:self];
                     self.breedField = cell.textField;
+                    self.breedField.userInteractionEnabled = NO;
                     break;
                 case PPEditorInfoRowAge:
                     [cell configureWithTitle:(kLang(@"pet_field_age") ?: @"Age (months)")
@@ -941,6 +944,10 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     [tableView deselectRowAtIndexPath:indexPath animated:YES];
+    if (indexPath.section == PPEditorSectionInfo && indexPath.row == PPEditorInfoRowBreed) {
+        [self pp_presentCategoryPicker];
+        return;
+    }
     if (indexPath.section == PPEditorSectionVaccinations) {
         if (indexPath.row >= (NSInteger)self.records.count) {
             [self pp_addVaccination];
@@ -952,6 +959,31 @@ typedef NS_ENUM(NSInteger, PPEditorFieldKind) {
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
     PPPetsApplySurfaceCellStyle(cell, 20.0);
+}
+
+#pragma mark - Category Picker
+
+- (void)pp_presentCategoryPicker {
+    [self.view endEditing:YES];
+    NSArray *options = MKM.MainKindsArray ?: @[];
+    if (options.count == 0) return;
+    
+    __weak typeof(self) ws = self;
+    PPSelectOptionViewController *vc = [[PPSelectOptionViewController alloc]
+        initWithOptions:options
+                  title:kLang(@"selectSpecies")
+                    row:nil
+       presentationStyle:PPSelectOptionPresentationSheet
+             completion:^(id _Nullable selectedObject) {
+        if (![selectedObject isKindOfClass:MainKindsModel.class]) return;
+        MainKindsModel *kind = (MainKindsModel *)selectedObject;
+        ws.pet.categoryId = kind.ID;
+        ws.pet.categoryName = kind.KindName;
+        ws.pet.breed = kind.KindName; // Fallback for backward compatibility
+        ws.breedField.text = kind.KindName;
+        [ws pp_refreshHeroHeader];
+        }];
+    [self presentViewController:vc animated:YES completion:nil];
 }
 
 #pragma mark - Vaccinations

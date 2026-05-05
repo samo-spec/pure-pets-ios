@@ -51,6 +51,7 @@
 #import <math.h>
 #import <float.h>
 #import "PPHomeOrderStatusCell.h"
+#import "PPNovaChatViewController.h"
 #import "UIView+Badge.h"
 #import "PPHomeLocationSheetViewController.h"
 #import "PPHomeInsetLabel.h"
@@ -1674,6 +1675,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeProfileItem;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeCartItem;
 @property (nonatomic, strong, nullable) UIButton *homeCartButton;
+@property (nonatomic, strong) UIButton *novaFloatingButton;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
 @property (nonatomic, strong, nullable) PPHomeSmartSearchTitleView *homeSmartSearchView;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchWidthConstraint;
@@ -3278,6 +3280,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self setupCollectionView];
     [self pp_applyOrderDetailsBackgroundAppearance];
     [self pp_applyCurrentLanguageDirectionToHomeUI];
+    [self setupNovaFloatingButton];
     [self configureDataSource];
     [self applyBaseSnapshot];   // 🔥 NEW
     [self refreshHeroSectionAppearance];
@@ -3356,7 +3359,60 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         addObserver:self
            selector:@selector(handleThemePreferenceDidChange:)
                name:PPThemePreferenceDidChangeNotification
-             object:nil];
+              object:nil];
+}
+
+- (void)setupNovaFloatingButton
+{
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeCustom];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.layer.cornerRadius = 28.0;
+    button.clipsToBounds = NO;
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    button.backgroundColor = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
+
+    UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:22.0
+                                                                                             weight:UIImageSymbolWeightSemibold];
+    UIImage *icon = [UIImage systemImageNamed:@"wand.and.stars" withConfiguration:iconConfig];
+    [button setImage:icon forState:UIControlStateNormal];
+    button.tintColor = UIColor.whiteColor;
+
+    PPApplyCardShadow(button);
+
+    [button addTarget:self
+               action:@selector(novaFloatingButtonTapped)
+     forControlEvents:UIControlEventTouchUpInside];
+
+    button.isAccessibilityElement = YES;
+    button.accessibilityLabel = kLang(@"nova_chat_accessibility") ?: @"Chat with Nova";
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+
+    [self.view addSubview:button];
+    self.novaFloatingButton = button;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPSpaceBase],
+        [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceBase],
+        [button.widthAnchor constraintEqualToConstant:56.0],
+        [button.heightAnchor constraintEqualToConstant:56.0],
+    ]];
+}
+
+- (void)novaFloatingButtonTapped
+{
+    PPTapFeedbackDown(self.novaFloatingButton);
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.14 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        PPTapFeedbackUp(self.novaFloatingButton);
+    });
+
+    PPNovaChatViewController *novaVC = [[PPNovaChatViewController alloc] init];
+    [self.navigationController pushViewController:novaVC animated:YES];
 }
 
 // 🔒 Validates Home Control config rows against the canonical PPHomeSection
@@ -5904,6 +5960,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             PPModernHomeActionCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier
                                                           forIndexPath:indexPath];
+            if (@available(iOS 13.0, *)) {
+                cell.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+            }
             PPHomeQuickActionModel *quickAction =
                 [item.payload isKindOfClass:PPHomeQuickActionModel.class]
                 ? (PPHomeQuickActionModel *)item.payload
@@ -6201,6 +6260,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 PPModerHomeCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier
                                                           forIndexPath:indexPath];
+                if (@available(iOS 13.0, *)) {
+                    cell.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+                }
 
                 // ⛔️ HARD GUARD – skeleton or invalid payload
                 if (![item.payload isKindOfClass:MainKindsModel.class]) {
@@ -6420,6 +6482,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                            withReuseIdentifier:@"PPSectionHeaderView"
                                                   forIndexPath:indexPath];
 
+        if (@available(iOS 13.0, *)) {
+            header.overrideUserInterfaceStyle = UIUserInterfaceStyleUnspecified;
+        }
 
         if (cfg.hidden) {
             header.hidden = YES;
@@ -9356,14 +9421,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (CGFloat)pp_preferredNavigationLocationTitleWidth
 {
-    CGFloat availableWidth = [self preferredNavigationCenterViewWidth];
-    if (availableWidth <= 0.0) {
-        return 188.0;
-    }
-
-    CGFloat minWidth = 134.0;
-    CGFloat maxWidth = UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad ? 238.0 : 222.0;
-    return floor(MIN(MAX(availableWidth, minWidth), maxWidth));
+    CGFloat width = [self pp_preferredNavigationSearchWidth];
+    return width > 0.0 ? floor(width) : 220.0;
 }
 
 - (void)pp_updateHomeLocationTitleViewWidth
@@ -9466,7 +9525,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             [[PPHomeLocationTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 46.0)];
         self.homeLocationTitleView.translatesAutoresizingMaskIntoConstraints = NO;
         self.homeLocationTitleWidthConstraint =
-            [self.homeLocationTitleView.widthAnchor constraintEqualToConstant:MAX(width, 134.0)];
+            [self.homeLocationTitleView.widthAnchor constraintEqualToConstant:MAX(width, 220.0)];
         self.homeLocationTitleWidthConstraint.priority = UILayoutPriorityRequired;
         self.homeLocationTitleWidthConstraint.active = YES;
         [self.homeLocationTitleView.heightAnchor constraintEqualToConstant:46.0].active = YES;
@@ -10394,6 +10453,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         }
         self.lastHomeLayoutBoundsSize = CGSizeZero;
         [self pp_updateHomeSmartSearchTitleViewWidth];
+        [self pp_updateHomeLocationTitleViewWidth];
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     } completion:^(__unused id<UIViewControllerTransitionCoordinatorContext> context) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -10402,6 +10462,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         }
         self.lastHomeLayoutBoundsSize = CGSizeZero;
         [self pp_updateHomeSmartSearchTitleViewWidth];
+        [self pp_updateHomeLocationTitleViewWidth];
         [self pp_stabilizeHomeCollectionLayoutIfNeeded];
         [self refreshHeroSectionAppearance];
     }];

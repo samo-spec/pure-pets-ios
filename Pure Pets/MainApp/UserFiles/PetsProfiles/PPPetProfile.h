@@ -25,6 +25,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSString *petID;
 @property (nonatomic, copy) NSString *name;
 @property (nonatomic, copy, nullable) NSString *breed;
+@property (nonatomic, assign) NSInteger categoryId;
+@property (nonatomic, copy, nullable) NSString *categoryName;
 @property (nonatomic, assign) NSInteger ageInMonths;
 @property (nonatomic, copy, nullable) NSString *imageURL;
 @property (nonatomic, assign) BOOL isDefaultPet;

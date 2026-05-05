@@ -707,6 +707,7 @@
 		F2E7C8112D7D5584002383C2 /* ArchivesManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E7C8102D7D5584002383C2 /* ArchivesManager.m */; };
 		F2E8B7CE2E5381CF00B88C38 /* Utils.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E8B7CD2E5381CF00B88C38 /* Utils.m */; };
 		F2E981EF2CBFD2A7005411D0 /* CountryCodeModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2E981EE2CBFD2A7005411D0 /* CountryCodeModel.m */; };
+		F2EAA0672FA9951C00E34CCD /* PPNovaChatViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */; };
 		F2EB74302E48EABF00A31008 /* UIButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EB742F2E48EABF00A31008 /* UIButton.m */; };
 		F2EB74332E4903EA00A31008 /* PetAdoptCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EB74322E4903EA00A31008 /* PetAdoptCollectionViewCell.m */; };
 		F2EB80672E863B68005E9ABD /* RNFrostedSidebar.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EB80662E863B68005E9ABD /* RNFrostedSidebar.m */; settings = {COMPILER_FLAGS = "-w"; }; };
@@ -2129,6 +2130,8 @@
 		F2E8B7CD2E5381CF00B88C38 /* Utils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Utils.m; sourceTree = "<group>"; };
 		F2E981ED2CBFD2A7005411D0 /* CountryCodeModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CountryCodeModel.h; sourceTree = "<group>"; };
 		F2E981EE2CBFD2A7005411D0 /* CountryCodeModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CountryCodeModel.m; sourceTree = "<group>"; };
+		F2EAA0652FA9951C00E34CCD /* PPNovaChatViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaChatViewController.h; sourceTree = "<group>"; };
+		F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaChatViewController.m; sourceTree = "<group>"; };
 		F2EAAC432C5883D700870525 /* Pure Pets-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Pure Pets-Bridging-Header.h"; sourceTree = "<group>"; };
 		F2EB742E2E48EAB300A31008 /* UIButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIButton.h; sourceTree = "<group>"; };
 		F2EB742F2E48EABF00A31008 /* UIButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIButton.m; sourceTree = "<group>"; };
@@ -3312,6 +3315,8 @@
 		F26E3AFD2E35B344007BB3FF /* GEMENI */ = {
 			isa = PBXGroup;
 			children = (
+				F2EAA0652FA9951C00E34CCD /* PPNovaChatViewController.h */,
+				F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */,
 				F26E3AFF2E35B35F007BB3FF /* GeminiChatViewController.m */,
 				F26E3AFE2E35B34E007BB3FF /* GeminiChatViewController.h */,
 			);
@@ -5710,6 +5715,7 @@
 				F22C07D12EF66C2F00C00EAC /* YYDiskCache.m in Sources */,
 				F22C07D22EF66C2F00C00EAC /* YYTextView.m in Sources */,
 				F25E7FF72EFF84A90089F659 /* PPHomeHelper.m in Sources */,
+				F2EAA0672FA9951C00E34CCD /* PPNovaChatViewController.m in Sources */,
 				F22C07D32EF66C2F00C00EAC /* UIView+YYAdd.m in Sources */,
 				F22C07D42EF66C2F00C00EAC /* UIBezierPath+YYAdd.m in Sources */,
 				F22C07D52EF66C2F00C00EAC /* NSArray+YYAdd.m in Sources */,

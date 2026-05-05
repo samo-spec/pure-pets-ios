@@ -8,6 +8,16 @@
 #import "PPHomeActionCell.h"
 #import "PPHomeModels.h"
 
+static inline UIColor *PPQuickActionDynamicColor(UIColor *lightColor, UIColor *darkColor)
+{
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? darkColor : lightColor;
+        }];
+    }
+    return lightColor;
+}
+
 static inline UIColor *PPQuickActionBlendColors(UIColor *a, UIColor *b, CGFloat t)
 {
     if (!a) return b;
@@ -89,14 +99,17 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
 
     self.actionButton = [UIButton new];
 
+    UIColor *dynamicSurface = PPQuickActionDynamicColor(UIColor.whiteColor,
+                                                         [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
+
     if (@available(iOS 26.0, *))
     {
         UIButtonConfiguration *glass;
         glass = [UIButtonConfiguration glassButtonConfiguration];
         glass.cornerStyle = UIButtonConfigurationCornerStyleFixed;
         glass.background.cornerRadius  = corners;
-        glass.background.backgroundColor = UIColor.whiteColor;
-        glass.baseBackgroundColor = UIColor.whiteColor;
+        glass.background.backgroundColor = dynamicSurface;
+        glass.baseBackgroundColor = dynamicSurface;
 
         self.actionButton.configuration = glass;
  
@@ -112,7 +125,7 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
         self.actionButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
     }
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
-    self.actionButton.backgroundColor = UIColor.whiteColor;
+    self.actionButton.backgroundColor = dynamicSurface;
     self.actionButton.adjustsImageWhenHighlighted = NO;
     self.actionButton.showsMenuAsPrimaryAction = NO;
     self.actionButton.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
@@ -525,13 +538,20 @@ static inline UIColor *PPQuickActionDeepenedColor(UIColor *baseColor, CGFloat am
     self.chevronView.hidden = NO;
 
     UIColor *resolvedAccent = accent ?: [self pp_quickActionAccentColor];
-    UIColor *surfaceBase = UIColor.whiteColor;
+    UIColor *surfaceBaseDynamic = PPQuickActionDynamicColor(UIColor.whiteColor,
+                                                             [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
+    UIColor *surfaceBase = surfaceBaseDynamic;
+    if (@available(iOS 13.0, *)) {
+        surfaceBase = [surfaceBaseDynamic resolvedColorWithTraitCollection:self.traitCollection];
+    }
     UIColor *primaryText = AppPrimaryTextClr ?: UIColor.labelColor;
     UIColor *secondaryText = [primaryText colorWithAlphaComponent:0.54];
     UIColor *upperSurface = PPQuickActionElevatedColor(surfaceBase, 0.06);
     UIColor *lowerSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.05);
     UIColor *borderColor = [PPQuickActionElevatedColor(AppForgroundColr, 0.18) colorWithAlphaComponent:0.58];
     UIColor *orbSurface = PPQuickActionBlendColors(surfaceBase, resolvedAccent, 0.10);
+
+    self.actionButton.backgroundColor = surfaceBaseDynamic;
    
     [self.actionButton pp_setShadowColor:PPQuickActionDeepenedColor(resolvedAccent, 0.24)];
     self.actionButton.layer.shadowOpacity = 0.055f;

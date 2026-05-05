@@ -8,17 +8,22 @@
 #import "PPImageLoaderManager.h"
 #import "UserModel.h"
 #import "PPModernAvatarRenderer.h"
-#import "PPVerifiedBadgeHelper.h"
 @interface UserContactView ()
 
 @property (nonatomic, copy) dispatch_block_t chatBlock;
 @property (nonatomic, copy) dispatch_block_t callBlock;
+@property (nonatomic, copy) dispatch_block_t whatsappBlock;
 @property (nonatomic, strong) UIImageView *verifiedBadgeView;
 @property (nonatomic, strong) UIView *statusIndicatorView;
 @property (nonatomic, strong) UIView *surfaceView;
 @property (nonatomic, strong) UIView *topGlowView;
 @property (nonatomic, strong) UIView *bottomGlowView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
+@property (nonatomic, strong) UIStackView *actionsStackView;
+@property (nonatomic, strong) NSLayoutConstraint *callButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *chatButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *whatsappButtonWidthConstraint;
+@property (nonatomic, assign) BOOL didStartLiveMotion;
 
 @end
 
@@ -54,14 +59,14 @@
     
 
     [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.08;
-    self.layer.shadowRadius = 24.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.layer.shadowOpacity = 0.06;
+    self.layer.shadowRadius = 22.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.backgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
-    self.surfaceView.layer.cornerRadius = 28.0;
+    self.surfaceView.layer.cornerRadius = 26.0;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [self.surfaceView pp_setBorderColor:[UIColor colorWithWhite:0.0 alpha:0.05]];
@@ -73,13 +78,13 @@
     self.topGlowView = [[UIView alloc] init];
     self.topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.topGlowView.userInteractionEnabled = NO;
-    self.topGlowView.backgroundColor = [(AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"]) colorWithAlphaComponent:0.10];
+    self.topGlowView.backgroundColor = [(AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"]) colorWithAlphaComponent:0.08];
     [self.surfaceView addSubview:self.topGlowView];
 
     self.bottomGlowView = [[UIView alloc] init];
     self.bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bottomGlowView.userInteractionEnabled = NO;
-    self.bottomGlowView.backgroundColor = [[UIColor colorWithHexString:@"#F3C46A"] colorWithAlphaComponent:0.10];
+    self.bottomGlowView.backgroundColor = [[UIColor colorWithHexString:@"#2FA36B"] colorWithAlphaComponent:0.075];
     [self.surfaceView addSubview:self.bottomGlowView];
 
     self.avatarImageView = [[UIImageView alloc] init];
@@ -117,19 +122,27 @@
     textStack.axis = UILayoutConstraintAxisVertical;
     textStack.spacing = 3.0;
     textStack.alignment = UIStackViewAlignmentFill;
-     [self.surfaceView addSubview:textStack];
+    [textStack setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.surfaceView addSubview:textStack];
 
-    // ---- Verified Badge (on avatar corner) ----
-    self.verifiedBadgeView = [PPVerifiedBadgeHelper addBadgeToAvatarView:self.avatarImageView
-                                                            inSuperview:self.surfaceView
-                                                              badgeSize:16];
+    self.verifiedBadgeView = [[UIImageView alloc] init];
+    self.verifiedBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.verifiedBadgeView.image = [[UIImage imageNamed:@"verify_icon_colored"] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.verifiedBadgeView.contentMode = UIViewContentModeScaleAspectFit;
+    self.verifiedBadgeView.hidden = YES;
+    self.verifiedBadgeView.backgroundColor = UIColor.systemBackgroundColor;
+    self.verifiedBadgeView.layer.cornerRadius = 8.5;
+    self.verifiedBadgeView.layer.borderWidth = 1.5;
+    [self.verifiedBadgeView pp_setBorderColor:UIColor.systemBackgroundColor];
+    self.verifiedBadgeView.clipsToBounds = YES;
+    [self.surfaceView addSubview:self.verifiedBadgeView];
 
     self.statusIndicatorView = [[UIView alloc] init];
     self.statusIndicatorView.translatesAutoresizingMaskIntoConstraints = NO;
     self.statusIndicatorView.backgroundColor = [UIColor colorWithHexString:@"#2FA36B"];
     self.statusIndicatorView.layer.cornerRadius = 5.0;
     self.statusIndicatorView.layer.borderWidth = 1.5;
-    [self.statusIndicatorView pp_setBorderColor:UIColor.whiteColor];
+    [self.statusIndicatorView pp_setBorderColor:UIColor.systemBackgroundColor];
     [self.surfaceView addSubview:self.statusIndicatorView];
 
     self.callButton = [self actionButtonWithSymbol:@"phone.fill"];
@@ -142,22 +155,38 @@
     self.chatButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_chat_advertiser_hint", @"Double-tap to start a chat with this person");
     [self.chatButton addTarget:self action:@selector(chatTapped) forControlEvents:UIControlEventTouchUpInside];
 
+    self.whatsappButton = [self actionButtonWithSymbol:@"whatsApp"];
+    self.whatsappButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_whatsapp_advertiser", @"WhatsApp advertiser");
+    self.whatsappButton.accessibilityHint = NSLocalizedString(@"a11y_btn_whatsapp_advertiser_hint", @"Double-tap to open WhatsApp with this person");
+    [self.whatsappButton addTarget:self action:@selector(whatsappTapped) forControlEvents:UIControlEventTouchUpInside];
+    self.whatsappButton.hidden = YES;
+
     UIStackView *actionsStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.callButton,
-        self.chatButton
+        self.chatButton,
+        self.whatsappButton
     ]];
     actionsStack.translatesAutoresizingMaskIntoConstraints = NO;
     actionsStack.axis = UILayoutConstraintAxisHorizontal;
     actionsStack.spacing = 10.0;
     actionsStack.alignment = UIStackViewAlignmentCenter;
     actionsStack.distribution = UIStackViewDistributionFill;
-     [self.surfaceView addSubview:actionsStack];
+    [actionsStack setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [actionsStack setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.surfaceView addSubview:actionsStack];
     self.emptyCardBellowButtons = actionsStack;
+    self.actionsStackView = actionsStack;
 
     self.callButton.enabled = NO;
     self.chatButton.enabled = NO;
+    self.whatsappButton.enabled = NO;
     self.callButton.alpha = 0.55;
     self.chatButton.alpha = 0.55;
+    self.whatsappButton.alpha = 0.55;
+
+    self.callButtonWidthConstraint = [self.callButton.widthAnchor constraintEqualToConstant:78.0];
+    self.chatButtonWidthConstraint = [self.chatButton.widthAnchor constraintEqualToConstant:78.0];
+    self.whatsappButtonWidthConstraint = [self.whatsappButton.widthAnchor constraintEqualToConstant:44.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor],
@@ -165,10 +194,10 @@
         [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
 
-        [self.topGlowView.widthAnchor constraintEqualToConstant:132.0],
-        [self.topGlowView.heightAnchor constraintEqualToConstant:132.0],
-        [self.topGlowView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:-54.0],
-        [self.topGlowView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:-64.0],
+        [self.topGlowView.widthAnchor constraintEqualToConstant:152.0],
+        [self.topGlowView.heightAnchor constraintEqualToConstant:152.0],
+        [self.topGlowView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:-24.0],
+        [self.topGlowView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:-44.0],
 
         [self.bottomGlowView.widthAnchor constraintEqualToConstant:146.0],
         [self.bottomGlowView.heightAnchor constraintEqualToConstant:146.0],
@@ -180,8 +209,13 @@
         [self.avatarImageView.widthAnchor constraintEqualToConstant:52.0],
         [self.avatarImageView.heightAnchor constraintEqualToConstant:52.0],
 
-        [self.statusIndicatorView.trailingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:0],
-        [self.statusIndicatorView.bottomAnchor constraintEqualToAnchor:self.avatarImageView.bottomAnchor constant:0],
+        [self.verifiedBadgeView.trailingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:2.0],
+        [self.verifiedBadgeView.topAnchor constraintEqualToAnchor:self.avatarImageView.topAnchor constant:-1.0],
+        [self.verifiedBadgeView.widthAnchor constraintEqualToConstant:17.0],
+        [self.verifiedBadgeView.heightAnchor constraintEqualToConstant:17.0],
+
+        [self.statusIndicatorView.trailingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:1.0],
+        [self.statusIndicatorView.bottomAnchor constraintEqualToAnchor:self.avatarImageView.bottomAnchor constant:1.0],
         [self.statusIndicatorView.widthAnchor constraintEqualToConstant:10],
         [self.statusIndicatorView.heightAnchor constraintEqualToConstant:10],
 
@@ -192,11 +226,15 @@
         [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
         [actionsStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
 
-        [self.callButton.widthAnchor constraintGreaterThanOrEqualToConstant:78.0],
+        self.callButtonWidthConstraint,
         [self.callButton.heightAnchor constraintEqualToConstant:44.0],
-        [self.chatButton.widthAnchor constraintGreaterThanOrEqualToConstant:78.0],
+        self.chatButtonWidthConstraint,
         [self.chatButton.heightAnchor constraintEqualToConstant:44.0],
+        self.whatsappButtonWidthConstraint,
+        [self.whatsappButton.heightAnchor constraintEqualToConstant:44.0],
     ]];
+
+    [self pp_updateActionPresentationForWhatsAppVisible:NO];
 }
 
 #pragma mark - Button Factory
@@ -205,13 +243,22 @@
 {
     UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
     btn.translatesAutoresizingMaskIntoConstraints = NO;
+    btn.adjustsImageWhenHighlighted = NO;
+    btn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 
     UIImageSymbolConfiguration *cfg =
     [UIImageSymbolConfiguration configurationWithPointSize:17
                                                      weight:UIImageSymbolWeightSemibold
                                                      scale:UIImageSymbolScaleLarge];
 
-    UIImage *img = [UIImage imageNamed:symbol] ?: [UIImage systemImageNamed:symbol withConfiguration:cfg];
+    BOOL isWhatsApp = [symbol isEqualToString:@"whatsApp"];
+    UIImage *img = [UIImage imageNamed:symbol];
+    if (isWhatsApp) {
+        img = [img imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    }
+    if (!img) {
+        img = [UIImage systemImageNamed:symbol withConfiguration:cfg];
+    }
     [btn setImage:img forState:UIControlStateNormal];
     btn.tintColor = UIColor.labelColor;
     btn.titleLabel.font = [GM boldFontWithSize:13.0];
@@ -220,6 +267,8 @@
     btn.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
     if ([symbol containsString:@"phone"]) {
         [btn setTitle:kLang(@"Call") forState:UIControlStateNormal];
+    } else if (isWhatsApp) {
+        [btn setTitle:kLang(@"WhatsApp") forState:UIControlStateNormal];
     } else {
         [btn setTitle:kLang(@"Chat") forState:UIControlStateNormal];
     }
@@ -227,16 +276,71 @@
 
     BOOL primary = [symbol containsString:@"phone"];
     UIColor *accent = AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"];
+    UIColor *whatsappAccent = [UIColor colorWithRed:0.16 green:0.67 blue:0.38 alpha:1.0];
+    UIColor *buttonAccent = isWhatsApp ? whatsappAccent : accent;
     btn.backgroundColor = primary ? [accent colorWithAlphaComponent:0.78] : UIColor.clearColor;
-    btn.tintColor = primary ? UIColor.whiteColor : accent;
-    [btn setTitleColor:(primary ? UIColor.whiteColor : accent) forState:UIControlStateNormal];
+    btn.tintColor = primary ? UIColor.whiteColor : buttonAccent;
+    [btn setTitleColor:(primary ? UIColor.whiteColor : buttonAccent) forState:UIControlStateNormal];
     btn.layer.cornerRadius = 22.0;
     btn.layer.masksToBounds = YES;
     btn.layer.borderWidth = primary ? 0.0 : 1.4;
-    [btn pp_setBorderColor:primary ? UIColor.clearColor : [accent colorWithAlphaComponent:0.48]];
+    [btn pp_setBorderColor:primary ? UIColor.clearColor : [buttonAccent colorWithAlphaComponent:0.48]];
     btn.contentEdgeInsets = UIEdgeInsetsMake(0.0, 12.0, 0.0, 12.0);
+    [btn addTarget:self action:@selector(pp_actionTouchDown:) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+    [btn addTarget:self action:@selector(pp_actionTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
 
     return btn;
+}
+
+- (void)pp_updateActionPresentationForWhatsAppVisible:(BOOL)whatsAppVisible
+{
+    self.whatsappButton.hidden = !whatsAppVisible;
+    self.actionsStackView.spacing = whatsAppVisible ? 8.0 : 10.0;
+
+    CGFloat actionWidth = whatsAppVisible ? 44.0 : 78.0;
+    self.callButtonWidthConstraint.constant = actionWidth;
+    self.chatButtonWidthConstraint.constant = actionWidth;
+    self.whatsappButtonWidthConstraint.constant = 44.0;
+
+    NSArray<UIButton *> *buttons = @[self.callButton, self.chatButton, self.whatsappButton];
+    for (UIButton *button in buttons) {
+        button.imageEdgeInsets = UIEdgeInsetsZero;
+        button.titleEdgeInsets = UIEdgeInsetsZero;
+        button.contentEdgeInsets = UIEdgeInsetsMake(0.0, whatsAppVisible ? 0.0 : 12.0, 0.0, whatsAppVisible ? 0.0 : 12.0);
+        button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        button.layer.cornerRadius = 22.0;
+    }
+
+    if (whatsAppVisible) {
+        [self.callButton setTitle:nil forState:UIControlStateNormal];
+        [self.chatButton setTitle:nil forState:UIControlStateNormal];
+        [self.whatsappButton setTitle:nil forState:UIControlStateNormal];
+    } else {
+        [self.callButton setTitle:kLang(@"Call") forState:UIControlStateNormal];
+        [self.chatButton setTitle:kLang(@"Chat") forState:UIControlStateNormal];
+        [self.whatsappButton setTitle:kLang(@"WhatsApp") forState:UIControlStateNormal];
+        self.callButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+        self.chatButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+        self.callButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+        self.chatButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+    }
+
+    UIColor *accent = AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"];
+    UIColor *whatsappAccent = [UIColor colorWithRed:0.16 green:0.67 blue:0.38 alpha:1.0];
+    self.callButton.backgroundColor = [accent colorWithAlphaComponent:0.78];
+    self.callButton.tintColor = UIColor.whiteColor;
+    [self.callButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+    [self.callButton pp_setBorderColor:UIColor.clearColor];
+
+    self.chatButton.backgroundColor = [accent colorWithAlphaComponent:whatsAppVisible ? 0.10 : 0.0];
+    self.chatButton.tintColor = accent;
+    [self.chatButton setTitleColor:accent forState:UIControlStateNormal];
+    [self.chatButton pp_setBorderColor:[accent colorWithAlphaComponent:0.42]];
+
+    self.whatsappButton.backgroundColor = [whatsappAccent colorWithAlphaComponent:whatsAppVisible ? 0.13 : 0.0];
+    self.whatsappButton.tintColor = whatsappAccent;
+    [self.whatsappButton setTitleColor:whatsappAccent forState:UIControlStateNormal];
+    [self.whatsappButton pp_setBorderColor:[whatsappAccent colorWithAlphaComponent:0.40]];
 }
 
 - (void)layoutSubviews
@@ -247,8 +351,11 @@
     self.eyebrowLabel.textAlignment = GM.setAligment;
     self.callButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
     self.chatButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
-    self.topGlowView.layer.cornerRadius = CGRectGetWidth(self.topGlowView.bounds) * 0.5;
-    self.bottomGlowView.layer.cornerRadius = CGRectGetWidth(self.bottomGlowView.bounds) * 0.5;
+    self.whatsappButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+    self.actionsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    self.topGlowView.layer.cornerRadius = 132/2;
+    
+    self.bottomGlowView.layer.cornerRadius =  132/2;
     self.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                                         cornerRadius:self.surfaceView.layer.cornerRadius].CGPath;
 }
@@ -259,17 +366,33 @@
              chatCallback:(dispatch_block_t)chatBlock
              callCallback:(dispatch_block_t)callBlock
 {
+    [self configureWithUser:user
+               chatCallback:chatBlock
+               callCallback:callBlock
+           whatsappCallback:nil];
+}
+
+- (void)configureWithUser:(UserModel *)user
+             chatCallback:(dispatch_block_t)chatBlock
+             callCallback:(dispatch_block_t)callBlock
+         whatsappCallback:(dispatch_block_t)whatsappBlock
+{
     self.chatBlock = chatBlock;
     self.callBlock = callBlock;
+    self.whatsappBlock = whatsappBlock;
 
     self.nameLabel.text = user.PPBestDisplayName ?: user.UserName ?: kLang(@"Contact Advertiser");
     self.verifiedBadgeView.hidden = !user.isVerified;
 
     BOOL canContact = ![user.ID isEqualToString:PPCurrentUser.ID];
+    BOOL hasWhatsApp = whatsappBlock != nil;
     self.callButton.enabled = canContact;
     self.chatButton.enabled = canContact;
+    self.whatsappButton.enabled = canContact && hasWhatsApp;
     self.callButton.alpha = canContact ? 1.0 : 0.55;
     self.chatButton.alpha = canContact ? 1.0 : 0.55;
+    self.whatsappButton.alpha = (canContact && hasWhatsApp) ? 1.0 : 0.55;
+    [self pp_updateActionPresentationForWhatsAppVisible:hasWhatsApp];
 
     // ── Accessibility: Update contact view label with user name ──
     self.isAccessibilityElement = NO; // Let children be individually accessible
@@ -278,13 +401,20 @@
         NSLocalizedString(@"a11y_btn_call_user_format", @"Call %@"), displayName];
     self.chatButton.accessibilityLabel = [NSString stringWithFormat:
         NSLocalizedString(@"a11y_btn_chat_user_format", @"Chat with %@"), displayName];
+    self.whatsappButton.accessibilityLabel = [NSString stringWithFormat:
+        NSLocalizedString(@"a11y_btn_whatsapp_user_format", @"WhatsApp %@"), displayName];
     
     [PPImageLoaderManager.shared setImageOnImageView:self.avatarImageView url:user.UserImageUrl.absoluteString placeholder:[PPModernAvatarRenderer avatarImageForName:user.UserName size:44] complation:^(UIImage * _Nonnull image,
-                                                                                                                                                    NSString * _Nullable urlString) {
+                                                                                                                                                        NSString * _Nullable urlString) {
         
     }];
     // Assume you already load images elsewhere (SDWebImage / PPImageLoader)
     // self.avatarImageView.image = ...
+}
+
+- (void)setContactTitleText:(NSString *)titleText
+{
+    self.eyebrowLabel.text = titleText.length > 0 ? titleText : kLang(@"Contact Advertiser");
 }
 
 #pragma mark - Actions
@@ -301,6 +431,81 @@
     if (self.callBlock) {
         self.callBlock();
     }
+}
+
+- (void)whatsappTapped
+{
+    if (self.whatsappBlock) {
+        self.whatsappBlock();
+    }
+}
+
+- (void)pp_actionTouchDown:(UIButton *)sender
+{
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = reduceMotion ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.96, 0.96);
+        sender.alpha = 0.92;
+    } completion:nil];
+}
+
+- (void)pp_actionTouchUp:(UIButton *)sender
+{
+    [UIView animateWithDuration:0.20
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformIdentity;
+        sender.alpha = sender.enabled ? 1.0 : 0.55;
+    } completion:nil];
+}
+
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    if (self.window) {
+        [self pp_startLiveMotionIfNeeded];
+    } else {
+        [self pp_stopLiveMotion];
+    }
+}
+
+- (void)pp_startLiveMotionIfNeeded
+{
+    if (self.didStartLiveMotion || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    self.didStartLiveMotion = YES;
+
+    [UIView animateWithDuration:5.8
+                          delay:0.0
+                        options:UIViewAnimationOptionAutoreverse | UIViewAnimationOptionRepeat | UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.topGlowView.transform = CGAffineTransformMakeTranslation(8.0, 5.0);
+        self.bottomGlowView.transform = CGAffineTransformMakeTranslation(-9.0, -6.0);
+    } completion:nil];
+
+    CABasicAnimation *statusPulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    statusPulse.fromValue = @0.62;
+    statusPulse.toValue = @1.0;
+    statusPulse.duration = 2.8;
+    statusPulse.autoreverses = YES;
+    statusPulse.repeatCount = HUGE_VALF;
+    statusPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.statusIndicatorView.layer addAnimation:statusPulse forKey:@"pp.contact.statusPulse"];
+}
+
+- (void)pp_stopLiveMotion
+{
+    self.didStartLiveMotion = NO;
+    [self.topGlowView.layer removeAllAnimations];
+    [self.bottomGlowView.layer removeAllAnimations];
+    [self.statusIndicatorView.layer removeAnimationForKey:@"pp.contact.statusPulse"];
+    self.topGlowView.transform = CGAffineTransformIdentity;
+    self.bottomGlowView.transform = CGAffineTransformIdentity;
 }
 
 @end

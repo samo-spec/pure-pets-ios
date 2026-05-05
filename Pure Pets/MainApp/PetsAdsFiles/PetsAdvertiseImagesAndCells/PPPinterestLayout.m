@@ -14,12 +14,6 @@
 static NSUInteger PPPinterestAutomaticColumnCount(CGFloat collectionWidth)
 {
     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-        if (collectionWidth >= 1280.0) {
-            return 5;
-        }
-        if (collectionWidth >= 920.0) {
-            return 4;
-        }
         return 3;
     }
 
