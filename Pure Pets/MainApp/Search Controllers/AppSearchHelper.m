@@ -11,6 +11,7 @@
 
 #import "SearchManager.h"
 #import "AppSearchResultsVC.h"
+#import "PPAnalytics.h"
 #import "SearchResultItem.h"
 
 @interface AppSearchHelper () <PYSearchViewControllerDelegate>
@@ -258,6 +259,7 @@
             NSLog(@"[Search][WARN] resultsVC is nil – cannot display results");
             return;
         }
+        [PPAnalytics logSearchWithTerm:text resultCount:results.count];
         self.resultsVC.results = results;
     }];
 }

@@ -3439,14 +3439,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
         [lot.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [lot.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [lot.widthAnchor constraintEqualToConstant:46.0],
-        [lot.heightAnchor constraintEqualToConstant:46.0],
+        [lot.widthAnchor constraintEqualToConstant:66.0],
+        [lot.heightAnchor constraintEqualToConstant:66.0],
     ]];
 
     // Lottie loads from Firebase Storage path LottieAnimations/nova.json via the project's helper.
     __weak typeof(self) weakSelf = self;
     __weak LOTAnimationView *weakLot = lot;
-    [AppClasses setAnimationNamed:@"nova"
+    [AppClasses setAnimationNamed:@"nova4"
                             ToView:lot
                          withSpeed:1.0
                         completion:^(BOOL success) {
@@ -3629,6 +3629,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
             if (strongSelf.novaFloatingButton) {
                 strongSelf.novaFloatingButton.hidden = !novaVisible;
+            }
+            if (strongSelf.novaFloatingHaloView) {
+                strongSelf.novaFloatingHaloView.hidden = !novaVisible;
             }
 
             if (sanitized.count == 0) {

@@ -10,6 +10,7 @@
 #import "PPSimilarAdsView.h"
 #import "PPOverlayCoordinator.h"
 #import "PPUserSigningManager.h"
+#import "PPAnalytics.h"
 #import "UIViewController+PPNavBar.h"
 #import "PPCommerceFeedbackManager.h"
 
@@ -112,6 +113,8 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
     [self initData];
     NSLog(@"USER ------>>> %@",self.ad.ownerID);
     NSLog(@"adID ------>>> %@",self.ad.adID);
+
+    [PPAnalytics logViewItemForAd:self.ad];
 }
 
 - (UIColor *)pp_luxuryBackgroundColor
@@ -1989,7 +1992,10 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
         self.ownerModel = user;
         dispatch_async(dispatch_get_main_queue(), ^{
             [self.contactView configureWithUser:user
-                                   chatCallback:^{ [self startChatWith:user]; }
+                                   chatCallback:^{
+                [PPAnalytics logContactIntentForAd:self.ad channel:PPContactChannelChat];
+                [self startChatWith:user];
+            }
                                    callCallback:^{
                 if (!user.MobileNo.length) {
                     [PPAlertHelper showInfoIn:self
@@ -1998,9 +2004,11 @@ static const CGFloat kViewerVcTitleCardMinHeight = 116.0;
                     return;
                 }
 
+                [PPAnalytics logContactIntentForAd:self.ad channel:PPContactChannelCall];
                 [self trackAdInteraction:PPItemInteractionTypeCall];
                 [AppClasses callPhoneNumber:user.MobileNo fromViewController:self];
             } whatsappCallback:^{
+                [PPAnalytics logContactIntentForAd:self.ad channel:PPContactChannelWhatsapp];
                 [self pp_openWhatsAppForUser:user];
             }];
             [self pp_styleContactActionButtons];

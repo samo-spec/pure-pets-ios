@@ -8,6 +8,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPFilterSheetVC.h"
 #import "PPAdSharingHelper.h"
+#import "PPAnalytics.h"
 #import "CartManager.h"
 #import "CartViewController.h"
 #import "PPModrenSegmrnted.h"
@@ -291,6 +292,14 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     }
     [self pp_restoreNavigationOwnership];
     [self pp_refreshVisibleUniversalCellsAppearance];
+
+    NSString *kindName = self.input.mainKind.KindNameEn;
+    if (kindName.length) {
+        [PPAnalytics logViewCategoryWithCategory:kindName listName:nil];
+        [PPAnalytics logViewItemListWithCategory:kindName
+                                        listName:@"home_feed"
+                                       itemCount:self.presentedItems.count];
+    }
 }
 - (void)viewWillDisappear:(BOOL)animated
 {

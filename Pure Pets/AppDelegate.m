@@ -101,6 +101,7 @@
         // Firestore persistence is enabled by default in Firebase iOS SDK 12.x.
         // Cache size uses the SDK default (100MB with auto-GC).
 
+        
 #if DEBUG
         [FIRFirestore enableLogging:YES];
         [[FIRConfiguration sharedInstance] setLoggerLevel:FIRLoggerLevelMin];
@@ -129,6 +130,10 @@
             NSLog(@"[AuthRestore] Session restore completed.");
         }
     }];
+    
+    [FIRAnalytics logEventWithName:@"test_event"
+                          parameters:@{@"status": @"app_opened"}];
+    
    
     [self initFIRInstallations];
     // ✅ Google Maps

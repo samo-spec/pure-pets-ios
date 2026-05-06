@@ -15,6 +15,9 @@
 #import "SearchResultCell.h"
 #import "SearchResultItem.h"
 #import "PPEmptyStateHelper.h"
+#import "PPAnalytics.h"
+#import "PetAd.h"
+#import "PetAccessory.h"
 static NSString * const kCellID = @"SearchResultCellID";
 
 static inline NSString *SRTypeToString(SearchResultType t) {
@@ -173,6 +176,26 @@ static inline NSString *SRTypeToString(SearchResultType t) {
               SRTypeToString(item.type),
               item.titleText ?: @"",
               hasCallback ? @"YES" : @"NO");
+
+        NSString *itemID = nil;
+        NSString *category = nil;
+        if ([item.rawObject isKindOfClass:[PetAd class]]) {
+            PetAd *ad = (PetAd *)item.rawObject;
+            itemID = ad.adID;
+            category = (ad.category == PetCategoryBirds) ? @"birds" :
+                       (ad.category == PetCategoryFish)  ? @"fish"  : @"other";
+        } else if ([item.rawObject isKindOfClass:[PetAccessory class]]) {
+            PetAccessory *acc = (PetAccessory *)item.rawObject;
+            itemID = acc.accessoryID;
+            category = [NSString stringWithFormat:@"acc-%ld", (long)acc.petMainCategoryID];
+        }
+        if (itemID.length) {
+            [PPAnalytics logSelectItemWithItemID:itemID
+                                            name:item.titleText
+                                        category:category
+                                           price:0
+                                        listName:@"search_results"];
+        }
 
         if (self.didSelectItem) self.didSelectItem(item);
     } else {

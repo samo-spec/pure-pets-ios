@@ -16,6 +16,7 @@
 #import "PPAddressModel.h"
 #import "PPAddressesManager.h"
 #import "PPNetworkRetryHelper.h"
+#import "PPAnalytics.h"
 @import FirebaseFunctions;
 #import <math.h>
 
@@ -615,6 +616,8 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
                self.selectedPaymentMethodId ?: @"",
                self.selectedAddress.documentID ?: self.selectedAddress.addressID ?: @"");
 
+    [PPAnalytics logBeginCheckoutWithCartItems:cart.cartItems grandTotal:cartTotal];
+
     // 2️⃣ Lock cart
     [cart setValue:@(YES) forKey:@"_isLocked"];
     PPORDERLog(@"Cart locked | generation=%ld", (long)generation);
@@ -992,6 +995,10 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
     }
 
     PPORDERLog(@"Checkout success | generation=%ld | orderId=%@", (long)generation, self.currentOrder.orderId ?: @"");
+
+    [PPAnalytics logPurchaseWithTransactionID:(self.currentOrder.orderId ?: @"")
+                                    cartItems:CartManager.sharedManager.cartItems
+                                   grandTotal:self.currentOrder.totalAmount];
 
     // Order placed — clear idempotency key so any future checkout gets a fresh key.
     self.checkoutIdempotencyKey = nil;

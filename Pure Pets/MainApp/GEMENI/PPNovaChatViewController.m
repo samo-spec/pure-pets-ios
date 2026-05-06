@@ -5,9 +5,9 @@
 
 #import "PPNovaChatViewController.h"
 #import "ChatMessageModel.h"
-#import "ChatMessageCell.h"
+#import "PPNovaMessageBubbleCell.h"
 #import "PPNovaProductMessageCell.h"
-#import "PPChatInputBarView.h"
+#import "PPNovaFloatingInputBarView.h"
 #import "EnumValues.h"
 #import "AppManager.h"
 #import "PPNavigationController.h"
@@ -15,27 +15,41 @@
 #import "CartManager.h"
 #import "CartItem.h"
 #import "PPHUD.h"
+#import "AccessViewerVC.h"
+#import "PPOverlayCoordinator.h"
 #import <IQKeyboardManager/IQKeyboardManager.h>
 
-@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPChatInputBarViewDelegate, PPNovaProductMessageCellDelegate>
+static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
+    if (@available(iOS 13.0, *)) {
+        return [UIColor colorWithDynamicProvider:^UIColor * _Nonnull(UITraitCollection * _Nonnull traitCollection) {
+            return traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? darkColor : lightColor;
+        }];
+    }
+    return lightColor;
+}
 
+@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate>
+
+@property (nonatomic, strong) UIView *ambientBackgroundView;
 @property (nonatomic, strong) UIView *novaHeaderView;
-@property (nonatomic, strong) UIView *headerGlowHost;
-@property (nonatomic, strong) CAGradientLayer *headerGlowLayer;
+@property (nonatomic, strong) UIView *headerBrandRingView;
+@property (nonatomic, strong) UIView *headerBrandMarkView;
 @property (nonatomic, strong) UIView *headerHairlineHost;
-@property (nonatomic, strong) CAGradientLayer *headerHairlineLayer;
 @property (nonatomic, strong) UIView *headerLiveCapsule;
 @property (nonatomic, strong) UIView *statusDot;
+@property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) UIVisualEffectView *typingContainer;
 @property (nonatomic, strong) UILabel *typingLabel;
 @property (nonatomic, copy)   NSArray<UIView *> *typingDots;
+@property (nonatomic, strong) UIView *emptyStateView;
+@property (nonatomic, strong) UIView *emptyStatePulseView;
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<ChatMessageModel *> *messages;
-@property (nonatomic, strong) PPChatInputBarView *inputbar;
+@property (nonatomic, strong) PPNovaFloatingInputBarView *inputbar;
 @property (nonatomic, strong) NSLayoutConstraint *inputBarBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *typingBottomConstraint;
-@property (nonatomic, strong) UIButton *bottomFillBlurView;
+@property (nonatomic, assign) CGFloat inputBarRestingBottomConstant;
 @property (nonatomic, copy, nullable) NSString *novaPendingPetType;
 @property (nonatomic, strong) FIRHTTPSCallable *novaCallable;
 
@@ -49,9 +63,11 @@
 @property (nonatomic, copy, nullable) NSString *novaMemoryNeed;
 @property (nonatomic, copy, nullable) NSString *novaMemoryLanguage;
 @property (nonatomic, assign) BOOL novaHasShownGreeting;
+@property (nonatomic, copy, nonnull) NSString *novaSessionId;
 
 @property (nonatomic, assign) BOOL previousIQEnabled;
 @property (nonatomic, assign) BOOL previousToolbarEnabled;
+@property (nonatomic, assign) CGFloat lastNovaTableLayoutWidth;
 
 @end
 
@@ -64,8 +80,8 @@
         UISheetPresentationController *sheet = novaVC.sheetPresentationController;
         if (sheet) {
             if (@available(iOS 16.0, *)) {
-                UISheetPresentationControllerDetent *customDetent = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"Nova85" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                    return UIScreen.mainScreen.bounds.size.height * 0.85;
+                UISheetPresentationControllerDetent *customDetent = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"Nova89" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                    return UIScreen.mainScreen.bounds.size.height * 0.89;
                 }];
                 sheet.detents = @[customDetent, [UISheetPresentationControllerDetent largeDetent]];
             } else {
@@ -85,16 +101,19 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
 
+    self.novaSessionId = [[NSUUID UUID] UUIDString];
     self.title = @"";
-    self.view.backgroundColor = AppBackgroundClr;
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
     self.messages = [NSMutableArray array];
 
+    [self setupAmbientBackground];
     [self setupNovaBackend];
     [self setupNovaHeader];
     [self setupInputView];
     [self setupTypingIndicator];
     [self setupTableView];
-    [self setupBottomFillBlur];
+    [self setupNovaEmptyState];
 
     [self registerForKeyboardNotifications];
 
@@ -137,6 +156,7 @@
     }
 
     [self pp_startHeaderLiveAnimations];
+    [self pp_startAmbientBackgroundAnimations];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -146,30 +166,33 @@
     [IQKeyboardManager sharedManager].enableAutoToolbar = self.previousToolbarEnabled;
 
     [self pp_stopHeaderLiveAnimations];
+    [self pp_stopAmbientBackgroundAnimations];
     [self pp_stopTypingDotsAnimation];
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    [self pp_applyNovaSurfaceColors];
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
-    // Resize CAGradientLayer frames in sync with the header layout (sheet resize, rotation).
-    [CATransaction begin];
-    [CATransaction setDisableActions:YES];
-
-    if (self.headerGlowHost && self.headerGlowLayer) {
-        self.headerGlowLayer.frame = self.headerGlowHost.bounds;
-    }
-    if (self.headerHairlineHost && self.headerHairlineLayer) {
-        self.headerHairlineLayer.frame = self.headerHairlineHost.bounds;
+    CGFloat tableWidth = CGRectGetWidth(self.tableView.bounds);
+    if (tableWidth <= 1.0 || fabs(tableWidth - self.lastNovaTableLayoutWidth) <= 1.0) {
+        return;
     }
 
-    [CATransaction commit];
+    self.lastNovaTableLayoutWidth = tableWidth;
+    [self pp_updateVisibleNovaMessageCellWidthsForTableWidth:tableWidth];
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [self.statusDot.layer removeAllAnimations];
-    [self.headerGlowLayer removeAllAnimations];
+    [self.headerBrandRingView.layer removeAllAnimations];
+    [self.headerBrandMarkView.layer removeAllAnimations];
+    [self.emptyStatePulseView.layer removeAllAnimations];
     for (UIView *dot in self.typingDots) {
         [dot.layer removeAllAnimations];
     }
@@ -200,7 +223,9 @@
 
     NSDictionary *payload = @{
         @"prompt": trimmedText,
-        @"context": [self pp_currentContextDictionary]
+        @"context": [self pp_currentContextDictionary],
+        @"history": [self pp_currentHistoryArray],
+        @"sessionId": self.novaSessionId
     };
 
     __weak typeof(self) weakSelf = self;
@@ -219,21 +244,63 @@
             }
             
             NSString *replyText = nil;
+            NSArray *productIDs = nil;
             if ([result.data isKindOfClass:NSDictionary.class]) {
                 NSDictionary *data = (NSDictionary *)result.data;
                 id textValue = data[@"text"];
                 if ([textValue isKindOfClass:NSString.class]) {
                     replyText = (NSString *)textValue;
                 }
+                id productsValue = data[@"productIDs"];
+                if ([productsValue isKindOfClass:NSArray.class]) {
+                    productIDs = (NSArray *)productsValue;
+                }
             }
             
             replyText = [replyText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (replyText.length == 0) {
+            if (replyText.length == 0 && productIDs.count == 0) {
                 [self insertNovaReplyForUserText:trimmedText];
                 return;
             }
             
-            [self addNovaMessage:replyText];
+            if (replyText.length > 0) {
+                replyText = [self pp_sanitizeNovaReply:replyText];
+                if (replyText.length > 0) {
+                    [self addNovaMessage:replyText];
+                }
+            }
+
+            if (productIDs.count > 0) {
+                [self pp_fetchAndShowNovaProducts:productIDs];
+            }
+        });
+    }];
+}
+
+- (void)pp_fetchAndShowNovaProducts:(NSArray<NSString *> *)productIDs {
+    [PetAccessoryManager fetchAccessoriesWithIDs:productIDs completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
+        if (accessories.count == 0) return;
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.lastShownProducts = accessories;
+            if (accessories.count == 1) {
+                self.lastSuggestedProduct = accessories.firstObject;
+                self.pendingCartProduct = accessories.firstObject;
+            } else {
+                self.lastSuggestedProduct = nil;
+                self.pendingCartProduct = nil;
+            }
+
+            ChatMessageModel *msg = [[ChatMessageModel alloc] init];
+            msg.ID = [[NSUUID UUID] UUIDString];
+            msg.messageType = accessories.count > 1 ? ChatMessageTypeNovaProductList : ChatMessageTypeNovaProduct;
+            msg.novaProducts = accessories;
+            msg.timestamp = [NSDate date];
+            msg.senderID = @"nova";
+
+            [self.messages addObject:msg];
+            [self updateNovaEmptyStateAnimated:YES];
+            [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
         });
     }];
 }
@@ -241,9 +308,9 @@
 #pragma mark - Initial Data
 
 - (void)insertNovaGreeting {
-    NSString *greeting = Language.isRTL
-        ? @"أهلاً، أنا نوفا من بيور بتس. أقدر أساعدك في المنتجات، الطلبات، أو نصائح العناية بحيوانك."
-        : @"Hi, I'm Nova from Pure Pets. I can help with products, orders, or pet care guidance.";
+    if (self.novaHasShownGreeting) return;
+
+    NSString *greeting = kLang(@"nova_greeting");
 
     [self addMessageWithText:greeting isIncoming:YES];
 
@@ -281,42 +348,42 @@
     BOOL hasNeed = need.length > 0;
 
     if (hasPet && hasNeed) {
+        NSString *format = [self pp_novaLocalizedStringForKey:@"nova_fallback_pet_need_format" arabic:isArabic];
         if (isArabic) {
-            return [NSString stringWithFormat:
-                    @"تمام، لـ%@ الذي تربيه أقدر أساعدك تختار %@ مناسب من بيور بتس. تحب خيار اقتصادي أو مميز؟",
-                    [self pp_arabicPetWord:petType], [self pp_arabicNeedWord:need]];
+            return [NSString stringWithFormat:format,
+                    [self pp_arabicPetWord:petType],
+                    [self pp_arabicNeedWord:need]];
         }
-        return [NSString stringWithFormat:
-                @"Got it — for your %@, I can help pick the right %@ from Pure Pets. Want a budget option or a premium pick?",
-                petType, need];
+        return [NSString stringWithFormat:format, petType, need];
     }
 
     if (hasPet) {
+        NSString *format = [self pp_novaLocalizedStringForKey:@"nova_fallback_pet_format" arabic:isArabic];
         if (isArabic) {
-            return [NSString stringWithFormat:
-                    @"للـ%@ الخاص بك، تبحث عن أكل، قفص، ألعاب، أو عناية؟",
+            return [NSString stringWithFormat:format,
                     [self pp_arabicPetWord:petType]];
         }
-        return [NSString stringWithFormat:
-                @"For your %@, are you looking for food, cage, toys, or care?",
-                petType];
+        return [NSString stringWithFormat:format, petType];
     }
 
     if (hasNeed) {
+        NSString *format = [self pp_novaLocalizedStringForKey:@"nova_fallback_need_format" arabic:isArabic];
         if (isArabic) {
-            return [NSString stringWithFormat:
-                    @"تمام، تبحث عن %@. أي حيوان عندك؟ (قط، كلب، طائر، سمك...)",
+            return [NSString stringWithFormat:format,
                     [self pp_arabicNeedWord:need]];
         }
-        return [NSString stringWithFormat:
-                @"Got it, looking for %@. Which pet — cat, dog, bird, or fish?",
-                need];
+        return [NSString stringWithFormat:format, need];
     }
 
-    if (isArabic) {
-        return @"اكتب لي نوع حيوانك (قط، كلب، طائر) وما تبحث عنه (أكل، قفص، ألعاب).";
-    }
-    return @"Tell me your pet (cat, dog, bird) and what you need (food, cage, toys).";
+    return [self pp_novaLocalizedStringForKey:@"nova_fallback_prompt" arabic:isArabic];
+}
+
+- (NSString *)pp_novaLocalizedStringForKey:(NSString *)key arabic:(BOOL)arabic {
+    NSString *languageCode = arabic ? @"ar" : @"en";
+    NSString *path = [[NSBundle mainBundle] pathForResource:languageCode ofType:@"lproj"];
+    NSBundle *bundle = path.length > 0 ? [NSBundle bundleWithPath:path] : nil;
+    NSString *localized = [bundle localizedStringForKey:key value:nil table:nil];
+    return localized.length > 0 ? localized : kLang(key);
 }
 
 - (BOOL)textContainsArabic:(NSString *)text {
@@ -465,10 +532,90 @@
     return [ctx copy];
 }
 
+- (NSArray *)pp_currentHistoryArray {
+    NSMutableArray *history = [NSMutableArray array];
+    // Only send the last 6 messages to keep the payload efficient.
+    // We skip the current message being sent as it's passed in the 'prompt' field.
+    NSInteger total = self.messages.count;
+    NSInteger start = MAX(0, total - 7);
+    for (NSInteger i = start; i < total; i++) {
+        ChatMessageModel *msg = self.messages[i];
+        if (msg.messageType != ChatMessageTypeText) continue;
+
+        // Skip the very last message if it matches the current prompt being sent
+        // (to avoid duplication since the prompt is sent separately).
+        // However, standard Vertex history includes the user message.
+        // But for our proxy, handleNovaRequest adds the prompt to the history.
+        // So history should ONLY be previous messages.
+        if (i == total - 1) continue;
+
+        NSString *role = [msg.senderID isEqualToString:@"nova_bot_id"] ? @"model" : @"user";
+        [history addObject:@{
+            @"role": role,
+            @"parts": @[@{ @"text": msg.text ?: @"" }]
+        }];
+    }
+    return [history copy];
+}
+
 #pragma mark - Setup UI
 
+- (void)setupAmbientBackground {
+    UIView *backgroundView = [[UIView alloc] init];
+    backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
+    backgroundView.userInteractionEnabled = NO;
+    backgroundView.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    [self.view addSubview:backgroundView];
+    self.ambientBackgroundView = backgroundView;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [backgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [backgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [backgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [backgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+    ]];
+
+    [self pp_applyNovaSurfaceColors];
+}
+
+- (void)pp_applyNovaSurfaceColors {
+    UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    UIColor *baseBackground = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    self.ambientBackgroundView.backgroundColor = baseBackground;
+    self.emptyStatePulseView.backgroundColor = [brand colorWithAlphaComponent:0.10];
+    self.headerHairlineHost.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.28];
+    self.statusDot.backgroundColor = brand;
+    self.statusDot.layer.shadowColor = brand.CGColor;
+    self.headerLiveCapsule.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.40].CGColor;
+    self.headerBrandRingView.layer.borderColor = [brand colorWithAlphaComponent:0.20].CGColor;
+    self.headerBrandMarkView.backgroundColor = PPNovaDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
+                                                                  [UIColor colorWithWhite:1.0 alpha:0.10]);
+    self.headerBrandMarkView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.30].CGColor;
+}
+
+- (void)pp_startAmbientBackgroundAnimations {
+    [self.emptyStatePulseView.layer removeAllAnimations];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.emptyStatePulseView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    CABasicAnimation *pulse = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    pulse.fromValue = @0.985;
+    pulse.toValue = @1.025;
+    pulse.duration = 4.8;
+    pulse.autoreverses = YES;
+    pulse.repeatCount = HUGE_VALF;
+    pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.emptyStatePulseView.layer addAnimation:pulse forKey:@"pp_novaEmptyPulse"];
+}
+
+- (void)pp_stopAmbientBackgroundAnimations {
+    [self.emptyStatePulseView.layer removeAllAnimations];
+}
+
 - (void)setupNovaHeader {
-    // Minimal premium glass: ultra-thin material instead of prominent.
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleProminent;
     if (@available(iOS 13.0, *)) {
         blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
@@ -476,42 +623,59 @@
     UIVisualEffect *blurEffect = [UIBlurEffect effectWithStyle:blurStyle];
     UIVisualEffectView *header = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
     header.translatesAutoresizingMaskIntoConstraints = NO;
+    header.layer.shadowColor = UIColor.blackColor.CGColor;
+    header.layer.shadowOpacity = 0.04;
+    header.layer.shadowRadius = 18.0;
+    header.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     [self.view addSubview:header];
     self.novaHeaderView = header;
 
     UIView *contentView = header.contentView;
 
-    // 1) Ambient brand glow plate (lives behind everything, breathes when visible).
-    UIView *glowHost = [[UIView alloc] init];
-    glowHost.translatesAutoresizingMaskIntoConstraints = NO;
-    glowHost.userInteractionEnabled = NO;
-    glowHost.backgroundColor = UIColor.clearColor;
-    [contentView addSubview:glowHost];
-    self.headerGlowHost = glowHost;
+    UIColor *accentColor = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
 
-    UIColor *glowColor = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
-    CAGradientLayer *glow = [CAGradientLayer layer];
-    glow.colors = @[
-        (id)[glowColor colorWithAlphaComponent:0.22].CGColor,
-        (id)[glowColor colorWithAlphaComponent:0.10].CGColor,
-        (id)[glowColor colorWithAlphaComponent:0.0].CGColor
-    ];
-    glow.locations = @[@0.0, @0.55, @1.0];
-    if (@available(iOS 12.0, *)) {
-        glow.type = kCAGradientLayerRadial;
+    UIView *brandRing = [[UIView alloc] init];
+    brandRing.translatesAutoresizingMaskIntoConstraints = NO;
+    brandRing.backgroundColor = UIColor.clearColor;
+    brandRing.layer.cornerRadius = 25.0;
+    brandRing.layer.borderWidth = 0.8 / UIScreen.mainScreen.scale;
+    brandRing.layer.borderColor = [accentColor colorWithAlphaComponent:0.20].CGColor;
+    if (@available(iOS 13.0, *)) {
+        brandRing.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    glow.startPoint = CGPointMake(0.5, 0.5);
-    glow.endPoint = CGPointMake(1.0, 1.0);
-    glow.opacity = 0.0; // revealed by pp_startHeaderLiveAnimations
-    [glowHost.layer addSublayer:glow];
-    self.headerGlowLayer = glow;
+    [contentView addSubview:brandRing];
+    self.headerBrandRingView = brandRing;
 
-    // 2) Title + subtitle.
+    UIView *brandMark = [[UIView alloc] init];
+    brandMark.translatesAutoresizingMaskIntoConstraints = NO;
+    brandMark.backgroundColor = PPNovaDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
+                                                   [UIColor colorWithWhite:1.0 alpha:0.10]);
+    brandMark.layer.cornerRadius = 20.0;
+    brandMark.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
+    brandMark.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.30].CGColor;
+    brandMark.layer.shadowColor = UIColor.blackColor.CGColor;
+    brandMark.layer.shadowOpacity = 0.07;
+    brandMark.layer.shadowRadius = 12.0;
+    brandMark.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    if (@available(iOS 13.0, *)) {
+        brandMark.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [contentView addSubview:brandMark];
+    self.headerBrandMarkView = brandMark;
+
+    UILabel *brandLabel = [[UILabel alloc] init];
+    brandLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    brandLabel.text = @"N";
+    brandLabel.textAlignment = NSTextAlignmentCenter;
+    brandLabel.textColor = accentColor;
+    brandLabel.font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightBold];
+    [brandMark addSubview:brandLabel];
+
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     nameLabel.font = [GM boldFontWithSize:PPFontTitle1] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
     nameLabel.textColor = AppPrimaryTextClr;
-    nameLabel.text = Language.isRTL ? @"نوفا" : @"Nova";
+    nameLabel.text = kLang(@"nova_title");
     nameLabel.textAlignment = NSTextAlignmentCenter;
     if (!Language.isRTL) {
         // Subtle premium tracking on the wordmark.
@@ -526,14 +690,13 @@
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightMedium];
     subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.92];
-    subtitleLabel.text = Language.isRTL ? @"المساعد الذكي من بيور بتس" : @"Pure Pets smart assistant";
+    subtitleLabel.text = kLang(@"nova_subtitle");
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     [contentView addSubview:subtitleLabel];
 
-    // 3) Live capsule: ultra-thin glass pill with breathing dot + status text.
     UIVisualEffectView *liveCapsule;
     if (@available(iOS 13.0, *)) {
-        liveCapsule = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial]];
+        liveCapsule = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
     } else {
         liveCapsule = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular]];
     }
@@ -543,7 +706,7 @@
     if (@available(iOS 13.0, *)) {
         liveCapsule.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    liveCapsule.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+    liveCapsule.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
     liveCapsule.layer.borderColor = [[UIColor separatorColor] colorWithAlphaComponent:0.55].CGColor;
     [contentView addSubview:liveCapsule];
     self.headerLiveCapsule = liveCapsule;
@@ -552,9 +715,9 @@
 
     UIView *accentDot = [[UIView alloc] init];
     accentDot.translatesAutoresizingMaskIntoConstraints = NO;
-    accentDot.backgroundColor = glowColor;
+    accentDot.backgroundColor = accentColor;
     accentDot.layer.cornerRadius = 3.5;
-    accentDot.layer.shadowColor = glowColor.CGColor;
+    accentDot.layer.shadowColor = accentColor.CGColor;
     accentDot.layer.shadowOpacity = 0.55;
     accentDot.layer.shadowRadius = 4.0;
     accentDot.layer.shadowOffset = CGSizeZero;
@@ -565,45 +728,42 @@
     statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
     statusLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
     statusLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.78];
-    statusLabel.text = Language.isRTL ? @"متصل" : @"Online";
+    statusLabel.text = kLang(@"nova_status_online");
     [liveContent addSubview:statusLabel];
+    self.statusLabel = statusLabel;
 
-    // 4) Hairline divider — fades from clear → border → clear at the bottom edge.
     UIView *hairlineHost = [[UIView alloc] init];
     hairlineHost.translatesAutoresizingMaskIntoConstraints = NO;
     hairlineHost.userInteractionEnabled = NO;
-    hairlineHost.backgroundColor = UIColor.clearColor;
+    hairlineHost.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.28];
     [contentView addSubview:hairlineHost];
     self.headerHairlineHost = hairlineHost;
 
-    UIColor *hairlineColor = [[UIColor separatorColor] colorWithAlphaComponent:0.85];
-    CAGradientLayer *hairline = [CAGradientLayer layer];
-    hairline.colors = @[
-        (id)[hairlineColor colorWithAlphaComponent:0.0].CGColor,
-        (id)hairlineColor.CGColor,
-        (id)[hairlineColor colorWithAlphaComponent:0.0].CGColor
-    ];
-    hairline.locations = @[@0.0, @0.5, @1.0];
-    hairline.startPoint = CGPointMake(0.0, 0.5);
-    hairline.endPoint = CGPointMake(1.0, 0.5);
-    [hairlineHost.layer addSublayer:hairline];
-    self.headerHairlineLayer = hairline;
-
     header.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", nameLabel.text, statusLabel.text];
 
-    CGFloat topOffset = 24.0; // Sheet grabber clearance.
+    CGFloat topOffset = 22.0; // Sheet grabber clearance.
 
     [NSLayoutConstraint activateConstraints:@[
         [header.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [header.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
 
-        [glowHost.topAnchor constraintEqualToAnchor:contentView.topAnchor],
-        [glowHost.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
-        [glowHost.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
-        [glowHost.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
+        [brandRing.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        [brandRing.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
+        [brandRing.widthAnchor constraintEqualToConstant:50.0],
+        [brandRing.heightAnchor constraintEqualToConstant:50.0],
 
-        [nameLabel.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        [brandMark.centerXAnchor constraintEqualToAnchor:brandRing.centerXAnchor],
+        [brandMark.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor],
+        [brandMark.widthAnchor constraintEqualToConstant:40.0],
+        [brandMark.heightAnchor constraintEqualToConstant:40.0],
+
+        [brandLabel.topAnchor constraintEqualToAnchor:brandMark.topAnchor],
+        [brandLabel.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor],
+        [brandLabel.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor],
+        [brandLabel.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor],
+
+        [nameLabel.topAnchor constraintEqualToAnchor:brandRing.bottomAnchor constant:8.0],
         [nameLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
 
         [subtitleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:2.0],
@@ -628,30 +788,22 @@
         [hairlineHost.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
         [hairlineHost.heightAnchor constraintEqualToConstant:1.0]
     ]];
+
+    [self pp_applyNovaSurfaceColors];
 }
 
 - (void)pp_startHeaderLiveAnimations {
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
 
-    // Glow plate: stay subtle, fade to a calm baseline; breathe only when motion is allowed.
-    [self.headerGlowLayer removeAllAnimations];
-    self.headerGlowLayer.opacity = reduceMotion ? 0.55 : 0.55;
-    if (!reduceMotion) {
-        CABasicAnimation *breath = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        breath.fromValue = @0.42;
-        breath.toValue = @0.85;
-        breath.duration = 5.4;
-        breath.autoreverses = YES;
-        breath.repeatCount = HUGE_VALF;
-        breath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.headerGlowLayer addAnimation:breath forKey:@"pp_headerGlowBreath"];
-    }
-
-    // Status dot: scale + opacity spring loop. Plain opacity in reduce-motion.
     [self.statusDot.layer removeAllAnimations];
+    [self.headerBrandRingView.layer removeAllAnimations];
+    [self.headerBrandMarkView.layer removeAllAnimations];
     if (reduceMotion) {
         self.statusDot.alpha = 1.0;
         self.statusDot.transform = CGAffineTransformIdentity;
+        self.headerBrandRingView.alpha = 1.0;
+        self.headerBrandRingView.transform = CGAffineTransformIdentity;
+        self.headerBrandMarkView.transform = CGAffineTransformIdentity;
         return;
     }
 
@@ -672,27 +824,63 @@
     opacity.repeatCount = HUGE_VALF;
     opacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.statusDot.layer addAnimation:opacity forKey:@"pp_statusDotOpacity"];
+
+    CABasicAnimation *ringOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    ringOpacity.fromValue = @0.42;
+    ringOpacity.toValue = @1.0;
+    ringOpacity.duration = 4.8;
+    ringOpacity.autoreverses = YES;
+    ringOpacity.repeatCount = HUGE_VALF;
+    ringOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.headerBrandRingView.layer addAnimation:ringOpacity forKey:@"pp_novaBrandRingOpacity"];
+
+    CABasicAnimation *ringScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    ringScale.fromValue = @0.985;
+    ringScale.toValue = @1.035;
+    ringScale.duration = 4.8;
+    ringScale.autoreverses = YES;
+    ringScale.repeatCount = HUGE_VALF;
+    ringScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.headerBrandRingView.layer addAnimation:ringScale forKey:@"pp_novaBrandRingScale"];
+
+    CABasicAnimation *markScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    markScale.fromValue = @0.99;
+    markScale.toValue = @1.018;
+    markScale.duration = 5.6;
+    markScale.autoreverses = YES;
+    markScale.repeatCount = HUGE_VALF;
+    markScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.headerBrandMarkView.layer addAnimation:markScale forKey:@"pp_novaBrandMarkScale"];
 }
 
 - (void)pp_stopHeaderLiveAnimations {
-    [self.headerGlowLayer removeAllAnimations];
     [self.statusDot.layer removeAllAnimations];
+    [self.headerBrandRingView.layer removeAllAnimations];
+    [self.headerBrandMarkView.layer removeAllAnimations];
 }
 
 - (void)setupInputView {
-    self.inputbar = [[PPChatInputBarView alloc] init];
+    self.inputbar = [[PPNovaFloatingInputBarView alloc] init];
     self.inputbar.delegate = self;
     self.inputbar.translatesAutoresizingMaskIntoConstraints = NO;
-    self.inputbar.semanticContentAttribute = GM.setSemantic;
+    self.inputbar.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     [self.view addSubview:self.inputbar];
-    [self.inputbar resetRecordingUI];
 
-    self.inputBarBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor];
+    self.inputBarRestingBottomConstant = -10.0;
+    self.inputBarBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:self.inputBarRestingBottomConstant];
+    NSLayoutConstraint *compactWidth = [self.inputbar.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-24.0];
+    compactWidth.priority = 999.0;
+    NSLayoutConstraint *readableWidth = [self.inputbar.widthAnchor constraintEqualToConstant:760.0];
+    readableWidth.priority = 998.0;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.inputbar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:-2],
-        [self.inputbar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:2],
+        [self.inputbar.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:12.0],
+        [self.inputbar.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12.0],
+        [self.inputbar.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [self.inputbar.widthAnchor constraintLessThanOrEqualToConstant:760.0],
+        compactWidth,
+        readableWidth,
         self.inputBarBottomConstraint
     ]];
 }
@@ -709,7 +897,7 @@
     if (@available(iOS 13.0, *)) {
         capsule.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    capsule.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+    capsule.layer.borderWidth = 0.0 / [UIScreen mainScreen].scale;
     capsule.layer.borderColor = [[UIColor separatorColor] colorWithAlphaComponent:0.55].CGColor;
     capsule.alpha = 0.0;
     capsule.transform = CGAffineTransformMakeScale(0.94, 0.94);
@@ -751,7 +939,7 @@
 
     [NSLayoutConstraint activateConstraints:@[
         self.typingBottomConstraint,
-        [capsule.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16],
+        [capsule.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor constant:0],
         [capsule.heightAnchor constraintEqualToConstant:32.0],
 
         [dotsStack.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:12.0],
@@ -761,6 +949,100 @@
         [self.typingLabel.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-12.0],
         [self.typingLabel.centerYAnchor constraintEqualToAnchor:content.centerYAnchor]
     ]];
+}
+
+- (void)setupNovaEmptyState {
+    UIView *emptyView = [[UIView alloc] init];
+    emptyView.translatesAutoresizingMaskIntoConstraints = NO;
+    emptyView.userInteractionEnabled = NO;
+    emptyView.alpha = 1.0;
+    emptyView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view insertSubview:emptyView belowSubview:self.tableView];
+    self.emptyStateView = emptyView;
+
+    UIView *pulseView = [[UIView alloc] init];
+    pulseView.translatesAutoresizingMaskIntoConstraints = NO;
+    pulseView.backgroundColor = [(AppPrimaryClr ?: UIColor.systemOrangeColor) colorWithAlphaComponent:0.10];
+    pulseView.layer.cornerRadius = 28.0;
+    pulseView.layer.masksToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        pulseView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [emptyView addSubview:pulseView];
+    self.emptyStatePulseView = pulseView;
+
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"sparkles"]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    [pulseView addSubview:iconView];
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:PPFontTitle3] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightSemibold];
+    titleLabel.textColor = AppPrimaryTextClr;
+    titleLabel.textAlignment = NSTextAlignmentCenter;
+    titleLabel.text = kLang(@"nova_empty_title");
+    [emptyView addSubview:titleLabel];
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightRegular];
+    subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.82];
+    subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    subtitleLabel.numberOfLines = 0;
+    subtitleLabel.text = kLang(@"nova_empty_subtitle");
+    [emptyView addSubview:subtitleLabel];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [emptyView.leadingAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.leadingAnchor constant:12.0],
+        [emptyView.trailingAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.trailingAnchor constant:-12.0],
+        [emptyView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:8.0],
+
+        [pulseView.topAnchor constraintEqualToAnchor:emptyView.topAnchor],
+        [pulseView.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor],
+        [pulseView.widthAnchor constraintEqualToConstant:56.0],
+        [pulseView.heightAnchor constraintEqualToConstant:56.0],
+
+        [iconView.centerXAnchor constraintEqualToAnchor:pulseView.centerXAnchor],
+        [iconView.centerYAnchor constraintEqualToAnchor:pulseView.centerYAnchor],
+        [iconView.widthAnchor constraintEqualToConstant:24.0],
+        [iconView.heightAnchor constraintEqualToConstant:24.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:pulseView.bottomAnchor constant:14.0],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:7.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor],
+        [subtitleLabel.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor]
+    ]];
+
+    [self pp_applyNovaSurfaceColors];
+    [self updateNovaEmptyStateAnimated:NO];
+}
+
+- (void)updateNovaEmptyStateAnimated:(BOOL)animated {
+    BOOL shouldShow = self.messages.count == 0;
+    CGFloat targetAlpha = shouldShow ? 1.0 : 0.0;
+
+    void (^changes)(void) = ^{
+        self.emptyStateView.alpha = targetAlpha;
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+        self.emptyStateView.hidden = !shouldShow;
+        return;
+    }
+
+    if (shouldShow) {
+        self.emptyStateView.hidden = NO;
+    }
+    [UIView animateWithDuration:0.24 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:changes completion:^(__unused BOOL finished) {
+        self.emptyStateView.hidden = !shouldShow;
+    }];
 }
 
 - (void)pp_startTypingDotsAnimation {
@@ -809,7 +1091,8 @@
 }
 
 - (void)showNovaTyping {
-    self.typingLabel.text = Language.isRTL ? @"نوفا تكتب" : @"Nova is typing";
+    self.typingLabel.text = kLang(@"nova_typing");
+    self.statusLabel.text = kLang(@"nova_status_thinking");
 
     [self pp_startTypingDotsAnimation];
 
@@ -831,6 +1114,8 @@
 }
 
 - (void)hideNovaTyping {
+    self.statusLabel.text = kLang(@"nova_status_online");
+
     [UIView animateWithDuration:0.22
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseIn
@@ -844,40 +1129,25 @@
     }];
 }
 
-- (void)setupBottomFillBlur {
-    if (self.bottomFillBlurView) return;
-
-    self.bottomFillBlurView = [PPNavigationController setButtonAsBackroundButtonWithStyle:UIButtonConfigurationCornerStyleFixed configType:PPButtonConfigrationGlass];
-
-    UIButtonConfiguration *cfg = self.bottomFillBlurView.configuration;
-    cfg.background.backgroundColor = [UIColor clearColor];
-    cfg.baseBackgroundColor = [UIColor clearColor];
-    self.bottomFillBlurView.configuration = cfg;
-
-    [self.view insertSubview:self.bottomFillBlurView belowSubview:self.inputbar];
-
-    [NSLayoutConstraint activateConstraints:@[
-        [self.bottomFillBlurView.topAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
-        [self.bottomFillBlurView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.bottomFillBlurView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.bottomFillBlurView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
-    ]];
-}
-
 - (void)setupTableView {
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
 
-    [self.tableView registerClass:[ChatMessageCell class] forCellReuseIdentifier:@"ChatMessageCell"];
+    [self.tableView registerClass:[PPNovaMessageBubbleCell class] forCellReuseIdentifier:[PPNovaMessageBubbleCell reuseIdentifier]];
     [self.tableView registerClass:[PPNovaProductMessageCell class] forCellReuseIdentifier:@"PPNovaProductMessageCell"];
 
     self.tableView.rowHeight = UITableViewAutomaticDimension;
-    self.tableView.estimatedRowHeight = 64;
+    self.tableView.estimatedRowHeight = 92;
     self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.backgroundColor = UIColor.clearColor;
-    // Add extra top inset so content starts below the glass header
-    self.tableView.contentInset = UIEdgeInsetsMake(120, 0, PPSpaceSM, 0);
+    self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
+    self.tableView.delaysContentTouches = NO;
+    if (@available(iOS 15.0, *)) {
+        self.tableView.sectionHeaderTopPadding = 0.0;
+    }
+    self.tableView.contentInset = UIEdgeInsetsMake(174, 0, PPSpaceBase, 0);
+    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
 
     [self.view addSubview:self.tableView];
 
@@ -887,15 +1157,12 @@
     if (self.typingContainer) {
         [self.view bringSubviewToFront:self.typingContainer];
     }
-    if (self.bottomFillBlurView) {
-        [self.view bringSubviewToFront:self.bottomFillBlurView];
-    }
     if (self.inputbar) {
         [self.view bringSubviewToFront:self.inputbar];
     }
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:12],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
@@ -933,7 +1200,8 @@
     UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
 
     CGFloat safeAreaBottom = self.view.safeAreaInsets.bottom;
-    self.inputBarBottomConstraint.constant = -(keyboardFrame.size.height - safeAreaBottom);
+    CGFloat keyboardOffset = MAX(keyboardFrame.size.height - safeAreaBottom, 0.0);
+    self.inputBarBottomConstraint.constant = -(keyboardOffset + 8.0);
 
     [UIView animateWithDuration:duration delay:0.0 options:(curve << 16) animations:^{
         [self.view layoutIfNeeded];
@@ -947,7 +1215,7 @@
     NSTimeInterval duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
     UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
 
-    self.inputBarBottomConstraint.constant = 0;
+    self.inputBarBottomConstraint.constant = self.inputBarRestingBottomConstant;
 
     [UIView animateWithDuration:duration delay:0.0 options:(curve << 16) animations:^{
         [self.view layoutIfNeeded];
@@ -976,32 +1244,127 @@
         return cell;
     }
 
-    ChatMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ChatMessageCell" forIndexPath:indexPath];
-
-    BOOL isIncoming = ![msg.senderID isEqualToString:[UserManager sharedManager].currentUser.ID];
-
-    PPChatGroupPosition groupPos = PPChatGroupPositionSingle;
-
-    [cell configureWithMessage:msg.text
-                          date:msg.timestamp
-                    isIncoming:isIncoming
-                      maxWidth:MAX_BUBBLE_WIDTH(self.view)
-                        status:msg.status
-                  messageModel:msg
-                 groupPosition:groupPos];
+    PPNovaMessageBubbleCell *cell = [tableView dequeueReusableCellWithIdentifier:[PPNovaMessageBubbleCell reuseIdentifier] forIndexPath:indexPath];
+    [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
 
     return cell;
 }
 
-#pragma mark - PPChatInputBarViewDelegate
+- (CGFloat)pp_novaMessageLayoutWidthForTableView:(UITableView *)tableView {
+    CGFloat width = CGRectGetWidth(tableView.bounds);
+    if (width <= 1.0) {
+        width = CGRectGetWidth(self.view.bounds);
+    }
+    if (width <= 1.0) {
+        width = UIScreen.mainScreen.bounds.size.width;
+    }
+    return width;
+}
 
-- (void)inputBar:(PPChatInputBarView *)bar didSendText:(NSString *)text {
+- (void)pp_updateVisibleNovaMessageCellWidthsForTableWidth:(CGFloat)tableWidth {
+    for (UITableViewCell *visibleCell in self.tableView.visibleCells) {
+        if (![visibleCell isKindOfClass:PPNovaMessageBubbleCell.class]) continue;
+
+        PPNovaMessageBubbleCell *cell = (PPNovaMessageBubbleCell *)visibleCell;
+        NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+        if (indexPath.row < 0 || indexPath.row >= self.messages.count) continue;
+
+        ChatMessageModel *message = self.messages[indexPath.row];
+        [cell configureWithMessage:message maxWidth:tableWidth];
+    }
+}
+
+- (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row >= self.messages.count) return;
+
+    ChatMessageModel *message = self.messages[indexPath.row];
+    if (message.didAnimateInsert || UIAccessibilityIsReduceMotionEnabled()) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        message.didAnimateInsert = YES;
+        return;
+    }
+
+    message.didAnimateInsert = YES;
+    cell.alpha = 0.0;
+    cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 16.0),
+                                             CGAffineTransformMakeScale(0.985, 0.985));
+    NSTimeInterval delay = MIN(indexPath.row * 0.025, 0.09);
+    [UIView animateWithDuration:0.38
+                          delay:delay
+         usingSpringWithDamping:0.91
+          initialSpringVelocity:0.16
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+#pragma mark - PPNovaFloatingInputBarViewDelegate
+
+- (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didSendText:(NSString *)text {
+    [self pp_handleNovaSubmittedText:text];
+}
+
+- (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeHeight:(CGFloat)height {
+    [UIView animateWithDuration:0.18 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction animations:^{
+        [self.view layoutIfNeeded];
+    } completion:^(__unused BOOL finished) {
+        [self scrollToBottomAnimated:YES];
+    }];
+}
+
+- (void)pp_handleNovaSubmittedText:(NSString *)text {
     NSString *trimmedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) return;
 
     [self addUserMessage:trimmedText];
+
+    // Check for "add to cart" intent
+    if ([self pp_isAddToCartIntent:trimmedText]) {
+        if (self.pendingCartProduct) {
+            [self pp_handleAddToCartForProduct:self.pendingCartProduct];
+            return;
+        } else if (self.lastShownProducts.count > 1) {
+            NSString *reply = kLang(@"nova_add_to_cart_which");
+            [self addNovaMessage:reply];
+            return;
+        }
+    }
+
     [self showNovaTyping];
     [self sendNovaRequestForUserText:trimmedText];
+}
+
+- (BOOL)pp_isAddToCartIntent:(NSString *)text {
+    NSString *lower = [text lowercaseString];
+    NSArray *keywords = @[@"yes", @"add", @"buy", @"want", @"أضف", @"اضف", @"نعم", @"اريد", @"أريد", @"شراء", @"ايوه", @"ايه"];
+    for (NSString *kw in keywords) {
+        if ([lower containsString:kw]) return YES;
+    }
+    return NO;
+}
+
+- (void)pp_handleAddToCartForProduct:(PetAccessory *)product {
+    [PPHUD showLoading:@""];
+
+    CartItem *item = [[CartItem alloc] initWithAccessory:product quantity:1];
+
+    BOOL success = [[CartManager sharedManager] addItem:item];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+
+        [PPHUD dismiss];
+        if (success) {
+            NSString *msg = kLang(@"nova_added_to_cart");
+            [self addNovaMessage:msg];
+            self.pendingCartProduct = nil; // Clear after adding
+        } else {
+            NSString *msg = kLang(@"nova_add_to_cart_failed");
+            [self addNovaMessage:msg];
+        }
+    });
 }
 
 - (void)addUserMessage:(NSString *)text {
@@ -1022,25 +1385,73 @@
     msg.senderID = isIncoming ? @"nova_bot_id" : [UserManager sharedManager].currentUser.ID;
 
     [self.messages addObject:msg];
+    [self updateNovaEmptyStateAnimated:YES];
     [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
 }
 
+- (NSString *)pp_sanitizeNovaReply:(NSString *)text {
+    if (text.length == 0) return text;
+
+    NSArray<NSString *> *greetingPrefixes = @[
+        @"أهلا بك في بيور بتس،",
+        @"أهلا بك في بيور بتس.",
+        @"أهلاً بك في بيور بتس،",
+        @"أهلاً بك في بيور بتس.",
+        @"أهلا بك في Pure Pets،",
+        @"أهلا بك في Pure Pets.",
+        @"أهلاً بك في Pure Pets،",
+        @"أهلاً بك في Pure Pets.",
+        @"أهلا بك في",
+        @"أهلاً بك في",
+        @"Welcome to Pure Pets,",
+        @"Welcome to Pure Pets.",
+        @"Hi, I'm Nova from Pure Pets."
+    ];
+
+    NSString *result = text;
+
+    for (NSString *prefix in greetingPrefixes) {
+        if ([result hasPrefix:prefix]) {
+            result = [result substringFromIndex:prefix.length];
+
+            result = [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+
+            if (result.length == 0) break;
+
+            unichar firstChar = [result characterAtIndex:0];
+            if (firstChar == 0x060C || firstChar == 0x002C || firstChar == 0x002E) {
+                result = [result substringFromIndex:1];
+                result = [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            }
+
+            break;
+        }
+    }
+
+    return result;
+}
+
 - (void)animateInsertedRowAtIndexPath:(NSIndexPath *)indexPath {
-    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationBottom];
+    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
     [self scrollToBottomAnimated:YES];
 }
 
-- (void)inputBar:(PPChatInputBarView *)bar didChangeText:(UITextView *)textView {}
-- (void)inputBarDidStartRecording:(PPChatInputBarView *)bar {}
-- (void)inputBar:(PPChatInputBarView *)bar didFinishRecordingWithURL:(nullable NSURL *)fileURL duration:(NSTimeInterval)duration locked:(BOOL)locked {}
-- (void)inputBarDidCancelRecording:(PPChatInputBarView *)bar {}
-- (void)inputBarDidTapAttachImage:(PPChatInputBarView *)bar {}
-- (void)inputBarDidTapAttachVideo:(PPChatInputBarView *)bar {}
-- (void)inputBar:(PPChatInputBarView *)bar didChangeHeight:(CGFloat)newHeight {}
-- (void)inputBarDidToggleRecordingPreview:(PPChatInputBarView *)bar {}
-- (void)finishVoiceRecordingAndSend {}
-- (void)inputBarDidStopRecordingPreview:(PPChatInputBarView *)bar {}
-- (void)recordingBarDidTapPlayFromLocked {}
-- (void)recordingBarDidTogglePlayback {}
+#pragma mark - PPNovaProductMessageCellDelegate
+
+- (void)novaProductCell_didTapAddToCart:(PetAccessory *)product {
+    [self pp_handleAddToCartForProduct:product];
+}
+
+- (void)novaProductCell_didTapProduct:(PetAccessory *)product {
+    AccessViewerVC *viewer = [[AccessViewerVC alloc] init];
+    viewer.accessAds = product;
+
+    if (self.navigationController) {
+        [self.navigationController pushViewController:viewer animated:YES];
+    } else {
+        PPNavigationController *nav = [[PPNavigationController alloc] initWithRootViewController:viewer];
+        [self presentViewController:nav animated:YES completion:nil];
+    }
+}
 
 @end

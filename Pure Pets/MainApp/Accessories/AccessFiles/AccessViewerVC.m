@@ -15,6 +15,7 @@
 #import "PPImageLoaderManager.h"
 #import "PPPetsTitleView.h"
 #import "ChManager.h"
+#import "PPAnalytics.h"
 #import "PPNetworkRetryHelper.h"
 #import "PPModernAvatarRenderer.h"
 
@@ -161,9 +162,11 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     [self designViews];
     [self applyAccessoryContent];
     [self loadOwnerModelIfNeeded];
-    
+
     _brower = [[PPPhotoBrowserBridge alloc] init];
     _brower.useArabic = Language.isRTL;
+
+    [PPAnalytics logViewItemForAccessory:self.accessAds];
 }
 
 - (void)initData {
@@ -1583,6 +1586,12 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     } else {
         message = kLang(@"ItemAddedToYourCart");
     }
+
+    [PPAnalytics logAddToCartItemID:self.accessAds.accessoryID
+                               name:self.accessAds.name
+                           category:[NSString stringWithFormat:@"acc-%ld", (long)self.accessAds.petMainCategoryID]
+                              price:self.accessAds.finalPrice.doubleValue
+                           quantity:safeQty];
 
     [self.bottomBar performAddToCartSuccessAnimation];
     [PPHUD showSuccess:kLang(@"AddedToCart") subtitle:message delay:1.25];

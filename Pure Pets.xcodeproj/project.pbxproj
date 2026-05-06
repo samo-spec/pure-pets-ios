@@ -212,6 +212,10 @@
 		F22CD3852C6709650098B6E9 /* star.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3782C6709650098B6E9 /* star.png */; };
 		F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22CD37B2C6709650098B6E9 /* FCAlertView.m */; };
 		F22DE0802ECB61C600B2D0D2 /* PPUserSigningController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D6396C2ECB491D00FEBCBB /* PPUserSigningController.m */; };
+		F22ED2432FA9FF4900F72C2B /* PPNovaProductMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */; };
+		F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */; };
+		F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */; };
+		F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */; };
 		F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */; };
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
@@ -1177,6 +1181,14 @@
 		F22CD3782C6709650098B6E9 /* star.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = star.png; sourceTree = "<group>"; };
 		F22CD37A2C6709650098B6E9 /* FCAlertView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FCAlertView.h; sourceTree = "<group>"; };
 		F22CD37B2C6709650098B6E9 /* FCAlertView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FCAlertView.m; sourceTree = "<group>"; };
+		F22ED2412FA9FF4900F72C2B /* PPNovaProductMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaProductMessageCell.h; sourceTree = "<group>"; };
+		F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaProductMessageCell.m; sourceTree = "<group>"; };
+		F22ED2442FAA100F72C2B /* PPNovaMessageBubbleCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaMessageBubbleCell.h; sourceTree = "<group>"; };
+		F22ED2442FAAC91C00F72C2B /* PPAnalytics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAnalytics.h; sourceTree = "<group>"; };
+		F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaMessageBubbleCell.m; sourceTree = "<group>"; };
+		F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAnalytics.m; sourceTree = "<group>"; };
+		F22ED2472FAA101F72C2B /* PPNovaFloatingInputBarView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaFloatingInputBarView.h; sourceTree = "<group>"; };
+		F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaFloatingInputBarView.m; sourceTree = "<group>"; };
 		F22F1B472F79947A00328BF3 /* GoogleMapsCore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = GoogleMapsCore.xcframework; path = Pods/GoogleMaps/Maps/Frameworks/GoogleMapsCore.xcframework; sourceTree = "<group>"; };
 		F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeOrderStatusCell.h; sourceTree = "<group>"; };
 		F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeOrderStatusCell.m; sourceTree = "<group>"; };
@@ -3315,6 +3327,12 @@
 		F26E3AFD2E35B344007BB3FF /* GEMENI */ = {
 			isa = PBXGroup;
 			children = (
+				F22ED2472FAA101F72C2B /* PPNovaFloatingInputBarView.h */,
+				F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */,
+				F22ED2442FAA100F72C2B /* PPNovaMessageBubbleCell.h */,
+				F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */,
+				F22ED2412FA9FF4900F72C2B /* PPNovaProductMessageCell.h */,
+				F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */,
 				F2EAA0652FA9951C00E34CCD /* PPNovaChatViewController.h */,
 				F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */,
 				F26E3AFF2E35B35F007BB3FF /* GeminiChatViewController.m */,
@@ -3560,6 +3578,8 @@
 		F27365F92F85D5AB000AB3DD /* UsesHelpers */ = {
 			isa = PBXGroup;
 			children = (
+				F22ED2442FAAC91C00F72C2B /* PPAnalytics.h */,
+				F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */,
 				F2EF8EDC2F87750700A797B3 /* ProfileCells */,
 				F24D6EEA2EB9F00A009962D0 /* UserManager.h */,
 				F24D6EEB2EB9F00A009962D0 /* UserManager.m */,
@@ -5279,6 +5299,7 @@
 				F263ABCB2D64E3BA00213743 /* Watermark.m in Sources */,
 				F271466A2CCE6B5300F7F3BA /* NSExpression+XLFormAdditions.m in Sources */,
 				F271466B2CCE6B5300F7F3BA /* XLFormOptionsViewController.m in Sources */,
+				F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */,
 				F2D0939E2F2675C200D4EE49 /* PPChatFeedbackManager.m in Sources */,
 				F271466C2CCE6B5300F7F3BA /* XLFormDatePickerCell.m in Sources */,
 				F271466D2CCE6B5300F7F3BA /* XLFormSwitchCell.m in Sources */,
@@ -5508,6 +5529,9 @@
 				F272E5AE2E2B95DA00ECC7A5 /* VetViewerViewController.m in Sources */,
 				F20F31BF2D177602001D1D57 /* PGDatePicker+Date.m in Sources */,
 				F20F31C02D177602001D1D57 /* PGDatePickManager.m in Sources */,
+				F22ED2432FA9FF4900F72C2B /* PPNovaProductMessageCell.m in Sources */,
+				F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */,
+				F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */,
 				F20F31C12D177602001D1D57 /* PGPickerTableView.m in Sources */,
 				F27A482C2EE07D540044040E /* PPPhotoBrowserBridge.swift in Sources */,
 				F20F31C22D177602001D1D57 /* PGDatePicker+MonthDay.m in Sources */,
@@ -6390,7 +6414,7 @@
 				F2D0C6032C4BE1BB0023CE53 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		F2D0C6042C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure Pets" */ = {
 			isa = XCConfigurationList;
@@ -6399,7 +6423,7 @@
 				F2D0C6062C4BE1BB0023CE53 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		F2D0C6072C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure PetsTests" */ = {
 			isa = XCConfigurationList;
@@ -6408,7 +6432,7 @@
 				F2D0C6092C4BE1BB0023CE53 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		F2D0C60A2C4BE1BB0023CE53 /* Build configuration list for PBXNativeTarget "Pure PetsUITests" */ = {
 			isa = XCConfigurationList;
@@ -6417,7 +6441,7 @@
 				F2D0C60C2C4BE1BB0023CE53 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 
