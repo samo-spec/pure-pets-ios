@@ -13,6 +13,7 @@
 #import "PPNavigationController.h"
 #import "PetAccessoryManager.h"
 #import "CartManager.h"
+#import "PPNovaLocalChatMemory.h"
 #import "CartItem.h"
 #import "PPHUD.h"
 #import "AccessViewerVC.h"
@@ -31,15 +32,21 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     return lightColor;
 }
 
-static const CGFloat PPNovaExpandedTableTopInset = 174.0;
-static const CGFloat PPNovaCollapsedTableTopInset = 96.0;
-static const CGFloat PPNovaTableBottomInset = 12.0;
+static const CGFloat PPNovaExpandedTableTopInset = 218.0;
+static const CGFloat PPNovaCollapsedTableTopInset = 124.0;
+static const CGFloat PPNovaTableBottomInset = 22.0;
 
 @interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate>
 
 @property (nonatomic, strong) UIView *ambientBackgroundView;
 @property (nonatomic, strong) UIView *novaHeaderView;
+@property (nonatomic, strong) UIView *novaHeaderChromeView;
+@property (nonatomic, strong) UIView *novaHeaderTopGlowView;
+@property (nonatomic, strong) UIView *novaHeaderBottomGlowView;
+@property (nonatomic, strong) UIView *novaHeaderSheenView;
+@property (nonatomic, copy) NSArray<UIView *> *novaHeaderMotionDots;
 @property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, strong) UIView *headerBrandHaloView;
 @property (nonatomic, strong) UIView *headerBrandRingView;
 @property (nonatomic, strong) UIView *headerBrandMarkView;
 @property (nonatomic, strong) UIView *headerHairlineHost;
@@ -49,7 +56,9 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 @property (nonatomic, strong) UILabel *headerNameLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
 @property (nonatomic, strong) NSLayoutConstraint *novaHeaderExpandedBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *emptyStateCenterYConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *novaHeaderCollapsedBottomConstraint;
+@property (nonatomic, assign) BOOL didInitialInset;
 @property (nonatomic, assign) BOOL novaHeaderCollapsed;
 @property (nonatomic, strong) UIVisualEffectView *typingContainer;
 @property (nonatomic, strong) UILabel *typingLabel;
@@ -60,6 +69,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 @property (nonatomic, strong) LOTAnimationView *novaHeaderBackgroundLottie;
 @property (nonatomic, copy) NSString *currentHeaderBgAnimationName;
 @property (nonatomic, strong) LOTAnimationView *novaRingBackgroundLottie;
+@property (nonatomic, assign) BOOL novaHeaderThinkingAnimationVisible;
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<ChatMessageModel *> *messages;
@@ -102,7 +112,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
                 UISheetPresentationControllerDetent *customDetent = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"Nova89" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
                     return UIScreen.mainScreen.bounds.size.height * 0.89;
                 }];
-                sheet.detents = @[customDetent, [UISheetPresentationControllerDetent largeDetent]];
+                sheet.detents = @[ [UISheetPresentationControllerDetent largeDetent]];//customDetent,
             } else {
                 sheet.detents = @[[UISheetPresentationControllerDetent largeDetent]];
             }
@@ -212,6 +222,16 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    
+    if (!self.didInitialInset && CGRectGetHeight(self.inputbar.frame) > 0) {
+        self.didInitialInset = YES;
+        CGFloat inputBarTotalHeight = CGRectGetHeight(self.inputbar.frame);
+        CGFloat bottomInset = inputBarTotalHeight + PPNovaTableBottomInset - self.inputBarRestingBottomConstant + self.view.safeAreaInsets.bottom;
+        UIEdgeInsets currentInset = self.tableView.contentInset;
+        currentInset.bottom = bottomInset;
+        self.tableView.contentInset = currentInset;
+        self.tableView.scrollIndicatorInsets = currentInset;
+    }
 
     CGFloat tableWidth = CGRectGetWidth(self.tableView.bounds);
     if (tableWidth <= 1.0 || fabs(tableWidth - self.lastNovaTableLayoutWidth) <= 1.0) {
@@ -710,6 +730,20 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
         }
 
         [self pp_showNovaSuggestionObjects:objects];
+
+        // Save the synthetic product marker to local memory so context is retained
+        NSInteger n = (NSInteger)objects.count;
+        NSMutableArray *names = [NSMutableArray array];
+        for (NSInteger pidx = 0; pidx < MIN(n, 4); pidx++) {
+            NSString *name = [self pp_novaDisplayNameForSuggestionObject:objects[pidx]];
+            if (name.length > 0) [names addObject:name];
+        }
+        if (names.count > 0) {
+            NSString *marker = [NSString stringWithFormat:@"[Nova showed %ld product%@: %@]",
+                                (long)n, n == 1 ? @"" : @"s",
+                                [names componentsJoinedByString:@", "]];
+            [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:@"nova" text:marker];
+        }
     };
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(8.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -1048,6 +1082,12 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 - (void)insertNovaGreeting {
     if (self.novaHasShownGreeting) return;
 
+    if ([[PPNovaLocalChatMemory sharedMemory] hasPreviousHistory]) {
+        self.novaHasShownGreeting = YES;
+        self.novaMemoryLanguage = Language.isRTL ? @"ar" : @"en";
+        return;
+    }
+
     NSString *greeting = kLang(@"nova_greeting");
 
     [self addMessageWithText:greeting isIncoming:YES];
@@ -1275,51 +1315,33 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 }
 
 - (NSArray *)pp_currentHistoryArray {
+    // We used to synthesize history here, but we now rely on PPNovaLocalChatMemory
+    // which accurately preserves history across sessions. We return up to 12
+    // recent items to give the backend proxy a rich contextual window.
+
+    NSArray *localHistory = [[PPNovaLocalChatMemory sharedMemory] recentHistoryLimit:12];
     NSMutableArray *history = [NSMutableArray array];
-    // Only send the last 6 messages to keep the payload efficient.
-    // The current prompt is passed in the 'prompt' field, so we skip the very last message here.
-    NSInteger total = self.messages.count;
-    NSInteger start = MAX(0, total - 7);
-    for (NSInteger i = start; i < total; i++) {
-        if (i == total - 1) continue;
-        ChatMessageModel *msg = self.messages[i];
 
-        // Product turns are not text — replace with a synthetic model-side marker so the
-        // LLM retains the context that it just showed the user N products. Without this,
-        // a "yes"/"the second one" follow-up loses its referent.
-        if (msg.messageType == ChatMessageTypeNovaProduct ||
-            msg.messageType == ChatMessageTypeNovaProductList) {
-            NSInteger n = (NSInteger)msg.novaProducts.count;
-            NSMutableArray *names = [NSMutableArray array];
-            for (NSInteger pidx = 0; pidx < MIN(n, 4); pidx++) {
-                id object = msg.novaProducts[pidx];
-                NSString *name = [self pp_novaDisplayNameForSuggestionObject:object];
-                if (name.length > 0) [names addObject:name];
-            }
-            NSString *marker;
-            if (names.count > 0) {
-                marker = [NSString stringWithFormat:@"[Nova showed %ld product%@: %@]",
-                          (long)n, n == 1 ? @"" : @"s",
-                          [names componentsJoinedByString:@", "]];
-            } else {
-                marker = [NSString stringWithFormat:@"[Nova showed %ld product%@]",
-                          (long)n, n == 1 ? @"" : @"s"];
-            }
-            [history addObject:@{
-                @"role": @"model",
-                @"parts": @[@{ @"text": marker }]
-            }];
-            continue;
-        }
+    // The geminiProxy.js expects objects in the shape:
+    // { "role": "user"|"model", "text": "..." } OR { "role": "user"|"model", "parts": [{ "text": "..." }] }
+    // We convert the PPNovaLocalChatMemory dict to match what the proxy currently parses smoothly.
 
-        if (msg.messageType != ChatMessageTypeText) continue;
-
-        NSString *role = [msg.senderID isEqualToString:@"nova_bot_id"] ? @"model" : @"user";
+    for (NSDictionary *dict in localHistory) {
         [history addObject:@{
-            @"role": role,
-            @"parts": @[@{ @"text": msg.text ?: @"" }]
+            @"role": dict[@"role"],
+            @"parts": @[@{ @"text": dict[@"text"] }]
         }];
     }
+
+    // Do not include the very last user message in the history block since it is
+    // passed as the "prompt" argument to the Cloud Function.
+    if (history.count > 0) {
+        NSDictionary *last = history.lastObject;
+        if ([last[@"role"] isEqualToString:@"user"]) {
+            [history removeLastObject];
+        }
+    }
+
     return [history copy];
 }
 
@@ -1344,18 +1366,47 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 }
 
 - (void)pp_applyNovaSurfaceColors {
-    UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    UIColor *baseBackground = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    UIColor *brand = [self pp_novaHeaderAccentColor];
+    UIColor *baseBackground = [self pp_novaHeaderCanvasColor];
+    UIColor *surface = [self pp_novaHeaderSurfaceColor];
+    UIColor *primaryText = [self pp_novaHeaderPrimaryTextColor];
+    UIColor *secondaryText = [self pp_novaHeaderSecondaryTextColor];
     self.ambientBackgroundView.backgroundColor = baseBackground;
     self.emptyStatePulseView.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    self.headerHairlineHost.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:0.28];
+    self.novaHeaderChromeView.backgroundColor = surface;
+    self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.08].CGColor;
+    self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.11],
+                                                                    [brand colorWithAlphaComponent:0.15]);
+    self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
+    self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
+                                                                       [UIColor.whiteColor colorWithAlphaComponent:0.05]);
+    self.novaHeaderSheenView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.045],
+                                                                  [brand colorWithAlphaComponent:0.085]);
+    self.headerHairlineHost.backgroundColor = [secondaryText colorWithAlphaComponent:0.10];
+    self.headerBrandHaloView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.10],
+                                                                  [brand colorWithAlphaComponent:0.18]);
+    self.headerBrandHaloView.layer.shadowColor = brand.CGColor;
     self.statusDot.backgroundColor = brand;
     self.statusDot.layer.shadowColor = brand.CGColor;
-    self.headerLiveCapsule.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.40].CGColor;
-    self.headerBrandRingView.layer.borderColor = [brand colorWithAlphaComponent:0.20].CGColor;
-    self.headerBrandMarkView.backgroundColor = PPNovaDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
-                                                                  [UIColor colorWithWhite:1.0 alpha:0.10]);
-    self.headerBrandMarkView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.30].CGColor;
+    self.headerLiveCapsule.backgroundColor = [brand colorWithAlphaComponent:0.10];
+    self.headerLiveCapsule.layer.borderColor = [brand colorWithAlphaComponent:0.14].CGColor;
+    self.headerBrandRingView.backgroundColor = [brand colorWithAlphaComponent:0.10];
+    self.headerBrandRingView.layer.borderColor = [brand colorWithAlphaComponent:0.24].CGColor;
+    self.headerBrandMarkView.backgroundColor = surface;
+    self.headerBrandMarkView.layer.borderColor = [brand colorWithAlphaComponent:0.14].CGColor;
+    self.headerNameLabel.textColor = primaryText;
+    self.headerSubtitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.92];
+    self.statusLabel.textColor = [primaryText colorWithAlphaComponent:0.78];
+    self.closeButton.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.82],
+                                                          [surface colorWithAlphaComponent:0.58]);
+    self.closeButton.layer.borderColor = [brand colorWithAlphaComponent:0.08].CGColor;
+    self.closeButton.tintColor = [primaryText colorWithAlphaComponent:0.62];
+
+    [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
+        dot.backgroundColor = idx % 2 == 0 ? brand : PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.92],
+                                                                        [UIColor.whiteColor colorWithAlphaComponent:0.68]);
+        dot.layer.shadowColor = brand.CGColor;
+    }];
 }
 
 - (void)pp_startAmbientBackgroundAnimations {
@@ -1380,147 +1431,356 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     [self.emptyStatePulseView.layer removeAllAnimations];
 }
 
-- (void)setupNovaHeader {
-    UIBlurEffectStyle blurStyle = UIBlurEffectStyleProminent;
-    if (@available(iOS 13.0, *)) {
-        blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
+- (UIColor *)pp_novaHeaderAccentColor {
+    return AppPrimaryClr ?: UIColor.systemTealColor;
+}
+
+- (UIColor *)pp_novaHeaderCanvasColor {
+    return AppBackgroundClr ?: UIColor.secondarySystemBackgroundColor;
+}
+
+- (UIColor *)pp_novaHeaderSurfaceColor {
+    return AppForgroundColr ?: UIColor.systemBackgroundColor;
+}
+
+- (UIColor *)pp_novaHeaderPrimaryTextColor {
+    return AppPrimaryTextClr ?: UIColor.labelColor;
+}
+
+- (UIColor *)pp_novaHeaderSecondaryTextColor {
+    return AppSecondaryTextClr ?: UIColor.secondaryLabelColor;
+}
+
+- (CGFloat)pp_novaHeaderBackgroundAlphaForCurrentState {
+    if (!self.novaHeaderThinkingAnimationVisible) {
+        return 0.0;
     }
-    UIVisualEffect *blurEffect = [UIBlurEffect effectWithStyle:blurStyle];
-    UIVisualEffectView *header = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+    return self.novaHeaderCollapsed ? 0.10 : 0.18;
+}
+
+- (CGFloat)pp_novaHeaderSheenAlphaForCurrentState {
+    return self.novaHeaderCollapsed ? 0.42 : 0.72;
+}
+
+- (void)pp_loadNovaIdentityAnimationIntoView:(LOTAnimationView *)animationView {
+    if (!animationView) {
+        return;
+    }
+
+    NSArray<NSDictionary<NSString *, NSString *> *> *localCandidates = @[
+        @{@"name": @"Ncolored", @"type": @"jason"},
+        @{@"name": @"Ncolored", @"type": @"json"}
+    ];
+    for (NSDictionary<NSString *, NSString *> *candidate in localCandidates) {
+        NSString *path = [[NSBundle mainBundle] pathForResource:candidate[@"name"] ofType:candidate[@"type"]];
+        if (path.length == 0) {
+            continue;
+        }
+
+        NSData *data = [NSData dataWithContentsOfFile:path];
+        if (data.length == 0) {
+            continue;
+        }
+
+        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+        LOTComposition *composition = [json isKindOfClass:NSDictionary.class] ? [LOTComposition animationFromJSON:json] : nil;
+        if (composition) {
+            animationView.animationSpeed = 0.86;
+            [animationView setSceneModel:composition];
+            [self pp_revealNovaIdentityAnimationView:animationView];
+            return;
+        }
+    }
+
+    NSArray<NSString *> *paths = @[
+        @"LottieAnimations/Ncolored.jason",
+        @"LottieAnimations/Ncolored.json"
+    ];
+    [self pp_loadNovaIdentityAnimationPaths:paths index:0 intoView:animationView];
+}
+
+- (void)pp_loadNovaIdentityAnimationPaths:(NSArray<NSString *> *)paths
+                                    index:(NSUInteger)index
+                                 intoView:(LOTAnimationView *)animationView
+{
+    if (!animationView) {
+        return;
+    }
+
+    if (index >= paths.count) {
+        __weak typeof(self) weakSelf = self;
+        __weak LOTAnimationView *weakAnimationView = animationView;
+        [AppClasses setAnimationNamed:@"nova-ring-bg"
+                               ToView:animationView
+                            withSpeed:0.86
+                           completion:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                LOTAnimationView *strongAnimationView = weakAnimationView;
+                if (!self || self.dismissed || !strongAnimationView || !success) {
+                    return;
+                }
+                [self pp_revealNovaIdentityAnimationView:strongAnimationView];
+            });
+        }];
+        return;
+    }
+
+    NSString *path = paths[index];
+    __weak typeof(self) weakSelf = self;
+    __weak LOTAnimationView *weakAnimationView = animationView;
+    [AppClasses fetchLottieJSONFromFirebasePath:path completion:^(NSDictionary *jsonDict, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            LOTAnimationView *strongAnimationView = weakAnimationView;
+            if (!self || self.dismissed || !strongAnimationView) {
+                return;
+            }
+
+            if (error || ![jsonDict isKindOfClass:NSDictionary.class]) {
+                [self pp_loadNovaIdentityAnimationPaths:paths index:index + 1 intoView:strongAnimationView];
+                return;
+            }
+
+            LOTComposition *composition = [LOTComposition animationFromJSON:jsonDict];
+            if (!composition) {
+                [self pp_loadNovaIdentityAnimationPaths:paths index:index + 1 intoView:strongAnimationView];
+                return;
+            }
+
+            strongAnimationView.animationSpeed = 0.86;
+            [strongAnimationView setSceneModel:composition];
+            [self pp_revealNovaIdentityAnimationView:strongAnimationView];
+        });
+    }];
+}
+
+- (void)pp_revealNovaIdentityAnimationView:(LOTAnimationView *)animationView {
+    if (!animationView) {
+        return;
+    }
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [animationView stop];
+        animationView.alpha = 1.0;
+        return;
+    }
+
+    [animationView play];
+    [UIView animateWithDuration:0.44
+                          delay:0.08
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        animationView.alpha = 1.0;
+        animationView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)setupNovaHeader {
+    UIView *header = [[UIView alloc] init];
     header.translatesAutoresizingMaskIntoConstraints = NO;
-    header.clipsToBounds = YES;
+    header.backgroundColor = UIColor.clearColor;
+    header.clipsToBounds = NO;
     header.layer.shadowColor = UIColor.blackColor.CGColor;
-    header.layer.shadowOpacity = 0.04;
-    header.layer.shadowRadius = 18.0;
-    header.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    header.layer.shadowOpacity = 0.07;
+    header.layer.shadowRadius = 30.0;
+    header.layer.shadowOffset = CGSizeMake(0.0, 18.0);
     [self.view addSubview:header];
     self.novaHeaderView = header;
 
-    UIView *contentView = header.contentView;
+    UIView *chromeView = [[UIView alloc] init];
+    chromeView.translatesAutoresizingMaskIntoConstraints = NO;
+    chromeView.clipsToBounds = YES;
+    chromeView.backgroundColor = [self pp_novaHeaderSurfaceColor];
+    chromeView.layer.cornerRadius = 32.0;
+    chromeView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    chromeView.layer.borderColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.08].CGColor;
+    chromeView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    if (@available(iOS 13.0, *)) {
+        chromeView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [header addSubview:chromeView];
+    self.novaHeaderChromeView = chromeView;
+
+    UIView *contentView = chromeView;
     contentView.clipsToBounds = YES;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [chromeView.topAnchor constraintEqualToAnchor:header.topAnchor constant:14.0],
+        [chromeView.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:16.0],
+        [chromeView.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-16.0],
+        [chromeView.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-8.0]
+    ]];
+
+    UIView *topGlowView = [[UIView alloc] init];
+    topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    topGlowView.userInteractionEnabled = NO;
+    topGlowView.backgroundColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.11];
+    topGlowView.layer.cornerRadius = 92.0;
+    topGlowView.layer.shadowColor = [self pp_novaHeaderAccentColor].CGColor;
+    topGlowView.layer.shadowOpacity = 0.18;
+    topGlowView.layer.shadowRadius = 22.0;
+    topGlowView.layer.shadowOffset = CGSizeZero;
+    if (@available(iOS 13.0, *)) {
+        topGlowView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [contentView addSubview:topGlowView];
+    self.novaHeaderTopGlowView = topGlowView;
+
+    UIView *bottomGlowView = [[UIView alloc] init];
+    bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomGlowView.userInteractionEnabled = NO;
+    bottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
+                                                       [UIColor.whiteColor colorWithAlphaComponent:0.05]);
+    bottomGlowView.layer.cornerRadius = 76.0;
+    bottomGlowView.layer.shadowColor = UIColor.whiteColor.CGColor;
+    bottomGlowView.layer.shadowOpacity = 0.12;
+    bottomGlowView.layer.shadowRadius = 18.0;
+    bottomGlowView.layer.shadowOffset = CGSizeZero;
+    if (@available(iOS 13.0, *)) {
+        bottomGlowView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [contentView addSubview:bottomGlowView];
+    self.novaHeaderBottomGlowView = bottomGlowView;
 
     LOTAnimationView *backgroundLottie = [[LOTAnimationView alloc] init];
     backgroundLottie.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundLottie.userInteractionEnabled = NO;
     backgroundLottie.contentMode = UIViewContentModeScaleAspectFill;
     backgroundLottie.loopAnimation = YES;
-    backgroundLottie.animationSpeed = 1.0;
+    backgroundLottie.animationSpeed = 0.92;
     backgroundLottie.alpha = 0.0;
     [contentView addSubview:backgroundLottie];
-    [contentView sendSubviewToBack:backgroundLottie];
     self.novaHeaderBackgroundLottie = backgroundLottie;
 
     [NSLayoutConstraint activateConstraints:@[
+        [topGlowView.widthAnchor constraintEqualToConstant:184.0],
+        [topGlowView.heightAnchor constraintEqualToConstant:184.0],
+        [topGlowView.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:-42.0],
+        [topGlowView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:-36.0],
+
+        [bottomGlowView.widthAnchor constraintEqualToConstant:152.0],
+        [bottomGlowView.heightAnchor constraintEqualToConstant:152.0],
+        [bottomGlowView.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:46.0],
+        [bottomGlowView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:18.0],
+
         [backgroundLottie.topAnchor constraintEqualToAnchor:contentView.topAnchor],
         [backgroundLottie.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
         [backgroundLottie.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
         [backgroundLottie.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor]
     ]];
 
-    __weak typeof(self) wself = self;
-    [AppClasses setAnimationNamed:@"novabg3"
-                           ToView:backgroundLottie
-                        withSpeed:1.0
-                       completion:^(BOOL success) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(wself) self = wself;
-            if (!self || self.dismissed) return;
-            if (success) {
-                self.currentHeaderBgAnimationName = @"novabg3";
-                [self.novaHeaderBackgroundLottie play];
-                [UIView animateWithDuration:0.55
-                                      delay:0.08
-                     usingSpringWithDamping:0.88
-                      initialSpringVelocity:0.2
-                                    options:UIViewAnimationOptionCurveEaseOut
-                                 animations:^{
-                    self.novaHeaderBackgroundLottie.alpha = self.novaHeaderCollapsed ? 0.58 : 1.0;
-                } completion:nil];
-            }
-        });
-    }];
+    UIView *sheenView = [[UIView alloc] init];
+    sheenView.translatesAutoresizingMaskIntoConstraints = NO;
+    sheenView.userInteractionEnabled = NO;
+    sheenView.alpha = [self pp_novaHeaderSheenAlphaForCurrentState];
+    sheenView.backgroundColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.045];
+    sheenView.layer.cornerRadius = 56.0;
+    if (@available(iOS 13.0, *)) {
+        sheenView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [contentView addSubview:sheenView];
+    self.novaHeaderSheenView = sheenView;
 
-    UIColor *accentColor = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
+    [NSLayoutConstraint activateConstraints:@[
+        [sheenView.widthAnchor constraintEqualToConstant:112.0],
+        [sheenView.heightAnchor constraintEqualToConstant:112.0],
+        [sheenView.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:-28.0],
+        [sheenView.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:28.0]
+    ]];
+
+    NSArray<NSDictionary<NSString *, NSNumber *> *> *dotSpecs = @[
+        @{@"x": @22.0,  @"y": @20.0, @"s": @5.0},
+        @{@"x": @70.0,  @"y": @72.0, @"s": @4.0},
+        @{@"x": @126.0, @"y": @34.0, @"s": @5.0},
+        @{@"x": @202.0, @"y": @112.0, @"s": @4.0},
+        @{@"x": @248.0, @"y": @62.0, @"s": @5.0}
+    ];
+    NSMutableArray<UIView *> *motionDots = [NSMutableArray arrayWithCapacity:dotSpecs.count];
+    for (NSDictionary<NSString *, NSNumber *> *spec in dotSpecs) {
+        UIView *dot = [[UIView alloc] init];
+        dot.translatesAutoresizingMaskIntoConstraints = NO;
+        dot.userInteractionEnabled = NO;
+        dot.alpha = 0.22;
+        CGFloat size = spec[@"s"].doubleValue;
+        dot.layer.cornerRadius = size / 2.0;
+        dot.layer.shadowOpacity = 0.10;
+        dot.layer.shadowRadius = 5.0;
+        dot.layer.shadowOffset = CGSizeZero;
+        [contentView addSubview:dot];
+        [NSLayoutConstraint activateConstraints:@[
+            [dot.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:spec[@"x"].doubleValue],
+            [dot.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:spec[@"y"].doubleValue],
+            [dot.widthAnchor constraintEqualToConstant:size],
+            [dot.heightAnchor constraintEqualToConstant:size]
+        ]];
+        [motionDots addObject:dot];
+    }
+    self.novaHeaderMotionDots = motionDots.copy;
+
+    UIColor *accentColor = [self pp_novaHeaderAccentColor];
+
+    UIView *brandHalo = [[UIView alloc] init];
+    brandHalo.translatesAutoresizingMaskIntoConstraints = NO;
+    brandHalo.userInteractionEnabled = NO;
+    brandHalo.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
+    brandHalo.layer.cornerRadius = 38.0;
+    brandHalo.layer.shadowColor = accentColor.CGColor;
+    brandHalo.layer.shadowOpacity = 0.16;
+    brandHalo.layer.shadowRadius = 18.0;
+    brandHalo.layer.shadowOffset = CGSizeZero;
+    if (@available(iOS 13.0, *)) {
+        brandHalo.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [contentView addSubview:brandHalo];
+    self.headerBrandHaloView = brandHalo;
 
     UIView *brandRing = [[UIView alloc] init];
     brandRing.translatesAutoresizingMaskIntoConstraints = NO;
-    brandRing.backgroundColor = UIColor.clearColor;
-    brandRing.layer.cornerRadius = 25.0;
-    brandRing.layer.borderWidth = 0.8 / UIScreen.mainScreen.scale;
-    brandRing.layer.borderColor = [accentColor colorWithAlphaComponent:0.20].CGColor;
+    brandRing.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
+    brandRing.layer.cornerRadius = 31.0;
+    brandRing.layer.borderWidth = 1.2 / UIScreen.mainScreen.scale;
+    brandRing.layer.borderColor = [accentColor colorWithAlphaComponent:0.24].CGColor;
+    brandRing.layer.shadowColor = UIColor.blackColor.CGColor;
+    brandRing.layer.shadowOpacity = 0.07;
+    brandRing.layer.shadowRadius = 16.0;
+    brandRing.layer.shadowOffset = CGSizeMake(0.0, 9.0);
     if (@available(iOS 13.0, *)) {
         brandRing.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [contentView addSubview:brandRing];
     self.headerBrandRingView = brandRing;
 
-    LOTAnimationView *ringLottie = [[LOTAnimationView alloc] init];
-    ringLottie.translatesAutoresizingMaskIntoConstraints = NO;
-    ringLottie.userInteractionEnabled = NO;
-    ringLottie.contentMode = UIViewContentModeScaleAspectFill;
-    ringLottie.loopAnimation = YES;
-    ringLottie.animationSpeed = 1.0;
-    ringLottie.alpha = 0.0;
-    ringLottie.layer.cornerRadius = 25.0;
-    ringLottie.clipsToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        ringLottie.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [brandRing addSubview:ringLottie];
-    self.novaRingBackgroundLottie = ringLottie;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [ringLottie.topAnchor constraintEqualToAnchor:brandRing.topAnchor],
-        [ringLottie.leadingAnchor constraintEqualToAnchor:brandRing.leadingAnchor],
-        [ringLottie.trailingAnchor constraintEqualToAnchor:brandRing.trailingAnchor],
-        [ringLottie.bottomAnchor constraintEqualToAnchor:brandRing.bottomAnchor]
-    ]];
-
-    [AppClasses setAnimationNamed:@"nova-ring-bg"
-                           ToView:ringLottie
-                        withSpeed:1.0
-                       completion:^(BOOL success) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(wself) self = wself;
-            if (!self || self.dismissed) return;
-            if (success) {
-                [self.novaRingBackgroundLottie play];
-                [UIView animateWithDuration:0.42
-                                      delay:0.12
-                     usingSpringWithDamping:0.86
-                      initialSpringVelocity:0.3
-                                    options:UIViewAnimationOptionCurveEaseOut
-                                 animations:^{
-                    self.novaRingBackgroundLottie.alpha = 1.0;
-                } completion:nil];
-            }
-        });
-    }];
-
     UIView *brandMark = [[UIView alloc] init];
     brandMark.translatesAutoresizingMaskIntoConstraints = NO;
-    brandMark.backgroundColor = PPNovaDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
-                                                   [UIColor colorWithWhite:1.0 alpha:0.10]);
-    brandMark.layer.cornerRadius = 20.0;
-    brandMark.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
-    brandMark.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.30].CGColor;
+    brandMark.backgroundColor = [self pp_novaHeaderSurfaceColor];
+    brandMark.layer.cornerRadius = 22.0;
+    brandMark.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    brandMark.layer.borderColor = [accentColor colorWithAlphaComponent:0.14].CGColor;
     brandMark.layer.shadowColor = UIColor.blackColor.CGColor;
-    brandMark.layer.shadowOpacity = 0.07;
+    brandMark.layer.shadowOpacity = 0.08;
     brandMark.layer.shadowRadius = 12.0;
-    brandMark.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    brandMark.layer.shadowOffset = CGSizeMake(0.0, 7.0);
     if (@available(iOS 13.0, *)) {
         brandMark.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [contentView addSubview:brandMark];
     self.headerBrandMarkView = brandMark;
 
-    UILabel *brandLabel = [[UILabel alloc] init];
-    brandLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    brandLabel.text = @"N";
-    brandLabel.textAlignment = NSTextAlignmentCenter;
-    brandLabel.textColor = accentColor;
-    brandLabel.font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightBold];
-    [brandMark addSubview:brandLabel];
+    LOTAnimationView *identityLottie = [[LOTAnimationView alloc] init];
+    identityLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    identityLottie.userInteractionEnabled = NO;
+    identityLottie.contentMode = UIViewContentModeScaleAspectFit;
+    identityLottie.loopAnimation = YES;
+    identityLottie.animationSpeed = 0.86;
+    identityLottie.alpha = 0.0;
+    identityLottie.transform = CGAffineTransformMakeScale(0.94, 0.94);
+    identityLottie.clipsToBounds = YES;
+    [brandMark addSubview:identityLottie];
+    self.novaRingBackgroundLottie = identityLottie;
+    [self pp_loadNovaIdentityAnimationIntoView:identityLottie];
 
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1528,6 +1788,8 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     nameLabel.textColor = AppPrimaryTextClr;
     nameLabel.text = kLang(@"nova_title");
     nameLabel.textAlignment = NSTextAlignmentCenter;
+    nameLabel.adjustsFontSizeToFitWidth = YES;
+    nameLabel.minimumScaleFactor = 0.82;
     if (!Language.isRTL) {
         // Subtle premium tracking on the wordmark.
         NSAttributedString *attr = [[NSAttributedString alloc]
@@ -1544,16 +1806,14 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.92];
     subtitleLabel.text = kLang(@"nova_subtitle");
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    subtitleLabel.adjustsFontSizeToFitWidth = YES;
+    subtitleLabel.minimumScaleFactor = 0.86;
     [contentView addSubview:subtitleLabel];
     self.headerSubtitleLabel = subtitleLabel;
 
-    UIVisualEffectView *liveCapsule;
-    if (@available(iOS 13.0, *)) {
-        liveCapsule = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
-    } else {
-        liveCapsule = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular]];
-    }
+    UIView *liveCapsule = [[UIView alloc] init];
     liveCapsule.translatesAutoresizingMaskIntoConstraints = NO;
+    liveCapsule.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
     liveCapsule.layer.cornerRadius = 13.0;
     liveCapsule.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
@@ -1564,7 +1824,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     [contentView addSubview:liveCapsule];
     self.headerLiveCapsule = liveCapsule;
 
-    UIView *liveContent = liveCapsule.contentView;
+    UIView *liveContent = liveCapsule;
 
     UIView *accentDot = [[UIView alloc] init];
     accentDot.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1596,8 +1856,24 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
         [closeButton setTitle:@"✕" forState:UIControlStateNormal];
     }
     closeButton.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:0.62];
+    closeButton.layer.cornerRadius = 18.0;
+    closeButton.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
+    closeButton.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
+    closeButton.layer.shadowColor = UIColor.blackColor.CGColor;
+    closeButton.layer.shadowOpacity = 0.035;
+    closeButton.layer.shadowRadius = 10.0;
+    closeButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    if (@available(iOS 13.0, *)) {
+        closeButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
     closeButton.accessibilityLabel = kLang(@"nova_close_accessibility");
     closeButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [closeButton addTarget:self
+                    action:@selector(pp_handleNovaHeaderControlPressDown:)
+          forControlEvents:UIControlEventTouchDown];
+    [closeButton addTarget:self
+                    action:@selector(pp_handleNovaHeaderControlPressUp:)
+          forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
     [closeButton addTarget:self
                     action:@selector(pp_handleNovaCloseTapped:)
           forControlEvents:UIControlEventTouchUpInside];
@@ -1613,7 +1889,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 
     header.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", nameLabel.text, statusLabel.text];
 
-    CGFloat topOffset = 22.0; // Sheet grabber clearance.
+    CGFloat topOffset = 20.0; // Sheet grabber clearance inside the Pro-login style host.
     self.novaHeaderExpandedBottomConstraint = [liveCapsule.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-14.0];
     self.novaHeaderCollapsedBottomConstraint = [brandRing.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-12.0];
     self.novaHeaderCollapsedBottomConstraint.active = NO;
@@ -1623,26 +1899,35 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
         [header.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
 
+        [brandHalo.centerXAnchor constraintEqualToAnchor:brandRing.centerXAnchor],
+        [brandHalo.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor],
+        [brandHalo.widthAnchor constraintEqualToConstant:76.0],
+        [brandHalo.heightAnchor constraintEqualToConstant:76.0],
+
         [brandRing.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
         [brandRing.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
-        [brandRing.widthAnchor constraintEqualToConstant:50.0],
-        [brandRing.heightAnchor constraintEqualToConstant:50.0],
+        [brandRing.widthAnchor constraintEqualToConstant:62.0],
+        [brandRing.heightAnchor constraintEqualToConstant:62.0],
 
         [brandMark.centerXAnchor constraintEqualToAnchor:brandRing.centerXAnchor],
         [brandMark.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor],
-        [brandMark.widthAnchor constraintEqualToConstant:40.0],
-        [brandMark.heightAnchor constraintEqualToConstant:40.0],
+        [brandMark.widthAnchor constraintEqualToConstant:46.0],
+        [brandMark.heightAnchor constraintEqualToConstant:46.0],
 
-        [brandLabel.topAnchor constraintEqualToAnchor:brandMark.topAnchor],
-        [brandLabel.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor],
-        [brandLabel.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor],
-        [brandLabel.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor],
+        [identityLottie.topAnchor constraintEqualToAnchor:brandMark.topAnchor constant:-4.0],
+        [identityLottie.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor constant:-4.0],
+        [identityLottie.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor constant:4.0],
+        [identityLottie.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor constant:4.0],
 
         [nameLabel.topAnchor constraintEqualToAnchor:brandRing.bottomAnchor constant:8.0],
         [nameLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
+        [nameLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:contentView.leadingAnchor constant:64.0],
+        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:contentView.trailingAnchor constant:-64.0],
 
         [subtitleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:2.0],
         [subtitleLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
+        [subtitleLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:contentView.leadingAnchor constant:28.0],
+        [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:contentView.trailingAnchor constant:-28.0],
 
         [liveCapsule.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0],
         [liveCapsule.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
@@ -1697,10 +1982,13 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     self.novaHeaderCollapsedBottomConstraint.active = collapsed;
 
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
-    NSTimeInterval duration = (animated && !reduceMotion) ? 0.34 : 0.0;
+    NSTimeInterval duration = (animated && !reduceMotion) ? (collapsed ? 0.32 : 0.46) : 0.0;
     CGFloat textAlpha = collapsed ? 0.0 : 1.0;
     CGFloat capsuleAlpha = collapsed ? 0.0 : 1.0;
     CGAffineTransform textTransform = collapsed ? CGAffineTransformMakeTranslation(0.0, -8.0) : CGAffineTransformIdentity;
+    CGAffineTransform ringTransform = collapsed ? CGAffineTransformMakeScale(0.94, 0.94) : CGAffineTransformIdentity;
+    CGAffineTransform haloTransform = collapsed ? CGAffineTransformMakeScale(0.78, 0.78) : CGAffineTransformIdentity;
+    CGAffineTransform glowTransform = collapsed ? CGAffineTransformMakeTranslation(0.0, -10.0) : CGAffineTransformIdentity;
 
     void (^changes)(void) = ^{
         self.headerNameLabel.alpha = textAlpha;
@@ -1709,25 +1997,40 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
         self.headerNameLabel.transform = textTransform;
         self.headerSubtitleLabel.transform = textTransform;
         self.headerLiveCapsule.transform = collapsed ? CGAffineTransformMakeTranslation(0.0, -10.0) : CGAffineTransformIdentity;
-        self.novaHeaderBackgroundLottie.alpha = collapsed ? 0.58 : 1.0;
+        self.headerBrandHaloView.alpha = collapsed ? 0.56 : 1.0;
+        self.headerBrandHaloView.transform = haloTransform;
+        self.headerBrandRingView.transform = ringTransform;
+        self.headerBrandMarkView.transform = ringTransform;
+        self.novaRingBackgroundLottie.transform = collapsed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
+        self.novaHeaderTopGlowView.alpha = collapsed ? 0.62 : 1.0;
+        self.novaHeaderBottomGlowView.alpha = collapsed ? 0.50 : 1.0;
+        self.novaHeaderTopGlowView.transform = glowTransform;
+        self.novaHeaderBottomGlowView.transform = collapsed ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
+        self.novaHeaderSheenView.alpha = [self pp_novaHeaderSheenAlphaForCurrentState];
+        self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
+        self.novaHeaderView.layer.shadowOpacity = collapsed ? 0.045 : 0.07;
+        [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
+            dot.alpha = collapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
+            dot.transform = collapsed ? CGAffineTransformMakeScale(0.82, 0.82) : CGAffineTransformIdentity;
+        }];
         [self pp_applyNovaTableInsetsForCurrentHeaderState];
         [self.view layoutIfNeeded];
-        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
     };
 
     if (duration <= 0.0) {
         changes();
+        [self pp_startHeaderLiveAnimations];
         return;
     }
 
     [UIView animateWithDuration:duration
                           delay:0.0
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.18
+         usingSpringWithDamping:0.91
+          initialSpringVelocity:0.12
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:changes
                      completion:^(__unused BOOL finished) {
-        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
+        [self pp_startHeaderLiveAnimations];
     }];
 }
 
@@ -1739,12 +2042,39 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     CGFloat topInset = self.novaHeaderCollapsed ? PPNovaCollapsedTableTopInset : PPNovaExpandedTableTopInset;
     UIEdgeInsets inset = self.tableView.contentInset;
     inset.top = topInset;
-    inset.bottom = PPNovaTableBottomInset;
     self.tableView.contentInset = inset;
     self.tableView.scrollIndicatorInsets = inset;
 }
 
-- (void)pp_handleNovaCloseTapped:(__unused UIButton *)sender {
+- (void)pp_handleNovaHeaderControlPressDown:(UIButton *)sender {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        sender.alpha = 0.78;
+        return;
+    }
+
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.94, 0.94);
+        sender.alpha = 0.82;
+    } completion:nil];
+}
+
+- (void)pp_handleNovaHeaderControlPressUp:(UIButton *)sender {
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.18
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        sender.transform = CGAffineTransformIdentity;
+        sender.alpha = 1.0;
+    } completion:nil];
+}
+
+- (void)pp_handleNovaCloseTapped:(UIButton *)sender {
+    [self pp_handleNovaHeaderControlPressUp:sender];
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:nil];
 }
@@ -1753,72 +2083,200 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
 
     [self.statusDot.layer removeAllAnimations];
+    [self.novaHeaderTopGlowView.layer removeAllAnimations];
+    [self.novaHeaderBottomGlowView.layer removeAllAnimations];
+    [self.novaHeaderSheenView.layer removeAllAnimations];
+    [self.headerBrandHaloView.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
     [self.headerBrandMarkView.layer removeAllAnimations];
+    for (UIView *dot in self.novaHeaderMotionDots) {
+        [dot.layer removeAllAnimations];
+    }
     if (reduceMotion) {
         self.statusDot.alpha = 1.0;
         self.statusDot.transform = CGAffineTransformIdentity;
+        self.novaHeaderTopGlowView.transform = CGAffineTransformIdentity;
+        self.novaHeaderBottomGlowView.transform = CGAffineTransformIdentity;
+        self.novaHeaderSheenView.transform = CGAffineTransformIdentity;
+        self.headerBrandHaloView.alpha = self.novaHeaderCollapsed ? 0.56 : 1.0;
+        self.headerBrandHaloView.transform = self.novaHeaderCollapsed ? CGAffineTransformMakeScale(0.78, 0.78) : CGAffineTransformIdentity;
         self.headerBrandRingView.alpha = 1.0;
-        self.headerBrandRingView.transform = CGAffineTransformIdentity;
-        self.headerBrandMarkView.transform = CGAffineTransformIdentity;
+        self.headerBrandRingView.transform = self.novaHeaderCollapsed ? CGAffineTransformMakeScale(0.94, 0.94) : CGAffineTransformIdentity;
+        self.headerBrandMarkView.transform = self.headerBrandRingView.transform;
+        [self.novaHeaderBackgroundLottie stop];
+        self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
+        [self.novaRingBackgroundLottie stop];
+        [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
+            dot.alpha = self.novaHeaderCollapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
+            dot.transform = CGAffineTransformIdentity;
+        }];
         return;
     }
 
+    if (self.novaHeaderThinkingAnimationVisible) {
+        [self.novaHeaderBackgroundLottie play];
+    } else {
+        [self.novaHeaderBackgroundLottie stop];
+        self.novaHeaderBackgroundLottie.alpha = 0.0;
+    }
+    [self.novaRingBackgroundLottie play];
+
     CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    scale.fromValue = @0.78;
-    scale.toValue = @1.18;
-    scale.duration = 1.4;
+    scale.fromValue = @0.88;
+    scale.toValue = @1.08;
+    scale.duration = 2.4;
     scale.autoreverses = YES;
     scale.repeatCount = HUGE_VALF;
     scale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.statusDot.layer addAnimation:scale forKey:@"pp_statusDotScale"];
 
     CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    opacity.fromValue = @0.55;
+    opacity.fromValue = @0.62;
     opacity.toValue = @1.0;
-    opacity.duration = 1.4;
+    opacity.duration = 2.4;
     opacity.autoreverses = YES;
     opacity.repeatCount = HUGE_VALF;
     opacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.statusDot.layer addAnimation:opacity forKey:@"pp_statusDotOpacity"];
 
+    CABasicAnimation *topGlowDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    topGlowDrift.fromValue = @(-10.0);
+    topGlowDrift.toValue = @(2.0);
+    topGlowDrift.duration = 5.6;
+    topGlowDrift.autoreverses = YES;
+    topGlowDrift.repeatCount = HUGE_VALF;
+    topGlowDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderTopGlowView.layer addAnimation:topGlowDrift forKey:@"pp_novaHeaderTopGlowDrift"];
+
+    CABasicAnimation *bottomGlowDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    bottomGlowDrift.fromValue = @(10.0);
+    bottomGlowDrift.toValue = @(-2.0);
+    bottomGlowDrift.duration = 5.8;
+    bottomGlowDrift.autoreverses = YES;
+    bottomGlowDrift.repeatCount = HUGE_VALF;
+    bottomGlowDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderBottomGlowView.layer addAnimation:bottomGlowDrift forKey:@"pp_novaHeaderBottomGlowDrift"];
+
+    CABasicAnimation *sheenBreath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    sheenBreath.fromValue = @([self pp_novaHeaderSheenAlphaForCurrentState] * 0.62);
+    sheenBreath.toValue = @([self pp_novaHeaderSheenAlphaForCurrentState]);
+    sheenBreath.duration = 5.2;
+    sheenBreath.autoreverses = YES;
+    sheenBreath.repeatCount = HUGE_VALF;
+    sheenBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderSheenView.layer addAnimation:sheenBreath forKey:@"pp_novaHeaderSheenBreath"];
+
+    CFTimeInterval baseTime = CACurrentMediaTime();
+    [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
+        CAKeyframeAnimation *dotScale = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+        dotScale.values = @[@0.82, @1.28, @0.92];
+        dotScale.keyTimes = @[@0.0, @0.48, @1.0];
+        dotScale.duration = 4.6 + (idx * 0.35);
+        dotScale.repeatCount = HUGE_VALF;
+        dotScale.autoreverses = YES;
+        dotScale.beginTime = baseTime + (idx * 0.18);
+        dotScale.timingFunctions = @[
+            [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+            [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]
+        ];
+        [dot.layer addAnimation:dotScale forKey:@"pp_novaHeaderDotScale"];
+
+        CAKeyframeAnimation *dotOpacity = [CAKeyframeAnimation animationWithKeyPath:@"opacity"];
+        CGFloat baseAlpha = self.novaHeaderCollapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
+        dotOpacity.values = @[@(baseAlpha * 0.62), @(MIN(baseAlpha + 0.18, 0.48)), @(baseAlpha)];
+        dotOpacity.keyTimes = @[@0.0, @0.50, @1.0];
+        dotOpacity.duration = dotScale.duration;
+        dotOpacity.repeatCount = HUGE_VALF;
+        dotOpacity.autoreverses = YES;
+        dotOpacity.beginTime = dotScale.beginTime;
+        [dot.layer addAnimation:dotOpacity forKey:@"pp_novaHeaderDotOpacity"];
+    }];
+
+    CABasicAnimation *haloOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    haloOpacity.fromValue = @(self.novaHeaderCollapsed ? 0.36 : 0.58);
+    haloOpacity.toValue = @(self.novaHeaderCollapsed ? 0.62 : 1.0);
+    haloOpacity.duration = 6.2;
+    haloOpacity.autoreverses = YES;
+    haloOpacity.repeatCount = HUGE_VALF;
+    haloOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.headerBrandHaloView.layer addAnimation:haloOpacity forKey:@"pp_novaBrandHaloOpacity"];
+
+    CABasicAnimation *haloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    haloScale.fromValue = @(self.novaHeaderCollapsed ? 0.78 : 0.96);
+    haloScale.toValue = @(self.novaHeaderCollapsed ? 0.86 : 1.055);
+    haloScale.duration = 6.2;
+    haloScale.autoreverses = YES;
+    haloScale.repeatCount = HUGE_VALF;
+    haloScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.headerBrandHaloView.layer addAnimation:haloScale forKey:@"pp_novaBrandHaloScale"];
+
     CABasicAnimation *ringOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    ringOpacity.fromValue = @0.42;
+    ringOpacity.fromValue = @0.62;
     ringOpacity.toValue = @1.0;
-    ringOpacity.duration = 4.8;
+    ringOpacity.duration = 5.6;
     ringOpacity.autoreverses = YES;
     ringOpacity.repeatCount = HUGE_VALF;
     ringOpacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.headerBrandRingView.layer addAnimation:ringOpacity forKey:@"pp_novaBrandRingOpacity"];
 
     CABasicAnimation *ringScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    ringScale.fromValue = @0.985;
-    ringScale.toValue = @1.035;
-    ringScale.duration = 4.8;
+    ringScale.fromValue = @(self.novaHeaderCollapsed ? 0.94 : 0.992);
+    ringScale.toValue = @(self.novaHeaderCollapsed ? 0.98 : 1.022);
+    ringScale.duration = 5.6;
     ringScale.autoreverses = YES;
     ringScale.repeatCount = HUGE_VALF;
     ringScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.headerBrandRingView.layer addAnimation:ringScale forKey:@"pp_novaBrandRingScale"];
-
-    CABasicAnimation *markScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    markScale.fromValue = @0.99;
-    markScale.toValue = @1.018;
-    markScale.duration = 5.6;
-    markScale.autoreverses = YES;
-    markScale.repeatCount = HUGE_VALF;
-    markScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.headerBrandMarkView.layer addAnimation:markScale forKey:@"pp_novaBrandMarkScale"];
 }
 
 - (void)pp_stopHeaderLiveAnimations {
     [self.statusDot.layer removeAllAnimations];
+    [self.novaHeaderTopGlowView.layer removeAllAnimations];
+    [self.novaHeaderBottomGlowView.layer removeAllAnimations];
+    [self.novaHeaderSheenView.layer removeAllAnimations];
+    [self.headerBrandHaloView.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
     [self.headerBrandMarkView.layer removeAllAnimations];
+    for (UIView *dot in self.novaHeaderMotionDots) {
+        [dot.layer removeAllAnimations];
+    }
+    [self.novaHeaderBackgroundLottie stop];
+    [self.novaRingBackgroundLottie stop];
+}
+
+- (void)pp_showThinkingHeaderLottieWithAnimation:(NSString *)animationName {
+    self.novaHeaderThinkingAnimationVisible = YES;
+    [self pp_transitionHeaderBackgroundToAnimation:animationName];
+}
+
+- (void)pp_hideThinkingHeaderLottie {
+    self.novaHeaderThinkingAnimationVisible = NO;
+    self.currentHeaderBgAnimationName = nil;
+
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.novaHeaderBackgroundLottie.alpha = 0.0;
+    } completion:^(__unused BOOL finished) {
+        if (!self.novaHeaderThinkingAnimationVisible) {
+            [self.novaHeaderBackgroundLottie stop];
+        }
+    }];
 }
 
 - (void)pp_transitionHeaderBackgroundToAnimation:(NSString *)animationName {
     if (!self.novaHeaderBackgroundLottie) return;
-    if ([self.currentHeaderBgAnimationName isEqualToString:animationName]) return;
+    if ([self.currentHeaderBgAnimationName isEqualToString:animationName]) {
+        [self.novaHeaderBackgroundLottie play];
+        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.24
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
+        } completion:nil];
+        return;
+    }
 
     self.currentHeaderBgAnimationName = animationName;
 
@@ -1838,7 +2296,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(wself) self = wself;
                 if (!self || self.dismissed) return;
-                if (success) {
+                if (success && self.novaHeaderThinkingAnimationVisible) {
                     [self.novaHeaderBackgroundLottie play];
                     [UIView animateWithDuration:0.38
                                           delay:0.06
@@ -1846,7 +2304,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
                           initialSpringVelocity:0.3
                                         options:UIViewAnimationOptionCurveEaseOut
                                      animations:^{
-                        self.novaHeaderBackgroundLottie.alpha = self.novaHeaderCollapsed ? 0.58 : 0.38;
+                        self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
                     } completion:nil];
                 }
             });
@@ -1987,10 +2445,12 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     subtitleLabel.text = kLang(@"nova_empty_subtitle");
     [emptyView addSubview:subtitleLabel];
 
+    self.emptyStateCenterYConstraint = [emptyView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:8.0];
+
     [NSLayoutConstraint activateConstraints:@[
         [emptyView.leadingAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.leadingAnchor constant:12.0],
         [emptyView.trailingAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.trailingAnchor constant:-12.0],
-        [emptyView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:8.0],
+        self.emptyStateCenterYConstraint,
 
         [pulseView.topAnchor constraintEqualToAnchor:emptyView.topAnchor],
         [pulseView.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor],
@@ -2091,7 +2551,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 
     NSInteger roll = arc4random_uniform(5) + 1;
     NSString *thinkingAnim = [NSString stringWithFormat:@"novabg%ld", (long)roll];
-    [self pp_transitionHeaderBackgroundToAnimation:thinkingAnim];
+    [self pp_showThinkingHeaderLottieWithAnimation:thinkingAnim];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.typingContainer.alpha = 1.0;
@@ -2113,7 +2573,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 - (void)hideNovaTyping {
     self.statusLabel.text = kLang(@"nova_status_online");
 
-    [self pp_transitionHeaderBackgroundToAnimation:@"novabg1"];
+    [self pp_hideThinkingHeaderLottie];
 
     [UIView animateWithDuration:0.22
                           delay:0.0
@@ -2166,7 +2626,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
         [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:12],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
+        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
     ]];
 
     self.tableView.delegate = self;
@@ -2225,15 +2685,24 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     self.inputBarBottomConstraint.constant = keyboardOffset > 0.0
         ? -(keyboardOffset + 8.0)
         : self.inputBarRestingBottomConstant;
+        
+    self.emptyStateCenterYConstraint.constant = 8.0 - (keyboardOffset > 0 ? keyboardOffset / 2.0 : 0);
+
+    // Update content insets
+    CGFloat inputBarTotalHeight = CGRectGetHeight(self.inputbar.frame);
+    if (inputBarTotalHeight == 0) inputBarTotalHeight = 60.0; // fallback
+    CGFloat bottomInset = keyboardOffset + inputBarTotalHeight + PPNovaTableBottomInset + (keyboardOffset > 0 ? 8.0 : -self.inputBarRestingBottomConstant);
+    UIEdgeInsets currentInset = self.tableView.contentInset;
+    currentInset.bottom = bottomInset;
+    self.tableView.contentInset = currentInset;
+    self.tableView.scrollIndicatorInsets = currentInset;
 
     UIViewAnimationOptions options = ((UIViewAnimationOptions)curve << 16) |
         UIViewAnimationOptionBeginFromCurrentState |
         UIViewAnimationOptionAllowUserInteraction;
     [UIView animateWithDuration:duration delay:0.0 options:options animations:^{
         [self.view layoutIfNeeded];
-        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
     } completion:^(BOOL finished) {
-        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
         [self scrollToBottomAnimated:NO];
     }];
 }
@@ -2265,7 +2734,7 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 
     if (msg.messageType == ChatMessageTypeNovaReview) {
         PPNovaReviewMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:[PPNovaReviewMessageCell reuseIdentifier] forIndexPath:indexPath];
-        [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
+        [cell configureWithMessage:msg maxWidth:self.view.hx_w * 0.8];
         return cell;
     }
 
@@ -2370,11 +2839,19 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeHeight:(CGFloat)height {
+    CGFloat inputBarTotalHeight = CGRectGetHeight(self.inputbar.frame);
+    CGFloat keyboardOffset = -(self.inputBarBottomConstraint.constant) - 8.0;
+    if (keyboardOffset < 0) keyboardOffset = 0;
+    
+    CGFloat bottomInset = keyboardOffset + height + PPNovaTableBottomInset + (keyboardOffset > 0 ? 8.0 : -self.inputBarRestingBottomConstant);
+    UIEdgeInsets currentInset = self.tableView.contentInset;
+    currentInset.bottom = bottomInset;
+    self.tableView.contentInset = currentInset;
+    self.tableView.scrollIndicatorInsets = currentInset;
+
     [UIView animateWithDuration:0.18 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction animations:^{
         [self.view layoutIfNeeded];
-        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
     } completion:^(__unused BOOL finished) {
-        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
         [self scrollToBottomAnimated:NO];
     }];
 }
@@ -2530,6 +3007,8 @@ static const CGFloat PPNovaTableBottomInset = 12.0;
     msg.status = ChatMessageStatusSent;
     msg.messageType = ChatMessageTypeText;
     msg.senderID = isIncoming ? @"nova_bot_id" : [UserManager sharedManager].currentUser.ID;
+
+    [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:isIncoming ? @"nova" : @"user" text:text];
 
     [self.messages addObject:msg];
     [self pp_trimMessageHistoryIfNeeded];

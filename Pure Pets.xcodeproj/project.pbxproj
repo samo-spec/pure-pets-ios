@@ -249,6 +249,7 @@
 		F24C03642D2C2D6E00A9F61F /* UIColor+PYSearchExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F24C035A2D2C2D6E00A9F61F /* UIColor+PYSearchExtension.m */; };
 		F24C04D52D2E3E0400A9F61F /* FileModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F24C04D42D2E3E0400A9F61F /* FileModel.m */; };
 		F24D2AB42FABEF5B0015EC83 /* PPNovaReviewMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F24D2AB32FABEF5B0015EC83 /* PPNovaReviewMessageCell.m */; };
+		F24D2AB72FAC4EB50015EC83 /* PPNovaLocalChatMemory.m in Sources */ = {isa = PBXBuildFile; fileRef = F24D2AB62FAC4EB50015EC83 /* PPNovaLocalChatMemory.m */; };
 		F24D6EEC2EB9F00A009962D0 /* UserManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F24D6EEB2EB9F00A009962D0 /* UserManager.m */; };
 		F24F36382D87C8050094C6F2 /* buyerDataVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F24F36372D87C8050094C6F2 /* buyerDataVC.m */; };
 		F24F363B2D87DFAB0094C6F2 /* BuyerModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F24F363A2D87DFAB0094C6F2 /* BuyerModel.m */; };
@@ -1257,6 +1258,8 @@
 		F24C04D42D2E3E0400A9F61F /* FileModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileModel.m; sourceTree = "<group>"; };
 		F24D2AB22FABEF5B0015EC83 /* PPNovaReviewMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaReviewMessageCell.h; sourceTree = "<group>"; };
 		F24D2AB32FABEF5B0015EC83 /* PPNovaReviewMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaReviewMessageCell.m; sourceTree = "<group>"; };
+		F24D2AB52FAC4EB50015EC83 /* PPNovaLocalChatMemory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaLocalChatMemory.h; sourceTree = "<group>"; };
+		F24D2AB62FAC4EB50015EC83 /* PPNovaLocalChatMemory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaLocalChatMemory.m; sourceTree = "<group>"; };
 		F24D6EEA2EB9F00A009962D0 /* UserManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserManager.h; sourceTree = "<group>"; };
 		F24D6EEB2EB9F00A009962D0 /* UserManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserManager.m; sourceTree = "<group>"; };
 		F24F36362D87C8050094C6F2 /* buyerDataVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = buyerDataVC.h; sourceTree = "<group>"; };
@@ -3330,6 +3333,8 @@
 		F26E3AFD2E35B344007BB3FF /* GEMENI */ = {
 			isa = PBXGroup;
 			children = (
+				F24D2AB52FAC4EB50015EC83 /* PPNovaLocalChatMemory.h */,
+				F24D2AB62FAC4EB50015EC83 /* PPNovaLocalChatMemory.m */,
 				F24D2AB22FABEF5B0015EC83 /* PPNovaReviewMessageCell.h */,
 				F24D2AB32FABEF5B0015EC83 /* PPNovaReviewMessageCell.m */,
 				F22ED2472FAA101F72C2B /* PPNovaFloatingInputBarView.h */,
@@ -5494,6 +5499,7 @@
 				F20F31AD2D177602001D1D57 /* PGDatePicker+Time.m in Sources */,
 				F2B09F9C2D1E22D300FB3B26 /* MYIntroductionView.m in Sources */,
 				F2EF8EEB2F87765600A797B3 /* PPProfileAddressCell.m in Sources */,
+				F24D2AB72FAC4EB50015EC83 /* PPNovaLocalChatMemory.m in Sources */,
 				F2B09F9D2D1E22D300FB3B26 /* MYIntroductionPanel.m in Sources */,
 				F20956732F85677D007C4ABA /* PPPetProfile.m in Sources */,
 				F20F31AE2D177602001D1D57 /* UIColor+PGHex.m in Sources */,

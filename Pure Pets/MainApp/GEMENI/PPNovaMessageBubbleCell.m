@@ -40,6 +40,11 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     return PPNovaTextStartsRTL(text) ? NSTextAlignmentRight : NSTextAlignmentLeft;
 }
 
+static const CGFloat PPNovaBubbleMinimumWidth = 60.0;
+static const CGFloat PPNovaAssistantHorizontalReserve = 120.0;
+static const CGFloat PPNovaUserHorizontalReserve = 86.0;
+static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
+
 @interface PPNovaMessageBubbleCell ()
 
 @property (nonatomic, strong) UIView *avatarView;
@@ -58,7 +63,6 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
 @property (nonatomic, strong) NSLayoutConstraint *bubbleWidthConstraint;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *assistantConstraints;
 @property (nonatomic, copy) NSArray<NSLayoutConstraint *> *userConstraints;
-@property (nonatomic, assign) CGFloat lastAppliedMaxWidth;
 @property (nonatomic, assign) CGFloat configuredMaxWidth;
 
 @property (nonatomic, strong, nullable) ChatMessageModel *messageModel;
@@ -91,7 +95,6 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     self.statusImageView.image = nil;
     self.statusImageView.hidden = YES;
     self.configuredMaxWidth = 0.0;
-    self.lastAppliedMaxWidth = 0.0;
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
     [self setActionTitles:nil];
@@ -103,11 +106,6 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
 
 - (void)layoutSubviews {
     [super layoutSubviews];
-
-    CGFloat contentWidth = CGRectGetWidth(self.contentView.bounds);
-    if (contentWidth > 1.0 && fabs(contentWidth - self.lastAppliedMaxWidth) > 1.0) {
-        [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:contentWidth];
-    }
     self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
                                                                         cornerRadius:self.bubbleMaterialView.layer.cornerRadius].CGPath;
 }
@@ -165,20 +163,20 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     self.contentStack = [[UIStackView alloc] init];
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.contentStack.axis = UILayoutConstraintAxisVertical;
-    self.contentStack.alignment = UIStackViewAlignmentFill;
+    self.contentStack.alignment = UIStackViewAlignmentLeading;
     self.contentStack.spacing = 7.0;
     [self.bubbleMaterialView.contentView addSubview:self.contentStack];
 
     self.messageLabel = [[UILabel alloc] init];
     self.messageLabel.numberOfLines = 0;
     self.messageLabel.lineBreakMode = NSLineBreakByWordWrapping;
-    self.messageLabel.textAlignment = NSTextAlignmentNatural;
+    self.messageLabel.textAlignment = GM.setAligment;
     UIFont *bodyFont = [GM MidFontWithSize:PPFontCallout] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightRegular];
     self.messageLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:bodyFont];
     self.messageLabel.adjustsFontForContentSizeCategory = YES;
-    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.messageLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    ///[self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    ////[self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    //[self.messageLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
     [self.contentStack addArrangedSubview:self.messageLabel];
 
     self.typingDotsStack = [[UIStackView alloc] init];
@@ -231,18 +229,17 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
         [self.statusImageView.heightAnchor constraintEqualToConstant:12.0]
     ]];
 
-    [self.contentStack setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    [self.contentStack setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    //[self.contentStack setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    //[self.contentStack setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
 
-    self.bubbleWidthConstraint = [self.bubbleShadowView.widthAnchor constraintEqualToConstant:280.0];
-    self.bubbleWidthConstraint.priority = UILayoutPriorityRequired;
+    self.bubbleWidthConstraint = [self.bubbleShadowView.widthAnchor constraintEqualToConstant:PPNovaBubbleMinimumWidth];
     self.bubbleWidthConstraint.active = YES;
 
-    NSLayoutConstraint *avatarEdge = [self.avatarView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0];
-    NSLayoutConstraint *assistantPrimary = [self.bubbleShadowView.leadingAnchor constraintEqualToAnchor:self.avatarView.trailingAnchor constant:8.0];
-    NSLayoutConstraint *assistantLimit = [self.bubbleShadowView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-70.0];
-    NSLayoutConstraint *userPrimary = [self.bubbleShadowView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0];
-    NSLayoutConstraint *userLimit = [self.bubbleShadowView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:70.0];
+    NSLayoutConstraint *avatarEdge = [self.avatarView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0];
+    NSLayoutConstraint *assistantPrimary = [self.bubbleShadowView.trailingAnchor constraintEqualToAnchor:self.avatarView.leadingAnchor constant:-8.0];
+    NSLayoutConstraint *assistantLimit = [self.bubbleShadowView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:70.0];
+    NSLayoutConstraint *userPrimary = [self.bubbleShadowView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0];
+    NSLayoutConstraint *userLimit = [self.bubbleShadowView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-70.0];
 
     self.assistantConstraints = @[assistantPrimary, assistantLimit];
     self.userConstraints = @[userPrimary, userLimit];
@@ -287,6 +284,7 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
     paragraphStyle.lineBreakMode = NSLineBreakByWordWrapping;
     paragraphStyle.alignment = PPNovaAlignmentForText(text);
+    paragraphStyle.baseWritingDirection = PPNovaTextStartsRTL(text) ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
     
     NSDictionary *defaultAttributes = @{
         NSFontAttributeName: font,
@@ -334,20 +332,20 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     self.typingMode = NO;
     self.assistantMessage = [messageModel.senderID isEqualToString:@"nova_bot_id"] || [messageModel.senderID isEqualToString:@"nova"];
     self.configuredMaxWidth = maxWidth;
-    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    //self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
     self.messageLabel.text = messageModel.text ?: @"";
-    self.messageLabel.semanticContentAttribute = PPNovaSemanticForText(self.messageLabel.text);
-    self.messageLabel.textAlignment = PPNovaAlignmentForText(self.messageLabel.text);
+    //self.messageLabel.semanticContentAttribute = PPNovaSemanticForText(self.messageLabel.text);
+    //self.messageLabel.textAlignment = PPNovaAlignmentForText(self.messageLabel.text);
     [self pp_applyStyleForAssistant:self.assistantMessage typing:NO];
     self.timeLabel.text = [self pp_formattedTime:messageModel.timestamp];
     [self pp_stopTypingAnimation];
     [self pp_configureStatusForMessage:messageModel];
     [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:maxWidth];
-    [self.contentView setNeedsLayout];
-    [self.contentView layoutIfNeeded];
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 
     self.accessibilityLabel = self.messageLabel.text;
 }
@@ -380,6 +378,9 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
 
     if (actionTitles.count == 0) {
         self.actionStack.hidden = YES;
+        if (self.configuredMaxWidth > 1.0) {
+            [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:self.configuredMaxWidth];
+        }
         return;
     }
 
@@ -401,67 +402,102 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
         [self.actionStack addArrangedSubview:button];
     }];
     [self pp_applyStyleForAssistant:self.assistantMessage typing:self.typingMode];
+    if (self.configuredMaxWidth > 1.0) {
+        [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:self.configuredMaxWidth];
+    }
 }
 
 - (void)pp_applyAlignmentForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
-    CGFloat availableWidth = maxWidth > 1.0 ? maxWidth : self.configuredMaxWidth;
-    if (availableWidth <= 1.0) {
-        availableWidth = CGRectGetWidth(self.contentView.bounds);
-    }
-    if (availableWidth <= 1.0) {
-        availableWidth = UIScreen.mainScreen.bounds.size.width;
-    }
-    availableWidth = MAX(availableWidth, 280.0);
-    self.lastAppliedMaxWidth = availableWidth;
-
-    CGFloat maxFittingWidth = assistant ? MAX(availableWidth - 120.0, 148.0) : MAX(availableWidth - 86.0, 150.0);
-    CGFloat assistantMinimumWidth = MIN(MAX(availableWidth - 152.0, 218.0), maxFittingWidth);
-    CGFloat targetWidth = 0.0;
-
-    if (assistant) {
-        targetWidth = self.typingMode ? 168.0 : maxFittingWidth;
-        targetWidth = MIN(MAX(targetWidth, self.typingMode ? 148.0 : assistantMinimumWidth), 560.0);
-    } else {
-        NSString *text = self.messageLabel.text ?: @"";
-        CGFloat measuredWidth = 0.0;
-        if (text.length > 0 && self.messageLabel.attributedText) {
-            CGRect rect = [self.messageLabel.attributedText boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
-                                                                         options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                                         context:nil];
-            measuredWidth = ceil(rect.size.width) + 42.0;
-        }
-        targetWidth = MIN(MAX(measuredWidth, 96.0), MIN(maxFittingWidth, 500.0));
-    }
-
-    targetWidth = floor(MIN(targetWidth, maxFittingWidth));
-    self.bubbleWidthConstraint.constant = MAX(targetWidth, assistant ? (self.typingMode ? 148.0 : assistantMinimumWidth) : 86.0);
-    self.messageLabel.preferredMaxLayoutWidth = MAX(self.bubbleWidthConstraint.constant - 30.0, 86.0);
     self.messageLabel.semanticContentAttribute = PPNovaSemanticForText(self.messageLabel.text ?: @"");
     self.messageLabel.textAlignment = PPNovaAlignmentForText(self.messageLabel.text ?: @"");
+    self.bubbleWidthConstraint.constant = [self pp_targetBubbleWidthForAssistant:assistant maxWidth:maxWidth];
+    self.messageLabel.preferredMaxLayoutWidth = MAX(self.bubbleWidthConstraint.constant - PPNovaBubbleHorizontalContentInset, 1.0);
 
     [NSLayoutConstraint deactivateConstraints:self.assistantConstraints];
     [NSLayoutConstraint deactivateConstraints:self.userConstraints];
     [NSLayoutConstraint activateConstraints:(assistant ? self.assistantConstraints : self.userConstraints)];
 
     self.avatarView.hidden = !assistant;
-    self.metaStack.alignment = assistant ? UIStackViewAlignmentLeading : UIStackViewAlignmentTrailing;
+    self.metaStack.alignment = assistant ? UIStackViewAlignmentTrailing : UIStackViewAlignmentLeading;
     self.contentStack.alignment = UIStackViewAlignmentFill;
 }
 
+- (CGFloat)pp_targetBubbleWidthForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
+    CGFloat containerWidth = maxWidth;
+    if (containerWidth <= 1.0) {
+        containerWidth = UIScreen.mainScreen.bounds.size.width;
+    }
+
+    CGFloat reserve = assistant ? PPNovaAssistantHorizontalReserve : PPNovaUserHorizontalReserve;
+    CGFloat availableWidth = floor(containerWidth - reserve);
+    if (availableWidth < PPNovaBubbleMinimumWidth) {
+        availableWidth = MAX(PPNovaBubbleMinimumWidth, floor(containerWidth - 32.0));
+    }
+
+    CGFloat measuredWidth = [self pp_measuredBubbleWidthForAvailableWidth:availableWidth];
+    CGFloat targetWidth = MIN(availableWidth, MAX(PPNovaBubbleMinimumWidth, measuredWidth));
+    if (self.typingMode) {
+        targetWidth = MAX(targetWidth, 86.0);
+    }
+
+    return ceil(targetWidth);
+}
+
+- (CGFloat)pp_measuredBubbleWidthForAvailableWidth:(CGFloat)availableWidth {
+    CGFloat maxLabelWidth = MAX(availableWidth - PPNovaBubbleHorizontalContentInset, 1.0);
+    CGFloat targetContentWidth = 0.0;
+
+    NSAttributedString *attributedText = self.messageLabel.attributedText;
+    if (attributedText.length > 0 && !self.messageLabel.hidden) {
+        CGRect textRect = [attributedText boundingRectWithSize:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)
+                                                       options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                                       context:nil];
+        targetContentWidth = MAX(targetContentWidth, ceil(CGRectGetWidth(textRect)));
+    } else if (!self.messageLabel.hidden && self.messageLabel.text.length > 0) {
+        NSDictionary *attributes = @{ NSFontAttributeName: self.messageLabel.font ?: [UIFont systemFontOfSize:16.0] };
+        CGRect textRect = [self.messageLabel.text boundingRectWithSize:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)
+                                                               options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                                            attributes:attributes
+                                                               context:nil];
+        targetContentWidth = MAX(targetContentWidth, ceil(CGRectGetWidth(textRect)));
+    }
+
+    if (!self.typingDotsStack.hidden) {
+        targetContentWidth = MAX(targetContentWidth, 42.0);
+    }
+
+    if (self.timeLabel.text.length > 0) {
+        CGSize timeSize = [self.timeLabel sizeThatFits:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)];
+        targetContentWidth = MAX(targetContentWidth, ceil(timeSize.width));
+    }
+
+    if (!self.actionStack.hidden) {
+        CGSize actionSize = [self.actionStack systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
+        targetContentWidth = MAX(targetContentWidth, ceil(actionSize.width));
+    }
+
+    return targetContentWidth + PPNovaBubbleHorizontalContentInset;
+}
+
 - (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize
-         withHorizontalFittingPriority:(UILayoutPriority)horizontalFittingPriority
-               verticalFittingPriority:(UILayoutPriority)verticalFittingPriority {
-    CGFloat width = targetSize.width > 1.0 ? targetSize.width : self.configuredMaxWidth;
-    [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:width];
-    self.contentView.bounds = CGRectMake(0.0, 0.0, width, CGFLOAT_MAX);
+        withHorizontalFittingPriority:(UILayoutPriority)horizontalFittingPriority
+              verticalFittingPriority:(UILayoutPriority)verticalFittingPriority {
+    CGFloat fittingWidth = targetSize.width > 1.0 ? targetSize.width : self.configuredMaxWidth;
+    if (fittingWidth <= 1.0) {
+        fittingWidth = UIScreen.mainScreen.bounds.size.width;
+    }
+    if (fittingWidth > 1.0) {
+        self.contentView.bounds = CGRectMake(0.0, 0.0, fittingWidth, CGRectGetHeight(self.contentView.bounds));
+        [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:fittingWidth];
+    }
+
     [self.contentView setNeedsLayout];
     [self.contentView layoutIfNeeded];
 
-    CGSize fittingSize = CGSizeMake(width, UILayoutFittingCompressedSize.height);
-    CGSize measuredSize = [self.contentView systemLayoutSizeFittingSize:fittingSize
-                                           withHorizontalFittingPriority:UILayoutPriorityRequired
-                                                 verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
-    return CGSizeMake(width, ceil(measuredSize.height));
+    CGSize size = [self.contentView systemLayoutSizeFittingSize:CGSizeMake(fittingWidth, UILayoutFittingCompressedSize.height)
+                                  withHorizontalFittingPriority:UILayoutPriorityRequired
+                                        verticalFittingPriority:UILayoutPriorityFittingSizeLevel];
+    return CGSizeMake(fittingWidth, ceil(size.height));
 }
 
 - (void)pp_applyStyleForAssistant:(BOOL)assistant typing:(BOOL)typing {
