@@ -7,8 +7,8 @@
 #import "ChatMessageModel.h"
 #import "PPNovaMessageBubbleCell.h"
 #import "PPNovaProductMessageCell.h"
+#import "PPNovaReviewMessageCell.h"
 #import "PPNovaFloatingInputBarView.h"
-#import "EnumValues.h"
 #import "AppManager.h"
 #import "PPNavigationController.h"
 #import "PetAccessoryManager.h"
@@ -16,7 +16,10 @@
 #import "CartItem.h"
 #import "PPHUD.h"
 #import "AccessViewerVC.h"
+#import "ServiceViewerViewController.h"
+#import "PPPetCareViewerVC.h"
 #import "PPOverlayCoordinator.h"
+#import "PPAnalytics.h"
 #import <IQKeyboardManager/IQKeyboardManager.h>
 
 static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
@@ -28,21 +31,35 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     return lightColor;
 }
 
+static const CGFloat PPNovaExpandedTableTopInset = 174.0;
+static const CGFloat PPNovaCollapsedTableTopInset = 96.0;
+static const CGFloat PPNovaTableBottomInset = 12.0;
+
 @interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate>
 
 @property (nonatomic, strong) UIView *ambientBackgroundView;
 @property (nonatomic, strong) UIView *novaHeaderView;
+@property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, strong) UIView *headerBrandRingView;
 @property (nonatomic, strong) UIView *headerBrandMarkView;
 @property (nonatomic, strong) UIView *headerHairlineHost;
 @property (nonatomic, strong) UIView *headerLiveCapsule;
 @property (nonatomic, strong) UIView *statusDot;
 @property (nonatomic, strong) UILabel *statusLabel;
+@property (nonatomic, strong) UILabel *headerNameLabel;
+@property (nonatomic, strong) UILabel *headerSubtitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *novaHeaderExpandedBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *novaHeaderCollapsedBottomConstraint;
+@property (nonatomic, assign) BOOL novaHeaderCollapsed;
 @property (nonatomic, strong) UIVisualEffectView *typingContainer;
 @property (nonatomic, strong) UILabel *typingLabel;
 @property (nonatomic, copy)   NSArray<UIView *> *typingDots;
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, strong) UIView *emptyStatePulseView;
+
+@property (nonatomic, strong) LOTAnimationView *novaHeaderBackgroundLottie;
+@property (nonatomic, copy) NSString *currentHeaderBgAnimationName;
+@property (nonatomic, strong) LOTAnimationView *novaRingBackgroundLottie;
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<ChatMessageModel *> *messages;
@@ -67,6 +84,8 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 
 @property (nonatomic, assign) BOOL previousIQEnabled;
 @property (nonatomic, assign) BOOL previousToolbarEnabled;
+@property (nonatomic, assign) BOOL iqStateSaved;
+@property (nonatomic, assign) BOOL dismissed;
 @property (nonatomic, assign) CGFloat lastNovaTableLayoutWidth;
 
 @end
@@ -102,6 +121,8 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     [super viewDidLoad];
 
     self.novaSessionId = [[NSUUID UUID] UUIDString];
+    [PPAnalytics logNovaOpenedWithSessionID:self.novaSessionId];
+
     self.title = @"";
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
@@ -120,17 +141,23 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     // Delayed load for premium motion feel
     self.novaHeaderView.alpha = 0.0;
     self.novaHeaderView.transform = CGAffineTransformMakeTranslation(0, -10);
-    
+
+    __weak typeof(self) wself = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(wself) self = wself;
+        if (!self || self.dismissed) return;
         [self insertNovaGreeting];
     });
 }
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    
-    self.previousIQEnabled = [IQKeyboardManager sharedManager].enable;
-    self.previousToolbarEnabled = [IQKeyboardManager sharedManager].enableAutoToolbar;
+
+    if (!self.iqStateSaved) {
+        self.previousIQEnabled = [IQKeyboardManager sharedManager].enable;
+        self.previousToolbarEnabled = [IQKeyboardManager sharedManager].enableAutoToolbar;
+        self.iqStateSaved = YES;
+    }
     [IQKeyboardManager sharedManager].enable = NO;
     [IQKeyboardManager sharedManager].enableAutoToolbar = NO;
 }
@@ -162,8 +189,16 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
 
-    [IQKeyboardManager sharedManager].enable = self.previousIQEnabled;
-    [IQKeyboardManager sharedManager].enableAutoToolbar = self.previousToolbarEnabled;
+    BOOL leavingForGood = self.isBeingDismissed || self.isMovingFromParentViewController;
+    if (leavingForGood) {
+        self.dismissed = YES;
+        if (self.iqStateSaved) {
+            [IQKeyboardManager sharedManager].enable = self.previousIQEnabled;
+            [IQKeyboardManager sharedManager].enableAutoToolbar = self.previousToolbarEnabled;
+        }
+        [PPAnalytics logNovaClosedWithSessionID:self.novaSessionId
+                                    messageCount:self.messages.count];
+    }
 
     [self pp_stopHeaderLiveAnimations];
     [self pp_stopAmbientBackgroundAnimations];
@@ -212,12 +247,23 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
         return;
     }
 
-    // Update local session memory BEFORE we build the context payload.
+    // Update local session memory BEFORE we build the context payload. Idempotent across retries.
     [self pp_updateMemoryFromUserText:trimmedText];
+
+    [PPAnalytics logNovaMessageSentWithCharCount:trimmedText.length
+                                         isArabic:[self textContainsArabic:trimmedText]
+                                       sessionID:self.novaSessionId];
+
+    [self pp_dispatchNovaRequest:trimmedText attempt:0];
+}
+
+- (void)pp_dispatchNovaRequest:(NSString *)trimmedText attempt:(NSInteger)attempt {
+    if (self.dismissed) return;
 
     if (!self.novaCallable) {
         [self hideNovaTyping];
         [self insertNovaReplyForUserText:trimmedText];
+        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
         return;
     }
 
@@ -233,76 +279,768 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
                            completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
-            if (!self) return;
-            
-            [self hideNovaTyping];
-            
+            if (!self || self.dismissed) return;
+
             if (error) {
-                NSLog(@"[PPNovaChat] geminiProxy error: %@", error.localizedDescription);
+                if (attempt == 0 && [PPNovaChatViewController pp_isRetryableNovaError:error]) {
+                    LOG_WARN(@"[PPNovaChat] geminiProxy transient error (will retry once): %@", error.localizedDescription);
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        __strong typeof(weakSelf) inner = weakSelf;
+                        if (!inner || inner.dismissed) return;
+                        [inner pp_dispatchNovaRequest:trimmedText attempt:1];
+                    });
+                    return;
+                }
+                [self hideNovaTyping];
+                LOG_ERROR(@"[PPNovaChat] geminiProxy failed (attempt %ld, code=%ld): %@",
+                          (long)attempt, (long)error.code, error.localizedDescription);
+                [PPAnalytics logNovaErrorWithCode:error.code
+                                            domain:error.domain
+                                           attempt:attempt
+                                         sessionID:self.novaSessionId];
+
+                // Surface specific error classes instead of the misleading "Got it..." fallback.
+                NSString *userFacing = [PPNovaChatViewController pp_userFacingErrorForNovaError:error];
+                if (userFacing.length > 0) {
+                    [self addNovaMessage:userFacing];
+                    return;
+                }
                 [self insertNovaReplyForUserText:trimmedText];
+                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
                 return;
             }
-            
+
             NSString *replyText = nil;
-            NSArray *productIDs = nil;
+            NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs = @[];
             if ([result.data isKindOfClass:NSDictionary.class]) {
                 NSDictionary *data = (NSDictionary *)result.data;
                 id textValue = data[@"text"];
                 if ([textValue isKindOfClass:NSString.class]) {
                     replyText = (NSString *)textValue;
                 }
-                id productsValue = data[@"productIDs"];
-                if ([productsValue isKindOfClass:NSArray.class]) {
-                    productIDs = (NSArray *)productsValue;
-                }
+                suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:data replyText:replyText];
+            } else {
+                suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:nil replyText:replyText];
             }
-            
+
             replyText = [replyText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            if (replyText.length == 0 && productIDs.count == 0) {
+            if (replyText.length == 0 && suggestionRefs.count == 0) {
+                [self hideNovaTyping];
+                LOG_WARN(@"[PPNovaChat] geminiProxy returned empty reply and no products; using local fallback.");
                 [self insertNovaReplyForUserText:trimmedText];
+                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
                 return;
             }
-            
+
+            NSString *suggestionFallbackText = nil;
             if (replyText.length > 0) {
-                replyText = [self pp_sanitizeNovaReply:replyText];
-                if (replyText.length > 0) {
-                    [self addNovaMessage:replyText];
+                NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:(suggestionRefs.count > 0)];
+                if (sanitizedReply.length > 0) {
+                    [self addNovaMessage:sanitizedReply];
+                } else if (suggestionRefs.count == 0) {
+                    [self hideNovaTyping];
+                    [self insertNovaReplyForUserText:trimmedText];
+                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
+                    return;
+                } else {
+                    suggestionFallbackText = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
                 }
             }
 
-            if (productIDs.count > 0) {
-                [self pp_fetchAndShowNovaProducts:productIDs];
+            if (suggestionRefs.count > 0) {
+                if (suggestionFallbackText.length == 0) {
+                    suggestionFallbackText = kLang(@"nova_suggestions_unavailable");
+                }
+                [self pp_fetchAndShowNovaSuggestionRefs:suggestionRefs
+                                           fallbackText:suggestionFallbackText
+                                               userText:trimmedText];
+            } else {
+                [self hideNovaTyping];
+                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
             }
         });
     }];
 }
 
-- (void)pp_fetchAndShowNovaProducts:(NSArray<NSString *> *)productIDs {
-    [PetAccessoryManager fetchAccessoriesWithIDs:productIDs completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
-        if (accessories.count == 0) return;
++ (BOOL)pp_isRetryableNovaError:(NSError *)error {
+    // Retry on transient gRPC codes (Unknown=2, DeadlineExceeded=4, ResourceExhausted=8,
+    // Internal=13, Unavailable=14) and on raw network errors.
+    NSInteger code = error.code;
+    if (code == 2 || code == 4 || code == 8 || code == 13 || code == 14) return YES;
+    if ([error.domain isEqualToString:NSURLErrorDomain]) return YES;
+    return NO;
+}
 
-        dispatch_async(dispatch_get_main_queue(), ^{
-            self.lastShownProducts = accessories;
-            if (accessories.count == 1) {
-                self.lastSuggestedProduct = accessories.firstObject;
-                self.pendingCartProduct = accessories.firstObject;
-            } else {
-                self.lastSuggestedProduct = nil;
-                self.pendingCartProduct = nil;
++ (nullable NSString *)pp_userFacingErrorForNovaError:(NSError *)error {
+    // Map specific error classes to localized user-facing strings. Returning nil means
+    // "fall through to the generic local fallback" — used for unknown / handled-elsewhere cases.
+    NSInteger code = error.code;
+    // Unauthenticated=16, PermissionDenied=7 — surface as session-expired.
+    if (code == 16 || code == 7) {
+        return kLang(@"nova_error_auth");
+    }
+    // Unavailable=14 / ResourceExhausted=8 after retry exhausted — be honest, don't pretend.
+    if (code == 14 || code == 8) {
+        return kLang(@"nova_error_unavailable");
+    }
+    return nil;
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaSuggestionRefsFromResponseData:(NSDictionary *)data
+                                                                                 replyText:(NSString *)replyText
+{
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *refs = [NSMutableArray array];
+
+    if ([data isKindOfClass:NSDictionary.class]) {
+        NSDictionary<NSString *, NSString *> *keyKinds = @{
+            @"productIDs": @"product", @"productIds": @"product", @"product_ids": @"product",
+            @"accessoryIDs": @"product", @"accessoryIds": @"product", @"itemIDs": @"product",
+            @"medicineIDs": @"medicine", @"medicineIds": @"medicine", @"medicine_ids": @"medicine",
+            @"serviceIDs": @"service", @"serviceIds": @"service", @"service_ids": @"service"
+        };
+        [keyKinds enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *kind, BOOL *stop) {
+            [self pp_appendNovaSuggestionRefsFromIDs:data[key] kind:kind toRefs:refs];
+        }];
+
+        NSDictionary<NSString *, NSString *> *arrayKeyKinds = @{
+            @"suggestions": @"", @"recommendations": @"", @"results": @"",
+            @"products": @"product", @"items": @"product",
+            @"services": @"service", @"medicines": @"medicine"
+        };
+        [arrayKeyKinds enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *kind, BOOL *stop) {
+            [self pp_appendNovaSuggestionRefsFromValue:data[key]
+                                                toRefs:refs
+                                         preferredKind:(kind.length > 0 ? kind : nil)];
+        }];
+    }
+
+    [self pp_appendNovaSuggestionRefsFromText:replyText toRefs:refs];
+    return [self pp_uniqueNovaSuggestionRefs:refs];
+}
+
+- (void)pp_appendNovaSuggestionRefsFromIDs:(id)value
+                                      kind:(NSString *)kind
+                                    toRefs:(NSMutableArray<NSDictionary<NSString *, NSString *> *> *)refs
+{
+    if (kind.length == 0) {
+        return;
+    }
+    if ([value isKindOfClass:NSArray.class]) {
+        for (id entry in (NSArray *)value) {
+            NSString *identifier = [self pp_novaStringFromValue:entry];
+            if (identifier.length > 0) {
+                [refs addObject:@{@"kind": kind, @"id": identifier}];
             }
+        }
+        return;
+    }
+    NSString *identifier = [self pp_novaStringFromValue:value];
+    if (identifier.length > 0) {
+        [refs addObject:@{@"kind": kind, @"id": identifier}];
+    }
+}
 
-            ChatMessageModel *msg = [[ChatMessageModel alloc] init];
-            msg.ID = [[NSUUID UUID] UUIDString];
-            msg.messageType = accessories.count > 1 ? ChatMessageTypeNovaProductList : ChatMessageTypeNovaProduct;
-            msg.novaProducts = accessories;
-            msg.timestamp = [NSDate date];
-            msg.senderID = @"nova";
+- (void)pp_appendNovaSuggestionRefsFromValue:(id)value
+                                      toRefs:(NSMutableArray<NSDictionary<NSString *, NSString *> *> *)refs
+                               preferredKind:(NSString *)preferredKind
+{
+    if (!value) {
+        return;
+    }
+    if ([value isKindOfClass:NSArray.class]) {
+        for (id entry in (NSArray *)value) {
+            [self pp_appendNovaSuggestionRefsFromValue:entry toRefs:refs preferredKind:preferredKind];
+        }
+        return;
+    }
+    if ([value isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dict = (NSDictionary *)value;
+        NSString *kind = [self pp_novaSuggestionKindFromDictionary:dict preferredKind:preferredKind];
+        NSString *identifier = [self pp_novaSuggestionIdentifierFromDictionary:dict kind:kind];
+        if (kind.length > 0 && identifier.length > 0) {
+            [refs addObject:@{@"kind": kind, @"id": identifier}];
+        }
+        return;
+    }
+    if (preferredKind.length > 0) {
+        NSString *identifier = [self pp_novaStringFromValue:value];
+        if (identifier.length > 0) {
+            [refs addObject:@{@"kind": preferredKind, @"id": identifier}];
+        }
+    }
+}
 
-            [self.messages addObject:msg];
-            [self updateNovaEmptyStateAnimated:YES];
-            [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
-        });
+- (NSString *)pp_novaSuggestionKindFromDictionary:(NSDictionary *)dict preferredKind:(NSString *)preferredKind {
+    if ([self pp_novaStringFromDictionary:dict keys:@[@"serviceID", @"serviceId", @"service_id"]].length > 0) {
+        return @"service";
+    }
+    if ([self pp_novaStringFromDictionary:dict keys:@[@"medicineID", @"medicineId", @"medicine_id"]].length > 0) {
+        return @"medicine";
+    }
+    if ([self pp_novaStringFromDictionary:dict keys:@[@"productID", @"productId", @"product_id", @"accessoryID", @"accessoryId", @"accessory_id"]].length > 0) {
+        return @"product";
+    }
+
+    id rawKindValue = dict[@"kind"] ?: dict[@"itemType"] ?: dict[@"collection"] ?: dict[@"collectionName"] ?: dict[@"type"];
+    NSString *rawKind = [[self pp_novaStringFromValue:rawKindValue] lowercaseString];
+    if ([rawKind containsString:@"service"]) {
+        return @"service";
+    }
+    if ([rawKind containsString:@"medicine"] || [rawKind containsString:@"medic"] || [rawKind containsString:@"pharmacy"]) {
+        return @"medicine";
+    }
+    if ([rawKind containsString:@"product"] || [rawKind containsString:@"accessory"] || [rawKind containsString:@"petaccessor"]) {
+        return @"product";
+    }
+
+    id accessKindValue = dict[@"accessKindType"] ?: dict[@"access_kind_type"] ?: dict[@"type"];
+    if ([accessKindValue respondsToSelector:@selector(integerValue)] &&
+        [accessKindValue integerValue] == AccessTypePetMedicine) {
+        return @"medicine";
+    }
+
+    return preferredKind.length > 0 ? preferredKind : @"product";
+}
+
+- (NSString *)pp_novaSuggestionIdentifierFromDictionary:(NSDictionary *)dict kind:(NSString *)kind {
+    NSArray<NSString *> *primaryKeys = [kind isEqualToString:@"service"]
+        ? @[@"serviceID", @"serviceId", @"service_id"]
+        : ([kind isEqualToString:@"medicine"]
+           ? @[@"medicineID", @"medicineId", @"medicine_id", @"productID", @"productId", @"product_id", @"accessoryID", @"accessoryId", @"accessory_id"]
+           : @[@"productID", @"productId", @"product_id", @"accessoryID", @"accessoryId", @"accessory_id"]);
+    NSString *identifier = [self pp_novaStringFromDictionary:dict keys:primaryKeys];
+    if (identifier.length > 0) {
+        return identifier;
+    }
+    return [self pp_novaStringFromDictionary:dict keys:@[@"id", @"documentID", @"documentId", @"docID", @"docId", @"itemID", @"itemId"]];
+}
+
+- (NSString *)pp_novaStringFromDictionary:(NSDictionary *)dict keys:(NSArray<NSString *> *)keys {
+    for (NSString *key in keys) {
+        NSString *value = [self pp_novaStringFromValue:dict[key]];
+        if (value.length > 0) {
+            return value;
+        }
+    }
+    return @"";
+}
+
+- (NSString *)pp_novaStringFromValue:(id)value {
+    if ([value isKindOfClass:NSString.class]) {
+        return [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    if ([value respondsToSelector:@selector(stringValue)]) {
+        return [[value stringValue] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    return @"";
+}
+
+- (void)pp_appendNovaSuggestionRefsFromText:(NSString *)text
+                                     toRefs:(NSMutableArray<NSDictionary<NSString *, NSString *> *> *)refs
+{
+    if (text.length == 0) {
+        return;
+    }
+    NSArray<NSDictionary<NSString *, NSString *> *> *patterns = @[
+        @{@"kind": @"product", @"pattern": @"\\[PRODUCT_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"service", @"pattern": @"\\[SERVICE_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"medicine", @"pattern": @"\\[MEDICINE_ID:\\s*([^\\]]+)\\]"}
+    ];
+    for (NSDictionary<NSString *, NSString *> *entry in patterns) {
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:entry[@"pattern"]
+                                                                               options:NSRegularExpressionCaseInsensitive
+                                                                                 error:nil];
+        if (!regex) {
+            continue;
+        }
+        NSArray<NSTextCheckingResult *> *matches = [regex matchesInString:text options:0 range:NSMakeRange(0, text.length)];
+        for (NSTextCheckingResult *match in matches) {
+            if (match.numberOfRanges < 2) {
+                continue;
+            }
+            NSString *identifier = [[text substringWithRange:[match rangeAtIndex:1]]
+                stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+            if (identifier.length > 0) {
+                [refs addObject:@{@"kind": entry[@"kind"], @"id": identifier}];
+            }
+        }
+    }
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_uniqueNovaSuggestionRefs:(NSArray<NSDictionary<NSString *, NSString *> *> *)refs {
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *ordered = [NSMutableArray array];
+    NSMutableSet<NSString *> *seen = [NSMutableSet set];
+    for (NSDictionary<NSString *, NSString *> *ref in refs) {
+        NSString *kind = ref[@"kind"];
+        NSString *identifier = [self pp_normalizedNovaSuggestionIdentifier:ref[@"id"]];
+        if (kind.length == 0 || identifier.length == 0) {
+            continue;
+        }
+        NSString *key = [NSString stringWithFormat:@"%@:%@", kind, identifier];
+        if ([seen containsObject:key]) {
+            continue;
+        }
+        [seen addObject:key];
+        [ordered addObject:@{@"kind": kind, @"id": identifier}];
+    }
+    return ordered.copy;
+}
+
+- (NSString *)pp_normalizedNovaSuggestionIdentifier:(NSString *)identifier {
+    NSString *normalized = [identifier isKindOfClass:NSString.class]
+        ? [identifier stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]
+        : @"";
+    if (normalized.length == 0) {
+        return @"";
+    }
+
+    NSString *pathless = normalized.lastPathComponent;
+    if (pathless.length > 0 &&
+        ([normalized containsString:@"/petAccessories/"] ||
+         [normalized containsString:@"/serviceOffers/"] ||
+         [normalized hasPrefix:@"petAccessories/"] ||
+         [normalized hasPrefix:@"serviceOffers/"])) {
+        normalized = pathless;
+    }
+
+    return [normalized stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+}
+
+- (void)pp_fetchAndShowNovaSuggestionRefs:(NSArray<NSDictionary<NSString *, NSString *> *> *)refs
+                             fallbackText:(NSString *)fallbackText
+                                 userText:(NSString *)userText {
+    if (refs.count == 0) {
+        return;
+    }
+
+    NSMutableArray<NSString *> *accessoryIDs = [NSMutableArray array];
+    NSMutableArray<NSString *> *serviceIDs = [NSMutableArray array];
+    for (NSDictionary<NSString *, NSString *> *ref in refs) {
+        NSString *kind = ref[@"kind"];
+        NSString *identifier = ref[@"id"];
+        if (identifier.length == 0) {
+            continue;
+        }
+        if ([kind isEqualToString:@"service"]) {
+            [serviceIDs addObject:identifier];
+        } else {
+            [accessoryIDs addObject:identifier];
+        }
+    }
+
+    dispatch_group_t group = dispatch_group_create();
+    __block NSArray<PetAccessory *> *resolvedAccessories = @[];
+    __block NSArray<ServiceModel *> *resolvedServices = @[];
+    __block BOOL didFinish = NO;
+
+    if (accessoryIDs.count > 0) {
+        dispatch_group_enter(group);
+        [PetAccessoryManager fetchAccessoriesWithIDs:accessoryIDs completion:^(NSArray<PetAccessory *> * _Nonnull accessories) {
+            resolvedAccessories = accessories ?: @[];
+            dispatch_group_leave(group);
+        }];
+    }
+
+    if (serviceIDs.count > 0) {
+        dispatch_group_enter(group);
+        [self pp_fetchNovaServicesWithIDs:serviceIDs completion:^(NSArray<ServiceModel *> *services) {
+            resolvedServices = services ?: @[];
+            dispatch_group_leave(group);
+        }];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    void (^finish)(BOOL timedOut) = ^(BOOL timedOut) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (didFinish || !self || self.dismissed) {
+            return;
+        }
+        didFinish = YES;
+
+        if (timedOut) {
+            LOG_WARN(@"[PPNovaChat] Nova suggestion resolution timed out: %@", refs);
+        }
+
+        [self hideNovaTyping];
+
+        NSDictionary<NSString *, PetAccessory *> *accessoriesByID = [self pp_novaAccessoriesByID:resolvedAccessories];
+        NSDictionary<NSString *, ServiceModel *> *servicesByID = [self pp_novaServicesByID:resolvedServices];
+        NSMutableArray *objects = [NSMutableArray array];
+        for (NSDictionary<NSString *, NSString *> *ref in refs) {
+            NSString *identifier = ref[@"id"];
+            id object = [ref[@"kind"] isEqualToString:@"service"] ? servicesByID[identifier] : accessoriesByID[identifier];
+            if (object) {
+                [objects addObject:object];
+            }
+        }
+
+        if (objects.count == 0) {
+            LOG_WARN(@"[PPNovaChat] Nova returned %lu suggestion ref(s) but none resolved: %@",
+                     (unsigned long)refs.count, refs);
+
+            [PPAnalytics logNovaShowcaseResolutionFailedWithRequestedCount:refs.count
+                                                              resolvedCount:0
+                                                                  sessionID:self.novaSessionId];
+
+            [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText completion:^(BOOL didShow) {
+                if (didShow) {
+                    return;
+                }
+
+                NSString *message = fallbackText.length > 0 ? fallbackText : kLang(@"nova_suggestions_unavailable");
+                if (message.length == 0) {
+                    return;
+                }
+
+                BOOL previousWasSameRecovery = NO;
+                if (self.messages.count > 0) {
+                    ChatMessageModel *lastMsg = self.messages.lastObject;
+                    if ([lastMsg.senderID isEqualToString:@"nova_bot_id"] &&
+                        lastMsg.messageType == ChatMessageTypeText &&
+                        [lastMsg.text isEqualToString:message]) {
+                        previousWasSameRecovery = YES;
+                    }
+                }
+
+                if (!previousWasSameRecovery) {
+                    [self addNovaMessage:message];
+                }
+            }];
+            return;
+        }
+
+        [self pp_showNovaSuggestionObjects:objects];
+    };
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(8.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        finish(YES);
+    });
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        finish(NO);
+    });
+}
+
+- (void)pp_fetchNovaServicesWithIDs:(NSArray<NSString *> *)serviceIDs
+                         completion:(void (^)(NSArray<ServiceModel *> *services))completion
+{
+    if (serviceIDs.count == 0) {
+        if (completion) completion(@[]);
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    NSMutableArray<ServiceModel *> *results = [NSMutableArray array];
+    dispatch_group_t group = dispatch_group_create();
+    for (NSString *serviceID in serviceIDs) {
+        if (serviceID.length == 0) {
+            continue;
+        }
+        dispatch_group_enter(group);
+        [[[db collectionWithPath:@"serviceOffers"] documentWithPath:serviceID]
+         getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable doc, NSError * _Nullable error) {
+            if (doc.exists && doc.data) {
+                ServiceModel *model = [[ServiceModel alloc] initWithDictionary:doc.data documentID:doc.documentID];
+                if (model.isLive) {
+                    @synchronized (results) {
+                        [results addObject:model];
+                    }
+                }
+            }
+            dispatch_group_leave(group);
+        }];
+    }
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (completion) completion(results.copy);
+    });
+}
+
+- (NSDictionary<NSString *, PetAccessory *> *)pp_novaAccessoriesByID:(NSArray<PetAccessory *> *)accessories {
+    NSMutableDictionary<NSString *, PetAccessory *> *map = [NSMutableDictionary dictionary];
+    for (PetAccessory *item in accessories) {
+        if (![item isKindOfClass:PetAccessory.class] || item.accessoryID.length == 0) {
+            continue;
+        }
+        map[item.accessoryID] = item;
+    }
+    return map.copy;
+}
+
+- (NSDictionary<NSString *, ServiceModel *> *)pp_novaServicesByID:(NSArray<ServiceModel *> *)services {
+    NSMutableDictionary<NSString *, ServiceModel *> *map = [NSMutableDictionary dictionary];
+    for (ServiceModel *service in services) {
+        if (![service isKindOfClass:ServiceModel.class] || service.serviceID.length == 0) {
+            continue;
+        }
+        map[service.serviceID] = service;
+    }
+    return map.copy;
+}
+
+- (void)pp_showNovaSuggestionObjects:(NSArray *)objects {
+    [self pp_showNovaSuggestionObjects:objects source:@"server"];
+}
+
+- (void)pp_showNovaSuggestionObjects:(NSArray *)objects source:(NSString *)source {
+    if (objects.count == 0) {
+        return;
+    }
+
+    NSArray<PetAccessory *> *cartableProducts = [self pp_cartableNovaProductsFromObjects:objects];
+    self.lastShownProducts = cartableProducts;
+    if (objects.count == 1 && [objects.firstObject isKindOfClass:PetAccessory.class]) {
+        self.lastSuggestedProduct = (PetAccessory *)objects.firstObject;
+        self.pendingCartProduct = (PetAccessory *)objects.firstObject;
+    } else {
+        self.lastSuggestedProduct = nil;
+        self.pendingCartProduct = nil;
+    }
+
+    ChatMessageModel *msg = [[ChatMessageModel alloc] init];
+    msg.ID = [[NSUUID UUID] UUIDString];
+    msg.messageType = objects.count > 1 ? ChatMessageTypeNovaProductList : ChatMessageTypeNovaProduct;
+    msg.novaProducts = (NSArray<PetAccessory *> *)objects;
+    msg.timestamp = [NSDate date];
+    msg.senderID = @"nova_bot_id";
+
+    [self.messages addObject:msg];
+    [self pp_trimMessageHistoryIfNeeded];
+    [self updateNovaEmptyStateAnimated:YES];
+    [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
+
+    [PPAnalytics logNovaShowcaseShownWithItemCount:objects.count
+                                          sessionID:self.novaSessionId
+                                             source:source];
+}
+
+- (void)pp_fetchAndShowLocalNovaShowcaseForUserText:(NSString *)userText
+                                         completion:(void (^)(BOOL didShow))completion
+{
+    NSString *trimmedText = [userText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    [self pp_updateMemoryFromUserText:trimmedText];
+
+    if (![self pp_shouldAttemptLocalNovaShowcaseForUserText:trimmedText] || [self pp_lastMessageIsNovaShowcase]) {
+        if (completion) completion(NO);
+        return;
+    }
+
+    NSString *need = [self pp_localNovaNeedLabelFromUserText:trimmedText] ?: self.novaMemoryNeed;
+    AccessKindType kind = [self pp_localNovaShowcaseKindForNeed:need];
+    __weak typeof(self) weakSelf = self;
+    [[PetAccessoryManager sharedManager] fetchAccessoriesOfKind:kind completion:^(NSArray<PetAccessory *> *accessories) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed) {
+            if (completion) completion(NO);
+            return;
+        }
+        if ([self pp_lastMessageIsNovaShowcase]) {
+            if (completion) completion(NO);
+            return;
+        }
+
+        NSArray<PetAccessory *> *ranked = [self pp_rankedLocalNovaAccessories:accessories
+                                                                     userText:trimmedText
+                                                                         need:need
+                                                                        limit:6];
+        if (ranked.count == 0) {
+            if (completion) completion(NO);
+            return;
+        }
+
+        [self pp_showNovaSuggestionObjects:ranked source:@"local"];
+        if (completion) completion(YES);
     }];
+}
+
+- (BOOL)pp_shouldAttemptLocalNovaShowcaseForUserText:(NSString *)userText {
+    NSString *lower = [userText.lowercaseString stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (lower.length == 0) {
+        return NO;
+    }
+
+    NSArray<NSString *> *productKeywords = @[
+        @"product", @"products", @"item", @"items", @"accessory", @"accessories",
+        @"food", @"medicine", @"vitamin", @"toy", @"cage", @"carrier", @"litter",
+        @"buy", @"shop", @"recommend", @"suggest", @"show me",
+        @"منتج", @"منتجات", @"اكسسوار", @"إكسسوار", @"أكل", @"اكل", @"طعام",
+        @"دواء", @"أدوية", @"ادوية", @"فيتامين", @"لعبة", @"لعبه", @"قفص",
+        @"رمل", @"اشتري", @"شراء", @"رشح", @"اقترح", @"اعرض"
+    ];
+    if ([self pp_string:lower containsAnyNovaKeyword:productKeywords]) {
+        return YES;
+    }
+
+    NSArray<NSString *> *continuationKeywords = @[
+        @"yes", @"yeah", @"ok", @"okay", @"sure", @"show", @"recommend", @"suggest",
+        @"نعم", @"تمام", @"اوكي", @"أوكي", @"اعرض", @"رشح", @"اقترح"
+    ];
+    if (self.novaMemoryNeed.length > 0 && [self pp_string:lower containsAnyNovaKeyword:continuationKeywords]) {
+        return YES;
+    }
+
+    NSArray<NSString *> *shoppingIntentKeywords = @[
+        @"need", @"want", @"looking for", @"find", @"أحتاج", @"احتاج", @"أريد",
+        @"اريد", @"ابي", @"أبي", @"ابغى", @"عايز"
+    ];
+    return self.novaMemoryPetType.length > 0 && [self pp_string:lower containsAnyNovaKeyword:shoppingIntentKeywords];
+}
+
+- (AccessKindType)pp_localNovaShowcaseKindForNeed:(NSString *)needLabel {
+    NSString *need = needLabel.lowercaseString ?: @"";
+    if ([need isEqualToString:@"food"]) {
+        return AccessTypeFood;
+    }
+    if ([need isEqualToString:@"medicine"]) {
+        return AccessTypePetMedicine;
+    }
+    return AccessTypeAccessory;
+}
+
+- (NSArray<PetAccessory *> *)pp_rankedLocalNovaAccessories:(NSArray<PetAccessory *> *)accessories
+                                                  userText:(NSString *)userText
+                                                      need:(NSString *)need
+                                                     limit:(NSUInteger)limit
+{
+    NSMutableArray<PetAccessory *> *candidates = [NSMutableArray array];
+    for (PetAccessory *item in accessories) {
+        if (![item isKindOfClass:PetAccessory.class] || item.accessoryID.length == 0) {
+            continue;
+        }
+        [candidates addObject:item];
+    }
+    if (candidates.count == 0) {
+        return @[];
+    }
+
+    NSArray<PetAccessory *> *sorted = [candidates sortedArrayUsingComparator:^NSComparisonResult(PetAccessory *left, PetAccessory *right) {
+        NSInteger leftScore = [self pp_localNovaAccessoryScore:left userText:userText need:need];
+        NSInteger rightScore = [self pp_localNovaAccessoryScore:right userText:userText need:need];
+        if (leftScore > rightScore) return NSOrderedAscending;
+        if (leftScore < rightScore) return NSOrderedDescending;
+
+        NSDate *leftDate = [left.createdAt isKindOfClass:NSDate.class] ? left.createdAt : NSDate.distantPast;
+        NSDate *rightDate = [right.createdAt isKindOfClass:NSDate.class] ? right.createdAt : NSDate.distantPast;
+        return [rightDate compare:leftDate];
+    }];
+
+    NSUInteger count = MIN(limit, sorted.count);
+    return [sorted subarrayWithRange:NSMakeRange(0, count)];
+}
+
+- (NSInteger)pp_localNovaAccessoryScore:(PetAccessory *)item userText:(NSString *)userText need:(NSString *)needLabel {
+    NSString *haystack = [[NSString stringWithFormat:@"%@ %@",
+                           item.name ?: @"",
+                           item.desc ?: @""] lowercaseString];
+    NSString *need = needLabel.lowercaseString ?: @"";
+    NSString *petType = self.novaMemoryPetType.lowercaseString ?: @"";
+    NSInteger score = 0;
+
+    if (item.quantity > 0) score += 2;
+    if (item.imageURLsArray.count > 0) score += 1;
+    if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_localNovaKeywordsForNeed:need]]) score += 8;
+    if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_localNovaKeywordsForPetType:petType]]) score += 5;
+    if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_tokenKeywordsFromUserText:userText]]) score += 3;
+    return score;
+}
+
+- (nullable NSString *)pp_localNovaNeedLabelFromUserText:(NSString *)userText {
+    NSString *lower = userText.lowercaseString ?: @"";
+    NSArray<NSDictionary<NSString *, id> *> *needKeywords = @[
+        @{@"label": @"food", @"keys": @[@"food", @"feed", @"meal", @"kibble", @"treat", @"snack", @"أكل", @"اكل", @"طعام", @"غذاء", @"دراي"]},
+        @{@"label": @"medicine", @"keys": @[@"medicine", @"medication", @"vitamin", @"supplement", @"treatment", @"دواء", @"أدوية", @"ادوية", @"فيتامين", @"علاج"]},
+        @{@"label": @"cage", @"keys": @[@"cage", @"carrier", @"crate", @"kennel", @"bed", @"aquarium", @"tank", @"قفص", @"حاملة", @"حقيبة", @"حقيبه", @"بيت", @"حوض"]},
+        @{@"label": @"toy", @"keys": @[@"toy", @"toys", @"play", @"ball", @"chew", @"لعبة", @"لعبه", @"ألعاب", @"العاب", @"كرة"]},
+        @{@"label": @"care", @"keys": @[@"care", @"grooming", @"shampoo", @"brush", @"clean", @"عناية", @"عنايه", @"شامبو", @"تنظيف", @"نظافة"]},
+        @{@"label": @"litter", @"keys": @[@"litter", @"sand", @"رمل", @"فضلات", @"ليتر"]}
+    ];
+
+    for (NSDictionary<NSString *, id> *entry in needKeywords) {
+        NSArray<NSString *> *keys = entry[@"keys"];
+        if ([self pp_string:lower containsAnyNovaKeyword:keys]) {
+            return entry[@"label"];
+        }
+    }
+    return nil;
+}
+
+- (NSArray<NSString *> *)pp_localNovaKeywordsForNeed:(NSString *)need {
+    if ([need isEqualToString:@"food"]) return @[@"food", @"kibble", @"treat", @"snack", @"أكل", @"اكل", @"طعام", @"دراي"];
+    if ([need isEqualToString:@"medicine"]) return @[@"medicine", @"vitamin", @"supplement", @"treatment", @"دواء", @"فيتامين", @"علاج"];
+    if ([need isEqualToString:@"cage"]) return @[@"cage", @"carrier", @"crate", @"bed", @"قفص", @"حقيبة", @"حقيبه", @"بيت"];
+    if ([need isEqualToString:@"toy"]) return @[@"toy", @"ball", @"chew", @"لعبة", @"لعبه", @"كرة"];
+    if ([need isEqualToString:@"care"]) return @[@"grooming", @"shampoo", @"brush", @"clean", @"شامبو", @"تنظيف", @"عناية", @"عنايه"];
+    if ([need isEqualToString:@"litter"]) return @[@"litter", @"sand", @"رمل", @"ليتر"];
+    return @[];
+}
+
+- (NSArray<NSString *> *)pp_localNovaKeywordsForPetType:(NSString *)petType {
+    if ([petType isEqualToString:@"cat"]) return @[@"cat", @"kitten", @"قط", @"قطة", @"قطه", @"قطط"];
+    if ([petType isEqualToString:@"dog"]) return @[@"dog", @"puppy", @"كلب", @"كلبة", @"كلبه", @"جرو"];
+    if ([petType isEqualToString:@"bird"]) return @[@"bird", @"طير", @"طائر", @"طيور", @"عصفور"];
+    if ([petType isEqualToString:@"parrot"]) return @[@"parrot", @"cockatiel", @"budgie", @"ببغاء", @"كروان"];
+    if ([petType isEqualToString:@"fish"]) return @[@"fish", @"aquarium", @"سمك", @"سمكة", @"سمكه", @"حوض"];
+    if ([petType isEqualToString:@"rabbit"]) return @[@"rabbit", @"bunny", @"أرنب", @"ارنب"];
+    if ([petType isEqualToString:@"hamster"]) return @[@"hamster", @"هامستر"];
+    if ([petType isEqualToString:@"turtle"]) return @[@"turtle", @"tortoise", @"سلحفاة", @"سلحفاه"];
+    return @[];
+}
+
+- (NSArray<NSString *> *)pp_tokenKeywordsFromUserText:(NSString *)userText {
+    NSArray<NSString *> *parts = [userText.lowercaseString componentsSeparatedByCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSMutableArray<NSString *> *tokens = [NSMutableArray array];
+    for (NSString *part in parts) {
+        NSString *trimmed = [part stringByTrimmingCharactersInSet:[NSCharacterSet punctuationCharacterSet]];
+        if (trimmed.length >= 3) {
+            [tokens addObject:trimmed];
+        }
+    }
+    return tokens.copy;
+}
+
+- (BOOL)pp_string:(NSString *)text containsAnyNovaKeyword:(NSArray<NSString *> *)keywords {
+    if (text.length == 0 || keywords.count == 0) {
+        return NO;
+    }
+    for (NSString *keyword in keywords) {
+        NSString *normalized = keyword.lowercaseString;
+        if (normalized.length > 0 && [text containsString:normalized]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (BOOL)pp_lastMessageIsNovaShowcase {
+    ChatMessageModel *last = self.messages.lastObject;
+    return last.messageType == ChatMessageTypeNovaProduct ||
+           last.messageType == ChatMessageTypeNovaProductList;
+}
+
+- (NSArray<PetAccessory *> *)pp_cartableNovaProductsFromObjects:(NSArray *)objects {
+    NSMutableArray<PetAccessory *> *products = [NSMutableArray array];
+    for (id object in objects) {
+        if ([object isKindOfClass:PetAccessory.class]) {
+            [products addObject:(PetAccessory *)object];
+        }
+    }
+    return products.copy;
+}
+
+- (NSString *)pp_novaDisplayNameForSuggestionObject:(id)object {
+    if ([object isKindOfClass:PetAccessory.class]) {
+        PetAccessory *acc = (PetAccessory *)object;
+        NSString *name = acc.name ?: @"";
+        NSString *priceStr = acc.price ? [NSString stringWithFormat:@" (%.2f QAR)", [acc.price doubleValue]] : @"";
+        return [name stringByAppendingString:priceStr];
+    }
+    if ([object isKindOfClass:ServiceModel.class]) {
+        ServiceModel *srv = (ServiceModel *)object;
+        NSString *name = srv.title ?: @"";
+        NSString *priceStr = srv.price ? [NSString stringWithFormat:@" (%.2f QAR)", srv.price] : @"";
+        return [name stringByAppendingString:priceStr];
+    }
+    return @"";
 }
 
 #pragma mark - Initial Data
@@ -435,7 +1173,9 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
             }
         }
         if (matched) {
-            self.novaMemoryPetType = p[@"label"];
+            if (self.novaMemoryPetType.length == 0) {
+                self.novaMemoryPetType = p[@"label"];
+            }
             break;
         }
     }
@@ -470,7 +1210,9 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
             }
         }
         if (matched) {
-            self.novaMemoryNeed = n[@"label"];
+            if (self.novaMemoryNeed.length == 0) {
+                self.novaMemoryNeed = n[@"label"];
+            }
             break;
         }
     }
@@ -535,19 +1277,42 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 - (NSArray *)pp_currentHistoryArray {
     NSMutableArray *history = [NSMutableArray array];
     // Only send the last 6 messages to keep the payload efficient.
-    // We skip the current message being sent as it's passed in the 'prompt' field.
+    // The current prompt is passed in the 'prompt' field, so we skip the very last message here.
     NSInteger total = self.messages.count;
     NSInteger start = MAX(0, total - 7);
     for (NSInteger i = start; i < total; i++) {
-        ChatMessageModel *msg = self.messages[i];
-        if (msg.messageType != ChatMessageTypeText) continue;
-
-        // Skip the very last message if it matches the current prompt being sent
-        // (to avoid duplication since the prompt is sent separately).
-        // However, standard Vertex history includes the user message.
-        // But for our proxy, handleNovaRequest adds the prompt to the history.
-        // So history should ONLY be previous messages.
         if (i == total - 1) continue;
+        ChatMessageModel *msg = self.messages[i];
+
+        // Product turns are not text — replace with a synthetic model-side marker so the
+        // LLM retains the context that it just showed the user N products. Without this,
+        // a "yes"/"the second one" follow-up loses its referent.
+        if (msg.messageType == ChatMessageTypeNovaProduct ||
+            msg.messageType == ChatMessageTypeNovaProductList) {
+            NSInteger n = (NSInteger)msg.novaProducts.count;
+            NSMutableArray *names = [NSMutableArray array];
+            for (NSInteger pidx = 0; pidx < MIN(n, 4); pidx++) {
+                id object = msg.novaProducts[pidx];
+                NSString *name = [self pp_novaDisplayNameForSuggestionObject:object];
+                if (name.length > 0) [names addObject:name];
+            }
+            NSString *marker;
+            if (names.count > 0) {
+                marker = [NSString stringWithFormat:@"[Nova showed %ld product%@: %@]",
+                          (long)n, n == 1 ? @"" : @"s",
+                          [names componentsJoinedByString:@", "]];
+            } else {
+                marker = [NSString stringWithFormat:@"[Nova showed %ld product%@]",
+                          (long)n, n == 1 ? @"" : @"s"];
+            }
+            [history addObject:@{
+                @"role": @"model",
+                @"parts": @[@{ @"text": marker }]
+            }];
+            continue;
+        }
+
+        if (msg.messageType != ChatMessageTypeText) continue;
 
         NSString *role = [msg.senderID isEqualToString:@"nova_bot_id"] ? @"model" : @"user";
         [history addObject:@{
@@ -623,6 +1388,7 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     UIVisualEffect *blurEffect = [UIBlurEffect effectWithStyle:blurStyle];
     UIVisualEffectView *header = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
     header.translatesAutoresizingMaskIntoConstraints = NO;
+    header.clipsToBounds = YES;
     header.layer.shadowColor = UIColor.blackColor.CGColor;
     header.layer.shadowOpacity = 0.04;
     header.layer.shadowRadius = 18.0;
@@ -631,6 +1397,48 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     self.novaHeaderView = header;
 
     UIView *contentView = header.contentView;
+    contentView.clipsToBounds = YES;
+
+    LOTAnimationView *backgroundLottie = [[LOTAnimationView alloc] init];
+    backgroundLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    backgroundLottie.userInteractionEnabled = NO;
+    backgroundLottie.contentMode = UIViewContentModeScaleAspectFill;
+    backgroundLottie.loopAnimation = YES;
+    backgroundLottie.animationSpeed = 1.0;
+    backgroundLottie.alpha = 0.0;
+    [contentView addSubview:backgroundLottie];
+    [contentView sendSubviewToBack:backgroundLottie];
+    self.novaHeaderBackgroundLottie = backgroundLottie;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [backgroundLottie.topAnchor constraintEqualToAnchor:contentView.topAnchor],
+        [backgroundLottie.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
+        [backgroundLottie.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
+        [backgroundLottie.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor]
+    ]];
+
+    __weak typeof(self) wself = self;
+    [AppClasses setAnimationNamed:@"novabg3"
+                           ToView:backgroundLottie
+                        withSpeed:1.0
+                       completion:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(wself) self = wself;
+            if (!self || self.dismissed) return;
+            if (success) {
+                self.currentHeaderBgAnimationName = @"novabg3";
+                [self.novaHeaderBackgroundLottie play];
+                [UIView animateWithDuration:0.55
+                                      delay:0.08
+                     usingSpringWithDamping:0.88
+                      initialSpringVelocity:0.2
+                                    options:UIViewAnimationOptionCurveEaseOut
+                                 animations:^{
+                    self.novaHeaderBackgroundLottie.alpha = self.novaHeaderCollapsed ? 0.58 : 1.0;
+                } completion:nil];
+            }
+        });
+    }];
 
     UIColor *accentColor = AppPrimaryClr ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
 
@@ -645,6 +1453,49 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     }
     [contentView addSubview:brandRing];
     self.headerBrandRingView = brandRing;
+
+    LOTAnimationView *ringLottie = [[LOTAnimationView alloc] init];
+    ringLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    ringLottie.userInteractionEnabled = NO;
+    ringLottie.contentMode = UIViewContentModeScaleAspectFill;
+    ringLottie.loopAnimation = YES;
+    ringLottie.animationSpeed = 1.0;
+    ringLottie.alpha = 0.0;
+    ringLottie.layer.cornerRadius = 25.0;
+    ringLottie.clipsToBounds = YES;
+    if (@available(iOS 13.0, *)) {
+        ringLottie.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [brandRing addSubview:ringLottie];
+    self.novaRingBackgroundLottie = ringLottie;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [ringLottie.topAnchor constraintEqualToAnchor:brandRing.topAnchor],
+        [ringLottie.leadingAnchor constraintEqualToAnchor:brandRing.leadingAnchor],
+        [ringLottie.trailingAnchor constraintEqualToAnchor:brandRing.trailingAnchor],
+        [ringLottie.bottomAnchor constraintEqualToAnchor:brandRing.bottomAnchor]
+    ]];
+
+    [AppClasses setAnimationNamed:@"nova-ring-bg"
+                           ToView:ringLottie
+                        withSpeed:1.0
+                       completion:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(wself) self = wself;
+            if (!self || self.dismissed) return;
+            if (success) {
+                [self.novaRingBackgroundLottie play];
+                [UIView animateWithDuration:0.42
+                                      delay:0.12
+                     usingSpringWithDamping:0.86
+                      initialSpringVelocity:0.3
+                                    options:UIViewAnimationOptionCurveEaseOut
+                                 animations:^{
+                    self.novaRingBackgroundLottie.alpha = 1.0;
+                } completion:nil];
+            }
+        });
+    }];
 
     UIView *brandMark = [[UIView alloc] init];
     brandMark.translatesAutoresizingMaskIntoConstraints = NO;
@@ -685,6 +1536,7 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
         nameLabel.attributedText = attr;
     }
     [contentView addSubview:nameLabel];
+    self.headerNameLabel = nameLabel;
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -693,6 +1545,7 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     subtitleLabel.text = kLang(@"nova_subtitle");
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     [contentView addSubview:subtitleLabel];
+    self.headerSubtitleLabel = subtitleLabel;
 
     UIVisualEffectView *liveCapsule;
     if (@available(iOS 13.0, *)) {
@@ -732,6 +1585,25 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     [liveContent addSubview:statusLabel];
     self.statusLabel = statusLabel;
 
+    UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    closeButton.translatesAutoresizingMaskIntoConstraints = NO;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:14.0
+                                                                                          weight:UIImageSymbolWeightSemibold];
+        UIImage *xmark = [UIImage systemImageNamed:@"xmark" withConfiguration:cfg];
+        [closeButton setImage:xmark forState:UIControlStateNormal];
+    } else {
+        [closeButton setTitle:@"✕" forState:UIControlStateNormal];
+    }
+    closeButton.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:0.62];
+    closeButton.accessibilityLabel = kLang(@"nova_close_accessibility");
+    closeButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [closeButton addTarget:self
+                    action:@selector(pp_handleNovaCloseTapped:)
+          forControlEvents:UIControlEventTouchUpInside];
+    [contentView addSubview:closeButton];
+    self.closeButton = closeButton;
+
     UIView *hairlineHost = [[UIView alloc] init];
     hairlineHost.translatesAutoresizingMaskIntoConstraints = NO;
     hairlineHost.userInteractionEnabled = NO;
@@ -742,6 +1614,9 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     header.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", nameLabel.text, statusLabel.text];
 
     CGFloat topOffset = 22.0; // Sheet grabber clearance.
+    self.novaHeaderExpandedBottomConstraint = [liveCapsule.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-14.0];
+    self.novaHeaderCollapsedBottomConstraint = [brandRing.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-12.0];
+    self.novaHeaderCollapsedBottomConstraint.active = NO;
 
     [NSLayoutConstraint activateConstraints:@[
         [header.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -772,7 +1647,7 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
         [liveCapsule.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0],
         [liveCapsule.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
         [liveCapsule.heightAnchor constraintEqualToConstant:26.0],
-        [liveCapsule.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-14.0],
+        self.novaHeaderExpandedBottomConstraint,
 
         [accentDot.leadingAnchor constraintEqualToAnchor:liveContent.leadingAnchor constant:10.0],
         [accentDot.centerYAnchor constraintEqualToAnchor:liveContent.centerYAnchor],
@@ -786,10 +1661,92 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
         [hairlineHost.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor],
         [hairlineHost.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor],
         [hairlineHost.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor],
-        [hairlineHost.heightAnchor constraintEqualToConstant:1.0]
+        [hairlineHost.heightAnchor constraintEqualToConstant:1.0],
+
+        // Close button: top-trailing of header, auto-flips for RTL via semantic attribute.
+        [closeButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        [closeButton.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12.0],
+        [closeButton.widthAnchor constraintEqualToConstant:36.0],
+        [closeButton.heightAnchor constraintEqualToConstant:36.0]
     ]];
 
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleNovaHeaderTap:)];
+    tap.cancelsTouchesInView = NO;
+    [header addGestureRecognizer:tap];
+
     [self pp_applyNovaSurfaceColors];
+}
+
+- (void)pp_handleNovaHeaderTap:(UITapGestureRecognizer *)tap {
+    CGPoint point = [tap locationInView:self.closeButton];
+    if (!self.closeButton.hidden && CGRectContainsPoint(self.closeButton.bounds, point)) {
+        return;
+    }
+    if (self.novaHeaderCollapsed) {
+        [self pp_setNovaHeaderCollapsed:NO animated:YES];
+    }
+}
+
+- (void)pp_setNovaHeaderCollapsed:(BOOL)collapsed animated:(BOOL)animated {
+    if (!self.novaHeaderView || self.novaHeaderCollapsed == collapsed) {
+        return;
+    }
+
+    self.novaHeaderCollapsed = collapsed;
+    self.novaHeaderExpandedBottomConstraint.active = !collapsed;
+    self.novaHeaderCollapsedBottomConstraint.active = collapsed;
+
+    BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    NSTimeInterval duration = (animated && !reduceMotion) ? 0.34 : 0.0;
+    CGFloat textAlpha = collapsed ? 0.0 : 1.0;
+    CGFloat capsuleAlpha = collapsed ? 0.0 : 1.0;
+    CGAffineTransform textTransform = collapsed ? CGAffineTransformMakeTranslation(0.0, -8.0) : CGAffineTransformIdentity;
+
+    void (^changes)(void) = ^{
+        self.headerNameLabel.alpha = textAlpha;
+        self.headerSubtitleLabel.alpha = textAlpha;
+        self.headerLiveCapsule.alpha = capsuleAlpha;
+        self.headerNameLabel.transform = textTransform;
+        self.headerSubtitleLabel.transform = textTransform;
+        self.headerLiveCapsule.transform = collapsed ? CGAffineTransformMakeTranslation(0.0, -10.0) : CGAffineTransformIdentity;
+        self.novaHeaderBackgroundLottie.alpha = collapsed ? 0.58 : 1.0;
+        [self pp_applyNovaTableInsetsForCurrentHeaderState];
+        [self.view layoutIfNeeded];
+        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
+    };
+
+    if (duration <= 0.0) {
+        changes();
+        return;
+    }
+
+    [UIView animateWithDuration:duration
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:changes
+                     completion:^(__unused BOOL finished) {
+        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
+    }];
+}
+
+- (void)pp_applyNovaTableInsetsForCurrentHeaderState {
+    if (!self.tableView) {
+        return;
+    }
+
+    CGFloat topInset = self.novaHeaderCollapsed ? PPNovaCollapsedTableTopInset : PPNovaExpandedTableTopInset;
+    UIEdgeInsets inset = self.tableView.contentInset;
+    inset.top = topInset;
+    inset.bottom = PPNovaTableBottomInset;
+    self.tableView.contentInset = inset;
+    self.tableView.scrollIndicatorInsets = inset;
+}
+
+- (void)pp_handleNovaCloseTapped:(__unused UIButton *)sender {
+    [self.view endEditing:YES];
+    [self dismissViewControllerAnimated:YES completion:nil];
 }
 
 - (void)pp_startHeaderLiveAnimations {
@@ -859,11 +1816,48 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     [self.headerBrandMarkView.layer removeAllAnimations];
 }
 
+- (void)pp_transitionHeaderBackgroundToAnimation:(NSString *)animationName {
+    if (!self.novaHeaderBackgroundLottie) return;
+    if ([self.currentHeaderBgAnimationName isEqualToString:animationName]) return;
+
+    self.currentHeaderBgAnimationName = animationName;
+
+    [UIView animateWithDuration:0.32
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn
+                     animations:^{
+        self.novaHeaderBackgroundLottie.alpha = 0.0;
+    } completion:^(BOOL finished) {
+        if (!self || self.dismissed) return;
+
+        __weak typeof(self) wself = self;
+        [AppClasses setAnimationNamed:animationName
+                               ToView:self.novaHeaderBackgroundLottie
+                            withSpeed:1.0
+                           completion:^(BOOL success) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(wself) self = wself;
+                if (!self || self.dismissed) return;
+                if (success) {
+                    [self.novaHeaderBackgroundLottie play];
+                    [UIView animateWithDuration:0.38
+                                          delay:0.06
+                         usingSpringWithDamping:0.84
+                          initialSpringVelocity:0.3
+                                        options:UIViewAnimationOptionCurveEaseOut
+                                     animations:^{
+                        self.novaHeaderBackgroundLottie.alpha = self.novaHeaderCollapsed ? 0.58 : 0.38;
+                    } completion:nil];
+                }
+            });
+        }];
+    }];
+}
+
 - (void)setupInputView {
     self.inputbar = [[PPNovaFloatingInputBarView alloc] init];
     self.inputbar.delegate = self;
     self.inputbar.translatesAutoresizingMaskIntoConstraints = NO;
-    self.inputbar.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     [self.view addSubview:self.inputbar];
 
@@ -956,7 +1950,6 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     emptyView.translatesAutoresizingMaskIntoConstraints = NO;
     emptyView.userInteractionEnabled = NO;
     emptyView.alpha = 1.0;
-    emptyView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.view insertSubview:emptyView belowSubview:self.tableView];
     self.emptyStateView = emptyView;
 
@@ -1096,6 +2089,10 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 
     [self pp_startTypingDotsAnimation];
 
+    NSInteger roll = arc4random_uniform(5) + 1;
+    NSString *thinkingAnim = [NSString stringWithFormat:@"novabg%ld", (long)roll];
+    [self pp_transitionHeaderBackgroundToAnimation:thinkingAnim];
+
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.typingContainer.alpha = 1.0;
         self.typingContainer.transform = CGAffineTransformIdentity;
@@ -1116,6 +2113,8 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 - (void)hideNovaTyping {
     self.statusLabel.text = kLang(@"nova_status_online");
 
+    [self pp_transitionHeaderBackgroundToAnimation:@"novabg1"];
+
     [UIView animateWithDuration:0.22
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseIn
@@ -1135,6 +2134,7 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 
     [self.tableView registerClass:[PPNovaMessageBubbleCell class] forCellReuseIdentifier:[PPNovaMessageBubbleCell reuseIdentifier]];
     [self.tableView registerClass:[PPNovaProductMessageCell class] forCellReuseIdentifier:@"PPNovaProductMessageCell"];
+    [self.tableView registerClass:[PPNovaReviewMessageCell class] forCellReuseIdentifier:[PPNovaReviewMessageCell reuseIdentifier]];
 
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 92;
@@ -1143,10 +2143,11 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     self.tableView.backgroundColor = UIColor.clearColor;
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     self.tableView.delaysContentTouches = NO;
+    self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
-    self.tableView.contentInset = UIEdgeInsetsMake(174, 0, PPSpaceBase, 0);
+    self.tableView.contentInset = UIEdgeInsetsMake(PPNovaExpandedTableTopInset, 0, PPNovaTableBottomInset, 0);
     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
 
     [self.view addSubview:self.tableView];
@@ -1184,42 +2185,57 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 
 - (void)registerForKeyboardNotifications {
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(keyboardWillShow:)
-                                                 name:UIKeyboardWillShowNotification
+                                             selector:@selector(keyboardWillChangeFrame:)
+                                                 name:UIKeyboardWillChangeFrameNotification
                                                object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(keyboardWillHide:)
-                                                 name:UIKeyboardWillHideNotification
+                                             selector:@selector(pp_appDidEnterBackground:)
+                                                 name:UIApplicationDidEnterBackgroundNotification
+                                               object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_appWillEnterForeground:)
+                                                 name:UIApplicationWillEnterForegroundNotification
                                                object:nil];
 }
 
-- (void)keyboardWillShow:(NSNotification *)notification {
+- (void)pp_appDidEnterBackground:(__unused NSNotification *)note {
+    [self pp_stopHeaderLiveAnimations];
+    [self pp_stopAmbientBackgroundAnimations];
+    [self pp_stopTypingDotsAnimation];
+}
+
+- (void)pp_appWillEnterForeground:(__unused NSNotification *)note {
+    if (self.dismissed || self.view.window == nil) return;
+    [self pp_startHeaderLiveAnimations];
+    [self pp_startAmbientBackgroundAnimations];
+    if (self.typingContainer.alpha > 0.5) {
+        [self pp_startTypingDotsAnimation];
+    }
+}
+
+- (void)keyboardWillChangeFrame:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
     CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     NSTimeInterval duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
     UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
 
-    CGFloat safeAreaBottom = self.view.safeAreaInsets.bottom;
-    CGFloat keyboardOffset = MAX(keyboardFrame.size.height - safeAreaBottom, 0.0);
-    self.inputBarBottomConstraint.constant = -(keyboardOffset + 8.0);
+    CGRect keyboardInView = [self.view convertRect:keyboardFrame fromView:nil];
+    CGFloat overlap = MAX(CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(keyboardInView), 0.0);
+    CGFloat keyboardOffset = MAX(overlap - self.view.safeAreaInsets.bottom, 0.0);
+    self.inputBarBottomConstraint.constant = keyboardOffset > 0.0
+        ? -(keyboardOffset + 8.0)
+        : self.inputBarRestingBottomConstant;
 
-    [UIView animateWithDuration:duration delay:0.0 options:(curve << 16) animations:^{
+    UIViewAnimationOptions options = ((UIViewAnimationOptions)curve << 16) |
+        UIViewAnimationOptionBeginFromCurrentState |
+        UIViewAnimationOptionAllowUserInteraction;
+    [UIView animateWithDuration:duration delay:0.0 options:options animations:^{
         [self.view layoutIfNeeded];
+        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
     } completion:^(BOOL finished) {
-        [self scrollToBottomAnimated:YES];
+        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
+        [self scrollToBottomAnimated:NO];
     }];
-}
-
-- (void)keyboardWillHide:(NSNotification *)notification {
-    NSDictionary *userInfo = notification.userInfo;
-    NSTimeInterval duration = [userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
-    UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
-
-    self.inputBarBottomConstraint.constant = self.inputBarRestingBottomConstant;
-
-    [UIView animateWithDuration:duration delay:0.0 options:(curve << 16) animations:^{
-        [self.view layoutIfNeeded];
-    } completion:nil];
 }
 
 - (void)scrollToBottomAnimated:(BOOL)animated {
@@ -1235,12 +2251,21 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 }
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row < 0 || indexPath.row >= (NSInteger)self.messages.count) {
+        return [[UITableViewCell alloc] init];
+    }
     ChatMessageModel *msg = self.messages[indexPath.row];
-    
+
     if (msg.messageType == ChatMessageTypeNovaProduct || msg.messageType == ChatMessageTypeNovaProductList) {
         PPNovaProductMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPNovaProductMessageCell" forIndexPath:indexPath];
         cell.delegate = self;
-        [cell configureWithMessage:msg maxWidth:self.view.bounds.size.width];
+        [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
+        return cell;
+    }
+
+    if (msg.messageType == ChatMessageTypeNovaReview) {
+        PPNovaReviewMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:[PPNovaReviewMessageCell reuseIdentifier] forIndexPath:indexPath];
+        [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
         return cell;
     }
 
@@ -1248,6 +2273,20 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
 
     return cell;
+}
+
+- (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath {
+    if (indexPath.row < 0 || indexPath.row >= (NSInteger)self.messages.count) {
+        return 92.0;
+    }
+    ChatMessageModel *msg = self.messages[indexPath.row];
+    if (msg.messageType == ChatMessageTypeNovaProduct || msg.messageType == ChatMessageTypeNovaProductList) {
+        return 335.0;
+    }
+    if (msg.messageType == ChatMessageTypeNovaReview) {
+        return 120.0;
+    }
+    return 92.0;
 }
 
 - (CGFloat)pp_novaMessageLayoutWidthForTableView:(UITableView *)tableView {
@@ -1263,6 +2302,11 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 
 - (void)pp_updateVisibleNovaMessageCellWidthsForTableWidth:(CGFloat)tableWidth {
     for (UITableViewCell *visibleCell in self.tableView.visibleCells) {
+        if ([visibleCell isKindOfClass:PPNovaProductMessageCell.class]) {
+            [(PPNovaProductMessageCell *)visibleCell updateAvailableWidth:tableWidth];
+            continue;
+        }
+
         if (![visibleCell isKindOfClass:PPNovaMessageBubbleCell.class]) continue;
 
         PPNovaMessageBubbleCell *cell = (PPNovaMessageBubbleCell *)visibleCell;
@@ -1272,6 +2316,13 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
         ChatMessageModel *message = self.messages[indexPath.row];
         [cell configureWithMessage:message maxWidth:tableWidth];
     }
+}
+
+- (void)pp_refreshVisibleNovaCellLayoutForCurrentTableWidth {
+    CGFloat width = [self pp_novaMessageLayoutWidthForTableView:self.tableView];
+    [self pp_updateVisibleNovaMessageCellWidthsForTableWidth:width];
+    [self.tableView beginUpdates];
+    [self.tableView endUpdates];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -1303,6 +2354,17 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 
 #pragma mark - PPNovaFloatingInputBarViewDelegate
 
+- (void)novaInputBarDidBeginEditing:(PPNovaFloatingInputBarView *)bar {
+    [self pp_setNovaHeaderCollapsed:YES animated:YES];
+}
+
+- (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeText:(NSString *)text {
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length > 0) {
+        [self pp_setNovaHeaderCollapsed:YES animated:YES];
+    }
+}
+
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didSendText:(NSString *)text {
     [self pp_handleNovaSubmittedText:text];
 }
@@ -1310,8 +2372,10 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeHeight:(CGFloat)height {
     [UIView animateWithDuration:0.18 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction animations:^{
         [self.view layoutIfNeeded];
+        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
     } completion:^(__unused BOOL finished) {
-        [self scrollToBottomAnimated:YES];
+        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
+        [self scrollToBottomAnimated:NO];
     }];
 }
 
@@ -1337,21 +2401,104 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     [self sendNovaRequestForUserText:trimmedText];
 }
 
+// Production-safe add-to-cart intent classifier.
+// Adding to cart is irreversible from a trust standpoint — false positives are far worse
+// than false negatives. Rules:
+//   1. Cap total length (≤30 chars) — true affirmations are short.
+//   2. Reject if any negation token is present (English/Arabic).
+//   3. Tier 1: bare-word exact match (e.g., "اريد" alone — but not "اريد المساعدة").
+//   4. Tier 2: prefix + word-boundary match with ≤15-char tail
+//      (e.g., "yes please" YES; "yes I have a question" NO).
 - (BOOL)pp_isAddToCartIntent:(NSString *)text {
-    NSString *lower = [text lowercaseString];
-    NSArray *keywords = @[@"yes", @"add", @"buy", @"want", @"أضف", @"اضف", @"نعم", @"اريد", @"أريد", @"شراء", @"ايوه", @"ايه"];
-    for (NSString *kw in keywords) {
-        if ([lower containsString:kw]) return YES;
+    if (text.length == 0) return NO;
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (trimmed.length == 0 || trimmed.length > 30) return NO;
+    NSString *lower = [trimmed lowercaseString];
+
+    // -- Negations short-circuit --------------------------------------------------
+    NSArray<NSString *> *englishNegations = @[
+        @"don't", @"dont", @"do not", @"not", @"no", @"never", @"won't", @"wont"
+    ];
+    for (NSString *neg in englishNegations) {
+        if ([self pp_lowercase:lower containsWord:neg]) return NO;
+    }
+    NSArray<NSString *> *arabicNegationsSubstr = @[
+        @"لا ", @" لا", @"لست", @"ليس", @"ليست",
+        @"ما ", @" ما", @"مش ", @"مو ", @"مب "
+    ];
+    for (NSString *neg in arabicNegationsSubstr) {
+        if ([trimmed containsString:neg]) return NO;
+    }
+    if ([trimmed isEqualToString:@"لا"] || [trimmed isEqualToString:@"ما"]) return NO;
+
+    // -- Tier 1: bare-word exact match. Words too generic for substring matching --
+    // ("اريد" alone is fine; "اريد المساعدة" must NOT trigger.)
+    NSArray<NSString *> *exactOnly = @[
+        @"اريد", @"أريد", @"بدي", @"ابي", @"أبي", @"ودي",
+        @"حسنا", @"حسناً", @"موافق", @"please"
+    ];
+    for (NSString *aff in exactOnly) {
+        if ([trimmed isEqualToString:aff] || [lower isEqualToString:aff.lowercaseString]) return YES;
+    }
+
+    // -- Tier 2: prefix + boundary + short tail -----------------------------------
+    NSArray<NSString *> *prefixAffirmatives = @[
+        @"yes", @"yep", @"yeah", @"yup", @"sure", @"ok", @"okay",
+        @"add it", @"add to cart", @"add",
+        @"buy it", @"buy", @"take it", @"i want it", @"i'll take",
+        @"do it", @"go ahead", @"please add",
+        @"نعم", @"ايوه", @"ايوا", @"ايه",
+        @"اضف", @"أضف", @"اضفه", @"أضفه", @"اضيفه", @"أضيفه", @"اضفها", @"أضفها",
+        @"اشتري", @"اشتريه",
+        @"تمام", @"ماشي", @"يلا", @"هيا", @"اوكي", @"أوكي"
+    ];
+    for (NSString *aff in prefixAffirmatives) {
+        NSString *lp = aff.lowercaseString;
+        if (![lower hasPrefix:lp]) continue;
+        NSInteger affLen = (NSInteger)lp.length;
+        if ((NSInteger)lower.length == affLen) return YES;
+        unichar nextChar = [lower characterAtIndex:affLen];
+        BOOL isWordBoundary = (nextChar == ' ' || nextChar == ',' || nextChar == '.' ||
+                               nextChar == '!' || nextChar == '\t' || nextChar == 0x060C);
+        if (!isWordBoundary) continue;
+        if ((NSInteger)lower.length - affLen <= 15) return YES;
     }
     return NO;
+}
+
+- (BOOL)pp_lowercase:(NSString *)haystack containsWord:(NSString *)word {
+    if (word.length == 0 || haystack.length == 0) return NO;
+    NSString *escaped = [NSRegularExpression escapedPatternForString:word];
+    NSString *pattern = [NSString stringWithFormat:@"(^|\\W)%@(\\W|$)", escaped];
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
+                                                                           options:NSRegularExpressionCaseInsensitive
+                                                                             error:nil];
+    if (!regex) return NO;
+    return [regex numberOfMatchesInString:haystack
+                                  options:0
+                                    range:NSMakeRange(0, haystack.length)] > 0;
 }
 
 - (void)pp_handleAddToCartForProduct:(PetAccessory *)product {
     [PPHUD showLoading:@""];
 
     CartItem *item = [[CartItem alloc] initWithAccessory:product quantity:1];
+    item.type = product.isPetMedicine ? @"petMedicine" : @"petAccessory";
 
     BOOL success = [[CartManager sharedManager] addItem:item];
+
+    if (success) {
+        NSString *category = [NSString stringWithFormat:@"acc-%ld", (long)product.petMainCategoryID];
+        [PPAnalytics logAddToCartItemID:product.accessoryID
+                                    name:product.name
+                                category:category
+                                   price:product.finalPrice.doubleValue
+                                quantity:1];
+
+        UINotificationFeedbackGenerator *fb = [[UINotificationFeedbackGenerator alloc] init];
+        [fb prepare];
+        [fb notificationOccurred:UINotificationFeedbackTypeSuccess];
+    }
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
 
@@ -1385,51 +2532,160 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     msg.senderID = isIncoming ? @"nova_bot_id" : [UserManager sharedManager].currentUser.ID;
 
     [self.messages addObject:msg];
+    [self pp_trimMessageHistoryIfNeeded];
     [self updateNovaEmptyStateAnimated:YES];
     [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
 }
 
-- (NSString *)pp_sanitizeNovaReply:(NSString *)text {
+// Cap message history at 100; when exceeded drop oldest 20 in one batch and reload.
+// A long Nova session would otherwise grow unbounded (memory + scroll perf).
+- (void)pp_trimMessageHistoryIfNeeded {
+    static const NSUInteger kCap = 100;
+    static const NSUInteger kTrimChunk = 20;
+    if (self.messages.count <= kCap) return;
+    NSUInteger floor = kCap - kTrimChunk;
+    if (self.messages.count <= floor) return;
+    NSUInteger removeCount = self.messages.count - floor;
+    [self.messages removeObjectsInRange:NSMakeRange(0, removeCount)];
+    [self.tableView reloadData];
+}
+
+// Best-effort principle-based reply sanitizer. Backend `sanitize_reply` flags issues but
+// does not hard-strip; this is the client-side belt-and-suspenders so users never see:
+//   - re-greetings (the screen already showed one when it opened),
+//   - pressure phrases that the Nova baseline explicitly removed
+//     (limited stock / availability / reserve-now / pressure CTAs, EN + AR).
+// If everything gets stripped, returns "" — caller (pp_dispatchNovaRequest) skips the bubble.
+- (NSString *)pp_sanitizeNovaReply:(NSString *)text hideStructuredSuggestions:(BOOL)hideStructuredSuggestions {
     if (text.length == 0) return text;
 
-    NSArray<NSString *> *greetingPrefixes = @[
-        @"أهلا بك في بيور بتس،",
-        @"أهلا بك في بيور بتس.",
-        @"أهلاً بك في بيور بتس،",
-        @"أهلاً بك في بيور بتس.",
-        @"أهلا بك في Pure Pets،",
-        @"أهلا بك في Pure Pets.",
-        @"أهلاً بك في Pure Pets،",
-        @"أهلاً بك في Pure Pets.",
-        @"أهلا بك في",
-        @"أهلاً بك في",
-        @"Welcome to Pure Pets,",
-        @"Welcome to Pure Pets.",
-        @"Hi, I'm Nova from Pure Pets."
-    ];
-
     NSString *result = text;
-
-    for (NSString *prefix in greetingPrefixes) {
-        if ([result hasPrefix:prefix]) {
-            result = [result substringFromIndex:prefix.length];
-
-            result = [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-
-            if (result.length == 0) break;
-
-            unichar firstChar = [result characterAtIndex:0];
-            if (firstChar == 0x060C || firstChar == 0x002C || firstChar == 0x002E) {
-                result = [result substringFromIndex:1];
-                result = [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            }
-
-            break;
-        }
+    if (hideStructuredSuggestions) {
+        result = [self pp_stripStructuredNovaSuggestionText:result];
     }
+    result = [self pp_stripNovaSuggestionReferenceTags:result];
 
+    // Collapse runs of whitespace introduced by mid-text strips.
+    NSRegularExpression *ws = [NSRegularExpression regularExpressionWithPattern:@"[ \\t]{2,}"
+                                                                        options:0
+                                                                          error:nil];
+    if (ws) {
+        result = [ws stringByReplacingMatchesInString:result
+                                              options:0
+                                                range:NSMakeRange(0, result.length)
+                                         withTemplate:@" "];
+    }
+    result = [result stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     return result;
 }
+
+- (NSString *)pp_stripNovaSuggestionReferenceTags:(NSString *)text {
+    if (text.length == 0) return text;
+
+    NSString *result = text;
+    NSArray<NSString *> *patterns = @[
+        @"\\[PRODUCT_ID:\\s*[^\\]]+\\]",
+        @"\\[SERVICE_ID:\\s*[^\\]]+\\]",
+        @"\\[MEDICINE_ID:\\s*[^\\]]+\\]"
+    ];
+    for (NSString *pattern in patterns) {
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
+                                                                               options:NSRegularExpressionCaseInsensitive
+                                                                                 error:nil];
+        if (!regex) continue;
+        result = [regex stringByReplacingMatchesInString:result
+                                                 options:0
+                                                   range:NSMakeRange(0, result.length)
+                                            withTemplate:@""];
+    }
+    return result;
+}
+
+- (NSString *)pp_stripStructuredNovaSuggestionText:(NSString *)text {
+    if (text.length == 0) return text;
+
+    NSString *result = text;
+    NSRegularExpression *tagSentenceRegex =
+    [NSRegularExpression regularExpressionWithPattern:@"[^\\.\\n!؟\\?]*(?:\\[PRODUCT_ID:|\\[SERVICE_ID:|\\[MEDICINE_ID:)[^\\.\\n!؟\\?]*[\\.\\n!؟\\?]?"
+                                             options:NSRegularExpressionCaseInsensitive
+                                               error:nil];
+    if (tagSentenceRegex) {
+        result = [tagSentenceRegex stringByReplacingMatchesInString:result
+                                                            options:0
+                                                              range:NSMakeRange(0, result.length)
+                                                       withTemplate:@"\n"];
+    }
+
+    NSMutableArray<NSString *> *keptLines = [NSMutableArray array];
+    NSArray<NSString *> *lines = [result componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet];
+    for (NSString *line in lines) {
+        NSString *trimmed = [line stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (trimmed.length == 0) {
+            continue;
+        }
+        if ([self pp_isNovaStructuredSuggestionLine:trimmed]) {
+            continue;
+        }
+        [keptLines addObject:trimmed];
+    }
+    if (keptLines.count == 1) {
+        NSString *onlyLine = keptLines.firstObject;
+        if ([onlyLine hasSuffix:@":"] || [onlyLine hasSuffix:@"："] || [onlyLine hasSuffix:@"،"]) {
+            return @"";
+        }
+    }
+    return [keptLines componentsJoinedByString:@"\n"];
+}
+
+- (BOOL)pp_isNovaStructuredSuggestionLine:(NSString *)line {
+    if (line.length == 0) {
+        return YES;
+    }
+
+    NSString *lower = line.lowercaseString;
+    if ([lower containsString:@"productid"] ||
+        [lower containsString:@"product_ids"] ||
+        [lower containsString:@"serviceid"] ||
+        [lower containsString:@"service_ids"] ||
+        [lower containsString:@"medicineid"] ||
+        [lower containsString:@"medicine_ids"]) {
+        return YES;
+    }
+    NSArray<NSString *> *headers = @[
+        @"curated picks", @"suggestions", @"suggestion", @"recommended products",
+        @"recommended items", @"recommended services", @"products", @"services", @"medicines",
+        @"اختيارات", @"اختيارات مناسبة", @"اقتراحات", @"الاقتراحات",
+        @"منتجات", @"المنتجات", @"خدمات", @"الخدمات", @"أدوية", @"الأدوية"
+    ];
+    for (NSString *header in headers) {
+        if ([lower isEqualToString:header] ||
+            [lower isEqualToString:[header stringByAppendingString:@":"]] ||
+            [lower isEqualToString:[header stringByAppendingString:@"："]]) {
+            return YES;
+        }
+    }
+    if (([lower containsString:@"recommend"] ||
+         [line containsString:@"أنصح"] ||
+         [line containsString:@"أرشح"]) &&
+        ([line hasSuffix:@":"] || [line hasSuffix:@"："])) {
+        return YES;
+    }
+
+    unichar first = [line characterAtIndex:0];
+    if (first == '-' || first == 0x2022 || first == '*') {
+        return YES;
+    }
+
+    NSRegularExpression *numberedLineRegex =
+    [NSRegularExpression regularExpressionWithPattern:@"^\\d+[\\).]\\s+"
+                                             options:0
+                                               error:nil];
+    return [numberedLineRegex numberOfMatchesInString:line
+                                              options:0
+                                                range:NSMakeRange(0, line.length)] > 0;
+}
+
+
 
 - (void)animateInsertedRowAtIndexPath:(NSIndexPath *)indexPath {
     [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
@@ -1438,14 +2694,88 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 
 #pragma mark - PPNovaProductMessageCellDelegate
 
-- (void)novaProductCell_didTapAddToCart:(PetAccessory *)product {
-    [self pp_handleAddToCartForProduct:product];
+- (void)novaProductCell_didTapAddToCart:(id)item {
+    if (![item isKindOfClass:PetAccessory.class]) {
+        return;
+    }
+    [self pp_handleAddToCartForProduct:(PetAccessory *)item];
 }
 
-- (void)novaProductCell_didTapProduct:(PetAccessory *)product {
+- (void)novaProductCell_didTapProduct:(id)item {
+    if ([item isKindOfClass:ServiceModel.class]) {
+        ServiceModel *service = (ServiceModel *)item;
+        [PPAnalytics logNovaPreviewOpenedWithItemKind:@"service"
+                                               itemID:service.serviceID
+                                            sessionID:self.novaSessionId];
+        ServiceViewerViewController *viewer = [ServiceViewerViewController new];
+        viewer.service = service;
+        [PPFunc presentSheetFrom:self sheetVC:viewer detentStyle:PPSheetDetentStyleLargeOnly];
+        return;
+    }
+
+    if (![item isKindOfClass:PetAccessory.class]) {
+        return;
+    }
+
+    PetAccessory *product = (PetAccessory *)item;
+    [PPAnalytics logNovaPreviewOpenedWithItemKind:(product.isPetMedicine ? @"medicine" : @"product")
+                                           itemID:product.accessoryID
+                                        sessionID:self.novaSessionId];
+    NSString *category = [NSString stringWithFormat:@"acc-%ld", (long)product.petMainCategoryID];
+    [PPAnalytics logSelectItemWithItemID:product.accessoryID
+                                     name:product.name
+                                 category:category
+                                    price:product.finalPrice.doubleValue
+                                 listName:@"nova_chat"];
+
+    if (product.isPetMedicine) {
+        VetMedicineModel *medicine = [self pp_novaMedicineModelFromAccessory:product];
+        PPPetCareViewerVC *viewer = [[PPPetCareViewerVC alloc] initWithMedicine:medicine
+                                                                   mainKindName:kLang(@"pet_care_all_pets")];
+        [self pp_openNovaStackViewer:viewer];
+        return;
+    }
+
     AccessViewerVC *viewer = [[AccessViewerVC alloc] init];
     viewer.accessAds = product;
+    [self pp_openNovaStackViewer:viewer];
+}
 
+- (VetMedicineModel *)pp_novaMedicineModelFromAccessory:(PetAccessory *)accessory {
+    NSMutableDictionary *data = [[accessory toFirestoreDictionary] mutableCopy] ?: [NSMutableDictionary dictionary];
+    data[@"accessKindType"] = @(AccessTypePetMedicine);
+    data[@"type"] = @(AccessTypePetMedicine);
+    if (accessory.name.length > 0) {
+        data[@"title"] = accessory.name;
+        data[@"name"] = accessory.name;
+        data[@"nameEn"] = accessory.name;
+    }
+    if (accessory.desc.length > 0) {
+        data[@"description"] = accessory.desc;
+        data[@"desc"] = accessory.desc;
+        data[@"descEn"] = accessory.desc;
+    }
+    NSString *firstImage = [accessory.imageURLsArray.firstObject isKindOfClass:NSString.class]
+        ? accessory.imageURLsArray.firstObject
+        : @"";
+    if (firstImage.length > 0) {
+        data[@"imageUrl"] = firstImage;
+    }
+    data[@"stockQuantity"] = @(MAX(accessory.quantity, 0));
+    data[@"quantity"] = @(MAX(accessory.quantity, 0));
+    data[@"isAvailable"] = @(accessory.quantity > 0);
+    data[@"isPublished"] = @YES;
+    if (!data[@"currency"]) {
+        data[@"currency"] = @"QAR";
+    }
+    return [VetMedicineModel fromDictionary:data withID:accessory.accessoryID ?: @""];
+}
+
+- (void)pp_openNovaStackViewer:(UIViewController *)viewer {
+    if (!viewer) {
+        return;
+    }
+    viewer.hidesBottomBarWhenPushed = YES;
     if (self.navigationController) {
         [self.navigationController pushViewController:viewer animated:YES];
     } else {

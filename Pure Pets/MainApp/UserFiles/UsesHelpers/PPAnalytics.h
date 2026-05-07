@@ -69,6 +69,29 @@ typedef NS_ENUM(NSInteger, PPContactChannel) {
 + (void)logContactIntentForAd:(PetAd *)ad channel:(PPContactChannel)channel;
 + (void)logContactIntentForAccessory:(PetAccessory *)accessory channel:(PPContactChannel)channel;
 
+// ---- Nova chat (custom GA4 events; Nova BigQuery pipeline maps these into the funnel) ----
++ (void)logNovaOpenedWithSessionID:(NSString *)sessionID;
++ (void)logNovaMessageSentWithCharCount:(NSUInteger)charCount
+                                isArabic:(BOOL)isArabic
+                              sessionID:(NSString *)sessionID;
++ (void)logNovaShowcaseShownWithItemCount:(NSUInteger)itemCount
+                                sessionID:(NSString *)sessionID;
++ (void)logNovaShowcaseShownWithItemCount:(NSUInteger)itemCount
+                                sessionID:(NSString *)sessionID
+                                   source:(nullable NSString *)source;
++ (void)logNovaShowcaseResolutionFailedWithRequestedCount:(NSUInteger)requestedCount
+                                             resolvedCount:(NSUInteger)resolvedCount
+                                                 sessionID:(NSString *)sessionID;
++ (void)logNovaPreviewOpenedWithItemKind:(nullable NSString *)itemKind
+                                  itemID:(nullable NSString *)itemID
+                               sessionID:(NSString *)sessionID;
++ (void)logNovaErrorWithCode:(NSInteger)gRPCCode
+                      domain:(nullable NSString *)domain
+                     attempt:(NSInteger)attempt
+                   sessionID:(NSString *)sessionID;
++ (void)logNovaClosedWithSessionID:(NSString *)sessionID
+                      messageCount:(NSUInteger)messageCount;
+
 @end
 
 NS_ASSUME_NONNULL_END

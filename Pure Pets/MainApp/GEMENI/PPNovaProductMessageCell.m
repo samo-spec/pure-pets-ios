@@ -7,6 +7,7 @@
 #import "PPUniversalCellViewModel.h"
 #import "PPImageLoaderManager.h"
 #import "AppManager.h"
+#import "ServiceModel.h"
 
 @interface PPNovaProductMessageCell () <UICollectionViewDelegateFlowLayout, UICollectionViewDataSource, PPUniversalCellDelegate>
 
@@ -14,8 +15,11 @@
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *countLabel;
 @property (nonatomic, strong) UICollectionView *collectionView;
-@property (nonatomic, strong) NSArray<PetAccessory *> *products;
+@property (nonatomic, strong) NSArray *products;
 @property (nonatomic, assign) CGFloat maxWidth;
+@property (nonatomic, copy) NSString *messageID;
+@property (nonatomic, assign) BOOL hasPerformedInitialScroll;
+@property (nonatomic, assign) CGFloat lastCollectionLayoutWidth;
 
 @end
 
@@ -32,6 +36,9 @@
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.products = @[];
+    self.messageID = nil;
+    self.hasPerformedInitialScroll = NO;
+    self.lastCollectionLayoutWidth = 0.0;
     self.countLabel.text = nil;
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
         cell.transform = CGAffineTransformIdentity;
@@ -42,6 +49,8 @@
 - (void)setupUI {
     self.backgroundColor = [UIColor clearColor];
     self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.clipsToBounds = NO;
+    self.contentView.clipsToBounds = NO;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     self.headerStack = [[UIStackView alloc] init];
@@ -49,6 +58,7 @@
     self.headerStack.axis = UILayoutConstraintAxisHorizontal;
     self.headerStack.alignment = UIStackViewAlignmentCenter;
     self.headerStack.spacing = 8.0;
+    self.headerStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.contentView addSubview:self.headerStack];
 
     self.titleLabel = [[UILabel alloc] init];
@@ -86,6 +96,8 @@
     self.collectionView.showsHorizontalScrollIndicator = NO;
     self.collectionView.delegate = self;
     self.collectionView.dataSource = self;
+    self.collectionView.clipsToBounds = NO;
+    self.collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.collectionView registerClass:[PPUniversalCell class] forCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier]];
 
     [self.contentView addSubview:self.collectionView];
@@ -106,17 +118,64 @@
 }
 
 - (void)configureWithMessage:(ChatMessageModel *)messageModel maxWidth:(CGFloat)maxWidth {
-    self.products = messageModel.novaProducts ?: @[];
+    BOOL isNewMessage = ![self.messageID isEqualToString:messageModel.ID ?: @""];
+    self.messageID = messageModel.ID ?: @"";
+    if (isNewMessage) {
+        self.hasPerformedInitialScroll = NO;
+    }
+
+    self.products = [self pp_supportedNovaItemsFromArray:(NSArray *)messageModel.novaProducts];
     self.maxWidth = maxWidth;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.headerStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.titleLabel.text = kLang(@"nova_product_results");
     self.countLabel.text = [NSString stringWithFormat:kLang(@"nova_product_count_format"), (long)self.products.count];
     [self.collectionView reloadData];
-    
-    // Reset scroll position
-    if (self.products.count > 0) {
-        UICollectionViewScrollPosition position = Language.isRTL ? UICollectionViewScrollPositionRight : UICollectionViewScrollPositionLeft;
-        [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:0 inSection:0] atScrollPosition:position animated:NO];
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self pp_scrollToInitialProductIfNeeded];
+}
+
+- (void)updateAvailableWidth:(CGFloat)maxWidth {
+    if (maxWidth <= 1.0) {
+        return;
     }
+    if (fabs(self.maxWidth - maxWidth) <= 1.0) {
+        return;
+    }
+    self.maxWidth = maxWidth;
+    [self.collectionView.collectionViewLayout invalidateLayout];
+    [self.collectionView setNeedsLayout];
+    [self.collectionView layoutIfNeeded];
+}
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat width = CGRectGetWidth(self.collectionView.bounds);
+    if (width > 1.0 && fabs(width - self.lastCollectionLayoutWidth) > 1.0) {
+        self.lastCollectionLayoutWidth = width;
+        [self.collectionView.collectionViewLayout invalidateLayout];
+    }
+}
+
+- (void)pp_scrollToInitialProductIfNeeded {
+    if (self.hasPerformedInitialScroll || self.products.count == 0) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.products.count == 0 || self.collectionView.window == nil) {
+            return;
+        }
+        self.hasPerformedInitialScroll = YES;
+        [self.collectionView layoutIfNeeded];
+        UICollectionViewScrollPosition position = Language.isRTL ? UICollectionViewScrollPositionRight : UICollectionViewScrollPositionLeft;
+        [self.collectionView scrollToItemAtIndexPath:[NSIndexPath indexPathForItem:0 inSection:0]
+                                    atScrollPosition:position
+                                            animated:NO];
+    });
 }
 
 #pragma mark - UICollectionViewDataSource
@@ -128,11 +187,12 @@
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier] forIndexPath:indexPath];
     
-    PetAccessory *product = self.products[indexPath.item];
-    PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:product context:PPCellForMarket];
+    id item = self.products[indexPath.item];
+    PPCellContext context = [self pp_cellContextForNovaItem:item];
+    PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:item context:context];
     
     [cell applyViewModel:vm
-                 context:PPCellForMarket
+                 context:context
               layoutMode:PPCellLayoutModeMarket
             discountMode:PPDiscountStyleBadge
              imageLoader:^(UIImageView * _Nullable imageView, NSString * _Nullable url, UIImage * _Nullable placeholder, UIView * _Nullable card) {
@@ -147,8 +207,13 @@
 }
 
 - (CGSize)collectionView:(UICollectionView *)collectionView layout:(UICollectionViewLayout*)collectionViewLayout sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
-    CGFloat availableWidth = self.contentView.bounds.size.width > 0 ? self.contentView.bounds.size.width : self.maxWidth;
-    CGFloat cardWidth = floor((availableWidth - 54.0) / 2.0);
+    CGFloat availableWidth = CGRectGetWidth(collectionView.bounds);
+    if (availableWidth <= 1.0) {
+        availableWidth = self.contentView.bounds.size.width > 0 ? self.contentView.bounds.size.width : self.maxWidth;
+    }
+    CGFloat horizontalInset = 36.0;
+    CGFloat lineSpacing = 14.0;
+    CGFloat cardWidth = floor((availableWidth - horizontalInset - lineSpacing) / 2.0);
     cardWidth = MAX(154.0, MIN(cardWidth, 198.0));
     return CGSizeMake(cardWidth, 270.0);
 }
@@ -176,8 +241,9 @@
 #pragma mark - PPUniversalCellDelegate
 
 - (void)PPUniversalCell_tapCard:(PPUniversalCellViewModel *)universalModel {
-    if ([universalModel.ModelObject isKindOfClass:[PetAccessory class]]) {
-        [self.delegate novaProductCell_didTapProduct:(PetAccessory *)universalModel.ModelObject];
+    id item = universalModel.ModelObject;
+    if ([self pp_isSupportedNovaItem:item]) {
+        [self.delegate novaProductCell_didTapProduct:item];
     }
 }
 
@@ -185,15 +251,42 @@
     // For Nova chat, we usually add 1, but we can handle quantity change if needed.
     // However, the task says "add to cart", which usually implies quantity 1 initially.
     if (quantity > 0 && [universalModel.ModelObject isKindOfClass:[PetAccessory class]]) {
-        [self.delegate novaProductCell_didTapAddToCart:(PetAccessory *)universalModel.ModelObject];
+        [self.delegate novaProductCell_didTapAddToCart:universalModel.ModelObject];
     }
 }
 
 // Map the old delegate method to the new one if needed
 - (void)PPUniversalCell_tapAddToCart:(PPUniversalCellViewModel *)universalModel {
     if ([universalModel.ModelObject isKindOfClass:[PetAccessory class]]) {
-        [self.delegate novaProductCell_didTapAddToCart:(PetAccessory *)universalModel.ModelObject];
+        [self.delegate novaProductCell_didTapAddToCart:universalModel.ModelObject];
     }
+}
+
+#pragma mark - Nova Item Support
+
+- (NSArray *)pp_supportedNovaItemsFromArray:(NSArray *)items {
+    if (![items isKindOfClass:NSArray.class]) {
+        return @[];
+    }
+    NSMutableArray *supported = [NSMutableArray arrayWithCapacity:items.count];
+    for (id item in items) {
+        if ([self pp_isSupportedNovaItem:item]) {
+            [supported addObject:item];
+        }
+    }
+    return supported.copy;
+}
+
+- (BOOL)pp_isSupportedNovaItem:(id)item {
+    return [item isKindOfClass:PetAccessory.class] ||
+           [item isKindOfClass:ServiceModel.class];
+}
+
+- (PPCellContext)pp_cellContextForNovaItem:(id)item {
+    if ([item isKindOfClass:ServiceModel.class]) {
+        return PPCellForServices;
+    }
+    return PPCellForMarket;
 }
 
 @end

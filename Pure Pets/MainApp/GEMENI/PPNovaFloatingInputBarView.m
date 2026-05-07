@@ -296,9 +296,18 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 
 #pragma mark - UITextViewDelegate
 
+- (void)textViewDidBeginEditing:(UITextView *)textView {
+    if ([self.delegate respondsToSelector:@selector(novaInputBarDidBeginEditing:)]) {
+        [self.delegate novaInputBarDidBeginEditing:self];
+    }
+}
+
 - (void)textViewDidChange:(UITextView *)textView {
     [self pp_updateTextHeightIfNeeded];
     [self pp_updateStateAnimated:YES];
+    if ([self.delegate respondsToSelector:@selector(novaInputBar:didChangeText:)]) {
+        [self.delegate novaInputBar:self didChangeText:textView.text ?: @""];
+    }
 }
 
 - (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text {

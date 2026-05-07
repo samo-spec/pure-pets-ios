@@ -248,6 +248,7 @@
 		F24C03632D2C2D6E00A9F61F /* UIView+PYSearchExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F24C035C2D2C2D6E00A9F61F /* UIView+PYSearchExtension.m */; };
 		F24C03642D2C2D6E00A9F61F /* UIColor+PYSearchExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = F24C035A2D2C2D6E00A9F61F /* UIColor+PYSearchExtension.m */; };
 		F24C04D52D2E3E0400A9F61F /* FileModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F24C04D42D2E3E0400A9F61F /* FileModel.m */; };
+		F24D2AB42FABEF5B0015EC83 /* PPNovaReviewMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F24D2AB32FABEF5B0015EC83 /* PPNovaReviewMessageCell.m */; };
 		F24D6EEC2EB9F00A009962D0 /* UserManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F24D6EEB2EB9F00A009962D0 /* UserManager.m */; };
 		F24F36382D87C8050094C6F2 /* buyerDataVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F24F36372D87C8050094C6F2 /* buyerDataVC.m */; };
 		F24F363B2D87DFAB0094C6F2 /* BuyerModel.m in Sources */ = {isa = PBXBuildFile; fileRef = F24F363A2D87DFAB0094C6F2 /* BuyerModel.m */; };
@@ -1254,6 +1255,8 @@
 		F24C035C2D2C2D6E00A9F61F /* UIView+PYSearchExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+PYSearchExtension.m"; sourceTree = "<group>"; };
 		F24C04D32D2E3E0400A9F61F /* FileModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileModel.h; sourceTree = "<group>"; };
 		F24C04D42D2E3E0400A9F61F /* FileModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileModel.m; sourceTree = "<group>"; };
+		F24D2AB22FABEF5B0015EC83 /* PPNovaReviewMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaReviewMessageCell.h; sourceTree = "<group>"; };
+		F24D2AB32FABEF5B0015EC83 /* PPNovaReviewMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaReviewMessageCell.m; sourceTree = "<group>"; };
 		F24D6EEA2EB9F00A009962D0 /* UserManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UserManager.h; sourceTree = "<group>"; };
 		F24D6EEB2EB9F00A009962D0 /* UserManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UserManager.m; sourceTree = "<group>"; };
 		F24F36362D87C8050094C6F2 /* buyerDataVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = buyerDataVC.h; sourceTree = "<group>"; };
@@ -3327,6 +3330,8 @@
 		F26E3AFD2E35B344007BB3FF /* GEMENI */ = {
 			isa = PBXGroup;
 			children = (
+				F24D2AB22FABEF5B0015EC83 /* PPNovaReviewMessageCell.h */,
+				F24D2AB32FABEF5B0015EC83 /* PPNovaReviewMessageCell.m */,
 				F22ED2472FAA101F72C2B /* PPNovaFloatingInputBarView.h */,
 				F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */,
 				F22ED2442FAA100F72C2B /* PPNovaMessageBubbleCell.h */,
@@ -5505,6 +5510,7 @@
 				F20F31B52D177602001D1D57 /* PGPickerColumnView.m in Sources */,
 				F2EF8EE82F87760300A797B3 /* PPProfileSelectorCell.m in Sources */,
 				F20956852F85686F007C4ABA /* PPReminderEditorViewController.m in Sources */,
+				F24D2AB42FABEF5B0015EC83 /* PPNovaReviewMessageCell.m in Sources */,
 				F20F31B62D177602001D1D57 /* NSDate+PGCategory.m in Sources */,
 				F2B790722DE5BD6000F8B03F /* DeepLinkRouter.m in Sources */,
 				F20DBFC12F19BDDD0089D685 /* PPSimilarAdsView.m in Sources */,

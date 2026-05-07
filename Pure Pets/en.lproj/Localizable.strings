@@ -2679,7 +2679,7 @@
 "AdViewerLocationSelectedFallback" = "Location selected for this ad";
 "nova_title" = "Nova";
 "nova_subtitle" = "Pure Pets smart shopping assistant";
-"nova_status_online" = "Online";
+"nova_status_online" = "Ready";
 "nova_status_thinking" = "Thinking";
 "nova_empty_title" = "Ask Nova";
 "nova_empty_subtitle" = "Tell me your pet and what you need. I'll guide you to the right Pure Pets pick.";
@@ -2687,7 +2687,7 @@
 "nova_input_placeholder" = "Message Nova...";
 "nova_input_attach_accessibility" = "Add attachment";
 "nova_input_send_accessibility" = "Send message";
-"nova_greeting" = "Hi, I'm Nova. Tell me what your pet needs and I'll help you choose with care.";
+"nova_greeting" = "Hi. Tell me what your pet needs and I'll guide you to the right Pure Pets pick.";
 "nova_product_results" = "Curated picks";
 "nova_product_count_format" = "%ld items";
 "nova_add_to_cart_which" = "Which one should I add to the cart?";
@@ -2697,4 +2697,8 @@
 "nova_fallback_pet_format" = "For your %@, are you looking for food, a carrier, toys, or care?";
 "nova_fallback_need_format" = "Got it, looking for %@. Which pet is it for?";
 "nova_fallback_prompt" = "Tell me your pet and what you need, like food, a carrier, toys, or care.";
+"nova_close_accessibility" = "Close";
+"nova_error_auth" = "Your session expired. Please reopen the chat.";
+"nova_error_unavailable" = "Nova is unavailable right now. Try again in a moment.";
+"nova_suggestions_unavailable" = "I couldn't load those picks. Tell me your pet and what you need, and I'll try again.";
 "OrderCanceled" = "OrderCanceled";

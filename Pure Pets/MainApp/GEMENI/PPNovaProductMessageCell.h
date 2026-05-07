@@ -11,8 +11,8 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @protocol PPNovaProductMessageCellDelegate <NSObject>
-- (void)novaProductCell_didTapAddToCart:(PetAccessory *)product;
-- (void)novaProductCell_didTapProduct:(PetAccessory *)product;
+- (void)novaProductCell_didTapAddToCart:(id)item;
+- (void)novaProductCell_didTapProduct:(id)item;
 @end
 
 @interface PPNovaProductMessageCell : UITableViewCell
@@ -21,6 +21,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)configureWithMessage:(ChatMessageModel *)messageModel
                     maxWidth:(CGFloat)maxWidth;
+- (void)updateAvailableWidth:(CGFloat)maxWidth;
 
 @end
 

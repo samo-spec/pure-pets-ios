@@ -452,6 +452,7 @@ typedef NS_ENUM(NSInteger, ChatMessageType) {
     ChatMessageTypeSystem,
     ChatMessageTypeNovaProduct,
     ChatMessageTypeNovaProductList,
+    ChatMessageTypeNovaReview,
     ChatMessageTypeCartConfirmation
 };
 
