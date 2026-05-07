@@ -10,7 +10,8 @@ typedef NS_ENUM(NSInteger, PPChatFeedbackEvent) {
     PPChatFeedbackEventOutgoingSend,
     PPChatFeedbackEventIncomingActiveChat,
     PPChatFeedbackEventIncomingOutsideChat,
-    PPChatFeedbackEventMessageRead
+    PPChatFeedbackEventMessageRead,
+    PPChatFeedbackEventTypingPulse
 };
 
 @interface PPChatFeedbackManager : NSObject

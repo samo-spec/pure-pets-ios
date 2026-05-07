@@ -40,7 +40,7 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     return PPNovaTextStartsRTL(text) ? NSTextAlignmentRight : NSTextAlignmentLeft;
 }
 
-static const CGFloat PPNovaBubbleMinimumWidth = 60.0;
+static const CGFloat PPNovaBubbleMinimumWidth = 90.0;
 static const CGFloat PPNovaAssistantHorizontalReserve = 120.0;
 static const CGFloat PPNovaUserHorizontalReserve = 86.0;
 static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
@@ -95,6 +95,7 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.statusImageView.image = nil;
     self.statusImageView.hidden = YES;
     self.configuredMaxWidth = 0.0;
+    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
     [self setActionTitles:nil];
@@ -116,7 +117,7 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.clipsToBounds = NO;
     self.contentView.clipsToBounds = NO;
-    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
 
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
     self.avatarView = [[UIView alloc] init];
@@ -332,7 +333,7 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.typingMode = NO;
     self.assistantMessage = [messageModel.senderID isEqualToString:@"nova_bot_id"] || [messageModel.senderID isEqualToString:@"nova"];
     self.configuredMaxWidth = maxWidth;
-    //self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
 
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
@@ -355,7 +356,7 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.typingMode = YES;
     self.assistantMessage = YES;
     self.configuredMaxWidth = maxWidth;
-    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
 
     self.messageLabel.hidden = YES;
     self.typingDotsStack.hidden = NO;

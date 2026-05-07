@@ -20,6 +20,7 @@
 #import "ServiceViewerViewController.h"
 #import "PPPetCareViewerVC.h"
 #import "PPOverlayCoordinator.h"
+#import "PPChatFeedbackManager.h"
 #import "PPAnalytics.h"
 #import <IQKeyboardManager/IQKeyboardManager.h>
 
@@ -90,6 +91,8 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 @property (nonatomic, copy, nullable) NSString *novaMemoryNeed;
 @property (nonatomic, copy, nullable) NSString *novaMemoryLanguage;
 @property (nonatomic, assign) BOOL novaHasShownGreeting;
+@property (nonatomic, assign) BOOL novaHasPlayedTypingFeedbackForCurrentTurn;
+@property (nonatomic, assign) BOOL novaInputHasActiveTypingFeedback;
 @property (nonatomic, copy, nonnull) NSString *novaSessionId;
 
 @property (nonatomic, assign) BOOL previousIQEnabled;
@@ -2547,6 +2550,11 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     self.typingLabel.text = kLang(@"nova_typing");
     self.statusLabel.text = kLang(@"nova_status_thinking");
 
+    if (!self.novaHasPlayedTypingFeedbackForCurrentTurn) {
+        self.novaHasPlayedTypingFeedbackForCurrentTurn = YES;
+        [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventTypingPulse];
+    }
+
     [self pp_startTypingDotsAnimation];
 
     NSInteger roll = arc4random_uniform(5) + 1;
@@ -2623,7 +2631,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     }
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:12],
+        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:32],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
@@ -2831,6 +2839,12 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (trimmed.length > 0) {
         [self pp_setNovaHeaderCollapsed:YES animated:YES];
+        if (!self.novaInputHasActiveTypingFeedback) {
+            self.novaInputHasActiveTypingFeedback = YES;
+            [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventTypingPulse];
+        }
+    } else {
+        self.novaInputHasActiveTypingFeedback = NO;
     }
 }
 
@@ -2860,6 +2874,8 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     NSString *trimmedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) return;
 
+    self.novaHasPlayedTypingFeedbackForCurrentTurn = NO;
+    self.novaInputHasActiveTypingFeedback = NO;
     [self addUserMessage:trimmedText];
 
     // Check for "add to cart" intent
@@ -3013,6 +3029,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     [self.messages addObject:msg];
     [self pp_trimMessageHistoryIfNeeded];
     [self updateNovaEmptyStateAnimated:YES];
+    [[PPChatFeedbackManager shared] playFeedbackForEvent:isIncoming ? PPChatFeedbackEventIncomingActiveChat : PPChatFeedbackEventOutgoingSend];
     [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
 }
 
