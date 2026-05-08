@@ -11,6 +11,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (instancetype)sharedMemory;
 
+@property (nonatomic, assign) BOOL isMemoryEnabled;
+
 /// Loads messages from disk, removing any older than 30 days.
 - (void)cleanupAndLoad;
 

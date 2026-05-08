@@ -54,8 +54,6 @@
             return 0.40;
         case PPChatFeedbackEventMessageRead:
             return 0.20;
-        case PPChatFeedbackEventTypingPulse:
-            return 1.10;
     }
     return 0.20;
 }
@@ -90,7 +88,6 @@
         case PPChatFeedbackEventIncomingActiveChat:
         case PPChatFeedbackEventIncomingOutsideChat:
         case PPChatFeedbackEventMessageRead:
-        case PPChatFeedbackEventTypingPulse:
             return YES;
     }
     return NO;
@@ -134,12 +131,6 @@
             // 👁 Message read (optional, subtle)
             case PPChatFeedbackEventMessageRead: {
                 [self.lightImpact impactOccurred];
-            } break;
-
-            // ✍️ Typing pulse - intentionally throttled and quiet.
-            case PPChatFeedbackEventTypingPulse: {
-                [self.lightImpact impactOccurred];
-                AudioServicesPlaySystemSound(1114);
             } break;
         }
     });

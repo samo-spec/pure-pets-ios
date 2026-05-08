@@ -249,6 +249,8 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
 - (void)configureWithQuickAction:(PPHomeQuickActionModel *)quickAction
 {
+    self.surfaceLayer.borderColor = [self pp_signalColorForQuickActionType:quickAction.type].CGColor;
+
     self.currentTitle = PPSafeString(quickAction.title);
     self.currentIconName = PPSafeString(quickAction.iconName);
     self.currentSignalColor = [self pp_signalColorForQuickActionType:quickAction.type];
@@ -314,9 +316,11 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
         (__bridge id)bottom.CGColor
     ];
     self.surfaceView.backgroundColor = bottom;
-    [self.surfaceView pp_setBorderColor:UIColor.clearColor];
+    [self.surfaceView pp_setBorderColor:UIColor.grayColor];
 
-  
+    self.surfaceView.layer.borderColor = PPModernHomeActionBlendColors(surfaceBase,
+                                                                       signal,
+                                                                       isDark ? 0.18 : 0.25).CGColor;
     self.signalMotionLayer.colors = @[
         (__bridge id)[signal colorWithAlphaComponent:0.24].CGColor,
         (__bridge id)[signal colorWithAlphaComponent:1.0].CGColor,
@@ -328,7 +332,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     self.titleLabel.textColor = titleColor;
     self.iconView.tintColor = signal;
     self.signalLineView.backgroundColor = [signal colorWithAlphaComponent:isDark ? 0.24 : 0.17];
-    self.signalLineView.alpha = 0.94;
+    self.signalLineView.alpha = 0.99;
     self.signalLineView.layer.shadowColor = signal.CGColor;
     self.signalLineView.layer.shadowOpacity = isDark ? 0.30 : 0.18;
     self.signalLineView.layer.shadowRadius = isDark ? 7.0 : 5.5;
@@ -383,8 +387,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     CGRect bounds = self.contentView.bounds;
     self.surfaceLayer.frame = bounds;
     //self.liquidBorderLayer.frame = bounds;
-    self.surfaceLayer.borderColor = AppBackgroundClr.CGColor;
-    self.surfaceLayer.borderWidth = 0.7;
+    self.surfaceLayer.borderWidth =0.4;
     self.surfaceLayer.cornerRadius = 22;
     self.surfaceLayer.opacity = 0.7;
     self.signalMotionLayer.frame = self.signalLineView.bounds;

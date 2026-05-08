@@ -30,6 +30,7 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
     self = [super init];
     if (self) {
         _messages = [NSMutableArray array];
+        _isMemoryEnabled = YES; // Enable by default — needed so history reaches the proxy and the greeting doesn't re-fire on every cold open.
         _ioQueue = dispatch_queue_create("com.purepets.nova.memory", DISPATCH_QUEUE_SERIAL);
         
         NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
@@ -90,7 +91,7 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
 }
 
 - (void)addMessageWithRole:(NSString *)role text:(NSString *)text {
-    if (text.length == 0 || role.length == 0) return;
+    if (!self.isMemoryEnabled || text.length == 0 || role.length == 0) return;
     
     // Privacy safeguard: do not store credit card formats or apparent tokens
     // (Simple heuristic: replace strings of digits > 12 if found, though true 

@@ -316,7 +316,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         (__bridge id)surfaceTop.CGColor,
         (__bridge id)surfaceBottom.CGColor
     ];
-    self.surfaceView.backgroundColor = surfaceBottom;
+    self.surfaceView.backgroundColor = AppForgroundColr;
     [self.surfaceView pp_setBorderColor:borderColor];
 
     [self pp_applyBottomGlowPalette];

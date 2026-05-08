@@ -2690,6 +2690,7 @@
 "nova_greeting" = "Hi. Tell me what your pet needs and I'll guide you to the right Pure Pets pick.";
 "nova_product_results" = "Curated picks";
 "nova_product_count_format" = "%ld items";
+"nova_found_matching_options" = "I found some good Pure Pets options for you.";
 "nova_add_to_cart_which" = "Which one should I add to the cart?";
 "nova_added_to_cart" = "Added to cart";
 "nova_add_to_cart_failed" = "Sorry, I couldn't add it to cart. Please try again.";
@@ -2699,6 +2700,8 @@
 "nova_fallback_prompt" = "Tell me your pet and what you need, like food, a carrier, toys, or care.";
 "nova_close_accessibility" = "Close";
 "nova_error_auth" = "Your session expired. Please reopen the chat.";
+"nova_error_signin_required" = "Sign in first so I can help you with Nova.";
+"nova_error_account_blocked" = "This account can't use Nova. Please contact Pure Pets support.";
 "nova_error_unavailable" = "Nova is unavailable right now. Try again in a moment.";
 "nova_suggestions_unavailable" = "I couldn't load those picks. Tell me your pet and what you need, and I'll try again.";
 "OrderCanceled" = "OrderCanceled";

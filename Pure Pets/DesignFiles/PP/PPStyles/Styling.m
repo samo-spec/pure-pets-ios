@@ -1269,8 +1269,8 @@ static NSString * const PPLegacyThemePreferenceKey = @"themePreference";
         return UIUserInterfaceStyleUnspecified;
     }
 
-    // Default to dark for first launch
-    UIUserInterfaceStyle fallback = UIUserInterfaceStyleDark;
+    // Default to light for first launch
+    UIUserInterfaceStyle fallback = UIUserInterfaceStyleLight;
     [self saveUserInterfaceStyle:fallback];
     return fallback;
 }

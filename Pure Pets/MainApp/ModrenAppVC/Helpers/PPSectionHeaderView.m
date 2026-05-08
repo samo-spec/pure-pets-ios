@@ -261,11 +261,10 @@
     if ([self pp_isDarkMode]) {
         return [UIColor colorWithWhite:1.0 alpha:0.045];
     }
-    if (self.currentSection == PPHomeSectionMainKinds) {
-        return AppForgroundColr ?: [UIColor colorWithWhite:0.955 alpha:1.0];
-    }
+   
+    
     UIColor *baseColor = AppBackgroundClr ?: UIColor.secondarySystemGroupedBackgroundColor;
-    return [baseColor colorWithAlphaComponent:0.78];
+    return [baseColor colorWithAlphaComponent:0.94];
 }
 
 - (UIColor *)pp_surfaceBorderColor

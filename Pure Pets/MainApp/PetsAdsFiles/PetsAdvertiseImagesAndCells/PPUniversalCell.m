@@ -1298,10 +1298,30 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     return [NSString stringWithFormat:@"%@|%@|%@", modelType, modelID, imageURL];
 }
 
+- (BOOL)pp_isHostedByHomeController
+{
+    UIResponder *responder = self.nextResponder;
+    while (responder) {
+        if ([NSStringFromClass(responder.class) isEqualToString:@"PPHomeViewController"]) {
+            return YES;
+        }
+        responder = responder.nextResponder;
+    }
+    return NO;
+}
+
 - (void)pp_configureTextsWithViewModel:(PPUniversalCellViewModel *)vm
 {
     self.titleLabel.text = PPUniversalCellSafeString(vm.title);
     self.subtitleLabel.text = PPUniversalCellSafeString(vm.subtitle);
+
+    BOOL shouldHideTitle = (self.context == PPCellForMarket) && [self pp_isHostedByHomeController];
+    if (shouldHideTitle) {
+        self.titleLabel.text = @"";
+    }
+    self.titleLabel.hidden = shouldHideTitle;
+    self.titleHeightConstraint.constant = shouldHideTitle ? 0.0 : PPUniversalCompactTitleHeight;
+
     BOOL shouldHideSubtitle = PPUniversalTemporarilyHideSubtitle || self.subtitleLabel.text.length == 0 || !self.showsSubtitle;
     if (shouldHideSubtitle) {
         self.subtitleLabel.text = @"";

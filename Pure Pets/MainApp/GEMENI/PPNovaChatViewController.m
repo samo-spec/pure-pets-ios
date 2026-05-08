@@ -5,7 +5,7 @@
 
 #import "PPNovaChatViewController.h"
 #import "ChatMessageModel.h"
-#import "PPNovaMessageBubbleCell.h"
+#import "ChatMessageCell.h" // #import "PPNovaMessageBubbleCell.h"
 #import "PPNovaProductMessageCell.h"
 #import "PPNovaReviewMessageCell.h"
 #import "PPNovaFloatingInputBarView.h"
@@ -22,6 +22,7 @@
 #import "PPOverlayCoordinator.h"
 #import "PPChatFeedbackManager.h"
 #import "PPAnalytics.h"
+#import "PPUserSigningManager.h"
 #import <IQKeyboardManager/IQKeyboardManager.h>
 
 static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
@@ -36,6 +37,9 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 static const CGFloat PPNovaExpandedTableTopInset = 218.0;
 static const CGFloat PPNovaCollapsedTableTopInset = 124.0;
 static const CGFloat PPNovaTableBottomInset = 22.0;
+static NSString * const PPNovaCallableRegion = @"us-central1";
+static NSString * const PPNovaCallableName = @"geminiProxy";
+static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
 @interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate>
 
@@ -45,6 +49,8 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 @property (nonatomic, strong) UIView *novaHeaderTopGlowView;
 @property (nonatomic, strong) UIView *novaHeaderBottomGlowView;
 @property (nonatomic, strong) UIView *novaHeaderSheenView;
+@property (nonatomic, strong) CAShapeLayer *novaHeaderLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *novaHeaderLiquidHighlightLayer;
 @property (nonatomic, copy) NSArray<UIView *> *novaHeaderMotionDots;
 @property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, strong) UIView *headerBrandHaloView;
@@ -91,8 +97,6 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 @property (nonatomic, copy, nullable) NSString *novaMemoryNeed;
 @property (nonatomic, copy, nullable) NSString *novaMemoryLanguage;
 @property (nonatomic, assign) BOOL novaHasShownGreeting;
-@property (nonatomic, assign) BOOL novaHasPlayedTypingFeedbackForCurrentTurn;
-@property (nonatomic, assign) BOOL novaInputHasActiveTypingFeedback;
 @property (nonatomic, copy, nonnull) NSString *novaSessionId;
 
 @property (nonatomic, assign) BOOL previousIQEnabled;
@@ -106,6 +110,24 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 @implementation PPNovaChatViewController
 
 + (void)presentNovaFromViewController:(UIViewController *)presentingVC {
+    // Auth gate. Logged-out users see the standard sign-in flow instead of a
+    // dead Nova chat that would only ever return "session expired" from the
+    // server. requireSignInFrom: returns YES if already signed in (continue),
+    // NO if it just presented sign-in (re-present Nova on success).
+    if (presentingVC) {
+        BOOL alreadyAuthed =
+            [PPUserSigningManager requireSignInFrom:presentingVC
+                                            success:^(UserModel * _Nonnull user) {
+                                                if (user && presentingVC) {
+                                                    [PPNovaChatViewController presentNovaFromViewController:presentingVC];
+                                                }
+                                            }
+                                          cancelled:nil];
+        if (!alreadyAuthed) {
+            return;
+        }
+    }
+
     PPNovaChatViewController *novaVC = [[PPNovaChatViewController alloc] init];
     if (@available(iOS 15.0, *)) {
         novaVC.modalPresentationStyle = UIModalPresentationPageSheet;
@@ -225,13 +247,12 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    
+    [self pp_updateNovaHeaderLiquidBorderPath];
+
     if (!self.didInitialInset && CGRectGetHeight(self.inputbar.frame) > 0) {
         self.didInitialInset = YES;
-        CGFloat inputBarTotalHeight = CGRectGetHeight(self.inputbar.frame);
-        CGFloat bottomInset = inputBarTotalHeight + PPNovaTableBottomInset - self.inputBarRestingBottomConstant + self.view.safeAreaInsets.bottom;
         UIEdgeInsets currentInset = self.tableView.contentInset;
-        currentInset.bottom = bottomInset;
+        currentInset.bottom = PPNovaTableBottomInset;
         self.tableView.contentInset = currentInset;
         self.tableView.scrollIndicatorInsets = currentInset;
     }
@@ -242,7 +263,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     }
 
     self.lastNovaTableLayoutWidth = tableWidth;
-    [self pp_updateVisibleNovaMessageCellWidthsForTableWidth:tableWidth];
+    [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
 }
 
 - (void)dealloc {
@@ -250,6 +271,8 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     [self.statusDot.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
     [self.headerBrandMarkView.layer removeAllAnimations];
+    [self.novaHeaderLiquidBorderLayer removeAllAnimations];
+    [self.novaHeaderLiquidHighlightLayer removeAllAnimations];
     [self.emptyStatePulseView.layer removeAllAnimations];
     for (UIView *dot in self.typingDots) {
         [dot.layer removeAllAnimations];
@@ -259,8 +282,9 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 #pragma mark - Backend
 
 - (void)setupNovaBackend {
-    FIRFunctions *functions = [FIRFunctions functionsForRegion:@"us-central1"];
-    self.novaCallable = [functions HTTPSCallableWithName:@"geminiProxy"];
+    FIRFunctions *functions = [FIRFunctions functionsForRegion:PPNovaCallableRegion];
+    self.novaCallable = [functions HTTPSCallableWithName:PPNovaCallableName];
+    LOG_INFO(@"[PPNovaChat][Debug] callable url=%@", [PPNovaChatViewController pp_novaCallableDebugURL]);
 }
 
 - (void)sendNovaRequestForUserText:(NSString *)userText {
@@ -284,8 +308,10 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     if (self.dismissed) return;
 
     if (!self.novaCallable) {
+        // Backend not initialized — don't fabricate a Nova reply, just try a
+        // local product showcase. If nothing scores high enough, the chat stays
+        // silent rather than injecting a templated apology.
         [self hideNovaTyping];
-        [self insertNovaReplyForUserText:trimmedText];
         [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
         return;
     }
@@ -297,6 +323,11 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         @"sessionId": self.novaSessionId
     };
 
+    LOG_INFO(@"[PPNovaChat][Debug] send url=%@ requestKeys=%@ authUIDPresent=%@",
+             [PPNovaChatViewController pp_novaCallableDebugURL],
+             [PPNovaChatViewController pp_sortedDictionaryKeys:payload],
+             PPCurrentFIRAuthUser.uid.length > 0 ? @"YES" : @"NO");
+
     __weak typeof(self) weakSelf = self;
     [self.novaCallable callWithObject:payload
                            completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
@@ -306,6 +337,10 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 
             if (error) {
                 if (attempt == 0 && [PPNovaChatViewController pp_isRetryableNovaError:error]) {
+                    LOG_WARN(@"[PPNovaChat][Debug] branch=retryable_transient attempt=%ld code=%ld httpStatus=%@",
+                             (long)attempt,
+                             (long)error.code,
+                             [PPNovaChatViewController pp_httpStatusDebugStringFromError:error]);
                     LOG_WARN(@"[PPNovaChat] geminiProxy transient error (will retry once): %@", error.localizedDescription);
                     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                         __strong typeof(weakSelf) inner = weakSelf;
@@ -317,18 +352,66 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
                 [self hideNovaTyping];
                 LOG_ERROR(@"[PPNovaChat] geminiProxy failed (attempt %ld, code=%ld): %@",
                           (long)attempt, (long)error.code, error.localizedDescription);
+                LOG_WARN(@"[PPNovaChat][Debug] error url=%@ httpStatus=%@ userInfoKeys=%@",
+                         [PPNovaChatViewController pp_novaCallableDebugURL],
+                         [PPNovaChatViewController pp_httpStatusDebugStringFromError:error],
+                         [PPNovaChatViewController pp_sortedDictionaryKeys:error.userInfo]);
                 [PPAnalytics logNovaErrorWithCode:error.code
                                             domain:error.domain
                                            attempt:attempt
                                          sessionID:self.novaSessionId];
 
-                // Surface specific error classes instead of the misleading "Got it..." fallback.
-                NSString *userFacing = [PPNovaChatViewController pp_userFacingErrorForNovaError:error];
-                if (userFacing.length > 0) {
-                    [self addNovaMessage:userFacing];
+                // If the server attached a structured reason, route to the right UX
+                // (sign-in for no_auth/no_profile; dedicated copy for blocked) instead
+                // of collapsing every auth-side failure into "session expired".
+                NSString *serverReason = [PPNovaChatViewController pp_novaServerReasonFromError:error];
+                if ([serverReason isEqualToString:@"no_auth"] ||
+                    [serverReason isEqualToString:@"no_profile"]) {
+                    LOG_WARN(@"[PPNovaChat][Debug] branch=auth_required reason=%@", serverReason);
+                    [self pp_dismissNovaForSignInRequired];
                     return;
                 }
-                [self insertNovaReplyForUserText:trimmedText];
+                if ([serverReason isEqualToString:@"blocked"]) {
+                    LOG_WARN(@"[PPNovaChat][Debug] branch=blocked_account reason=%@", serverReason);
+                    [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_account_blocked")];
+                    return;
+                }
+
+                // Connectivity-class errors get a localized status message —
+                // these are system events, not Nova "answering" a query. Show
+                // them at most once per outage streak so the chat doesn't fill
+                // up with identical "unavailable" bubbles when the user keeps
+                // typing while the backend is down.
+                NSString *userFacing = [PPNovaChatViewController pp_userFacingErrorForNovaError:error];
+                if (userFacing.length > 0) {
+                    NSString *branch = [userFacing isEqualToString:kLang(@"nova_error_unavailable")]
+                        ? @"unavailable_connectivity_or_backend"
+                        : @"auth_or_permission_error";
+                    LOG_WARN(@"[PPNovaChat][Debug] branch=%@ code=%ld httpStatus=%@",
+                             branch,
+                             (long)error.code,
+                             [PPNovaChatViewController pp_httpStatusDebugStringFromError:error]);
+                    // Only the connectivity bubble can be suppressed by a
+                    // successful local product showcase — auth/permission
+                    // errors must always surface so the user knows to re-auth.
+                    if ([userFacing isEqualToString:kLang(@"nova_error_unavailable")]) {
+                        __weak typeof(self) localWeakSelf = self;
+                        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+                                                              completion:^(BOOL didShow) {
+                            __strong typeof(localWeakSelf) strongSelf = localWeakSelf;
+                            if (!strongSelf || strongSelf.dismissed) return;
+                            if (!didShow) {
+                                [strongSelf pp_addNovaSystemBubbleIfNew:userFacing];
+                            }
+                        }];
+                        return;
+                    }
+                    [self pp_addNovaSystemBubbleIfNew:userFacing];
+                    return;
+                }
+                // Anything else: try a local product showcase silently. No
+                // templated apology — if local search has no relevant items,
+                // the chat stays quiet rather than fabricating a Nova reply.
                 [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
                 return;
             }
@@ -337,52 +420,154 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
             NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs = @[];
             if ([result.data isKindOfClass:NSDictionary.class]) {
                 NSDictionary *data = (NSDictionary *)result.data;
+                LOG_INFO(@"[PPNovaChat][Debug] responseKeys=%@ httpStatus=%@",
+                         [PPNovaChatViewController pp_sortedDictionaryKeys:data],
+                         @"n/a");
                 id textValue = data[@"text"];
                 if ([textValue isKindOfClass:NSString.class]) {
                     replyText = (NSString *)textValue;
                 }
                 suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:data replyText:replyText];
             } else {
+                LOG_WARN(@"[PPNovaChat][Debug] branch=response_not_dictionary responseType=%@ httpStatus=%@",
+                         result.data ? NSStringFromClass([result.data class]) : @"nil",
+                         @"n/a");
                 suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:nil replyText:replyText];
             }
 
             replyText = [replyText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
             if (replyText.length == 0 && suggestionRefs.count == 0) {
                 [self hideNovaTyping];
-                LOG_WARN(@"[PPNovaChat] geminiProxy returned empty reply and no products; using local fallback.");
-                [self insertNovaReplyForUserText:trimmedText];
+                LOG_WARN(@"[PPNovaChat][Debug] branch=empty_text_and_empty_products responseKeys=%@",
+                         [result.data isKindOfClass:NSDictionary.class]
+                            ? [PPNovaChatViewController pp_sortedDictionaryKeys:(NSDictionary *)result.data]
+                            : @[]);
+                LOG_WARN(@"[PPNovaChat] geminiProxy returned empty reply and no products; trying local showcase silently.");
+                // Don't synthesize a Nova reply on emptiness — try local
+                // products silently. If the AI returned nothing meaningful,
+                // injecting a scripted line on its behalf would impersonate it.
                 [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
                 return;
             }
 
             NSString *suggestionFallbackText = nil;
+            NSString *deferredNoProductReply = nil;
+            NSString *localShowcaseIntroText = nil;
             if (replyText.length > 0) {
                 NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:(suggestionRefs.count > 0)];
                 if (sanitizedReply.length > 0) {
-                    [self addNovaMessage:sanitizedReply];
+                    if ([self pp_novaReplyContainsNoProductClaim:sanitizedReply]) {
+                        if (suggestionRefs.count > 0) {
+                            [self addNovaMessage:[self pp_positiveNovaLocalShowcaseTextForUserText:trimmedText]];
+                        } else {
+                            deferredNoProductReply = sanitizedReply;
+                            localShowcaseIntroText = [self pp_positiveNovaLocalShowcaseTextForUserText:trimmedText];
+                        }
+                    } else {
+                        [self addNovaMessage:sanitizedReply];
+                    }
                 } else if (suggestionRefs.count == 0) {
-                    [self hideNovaTyping];
-                    [self insertNovaReplyForUserText:trimmedText];
-                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
-                    return;
+                    // Structured-strip emptied a reply that has no product refs.
+                    // Try the lighter strip (only [PRODUCT_ID:] tags) so the
+                    // model's actual answer survives. If even that is empty,
+                    // stay silent — never inject a templated apology on the
+                    // AI's behalf.
+                    NSString *unstrippedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
+                    if (unstrippedReply.length > 0) {
+                        if ([self pp_novaReplyContainsNoProductClaim:unstrippedReply]) {
+                            deferredNoProductReply = unstrippedReply;
+                            localShowcaseIntroText = [self pp_positiveNovaLocalShowcaseTextForUserText:trimmedText];
+                        } else {
+                            [self addNovaMessage:unstrippedReply];
+                        }
+                    } else {
+                        [self hideNovaTyping];
+                        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
+                        return;
+                    }
                 } else {
                     suggestionFallbackText = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
                 }
             }
 
             if (suggestionRefs.count > 0) {
-                if (suggestionFallbackText.length == 0) {
-                    suggestionFallbackText = kLang(@"nova_suggestions_unavailable");
-                }
+                // No scripted fallback text — pass nil so the resolver only
+                // shows the AI's own reply (already added above) plus whatever
+                // products it can resolve. Templated apologies on resolution
+                // failure are gone.
                 [self pp_fetchAndShowNovaSuggestionRefs:suggestionRefs
-                                           fallbackText:suggestionFallbackText
+                                           fallbackText:nil
                                                userText:trimmedText];
             } else {
                 [self hideNovaTyping];
-                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
+                if (deferredNoProductReply.length > 0) {
+                    __weak typeof(self) localWeakSelf = self;
+                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+                                                            introText:localShowcaseIntroText
+                                                           completion:^(BOOL didShow) {
+                        __strong typeof(localWeakSelf) strongSelf = localWeakSelf;
+                        if (!strongSelf || strongSelf.dismissed || didShow) return;
+                        [strongSelf addNovaMessage:deferredNoProductReply];
+                    }];
+                } else {
+                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
+                }
             }
         });
     }];
+}
+
++ (NSString *)pp_novaCallableDebugURL {
+    return [NSString stringWithFormat:@"https://%@-%@.cloudfunctions.net/%@",
+            PPNovaCallableRegion,
+            PPNovaFirebaseProjectID,
+            PPNovaCallableName];
+}
+
++ (NSArray<NSString *> *)pp_sortedDictionaryKeys:(NSDictionary *)dictionary {
+    if (![dictionary isKindOfClass:NSDictionary.class] || dictionary.count == 0) {
+        return @[];
+    }
+
+    NSMutableArray<NSString *> *keys = [NSMutableArray arrayWithCapacity:dictionary.count];
+    for (id key in dictionary.allKeys) {
+        NSString *keyString = [key isKindOfClass:NSString.class] ? key : [key description];
+        if (keyString.length > 0) {
+            [keys addObject:keyString];
+        }
+    }
+    [keys sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+    return keys.copy;
+}
+
++ (NSString *)pp_httpStatusDebugStringFromError:(NSError *)error {
+    if (!error) {
+        return @"n/a";
+    }
+
+    id directStatus = error.userInfo[@"status"] ?: error.userInfo[@"httpStatus"] ?: error.userInfo[@"HTTPStatus"];
+    if ([directStatus respondsToSelector:@selector(stringValue)]) {
+        return [directStatus stringValue];
+    }
+
+    for (id key in error.userInfo.allKeys) {
+        NSString *keyString = [[key description] lowercaseString];
+        if (![keyString containsString:@"status"] && ![keyString containsString:@"http"]) {
+            continue;
+        }
+        id value = error.userInfo[key];
+        if ([value isKindOfClass:NSHTTPURLResponse.class]) {
+            return [NSString stringWithFormat:@"%ld", (long)[(NSHTTPURLResponse *)value statusCode]];
+        }
+        if ([value respondsToSelector:@selector(stringValue)]) {
+            return [value stringValue];
+        }
+        if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+            return value;
+        }
+    }
+
+    return @"n/a";
 }
 
 + (BOOL)pp_isRetryableNovaError:(NSError *)error {
@@ -407,6 +592,40 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         return kLang(@"nova_error_unavailable");
     }
     return nil;
+}
+
+// Reads geminiProxy's `details.reason` ({"no_auth","no_profile","blocked"}) so the
+// client can route auth-side failures to the right UX. The Functions iOS SDK
+// stores the HttpsError details under userInfo[@"details"].
++ (nullable NSString *)pp_novaServerReasonFromError:(NSError *)error {
+    if (error.code != 7 && error.code != 16) {
+        return nil;
+    }
+    id details = error.userInfo[@"details"];
+    if (![details isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    id reason = ((NSDictionary *)details)[@"reason"];
+    return [reason isKindOfClass:NSString.class] ? (NSString *)reason : nil;
+}
+
+// Dismiss Nova and re-trigger the standard sign-in flow. Used when the server
+// reports the caller is not authenticated (or has no UsersCol profile yet).
+- (void)pp_dismissNovaForSignInRequired {
+    UIViewController *presenter = self.presentingViewController;
+    NSString *signInMessage = kLang(@"nova_error_signin_required");
+    [self dismissViewControllerAnimated:YES completion:^{
+        UIViewController *target = presenter ?: [UIApplication sharedApplication].delegate.window.rootViewController;
+        if (!target) return;
+        [PPUserSigningManager requireSignInFrom:target
+                                    withMessage:signInMessage
+                                        success:^(UserModel * _Nonnull user) {
+                                            if (user) {
+                                                [PPNovaChatViewController presentNovaFromViewController:target];
+                                            }
+                                        }
+                                      cancelled:nil];
+    }];
 }
 
 - (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaSuggestionRefsFromResponseData:(NSDictionary *)data
@@ -705,30 +924,14 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
                                                               resolvedCount:0
                                                                   sessionID:self.novaSessionId];
 
-            [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText completion:^(BOOL didShow) {
-                if (didShow) {
-                    return;
-                }
-
-                NSString *message = fallbackText.length > 0 ? fallbackText : kLang(@"nova_suggestions_unavailable");
-                if (message.length == 0) {
-                    return;
-                }
-
-                BOOL previousWasSameRecovery = NO;
-                if (self.messages.count > 0) {
-                    ChatMessageModel *lastMsg = self.messages.lastObject;
-                    if ([lastMsg.senderID isEqualToString:@"nova_bot_id"] &&
-                        lastMsg.messageType == ChatMessageTypeText &&
-                        [lastMsg.text isEqualToString:message]) {
-                        previousWasSameRecovery = YES;
-                    }
-                }
-
-                if (!previousWasSameRecovery) {
-                    [self addNovaMessage:message];
-                }
-            }];
+            // Resolution failed. Try a local product showcase silently. If it
+            // also produces nothing, stay quiet — the AI's main reply (already
+            // shown above) stands on its own. We deliberately do NOT inject a
+            // templated "couldn't load these picks" message here; that turned
+            // ordinary edge cases into a robotic apology loop.
+            [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText completion:nil];
+            (void)fallbackText; // intentionally unused — kept in the signature
+                                // for callers that may still pass context.
             return;
         }
 
@@ -854,6 +1057,15 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 - (void)pp_fetchAndShowLocalNovaShowcaseForUserText:(NSString *)userText
                                          completion:(void (^)(BOOL didShow))completion
 {
+    [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText
+                                            introText:nil
+                                           completion:completion];
+}
+
+- (void)pp_fetchAndShowLocalNovaShowcaseForUserText:(NSString *)userText
+                                          introText:(nullable NSString *)introText
+                                        completion:(void (^)(BOOL didShow))completion
+{
     NSString *trimmedText = [userText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     [self pp_updateMemoryFromUserText:trimmedText];
 
@@ -862,8 +1074,11 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         return;
     }
 
-    NSString *need = [self pp_localNovaNeedLabelFromUserText:trimmedText] ?: self.novaMemoryNeed;
-    AccessKindType kind = [self pp_localNovaShowcaseKindForNeed:need];
+    NSString *currentNeed = [self pp_localNovaNeedLabelFromUserText:trimmedText];
+    NSString *currentPetType = [self pp_localNovaPetTypeFromUserText:trimmedText];
+    NSString *need = currentNeed ?: (currentPetType.length > 0 ? nil : self.novaMemoryNeed);
+    NSString *petType = currentPetType ?: @"";
+    AccessKindType kind = [self pp_localNovaShowcaseKindForNeed:need petType:petType];
     __weak typeof(self) weakSelf = self;
     [[PetAccessoryManager sharedManager] fetchAccessoriesOfKind:kind completion:^(NSArray<PetAccessory *> *accessories) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -879,12 +1094,17 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         NSArray<PetAccessory *> *ranked = [self pp_rankedLocalNovaAccessories:accessories
                                                                      userText:trimmedText
                                                                          need:need
+                                                                      petType:petType
                                                                         limit:6];
         if (ranked.count == 0) {
             if (completion) completion(NO);
             return;
         }
 
+        NSString *cleanIntro = [introText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (cleanIntro.length > 0) {
+            [self addNovaMessage:cleanIntro];
+        }
         [self pp_showNovaSuggestionObjects:ranked source:@"local"];
         if (completion) completion(YES);
     }];
@@ -895,35 +1115,12 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     if (lower.length == 0) {
         return NO;
     }
-
-    NSArray<NSString *> *productKeywords = @[
-        @"product", @"products", @"item", @"items", @"accessory", @"accessories",
-        @"food", @"medicine", @"vitamin", @"toy", @"cage", @"carrier", @"litter",
-        @"buy", @"shop", @"recommend", @"suggest", @"show me",
-        @"منتج", @"منتجات", @"اكسسوار", @"إكسسوار", @"أكل", @"اكل", @"طعام",
-        @"دواء", @"أدوية", @"ادوية", @"فيتامين", @"لعبة", @"لعبه", @"قفص",
-        @"رمل", @"اشتري", @"شراء", @"رشح", @"اقترح", @"اعرض"
-    ];
-    if ([self pp_string:lower containsAnyNovaKeyword:productKeywords]) {
-        return YES;
-    }
-
-    NSArray<NSString *> *continuationKeywords = @[
-        @"yes", @"yeah", @"ok", @"okay", @"sure", @"show", @"recommend", @"suggest",
-        @"نعم", @"تمام", @"اوكي", @"أوكي", @"اعرض", @"رشح", @"اقترح"
-    ];
-    if (self.novaMemoryNeed.length > 0 && [self pp_string:lower containsAnyNovaKeyword:continuationKeywords]) {
-        return YES;
-    }
-
-    NSArray<NSString *> *shoppingIntentKeywords = @[
-        @"need", @"want", @"looking for", @"find", @"أحتاج", @"احتاج", @"أريد",
-        @"اريد", @"ابي", @"أبي", @"ابغى", @"عايز"
-    ];
-    return self.novaMemoryPetType.length > 0 && [self pp_string:lower containsAnyNovaKeyword:shoppingIntentKeywords];
+    NSString *need = [self pp_localNovaNeedLabelFromUserText:lower];
+    NSString *petType = [self pp_localNovaPetTypeFromUserText:lower];
+    return need.length > 0 || [self pp_localNovaPetTypeIsLivePet:petType];
 }
 
-- (AccessKindType)pp_localNovaShowcaseKindForNeed:(NSString *)needLabel {
+- (AccessKindType)pp_localNovaShowcaseKindForNeed:(NSString *)needLabel petType:(NSString *)petType {
     NSString *need = needLabel.lowercaseString ?: @"";
     if ([need isEqualToString:@"food"]) {
         return AccessTypeFood;
@@ -931,28 +1128,49 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     if ([need isEqualToString:@"medicine"]) {
         return AccessTypePetMedicine;
     }
+    if ([self pp_localNovaPetTypeIsLivePet:petType]) {
+        return AccessTypeLivePet;
+    }
     return AccessTypeAccessory;
 }
 
 - (NSArray<PetAccessory *> *)pp_rankedLocalNovaAccessories:(NSArray<PetAccessory *> *)accessories
                                                   userText:(NSString *)userText
                                                       need:(NSString *)need
+                                                   petType:(NSString *)petType
                                                      limit:(NSUInteger)limit
 {
-    NSMutableArray<PetAccessory *> *candidates = [NSMutableArray array];
+    // Minimum *semantic* relevance score (need-match, pet-match, or token-match —
+    // bare in-stock + has-image bonuses don't count). Off-topic queries score
+    // below this and produce an empty result, so we never showcase random items.
+    static const NSInteger kMinNovaRelevance = 3;
+
+    NSMutableArray<PetAccessory *> *eligible = [NSMutableArray array];
+    NSMutableDictionary<NSString *, NSNumber *> *scoresByID = [NSMutableDictionary dictionary];
     for (PetAccessory *item in accessories) {
         if (![item isKindOfClass:PetAccessory.class] || item.accessoryID.length == 0) {
             continue;
         }
-        [candidates addObject:item];
+        if (petType.length > 0 && ![self pp_localNovaAccessory:item matchesPetType:petType]) {
+            continue;
+        }
+        NSInteger relevance = [self pp_localNovaAccessoryRelevanceScore:item
+                                                                userText:userText
+                                                                    need:need
+                                                                 petType:petType];
+        if (relevance < kMinNovaRelevance) {
+            continue;
+        }
+        scoresByID[item.accessoryID] = @(relevance + [self pp_localNovaAccessoryQualityScore:item]);
+        [eligible addObject:item];
     }
-    if (candidates.count == 0) {
+    if (eligible.count == 0) {
         return @[];
     }
 
-    NSArray<PetAccessory *> *sorted = [candidates sortedArrayUsingComparator:^NSComparisonResult(PetAccessory *left, PetAccessory *right) {
-        NSInteger leftScore = [self pp_localNovaAccessoryScore:left userText:userText need:need];
-        NSInteger rightScore = [self pp_localNovaAccessoryScore:right userText:userText need:need];
+    NSArray<PetAccessory *> *sorted = [eligible sortedArrayUsingComparator:^NSComparisonResult(PetAccessory *left, PetAccessory *right) {
+        NSInteger leftScore = scoresByID[left.accessoryID].integerValue;
+        NSInteger rightScore = scoresByID[right.accessoryID].integerValue;
         if (leftScore > rightScore) return NSOrderedAscending;
         if (leftScore < rightScore) return NSOrderedDescending;
 
@@ -965,19 +1183,30 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     return [sorted subarrayWithRange:NSMakeRange(0, count)];
 }
 
-- (NSInteger)pp_localNovaAccessoryScore:(PetAccessory *)item userText:(NSString *)userText need:(NSString *)needLabel {
+// Pure semantic signal — does the item match the user's stated need / pet /
+// keywords? Used as the gate for inclusion (bare popularity bonuses don't
+// qualify an item).
+- (NSInteger)pp_localNovaAccessoryRelevanceScore:(PetAccessory *)item
+                                         userText:(NSString *)userText
+                                             need:(NSString *)needLabel
+                                          petType:(NSString *)petTypeLabel {
     NSString *haystack = [[NSString stringWithFormat:@"%@ %@",
                            item.name ?: @"",
                            item.desc ?: @""] lowercaseString];
     NSString *need = needLabel.lowercaseString ?: @"";
-    NSString *petType = self.novaMemoryPetType.lowercaseString ?: @"";
+    NSString *petType = petTypeLabel.lowercaseString ?: @"";
     NSInteger score = 0;
-
-    if (item.quantity > 0) score += 2;
-    if (item.imageURLsArray.count > 0) score += 1;
     if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_localNovaKeywordsForNeed:need]]) score += 8;
     if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_localNovaKeywordsForPetType:petType]]) score += 5;
     if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_tokenKeywordsFromUserText:userText]]) score += 3;
+    return score;
+}
+
+// Tie-breaker bonuses — applied only after relevance passes the gate.
+- (NSInteger)pp_localNovaAccessoryQualityScore:(PetAccessory *)item {
+    NSInteger score = 0;
+    if (item.quantity > 0) score += 2;
+    if (item.imageURLsArray.count > 0) score += 1;
     return score;
 }
 
@@ -999,6 +1228,50 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         }
     }
     return nil;
+}
+
+- (nullable NSString *)pp_localNovaPetTypeFromUserText:(NSString *)userText {
+    NSString *lower = userText.lowercaseString ?: @"";
+    NSArray<NSDictionary<NSString *, id> *> *petKeywords = @[
+        @{@"label": @"cat", @"keys": @[@"cat", @"cats", @"kitten", @"kitty", @"قط", @"قطة", @"قطه", @"قطط", @"بسه", @"بسة"]},
+        @{@"label": @"dog", @"keys": @[@"dog", @"dogs", @"puppy", @"pup", @"كلب", @"كلبة", @"كلبه", @"كلاب", @"جرو"]},
+        @{@"label": @"bird", @"keys": @[@"bird", @"birds", @"طير", @"طائر", @"طيور", @"عصفور", @"عصافير"]},
+        @{@"label": @"parrot", @"keys": @[@"parrot", @"parrots", @"cockatiel", @"cockatoo", @"budgie", @"ببغاء", @"كروان", @"كاسكو"]},
+        @{@"label": @"fish", @"keys": @[@"fish", @"fishes", @"aquarium", @"سمك", @"سمكة", @"سمكه", @"أسماك", @"اسماك"]},
+        @{@"label": @"rabbit", @"keys": @[@"rabbit", @"rabbits", @"bunny", @"أرنب", @"ارنب", @"أرانب", @"ارانب"]},
+        @{@"label": @"hamster", @"keys": @[@"hamster", @"hamsters", @"هامستر", @"هامستار"]},
+        @{@"label": @"turtle", @"keys": @[@"turtle", @"turtles", @"tortoise", @"سلحفاة", @"سلحفاه", @"سلاحف"]}
+    ];
+    for (NSDictionary<NSString *, id> *entry in petKeywords) {
+        if ([self pp_string:lower containsAnyNovaKeyword:entry[@"keys"]]) {
+            return entry[@"label"];
+        }
+    }
+    return nil;
+}
+
+- (BOOL)pp_localNovaPetTypeIsLivePet:(NSString *)petType {
+    NSString *value = petType.lowercaseString ?: @"";
+    return [@[@"bird", @"parrot", @"fish", @"rabbit", @"hamster", @"turtle"] containsObject:value];
+}
+
+- (BOOL)pp_localNovaAccessory:(PetAccessory *)item matchesPetType:(NSString *)petType {
+    NSString *value = petType.lowercaseString ?: @"";
+    if (value.length == 0) {
+        return YES;
+    }
+    NSString *haystack = [[NSString stringWithFormat:@"%@ %@",
+                           item.name ?: @"",
+                           item.desc ?: @""] lowercaseString];
+    if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_localNovaKeywordsForPetType:value]]) {
+        return YES;
+    }
+    if ([value isEqualToString:@"cat"] && item.petMainCategoryID == 5) return YES;
+    if ([value isEqualToString:@"dog"] && item.petMainCategoryID == 6) return YES;
+    if (([value isEqualToString:@"bird"] || [value isEqualToString:@"parrot"]) && item.petMainCategoryID == 0) return YES;
+    if ([value isEqualToString:@"fish"] && item.petMainCategoryID == 1) return YES;
+    if (([value isEqualToString:@"hamster"] || [value isEqualToString:@"rabbit"]) && item.petMainCategoryID == 2) return YES;
+    return NO;
 }
 
 - (NSArray<NSString *> *)pp_localNovaKeywordsForNeed:(NSString *)need {
@@ -1101,71 +1374,11 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     self.novaMemoryLanguage = Language.isRTL ? @"ar" : @"en";
 }
 
-- (void)insertNovaReplyForUserText:(NSString *)userText {
-    NSString *trimmedText = [userText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-
-    // Memory is updated by sendNovaRequestForUserText before we get here, but in case
-    // the local fallback runs from another path, do it here too — idempotent.
-    [self pp_updateMemoryFromUserText:trimmedText];
-
-    BOOL isArabic = [self.novaMemoryLanguage isEqualToString:@"ar"]
-                  || [self textContainsArabic:trimmedText];
-
-    NSString *petType = self.novaMemoryPetType;
-    NSString *needType = self.novaMemoryNeed;
-
-    NSString *reply = [self pp_buildLocalFallbackReplyArabic:isArabic
-                                                     petType:petType
-                                                        need:needType];
-    [self addMessageWithText:reply isIncoming:YES];
-}
-
-// Memory-aware local fallback. Never includes a greeting/intro because the screen
-// already showed one when it opened (novaHasShownGreeting is YES from then on).
-- (NSString *)pp_buildLocalFallbackReplyArabic:(BOOL)isArabic
-                                       petType:(NSString *)petType
-                                          need:(NSString *)need {
-    BOOL hasPet = petType.length > 0;
-    BOOL hasNeed = need.length > 0;
-
-    if (hasPet && hasNeed) {
-        NSString *format = [self pp_novaLocalizedStringForKey:@"nova_fallback_pet_need_format" arabic:isArabic];
-        if (isArabic) {
-            return [NSString stringWithFormat:format,
-                    [self pp_arabicPetWord:petType],
-                    [self pp_arabicNeedWord:need]];
-        }
-        return [NSString stringWithFormat:format, petType, need];
-    }
-
-    if (hasPet) {
-        NSString *format = [self pp_novaLocalizedStringForKey:@"nova_fallback_pet_format" arabic:isArabic];
-        if (isArabic) {
-            return [NSString stringWithFormat:format,
-                    [self pp_arabicPetWord:petType]];
-        }
-        return [NSString stringWithFormat:format, petType];
-    }
-
-    if (hasNeed) {
-        NSString *format = [self pp_novaLocalizedStringForKey:@"nova_fallback_need_format" arabic:isArabic];
-        if (isArabic) {
-            return [NSString stringWithFormat:format,
-                    [self pp_arabicNeedWord:need]];
-        }
-        return [NSString stringWithFormat:format, need];
-    }
-
-    return [self pp_novaLocalizedStringForKey:@"nova_fallback_prompt" arabic:isArabic];
-}
-
-- (NSString *)pp_novaLocalizedStringForKey:(NSString *)key arabic:(BOOL)arabic {
-    NSString *languageCode = arabic ? @"ar" : @"en";
-    NSString *path = [[NSBundle mainBundle] pathForResource:languageCode ofType:@"lproj"];
-    NSBundle *bundle = path.length > 0 ? [NSBundle bundleWithPath:path] : nil;
-    NSString *localized = [bundle localizedStringForKey:key value:nil table:nil];
-    return localized.length > 0 ? localized : kLang(key);
-}
+// Templated local-fallback reply was removed in the behavioral refactor: it
+// was the source of the "rigid handler text overrides AI" complaint. When the
+// model is unreachable or returns nothing, we now stay silent and let the
+// product-showcase path speak instead. The Arabic word maps below are still
+// used by `pp_buildPreviousUserFactsString` to seed the agent's context.
 
 - (BOOL)textContainsArabic:(NSString *)text {
     for (NSUInteger i = 0; i < text.length; i++) {
@@ -1216,9 +1429,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
             }
         }
         if (matched) {
-            if (self.novaMemoryPetType.length == 0) {
-                self.novaMemoryPetType = p[@"label"];
-            }
+            self.novaMemoryPetType = p[@"label"];
             break;
         }
     }
@@ -1253,9 +1464,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
             }
         }
         if (matched) {
-            if (self.novaMemoryNeed.length == 0) {
-                self.novaMemoryNeed = n[@"label"];
-            }
+            self.novaMemoryNeed = n[@"label"];
             break;
         }
     }
@@ -1309,6 +1518,16 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 
     // Greeting was already shown locally — tell the backend not to re-greet.
     ctx[@"isFirstAssistantMessage"] = @(!self.novaHasShownGreeting);
+
+    // Personalization signals — keep optional, never block on missing values.
+    NSString *firstName = [PPCurrentUser.FirstName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (firstName.length > 0) {
+        ctx[@"firstName"] = firstName;
+    }
+    NSInteger hour = [[NSCalendar currentCalendar] component:NSCalendarUnitHour fromDate:[NSDate date]];
+    if (hour >= 0 && hour < 24) {
+        ctx[@"localHour"] = @(hour);
+    }
 
     NSString *facts = [self pp_buildPreviousUserFactsString];
     if (facts.length > 0) {
@@ -1376,7 +1595,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     UIColor *secondaryText = [self pp_novaHeaderSecondaryTextColor];
     self.ambientBackgroundView.backgroundColor = baseBackground;
     self.emptyStatePulseView.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    self.novaHeaderChromeView.backgroundColor = surface;
+    self.novaHeaderChromeView.backgroundColor = AppPrimaryClr;
     self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.08].CGColor;
     self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.11],
                                                                     [brand colorWithAlphaComponent:0.15]);
@@ -1385,6 +1604,17 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
                                                                        [UIColor.whiteColor colorWithAlphaComponent:0.05]);
     self.novaHeaderSheenView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.045],
                                                                   [brand colorWithAlphaComponent:0.085]);
+    [self pp_installNovaHeaderLiquidBorderIfNeeded];
+    UIColor *liquidBorder = PPNovaDynamicColor([brand colorWithAlphaComponent:0.14],
+                                               [UIColor.whiteColor colorWithAlphaComponent:0.12]);
+    UIColor *liquidHighlight = PPNovaDynamicColor([brand colorWithAlphaComponent:0.42],
+                                                  [UIColor.whiteColor colorWithAlphaComponent:0.34]);
+    if (@available(iOS 13.0, *)) {
+        liquidBorder = [liquidBorder resolvedColorWithTraitCollection:self.traitCollection];
+        liquidHighlight = [liquidHighlight resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    self.novaHeaderLiquidBorderLayer.strokeColor = liquidBorder.CGColor;
+    self.novaHeaderLiquidHighlightLayer.strokeColor = liquidHighlight.CGColor;
     self.headerHairlineHost.backgroundColor = [secondaryText colorWithAlphaComponent:0.10];
     self.headerBrandHaloView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.10],
                                                                   [brand colorWithAlphaComponent:0.18]);
@@ -1471,7 +1701,6 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     }
 
     NSArray<NSDictionary<NSString *, NSString *> *> *localCandidates = @[
-        @{@"name": @"Ncolored", @"type": @"jason"},
         @{@"name": @"Ncolored", @"type": @"json"}
     ];
     for (NSDictionary<NSString *, NSString *> *candidate in localCandidates) {
@@ -1496,7 +1725,6 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     }
 
     NSArray<NSString *> *paths = @[
-        @"LottieAnimations/Ncolored.jason",
         @"LottieAnimations/Ncolored.json"
     ];
     [self pp_loadNovaIdentityAnimationPaths:paths index:0 intoView:animationView];
@@ -1917,10 +2145,10 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         [brandMark.widthAnchor constraintEqualToConstant:46.0],
         [brandMark.heightAnchor constraintEqualToConstant:46.0],
 
-        [identityLottie.topAnchor constraintEqualToAnchor:brandMark.topAnchor constant:-4.0],
-        [identityLottie.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor constant:-4.0],
-        [identityLottie.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor constant:4.0],
-        [identityLottie.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor constant:4.0],
+        [identityLottie.topAnchor constraintEqualToAnchor:brandMark.topAnchor constant:-8.0],
+        [identityLottie.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor constant:-8.0],
+        [identityLottie.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor constant:8.0],
+        [identityLottie.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor constant:8.0],
 
         [nameLabel.topAnchor constraintEqualToAnchor:brandRing.bottomAnchor constant:8.0],
         [nameLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
@@ -1963,6 +2191,63 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     [header addGestureRecognizer:tap];
 
     [self pp_applyNovaSurfaceColors];
+}
+
+- (void)pp_installNovaHeaderLiquidBorderIfNeeded {
+    if (!self.novaHeaderChromeView || self.novaHeaderLiquidBorderLayer) {
+        return;
+    }
+
+    CAShapeLayer *borderLayer = [CAShapeLayer layer];
+    borderLayer.fillColor = UIColor.clearColor.CGColor;
+    borderLayer.lineCap = kCALineCapRound;
+    borderLayer.lineJoin = kCALineJoinRound;
+    borderLayer.lineWidth = 1.0 / UIScreen.mainScreen.scale;
+    borderLayer.opacity = 0.72;
+    borderLayer.zPosition = 60.0;
+    [self.novaHeaderChromeView.layer addSublayer:borderLayer];
+    self.novaHeaderLiquidBorderLayer = borderLayer;
+
+    CAShapeLayer *highlightLayer = [CAShapeLayer layer];
+    highlightLayer.fillColor = UIColor.clearColor.CGColor;
+    highlightLayer.lineCap = kCALineCapRound;
+    highlightLayer.lineJoin = kCALineJoinRound;
+    highlightLayer.lineWidth = 1.55 / UIScreen.mainScreen.scale;
+    highlightLayer.opacity = 0.36;
+    highlightLayer.zPosition = 61.0;
+    [self.novaHeaderChromeView.layer addSublayer:highlightLayer];
+    self.novaHeaderLiquidHighlightLayer = highlightLayer;
+
+    [self pp_updateNovaHeaderLiquidBorderPath];
+}
+
+- (void)pp_updateNovaHeaderLiquidBorderPath {
+    if (!self.novaHeaderChromeView || !self.novaHeaderLiquidBorderLayer || !self.novaHeaderLiquidHighlightLayer) {
+        return;
+    }
+
+    CGRect bounds = self.novaHeaderChromeView.bounds;
+    if (CGRectIsEmpty(bounds)) {
+        return;
+    }
+
+    CGFloat scale = UIScreen.mainScreen.scale;
+    CGFloat inset = MAX(1.0 / scale, 0.5);
+    CGFloat radius = 16.0;
+    CGRect pathRect = CGRectInset(bounds, inset, inset);
+    UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:pathRect cornerRadius:radius];
+    CGFloat perimeter = MAX(1.0, ((CGRectGetWidth(pathRect) + CGRectGetHeight(pathRect)) * 2.0) - (8.0 * radius) + ((CGFloat)M_PI * 2.0 * radius));
+    CGFloat dashLength = MAX(44.0, MIN(86.0, perimeter * 0.13));
+    CGFloat gapLength = MAX(120.0, perimeter - dashLength);
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self.novaHeaderLiquidBorderLayer.frame = bounds;
+    self.novaHeaderLiquidHighlightLayer.frame = bounds;
+    self.novaHeaderLiquidBorderLayer.path = path.CGPath;
+    self.novaHeaderLiquidHighlightLayer.path = path.CGPath;
+    self.novaHeaderLiquidHighlightLayer.lineDashPattern = @[@(dashLength), @(gapLength)];
+    [CATransaction commit];
 }
 
 - (void)pp_handleNovaHeaderTap:(UITapGestureRecognizer *)tap {
@@ -2018,6 +2303,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         }];
         [self pp_applyNovaTableInsetsForCurrentHeaderState];
         [self.view layoutIfNeeded];
+        [self pp_updateNovaHeaderLiquidBorderPath];
     };
 
     if (duration <= 0.0) {
@@ -2092,10 +2378,15 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     [self.headerBrandHaloView.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
     [self.headerBrandMarkView.layer removeAllAnimations];
+    [self.novaHeaderLiquidBorderLayer removeAllAnimations];
+    [self.novaHeaderLiquidHighlightLayer removeAllAnimations];
     for (UIView *dot in self.novaHeaderMotionDots) {
         [dot.layer removeAllAnimations];
     }
+    [self pp_updateNovaHeaderLiquidBorderPath];
     if (reduceMotion) {
+        self.novaHeaderLiquidBorderLayer.opacity = self.novaHeaderCollapsed ? 0.52 : 0.68;
+        self.novaHeaderLiquidHighlightLayer.opacity = self.novaHeaderCollapsed ? 0.18 : 0.28;
         self.statusDot.alpha = 1.0;
         self.statusDot.transform = CGAffineTransformIdentity;
         self.novaHeaderTopGlowView.transform = CGAffineTransformIdentity;
@@ -2230,6 +2521,35 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     ringScale.repeatCount = HUGE_VALF;
     ringScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.headerBrandRingView.layer addAnimation:ringScale forKey:@"pp_novaBrandRingScale"];
+
+    self.novaHeaderLiquidBorderLayer.opacity = self.novaHeaderCollapsed ? 0.54 : 0.72;
+    self.novaHeaderLiquidHighlightLayer.opacity = self.novaHeaderCollapsed ? 0.24 : 0.36;
+
+    CABasicAnimation *borderPulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    borderPulse.fromValue = @(self.novaHeaderCollapsed ? 0.42 : 0.58);
+    borderPulse.toValue = @(self.novaHeaderCollapsed ? 0.58 : 0.78);
+    borderPulse.duration = 5.8;
+    borderPulse.autoreverses = YES;
+    borderPulse.repeatCount = HUGE_VALF;
+    borderPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderLiquidBorderLayer addAnimation:borderPulse forKey:@"pp_novaHeaderLiquidBorderPulse"];
+
+    CABasicAnimation *liquidFlow = [CABasicAnimation animationWithKeyPath:@"lineDashPhase"];
+    liquidFlow.fromValue = @0.0;
+    liquidFlow.toValue = @(-260.0);
+    liquidFlow.duration = self.novaHeaderCollapsed ? 9.6 : 7.8;
+    liquidFlow.repeatCount = HUGE_VALF;
+    liquidFlow.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+    [self.novaHeaderLiquidHighlightLayer addAnimation:liquidFlow forKey:@"pp_novaHeaderLiquidBorderFlow"];
+
+    CABasicAnimation *highlightPulse = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    highlightPulse.fromValue = @(self.novaHeaderCollapsed ? 0.16 : 0.24);
+    highlightPulse.toValue = @(self.novaHeaderCollapsed ? 0.30 : 0.46);
+    highlightPulse.duration = 4.9;
+    highlightPulse.autoreverses = YES;
+    highlightPulse.repeatCount = HUGE_VALF;
+    highlightPulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderLiquidHighlightLayer addAnimation:highlightPulse forKey:@"pp_novaHeaderLiquidBorderGlow"];
 }
 
 - (void)pp_stopHeaderLiveAnimations {
@@ -2240,6 +2560,8 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     [self.headerBrandHaloView.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
     [self.headerBrandMarkView.layer removeAllAnimations];
+    [self.novaHeaderLiquidBorderLayer removeAllAnimations];
+    [self.novaHeaderLiquidHighlightLayer removeAllAnimations];
     for (UIView *dot in self.novaHeaderMotionDots) {
         [dot.layer removeAllAnimations];
     }
@@ -2550,11 +2872,6 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     self.typingLabel.text = kLang(@"nova_typing");
     self.statusLabel.text = kLang(@"nova_status_thinking");
 
-    if (!self.novaHasPlayedTypingFeedbackForCurrentTurn) {
-        self.novaHasPlayedTypingFeedbackForCurrentTurn = YES;
-        [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventTypingPulse];
-    }
-
     [self pp_startTypingDotsAnimation];
 
     NSInteger roll = arc4random_uniform(5) + 1;
@@ -2600,7 +2917,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
 
-    [self.tableView registerClass:[PPNovaMessageBubbleCell class] forCellReuseIdentifier:[PPNovaMessageBubbleCell reuseIdentifier]];
+    [self.tableView registerClass:[ChatMessageCell class] forCellReuseIdentifier:@"ChatMessageCell"];
     [self.tableView registerClass:[PPNovaProductMessageCell class] forCellReuseIdentifier:@"PPNovaProductMessageCell"];
     [self.tableView registerClass:[PPNovaReviewMessageCell class] forCellReuseIdentifier:[PPNovaReviewMessageCell reuseIdentifier]];
 
@@ -2634,7 +2951,7 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:32],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
     ]];
 
     self.tableView.delegate = self;
@@ -2690,29 +3007,29 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     CGRect keyboardInView = [self.view convertRect:keyboardFrame fromView:nil];
     CGFloat overlap = MAX(CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(keyboardInView), 0.0);
     CGFloat keyboardOffset = MAX(overlap - self.view.safeAreaInsets.bottom, 0.0);
+
     self.inputBarBottomConstraint.constant = keyboardOffset > 0.0
         ? -(keyboardOffset + 8.0)
         : self.inputBarRestingBottomConstant;
-        
+
     self.emptyStateCenterYConstraint.constant = 8.0 - (keyboardOffset > 0 ? keyboardOffset / 2.0 : 0);
 
-    // Update content insets
-    CGFloat inputBarTotalHeight = CGRectGetHeight(self.inputbar.frame);
-    if (inputBarTotalHeight == 0) inputBarTotalHeight = 60.0; // fallback
-    CGFloat bottomInset = keyboardOffset + inputBarTotalHeight + PPNovaTableBottomInset + (keyboardOffset > 0 ? 8.0 : -self.inputBarRestingBottomConstant);
+    // We rely on the constraint between the tableView bottom and inputBar top.
+    // No need to dynamically adjust bottom inset for the keyboard height here,
+    // as it leads to double-accounting and scroll jumps.
     UIEdgeInsets currentInset = self.tableView.contentInset;
-    currentInset.bottom = bottomInset;
+    currentInset.bottom = PPNovaTableBottomInset;
     self.tableView.contentInset = currentInset;
     self.tableView.scrollIndicatorInsets = currentInset;
 
     UIViewAnimationOptions options = ((UIViewAnimationOptions)curve << 16) |
         UIViewAnimationOptionBeginFromCurrentState |
         UIViewAnimationOptionAllowUserInteraction;
+
     [UIView animateWithDuration:duration delay:0.0 options:options animations:^{
         [self.view layoutIfNeeded];
-    } completion:^(BOOL finished) {
         [self scrollToBottomAnimated:NO];
-    }];
+    } completion:nil];
 }
 
 - (void)scrollToBottomAnimated:(BOOL)animated {
@@ -2742,28 +3059,33 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 
     if (msg.messageType == ChatMessageTypeNovaReview) {
         PPNovaReviewMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:[PPNovaReviewMessageCell reuseIdentifier] forIndexPath:indexPath];
-        [cell configureWithMessage:msg maxWidth:self.view.hx_w * 0.8];
+        [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
         return cell;
     }
 
-    PPNovaMessageBubbleCell *cell = [tableView dequeueReusableCellWithIdentifier:[PPNovaMessageBubbleCell reuseIdentifier] forIndexPath:indexPath];
-    [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
+    ChatMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ChatMessageCell" forIndexPath:indexPath];
+    [cell configureWithMessage:msg.text
+                          date:msg.timestamp
+                    isIncoming:[msg.senderID isEqualToString:@"nova_bot_id"]
+                      maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]
+                        status:msg.status
+                  messageModel:msg groupPosition:PPChatGroupPositionSingle];
 
     return cell;
 }
 
 - (CGFloat)tableView:(UITableView *)tableView estimatedHeightForRowAtIndexPath:(NSIndexPath *)indexPath {
     if (indexPath.row < 0 || indexPath.row >= (NSInteger)self.messages.count) {
-        return 92.0;
+        return 102.0;
     }
     ChatMessageModel *msg = self.messages[indexPath.row];
     if (msg.messageType == ChatMessageTypeNovaProduct || msg.messageType == ChatMessageTypeNovaProductList) {
         return 335.0;
     }
     if (msg.messageType == ChatMessageTypeNovaReview) {
-        return 120.0;
+        return 130.0;
     }
-    return 92.0;
+    return 102.0;
 }
 
 - (CGFloat)pp_novaMessageLayoutWidthForTableView:(UITableView *)tableView {
@@ -2784,22 +3106,41 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
             continue;
         }
 
-        if (![visibleCell isKindOfClass:PPNovaMessageBubbleCell.class]) continue;
+        if ([visibleCell isKindOfClass:PPNovaReviewMessageCell.class]) {
+            PPNovaReviewMessageCell *cell = (PPNovaReviewMessageCell *)visibleCell;
+            NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+            if (indexPath.row >= 0 && indexPath.row < self.messages.count) {
+                ChatMessageModel *message = self.messages[indexPath.row];
+                [cell configureWithMessage:message maxWidth:tableWidth];
+            }
+            continue;
+        }
 
-        PPNovaMessageBubbleCell *cell = (PPNovaMessageBubbleCell *)visibleCell;
+        if (![visibleCell isKindOfClass:ChatMessageCell.class]) continue;
+
+        ChatMessageCell *cell = (ChatMessageCell *)visibleCell;
         NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
         if (indexPath.row < 0 || indexPath.row >= self.messages.count) continue;
 
         ChatMessageModel *message = self.messages[indexPath.row];
-        [cell configureWithMessage:message maxWidth:tableWidth];
+
+        [cell configureWithMessage:message.text
+                              date:message.timestamp
+                        isIncoming:[message.senderID isEqualToString:@"nova_bot_id"]
+                          maxWidth:tableWidth
+                            status:message.status
+                      messageModel:message groupPosition:PPChatGroupPositionSingle];
+
     }
 }
 
 - (void)pp_refreshVisibleNovaCellLayoutForCurrentTableWidth {
     CGFloat width = [self pp_novaMessageLayoutWidthForTableView:self.tableView];
     [self pp_updateVisibleNovaMessageCellWidthsForTableWidth:width];
-    [self.tableView beginUpdates];
-    [self.tableView endUpdates];
+    [UIView performWithoutAnimation:^{
+        [self.tableView beginUpdates];
+        [self.tableView endUpdates];
+    }];
 }
 
 - (void)tableView:(UITableView *)tableView willDisplayCell:(UITableViewCell *)cell forRowAtIndexPath:(NSIndexPath *)indexPath {
@@ -2839,12 +3180,6 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (trimmed.length > 0) {
         [self pp_setNovaHeaderCollapsed:YES animated:YES];
-        if (!self.novaInputHasActiveTypingFeedback) {
-            self.novaInputHasActiveTypingFeedback = YES;
-            [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventTypingPulse];
-        }
-    } else {
-        self.novaInputHasActiveTypingFeedback = NO;
     }
 }
 
@@ -2874,8 +3209,6 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     NSString *trimmedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) return;
 
-    self.novaHasPlayedTypingFeedbackForCurrentTurn = NO;
-    self.novaInputHasActiveTypingFeedback = NO;
     [self addUserMessage:trimmedText];
 
     // Check for "add to cart" intent
@@ -3015,6 +3348,30 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
     [self addMessageWithText:text isIncoming:YES];
 }
 
+// Adds a Nova-side system bubble (connectivity status, blocked-account, etc.)
+// only if the previous Nova message wasn't already this exact text. Prevents
+// the "Nova is unavailable / Nova is unavailable / Nova is unavailable" loop
+// when the user keeps typing during a backend outage.
+- (void)pp_addNovaSystemBubbleIfNew:(NSString *)text {
+    if (text.length == 0) {
+        return;
+    }
+    for (NSInteger i = (NSInteger)self.messages.count - 1; i >= 0; i--) {
+        ChatMessageModel *msg = self.messages[i];
+        if (![msg.senderID isEqualToString:@"nova_bot_id"]) {
+            continue;
+        }
+        if (msg.messageType != ChatMessageTypeText) {
+            break;
+        }
+        if ([msg.text isEqualToString:text]) {
+            return;
+        }
+        break;
+    }
+    [self addNovaMessage:text];
+}
+
 - (void)addMessageWithText:(NSString *)text isIncoming:(BOOL)isIncoming {
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [[NSUUID UUID] UUIDString];
@@ -3131,6 +3488,45 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
         }
     }
     return [keptLines componentsJoinedByString:@"\n"];
+}
+
+- (BOOL)pp_novaReplyContainsNoProductClaim:(NSString *)text {
+    if (text.length == 0) {
+        return NO;
+    }
+    NSArray<NSString *> *patterns = @[
+        @"couldn['’]?t\\s+find",
+        @"could\\s+not\\s+find",
+        @"can['’]?t\\s+find",
+        @"cannot\\s+find",
+        @"didn['’]?t\\s+find",
+        @"did\\s+not\\s+find",
+        @"unable\\s+to\\s+find",
+        @"no\\s+(matching\\s+)?(products?|items?|results?|matches?|inventory)",
+        @"not\\s+available",
+        @"current\\s+inventory",
+        @"check\\s+(the\\s+)?(pure\\s+pets\\s+)?catalog",
+        @"لم\\s+أجد",
+        @"لم\\s+اجد",
+        @"ما\\s+لقيت",
+        @"ما\\s+لقينا",
+        @"لا\\s+يوجد",
+        @"لا\\s+توجد",
+        @"غير\\s+متوفر"
+    ];
+    for (NSString *pattern in patterns) {
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
+                                                                               options:NSRegularExpressionCaseInsensitive
+                                                                                 error:nil];
+        if (regex && [regex numberOfMatchesInString:text options:0 range:NSMakeRange(0, text.length)] > 0) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (NSString *)pp_positiveNovaLocalShowcaseTextForUserText:(NSString *)userText {
+    return [self textContainsArabic:userText] ? kLang(@"nova_found_matching_options") : kLang(@"nova_found_matching_options");
 }
 
 - (BOOL)pp_isNovaStructuredSuggestionLine:(NSString *)line {

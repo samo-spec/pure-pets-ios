@@ -78,5 +78,7 @@
 		<string>remote-notification</string>
 		<string>fetch</string>
 	</array>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

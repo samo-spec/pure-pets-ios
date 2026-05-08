@@ -2678,6 +2678,7 @@
 "nova_greeting" = "أهلاً. اكتب ما يحتاجه حيوانك وسأرشدك إلى الاختيار الأنسب من بيور بتس.";
 "nova_product_results" = "اختيارات مناسبة";
 "nova_product_count_format" = "%ld عنصر";
+"nova_found_matching_options" = "لقيت لك خيارات مناسبة من بيور بتس.";
 "nova_add_to_cart_which" = "أي منتج أضيفه للسلة؟";
 "nova_added_to_cart" = "تمت الإضافة للسلة";
 "nova_add_to_cart_failed" = "عذراً، لم أتمكن من الإضافة للسلة. حاول مرة أخرى.";
@@ -2687,6 +2688,8 @@
 "nova_fallback_prompt" = "اكتب نوع حيوانك وما تحتاجه، مثل الطعام، الحاملة، الألعاب، أو العناية.";
 "nova_close_accessibility" = "إغلاق";
 "nova_error_auth" = "انتهت الجلسة. أعد فتح المحادثة من فضلك.";
+"nova_error_signin_required" = "سجّل دخولك أولًا حتى أساعدك من خلال نوفا.";
+"nova_error_account_blocked" = "هذا الحساب لا يمكنه استخدام نوفا. تواصل مع دعم بيور بتس.";
 "nova_error_unavailable" = "الخدمة غير متاحة حالياً. حاول بعد قليل.";
 "nova_suggestions_unavailable" = "لم أستطع تحميل هذه الاختيارات. اكتب نوع حيوانك وما تحتاجه وسأحاول مرة أخرى.";
 "OrderCanceled" = "تم إلغاء الطلب";

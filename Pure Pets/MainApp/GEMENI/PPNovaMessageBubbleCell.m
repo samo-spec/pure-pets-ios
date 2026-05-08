@@ -41,9 +41,13 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
 }
 
 static const CGFloat PPNovaBubbleMinimumWidth = 90.0;
+static const CGFloat PPNovaAssistantMinimumReadableWidth = 184.0;
+static const CGFloat PPNovaAssistantMaximumReadableFloor = 260.0;
+static const CGFloat PPNovaAssistantReadableWidthRatio = 0.52;
 static const CGFloat PPNovaAssistantHorizontalReserve = 120.0;
 static const CGFloat PPNovaUserHorizontalReserve = 86.0;
 static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
+static const CGFloat PPNovaBubbleCornerRadius = 24.0;
 
 @interface PPNovaMessageBubbleCell ()
 
@@ -107,6 +111,7 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
 
 - (void)layoutSubviews {
     [super layoutSubviews];
+
     self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
                                                                         cornerRadius:self.bubbleMaterialView.layer.cornerRadius].CGPath;
 }
@@ -125,7 +130,13 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.avatarView.backgroundColor = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.16],
                                                             [brand colorWithAlphaComponent:0.22]);
     self.avatarView.layer.cornerRadius = 13.0;
-    self.avatarView.layer.masksToBounds = YES;
+    self.avatarView.layer.masksToBounds = NO;
+    self.avatarView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.avatarView.layer.borderColor = [brand colorWithAlphaComponent:0.18].CGColor;
+    self.avatarView.layer.shadowColor = brand.CGColor;
+    self.avatarView.layer.shadowOpacity = 0.10;
+    self.avatarView.layer.shadowRadius = 8.0;
+    self.avatarView.layer.shadowOffset = CGSizeMake(0.0, 3.0);
     if (@available(iOS 13.0, *)) {
         self.avatarView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -143,9 +154,11 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.bubbleShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bubbleShadowView.backgroundColor = UIColor.clearColor;
     self.bubbleShadowView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.bubbleShadowView.layer.shadowOpacity = 0.06;
-    self.bubbleShadowView.layer.shadowRadius = 18.0;
-    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    self.bubbleShadowView.layer.shadowOpacity = 0.08;
+    self.bubbleShadowView.layer.shadowRadius = 20.0;
+    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.bubbleShadowView.layer.shouldRasterize = YES;
+    self.bubbleShadowView.layer.rasterizationScale = UIScreen.mainScreen.scale;
     [self.contentView addSubview:self.bubbleShadowView];
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleRegular;
@@ -154,7 +167,7 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     }
     self.bubbleMaterialView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
     self.bubbleMaterialView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.bubbleMaterialView.layer.cornerRadius = 23.0;
+    self.bubbleMaterialView.layer.cornerRadius = PPNovaBubbleCornerRadius;
     self.bubbleMaterialView.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         self.bubbleMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -175,9 +188,9 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     UIFont *bodyFont = [GM MidFontWithSize:PPFontCallout] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightRegular];
     self.messageLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:bodyFont];
     self.messageLabel.adjustsFontForContentSizeCategory = YES;
-    ///[self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    ////[self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
-    //[self.messageLabel setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
+    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
+    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.messageLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.contentStack addArrangedSubview:self.messageLabel];
 
     self.typingDotsStack = [[UIStackView alloc] init];
@@ -332,8 +345,10 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.messageModel = messageModel;
     self.typingMode = NO;
     self.assistantMessage = [messageModel.senderID isEqualToString:@"nova_bot_id"] || [messageModel.senderID isEqualToString:@"nova"];
-    self.configuredMaxWidth = maxWidth;
+    CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
+    self.configuredMaxWidth = resolvedMaxWidth;
     self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.contentView.bounds = CGRectMake(0.0, 0.0, resolvedMaxWidth, CGRectGetHeight(self.contentView.bounds));
 
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
@@ -344,7 +359,7 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.timeLabel.text = [self pp_formattedTime:messageModel.timestamp];
     [self pp_stopTypingAnimation];
     [self pp_configureStatusForMessage:messageModel];
-    [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:maxWidth];
+    [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:resolvedMaxWidth];
     [self setNeedsLayout];
     [self layoutIfNeeded];
 
@@ -355,15 +370,17 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.messageModel = nil;
     self.typingMode = YES;
     self.assistantMessage = YES;
-    self.configuredMaxWidth = maxWidth;
+    CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
+    self.configuredMaxWidth = resolvedMaxWidth;
     self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.contentView.bounds = CGRectMake(0.0, 0.0, resolvedMaxWidth, CGRectGetHeight(self.contentView.bounds));
 
     self.messageLabel.hidden = YES;
     self.typingDotsStack.hidden = NO;
     self.timeLabel.text = kLang(@"nova_typing");
     self.statusImageView.hidden = YES;
     [self pp_applyStyleForAssistant:YES typing:YES];
-    [self pp_applyAlignmentForAssistant:YES maxWidth:maxWidth];
+    [self pp_applyAlignmentForAssistant:YES maxWidth:resolvedMaxWidth];
     [self pp_startTypingAnimation];
     [self.contentView setNeedsLayout];
     [self.contentView layoutIfNeeded];
@@ -409,9 +426,10 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
 }
 
 - (void)pp_applyAlignmentForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
+    CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
     self.messageLabel.semanticContentAttribute = PPNovaSemanticForText(self.messageLabel.text ?: @"");
     self.messageLabel.textAlignment = PPNovaAlignmentForText(self.messageLabel.text ?: @"");
-    self.bubbleWidthConstraint.constant = [self pp_targetBubbleWidthForAssistant:assistant maxWidth:maxWidth];
+    self.bubbleWidthConstraint.constant = [self pp_targetBubbleWidthForAssistant:assistant maxWidth:resolvedMaxWidth];
     self.messageLabel.preferredMaxLayoutWidth = MAX(self.bubbleWidthConstraint.constant - PPNovaBubbleHorizontalContentInset, 1.0);
 
     [NSLayoutConstraint deactivateConstraints:self.assistantConstraints];
@@ -423,11 +441,22 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.contentStack.alignment = UIStackViewAlignmentFill;
 }
 
-- (CGFloat)pp_targetBubbleWidthForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
-    CGFloat containerWidth = maxWidth;
-    if (containerWidth <= 1.0) {
-        containerWidth = UIScreen.mainScreen.bounds.size.width;
+- (CGFloat)pp_resolvedContainerWidthForCandidate:(CGFloat)candidateWidth {
+    CGFloat width = candidateWidth;
+    if (width <= 1.0 && self.configuredMaxWidth > 1.0) {
+        width = self.configuredMaxWidth;
     }
+    if (width <= 1.0) {
+        width = CGRectGetWidth(self.contentView.bounds);
+    }
+    if (width <= 1.0) {
+        width = UIScreen.mainScreen.bounds.size.width;
+    }
+    return floor(MAX(width, 1.0));
+}
+
+- (CGFloat)pp_targetBubbleWidthForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
+    CGFloat containerWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
 
     CGFloat reserve = assistant ? PPNovaAssistantHorizontalReserve : PPNovaUserHorizontalReserve;
     CGFloat availableWidth = floor(containerWidth - reserve);
@@ -436,7 +465,14 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     }
 
     CGFloat measuredWidth = [self pp_measuredBubbleWidthForAvailableWidth:availableWidth];
-    CGFloat targetWidth = MIN(availableWidth, MAX(PPNovaBubbleMinimumWidth, measuredWidth));
+    CGFloat minimumWidth = PPNovaBubbleMinimumWidth;
+    if (assistant && !self.typingMode) {
+        CGFloat readableFloor = floor(containerWidth * PPNovaAssistantReadableWidthRatio);
+        readableFloor = MIN(PPNovaAssistantMaximumReadableFloor, MAX(PPNovaAssistantMinimumReadableWidth, readableFloor));
+        minimumWidth = MIN(availableWidth, MAX(PPNovaBubbleMinimumWidth, readableFloor));
+    }
+
+    CGFloat targetWidth = MIN(availableWidth, MAX(minimumWidth, measuredWidth));
     if (self.typingMode) {
         targetWidth = MAX(targetWidth, 86.0);
     }
@@ -447,9 +483,22 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
 - (CGFloat)pp_measuredBubbleWidthForAvailableWidth:(CGFloat)availableWidth {
     CGFloat maxLabelWidth = MAX(availableWidth - PPNovaBubbleHorizontalContentInset, 1.0);
     CGFloat targetContentWidth = 0.0;
+    NSString *plainText = self.messageLabel.attributedText.string.length > 0
+        ? self.messageLabel.attributedText.string
+        : (self.messageLabel.text ?: @"");
+    BOOL hasExplicitLineBreak = [plainText rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location != NSNotFound;
 
     NSAttributedString *attributedText = self.messageLabel.attributedText;
     if (attributedText.length > 0 && !self.messageLabel.hidden) {
+        if (!hasExplicitLineBreak) {
+            CGRect singleLineRect = [attributedText boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
+                                                                 options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
+                                                                 context:nil];
+            CGFloat singleLineWidth = ceil(CGRectGetWidth(singleLineRect));
+            if (singleLineWidth <= maxLabelWidth) {
+                targetContentWidth = MAX(targetContentWidth, singleLineWidth);
+            }
+        }
         CGRect textRect = [attributedText boundingRectWithSize:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)
                                                        options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
                                                        context:nil];
@@ -483,10 +532,12 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
 - (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize
         withHorizontalFittingPriority:(UILayoutPriority)horizontalFittingPriority
               verticalFittingPriority:(UILayoutPriority)verticalFittingPriority {
-    CGFloat fittingWidth = targetSize.width > 1.0 ? targetSize.width : self.configuredMaxWidth;
-    if (fittingWidth <= 1.0) {
-        fittingWidth = UIScreen.mainScreen.bounds.size.width;
+    CGFloat configuredWidth = [self pp_resolvedContainerWidthForCandidate:self.configuredMaxWidth];
+    CGFloat fittingWidth = targetSize.width > 1.0 ? targetSize.width : configuredWidth;
+    if (configuredWidth > 1.0 && fittingWidth < configuredWidth) {
+        fittingWidth = configuredWidth;
     }
+    fittingWidth = [self pp_resolvedContainerWidthForCandidate:fittingWidth];
     if (fittingWidth > 1.0) {
         self.contentView.bounds = CGRectMake(0.0, 0.0, fittingWidth, CGRectGetHeight(self.contentView.bounds));
         [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:fittingWidth];
@@ -503,16 +554,20 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
 
 - (void)pp_applyStyleForAssistant:(BOOL)assistant typing:(BOOL)typing {
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    UIColor *assistantFill = PPNovaCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.86],
-                                                   [UIColor colorWithWhite:1.0 alpha:0.075]);
+    UIColor *assistantFill = PPNovaCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.93],
+                                                   [UIColor colorWithWhite:1.0 alpha:0.105]);
     UIColor *assistantText = PPNovaCellDynamicColor(AppPrimaryTextClr ?: UIColor.blackColor,
                                                    UIColor.whiteColor);
-    UIColor *assistantMeta = PPNovaCellDynamicColor([UIColor colorWithWhite:0.16 alpha:0.52],
-                                                   [UIColor colorWithWhite:1.0 alpha:0.50]);
-    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.92],
-                                              [brand colorWithAlphaComponent:0.82]);
+    UIColor *assistantMeta = PPNovaCellDynamicColor([UIColor colorWithWhite:0.16 alpha:0.46],
+                                                   [UIColor colorWithWhite:1.0 alpha:0.46]);
+    UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.13],
+                                                     [UIColor.whiteColor colorWithAlphaComponent:0.09]);
+    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.90],
+                                              [brand colorWithAlphaComponent:0.76]);
     UIColor *userText = UIColor.whiteColor;
     UIColor *userMeta = [UIColor.whiteColor colorWithAlphaComponent:0.72];
+    UIColor *userBorder = PPNovaCellDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.34],
+                                                [UIColor.whiteColor colorWithAlphaComponent:0.18]);
 
     UIVisualEffect *assistantEffect = nil;
     if (assistant) {
@@ -524,10 +579,31 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     }
     self.bubbleMaterialView.effect = assistantEffect;
     self.bubbleMaterialView.contentView.backgroundColor = assistant ? assistantFill : userFill;
-    self.bubbleMaterialView.layer.borderWidth = assistant ? (0.5 / UIScreen.mainScreen.scale) : 0.0;
-    self.bubbleMaterialView.layer.borderColor = assistant ? [UIColor.separatorColor colorWithAlphaComponent:0.22].CGColor : UIColor.clearColor.CGColor;
-    self.bubbleShadowView.layer.shadowOpacity = assistant ? 0.055 : 0.085;
-    self.bubbleShadowView.layer.shadowRadius = assistant ? 16.0 : 14.0;
+    self.bubbleMaterialView.layer.cornerRadius = typing ? 21.0 : PPNovaBubbleCornerRadius;
+    self.bubbleMaterialView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.bubbleMaterialView.layer.borderColor = (assistant ? assistantBorder : userBorder).CGColor;
+
+    UIColor *shadowColor = assistant ? UIColor.blackColor : brand;
+    UIColor *avatarShadowColor = brand;
+    if (@available(iOS 13.0, *)) {
+        shadowColor = [shadowColor resolvedColorWithTraitCollection:self.traitCollection];
+        avatarShadowColor = [avatarShadowColor resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    BOOL darkMode = NO;
+    if (@available(iOS 13.0, *)) {
+        darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    self.bubbleShadowView.layer.shadowColor = shadowColor.CGColor;
+    self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.18 : 0.075) : (darkMode ? 0.20 : 0.13);
+    self.bubbleShadowView.layer.shadowRadius = assistant ? 18.0 : 17.0;
+    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 8.0 : 9.0);
+
+    self.avatarView.backgroundColor = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.11],
+                                                            [brand colorWithAlphaComponent:0.18]);
+    self.avatarView.layer.borderColor = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.18],
+                                                              [UIColor.whiteColor colorWithAlphaComponent:0.10]).CGColor;
+    self.avatarView.layer.shadowColor = avatarShadowColor.CGColor;
+    self.avatarView.layer.shadowOpacity = darkMode ? 0.18 : 0.12;
 
     self.messageLabel.textColor = assistant ? assistantText : userText;
     
@@ -541,12 +617,18 @@ static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
     self.statusImageView.tintColor = userMeta;
 
     for (UIView *dot in self.typingDots) {
-        dot.backgroundColor = [brand colorWithAlphaComponent:typing ? 1.0 : 0.8];
+        dot.backgroundColor = [brand colorWithAlphaComponent:typing ? 0.96 : 0.76];
+        dot.layer.shadowColor = brand.CGColor;
+        dot.layer.shadowOpacity = typing ? 0.16 : 0.0;
+        dot.layer.shadowRadius = 3.0;
+        dot.layer.shadowOffset = CGSizeZero;
     }
 
     for (UIButton *button in self.actionStack.arrangedSubviews) {
         if (![button isKindOfClass:UIButton.class]) continue;
-        button.backgroundColor = assistant ? [brand colorWithAlphaComponent:0.12] : [UIColor.whiteColor colorWithAlphaComponent:0.16];
+        button.backgroundColor = assistant ? [brand colorWithAlphaComponent:0.10] : [UIColor.whiteColor colorWithAlphaComponent:0.15];
+        button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+        button.layer.borderColor = (assistant ? [brand colorWithAlphaComponent:0.14] : [UIColor.whiteColor colorWithAlphaComponent:0.22]).CGColor;
         [button setTitleColor:(assistant ? brand : UIColor.whiteColor) forState:UIControlStateNormal];
     }
 }
