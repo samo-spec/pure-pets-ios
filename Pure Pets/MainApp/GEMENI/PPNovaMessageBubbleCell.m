@@ -277,10 +277,10 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
         [self.bubbleMaterialView.trailingAnchor constraintEqualToAnchor:self.bubbleShadowView.trailingAnchor],
         [self.bubbleMaterialView.bottomAnchor constraintEqualToAnchor:self.bubbleShadowView.bottomAnchor],
 
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor constant:12.0],
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor constant:20.0],
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.leadingAnchor constant:15.0],
         [self.contentStack.trailingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.trailingAnchor constant:-15.0],
-        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.bottomAnchor constant:-9.0]
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.bottomAnchor constant:-18.0]
     ]];
 
     [self pp_applyStyleForAssistant:YES typing:NO];
@@ -344,7 +344,7 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
 - (void)configureWithMessage:(ChatMessageModel *)messageModel maxWidth:(CGFloat)maxWidth {
     self.messageModel = messageModel;
     self.typingMode = NO;
-    self.assistantMessage = [messageModel.senderID isEqualToString:@"nova_bot_id"] || [messageModel.senderID isEqualToString:@"nova"];
+    self.assistantMessage = YES;
     CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
     self.configuredMaxWidth = resolvedMaxWidth;
     self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;

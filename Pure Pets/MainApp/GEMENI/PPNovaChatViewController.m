@@ -44,6 +44,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 @interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate>
 
 @property (nonatomic, strong) UIView *ambientBackgroundView;
+@property (nonatomic, strong) UIView *novaChatBottomGlowView;
 @property (nonatomic, strong) UIView *novaHeaderView;
 @property (nonatomic, strong) UIView *novaHeaderChromeView;
 @property (nonatomic, strong) UIView *novaHeaderTopGlowView;
@@ -62,6 +63,15 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 @property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) UILabel *headerNameLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *brandRingCenterXConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *brandRingLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *nameLabelCenterXConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *nameLabelLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *nameLabelTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *nameLabelCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleLabelCenterXConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleLabelLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *subtitleLabelTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *novaHeaderExpandedBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *emptyStateCenterYConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *novaHeaderCollapsedBottomConstraint;
@@ -72,10 +82,14 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 @property (nonatomic, copy)   NSArray<UIView *> *typingDots;
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, strong) UIView *emptyStatePulseView;
+@property (nonatomic, strong) UIVisualEffectView *smartSuggestionSurfaceView;
+@property (nonatomic, strong) UILabel *smartSuggestionTitleLabel;
+@property (nonatomic, copy) NSArray<UIButton *> *smartSuggestionButtons;
 
 @property (nonatomic, strong) LOTAnimationView *novaHeaderBackgroundLottie;
 @property (nonatomic, copy) NSString *currentHeaderBgAnimationName;
 @property (nonatomic, strong) LOTAnimationView *novaRingBackgroundLottie;
+@property (nonatomic, strong) LOTAnimationView *novaLoadingLottie; // Added for thinking state
 @property (nonatomic, assign) BOOL novaHeaderThinkingAnimationVisible;
 
 @property (nonatomic, strong) UITableView *tableView;
@@ -205,6 +219,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     if (reduceMotion) {
         self.novaHeaderView.alpha = 1.0;
         self.novaHeaderView.transform = CGAffineTransformIdentity;
+        self.novaHeaderTopGlowView.alpha = 1.0;
+        self.novaChatBottomGlowView.alpha = 1.0;
     } else {
         [UIView animateWithDuration:0.46
                               delay:0.05
@@ -214,6 +230,14 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                          animations:^{
             self.novaHeaderView.alpha = 1.0;
             self.novaHeaderView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+
+        [UIView animateWithDuration:0.92
+                              delay:0.18
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.novaHeaderTopGlowView.alpha = 1.0;
+            self.novaChatBottomGlowView.alpha = 1.0;
         } completion:nil];
     }
 
@@ -274,6 +298,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [self.novaHeaderLiquidBorderLayer removeAllAnimations];
     [self.novaHeaderLiquidHighlightLayer removeAllAnimations];
     [self.emptyStatePulseView.layer removeAllAnimations];
+    [self.novaChatBottomGlowView.layer removeAllAnimations];
     for (UIView *dot in self.typingDots) {
         [dot.layer removeAllAnimations];
     }
@@ -1577,11 +1602,30 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [self.view addSubview:backgroundView];
     self.ambientBackgroundView = backgroundView;
 
+    UIView *bottomGlowView = [[UIView alloc] init];
+    bottomGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    bottomGlowView.userInteractionEnabled = NO;
+    bottomGlowView.layer.cornerRadius = 170.0;
+    bottomGlowView.layer.shadowOpacity = 0.22;
+    bottomGlowView.layer.shadowRadius = 42.0;
+    bottomGlowView.layer.shadowOffset = CGSizeZero;
+    bottomGlowView.alpha = 0.0;
+    if (@available(iOS 13.0, *)) {
+        bottomGlowView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [backgroundView addSubview:bottomGlowView];
+    self.novaChatBottomGlowView = bottomGlowView;
+
     [NSLayoutConstraint activateConstraints:@[
         [backgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [backgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [backgroundView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [backgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+        [backgroundView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [bottomGlowView.widthAnchor constraintEqualToConstant:340.0],
+        [bottomGlowView.heightAnchor constraintEqualToConstant:340.0],
+        [bottomGlowView.leadingAnchor constraintEqualToAnchor:backgroundView.leadingAnchor constant:-96.0],
+        [bottomGlowView.bottomAnchor constraintEqualToAnchor:backgroundView.bottomAnchor constant:128.0]
     ]];
 
     [self pp_applyNovaSurfaceColors];
@@ -1594,14 +1638,25 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     UIColor *primaryText = [self pp_novaHeaderPrimaryTextColor];
     UIColor *secondaryText = [self pp_novaHeaderSecondaryTextColor];
     self.ambientBackgroundView.backgroundColor = baseBackground;
+    self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
+                                                                     [brand colorWithAlphaComponent:0.22]);
+    self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
     self.emptyStatePulseView.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    self.novaHeaderChromeView.backgroundColor = AppPrimaryClr;
-    self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.08].CGColor;
-    self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.11],
-                                                                    [brand colorWithAlphaComponent:0.15]);
+    [self pp_applyNovaSmartSuggestionColorsWithBrand:brand
+                                             surface:surface
+                                         primaryText:primaryText
+                                       secondaryText:secondaryText];
+    if ([self.novaHeaderChromeView isKindOfClass:UIVisualEffectView.class]) {
+        ((UIVisualEffectView *)self.novaHeaderChromeView).effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
+    }
+    self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.42],
+                                                                   [surface colorWithAlphaComponent:0.28]);
+    self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.16].CGColor;
+    self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.16],
+                                                                    [brand colorWithAlphaComponent:0.26]);
     self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
-    self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
-                                                                       [UIColor.whiteColor colorWithAlphaComponent:0.05]);
+    self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.18],
+                                                                       [UIColor.whiteColor colorWithAlphaComponent:0.045]);
     self.novaHeaderSheenView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.045],
                                                                   [brand colorWithAlphaComponent:0.085]);
     [self pp_installNovaHeaderLiquidBorderIfNeeded];
@@ -1615,14 +1670,15 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }
     self.novaHeaderLiquidBorderLayer.strokeColor = liquidBorder.CGColor;
     self.novaHeaderLiquidHighlightLayer.strokeColor = liquidHighlight.CGColor;
+    self.novaHeaderLiquidHighlightLayer.shadowColor = liquidHighlight.CGColor;
     self.headerHairlineHost.backgroundColor = [secondaryText colorWithAlphaComponent:0.10];
-    self.headerBrandHaloView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.10],
-                                                                  [brand colorWithAlphaComponent:0.18]);
+    self.headerBrandHaloView.backgroundColor = PPNovaDynamicColor([AppBackgroundClr colorWithAlphaComponent:0.10],
+                                                                  [AppForgroundColr colorWithAlphaComponent:0.18]);
     self.headerBrandHaloView.layer.shadowColor = brand.CGColor;
-    self.statusDot.backgroundColor = brand;
+    self.statusDot.backgroundColor = AppBageColor();
     self.statusDot.layer.shadowColor = brand.CGColor;
     self.headerLiveCapsule.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    self.headerLiveCapsule.layer.borderColor = [brand colorWithAlphaComponent:0.14].CGColor;
+    self.headerLiveCapsule.layer.borderColor = [brand colorWithAlphaComponent:0.18].CGColor;
     self.headerBrandRingView.backgroundColor = [brand colorWithAlphaComponent:0.10];
     self.headerBrandRingView.layer.borderColor = [brand colorWithAlphaComponent:0.24].CGColor;
     self.headerBrandMarkView.backgroundColor = surface;
@@ -1642,11 +1698,47 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }];
 }
 
+- (void)pp_applyNovaSmartSuggestionColorsWithBrand:(UIColor *)brand
+                                           surface:(UIColor *)surface
+                                       primaryText:(UIColor *)primaryText
+                                     secondaryText:(UIColor *)secondaryText {
+    if (!self.smartSuggestionSurfaceView) {
+        return;
+    }
+
+    self.smartSuggestionSurfaceView.effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
+    self.smartSuggestionSurfaceView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.42],
+                                                                         [surface colorWithAlphaComponent:0.30]);
+    self.smartSuggestionSurfaceView.layer.borderColor = [brand colorWithAlphaComponent:0.13].CGColor;
+    self.smartSuggestionSurfaceView.layer.shadowColor = brand.CGColor;
+    self.smartSuggestionTitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.72];
+
+    [self.smartSuggestionButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
+        BOOL primary = idx == 0;
+        UIColor *fillColor = primary
+            ? [brand colorWithAlphaComponent:0.13]
+            : PPNovaDynamicColor([surface colorWithAlphaComponent:0.46],
+                                 [UIColor.whiteColor colorWithAlphaComponent:0.07]);
+        UIColor *strokeColor = primary ? [brand colorWithAlphaComponent:0.18] : [secondaryText colorWithAlphaComponent:0.12];
+        UIColor *titleColor = primary ? brand : [primaryText colorWithAlphaComponent:0.84];
+
+        button.backgroundColor = fillColor;
+        button.layer.borderColor = strokeColor.CGColor;
+        button.tintColor = titleColor;
+        [button setTitleColor:titleColor forState:UIControlStateNormal];
+        [button setTitleColor:[titleColor colorWithAlphaComponent:0.72] forState:UIControlStateHighlighted];
+    }];
+}
+
 - (void)pp_startAmbientBackgroundAnimations {
     [self.emptyStatePulseView.layer removeAllAnimations];
+    [self.novaChatBottomGlowView.layer removeAllAnimations];
+    [self.novaHeaderTopGlowView.layer removeAllAnimations];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.emptyStatePulseView.transform = CGAffineTransformIdentity;
+        self.novaChatBottomGlowView.transform = CGAffineTransformIdentity;
+        self.novaHeaderTopGlowView.transform = CGAffineTransformIdentity;
         return;
     }
 
@@ -1658,10 +1750,68 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     pulse.repeatCount = HUGE_VALF;
     pulse.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.emptyStatePulseView.layer addAnimation:pulse forKey:@"pp_novaEmptyPulse"];
+
+    // Top halo (just below the header) — slow inhale, gentle vertical drift, soft breath.
+    CABasicAnimation *topHaloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    topHaloScale.fromValue = @0.94;
+    topHaloScale.toValue = @1.06;
+    topHaloScale.duration = 6.8;
+    topHaloScale.autoreverses = YES;
+    topHaloScale.repeatCount = HUGE_VALF;
+    topHaloScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderTopGlowView.layer addAnimation:topHaloScale forKey:@"pp_novaHeaderTopHaloScale"];
+
+    CABasicAnimation *topHaloDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    topHaloDrift.fromValue = @(-12.0);
+    topHaloDrift.toValue = @(8.0);
+    topHaloDrift.duration = 7.6;
+    topHaloDrift.autoreverses = YES;
+    topHaloDrift.repeatCount = HUGE_VALF;
+    topHaloDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderTopGlowView.layer addAnimation:topHaloDrift forKey:@"pp_novaHeaderTopHaloDrift"];
+
+    CABasicAnimation *topHaloBreath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    topHaloBreath.fromValue = @0.78;
+    topHaloBreath.toValue = @1.0;
+    topHaloBreath.duration = 5.4;
+    topHaloBreath.autoreverses = YES;
+    topHaloBreath.repeatCount = HUGE_VALF;
+    topHaloBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaHeaderTopGlowView.layer addAnimation:topHaloBreath forKey:@"pp_novaHeaderTopHaloBreath"];
+
+    // Bottom halo (opposite corner) — counter-phase scale, drift, breath.
+    CABasicAnimation *bottomGlowScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    bottomGlowScale.fromValue = @0.965;
+    bottomGlowScale.toValue = @1.045;
+    bottomGlowScale.duration = 7.4;
+    bottomGlowScale.autoreverses = YES;
+    bottomGlowScale.repeatCount = HUGE_VALF;
+    bottomGlowScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaChatBottomGlowView.layer addAnimation:bottomGlowScale forKey:@"pp_novaBottomGlowScale"];
+
+    CABasicAnimation *bottomGlowDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+    bottomGlowDrift.fromValue = @(10.0);
+    bottomGlowDrift.toValue = @(-14.0);
+    bottomGlowDrift.duration = 8.2;
+    bottomGlowDrift.autoreverses = YES;
+    bottomGlowDrift.repeatCount = HUGE_VALF;
+    bottomGlowDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaChatBottomGlowView.layer addAnimation:bottomGlowDrift forKey:@"pp_novaBottomGlowDrift"];
+
+    CABasicAnimation *bottomGlowBreath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    bottomGlowBreath.fromValue = @1.0;
+    bottomGlowBreath.toValue = @0.74;
+    bottomGlowBreath.duration = 6.2;
+    bottomGlowBreath.autoreverses = YES;
+    bottomGlowBreath.repeatCount = HUGE_VALF;
+    bottomGlowBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaChatBottomGlowView.layer addAnimation:bottomGlowBreath forKey:@"pp_novaBottomGlowBreath"];
 }
 
 - (void)pp_stopAmbientBackgroundAnimations {
     [self.emptyStatePulseView.layer removeAllAnimations];
+    [self.novaChatBottomGlowView.layer removeAllAnimations];
+    [self.novaHeaderTopGlowView.layer removeAllAnimations];
 }
 
 - (UIColor *)pp_novaHeaderAccentColor {
@@ -1676,6 +1826,15 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     return AppForgroundColr ?: UIColor.systemBackgroundColor;
 }
 
+- (UIBlurEffectStyle)pp_novaHeaderGlassBlurStyle {
+    if (@available(iOS 13.0, *)) {
+        return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark
+            ? UIBlurEffectStyleSystemThinMaterialDark
+            : UIBlurEffectStyleSystemUltraThinMaterialLight;
+    }
+    return UIBlurEffectStyleExtraLight;
+}
+
 - (UIColor *)pp_novaHeaderPrimaryTextColor {
     return AppPrimaryTextClr ?: UIColor.labelColor;
 }
@@ -1685,10 +1844,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 }
 
 - (CGFloat)pp_novaHeaderBackgroundAlphaForCurrentState {
-    if (!self.novaHeaderThinkingAnimationVisible) {
-        return 0.0;
-    }
-    return self.novaHeaderCollapsed ? 0.10 : 0.18;
+    return self.novaHeaderCollapsed ? 0.35 : 0.65;
 }
 
 - (CGFloat)pp_novaHeaderSheenAlphaForCurrentState {
@@ -1821,21 +1977,22 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [self.view addSubview:header];
     self.novaHeaderView = header;
 
-    UIView *chromeView = [[UIView alloc] init];
+    UIVisualEffectView *chromeView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]]];
     chromeView.translatesAutoresizingMaskIntoConstraints = NO;
     chromeView.clipsToBounds = YES;
-    chromeView.backgroundColor = [self pp_novaHeaderSurfaceColor];
+    chromeView.backgroundColor = [[self pp_novaHeaderSurfaceColor] colorWithAlphaComponent:0.50];
     chromeView.layer.cornerRadius = 32.0;
     chromeView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    chromeView.layer.borderColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.08].CGColor;
+    chromeView.layer.borderColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.12].CGColor;
     chromeView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    chromeView.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
         chromeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [header addSubview:chromeView];
     self.novaHeaderChromeView = chromeView;
 
-    UIView *contentView = chromeView;
+    UIView *contentView = chromeView.contentView;
     contentView.clipsToBounds = YES;
 
     [NSLayoutConstraint activateConstraints:@[
@@ -1848,16 +2005,17 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     UIView *topGlowView = [[UIView alloc] init];
     topGlowView.translatesAutoresizingMaskIntoConstraints = NO;
     topGlowView.userInteractionEnabled = NO;
-    topGlowView.backgroundColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.11];
-    topGlowView.layer.cornerRadius = 92.0;
+    topGlowView.backgroundColor = [[self pp_novaHeaderAccentColor] colorWithAlphaComponent:0.16];
+    topGlowView.layer.cornerRadius = 150.0;
     topGlowView.layer.shadowColor = [self pp_novaHeaderAccentColor].CGColor;
-    topGlowView.layer.shadowOpacity = 0.18;
-    topGlowView.layer.shadowRadius = 22.0;
+    topGlowView.layer.shadowOpacity = 0.22;
+    topGlowView.layer.shadowRadius = 36.0;
     topGlowView.layer.shadowOffset = CGSizeZero;
+    topGlowView.alpha = 0.0;
     if (@available(iOS 13.0, *)) {
         topGlowView.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [contentView addSubview:topGlowView];
+    [self.ambientBackgroundView addSubview:topGlowView];
     self.novaHeaderTopGlowView = topGlowView;
 
     UIView *bottomGlowView = [[UIView alloc] init];
@@ -1876,7 +2034,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [contentView addSubview:bottomGlowView];
     self.novaHeaderBottomGlowView = bottomGlowView;
 
-    LOTAnimationView *backgroundLottie = [[LOTAnimationView alloc] init];
+    LOTAnimationView *backgroundLottie = [LOTAnimationView new];
     backgroundLottie.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundLottie.userInteractionEnabled = NO;
     backgroundLottie.contentMode = UIViewContentModeScaleAspectFill;
@@ -1885,12 +2043,13 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     backgroundLottie.alpha = 0.0;
     [contentView addSubview:backgroundLottie];
     self.novaHeaderBackgroundLottie = backgroundLottie;
+    //self.currentHeaderBgAnimationName = @"novawave";
 
     [NSLayoutConstraint activateConstraints:@[
-        [topGlowView.widthAnchor constraintEqualToConstant:184.0],
-        [topGlowView.heightAnchor constraintEqualToConstant:184.0],
-        [topGlowView.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:-42.0],
-        [topGlowView.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:-36.0],
+        [topGlowView.widthAnchor constraintEqualToConstant:300.0],
+        [topGlowView.heightAnchor constraintEqualToConstant:300.0],
+        [topGlowView.centerYAnchor constraintEqualToAnchor:header.bottomAnchor constant:-32.0],
+        [topGlowView.centerXAnchor constraintEqualToAnchor:header.centerXAnchor constant:104.0],
 
         [bottomGlowView.widthAnchor constraintEqualToConstant:152.0],
         [bottomGlowView.heightAnchor constraintEqualToConstant:152.0],
@@ -1956,8 +2115,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     UIView *brandHalo = [[UIView alloc] init];
     brandHalo.translatesAutoresizingMaskIntoConstraints = NO;
     brandHalo.userInteractionEnabled = NO;
-    brandHalo.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
-    brandHalo.layer.cornerRadius = 38.0;
+    brandHalo.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.10];
+    brandHalo.layer.cornerRadius = 42.0;
     brandHalo.layer.shadowColor = accentColor.CGColor;
     brandHalo.layer.shadowOpacity = 0.16;
     brandHalo.layer.shadowRadius = 18.0;
@@ -1968,15 +2127,25 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [contentView addSubview:brandHalo];
     self.headerBrandHaloView = brandHalo;
 
+    LOTAnimationView *loadingLottie = [LOTAnimationView animationNamed:@"nova_loading"];
+    loadingLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    loadingLottie.userInteractionEnabled = NO;
+    loadingLottie.contentMode = UIViewContentModeScaleAspectFit;
+    loadingLottie.loopAnimation = YES;
+    loadingLottie.animationSpeed = 1.0;
+    loadingLottie.alpha = 0.0;
+    [brandHalo addSubview:loadingLottie];
+    self.novaLoadingLottie = loadingLottie;
+
     UIView *brandRing = [[UIView alloc] init];
     brandRing.translatesAutoresizingMaskIntoConstraints = NO;
     brandRing.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
-    brandRing.layer.cornerRadius = 31.0;
+    brandRing.layer.cornerRadius = 34.0;
     brandRing.layer.borderWidth = 1.2 / UIScreen.mainScreen.scale;
     brandRing.layer.borderColor = [accentColor colorWithAlphaComponent:0.24].CGColor;
     brandRing.layer.shadowColor = UIColor.blackColor.CGColor;
     brandRing.layer.shadowOpacity = 0.07;
-    brandRing.layer.shadowRadius = 16.0;
+    brandRing.layer.shadowRadius = 17.0;
     brandRing.layer.shadowOffset = CGSizeMake(0.0, 9.0);
     if (@available(iOS 13.0, *)) {
         brandRing.layer.cornerCurve = kCACornerCurveContinuous;
@@ -2016,7 +2185,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     UILabel *nameLabel = [[UILabel alloc] init];
     nameLabel.translatesAutoresizingMaskIntoConstraints = NO;
     nameLabel.font = [GM boldFontWithSize:PPFontTitle1] ?: [UIFont systemFontOfSize:28.0 weight:UIFontWeightBold];
-    nameLabel.textColor = AppPrimaryTextClr;
+    nameLabel.textColor = UIColor.whiteColor;
     nameLabel.text = kLang(@"nova_title");
     nameLabel.textAlignment = NSTextAlignmentCenter;
     nameLabel.adjustsFontSizeToFitWidth = YES;
@@ -2034,7 +2203,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     subtitleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightMedium];
-    subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.92];
+    subtitleLabel.textColor = [UIColor.whiteColor colorWithAlphaComponent:0.82]; // Off-white
     subtitleLabel.text = kLang(@"nova_subtitle");
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     subtitleLabel.adjustsFontSizeToFitWidth = YES;
@@ -2121,9 +2290,28 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     header.accessibilityLabel = [NSString stringWithFormat:@"%@, %@", nameLabel.text, statusLabel.text];
 
     CGFloat topOffset = 20.0; // Sheet grabber clearance inside the Pro-login style host.
+
+    // Expanded bottom constraint (online status capsule)
     self.novaHeaderExpandedBottomConstraint = [liveCapsule.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-14.0];
+
+    // Collapsed bottom constraint (avatar ring)
     self.novaHeaderCollapsedBottomConstraint = [brandRing.bottomAnchor constraintEqualToAnchor:contentView.bottomAnchor constant:-12.0];
     self.novaHeaderCollapsedBottomConstraint.active = NO;
+
+    // Brand Ring (Avatar) Constraints
+    self.brandRingCenterXConstraint = [brandRing.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor];
+    self.brandRingLeadingConstraint = [brandRing.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0];
+
+    // Name Label (Title) Constraints
+    self.nameLabelCenterXConstraint = [nameLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor];
+    self.nameLabelLeadingConstraint = [nameLabel.leadingAnchor constraintEqualToAnchor:brandRing.trailingAnchor constant:14.0];
+    self.nameLabelTopConstraint = [nameLabel.topAnchor constraintEqualToAnchor:brandRing.bottomAnchor constant:3.0]; // Moved up (8.0 -> 3.0)
+    self.nameLabelCenterYConstraint = [nameLabel.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor constant:-5.0]; // Requested offset
+
+    // Subtitle Label Constraints
+    self.subtitleLabelCenterXConstraint = [subtitleLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor];
+    self.subtitleLabelLeadingConstraint = [subtitleLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor];
+    self.subtitleLabelTopConstraint = [subtitleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:2.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [header.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -2132,33 +2320,38 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
         [brandHalo.centerXAnchor constraintEqualToAnchor:brandRing.centerXAnchor],
         [brandHalo.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor],
-        [brandHalo.widthAnchor constraintEqualToConstant:76.0],
-        [brandHalo.heightAnchor constraintEqualToConstant:76.0],
+        [brandHalo.widthAnchor constraintEqualToConstant:80.0],
+        [brandHalo.heightAnchor constraintEqualToConstant:80.0],
+
+        [loadingLottie.centerXAnchor constraintEqualToAnchor:brandHalo.centerXAnchor],
+        [loadingLottie.centerYAnchor constraintEqualToAnchor:brandHalo.centerYAnchor],
+        [loadingLottie.widthAnchor constraintEqualToAnchor:brandHalo.widthAnchor constant:16.0],
+        [loadingLottie.heightAnchor constraintEqualToAnchor:brandHalo.heightAnchor constant:16.0],
 
         [brandRing.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
-        [brandRing.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
-        [brandRing.widthAnchor constraintEqualToConstant:62.0],
-        [brandRing.heightAnchor constraintEqualToConstant:62.0],
+        self.brandRingCenterXConstraint,
+        [brandRing.widthAnchor constraintEqualToConstant:68.0],
+        [brandRing.heightAnchor constraintEqualToConstant:68.0],
 
         [brandMark.centerXAnchor constraintEqualToAnchor:brandRing.centerXAnchor],
         [brandMark.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor],
-        [brandMark.widthAnchor constraintEqualToConstant:46.0],
-        [brandMark.heightAnchor constraintEqualToConstant:46.0],
+        [brandMark.widthAnchor constraintEqualToConstant:42.0],
+        [brandMark.heightAnchor constraintEqualToConstant:42.0],
 
         [identityLottie.topAnchor constraintEqualToAnchor:brandMark.topAnchor constant:-8.0],
         [identityLottie.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor constant:-8.0],
         [identityLottie.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor constant:8.0],
         [identityLottie.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor constant:8.0],
 
-        [nameLabel.topAnchor constraintEqualToAnchor:brandRing.bottomAnchor constant:8.0],
-        [nameLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
-        [nameLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:contentView.leadingAnchor constant:64.0],
-        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:contentView.trailingAnchor constant:-64.0],
+        self.nameLabelCenterXConstraint,
+        self.nameLabelTopConstraint,
+        [nameLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:contentView.leadingAnchor constant:16.0],
+        [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:closeButton.leadingAnchor constant:-12.0],
 
-        [subtitleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:2.0],
-        [subtitleLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
-        [subtitleLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:contentView.leadingAnchor constant:28.0],
-        [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:contentView.trailingAnchor constant:-28.0],
+        self.subtitleLabelCenterXConstraint,
+        self.subtitleLabelTopConstraint,
+        [subtitleLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:contentView.leadingAnchor constant:16.0],
+        [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:closeButton.leadingAnchor constant:-12.0],
 
         [liveCapsule.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:8.0],
         [liveCapsule.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor],
@@ -2193,10 +2386,19 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [self pp_applyNovaSurfaceColors];
 }
 
+- (CALayer *)pp_novaHeaderLiquidBorderHostLayer {
+    if ([self.novaHeaderChromeView isKindOfClass:UIVisualEffectView.class]) {
+        return ((UIVisualEffectView *)self.novaHeaderChromeView).contentView.layer;
+    }
+    return self.novaHeaderChromeView.layer;
+}
+
 - (void)pp_installNovaHeaderLiquidBorderIfNeeded {
     if (!self.novaHeaderChromeView || self.novaHeaderLiquidBorderLayer) {
         return;
     }
+
+    CALayer *host = [self pp_novaHeaderLiquidBorderHostLayer];
 
     CAShapeLayer *borderLayer = [CAShapeLayer layer];
     borderLayer.fillColor = UIColor.clearColor.CGColor;
@@ -2205,7 +2407,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     borderLayer.lineWidth = 1.0 / UIScreen.mainScreen.scale;
     borderLayer.opacity = 0.72;
     borderLayer.zPosition = 60.0;
-    [self.novaHeaderChromeView.layer addSublayer:borderLayer];
+    [host addSublayer:borderLayer];
     self.novaHeaderLiquidBorderLayer = borderLayer;
 
     CAShapeLayer *highlightLayer = [CAShapeLayer layer];
@@ -2214,8 +2416,11 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     highlightLayer.lineJoin = kCALineJoinRound;
     highlightLayer.lineWidth = 1.55 / UIScreen.mainScreen.scale;
     highlightLayer.opacity = 0.36;
+    highlightLayer.shadowOpacity = 0.32;
+    highlightLayer.shadowRadius = 6.0;
+    highlightLayer.shadowOffset = CGSizeZero;
     highlightLayer.zPosition = 61.0;
-    [self.novaHeaderChromeView.layer addSublayer:highlightLayer];
+    [host addSublayer:highlightLayer];
     self.novaHeaderLiquidHighlightLayer = highlightLayer;
 
     [self pp_updateNovaHeaderLiquidBorderPath];
@@ -2233,8 +2438,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
     CGFloat scale = UIScreen.mainScreen.scale;
     CGFloat inset = MAX(1.0 / scale, 0.5);
-    CGFloat radius = 16.0;
     CGRect pathRect = CGRectInset(bounds, inset, inset);
+    CGFloat radius = MIN(32.0, MAX(18.0, CGRectGetHeight(pathRect) * 0.24));
     UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:pathRect cornerRadius:radius];
     CGFloat perimeter = MAX(1.0, ((CGRectGetWidth(pathRect) + CGRectGetHeight(pathRect)) * 2.0) - (8.0 * radius) + ((CGFloat)M_PI * 2.0 * radius));
     CGFloat dashLength = MAX(44.0, MIN(86.0, perimeter * 0.13));
@@ -2246,6 +2451,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     self.novaHeaderLiquidHighlightLayer.frame = bounds;
     self.novaHeaderLiquidBorderLayer.path = path.CGPath;
     self.novaHeaderLiquidHighlightLayer.path = path.CGPath;
+    self.novaHeaderLiquidHighlightLayer.shadowPath = path.CGPath;
     self.novaHeaderLiquidHighlightLayer.lineDashPattern = @[@(dashLength), @(gapLength)];
     [CATransaction commit];
 }
@@ -2279,21 +2485,39 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     CGAffineTransform glowTransform = collapsed ? CGAffineTransformMakeTranslation(0.0, -10.0) : CGAffineTransformIdentity;
 
     void (^changes)(void) = ^{
-        self.headerNameLabel.alpha = textAlpha;
-        self.headerSubtitleLabel.alpha = textAlpha;
+        self.headerNameLabel.alpha = 1.0;
+        self.headerSubtitleLabel.alpha = 1.0;
         self.headerLiveCapsule.alpha = capsuleAlpha;
-        self.headerNameLabel.transform = textTransform;
-        self.headerSubtitleLabel.transform = textTransform;
+
+        // Toggle Layout Constraints
+        self.brandRingCenterXConstraint.active = !collapsed;
+        self.brandRingLeadingConstraint.active = collapsed;
+
+        self.nameLabelCenterXConstraint.active = !collapsed;
+        self.nameLabelLeadingConstraint.active = collapsed;
+
+        self.nameLabelTopConstraint.active = !collapsed;
+        self.nameLabelCenterYConstraint.active = collapsed;
+
+        self.subtitleLabelCenterXConstraint.active = !collapsed;
+        self.subtitleLabelLeadingConstraint.active = collapsed;
+
+        // Update Alignment
+        self.headerNameLabel.textAlignment = collapsed ? NSTextAlignmentNatural : NSTextAlignmentCenter;
+        self.headerSubtitleLabel.textAlignment = collapsed ? NSTextAlignmentNatural : NSTextAlignmentCenter;
+
+        self.headerNameLabel.transform = collapsed ? CGAffineTransformIdentity : textTransform;
+        self.headerSubtitleLabel.transform = collapsed ? CGAffineTransformIdentity : textTransform;
+
         self.headerLiveCapsule.transform = collapsed ? CGAffineTransformMakeTranslation(0.0, -10.0) : CGAffineTransformIdentity;
-        self.headerBrandHaloView.alpha = collapsed ? 0.56 : 1.0;
+        self.headerBrandHaloView.alpha = collapsed ? 0.96 : 1.0;
         self.headerBrandHaloView.transform = haloTransform;
         self.headerBrandRingView.transform = ringTransform;
         self.headerBrandMarkView.transform = ringTransform;
         self.novaRingBackgroundLottie.transform = collapsed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
-        self.novaHeaderTopGlowView.alpha = collapsed ? 0.62 : 1.0;
         self.novaHeaderBottomGlowView.alpha = collapsed ? 0.50 : 1.0;
-        self.novaHeaderTopGlowView.transform = glowTransform;
         self.novaHeaderBottomGlowView.transform = collapsed ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
+        (void)glowTransform;
         self.novaHeaderSheenView.alpha = [self pp_novaHeaderSheenAlphaForCurrentState];
         self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
         self.novaHeaderView.layer.shadowOpacity = collapsed ? 0.045 : 0.07;
@@ -2372,7 +2596,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
 
     [self.statusDot.layer removeAllAnimations];
-    [self.novaHeaderTopGlowView.layer removeAllAnimations];
     [self.novaHeaderBottomGlowView.layer removeAllAnimations];
     [self.novaHeaderSheenView.layer removeAllAnimations];
     [self.headerBrandHaloView.layer removeAllAnimations];
@@ -2389,7 +2612,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         self.novaHeaderLiquidHighlightLayer.opacity = self.novaHeaderCollapsed ? 0.18 : 0.28;
         self.statusDot.alpha = 1.0;
         self.statusDot.transform = CGAffineTransformIdentity;
-        self.novaHeaderTopGlowView.transform = CGAffineTransformIdentity;
         self.novaHeaderBottomGlowView.transform = CGAffineTransformIdentity;
         self.novaHeaderSheenView.transform = CGAffineTransformIdentity;
         self.headerBrandHaloView.alpha = self.novaHeaderCollapsed ? 0.56 : 1.0;
@@ -2407,12 +2629,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         return;
     }
 
-    if (self.novaHeaderThinkingAnimationVisible) {
-        [self.novaHeaderBackgroundLottie play];
-    } else {
-        [self.novaHeaderBackgroundLottie stop];
-        self.novaHeaderBackgroundLottie.alpha = 0.0;
-    }
+    [self.novaHeaderBackgroundLottie play];
+    self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
     [self.novaRingBackgroundLottie play];
 
     CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
@@ -2432,15 +2650,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     opacity.repeatCount = HUGE_VALF;
     opacity.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.statusDot.layer addAnimation:opacity forKey:@"pp_statusDotOpacity"];
-
-    CABasicAnimation *topGlowDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
-    topGlowDrift.fromValue = @(-10.0);
-    topGlowDrift.toValue = @(2.0);
-    topGlowDrift.duration = 5.6;
-    topGlowDrift.autoreverses = YES;
-    topGlowDrift.repeatCount = HUGE_VALF;
-    topGlowDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-    [self.novaHeaderTopGlowView.layer addAnimation:topGlowDrift forKey:@"pp_novaHeaderTopGlowDrift"];
 
     CABasicAnimation *bottomGlowDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
     bottomGlowDrift.fromValue = @(10.0);
@@ -2554,7 +2763,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
 - (void)pp_stopHeaderLiveAnimations {
     [self.statusDot.layer removeAllAnimations];
-    [self.novaHeaderTopGlowView.layer removeAllAnimations];
     [self.novaHeaderBottomGlowView.layer removeAllAnimations];
     [self.novaHeaderSheenView.layer removeAllAnimations];
     [self.headerBrandHaloView.layer removeAllAnimations];
@@ -2572,20 +2780,26 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 - (void)pp_showThinkingHeaderLottieWithAnimation:(NSString *)animationName {
     self.novaHeaderThinkingAnimationVisible = YES;
     [self pp_transitionHeaderBackgroundToAnimation:animationName];
+
+    [self.novaLoadingLottie play];
+    [UIView animateWithDuration:0.3 animations:^{
+        self.novaLoadingLottie.alpha = 1.0;
+    }];
 }
 
 - (void)pp_hideThinkingHeaderLottie {
     self.novaHeaderThinkingAnimationVisible = NO;
-    self.currentHeaderBgAnimationName = nil;
+
+    [self pp_transitionHeaderBackgroundToAnimation:@"novawave"];
 
     [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.24
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self.novaHeaderBackgroundLottie.alpha = 0.0;
+        self.novaLoadingLottie.alpha = 0.0;
     } completion:^(__unused BOOL finished) {
         if (!self.novaHeaderThinkingAnimationVisible) {
-            [self.novaHeaderBackgroundLottie stop];
+            [self.novaLoadingLottie stop];
         }
     }];
 }
@@ -2621,7 +2835,11 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(wself) self = wself;
                 if (!self || self.dismissed) return;
-                if (success && self.novaHeaderThinkingAnimationVisible) {
+
+                // If it changed AGAIN while we were loading, don't show the old one.
+                if (![self.currentHeaderBgAnimationName isEqualToString:animationName]) return;
+
+                if (success) {
                     [self.novaHeaderBackgroundLottie play];
                     [UIView animateWithDuration:0.38
                                           delay:0.06
@@ -2728,12 +2946,50 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     ]];
 }
 
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaSmartSuggestionSpecs {
+    return @[
+        @{@"titleKey": @"nova_smart_suggestion_cat_food",
+          @"promptKey": @"nova_smart_suggestion_cat_food_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_bird_bundle",
+          @"promptKey": @"nova_smart_suggestion_bird_bundle_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_medicine",
+          @"promptKey": @"nova_smart_suggestion_medicine_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_care",
+          @"promptKey": @"nova_smart_suggestion_care_prompt"}
+    ];
+}
+
+- (UIButton *)pp_makeNovaSmartSuggestionButtonWithTitle:(NSString *)title index:(NSUInteger)index {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.tag = (NSInteger)index;
+    button.clipsToBounds = YES;
+    button.layer.cornerRadius = 19.0;
+    button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 15.0, 0.0, 15.0);
+    button.titleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    button.titleLabel.numberOfLines = 1;
+    button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    button.accessibilityLabel = title;
+    [button setTitle:title forState:UIControlStateNormal];
+    [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionTap:) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressCancel:) forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [button.heightAnchor constraintEqualToConstant:38.0],
+        [button.widthAnchor constraintGreaterThanOrEqualToConstant:128.0]
+    ]];
+    return button;
+}
+
 - (void)setupNovaEmptyState {
     UIView *emptyView = [[UIView alloc] init];
     emptyView.translatesAutoresizingMaskIntoConstraints = NO;
-    emptyView.userInteractionEnabled = NO;
+    emptyView.userInteractionEnabled = YES;
     emptyView.alpha = 1.0;
-    [self.view insertSubview:emptyView belowSubview:self.tableView];
+    [self.view insertSubview:emptyView aboveSubview:self.tableView];
     self.emptyStateView = emptyView;
 
     UIView *pulseView = [[UIView alloc] init];
@@ -2770,6 +3026,60 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     subtitleLabel.text = kLang(@"nova_empty_subtitle");
     [emptyView addSubview:subtitleLabel];
 
+    UIVisualEffectView *suggestionView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]]];
+    suggestionView.translatesAutoresizingMaskIntoConstraints = NO;
+    suggestionView.clipsToBounds = YES;
+    suggestionView.layer.cornerRadius = 22.0;
+    suggestionView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    suggestionView.layer.shadowOpacity = 0.10;
+    suggestionView.layer.shadowRadius = 18.0;
+    suggestionView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    suggestionView.alpha = 0.0;
+    suggestionView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+    suggestionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    suggestionView.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    if (@available(iOS 13.0, *)) {
+        suggestionView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [emptyView addSubview:suggestionView];
+    self.smartSuggestionSurfaceView = suggestionView;
+
+    UILabel *suggestionTitleLabel = [[UILabel alloc] init];
+    suggestionTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    suggestionTitleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    suggestionTitleLabel.text = kLang(@"nova_smart_suggestions_title");
+    suggestionTitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    suggestionTitleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [suggestionView.contentView addSubview:suggestionTitleLabel];
+    self.smartSuggestionTitleLabel = suggestionTitleLabel;
+
+    UIScrollView *suggestionScrollView = [[UIScrollView alloc] init];
+    suggestionScrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    suggestionScrollView.showsHorizontalScrollIndicator = NO;
+    suggestionScrollView.alwaysBounceHorizontal = YES;
+    suggestionScrollView.alwaysBounceVertical = NO;
+    suggestionScrollView.directionalLockEnabled = YES;
+    suggestionScrollView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [suggestionView.contentView addSubview:suggestionScrollView];
+
+    UIStackView *suggestionStack = [[UIStackView alloc] init];
+    suggestionStack.translatesAutoresizingMaskIntoConstraints = NO;
+    suggestionStack.axis = UILayoutConstraintAxisHorizontal;
+    suggestionStack.alignment = UIStackViewAlignmentFill;
+    suggestionStack.distribution = UIStackViewDistributionFill;
+    suggestionStack.spacing = 8.0;
+    suggestionStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [suggestionScrollView addSubview:suggestionStack];
+
+    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, __unused BOOL *stop) {
+        UIButton *button = [self pp_makeNovaSmartSuggestionButtonWithTitle:kLang(spec[@"titleKey"]) index:idx];
+        [suggestionStack addArrangedSubview:button];
+        [buttons addObject:button];
+    }];
+    self.smartSuggestionButtons = buttons.copy;
+
     self.emptyStateCenterYConstraint = [emptyView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:8.0];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -2794,7 +3104,29 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:7.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor],
-        [subtitleLabel.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor]
+
+        [suggestionView.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
+        [suggestionView.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor],
+        [suggestionView.leadingAnchor constraintGreaterThanOrEqualToAnchor:emptyView.leadingAnchor],
+        [suggestionView.trailingAnchor constraintLessThanOrEqualToAnchor:emptyView.trailingAnchor],
+        [suggestionView.widthAnchor constraintLessThanOrEqualToConstant:540.0],
+        [suggestionView.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor],
+
+        [suggestionTitleLabel.topAnchor constraintEqualToAnchor:suggestionView.contentView.topAnchor constant:12.0],
+        [suggestionTitleLabel.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor constant:14.0],
+        [suggestionTitleLabel.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor constant:-14.0],
+
+        [suggestionScrollView.topAnchor constraintEqualToAnchor:suggestionTitleLabel.bottomAnchor constant:9.0],
+        [suggestionScrollView.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor constant:10.0],
+        [suggestionScrollView.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor constant:-10.0],
+        [suggestionScrollView.bottomAnchor constraintEqualToAnchor:suggestionView.contentView.bottomAnchor constant:-10.0],
+        [suggestionScrollView.heightAnchor constraintEqualToConstant:38.0],
+
+        [suggestionStack.topAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.topAnchor],
+        [suggestionStack.leadingAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.leadingAnchor],
+        [suggestionStack.trailingAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.trailingAnchor],
+        [suggestionStack.bottomAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.bottomAnchor],
+        [suggestionStack.heightAnchor constraintEqualToAnchor:suggestionScrollView.frameLayoutGuide.heightAnchor]
     ]];
 
     [self pp_applyNovaSurfaceColors];
@@ -2802,11 +3134,12 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 }
 
 - (void)updateNovaEmptyStateAnimated:(BOOL)animated {
-    BOOL shouldShow = self.messages.count == 0;
+    BOOL shouldShow = ![self pp_hasUserMessageInCurrentNovaSession];
     CGFloat targetAlpha = shouldShow ? 1.0 : 0.0;
 
     void (^changes)(void) = ^{
         self.emptyStateView.alpha = targetAlpha;
+        self.emptyStateView.userInteractionEnabled = shouldShow;
     };
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
@@ -2820,6 +3153,119 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }
     [UIView animateWithDuration:0.24 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:changes completion:^(__unused BOOL finished) {
         self.emptyStateView.hidden = !shouldShow;
+    }];
+}
+
+- (BOOL)pp_hasUserMessageInCurrentNovaSession {
+    for (ChatMessageModel *message in self.messages) {
+        if (![message.senderID isEqualToString:@"nova_bot_id"]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (void)pp_revealNovaSmartSuggestionsIfNeeded {
+    if (!self.smartSuggestionSurfaceView || [self pp_hasUserMessageInCurrentNovaSession]) {
+        return;
+    }
+
+    NSArray<UIButton *> *buttons = self.smartSuggestionButtons ?: @[];
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.smartSuggestionSurfaceView.alpha = 1.0;
+        self.smartSuggestionSurfaceView.transform = CGAffineTransformIdentity;
+        for (UIButton *button in buttons) {
+            button.alpha = 1.0;
+            button.transform = CGAffineTransformIdentity;
+        }
+        return;
+    }
+
+    self.smartSuggestionSurfaceView.alpha = 0.0;
+    self.smartSuggestionSurfaceView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+    for (UIButton *button in buttons) {
+        button.alpha = 0.0;
+        button.transform = CGAffineTransformMakeTranslation(Language.isRTL ? -8.0 : 8.0, 0.0);
+    }
+
+    [UIView animateWithDuration:0.38
+                          delay:0.20
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.16
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.smartSuggestionSurfaceView.alpha = 1.0;
+        self.smartSuggestionSurfaceView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [buttons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
+        [UIView animateWithDuration:0.30
+                              delay:0.28 + (idx * 0.045)
+             usingSpringWithDamping:0.86
+              initialSpringVelocity:0.20
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            button.alpha = 1.0;
+            button.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+}
+
+- (void)pp_handleNovaSmartSuggestionPressDown:(UIButton *)sender {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        sender.alpha = 0.72;
+        return;
+    }
+    [UIView animateWithDuration:0.12
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.97, 0.97);
+    } completion:nil];
+}
+
+- (void)pp_handleNovaSmartSuggestionPressCancel:(UIButton *)sender {
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.16
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.alpha = 1.0;
+        sender.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_handleNovaSmartSuggestionTap:(UIButton *)sender {
+    if ([self pp_hasUserMessageInCurrentNovaSession]) {
+        return;
+    }
+
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    if (sender.tag < 0 || sender.tag >= (NSInteger)suggestions.count) {
+        return;
+    }
+
+    NSString *promptKey = suggestions[(NSUInteger)sender.tag][@"promptKey"];
+    NSString *prompt = [kLang(promptKey) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if (prompt.length == 0) {
+        return;
+    }
+
+    for (UIButton *button in self.smartSuggestionButtons) {
+        button.userInteractionEnabled = NO;
+    }
+    [self pp_setNovaHeaderCollapsed:YES animated:YES];
+
+    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.12;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.965, 0.965);
+        sender.alpha = 0.84;
+    } completion:^(__unused BOOL finished) {
+        sender.transform = CGAffineTransformIdentity;
+        sender.alpha = 1.0;
+        [self pp_handleNovaSubmittedText:prompt];
     }];
 }
 
@@ -3191,7 +3637,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     CGFloat inputBarTotalHeight = CGRectGetHeight(self.inputbar.frame);
     CGFloat keyboardOffset = -(self.inputBarBottomConstraint.constant) - 8.0;
     if (keyboardOffset < 0) keyboardOffset = 0;
-    
+
     CGFloat bottomInset = keyboardOffset + height + PPNovaTableBottomInset + (keyboardOffset > 0 ? 8.0 : -self.inputBarRestingBottomConstant);
     UIEdgeInsets currentInset = self.tableView.contentInset;
     currentInset.bottom = bottomInset;

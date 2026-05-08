@@ -96,8 +96,8 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.textView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.textView.textContainerInset = UIEdgeInsetsMake(8.0, 0.0, 8.0, 0.0);
     self.textView.textContainer.lineFragmentPadding = 0.0;
-    self.textView.returnKeyType = UIReturnKeySend;
-    self.textView.enablesReturnKeyAutomatically = YES;
+    self.textView.returnKeyType = UIReturnKeyDefault;
+    self.textView.enablesReturnKeyAutomatically = NO;
     [self.rowStack addArrangedSubview:self.textView];
 
     self.placeholderLabel = [[UILabel alloc] init];
@@ -113,9 +113,6 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 
     self.sendButton = [self pp_makeIconButtonNamed:@"arrow.up" accessibilityKey:@"nova_input_send_accessibility"];
     [self.sendButton addTarget:self action:@selector(pp_sendTapped) forControlEvents:UIControlEventTouchUpInside];
-    self.sendButton.hidden = YES;
-    self.sendButton.userInteractionEnabled = NO;
-    self.sendButton.accessibilityElementsHidden = YES;
     [self.rowStack addArrangedSubview:self.sendButton];
 
     self.textViewHeightConstraint = [self.textView.heightAnchor constraintEqualToConstant:40.0];
@@ -229,14 +226,11 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 - (void)pp_updateStateAnimated:(BOOL)animated {
     BOOL hasText = [self.textView.text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]].length > 0;
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    UIColor *idleFill = PPNovaInputDynamicColor([UIColor colorWithWhite:0.95 alpha:1.0],
-                                               [UIColor colorWithWhite:1.0 alpha:0.09]);
-    UIColor *activeFill = PPNovaInputDynamicColor(UIColor.blackColor,
-                                                 [UIColor colorWithWhite:1.0 alpha:0.92]);
-    UIColor *activeTint = PPNovaInputDynamicColor(UIColor.whiteColor,
-                                                 UIColor.blackColor);
+    UIColor *activeFill = brand;
+    UIColor *idleFill = [brand colorWithAlphaComponent:0.32];
+    UIColor *iconTint = UIColor.whiteColor;
 
-    UIImage *image = [UIImage systemImageNamed:(hasText ? @"arrow.up" : @"waveform")];
+    UIImage *image = [UIImage systemImageNamed:@"arrow.up"];
     if (@available(iOS 13.0, *)) {
         UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:18.0 weight:UIImageSymbolWeightSemibold];
         image = [image imageWithConfiguration:configuration];
@@ -246,7 +240,7 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
         self.placeholderLabel.alpha = hasText ? 0.0 : 1.0;
         self.textView.textAlignment = hasText ? Language.alignmentForCurrentLanguage : NSTextAlignmentCenter;
         self.sendButton.backgroundColor = hasText ? activeFill : idleFill;
-        self.sendButton.tintColor = hasText ? activeTint : [brand colorWithAlphaComponent:0.82];
+        self.sendButton.tintColor = iconTint;
         [self.sendButton setImage:image forState:UIControlStateNormal];
     };
 
@@ -311,10 +305,6 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 }
 
 - (BOOL)textView:(UITextView *)textView shouldChangeTextInRange:(NSRange)range replacementText:(NSString *)text {
-    if ([text isEqualToString:@"\n"]) {
-        [self pp_sendTapped];
-        return NO;
-    }
     return YES;
 }
 

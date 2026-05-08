@@ -2671,6 +2671,15 @@
 "nova_status_thinking" = "تفكر";
 "nova_empty_title" = "اسأل نوفا";
 "nova_empty_subtitle" = "اكتب نوع حيوانك وما تبحث عنه، وسأرشح لك الاختيار الأنسب من بيور بتس.";
+"nova_smart_suggestions_title" = "اقتراحات ذكية";
+"nova_smart_suggestion_cat_food" = "طعام للقطط";
+"nova_smart_suggestion_cat_food_prompt" = "أحتاج طعامًا مناسبًا لقطتي";
+"nova_smart_suggestion_bird_bundle" = "تجهيز طائر";
+"nova_smart_suggestion_bird_bundle_prompt" = "أريد طائرًا مع قفص وطعام";
+"nova_smart_suggestion_medicine" = "منتجات دوائية";
+"nova_smart_suggestion_medicine_prompt" = "أريد البحث عن منتجات دوائية لحيواني الأليف";
+"nova_smart_suggestion_care" = "عناية وتنظيف";
+"nova_smart_suggestion_care_prompt" = "أحتاج منتجات عناية وتنظيف لحيواني الأليف";
 "nova_typing" = "نوفا تفكر";
 "nova_input_placeholder" = "راسل نوفا...";
 "nova_input_attach_accessibility" = "إضافة مرفق";
