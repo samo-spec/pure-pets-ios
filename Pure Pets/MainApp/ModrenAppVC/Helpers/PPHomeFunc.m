@@ -36,7 +36,7 @@ static const CGFloat kHeaderHeight     = 68.0;
 static const CGFloat kHeaderHeightMin     = 62.0;
 
 static const CGFloat kAccessoriesItemWidth  = 188;
-static const CGFloat kAccessoriesItemHeight = 320;
+static const CGFloat kAccessoriesItemHeight = 290;
 
 // Standard card sizes
 static const CGFloat kCardMedium  = 188.0;
@@ -211,12 +211,12 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
         return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 68.0;
+        return 64.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 62.0;
+        return 64.0;
     }
-    return 68.0;
+    return 64.0;
 }
 
 

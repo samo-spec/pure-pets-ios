@@ -2687,7 +2687,6 @@
 "nova_greeting" = "أهلاً. اكتب ما يحتاجه حيوانك وسأرشدك إلى الاختيار الأنسب من بيور بتس.";
 "nova_product_results" = "اختيارات مناسبة";
 "nova_product_count_format" = "%ld عنصر";
-"nova_found_matching_options" = "لقيت لك خيارات مناسبة من بيور بتس.";
 "nova_add_to_cart_which" = "أي منتج أضيفه للسلة؟";
 "nova_added_to_cart" = "تمت الإضافة للسلة";
 "nova_add_to_cart_failed" = "عذراً، لم أتمكن من الإضافة للسلة. حاول مرة أخرى.";
