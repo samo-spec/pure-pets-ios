@@ -118,6 +118,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 @property (nonatomic, assign) BOOL iqStateSaved;
 @property (nonatomic, assign) BOOL dismissed;
 @property (nonatomic, assign) CGFloat lastNovaTableLayoutWidth;
+@property (nonatomic, assign) NSUInteger novaRequestGeneration;
 
 @end
 
@@ -309,7 +310,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 - (void)setupNovaBackend {
     FIRFunctions *functions = [FIRFunctions functionsForRegion:PPNovaCallableRegion];
     self.novaCallable = [functions HTTPSCallableWithName:PPNovaCallableName];
-    LOG_INFO(@"[PPNovaChat][Debug] callable url=%@", [PPNovaChatViewController pp_novaCallableDebugURL]);
+    // Reverting timeout to default 70.0s because 15.0s caused Firebase Functions
+    // cold starts and AI delays to timeout frequently.
+    self.novaCallable.timeoutInterval = 70.0;
+    LOG_INFO(@"[PPNovaChat][Debug] callable url=%@ timeout=%.0fs", [PPNovaChatViewController pp_novaCallableDebugURL], self.novaCallable.timeoutInterval);
 }
 
 - (void)sendNovaRequestForUserText:(NSString *)userText {
@@ -326,11 +330,15 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                                          isArabic:[self textContainsArabic:trimmedText]
                                        sessionID:self.novaSessionId];
 
-    [self pp_dispatchNovaRequest:trimmedText attempt:0];
+    self.novaRequestGeneration = self.novaRequestGeneration + 1;
+    NSUInteger generation = self.novaRequestGeneration;
+    [self pp_startNovaRequestWatchdogForGeneration:generation userText:trimmedText];
+    [self pp_dispatchNovaRequest:trimmedText attempt:0 generation:generation];
 }
 
-- (void)pp_dispatchNovaRequest:(NSString *)trimmedText attempt:(NSInteger)attempt {
+- (void)pp_dispatchNovaRequest:(NSString *)trimmedText attempt:(NSInteger)attempt generation:(NSUInteger)generation {
     if (self.dismissed) return;
+    BOOL hasCatalogIntent = [self pp_novaHasCatalogSearchIntentForUserText:trimmedText];
 
     if (!self.novaCallable) {
         // Backend not initialized — don't fabricate a Nova reply, just try a
@@ -345,7 +353,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         @"prompt": trimmedText,
         @"context": [self pp_currentContextDictionary],
         @"history": [self pp_currentHistoryArray],
-        @"sessionId": self.novaSessionId
+        @"sessionId": self.novaSessionId,
+        @"conversation_state": [self pp_currentNovaBrainStateDictionary]
     };
 
     LOG_INFO(@"[PPNovaChat][Debug] send url=%@ requestKeys=%@ authUIDPresent=%@",
@@ -370,8 +379,11 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                         __strong typeof(weakSelf) inner = weakSelf;
                         if (!inner || inner.dismissed) return;
-                        [inner pp_dispatchNovaRequest:trimmedText attempt:1];
+                        [inner pp_dispatchNovaRequest:trimmedText attempt:1 generation:generation];
                     });
+                    return;
+                }
+                if (generation != self.novaRequestGeneration) {
                     return;
                 }
                 [self hideNovaTyping];
@@ -440,19 +452,33 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                 [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
                 return;
             }
+            if (generation != self.novaRequestGeneration) {
+                return;
+            }
 
             NSString *replyText = nil;
+            NSString *serverAction = nil;
             NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs = @[];
             if ([result.data isKindOfClass:NSDictionary.class]) {
                 NSDictionary *data = (NSDictionary *)result.data;
                 LOG_INFO(@"[PPNovaChat][Debug] responseKeys=%@ httpStatus=%@",
                          [PPNovaChatViewController pp_sortedDictionaryKeys:data],
                          @"n/a");
+                serverAction = [PPNovaChatViewController pp_novaBrainActionFromResponseData:data];
+                // Prefer the new canonical `assistantText` field; fall back to
+                // legacy `text` so older Cloud Function builds still work.
+                id assistantTextValue = data[@"assistantText"];
                 id textValue = data[@"text"];
-                if ([textValue isKindOfClass:NSString.class]) {
+                if ([assistantTextValue isKindOfClass:NSString.class] &&
+                    [(NSString *)assistantTextValue length] > 0) {
+                    replyText = (NSString *)assistantTextValue;
+                } else if ([textValue isKindOfClass:NSString.class]) {
                     replyText = (NSString *)textValue;
                 }
                 suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:data replyText:replyText];
+                LOG_INFO(@"[PPNovaChat][Refs] received_from_server=%lu assistantTextChars=%lu",
+                         (unsigned long)suggestionRefs.count,
+                         (unsigned long)replyText.length);
             } else {
                 LOG_WARN(@"[PPNovaChat][Debug] branch=response_not_dictionary responseType=%@ httpStatus=%@",
                          result.data ? NSStringFromClass([result.data class]) : @"nil",
@@ -461,6 +487,18 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
             }
 
             replyText = [replyText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            // Nova Brain clarification/response actions are terminal: render the
+            // reply and skip the local showcase fallback so unclear text never
+            // triggers product cards.
+            if ([serverAction isEqualToString:@"ASK_CLARIFICATION"] ||
+                [serverAction isEqualToString:@"RESPOND"]) {
+                [self hideNovaTyping];
+                NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:YES];
+                if (sanitizedReply.length > 0) {
+                    [self addNovaMessage:sanitizedReply];
+                }
+                return;
+            }
             if (replyText.length == 0 && suggestionRefs.count == 0) {
                 [self hideNovaTyping];
                 LOG_WARN(@"[PPNovaChat][Debug] branch=empty_text_and_empty_products responseKeys=%@",
@@ -471,23 +509,41 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                 // Don't synthesize a Nova reply on emptiness — try local
                 // products silently. If the AI returned nothing meaningful,
                 // injecting a scripted line on its behalf would impersonate it.
-                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
+                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+                                                        completion:^(BOOL didShow) {
+                    if (!didShow && hasCatalogIntent) {
+                        [self pp_addNovaProductResultTextForRenderedCount:0
+                                                             proposedText:nil
+                                                                 userText:trimmedText
+                                                                   source:@"local_empty_after_empty_response"];
+                    }
+                }];
                 return;
             }
 
             NSString *suggestionFallbackText = nil;
             NSString *deferredNoProductReply = nil;
+            NSString *deferredModelReplyIfNoLocalProducts = nil;
             NSString *localShowcaseIntroText = nil;
+            NSString *pendingResolvedProductText = nil;
             if (replyText.length > 0) {
                 NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:(suggestionRefs.count > 0)];
                 if (sanitizedReply.length > 0) {
                     if ([self pp_novaReplyContainsNoProductClaim:sanitizedReply]) {
                         if (suggestionRefs.count > 0) {
-                            [self addNovaMessage:[self pp_positiveNovaLocalShowcaseTextForUserText:trimmedText]];
+                            pendingResolvedProductText = nil;
                         } else {
                             deferredNoProductReply = sanitizedReply;
-                            localShowcaseIntroText = [self pp_positiveNovaLocalShowcaseTextForUserText:trimmedText];
+                            localShowcaseIntroText = nil;
                         }
+                    } else if (suggestionRefs.count > 0) {
+                        // Always use the server's AI reply alongside product cells.
+                        // The behavior layer already crafted a natural assistant message;
+                        // replacing it with a template silences the AI personality.
+                        pendingResolvedProductText = sanitizedReply;
+                    } else if (hasCatalogIntent) {
+                        deferredModelReplyIfNoLocalProducts = sanitizedReply;
+                        localShowcaseIntroText = sanitizedReply;
                     } else {
                         [self addNovaMessage:sanitizedReply];
                     }
@@ -501,7 +557,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                     if (unstrippedReply.length > 0) {
                         if ([self pp_novaReplyContainsNoProductClaim:unstrippedReply]) {
                             deferredNoProductReply = unstrippedReply;
-                            localShowcaseIntroText = [self pp_positiveNovaLocalShowcaseTextForUserText:trimmedText];
+                            localShowcaseIntroText = nil;
+                        } else if (hasCatalogIntent) {
+                            deferredModelReplyIfNoLocalProducts = unstrippedReply;
+                            localShowcaseIntroText = unstrippedReply;
                         } else {
                             [self addNovaMessage:unstrippedReply];
                         }
@@ -511,7 +570,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                         return;
                     }
                 } else {
-                    suggestionFallbackText = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
+                    suggestionFallbackText = pendingResolvedProductText ?: [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
                 }
             }
 
@@ -521,25 +580,70 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                 // products it can resolve. Templated apologies on resolution
                 // failure are gone.
                 [self pp_fetchAndShowNovaSuggestionRefs:suggestionRefs
-                                           fallbackText:nil
+                                           fallbackText:pendingResolvedProductText ?: suggestionFallbackText
                                                userText:trimmedText];
             } else {
                 [self hideNovaTyping];
-                if (deferredNoProductReply.length > 0) {
+                if (deferredNoProductReply.length > 0 || deferredModelReplyIfNoLocalProducts.length > 0) {
                     __weak typeof(self) localWeakSelf = self;
                     [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
                                                             introText:localShowcaseIntroText
                                                            completion:^(BOOL didShow) {
                         __strong typeof(localWeakSelf) strongSelf = localWeakSelf;
                         if (!strongSelf || strongSelf.dismissed || didShow) return;
-                        [strongSelf addNovaMessage:deferredNoProductReply];
+                        NSString *modelReply = deferredModelReplyIfNoLocalProducts ?: deferredNoProductReply;
+                        if (modelReply.length > 0) {
+                            [strongSelf addNovaMessage:modelReply];
+                        } else {
+                            [strongSelf pp_addNovaProductResultTextForRenderedCount:0
+                                                                       proposedText:nil
+                                                                           userText:trimmedText
+                                                                             source:@"local_empty_after_model_text"];
+                        }
                     }];
                 } else {
-                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
+                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+                                                            completion:^(BOOL didShow) {
+                        if (!didShow && hasCatalogIntent) {
+                            [self pp_addNovaProductResultTextForRenderedCount:0
+                                                                 proposedText:nil
+                                                                     userText:trimmedText
+                                                                       source:@"local_empty_after_response"];
+                        }
+                    }];
                 }
             }
         });
     }];
+}
+
+- (void)pp_startNovaRequestWatchdogForGeneration:(NSUInteger)generation userText:(NSString *)userText {
+    NSString *query = [userText copy] ?: @"";
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(35.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed || generation != self.novaRequestGeneration) {
+            return;
+        }
+        if (self.typingContainer.alpha <= 0.01) {
+            return;
+        }
+
+        LOG_WARN(@"[PPNovaChat][Debug] branch=request_watchdog_timeout generation=%lu",
+                 (unsigned long)generation);
+        [self hideNovaTyping];
+        if ([self pp_novaHasCatalogSearchIntentForUserText:query] &&
+            ![self pp_novaIsGenericConversationText:query]) {
+            [self pp_fetchAndShowLocalNovaShowcaseForUserText:query
+                                                    completion:^(BOOL didShow) {
+                if (!didShow) {
+                    [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
+                }
+            }];
+        } else {
+            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
+        }
+    });
 }
 
 + (NSString *)pp_novaCallableDebugURL {
@@ -563,6 +667,24 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }
     [keys sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
     return keys.copy;
+}
+
++ (nullable NSString *)pp_novaBrainActionFromResponseData:(NSDictionary *)data {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    id action = data[@"action"];
+    if ([action isKindOfClass:NSString.class] && [(NSString *)action length] > 0) {
+        return (NSString *)action;
+    }
+    id brain = data[@"novaBrain"];
+    if ([brain isKindOfClass:NSDictionary.class]) {
+        id nestedAction = ((NSDictionary *)brain)[@"action"];
+        if ([nestedAction isKindOfClass:NSString.class] && [(NSString *)nestedAction length] > 0) {
+            return (NSString *)nestedAction;
+        }
+    }
+    return nil;
 }
 
 + (NSString *)pp_httpStatusDebugStringFromError:(NSError *)error {
@@ -671,6 +793,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
         NSDictionary<NSString *, NSString *> *arrayKeyKinds = @{
             @"suggestions": @"", @"recommendations": @"", @"results": @"",
+            @"resultRefs": @"", @"result_refs": @"",
             @"products": @"product", @"items": @"product",
             @"services": @"service", @"medicines": @"medicine"
         };
@@ -941,6 +1064,21 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
             }
         }
 
+        // Per Nova architecture rules: card-resolution failure must NEVER
+        // swallow the assistant's natural text. If Nova said something and we
+        // simply can't resolve the IDs, the customer still gets her words.
+        // Telemetry counts what we received vs. resolved so we can see
+        // unresolved IDs in production logs.
+        NSUInteger requestedCount = refs.count;
+        NSUInteger resolvedCount = objects.count;
+        NSUInteger unresolvedCount = (requestedCount > resolvedCount) ? (requestedCount - resolvedCount) : 0;
+        BOOL hasAssistantText = fallbackText.length > 0;
+        LOG_INFO(@"[PPNovaChat][Refs] received=%lu resolved=%lu unresolved=%lu assistantTextChars=%lu",
+                 (unsigned long)requestedCount,
+                 (unsigned long)resolvedCount,
+                 (unsigned long)unresolvedCount,
+                 (unsigned long)fallbackText.length);
+
         if (objects.count == 0) {
             LOG_WARN(@"[PPNovaChat] Nova returned %lu suggestion ref(s) but none resolved: %@",
                      (unsigned long)refs.count, refs);
@@ -950,16 +1088,48 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                                                                   sessionID:self.novaSessionId];
 
             // Resolution failed. Try a local product showcase silently. If it
-            // also produces nothing, stay quiet — the AI's main reply (already
-            // shown above) stands on its own. We deliberately do NOT inject a
-            // templated "couldn't load these picks" message here; that turned
-            // ordinary edge cases into a robotic apology loop.
-            [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText completion:nil];
-            (void)fallbackText; // intentionally unused — kept in the signature
-                                // for callers that may still pass context.
+            // also produces nothing, fall back to Nova's own assistantText so
+            // her message is never lost to a card-resolve failure. The AI text
+            // is the source of truth for what Nova said; cards are only the
+            // visual layer.
+            [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText
+                                                    completion:^(BOOL didShow) {
+                if (!didShow) {
+                    if (hasAssistantText) {
+                        [self pp_addNovaProductResultTextForRenderedCount:0
+                                                             proposedText:fallbackText
+                                                                 userText:userText
+                                                                   source:@"server_resolution_empty_assistantText_preserved"];
+                    } else if ([self pp_novaHasCatalogSearchIntentForUserText:userText]) {
+                        [self pp_addNovaProductResultTextForRenderedCount:0
+                                                             proposedText:nil
+                                                                 userText:userText
+                                                                   source:@"server_resolution_empty"];
+                    }
+                }
+            }];
             return;
         }
 
+        // Resolved-IDs telemetry per spec — every server-resolution turn logs
+        // received vs. resolved vs. unresolved IDs and the source/type used,
+        // plus whether assistantText was shown alongside the cards.
+        NSMutableDictionary<NSString *, NSNumber *> *typeCounts = [NSMutableDictionary dictionary];
+        for (NSDictionary<NSString *, NSString *> *ref in refs) {
+            NSString *typeKey = ref[@"kind"].length > 0 ? ref[@"kind"] : @"product";
+            typeCounts[typeKey] = @(typeCounts[typeKey].integerValue + 1);
+        }
+        LOG_INFO(@"[PPNovaChat][Refs] success received=%lu resolved=%lu unresolved=%lu typeCounts=%@ assistantTextRendered=%@",
+                 (unsigned long)refs.count,
+                 (unsigned long)objects.count,
+                 (unsigned long)((refs.count > objects.count) ? (refs.count - objects.count) : 0),
+                 typeCounts,
+                 fallbackText.length > 0 ? @"YES" : @"NO");
+
+        [self pp_addNovaProductResultTextForRenderedCount:objects.count
+                                             proposedText:fallbackText
+                                                 userText:userText
+                                                   source:@"server"];
         [self pp_showNovaSuggestionObjects:objects];
 
         // Save the synthetic product marker to local memory so context is retained
@@ -1074,6 +1244,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [self updateNovaEmptyStateAnimated:YES];
     [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
 
+    LOG_INFO(@"NOVA_RENDERED_CELL_COUNT rendered=%lu source=%@",
+             (unsigned long)objects.count,
+             source ?: @"unknown");
+
     [PPAnalytics logNovaShowcaseShownWithItemCount:objects.count
                                           sessionID:self.novaSessionId
                                              source:source];
@@ -1093,8 +1267,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 {
     NSString *trimmedText = [userText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     [self pp_updateMemoryFromUserText:trimmedText];
+    [self pp_logNovaIntentForUserText:trimmedText stage:@"local_search_start"];
 
     if (![self pp_shouldAttemptLocalNovaShowcaseForUserText:trimmedText] || [self pp_lastMessageIsNovaShowcase]) {
+        LOG_INFO(@"NOVA_PRODUCTS_COUNT count=0 source=local reason=not_attempted");
         if (completion) completion(NO);
         return;
     }
@@ -1102,8 +1278,14 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     NSString *currentNeed = [self pp_localNovaNeedLabelFromUserText:trimmedText];
     NSString *currentPetType = [self pp_localNovaPetTypeFromUserText:trimmedText];
     NSString *need = currentNeed ?: (currentPetType.length > 0 ? nil : self.novaMemoryNeed);
-    NSString *petType = currentPetType ?: @"";
+    NSString *petType = currentPetType ?: ([self pp_novaTextHasShowcaseDisplayIntent:trimmedText] ? (self.novaMemoryPetType ?: @"") : @"");
     AccessKindType kind = [self pp_localNovaShowcaseKindForNeed:need petType:petType];
+    LOG_INFO(@"NOVA_SEARCH_QUERY raw=%@ normalized=%@ kind=%ld need=%@ petType=%@",
+             trimmedText ?: @"",
+             [self pp_normalizedNovaIntentText:trimmedText],
+             (long)kind,
+             need ?: @"",
+             petType ?: @"");
     __weak typeof(self) weakSelf = self;
     [[PetAccessoryManager sharedManager] fetchAccessoriesOfKind:kind completion:^(NSArray<PetAccessory *> *accessories) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -1121,28 +1303,234 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                                                                          need:need
                                                                       petType:petType
                                                                         limit:6];
+        LOG_INFO(@"NOVA_PRODUCTS_COUNT count=%lu source=local kind=%ld need=%@ petType=%@",
+                 (unsigned long)ranked.count,
+                 (long)kind,
+                 need ?: @"",
+                 petType ?: @"");
         if (ranked.count == 0) {
             if (completion) completion(NO);
             return;
         }
 
-        NSString *cleanIntro = [introText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-        if (cleanIntro.length > 0) {
-            [self addNovaMessage:cleanIntro];
-        }
+        [self pp_addNovaProductResultTextForRenderedCount:ranked.count
+                                             proposedText:introText
+                                                 userText:trimmedText
+                                                   source:@"local"];
         [self pp_showNovaSuggestionObjects:ranked source:@"local"];
         if (completion) completion(YES);
     }];
 }
 
+- (NSString *)pp_normalizedNovaIntentText:(NSString *)text {
+    NSString *value = (text ?: @"").lowercaseString;
+    NSDictionary<NSString *, NSString *> *replacements = @{
+        @"إ": @"ا", @"أ": @"ا", @"آ": @"ا",
+        @"ى": @"ي", @"ة": @"ه", @"ؤ": @"و", @"ئ": @"ي"
+    };
+    for (NSString *key in replacements) {
+        value = [value stringByReplacingOccurrencesOfString:key withString:replacements[key]];
+    }
+    NSCharacterSet *punctuation = [NSCharacterSet characterSetWithCharactersInString:@"-_/.,;:!?()[]{}\"'`~|<>،؟؛"];
+    NSArray<NSString *> *parts = [value componentsSeparatedByCharactersInSet:punctuation];
+    value = [parts componentsJoinedByString:@" "];
+    while ([value containsString:@"  "]) {
+        value = [value stringByReplacingOccurrencesOfString:@"  " withString:@" "];
+    }
+    return [value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+}
+
+- (NSArray<NSString *> *)pp_novaShowcaseDisplayAliases {
+    return @[
+        @"show", @"show me", @"display", @"recommend", @"recommendation", @"recommendations",
+        @"suggest", @"suggestion", @"suggestions", @"ads", @"ad",
+        @"اعرض", @"عرض", @"وريني", @"ارني", @"رشح", @"رشحلي", @"رشح لي",
+        @"اقتراحات", @"اقتراح", @"توصيات", @"اعلانات", @"إعلانات"
+    ];
+}
+
+- (BOOL)pp_normalizedNovaText:(NSString *)text containsAlias:(NSString *)alias {
+    NSString *normalized = [self pp_normalizedNovaIntentText:text];
+    NSString *needle = [self pp_normalizedNovaIntentText:alias];
+    if (normalized.length == 0 || needle.length == 0) {
+        return NO;
+    }
+    if ([needle containsString:@" "]) {
+        return [normalized containsString:needle];
+    }
+    NSArray<NSString *> *tokens = [normalized componentsSeparatedByString:@" "];
+    return [tokens containsObject:needle];
+}
+
+- (BOOL)pp_novaTextHasShowcaseDisplayIntent:(NSString *)text {
+    for (NSString *alias in [self pp_novaShowcaseDisplayAliases]) {
+        if ([self pp_normalizedNovaText:text containsAlias:alias]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (BOOL)pp_novaIsGenericConversationText:(NSString *)text {
+    NSString *normalized = [self pp_normalizedNovaIntentText:text];
+    if (normalized.length == 0) {
+        return YES;
+    }
+    NSSet<NSString *> *exact = [NSSet setWithArray:@[
+        @"hi", @"hello", @"hey", @"salam", @"ok", @"okay",
+        @"thanks", @"thank you", @"how are you",
+        @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا",
+        @"السلام عليكم", @"شكرا", @"تمام", @"اوكي"
+    ]];
+    if ([exact containsObject:normalized]) {
+        return YES;
+    }
+    NSSet<NSString *> *tokensAllowed = [NSSet setWithArray:@[
+        @"hi", @"hello", @"hey", @"ok", @"okay", @"thanks", @"thank", @"you", @"how", @"are",
+        @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا", @"السلام", @"عليكم", @"شكرا", @"تمام", @"اوكي"
+    ]];
+    NSArray<NSString *> *tokens = [normalized componentsSeparatedByString:@" "];
+    if (tokens.count > 0 && tokens.count <= 4) {
+        for (NSString *token in tokens) {
+            if (![tokensAllowed containsObject:token]) {
+                return NO;
+            }
+        }
+        return YES;
+    }
+    return NO;
+}
+
+- (NSString *)pp_novaSearchTextByRemovingDisplayIntent:(NSString *)text {
+    NSString *normalized = [self pp_normalizedNovaIntentText:text];
+    for (NSString *alias in [self pp_novaShowcaseDisplayAliases]) {
+        NSString *needle = [self pp_normalizedNovaIntentText:alias];
+        if (needle.length == 0) {
+            continue;
+        }
+        NSString *pattern = [NSString stringWithFormat:@"(^| )%@( ?)", [NSRegularExpression escapedPatternForString:needle]];
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern options:0 error:nil];
+        normalized = [regex stringByReplacingMatchesInString:normalized
+                                                     options:0
+                                                       range:NSMakeRange(0, normalized.length)
+                                                withTemplate:@" "];
+        while ([normalized containsString:@"  "]) {
+            normalized = [normalized stringByReplacingOccurrencesOfString:@"  " withString:@" "];
+        }
+        normalized = [normalized stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    return normalized;
+}
+
+- (BOOL)pp_novaHasCatalogSearchIntentForUserText:(NSString *)userText {
+    if ([self pp_novaIsGenericConversationText:userText]) {
+        return NO;
+    }
+    NSString *need = [self pp_localNovaNeedLabelFromUserText:userText];
+    NSString *petType = [self pp_localNovaPetTypeFromUserText:userText];
+    if (need.length > 0 || petType.length > 0 || [self pp_novaTextHasShowcaseDisplayIntent:userText]) {
+        return YES;
+    }
+    return [self pp_novaSearchTextByRemovingDisplayIntent:userText].length > 0;
+}
+
+- (BOOL)pp_novaDisplayIntentIsMissingTargetForUserText:(NSString *)userText {
+    if (![self pp_novaTextHasShowcaseDisplayIntent:userText]) {
+        return NO;
+    }
+    NSString *need = [self pp_localNovaNeedLabelFromUserText:userText];
+    NSString *petType = [self pp_localNovaPetTypeFromUserText:userText];
+    NSString *remainingQuery = [self pp_novaSearchTextByRemovingDisplayIntent:userText];
+    BOOL hasMemoryTarget = self.novaMemoryNeed.length > 0 || self.novaMemoryPetType.length > 0;
+    return need.length == 0 && petType.length == 0 && remainingQuery.length == 0 && !hasMemoryTarget;
+}
+
+- (void)pp_logNovaIntentForUserText:(NSString *)userText stage:(NSString *)stage {
+    NSString *need = [self pp_localNovaNeedLabelFromUserText:userText] ?: self.novaMemoryNeed ?: @"";
+    NSString *petType = [self pp_localNovaPetTypeFromUserText:userText] ?: self.novaMemoryPetType ?: @"";
+    BOOL showcaseIntent = [self pp_novaTextHasShowcaseDisplayIntent:userText];
+    BOOL displayOnly = [self pp_novaDisplayIntentIsMissingTargetForUserText:userText];
+    LOG_INFO(@"NOVA_INTENT stage=%@ showcase=%@ displayOnly=%@ need=%@ petType=%@",
+             stage ?: @"",
+             showcaseIntent ? @"YES" : @"NO",
+             displayOnly ? @"YES" : @"NO",
+             need,
+             petType);
+}
+
+- (BOOL)pp_lastNovaTextMessageEquals:(NSString *)text {
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        return NO;
+    }
+    for (NSInteger i = (NSInteger)self.messages.count - 1; i >= 0; i--) {
+        ChatMessageModel *msg = self.messages[i];
+        if (![msg.senderID isEqualToString:@"nova_bot_id"]) {
+            continue;
+        }
+        if (msg.messageType != ChatMessageTypeText) {
+            return NO;
+        }
+        return [[msg.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] isEqualToString:trimmed];
+    }
+    return NO;
+}
+
+- (void)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
+                                       proposedText:(NSString *)proposedText
+                                           userText:(NSString *)userText
+                                             source:(NSString *)source {
+    NSString *cleanProposed = [proposedText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *decision = @"no_products";
+    NSString *textToShow = nil;
+
+    if (renderedCount > 0) {
+        if (cleanProposed.length > 0 && ![self pp_novaReplyContainsNoProductClaim:cleanProposed]) {
+            textToShow = cleanProposed;
+            decision = @"proposed_text_with_rendered_products";
+        } else {
+            decision = cleanProposed.length == 0 ? @"cards_only_no_ai_text" : @"cards_only_suppressed_no_product_text";
+        }
+    } else {
+        if (cleanProposed.length > 0) {
+            textToShow = cleanProposed;
+            decision = @"proposed_text_without_products";
+        } else {
+            decision = @"no_products_no_ai_text";
+        }
+    }
+
+    LOG_INFO(@"NOVA_PRODUCTS_COUNT count=%lu source=%@",
+             (unsigned long)renderedCount,
+             source ?: @"unknown");
+    LOG_INFO(@"NOVA_RENDERED_CELL_COUNT rendered=%lu source=%@",
+             (unsigned long)renderedCount,
+             source ?: @"unknown");
+    LOG_INFO(@"NOVA_TEXT_DECISION decision=%@ rendered=%lu source=%@ text=%@",
+             decision,
+             (unsigned long)renderedCount,
+             source ?: @"unknown",
+             textToShow ?: @"");
+
+    if (textToShow.length > 0 && ![self pp_lastNovaTextMessageEquals:textToShow]) {
+        [self addNovaMessage:textToShow];
+    }
+}
+
 - (BOOL)pp_shouldAttemptLocalNovaShowcaseForUserText:(NSString *)userText {
     NSString *lower = [userText.lowercaseString stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (lower.length == 0) {
+    if (lower.length == 0 || [self pp_novaIsGenericConversationText:lower]) {
         return NO;
     }
     NSString *need = [self pp_localNovaNeedLabelFromUserText:lower];
     NSString *petType = [self pp_localNovaPetTypeFromUserText:lower];
-    return need.length > 0 || [self pp_localNovaPetTypeIsLivePet:petType];
+    if (need.length > 0 || [self pp_localNovaPetTypeIsLivePet:petType]) {
+        return YES;
+    }
+    if ([self pp_novaTextHasShowcaseDisplayIntent:lower]) {
+        return self.novaMemoryNeed.length > 0 || self.novaMemoryPetType.length > 0;
+    }
+    return NO;
 }
 
 - (AccessKindType)pp_localNovaShowcaseKindForNeed:(NSString *)needLabel petType:(NSString *)petType {
@@ -1559,6 +1947,29 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         ctx[@"previousUserFacts"] = facts;
     }
     return [ctx copy];
+}
+
+- (NSDictionary *)pp_currentNovaBrainStateDictionary {
+    NSMutableDictionary *state = [NSMutableDictionary dictionary];
+    if (self.novaMemoryPetType.length > 0) {
+        state[@"animal"] = self.novaMemoryPetType;
+    }
+    if (self.novaMemoryNeed.length > 0) {
+        state[@"category"] = self.novaMemoryNeed;
+    }
+    if (self.novaMemoryLanguage.length > 0) {
+        state[@"user_language"] = self.novaMemoryLanguage;
+    }
+    NSMutableArray<NSString *> *shownProductIDs = [NSMutableArray array];
+    for (PetAccessory *product in self.lastShownProducts) {
+        if ([product isKindOfClass:PetAccessory.class] && product.accessoryID.length > 0) {
+            [shownProductIDs addObject:product.accessoryID];
+        }
+    }
+    if (shownProductIDs.count > 0) {
+        state[@"last_products_shown"] = shownProductIDs.copy;
+    }
+    return state.copy;
 }
 
 - (NSArray *)pp_currentHistoryArray {
@@ -3669,7 +4080,27 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         }
     }
 
+    [self pp_updateMemoryFromUserText:trimmedText];
+    [self pp_logNovaIntentForUserText:trimmedText stage:@"submitted"];
+
     [self showNovaTyping];
+    if ([self pp_novaTextHasShowcaseDisplayIntent:trimmedText] &&
+        [self pp_localNovaNeedLabelFromUserText:trimmedText].length == 0 &&
+        [self pp_localNovaPetTypeFromUserText:trimmedText].length == 0 &&
+        (self.novaMemoryNeed.length > 0 || self.novaMemoryPetType.length > 0)) {
+        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+                                                introText:nil
+                                               completion:^(BOOL didShow) {
+            [self hideNovaTyping];
+            if (!didShow) {
+                [self pp_addNovaProductResultTextForRenderedCount:0
+                                                     proposedText:nil
+                                                         userText:trimmedText
+                                                           source:@"display_intent_memory_target"];
+            }
+        }];
+        return;
+    }
     [self sendNovaRequestForUserText:trimmedText];
 }
 
@@ -3953,7 +4384,11 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         @"current\\s+inventory",
         @"check\\s+(the\\s+)?(pure\\s+pets\\s+)?catalog",
         @"لم\\s+أجد",
+        @"لا\\s*أجد",
         @"لم\\s+اجد",
+        @"لا\\s*اجد",
+        @"لم\\s+نجد",
+        @"لا\\s*نجد",
         @"ما\\s+لقيت",
         @"ما\\s+لقينا",
         @"لا\\s+يوجد",
@@ -3969,10 +4404,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         }
     }
     return NO;
-}
-
-- (NSString *)pp_positiveNovaLocalShowcaseTextForUserText:(NSString *)userText {
-    return [self textContainsArabic:userText] ? kLang(@"nova_found_matching_options") : kLang(@"nova_found_matching_options");
 }
 
 - (BOOL)pp_isNovaStructuredSuggestionLine:(NSString *)line {
