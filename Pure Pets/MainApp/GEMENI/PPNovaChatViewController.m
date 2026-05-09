@@ -1278,7 +1278,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     NSString *currentNeed = [self pp_localNovaNeedLabelFromUserText:trimmedText];
     NSString *currentPetType = [self pp_localNovaPetTypeFromUserText:trimmedText];
     NSString *need = currentNeed ?: (currentPetType.length > 0 ? nil : self.novaMemoryNeed);
-    NSString *petType = currentPetType ?: ([self pp_novaTextHasShowcaseDisplayIntent:trimmedText] ? (self.novaMemoryPetType ?: @"") : @"");
+    BOOL canCarryMemoryPetType = currentNeed.length > 0 || [self pp_novaTextHasShowcaseDisplayIntent:trimmedText];
+    NSString *petType = currentPetType ?: (canCarryMemoryPetType ? (self.novaMemoryPetType ?: @"") : @"");
     AccessKindType kind = [self pp_localNovaShowcaseKindForNeed:need petType:petType];
     LOG_INFO(@"NOVA_SEARCH_QUERY raw=%@ normalized=%@ kind=%ld need=%@ petType=%@",
              trimmedText ?: @"",
@@ -1378,16 +1379,17 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }
     NSSet<NSString *> *exact = [NSSet setWithArray:@[
         @"hi", @"hello", @"hey", @"salam", @"ok", @"okay",
-        @"thanks", @"thank you", @"how are you",
+        @"thanks", @"thank you", @"how are you", @"nova",
         @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا",
-        @"السلام عليكم", @"شكرا", @"تمام", @"اوكي"
+        @"السلام عليكم", @"نوفا", @"نوڤا", @"شكرا", @"تمام", @"اوكي"
     ]];
     if ([exact containsObject:normalized]) {
         return YES;
     }
     NSSet<NSString *> *tokensAllowed = [NSSet setWithArray:@[
         @"hi", @"hello", @"hey", @"ok", @"okay", @"thanks", @"thank", @"you", @"how", @"are",
-        @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا", @"السلام", @"عليكم", @"شكرا", @"تمام", @"اوكي"
+        @"nova",
+        @"هاي", @"هاى", @"هلا", @"اهلا", @"اهلين", @"مرحبا", @"نوفا", @"نوڤا", @"السلام", @"عليكم", @"شكرا", @"تمام", @"اوكي"
     ]];
     NSArray<NSString *> *tokens = [normalized componentsSeparatedByString:@" "];
     if (tokens.count > 0 && tokens.count <= 4) {
@@ -1524,8 +1526,11 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }
     NSString *need = [self pp_localNovaNeedLabelFromUserText:lower];
     NSString *petType = [self pp_localNovaPetTypeFromUserText:lower];
-    if (need.length > 0 || [self pp_localNovaPetTypeIsLivePet:petType]) {
+    if ([self pp_localNovaPetTypeIsLivePet:petType]) {
         return YES;
+    }
+    if (need.length > 0) {
+        return petType.length > 0 || self.novaMemoryPetType.length > 0;
     }
     if ([self pp_novaTextHasShowcaseDisplayIntent:lower]) {
         return self.novaMemoryNeed.length > 0 || self.novaMemoryPetType.length > 0;
