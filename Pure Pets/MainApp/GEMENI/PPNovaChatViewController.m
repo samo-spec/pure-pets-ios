@@ -17,8 +17,14 @@
 #import "CartItem.h"
 #import "PPHUD.h"
 #import "AccessViewerVC.h"
+#import "ViewerVC.h"
 #import "ServiceViewerViewController.h"
 #import "PPPetCareViewerVC.h"
+#import "PetAdManager.h"
+#import "AdoptPetManager.h"
+#import "AdoptPetModel.h"
+#import "AdoptPetDetailsViewController.h"
+#import "PPPetCareVetViewrVC.h"
 #import "PPOverlayCoordinator.h"
 #import "PPChatFeedbackManager.h"
 #import "PPAnalytics.h"
@@ -785,7 +791,13 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
             @"productIDs": @"product", @"productIds": @"product", @"product_ids": @"product",
             @"accessoryIDs": @"product", @"accessoryIds": @"product", @"itemIDs": @"product",
             @"medicineIDs": @"medicine", @"medicineIds": @"medicine", @"medicine_ids": @"medicine",
-            @"serviceIDs": @"service", @"serviceIds": @"service", @"service_ids": @"service"
+            @"serviceIDs": @"service", @"serviceIds": @"service", @"service_ids": @"service",
+            @"petAdIDs": @"pet_ad", @"petAdIds": @"pet_ad", @"pet_ad_ids": @"pet_ad",
+            @"adIDs": @"pet_ad", @"adIds": @"pet_ad", @"ad_ids": @"pet_ad",
+            @"adoptPetIDs": @"adoption", @"adoptPetIds": @"adoption", @"adopt_pet_ids": @"adoption",
+            @"adoptionIDs": @"adoption", @"adoptionIds": @"adoption", @"adoption_ids": @"adoption",
+            @"vetIDs": @"vet", @"vetIds": @"vet", @"vet_ids": @"vet",
+            @"veterinarianIDs": @"vet", @"veterinarianIds": @"vet", @"veterinarian_ids": @"vet"
         };
         [keyKinds enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *kind, BOOL *stop) {
             [self pp_appendNovaSuggestionRefsFromIDs:data[key] kind:kind toRefs:refs];
@@ -795,7 +807,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
             @"suggestions": @"", @"recommendations": @"", @"results": @"",
             @"resultRefs": @"", @"result_refs": @"",
             @"products": @"product", @"items": @"product",
-            @"services": @"service", @"medicines": @"medicine"
+            @"services": @"service", @"medicines": @"medicine",
+            @"petAds": @"pet_ad", @"pet_ads": @"pet_ad",
+            @"adoptions": @"adoption", @"adoptPets": @"adoption", @"adopt_pets": @"adoption",
+            @"vets": @"vet", @"veterinarians": @"vet"
         };
         [arrayKeyKinds enumerateKeysAndObjectsUsingBlock:^(NSString *key, NSString *kind, BOOL *stop) {
             [self pp_appendNovaSuggestionRefsFromValue:data[key]
@@ -861,8 +876,17 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 }
 
 - (NSString *)pp_novaSuggestionKindFromDictionary:(NSDictionary *)dict preferredKind:(NSString *)preferredKind {
+    if ([self pp_novaStringFromDictionary:dict keys:@[@"petAdID", @"petAdId", @"pet_ad_id", @"adID", @"adId", @"ad_id"]].length > 0) {
+        return @"pet_ad";
+    }
+    if ([self pp_novaStringFromDictionary:dict keys:@[@"adoptPetID", @"adoptPetId", @"adopt_pet_id", @"adoptionID", @"adoptionId", @"adoption_id"]].length > 0) {
+        return @"adoption";
+    }
     if ([self pp_novaStringFromDictionary:dict keys:@[@"serviceID", @"serviceId", @"service_id"]].length > 0) {
         return @"service";
+    }
+    if ([self pp_novaStringFromDictionary:dict keys:@[@"vetID", @"vetId", @"vet_id", @"veterinarianID", @"veterinarianId", @"veterinarian_id"]].length > 0) {
+        return @"vet";
     }
     if ([self pp_novaStringFromDictionary:dict keys:@[@"medicineID", @"medicineId", @"medicine_id"]].length > 0) {
         return @"medicine";
@@ -873,8 +897,19 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
     id rawKindValue = dict[@"kind"] ?: dict[@"itemType"] ?: dict[@"collection"] ?: dict[@"collectionName"] ?: dict[@"type"];
     NSString *rawKind = [[self pp_novaStringFromValue:rawKindValue] lowercaseString];
+    if ([rawKind containsString:@"pet_ad"] || [rawKind containsString:@"pet ad"] ||
+        [rawKind containsString:@"pet_ads"] || [rawKind isEqualToString:@"ads"]) {
+        return @"pet_ad";
+    }
+    if ([rawKind containsString:@"adoption"] || [rawKind containsString:@"adopt"] ||
+        [rawKind containsString:@"adopt_pets"]) {
+        return @"adoption";
+    }
     if ([rawKind containsString:@"service"]) {
         return @"service";
+    }
+    if ([rawKind containsString:@"vet"] || [rawKind containsString:@"veterinarian"]) {
+        return @"vet";
     }
     if ([rawKind containsString:@"medicine"] || [rawKind containsString:@"medic"] || [rawKind containsString:@"pharmacy"]) {
         return @"medicine";
@@ -888,16 +923,22 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         [accessKindValue integerValue] == AccessTypePetMedicine) {
         return @"medicine";
     }
-
     return preferredKind.length > 0 ? preferredKind : @"product";
 }
 
 - (NSString *)pp_novaSuggestionIdentifierFromDictionary:(NSDictionary *)dict kind:(NSString *)kind {
-    NSArray<NSString *> *primaryKeys = [kind isEqualToString:@"service"]
-        ? @[@"serviceID", @"serviceId", @"service_id"]
-        : ([kind isEqualToString:@"medicine"]
-           ? @[@"medicineID", @"medicineId", @"medicine_id", @"productID", @"productId", @"product_id", @"accessoryID", @"accessoryId", @"accessory_id"]
-           : @[@"productID", @"productId", @"product_id", @"accessoryID", @"accessoryId", @"accessory_id"]);
+    NSArray<NSString *> *primaryKeys = @[@"productID", @"productId", @"product_id", @"accessoryID", @"accessoryId", @"accessory_id"];
+    if ([kind isEqualToString:@"service"]) {
+        primaryKeys = @[@"serviceID", @"serviceId", @"service_id"];
+    } else if ([kind isEqualToString:@"vet"]) {
+        primaryKeys = @[@"vetID", @"vetId", @"vet_id", @"veterinarianID", @"veterinarianId", @"veterinarian_id"];
+    } else if ([kind isEqualToString:@"pet_ad"]) {
+        primaryKeys = @[@"petAdID", @"petAdId", @"pet_ad_id", @"adID", @"adId", @"ad_id", @"productID", @"productId", @"product_id"];
+    } else if ([kind isEqualToString:@"adoption"]) {
+        primaryKeys = @[@"adoptPetID", @"adoptPetId", @"adopt_pet_id", @"adoptionID", @"adoptionId", @"adoption_id", @"productID", @"productId", @"product_id"];
+    } else if ([kind isEqualToString:@"medicine"]) {
+        primaryKeys = @[@"medicineID", @"medicineId", @"medicine_id", @"productID", @"productId", @"product_id", @"accessoryID", @"accessoryId", @"accessory_id"];
+    }
     NSString *identifier = [self pp_novaStringFromDictionary:dict keys:primaryKeys];
     if (identifier.length > 0) {
         return identifier;
@@ -934,7 +975,13 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     NSArray<NSDictionary<NSString *, NSString *> *> *patterns = @[
         @{@"kind": @"product", @"pattern": @"\\[PRODUCT_ID:\\s*([^\\]]+)\\]"},
         @{@"kind": @"service", @"pattern": @"\\[SERVICE_ID:\\s*([^\\]]+)\\]"},
-        @{@"kind": @"medicine", @"pattern": @"\\[MEDICINE_ID:\\s*([^\\]]+)\\]"}
+        @{@"kind": @"medicine", @"pattern": @"\\[MEDICINE_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"pet_ad", @"pattern": @"\\[PET_AD_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"pet_ad", @"pattern": @"\\[AD_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"adoption", @"pattern": @"\\[ADOPTION_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"adoption", @"pattern": @"\\[ADOPT_PET_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"vet", @"pattern": @"\\[VET_ID:\\s*([^\\]]+)\\]"},
+        @{@"kind": @"vet", @"pattern": @"\\[VETERINARIAN_ID:\\s*([^\\]]+)\\]"}
     ];
     for (NSDictionary<NSString *, NSString *> *entry in patterns) {
         NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:entry[@"pattern"]
@@ -988,8 +1035,14 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     if (pathless.length > 0 &&
         ([normalized containsString:@"/petAccessories/"] ||
          [normalized containsString:@"/serviceOffers/"] ||
+         [normalized containsString:@"/veterinarians/"] ||
+         [normalized containsString:@"/pet_ads/"] ||
+         [normalized containsString:@"/adopt_pets/"] ||
          [normalized hasPrefix:@"petAccessories/"] ||
-         [normalized hasPrefix:@"serviceOffers/"])) {
+         [normalized hasPrefix:@"serviceOffers/"] ||
+         [normalized hasPrefix:@"veterinarians/"] ||
+         [normalized hasPrefix:@"pet_ads/"] ||
+         [normalized hasPrefix:@"adopt_pets/"])) {
         normalized = pathless;
     }
 
@@ -1005,6 +1058,9 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
     NSMutableArray<NSString *> *accessoryIDs = [NSMutableArray array];
     NSMutableArray<NSString *> *serviceIDs = [NSMutableArray array];
+    NSMutableArray<NSString *> *petAdIDs = [NSMutableArray array];
+    NSMutableArray<NSString *> *adoptionIDs = [NSMutableArray array];
+    NSMutableArray<NSString *> *vetIDs = [NSMutableArray array];
     for (NSDictionary<NSString *, NSString *> *ref in refs) {
         NSString *kind = ref[@"kind"];
         NSString *identifier = ref[@"id"];
@@ -1013,6 +1069,12 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         }
         if ([kind isEqualToString:@"service"]) {
             [serviceIDs addObject:identifier];
+        } else if ([kind isEqualToString:@"vet"]) {
+            [vetIDs addObject:identifier];
+        } else if ([kind isEqualToString:@"pet_ad"]) {
+            [petAdIDs addObject:identifier];
+        } else if ([kind isEqualToString:@"adoption"]) {
+            [adoptionIDs addObject:identifier];
         } else {
             [accessoryIDs addObject:identifier];
         }
@@ -1021,6 +1083,9 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     dispatch_group_t group = dispatch_group_create();
     __block NSArray<PetAccessory *> *resolvedAccessories = @[];
     __block NSArray<ServiceModel *> *resolvedServices = @[];
+    __block NSArray<PetAd *> *resolvedPetAds = @[];
+    __block NSArray<AdoptPetModel *> *resolvedAdoptions = @[];
+    __block NSArray<VetModel *> *resolvedVets = @[];
     __block BOOL didFinish = NO;
 
     if (accessoryIDs.count > 0) {
@@ -1035,6 +1100,33 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         dispatch_group_enter(group);
         [self pp_fetchNovaServicesWithIDs:serviceIDs completion:^(NSArray<ServiceModel *> *services) {
             resolvedServices = services ?: @[];
+            dispatch_group_leave(group);
+        }];
+    }
+
+    if (vetIDs.count > 0) {
+        dispatch_group_enter(group);
+        [self pp_fetchNovaVetsWithIDs:vetIDs completion:^(NSArray<VetModel *> *vets) {
+            resolvedVets = vets ?: @[];
+            dispatch_group_leave(group);
+        }];
+    }
+
+    if (petAdIDs.count > 0) {
+        dispatch_group_enter(group);
+        [PetAdManager fetchAdsWithIDs:petAdIDs completion:^(NSArray<PetAd *> *ads) {
+            resolvedPetAds = ads ?: @[];
+            dispatch_group_leave(group);
+        }];
+    }
+
+    if (adoptionIDs.count > 0) {
+        dispatch_group_enter(group);
+        [AdoptPetManager.shared fetchPetsWithIDs:adoptionIDs completion:^(NSArray<AdoptPetModel *> * _Nullable pets, NSError * _Nullable error) {
+            if (error) {
+                LOG_WARN(@"[PPNovaChat][Refs] adoption resolution error=%@", error.localizedDescription);
+            }
+            resolvedAdoptions = pets ?: @[];
             dispatch_group_leave(group);
         }];
     }
@@ -1055,10 +1147,25 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
         NSDictionary<NSString *, PetAccessory *> *accessoriesByID = [self pp_novaAccessoriesByID:resolvedAccessories];
         NSDictionary<NSString *, ServiceModel *> *servicesByID = [self pp_novaServicesByID:resolvedServices];
+        NSDictionary<NSString *, PetAd *> *petAdsByID = [self pp_novaPetAdsByID:resolvedPetAds];
+        NSDictionary<NSString *, AdoptPetModel *> *adoptionsByID = [self pp_novaAdoptionsByID:resolvedAdoptions];
+        NSDictionary<NSString *, VetModel *> *vetsByID = [self pp_novaVetsByID:resolvedVets];
         NSMutableArray *objects = [NSMutableArray array];
         for (NSDictionary<NSString *, NSString *> *ref in refs) {
             NSString *identifier = ref[@"id"];
-            id object = [ref[@"kind"] isEqualToString:@"service"] ? servicesByID[identifier] : accessoriesByID[identifier];
+            NSString *kind = ref[@"kind"];
+            id object = nil;
+            if ([kind isEqualToString:@"service"]) {
+                object = servicesByID[identifier];
+            } else if ([kind isEqualToString:@"vet"]) {
+                object = vetsByID[identifier];
+            } else if ([kind isEqualToString:@"pet_ad"]) {
+                object = petAdsByID[identifier];
+            } else if ([kind isEqualToString:@"adoption"]) {
+                object = adoptionsByID[identifier];
+            } else {
+                object = accessoriesByID[identifier];
+            }
             if (object) {
                 [objects addObject:object];
             }
@@ -1191,6 +1298,53 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     });
 }
 
+- (void)pp_fetchNovaVetsWithIDs:(NSArray<NSString *> *)vetIDs
+                     completion:(void (^)(NSArray<VetModel *> *vets))completion
+{
+    if (vetIDs.count == 0) {
+        if (completion) completion(@[]);
+        return;
+    }
+
+    FIRFirestore *db = [FIRFirestore firestore];
+    NSMutableArray<VetModel *> *results = [NSMutableArray array];
+    dispatch_group_t group = dispatch_group_create();
+    for (NSString *vetID in vetIDs) {
+        if (vetID.length == 0) {
+            continue;
+        }
+        dispatch_group_enter(group);
+        [[[db collectionWithPath:@"veterinarians"] documentWithPath:vetID]
+         getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable doc, NSError * _Nullable error) {
+            if (doc.exists && doc.data) {
+                VetModel *model = [VetModel fromDictionary:doc.data withID:doc.documentID];
+                if ([self pp_novaVetIsListable:model]) {
+                    @synchronized (results) {
+                        [results addObject:model];
+                    }
+                }
+            }
+            dispatch_group_leave(group);
+        }];
+    }
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (completion) completion(results.copy);
+    });
+}
+
+- (BOOL)pp_novaVetIsListable:(VetModel *)vet
+{
+    if (![vet isKindOfClass:VetModel.class] || vet.isDisabled) {
+        return NO;
+    }
+    NSString *status = [vet.verificationStatus.lowercaseString stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (status.length == 0) {
+        return YES;
+    }
+    return [@[@"approved", @"active", @"verified"] containsObject:status];
+}
+
 - (NSDictionary<NSString *, PetAccessory *> *)pp_novaAccessoriesByID:(NSArray<PetAccessory *> *)accessories {
     NSMutableDictionary<NSString *, PetAccessory *> *map = [NSMutableDictionary dictionary];
     for (PetAccessory *item in accessories) {
@@ -1209,6 +1363,39 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
             continue;
         }
         map[service.serviceID] = service;
+    }
+    return map.copy;
+}
+
+- (NSDictionary<NSString *, VetModel *> *)pp_novaVetsByID:(NSArray<VetModel *> *)vets {
+    NSMutableDictionary<NSString *, VetModel *> *map = [NSMutableDictionary dictionary];
+    for (VetModel *vet in vets) {
+        if (![vet isKindOfClass:VetModel.class] || vet.vetID.length == 0) {
+            continue;
+        }
+        map[vet.vetID] = vet;
+    }
+    return map.copy;
+}
+
+- (NSDictionary<NSString *, PetAd *> *)pp_novaPetAdsByID:(NSArray<PetAd *> *)ads {
+    NSMutableDictionary<NSString *, PetAd *> *map = [NSMutableDictionary dictionary];
+    for (PetAd *ad in ads) {
+        if (![ad isKindOfClass:PetAd.class] || ad.adID.length == 0) {
+            continue;
+        }
+        map[ad.adID] = ad;
+    }
+    return map.copy;
+}
+
+- (NSDictionary<NSString *, AdoptPetModel *> *)pp_novaAdoptionsByID:(NSArray<AdoptPetModel *> *)pets {
+    NSMutableDictionary<NSString *, AdoptPetModel *> *map = [NSMutableDictionary dictionary];
+    for (AdoptPetModel *pet in pets) {
+        if (![pet isKindOfClass:AdoptPetModel.class] || pet.documentID.length == 0) {
+            continue;
+        }
+        map[pet.documentID] = pet;
     }
     return map.copy;
 }
@@ -1767,6 +1954,20 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         NSString *name = srv.title ?: @"";
         NSString *priceStr = srv.price ? [NSString stringWithFormat:@" (%.2f QAR)", srv.price] : @"";
         return [name stringByAppendingString:priceStr];
+    }
+    if ([object isKindOfClass:VetModel.class]) {
+        VetModel *vet = (VetModel *)object;
+        return vet.title ?: @"";
+    }
+    if ([object isKindOfClass:PetAd.class]) {
+        PetAd *ad = (PetAd *)object;
+        NSString *name = ad.adTitle ?: @"";
+        NSString *priceStr = ad.price ? [NSString stringWithFormat:@" (%.2f QAR)", [ad.price doubleValue]] : @"";
+        return [name stringByAppendingString:priceStr];
+    }
+    if ([object isKindOfClass:AdoptPetModel.class]) {
+        AdoptPetModel *pet = (AdoptPetModel *)object;
+        return pet.name ?: @"";
     }
     return @"";
 }
@@ -2571,7 +2772,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
     UIView *brandMark = [[UIView alloc] init];
     brandMark.translatesAutoresizingMaskIntoConstraints = NO;
-    brandMark.backgroundColor = [self pp_novaHeaderSurfaceColor];
+    brandMark.backgroundColor = AppClearClr;
     brandMark.layer.cornerRadius = 22.0;
     brandMark.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     brandMark.layer.borderColor = [accentColor colorWithAlphaComponent:0.14].CGColor;
@@ -2736,28 +2937,28 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
         [brandHalo.centerXAnchor constraintEqualToAnchor:brandRing.centerXAnchor],
         [brandHalo.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor],
-        [brandHalo.widthAnchor constraintEqualToConstant:80.0],
-        [brandHalo.heightAnchor constraintEqualToConstant:80.0],
+        [brandHalo.widthAnchor constraintEqualToConstant:60.0],
+        [brandHalo.heightAnchor constraintEqualToConstant:60.0],
 
         [loadingLottie.centerXAnchor constraintEqualToAnchor:brandHalo.centerXAnchor],
         [loadingLottie.centerYAnchor constraintEqualToAnchor:brandHalo.centerYAnchor],
-        [loadingLottie.widthAnchor constraintEqualToAnchor:brandHalo.widthAnchor constant:16.0],
-        [loadingLottie.heightAnchor constraintEqualToAnchor:brandHalo.heightAnchor constant:16.0],
+        [loadingLottie.widthAnchor constraintEqualToAnchor:brandHalo.widthAnchor constant:0.0],
+        [loadingLottie.heightAnchor constraintEqualToAnchor:brandHalo.heightAnchor constant:0.0],
 
         [brandRing.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
         self.brandRingCenterXConstraint,
-        [brandRing.widthAnchor constraintEqualToConstant:68.0],
-        [brandRing.heightAnchor constraintEqualToConstant:68.0],
+        [brandRing.widthAnchor constraintEqualToConstant:58.0],
+        [brandRing.heightAnchor constraintEqualToConstant:58.0],
 
         [brandMark.centerXAnchor constraintEqualToAnchor:brandRing.centerXAnchor],
         [brandMark.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor],
-        [brandMark.widthAnchor constraintEqualToConstant:42.0],
-        [brandMark.heightAnchor constraintEqualToConstant:42.0],
+        [brandMark.widthAnchor constraintEqualToConstant:62.0],
+        [brandMark.heightAnchor constraintEqualToConstant:62.0],
 
-        [identityLottie.topAnchor constraintEqualToAnchor:brandMark.topAnchor constant:-8.0],
-        [identityLottie.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor constant:-8.0],
-        [identityLottie.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor constant:8.0],
-        [identityLottie.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor constant:8.0],
+        [identityLottie.topAnchor constraintEqualToAnchor:brandMark.topAnchor constant:10.0],
+        [identityLottie.leadingAnchor constraintEqualToAnchor:brandMark.leadingAnchor constant:10.0],
+        [identityLottie.trailingAnchor constraintEqualToAnchor:brandMark.trailingAnchor constant:-10.0],
+        [identityLottie.bottomAnchor constraintEqualToAnchor:brandMark.bottomAnchor constant:-10.0],
 
         self.nameLabelCenterXConstraint,
         self.nameLabelTopConstraint,
@@ -3206,7 +3407,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 - (void)pp_hideThinkingHeaderLottie {
     self.novaHeaderThinkingAnimationVisible = NO;
 
-    [self pp_transitionHeaderBackgroundToAnimation:@"novawave"];
+    //[self pp_transitionHeaderBackgroundToAnimation:@"novawave"];
 
     [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.24
                           delay:0.0
@@ -3286,8 +3487,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     readableWidth.priority = 998.0;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.inputbar.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:12.0],
-        [self.inputbar.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12.0],
+        [self.inputbar.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:16.0],
+        [self.inputbar.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-16.0],
         [self.inputbar.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
         [self.inputbar.widthAnchor constraintLessThanOrEqualToConstant:760.0],
         compactWidth,
@@ -4321,7 +4522,13 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     NSArray<NSString *> *patterns = @[
         @"\\[PRODUCT_ID:\\s*[^\\]]+\\]",
         @"\\[SERVICE_ID:\\s*[^\\]]+\\]",
-        @"\\[MEDICINE_ID:\\s*[^\\]]+\\]"
+        @"\\[MEDICINE_ID:\\s*[^\\]]+\\]",
+        @"\\[PET_AD_ID:\\s*[^\\]]+\\]",
+        @"\\[AD_ID:\\s*[^\\]]+\\]",
+        @"\\[ADOPTION_ID:\\s*[^\\]]+\\]",
+        @"\\[ADOPT_PET_ID:\\s*[^\\]]+\\]",
+        @"\\[VET_ID:\\s*[^\\]]+\\]",
+        @"\\[VETERINARIAN_ID:\\s*[^\\]]+\\]"
     ];
     for (NSString *pattern in patterns) {
         NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
@@ -4341,7 +4548,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
     NSString *result = text;
     NSRegularExpression *tagSentenceRegex =
-    [NSRegularExpression regularExpressionWithPattern:@"[^\\.\\n!؟\\?]*(?:\\[PRODUCT_ID:|\\[SERVICE_ID:|\\[MEDICINE_ID:)[^\\.\\n!؟\\?]*[\\.\\n!؟\\?]?"
+    [NSRegularExpression regularExpressionWithPattern:@"[^\\.\\n!؟\\?]*(?:\\[PRODUCT_ID:|\\[SERVICE_ID:|\\[MEDICINE_ID:|\\[PET_AD_ID:|\\[AD_ID:|\\[ADOPTION_ID:|\\[ADOPT_PET_ID:|\\[VET_ID:|\\[VETERINARIAN_ID:)[^\\.\\n!؟\\?]*[\\.\\n!؟\\?]?"
                                              options:NSRegularExpressionCaseInsensitive
                                                error:nil];
     if (tagSentenceRegex) {
@@ -4422,14 +4629,26 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         [lower containsString:@"serviceid"] ||
         [lower containsString:@"service_ids"] ||
         [lower containsString:@"medicineid"] ||
-        [lower containsString:@"medicine_ids"]) {
+        [lower containsString:@"medicine_ids"] ||
+        [lower containsString:@"petadid"] ||
+        [lower containsString:@"pet_ad_ids"] ||
+        [lower containsString:@"adoptionid"] ||
+        [lower containsString:@"adoption_ids"] ||
+        [lower containsString:@"adoptpetid"] ||
+        [lower containsString:@"adopt_pet_ids"] ||
+        [lower containsString:@"vetid"] ||
+        [lower containsString:@"vet_ids"] ||
+        [lower containsString:@"veterinarianid"] ||
+        [lower containsString:@"veterinarian_ids"]) {
         return YES;
     }
     NSArray<NSString *> *headers = @[
         @"curated picks", @"suggestions", @"suggestion", @"recommended products",
         @"recommended items", @"recommended services", @"products", @"services", @"medicines",
+        @"pet ads", @"ads", @"adoptions", @"adoption posts", @"vets", @"veterinarians",
         @"اختيارات", @"اختيارات مناسبة", @"اقتراحات", @"الاقتراحات",
-        @"منتجات", @"المنتجات", @"خدمات", @"الخدمات", @"أدوية", @"الأدوية"
+        @"منتجات", @"المنتجات", @"خدمات", @"الخدمات", @"أدوية", @"الأدوية",
+        @"إعلانات", @"اعلانات", @"تبني", @"للتبني", @"أطباء", @"اطباء", @"بيطريين"
     ];
     for (NSString *header in headers) {
         if ([lower isEqualToString:header] ||
@@ -4476,6 +4695,27 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 }
 
 - (void)novaProductCell_didTapProduct:(id)item {
+    if ([item isKindOfClass:PetAd.class]) {
+        PetAd *ad = (PetAd *)item;
+        [PPAnalytics logNovaPreviewOpenedWithItemKind:@"pet_ad"
+                                               itemID:ad.adID
+                                            sessionID:self.novaSessionId];
+        ViewerVC *viewer = [[ViewerVC alloc] init];
+        viewer.ad = ad;
+        [self pp_openNovaStackViewer:viewer];
+        return;
+    }
+
+    if ([item isKindOfClass:AdoptPetModel.class]) {
+        AdoptPetModel *pet = (AdoptPetModel *)item;
+        [PPAnalytics logNovaPreviewOpenedWithItemKind:@"adoption"
+                                               itemID:pet.documentID
+                                            sessionID:self.novaSessionId];
+        AdoptPetDetailsViewController *viewer = [[AdoptPetDetailsViewController alloc] initWithModel:pet];
+        [self pp_openNovaStackViewer:viewer];
+        return;
+    }
+
     if ([item isKindOfClass:ServiceModel.class]) {
         ServiceModel *service = (ServiceModel *)item;
         [PPAnalytics logNovaPreviewOpenedWithItemKind:@"service"
@@ -4483,6 +4723,17 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                                             sessionID:self.novaSessionId];
         ServiceViewerViewController *viewer = [ServiceViewerViewController new];
         viewer.service = service;
+        [PPFunc presentSheetFrom:self sheetVC:viewer detentStyle:PPSheetDetentStyleLargeOnly];
+        return;
+    }
+
+    if ([item isKindOfClass:VetModel.class]) {
+        VetModel *vet = (VetModel *)item;
+        [PPAnalytics logNovaPreviewOpenedWithItemKind:@"vet"
+                                               itemID:vet.vetID
+                                            sessionID:self.novaSessionId];
+        PPPetCareVetViewrVC *viewer = [[PPPetCareVetViewrVC alloc] initWithVet:vet
+                                                                  mainKindName:nil];
         [PPFunc presentSheetFrom:self sheetVC:viewer detentStyle:PPSheetDetentStyleLargeOnly];
         return;
     }

@@ -131,13 +131,13 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 
         [self.rowStack.topAnchor constraintEqualToAnchor:self.materialView.contentView.topAnchor constant:7.0],
         [self.rowStack.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor constant:18.0],
-        [self.rowStack.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor constant:-18.0],
+        [self.rowStack.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor constant:-7.0],
         [self.rowStack.bottomAnchor constraintEqualToAnchor:self.materialView.contentView.bottomAnchor constant:-7.0],
 
-        [self.attachButton.widthAnchor constraintEqualToConstant:42.0],
-        [self.attachButton.heightAnchor constraintEqualToConstant:42.0],
-        [self.sendButton.widthAnchor constraintEqualToConstant:42.0],
-        [self.sendButton.heightAnchor constraintEqualToConstant:42.0],
+        [self.attachButton.widthAnchor constraintEqualToConstant:38.0],
+        [self.attachButton.heightAnchor constraintEqualToConstant:38.0],
+        [self.sendButton.widthAnchor constraintEqualToConstant:38.0],
+        [self.sendButton.heightAnchor constraintEqualToConstant:38.0],
         self.textViewHeightConstraint,
 
         [self.placeholderLabel.centerXAnchor constraintEqualToAnchor:self.textView.centerXAnchor],
@@ -153,7 +153,7 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     button.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
     button.backgroundColor = PPNovaInputDynamicColor([UIColor colorWithWhite:0.95 alpha:1.0],
                                                     [UIColor colorWithWhite:1.0 alpha:0.09]);
-    button.layer.cornerRadius = 21.0;
+    button.layer.cornerRadius = 19.0;
     button.layer.masksToBounds = YES;
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;

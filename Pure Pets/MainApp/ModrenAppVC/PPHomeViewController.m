@@ -9239,10 +9239,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-    self.homeCartButton.layer.shadowOpacity = 0.0;
-    self.homeCartButton.layer.shadowOffset = CGSizeMake(0, 0);
-    self.homeCartButton.layer.shadowRadius = 0;
-    self.homeCartButton.clipsToBounds = YES;
+   
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = self.homeCartButton.configuration;

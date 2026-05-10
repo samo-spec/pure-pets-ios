@@ -330,8 +330,9 @@ typedef NS_ENUM(NSInteger, PPCellContext) {
     PPCellForFood,
     PPCellForServices,
     PPCellForVets,
+    PPCellForAdopt,
     PPCellForHomeAds,
-    PPCellForContextAccessory
+    PPCellForContextAccessory,
 };
  
 

@@ -8,6 +8,9 @@
 #import "PPImageLoaderManager.h"
 #import "AppManager.h"
 #import "ServiceModel.h"
+#import "PetAd.h"
+#import "AdoptPetModel.h"
+#import "VetModel.h"
 
 @interface PPNovaProductMessageCell () <UICollectionViewDelegateFlowLayout, UICollectionViewDataSource, PPUniversalCellDelegate>
 
@@ -185,9 +188,8 @@
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier] forIndexPath:indexPath];
-    
     id item = self.products[indexPath.item];
+    PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier] forIndexPath:indexPath];
     PPCellContext context = [self pp_cellContextForNovaItem:item];
     PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:item context:context];
     
@@ -279,12 +281,33 @@
 
 - (BOOL)pp_isSupportedNovaItem:(id)item {
     return [item isKindOfClass:PetAccessory.class] ||
-           [item isKindOfClass:ServiceModel.class];
+           [item isKindOfClass:ServiceModel.class] ||
+           [item isKindOfClass:PetAd.class] ||
+           [item isKindOfClass:AdoptPetModel.class] ||
+           [item isKindOfClass:VetModel.class];
 }
 
 - (PPCellContext)pp_cellContextForNovaItem:(id)item {
     if ([item isKindOfClass:ServiceModel.class]) {
         return PPCellForServices;
+    }
+    if ([item isKindOfClass:VetModel.class]) {
+        return PPCellForVets;
+    }
+    if ([item isKindOfClass:AdoptPetModel.class]) {
+        return PPCellForAdopt;
+    }
+    if ([item isKindOfClass:PetAd.class]) {
+        return PPCellForAds;
+    }
+    if ([item isKindOfClass:PetAccessory.class]) {
+        PetAccessory *accessory = (PetAccessory *)item;
+        if (accessory.accessKindType == AccessTypeFood) {
+            return PPCellForFood;
+        }
+        if (accessory.accessKindType == AccessTypeLivePet) {
+            return PPCellForAds;
+        }
     }
     return PPCellForMarket;
 }

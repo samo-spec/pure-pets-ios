@@ -3,6 +3,7 @@
 #import "PetAd.h"
 #import "ServiceModel.h"
 #import "VetModel.h"
+#import "AdoptPetModel.h"
 #import "CitiesManager.h"
 #import "MainKindsModel.h"
 #import "SubKindModel.h"
@@ -211,6 +212,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
             break;
         case PPCellForHomeAds:
         case PPCellForAds:
+        case PPCellForAdopt:
         default:
             _cellSection = CellSectionAds;
             _ppSection = PPSectionAds;
@@ -292,6 +294,21 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
             _contextualReasonText = PPUniversalLocalizedString(@"New", PPUniversalLocalizedPair(@"New", @"جديد"));
         }
         _preferredAspectRatio = PPUniversalClampedAspectRatio(_imageSize, 0.98);
+    } else if ([model isKindOfClass:[AdoptPetModel class]]) {
+        AdoptPetModel *pet = (AdoptPetModel *)model;
+        NSString *firstImage = [pet.imageURLs.firstObject isKindOfClass:NSString.class] ? pet.imageURLs.firstObject : @"";
+        NSString *cityName = pet.mCityName.length > 0 ? pet.mCityName : ([CitiesManager.shared cityNameForID:pet.cityID] ?: @"");
+
+        _title = pet.name ?: PPUniversalLocalizedString(@"AdoptPet", PPUniversalLocalizedPair(@"Adoption pet", @"حيوان للتبني"));
+        _subtitle = pet.details.length > 0 ? pet.details : cityName;
+        _ModelID = pet.documentID.length > 0 ? pet.documentID : _ModelID;
+        _imageURL = firstImage;
+        _location = cityName;
+        _priceText = @"";
+        _availabilityText = PPUniversalLocalizedString(@"Available", PPUniversalLocalizedPair(@"Available", @"متوفر"));
+        _badgeText = PPUniversalLocalizedString(@"For Adoption", PPUniversalLocalizedPair(@"For Adoption", @"للتبني"));
+        _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:pet.ownerID];
+        _preferredAspectRatio = 0.98;
     } else if ([model isKindOfClass:[ServiceModel class]]) {
         ServiceModel *service = (ServiceModel *)model;
 

@@ -249,7 +249,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
 - (void)configureWithQuickAction:(PPHomeQuickActionModel *)quickAction
 {
-    self.surfaceLayer.borderColor = [self pp_signalColorForQuickActionType:quickAction.type].CGColor;
+    self.surfaceLayer.borderColor = [[self pp_signalColorForQuickActionType:quickAction.type] colorWithAlphaComponent:0.5].CGColor;
 
     self.currentTitle = PPSafeString(quickAction.title);
     self.currentIconName = PPSafeString(quickAction.iconName);
