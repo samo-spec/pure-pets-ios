@@ -37,7 +37,7 @@
 #import "PPHomeHeroCell.h"
 #import "PPModerHomeCell.h"
 #import "PPModernHomeActionCell.h"
-#import "PPPremuimSearchbarCell.h"
+#import "PPHomeSearchBarCell.h"
 #import "PPHomeModels.h"
 #import "PPHUD.h"
 #import "PPCommerceFeedbackManager.h"
@@ -5969,13 +5969,13 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
     [self.collectionView registerClass:PPModernHomeActionCell.class
             forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
-    [self.collectionView registerClass:PPPremuimSearchbarCell.class
-            forCellWithReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomeSearchBarCell.class
+            forCellWithReuseIdentifier:PPHomeSearchBarCell.reuseIdentifier];
     [self.collectionView registerClass:UICollectionViewCell.class
             forCellWithReuseIdentifier:@"PPHomePremiumSearchSpacerCell"];
-    [self.collectionView registerClass:PPPremuimSearchbarCell.class
+    [self.collectionView registerClass:PPHomeSearchBarCell.class
             forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
-                   withReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier];
+                   withReuseIdentifier:PPHomeSearchBarCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
@@ -6586,9 +6586,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         PPHomeSection section = (PPHomeSection)sectionID.integerValue;
 
         if (section == PPHomeSectionPremiumSearch) {
-            PPPremuimSearchbarCell *searchView =
-                (PPPremuimSearchbarCell *)[collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                                                             withReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier
+            PPHomeSearchBarCell *searchView =
+                (PPHomeSearchBarCell *)[collectionView dequeueReusableSupplementaryViewOfKind:kind
+                                                                             withReuseIdentifier:PPHomeSearchBarCell.reuseIdentifier
                                                                                     forIndexPath:indexPath];
             [searchView configureWithTrendingQuery:[weakSelf pp_currentHomeSmartSearchPlaceholder]];
             __weak typeof(weakSelf) weakSearch = weakSelf;
@@ -9814,11 +9814,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     UICollectionReusableView *view =
         [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
                                                  atIndexPath:indexPath];
-    if (![view isKindOfClass:PPPremuimSearchbarCell.class]) {
+    if (![view isKindOfClass:PPHomeSearchBarCell.class]) {
         return;
     }
 
-    [(PPPremuimSearchbarCell *)view configureWithTrendingQuery:placeholder];
+    [(PPHomeSearchBarCell *)view configureWithTrendingQuery:placeholder];
 }
 
 - (void)pp_startHomeSmartSearchTimerIfNeeded
@@ -10378,7 +10378,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyOrderDetailsBackgroundAppearance
 {
-    self.view.backgroundColor = AppBackgroundClr;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    UIColor *premiumBackground = [UIColor colorWithHexString:@"#E8EDF2"];
+    UIColor *novaBackground = [UIColor colorWithRed:1.0 green:0.97 blue:0.98 alpha:1.0];
+    self.view.backgroundColor = AppBageColor();// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
     self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     [self pp_updatePremiumBackgroundGlowAppearance];

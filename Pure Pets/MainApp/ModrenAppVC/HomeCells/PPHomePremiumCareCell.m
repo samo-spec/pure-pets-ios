@@ -21,6 +21,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     UIImageView *_iconImageView;
     LOTAnimationView *_careAnimationView;
     NSMutableArray<UIView *> *_backgroundDotViews;
+    UIStackView *_contentStackView;
     UILabel *_eyebrowLabel;
     UILabel *_titleLabel;
     UILabel *_subtitleLabel;
@@ -42,7 +43,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
 static UIColor *PremiumSoftCardBorderColor(void)
 {
-    return [UIColor.whiteColor colorWithAlphaComponent:0.72];//[AppLightGrayColor colorWithAlphaComponent:0.84];
+    return [UIColor.whiteColor colorWithAlphaComponent:0.82];//[AppLightGrayColor colorWithAlphaComponent:0.84];
 }
  
 - (instancetype)initWithFrame:(CGRect)frame
@@ -82,6 +83,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [_surfaceView.layer insertSublayer:_gradientLayer atIndex:0];
 
     _topBackgroundGlowView = [self pp_makePetCareGlowViewWithRadius:136.0];
+    _topBackgroundGlowView.hidden = YES;
+    _topBackgroundGlowView.alpha = 0;
     [_surfaceView addSubview:_topBackgroundGlowView];
 
     _middleBackgroundGlowView = [self pp_makePetCareGlowViewWithRadius:108.0];
@@ -142,22 +145,26 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _eyebrowLabel = [[UILabel alloc] init];
     _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    _eyebrowLabel.font = [GM boldFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
     _eyebrowLabel.numberOfLines = 1;
+    _eyebrowLabel.adjustsFontSizeToFitWidth = YES;
+    _eyebrowLabel.minimumScaleFactor = 0.84;
     [_surfaceView addSubview:_eyebrowLabel];
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    _titleLabel.font = [GM boldFontWithSize:21.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
     _titleLabel.numberOfLines = 1;
     _titleLabel.adjustsFontSizeToFitWidth = YES;
-    _titleLabel.minimumScaleFactor = 0.8;
+    _titleLabel.minimumScaleFactor = 0.78;
     [_surfaceView addSubview:_titleLabel];
 
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _subtitleLabel.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
     _subtitleLabel.numberOfLines = 2;
+    _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisVertical];
     [_surfaceView addSubview:_subtitleLabel];
 
     /*_pillStackView = [[UIStackView alloc] init];
@@ -201,7 +208,32 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _ctaIconView.contentMode = UIViewContentModeScaleAspectFit;
     [_ctaView addSubview:_ctaIconView];
 
+    _contentStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
+        _eyebrowLabel,
+        _titleLabel,
+        _subtitleLabel,
+        _ctaView
+    ]];
+    _contentStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    _contentStackView.axis = UILayoutConstraintAxisVertical;
+    _contentStackView.alignment = UIStackViewAlignmentFill;
+    _contentStackView.distribution = UIStackViewDistributionFill;
+    _contentStackView.spacing = 5.0;
+    [_contentStackView setCustomSpacing:6.0 afterView:_titleLabel];
+    [_contentStackView setCustomSpacing:13.0 afterView:_subtitleLabel];
+    [_surfaceView addSubview:_contentStackView];
+
+    _topBackgroundGlowView.layer.masksToBounds = YES;
+    _topBackgroundGlowView.clipsToBounds = YES;
+
+    _middleBackgroundGlowView.layer.masksToBounds = YES;
+    _middleBackgroundGlowView.clipsToBounds = YES;
+
+    _largeOrbView.layer.masksToBounds = YES;
+    _topBackgroundGlowView.clipsToBounds = YES;
     
+    _topBackgroundGlowView.layer.masksToBounds = YES;
+    _topBackgroundGlowView.clipsToBounds = YES;
     
     _topBackgroundGlowView.layer.cornerRadius = 272.0/2;
     _middleBackgroundGlowView.layer.cornerRadius = 216.0/2;
@@ -257,28 +289,17 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_careAnimationView.widthAnchor constraintEqualToConstant:52.0],
         [_careAnimationView.heightAnchor constraintEqualToConstant:52.0],
 
-        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
-        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
-        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:5.0],
-
-        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
+        [_contentStackView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
+        [_contentStackView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:20.0],
+        [_contentStackView.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-14.0],
+        [_contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
 
        // [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
        // [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
         //[_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
        // [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
 
-        [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        //[_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
-        [_ctaView.heightAnchor constraintEqualToConstant:42.0],
-        [_ctaView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:14.0],
+        [_ctaView.heightAnchor constraintEqualToConstant:40.0],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
@@ -314,8 +335,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
     view.userInteractionEnabled = NO;
     view.clipsToBounds = NO;
     view.layer.cornerRadius = radius;
-    view.layer.shadowRadius = 8.0;
-    view.layer.shadowOpacity = 0.06;
+    view.layer.shadowRadius = 4.0;
+    view.layer.shadowOpacity = 0.02;
     view.layer.shadowOffset = CGSizeZero;
     return view;
 }
@@ -355,8 +376,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _smallOrbView.layer.cornerRadius = CGRectGetHeight(_smallOrbView.bounds) * 0.5;
     _iconPlateView.layer.cornerRadius = CGRectGetHeight(_iconPlateView.bounds) * 0.5;
 
-    self.contentView.layer.shadowRadius = 12.0;
-    self.contentView.layer.shadowPath =
+     self.contentView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:_surfaceView.bounds
                                    cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
 
@@ -425,9 +445,9 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _surfaceView.backgroundColor = surfaceColor;
     [_surfaceView pp_setBorderColor:borderColor];
-    self.contentView.layer.shadowOpacity = isDark ? 0.0 : 0.08;
-    self.contentView.layer.shadowRadius = 24.0;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    self.contentView.layer.shadowOpacity = isDark ? 0.0 : 0.04;
+    self.contentView.layer.shadowRadius = 14.0;
+    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
 
     _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
@@ -609,6 +629,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     _surfaceView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    _contentStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     _eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;

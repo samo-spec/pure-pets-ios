@@ -267,7 +267,7 @@
 #define AppSurfSecColor                [[UIColor colorNamed:@"AppSurfSecColor"] colorWithAlphaComponent:1.0]
 
 #define AppCardColor                [[UIColor colorNamed:@"AppCardColor"] colorWithAlphaComponent:1.0]
-
+#define bageColor                [[UIColor colorNamed:@"AppBageColor"] colorWithAlphaComponent:1.0]
 #pragma mark - Chat Base
 
 /// Main chat background (table view)

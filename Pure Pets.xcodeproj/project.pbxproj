@@ -631,7 +631,7 @@
 		F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA434E2CCA4AC800943394 /* UIView+XIB.m */; };
 		F2BA97562DCE7C66007DE482 /* AddNewAd.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BA97552DCE7C65007DE482 /* AddNewAd.m */; };
 		F2BC30D62E43E385003F603D /* UIScreen.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC30D52E43E385003F603D /* UIScreen.m */; };
-		F2BC865C2FA6667E0065BF67 /* PPPremuimSearchbarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC865B2FA6667E0065BF67 /* PPPremuimSearchbarCell.m */; };
+		F2BC865C2FA6667E0065BF67 /* PPHomeSearchBarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC865B2FA6667E0065BF67 /* PPHomeSearchBarCell.m */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
 		F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */; };
 		F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C158342E2100D100EFDC91 /* EmptyStateView.m */; };
@@ -1993,8 +1993,8 @@
 		F2BA97552DCE7C65007DE482 /* AddNewAd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AddNewAd.m; sourceTree = "<group>"; };
 		F2BC30D42E43E37A003F603D /* UIScreen.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = UIScreen.h; sourceTree = "<group>"; };
 		F2BC30D52E43E385003F603D /* UIScreen.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = UIScreen.m; sourceTree = "<group>"; };
-		F2BC865A2FA6667E0065BF67 /* PPPremuimSearchbarCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPPremuimSearchbarCell.h; sourceTree = "<group>"; };
-		F2BC865B2FA6667E0065BF67 /* PPPremuimSearchbarCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPremuimSearchbarCell.m; sourceTree = "<group>"; };
+		F2BC865A2FA6667E0065BF67 /* PPHomeSearchBarCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeSearchBarCell.h; sourceTree = "<group>"; };
+		F2BC865B2FA6667E0065BF67 /* PPHomeSearchBarCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeSearchBarCell.m; sourceTree = "<group>"; };
 		F2C085532F935AF8001C27DA /* PPAuditLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuditLogger.h; sourceTree = "<group>"; };
 		F2C085542F935AF8001C27DA /* PPAuditLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuditLogger.m; sourceTree = "<group>"; };
 		F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPremuimChekoutView.swift; sourceTree = "<group>"; };
@@ -2310,8 +2310,8 @@
 		F202A0722EFF15B30048D4C2 /* HomeCells */ = {
 			isa = PBXGroup;
 			children = (
-				F2BC865A2FA6667E0065BF67 /* PPPremuimSearchbarCell.h */,
-				F2BC865B2FA6667E0065BF67 /* PPPremuimSearchbarCell.m */,
+				F2BC865A2FA6667E0065BF67 /* PPHomeSearchBarCell.h */,
+				F2BC865B2FA6667E0065BF67 /* PPHomeSearchBarCell.m */,
 				F28476842FA240AA009AE4CE /* PPHomePremiumCareCell.h */,
 				F28476852FA240B8009AE4CE /* PPHomePremiumCareCell.m */,
 				F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */,
@@ -5867,7 +5867,7 @@
 				F27FAE9F2D2F363200EA6B56 /* JPGCDExtensions.m in Sources */,
 				F27FAEA02D2F363200EA6B56 /* JPVideoPlayerControlViews.m in Sources */,
 				F2E1345F2DDC6F40006770E5 /* AddNewAccessory.m in Sources */,
-				F2BC865C2FA6667E0065BF67 /* PPPremuimSearchbarCell.m in Sources */,
+				F2BC865C2FA6667E0065BF67 /* PPHomeSearchBarCell.m in Sources */,
 				F2736EBA2E83948900902E1C /* XLFormRowFullWidthTextFieldCell.m in Sources */,
 				F27314982F31CE9300FFA0B8 /* CartManager.m in Sources */,
 				F2CALC003F40A00000000003 /* PPCartCalculator.m in Sources */,

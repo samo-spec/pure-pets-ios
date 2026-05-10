@@ -46,6 +46,418 @@ static const CGFloat PPNovaTableBottomInset = 22.0;
 static NSString * const PPNovaCallableRegion = @"us-central1";
 static NSString * const PPNovaCallableName = @"geminiProxy";
 static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
+static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryEntryCell";
+
+#pragma mark - Nova History Sheet
+
+@interface PPNovaHistoryEntryCell : UITableViewCell
+
+- (void)configureWithMessage:(NSDictionary *)message;
+
+@end
+
+@interface PPNovaHistoryEntryCell ()
+
+@property (nonatomic, strong) UIVisualEffectView *cardView;
+@property (nonatomic, strong) UIView *roleDotView;
+@property (nonatomic, strong) UILabel *roleLabel;
+@property (nonatomic, strong) UILabel *timeLabel;
+@property (nonatomic, strong) UILabel *messageLabel;
+
+@end
+
+@implementation PPNovaHistoryEntryCell
+
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
+    if (self) {
+        [self pp_setupHistoryCell];
+    }
+    return self;
+}
+
+- (void)prepareForReuse {
+    [super prepareForReuse];
+    self.contentView.alpha = 1.0;
+    self.contentView.transform = CGAffineTransformIdentity;
+    self.messageLabel.text = nil;
+    self.roleLabel.text = nil;
+    self.timeLabel.text = nil;
+}
+
+- (void)pp_setupHistoryCell {
+    self.selectionStyle = UITableViewCellSelectionStyleNone;
+    self.backgroundColor = UIColor.clearColor;
+    self.contentView.backgroundColor = UIColor.clearColor;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIBlurEffectStyle blurStyle = UIBlurEffectStyleRegular;
+    if (@available(iOS 13.0, *)) {
+        blurStyle = UIBlurEffectStyleSystemThinMaterial;
+    }
+
+    UIVisualEffectView *cardView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
+    cardView.translatesAutoresizingMaskIntoConstraints = NO;
+    cardView.clipsToBounds = YES;
+    cardView.layer.cornerRadius = 18.0;
+    cardView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    cardView.layer.borderColor = [[UIColor separatorColor] colorWithAlphaComponent:0.12].CGColor;
+    if (@available(iOS 13.0, *)) {
+        cardView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [self.contentView addSubview:cardView];
+    self.cardView = cardView;
+
+    UIView *content = cardView.contentView;
+    content.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+
+    UIView *roleDot = [[UIView alloc] init];
+    roleDot.translatesAutoresizingMaskIntoConstraints = NO;
+    roleDot.layer.cornerRadius = 4.0;
+    roleDot.layer.shadowOpacity = 0.18;
+    roleDot.layer.shadowRadius = 5.0;
+    roleDot.layer.shadowOffset = CGSizeZero;
+    [content addSubview:roleDot];
+    self.roleDotView = roleDot;
+
+    UILabel *roleLabel = [[UILabel alloc] init];
+    roleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    roleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+    roleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    roleLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [content addSubview:roleLabel];
+    self.roleLabel = roleLabel;
+
+    UILabel *timeLabel = [[UILabel alloc] init];
+    timeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    timeLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    timeLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.64];
+    timeLabel.textAlignment = Language.isRTL ? NSTextAlignmentLeft : NSTextAlignmentRight;
+    [content addSubview:timeLabel];
+    self.timeLabel = timeLabel;
+
+    UILabel *messageLabel = [[UILabel alloc] init];
+    messageLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    messageLabel.font = [GM fontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightRegular];
+    messageLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.90];
+    messageLabel.numberOfLines = 0;
+    messageLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    messageLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [content addSubview:messageLabel];
+    self.messageLabel = messageLabel;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:6.0],
+        [cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
+        [cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
+        [cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-6.0],
+
+        [roleDot.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:16.0],
+        [roleDot.topAnchor constraintEqualToAnchor:content.topAnchor constant:17.0],
+        [roleDot.widthAnchor constraintEqualToConstant:8.0],
+        [roleDot.heightAnchor constraintEqualToConstant:8.0],
+
+        [roleLabel.leadingAnchor constraintEqualToAnchor:roleDot.trailingAnchor constant:8.0],
+        [roleLabel.centerYAnchor constraintEqualToAnchor:roleDot.centerYAnchor],
+        [roleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:timeLabel.leadingAnchor constant:-10.0],
+
+        [timeLabel.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-16.0],
+        [timeLabel.centerYAnchor constraintEqualToAnchor:roleLabel.centerYAnchor],
+
+        [messageLabel.topAnchor constraintEqualToAnchor:roleLabel.bottomAnchor constant:9.0],
+        [messageLabel.leadingAnchor constraintEqualToAnchor:content.leadingAnchor constant:16.0],
+        [messageLabel.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-16.0],
+        [messageLabel.bottomAnchor constraintEqualToAnchor:content.bottomAnchor constant:-16.0]
+    ]];
+}
+
+- (void)configureWithMessage:(NSDictionary *)message {
+    NSString *role = [message[@"role"] isKindOfClass:NSString.class] ? message[@"role"] : @"";
+    BOOL isUser = [role isEqualToString:@"user"];
+
+    UIColor *novaAccent = nil;
+    if (@available(iOS 13.0, *)) {
+        novaAccent = UIColor.systemIndigoColor;
+    } else {
+        novaAccent = [UIColor colorWithRed:0.36 green:0.40 blue:0.84 alpha:1.0];
+    }
+    UIColor *accent = isUser ? (AppPrimaryClr ?: [UIColor colorWithRed:0.96 green:0.55 blue:0.20 alpha:1.0]) : novaAccent;
+
+    self.roleDotView.backgroundColor = accent;
+    self.roleDotView.layer.shadowColor = accent.CGColor;
+    self.roleLabel.text = isUser ? kLang(@"nova_history_role_user") : kLang(@"nova_history_role_nova");
+    self.roleLabel.textColor = accent;
+
+    NSString *text = [message[@"text"] isKindOfClass:NSString.class] ? message[@"text"] : @"";
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    self.messageLabel.text = trimmed.length > 0 ? trimmed : kLang(@"nova_history_empty_message");
+
+    NSNumber *timestamp = [message[@"timestamp"] isKindOfClass:NSNumber.class] ? message[@"timestamp"] : nil;
+    self.timeLabel.text = [self pp_timeTextForTimestamp:timestamp];
+}
+
+- (NSString *)pp_timeTextForTimestamp:(NSNumber *)timestamp {
+    if (!timestamp) {
+        return @"";
+    }
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:timestamp.doubleValue];
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    formatter.locale = NSLocale.currentLocale;
+    formatter.timeStyle = NSDateFormatterShortStyle;
+    formatter.dateStyle = [[NSCalendar currentCalendar] isDateInToday:date] ? NSDateFormatterNoStyle : NSDateFormatterShortStyle;
+    return [formatter stringFromDate:date] ?: @"";
+}
+
+@end
+
+@interface PPNovaHistorySheetViewController : UIViewController <UITableViewDataSource, UITableViewDelegate>
+
+- (instancetype)initWithMessages:(NSArray<NSDictionary *> *)messages;
+
+@end
+
+@interface PPNovaHistorySheetViewController ()
+
+@property (nonatomic, copy) NSArray<NSDictionary *> *historyMessages;
+@property (nonatomic, strong) UIView *headerView;
+@property (nonatomic, strong) UILabel *titleLabel;
+@property (nonatomic, strong) UILabel *subtitleLabel;
+@property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIView *emptyStateView;
+@property (nonatomic, assign) BOOL didRunEntranceAnimation;
+
+@end
+
+@implementation PPNovaHistorySheetViewController
+
+- (instancetype)initWithMessages:(NSArray<NSDictionary *> *)messages {
+    self = [super initWithNibName:nil bundle:nil];
+    if (self) {
+        NSArray<NSDictionary *> *source = [messages isKindOfClass:NSArray.class] ? messages : @[];
+        if (source.count > 80) {
+            source = [source subarrayWithRange:NSMakeRange(source.count - 80, 80)];
+        }
+        self.historyMessages = [[[source reverseObjectEnumerator] allObjects] copy];
+        self.modalPresentationStyle = UIModalPresentationPageSheet;
+    }
+    return self;
+}
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = AppBackgroundClr ?: UIColor.whiteColor;
+    self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self pp_setupSheetLayout];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self pp_runEntranceAnimationIfNeeded];
+}
+
+- (void)pp_setupSheetLayout {
+    UIView *header = [[UIView alloc] init];
+    header.translatesAutoresizingMaskIntoConstraints = NO;
+    header.backgroundColor = UIColor.clearColor;
+    header.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view addSubview:header];
+    self.headerView = header;
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:PPFontTitle3] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightSemibold];
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.blackColor;
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    titleLabel.text = kLang(@"nova_chat_history");
+    [header addSubview:titleLabel];
+    self.titleLabel = titleLabel;
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.78];
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    subtitleLabel.text = self.historyMessages.count > 0
+        ? [NSString stringWithFormat:kLang(@"nova_chat_history_subtitle_format"), (long)self.historyMessages.count]
+        : kLang(@"nova_no_history");
+    [header addSubview:subtitleLabel];
+    self.subtitleLabel = subtitleLabel;
+
+    UIButton *closeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    closeButton.translatesAutoresizingMaskIntoConstraints = NO;
+    closeButton.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:0.68];
+    closeButton.layer.cornerRadius = 18.0;
+    closeButton.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
+    closeButton.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.20].CGColor;
+    closeButton.backgroundColor = [AppPrimaryTextClr colorWithAlphaComponent:0.05];
+    if (@available(iOS 13.0, *)) {
+        closeButton.layer.cornerCurve = kCACornerCurveContinuous;
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:13.0
+                                                                                          weight:UIImageSymbolWeightSemibold];
+        [closeButton setImage:[UIImage systemImageNamed:@"xmark" withConfiguration:cfg] forState:UIControlStateNormal];
+    } else {
+        [closeButton setTitle:kLang(@"Cancel") forState:UIControlStateNormal];
+    }
+    closeButton.accessibilityLabel = kLang(@"Cancel");
+    [closeButton addTarget:self action:@selector(pp_closeHistorySheet) forControlEvents:UIControlEventTouchUpInside];
+    [header addSubview:closeButton];
+
+    UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
+    tableView.translatesAutoresizingMaskIntoConstraints = NO;
+    tableView.backgroundColor = UIColor.clearColor;
+    tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
+    tableView.rowHeight = UITableViewAutomaticDimension;
+    tableView.estimatedRowHeight = 112.0;
+    tableView.showsVerticalScrollIndicator = NO;
+    tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, 24.0, 0.0);
+    tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    tableView.delegate = self;
+    tableView.dataSource = self;
+    [tableView registerClass:PPNovaHistoryEntryCell.class forCellReuseIdentifier:PPNovaHistoryEntryCellReuseIdentifier];
+    [self.view addSubview:tableView];
+    self.tableView = tableView;
+
+    UIView *emptyView = [[UIView alloc] init];
+    emptyView.translatesAutoresizingMaskIntoConstraints = NO;
+    emptyView.hidden = self.historyMessages.count > 0;
+    emptyView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view addSubview:emptyView];
+    self.emptyStateView = emptyView;
+
+    UILabel *emptyTitle = [[UILabel alloc] init];
+    emptyTitle.translatesAutoresizingMaskIntoConstraints = NO;
+    emptyTitle.font = [GM boldFontWithSize:PPFontHeadline] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    emptyTitle.textColor = AppPrimaryTextClr ?: UIColor.blackColor;
+    emptyTitle.textAlignment = NSTextAlignmentCenter;
+    emptyTitle.text = kLang(@"nova_history_empty_title");
+    [emptyView addSubview:emptyTitle];
+
+    UILabel *emptyCopy = [[UILabel alloc] init];
+    emptyCopy.translatesAutoresizingMaskIntoConstraints = NO;
+    emptyCopy.font = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightRegular];
+    emptyCopy.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.78];
+    emptyCopy.textAlignment = NSTextAlignmentCenter;
+    emptyCopy.numberOfLines = 0;
+    emptyCopy.text = kLang(@"nova_history_empty_subtitle");
+    [emptyView addSubview:emptyCopy];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [header.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:18.0],
+        [header.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [header.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+
+        [closeButton.topAnchor constraintEqualToAnchor:header.topAnchor],
+        [closeButton.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-18.0],
+        [closeButton.widthAnchor constraintEqualToConstant:36.0],
+        [closeButton.heightAnchor constraintEqualToConstant:36.0],
+
+        [titleLabel.topAnchor constraintEqualToAnchor:header.topAnchor],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:22.0],
+        [titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:closeButton.leadingAnchor constant:-12.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:closeButton.leadingAnchor constant:-12.0],
+        [subtitleLabel.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
+
+        [tableView.topAnchor constraintEqualToAnchor:header.bottomAnchor constant:16.0],
+        [tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+
+        [emptyView.leadingAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.leadingAnchor constant:18.0],
+        [emptyView.trailingAnchor constraintEqualToAnchor:self.view.layoutMarginsGuide.trailingAnchor constant:-18.0],
+        [emptyView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:20.0],
+
+        [emptyTitle.topAnchor constraintEqualToAnchor:emptyView.topAnchor],
+        [emptyTitle.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor],
+        [emptyTitle.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor],
+
+        [emptyCopy.topAnchor constraintEqualToAnchor:emptyTitle.bottomAnchor constant:8.0],
+        [emptyCopy.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor],
+        [emptyCopy.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor],
+        [emptyCopy.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor]
+    ]];
+}
+
+- (void)pp_closeHistorySheet {
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)pp_runEntranceAnimationIfNeeded {
+    if (self.didRunEntranceAnimation) {
+        return;
+    }
+    self.didRunEntranceAnimation = YES;
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.headerView.alpha = 1.0;
+        self.tableView.alpha = 1.0;
+        self.emptyStateView.alpha = self.emptyStateView.hidden ? 0.0 : 1.0;
+        return;
+    }
+
+    self.headerView.alpha = 0.0;
+    self.headerView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+    self.tableView.alpha = 0.0;
+    self.tableView.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+    self.emptyStateView.alpha = 0.0;
+    self.emptyStateView.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+
+    [UIView animateWithDuration:0.38
+                          delay:0.02
+         usingSpringWithDamping:0.90
+          initialSpringVelocity:0.12
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.headerView.alpha = 1.0;
+        self.headerView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    [UIView animateWithDuration:0.46
+                          delay:0.08
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.12
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.tableView.alpha = 1.0;
+        self.tableView.transform = CGAffineTransformIdentity;
+        self.emptyStateView.alpha = self.emptyStateView.hidden ? 0.0 : 1.0;
+        self.emptyStateView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+
+    NSArray<UITableViewCell *> *visibleCells = self.tableView.visibleCells ?: @[];
+    [visibleCells enumerateObjectsUsingBlock:^(UITableViewCell *cell, NSUInteger idx, __unused BOOL *stop) {
+        cell.contentView.alpha = 0.0;
+        cell.contentView.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+        NSTimeInterval delay = 0.15 + MIN(idx, (NSUInteger)8) * 0.035;
+        [UIView animateWithDuration:0.34
+                              delay:delay
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.12
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            cell.contentView.alpha = 1.0;
+            cell.contentView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+}
+
+#pragma mark - UITableViewDataSource
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
+    return (NSInteger)self.historyMessages.count;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
+    PPNovaHistoryEntryCell *cell = [tableView dequeueReusableCellWithIdentifier:PPNovaHistoryEntryCellReuseIdentifier forIndexPath:indexPath];
+    if (indexPath.row < (NSInteger)self.historyMessages.count) {
+        [cell configureWithMessage:self.historyMessages[(NSUInteger)indexPath.row]];
+    }
+    return cell;
+}
+
+@end
 
 @interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate>
 
@@ -61,10 +473,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 @property (nonatomic, copy) NSArray<UIView *> *novaHeaderMotionDots;
 @property (nonatomic, strong) UIButton *closeButton;
 @property (nonatomic, strong) UIButton *historyButton;
-@property (nonatomic, strong) UIView *novaSuggestionsBar;
-@property (nonatomic, strong) UIScrollView *novaSuggestionsScrollView;
-@property (nonatomic, strong) UIStackView *novaSuggestionsStackView;
-@property (nonatomic, copy) NSArray<UIButton *> *novaSuggestionChipButtons;
 @property (nonatomic, strong) UIView *headerBrandHaloView;
 @property (nonatomic, strong) UIView *headerBrandRingView;
 @property (nonatomic, strong) UIView *headerBrandMarkView;
@@ -83,6 +491,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 @property (nonatomic, strong) NSLayoutConstraint *subtitleLabelCenterXConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subtitleLabelLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subtitleLabelTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *headerNameCollapsedTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *headerSubtitleCollapsedTrailingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *historyButtonLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *historyButtonCollapsedTrailingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *novaHeaderExpandedBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *emptyStateCenterYConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *novaHeaderCollapsedBottomConstraint;
@@ -2330,22 +2742,26 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
     self.smartSuggestionSurfaceView.effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
     self.smartSuggestionSurfaceView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.42],
-                                                                         [surface colorWithAlphaComponent:0.30]);
+                                                                         [surface colorWithAlphaComponent:0.26]);
     self.smartSuggestionSurfaceView.layer.borderColor = [brand colorWithAlphaComponent:0.13].CGColor;
     self.smartSuggestionSurfaceView.layer.shadowColor = brand.CGColor;
-    self.smartSuggestionTitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.72];
+    self.smartSuggestionTitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.74];
 
     [self.smartSuggestionButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
         BOOL primary = idx == 0;
         UIColor *fillColor = primary
             ? [brand colorWithAlphaComponent:0.13]
-            : PPNovaDynamicColor([surface colorWithAlphaComponent:0.46],
+            : PPNovaDynamicColor([surface colorWithAlphaComponent:0.48],
                                  [UIColor.whiteColor colorWithAlphaComponent:0.07]);
         UIColor *strokeColor = primary ? [brand colorWithAlphaComponent:0.18] : [secondaryText colorWithAlphaComponent:0.12];
         UIColor *titleColor = primary ? brand : [primaryText colorWithAlphaComponent:0.84];
 
         button.backgroundColor = fillColor;
         button.layer.borderColor = strokeColor.CGColor;
+        button.layer.shadowColor = primary ? brand.CGColor : UIColor.blackColor.CGColor;
+        button.layer.shadowOpacity = primary ? 0.045 : 0.025;
+        button.layer.shadowRadius = primary ? 10.0 : 6.0;
+        button.layer.shadowOffset = CGSizeMake(0.0, 4.0);
         button.tintColor = titleColor;
         [button setTitleColor:titleColor forState:UIControlStateNormal];
         [button setTitleColor:[titleColor colorWithAlphaComponent:0.72] forState:UIControlStateHighlighted];
@@ -2902,7 +3318,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [contentView addSubview:closeButton];
     self.closeButton = closeButton;
 
-    // History button — leading side of header, opposite close button
+    // History button starts on the leading edge, then joins the trailing action cluster when collapsed.
     UIButton *historyButton = [UIButton buttonWithType:UIButtonTypeSystem];
     historyButton.translatesAutoresizingMaskIntoConstraints = NO;
     if (@available(iOS 13.0, *)) {
@@ -2970,6 +3386,14 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     self.subtitleLabelLeadingConstraint = [subtitleLabel.leadingAnchor constraintEqualToAnchor:nameLabel.leadingAnchor];
     self.subtitleLabelTopConstraint = [subtitleLabel.topAnchor constraintEqualToAnchor:nameLabel.bottomAnchor constant:2.0];
 
+    self.historyButtonLeadingConstraint = [historyButton.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:12.0];
+    self.historyButtonCollapsedTrailingConstraint = [historyButton.trailingAnchor constraintEqualToAnchor:closeButton.leadingAnchor constant:-8.0];
+    self.historyButtonCollapsedTrailingConstraint.active = NO;
+    self.headerNameCollapsedTrailingConstraint = [nameLabel.trailingAnchor constraintLessThanOrEqualToAnchor:historyButton.leadingAnchor constant:-10.0];
+    self.headerNameCollapsedTrailingConstraint.active = NO;
+    self.headerSubtitleCollapsedTrailingConstraint = [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:historyButton.leadingAnchor constant:-10.0];
+    self.headerSubtitleCollapsedTrailingConstraint.active = NO;
+
     [NSLayoutConstraint activateConstraints:@[
         [header.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [header.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -3035,9 +3459,9 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         [closeButton.widthAnchor constraintEqualToConstant:36.0],
         [closeButton.heightAnchor constraintEqualToConstant:36.0],
 
-        // History button: top-leading of header, auto-flips for RTL.
+        // History button: expanded on leading side; collapsed beside trailing close action.
         [historyButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
-        [historyButton.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:12.0],
+        self.historyButtonLeadingConstraint,
         [historyButton.widthAnchor constraintEqualToConstant:36.0],
         [historyButton.heightAnchor constraintEqualToConstant:36.0]
     ]];
@@ -3124,6 +3548,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     if (!self.closeButton.hidden && CGRectContainsPoint(self.closeButton.bounds, point)) {
         return;
     }
+    CGPoint historyPoint = [tap locationInView:self.historyButton];
+    if (!self.historyButton.hidden && CGRectContainsPoint(self.historyButton.bounds, historyPoint)) {
+        return;
+    }
     if (self.novaHeaderCollapsed) {
         [self pp_setNovaHeaderCollapsed:NO animated:YES];
     }
@@ -3140,7 +3568,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     NSTimeInterval duration = (animated && !reduceMotion) ? (collapsed ? 0.32 : 0.46) : 0.0;
-    CGFloat textAlpha = collapsed ? 0.0 : 1.0;
     CGFloat capsuleAlpha = collapsed ? 0.0 : 1.0;
     CGAffineTransform textTransform = collapsed ? CGAffineTransformMakeTranslation(0.0, -8.0) : CGAffineTransformIdentity;
     CGAffineTransform ringTransform = collapsed ? CGAffineTransformMakeScale(0.94, 0.94) : CGAffineTransformIdentity;
@@ -3164,6 +3591,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
         self.subtitleLabelCenterXConstraint.active = !collapsed;
         self.subtitleLabelLeadingConstraint.active = collapsed;
+        self.historyButtonLeadingConstraint.active = !collapsed;
+        self.historyButtonCollapsedTrailingConstraint.active = collapsed;
+        self.headerNameCollapsedTrailingConstraint.active = collapsed;
+        self.headerSubtitleCollapsedTrailingConstraint.active = collapsed;
 
         // Update Alignment
         self.headerNameLabel.textAlignment = collapsed ? NSTextAlignmentNatural : NSTextAlignmentCenter;
@@ -3195,9 +3626,9 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         self.closeButton.alpha = closeAlpha;
         self.closeButton.transform = closeTransform;
 
-        // History button: collapse to leading edge with same effect
-        self.historyButton.alpha = closeAlpha;
-        self.historyButton.transform = closeTransform;
+        // History button: collapse beside the trailing close action so history stays reachable.
+        self.historyButton.alpha = collapsed ? 0.90 : 1.0;
+        self.historyButton.transform = collapsed ? CGAffineTransformMakeScale(0.90, 0.90) : CGAffineTransformIdentity;
 
         [self pp_applyNovaTableInsetsForCurrentHeaderState];
         [self.view layoutIfNeeded];
@@ -3249,14 +3680,26 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 }
 
 - (void)pp_handleNovaHeaderControlPressUp:(UIButton *)sender {
+    CGFloat targetAlpha = 1.0;
+    CGAffineTransform targetTransform = CGAffineTransformIdentity;
+    if (self.novaHeaderCollapsed) {
+        if (sender == self.closeButton) {
+            targetAlpha = 0.45;
+            targetTransform = CGAffineTransformMakeScale(0.82, 0.82);
+        } else if (sender == self.historyButton) {
+            targetAlpha = 0.90;
+            targetTransform = CGAffineTransformMakeScale(0.90, 0.90);
+        }
+    }
+
     [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.18
                           delay:0.0
          usingSpringWithDamping:0.88
           initialSpringVelocity:0.18
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        sender.transform = CGAffineTransformIdentity;
-        sender.alpha = 1.0;
+        sender.transform = targetTransform;
+        sender.alpha = targetAlpha;
     } completion:nil];
 }
 
@@ -3268,27 +3711,35 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
 - (void)pp_handleNovaHistoryTapped:(UIButton *)sender {
     [self pp_handleNovaHeaderControlPressUp:sender];
-    // Load local chat memory and present as history sheet
-    PPNovaLocalChatMemory *memory = [[PPNovaLocalChatMemory alloc] init];
+    PPNovaLocalChatMemory *memory = [PPNovaLocalChatMemory sharedMemory];
     NSArray<NSDictionary *> *history = [memory allMessages] ?: @[];
-    if (history.count == 0) {
-        [PPHUD showInfo:kLang(@"nova_no_history")];
-        return;
+
+    PPNovaHistorySheetViewController *sheetVC = [[PPNovaHistorySheetViewController alloc] initWithMessages:history];
+    sheetVC.modalPresentationStyle = UIModalPresentationPageSheet;
+
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet = sheetVC.sheetPresentationController;
+        if (sheet) {
+            if (@available(iOS 16.0, *)) {
+                UISheetPresentationControllerDetentIdentifier compactIdentifier = @"pp.nova.history.compact";
+                UISheetPresentationControllerDetent *compact =
+                [UISheetPresentationControllerDetent customDetentWithIdentifier:compactIdentifier
+                                                                        resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                    return MIN(context.maximumDetentValue, MAX(360.0, context.maximumDetentValue * 0.56));
+                }];
+                sheet.detents = @[compact, UISheetPresentationControllerDetent.largeDetent];
+                sheet.selectedDetentIdentifier = compactIdentifier;
+            } else {
+                sheet.detents = @[UISheetPresentationControllerDetent.mediumDetent,
+                                  UISheetPresentationControllerDetent.largeDetent];
+            }
+            sheet.prefersGrabberVisible = YES;
+            sheet.preferredCornerRadius = 34.0;
+            sheet.prefersScrollingExpandsWhenScrolledToEdge = YES;
+        }
     }
-    // Present a simple alert with recent conversation snippets
-    NSMutableString *snippets = [NSMutableString string];
-    NSArray<NSDictionary *> *recent = history.count > 20 ? [history subarrayWithRange:NSMakeRange(history.count - 20, 20)] : history;
-    for (NSDictionary *msg in recent) {
-        NSString *role = [msg[@"role"] isEqualToString:@"user"] ? @"👤" : @"✨";
-        NSString *text = msg[@"text"] ?: @"";
-        if (text.length > 80) text = [[text substringToIndex:80] stringByAppendingString:@"…"];
-        [snippets appendFormat:@"%@ %@\n\n", role, text];
-    }
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"nova_chat_history")
-                                                                   message:snippets.length > 0 ? snippets : kLang(@"nova_no_history")
-                                                            preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"OK") style:UIAlertActionStyleDefault handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+
+    [self presentViewController:sheetVC animated:YES completion:nil];
 }
 
 - (void)pp_startHeaderLiveAnimations {
@@ -3578,129 +4029,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         self.inputBarBottomConstraint
     ]];
 
-    // ---- Suggestion Tags Bar (above input) ----
-    [self setupNovaSuggestionsBar];
-}
-
-- (void)setupNovaSuggestionsBar {
-    UIVisualEffectView *bar = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
-    bar.translatesAutoresizingMaskIntoConstraints = NO;
-    bar.clipsToBounds = YES;
-    bar.layer.cornerRadius = 18.0;
-    if (@available(iOS 13.0, *)) {
-        bar.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    bar.alpha = 0.0;
-    bar.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    [self.view addSubview:bar];
-    self.novaSuggestionsBar = bar;
-
-    UIScrollView *scrollView = [[UIScrollView alloc] init];
-    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    scrollView.showsHorizontalScrollIndicator = NO;
-    scrollView.alwaysBounceHorizontal = YES;
-    scrollView.alwaysBounceVertical = NO;
-    scrollView.directionalLockEnabled = YES;
-    scrollView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [bar.contentView addSubview:scrollView];
-    self.novaSuggestionsScrollView = scrollView;
-
-    UIStackView *stack = [[UIStackView alloc] init];
-    stack.translatesAutoresizingMaskIntoConstraints = NO;
-    stack.axis = UILayoutConstraintAxisHorizontal;
-    stack.alignment = UIStackViewAlignmentCenter;
-    stack.distribution = UIStackViewDistributionFill;
-    stack.spacing = 8.0;
-    stack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [scrollView addSubview:stack];
-    self.novaSuggestionsStackView = stack;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [bar.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-8.0],
-        [bar.leadingAnchor constraintEqualToAnchor:self.inputbar.leadingAnchor],
-        [bar.trailingAnchor constraintEqualToAnchor:self.inputbar.trailingAnchor],
-        [bar.heightAnchor constraintEqualToConstant:40.0],
-
-        [scrollView.topAnchor constraintEqualToAnchor:bar.contentView.topAnchor constant:4.0],
-        [scrollView.leadingAnchor constraintEqualToAnchor:bar.contentView.leadingAnchor constant:8.0],
-        [scrollView.trailingAnchor constraintEqualToAnchor:bar.contentView.trailingAnchor constant:-8.0],
-        [scrollView.bottomAnchor constraintEqualToAnchor:bar.contentView.bottomAnchor constant:-4.0],
-
-        [stack.topAnchor constraintEqualToAnchor:scrollView.topAnchor],
-        [stack.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor],
-        [stack.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor],
-        [stack.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor],
-        [stack.heightAnchor constraintEqualToAnchor:scrollView.heightAnchor],
-    ]];
-
-    [self pp_populateNovaSuggestionChips];
-}
-
-- (void)pp_populateNovaSuggestionChips {
-    for (UIButton *btn in self.novaSuggestionChipButtons) {
-        [btn removeFromSuperview];
-    }
-
-    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
-    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
-    [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, __unused BOOL *stop) {
-        UIButton *chip = [UIButton buttonWithType:UIButtonTypeSystem];
-        chip.translatesAutoresizingMaskIntoConstraints = NO;
-        
-        [chip setTitle:kLang(spec[@"titleKey"]) forState:UIControlStateNormal];
-        chip.titleLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
-        [chip setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
-        chip.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
-        chip.layer.cornerRadius = 13.0;
-        if (@available(iOS 13.0, *)) {
-            chip.layer.cornerCurve = kCACornerCurveContinuous;
-        }
-        chip.contentEdgeInsets = UIEdgeInsetsMake(6.0, 14.0, 6.0, 14.0);
-        chip.tag = idx;
-        [chip addTarget:self action:@selector(pp_handleNovaSuggestionChipTap:) forControlEvents:UIControlEventTouchUpInside];
-        [self.novaSuggestionsStackView addArrangedSubview:chip];
-        [buttons addObject:chip];
-    }];
-    self.novaSuggestionChipButtons = buttons.copy;
-}
-
-- (void)pp_handleNovaSuggestionChipTap:(UIButton *)sender {
-    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
-    if (sender.tag < (NSInteger)suggestions.count) {
-        NSString *promptKey = suggestions[sender.tag][@"promptKey"];
-        NSString *text = kLang(promptKey);
-        if (text.length > 0) {
-            [self pp_hideNovaSuggestionsBar];
-            [self pp_handleNovaSubmittedText:text];
-        }
-    }
-}
- 
-
-- (void)pp_revealNovaSuggestionsBar {
-    if (!self.novaSuggestionsBar || self.novaSuggestionsBar.alpha > 0.01) return;
-
-    [UIView animateWithDuration:0.28
-                          delay:0.0
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.14
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.novaSuggestionsBar.alpha = 1.0;
-        self.novaSuggestionsBar.transform = CGAffineTransformIdentity;
-    } completion:nil];
-}
-
-- (void)pp_hideNovaSuggestionsBar {
-    if (!self.novaSuggestionsBar || self.novaSuggestionsBar.alpha < 0.01) return;
-
-    [UIView animateWithDuration:0.20
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.novaSuggestionsBar.alpha = 0.0;
-        self.novaSuggestionsBar.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
-    } completion:nil];
 }
 
 - (void)setupTypingIndicator {
@@ -3778,7 +4106,15 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         @{@"titleKey": @"nova_smart_suggestion_medicine",
           @"promptKey": @"nova_smart_suggestion_medicine_prompt"},
         @{@"titleKey": @"nova_smart_suggestion_care",
-          @"promptKey": @"nova_smart_suggestion_care_prompt"}
+          @"promptKey": @"nova_smart_suggestion_care_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_dog_toys",
+          @"promptKey": @"nova_smart_suggestion_dog_toys_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_cat_litter",
+          @"promptKey": @"nova_smart_suggestion_cat_litter_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_fish_setup",
+          @"promptKey": @"nova_smart_suggestion_fish_setup_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_live_pets",
+          @"promptKey": @"nova_smart_suggestion_live_pets_prompt"}
     ];
 }
 
@@ -3787,9 +4123,9 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.tag = (NSInteger)index;
     button.clipsToBounds = YES;
-    button.layer.cornerRadius = 19.0;
+    button.layer.cornerRadius = 18.0;
     button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 15.0, 0.0, 15.0);
+    button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 14.0, 0.0, 14.0);
     button.titleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
     button.titleLabel.numberOfLines = 1;
     button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
@@ -3799,10 +4135,16 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionTap:) forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressCancel:) forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+    }
 
+    NSLayoutConstraint *maxWidth = [button.widthAnchor constraintLessThanOrEqualToConstant:220.0];
+    maxWidth.priority = 999.0;
     [NSLayoutConstraint activateConstraints:@[
-        [button.heightAnchor constraintEqualToConstant:38.0],
-        [button.widthAnchor constraintGreaterThanOrEqualToConstant:128.0]
+        [button.heightAnchor constraintEqualToConstant:36.0],
+        [button.widthAnchor constraintGreaterThanOrEqualToConstant:112.0],
+        maxWidth
     ]];
     return button;
 }
@@ -3858,7 +4200,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     suggestionView.layer.shadowRadius = 18.0;
     suggestionView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     suggestionView.alpha = 0.0;
-    suggestionView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+    suggestionView.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
     suggestionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     suggestionView.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
@@ -3903,6 +4245,10 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }];
     self.smartSuggestionButtons = buttons.copy;
 
+    NSLayoutConstraint *suggestionWidthConstraint = [suggestionView.widthAnchor constraintEqualToAnchor:emptyView.widthAnchor];
+    suggestionWidthConstraint.priority = 999.0;
+    NSLayoutConstraint *suggestionMaxWidthConstraint = [suggestionView.widthAnchor constraintLessThanOrEqualToConstant:540.0];
+
     self.emptyStateCenterYConstraint = [emptyView.centerYAnchor constraintEqualToAnchor:self.view.centerYAnchor constant:8.0];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -3932,7 +4278,8 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         [suggestionView.centerXAnchor constraintEqualToAnchor:emptyView.centerXAnchor],
         [suggestionView.leadingAnchor constraintGreaterThanOrEqualToAnchor:emptyView.leadingAnchor],
         [suggestionView.trailingAnchor constraintLessThanOrEqualToAnchor:emptyView.trailingAnchor],
-        [suggestionView.widthAnchor constraintLessThanOrEqualToConstant:540.0],
+        suggestionWidthConstraint,
+        suggestionMaxWidthConstraint,
         [suggestionView.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor],
 
         [suggestionTitleLabel.topAnchor constraintEqualToAnchor:suggestionView.contentView.topAnchor constant:12.0],
@@ -3943,7 +4290,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         [suggestionScrollView.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor constant:10.0],
         [suggestionScrollView.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor constant:-10.0],
         [suggestionScrollView.bottomAnchor constraintEqualToAnchor:suggestionView.contentView.bottomAnchor constant:-10.0],
-        [suggestionScrollView.heightAnchor constraintEqualToConstant:38.0],
+        [suggestionScrollView.heightAnchor constraintEqualToConstant:36.0],
 
         [suggestionStack.topAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.topAnchor],
         [suggestionStack.leadingAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.leadingAnchor],
@@ -3968,15 +4315,73 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
         changes();
         self.emptyStateView.hidden = !shouldShow;
+        self.smartSuggestionSurfaceView.alpha = shouldShow ? 1.0 : 0.0;
+        self.smartSuggestionSurfaceView.transform = CGAffineTransformIdentity;
+        for (UIButton *button in self.smartSuggestionButtons) {
+            button.alpha = shouldShow ? 1.0 : 0.0;
+            button.transform = CGAffineTransformIdentity;
+            button.userInteractionEnabled = shouldShow;
+        }
         return;
     }
 
     if (shouldShow) {
         self.emptyStateView.hidden = NO;
+        self.smartSuggestionSurfaceView.alpha = 0.0;
+        self.smartSuggestionSurfaceView.transform = CGAffineTransformMakeTranslation(0.0, 12.0);
+        for (UIButton *button in self.smartSuggestionButtons) {
+            button.alpha = 0.0;
+            button.transform = CGAffineTransformMakeTranslation(Language.isRTL ? -8.0 : 8.0, 0.0);
+            button.userInteractionEnabled = YES;
+        }
     }
-    [UIView animateWithDuration:0.24 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut animations:changes completion:^(__unused BOOL finished) {
+
+    [UIView animateWithDuration:0.30
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.24
+                        options:UIViewAnimationOptionCurveEaseOut
+                     animations:^{
+        changes();
+    } completion:^(__unused BOOL finished) {
         self.emptyStateView.hidden = !shouldShow;
     }];
+
+    if (shouldShow) {
+        [UIView animateWithDuration:0.38
+                              delay:0.12
+             usingSpringWithDamping:0.82
+              initialSpringVelocity:0.32
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.smartSuggestionSurfaceView.alpha = 1.0;
+            self.smartSuggestionSurfaceView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+
+        [self.smartSuggestionButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
+            [UIView animateWithDuration:0.30
+                                  delay:0.18 + MIN(idx, (NSUInteger)8) * 0.035
+                 usingSpringWithDamping:0.88
+                  initialSpringVelocity:0.16
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                button.alpha = 1.0;
+                button.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }];
+    } else {
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn
+                         animations:^{
+            self.smartSuggestionSurfaceView.alpha = 0.0;
+            self.smartSuggestionSurfaceView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
+            for (UIButton *button in self.smartSuggestionButtons) {
+                button.alpha = 0.0;
+                button.transform = CGAffineTransformMakeTranslation(Language.isRTL ? -6.0 : 6.0, 0.0);
+            }
+        } completion:nil];
+    }
 }
 
 - (BOOL)pp_hasUserMessageInCurrentNovaSession {
@@ -3986,52 +4391,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         }
     }
     return NO;
-}
-
-- (void)pp_revealNovaSmartSuggestionsIfNeeded {
-    if (!self.smartSuggestionSurfaceView || [self pp_hasUserMessageInCurrentNovaSession]) {
-        return;
-    }
-
-    NSArray<UIButton *> *buttons = self.smartSuggestionButtons ?: @[];
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.smartSuggestionSurfaceView.alpha = 1.0;
-        self.smartSuggestionSurfaceView.transform = CGAffineTransformIdentity;
-        for (UIButton *button in buttons) {
-            button.alpha = 1.0;
-            button.transform = CGAffineTransformIdentity;
-        }
-        return;
-    }
-
-    self.smartSuggestionSurfaceView.alpha = 0.0;
-    self.smartSuggestionSurfaceView.transform = CGAffineTransformMakeTranslation(0.0, 10.0);
-    for (UIButton *button in buttons) {
-        button.alpha = 0.0;
-        button.transform = CGAffineTransformMakeTranslation(Language.isRTL ? -8.0 : 8.0, 0.0);
-    }
-
-    [UIView animateWithDuration:0.38
-                          delay:0.20
-         usingSpringWithDamping:0.92
-          initialSpringVelocity:0.16
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.smartSuggestionSurfaceView.alpha = 1.0;
-        self.smartSuggestionSurfaceView.transform = CGAffineTransformIdentity;
-    } completion:nil];
-
-    [buttons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
-        [UIView animateWithDuration:0.30
-                              delay:0.28 + (idx * 0.045)
-             usingSpringWithDamping:0.86
-              initialSpringVelocity:0.20
-                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
-                         animations:^{
-            button.alpha = 1.0;
-            button.transform = CGAffineTransformIdentity;
-        } completion:nil];
-    }];
 }
 
 - (void)pp_handleNovaSmartSuggestionPressDown:(UIButton *)sender {
@@ -4063,6 +4422,9 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     }
 
     NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    if (suggestions.count == 0) {
+        return;
+    }
     if (sender.tag < 0 || sender.tag >= (NSInteger)suggestions.count) {
         return;
     }
@@ -4083,7 +4445,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        sender.transform = CGAffineTransformMakeScale(0.965, 0.965);
+        sender.transform = CGAffineTransformMakeScale(0.975, 0.975);
         sender.alpha = 0.84;
     } completion:^(__unused BOOL finished) {
         sender.transform = CGAffineTransformIdentity;
@@ -4443,7 +4805,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
 - (void)novaInputBarDidBeginEditing:(PPNovaFloatingInputBarView *)bar {
     [self pp_setNovaHeaderCollapsed:YES animated:YES];
-    [self pp_revealNovaSuggestionsBar];
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeText:(NSString *)text {
@@ -4454,7 +4815,6 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didSendText:(NSString *)text {
-    [self pp_hideNovaSuggestionsBar];
     [self pp_handleNovaSubmittedText:text];
 }
 
