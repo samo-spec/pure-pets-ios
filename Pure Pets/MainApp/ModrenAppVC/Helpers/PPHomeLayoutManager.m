@@ -45,7 +45,6 @@
                 @(PPHomeSectionCurrentOrders),
                 @(PPHomeSectionPremiumSearch),
                 @(PPHomeSectionQuickActions),
-                @(PPHomeSectionPremiumCare),
                 @(PPHomeSectionMainKinds),
                 @(PPHomeSectionCarousel),
                 @(PPHomeSectionSuggestions),
@@ -86,7 +85,7 @@
                 return [PPHomeFunc heroSectionForWidth:availableWidth];
 
             case PPHomeSectionPremiumSearch:
-                return [PPHomeFunc premiumSearchSectionForWidth:availableWidth];
+                return [PPHomeFunc premiumCareSectionForWidth:availableWidth];
 
             case PPHomeSectionQuickActions:
                 return [PPHomeFunc quickActionsSectionForWidth:availableWidth];

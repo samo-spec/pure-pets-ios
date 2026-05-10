@@ -37,7 +37,6 @@
 #import "PPHomeHeroCell.h"
 #import "PPModerHomeCell.h"
 #import "PPModernHomeActionCell.h"
-#import "PPHomeSearchBarCell.h"
 #import "PPHomeModels.h"
 #import "PPHUD.h"
 #import "PPCommerceFeedbackManager.h"
@@ -1789,7 +1788,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         return;
     }
 
-    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
+    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumSearch];
+    if (sectionIndex == NSNotFound) {
+        sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
+    }
     if (sectionIndex == NSNotFound || !self.collectionView) {
         return;
     }
@@ -2119,7 +2121,6 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionQuickActions),
-        @(PPHomeSectionPremiumCare),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionSuggestions),
@@ -2177,6 +2178,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         sections = [dedupedSections.array mutableCopy];
     }
 
+    if ([sections containsObject:@(PPHomeSectionPremiumSearch)] &&
+        [sections containsObject:@(PPHomeSectionPremiumCare)]) {
+        [sections removeObject:@(PPHomeSectionPremiumCare)];
+    }
+
     [snapshot appendSectionsWithIdentifiers:sections];
 
     void (^safeAppend)(NSArray *, NSNumber *) = ^(NSArray *items, NSNumber *section) {
@@ -2189,9 +2195,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     PPHomeItem *heroItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypeHero payload:@"hero-card"];
     safeAppend(@[heroItem], @(PPHomeSectionHero));
 
-    // ✅ Premium Search
-    PPHomeItem *premiumSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumSearch payload:@"premium-search-bar"];
-    safeAppend(@[premiumSearchItem], @(PPHomeSectionPremiumSearch));
+    // ✅ Premium care now owns the former Premium Search home slot.
+    PPHomeItem *premiumCareSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
+    safeAppend(@[premiumCareSearchItem], @(PPHomeSectionPremiumSearch));
 
     // ✅ Quick Actions
     NSMutableArray<PPHomeItem *> *quickActions = [NSMutableArray array];
@@ -2238,8 +2244,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     safeAppend(@[petProfileItem], @(PPHomeSectionPetProfile));
 
     // ✅ Premium Care
-    PPHomeItem *premiumCareItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
-    safeAppend(@[premiumCareItem], @(PPHomeSectionPremiumCare));
+    if (![sections containsObject:@(PPHomeSectionPremiumSearch)]) {
+        PPHomeItem *premiumCareItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
+        safeAppend(@[premiumCareItem], @(PPHomeSectionPremiumCare));
+    }
 
     // ✅ Adopt
     PPHomeItem *adoptItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypeAdopt payload:@"adopt"];
@@ -2333,6 +2341,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self refreshHeroSectionAppearance];
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAdopt)
     ]];
@@ -2390,6 +2399,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAdopt)
     ]];
@@ -2498,6 +2508,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     NSArray<NSNumber *> *themeSections = @[
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
@@ -2821,6 +2832,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if (section == PPHomeSectionHero ||
         section == PPHomeSectionCarousel ||
         section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         [parts addObject:[NSString stringWithFormat:@"static:%ld", (long)section]];
@@ -3121,6 +3133,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         }
 
         if (section == PPHomeSectionPetProfile ||
+            section == PPHomeSectionPremiumSearch ||
             section == PPHomeSectionPremiumCare ||
             section == PPHomeSectionAdopt) {
             [self.collectionView setNeedsLayout];
@@ -3196,6 +3209,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         section == PPHomeSectionAdsNearBy ||
         section == PPHomeSectionCurrentOrders ||
         section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt ||
         section == PPHomeSectionAccessories ||
@@ -3214,6 +3228,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     if (section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         [self.collectionView setNeedsLayout];
@@ -5969,13 +5984,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
     [self.collectionView registerClass:PPModernHomeActionCell.class
             forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
-    [self.collectionView registerClass:PPHomeSearchBarCell.class
-            forCellWithReuseIdentifier:PPHomeSearchBarCell.reuseIdentifier];
-    [self.collectionView registerClass:UICollectionViewCell.class
-            forCellWithReuseIdentifier:@"PPHomePremiumSearchSpacerCell"];
-    [self.collectionView registerClass:PPHomeSearchBarCell.class
-            forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
-                   withReuseIdentifier:PPHomeSearchBarCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
@@ -6112,17 +6120,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return cell;
         }
 
-        if (section == PPHomeSectionPremiumSearch) {
-            UICollectionViewCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomePremiumSearchSpacerCell"
-                                                          forIndexPath:indexPath];
-            cell.hidden = YES;
-            cell.contentView.hidden = YES;
-            cell.backgroundColor = UIColor.clearColor;
-            cell.contentView.backgroundColor = UIColor.clearColor;
-            return cell;
-        }
-
         if (section == PPHomeSectionCurrentOrders) {
             PPHomeOrderStatusCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeOrderStatusCell.reuseIdentifier
@@ -6184,7 +6181,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return cell;
         }
 
-        if (section == PPHomeSectionPremiumCare) {
+        if (section == PPHomeSectionPremiumSearch ||
+            section == PPHomeSectionPremiumCare) {
             PPHomePremiumCareCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
                                                           forIndexPath:indexPath];
@@ -6584,23 +6582,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         if (indexPath.section >= (NSInteger)sectionIDs.count) return nil;
         NSNumber *sectionID = sectionIDs[indexPath.section];
         PPHomeSection section = (PPHomeSection)sectionID.integerValue;
-
-        if (section == PPHomeSectionPremiumSearch) {
-            PPHomeSearchBarCell *searchView =
-                (PPHomeSearchBarCell *)[collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                                                             withReuseIdentifier:PPHomeSearchBarCell.reuseIdentifier
-                                                                                    forIndexPath:indexPath];
-            [searchView configureWithTrendingQuery:[weakSelf pp_currentHomeSmartSearchPlaceholder]];
-            __weak typeof(weakSelf) weakSearch = weakSelf;
-            searchView.onTap = ^{
-                __strong typeof(weakSearch) self = weakSearch;
-                if (!self) return;
-                [self pp_openSmartSearch];
-            };
-            searchView.hidden = NO;
-            searchView.contentView.hidden = NO;
-            return searchView;
-        }
 
         PPHomeHeaderConfig *cfg =
             [weakSelf headerConfigForSection:section];
@@ -7718,12 +7699,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     switch (section) {
-        case PPHomeSectionPremiumSearch: {
-            [self pp_emitSelectionHaptic];
-            [self pp_openSmartSearch];
-            return;
-        }
-
         case PPHomeSectionQuickActions:
             return;
 
@@ -7781,6 +7756,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             return;
         }
 
+        case PPHomeSectionPremiumSearch:
         case PPHomeSectionPremiumCare: {
             [self pp_emitSelectionHaptic];
             [self openPremiumPetCare];
@@ -7870,6 +7846,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     (void)collectionView;
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         if ([self pp_isInitialHomeRevealSettled]) {
@@ -8837,6 +8814,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
         || section == PPHomeSectionPetProfile
+        || section == PPHomeSectionPremiumSearch
         || section == PPHomeSectionPremiumCare;
 
     NSTimeInterval duration = isHero ? 0.52 : (isPrimarySurface ? 0.40 : 0.30);
@@ -8941,6 +8919,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
         || section == PPHomeSectionPetProfile
+        || section == PPHomeSectionPremiumSearch
         || section == PPHomeSectionPremiumCare;
 
     CGFloat translateY = isLateAppearance ? (isHero ? 8.0 : (isPrimarySurface ? 6.0 : 4.0))
@@ -9804,21 +9783,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [self.homeSmartSearchView setQueryText:placeholder
                                       animated:animated];
     }
-
-    NSInteger searchSectionIndex = [self sectionIndexForType:PPHomeSectionPremiumSearch];
-    if (searchSectionIndex == NSNotFound || !self.collectionView) {
-        return;
-    }
-
-    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:searchSectionIndex];
-    UICollectionReusableView *view =
-        [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
-                                                 atIndexPath:indexPath];
-    if (![view isKindOfClass:PPHomeSearchBarCell.class]) {
-        return;
-    }
-
-    [(PPHomeSearchBarCell *)view configureWithTrendingQuery:placeholder];
 }
 
 - (void)pp_startHomeSmartSearchTimerIfNeeded

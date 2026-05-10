@@ -513,6 +513,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 @property (nonatomic, copy) NSString *currentHeaderBgAnimationName;
 @property (nonatomic, strong) LOTAnimationView *novaRingBackgroundLottie;
 @property (nonatomic, strong) LOTAnimationView *novaLoadingLottie; // Added for thinking state
+@property (nonatomic, strong) LOTAnimationView *novaEmptyLoaderLottie;
 @property (nonatomic, assign) BOOL novaHeaderThinkingAnimationVisible;
 
 @property (nonatomic, strong) UITableView *tableView;
@@ -4168,11 +4169,18 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     [emptyView addSubview:pulseView];
     self.emptyStatePulseView = pulseView;
 
-    UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"sparkles"]];
-    iconView.translatesAutoresizingMaskIntoConstraints = NO;
-    iconView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    iconView.contentMode = UIViewContentModeScaleAspectFit;
-    [pulseView addSubview:iconView];
+    LOTAnimationView *loaderLottie = [[LOTAnimationView alloc] init];
+    loaderLottie.translatesAutoresizingMaskIntoConstraints = NO;
+    loaderLottie.contentMode = UIViewContentModeScaleAspectFit;
+    loaderLottie.loopAnimation = YES;
+    [pulseView addSubview:loaderLottie];
+    self.novaEmptyLoaderLottie = loaderLottie;
+    [Styling setAnimationNamed:@"NovaLoader1.json"
+                        toView:loaderLottie
+                     withSpeed:0.8
+                 loopAnimation:YES
+                      autoplay:YES
+                    completion:^(__unused BOOL success) {}];
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -4261,10 +4269,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         [pulseView.widthAnchor constraintEqualToConstant:56.0],
         [pulseView.heightAnchor constraintEqualToConstant:56.0],
 
-        [iconView.centerXAnchor constraintEqualToAnchor:pulseView.centerXAnchor],
-        [iconView.centerYAnchor constraintEqualToAnchor:pulseView.centerYAnchor],
-        [iconView.widthAnchor constraintEqualToConstant:24.0],
-        [iconView.heightAnchor constraintEqualToConstant:24.0],
+        [loaderLottie.centerXAnchor constraintEqualToAnchor:pulseView.centerXAnchor],
+        [loaderLottie.centerYAnchor constraintEqualToAnchor:pulseView.centerYAnchor],
+        [loaderLottie.widthAnchor constraintEqualToConstant:58.0],
+        [loaderLottie.heightAnchor constraintEqualToConstant:58.0],
 
         [titleLabel.topAnchor constraintEqualToAnchor:pulseView.bottomAnchor constant:14.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:emptyView.leadingAnchor],
