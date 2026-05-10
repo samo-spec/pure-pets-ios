@@ -40,6 +40,11 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     return @"PPHomePremiumCareCell";
 }
 
+static UIColor *PremiumSoftCardBorderColor(void)
+{
+    return [UIColor.whiteColor colorWithAlphaComponent:0.72];//[AppLightGrayColor colorWithAlphaComponent:0.84];
+}
+ 
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
@@ -51,9 +56,9 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     self.contentView.backgroundColor = UIColor.clearColor;
     self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitButton;
-    [self.contentView pp_setShadowColor:UIColor.blackColor];
-    self.contentView.layer.shadowRadius = 24.0;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    //[self.contentView pp_setShadowColor:UIColor.blackColor];
+    //self.contentView.layer.shadowRadius = 24.0;
+    //self.contentView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 
     _surfaceView = [UIView new];
     if (@available(iOS 13.0, *)) {
@@ -67,6 +72,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     if (@available(iOS 13.0, *)) {
         _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    _surfaceView.layer.borderColor = PremiumSoftCardBorderColor().CGColor;
     [self.contentView addSubview:_surfaceView];
 
     _gradientLayer = [CAGradientLayer layer];
@@ -195,6 +201,15 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _ctaIconView.contentMode = UIViewContentModeScaleAspectFit;
     [_ctaView addSubview:_ctaIconView];
 
+    
+    
+    _topBackgroundGlowView.layer.cornerRadius = 272.0/2;
+    _middleBackgroundGlowView.layer.cornerRadius = 216.0/2;
+    _largeOrbView.layer.cornerRadius = 120.0/2;
+    _iconPlateView.layer.cornerRadius = 72.0/2;
+    _smallOrbView.layer.cornerRadius = 48.0/2;
+    
+    
     [NSLayoutConstraint activateConstraints:@[
         [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
@@ -206,6 +221,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-82.0],
         [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:104.0],
 
+        
         [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:216.0],
         [_middleBackgroundGlowView.heightAnchor constraintEqualToConstant:216.0],
         [_middleBackgroundGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
@@ -230,7 +246,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:22.0],
         [_iconPlateView.widthAnchor constraintEqualToConstant: 72.0],
         [_iconPlateView.heightAnchor constraintEqualToConstant:72.0],
-
+        
         [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
         [_iconImageView.widthAnchor constraintEqualToConstant:25.0],
@@ -298,8 +314,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     view.userInteractionEnabled = NO;
     view.clipsToBounds = NO;
     view.layer.cornerRadius = radius;
-    view.layer.shadowRadius = 68.0;
-    view.layer.shadowOpacity = 0.28;
+    view.layer.shadowRadius = 8.0;
+    view.layer.shadowOpacity = 0.06;
     view.layer.shadowOffset = CGSizeZero;
     return view;
 }
@@ -339,7 +355,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _smallOrbView.layer.cornerRadius = CGRectGetHeight(_smallOrbView.bounds) * 0.5;
     _iconPlateView.layer.cornerRadius = CGRectGetHeight(_iconPlateView.bounds) * 0.5;
 
-    self.contentView.layer.shadowRadius = 28.0;
+    self.contentView.layer.shadowRadius = 12.0;
     self.contentView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:_surfaceView.bounds
                                    cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
@@ -405,8 +421,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     UIColor *secondaryColor = PPPetCareSecondaryTextColor();
     UIColor *borderColor = PPPetCareBorderColor();
     UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.4];
-    UIColor *controlFillColor = [accent colorWithAlphaComponent:isDark ? 0.35 : 0.09];
-    UIColor *controlBorderColor = borderColor;
+    
 
     _surfaceView.backgroundColor = surfaceColor;
     [_surfaceView pp_setBorderColor:borderColor];

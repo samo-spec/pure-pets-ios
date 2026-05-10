@@ -548,12 +548,12 @@
 
                 NSString *full = [dir stringByAppendingPathComponent:file];
                 [fm removeItemAtPath:full error:nil];
-                NSLog(@"🔥 Deleted audio %@", full);
+                NSLog(@"Deleted audio %@", full);
             }
         }
     }
 
-    NSLog(@"🔥 ALL audio cache cleared");
+    NSLog(@"Audio cache cleared");
 }
 
 

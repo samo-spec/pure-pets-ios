@@ -25,7 +25,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, weak, nullable) id<PPNovaFloatingInputBarViewDelegate> delegate;
 
 - (void)clearText;
-
+-(void)setText:(NSString *)txt;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -60,6 +60,11 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 @property (nonatomic, strong) CAShapeLayer *novaHeaderLiquidHighlightLayer;
 @property (nonatomic, copy) NSArray<UIView *> *novaHeaderMotionDots;
 @property (nonatomic, strong) UIButton *closeButton;
+@property (nonatomic, strong) UIButton *historyButton;
+@property (nonatomic, strong) UIView *novaSuggestionsBar;
+@property (nonatomic, strong) UIScrollView *novaSuggestionsScrollView;
+@property (nonatomic, strong) UIStackView *novaSuggestionsStackView;
+@property (nonatomic, copy) NSArray<UIButton *> *novaSuggestionChipButtons;
 @property (nonatomic, strong) UIView *headerBrandHaloView;
 @property (nonatomic, strong) UIView *headerBrandRingView;
 @property (nonatomic, strong) UIView *headerBrandMarkView;
@@ -2897,6 +2902,41 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [contentView addSubview:closeButton];
     self.closeButton = closeButton;
 
+    // History button — leading side of header, opposite close button
+    UIButton *historyButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    historyButton.translatesAutoresizingMaskIntoConstraints = NO;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:14.0
+                                                                                          weight:UIImageSymbolWeightSemibold];
+        UIImage *clockIcon = [UIImage systemImageNamed:@"clock.arrow.circlepath" withConfiguration:cfg];
+        [historyButton setImage:clockIcon forState:UIControlStateNormal];
+    } else {
+        [historyButton setTitle:@"⏱" forState:UIControlStateNormal];
+    }
+    historyButton.tintColor = [AppPrimaryTextClr colorWithAlphaComponent:0.55];
+    historyButton.layer.cornerRadius = 18.0;
+    historyButton.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
+    historyButton.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
+    historyButton.layer.shadowColor = UIColor.blackColor.CGColor;
+    historyButton.layer.shadowOpacity = 0.035;
+    historyButton.layer.shadowRadius = 10.0;
+    historyButton.layer.shadowOffset = CGSizeMake(0.0, 5.0);
+    if (@available(iOS 13.0, *)) {
+        historyButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    historyButton.accessibilityLabel = kLang(@"nova_history_accessibility");
+    [historyButton addTarget:self
+                      action:@selector(pp_handleNovaHeaderControlPressDown:)
+            forControlEvents:UIControlEventTouchDown];
+    [historyButton addTarget:self
+                      action:@selector(pp_handleNovaHeaderControlPressUp:)
+            forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
+    [historyButton addTarget:self
+                      action:@selector(pp_handleNovaHistoryTapped:)
+            forControlEvents:UIControlEventTouchUpInside];
+    [contentView addSubview:historyButton];
+    self.historyButton = historyButton;
+
     UIView *hairlineHost = [[UIView alloc] init];
     hairlineHost.translatesAutoresizingMaskIntoConstraints = NO;
     hairlineHost.userInteractionEnabled = NO;
@@ -2993,7 +3033,13 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         [closeButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
         [closeButton.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12.0],
         [closeButton.widthAnchor constraintEqualToConstant:36.0],
-        [closeButton.heightAnchor constraintEqualToConstant:36.0]
+        [closeButton.heightAnchor constraintEqualToConstant:36.0],
+
+        // History button: top-leading of header, auto-flips for RTL.
+        [historyButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        [historyButton.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:12.0],
+        [historyButton.widthAnchor constraintEqualToConstant:36.0],
+        [historyButton.heightAnchor constraintEqualToConstant:36.0]
     ]];
 
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(pp_handleNovaHeaderTap:)];
@@ -3142,6 +3188,17 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
             dot.alpha = collapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
             dot.transform = collapsed ? CGAffineTransformMakeScale(0.82, 0.82) : CGAffineTransformIdentity;
         }];
+
+        // Close button: collapse to trailing edge with reduced scale/opacity
+        CGFloat closeAlpha = collapsed ? 0.45 : 1.0;
+        CGAffineTransform closeTransform = collapsed ? CGAffineTransformMakeScale(0.82, 0.82) : CGAffineTransformIdentity;
+        self.closeButton.alpha = closeAlpha;
+        self.closeButton.transform = closeTransform;
+
+        // History button: collapse to leading edge with same effect
+        self.historyButton.alpha = closeAlpha;
+        self.historyButton.transform = closeTransform;
+
         [self pp_applyNovaTableInsetsForCurrentHeaderState];
         [self.view layoutIfNeeded];
         [self pp_updateNovaHeaderLiquidBorderPath];
@@ -3207,6 +3264,31 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
     [self pp_handleNovaHeaderControlPressUp:sender];
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)pp_handleNovaHistoryTapped:(UIButton *)sender {
+    [self pp_handleNovaHeaderControlPressUp:sender];
+    // Load local chat memory and present as history sheet
+    PPNovaLocalChatMemory *memory = [[PPNovaLocalChatMemory alloc] init];
+    NSArray<NSDictionary *> *history = [memory allMessages] ?: @[];
+    if (history.count == 0) {
+        [PPHUD showInfo:kLang(@"nova_no_history")];
+        return;
+    }
+    // Present a simple alert with recent conversation snippets
+    NSMutableString *snippets = [NSMutableString string];
+    NSArray<NSDictionary *> *recent = history.count > 20 ? [history subarrayWithRange:NSMakeRange(history.count - 20, 20)] : history;
+    for (NSDictionary *msg in recent) {
+        NSString *role = [msg[@"role"] isEqualToString:@"user"] ? @"👤" : @"✨";
+        NSString *text = msg[@"text"] ?: @"";
+        if (text.length > 80) text = [[text substringToIndex:80] stringByAppendingString:@"…"];
+        [snippets appendFormat:@"%@ %@\n\n", role, text];
+    }
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"nova_chat_history")
+                                                                   message:snippets.length > 0 ? snippets : kLang(@"nova_no_history")
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"OK") style:UIAlertActionStyleDefault handler:nil]];
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)pp_startHeaderLiveAnimations {
@@ -3495,6 +3577,130 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
         readableWidth,
         self.inputBarBottomConstraint
     ]];
+
+    // ---- Suggestion Tags Bar (above input) ----
+    [self setupNovaSuggestionsBar];
+}
+
+- (void)setupNovaSuggestionsBar {
+    UIVisualEffectView *bar = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial]];
+    bar.translatesAutoresizingMaskIntoConstraints = NO;
+    bar.clipsToBounds = YES;
+    bar.layer.cornerRadius = 18.0;
+    if (@available(iOS 13.0, *)) {
+        bar.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    bar.alpha = 0.0;
+    bar.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    [self.view addSubview:bar];
+    self.novaSuggestionsBar = bar;
+
+    UIScrollView *scrollView = [[UIScrollView alloc] init];
+    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
+    scrollView.showsHorizontalScrollIndicator = NO;
+    scrollView.alwaysBounceHorizontal = YES;
+    scrollView.alwaysBounceVertical = NO;
+    scrollView.directionalLockEnabled = YES;
+    scrollView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [bar.contentView addSubview:scrollView];
+    self.novaSuggestionsScrollView = scrollView;
+
+    UIStackView *stack = [[UIStackView alloc] init];
+    stack.translatesAutoresizingMaskIntoConstraints = NO;
+    stack.axis = UILayoutConstraintAxisHorizontal;
+    stack.alignment = UIStackViewAlignmentCenter;
+    stack.distribution = UIStackViewDistributionFill;
+    stack.spacing = 8.0;
+    stack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [scrollView addSubview:stack];
+    self.novaSuggestionsStackView = stack;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [bar.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-8.0],
+        [bar.leadingAnchor constraintEqualToAnchor:self.inputbar.leadingAnchor],
+        [bar.trailingAnchor constraintEqualToAnchor:self.inputbar.trailingAnchor],
+        [bar.heightAnchor constraintEqualToConstant:40.0],
+
+        [scrollView.topAnchor constraintEqualToAnchor:bar.contentView.topAnchor constant:4.0],
+        [scrollView.leadingAnchor constraintEqualToAnchor:bar.contentView.leadingAnchor constant:8.0],
+        [scrollView.trailingAnchor constraintEqualToAnchor:bar.contentView.trailingAnchor constant:-8.0],
+        [scrollView.bottomAnchor constraintEqualToAnchor:bar.contentView.bottomAnchor constant:-4.0],
+
+        [stack.topAnchor constraintEqualToAnchor:scrollView.topAnchor],
+        [stack.leadingAnchor constraintEqualToAnchor:scrollView.leadingAnchor],
+        [stack.trailingAnchor constraintEqualToAnchor:scrollView.trailingAnchor],
+        [stack.bottomAnchor constraintEqualToAnchor:scrollView.bottomAnchor],
+        [stack.heightAnchor constraintEqualToAnchor:scrollView.heightAnchor],
+    ]];
+
+    [self pp_populateNovaSuggestionChips];
+}
+
+- (void)pp_populateNovaSuggestionChips {
+    for (UIButton *btn in self.novaSuggestionChipButtons) {
+        [btn removeFromSuperview];
+    }
+
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
+    [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, __unused BOOL *stop) {
+        UIButton *chip = [UIButton buttonWithType:UIButtonTypeSystem];
+        chip.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        [chip setTitle:kLang(spec[@"titleKey"]) forState:UIControlStateNormal];
+        chip.titleLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+        [chip setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+        chip.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.08];
+        chip.layer.cornerRadius = 13.0;
+        if (@available(iOS 13.0, *)) {
+            chip.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        chip.contentEdgeInsets = UIEdgeInsetsMake(6.0, 14.0, 6.0, 14.0);
+        chip.tag = idx;
+        [chip addTarget:self action:@selector(pp_handleNovaSuggestionChipTap:) forControlEvents:UIControlEventTouchUpInside];
+        [self.novaSuggestionsStackView addArrangedSubview:chip];
+        [buttons addObject:chip];
+    }];
+    self.novaSuggestionChipButtons = buttons.copy;
+}
+
+- (void)pp_handleNovaSuggestionChipTap:(UIButton *)sender {
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    if (sender.tag < (NSInteger)suggestions.count) {
+        NSString *promptKey = suggestions[sender.tag][@"promptKey"];
+        NSString *text = kLang(promptKey);
+        if (text.length > 0) {
+            [self pp_hideNovaSuggestionsBar];
+            [self pp_handleNovaSubmittedText:text];
+        }
+    }
+}
+ 
+
+- (void)pp_revealNovaSuggestionsBar {
+    if (!self.novaSuggestionsBar || self.novaSuggestionsBar.alpha > 0.01) return;
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.14
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.novaSuggestionsBar.alpha = 1.0;
+        self.novaSuggestionsBar.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_hideNovaSuggestionsBar {
+    if (!self.novaSuggestionsBar || self.novaSuggestionsBar.alpha < 0.01) return;
+
+    [UIView animateWithDuration:0.20
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.novaSuggestionsBar.alpha = 0.0;
+        self.novaSuggestionsBar.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    } completion:nil];
 }
 
 - (void)setupTypingIndicator {
@@ -4237,6 +4443,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 
 - (void)novaInputBarDidBeginEditing:(PPNovaFloatingInputBarView *)bar {
     [self pp_setNovaHeaderCollapsed:YES animated:YES];
+    [self pp_revealNovaSuggestionsBar];
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeText:(NSString *)text {
@@ -4247,6 +4454,7 @@ static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didSendText:(NSString *)text {
+    [self pp_hideNovaSuggestionsBar];
     [self pp_handleNovaSubmittedText:text];
 }
 

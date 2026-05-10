@@ -80,14 +80,18 @@ static UIColor *PPUniversalCellSoftImageBorderColor(void)
 
 static UIColor *PPUniversalCellSoftShadowColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.16 green:0.13 blue:0.18 alpha:0.48],
-                                      [UIColor colorWithRed:0.08 green:0.04 blue:0.05 alpha:0.88]);
+    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.16 green:0.13 blue:0.18 alpha:0.0], [UIColor colorWithRed:0.08 green:0.04 blue:0.05 alpha:0.0]);
+   // return PPUniversalCellDynamicColor([UIColor colorWithRed:0.16 green:0.13 blue:0.18 alpha:0.48], [UIColor colorWithRed:0.08 green:0.04 blue:0.05 alpha:0.88]);
+
 }
 
 static UIColor *PPUniversalCellOuterShadowColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.15 alpha:0.46],
-                                      [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0.92]);
+    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.15 alpha:0], [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0]);
+                               
+    
+   // return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.15 alpha:0.46], [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0.92]);
+                              // [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0.92]);
 }
 
 static CGFloat PPUniversalCellOuterShadowOpacity(BOOL isDark, BOOL selected)

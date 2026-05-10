@@ -230,9 +230,13 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     ]];
 
     [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.05;
-    self.layer.shadowRadius = 12.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.layer.shadowOpacity = 0.0;
+    self.layer.shadowRadius = 0.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 0.0);
+    
+    //self.layer.shadowOpacity = 0.05;
+    //self.layer.shadowRadius = 12.0;
+    //self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [self pp_applyTheme];
 }
 

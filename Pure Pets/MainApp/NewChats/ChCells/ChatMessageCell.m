@@ -11,7 +11,7 @@
 #import "ChatMessageCell.h"
 #import "PPChatsFunc.h"
 
-@interface ChatMessageCell()<PPChatBubbleColorProviding,ChatMessageStatusUpdatable>
+@interface ChatMessageCell()<PPChatBubbleColorProviding,ChatMessageStatusUpdatable,UIContextMenuInteractionDelegate>
 @property (nonatomic, assign) PPChatGroupPosition groupPosition;
 @property (nonatomic, assign) BOOL isIncoming;
 @property (nonatomic, strong) ChatMessageModel *message;
@@ -66,6 +66,10 @@
     self.bubbleView = [[ChatBubbleView alloc] init];
     self.bubbleView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.contentView addSubview:self.bubbleView];
+    
+    // Long-press context menu (Copy / Reply)
+    UIContextMenuInteraction *menuInteraction = [[UIContextMenuInteraction alloc] initWithDelegate:self];
+    [self.bubbleView addInteraction:menuInteraction];
     
     CGFloat spacingAbove = PPChatBubblePad;
     CGFloat spacingBelow = PPChatBubblePad;
@@ -181,6 +185,56 @@
     }
     // Do not touch thumbnail, loading, play state, or applyVisualState.
 }
+
+#pragma mark - Long-Press Context Menu
+
+- (nullable UIContextMenuConfiguration *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+                         configurationForMenuAtLocation:(CGPoint)location
+{
+    return [UIContextMenuConfiguration configurationWithIdentifier:nil
+                                                   previewProvider:nil
+                                                    actionProvider:^UIMenu * _Nullable(NSArray<UIMenuElement *> * _Nonnull suggestedActions) {
+        return [self makeContextMenu];
+    }];
+}
+
+- (UIMenu *)makeContextMenu
+{
+    NSMutableArray<UIMenuElement *> *actions = [NSMutableArray array];
+    
+    // Copy action
+    if (self.message.text.length > 0) {
+        UIImage *copyIcon = [UIImage systemImageNamed:@"doc.on.doc"];
+        UIAction *copyAction = [UIAction actionWithTitle:kLang(@"copy")
+                                                   image:copyIcon
+                                              identifier:nil
+                                                 handler:^(__kindof UIAction * _Nonnull action) {
+            [UIPasteboard generalPasteboard].string = self.message.text;
+        }];
+        [actions addObject:copyAction];
+    }
+    
+    // Reply action
+    UIImage *replyIcon = [UIImage systemImageNamed:@"arrowshape.turn.up.left"];
+    UIAction *replyAction = [UIAction actionWithTitle:kLang(@"reply")
+                                                image:replyIcon
+                                           identifier:nil
+                                              handler:^(__kindof UIAction * _Nonnull action) {
+        if ([self.delegate respondsToSelector:@selector(chatMessageCellDidRequestReply:)]) {
+            [self.delegate chatMessageCellDidRequestReply:self];
+        }
+    }];
+    [actions addObject:replyAction];
+    
+    return [UIMenu menuWithTitle:@"" children:actions];
+}
+
+- (nullable UITargetedPreview *)contextMenuInteraction:(UIContextMenuInteraction *)interaction
+                       previewForHighlightingMenuWithConfiguration:(UIContextMenuConfiguration *)configuration
+{
+    return [[UITargetedPreview alloc] initWithView:self.bubbleView];
+}
+
 @end
 
 

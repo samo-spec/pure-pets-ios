@@ -57,7 +57,7 @@
         return;
     }
 
-    NSLog(@"🔥 SearchManager starting warm-up...");
+    NSLog(@"SearchManager starting warm-up...");
     dispatch_group_t g = dispatch_group_create();
 
     // Ads

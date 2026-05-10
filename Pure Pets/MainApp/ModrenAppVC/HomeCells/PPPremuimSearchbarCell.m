@@ -364,7 +364,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
         [chromeView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:4.0],
         [chromeView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [chromeView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [chromeView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-8.0],
+        [chromeView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-4.0],
 
         [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:7.0],
         [leadingChipView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],

@@ -799,7 +799,7 @@
             return;
         }
 
-        NSLog(@"🔥 Phone verification success → user logged in");
+        NSLog(@"Phone verification success → user logged in");
         [self handleSuccessfulAuth:authResult];
     }];
 }

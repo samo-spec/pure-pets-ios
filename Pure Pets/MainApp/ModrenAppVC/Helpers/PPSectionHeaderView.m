@@ -224,9 +224,13 @@
     self.surfaceView.backgroundColor = [self pp_surfaceFillColor];
     self.surfaceView.layer.borderColor = [self pp_surfaceBorderColor].CGColor;
     self.surfaceView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.surfaceView.layer.shadowOpacity = [self pp_isDarkMode] ? 0.0 : 0.045;
-    self.surfaceView.layer.shadowRadius = 14.0;
-    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.surfaceView.layer.shadowOpacity = [self pp_isDarkMode] ? 0.0 : 0.00;
+    self.surfaceView.layer.shadowRadius =0.0;
+    self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 0.0);
+    
+    //self.surfaceView.layer.shadowOpacity = [self pp_isDarkMode] ? 0.0 : 0.045;
+    //self.surfaceView.layer.shadowRadius = 14.0;
+    //self.surfaceView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
 
     self.accentRailView.backgroundColor = [self pp_accentColor];
     self.titleLabel.textColor = [self pp_titleColor];
@@ -264,7 +268,7 @@
    
     
     UIColor *baseColor = AppBackgroundClr ?: UIColor.secondarySystemGroupedBackgroundColor;
-    return [baseColor colorWithAlphaComponent:0.94];
+    return [baseColor colorWithAlphaComponent:1.0];
 }
 
 - (UIColor *)pp_surfaceBorderColor

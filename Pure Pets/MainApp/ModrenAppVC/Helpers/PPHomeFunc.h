@@ -30,6 +30,7 @@
 + (NSCollectionLayoutSection *)adoptSection;
 + (NSCollectionLayoutSection *)categoriesOptionsSection;
 + (NSCollectionLayoutSection *)categoriesItemsSection;
++ (NSCollectionLayoutSection *)categoriesItemsSectionForWidth:(CGFloat)availableWidth;
 + (NSCollectionLayoutSection *)suggestionsSection;
 
 + (NSCollectionLayoutSection *)mainKindsHorizontalSectionForWidth:(CGFloat)availableWidth;

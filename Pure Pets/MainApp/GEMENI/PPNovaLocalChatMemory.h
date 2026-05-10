@@ -32,6 +32,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable NSString *)lastKnownPetType;
 - (nullable NSString *)lastKnownNeed;
 
+/// Returns all stored messages (thread-safe snapshot)
+- (NSArray<NSDictionary *> *)allMessages;
+
 @end
 
 NS_ASSUME_NONNULL_END

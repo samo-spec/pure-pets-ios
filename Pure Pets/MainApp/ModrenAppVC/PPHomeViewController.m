@@ -232,9 +232,9 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     cardView.layer.borderWidth = 0.7;
     [cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08]];
     [cardView pp_setShadowColor:UIColor.blackColor];
-    cardView.layer.shadowOpacity = 0.10f;
-    cardView.layer.shadowRadius = 24.0f;
-    cardView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    cardView.layer.shadowOpacity = 0.06f;
+    cardView.layer.shadowRadius = 14.0f;
+    cardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     if (@available(iOS 13.0, *)) {
         cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -3422,7 +3422,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     lot.userInteractionEnabled = NO;
     lot.contentMode = UIViewContentModeScaleAspectFit;
     lot.loopAnimation = YES;
-    lot.animationSpeed = 1.0;
+    lot.animationSpeed = 0.5;
     [button addSubview:lot];
     self.novaFloatingLottieView = lot;
 
@@ -3439,8 +3439,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
         [lot.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [lot.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [lot.widthAnchor constraintEqualToConstant:66.0],
-        [lot.heightAnchor constraintEqualToConstant:66.0],
+        [lot.widthAnchor constraintEqualToConstant:76.0],
+        [lot.heightAnchor constraintEqualToConstant:76.0],
     ]];
 
     // Lottie loads from Firebase Storage path LottieAnimations/nova.json via the project's helper.
@@ -10378,7 +10378,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyOrderDetailsBackgroundAppearance
 {
-    self.view.backgroundColor = AppBackgroundClrDarker;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    self.view.backgroundColor = AppBackgroundClr;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
     self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     [self pp_updatePremiumBackgroundGlowAppearance];
@@ -10443,9 +10443,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     glowView.alpha = 1.0;
     glowView.backgroundColor = [color colorWithAlphaComponent:surfaceAlpha];
-    glowView.layer.shadowColor = color.CGColor;
-    glowView.layer.shadowOpacity = shadowOpacity;
-    glowView.layer.shadowRadius = shadowRadius;
+    glowView.layer.shadowColor = AppClearClr.CGColor;
+    glowView.layer.shadowOpacity = 0;
+    glowView.layer.shadowRadius = 0;
 }
 
 - (void)pp_updatePremiumBackgroundGlowAppearance

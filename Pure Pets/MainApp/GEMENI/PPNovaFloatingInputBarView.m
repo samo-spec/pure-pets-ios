@@ -40,6 +40,11 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     return self;
 }
 
+-(void)setText:(NSString *)txt
+{
+    _textView.text = txt;
+}
+
 - (void)setupUI {
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];

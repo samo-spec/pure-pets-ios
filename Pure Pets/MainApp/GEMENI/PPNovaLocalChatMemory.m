@@ -98,7 +98,25 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
     // payment info shouldn't hit Nova chat anyway)
     NSString *safeText = [self _maskPotentialSensitiveData:text];
     
+    // Offset model timestamps by 1ms past the last user timestamp so
+    // chronological sort (array order) is unambiguous even within the same
+    // millisecond window.
     NSTimeInterval now = [[NSDate date] timeIntervalSince1970];
+    BOOL isModel = [role isEqualToString:@"nova"] || [role isEqualToString:@"model"] || [role isEqualToString:@"assistant"];
+    if (isModel) {
+        NSTimeInterval lastUserTs = 0;
+        for (NSDictionary *m in self.messages.reverseObjectEnumerator) {
+            NSString *r = m[@"role"];
+            if ([r isEqualToString:@"user"]) {
+                lastUserTs = [m[@"timestamp"] doubleValue];
+                break;
+            }
+        }
+        if (lastUserTs > 0 && now <= lastUserTs) {
+            now = lastUserTs + 0.001;
+        }
+    }
+    
     NSDictionary *msg = @{
         @"role": role,
         @"text": safeText,
@@ -147,15 +165,99 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
     return [lines componentsJoinedByString:@" | "];
 }
 
+- (NSArray<NSDictionary *> *)allMessages {
+    __block NSArray *result = nil;
+    dispatch_sync(self.ioQueue, ^{
+        result = [self.messages copy];
+    });
+    return result ?: @[];
+}
+
 - (nullable NSString *)lastKnownPetType {
-    // This is extracted globally per session in NovaChatViewController normally.
-    // If we wanted cross-session extraction, we'd regex the history here.
-    // For now, we rely on PPNovaChatViewController's own extraction logic,
-    // which we will seed from recent history on boot.
-    return nil;
+    __block NSString *result = nil;
+    dispatch_sync(self.ioQueue, ^{
+        for (NSDictionary *msg in self.messages.reverseObjectEnumerator) {
+            NSString *text = msg[@"text"];
+            if (text.length == 0) continue;
+            NSString *lower = [text lowercaseString];
+            result = [self _matchPetTypeInText:lower original:text];
+            if (result) break;
+        }
+    });
+    return result;
 }
 
 - (nullable NSString *)lastKnownNeed {
+    __block NSString *result = nil;
+    dispatch_sync(self.ioQueue, ^{
+        for (NSDictionary *msg in self.messages.reverseObjectEnumerator) {
+            NSString *text = msg[@"text"];
+            if (text.length == 0) continue;
+            NSString *lower = [text lowercaseString];
+            result = [self _matchNeedInText:lower original:text];
+            if (result) break;
+        }
+    });
+    return result;
+}
+
+- (nullable NSString *)_matchPetTypeInText:(NSString *)lower original:(NSString *)original {
+    NSArray<NSDictionary *> *petKeywords = @[
+        @{@"label": @"cat",     @"keys": @[@"cat", @"cats", @"kitten", @"kitty",
+                                            @"قط", @"قطة", @"قطه", @"قطتي", @"قطط", @"بسة", @"بسه", @"هر", @"هرة"]},
+        @{@"label": @"dog",     @"keys": @[@"dog", @"dogs", @"puppy", @"pup",
+                                            @"كلب", @"كلبة", @"كلبه", @"كلبي", @"جرو", @"كلاب"]},
+        @{@"label": @"bird",    @"keys": @[@"bird", @"birds",
+                                            @"طير", @"طائر", @"طيور", @"عصفور", @"عصافير"]},
+        @{@"label": @"parrot",  @"keys": @[@"parrot", @"parrots", @"cockatiel", @"cockatoo", @"budgie",
+                                            @"ببغاء", @"ببغاوات", @"كاسكو", @"درة", @"كروان"]},
+        @{@"label": @"fish",    @"keys": @[@"fish", @"fishes", @"aquarium",
+                                            @"سمك", @"سمكة", @"سمكه", @"أسماك", @"اسماك"]},
+        @{@"label": @"rabbit",  @"keys": @[@"rabbit", @"rabbits", @"bunny",
+                                            @"أرنب", @"ارنب", @"أرانب", @"ارانب"]},
+        @{@"label": @"hamster", @"keys": @[@"hamster", @"hamsters",
+                                            @"هامستر", @"هامستار"]},
+        @{@"label": @"turtle",  @"keys": @[@"turtle", @"turtles", @"tortoise",
+                                            @"سلحفاة", @"سلحفاه", @"سلاحف"]}
+    ];
+    for (NSDictionary *p in petKeywords) {
+        for (NSString *kw in p[@"keys"]) {
+            if ([lower containsString:kw] || [original containsString:kw]) {
+                return p[@"label"];
+            }
+        }
+    }
+    return nil;
+}
+
+- (nullable NSString *)_matchNeedInText:(NSString *)lower original:(NSString *)original {
+    NSArray<NSDictionary *> *needKeywords = @[
+        @{@"label": @"food",     @"keys": @[@"food", @"feed", @"meal", @"kibble", @"treat", @"snack",
+                                              @"dry food", @"wet food", @"dry", @"wet",
+                                              @"أكل", @"اكل", @"طعام", @"غذاء", @"دراي", @"وجبة", @"وجبه", @"تغذية"]},
+        @{@"label": @"cage",     @"keys": @[@"cage", @"carrier", @"crate", @"kennel", @"bed",
+                                              @"aquarium", @"tank",
+                                              @"قفص", @"أقفاص", @"اقفاص", @"حاملة", @"حقيبة", @"حقيبه",
+                                              @"بيت", @"حوض", @"ناقلة", @"كاريير"]},
+        @{@"label": @"toy",      @"keys": @[@"toy", @"toys", @"play", @"ball", @"chew",
+                                              @"لعبة", @"لعبه", @"لعب", @"ألعاب", @"العاب", @"كرة"]},
+        @{@"label": @"medicine", @"keys": @[@"medicine", @"medication", @"vitamin", @"vitamins",
+                                              @"supplement", @"supplements", @"treatment",
+                                              @"دواء", @"أدوية", @"ادوية", @"فيتامين", @"فيتامينات", @"علاج"]},
+        @{@"label": @"care",     @"keys": @[@"care", @"grooming", @"groom", @"shampoo", @"brush",
+                                              @"bath", @"nail", @"clean",
+                                              @"عناية", @"عنايه", @"شامبو", @"تنظيف", @"نظافة",
+                                              @"تمشيط", @"استحمام", @"تقليم"]},
+        @{@"label": @"litter",   @"keys": @[@"litter", @"litter box", @"potty", @"toilet", @"sand",
+                                              @"رمل", @"فضلات", @"ليتر"]}
+    ];
+    for (NSDictionary *n in needKeywords) {
+        for (NSString *kw in n[@"keys"]) {
+            if ([lower containsString:kw] || [original containsString:kw]) {
+                return n[@"label"];
+            }
+        }
+    }
     return nil;
 }
 

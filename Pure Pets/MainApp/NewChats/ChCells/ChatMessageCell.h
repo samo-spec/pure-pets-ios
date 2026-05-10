@@ -14,9 +14,18 @@
 #import "ChatMessageModel.h"
 NS_ASSUME_NONNULL_BEGIN
 
+@class ChatMessageCell;
+
+@protocol ChatMessageCellDelegate <NSObject>
+@optional
+- (void)chatMessageCellDidRequestCopy:(ChatMessageCell *)cell;
+- (void)chatMessageCellDidRequestReply:(ChatMessageCell *)cell;
+@end
+
 @interface ChatMessageCell : UITableViewCell
 - (BOOL)isSingleLineMessage;
 @property (nonatomic, strong) ChatBubbleView *bubbleView;
+@property (nonatomic, weak) id<ChatMessageCellDelegate> delegate;
 
 - (void)configureWithMessage:(NSString *)message
                         date:(NSDate *)date
