@@ -6,7 +6,7 @@
 //  Quiet authority through restraint — no chips, no signals, no decoration.
 //
 
-#import "PPHomeSearchBarCell.h"
+#import "PPHomeSmartSearchTitleView.h"
 #import <QuartzCore/QuartzCore.h>
 
 @implementation PPHomeSmartSearchTitleView {
@@ -88,7 +88,7 @@
     }
 
     self.backgroundColor = UIColor.clearColor;
-    self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
+    self.semanticContentAttribute = GM.setSemantic;
     self.accessibilityTraits = UIAccessibilityTraitButton;
     self.accessibilityLabel =
         kLang(@"home_nav_search_accessibility") ?:
@@ -209,7 +209,7 @@
     UILabel *signalLabel = [UILabel new];
     signalLabel.translatesAutoresizingMaskIntoConstraints = NO;
     signalLabel.font = [GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold];
-    signalLabel.textAlignment = PPHomeCurrentTextAlignment();
+    signalLabel.textAlignment = GM.setAligment;
     signalLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     signalLabel.adjustsFontSizeToFitWidth = YES;
     signalLabel.minimumScaleFactor = 0.84;
@@ -222,7 +222,7 @@
     UILabel *placeholderLabel = [UILabel new];
     placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
     placeholderLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
-    placeholderLabel.textAlignment = PPHomeCurrentTextAlignment();
+    placeholderLabel.textAlignment = GM.setAligment;
     placeholderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     placeholderLabel.adjustsFontSizeToFitWidth = YES;
     placeholderLabel.allowsDefaultTighteningForTruncation = YES;

@@ -26,6 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)clearText;
 -(void)setText:(NSString *)txt;
+- (void)focusTextInput;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -2672,6 +2672,13 @@
 "nova_empty_title" = "اسأل نوفا";
 "nova_empty_subtitle" = "اكتب نوع حيوانك وما تبحث عنه، وسأرشح لك الاختيار الأنسب من بيور بتس.";
 "nova_smart_suggestions_title" = "اقتراحات ذكية";
+"nova_suggestion_picker_title" = "اختر اقتراحًا";
+"nova_suggestion_picker_change" = "تغيير";
+"nova_suggestion_auto_send" = "إرسال تلقائي";
+"nova_suggestion_auto_send_on" = "مفعّل";
+"nova_suggestion_auto_send_off" = "غير مفعّل";
+"nova_smart_suggestion_auto_hint" = "اضغط على اقتراح لإرساله فورًا";
+"nova_smart_suggestion_fill_hint" = "اضغط على اقتراح لوضعه في خانة الكتابة";
 "nova_smart_suggestion_cat_food" = "طعام للقطط";
 "nova_smart_suggestion_cat_food_prompt" = "أحتاج طعامًا مناسبًا لقطتي";
 "nova_smart_suggestion_bird_bundle" = "تجهيز طائر";

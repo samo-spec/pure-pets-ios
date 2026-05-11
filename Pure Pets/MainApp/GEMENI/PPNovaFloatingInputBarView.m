@@ -42,7 +42,12 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 
 -(void)setText:(NSString *)txt
 {
-    _textView.text = txt;
+    self.textView.text = txt ?: @"";
+    [self pp_updateTextHeightIfNeeded];
+    [self pp_updateStateAnimated:YES];
+    if ([self.delegate respondsToSelector:@selector(novaInputBar:didChangeText:)]) {
+        [self.delegate novaInputBar:self didChangeText:self.textView.text ?: @""];
+    }
 }
 
 - (void)setupUI {
@@ -188,6 +193,13 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.textView.text = @"";
     [self pp_updateTextHeightIfNeeded];
     [self pp_updateStateAnimated:YES];
+    if ([self.delegate respondsToSelector:@selector(novaInputBar:didChangeText:)]) {
+        [self.delegate novaInputBar:self didChangeText:@""];
+    }
+}
+
+- (void)focusTextInput {
+    [self.textView becomeFirstResponder];
 }
 
 - (void)pp_attachTapped {

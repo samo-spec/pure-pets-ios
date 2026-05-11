@@ -2684,6 +2684,13 @@
 "nova_empty_title" = "Ask Nova";
 "nova_empty_subtitle" = "Tell me your pet and what you need. I'll guide you to the right Pure Pets pick.";
 "nova_smart_suggestions_title" = "Smart suggestions";
+"nova_suggestion_picker_title" = "Choose suggestion";
+"nova_suggestion_picker_change" = "Change";
+"nova_suggestion_auto_send" = "Auto send";
+"nova_suggestion_auto_send_on" = "On";
+"nova_suggestion_auto_send_off" = "Off";
+"nova_smart_suggestion_auto_hint" = "Tap a suggestion to send instantly";
+"nova_smart_suggestion_fill_hint" = "Tap a suggestion to place it in the input";
 "nova_smart_suggestion_cat_food" = "Cat food";
 "nova_smart_suggestion_cat_food_prompt" = "I need food for my cat";
 "nova_smart_suggestion_bird_bundle" = "Bird setup";
