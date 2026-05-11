@@ -35,6 +35,9 @@ NS_ASSUME_NONNULL_BEGIN
 /// Returns all stored messages (thread-safe snapshot)
 - (NSArray<NSDictionary *> *)allMessages;
 
+/// Clears all stored messages from memory and disk
+- (void)clearAllMessages;
+
 @end
 
 NS_ASSUME_NONNULL_END

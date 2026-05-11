@@ -29,6 +29,8 @@
 #import "PPChatFeedbackManager.h"
 #import "PPAnalytics.h"
 #import "PPUserSigningManager.h"
+#import "ServicesManager.h"
+#import "VetManager.h"
 #import <IQKeyboardManager/IQKeyboardManager.h>
 
 static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
@@ -223,6 +225,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UITableView *tableView;
+@property (nonatomic, strong) UIButton *clearButton;
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
 
@@ -302,6 +305,24 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     [closeButton addTarget:self action:@selector(pp_closeHistorySheet) forControlEvents:UIControlEventTouchUpInside];
     [header addSubview:closeButton];
 
+    UIButton *clearButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    clearButton.translatesAutoresizingMaskIntoConstraints = NO;
+    clearButton.tintColor = [UIColor.systemRedColor colorWithAlphaComponent:0.82];
+    clearButton.titleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    clearButton.layer.cornerRadius = 18.0;
+    clearButton.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
+    clearButton.layer.borderColor = [UIColor.systemRedColor colorWithAlphaComponent:0.18].CGColor;
+    clearButton.backgroundColor = [UIColor.systemRedColor colorWithAlphaComponent:0.06];
+    clearButton.contentEdgeInsets = UIEdgeInsetsMake(0.0, 14.0, 0.0, 14.0);
+    if (@available(iOS 13.0, *)) {
+        clearButton.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [clearButton setTitle:kLang(@"nova_history_clear_button") forState:UIControlStateNormal];
+    [clearButton addTarget:self action:@selector(pp_handleClearHistoryTapped) forControlEvents:UIControlEventTouchUpInside];
+    clearButton.hidden = self.historyMessages.count == 0;
+    [header addSubview:clearButton];
+    self.clearButton = clearButton;
+
     UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     tableView.translatesAutoresizingMaskIntoConstraints = NO;
     tableView.backgroundColor = UIColor.clearColor;
@@ -358,7 +379,11 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:4.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:closeButton.leadingAnchor constant:-12.0],
-        [subtitleLabel.bottomAnchor constraintEqualToAnchor:header.bottomAnchor],
+
+        [clearButton.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:10.0],
+        [clearButton.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [clearButton.heightAnchor constraintEqualToConstant:36.0],
+        [clearButton.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-6.0],
 
         [tableView.topAnchor constraintEqualToAnchor:header.bottomAnchor constant:16.0],
         [tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -382,6 +407,36 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
 - (void)pp_closeHistorySheet {
     [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)pp_handleClearHistoryTapped {
+    UIAlertController *confirm = [UIAlertController alertControllerWithTitle:kLang(@"nova_history_clear_confirm_title")
+                                                                    message:kLang(@"nova_history_clear_confirm_message")
+                                                             preferredStyle:UIAlertControllerStyleActionSheet];
+    UIAlertAction *clearAction = [UIAlertAction actionWithTitle:kLang(@"nova_history_clear_confirm_action")
+                                                          style:UIAlertActionStyleDestructive
+                                                        handler:^(__unused UIAlertAction *action) {
+        [[PPNovaLocalChatMemory sharedMemory] clearAllMessages];
+        self.historyMessages = @[];
+        self.clearButton.hidden = YES;
+        self.subtitleLabel.text = kLang(@"nova_no_history");
+        self.emptyStateView.hidden = NO;
+        [self.tableView reloadData];
+
+        [UIView animateWithDuration:0.26
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:^{
+            self.emptyStateView.alpha = 1.0;
+            self.tableView.alpha = 0.0;
+        } completion:nil];
+    }];
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:kLang(@"Cancel")
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+    [confirm addAction:clearAction];
+    [confirm addAction:cancelAction];
+    [self presentViewController:confirm animated:YES completion:nil];
 }
 
 - (void)pp_runEntranceAnimationIfNeeded {
@@ -508,6 +563,9 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 @property (nonatomic, strong) UIVisualEffectView *smartSuggestionSurfaceView;
 @property (nonatomic, strong) UILabel *smartSuggestionTitleLabel;
 @property (nonatomic, copy) NSArray<UIButton *> *smartSuggestionButtons;
+@property (nonatomic, copy) NSArray<NSDictionary<NSString *, NSString *> *> *dynamicSmartSuggestions;
+@property (nonatomic, strong) UIStackView *smartSuggestionStackView;
+@property (nonatomic, strong) UIScrollView *smartSuggestionScrollView;
 
 @property (nonatomic, strong) LOTAnimationView *novaHeaderBackgroundLottie;
 @property (nonatomic, copy) NSString *currentHeaderBgAnimationName;
@@ -668,6 +726,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
     [self pp_startHeaderLiveAnimations];
     [self pp_startAmbientBackgroundAnimations];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self pp_refreshProviderSmartSuggestions];
+    });
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -4099,6 +4161,9 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaSmartSuggestionSpecs {
+    if (self.dynamicSmartSuggestions.count > 0) {
+        return self.dynamicSmartSuggestions;
+    }
     return @[
         @{@"titleKey": @"nova_smart_suggestion_cat_food",
           @"promptKey": @"nova_smart_suggestion_cat_food_prompt"},
@@ -4148,6 +4213,114 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         maxWidth
     ]];
     return button;
+}
+
+- (void)pp_refreshProviderSmartSuggestions {
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *specs = [NSMutableArray array];
+    dispatch_group_t group = dispatch_group_create();
+
+    for (MainKindsModel *kind in PPMainKindsArray) {
+        if (!kind.isVisibleInUserApp) continue;
+        if (kind.KindName.length == 0) continue;
+
+        BOOL hasItems = NO;
+        for (SubKindModel *sub in kind.SubKindsArray) {
+            if (sub.have_items > 0) { hasItems = YES; break; }
+        }
+        if (hasItems) {
+            NSString *title = [NSString stringWithFormat:kLang(@"nova_provider_products_title"), kind.KindName];
+            NSString *prompt = [NSString stringWithFormat:kLang(@"nova_provider_products_prompt"), kind.KindName];
+            [specs addObject:@{@"title": title, @"prompt": prompt}];
+        }
+    }
+
+    dispatch_group_enter(group);
+    FIRQuery *adsQuery = [[[AppMgr.dF collectionWithPath:kPetAdsCollection]
+                            queryWhereField:@"status" isEqualTo:@(1)]
+                           queryLimitedTo:1];
+    [adsQuery getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+        if (!error && snapshot.documents.count > 0) {
+            [specs addObject:@{
+                @"title": kLang(@"nova_provider_ads_title_default"),
+                @"prompt": kLang(@"nova_provider_ads_prompt_default")
+            }];
+        }
+        dispatch_group_leave(group);
+    }];
+
+    dispatch_group_enter(group);
+    FIRQuery *adoptQuery = [[AppMgr.dF collectionWithPath:@"adopt_pets"] queryLimitedTo:1];
+    [adoptQuery getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+        if (!error && snapshot.documents.count > 0) {
+            [specs addObject:@{
+                @"title": kLang(@"nova_provider_adopt_title"),
+                @"prompt": kLang(@"nova_provider_adopt_prompt")
+            }];
+        }
+        dispatch_group_leave(group);
+    }];
+
+    dispatch_group_enter(group);
+    [[ServicesManager sharedInstance] listenToAllServicesWithCompletion:^(NSArray<ServiceModel *> *services, __unused NSError *error) {
+        if (services.count > 0) {
+            [specs addObject:@{
+                @"title": kLang(@"nova_provider_services_title"),
+                @"prompt": kLang(@"nova_provider_services_prompt")
+            }];
+        }
+        dispatch_group_leave(group);
+    }];
+
+    dispatch_group_enter(group);
+    [[VetManager sharedManager] fetchAllVetsWithCompletion:^(NSArray<VetModel *> *vets, __unused NSError *error) {
+        if (vets.count > 0) {
+            [specs addObject:@{
+                @"title": kLang(@"nova_provider_vets_title"),
+                @"prompt": kLang(@"nova_provider_vets_prompt")
+            }];
+        }
+        dispatch_group_leave(group);
+    }];
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (specs.count == 0) {
+            self.dynamicSmartSuggestions = @[];
+            return;
+        }
+        NSArray *sorted = [specs sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+            return [a[@"title"] compare:b[@"title"]];
+        }];
+        self.dynamicSmartSuggestions = sorted;
+        [self pp_rebuildNovaSmartSuggestionButtons];
+    });
+}
+
+- (void)pp_rebuildNovaSmartSuggestionButtons {
+    if (!self.smartSuggestionStackView) return;
+
+    for (UIView *subview in self.smartSuggestionStackView.arrangedSubviews) {
+        [self.smartSuggestionStackView removeArrangedSubview:subview];
+        [subview removeFromSuperview];
+    }
+
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
+    [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, __unused BOOL *stop) {
+        NSString *title = spec[@"title"];
+        if (title.length == 0) {
+            title = kLang(spec[@"titleKey"]);
+        }
+        UIButton *button = [self pp_makeNovaSmartSuggestionButtonWithTitle:title index:idx];
+        [self.smartSuggestionStackView addArrangedSubview:button];
+        [buttons addObject:button];
+    }];
+    self.smartSuggestionButtons = buttons.copy;
+
+    BOOL shouldShow = ![self pp_hasUserMessageInCurrentNovaSession];
+    for (UIButton *button in buttons) {
+        button.alpha = shouldShow ? 1.0 : 0.0;
+        button.userInteractionEnabled = shouldShow;
+    }
 }
 
 - (void)setupNovaEmptyState {
@@ -4243,15 +4416,8 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     suggestionStack.spacing = 8.0;
     suggestionStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [suggestionScrollView addSubview:suggestionStack];
-
-    NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
-    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
-    [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, __unused BOOL *stop) {
-        UIButton *button = [self pp_makeNovaSmartSuggestionButtonWithTitle:kLang(spec[@"titleKey"]) index:idx];
-        [suggestionStack addArrangedSubview:button];
-        [buttons addObject:button];
-    }];
-    self.smartSuggestionButtons = buttons.copy;
+    self.smartSuggestionScrollView = suggestionScrollView;
+    self.smartSuggestionStackView = suggestionStack;
 
     NSLayoutConstraint *suggestionWidthConstraint = [suggestionView.widthAnchor constraintEqualToAnchor:emptyView.widthAnchor];
     suggestionWidthConstraint.priority = 999.0;
@@ -4307,6 +4473,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         [suggestionStack.heightAnchor constraintEqualToAnchor:suggestionScrollView.frameLayoutGuide.heightAnchor]
     ]];
 
+    [self pp_rebuildNovaSmartSuggestionButtons];
     [self pp_applyNovaSurfaceColors];
     [self updateNovaEmptyStateAnimated:NO];
 }
@@ -4437,8 +4604,11 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         return;
     }
 
-    NSString *promptKey = suggestions[(NSUInteger)sender.tag][@"promptKey"];
-    NSString *prompt = [kLang(promptKey) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *prompt = suggestions[(NSUInteger)sender.tag][@"prompt"];
+    if (prompt.length == 0) {
+        NSString *promptKey = suggestions[(NSUInteger)sender.tag][@"promptKey"];
+        prompt = [kLang(promptKey) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
     if (prompt.length == 0) {
         return;
     }

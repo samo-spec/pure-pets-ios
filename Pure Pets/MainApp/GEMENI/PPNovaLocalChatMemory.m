@@ -173,6 +173,13 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
     return result ?: @[];
 }
 
+- (void)clearAllMessages {
+    dispatch_async(self.ioQueue, ^{
+        [self.messages removeAllObjects];
+        [self _saveToDiskUnsafe];
+    });
+}
+
 - (nullable NSString *)lastKnownPetType {
     __block NSString *result = nil;
     dispatch_sync(self.ioQueue, ^{
