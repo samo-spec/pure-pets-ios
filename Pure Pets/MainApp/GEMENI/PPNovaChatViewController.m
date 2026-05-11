@@ -614,6 +614,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 @property (nonatomic, assign) BOOL dismissed;
 @property (nonatomic, assign) CGFloat lastNovaTableLayoutWidth;
 @property (nonatomic, assign) NSUInteger novaRequestGeneration;
+@property (nonatomic, copy, nullable) NSString *activeNovaRequestID;
+@property (nonatomic, copy, nullable) NSString *activeNovaResponseID;
+@property (nonatomic, assign) NSUInteger activeNovaCachedProductsBeforeSend;
+@property (nonatomic, assign) BOOL activeNovaClearedCachedProducts;
 
 @end
 
@@ -819,7 +823,123 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     LOG_INFO(@"[PPNovaChat][Debug] callable url=%@ timeout=%.0fs", [PPNovaChatViewController pp_novaCallableDebugURL], self.novaCallable.timeoutInterval);
 }
 
-- (void)sendNovaRequestForUserText:(NSString *)userText {
+- (NSString *)pp_newNovaScopedIDWithPrefix:(NSString *)prefix {
+    NSString *safePrefix = prefix.length > 0 ? prefix : @"nova";
+    return [NSString stringWithFormat:@"%@_%@", safePrefix, [[NSUUID UUID] UUIDString]];
+}
+
+- (NSString *)pp_novaResponseIDFromResponseData:(NSDictionary *)data
+                                      requestID:(NSString *)requestID
+                                         source:(NSString *)source {
+    NSArray<NSString *> *keys = @[@"response_id", @"responseId", @"responseID", @"message_id", @"messageId", @"id"];
+    if ([data isKindOfClass:NSDictionary.class]) {
+        for (NSString *key in keys) {
+            NSString *value = [self pp_novaStringFromValue:data[key]];
+            if (value.length > 0) {
+                return value;
+            }
+        }
+    }
+    NSString *base = requestID.length > 0 ? requestID : @"request";
+    NSString *safeSource = source.length > 0 ? source : @"response";
+    return [NSString stringWithFormat:@"%@_%@_%@", base, safeSource, [[NSUUID UUID] UUIDString]];
+}
+
+- (void)pp_prepareNovaRenderStateForRequestID:(NSString *)requestID
+                      cachedProductsBeforeSend:(NSUInteger)cachedProductsBeforeSend {
+    BOOL hadPendingPayload = cachedProductsBeforeSend > 0 || self.lastSuggestedProduct != nil || self.pendingCartProduct != nil;
+    self.activeNovaRequestID = requestID;
+    self.activeNovaResponseID = nil;
+    self.activeNovaCachedProductsBeforeSend = cachedProductsBeforeSend;
+    self.activeNovaClearedCachedProducts = hadPendingPayload;
+    self.lastShownProducts = @[];
+    self.lastSuggestedProduct = nil;
+    self.pendingCartProduct = nil;
+
+    LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ cached_products_before_send=%lu cached_products_cleared=%@ pending_payload_cleared=%@",
+             requestID ?: @"",
+             (unsigned long)cachedProductsBeforeSend,
+             hadPendingPayload ? @"YES" : @"NO",
+             hadPendingPayload ? @"YES" : @"NO");
+}
+
+- (BOOL)pp_canAttachNovaRenderForRequestID:(NSString *)requestID
+                                responseID:(NSString *)responseID
+                                generation:(NSUInteger)generation
+                                    source:(NSString *)source {
+    BOOL hasIDs = requestID.length > 0 && responseID.length > 0;
+    BOOL requestMatches = hasIDs && [requestID isEqualToString:self.activeNovaRequestID];
+    BOOL responseMatches = hasIDs && (self.activeNovaResponseID.length == 0 || [responseID isEqualToString:self.activeNovaResponseID]);
+    BOOL generationMatches = generation == 0 || generation == self.novaRequestGeneration;
+    if (requestMatches && responseMatches && generationMatches) {
+        return YES;
+    }
+
+    LOG_WARN(@"[PPNovaChat][RenderBinding] append_dropped request_id=%@ response_id=%@ active_request_id=%@ active_response_id=%@ generation=%lu active_generation=%lu source=%@ reused_previous_payload=NO",
+             requestID ?: @"",
+             responseID ?: @"",
+             self.activeNovaRequestID ?: @"",
+             self.activeNovaResponseID ?: @"",
+             (unsigned long)generation,
+             (unsigned long)self.novaRequestGeneration,
+             source ?: @"unknown");
+    return NO;
+}
+
+- (NSUInteger)pp_novaRefCountInRefs:(NSArray<NSDictionary<NSString *, NSString *> *> *)refs
+                              kinds:(NSSet<NSString *> *)kinds {
+    NSUInteger count = 0;
+    for (NSDictionary<NSString *, NSString *> *ref in refs) {
+        NSString *kind = ref[@"kind"] ?: @"";
+        if ([kinds containsObject:kind]) {
+            count++;
+        }
+    }
+    return count;
+}
+
+- (void)pp_logNovaIncomingRefs:(NSArray<NSDictionary<NSString *, NSString *> *> *)refs
+                     requestID:(NSString *)requestID
+                    responseID:(NSString *)responseID
+                        source:(NSString *)source {
+    NSUInteger productsCount = [self pp_novaRefCountInRefs:refs kinds:[NSSet setWithArray:@[@"product", @"medicine"]]];
+    NSUInteger adsCount = [self pp_novaRefCountInRefs:refs kinds:[NSSet setWithArray:@[@"pet_ad", @"adoption"]]];
+    NSUInteger servicesCount = [self pp_novaRefCountInRefs:refs kinds:[NSSet setWithArray:@[@"service", @"vet"]]];
+    LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ response_id=%@ incoming_products_count=%lu incoming_ads_count=%lu incoming_services_count=%lu source=%@",
+             requestID ?: @"",
+             responseID ?: @"",
+             (unsigned long)productsCount,
+             (unsigned long)adsCount,
+             (unsigned long)servicesCount,
+             source ?: @"unknown");
+}
+
+- (void)pp_logNovaIncomingObjects:(NSArray *)objects
+                        requestID:(NSString *)requestID
+                       responseID:(NSString *)responseID
+                           source:(NSString *)source {
+    NSUInteger productsCount = 0;
+    NSUInteger adsCount = 0;
+    NSUInteger servicesCount = 0;
+    for (id object in objects) {
+        if ([object isKindOfClass:PetAccessory.class]) {
+            productsCount++;
+        } else if ([object isKindOfClass:PetAd.class] || [object isKindOfClass:AdoptPetModel.class]) {
+            adsCount++;
+        } else if ([object isKindOfClass:ServiceModel.class] || [object isKindOfClass:VetModel.class]) {
+            servicesCount++;
+        }
+    }
+    LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ response_id=%@ incoming_products_count=%lu incoming_ads_count=%lu incoming_services_count=%lu source=%@",
+             requestID ?: @"",
+             responseID ?: @"",
+             (unsigned long)productsCount,
+             (unsigned long)adsCount,
+             (unsigned long)servicesCount,
+             source ?: @"unknown");
+}
+
+- (void)sendNovaRequestForUserText:(NSString *)userText requestID:(NSString *)requestID {
     NSString *trimmedText = [userText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) {
         [self hideNovaTyping];
@@ -835,11 +955,11 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
     self.novaRequestGeneration = self.novaRequestGeneration + 1;
     NSUInteger generation = self.novaRequestGeneration;
-    [self pp_startNovaRequestWatchdogForGeneration:generation userText:trimmedText];
-    [self pp_dispatchNovaRequest:trimmedText attempt:0 generation:generation];
+    [self pp_startNovaRequestWatchdogForGeneration:generation userText:trimmedText requestID:requestID];
+    [self pp_dispatchNovaRequest:trimmedText attempt:0 generation:generation requestID:requestID];
 }
 
-- (void)pp_dispatchNovaRequest:(NSString *)trimmedText attempt:(NSInteger)attempt generation:(NSUInteger)generation {
+- (void)pp_dispatchNovaRequest:(NSString *)trimmedText attempt:(NSInteger)attempt generation:(NSUInteger)generation requestID:(NSString *)requestID {
     if (self.dismissed) return;
     BOOL hasCatalogIntent = [self pp_novaHasCatalogSearchIntentForUserText:trimmedText];
 
@@ -848,7 +968,15 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         // local product showcase. If nothing scores high enough, the chat stays
         // silent rather than injecting a templated apology.
         [self hideNovaTyping];
-        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
+        NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"local_no_callable"];
+        self.activeNovaResponseID = responseID;
+        [self pp_logNovaIncomingObjects:@[] requestID:requestID responseID:responseID source:@"local_no_callable"];
+        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+                                                 introText:nil
+                                                 requestID:requestID
+                                                responseID:responseID
+                                                generation:generation
+                                               completion:nil];
         return;
     }
 
@@ -857,11 +985,14 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         @"context": [self pp_currentContextDictionary],
         @"history": [self pp_currentHistoryArray],
         @"sessionId": self.novaSessionId,
+        @"request_id": requestID ?: @"",
+        @"requestId": requestID ?: @"",
         @"conversation_state": [self pp_currentNovaBrainStateDictionary]
     };
 
-    LOG_INFO(@"[PPNovaChat][Debug] send url=%@ requestKeys=%@ authUIDPresent=%@",
+    LOG_INFO(@"[PPNovaChat][Debug] send url=%@ request_id=%@ requestKeys=%@ authUIDPresent=%@",
              [PPNovaChatViewController pp_novaCallableDebugURL],
+             requestID ?: @"",
              [PPNovaChatViewController pp_sortedDictionaryKeys:payload],
              PPCurrentFIRAuthUser.uid.length > 0 ? @"YES" : @"NO");
 
@@ -874,16 +1005,16 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
             if (error) {
                 if (attempt == 0 && [PPNovaChatViewController pp_isRetryableNovaError:error]) {
-                    LOG_WARN(@"[PPNovaChat][Debug] branch=retryable_transient attempt=%ld code=%ld httpStatus=%@",
-                             (long)attempt,
-                             (long)error.code,
-                             [PPNovaChatViewController pp_httpStatusDebugStringFromError:error]);
-                    LOG_WARN(@"[PPNovaChat] geminiProxy transient error (will retry once): %@", error.localizedDescription);
-                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                        __strong typeof(weakSelf) inner = weakSelf;
-                        if (!inner || inner.dismissed) return;
-                        [inner pp_dispatchNovaRequest:trimmedText attempt:1 generation:generation];
-                    });
+	                    LOG_WARN(@"[PPNovaChat][Debug] branch=retryable_transient attempt=%ld code=%ld httpStatus=%@",
+	                             (long)attempt,
+	                             (long)error.code,
+	                             [PPNovaChatViewController pp_httpStatusDebugStringFromError:error]);
+	                    LOG_WARN(@"[PPNovaChat] geminiProxy transient error (will retry once): %@", error.localizedDescription);
+	                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+	                        __strong typeof(weakSelf) inner = weakSelf;
+	                        if (!inner || inner.dismissed) return;
+	                        [inner pp_dispatchNovaRequest:trimmedText attempt:1 generation:generation requestID:requestID];
+	                    });
                     return;
                 }
                 if (generation != self.novaRequestGeneration) {
@@ -931,196 +1062,194 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
                              branch,
                              (long)error.code,
                              [PPNovaChatViewController pp_httpStatusDebugStringFromError:error]);
-                    // Only the connectivity bubble can be suppressed by a
-                    // successful local product showcase — auth/permission
-                    // errors must always surface so the user knows to re-auth.
-                    if ([userFacing isEqualToString:kLang(@"nova_error_unavailable")]) {
-                        __weak typeof(self) localWeakSelf = self;
-                        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
-                                                              completion:^(BOOL didShow) {
-                            __strong typeof(localWeakSelf) strongSelf = localWeakSelf;
-                            if (!strongSelf || strongSelf.dismissed) return;
-                            if (!didShow) {
-                                [strongSelf pp_addNovaSystemBubbleIfNew:userFacing];
-                            }
-                        }];
-                        return;
-                    }
-                    [self pp_addNovaSystemBubbleIfNew:userFacing];
-                    return;
-                }
-                // Anything else: try a local product showcase silently. No
-                // templated apology — if local search has no relevant items,
-                // the chat stays quiet rather than fabricating a Nova reply.
-                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
-                return;
-            }
-            if (generation != self.novaRequestGeneration) {
-                return;
-            }
+	                    // Only the connectivity bubble can be suppressed by a
+	                    // successful local product showcase — auth/permission
+	                    // errors must always surface so the user knows to re-auth.
+	                    if ([userFacing isEqualToString:kLang(@"nova_error_unavailable")]) {
+	                        NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"local_unavailable"];
+	                        self.activeNovaResponseID = responseID;
+	                        [self pp_logNovaIncomingObjects:@[] requestID:requestID responseID:responseID source:@"local_unavailable"];
+	                        __weak typeof(self) localWeakSelf = self;
+	                        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+	                                                                introText:nil
+	                                                                requestID:requestID
+	                                                               responseID:responseID
+	                                                               generation:generation
+	                                                              completion:^(BOOL didShow) {
+	                            __strong typeof(localWeakSelf) strongSelf = localWeakSelf;
+	                            if (!strongSelf || strongSelf.dismissed) return;
+	                            if (!didShow) {
+	                                [strongSelf pp_addNovaSystemBubbleIfNew:userFacing];
+	                            }
+	                        }];
+	                        return;
+	                    }
+	                    [self pp_addNovaSystemBubbleIfNew:userFacing];
+	                    return;
+	                }
+	                // Anything else: try a local product showcase silently. No
+	                // templated apology — if local search has no relevant items,
+	                // the chat stays quiet rather than fabricating a Nova reply.
+	                NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"local_error"];
+	                self.activeNovaResponseID = responseID;
+	                [self pp_logNovaIncomingObjects:@[] requestID:requestID responseID:responseID source:@"local_error"];
+	                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
+	                                                        introText:nil
+	                                                        requestID:requestID
+	                                                       responseID:responseID
+	                                                       generation:generation
+	                                                      completion:nil];
+	                return;
+	            }
+	            if (generation != self.novaRequestGeneration) {
+	                return;
+	            }
 
-            NSString *replyText = nil;
-            NSString *serverAction = nil;
-            NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs = @[];
-            if ([result.data isKindOfClass:NSDictionary.class]) {
-                NSDictionary *data = (NSDictionary *)result.data;
-                LOG_INFO(@"[PPNovaChat][Debug] responseKeys=%@ httpStatus=%@",
-                         [PPNovaChatViewController pp_sortedDictionaryKeys:data],
-                         @"n/a");
-                serverAction = [PPNovaChatViewController pp_novaBrainActionFromResponseData:data];
-                // Prefer the new canonical `assistantText` field; fall back to
-                // legacy `text` so older Cloud Function builds still work.
-                id assistantTextValue = data[@"assistantText"];
-                id textValue = data[@"text"];
-                if ([assistantTextValue isKindOfClass:NSString.class] &&
-                    [(NSString *)assistantTextValue length] > 0) {
-                    replyText = (NSString *)assistantTextValue;
-                } else if ([textValue isKindOfClass:NSString.class]) {
-                    replyText = (NSString *)textValue;
-                }
-                suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:data replyText:replyText];
-                LOG_INFO(@"[PPNovaChat][Refs] received_from_server=%lu assistantTextChars=%lu",
-                         (unsigned long)suggestionRefs.count,
-                         (unsigned long)replyText.length);
-            } else {
-                LOG_WARN(@"[PPNovaChat][Debug] branch=response_not_dictionary responseType=%@ httpStatus=%@",
-                         result.data ? NSStringFromClass([result.data class]) : @"nil",
-                         @"n/a");
-                suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:nil replyText:replyText];
-            }
+	            NSString *replyText = nil;
+	            NSString *serverAction = nil;
+	            NSString *responseID = nil;
+	            NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs = @[];
+	            if ([result.data isKindOfClass:NSDictionary.class]) {
+	                NSDictionary *data = (NSDictionary *)result.data;
+	                responseID = [self pp_novaResponseIDFromResponseData:data requestID:requestID source:@"server"];
+	                self.activeNovaResponseID = responseID;
+	                LOG_INFO(@"[PPNovaChat][Debug] responseKeys=%@ httpStatus=%@",
+	                         [PPNovaChatViewController pp_sortedDictionaryKeys:data],
+	                         @"n/a");
+	                serverAction = [PPNovaChatViewController pp_novaBrainActionFromResponseData:data];
+	                // Prefer the new canonical `assistantText` field; fall back to
+	                // legacy `text` so older Cloud Function builds still work.
+	                id assistantTextValue = data[@"assistantText"];
+	                id textValue = data[@"text"];
+	                if ([assistantTextValue isKindOfClass:NSString.class] &&
+	                    [(NSString *)assistantTextValue length] > 0) {
+	                    replyText = (NSString *)assistantTextValue;
+	                } else if ([textValue isKindOfClass:NSString.class]) {
+	                    replyText = (NSString *)textValue;
+	                }
+	                suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:data replyText:replyText];
+	                LOG_INFO(@"[PPNovaChat][Refs] received_from_server=%lu assistantTextChars=%lu",
+	                         (unsigned long)suggestionRefs.count,
+	                         (unsigned long)replyText.length);
+	            } else {
+	                responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"server_non_dictionary"];
+	                self.activeNovaResponseID = responseID;
+	                LOG_WARN(@"[PPNovaChat][Debug] branch=response_not_dictionary responseType=%@ httpStatus=%@",
+	                         result.data ? NSStringFromClass([result.data class]) : @"nil",
+	                         @"n/a");
+	                suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:nil replyText:replyText];
+	            }
+	            [self pp_logNovaIncomingRefs:suggestionRefs requestID:requestID responseID:responseID source:@"server"];
 
-            replyText = [replyText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-            // Nova Brain clarification/response actions are terminal: render the
-            // reply and skip the local showcase fallback so unclear text never
-            // triggers product cards.
-            if ([serverAction isEqualToString:@"ASK_CLARIFICATION"] ||
-                [serverAction isEqualToString:@"RESPOND"]) {
-                [self hideNovaTyping];
-                NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:YES];
-                if (sanitizedReply.length > 0) {
-                    [self addNovaMessage:sanitizedReply];
-                }
-                return;
-            }
-            if (replyText.length == 0 && suggestionRefs.count == 0) {
-                [self hideNovaTyping];
-                LOG_WARN(@"[PPNovaChat][Debug] branch=empty_text_and_empty_products responseKeys=%@",
-                         [result.data isKindOfClass:NSDictionary.class]
-                            ? [PPNovaChatViewController pp_sortedDictionaryKeys:(NSDictionary *)result.data]
-                            : @[]);
-                LOG_WARN(@"[PPNovaChat] geminiProxy returned empty reply and no products; trying local showcase silently.");
-                // Don't synthesize a Nova reply on emptiness — try local
-                // products silently. If the AI returned nothing meaningful,
-                // injecting a scripted line on its behalf would impersonate it.
-                [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
-                                                        completion:^(BOOL didShow) {
-                    if (!didShow && hasCatalogIntent) {
-                        [self pp_addNovaProductResultTextForRenderedCount:0
-                                                             proposedText:nil
-                                                                 userText:trimmedText
-                                                                   source:@"local_empty_after_empty_response"];
-                    }
-                }];
-                return;
-            }
+	            replyText = [replyText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+	            // Nova Brain clarification/response actions are terminal: render the
+	            // reply and skip the local showcase fallback so unclear text never
+	            // triggers product cards.
+	            if ([serverAction isEqualToString:@"ASK_CLARIFICATION"] ||
+	                [serverAction isEqualToString:@"RESPOND"]) {
+	                [self hideNovaTyping];
+	                NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:YES];
+	                if (sanitizedReply.length > 0) {
+	                    [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                }
+	                return;
+	            }
+	            if (replyText.length == 0 && suggestionRefs.count == 0) {
+	                [self hideNovaTyping];
+	                LOG_WARN(@"[PPNovaChat][Debug] branch=empty_text_and_empty_products responseKeys=%@",
+	                         [result.data isKindOfClass:NSDictionary.class]
+	                            ? [PPNovaChatViewController pp_sortedDictionaryKeys:(NSDictionary *)result.data]
+	                            : @[]);
+	                LOG_WARN(@"[PPNovaChat] geminiProxy returned empty reply and no products; no previous local cards will be reused.");
+	                if (hasCatalogIntent) {
+	                    [self pp_addNovaProductResultTextForRenderedCount:0
+	                                                         proposedText:nil
+	                                                             userText:trimmedText
+	                                                               source:@"server_empty_response"
+	                                                            requestID:requestID
+	                                                           responseID:responseID];
+	                }
+	                return;
+	            }
 
-            NSString *suggestionFallbackText = nil;
-            NSString *deferredNoProductReply = nil;
-            NSString *deferredModelReplyIfNoLocalProducts = nil;
-            NSString *localShowcaseIntroText = nil;
-            NSString *pendingResolvedProductText = nil;
-            if (replyText.length > 0) {
-                NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:(suggestionRefs.count > 0)];
-                if (sanitizedReply.length > 0) {
-                    if ([self pp_novaReplyContainsNoProductClaim:sanitizedReply]) {
-                        if (suggestionRefs.count > 0) {
-                            pendingResolvedProductText = nil;
-                        } else {
-                            deferredNoProductReply = sanitizedReply;
-                            localShowcaseIntroText = nil;
-                        }
-                    } else if (suggestionRefs.count > 0) {
-                        // Always use the server's AI reply alongside product cells.
-                        // The behavior layer already crafted a natural assistant message;
-                        // replacing it with a template silences the AI personality.
-                        pendingResolvedProductText = sanitizedReply;
-                    } else if (hasCatalogIntent) {
-                        deferredModelReplyIfNoLocalProducts = sanitizedReply;
-                        localShowcaseIntroText = sanitizedReply;
-                    } else {
-                        [self addNovaMessage:sanitizedReply];
-                    }
-                } else if (suggestionRefs.count == 0) {
-                    // Structured-strip emptied a reply that has no product refs.
-                    // Try the lighter strip (only [PRODUCT_ID:] tags) so the
-                    // model's actual answer survives. If even that is empty,
-                    // stay silent — never inject a templated apology on the
-                    // AI's behalf.
-                    NSString *unstrippedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
-                    if (unstrippedReply.length > 0) {
-                        if ([self pp_novaReplyContainsNoProductClaim:unstrippedReply]) {
-                            deferredNoProductReply = unstrippedReply;
-                            localShowcaseIntroText = nil;
-                        } else if (hasCatalogIntent) {
-                            deferredModelReplyIfNoLocalProducts = unstrippedReply;
-                            localShowcaseIntroText = unstrippedReply;
-                        } else {
-                            [self addNovaMessage:unstrippedReply];
-                        }
-                    } else {
-                        [self hideNovaTyping];
-                        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText completion:nil];
-                        return;
-                    }
-                } else {
-                    suggestionFallbackText = pendingResolvedProductText ?: [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
-                }
-            }
+	            NSString *suggestionFallbackText = nil;
+	            NSString *pendingResolvedProductText = nil;
+	            if (replyText.length > 0) {
+	                NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:(suggestionRefs.count > 0)];
+	                if (sanitizedReply.length > 0) {
+	                    if ([self pp_novaReplyContainsNoProductClaim:sanitizedReply]) {
+	                        if (suggestionRefs.count > 0) {
+	                            pendingResolvedProductText = nil;
+	                        } else {
+	                            [self hideNovaTyping];
+	                            [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                            return;
+	                        }
+	                    } else if (suggestionRefs.count > 0) {
+	                        // Always use the server's AI reply alongside product cells.
+	                        // The behavior layer already crafted a natural assistant message;
+	                        // replacing it with a template silences the AI personality.
+	                        pendingResolvedProductText = sanitizedReply;
+	                    } else {
+	                        [self hideNovaTyping];
+	                        [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                        return;
+	                    }
+	                } else if (suggestionRefs.count == 0) {
+	                    // Structured-strip emptied a reply that has no product refs.
+	                    // Try the lighter strip (only [PRODUCT_ID:] tags) so the
+	                    // model's actual answer survives. If even that is empty,
+	                    // stay silent — never inject a templated apology on the
+	                    // AI's behalf.
+	                    NSString *unstrippedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
+	                    if (unstrippedReply.length > 0) {
+	                        [self hideNovaTyping];
+	                        [self addNovaMessage:unstrippedReply requestID:requestID responseID:responseID];
+	                        return;
+	                    } else {
+	                        [self hideNovaTyping];
+	                        if (hasCatalogIntent) {
+	                            [self pp_addNovaProductResultTextForRenderedCount:0
+	                                                                 proposedText:nil
+	                                                                     userText:trimmedText
+	                                                                       source:@"server_text_stripped_empty"
+	                                                                    requestID:requestID
+	                                                                   responseID:responseID];
+	                        }
+	                        return;
+	                    }
+	                } else {
+	                    suggestionFallbackText = pendingResolvedProductText ?: [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
+	                }
+	            }
 
-            if (suggestionRefs.count > 0) {
-                // No scripted fallback text — pass nil so the resolver only
-                // shows the AI's own reply (already added above) plus whatever
-                // products it can resolve. Templated apologies on resolution
-                // failure are gone.
-                [self pp_fetchAndShowNovaSuggestionRefs:suggestionRefs
-                                           fallbackText:pendingResolvedProductText ?: suggestionFallbackText
-                                               userText:trimmedText];
-            } else {
-                [self hideNovaTyping];
-                if (deferredNoProductReply.length > 0 || deferredModelReplyIfNoLocalProducts.length > 0) {
-                    __weak typeof(self) localWeakSelf = self;
-                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
-                                                            introText:localShowcaseIntroText
-                                                           completion:^(BOOL didShow) {
-                        __strong typeof(localWeakSelf) strongSelf = localWeakSelf;
-                        if (!strongSelf || strongSelf.dismissed || didShow) return;
-                        NSString *modelReply = deferredModelReplyIfNoLocalProducts ?: deferredNoProductReply;
-                        if (modelReply.length > 0) {
-                            [strongSelf addNovaMessage:modelReply];
-                        } else {
-                            [strongSelf pp_addNovaProductResultTextForRenderedCount:0
-                                                                       proposedText:nil
-                                                                           userText:trimmedText
-                                                                             source:@"local_empty_after_model_text"];
-                        }
-                    }];
-                } else {
-                    [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
-                                                            completion:^(BOOL didShow) {
-                        if (!didShow && hasCatalogIntent) {
-                            [self pp_addNovaProductResultTextForRenderedCount:0
-                                                                 proposedText:nil
-                                                                     userText:trimmedText
-                                                                       source:@"local_empty_after_response"];
-                        }
-                    }];
-                }
-            }
+	            if (suggestionRefs.count > 0) {
+	                // No scripted fallback text — pass nil so the resolver only
+	                // shows the AI's own reply (already added above) plus whatever
+	                // products it can resolve. Templated apologies on resolution
+	                // failure are gone.
+	                [self pp_fetchAndShowNovaSuggestionRefs:suggestionRefs
+	                                           fallbackText:pendingResolvedProductText ?: suggestionFallbackText
+	                                               userText:trimmedText
+	                                              requestID:requestID
+	                                             responseID:responseID
+	                                             generation:generation];
+	            } else {
+	                [self hideNovaTyping];
+	                if (hasCatalogIntent) {
+	                    [self pp_addNovaProductResultTextForRenderedCount:0
+	                                                         proposedText:nil
+	                                                             userText:trimmedText
+	                                                               source:@"server_no_refs"
+	                                                            requestID:requestID
+	                                                           responseID:responseID];
+	                }
+	            }
         });
     }];
 }
 
-- (void)pp_startNovaRequestWatchdogForGeneration:(NSUInteger)generation userText:(NSString *)userText {
+- (void)pp_startNovaRequestWatchdogForGeneration:(NSUInteger)generation userText:(NSString *)userText requestID:(NSString *)requestID {
     NSString *query = [userText copy] ?: @"";
     __weak typeof(self) weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(35.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -1132,20 +1261,27 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
             return;
         }
 
-        LOG_WARN(@"[PPNovaChat][Debug] branch=request_watchdog_timeout generation=%lu",
-                 (unsigned long)generation);
-        [self hideNovaTyping];
-        if ([self pp_novaHasCatalogSearchIntentForUserText:query] &&
-            ![self pp_novaIsGenericConversationText:query]) {
-            [self pp_fetchAndShowLocalNovaShowcaseForUserText:query
-                                                    completion:^(BOOL didShow) {
-                if (!didShow) {
-                    [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
-                }
-            }];
-        } else {
-            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
-        }
+	        LOG_WARN(@"[PPNovaChat][Debug] branch=request_watchdog_timeout generation=%lu",
+	                 (unsigned long)generation);
+	        [self hideNovaTyping];
+	        if ([self pp_novaHasCatalogSearchIntentForUserText:query] &&
+	            ![self pp_novaIsGenericConversationText:query]) {
+	            NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"local_watchdog"];
+	            self.activeNovaResponseID = responseID;
+	            [self pp_logNovaIncomingObjects:@[] requestID:requestID responseID:responseID source:@"local_watchdog"];
+	            [self pp_fetchAndShowLocalNovaShowcaseForUserText:query
+	                                                    introText:nil
+	                                                    requestID:requestID
+	                                                   responseID:responseID
+	                                                   generation:generation
+	                                                   completion:^(BOOL didShow) {
+	                if (!didShow) {
+	                    [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
+	                }
+	            }];
+	        } else {
+	            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
+	        }
     });
 }
 
@@ -1548,7 +1684,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
 - (void)pp_fetchAndShowNovaSuggestionRefs:(NSArray<NSDictionary<NSString *, NSString *> *> *)refs
                              fallbackText:(NSString *)fallbackText
-                                 userText:(NSString *)userText {
+                                 userText:(NSString *)userText
+                                requestID:(NSString *)requestID
+                               responseID:(NSString *)responseID
+                               generation:(NSUInteger)generation {
     if (refs.count == 0) {
         return;
     }
@@ -1629,15 +1768,21 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     }
 
     __weak typeof(self) weakSelf = self;
-    void (^finish)(BOOL timedOut) = ^(BOOL timedOut) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (didFinish || !self || self.dismissed) {
-            return;
-        }
-        didFinish = YES;
+	    void (^finish)(BOOL timedOut) = ^(BOOL timedOut) {
+	        __strong typeof(weakSelf) self = weakSelf;
+	        if (didFinish || !self || self.dismissed) {
+	            return;
+	        }
+	        didFinish = YES;
+	        if (![self pp_canAttachNovaRenderForRequestID:requestID
+	                                           responseID:responseID
+	                                           generation:generation
+	                                               source:@"server_resolution"]) {
+	            return;
+	        }
 
-        if (timedOut) {
-            LOG_WARN(@"[PPNovaChat] Nova suggestion resolution timed out: %@", refs);
+	        if (timedOut) {
+	            LOG_WARN(@"[PPNovaChat] Nova suggestion resolution timed out: %@", refs);
         }
 
         [self hideNovaTyping];
@@ -1691,29 +1836,25 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
                                                               resolvedCount:0
                                                                   sessionID:self.novaSessionId];
 
-            // Resolution failed. Try a local product showcase silently. If it
-            // also produces nothing, fall back to Nova's own assistantText so
-            // her message is never lost to a card-resolve failure. The AI text
-            // is the source of truth for what Nova said; cards are only the
-            // visual layer.
-            [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText
-                                                    completion:^(BOOL didShow) {
-                if (!didShow) {
-                    if (hasAssistantText) {
-                        [self pp_addNovaProductResultTextForRenderedCount:0
-                                                             proposedText:fallbackText
-                                                                 userText:userText
-                                                                   source:@"server_resolution_empty_assistantText_preserved"];
-                    } else if ([self pp_novaHasCatalogSearchIntentForUserText:userText]) {
-                        [self pp_addNovaProductResultTextForRenderedCount:0
-                                                             proposedText:nil
-                                                                 userText:userText
-                                                                   source:@"server_resolution_empty"];
-                    }
-                }
-            }];
-            return;
-        }
+	            // Resolution failed. Preserve Nova's text, but do not substitute
+	            // any previous local card payload for this response.
+	            if (hasAssistantText) {
+	                [self pp_addNovaProductResultTextForRenderedCount:0
+	                                                     proposedText:fallbackText
+	                                                         userText:userText
+	                                                           source:@"server_resolution_empty_assistantText_preserved"
+	                                                        requestID:requestID
+	                                                       responseID:responseID];
+	            } else if ([self pp_novaHasCatalogSearchIntentForUserText:userText]) {
+	                [self pp_addNovaProductResultTextForRenderedCount:0
+	                                                     proposedText:nil
+	                                                         userText:userText
+	                                                           source:@"server_resolution_empty"
+	                                                        requestID:requestID
+	                                                       responseID:responseID];
+	            }
+	            return;
+	        }
 
         // Resolved-IDs telemetry per spec — every server-resolution turn logs
         // received vs. resolved vs. unresolved IDs and the source/type used,
@@ -1730,11 +1871,17 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
                  typeCounts,
                  fallbackText.length > 0 ? @"YES" : @"NO");
 
-        [self pp_addNovaProductResultTextForRenderedCount:objects.count
-                                             proposedText:fallbackText
-                                                 userText:userText
-                                                   source:@"server"];
-        [self pp_showNovaSuggestionObjects:objects];
+	        [self pp_addNovaProductResultTextForRenderedCount:objects.count
+	                                             proposedText:fallbackText
+	                                                 userText:userText
+	                                                   source:@"server"
+	                                                requestID:requestID
+	                                               responseID:responseID];
+	        [self pp_showNovaSuggestionObjects:objects
+	                                    source:@"server"
+	                                 requestID:requestID
+	                                responseID:responseID
+	                                generation:generation];
 
         // Save the synthetic product marker to local memory so context is retained
         NSInteger n = (NSInteger)objects.count;
@@ -1902,9 +2049,28 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (void)pp_showNovaSuggestionObjects:(NSArray *)objects source:(NSString *)source {
+    [self pp_showNovaSuggestionObjects:objects
+                                source:source
+                             requestID:self.activeNovaRequestID
+                            responseID:self.activeNovaResponseID
+                            generation:self.novaRequestGeneration];
+}
+
+- (void)pp_showNovaSuggestionObjects:(NSArray *)objects
+                              source:(NSString *)source
+                           requestID:(NSString *)requestID
+                          responseID:(NSString *)responseID
+                          generation:(NSUInteger)generation {
     if (objects.count == 0) {
         return;
     }
+    if (![self pp_canAttachNovaRenderForRequestID:requestID
+                                       responseID:responseID
+                                       generation:generation
+                                           source:source]) {
+        return;
+    }
+    [self pp_logNovaIncomingObjects:objects requestID:requestID responseID:responseID source:source];
 
     NSArray<PetAccessory *> *cartableProducts = [self pp_cartableNovaProductsFromObjects:objects];
     self.lastShownProducts = cartableProducts;
@@ -1920,6 +2086,8 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     msg.ID = [[NSUUID UUID] UUIDString];
     msg.messageType = objects.count > 1 ? ChatMessageTypeNovaProductList : ChatMessageTypeNovaProduct;
     msg.novaProducts = (NSArray<PetAccessory *> *)objects;
+    msg.novaRequestID = requestID;
+    msg.novaResponseID = responseID;
     msg.timestamp = [NSDate date];
     msg.senderID = @"nova_bot_id";
 
@@ -1931,6 +2099,12 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     LOG_INFO(@"NOVA_RENDERED_CELL_COUNT rendered=%lu source=%@",
              (unsigned long)objects.count,
              source ?: @"unknown");
+    LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ response_id=%@ appended_section_id=%@ attached_to_message_id=%@ reused_previous_payload=NO source=%@",
+             requestID ?: @"",
+             responseID ?: @"",
+             msg.ID ?: @"",
+             msg.ID ?: @"",
+             source ?: @"unknown");
 
     [PPAnalytics logNovaShowcaseShownWithItemCount:objects.count
                                           sessionID:self.novaSessionId
@@ -1940,8 +2114,13 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 - (void)pp_fetchAndShowLocalNovaShowcaseForUserText:(NSString *)userText
                                          completion:(void (^)(BOOL didShow))completion
 {
+    NSString *requestID = self.activeNovaRequestID ?: [self pp_newNovaScopedIDWithPrefix:@"request"];
+    NSString *responseID = self.activeNovaResponseID ?: [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"local"];
     [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText
                                             introText:nil
+                                            requestID:requestID
+                                           responseID:responseID
+                                           generation:self.novaRequestGeneration
                                            completion:completion];
 }
 
@@ -1949,9 +2128,34 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
                                           introText:(nullable NSString *)introText
                                         completion:(void (^)(BOOL didShow))completion
 {
+    NSString *requestID = self.activeNovaRequestID ?: [self pp_newNovaScopedIDWithPrefix:@"request"];
+    NSString *responseID = self.activeNovaResponseID ?: [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"local"];
+    [self pp_fetchAndShowLocalNovaShowcaseForUserText:userText
+                                            introText:introText
+                                            requestID:requestID
+                                           responseID:responseID
+                                           generation:self.novaRequestGeneration
+                                           completion:completion];
+}
+
+- (void)pp_fetchAndShowLocalNovaShowcaseForUserText:(NSString *)userText
+                                          introText:(nullable NSString *)introText
+                                          requestID:(NSString *)requestID
+                                         responseID:(NSString *)responseID
+                                         generation:(NSUInteger)generation
+                                        completion:(void (^)(BOOL didShow))completion
+{
     NSString *trimmedText = [userText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     [self pp_updateMemoryFromUserText:trimmedText];
     [self pp_logNovaIntentForUserText:trimmedText stage:@"local_search_start"];
+
+    if (![self pp_canAttachNovaRenderForRequestID:requestID
+                                       responseID:responseID
+                                       generation:generation
+                                           source:@"local_search_start"]) {
+        if (completion) completion(NO);
+        return;
+    }
 
     if (![self pp_shouldAttemptLocalNovaShowcaseForUserText:trimmedText] || [self pp_lastMessageIsNovaShowcase]) {
         LOG_INFO(@"NOVA_PRODUCTS_COUNT count=0 source=local reason=not_attempted");
@@ -1961,9 +2165,8 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
     NSString *currentNeed = [self pp_localNovaNeedLabelFromUserText:trimmedText];
     NSString *currentPetType = [self pp_localNovaPetTypeFromUserText:trimmedText];
-    NSString *need = currentNeed ?: (currentPetType.length > 0 ? nil : self.novaMemoryNeed);
-    BOOL canCarryMemoryPetType = currentNeed.length > 0 || [self pp_novaTextHasShowcaseDisplayIntent:trimmedText];
-    NSString *petType = currentPetType ?: (canCarryMemoryPetType ? (self.novaMemoryPetType ?: @"") : @"");
+    NSString *need = currentNeed ?: @"";
+    NSString *petType = currentPetType ?: @"";
     AccessKindType kind = [self pp_localNovaShowcaseKindForNeed:need petType:petType];
     LOG_INFO(@"NOVA_SEARCH_QUERY raw=%@ normalized=%@ kind=%ld need=%@ petType=%@",
              trimmedText ?: @"",
@@ -1975,6 +2178,13 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     [[PetAccessoryManager sharedManager] fetchAccessoriesOfKind:kind completion:^(NSArray<PetAccessory *> *accessories) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || self.dismissed) {
+            if (completion) completion(NO);
+            return;
+        }
+        if (![self pp_canAttachNovaRenderForRequestID:requestID
+                                           responseID:responseID
+                                           generation:generation
+                                               source:@"local_search_finish"]) {
             if (completion) completion(NO);
             return;
         }
@@ -2001,8 +2211,14 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         [self pp_addNovaProductResultTextForRenderedCount:ranked.count
                                              proposedText:introText
                                                  userText:trimmedText
-                                                   source:@"local"];
-        [self pp_showNovaSuggestionObjects:ranked source:@"local"];
+                                                   source:@"local"
+                                                requestID:requestID
+                                               responseID:responseID];
+        [self pp_showNovaSuggestionObjects:ranked
+                                    source:@"local"
+                                 requestID:requestID
+                                responseID:responseID
+                                generation:generation];
         if (completion) completion(YES);
     }];
 }
@@ -2165,7 +2381,15 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 - (void)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
                                        proposedText:(NSString *)proposedText
                                            userText:(NSString *)userText
-                                             source:(NSString *)source {
+                                             source:(NSString *)source
+                                          requestID:(NSString *)requestID
+                                         responseID:(NSString *)responseID {
+    if (![self pp_canAttachNovaRenderForRequestID:requestID
+                                       responseID:responseID
+                                       generation:self.novaRequestGeneration
+                                           source:source]) {
+        return;
+    }
     NSString *cleanProposed = [proposedText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSString *decision = @"no_products";
     NSString *textToShow = nil;
@@ -2186,20 +2410,26 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         }
     }
 
-    LOG_INFO(@"NOVA_PRODUCTS_COUNT count=%lu source=%@",
+    LOG_INFO(@"NOVA_PRODUCTS_COUNT request_id=%@ response_id=%@ count=%lu source=%@",
+             requestID ?: @"",
+             responseID ?: @"",
              (unsigned long)renderedCount,
              source ?: @"unknown");
-    LOG_INFO(@"NOVA_RENDERED_CELL_COUNT rendered=%lu source=%@",
+    LOG_INFO(@"NOVA_RENDERED_CELL_COUNT request_id=%@ response_id=%@ rendered=%lu source=%@",
+             requestID ?: @"",
+             responseID ?: @"",
              (unsigned long)renderedCount,
              source ?: @"unknown");
-    LOG_INFO(@"NOVA_TEXT_DECISION decision=%@ rendered=%lu source=%@ text=%@",
+    LOG_INFO(@"NOVA_TEXT_DECISION request_id=%@ response_id=%@ decision=%@ rendered=%lu source=%@ text=%@",
+             requestID ?: @"",
+             responseID ?: @"",
              decision,
              (unsigned long)renderedCount,
              source ?: @"unknown",
              textToShow ?: @"");
 
     if (textToShow.length > 0 && ![self pp_lastNovaTextMessageEquals:textToShow]) {
-        [self addNovaMessage:textToShow];
+        [self addNovaMessage:textToShow requestID:requestID responseID:responseID];
     }
 }
 
@@ -2214,10 +2444,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         return YES;
     }
     if (need.length > 0) {
-        return petType.length > 0 || self.novaMemoryPetType.length > 0;
+        return petType.length > 0;
     }
     if ([self pp_novaTextHasShowcaseDisplayIntent:lower]) {
-        return self.novaMemoryNeed.length > 0 || self.novaMemoryPetType.length > 0;
+        return petType.length > 0;
     }
     return NO;
 }
@@ -5465,45 +5695,33 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 - (void)pp_handleNovaSubmittedText:(NSString *)text {
     NSString *trimmedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) return;
+    NSString *requestID = [self pp_newNovaScopedIDWithPrefix:@"request"];
 
     [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
     [self pp_stopNovaSmartSuggestionRotation];
-    [self addUserMessage:trimmedText];
+    [self addUserMessage:trimmedText requestID:requestID];
 
     // Check for "add to cart" intent
     if ([self pp_isAddToCartIntent:trimmedText]) {
+        NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"cart"];
         if (self.pendingCartProduct) {
-            [self pp_handleAddToCartForProduct:self.pendingCartProduct];
+            [self pp_handleAddToCartForProduct:self.pendingCartProduct requestID:requestID responseID:responseID];
             return;
         } else if (self.lastShownProducts.count > 1) {
             NSString *reply = kLang(@"nova_add_to_cart_which");
-            [self addNovaMessage:reply];
+            [self addNovaMessage:reply requestID:requestID responseID:responseID];
             return;
         }
     }
 
+    NSUInteger cachedProductsBeforeSend = self.lastShownProducts.count;
+    [self pp_prepareNovaRenderStateForRequestID:requestID
+                        cachedProductsBeforeSend:cachedProductsBeforeSend];
     [self pp_updateMemoryFromUserText:trimmedText];
     [self pp_logNovaIntentForUserText:trimmedText stage:@"submitted"];
 
     [self showNovaTyping];
-    if ([self pp_novaTextHasShowcaseDisplayIntent:trimmedText] &&
-        [self pp_localNovaNeedLabelFromUserText:trimmedText].length == 0 &&
-        [self pp_localNovaPetTypeFromUserText:trimmedText].length == 0 &&
-        (self.novaMemoryNeed.length > 0 || self.novaMemoryPetType.length > 0)) {
-        [self pp_fetchAndShowLocalNovaShowcaseForUserText:trimmedText
-                                                introText:nil
-                                               completion:^(BOOL didShow) {
-            [self hideNovaTyping];
-            if (!didShow) {
-                [self pp_addNovaProductResultTextForRenderedCount:0
-                                                     proposedText:nil
-                                                         userText:trimmedText
-                                                           source:@"display_intent_memory_target"];
-            }
-        }];
-        return;
-    }
-    [self sendNovaRequestForUserText:trimmedText];
+    [self sendNovaRequestForUserText:trimmedText requestID:requestID];
 }
 
 // Production-safe add-to-cart intent classifier.
@@ -5585,6 +5803,12 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (void)pp_handleAddToCartForProduct:(PetAccessory *)product {
+    [self pp_handleAddToCartForProduct:product requestID:nil responseID:nil];
+}
+
+- (void)pp_handleAddToCartForProduct:(PetAccessory *)product
+                            requestID:(NSString *)requestID
+                           responseID:(NSString *)responseID {
     [PPHUD showLoading:@""];
 
     CartItem *item = [[CartItem alloc] initWithAccessory:product quantity:1];
@@ -5610,21 +5834,29 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         [PPHUD dismiss];
         if (success) {
             NSString *msg = kLang(@"nova_added_to_cart");
-            [self addNovaMessage:msg];
+            [self addNovaMessage:msg requestID:requestID responseID:responseID];
             self.pendingCartProduct = nil; // Clear after adding
         } else {
             NSString *msg = kLang(@"nova_add_to_cart_failed");
-            [self addNovaMessage:msg];
+            [self addNovaMessage:msg requestID:requestID responseID:responseID];
         }
     });
 }
 
 - (void)addUserMessage:(NSString *)text {
-    [self addMessageWithText:text isIncoming:NO];
+    [self addUserMessage:text requestID:nil];
+}
+
+- (void)addUserMessage:(NSString *)text requestID:(NSString *)requestID {
+    [self addMessageWithText:text isIncoming:NO requestID:requestID responseID:nil];
 }
 
 - (void)addNovaMessage:(NSString *)text {
-    [self addMessageWithText:text isIncoming:YES];
+    [self addNovaMessage:text requestID:nil responseID:nil];
+}
+
+- (void)addNovaMessage:(NSString *)text requestID:(NSString *)requestID responseID:(NSString *)responseID {
+    [self addMessageWithText:text isIncoming:YES requestID:requestID responseID:responseID];
 }
 
 // Adds a Nova-side system bubble (connectivity status, blocked-account, etc.)
@@ -5652,6 +5884,13 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (void)addMessageWithText:(NSString *)text isIncoming:(BOOL)isIncoming {
+    [self addMessageWithText:text isIncoming:isIncoming requestID:nil responseID:nil];
+}
+
+- (void)addMessageWithText:(NSString *)text
+                isIncoming:(BOOL)isIncoming
+                 requestID:(NSString *)requestID
+                responseID:(NSString *)responseID {
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [[NSUUID UUID] UUIDString];
     msg.text = text;
@@ -5659,6 +5898,8 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     msg.status = ChatMessageStatusSent;
     msg.messageType = ChatMessageTypeText;
     msg.senderID = isIncoming ? @"nova_bot_id" : [UserManager sharedManager].currentUser.ID;
+    msg.novaRequestID = requestID;
+    msg.novaResponseID = responseID;
 
     [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:isIncoming ? @"nova" : @"user" text:text];
 
