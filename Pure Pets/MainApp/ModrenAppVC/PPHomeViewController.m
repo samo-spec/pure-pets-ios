@@ -55,6 +55,10 @@
 #import "PPHomeLocationSheetViewController.h"
 #import "PPHomeInsetLabel.h"
 #import "PPHomeLocationTitleView.h"
+#import "PPHomeSmartSearchTitleView.h"
+
+
+
 extern NSString * const PPThemePreferenceDidChangeNotification;
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -1535,6 +1539,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     NSArray *defaultOrder = @[
         @(PPHomeSectionHero),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionQuickActions),
         @(PPHomeSectionMainKinds),
@@ -1548,12 +1553,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionAdopt)
     ];
 
+    BOOL hasPremiumSearchConfig = NO;
     if (self.homeConfigSections.count > 0) {
         for (NSDictionary *sectionCfg in self.homeConfigSections) {
+            NSInteger sectionID = [sectionCfg[@"id"] integerValue];
+            if (sectionID == PPHomeSectionPremiumSearch) {
+                hasPremiumSearchConfig = YES;
+            }
             if (![sectionCfg[@"visible"] boolValue]) {
                 continue;
             }
-            NSInteger sectionID = [sectionCfg[@"id"] integerValue];
             // 🔒 Services is force-hidden in this build; including the section
             // identifier here would leave a stranded header with no items
             // because the items branch below is gated on hideServiceSection.
@@ -1570,7 +1579,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [sections addObject:@(PPHomeSectionServices)];
     }
 
-    // PremiumCare is a feature control — only add when the remote toggle is ON.
+    if (!hasPremiumSearchConfig && ![sections containsObject:@(PPHomeSectionPremiumSearch)]) {
+        NSUInteger heroIndex = [sections indexOfObject:@(PPHomeSectionHero)];
+        NSUInteger insertIndex = (heroIndex == NSNotFound) ? 0 : heroIndex + 1;
+        [sections insertObject:@(PPHomeSectionPremiumSearch) atIndex:MIN(insertIndex, sections.count)];
+    }
+
+    // PremiumCare still mirrors the legacy premiumCareVisible field for older Console builds.
     if (self.homePremiumCareVisible && ![sections containsObject:@(PPHomeSectionPremiumCare)]) {
         [sections addObject:@(PPHomeSectionPremiumCare)];
     } else if (!self.homePremiumCareVisible && [sections containsObject:@(PPHomeSectionPremiumCare)]) {
@@ -1613,9 +1628,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     PPHomeItem *heroItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypeHero payload:@"hero-card"];
     safeAppend(@[heroItem], @(PPHomeSectionHero));
 
-    // ✅ Premium care now owns the former Premium Search home slot.
-    PPHomeItem *premiumCareSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
-    safeAppend(@[premiumCareSearchItem], @(PPHomeSectionPremiumSearch));
+    // ✅ Premium Search
+    PPHomeItem *premiumSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumSearch payload:@"premium-search-card"];
+    safeAppend(@[premiumSearchItem], @(PPHomeSectionPremiumSearch));
 
     // ✅ Quick Actions
     NSMutableArray<PPHomeItem *> *quickActions = [NSMutableArray array];
@@ -1662,10 +1677,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     safeAppend(@[petProfileItem], @(PPHomeSectionPetProfile));
 
     // ✅ Premium Care
-    if (![sections containsObject:@(PPHomeSectionPremiumSearch)]) {
-        PPHomeItem *premiumCareItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
-        safeAppend(@[premiumCareItem], @(PPHomeSectionPremiumCare));
-    }
+    PPHomeItem *premiumCareItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumCare payload:@"premium-care-card"];
+    safeAppend(@[premiumCareItem], @(PPHomeSectionPremiumCare));
 
     // ✅ Adopt
     PPHomeItem *adoptItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypeAdopt payload:@"adopt"];

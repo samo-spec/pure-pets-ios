@@ -266,22 +266,22 @@ typedef NS_ENUM(NSInteger, PPCategoryItemKind) {
  */
 
 typedef NS_ENUM(NSInteger, PPHomeSection) {
-    PPHomeSectionHero,
-    PPHomeSectionQuickActions,
-    PPHomeSectionCurrentOrders,
-    PPHomeSectionServices,
-    PPHomeSectionCarousel,
-    PPHomeSectionMainKinds,
-    PPHomeSectionSuggestions,
-    PPHomeSectionAccessories,
-    PPHomeSectionPetProfile,
-    PPHomeSectionPremiumCare,
-    PPHomeSectionLastFood,
-    PPHomeSectionNearbyServices,
-    PPHomeSectionAdsNearBy,
-    PPHomeSectionAdopt, // legacy (not rendered on home in Pattern 1)
-    PPHomeSectionBuyAgain,
-    PPHomeSectionPremiumSearch,
+    PPHomeSectionHero = 0,
+    PPHomeSectionQuickActions = 1,
+    PPHomeSectionCurrentOrders = 2,
+    PPHomeSectionServices = 3,
+    PPHomeSectionCarousel = 4,
+    PPHomeSectionMainKinds = 5,
+    PPHomeSectionSuggestions = 6,
+    PPHomeSectionAccessories = 7,
+    PPHomeSectionPetProfile = 8,
+    PPHomeSectionPremiumCare = 9,
+    PPHomeSectionLastFood = 10,
+    PPHomeSectionNearbyServices = 11,
+    PPHomeSectionAdsNearBy = 12,
+    PPHomeSectionAdopt = 13, // legacy (not rendered on home in Pattern 1)
+    PPHomeSectionBuyAgain = 14,
+    PPHomeSectionPremiumSearch = 15,
 };
 
 typedef NS_ENUM(NSInteger, PPDataSection) {

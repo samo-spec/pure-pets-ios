@@ -212,12 +212,12 @@ static inline CGFloat PPHomeCareHeight(CGFloat width)
         return 204.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 186.0;
+        return 176.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
         return 178.0;
     }
-    return 182.0;
+    return 172.0;
 }
 
 static inline CGFloat PPHomeAdoptHeight(CGFloat width)

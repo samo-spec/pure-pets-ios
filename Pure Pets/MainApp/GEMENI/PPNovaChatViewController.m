@@ -1,5 +1,5 @@
 //
-//  PPNovaChatViewController.m
+//  PPNovaChatViewController.m  Thread 1: EXC_BREAKPOINT (code=1, subcode=0x104654a64) line 4331
 //  Pure Pets
 //
 
@@ -4330,7 +4330,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         }
         dispatch_group_leave(group);
     }];
-
+    
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
         if (specs.count == 0) {
             self.dynamicSmartSuggestions = @[];
