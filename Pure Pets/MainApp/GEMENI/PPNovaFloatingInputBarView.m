@@ -165,7 +165,7 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     }
     UIImage *image = [UIImage systemImageNamed:systemName];
     if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:18.0 weight:UIImageSymbolWeightSemibold];
+        UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightSemibold];
         image = [image imageWithConfiguration:configuration];
     }
     [button setImage:image forState:UIControlStateNormal];

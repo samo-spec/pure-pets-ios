@@ -562,10 +562,22 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 @property (nonatomic, strong) UIView *emptyStatePulseView;
 @property (nonatomic, strong) UIVisualEffectView *smartSuggestionSurfaceView;
 @property (nonatomic, strong) UILabel *smartSuggestionTitleLabel;
-@property (nonatomic, copy) NSArray<UIButton *> *smartSuggestionButtons;
+@property (nonatomic, strong) UILabel *smartSuggestionTextLabel;
+@property (nonatomic, strong) UILabel *smartSuggestionHintLabel;
+@property (nonatomic, strong) UIImageView *smartSuggestionActionImageView;
+@property (nonatomic, strong) UIButton *smartSuggestionSurfaceButton;
 @property (nonatomic, copy) NSArray<NSDictionary<NSString *, NSString *> *> *dynamicSmartSuggestions;
-@property (nonatomic, strong) UIStackView *smartSuggestionStackView;
-@property (nonatomic, strong) UIScrollView *smartSuggestionScrollView;
+@property (nonatomic, strong) NSTimer *smartSuggestionRotationTimer;
+@property (nonatomic, assign) NSUInteger smartSuggestionCurrentIndex;
+@property (nonatomic, assign) BOOL smartSuggestionAutoSendEnabled;
+@property (nonatomic, assign) BOOL smartSuggestionPickerVisible;
+@property (nonatomic, strong) UIVisualEffectView *smartSuggestionPickerView;
+@property (nonatomic, strong) UILabel *smartSuggestionPickerTitleLabel;
+@property (nonatomic, strong) UIButton *smartSuggestionAutoSendButton;
+@property (nonatomic, strong) UIButton *smartSuggestionShuffleButton;
+@property (nonatomic, strong) UIStackView *smartSuggestionPickerStackView;
+@property (nonatomic, copy) NSArray<UIButton *> *smartSuggestionPickerButtons;
+@property (nonatomic, strong) NSLayoutConstraint *smartSuggestionPickerBottomConstraint;
 
 @property (nonatomic, strong) LOTAnimationView *novaHeaderBackgroundLottie;
 @property (nonatomic, copy) NSString *currentHeaderBgAnimationName;
@@ -659,6 +671,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
     self.messages = [NSMutableArray array];
+    self.smartSuggestionAutoSendEnabled = YES;
 
     [self setupAmbientBackground];
     [self setupNovaBackend];
@@ -726,6 +739,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
     [self pp_startHeaderLiveAnimations];
     [self pp_startAmbientBackgroundAnimations];
+    [self pp_startNovaSmartSuggestionRotationIfNeeded];
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.6 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self pp_refreshProviderSmartSuggestions];
@@ -748,6 +762,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
     [self pp_stopHeaderLiveAnimations];
     [self pp_stopAmbientBackgroundAnimations];
+    [self pp_stopNovaSmartSuggestionRotation];
     [self pp_stopTypingDotsAnimation];
 }
 
@@ -786,6 +801,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     [self.novaHeaderLiquidHighlightLayer removeAllAnimations];
     [self.emptyStatePulseView.layer removeAllAnimations];
     [self.novaChatBottomGlowView.layer removeAllAnimations];
+    [self pp_stopNovaSmartSuggestionRotation];
     for (UIView *dot in self.typingDots) {
         [dot.layer removeAllAnimations];
     }
@@ -2808,23 +2824,32 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
                                                                          [surface colorWithAlphaComponent:0.26]);
     self.smartSuggestionSurfaceView.layer.borderColor = [brand colorWithAlphaComponent:0.13].CGColor;
     self.smartSuggestionSurfaceView.layer.shadowColor = brand.CGColor;
+    self.smartSuggestionSurfaceView.layer.shadowOpacity = 0.10;
+    self.smartSuggestionSurfaceView.layer.shadowRadius = 18.0;
+    self.smartSuggestionSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
     self.smartSuggestionTitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.74];
+    self.smartSuggestionTextLabel.textColor = primaryText;
+    self.smartSuggestionHintLabel.textColor = [secondaryText colorWithAlphaComponent:0.72];
+    self.smartSuggestionActionImageView.tintColor = brand;
 
-    [self.smartSuggestionButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
-        BOOL primary = idx == 0;
-        UIColor *fillColor = primary
-            ? [brand colorWithAlphaComponent:0.13]
-            : PPNovaDynamicColor([surface colorWithAlphaComponent:0.48],
-                                 [UIColor.whiteColor colorWithAlphaComponent:0.07]);
-        UIColor *strokeColor = primary ? [brand colorWithAlphaComponent:0.18] : [secondaryText colorWithAlphaComponent:0.12];
-        UIColor *titleColor = primary ? brand : [primaryText colorWithAlphaComponent:0.84];
+    self.smartSuggestionPickerView.effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
+    self.smartSuggestionPickerView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.54],
+                                                                        [surface colorWithAlphaComponent:0.34]);
+    self.smartSuggestionPickerView.layer.borderColor = [brand colorWithAlphaComponent:0.12].CGColor;
+    self.smartSuggestionPickerView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.smartSuggestionPickerTitleLabel.textColor = primaryText;
+    [self pp_updateNovaSmartSuggestionAutoSendButtonAnimated:NO];
 
+    [self.smartSuggestionPickerButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
+        BOOL selected = idx == self.smartSuggestionCurrentIndex;
+        UIColor *fillColor = selected
+            ? [brand colorWithAlphaComponent:0.12]
+            : PPNovaDynamicColor([surface colorWithAlphaComponent:0.38],
+                                 [UIColor.whiteColor colorWithAlphaComponent:0.055]);
+        UIColor *strokeColor = selected ? [brand colorWithAlphaComponent:0.20] : [secondaryText colorWithAlphaComponent:0.10];
+        UIColor *titleColor = selected ? brand : [primaryText colorWithAlphaComponent:0.88];
         button.backgroundColor = fillColor;
         button.layer.borderColor = strokeColor.CGColor;
-        button.layer.shadowColor = primary ? brand.CGColor : UIColor.blackColor.CGColor;
-        button.layer.shadowOpacity = primary ? 0.045 : 0.025;
-        button.layer.shadowRadius = primary ? 10.0 : 6.0;
-        button.layer.shadowOffset = CGSizeMake(0.0, 4.0);
         button.tintColor = titleColor;
         [button setTitleColor:titleColor forState:UIControlStateNormal];
         [button setTitleColor:[titleColor colorWithAlphaComponent:0.72] forState:UIControlStateHighlighted];
@@ -4184,33 +4209,54 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     ];
 }
 
-- (UIButton *)pp_makeNovaSmartSuggestionButtonWithTitle:(NSString *)title index:(NSUInteger)index {
+- (NSString *)pp_titleForNovaSmartSuggestionSpec:(NSDictionary<NSString *, NSString *> *)spec {
+    NSString *title = spec[@"title"];
+    if (title.length == 0) {
+        title = kLang(spec[@"titleKey"]);
+    }
+    return title ?: @"";
+}
+
+- (NSString *)pp_promptForNovaSmartSuggestionSpec:(NSDictionary<NSString *, NSString *> *)spec {
+    NSString *prompt = spec[@"prompt"];
+    if (prompt.length == 0) {
+        prompt = [kLang(spec[@"promptKey"]) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    }
+    return prompt ?: @"";
+}
+
+- (NSDictionary<NSString *, NSString *> *)pp_currentNovaSmartSuggestionSpec {
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    if (suggestions.count == 0) {
+        return nil;
+    }
+    NSUInteger index = MIN(self.smartSuggestionCurrentIndex, suggestions.count - 1);
+    return suggestions[index];
+}
+
+- (UIButton *)pp_makeNovaSmartSuggestionPickerButtonWithTitle:(NSString *)title index:(NSUInteger)index {
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.tag = (NSInteger)index;
     button.clipsToBounds = YES;
-    button.layer.cornerRadius = 18.0;
+    button.layer.cornerRadius = 16.0;
     button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     button.contentEdgeInsets = UIEdgeInsetsMake(0.0, 14.0, 0.0, 14.0);
-    button.titleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
+    button.titleLabel.font = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
     button.titleLabel.numberOfLines = 1;
     button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     button.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     button.accessibilityLabel = title;
     [button setTitle:title forState:UIControlStateNormal];
-    [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionTap:) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionPickerTap:) forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressDown:) forControlEvents:UIControlEventTouchDown];
     [button addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressCancel:) forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
 
-    NSLayoutConstraint *maxWidth = [button.widthAnchor constraintLessThanOrEqualToConstant:220.0];
-    maxWidth.priority = 999.0;
     [NSLayoutConstraint activateConstraints:@[
-        [button.heightAnchor constraintEqualToConstant:36.0],
-        [button.widthAnchor constraintGreaterThanOrEqualToConstant:112.0],
-        maxWidth
+        [button.heightAnchor constraintEqualToConstant:42.0]
     ]];
     return button;
 }
@@ -4296,31 +4342,119 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (void)pp_rebuildNovaSmartSuggestionButtons {
-    if (!self.smartSuggestionStackView) return;
+    if (!self.smartSuggestionPickerStackView) return;
 
-    for (UIView *subview in self.smartSuggestionStackView.arrangedSubviews) {
-        [self.smartSuggestionStackView removeArrangedSubview:subview];
+    for (UIView *subview in self.smartSuggestionPickerStackView.arrangedSubviews) {
+        [self.smartSuggestionPickerStackView removeArrangedSubview:subview];
         [subview removeFromSuperview];
     }
 
     NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
     NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
     [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, __unused BOOL *stop) {
-        NSString *title = spec[@"title"];
-        if (title.length == 0) {
-            title = kLang(spec[@"titleKey"]);
-        }
-        UIButton *button = [self pp_makeNovaSmartSuggestionButtonWithTitle:title index:idx];
-        [self.smartSuggestionStackView addArrangedSubview:button];
+        UIButton *button = [self pp_makeNovaSmartSuggestionPickerButtonWithTitle:[self pp_titleForNovaSmartSuggestionSpec:spec] index:idx];
+        [self.smartSuggestionPickerStackView addArrangedSubview:button];
         [buttons addObject:button];
     }];
-    self.smartSuggestionButtons = buttons.copy;
+    self.smartSuggestionPickerButtons = buttons.copy;
 
-    BOOL shouldShow = ![self pp_hasUserMessageInCurrentNovaSession];
-    for (UIButton *button in buttons) {
-        button.alpha = shouldShow ? 1.0 : 0.0;
-        button.userInteractionEnabled = shouldShow;
+    if (suggestions.count > 0) {
+        self.smartSuggestionCurrentIndex = MIN(self.smartSuggestionCurrentIndex, suggestions.count - 1);
+    } else {
+        self.smartSuggestionCurrentIndex = 0;
     }
+    [self pp_configureCurrentNovaSmartSuggestionAnimated:NO];
+    [self pp_applyNovaSurfaceColors];
+}
+
+- (void)pp_configureCurrentNovaSmartSuggestionAnimated:(BOOL)animated {
+    NSDictionary<NSString *, NSString *> *spec = [self pp_currentNovaSmartSuggestionSpec];
+    NSString *title = [self pp_titleForNovaSmartSuggestionSpec:spec];
+    NSString *prompt = [self pp_promptForNovaSmartSuggestionSpec:spec];
+    if (title.length == 0) {
+        title = kLang(@"nova_smart_suggestion_cat_food");
+    }
+    if (prompt.length == 0) {
+        prompt = kLang(@"nova_smart_suggestion_cat_food_prompt");
+    }
+
+    void (^changes)(void) = ^{
+        self.smartSuggestionTitleLabel.text = kLang(@"nova_smart_suggestions_title");
+        self.smartSuggestionTextLabel.text = title;
+        self.smartSuggestionHintLabel.text = self.smartSuggestionAutoSendEnabled
+            ? kLang(@"nova_smart_suggestion_auto_hint")
+            : kLang(@"nova_smart_suggestion_fill_hint");
+        self.smartSuggestionSurfaceButton.accessibilityLabel = [NSString stringWithFormat:@"%@. %@", title, self.smartSuggestionHintLabel.text ?: @""];
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+        return;
+    }
+
+    CGFloat direction = Language.isRTL ? -1.0 : 1.0;
+    [UIView animateWithDuration:0.18
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.smartSuggestionTextLabel.alpha = 0.0;
+        self.smartSuggestionHintLabel.alpha = 0.0;
+        self.smartSuggestionTextLabel.transform = CGAffineTransformMakeTranslation(10.0 * direction, 0.0);
+        self.smartSuggestionHintLabel.transform = CGAffineTransformMakeTranslation(8.0 * direction, 0.0);
+    } completion:^(__unused BOOL finished) {
+        changes();
+        self.smartSuggestionTextLabel.transform = CGAffineTransformMakeTranslation(-12.0 * direction, 0.0);
+        self.smartSuggestionHintLabel.transform = CGAffineTransformMakeTranslation(-10.0 * direction, 0.0);
+        [UIView animateWithDuration:0.34
+                              delay:0.0
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.12
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.smartSuggestionTextLabel.alpha = 1.0;
+            self.smartSuggestionHintLabel.alpha = 1.0;
+            self.smartSuggestionTextLabel.transform = CGAffineTransformIdentity;
+            self.smartSuggestionHintLabel.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }];
+}
+
+- (void)pp_advanceNovaSmartSuggestionAnimated:(BOOL)animated {
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    if (suggestions.count == 0) return;
+    self.smartSuggestionCurrentIndex = (self.smartSuggestionCurrentIndex + 1) % suggestions.count;
+    [self pp_configureCurrentNovaSmartSuggestionAnimated:animated];
+    [self pp_applyNovaSurfaceColors];
+}
+
+- (void)pp_startNovaSmartSuggestionRotationIfNeeded {
+    if (self.smartSuggestionRotationTimer ||
+        self.smartSuggestionPickerVisible ||
+        [self pp_hasUserMessageInCurrentNovaSession] ||
+        [self pp_novaSmartSuggestionSpecs].count <= 1) {
+        return;
+    }
+
+    self.smartSuggestionRotationTimer =
+        [NSTimer timerWithTimeInterval:4.8
+                                target:self
+                              selector:@selector(pp_handleNovaSmartSuggestionRotationTimer:)
+                              userInfo:nil
+                               repeats:YES];
+    [[NSRunLoop mainRunLoop] addTimer:self.smartSuggestionRotationTimer forMode:NSRunLoopCommonModes];
+}
+
+- (void)pp_stopNovaSmartSuggestionRotation {
+    [self.smartSuggestionRotationTimer invalidate];
+    self.smartSuggestionRotationTimer = nil;
+}
+
+- (void)pp_handleNovaSmartSuggestionRotationTimer:(NSTimer *)timer {
+    if (self.smartSuggestionPickerVisible || [self pp_hasUserMessageInCurrentNovaSession]) {
+        [self pp_stopNovaSmartSuggestionRotation];
+        return;
+    }
+    [self pp_advanceNovaSmartSuggestionAnimated:YES];
 }
 
 - (void)setupNovaEmptyState {
@@ -4399,25 +4533,46 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     [suggestionView.contentView addSubview:suggestionTitleLabel];
     self.smartSuggestionTitleLabel = suggestionTitleLabel;
 
-    UIScrollView *suggestionScrollView = [[UIScrollView alloc] init];
-    suggestionScrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    suggestionScrollView.showsHorizontalScrollIndicator = NO;
-    suggestionScrollView.alwaysBounceHorizontal = YES;
-    suggestionScrollView.alwaysBounceVertical = NO;
-    suggestionScrollView.directionalLockEnabled = YES;
-    suggestionScrollView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [suggestionView.contentView addSubview:suggestionScrollView];
+    UILabel *suggestionTextLabel = [[UILabel alloc] init];
+    suggestionTextLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    suggestionTextLabel.font = [GM boldFontWithSize:PPFontHeadline] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
+    suggestionTextLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    suggestionTextLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    suggestionTextLabel.numberOfLines = 1;
+    suggestionTextLabel.adjustsFontSizeToFitWidth = YES;
+    suggestionTextLabel.minimumScaleFactor = 0.78;
+    [suggestionView.contentView addSubview:suggestionTextLabel];
+    self.smartSuggestionTextLabel = suggestionTextLabel;
 
-    UIStackView *suggestionStack = [[UIStackView alloc] init];
-    suggestionStack.translatesAutoresizingMaskIntoConstraints = NO;
-    suggestionStack.axis = UILayoutConstraintAxisHorizontal;
-    suggestionStack.alignment = UIStackViewAlignmentFill;
-    suggestionStack.distribution = UIStackViewDistributionFill;
-    suggestionStack.spacing = 8.0;
-    suggestionStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    [suggestionScrollView addSubview:suggestionStack];
-    self.smartSuggestionScrollView = suggestionScrollView;
-    self.smartSuggestionStackView = suggestionStack;
+    UILabel *suggestionHintLabel = [[UILabel alloc] init];
+    suggestionHintLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    suggestionHintLabel.font = [GM MidFontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    suggestionHintLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    suggestionHintLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    suggestionHintLabel.numberOfLines = 1;
+    [suggestionView.contentView addSubview:suggestionHintLabel];
+    self.smartSuggestionHintLabel = suggestionHintLabel;
+
+    UIImageView *actionImageView = [[UIImageView alloc] init];
+    actionImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    actionImageView.contentMode = UIViewContentModeScaleAspectFit;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                                                          weight:UIImageSymbolWeightSemibold];
+        actionImageView.image = [UIImage systemImageNamed:@"sparkles" withConfiguration:cfg];
+    }
+    [suggestionView.contentView addSubview:actionImageView];
+    self.smartSuggestionActionImageView = actionImageView;
+
+    UIButton *surfaceButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    surfaceButton.translatesAutoresizingMaskIntoConstraints = NO;
+    surfaceButton.backgroundColor = UIColor.clearColor;
+    surfaceButton.accessibilityTraits = UIAccessibilityTraitButton;
+    [surfaceButton addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressDown:) forControlEvents:UIControlEventTouchDown];
+    [surfaceButton addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressCancel:) forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
+    [surfaceButton addTarget:self action:@selector(pp_handleNovaSmartSuggestionPillTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [suggestionView.contentView addSubview:surfaceButton];
+    self.smartSuggestionSurfaceButton = surfaceButton;
 
     NSLayoutConstraint *suggestionWidthConstraint = [suggestionView.widthAnchor constraintEqualToAnchor:emptyView.widthAnchor];
     suggestionWidthConstraint.priority = 999.0;
@@ -4456,23 +4611,31 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         suggestionMaxWidthConstraint,
         [suggestionView.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor],
 
-        [suggestionTitleLabel.topAnchor constraintEqualToAnchor:suggestionView.contentView.topAnchor constant:12.0],
-        [suggestionTitleLabel.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor constant:14.0],
-        [suggestionTitleLabel.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor constant:-14.0],
+        [suggestionTitleLabel.topAnchor constraintEqualToAnchor:suggestionView.contentView.topAnchor constant:13.0],
+        [suggestionTitleLabel.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor constant:18.0],
+        [suggestionTitleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:actionImageView.leadingAnchor constant:-12.0],
 
-        [suggestionScrollView.topAnchor constraintEqualToAnchor:suggestionTitleLabel.bottomAnchor constant:9.0],
-        [suggestionScrollView.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor constant:10.0],
-        [suggestionScrollView.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor constant:-10.0],
-        [suggestionScrollView.bottomAnchor constraintEqualToAnchor:suggestionView.contentView.bottomAnchor constant:-10.0],
-        [suggestionScrollView.heightAnchor constraintEqualToConstant:36.0],
+        [suggestionTextLabel.topAnchor constraintEqualToAnchor:suggestionTitleLabel.bottomAnchor constant:3.0],
+        [suggestionTextLabel.leadingAnchor constraintEqualToAnchor:suggestionTitleLabel.leadingAnchor],
+        [suggestionTextLabel.trailingAnchor constraintLessThanOrEqualToAnchor:actionImageView.leadingAnchor constant:-12.0],
 
-        [suggestionStack.topAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.topAnchor],
-        [suggestionStack.leadingAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.leadingAnchor],
-        [suggestionStack.trailingAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.trailingAnchor],
-        [suggestionStack.bottomAnchor constraintEqualToAnchor:suggestionScrollView.contentLayoutGuide.bottomAnchor],
-        [suggestionStack.heightAnchor constraintEqualToAnchor:suggestionScrollView.frameLayoutGuide.heightAnchor]
+        [suggestionHintLabel.topAnchor constraintEqualToAnchor:suggestionTextLabel.bottomAnchor constant:3.0],
+        [suggestionHintLabel.leadingAnchor constraintEqualToAnchor:suggestionTitleLabel.leadingAnchor],
+        [suggestionHintLabel.trailingAnchor constraintLessThanOrEqualToAnchor:actionImageView.leadingAnchor constant:-12.0],
+        [suggestionHintLabel.bottomAnchor constraintEqualToAnchor:suggestionView.contentView.bottomAnchor constant:-13.0],
+
+        [actionImageView.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor constant:-18.0],
+        [actionImageView.centerYAnchor constraintEqualToAnchor:suggestionView.contentView.centerYAnchor],
+        [actionImageView.widthAnchor constraintEqualToConstant:24.0],
+        [actionImageView.heightAnchor constraintEqualToConstant:24.0],
+
+        [surfaceButton.topAnchor constraintEqualToAnchor:suggestionView.contentView.topAnchor],
+        [surfaceButton.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor],
+        [surfaceButton.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor],
+        [surfaceButton.bottomAnchor constraintEqualToAnchor:suggestionView.contentView.bottomAnchor]
     ]];
 
+    [self setupNovaSmartSuggestionPicker];
     [self pp_rebuildNovaSmartSuggestionButtons];
     [self pp_applyNovaSurfaceColors];
     [self updateNovaEmptyStateAnimated:NO];
