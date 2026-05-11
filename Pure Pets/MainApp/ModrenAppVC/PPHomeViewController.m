@@ -1209,9 +1209,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         return;
     }
 
-    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumSearch];
+    NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
     if (sectionIndex == NSNotFound) {
-        sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
+       // sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
     }
     if (sectionIndex == NSNotFound || !self.collectionView) {
         return;
@@ -1540,6 +1540,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     NSArray *defaultOrder = @[
         @(PPHomeSectionHero),
         @(PPHomeSectionPremiumSearch),
+        @(PPHomeSectionPremiumCare),
         @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionQuickActions),
         @(PPHomeSectionMainKinds),

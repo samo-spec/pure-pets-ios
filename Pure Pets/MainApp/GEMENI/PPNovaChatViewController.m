@@ -1,5 +1,5 @@
 //
-//  PPNovaChatViewController.m  Thread 1: EXC_BREAKPOINT (code=1, subcode=0x104654a64) line 4331
+//  PPNovaChatViewController.m
 //  Pure Pets
 //
 
@@ -4267,6 +4267,13 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 - (void)pp_refreshProviderSmartSuggestions {
     NSMutableArray<NSDictionary<NSString *, NSString *> *> *specs = [NSMutableArray array];
     dispatch_group_t group = dispatch_group_create();
+    NSObject *leaveLock = [NSObject new];
+    void (^addSpec)(NSString *, NSString *) = ^(NSString *title, NSString *prompt) {
+        if (title.length == 0 || prompt.length == 0) return;
+        @synchronized (specs) {
+            [specs addObject:@{@"title": title, @"prompt": prompt}];
+        }
+    };
 
     for (MainKindsModel *kind in PPMainKindsArray) {
         if (!kind.isVisibleInUserApp) continue;
@@ -4279,58 +4286,87 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         if (hasItems) {
             NSString *title = [NSString stringWithFormat:kLang(@"nova_provider_products_title"), kind.KindName];
             NSString *prompt = [NSString stringWithFormat:kLang(@"nova_provider_products_prompt"), kind.KindName];
-            [specs addObject:@{@"title": title, @"prompt": prompt}];
+            addSpec(title, prompt);
         }
     }
 
+    __block BOOL adsDidLeave = NO;
+    BOOL (^markAdsFinished)(void) = ^BOOL{
+        @synchronized (leaveLock) {
+            if (adsDidLeave) return NO;
+            adsDidLeave = YES;
+        }
+        return YES;
+    };
     dispatch_group_enter(group);
     FIRQuery *adsQuery = [[[AppMgr.dF collectionWithPath:kPetAdsCollection]
                             queryWhereField:@"status" isEqualTo:@(1)]
                            queryLimitedTo:1];
     [adsQuery getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+        if (!markAdsFinished()) return;
         if (!error && snapshot.documents.count > 0) {
-            [specs addObject:@{
-                @"title": kLang(@"nova_provider_ads_title_default"),
-                @"prompt": kLang(@"nova_provider_ads_prompt_default")
-            }];
+            addSpec(kLang(@"nova_provider_ads_title_default"),
+                    kLang(@"nova_provider_ads_prompt_default"));
         }
         dispatch_group_leave(group);
     }];
 
+    __block BOOL adoptDidLeave = NO;
+    BOOL (^markAdoptFinished)(void) = ^BOOL{
+        @synchronized (leaveLock) {
+            if (adoptDidLeave) return NO;
+            adoptDidLeave = YES;
+        }
+        return YES;
+    };
     dispatch_group_enter(group);
     FIRQuery *adoptQuery = [[AppMgr.dF collectionWithPath:@"adopt_pets"] queryLimitedTo:1];
     [adoptQuery getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+        if (!markAdoptFinished()) return;
         if (!error && snapshot.documents.count > 0) {
-            [specs addObject:@{
-                @"title": kLang(@"nova_provider_adopt_title"),
-                @"prompt": kLang(@"nova_provider_adopt_prompt")
-            }];
+            addSpec(kLang(@"nova_provider_adopt_title"),
+                    kLang(@"nova_provider_adopt_prompt"));
         }
         dispatch_group_leave(group);
     }];
 
+    __block BOOL servicesDidLeave = NO;
+    BOOL (^markServicesFinished)(void) = ^BOOL{
+        @synchronized (leaveLock) {
+            if (servicesDidLeave) return NO;
+            servicesDidLeave = YES;
+        }
+        return YES;
+    };
     dispatch_group_enter(group);
-    [[ServicesManager sharedInstance] listenToAllServicesWithCompletion:^(NSArray<ServiceModel *> *services, __unused NSError *error) {
-        if (services.count > 0) {
-            [specs addObject:@{
-                @"title": kLang(@"nova_provider_services_title"),
-                @"prompt": kLang(@"nova_provider_services_prompt")
-            }];
+    FIRQuery *servicesQuery = [[AppMgr.dF collectionWithPath:@"serviceOffers"] queryLimitedTo:1];
+    [servicesQuery getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+        if (!markServicesFinished()) return;
+        if (!error && snapshot.documents.count > 0) {
+            addSpec(kLang(@"nova_provider_services_title"),
+                    kLang(@"nova_provider_services_prompt"));
         }
         dispatch_group_leave(group);
     }];
 
+    __block BOOL vetsDidLeave = NO;
+    BOOL (^markVetsFinished)(void) = ^BOOL{
+        @synchronized (leaveLock) {
+            if (vetsDidLeave) return NO;
+            vetsDidLeave = YES;
+        }
+        return YES;
+    };
     dispatch_group_enter(group);
     [[VetManager sharedManager] fetchAllVetsWithCompletion:^(NSArray<VetModel *> *vets, __unused NSError *error) {
+        if (!markVetsFinished()) return;
         if (vets.count > 0) {
-            [specs addObject:@{
-                @"title": kLang(@"nova_provider_vets_title"),
-                @"prompt": kLang(@"nova_provider_vets_prompt")
-            }];
+            addSpec(kLang(@"nova_provider_vets_title"),
+                    kLang(@"nova_provider_vets_prompt"));
         }
         dispatch_group_leave(group);
     }];
-    
+
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
         if (specs.count == 0) {
             self.dynamicSmartSuggestions = @[];
