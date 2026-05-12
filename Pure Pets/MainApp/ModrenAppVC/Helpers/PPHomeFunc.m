@@ -71,10 +71,10 @@ static inline CGFloat PPHomeHeroHeight(CGFloat width)
         return 170.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 160.0;
+        return 170.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 130.0;
+        return 140.0;
     }
     return (PPIOS26() ? 160.0 : 160.0);
 }
@@ -197,7 +197,7 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
         return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 68.0;
+        return 72.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
         return 68.0;
@@ -265,14 +265,14 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     [NSCollectionLayoutSection sectionWithGroup:group];
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+    NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
    return section;
 }
 
 + (NSCollectionLayoutSection *)premiumSearchSectionForWidth:(CGFloat)availableWidth
 {
-    CGFloat searchHeight = 60.0;
+    CGFloat searchHeight = 54.0;
 
     NSCollectionLayoutSize *itemSize =
         [NSCollectionLayoutSize sizeWithWidthDimension:
@@ -291,7 +291,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
         [NSCollectionLayoutSection sectionWithGroup:group];
 
     section.orthogonalScrollingBehavior = UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
-    section.interGroupSpacing = 0.0;
+    section.interGroupSpacing = 12.0;
     section.contentInsets = NSDirectionalEdgeInsetsZero;
 
     NSCollectionLayoutSize *searchSize =
@@ -308,7 +308,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     stickySearch.pinToVisibleBounds = YES;
     stickySearch.zIndex = 1024;
 
-    stickySearch.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceXS, PPSpaceBase, PPSpaceXS, PPSpaceBase);
+    stickySearch.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
     section.boundarySupplementaryItems = @[stickySearch];
 
     return section;
@@ -349,7 +349,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.orthogonalScrollingBehavior =
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+     NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
      return section;
  }
@@ -373,10 +373,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-     item.contentInsets = NSDirectionalEdgeInsetsMake(6,
-                                                      PPSpaceMDHalf,
-                                                      0,
-                                                      PPSpaceMDHalf);
+     item.contentInsets = NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -391,7 +388,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.interGroupSpacing = 0;
 
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+     NSDirectionalEdgeInsetsMake(12, 6, 12, 6);
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                    pinned:NO]];
@@ -419,10 +416,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0,
-                                                      PPSpaceMDHalf,
-                                                      0,
-                                                      PPSpaceMDHalf);
+     item.contentInsets = NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -437,7 +431,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.interGroupSpacing = 0;
 
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+     NSDirectionalEdgeInsetsMake(12, 6, 12, 6);
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin]];
 
@@ -453,10 +447,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      CGFloat horizontalInset = 12;  //PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSection *section = [self accessoriesSectionForWidth:availableWidth];
-     section.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceBase,
-                                                         horizontalInset,
-                                                         PPSpaceBase,
-                                                         horizontalInset);
+     section.contentInsets = NSDirectionalEdgeInsetsMake(12, 6, 12, 6);
      section.interGroupSpacing = 0;
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
      return section;
@@ -490,7 +481,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
      section.interGroupSpacing = 0.0;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+     NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
      return section;
  }
@@ -502,10 +493,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutSection *)lastFoodSectionForWidth:(CGFloat)availableWidth {
      CGFloat horizontalInset = 12;  //PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSection *section = [self accessoriesSectionForWidth:availableWidth];
-     section.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceBase,
-                                                         horizontalInset,
-                                                         PPSpaceBase,
-                                                         horizontalInset);
+     section.contentInsets = NSDirectionalEdgeInsetsMake(12, 6, 12, 6);
      section.interGroupSpacing = 0;
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
      return section;
@@ -547,7 +535,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     // 12pt margin on each side
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+    NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
     // ❌ No header
     // ❌ No orthogonal scrolling
@@ -583,7 +571,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0,PPSpaceMDHalf,0,PPSpaceMDHalf);
+     item.contentInsets = NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -595,9 +583,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.orthogonalScrollingBehavior =
      UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
 
+     section.interGroupSpacing = 0;
 
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+     NSDirectionalEdgeInsetsMake(12, 6, 12, 6);
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
      return section;
@@ -660,14 +649,14 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                                      count:columnCount];
 
      group.interItemSpacing =
-     [NSCollectionLayoutSpacing fixedSpacing:PPSpaceBase];
+     [NSCollectionLayoutSpacing fixedSpacing:12];
 
      NSCollectionLayoutSection *section =
      [NSCollectionLayoutSection sectionWithGroup:group];
 
-     section.interGroupSpacing = PPSpaceBase;
+     section.interGroupSpacing = 12;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceMDHalf, horizontalInset, PPSpaceMDHalf, horizontalInset);
+     NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                    pinned:NO]];
@@ -714,7 +703,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-    item.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMDHalf, 0.0, PPSpaceMDHalf, 0.0);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(6, 0.0, 6, 0.0);
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -725,8 +714,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-    section.interGroupSpacing = PPSpaceBase;
-    section.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceSM, horizontalInset, PPSpaceSM, horizontalInset);
+    section.interGroupSpacing = 12;
+    section.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
     return section;
  }
@@ -758,7 +747,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
      section.interGroupSpacing = 0.0;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceSM, horizontalInset, PPSpaceSM, horizontalInset);
+     NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
      return section;
  }
@@ -790,9 +779,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior =
          UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-     section.interGroupSpacing = PPSpaceBase;
+     section.interGroupSpacing = 12;
      section.contentInsets =
-         NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+         NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight
                                                                     pinned:NO]];
@@ -828,9 +817,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior =
          UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-     section.interGroupSpacing = PPSpaceBase;
+     section.interGroupSpacing = 12;
      section.contentInsets =
-         NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+         NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight
                                                                    pinned:NO]];
@@ -853,7 +842,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
      item.contentInsets =
-     NSDirectionalEdgeInsetsMake(0, PPSpaceSM, 0, PPSpaceSM);
+     NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
 
      // Group (single row, 3 items)
      NSCollectionLayoutSize *groupSize =
@@ -870,9 +859,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      NSCollectionLayoutSection *section =
      [NSCollectionLayoutSection sectionWithGroup:group];
 
-     section.interGroupSpacing = 0;
+     section.interGroupSpacing = 12;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceSM, PPSpaceBase, PPSpaceSM, PPSpaceBase);
+     NSDirectionalEdgeInsetsMake(12, 6, 12, 6);
 
      return section;
  }
@@ -887,7 +876,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                        heightDimension:
           [NSCollectionLayoutDimension absoluteDimension:0]]];
 
-        item.contentInsets = NSDirectionalEdgeInsetsMake(0, PPSpaceSM, 0, PPSpaceSM);
+        item.contentInsets = NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
 
         NSCollectionLayoutGroup *group =
         [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:
@@ -972,8 +961,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     //UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-    section.interGroupSpacing = PPSpaceBase;
-    section.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+    section.interGroupSpacing = 12;
+    section.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
     
     return section;
@@ -1021,10 +1010,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
     section.interGroupSpacing = 0;
-    section.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceBase,
-                                                        horizontalInset,
-                                                        PPSpaceBase,
-                                                        horizontalInset);
+    section.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
 
 
     

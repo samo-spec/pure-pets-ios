@@ -21,7 +21,7 @@
 #import "ServiceModel.h"
 #import "VetModel.h"
 
-static CGFloat const PPUniversalCardCornerRadius = 12.0;
+static CGFloat const PPUniversalCardCornerRadius = 28.0;
 static CGFloat const PPUniversalImageCornerRadius = 22.0;
 static CGFloat const PPUniversalOuterInset = 16.0;
 static CGFloat const PPUniversalInnerSpacing = 12.0;

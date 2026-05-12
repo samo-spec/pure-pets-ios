@@ -3094,6 +3094,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
             [strongSelf applyBaseSnapshot];
 
+            // When HomeConfig changes (e.g. banners visibility toggled from Console),
+            // the carousel section may have just been added/removed from the snapshot.
+            // Refresh the banner data so the carousel renders current cards — the
+            // PromoCarouselManager keeps a live listener, so self.promoCarouselCards
+            // is already fresh, but fillCarouselBanner must update the snapshot payload.
+            [strongSelf fillCarouselBanner];
+
             BOOL expectsSearchTitle =
                 [resolvedTitleViewMode isEqualToString:@"search"];
             BOOL showingSearchTitle =

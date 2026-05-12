@@ -156,7 +156,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.isFavorite = NO;
-    self.view.backgroundColor = PPBackgroundColorForIOS26(NewBgColor);
+    self.view.backgroundColor = AppBageColor();
     [self initData];
     [self initForms];
     [self designViews];
@@ -206,7 +206,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     // ── Scroll view ──
     self.scrollView = [[UIScrollView alloc] init];
     self.scrollView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.scrollView.backgroundColor = [self.view.backgroundColor colorWithAlphaComponent:0.5];
+    self.scrollView.backgroundColor = [AppBageColor() colorWithAlphaComponent:0.5];
     self.scrollView.alwaysBounceVertical = YES;
     self.scrollView.showsVerticalScrollIndicator = YES;
     self.scrollView.keyboardDismissMode = UIScrollViewKeyboardDismissModeOnDrag;
