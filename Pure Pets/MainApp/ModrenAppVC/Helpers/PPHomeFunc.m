@@ -151,13 +151,13 @@ static inline CGFloat PPHomeMainKindsGridItemHeight(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 242.0;
+        return 212.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 218.0;
+        return 208.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 184.0;
+        return 174.0;
     }
     return kCardMedium;
 }
@@ -197,12 +197,12 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
         return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 64.0;
+        return 68.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 64.0;
+        return 68.0;
     }
-    return 64.0;
+    return 68.0;
 }
 
 
@@ -212,12 +212,12 @@ static inline CGFloat PPHomeCareHeight(CGFloat width)
         return 204.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 176.0;
+        return 168.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 178.0;
+        return 168.0;
     }
-    return 172.0;
+    return 168.0;
 }
 
 static inline CGFloat PPHomeAdoptHeight(CGFloat width)
@@ -373,10 +373,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0,
-                                                      PPSpaceSM,
+     item.contentInsets = NSDirectionalEdgeInsetsMake(6,
+                                                      PPSpaceMDHalf,
                                                       0,
-                                                      PPSpaceSM);
+                                                      PPSpaceMDHalf);
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -420,9 +420,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
      item.contentInsets = NSDirectionalEdgeInsetsMake(0,
-                                                      PPSpaceSM,
+                                                      PPSpaceMDHalf,
                                                       0,
-                                                      PPSpaceSM);
+                                                      PPSpaceMDHalf);
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -583,7 +583,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0,PPSpaceSM,0,PPSpaceSM);
+     item.contentInsets = NSDirectionalEdgeInsetsMake(0,PPSpaceMDHalf,0,PPSpaceMDHalf);
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -667,7 +667,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.interGroupSpacing = PPSpaceBase;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSpaceBase, horizontalInset, PPSpaceBase, horizontalInset);
+     NSDirectionalEdgeInsetsMake(PPSpaceMDHalf, horizontalInset, PPSpaceMDHalf, horizontalInset);
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                    pinned:NO]];
@@ -702,7 +702,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutSection *)quickActionsSectionForWidth:(CGFloat)availableWidth {
     CGFloat horizontalInset = 12;  //PPHomeHorizontalInset(availableWidth);
     CGFloat contentWidth = MAX(0.0, availableWidth - (2.0 * horizontalInset));
-    CGFloat itemWidth  = MAX(156.0, floor(contentWidth * 0.48));
+    CGFloat itemWidth  = MAX(156.0, floor(contentWidth * 0.52));
     CGFloat itemHeight = PPHomeQuickActionHeight(availableWidth);
 
     NSCollectionLayoutSize *itemSize =
@@ -714,7 +714,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-    item.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
+    item.contentInsets = NSDirectionalEdgeInsetsMake(PPSpaceMDHalf, 0.0, PPSpaceMDHalf, 0.0);
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -771,7 +771,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  {
      CGFloat horizontalInset = 12;  //PPHomeHorizontalInset(availableWidth);
      CGFloat cardWidth  = PPHomeAccessoryCardWidth(availableWidth);
-     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 40.0;
+     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 10.0;
 
      NSCollectionLayoutSize *itemSize =
          [NSCollectionLayoutSize sizeWithWidthDimension:

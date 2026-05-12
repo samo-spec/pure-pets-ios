@@ -5,7 +5,7 @@
 
 #import "PPNovaChatViewController.h"
 #import "ChatMessageModel.h"
-#import "ChatMessageCell.h" // #import "PPNovaMessageBubbleCell.h"
+#import "PPNovaMessageBubbleCell.h" // #import "PPNovaMessageBubbleCell.h" #import "ChatMessageCell.h"
 #import "PPNovaProductMessageCell.h"
 #import "PPNovaReviewMessageCell.h"
 #import "PPNovaFloatingInputBarView.h"
@@ -42,13 +42,97 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     return lightColor;
 }
 
-static const CGFloat PPNovaExpandedTableTopInset = 218.0;
+static const CGFloat PPNovaExpandedTableTopInset = 228.0;
 static const CGFloat PPNovaCollapsedTableTopInset = 124.0;
 static const CGFloat PPNovaTableBottomInset = 22.0;
 static NSString * const PPNovaCallableRegion = @"us-central1";
 static NSString * const PPNovaCallableName = @"geminiProxy";
 static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryEntryCell";
+
+#pragma mark - Nova Output Presentation
+
+typedef NS_ENUM(NSInteger, PPNovaOutputType) {
+    PPNovaOutputTypeText = 0,
+    PPNovaOutputTypeProductCards,
+    PPNovaOutputTypeAdsCards,
+    PPNovaOutputTypeAdoptCards,
+    PPNovaOutputTypeVetCards,
+    PPNovaOutputTypeServiceCards,
+    PPNovaOutputTypeSystemFallback
+};
+
+typedef NS_ENUM(NSInteger, PPNovaPresentationAlignment) {
+    PPNovaPresentationAlignmentAssistant = 0,
+    PPNovaPresentationAlignmentUser,
+    PPNovaPresentationAlignmentCentered
+};
+
+static NSString *PPNovaOutputTypeName(PPNovaOutputType type) {
+    switch (type) {
+        case PPNovaOutputTypeText: return @"text";
+        case PPNovaOutputTypeProductCards: return @"productCards";
+        case PPNovaOutputTypeAdsCards: return @"adsCards";
+        case PPNovaOutputTypeAdoptCards: return @"adoptCards";
+        case PPNovaOutputTypeVetCards: return @"vetCards";
+        case PPNovaOutputTypeServiceCards: return @"serviceCards";
+        case PPNovaOutputTypeSystemFallback: return @"systemFallback";
+    }
+    return @"text";
+}
+
+static NSString *PPNovaPresentationAlignmentName(PPNovaPresentationAlignment alignment) {
+    switch (alignment) {
+        case PPNovaPresentationAlignmentAssistant: return @"assistant";
+        case PPNovaPresentationAlignmentUser: return @"user";
+        case PPNovaPresentationAlignmentCentered: return @"centered";
+    }
+    return @"assistant";
+}
+
+static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
+    return type == PPNovaOutputTypeProductCards ||
+           type == PPNovaOutputTypeAdsCards ||
+           type == PPNovaOutputTypeAdoptCards ||
+           type == PPNovaOutputTypeVetCards ||
+           type == PPNovaOutputTypeServiceCards;
+}
+
+@interface PPNovaOutputStyle : NSObject
+
+@property (nonatomic, assign) PPNovaOutputType outputType;
+@property (nonatomic, assign) CGFloat visualWeight;
+@property (nonatomic, assign) NSInteger priority;
+@property (nonatomic, strong) UIColor *backgroundColor;
+@property (nonatomic, strong) UIColor *textColor;
+@property (nonatomic, strong) UIColor *accentColor;
+@property (nonatomic, assign) CGFloat cornerRadius;
+@property (nonatomic, assign) CGFloat spacing;
+@property (nonatomic, assign) CGFloat maxWidth;
+@property (nonatomic, assign) PPNovaPresentationAlignment alignment;
+@property (nonatomic, assign) BOOL shouldRenderCards;
+@property (nonatomic, assign) BOOL shouldRenderAssistantText;
+@property (nonatomic, copy) NSString *stableReuseIdentifier;
+@property (nonatomic, copy) NSString *renderStyle;
+
+@end
+
+@implementation PPNovaOutputStyle
+@end
+
+@interface PPNovaMessagePresentation : NSObject
+
+@property (nonatomic, copy) NSString *messageID;
+@property (nonatomic, copy) NSString *requestID;
+@property (nonatomic, copy) NSString *responseID;
+@property (nonatomic, copy) NSString *renderKey;
+@property (nonatomic, assign) NSInteger rowIndex;
+@property (nonatomic, strong) PPNovaOutputStyle *style;
+
+@end
+
+@implementation PPNovaMessagePresentation
+@end
 
 #pragma mark - Nova History Sheet
 
@@ -251,6 +335,8 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     self.view.backgroundColor = AppBackgroundClr ?: UIColor.whiteColor;
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self pp_setupSheetLayout];
+
+    self.modalInPresentation = YES;
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -605,7 +691,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 @property (nonatomic, copy, nullable) NSString *novaMemoryPetType;
 @property (nonatomic, copy, nullable) NSString *novaMemoryNeed;
 @property (nonatomic, copy, nullable) NSString *novaMemoryLanguage;
-@property (nonatomic, assign) BOOL novaHasShownGreeting;
+@property (nonatomic, assign) BOOL novaHasSentFirstMessage;
 @property (nonatomic, copy, nonnull) NSString *novaSessionId;
 
 @property (nonatomic, assign) BOOL previousIQEnabled;
@@ -618,6 +704,9 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 @property (nonatomic, copy, nullable) NSString *activeNovaResponseID;
 @property (nonatomic, assign) NSUInteger activeNovaCachedProductsBeforeSend;
 @property (nonatomic, assign) BOOL activeNovaClearedCachedProducts;
+@property (nonatomic, copy, nullable) dispatch_block_t pendingNovaVisibleLayoutRefreshBlock;
+@property (nonatomic, assign) BOOL novaLastTableMutationRequestedAutoScroll;
+@property (nonatomic, assign) CFTimeInterval novaLastTableMutationTimestamp;
 
 @end
 
@@ -643,14 +732,12 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     }
 
     PPNovaChatViewController *novaVC = [[PPNovaChatViewController alloc] init];
+    novaVC.modalInPresentation = YES;
     if (@available(iOS 15.0, *)) {
         novaVC.modalPresentationStyle = UIModalPresentationPageSheet;
         UISheetPresentationController *sheet = novaVC.sheetPresentationController;
         if (sheet) {
             if (@available(iOS 16.0, *)) {
-                UISheetPresentationControllerDetent *customDetent = [UISheetPresentationControllerDetent customDetentWithIdentifier:@"Nova89" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                    return UIScreen.mainScreen.bounds.size.height * 0.89;
-                }];
                 sheet.detents = @[ [UISheetPresentationControllerDetent largeDetent]];//customDetent,
             } else {
                 sheet.detents = @[[UISheetPresentationControllerDetent largeDetent]];
@@ -659,7 +746,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
             sheet.preferredCornerRadius = 42.0;
         }
     } else {
-        novaVC.modalPresentationStyle = UIModalPresentationFormSheet;
+        novaVC.modalPresentationStyle = UIModalPresentationFullScreen;
     }
     [presentingVC presentViewController:novaVC animated:YES completion:nil];
 }
@@ -669,7 +756,18 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 - (void)viewDidLoad {
     [super viewDidLoad];
 
-    self.novaSessionId = [[NSUUID UUID] UUIDString];
+    // Stable sessionId per chat — reuse the last known session so the backend
+    // Agent Runtime sees consistent conversation context. Only generate a new
+    // UUID when absolutely nothing exists yet.
+    NSString *storedSessionId = [[PPNovaLocalChatMemory sharedMemory] lastKnownSessionId];
+    if (storedSessionId.length > 0) {
+        self.novaSessionId = storedSessionId;
+        LOG_INFO(@"[PPNovaChat][Session] reused_stored_session_id=%@", self.novaSessionId);
+    } else {
+        self.novaSessionId = [[NSUUID UUID] UUIDString];
+        [[PPNovaLocalChatMemory sharedMemory] setLastKnownSessionId:self.novaSessionId];
+        LOG_INFO(@"[PPNovaChat][Session] generated_new_session_id=%@", self.novaSessionId);
+    }
     [PPAnalytics logNovaOpenedWithSessionID:self.novaSessionId];
 
     self.title = @"";
@@ -692,11 +790,17 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     self.novaHeaderView.alpha = 0.0;
     self.novaHeaderView.transform = CGAffineTransformMakeTranslation(0, -10);
 
+    // Lesson: the first real Nova reply IS the greeting now. No more local
+    // hardcoded bubble — the Agent Runtime produces a natural, contextual
+    // welcome using the STRICT GREETING RULE in its system prompt. The
+    // `isFirstAssistantMessage` flag in the first request context tells
+    // the backend to allow greeting exactly once.
     __weak typeof(self) wself = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         __strong typeof(wself) self = wself;
         if (!self || self.dismissed) return;
-        [self insertNovaGreeting];
+        // NO more insertNovaGreeting — Nova owns the first message now.
+        self.novaMemoryLanguage = Language.isRTL ? @"ar" : @"en";
     });
 }
 
@@ -783,7 +887,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     if (!self.didInitialInset && CGRectGetHeight(self.inputbar.frame) > 0) {
         self.didInitialInset = YES;
         UIEdgeInsets currentInset = self.tableView.contentInset;
-        currentInset.bottom = PPNovaTableBottomInset;
+        currentInset.bottom = 0.0;
         self.tableView.contentInset = currentInset;
         self.tableView.scrollIndicatorInsets = currentInset;
     }
@@ -794,11 +898,15 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     }
 
     self.lastNovaTableLayoutWidth = tableWidth;
-    [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
+    [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"table_width_changed"];
 }
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if (self.pendingNovaVisibleLayoutRefreshBlock) {
+        dispatch_block_cancel(self.pendingNovaVisibleLayoutRefreshBlock);
+        self.pendingNovaVisibleLayoutRefreshBlock = nil;
+    }
     [self.statusDot.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
     [self.headerBrandMarkView.layer removeAllAnimations];
@@ -816,6 +924,26 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
 - (void)setupNovaBackend {
     FIRFunctions *functions = [FIRFunctions functionsForRegion:PPNovaCallableRegion];
+
+    // App Check: identical to UserManager / PaymentManager / OrderManager.
+    // The backend geminiProxy enforces App Check. Without this the callable
+    // returns gRPC 7/16 and the client falls back to nova_error_unavailable.
+    SEL limitedUseSetter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
+    if ([functions respondsToSelector:limitedUseSetter]) {
+        NSMethodSignature *signature = [functions methodSignatureForSelector:limitedUseSetter];
+        if (signature) {
+            BOOL enabled = YES;
+            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+            [invocation setSelector:limitedUseSetter];
+            [invocation setTarget:functions];
+            [invocation setArgument:&enabled atIndex:2];
+            [invocation invoke];
+            LOG_INFO(@"[PPNovaChat][AppCheck] Enabled limited-use App Check tokens for novaCallable (%@).", PPNovaCallableName);
+        }
+    } else {
+        LOG_WARN(@"[PPNovaChat][AppCheck] FIRFunctions does not respond to setUseAppCheckLimitedUseTokens — App Check may not be attached.");
+    }
+
     self.novaCallable = [functions HTTPSCallableWithName:PPNovaCallableName];
     // Reverting timeout to default 70.0s because 15.0s caused Firebase Functions
     // cold starts and AI delays to timeout frequently.
@@ -852,15 +980,28 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     self.activeNovaResponseID = nil;
     self.activeNovaCachedProductsBeforeSend = cachedProductsBeforeSend;
     self.activeNovaClearedCachedProducts = hadPendingPayload;
+    [self pp_clearNovaTransientRenderPayloadForReason:@"new_user_message"];
+
+    // Lesson: a new user message starts a fresh request/response context. The
+    // newest response owns its own cards; it must never inherit cards from a
+    // previous response, and we never re-render historical card payloads here.
+    LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ previous_cached_card_count=%lu cleared_transient_payload=%@ historical_restore=NO reused_previous_payload=NO",
+             requestID ?: @"",
+             (unsigned long)cachedProductsBeforeSend,
+             hadPendingPayload ? @"YES" : @"NO");
+}
+
+// Single point of truth for clearing the transient render payload (cards that
+// the previous response left behind). Used at the start of every new request
+// and on any correction/rejection that follows the same pattern.
+- (void)pp_clearNovaTransientRenderPayloadForReason:(NSString *)reason {
+    BOOL hadAny = self.lastShownProducts.count > 0 || self.lastSuggestedProduct != nil || self.pendingCartProduct != nil;
     self.lastShownProducts = @[];
     self.lastSuggestedProduct = nil;
     self.pendingCartProduct = nil;
-
-    LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ cached_products_before_send=%lu cached_products_cleared=%@ pending_payload_cleared=%@",
-             requestID ?: @"",
-             (unsigned long)cachedProductsBeforeSend,
-             hadPendingPayload ? @"YES" : @"NO",
-             hadPendingPayload ? @"YES" : @"NO");
+    LOG_INFO(@"[PPNovaChat][RenderBinding] transient_payload_clear reason=%@ had_any=%@",
+             reason ?: @"unspecified",
+             hadAny ? @"YES" : @"NO");
 }
 
 - (BOOL)pp_canAttachNovaRenderForRequestID:(NSString *)requestID
@@ -875,7 +1016,9 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         return YES;
     }
 
-    LOG_WARN(@"[PPNovaChat][RenderBinding] append_dropped request_id=%@ response_id=%@ active_request_id=%@ active_response_id=%@ generation=%lu active_generation=%lu source=%@ reused_previous_payload=NO",
+    NSString *reason = !hasIDs ? @"missing_response_ids" : @"stale_request_or_generation";
+    LOG_WARN(@"[PPNovaChat][RenderBinding] append_dropped reason=%@ request_id=%@ response_id=%@ active_request_id=%@ active_response_id=%@ generation=%lu active_generation=%lu source=%@ reused_previous_payload=NO",
+             reason,
              requestID ?: @"",
              responseID ?: @"",
              self.activeNovaRequestID ?: @"",
@@ -939,19 +1082,268 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
              source ?: @"unknown");
 }
 
+#pragma mark - Nova Presentation Runtime
+
+- (PPNovaOutputType)pp_novaOutputTypeForCardObject:(id)object {
+    if ([object isKindOfClass:ServiceModel.class]) {
+        return PPNovaOutputTypeServiceCards;
+    }
+    if ([object isKindOfClass:VetModel.class]) {
+        return PPNovaOutputTypeVetCards;
+    }
+    if ([object isKindOfClass:AdoptPetModel.class]) {
+        return PPNovaOutputTypeAdoptCards;
+    }
+    if ([object isKindOfClass:PetAd.class]) {
+        return PPNovaOutputTypeAdsCards;
+    }
+    if ([object isKindOfClass:PetAccessory.class]) {
+        return PPNovaOutputTypeProductCards;
+    }
+    return PPNovaOutputTypeProductCards;
+}
+
+- (PPNovaOutputType)pp_novaOutputTypeForCardObjects:(NSArray *)objects {
+    NSMutableDictionary<NSNumber *, NSNumber *> *counts = [NSMutableDictionary dictionary];
+    for (id object in objects) {
+        PPNovaOutputType type = [self pp_novaOutputTypeForCardObject:object];
+        NSNumber *key = @(type);
+        counts[key] = @((counts[key].integerValue) + 1);
+    }
+
+    PPNovaOutputType dominantType = PPNovaOutputTypeProductCards;
+    NSInteger dominantCount = 0;
+    for (NSNumber *key in counts) {
+        NSInteger count = counts[key].integerValue;
+        if (count > dominantCount) {
+            dominantCount = count;
+            dominantType = (PPNovaOutputType)key.integerValue;
+        }
+    }
+    return dominantType;
+}
+
+- (PPNovaOutputType)pp_novaOutputTypeForMessage:(ChatMessageModel *)message {
+    if (message.messageType == ChatMessageTypeNovaProduct ||
+        message.messageType == ChatMessageTypeNovaProductList) {
+        return [self pp_novaOutputTypeForCardObjects:(NSArray *)message.novaProducts];
+    }
+    if (message.messageType == ChatMessageTypeSystem ||
+        message.messageType == ChatMessageTypeNovaReview) {
+        return PPNovaOutputTypeSystemFallback;
+    }
+    return PPNovaOutputTypeText;
+}
+
+- (NSString *)pp_novaStableReuseIdentifierForOutputType:(PPNovaOutputType)outputType
+                                            messageType:(ChatMessageType)messageType {
+    if (messageType == ChatMessageTypeNovaReview) {
+        return [PPNovaReviewMessageCell reuseIdentifier];
+    }
+    if (PPNovaOutputTypeRendersCards(outputType)) {
+        return [PPNovaProductMessageCell reuseIdentifier];
+    }
+    return [PPNovaMessageBubbleCell reuseIdentifier];
+}
+
+- (PPNovaPresentationAlignment)pp_novaAlignmentForMessage:(ChatMessageModel *)message
+                                               outputType:(PPNovaOutputType)outputType {
+    if (outputType == PPNovaOutputTypeSystemFallback) {
+        return PPNovaPresentationAlignmentCentered;
+    }
+    BOOL assistant = [message.senderID isEqualToString:@"nova_bot_id"];
+    return assistant ? PPNovaPresentationAlignmentAssistant : PPNovaPresentationAlignmentUser;
+}
+
+- (PPNovaOutputStyle *)pp_novaOutputStyleForMessage:(ChatMessageModel *)message
+                                         outputType:(PPNovaOutputType)outputType
+                                         tableWidth:(CGFloat)tableWidth {
+    PPNovaOutputStyle *style = [[PPNovaOutputStyle alloc] init];
+    style.outputType = outputType;
+    style.alignment = [self pp_novaAlignmentForMessage:message outputType:outputType];
+    style.shouldRenderCards = PPNovaOutputTypeRendersCards(outputType);
+    style.shouldRenderAssistantText = outputType == PPNovaOutputTypeText &&
+        [message.senderID isEqualToString:@"nova_bot_id"] &&
+        message.text.length > 0;
+    style.stableReuseIdentifier = [self pp_novaStableReuseIdentifierForOutputType:outputType
+                                                                      messageType:message.messageType];
+    style.renderStyle = style.shouldRenderCards ? @"horizontalCards" : @"bubble";
+    style.maxWidth = MAX(tableWidth, 1.0);
+
+    UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    UIColor *primaryText = AppPrimaryTextClr ?: UIColor.labelColor;
+    style.accentColor = brand;
+    style.backgroundColor = style.shouldRenderCards
+        ? UIColor.clearColor
+        : PPNovaDynamicColor([UIColor colorWithWhite:1.0 alpha:0.93],
+                             [UIColor colorWithWhite:1.0 alpha:0.105]);
+    style.textColor = (style.alignment == PPNovaPresentationAlignmentUser) ? UIColor.whiteColor : primaryText;
+    style.cornerRadius = style.shouldRenderCards ? 0.0 : 24.0;
+    style.spacing = style.shouldRenderCards ? 10.0 : 8.0;
+    style.visualWeight = style.shouldRenderCards ? 0.86 : (style.shouldRenderAssistantText ? 0.70 : 0.62);
+    style.priority = style.shouldRenderCards ? 80 : (style.shouldRenderAssistantText ? 70 : 60);
+    if (outputType == PPNovaOutputTypeSystemFallback) {
+        style.visualWeight = 0.54;
+        style.priority = 45;
+    }
+    return style;
+}
+
+- (NSString *)pp_realNovaIDForCardObject:(id)object {
+    if ([object isKindOfClass:PetAccessory.class]) {
+        return ((PetAccessory *)object).accessoryID ?: @"";
+    }
+    if ([object isKindOfClass:ServiceModel.class]) {
+        return ((ServiceModel *)object).serviceID ?: @"";
+    }
+    if ([object isKindOfClass:PetAd.class]) {
+        return ((PetAd *)object).adID ?: @"";
+    }
+    if ([object isKindOfClass:AdoptPetModel.class]) {
+        return ((AdoptPetModel *)object).documentID ?: @"";
+    }
+    if ([object isKindOfClass:VetModel.class]) {
+        return ((VetModel *)object).vetID ?: @"";
+    }
+    return @"";
+}
+
+- (NSArray<NSString *> *)pp_realNovaIDsForCardObjects:(NSArray *)objects {
+    NSMutableArray<NSString *> *ids = [NSMutableArray array];
+    for (id object in objects) {
+        NSString *identifier = [self pp_realNovaIDForCardObject:object];
+        if (identifier.length > 0) {
+            [ids addObject:identifier];
+        }
+    }
+    return ids.copy;
+}
+
+- (NSArray *)pp_validNovaCardObjectsFromObjects:(NSArray *)objects
+                                         source:(NSString *)source
+                                      requestID:(NSString *)requestID
+                                     responseID:(NSString *)responseID {
+    NSMutableArray *validObjects = [NSMutableArray arrayWithCapacity:objects.count];
+    for (id object in objects) {
+        NSString *identifier = [self pp_realNovaIDForCardObject:object];
+        if (identifier.length == 0) {
+            LOG_WARN(@"[PPNovaChat][Presentation] card_output_missing_real_id request_id=%@ response_id=%@ source=%@ objectClass=%@",
+                     requestID ?: @"",
+                     responseID ?: @"",
+                     source ?: @"unknown",
+                     NSStringFromClass([object class]));
+            NSAssert(identifier.length > 0, @"Nova card output is missing a real retrieved ID.");
+            continue;
+        }
+        [validObjects addObject:object];
+    }
+    return validObjects.copy;
+}
+
+- (NSString *)pp_renderKeyForMessage:(ChatMessageModel *)message
+                           outputType:(PPNovaOutputType)outputType {
+    NSString *contentKey = @"";
+    if (PPNovaOutputTypeRendersCards(outputType)) {
+        contentKey = [[self pp_realNovaIDsForCardObjects:(NSArray *)message.novaProducts] componentsJoinedByString:@","];
+    } else {
+        contentKey = [NSString stringWithFormat:@"%lu", (unsigned long)(message.text ?: @"").hash];
+    }
+    return [NSString stringWithFormat:@"%@|%@|%@|%@|%@",
+            message.ID ?: @"",
+            message.novaRequestID ?: @"",
+            message.novaResponseID ?: @"",
+            PPNovaOutputTypeName(outputType),
+            contentKey ?: @""];
+}
+
+- (PPNovaMessagePresentation *)pp_presentationForMessage:(ChatMessageModel *)message
+                                                rowIndex:(NSInteger)rowIndex {
+    CGFloat tableWidth = [self pp_novaMessageLayoutWidthForTableView:self.tableView];
+    PPNovaOutputType outputType = [self pp_novaOutputTypeForMessage:message];
+    PPNovaMessagePresentation *presentation = [[PPNovaMessagePresentation alloc] init];
+    presentation.messageID = message.ID ?: @"";
+    presentation.requestID = message.novaRequestID ?: @"";
+    presentation.responseID = message.novaResponseID ?: @"";
+    presentation.rowIndex = rowIndex;
+    presentation.style = [self pp_novaOutputStyleForMessage:message
+                                                 outputType:outputType
+                                                 tableWidth:tableWidth];
+    presentation.renderKey = [self pp_renderKeyForMessage:message outputType:outputType];
+    return presentation;
+}
+
+- (void)pp_logNovaTableUpdateForMessage:(ChatMessageModel *)message
+                               rowIndex:(NSInteger)rowIndex
+                                 reason:(NSString *)reason {
+    PPNovaMessagePresentation *presentation = [self pp_presentationForMessage:message rowIndex:rowIndex];
+    LOG_INFO(@"[PPNovaChat][TableUpdate] messageId=%@ outputType=%@ reuseIdentifier=%@ renderKey=%@ row=%ld reason=%@ alignment=%@ priority=%ld shouldRenderText=%@ shouldRenderCards=%@",
+             presentation.messageID ?: @"",
+             PPNovaOutputTypeName(presentation.style.outputType),
+             presentation.style.stableReuseIdentifier ?: @"",
+             presentation.renderKey ?: @"",
+             (long)rowIndex,
+             reason ?: @"unknown",
+             PPNovaPresentationAlignmentName(presentation.style.alignment),
+             (long)presentation.style.priority,
+             presentation.style.shouldRenderAssistantText ? @"YES" : @"NO",
+             presentation.style.shouldRenderCards ? @"YES" : @"NO");
+}
+
 - (void)sendNovaRequestForUserText:(NSString *)userText requestID:(NSString *)requestID {
     NSString *trimmedText = [userText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) {
         [self hideNovaTyping];
+        LOG_WARN(@"[PPNovaChat][Debug] branch=rejected_empty_message request_id=%@", requestID ?: @"");
         return;
     }
 
-    // Update local session memory BEFORE we build the context payload. Idempotent across retries.
-    [self pp_updateMemoryFromUserText:trimmedText];
+    // Guard: Firebase Auth user must exist. If nil, show sign-in required
+    // instead of letting the callable fail with a cryptic App Check / auth error.
+    FIRUser *currentUser = PPCurrentFIRAuthUser;
+    if (!currentUser || currentUser.uid.length == 0) {
+        [self hideNovaTyping];
+        LOG_ERROR(@"[PPNovaChat][Debug] branch=no_firebase_user request_id=%@", requestID ?: @"");
+        [self pp_dismissNovaForSignInRequired];
+        return;
+    }
+
+    // Refresh the ID token if needed so the callable always carries a fresh one.
+    // The Firebase Callable SDK auto-attaches `Authorization: Bearer <id_token>`
+    // but only if the token is still valid. A stale token causes gRPC 16.
+    __weak typeof(self) weakSelf = self;
+    [currentUser getIDTokenForcingRefresh:YES completion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed) return;
+
+        if (tokenError || idToken.length == 0) {
+            [self hideNovaTyping];
+            LOG_ERROR(@"[PPNovaChat][Debug] branch=token_refresh_failed error=%@ request_id=%@",
+                      tokenError.localizedDescription ?: @"missing token",
+                      requestID ?: @"");
+            [self pp_dismissNovaForSignInRequired];
+            return;
+        }
+
+        LOG_INFO(@"[PPNovaChat][Debug] branch=token_refreshed request_id=%@ token_length=%lu",
+                 requestID ?: @"", (unsigned long)idToken.length);
+
+        // Proceed with the actual request now that we have a fresh token.
+        [self pp_continueNovaRequestWithText:trimmedText requestID:requestID];
+    }];
+}
+
+- (void)pp_continueNovaRequestWithText:(NSString *)trimmedText requestID:(NSString *)requestID {
+    // pp_updateMemoryFromUserText is already called by the caller before
+    // sendNovaRequestForUserText — do not duplicate here.
 
     [PPAnalytics logNovaMessageSentWithCharCount:trimmedText.length
                                          isArabic:[self textContainsArabic:trimmedText]
                                        sessionID:self.novaSessionId];
+
+    // After the first request is dispatched, every subsequent message tells the
+    // backend isFirstAssistantMessage=false so the Agent Runtime enforces the
+    // STRICT GREETING RULE (no hello, no re-welcome).
+    self.novaHasSentFirstMessage = YES;
 
     self.novaRequestGeneration = self.novaRequestGeneration + 1;
     NSUInteger generation = self.novaRequestGeneration;
@@ -1003,7 +1395,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
             __strong typeof(weakSelf) self = weakSelf;
             if (!self || self.dismissed) return;
 
-            if (error) {
+                if (error) {
                 if (attempt == 0 && [PPNovaChatViewController pp_isRetryableNovaError:error]) {
 	                    LOG_WARN(@"[PPNovaChat][Debug] branch=retryable_transient attempt=%ld code=%ld httpStatus=%@",
 	                             (long)attempt,
@@ -1015,26 +1407,36 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 	                        if (!inner || inner.dismissed) return;
 	                        [inner pp_dispatchNovaRequest:trimmedText attempt:1 generation:generation requestID:requestID];
 	                    });
-                    return;
-                }
-                if (generation != self.novaRequestGeneration) {
-                    return;
-                }
-                [self hideNovaTyping];
-                LOG_ERROR(@"[PPNovaChat] geminiProxy failed (attempt %ld, code=%ld): %@",
-                          (long)attempt, (long)error.code, error.localizedDescription);
-                LOG_WARN(@"[PPNovaChat][Debug] error url=%@ httpStatus=%@ userInfoKeys=%@",
-                         [PPNovaChatViewController pp_novaCallableDebugURL],
-                         [PPNovaChatViewController pp_httpStatusDebugStringFromError:error],
-                         [PPNovaChatViewController pp_sortedDictionaryKeys:error.userInfo]);
-                [PPAnalytics logNovaErrorWithCode:error.code
-                                            domain:error.domain
-                                           attempt:attempt
-                                         sessionID:self.novaSessionId];
+                        return;
+                    }
+                    if (generation != self.novaRequestGeneration) {
+                        return;
+                    }
+                    [self hideNovaTyping];
 
-                // If the server attached a structured reason, route to the right UX
-                // (sign-in for no_auth/no_profile; dedicated copy for blocked) instead
-                // of collapsing every auth-side failure into "session expired".
+                    // ── Comprehensive failure diagnostics ──
+                    NSString *authUID = PPCurrentFIRAuthUser.uid;
+                    BOOL hasAuthUser = authUID.length > 0;
+                    NSString *httpStatus = [PPNovaChatViewController pp_httpStatusDebugStringFromError:error];
+                    NSArray<NSString *> *userInfoKeys = [PPNovaChatViewController pp_sortedDictionaryKeys:error.userInfo];
+
+                    LOG_ERROR(@"[PPNovaChat] geminiProxy failed (attempt %ld, code=%ld, domain=%@): %@",
+                              (long)attempt, (long)error.code, error.domain, error.localizedDescription);
+                    LOG_ERROR(@"[PPNovaChat][Diagnostics] endpoint=%@ callable=%@ region=%@ authUserPresent=%@ appCheckConfigured=YES httpStatus=%@ userInfoKeys=%@",
+                              [PPNovaChatViewController pp_novaCallableDebugURL],
+                              PPNovaCallableName,
+                              PPNovaCallableRegion,
+                              hasAuthUser ? @"YES" : @"NO",
+                              httpStatus ?: @"n/a",
+                              userInfoKeys);
+                    [PPAnalytics logNovaErrorWithCode:error.code
+                                                domain:error.domain
+                                               attempt:attempt
+                                             sessionID:self.novaSessionId];
+
+                    // If the server attached a structured reason, route to the right UX
+                    // (sign-in for no_auth/no_profile; dedicated copy for blocked) instead
+                    // of collapsing every auth-side failure into "session expired".
                 NSString *serverReason = [PPNovaChatViewController pp_novaServerReasonFromError:error];
                 if ([serverReason isEqualToString:@"no_auth"] ||
                     [serverReason isEqualToString:@"no_profile"]) {
@@ -2045,15 +2447,17 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (void)pp_showNovaSuggestionObjects:(NSArray *)objects {
-    [self pp_showNovaSuggestionObjects:objects source:@"server"];
+    // Lesson: cards belong only to the response that returned them. Callers
+    // must pass an explicit request_id/response_id pair — never let a card
+    // batch silently bind to whatever the active context happens to be.
+    LOG_WARN(@"[PPNovaChat][RenderBinding] append_dropped reason=missing_explicit_response_context source=convenience_no_ids incoming_card_count=%lu reused_previous_payload=NO",
+             (unsigned long)objects.count);
 }
 
 - (void)pp_showNovaSuggestionObjects:(NSArray *)objects source:(NSString *)source {
-    [self pp_showNovaSuggestionObjects:objects
-                                source:source
-                             requestID:self.activeNovaRequestID
-                            responseID:self.activeNovaResponseID
-                            generation:self.novaRequestGeneration];
+    LOG_WARN(@"[PPNovaChat][RenderBinding] append_dropped reason=missing_explicit_response_context source=%@ incoming_card_count=%lu reused_previous_payload=NO",
+             source ?: @"convenience_no_ids",
+             (unsigned long)objects.count);
 }
 
 - (void)pp_showNovaSuggestionObjects:(NSArray *)objects
@@ -2061,7 +2465,25 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
                            requestID:(NSString *)requestID
                           responseID:(NSString *)responseID
                           generation:(NSUInteger)generation {
-    if (objects.count == 0) {
+    NSArray *validObjects = [self pp_validNovaCardObjectsFromObjects:objects
+                                                              source:source
+                                                           requestID:requestID
+                                                          responseID:responseID];
+    // Empty payload means no cards for this response. Lesson: never invent
+    // cards out of nothing, never carry forward the previous response's batch.
+    if (validObjects.count == 0) {
+        LOG_INFO(@"[PPNovaChat][RenderBinding] empty_payload_no_cards request_id=%@ response_id=%@ source=%@ reused_previous_payload=NO",
+                 requestID ?: @"",
+                 responseID ?: @"",
+                 source ?: @"unknown");
+        return;
+    }
+    if (requestID.length == 0 || responseID.length == 0) {
+        LOG_WARN(@"[PPNovaChat][RenderBinding] append_dropped reason=missing_response_ids request_id=%@ response_id=%@ source=%@ incoming_card_count=%lu reused_previous_payload=NO",
+                 requestID ?: @"",
+                 responseID ?: @"",
+                 source ?: @"unknown",
+                 (unsigned long)validObjects.count);
         return;
     }
     if (![self pp_canAttachNovaRenderForRequestID:requestID
@@ -2070,13 +2492,13 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
                                            source:source]) {
         return;
     }
-    [self pp_logNovaIncomingObjects:objects requestID:requestID responseID:responseID source:source];
+    [self pp_logNovaIncomingObjects:validObjects requestID:requestID responseID:responseID source:source];
 
-    NSArray<PetAccessory *> *cartableProducts = [self pp_cartableNovaProductsFromObjects:objects];
+    NSArray<PetAccessory *> *cartableProducts = [self pp_cartableNovaProductsFromObjects:validObjects];
     self.lastShownProducts = cartableProducts;
-    if (objects.count == 1 && [objects.firstObject isKindOfClass:PetAccessory.class]) {
-        self.lastSuggestedProduct = (PetAccessory *)objects.firstObject;
-        self.pendingCartProduct = (PetAccessory *)objects.firstObject;
+    if (validObjects.count == 1 && [validObjects.firstObject isKindOfClass:PetAccessory.class]) {
+        self.lastSuggestedProduct = (PetAccessory *)validObjects.firstObject;
+        self.pendingCartProduct = (PetAccessory *)validObjects.firstObject;
     } else {
         self.lastSuggestedProduct = nil;
         self.pendingCartProduct = nil;
@@ -2084,20 +2506,17 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [[NSUUID UUID] UUIDString];
-    msg.messageType = objects.count > 1 ? ChatMessageTypeNovaProductList : ChatMessageTypeNovaProduct;
-    msg.novaProducts = (NSArray<PetAccessory *> *)objects;
+    msg.messageType = validObjects.count > 1 ? ChatMessageTypeNovaProductList : ChatMessageTypeNovaProduct;
+    msg.novaProducts = (NSArray<PetAccessory *> *)validObjects;
     msg.novaRequestID = requestID;
     msg.novaResponseID = responseID;
     msg.timestamp = [NSDate date];
     msg.senderID = @"nova_bot_id";
 
-    [self.messages addObject:msg];
-    [self pp_trimMessageHistoryIfNeeded];
-    [self updateNovaEmptyStateAnimated:YES];
-    [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
+    [self pp_appendNovaMessageModel:msg updateReason:@"insert_cards"];
 
     LOG_INFO(@"NOVA_RENDERED_CELL_COUNT rendered=%lu source=%@",
-             (unsigned long)objects.count,
+             (unsigned long)validObjects.count,
              source ?: @"unknown");
     LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ response_id=%@ appended_section_id=%@ attached_to_message_id=%@ reused_previous_payload=NO source=%@",
              requestID ?: @"",
@@ -2106,7 +2525,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
              msg.ID ?: @"",
              source ?: @"unknown");
 
-    [PPAnalytics logNovaShowcaseShownWithItemCount:objects.count
+    [PPAnalytics logNovaShowcaseShownWithItemCount:validObjects.count
                                           sessionID:self.novaSessionId
                                              source:source];
 }
@@ -2701,25 +3120,6 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
 #pragma mark - Initial Data
 
-- (void)insertNovaGreeting {
-    if (self.novaHasShownGreeting) return;
-
-    if ([[PPNovaLocalChatMemory sharedMemory] hasPreviousHistory]) {
-        self.novaHasShownGreeting = YES;
-        self.novaMemoryLanguage = Language.isRTL ? @"ar" : @"en";
-        return;
-    }
-
-    NSString *greeting = kLang(@"nova_greeting");
-
-    [self addMessageWithText:greeting isIncoming:YES];
-
-    // The greeting bubble is the only welcome the user should ever see in this session.
-    // From now on, the backend is told isFirstAssistantMessage=false so it does not re-greet.
-    self.novaHasShownGreeting = YES;
-    self.novaMemoryLanguage = Language.isRTL ? @"ar" : @"en";
-}
-
 // Templated local-fallback reply was removed in the behavioral refactor: it
 // was the source of the "rigid handler text overrides AI" complaint. When the
 // model is unreachable or returns nothing, we now stay silent and let the
@@ -2862,8 +3262,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     if (self.novaMemoryNeed.length > 0)     ctx[@"need"] = self.novaMemoryNeed;
     if (self.novaMemoryLanguage.length > 0) ctx[@"language"] = self.novaMemoryLanguage;
 
-    // Greeting was already shown locally — tell the backend not to re-greet.
-    ctx[@"isFirstAssistantMessage"] = @(!self.novaHasShownGreeting);
+    // Tell the backend this is the first assistant message so Nova can deliver
+    // a natural, contextual greeting. After the first reply lands, the flag
+    // flips to NO for all subsequent messages (enforcing the STRICT GREETING RULE).
+    ctx[@"isFirstAssistantMessage"] = @(!self.novaHasSentFirstMessage);
 
     // Personalization signals — keep optional, never block on missing values.
     NSString *firstName = [PPCurrentUser.FirstName stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
@@ -3877,6 +4279,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (void)pp_setNovaHeaderCollapsed:(BOOL)collapsed animated:(BOOL)animated {
+    [self pp_setNovaHeaderCollapsed:collapsed animated:animated updateInsets:YES];
+}
+
+- (void)pp_setNovaHeaderCollapsed:(BOOL)collapsed animated:(BOOL)animated updateInsets:(BOOL)updateInsets {
     if (!self.novaHeaderView || self.novaHeaderCollapsed == collapsed) {
         return;
     }
@@ -3949,10 +4355,13 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         self.historyButton.alpha = collapsed ? 0.90 : 1.0;
         self.historyButton.transform = collapsed ? CGAffineTransformMakeScale(0.90, 0.90) : CGAffineTransformIdentity;
 
-        [self pp_applyNovaTableInsetsForCurrentHeaderState];
         [self.view layoutIfNeeded];
         [self pp_updateNovaHeaderLiquidBorderPath];
     };
+
+    if (updateInsets) {
+       // [self pp_applyNovaTableInsetsForCurrentHeaderState];
+    }
 
     if (duration <= 0.0) {
         changes();
@@ -3976,9 +4385,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         return;
     }
 
-    CGFloat topInset = self.novaHeaderCollapsed ? PPNovaCollapsedTableTopInset : PPNovaExpandedTableTopInset;
+    CGFloat topInset = (self.novaHeaderCollapsed ? PPNovaCollapsedTableTopInset : PPNovaExpandedTableTopInset) + 12.0;
     UIEdgeInsets inset = self.tableView.contentInset;
     inset.top = topInset;
+    inset.bottom = 0.0;
     self.tableView.contentInset = inset;
     self.tableView.scrollIndicatorInsets = inset;
 }
@@ -5216,7 +5626,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     if (trimmed.length == 0) return;
 
     [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
-    [self pp_setNovaHeaderCollapsed:YES animated:YES];
+    [self pp_setNovaHeaderCollapsed:YES animated:NO updateInsets:NO];
 
     if (self.smartSuggestionAutoSendEnabled) {
         [self pp_handleNovaSubmittedText:trimmed];
@@ -5396,23 +5806,25 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     self.tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     self.tableView.translatesAutoresizingMaskIntoConstraints = NO;
 
-    [self.tableView registerClass:[ChatMessageCell class] forCellReuseIdentifier:@"ChatMessageCell"];
-    [self.tableView registerClass:[PPNovaProductMessageCell class] forCellReuseIdentifier:@"PPNovaProductMessageCell"];
+    [self.tableView registerClass:[PPNovaMessageBubbleCell class] forCellReuseIdentifier:[PPNovaMessageBubbleCell reuseIdentifier]];
+    [self.tableView registerClass:[PPNovaProductMessageCell class] forCellReuseIdentifier:[PPNovaProductMessageCell reuseIdentifier]];
     [self.tableView registerClass:[PPNovaReviewMessageCell class] forCellReuseIdentifier:[PPNovaReviewMessageCell reuseIdentifier]];
 
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 92;
+    self.tableView.estimatedSectionHeaderHeight = 0.0;
+    self.tableView.estimatedSectionFooterHeight = 0.0;
     self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentNever;
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;
     self.tableView.backgroundColor = UIColor.clearColor;
     self.tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     self.tableView.delaysContentTouches = NO;
+    self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 15.0, *)) {
         self.tableView.sectionHeaderTopPadding = 0.0;
     }
-    self.tableView.contentInset = UIEdgeInsetsMake(PPNovaExpandedTableTopInset, 0, PPNovaTableBottomInset, 0);
-    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
+     self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
 
     [self.view addSubview:self.tableView];
 
@@ -5427,7 +5839,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     }
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.tableView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:32],
+        [self.tableView.topAnchor constraintEqualToAnchor:self.novaHeaderView.bottomAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
@@ -5487,33 +5899,51 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     CGFloat overlap = MAX(CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(keyboardInView), 0.0);
     CGFloat keyboardOffset = MAX(overlap - self.view.safeAreaInsets.bottom, 0.0);
 
-    self.inputBarBottomConstraint.constant = keyboardOffset > 0.0
+    self.emptyStateCenterYConstraint.constant = 8.0 - (keyboardOffset > 0 ? keyboardOffset / 2.0 : 0);
+
+    BOOL wasNearBottom = [self pp_novaIsScrolledNearBottom];
+    BOOL shouldCollapseHeader = keyboardOffset > 0.0 && !self.novaHeaderCollapsed;
+ 
+    CGFloat targetBottomConstant = keyboardOffset > 0.0
         ? -(keyboardOffset + 8.0)
         : self.inputBarRestingBottomConstant;
 
-    self.emptyStateCenterYConstraint.constant = 8.0 - (keyboardOffset > 0 ? keyboardOffset / 2.0 : 0);
-
-    // We rely on the constraint between the tableView bottom and inputBar top.
-    // No need to dynamically adjust bottom inset for the keyboard height here,
-    // as it leads to double-accounting and scroll jumps.
-    UIEdgeInsets currentInset = self.tableView.contentInset;
-    currentInset.bottom = PPNovaTableBottomInset;
-    self.tableView.contentInset = currentInset;
-    self.tableView.scrollIndicatorInsets = currentInset;
+    if (shouldCollapseHeader) {
+        [self pp_setNovaHeaderCollapsed:YES animated:NO updateInsets:NO];
+    }
 
     UIViewAnimationOptions options = ((UIViewAnimationOptions)curve << 16) |
         UIViewAnimationOptionBeginFromCurrentState |
         UIViewAnimationOptionAllowUserInteraction;
 
     [UIView animateWithDuration:duration delay:0.0 options:options animations:^{
+        self.inputBarBottomConstraint.constant = targetBottomConstant;
+ 
         [self.view layoutIfNeeded];
-        [self scrollToBottomAnimated:NO];
-    } completion:nil];
+    } completion:^(BOOL finished) {
+        if (wasNearBottom) {
+            [self scrollToBottomAnimated:NO];
+        }
+    }];
+}
+
+- (BOOL)pp_novaIsScrolledNearBottom {
+    if (self.messages.count == 0) return YES;
+    CGFloat contentHeight = self.tableView.contentSize.height;
+    CGFloat visibleHeight = CGRectGetHeight(self.tableView.bounds) - self.tableView.contentInset.top - self.tableView.contentInset.bottom;
+    if (contentHeight <= visibleHeight) return YES;
+    CGFloat bottomEdge = contentHeight + self.tableView.contentInset.bottom;
+    CGFloat currentBottom = self.tableView.contentOffset.y + CGRectGetHeight(self.tableView.bounds);
+    return (bottomEdge - currentBottom) < 60.0;
 }
 
 - (void)scrollToBottomAnimated:(BOOL)animated {
     if (self.messages.count == 0) return;
-    NSIndexPath *bottomIP = [NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0];
+    NSInteger tableRows = [self.tableView numberOfRowsInSection:0];
+    if (tableRows <= 0) return;
+    NSInteger bottomRow = MIN((NSInteger)self.messages.count, tableRows) - 1;
+    if (bottomRow < 0) return;
+    NSIndexPath *bottomIP = [NSIndexPath indexPathForRow:bottomRow inSection:0];
     [self.tableView scrollToRowAtIndexPath:bottomIP atScrollPosition:UITableViewScrollPositionBottom animated:animated];
 }
 
@@ -5528,27 +5958,35 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
         return [[UITableViewCell alloc] init];
     }
     ChatMessageModel *msg = self.messages[indexPath.row];
+    PPNovaMessagePresentation *presentation = [self pp_presentationForMessage:msg rowIndex:indexPath.row];
+    [self pp_logNovaTableUpdateForMessage:msg rowIndex:indexPath.row reason:@"cellForRow"];
 
     if (msg.messageType == ChatMessageTypeNovaProduct || msg.messageType == ChatMessageTypeNovaProductList) {
-        PPNovaProductMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPNovaProductMessageCell" forIndexPath:indexPath];
+        PPNovaProductMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:presentation.style.stableReuseIdentifier forIndexPath:indexPath];
         cell.delegate = self;
-        [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
+        cell.accessibilityIdentifier = presentation.renderKey;
+        [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
         return cell;
     }
 
     if (msg.messageType == ChatMessageTypeNovaReview) {
-        PPNovaReviewMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:[PPNovaReviewMessageCell reuseIdentifier] forIndexPath:indexPath];
-        [cell configureWithMessage:msg maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]];
+        PPNovaReviewMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:presentation.style.stableReuseIdentifier forIndexPath:indexPath];
+        cell.accessibilityIdentifier = presentation.renderKey;
+        [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
         return cell;
     }
 
-    ChatMessageCell *cell = [tableView dequeueReusableCellWithIdentifier:@"ChatMessageCell" forIndexPath:indexPath];
-    [cell configureWithMessage:msg.text
-                          date:msg.timestamp
-                    isIncoming:[msg.senderID isEqualToString:@"nova_bot_id"]
-                      maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]
-                        status:msg.status
-                  messageModel:msg groupPosition:PPChatGroupPositionSingle];
+    PPNovaMessageBubbleCell *cell = [tableView dequeueReusableCellWithIdentifier:presentation.style.stableReuseIdentifier forIndexPath:indexPath];
+    cell.accessibilityIdentifier = presentation.renderKey;
+    [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
+    /*
+     [cell configureWithMessage:msg.text
+                           date:msg.timestamp
+                     isIncoming:[msg.senderID isEqualToString:@"nova_bot_id"]
+                       maxWidth:[self pp_novaMessageLayoutWidthForTableView:tableView]
+                         status:msg.status
+                   messageModel:msg groupPosition:PPChatGroupPositionSingle]o
+     */
 
     return cell;
 }
@@ -5559,7 +5997,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     }
     ChatMessageModel *msg = self.messages[indexPath.row];
     if (msg.messageType == ChatMessageTypeNovaProduct || msg.messageType == ChatMessageTypeNovaProductList) {
-        return 335.0;
+        return 350.0;
     }
     if (msg.messageType == ChatMessageTypeNovaReview) {
         return 130.0;
@@ -5580,37 +6018,51 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
 - (void)pp_updateVisibleNovaMessageCellWidthsForTableWidth:(CGFloat)tableWidth {
     for (UITableViewCell *visibleCell in self.tableView.visibleCells) {
+        NSIndexPath *indexPath = [self.tableView indexPathForCell:visibleCell];
+        if (indexPath.row < 0 || indexPath.row >= self.messages.count) continue;
+        ChatMessageModel *message = self.messages[indexPath.row];
+        PPNovaMessagePresentation *presentation = [self pp_presentationForMessage:message rowIndex:indexPath.row];
+        [self pp_logNovaTableUpdateForMessage:message rowIndex:indexPath.row reason:@"visible_width_refresh"];
+
         if ([visibleCell isKindOfClass:PPNovaProductMessageCell.class]) {
             [(PPNovaProductMessageCell *)visibleCell updateAvailableWidth:tableWidth];
+            visibleCell.accessibilityIdentifier = presentation.renderKey;
             continue;
         }
 
         if ([visibleCell isKindOfClass:PPNovaReviewMessageCell.class]) {
             PPNovaReviewMessageCell *cell = (PPNovaReviewMessageCell *)visibleCell;
-            NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
-            if (indexPath.row >= 0 && indexPath.row < self.messages.count) {
-                ChatMessageModel *message = self.messages[indexPath.row];
-                [cell configureWithMessage:message maxWidth:tableWidth];
-            }
+            cell.accessibilityIdentifier = presentation.renderKey;
+            [cell configureWithMessage:message maxWidth:presentation.style.maxWidth];
             continue;
         }
 
-        if (![visibleCell isKindOfClass:ChatMessageCell.class]) continue;
-
-        ChatMessageCell *cell = (ChatMessageCell *)visibleCell;
-        NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
-        if (indexPath.row < 0 || indexPath.row >= self.messages.count) continue;
-
-        ChatMessageModel *message = self.messages[indexPath.row];
-
-        [cell configureWithMessage:message.text
-                              date:message.timestamp
-                        isIncoming:[message.senderID isEqualToString:@"nova_bot_id"]
-                          maxWidth:tableWidth
-                            status:message.status
-                      messageModel:message groupPosition:PPChatGroupPositionSingle];
+        if ([visibleCell isKindOfClass:PPNovaMessageBubbleCell.class]) {
+            PPNovaMessageBubbleCell *cell = (PPNovaMessageBubbleCell *)visibleCell;
+            cell.accessibilityIdentifier = presentation.renderKey;
+            [cell configureWithMessage:message maxWidth:presentation.style.maxWidth];
+            continue;
+        }
 
     }
+}
+
+- (void)pp_scheduleNovaVisibleLayoutRefreshForReason:(NSString *)reason {
+    if (self.pendingNovaVisibleLayoutRefreshBlock) {
+        dispatch_block_cancel(self.pendingNovaVisibleLayoutRefreshBlock);
+        self.pendingNovaVisibleLayoutRefreshBlock = nil;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t block = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed) return;
+        self.pendingNovaVisibleLayoutRefreshBlock = nil;
+        LOG_INFO(@"[PPNovaChat][TableUpdate] debounced_visible_refresh reason=%@", reason ?: @"unknown");
+        [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
+    });
+    self.pendingNovaVisibleLayoutRefreshBlock = block;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.055 * NSEC_PER_SEC)), dispatch_get_main_queue(), block);
 }
 
 - (void)pp_refreshVisibleNovaCellLayoutForCurrentTableWidth {
@@ -5655,7 +6107,6 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     if (self.smartSuggestionPickerVisible) {
         [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
     }
-    [self pp_setNovaHeaderCollapsed:YES animated:YES];
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeText:(NSString *)text {
@@ -5663,7 +6114,6 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     self.novaInputHasText = trimmed.length > 0;
     if (trimmed.length > 0) {
         [self pp_stopNovaSmartSuggestionRotation];
-        [self pp_setNovaHeaderCollapsed:YES animated:YES];
     } else {
         [self pp_startNovaSmartSuggestionRotationIfNeeded];
     }
@@ -5675,20 +6125,21 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeHeight:(CGFloat)height {
-    CGFloat inputBarTotalHeight = CGRectGetHeight(self.inputbar.frame);
     CGFloat keyboardOffset = -(self.inputBarBottomConstraint.constant) - 8.0;
     if (keyboardOffset < 0) keyboardOffset = 0;
 
-    CGFloat bottomInset = keyboardOffset + height + PPNovaTableBottomInset + (keyboardOffset > 0 ? 8.0 : -self.inputBarRestingBottomConstant);
-    UIEdgeInsets currentInset = self.tableView.contentInset;
-    currentInset.bottom = bottomInset;
-    self.tableView.contentInset = currentInset;
-    self.tableView.scrollIndicatorInsets = currentInset;
+    BOOL wasNearBottom = [self pp_novaIsScrolledNearBottom];
 
     [UIView animateWithDuration:0.18 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction animations:^{
+        UIEdgeInsets currentInset = self.tableView.contentInset;
+        currentInset.bottom = 0.0;
+        self.tableView.contentInset = currentInset;
+        self.tableView.scrollIndicatorInsets = currentInset;
         [self.view layoutIfNeeded];
     } completion:^(__unused BOOL finished) {
-        [self scrollToBottomAnimated:NO];
+        if (wasNearBottom) {
+            [self scrollToBottomAnimated:NO];
+        }
     }];
 }
 
@@ -5900,27 +6351,139 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
     msg.senderID = isIncoming ? @"nova_bot_id" : [UserManager sharedManager].currentUser.ID;
     msg.novaRequestID = requestID;
     msg.novaResponseID = responseID;
+    // Lesson: text-only / clarification / correction / rejection bubbles never
+    // own card payloads. Cards belong only to the response that returned them.
+    msg.novaProducts = nil;
 
     [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:isIncoming ? @"nova" : @"user" text:text];
 
-    [self.messages addObject:msg];
-    [self pp_trimMessageHistoryIfNeeded];
-    [self updateNovaEmptyStateAnimated:YES];
     [[PPChatFeedbackManager shared] playFeedbackForEvent:isIncoming ? PPChatFeedbackEventIncomingActiveChat : PPChatFeedbackEventOutgoingSend];
-    [self animateInsertedRowAtIndexPath:[NSIndexPath indexPathForRow:self.messages.count - 1 inSection:0]];
+    [self pp_appendNovaMessageModel:msg updateReason:isIncoming ? @"insert_assistant_text" : @"insert_user_text"];
+
+    LOG_INFO(@"[PPNovaChat][RenderBinding] text_bubble_attached request_id=%@ response_id=%@ attached_to_message_id=%@ role=%@ incoming_card_count=0 reused_previous_payload=NO",
+             requestID ?: @"",
+             responseID ?: @"",
+             msg.ID ?: @"",
+             isIncoming ? @"nova" : @"user");
 }
 
-// Cap message history at 100; when exceeded drop oldest 20 in one batch and reload.
+- (void)pp_appendNovaMessageModel:(ChatMessageModel *)message updateReason:(NSString *)reason {
+    if (!message) {
+        return;
+    }
+
+    NSInteger oldRowCount = [self.tableView numberOfRowsInSection:0];
+    ChatMessageModel *previousMessage = self.messages.lastObject;
+    BOOL relatedCardsFollowAssistantText = [reason isEqualToString:@"insert_cards"] &&
+        previousMessage.messageType == ChatMessageTypeText &&
+        [previousMessage.senderID isEqualToString:@"nova_bot_id"] &&
+        [previousMessage.novaRequestID isEqualToString:message.novaRequestID ?: @""] &&
+        [previousMessage.novaResponseID isEqualToString:message.novaResponseID ?: @""];
+    CFTimeInterval now = CACurrentMediaTime();
+    BOOL recentAutoScroll = self.novaLastTableMutationRequestedAutoScroll &&
+        (now - self.novaLastTableMutationTimestamp) < 1.0;
+    BOOL shouldAutoScroll = [self pp_novaIsScrolledNearBottom] ||
+        (relatedCardsFollowAssistantText && recentAutoScroll);
+    [self.messages addObject:message];
+    NSArray<NSIndexPath *> *deletedIndexPaths = [self pp_deletedIndexPathsByTrimmingMessageHistoryIfNeeded];
+    NSInteger insertedRow = (NSInteger)self.messages.count - 1;
+    NSIndexPath *insertedIndexPath = insertedRow >= 0 ? [NSIndexPath indexPathForRow:insertedRow inSection:0] : nil;
+
+    [self updateNovaEmptyStateAnimated:YES];
+    [self pp_logNovaTableUpdateForMessage:message rowIndex:insertedRow reason:reason ?: @"append"];
+    [self pp_applyNovaTableMutationWithInsertedIndexPath:insertedIndexPath
+                                       deletedIndexPaths:deletedIndexPaths
+                                             oldRowCount:oldRowCount
+                                        shouldAutoScroll:shouldAutoScroll
+                                            updateReason:reason ?: @"append"];
+    self.novaLastTableMutationRequestedAutoScroll = shouldAutoScroll;
+    self.novaLastTableMutationTimestamp = now;
+}
+
+// Cap message history at 100; when exceeded drop oldest 20 with targeted deletes.
 // A long Nova session would otherwise grow unbounded (memory + scroll perf).
-- (void)pp_trimMessageHistoryIfNeeded {
+- (NSArray<NSIndexPath *> *)pp_deletedIndexPathsByTrimmingMessageHistoryIfNeeded {
     static const NSUInteger kCap = 100;
     static const NSUInteger kTrimChunk = 20;
-    if (self.messages.count <= kCap) return;
-    NSUInteger floor = kCap - kTrimChunk;
-    if (self.messages.count <= floor) return;
-    NSUInteger removeCount = self.messages.count - floor;
+    if (self.messages.count <= kCap) return @[];
+    NSUInteger targetFloor = kCap - kTrimChunk;
+    if (self.messages.count <= targetFloor) return @[];
+    NSUInteger removeCount = self.messages.count - targetFloor;
+    NSMutableArray<NSIndexPath *> *deleted = [NSMutableArray arrayWithCapacity:removeCount];
+    for (NSUInteger idx = 0; idx < removeCount; idx++) {
+        [deleted addObject:[NSIndexPath indexPathForRow:(NSInteger)idx inSection:0]];
+    }
     [self.messages removeObjectsInRange:NSMakeRange(0, removeCount)];
-    [self.tableView reloadData];
+    return deleted.copy;
+}
+
+- (void)pp_trimMessageHistoryIfNeeded {
+    NSInteger oldRowCount = [self.tableView numberOfRowsInSection:0];
+    NSArray<NSIndexPath *> *deletedIndexPaths = [self pp_deletedIndexPathsByTrimmingMessageHistoryIfNeeded];
+    if (deletedIndexPaths.count == 0) {
+        return;
+    }
+    [self pp_applyNovaTableMutationWithInsertedIndexPath:nil
+                                       deletedIndexPaths:deletedIndexPaths
+                                             oldRowCount:oldRowCount
+                                        shouldAutoScroll:NO
+                                            updateReason:@"history_trim"];
+}
+
+- (void)pp_applyNovaTableMutationWithInsertedIndexPath:(NSIndexPath *)insertedIndexPath
+                                    deletedIndexPaths:(NSArray<NSIndexPath *> *)deletedIndexPaths
+                                          oldRowCount:(NSInteger)oldRowCount
+                                     shouldAutoScroll:(BOOL)shouldAutoScroll
+                                         updateReason:(NSString *)reason {
+    NSInteger insertedCount = insertedIndexPath ? 1 : 0;
+    NSInteger expectedOldRows = (NSInteger)self.messages.count - insertedCount + (NSInteger)deletedIndexPaths.count;
+    if (oldRowCount != expectedOldRows) {
+        CGPoint preservedOffset = self.tableView.contentOffset;
+        LOG_WARN(@"[PPNovaChat][TableUpdate] full_reload_reconcile reason=%@ tableRows=%ld expectedOldRows=%ld finalRows=%lu inserted=%ld deleted=%lu",
+                 reason ?: @"unknown",
+                 (long)oldRowCount,
+                 (long)expectedOldRows,
+                 (unsigned long)self.messages.count,
+                 (long)insertedCount,
+                 (unsigned long)deletedIndexPaths.count);
+        [UIView performWithoutAnimation:^{
+            [self.tableView reloadData];
+            [self.tableView layoutIfNeeded];
+        }];
+        if (shouldAutoScroll) {
+            [self scrollToBottomAnimated:NO];
+        } else {
+            [self.tableView setContentOffset:preservedOffset animated:NO];
+        }
+        return;
+    }
+
+    CGPoint preservedOffset = self.tableView.contentOffset;
+    LOG_INFO(@"[PPNovaChat][TableUpdate] targeted_mutation reason=%@ oldRows=%ld finalRows=%lu inserted=%ld deleted=%lu autoScroll=%@",
+             reason ?: @"unknown",
+             (long)oldRowCount,
+             (unsigned long)self.messages.count,
+             (long)insertedCount,
+             (unsigned long)deletedIndexPaths.count,
+             shouldAutoScroll ? @"YES" : @"NO");
+
+    [CATransaction begin];
+    [CATransaction setCompletionBlock:^{
+        if (shouldAutoScroll) {
+            [self scrollToBottomAnimated:YES];
+        } else {
+            [self.tableView setContentOffset:preservedOffset animated:NO];
+        }
+    }];
+    [self.tableView beginUpdates];
+    if (deletedIndexPaths.count > 0) {
+        [self.tableView deleteRowsAtIndexPaths:deletedIndexPaths withRowAnimation:UITableViewRowAnimationNone];
+    }
+    if (insertedIndexPath) {
+        [self.tableView insertRowsAtIndexPaths:@[insertedIndexPath] withRowAnimation:UITableViewRowAnimationNone];
+    }
+    [self.tableView endUpdates];
+    [CATransaction commit];
 }
 
 // Best-effort principle-based reply sanitizer. Backend `sanitize_reply` flags issues but
@@ -6118,8 +6681,11 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 
 
 - (void)animateInsertedRowAtIndexPath:(NSIndexPath *)indexPath {
-    [self.tableView insertRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationNone];
-    [self scrollToBottomAnimated:YES];
+    [self pp_applyNovaTableMutationWithInsertedIndexPath:indexPath
+                                       deletedIndexPaths:@[]
+                                             oldRowCount:[self.tableView numberOfRowsInSection:0]
+                                        shouldAutoScroll:[self pp_novaIsScrolledNearBottom]
+                                            updateReason:@"legacy_insert"];
 }
 
 #pragma mark - PPNovaProductMessageCellDelegate

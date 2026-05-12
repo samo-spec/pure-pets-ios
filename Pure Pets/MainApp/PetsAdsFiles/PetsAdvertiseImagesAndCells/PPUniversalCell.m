@@ -21,11 +21,11 @@
 #import "ServiceModel.h"
 #import "VetModel.h"
 
-static CGFloat const PPUniversalCardCornerRadius = 26.0;
+static CGFloat const PPUniversalCardCornerRadius = 12.0;
 static CGFloat const PPUniversalImageCornerRadius = 22.0;
 static CGFloat const PPUniversalOuterInset = 16.0;
 static CGFloat const PPUniversalInnerSpacing = 12.0;
-static CGFloat const PPUniversalButtonHeight = 36.0;
+static CGFloat const PPUniversalButtonHeight = 38.0;
 static CGFloat const PPUniversalPillHeight = 34.0;
 static CGFloat const PPUniversalCompactTitleHeight = 24.0;
 static CGFloat const PPUniversalCompactPriceHeight = 26.0;

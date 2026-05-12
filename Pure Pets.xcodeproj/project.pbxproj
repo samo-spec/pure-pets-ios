@@ -551,6 +551,7 @@
 		F2A903472F9E84F10097485B /* PPPetCareViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034A2F9E84F40097485B /* PPPetCareViewerVC.m */; };
 		F2A903482F9E84F20097485B /* PPPetCareVetViewrVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */; };
 		F2A9034F2F9E98230097485B /* PPHomeInsetLabel.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */; };
+		F2A9E80E2FB3570200B2729F /* PPHomePremiumSearchCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */; };
 		F2AAEDA62EF9AC16006E0A6F /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */; };
 		F2AB488C2C72CF3C00D88603 /* JGProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB487F2C72CF3C00D88603 /* JGProgressHUD.m */; };
 		F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */ = {isa = PBXBuildFile; fileRef = F2AB48802C72CF3C00D88603 /* JGProgressHUDAnimation.m */; };
@@ -1830,6 +1831,8 @@
 		F2A9034C2F9E84F60097485B /* PPPetCareVetViewrVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPPetCareVetViewrVC.m; sourceTree = "<group>"; };
 		F2A9034D2F9E98180097485B /* PPHomeInsetLabel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeInsetLabel.h; sourceTree = "<group>"; };
 		F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeInsetLabel.m; sourceTree = "<group>"; };
+		F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomePremiumSearchCell.h; sourceTree = "<group>"; };
+		F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomePremiumSearchCell.m; sourceTree = "<group>"; };
 		F2AAEDA52EF9AC16006E0A6F /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPFactory.m"; path = "Pure Pets/DesignFiles/PP/PPComponent/UITabBarItem+PPFactory.m"; sourceTree = SOURCE_ROOT; };
 		F2AAEDA82EF9E249006E0A6F /* UITabBarItem+PPAdditions.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "UITabBarItem+PPAdditions.m"; path = "Pure Pets/DesignFiles/PP/PPNAV/UITabBarItem+PPAdditions.m"; sourceTree = SOURCE_ROOT; };
 		F2AB48702C72CF3C00D88603 /* JGProgressHUD-Defines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "JGProgressHUD-Defines.h"; sourceTree = "<group>"; };
@@ -2318,6 +2321,8 @@
 				F2A9034E2F9E98230097485B /* PPHomeInsetLabel.m */,
 				F2353B6B2F80191E0018EC49 /* PPHomeOrderStatusCell.h */,
 				F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */,
+				F2A9E80C2FB3570200B2729F /* PPHomePremiumSearchCell.h */,
+				F2A9E80D2FB3570200B2729F /* PPHomePremiumSearchCell.m */,
 				F2B641B82F4A95290092C2BF /* Stories */,
 				F2F465F02F3B8C8200E5FB60 /* PPHomeHeroCell.h */,
 				F2F465F12F3B8CAB00E5FB60 /* PPHomeHeroCell.m */,
@@ -5370,6 +5375,7 @@
 				F27006902F256133005E38CF /* PPMediaPreviewController.m in Sources */,
 				F271467C2CCE6B5300F7F3BA /* XLFormOptionsObject.m in Sources */,
 				F271467D2CCE6B5300F7F3BA /* XLFormLeftRightSelectorCell.m in Sources */,
+				F2A9E80E2FB3570200B2729F /* PPHomePremiumSearchCell.m in Sources */,
 				F2F6C8B32E8D7B430092D85D /* SplashViewController.m in Sources */,
 				F271467E2CCE6B5300F7F3BA /* NSObject+XLFormAdditions.m in Sources */,
 				F2F750CB2E7C605E00BACFA8 /* PPS.m in Sources */,

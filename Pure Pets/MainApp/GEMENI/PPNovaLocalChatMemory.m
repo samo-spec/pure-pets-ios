@@ -284,4 +284,20 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
     return [regex stringByReplacingMatchesInString:text options:0 range:NSMakeRange(0, text.length) withTemplate:@"[REDACTED]"];
 }
 
+#pragma mark - Session ID
+
+static NSString * const kPPNovaSessionIdKey = @"pp_nova_last_session_id";
+
+- (nullable NSString *)lastKnownSessionId {
+    NSString *sessionId = [[NSUserDefaults standardUserDefaults] stringForKey:kPPNovaSessionIdKey];
+    return sessionId.length > 0 ? sessionId : nil;
+}
+
+- (void)setLastKnownSessionId:(NSString *)sessionId {
+    if (sessionId.length > 0) {
+        [[NSUserDefaults standardUserDefaults] setObject:sessionId forKey:kPPNovaSessionIdKey];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+    }
+}
+
 @end

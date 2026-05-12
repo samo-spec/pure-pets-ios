@@ -56,7 +56,7 @@
 #import "PPHomeInsetLabel.h"
 #import "PPHomeLocationTitleView.h"
 #import "PPHomeSmartSearchTitleView.h"
-
+#import "PPHomePremiumSearchCell.h"
 
 
 extern NSString * const PPThemePreferenceDidChangeNotification;
@@ -1558,18 +1558,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if (self.homeConfigSections.count > 0) {
         for (NSDictionary *sectionCfg in self.homeConfigSections) {
             NSInteger sectionID = [sectionCfg[@"id"] integerValue];
-            if (sectionID == PPHomeSectionPremiumSearch) {
-                hasPremiumSearchConfig = YES;
-            }
             if (![sectionCfg[@"visible"] boolValue]) {
                 continue;
             }
-            // 🔒 Services is force-hidden in this build; including the section
-            // identifier here would leave a stranded header with no items
-            // because the items branch below is gated on hideServiceSection.
-            if (sectionID == PPHomeSectionServices && self.hideServiceSection) {
-                continue;
-            }
+           
             [sections addObject:@(sectionID)];
         }
     } else {
@@ -1580,7 +1572,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         [sections addObject:@(PPHomeSectionServices)];
     }
 
-    if (!hasPremiumSearchConfig && ![sections containsObject:@(PPHomeSectionPremiumSearch)]) {
+    if (![sections containsObject:@(PPHomeSectionPremiumSearch)]) {
         NSUInteger heroIndex = [sections indexOfObject:@(PPHomeSectionHero)];
         NSUInteger insertIndex = (heroIndex == NSNotFound) ? 0 : heroIndex + 1;
         [sections insertObject:@(PPHomeSectionPremiumSearch) atIndex:MIN(insertIndex, sections.count)];
@@ -5429,6 +5421,9 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomePremiumCareCell.class
             forCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomePremiumSearchCell.class
+            forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
+    
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
     [self.collectionView registerClass:PPHomeServicesCell.class forCellWithReuseIdentifier:PPHomeServicesCell.reuseIdentifier];
@@ -5620,9 +5615,16 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                 isLoading:strongSelf.petProfilesLoading];
             return cell;
         }
+   
+            if ( section == PPHomeSectionPremiumSearch) {
+                PPHomePremiumSearchCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomePremiumSearchCell"
+                                                              forIndexPath:indexPath];
+         
+                return cell;
+            }
 
-        if (section == PPHomeSectionPremiumSearch ||
-            section == PPHomeSectionPremiumCare) {
+        if ( section == PPHomeSectionPremiumCare) {
             PPHomePremiumCareCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
                                                           forIndexPath:indexPath];

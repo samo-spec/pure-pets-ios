@@ -19,6 +19,7 @@
 #define PPSpaceXS    4.0f
 #define PPSpaceSM    8.0f
 #define PPSpaceMD    12.0f
+#define PPSpaceMDHalf    6.0f
 #define PPSpaceBase  16.0f
 #define PPSpaceLG    20.0f
 #define PPSpaceXL    24.0f

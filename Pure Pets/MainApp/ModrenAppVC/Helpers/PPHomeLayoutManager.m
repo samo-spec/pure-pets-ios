@@ -85,7 +85,7 @@
                 return [PPHomeFunc heroSectionForWidth:availableWidth];
 
             case PPHomeSectionPremiumSearch:
-                return [PPHomeFunc premiumCareSectionForWidth:availableWidth];
+                return [PPHomeFunc premiumSearchSectionForWidth:availableWidth];
 
             case PPHomeSectionQuickActions:
                 return [PPHomeFunc quickActionsSectionForWidth:availableWidth];
