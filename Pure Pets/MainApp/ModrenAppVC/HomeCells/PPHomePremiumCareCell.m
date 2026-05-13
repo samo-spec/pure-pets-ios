@@ -67,8 +67,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
     }
 
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.layer.cornerRadius = 32.0;
-    _surfaceView.layer.borderWidth = 0.8;
+    _surfaceView.layer.cornerRadius = 34.0;
+    _surfaceView.layer.borderWidth = 1.0;
     _surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -452,12 +452,13 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
     _gradientLayer.colors = @[
-        (id)[AppPrimaryClrShiner colorWithAlphaComponent:isDark ? 0.20 : 0.16].CGColor,
-        (id)[UIColor clearColor].CGColor
+        (id)surfaceColor.CGColor,
+        (id)[accent colorWithAlphaComponent:isDark ? 0.10 : 0.05].CGColor,
+        (id)surfaceColor.CGColor
     ];
-    _gradientLayer.locations = @[@0.0, @1.0];
+    _gradientLayer.locations = @[@0.0, @0.5, @1.0];
 
-    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.06];
+    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.11];
     [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.12]];
     _topBackgroundGlowView.layer.shadowOpacity = 0.16;
     _topBackgroundGlowView.layer.shadowRadius = 48.0;
