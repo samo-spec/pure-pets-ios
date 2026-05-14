@@ -32,6 +32,7 @@
 #import "ServicesManager.h"
 #import "VetManager.h"
 #import <IQKeyboardManager/IQKeyboardManager.h>
+#import <QuartzCore/QuartzCore.h>
 
 static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     if (@available(iOS 13.0, *)) {
@@ -49,6 +50,9 @@ static NSString * const PPNovaCallableRegion = @"us-central1";
 static NSString * const PPNovaCallableName = @"geminiProxy";
 static NSString * const PPNovaFirebaseProjectID = @"pure-pets-49199";
 static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryEntryCell";
+static NSString * const PPNovaSmartSuggestionWashBreathKey = @"pp.nova.smartSuggestion.washBreath";
+static NSString * const PPNovaSmartSuggestionActionBreathKey = @"pp.nova.smartSuggestion.actionBreath";
+static NSString * const PPNovaSmartSuggestionColorShiftKey = @"pp.nova.smartSuggestion.colorShift";
 
 #pragma mark - Nova Output Presentation
 
@@ -623,8 +627,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) UILabel *statusLabel;
 @property (nonatomic, strong) UILabel *headerNameLabel;
 @property (nonatomic, strong) UILabel *headerSubtitleLabel;
+@property (nonatomic, strong) NSLayoutConstraint *brandRingTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *brandRingCenterXConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *brandRingLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *brandRingCollapsedCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *closeButtonTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *closeButtonCollapsedCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *historyButtonTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *historyButtonCollapsedCenterYConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *nameLabelCenterXConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *nameLabelLeadingConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *nameLabelTopConstraint;
@@ -647,6 +657,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) UIView *emptyStateView;
 @property (nonatomic, strong) UIView *emptyStatePulseView;
 @property (nonatomic, strong) UIVisualEffectView *smartSuggestionSurfaceView;
+@property (nonatomic, strong) UIView *smartSuggestionAccentWashView;
+@property (nonatomic, strong) CAGradientLayer *smartSuggestionAccentGradientLayer;
 @property (nonatomic, strong) UILabel *smartSuggestionTitleLabel;
 @property (nonatomic, strong) UILabel *smartSuggestionTextLabel;
 @property (nonatomic, strong) UILabel *smartSuggestionHintLabel;
@@ -882,7 +894,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    [self pp_updateNovaHeaderCollapsedGeometry];
     [self pp_updateNovaHeaderLiquidBorderPath];
+    self.smartSuggestionAccentGradientLayer.frame = self.smartSuggestionAccentWashView.bounds;
 
     if (!self.didInitialInset && CGRectGetHeight(self.inputbar.frame) > 0) {
         self.didInitialInset = YES;
@@ -914,6 +928,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self.novaHeaderLiquidHighlightLayer removeAllAnimations];
     [self.emptyStatePulseView.layer removeAllAnimations];
     [self.novaChatBottomGlowView.layer removeAllAnimations];
+    [self pp_stopNovaSmartSuggestionLiveMotion];
     [self pp_stopNovaSmartSuggestionRotation];
     for (UIView *dot in self.typingDots) {
         [dot.layer removeAllAnimations];
@@ -1080,6 +1095,184 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
              (unsigned long)adsCount,
              (unsigned long)servicesCount,
              source ?: @"unknown");
+}
+
+- (NSDictionary *)pp_novaResultSetDictionaryFromResponseData:(NSDictionary *)data {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    id resultSet = data[@"result_set"] ?: data[@"resultSet"];
+    return [resultSet isKindOfClass:NSDictionary.class] ? (NSDictionary *)resultSet : nil;
+}
+
+- (NSUInteger)pp_novaUnsignedIntegerFromValue:(id)value {
+    if ([value isKindOfClass:NSArray.class]) {
+        return [(NSArray *)value count];
+    }
+    if ([value respondsToSelector:@selector(unsignedIntegerValue)]) {
+        return [value unsignedIntegerValue];
+    }
+    NSString *text = [self pp_novaStringFromValue:value];
+    if (text.length > 0) {
+        NSInteger number = text.integerValue;
+        return number > 0 ? (NSUInteger)number : 0;
+    }
+    return 0;
+}
+
+- (BOOL)pp_novaBoolFromValue:(id)value defaultValue:(BOOL)defaultValue {
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)value boolValue];
+    }
+    NSString *text = [[self pp_novaStringFromValue:value] lowercaseString];
+    if (text.length == 0) {
+        return defaultValue;
+    }
+    if ([text isEqualToString:@"true"] || [text isEqualToString:@"yes"] || [text isEqualToString:@"1"]) {
+        return YES;
+    }
+    if ([text isEqualToString:@"false"] || [text isEqualToString:@"no"] || [text isEqualToString:@"0"]) {
+        return NO;
+    }
+    return defaultValue;
+}
+
+- (NSUInteger)pp_novaBackendResultCountFromResponseData:(NSDictionary *)data {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return 0;
+    }
+    __block NSUInteger count = 0;
+    void (^consider)(id) = ^(id value) {
+        count = MAX(count, [self pp_novaUnsignedIntegerFromValue:value]);
+    };
+    for (NSString *key in @[@"result_count", @"resultCount", @"product_count", @"productCount", @"renderedProductCount", @"rendered_product_count", @"matchedProductCount", @"matched_product_count"]) {
+        consider(data[key]);
+    }
+    NSDictionary *context = [data[@"_compose_context"] isKindOfClass:NSDictionary.class] ? data[@"_compose_context"] : nil;
+    if (!context) {
+        context = [data[@"compose_context"] isKindOfClass:NSDictionary.class] ? data[@"compose_context"] : nil;
+    }
+    if (!context) {
+        context = [data[@"composeContext"] isKindOfClass:NSDictionary.class] ? data[@"composeContext"] : nil;
+    }
+    for (NSString *key in @[@"result_count", @"resultCount", @"card_count", @"cardCount"]) {
+        consider(context[key]);
+    }
+    NSDictionary *resultSet = [self pp_novaResultSetDictionaryFromResponseData:data];
+    consider(resultSet[@"items"] ?: resultSet[@"products"]);
+    for (NSString *key in @[@"products", @"items", @"resultRefs", @"result_refs"]) {
+        consider(data[key]);
+    }
+    return count;
+}
+
+- (NSUInteger)pp_novaBackendResultRefsCountFromResponseData:(NSDictionary *)data {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return 0;
+    }
+    NSUInteger count = 0;
+    for (NSString *key in @[@"resultRefs", @"result_refs"]) {
+        id value = data[key];
+        if ([value isKindOfClass:NSArray.class]) {
+            count += [(NSArray *)value count];
+        }
+    }
+    NSDictionary *resultSet = [self pp_novaResultSetDictionaryFromResponseData:data];
+    id items = resultSet[@"items"];
+    if ([items isKindOfClass:NSArray.class]) {
+        count += [(NSArray *)items count];
+    }
+    return count;
+}
+
+- (BOOL)pp_novaCardsRequiredFromResponseData:(NSDictionary *)data
+                                 resultCount:(NSUInteger)resultCount
+                             resultRefsCount:(NSUInteger)resultRefsCount {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    NSDictionary *resultSet = [self pp_novaResultSetDictionaryFromResponseData:data];
+    NSDictionary *context = [data[@"_compose_context"] isKindOfClass:NSDictionary.class] ? data[@"_compose_context"] : nil;
+    if (!context) {
+        context = [data[@"compose_context"] isKindOfClass:NSDictionary.class] ? data[@"compose_context"] : nil;
+    }
+    if (!context) {
+        context = [data[@"composeContext"] isKindOfClass:NSDictionary.class] ? data[@"composeContext"] : nil;
+    }
+    BOOL explicitRequired = [self pp_novaBoolFromValue:data[@"cardsRequired"] defaultValue:NO] ||
+                            [self pp_novaBoolFromValue:data[@"cards_required"] defaultValue:NO] ||
+                            [self pp_novaBoolFromValue:resultSet[@"cardsRequired"] defaultValue:NO] ||
+                            [self pp_novaBoolFromValue:resultSet[@"cards_required"] defaultValue:NO] ||
+                            [self pp_novaBoolFromValue:context[@"cards_required"] defaultValue:NO];
+    BOOL textFallbackAllowed = [self pp_novaBoolFromValue:data[@"textFallbackAllowed"] defaultValue:YES] &&
+                               [self pp_novaBoolFromValue:data[@"text_fallback_allowed"] defaultValue:YES] &&
+                               [self pp_novaBoolFromValue:resultSet[@"textFallbackAllowed"] defaultValue:YES] &&
+                               [self pp_novaBoolFromValue:resultSet[@"text_fallback_allowed"] defaultValue:YES];
+    return explicitRequired || resultRefsCount > 0 || (resultCount > 0 && !textFallbackAllowed);
+}
+
+- (NSString *)pp_novaResultSourceFromResponseData:(NSDictionary *)data {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return @"unknown";
+    }
+    NSDictionary *resultSet = [self pp_novaResultSetDictionaryFromResponseData:data];
+    NSDictionary *context = [data[@"_compose_context"] isKindOfClass:NSDictionary.class] ? data[@"_compose_context"] : nil;
+    if (!context) {
+        context = [data[@"compose_context"] isKindOfClass:NSDictionary.class] ? data[@"compose_context"] : nil;
+    }
+    if (!context) {
+        context = [data[@"composeContext"] isKindOfClass:NSDictionary.class] ? data[@"composeContext"] : nil;
+    }
+    NSString *source = [self pp_novaStringFromValue:data[@"locked_source"]];
+    if (source.length == 0) source = [self pp_novaStringFromValue:resultSet[@"source"]];
+    if (source.length == 0) source = [self pp_novaStringFromValue:data[@"source_used"]];
+    if (source.length == 0) source = [self pp_novaStringFromValue:context[@"source_used"]];
+    if (source.length == 0) source = [self pp_novaStringFromValue:data[@"payload_type"]];
+    return source.length > 0 ? source : @"unknown";
+}
+
+- (void)pp_logNovaCellPayloadWithRequestID:(NSString *)requestID
+                                responseID:(NSString *)responseID
+                        backendResultCount:(NSUInteger)backendResultCount
+                     backendResultRefsCount:(NSUInteger)backendResultRefsCount
+                          parsedResultRefs:(NSUInteger)parsedResultRefs
+                             cardsRequired:(BOOL)cardsRequired
+                                    source:(NSString *)source {
+    LOG_INFO(@"NOVA_CELL_PAYLOAD request_id=%@ response_id=%@ backend_result_count=%lu resultRefs_count=%lu parsed_resultRefs_count=%lu cardsRequired=%@ source=%@",
+             requestID ?: @"",
+             responseID ?: @"",
+             (unsigned long)backendResultCount,
+             (unsigned long)backendResultRefsCount,
+             (unsigned long)parsedResultRefs,
+             cardsRequired ? @"YES" : @"NO",
+             source ?: @"unknown");
+}
+
+- (void)pp_handleNovaCellRenderMissingWithRequestID:(NSString *)requestID
+                                        responseID:(NSString *)responseID
+                                backendResultCount:(NSUInteger)backendResultCount
+                             backendResultRefsCount:(NSUInteger)backendResultRefsCount
+                                  parsedResultRefs:(NSUInteger)parsedResultRefs
+                                      cellsCreated:(NSUInteger)cellsCreated
+                                            source:(NSString *)source
+                                            reason:(NSString *)reason {
+    LOG_WARN(@"NOVA_CELL_RENDER_MISSING request_id=%@ response_id=%@ backend_result_count=%lu resultRefs_count=%lu parsed_resultRefs_count=%lu cells_created=%lu source=%@ reason=%@",
+             requestID ?: @"",
+             responseID ?: @"",
+             (unsigned long)backendResultCount,
+             (unsigned long)backendResultRefsCount,
+             (unsigned long)parsedResultRefs,
+             (unsigned long)cellsCreated,
+             source ?: @"unknown",
+             reason ?: @"unknown");
+    [self hideNovaTyping];
+    NSString *fallback = kLang(@"nova_cell_render_missing");
+    if (fallback.length == 0 || [fallback isEqualToString:@"nova_cell_render_missing"]) {
+        fallback = kLang(@"nova_suggestions_unavailable");
+    }
+    if (![self pp_lastNovaTextMessageEquals:fallback]) {
+        [self addNovaMessage:fallback requestID:requestID responseID:responseID];
+    }
 }
 
 #pragma mark - Nova Presentation Runtime
@@ -1510,9 +1703,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	            NSString *replyText = nil;
 	            NSString *serverAction = nil;
 	            NSString *responseID = nil;
+	            NSDictionary *responseData = nil;
 	            NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs = @[];
 	            if ([result.data isKindOfClass:NSDictionary.class]) {
 	                NSDictionary *data = (NSDictionary *)result.data;
+	                responseData = data;
 	                responseID = [self pp_novaResponseIDFromResponseData:data requestID:requestID source:@"server"];
 	                self.activeNovaResponseID = responseID;
 	                LOG_INFO(@"[PPNovaChat][Debug] responseKeys=%@ httpStatus=%@",
@@ -1541,6 +1736,20 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                         @"n/a");
 	                suggestionRefs = [self pp_novaSuggestionRefsFromResponseData:nil replyText:replyText];
 	            }
+	            NSUInteger backendResultCount = [self pp_novaBackendResultCountFromResponseData:responseData];
+	            NSUInteger backendResultRefsCount = [self pp_novaBackendResultRefsCountFromResponseData:responseData];
+	            BOOL cardsRequired = [self pp_novaCardsRequiredFromResponseData:responseData
+	                                                                 resultCount:backendResultCount
+	                                                             resultRefsCount:backendResultRefsCount];
+	            NSString *resultSource = [self pp_novaResultSourceFromResponseData:responseData];
+	            BOOL mustRenderCells = cardsRequired || backendResultCount > 0 || suggestionRefs.count > 0;
+	            [self pp_logNovaCellPayloadWithRequestID:requestID
+	                                          responseID:responseID
+	                                  backendResultCount:backendResultCount
+	                               backendResultRefsCount:backendResultRefsCount
+	                                    parsedResultRefs:suggestionRefs.count
+	                                       cardsRequired:cardsRequired
+	                                              source:resultSource];
 	            [self pp_logNovaIncomingRefs:suggestionRefs requestID:requestID responseID:responseID source:@"server"];
 
 	            replyText = [replyText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -1549,11 +1758,30 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	            // triggers product cards.
 	            if ([serverAction isEqualToString:@"ASK_CLARIFICATION"] ||
 	                [serverAction isEqualToString:@"RESPOND"]) {
-	                [self hideNovaTyping];
-	                NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:YES];
-	                if (sanitizedReply.length > 0) {
-	                    [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                if (mustRenderCells) {
+	                    LOG_WARN(@"[PPNovaChat][Refs] terminal_action_has_result_payload action=%@ backend_result_count=%lu parsed_refs=%lu source=%@",
+	                             serverAction ?: @"",
+	                             (unsigned long)backendResultCount,
+	                             (unsigned long)suggestionRefs.count,
+	                             resultSource ?: @"unknown");
+	                } else {
+	                    [self hideNovaTyping];
+	                    NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:YES];
+	                    if (sanitizedReply.length > 0) {
+	                        [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                    }
+	                    return;
 	                }
+	            }
+	            if (mustRenderCells && suggestionRefs.count == 0) {
+	                [self pp_handleNovaCellRenderMissingWithRequestID:requestID
+	                                                       responseID:responseID
+	                                               backendResultCount:backendResultCount
+	                                            backendResultRefsCount:backendResultRefsCount
+	                                                 parsedResultRefs:0
+	                                                     cellsCreated:0
+	                                                           source:resultSource
+	                                                           reason:@"parsed_refs_empty"];
 	                return;
 	            }
 	            if (replyText.length == 0 && suggestionRefs.count == 0) {
@@ -1635,7 +1863,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                               userText:trimmedText
 	                                              requestID:requestID
 	                                             responseID:responseID
-	                                             generation:generation];
+	                                             generation:generation
+	                                    backendResultCount:backendResultCount
+	                                 backendResultRefsCount:backendResultRefsCount
+	                                        cardsRequired:mustRenderCells
+	                                          resultSource:resultSource];
 	            } else {
 	                [self hideNovaTyping];
 	                if (hasCatalogIntent) {
@@ -1838,10 +2070,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             [self pp_appendNovaSuggestionRefsFromIDs:data[key] kind:kind toRefs:refs];
         }];
 
+        [self pp_appendNovaSuggestionRefsFromResultSet:data[@"result_set"] toRefs:refs];
+
+        NSString *payloadKind = [self pp_novaSuggestionKindForResultSetSource:[self pp_novaResultSourceFromResponseData:data]];
         NSDictionary<NSString *, NSString *> *arrayKeyKinds = @{
             @"suggestions": @"", @"recommendations": @"", @"results": @"",
             @"resultRefs": @"", @"result_refs": @"",
-            @"products": @"product", @"items": @"product",
+            @"products": payloadKind.length > 0 ? payloadKind : @"product",
+            @"items": payloadKind.length > 0 ? payloadKind : @"product",
             @"services": @"service", @"medicines": @"medicine",
             @"petAds": @"pet_ad", @"pet_ads": @"pet_ad",
             @"adoptions": @"adoption", @"adoptPets": @"adoption", @"adopt_pets": @"adoption",
@@ -1854,8 +2090,76 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         }];
     }
 
-    [self pp_appendNovaSuggestionRefsFromText:replyText toRefs:refs];
+    if (replyText.length > 0) {
+        LOG_INFO(@"[PPNovaChat][Refs] text-ref fallback disabled; refs must come from structured payload.");
+    }
     return [self pp_uniqueNovaSuggestionRefs:refs];
+}
+
+- (void)pp_appendNovaSuggestionRefsFromResultSet:(id)value
+                                          toRefs:(NSMutableArray<NSDictionary<NSString *, NSString *> *> *)refs
+{
+    if (![value isKindOfClass:NSDictionary.class]) {
+        return;
+    }
+    NSDictionary *resultSet = (NSDictionary *)value;
+    NSArray *items = [resultSet[@"items"] isKindOfClass:NSArray.class] ? resultSet[@"items"] : @[];
+    NSString *setSource = [self pp_novaStringFromValue:resultSet[@"source"]];
+    for (id entry in items) {
+        if (![entry isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSDictionary *item = (NSDictionary *)entry;
+        NSString *identifier = [self pp_novaStringFromDictionary:item keys:@[@"id", @"documentID", @"documentId", @"docID", @"docId", @"itemID", @"itemId"]];
+        NSString *displayName = [self pp_novaResultDisplayNameFromDictionary:item];
+        NSString *source = [self pp_novaStringFromValue:item[@"source"]];
+        if (source.length == 0) {
+            source = setSource;
+        }
+        if (identifier.length == 0 || displayName.length == 0 || [self pp_novaResultDisplayNameLooksGeneric:displayName]) {
+            LOG_WARN(@"NOVA_INVALID_RESULT_METADATA source=%@ id=%@ reason=%@",
+                     source ?: @"",
+                     identifier ?: @"",
+                     identifier.length == 0 ? @"missing_id" : @"missing_displayName");
+            continue;
+        }
+        NSString *preferredKind = [self pp_novaSuggestionKindForResultSetSource:source];
+        NSString *kind = [self pp_novaSuggestionKindFromDictionary:item preferredKind:preferredKind];
+        if (kind.length > 0 && identifier.length > 0) {
+            [refs addObject:@{@"kind": kind, @"id": identifier}];
+        }
+    }
+}
+
+- (NSString *)pp_novaSuggestionKindForResultSetSource:(NSString *)source {
+    NSString *raw = [[self pp_novaStringFromValue:source] lowercaseString];
+    if ([raw containsString:@"services"] || [raw containsString:@"serviceoffers"] || [raw isEqualToString:@"service"]) {
+        return @"service";
+    }
+    if ([raw containsString:@"veterinarian"] || [raw isEqualToString:@"vets"] || [raw isEqualToString:@"vet"]) {
+        return @"vet";
+    }
+    if ([raw containsString:@"pet_ads"] || [raw isEqualToString:@"ads"] || [raw isEqualToString:@"pet_ad"]) {
+        return @"pet_ad";
+    }
+    if ([raw containsString:@"adopt_pets"] || [raw containsString:@"adoption"]) {
+        return @"adoption";
+    }
+    if ([raw containsString:@"medicine"]) {
+        return @"medicine";
+    }
+    return @"product";
+}
+
+- (NSString *)pp_novaResultDisplayNameFromDictionary:(NSDictionary *)dict {
+    return [self pp_novaStringFromDictionary:dict keys:@[@"displayName", @"title", @"name", @"name_ar"]];
+}
+
+- (BOOL)pp_novaResultDisplayNameLooksGeneric:(NSString *)displayName {
+    NSString *normalized = [[[displayName lowercaseString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]
+        stringByReplacingOccurrencesOfString:@"  " withString:@" "];
+    NSSet<NSString *> *generic = [NSSet setWithArray:@[@"service", @"خدمة", @"clinic", @"عيادة", @"pet ad", @"إعلان", @"اعلان", @"adoptable pet", @"للتبني", @"product", @"منتج", @"item"]];
+    return [generic containsObject:normalized];
 }
 
 - (void)pp_appendNovaSuggestionRefsFromIDs:(id)value
@@ -1930,7 +2234,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return @"product";
     }
 
-    id rawKindValue = dict[@"kind"] ?: dict[@"itemType"] ?: dict[@"collection"] ?: dict[@"collectionName"] ?: dict[@"type"];
+    id rawKindValue = dict[@"kind"] ?: dict[@"itemType"] ?: dict[@"collection"] ?: dict[@"collectionName"] ?: dict[@"source"] ?: dict[@"resultSource"] ?: dict[@"type"];
     NSString *rawKind = [[self pp_novaStringFromValue:rawKindValue] lowercaseString];
     if ([rawKind containsString:@"pet_ad"] || [rawKind containsString:@"pet ad"] ||
         [rawKind containsString:@"pet_ads"] || [rawKind isEqualToString:@"ads"]) {
@@ -2089,8 +2393,22 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                  userText:(NSString *)userText
                                 requestID:(NSString *)requestID
                                responseID:(NSString *)responseID
-                               generation:(NSUInteger)generation {
+                               generation:(NSUInteger)generation
+                        backendResultCount:(NSUInteger)backendResultCount
+                     backendResultRefsCount:(NSUInteger)backendResultRefsCount
+                             cardsRequired:(BOOL)cardsRequired
+                               resultSource:(NSString *)resultSource {
     if (refs.count == 0) {
+        if (cardsRequired || backendResultCount > 0) {
+            [self pp_handleNovaCellRenderMissingWithRequestID:requestID
+                                                   responseID:responseID
+                                           backendResultCount:backendResultCount
+                                        backendResultRefsCount:backendResultRefsCount
+                                             parsedResultRefs:0
+                                                 cellsCreated:0
+                                                       source:resultSource ?: @"server"
+                                                       reason:@"resolver_called_without_refs"];
+        }
         return;
     }
 
@@ -2240,7 +2558,16 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 	            // Resolution failed. Preserve Nova's text, but do not substitute
 	            // any previous local card payload for this response.
-	            if (hasAssistantText) {
+	            if (cardsRequired || backendResultCount > 0) {
+	                [self pp_handleNovaCellRenderMissingWithRequestID:requestID
+	                                                       responseID:responseID
+	                                               backendResultCount:backendResultCount
+	                                            backendResultRefsCount:backendResultRefsCount
+	                                                 parsedResultRefs:refs.count
+	                                                     cellsCreated:0
+	                                                           source:resultSource ?: @"server"
+	                                                           reason:@"resolution_empty"];
+	            } else if (hasAssistantText) {
 	                [self pp_addNovaProductResultTextForRenderedCount:0
 	                                                     proposedText:fallbackText
 	                                                         userText:userText
@@ -2272,6 +2599,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                  (unsigned long)((refs.count > objects.count) ? (refs.count - objects.count) : 0),
                  typeCounts,
                  fallbackText.length > 0 ? @"YES" : @"NO");
+        LOG_INFO(@"NOVA_CELL_RENDER_RESULT request_id=%@ response_id=%@ backend_result_count=%lu resultRefs_count=%lu parsed_resultRefs_count=%lu cells_created=%lu source=%@ message_type=%@ universalCell=YES",
+                 requestID ?: @"",
+                 responseID ?: @"",
+                 (unsigned long)backendResultCount,
+                 (unsigned long)backendResultRefsCount,
+                 (unsigned long)refs.count,
+                 (unsigned long)objects.count,
+                 resultSource ?: @"server",
+                 objects.count > 1 ? @"ChatMessageTypeNovaProductList" : @"ChatMessageTypeNovaProduct");
 
 	        [self pp_addNovaProductResultTextForRenderedCount:objects.count
 	                                             proposedText:fallbackText
@@ -2517,6 +2853,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     LOG_INFO(@"NOVA_RENDERED_CELL_COUNT rendered=%lu source=%@",
              (unsigned long)validObjects.count,
+             source ?: @"unknown");
+    LOG_INFO(@"NOVA_CELL_MESSAGE_INSERTED request_id=%@ response_id=%@ cells_created=%lu message_type=%@ universalCell=YES source=%@",
+             requestID ?: @"",
+             responseID ?: @"",
+             (unsigned long)validObjects.count,
+             msg.messageType == ChatMessageTypeNovaProductList ? @"ChatMessageTypeNovaProductList" : @"ChatMessageTypeNovaProduct",
              source ?: @"unknown");
     LOG_INFO(@"[PPNovaChat][RenderBinding] request_id=%@ response_id=%@ appended_section_id=%@ attached_to_message_id=%@ reused_previous_payload=NO source=%@",
              requestID ?: @"",
@@ -3395,10 +3737,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if ([self.novaHeaderChromeView isKindOfClass:UIVisualEffectView.class]) {
         ((UIVisualEffectView *)self.novaHeaderChromeView).effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
     }
-    self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.42],
+    self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.12],
                                                                    [surface colorWithAlphaComponent:0.28]);
     self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.16].CGColor;
-    self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.16],
+    self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
                                                                     [brand colorWithAlphaComponent:0.26]);
     self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
     self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.18],
@@ -3444,45 +3786,131 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }];
 }
 
+- (UIColor *)pp_resolvedNovaLayerColor:(UIColor *)color {
+    if (@available(iOS 13.0, *)) {
+        return [color resolvedColorWithTraitCollection:self.traitCollection];
+    }
+    return color;
+}
+
+- (NSArray<UIColor *> *)pp_novaSmartSuggestionPaletteForIndex:(NSUInteger)index {
+    NSArray<NSArray<UIColor *> *> *palettes = @[
+        @[[UIColor colorWithRed:0.98 green:0.43 blue:0.34 alpha:1.0],
+          [UIColor colorWithRed:0.96 green:0.64 blue:0.22 alpha:1.0]],
+        @[[UIColor colorWithRed:0.18 green:0.66 blue:0.88 alpha:1.0],
+          [UIColor colorWithRed:0.20 green:0.78 blue:0.60 alpha:1.0]],
+        @[[UIColor colorWithRed:0.64 green:0.42 blue:0.92 alpha:1.0],
+          [UIColor colorWithRed:0.90 green:0.36 blue:0.62 alpha:1.0]],
+        @[[UIColor colorWithRed:0.18 green:0.73 blue:0.50 alpha:1.0],
+          [UIColor colorWithRed:0.38 green:0.80 blue:0.32 alpha:1.0]],
+        @[[UIColor colorWithRed:0.30 green:0.55 blue:0.93 alpha:1.0],
+          [UIColor colorWithRed:0.46 green:0.36 blue:0.86 alpha:1.0]],
+        @[[UIColor colorWithRed:0.16 green:0.70 blue:0.70 alpha:1.0],
+          [UIColor colorWithRed:0.36 green:0.72 blue:0.94 alpha:1.0]],
+        @[[UIColor colorWithRed:0.95 green:0.58 blue:0.24 alpha:1.0],
+          [UIColor colorWithRed:0.92 green:0.38 blue:0.42 alpha:1.0]],
+        @[[UIColor colorWithRed:0.52 green:0.42 blue:0.92 alpha:1.0],
+          [UIColor colorWithRed:0.22 green:0.72 blue:0.92 alpha:1.0]]
+    ];
+    return palettes[index % palettes.count];
+}
+
 - (void)pp_applyNovaSmartSuggestionColorsWithBrand:(UIColor *)brand
                                            surface:(UIColor *)surface
                                        primaryText:(UIColor *)primaryText
                                      secondaryText:(UIColor *)secondaryText {
+    [self pp_applyNovaSmartSuggestionColorsWithBrand:brand
+                                             surface:surface
+                                         primaryText:primaryText
+                                       secondaryText:secondaryText
+                                            animated:NO];
+}
+
+- (void)pp_applyNovaSmartSuggestionColorsWithBrand:(UIColor *)brand
+                                           surface:(UIColor *)surface
+                                       primaryText:(UIColor *)primaryText
+                                     secondaryText:(UIColor *)secondaryText
+                                          animated:(BOOL)animated {
     if (!self.smartSuggestionSurfaceView) {
         return;
     }
 
+    NSArray<UIColor *> *palette = [self pp_novaSmartSuggestionPaletteForIndex:self.smartSuggestionCurrentIndex];
+    UIColor *suggestionAccent = palette.firstObject ?: brand;
+    UIColor *suggestionCompanion = palette.count > 1 ? palette[1] : brand;
+    BOOL isDark = NO;
+    if (@available(iOS 13.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+    UIColor *surfaceFill = PPNovaDynamicColor([suggestionAccent colorWithAlphaComponent:0.095],
+                                              [suggestionCompanion colorWithAlphaComponent:0.115]);
+    UIColor *strokeColor = [suggestionAccent colorWithAlphaComponent:isDark ? 0.28 : 0.22];
+    UIColor *washStart = [suggestionAccent colorWithAlphaComponent:isDark ? 0.24 : 0.17];
+    UIColor *washMid = [suggestionCompanion colorWithAlphaComponent:isDark ? 0.18 : 0.12];
+    UIColor *washEnd = [surface colorWithAlphaComponent:0.0];
+    NSArray *gradientColors = @[
+        (id)[self pp_resolvedNovaLayerColor:washStart].CGColor,
+        (id)[self pp_resolvedNovaLayerColor:washMid].CGColor,
+        (id)[self pp_resolvedNovaLayerColor:washEnd].CGColor
+    ];
+    NSArray *previousGradientColors = self.smartSuggestionAccentGradientLayer.colors;
+    void (^changes)(void) = ^{
+        self.smartSuggestionAccentWashView.alpha = 1.0;
+        self.smartSuggestionAccentGradientLayer.frame = self.smartSuggestionAccentWashView.bounds;
+        self.smartSuggestionAccentGradientLayer.colors = gradientColors;
+        self.smartSuggestionAccentGradientLayer.locations = @[@0.0, @0.45, @1.0];
+        self.smartSuggestionAccentGradientLayer.startPoint = Language.isRTL ? CGPointMake(1.0, 0.0) : CGPointMake(0.0, 0.0);
+        self.smartSuggestionAccentGradientLayer.endPoint = Language.isRTL ? CGPointMake(0.0, 1.0) : CGPointMake(1.0, 1.0);
+
+        self.smartSuggestionSurfaceView.backgroundColor = surfaceFill;
+        self.smartSuggestionSurfaceView.layer.borderColor = [self pp_resolvedNovaLayerColor:strokeColor].CGColor;
+        self.smartSuggestionSurfaceView.layer.shadowColor = [self pp_resolvedNovaLayerColor:suggestionCompanion].CGColor;
+        self.smartSuggestionSurfaceView.layer.shadowOpacity = isDark ? 0.16 : 0.13;
+        self.smartSuggestionSurfaceView.layer.shadowRadius = 20.0;
+        self.smartSuggestionSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+        self.smartSuggestionTitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.74];
+        self.smartSuggestionTextLabel.textColor = primaryText;
+        self.smartSuggestionHintLabel.textColor = [secondaryText colorWithAlphaComponent:0.74];
+        self.smartSuggestionActionImageView.tintColor = suggestionAccent;
+    };
+
     self.smartSuggestionSurfaceView.effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
-    self.smartSuggestionSurfaceView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.42],
-                                                                         [surface colorWithAlphaComponent:0.26]);
-    self.smartSuggestionSurfaceView.layer.borderColor = [brand colorWithAlphaComponent:0.13].CGColor;
-    self.smartSuggestionSurfaceView.layer.shadowColor = brand.CGColor;
-    self.smartSuggestionSurfaceView.layer.shadowOpacity = 0.10;
-    self.smartSuggestionSurfaceView.layer.shadowRadius = 18.0;
-    self.smartSuggestionSurfaceView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    self.smartSuggestionTitleLabel.textColor = [secondaryText colorWithAlphaComponent:0.74];
-    self.smartSuggestionTextLabel.textColor = primaryText;
-    self.smartSuggestionHintLabel.textColor = [secondaryText colorWithAlphaComponent:0.72];
-    self.smartSuggestionActionImageView.tintColor = brand;
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+    } else {
+        [UIView animateWithDuration:0.34
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:changes
+                         completion:nil];
+        if (previousGradientColors.count == gradientColors.count) {
+            CABasicAnimation *colorShift = [CABasicAnimation animationWithKeyPath:@"colors"];
+            colorShift.fromValue = previousGradientColors;
+            colorShift.toValue = gradientColors;
+            colorShift.duration = 0.34;
+            colorShift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+            [self.smartSuggestionAccentGradientLayer addAnimation:colorShift forKey:PPNovaSmartSuggestionColorShiftKey];
+        }
+    }
 
     self.smartSuggestionPickerView.effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
-    self.smartSuggestionPickerView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.54],
-                                                                        [surface colorWithAlphaComponent:0.34]);
-    self.smartSuggestionPickerView.layer.borderColor = [brand colorWithAlphaComponent:0.12].CGColor;
-    self.smartSuggestionPickerView.layer.shadowColor = UIColor.blackColor.CGColor;
+    self.smartSuggestionPickerView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.56],
+                                                                        [surface colorWithAlphaComponent:0.36]);
+    self.smartSuggestionPickerView.layer.borderColor = [suggestionAccent colorWithAlphaComponent:0.16].CGColor;
+    self.smartSuggestionPickerView.layer.shadowColor = [self pp_resolvedNovaLayerColor:suggestionCompanion].CGColor;
     self.smartSuggestionPickerTitleLabel.textColor = primaryText;
     [self pp_updateNovaSmartSuggestionAutoSendButtonAnimated:NO];
 
     [self.smartSuggestionPickerButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
         BOOL selected = idx == self.smartSuggestionCurrentIndex;
         UIColor *fillColor = selected
-            ? [brand colorWithAlphaComponent:0.12]
+            ? [suggestionAccent colorWithAlphaComponent:0.14]
             : PPNovaDynamicColor([surface colorWithAlphaComponent:0.38],
                                  [UIColor.whiteColor colorWithAlphaComponent:0.055]);
-        UIColor *strokeColor = selected ? [brand colorWithAlphaComponent:0.20] : [secondaryText colorWithAlphaComponent:0.10];
-        UIColor *titleColor = selected ? brand : [primaryText colorWithAlphaComponent:0.88];
+        UIColor *buttonStrokeColor = selected ? [suggestionAccent colorWithAlphaComponent:0.24] : [secondaryText colorWithAlphaComponent:0.10];
+        UIColor *titleColor = selected ? suggestionAccent : [primaryText colorWithAlphaComponent:0.88];
         button.backgroundColor = fillColor;
-        button.layer.borderColor = strokeColor.CGColor;
+        button.layer.borderColor = [self pp_resolvedNovaLayerColor:buttonStrokeColor].CGColor;
         button.tintColor = titleColor;
         [button setTitleColor:titleColor forState:UIControlStateNormal];
         [button setTitleColor:[titleColor colorWithAlphaComponent:0.72] forState:UIControlStateHighlighted];
@@ -3493,11 +3921,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self.emptyStatePulseView.layer removeAllAnimations];
     [self.novaChatBottomGlowView.layer removeAllAnimations];
     [self.novaHeaderTopGlowView.layer removeAllAnimations];
+    [self.smartSuggestionAccentWashView.layer removeAnimationForKey:PPNovaSmartSuggestionWashBreathKey];
+    [self.smartSuggestionActionImageView.layer removeAnimationForKey:PPNovaSmartSuggestionActionBreathKey];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.emptyStatePulseView.transform = CGAffineTransformIdentity;
         self.novaChatBottomGlowView.transform = CGAffineTransformIdentity;
         self.novaHeaderTopGlowView.transform = CGAffineTransformIdentity;
+        self.smartSuggestionAccentWashView.layer.opacity = 1.0;
+        self.smartSuggestionActionImageView.transform = CGAffineTransformIdentity;
         return;
     }
 
@@ -3565,12 +3997,48 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     bottomGlowBreath.repeatCount = HUGE_VALF;
     bottomGlowBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.novaChatBottomGlowView.layer addAnimation:bottomGlowBreath forKey:@"pp_novaBottomGlowBreath"];
+
+    [self pp_startNovaSmartSuggestionLiveMotionIfNeeded];
 }
 
 - (void)pp_stopAmbientBackgroundAnimations {
     [self.emptyStatePulseView.layer removeAllAnimations];
     [self.novaChatBottomGlowView.layer removeAllAnimations];
     [self.novaHeaderTopGlowView.layer removeAllAnimations];
+    [self pp_stopNovaSmartSuggestionLiveMotion];
+}
+
+- (void)pp_startNovaSmartSuggestionLiveMotionIfNeeded {
+    if (!self.smartSuggestionAccentWashView || !self.smartSuggestionActionImageView || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    CABasicAnimation *washBreath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    washBreath.fromValue = @0.72;
+    washBreath.toValue = @1.0;
+    washBreath.duration = 5.6;
+    washBreath.autoreverses = YES;
+    washBreath.repeatCount = HUGE_VALF;
+    washBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.smartSuggestionAccentWashView.layer addAnimation:washBreath forKey:PPNovaSmartSuggestionWashBreathKey];
+
+    CAKeyframeAnimation *actionBreath = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+    actionBreath.values = @[@1.0, @1.075, @1.0];
+    actionBreath.keyTimes = @[@0.0, @0.48, @1.0];
+    actionBreath.duration = 4.8;
+    actionBreath.repeatCount = HUGE_VALF;
+    actionBreath.timingFunctions = @[
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]
+    ];
+    [self.smartSuggestionActionImageView.layer addAnimation:actionBreath forKey:PPNovaSmartSuggestionActionBreathKey];
+}
+
+- (void)pp_stopNovaSmartSuggestionLiveMotion {
+    [self.smartSuggestionAccentWashView.layer removeAnimationForKey:PPNovaSmartSuggestionWashBreathKey];
+    [self.smartSuggestionActionImageView.layer removeAnimationForKey:PPNovaSmartSuggestionActionBreathKey];
+    self.smartSuggestionAccentWashView.layer.opacity = 1.0;
+    self.smartSuggestionActionImageView.transform = CGAffineTransformIdentity;
 }
 
 - (UIColor *)pp_novaHeaderAccentColor {
@@ -3875,7 +4343,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     brandHalo.translatesAutoresizingMaskIntoConstraints = NO;
     brandHalo.userInteractionEnabled = NO;
     brandHalo.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:0.10];
-    brandHalo.layer.cornerRadius = 42.0;
+    brandHalo.layer.cornerRadius = 30.0;
     brandHalo.layer.shadowColor = accentColor.CGColor;
     brandHalo.layer.shadowOpacity = 0.16;
     brandHalo.layer.shadowRadius = 18.0;
@@ -3893,13 +4361,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     loadingLottie.loopAnimation = YES;
     loadingLottie.animationSpeed = 1.0;
     loadingLottie.alpha = 0.0;
+    loadingLottie.clipsToBounds = YES;
     [brandHalo addSubview:loadingLottie];
     self.novaLoadingLottie = loadingLottie;
 
     UIView *brandRing = [[UIView alloc] init];
     brandRing.translatesAutoresizingMaskIntoConstraints = NO;
     brandRing.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
-    brandRing.layer.cornerRadius = 34.0;
+    brandRing.layer.cornerRadius = 29.0;
     brandRing.layer.borderWidth = 1.2 / UIScreen.mainScreen.scale;
     brandRing.layer.borderColor = [accentColor colorWithAlphaComponent:0.24].CGColor;
     brandRing.layer.shadowColor = UIColor.blackColor.CGColor;
@@ -3915,7 +4384,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *brandMark = [[UIView alloc] init];
     brandMark.translatesAutoresizingMaskIntoConstraints = NO;
     brandMark.backgroundColor = AppClearClr;
-    brandMark.layer.cornerRadius = 22.0;
+    brandMark.clipsToBounds = YES;
+    brandMark.layer.cornerRadius = 31.0;
     brandMark.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     brandMark.layer.borderColor = [accentColor colorWithAlphaComponent:0.14].CGColor;
     brandMark.layer.shadowColor = UIColor.blackColor.CGColor;
@@ -4093,14 +4563,23 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.novaHeaderCollapsedBottomConstraint.active = NO;
 
     // Brand Ring (Avatar) Constraints
+    self.brandRingTopConstraint = [brandRing.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset];
     self.brandRingCenterXConstraint = [brandRing.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor];
     self.brandRingLeadingConstraint = [brandRing.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16.0];
+    self.brandRingCollapsedCenterYConstraint = [brandRing.centerYAnchor constraintEqualToAnchor:contentView.centerYAnchor];
+    self.brandRingCollapsedCenterYConstraint.active = NO;
+    self.closeButtonTopConstraint = [closeButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset];
+    self.closeButtonCollapsedCenterYConstraint = [closeButton.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor];
+    self.closeButtonCollapsedCenterYConstraint.active = NO;
+    self.historyButtonTopConstraint = [historyButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset];
+    self.historyButtonCollapsedCenterYConstraint = [historyButton.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor];
+    self.historyButtonCollapsedCenterYConstraint.active = NO;
 
     // Name Label (Title) Constraints
     self.nameLabelCenterXConstraint = [nameLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor];
     self.nameLabelLeadingConstraint = [nameLabel.leadingAnchor constraintEqualToAnchor:brandRing.trailingAnchor constant:14.0];
     self.nameLabelTopConstraint = [nameLabel.topAnchor constraintEqualToAnchor:brandRing.bottomAnchor constant:3.0]; // Moved up (8.0 -> 3.0)
-    self.nameLabelCenterYConstraint = [nameLabel.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor constant:-5.0]; // Requested offset
+    self.nameLabelCenterYConstraint = [nameLabel.centerYAnchor constraintEqualToAnchor:brandRing.centerYAnchor constant:0.0];
 
     // Subtitle Label Constraints
     self.subtitleLabelCenterXConstraint = [subtitleLabel.centerXAnchor constraintEqualToAnchor:contentView.centerXAnchor];
@@ -4130,7 +4609,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [loadingLottie.widthAnchor constraintEqualToAnchor:brandHalo.widthAnchor constant:0.0],
         [loadingLottie.heightAnchor constraintEqualToAnchor:brandHalo.heightAnchor constant:0.0],
 
-        [brandRing.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        self.brandRingTopConstraint,
         self.brandRingCenterXConstraint,
         [brandRing.widthAnchor constraintEqualToConstant:58.0],
         [brandRing.heightAnchor constraintEqualToConstant:58.0],
@@ -4175,13 +4654,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [hairlineHost.heightAnchor constraintEqualToConstant:1.0],
 
         // Close button: top-trailing of header, auto-flips for RTL via semantic attribute.
-        [closeButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        self.closeButtonTopConstraint,
         [closeButton.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-12.0],
         [closeButton.widthAnchor constraintEqualToConstant:36.0],
         [closeButton.heightAnchor constraintEqualToConstant:36.0],
 
         // History button: expanded on leading side; collapsed beside trailing close action.
-        [historyButton.topAnchor constraintEqualToAnchor:contentView.topAnchor constant:topOffset],
+        self.historyButtonTopConstraint,
         self.historyButtonLeadingConstraint,
         [historyButton.widthAnchor constraintEqualToConstant:36.0],
         [historyButton.heightAnchor constraintEqualToConstant:36.0]
@@ -4234,6 +4713,52 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_updateNovaHeaderLiquidBorderPath];
 }
 
+- (CGFloat)pp_novaHeaderChromeCornerRadiusForBounds:(CGRect)bounds {
+    CGFloat height = CGRectGetHeight(bounds);
+    if (height <= 0.0) {
+        return self.novaHeaderCollapsed ? 28.0 : 32.0;
+    }
+    if (self.novaHeaderCollapsed) {
+        return height / 2.0;
+    }
+    return MIN(32.0, MAX(18.0, height * 0.24));
+}
+
+- (void)pp_updateNovaHeaderCollapsedGeometry {
+    if (!self.novaHeaderChromeView) {
+        return;
+    }
+
+    CGRect chromeBounds = self.novaHeaderChromeView.bounds;
+    if (!CGRectIsEmpty(chromeBounds)) {
+        CGFloat chromeRadius = [self pp_novaHeaderChromeCornerRadiusForBounds:chromeBounds];
+        self.novaHeaderChromeView.layer.cornerRadius = chromeRadius;
+        if (!CGRectIsEmpty(self.novaHeaderChromeView.frame)) {
+            self.novaHeaderView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.novaHeaderChromeView.frame
+                                                                             cornerRadius:chromeRadius].CGPath;
+        }
+    }
+
+    NSMutableArray<UIView *> *circleViews = [NSMutableArray array];
+    if (self.headerBrandHaloView) { [circleViews addObject:self.headerBrandHaloView]; }
+    if (self.headerBrandRingView) { [circleViews addObject:self.headerBrandRingView]; }
+    if (self.headerBrandMarkView) { [circleViews addObject:self.headerBrandMarkView]; }
+    if (self.novaRingBackgroundLottie) { [circleViews addObject:self.novaRingBackgroundLottie]; }
+    if (self.novaLoadingLottie) { [circleViews addObject:self.novaLoadingLottie]; }
+    if (self.closeButton) { [circleViews addObject:self.closeButton]; }
+    if (self.historyButton) { [circleViews addObject:self.historyButton]; }
+    if (self.headerLiveCapsule) { [circleViews addObject:self.headerLiveCapsule]; }
+    if (self.statusDot) { [circleViews addObject:self.statusDot]; }
+    for (UIView *view in circleViews) {
+        if (!view.superview || CGRectIsEmpty(view.bounds)) {
+            continue;
+        }
+        CGFloat radius = MIN(CGRectGetWidth(view.bounds), CGRectGetHeight(view.bounds)) / 2.0;
+        view.layer.cornerRadius = radius;
+        view.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:view.bounds cornerRadius:radius].CGPath;
+    }
+}
+
 - (void)pp_updateNovaHeaderLiquidBorderPath {
     if (!self.novaHeaderChromeView || !self.novaHeaderLiquidBorderLayer || !self.novaHeaderLiquidHighlightLayer) {
         return;
@@ -4247,7 +4772,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CGFloat scale = UIScreen.mainScreen.scale;
     CGFloat inset = MAX(1.0 / scale, 0.5);
     CGRect pathRect = CGRectInset(bounds, inset, inset);
-    CGFloat radius = MIN(32.0, MAX(18.0, CGRectGetHeight(pathRect) * 0.24));
+    CGFloat radius = [self pp_novaHeaderChromeCornerRadiusForBounds:pathRect];
     UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:pathRect cornerRadius:radius];
     CGFloat perimeter = MAX(1.0, ((CGRectGetWidth(pathRect) + CGRectGetHeight(pathRect)) * 2.0) - (8.0 * radius) + ((CGFloat)M_PI * 2.0 * radius));
     CGFloat dashLength = MAX(44.0, MIN(86.0, perimeter * 0.13));
@@ -4294,6 +4819,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
     NSTimeInterval duration = (animated && !reduceMotion) ? (collapsed ? 0.32 : 0.46) : 0.0;
     CGFloat capsuleAlpha = collapsed ? 0.0 : 1.0;
+    CGFloat subtitleAlpha = collapsed ? 0.0 : 1.0;
     CGAffineTransform textTransform = collapsed ? CGAffineTransformMakeTranslation(0.0, -8.0) : CGAffineTransformIdentity;
     CGAffineTransform ringTransform = collapsed ? CGAffineTransformMakeScale(0.94, 0.94) : CGAffineTransformIdentity;
     CGAffineTransform haloTransform = collapsed ? CGAffineTransformMakeScale(0.78, 0.78) : CGAffineTransformIdentity;
@@ -4301,12 +4827,18 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     void (^changes)(void) = ^{
         self.headerNameLabel.alpha = 1.0;
-        self.headerSubtitleLabel.alpha = 1.0;
+        self.headerSubtitleLabel.alpha = subtitleAlpha;
         self.headerLiveCapsule.alpha = capsuleAlpha;
 
         // Toggle Layout Constraints
+        self.brandRingTopConstraint.active = !collapsed;
         self.brandRingCenterXConstraint.active = !collapsed;
         self.brandRingLeadingConstraint.active = collapsed;
+        self.brandRingCollapsedCenterYConstraint.active = collapsed;
+        self.closeButtonTopConstraint.active = !collapsed;
+        self.closeButtonCollapsedCenterYConstraint.active = collapsed;
+        self.historyButtonTopConstraint.active = !collapsed;
+        self.historyButtonCollapsedCenterYConstraint.active = collapsed;
 
         self.nameLabelCenterXConstraint.active = !collapsed;
         self.nameLabelLeadingConstraint.active = collapsed;
@@ -4356,6 +4888,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.historyButton.transform = collapsed ? CGAffineTransformMakeScale(0.90, 0.90) : CGAffineTransformIdentity;
 
         [self.view layoutIfNeeded];
+        [self pp_updateNovaHeaderCollapsedGeometry];
         [self pp_updateNovaHeaderLiquidBorderPath];
     };
 
@@ -4662,7 +5195,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     [self.novaLoadingLottie play];
     [UIView animateWithDuration:0.3 animations:^{
-        self.novaLoadingLottie.alpha = 1.0;
+        self.novaLoadingLottie.alpha = 0.7;
     }];
 }
 
@@ -5057,6 +5590,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         prompt = kLang(@"nova_smart_suggestion_cat_food_prompt");
     }
 
+    [self pp_applyNovaSmartSuggestionColorsWithBrand:[self pp_novaHeaderAccentColor]
+                                             surface:[self pp_novaHeaderSurfaceColor]
+                                         primaryText:[self pp_novaHeaderPrimaryTextColor]
+                                       secondaryText:[self pp_novaHeaderSecondaryTextColor]
+                                            animated:animated];
+
     void (^changes)(void) = ^{
         self.smartSuggestionTitleLabel.text = kLang(@"nova_smart_suggestions_title");
         self.smartSuggestionTextLabel.text = title;
@@ -5103,7 +5642,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (suggestions.count == 0) return;
     self.smartSuggestionCurrentIndex = (self.smartSuggestionCurrentIndex + 1) % suggestions.count;
     [self pp_configureCurrentNovaSmartSuggestionAnimated:animated];
-    [self pp_applyNovaSurfaceColors];
 }
 
 - (void)pp_startNovaSmartSuggestionRotationIfNeeded {
@@ -5204,6 +5742,18 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [emptyView addSubview:suggestionView];
     self.smartSuggestionSurfaceView = suggestionView;
 
+    UIView *accentWashView = [[UIView alloc] init];
+    accentWashView.translatesAutoresizingMaskIntoConstraints = NO;
+    accentWashView.userInteractionEnabled = NO;
+    accentWashView.backgroundColor = UIColor.clearColor;
+    [suggestionView.contentView addSubview:accentWashView];
+    self.smartSuggestionAccentWashView = accentWashView;
+
+    CAGradientLayer *accentGradientLayer = [CAGradientLayer layer];
+    accentGradientLayer.masksToBounds = YES;
+    [accentWashView.layer addSublayer:accentGradientLayer];
+    self.smartSuggestionAccentGradientLayer = accentGradientLayer;
+
     UILabel *suggestionTitleLabel = [[UILabel alloc] init];
     suggestionTitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     suggestionTitleLabel.font = [GM MidFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightMedium];
@@ -5290,6 +5840,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         suggestionWidthConstraint,
         suggestionMaxWidthConstraint,
         [suggestionView.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor],
+
+        [accentWashView.topAnchor constraintEqualToAnchor:suggestionView.contentView.topAnchor],
+        [accentWashView.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor],
+        [accentWashView.trailingAnchor constraintEqualToAnchor:suggestionView.contentView.trailingAnchor],
+        [accentWashView.bottomAnchor constraintEqualToAnchor:suggestionView.contentView.bottomAnchor],
 
         [suggestionTitleLabel.topAnchor constraintEqualToAnchor:suggestionView.contentView.topAnchor constant:13.0],
         [suggestionTitleLabel.leadingAnchor constraintEqualToAnchor:suggestionView.contentView.leadingAnchor constant:18.0],
@@ -5544,11 +6099,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_updateNovaSmartSuggestionPickerSelection {
-    [self pp_applyNovaSurfaceColors];
+    [self pp_applyNovaSmartSuggestionColorsWithBrand:[self pp_novaHeaderAccentColor]
+                                             surface:[self pp_novaHeaderSurfaceColor]
+                                         primaryText:[self pp_novaHeaderPrimaryTextColor]
+                                       secondaryText:[self pp_novaHeaderSecondaryTextColor]
+                                            animated:NO];
 }
 
 - (void)pp_showNovaSmartSuggestionPickerAnimated:(BOOL)animated {
-    if (self.smartSuggestionPickerVisible || [self pp_hasUserMessageInCurrentNovaSession]) {
+    if (self.smartSuggestionPickerVisible) {
         return;
     }
 
@@ -5681,7 +6240,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     self.smartSuggestionCurrentIndex = (NSUInteger)sender.tag;
     [self pp_configureCurrentNovaSmartSuggestionAnimated:YES];
-    [self pp_updateNovaSmartSuggestionPickerSelection];
 
     NSString *prompt = [self pp_promptForNovaSmartSuggestionSpec:suggestions[(NSUInteger)sender.tag]];
     if (prompt.length == 0) return;
@@ -6107,6 +6665,16 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (self.smartSuggestionPickerVisible) {
         [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
     }
+}
+
+- (void)novaInputBarDidTapSuggestions:(PPNovaFloatingInputBarView *)bar {
+    if (self.smartSuggestionPickerVisible) {
+        [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
+        return;
+    }
+
+    [self pp_setNovaHeaderCollapsed:YES animated:YES updateInsets:NO];
+    [self pp_showNovaSmartSuggestionPickerAnimated:YES];
 }
 
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeText:(NSString *)text {

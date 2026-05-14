@@ -17,6 +17,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeHeight:(CGFloat)height;
 - (void)novaInputBarDidBeginEditing:(PPNovaFloatingInputBarView *)bar;
 - (void)novaInputBar:(PPNovaFloatingInputBarView *)bar didChangeText:(NSString *)text;
+- (void)novaInputBarDidTapSuggestions:(PPNovaFloatingInputBarView *)bar;
 
 @end
 

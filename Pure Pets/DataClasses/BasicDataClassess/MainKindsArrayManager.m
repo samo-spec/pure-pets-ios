@@ -37,13 +37,17 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
                        queryOrderedByField:@"sortingKey" descending:NO];
     
     __weak typeof(self) weakSelf = self;
-    self.mainKindsListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         
         if (error) {
-            NSLog(@"[MainKinds] ❌ Listener error: %@", error.localizedDescription);
+            NSLog(@"[MainKinds] ❌ Fetch error: %@", error.localizedDescription);
             if (block) block(nil, error);
+            return;
+        }
+        if (!snapshot) {
+            if (block) block(@[], nil);
             return;
         }
         
@@ -61,7 +65,7 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
         
         strongSelf.MainKindsArray = arr.mutableCopy;
         
-        NSLog(@"[MainKinds] 🔄 Listener updated → %lu items", (unsigned long)arr.count);
+        NSLog(@"[MainKinds] 🔄 Fetch completed → %lu items", (unsigned long)arr.count);
         
         [self saveMainKindsToCache];
         
@@ -331,12 +335,6 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
         }
     }
     
-    // Clean up any existing listener to avoid duplicates
-    if (self.mainKindsListener) {
-        [self.mainKindsListener remove];
-        self.mainKindsListener = nil;
-    }
-    
     // Set a flag indicating whether initial data has been seeded
     self.didSeedMainKinds = hasCache;
     
@@ -345,15 +343,15 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
                         queryWhereField:@"is_visible_in_user_app" isEqualTo:@YES]
                        queryOrderedByField:@"sortingKey" descending:NO];
     
-    // Use weakSelf in the block to avoid retain cycles
+    // One-time server fetch — persistent snapshot listener not needed;
+    // MainKinds data (category hierarchy) changes very rarely (weeks/months).
     __weak typeof(self) weakSelf = self;
-    self.mainKindsListener = [query addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    [query getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) { return; }
+        if (!strongSelf) return;
         
         if (error) {
             NSLog(@"Error fetching MainKinds: %@", error.localizedDescription);
-            // Only call completion handler with failure if we haven't seeded data yet
             if (completionHandler && !strongSelf.didSeedMainKinds) {
                 completionHandler(0);
             }
@@ -367,100 +365,27 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
             return;
         }
         
-        // **Initial load:** seed the array from the first snapshot if not already done
-        if (!strongSelf.didSeedMainKinds) {
-            NSLog(@"Initial seed of MainKindsArray from snapshot...");
-            
-            
-            [strongSelf.MainKindsArray removeAllObjects];
-            for (FIRDocumentSnapshot *doc in snapshot.documents) {
-                MainKindsModel *model = [[MainKindsModel alloc] initWithSnapshot:doc];
-                if (!model.SubKindsArray) model.SubKindsArray = [NSMutableArray array];
-                model.didSeedSubKinds = NO;
-                [strongSelf.MainKindsArray addObject:model];
-            }
-            // Sort array by ID to maintain order
-            [strongSelf.MainKindsArray sortUsingComparator:^NSComparisonResult(MainKindsModel *a, MainKindsModel *b) {
-                if (a.sortingKey < b.sortingKey) return NSOrderedAscending;
-                if (a.sortingKey > b.sortingKey) return NSOrderedDescending;
-                return NSOrderedSame;
-            }];
-            strongSelf.didSeedMainKinds = YES;
-            [self saveMainKindsToCache];
-            // Invoke completion handler now that initial load is done (if not already called)
-            if (!hasCache && completionHandler) {
-                NSLog(@"Initial MainKindsArray updated with Server %lu items.", (unsigned long)strongSelf.MainKindsArray.count);
-                completionHandler(1);
-            }
-            
-            return;  // Return here so we don't also run the incremental loop on this same snapshot
+        // Seed the array from the fetched data
+        [strongSelf.MainKindsArray removeAllObjects];
+        for (FIRDocumentSnapshot *doc in snapshot.documents) {
+            MainKindsModel *model = [[MainKindsModel alloc] initWithSnapshot:doc];
+            if (!model.SubKindsArray) model.SubKindsArray = [NSMutableArray array];
+            model.didSeedSubKinds = NO;
+            [strongSelf.MainKindsArray addObject:model];
         }
-        
-        // **Incremental updates:** process any document changes after initial seed
-        for (FIRDocumentChange *change in snapshot.documentChanges) {
-            NSString *docID = change.document.documentID;
-            // Helper: find index in the array by document ID
-            NSInteger idx = [strongSelf indexOfMainKindByDocID:docID];
-            MainKindsModel *updatedModel = [[MainKindsModel alloc] initWithSnapshot:change.document];
-            if (!updatedModel.SubKindsArray) updatedModel.SubKindsArray = [NSMutableArray array];
-            updatedModel.didSeedSubKinds = NO;
-            
-            switch (change.type) {
-                case FIRDocumentChangeTypeAdded:
-                    if (idx != NSNotFound) {
-                        // Already exists: update it
-                        strongSelf.MainKindsArray[idx] = updatedModel;
-                    } else {
-                        // New document: append to array
-                        [strongSelf.MainKindsArray addObject:updatedModel];
-                    }
-                    break;
-                case FIRDocumentChangeTypeModified:
-                    if (idx != NSNotFound) {
-                        strongSelf.MainKindsArray[idx] = updatedModel;
-                    } else {
-                        [strongSelf.MainKindsArray addObject:updatedModel];
-                    }
-                    break;
-                case FIRDocumentChangeTypeRemoved:
-                    if (idx != NSNotFound) {
-                        [strongSelf.MainKindsArray removeObjectAtIndex:idx];
-                    }
-                    break;
-                    
-                    
-            }
-        }
-        
-        // Re-sort the array after processing changes
         [strongSelf.MainKindsArray sortUsingComparator:^NSComparisonResult(MainKindsModel *a, MainKindsModel *b) {
             if (a.sortingKey < b.sortingKey) return NSOrderedAscending;
             if (a.sortingKey > b.sortingKey) return NSOrderedDescending;
             return NSOrderedSame;
         }];
+        strongSelf.didSeedMainKinds = YES;
+        [strongSelf saveMainKindsToCache];
         
-        if(snapshot.documentChanges > 0)
-        {
-            NSLog(@"MainKindsArray documentChanges ");
-            
-            [[NSNotificationCenter defaultCenter] postNotificationName:@"MainKindsUpdatedNotification"
-                                                                object:self
-                                                              userInfo:@{@"MainKindsArray": strongSelf.MainKindsArray}];
-        }
-        /*
-         
-         // Re-sort the array after processing changes
-         [strongSelf.MainKindsArray sortUsingComparator:^NSComparisonResult(MainKindsModel *a, MainKindsModel *b) {
-         if (a.ID < b.ID) return NSOrderedAscending;
-         if (a.ID > b.ID) return NSOrderedDescending;
-         return NSOrderedSame;
-         }];
-         */
-        NSLog(@"MainKindsArray updated with Online %lu items.", (unsigned long)strongSelf.MainKindsArray.count);
-        // (Optionally, you could post a notification or call completion here if needed.)
-        [self saveMainKindsToCache];
-        if (completionHandler) {
-            completionHandler(1);  // Return success with cached data
+        if (!hasCache && completionHandler) {
+            NSLog(@"Initial MainKindsArray updated with Server %lu items.", (unsigned long)strongSelf.MainKindsArray.count);
+            completionHandler(1);
+        } else if (completionHandler) {
+            completionHandler(1);
         }
     }];
 }
@@ -511,18 +436,12 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
         return;
     }
     
-    // Remove previous listener on this mainKind to avoid duplicate streams
-    if (mainKind.subKindsListener) {
-        [mainKind.subKindsListener remove];
-        mainKind.subKindsListener = nil;
-    }
-    
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *mainDoc = [[db collectionWithPath:@"MainKindsCollection"] documentWithPath:mainKind.documentID];
     FIRQuery *q = [[mainDoc collectionWithPath:@"SubKinds"] queryOrderedByField:@"ID" descending:NO];
     
     __weak typeof(self) weakSelf = self;
-    mainKind.subKindsListener = [q addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    [q getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         
@@ -567,12 +486,6 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
         return;
     }
     
-    // Remove previous listener on this subKind
-    if (subKind.subSubKindsListener) {
-        [subKind.subSubKindsListener remove];
-        subKind.subSubKindsListener = nil;
-    }
-    
     NSString *subDocID =        [NSString stringWithFormat:@"%ld", (long)subKind.ID];
     
     FIRFirestore *db = [FIRFirestore firestore];
@@ -582,7 +495,7 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
     FIRQuery *q = [[subDoc collectionWithPath:@"SubSubKinds"] queryOrderedByField:@"ID" descending:NO];
     
     __weak typeof(self) weakSelf = self;
-    subKind.subSubKindsListener = [q addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    [q getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         
@@ -625,22 +538,17 @@ static NSString * const kCachedMainKindsKey = @"cachedMainKinds_v2";
         return;
     }
     
-    if (subSubKind.subKindItemsListener) {
-        [subSubKind.subKindItemsListener remove];
-        subSubKind.subKindItemsListener = nil;
-    }
-    
     NSString *subSubDocID = [NSString stringWithFormat:@"%ld", (long)subSubKind.ID];
     
     FIRFirestore *db = [FIRFirestore firestore];
     FIRDocumentReference *subSubDoc = [[[[[[db collectionWithPath:@"MainKindsCollection"] documentWithPath:mainKindDocID]
-                                          collectionWithPath:@"SubKinds"] documentWithPath:subKindDocID]
-                                        collectionWithPath:@"SubSubKinds"] documentWithPath:subSubDocID];
+                                         collectionWithPath:@"SubKinds"] documentWithPath:subKindDocID]
+                                       collectionWithPath:@"SubSubKinds"] documentWithPath:subSubDocID];
     
     FIRQuery *q = [[subSubDoc collectionWithPath:@"Items"] queryOrderedByField:@"ID" descending:NO];
     
     __weak typeof(self) weakSelf = self;
-    subSubKind.subKindItemsListener = [q addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    [q getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
         

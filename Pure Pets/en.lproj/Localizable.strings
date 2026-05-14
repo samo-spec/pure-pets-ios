@@ -2737,6 +2737,7 @@
 "nova_typing" = "Nova is thinking";
 "nova_input_placeholder" = "Message Nova...";
 "nova_input_attach_accessibility" = "Add attachment";
+"nova_input_suggestions_accessibility" = "Show smart suggestions";
 "nova_input_send_accessibility" = "Send message";
 "nova_greeting" = "Hi. Tell me what your pet needs and I'll guide you to the right Pure Pets pick.";
 "nova_product_results" = "Curated picks";
@@ -2753,5 +2754,12 @@
 "nova_error_signin_required" = "Sign in first so I can help you with Nova.";
 "nova_error_account_blocked" = "This account can't use Nova. Please contact Pure Pets support.";
 "nova_error_unavailable" = "Nova is unavailable right now. Try again in a moment.";
+"nova_cell_render_missing" = "Results were found, but the cards were not displayed because of a UI binding issue.";
 "nova_suggestions_unavailable" = "I couldn't load those picks. Tell me your pet and what you need, and I'll try again.";
+"nova_render_fallback_service" = "Care service";
+"nova_render_fallback_bird_service" = "Bird care service";
+"nova_render_fallback_product" = "Pure Pets item";
+"nova_render_price_label" = "Price:";
+"nova_render_limited_details" = "Details are limited";
+"nova_render_more_results_hint" = "More options are available. Ask Nova to narrow the list.";
 "OrderCanceled" = "OrderCanceled";

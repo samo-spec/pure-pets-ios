@@ -43,7 +43,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
 static UIColor *PremiumSoftCardBorderColor(void)
 {
-    return [UIColor.whiteColor colorWithAlphaComponent:0.82];//[AppLightGrayColor colorWithAlphaComponent:0.84];
+    return [UIColor.whiteColor colorWithAlphaComponent:0.92];//[AppLightGrayColor colorWithAlphaComponent:0.84];
 }
  
 - (instancetype)initWithFrame:(CGRect)frame
@@ -67,8 +67,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
     }
 
     _surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
-    _surfaceView.layer.cornerRadius = 34.0;
-    _surfaceView.layer.borderWidth = 1.0;
+    _surfaceView.layer.cornerRadius = 32.0;
+    _surfaceView.layer.borderWidth = 0.8;
     _surfaceView.clipsToBounds = YES;
     if (@available(iOS 13.0, *)) {
         _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
@@ -83,29 +83,30 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [_surfaceView.layer insertSublayer:_gradientLayer atIndex:0];
 
     _topBackgroundGlowView = [self pp_makePetCareGlowViewWithRadius:136.0];
-    _topBackgroundGlowView.hidden = YES;
-    _topBackgroundGlowView.alpha = 0;
+    _topBackgroundGlowView.hidden = NO;
+    _topBackgroundGlowView.clipsToBounds = NO;
+    _topBackgroundGlowView.alpha = 1;
     [_surfaceView addSubview:_topBackgroundGlowView];
 
     _middleBackgroundGlowView = [self pp_makePetCareGlowViewWithRadius:108.0];
     [_surfaceView addSubview:_middleBackgroundGlowView];
 
-    _bottomLeadingGlowView = [self pp_makePetCareGlowViewWithRadius:132.0];
+    _bottomLeadingGlowView = [self pp_makePetCareGlowViewWithRadius:172.0];
     [_surfaceView addSubview:_bottomLeadingGlowView];
 
     _largeOrbView = [[UIView alloc] init];
     _largeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _largeOrbView.userInteractionEnabled = NO;
     _largeOrbView.layer.cornerRadius = 60.0;
-    
+    _largeOrbView.clipsToBounds = YES;
     [_surfaceView addSubview:_largeOrbView];
 
     _smallOrbView = [[UIView alloc] init];
     _smallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _smallOrbView.userInteractionEnabled = NO;
     _smallOrbView.layer.cornerRadius = 24.0;
-    _largeOrbView.alpha = 0;
-    _largeOrbView.hidden = YES;
+    _largeOrbView.alpha = 1;
+    _largeOrbView.hidden = NO;
     [_surfaceView addSubview:_smallOrbView];
 
     _backgroundDotViews = [NSMutableArray arrayWithCapacity:5];
@@ -120,9 +121,9 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _iconPlateView = [[UIView alloc] init];
     _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconPlateView.layer.cornerRadius = 38.0;
-    _iconPlateView.layer.borderWidth = 0.0;
-    _iconPlateView.clipsToBounds = YES;
+    _iconPlateView.layer.cornerRadius = 24.0;
+    _iconPlateView.layer.borderWidth = 0.8;
+    _iconPlateView.clipsToBounds = NO;
     if (@available(iOS 13.0, *)) {
         _iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -223,22 +224,22 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [_contentStackView setCustomSpacing:13.0 afterView:_subtitleLabel];
     [_surfaceView addSubview:_contentStackView];
 
-    _topBackgroundGlowView.layer.masksToBounds = YES;
-    _topBackgroundGlowView.clipsToBounds = YES;
+    _topBackgroundGlowView.layer.masksToBounds = NO;
+    _topBackgroundGlowView.clipsToBounds = NO;
 
-    _middleBackgroundGlowView.layer.masksToBounds = YES;
-    _middleBackgroundGlowView.clipsToBounds = YES;
+    _middleBackgroundGlowView.layer.masksToBounds = NO;
+    _middleBackgroundGlowView.clipsToBounds = NO;
+
+    _bottomLeadingGlowView.layer.masksToBounds = NO;
+    _bottomLeadingGlowView.clipsToBounds = NO;
 
     _largeOrbView.layer.masksToBounds = YES;
-    _topBackgroundGlowView.clipsToBounds = YES;
-    
-    _topBackgroundGlowView.layer.masksToBounds = YES;
-    _topBackgroundGlowView.clipsToBounds = YES;
     
     _topBackgroundGlowView.layer.cornerRadius = 272.0/2;
     _middleBackgroundGlowView.layer.cornerRadius = 216.0/2;
+    _bottomLeadingGlowView.layer.cornerRadius = 344.0/2;
     _largeOrbView.layer.cornerRadius = 120.0/2;
-    _iconPlateView.layer.cornerRadius = 72.0/2;
+    _iconPlateView.layer.cornerRadius = 48.0/2;
     _smallOrbView.layer.cornerRadius = 48.0/2;
     
     
@@ -248,24 +249,24 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:272.0],
-        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:272.0],
-        [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-82.0],
-        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:104.0],
+        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:182.0],
+        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:182.0],
+        [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-52.0],
+        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:54.0],
 
         
-        [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:216.0],
-        [_middleBackgroundGlowView.heightAnchor constraintEqualToConstant:216.0],
+        [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:0],
+        [_middleBackgroundGlowView.heightAnchor constraintEqualToConstant:0],
         [_middleBackgroundGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
         [_middleBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:68.0],
 
-        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:156.0],
-        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:156.0],
-        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
-        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:92.0],
+        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:4.0],
+        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:4.0],
+        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-136.0],
+        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:132.0],
 
-        [_largeOrbView.widthAnchor constraintEqualToConstant:120.0],
-        [_largeOrbView.heightAnchor constraintEqualToConstant:120.0],
+        [_largeOrbView.widthAnchor constraintEqualToConstant:0.0],
+        [_largeOrbView.heightAnchor constraintEqualToConstant:0.0],
         [_largeOrbView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:24.0],
         [_largeOrbView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-24.0],
 
@@ -274,20 +275,20 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_smallOrbView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:30.0],
         [_smallOrbView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:16.0],
 
-        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-22.0],
+        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
         [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:22.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant: 72.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:72.0],
+        [_iconPlateView.widthAnchor constraintEqualToConstant:68.0],
+        [_iconPlateView.heightAnchor constraintEqualToConstant:68.0],
         
         [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_iconImageView.widthAnchor constraintEqualToConstant:25.0],
-        [_iconImageView.heightAnchor constraintEqualToConstant:25.0],
+        [_iconImageView.widthAnchor constraintEqualToConstant:22.0],
+        [_iconImageView.heightAnchor constraintEqualToConstant:22.0],
 
         [_careAnimationView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor ],
-        [_careAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor constant:3],
-        [_careAnimationView.widthAnchor constraintEqualToConstant:52.0],
-        [_careAnimationView.heightAnchor constraintEqualToConstant:52.0],
+        [_careAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
+        [_careAnimationView.widthAnchor constraintEqualToConstant:48.0],
+        [_careAnimationView.heightAnchor constraintEqualToConstant:48.0],
 
         [_contentStackView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
         [_contentStackView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:20.0],
@@ -335,8 +336,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
     view.userInteractionEnabled = NO;
     view.clipsToBounds = NO;
     view.layer.cornerRadius = radius;
-    view.layer.shadowRadius = 4.0;
-    view.layer.shadowOpacity = 0.02;
+    view.layer.shadowRadius = 68.0;
+    view.layer.shadowOpacity = 0.28;
     view.layer.shadowOffset = CGSizeZero;
     return view;
 }
@@ -440,36 +441,37 @@ static UIColor *PremiumSoftCardBorderColor(void)
     UIColor *titleColor = PPPetCareTextColor();
     UIColor *secondaryColor = PPPetCareSecondaryTextColor();
     UIColor *borderColor = PPPetCareBorderColor();
-    UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.4];
+    UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.10];
     
 
     _surfaceView.backgroundColor = surfaceColor;
     [_surfaceView pp_setBorderColor:borderColor];
-    self.contentView.layer.shadowOpacity = isDark ? 0.0 : 0.04;
-    self.contentView.layer.shadowRadius = 14.0;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.contentView.layer.shadowOpacity = isDark ? 0.0 : 0.08;
+    self.contentView.layer.shadowRadius = 24.0;
+    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 
     _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    _gradientLayer.opacity = 1.0;
     _gradientLayer.colors = @[
-        (id)surfaceColor.CGColor,
-        (id)[accent colorWithAlphaComponent:isDark ? 0.10 : 0.05].CGColor,
-        (id)surfaceColor.CGColor
+        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor,
+        (id)[UIColor clearColor].CGColor
     ];
-    _gradientLayer.locations = @[@0.0, @0.5, @1.0];
+    _gradientLayer.locations = nil;
 
-    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.11];
-    [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.12]];
-    _topBackgroundGlowView.layer.shadowOpacity = 0.16;
-    _topBackgroundGlowView.layer.shadowRadius = 48.0;
+    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.17];
+    [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.22]];
+    _topBackgroundGlowView.layer.shadowOpacity = 0.28;
+    _topBackgroundGlowView.layer.shadowRadius = 68.0;
     _topBackgroundGlowView.layer.shadowOffset = CGSizeZero;
 
     _middleBackgroundGlowView.backgroundColor = glowHighlight;
     [_middleBackgroundGlowView pp_setShadowColor:glowHighlight];
-    _middleBackgroundGlowView.layer.shadowOpacity = 0.18;
+    _middleBackgroundGlowView.layer.shadowOpacity = 0.28;
     _middleBackgroundGlowView.layer.shadowRadius = 68.0;
     _middleBackgroundGlowView.layer.shadowOffset = CGSizeZero;
-     _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
+
+    _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
     [_bottomLeadingGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.16 : 0.18]];
     _bottomLeadingGlowView.layer.shadowOpacity = 0.28;
     _bottomLeadingGlowView.layer.shadowRadius = 68.0;
@@ -479,7 +481,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _smallOrbView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.0 : 0.0];
 
     _iconPlateView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.18 : 0.11];
-    [_iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
+    [_iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.0]];
     _iconImageView.tintColor = accent;
     _eyebrowLabel.textColor = [accent colorWithAlphaComponent:isDark ? 0.92 : 0.82];
     _titleLabel.textColor = titleColor;
@@ -612,7 +614,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _topBackgroundGlowView.alpha = 1.0;
     _topBackgroundGlowView.transform = CGAffineTransformIdentity;
-    _middleBackgroundGlowView.alpha = 0.7;
+    _middleBackgroundGlowView.alpha = 1.0;
     _middleBackgroundGlowView.transform = CGAffineTransformIdentity;
     _bottomLeadingGlowView.alpha = 1.0;
     _bottomLeadingGlowView.transform = CGAffineTransformIdentity;

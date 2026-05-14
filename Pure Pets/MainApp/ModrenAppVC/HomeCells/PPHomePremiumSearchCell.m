@@ -426,6 +426,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     _trailingSearchView.layer.cornerRadius = CGRectGetHeight(_trailingSearchView.bounds) * 0.5;
     _signalDotView.layer.cornerRadius = 2.75;
     self.layer.shadowPath = nil;
+    [self pp_updateLeadingFireLottiePlayback];
 }
 
 - (void)didMoveToWindow
@@ -852,8 +853,11 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     _trailingSearchView.transform = CGAffineTransformIdentity;
     _trailingSearchIconView.transform = CGAffineTransformIdentity;
 #if PPPSB_HAS_LOTTIE
-    if (_leadingLottieView) {
-        [_leadingLottieView stop];
+    if (_leadingLottieView && [_leadingLottieSignature hasPrefix:@"loaded"]) {
+        _leadingLottieView.loopAnimation = YES;
+        _leadingLottieView.hidden = NO;
+        _leadingLottieView.alpha = 1.0;
+        _leadingIconView.alpha = 0.0;
     }
 #endif
     _placeholderLabel.text = PPPSB_DefaultSmartSearchPlaceholderForWidth(CGRectGetWidth(self.bounds));
@@ -863,6 +867,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     [self pp_applyPalette];
     if (self.window) {
         [self pp_startAmbientMotionIfNeeded];
+        [self pp_updateLeadingFireLottiePlayback];
     }
 }
 

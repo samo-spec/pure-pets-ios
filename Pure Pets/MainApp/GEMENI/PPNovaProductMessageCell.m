@@ -139,6 +139,17 @@
 
     self.products = [self pp_supportedNovaItemsFromArray:(NSArray *)messageModel.novaProducts];
     self.maxWidth = maxWidth;
+    LOG_INFO(@"NOVA_UNIVERSAL_CELL_RENDER_PREP message_id=%@ response_id=%@ item_count=%lu supported_count=%lu",
+             messageModel.ID ?: @"",
+             messageModel.novaResponseID ?: @"",
+             (unsigned long)((NSArray *)messageModel.novaProducts).count,
+             (unsigned long)self.products.count);
+    if (((NSArray *)messageModel.novaProducts).count > 0 && self.products.count == 0) {
+        LOG_WARN(@"NOVA_UNIVERSAL_CELL_RENDER_FAILURE message_id=%@ response_id=%@ reason=no_supported_items item_count=%lu",
+                 messageModel.ID ?: @"",
+                 messageModel.novaResponseID ?: @"",
+                 (unsigned long)((NSArray *)messageModel.novaProducts).count);
+    }
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.headerStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -208,6 +219,10 @@
     cell.transform = CGAffineTransformIdentity;
     cell.alpha = 1.0;
     if (indexPath.item >= self.products.count) {
+        LOG_WARN(@"NOVA_UNIVERSAL_CELL_RENDER_FAILURE message_id=%@ reason=index_out_of_bounds index=%ld count=%lu",
+                 self.messageID ?: @"",
+                 (long)indexPath.item,
+                 (unsigned long)self.products.count);
         return cell;
     }
 
@@ -227,6 +242,12 @@
     }];
 
     cell.delegate = self;
+    LOG_INFO(@"NOVA_UNIVERSAL_CELL_RENDER_SUCCESS message_id=%@ render_key=%@ index=%ld objectClass=%@ context=%ld",
+             self.messageID ?: @"",
+             self.renderKey ?: @"",
+             (long)indexPath.item,
+             NSStringFromClass([item class]),
+             (long)context);
     return cell;
 }
 

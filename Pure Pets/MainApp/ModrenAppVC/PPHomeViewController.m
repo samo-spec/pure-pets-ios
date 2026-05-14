@@ -2861,7 +2861,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     lot.userInteractionEnabled = NO;
     lot.contentMode = UIViewContentModeScaleAspectFit;
     lot.loopAnimation = YES;
-    lot.animationSpeed = 0.5;
+    lot.animationSpeed = 0.3;
     [button addSubview:lot];
     self.novaFloatingLottieView = lot;
 
@@ -2873,21 +2873,21 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
         [halo.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [halo.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [halo.widthAnchor constraintEqualToConstant:72.0],
-        [halo.heightAnchor constraintEqualToConstant:72.0],
+        [halo.widthAnchor constraintEqualToConstant:0.0],
+        [halo.heightAnchor constraintEqualToConstant:0.0],
 
         [lot.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [lot.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [lot.widthAnchor constraintEqualToConstant:76.0],
-        [lot.heightAnchor constraintEqualToConstant:76.0],
+        [lot.widthAnchor constraintEqualToConstant:82.0],
+        [lot.heightAnchor constraintEqualToConstant:82.0],
     ]];
 
     // Lottie loads from Firebase Storage path LottieAnimations/nova.json via the project's helper.
     __weak typeof(self) weakSelf = self;
     __weak LOTAnimationView *weakLot = lot;
-    [AppClasses setAnimationNamed:@"nova4"
+    [AppClasses setAnimationNamed:@"Nselver"
                             ToView:lot
-                         withSpeed:1.0
+                         withSpeed:0.6
                         completion:^(BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
