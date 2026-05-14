@@ -21,8 +21,8 @@ NS_ASSUME_NONNULL_BEGIN
 // sections do not accidentally double the visible gap.
 static const CGFloat PPHomeSpacingSmall   = 8.0;
 static const CGFloat PPHomeSpacingBase    = 16.0;
-static const CGFloat PPHomeSpacingSection = 20.0;
-
+static const CGFloat PPInner = 8.0;
+static const CGFloat PPHomeSpacingSection = 24.0;
 static const CGFloat kHeaderHeight     = 64.0;
 static const CGFloat kHeaderHeightMin     = 54.0;
 
@@ -79,7 +79,7 @@ static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(),
                                        PPHomeItemHalfGap(),
-                                       PPHomeSpacingBase,
+                                       PPHomeSpacingBase+4,
                                        PPHomeItemHalfGap());
 }
 
@@ -756,7 +756,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)adsNearBySectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat cardWidth  = PPHomeAccessoryCardWidth(availableWidth);
+     CGFloat cardWidth  = PPHomeAccessoryCardWidth(availableWidth)-10;
      CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 10.0;
 
      NSCollectionLayoutSize *itemSize =
@@ -780,7 +780,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.contentInsets =
          PPHomeFullWidthSectionInsets();
 
-     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight
+     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                     pinned:NO]];
 
      return section;

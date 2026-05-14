@@ -2707,6 +2707,26 @@
 "nova_smart_suggestion_fish_setup_prompt" = "Show me fish tank supplies and food";
 "nova_smart_suggestion_live_pets" = "Live pets";
 "nova_smart_suggestion_live_pets_prompt" = "Show me available live pets";
+"nova_smart_suggestion_services" = "Pet services";
+"nova_smart_suggestion_services_prompt" = "Show me pet care services";
+"nova_smart_suggestion_vets" = "Veterinary clinics";
+"nova_smart_suggestion_vets_prompt" = "Show me nearby veterinary clinics";
+"nova_smart_suggestion_adoption" = "Adoption";
+"nova_smart_suggestion_adoption_prompt" = "Show pets available for adoption";
+"nova_smart_suggestion_pet_ads" = "Pet listings";
+"nova_smart_suggestion_pet_ads_prompt" = "Show me pet listings";
+"nova_smart_suggestion_bird_food" = "Bird food";
+"nova_smart_suggestion_bird_food_prompt" = "Find food and treats for birds";
+"nova_smart_suggestion_dog_grooming" = "Dog grooming";
+"nova_smart_suggestion_dog_grooming_prompt" = "Show dog grooming services";
+"nova_smart_suggestion_cat_carrier" = "Cat carrier";
+"nova_smart_suggestion_cat_carrier_prompt" = "Find a carrier for my cat";
+"nova_smart_suggestion_aquarium_cleaning" = "Aquarium care";
+"nova_smart_suggestion_aquarium_cleaning_prompt" = "Find aquarium cleaning supplies";
+"nova_smart_suggestion_rabbit_food" = "Rabbit food";
+"nova_smart_suggestion_rabbit_food_prompt" = "Find food for rabbits";
+"nova_smart_suggestion_travel_kit" = "Travel kit";
+"nova_smart_suggestion_travel_kit_prompt" = "Show me pet travel essentials";
 "nova_provider_products_title" = "%@ products";
 "nova_provider_products_prompt" = "Show me %@ products";
 "nova_provider_ads_title" = "%@ ads";
@@ -2763,3 +2783,9 @@
 "nova_render_limited_details" = "Details are limited";
 "nova_render_more_results_hint" = "More options are available. Ask Nova to narrow the list.";
 "OrderCanceled" = "OrderCanceled";
+
+/* Nova chat */
+"nova_thinking" = "Thinking…";
+"nova_empty_sub" = "Orders, pharmacy, services, vets — your pet, one chat.";
+"nova_error_generic" = "Couldn't reach Nova. Try again.";
+"nova_error_offline" = "You appear to be offline.";

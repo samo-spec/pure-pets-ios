@@ -5,6 +5,8 @@
 
 #import "PPNovaChatViewController.h"
 #import "ChatMessageModel.h"
+#import "PPAgentClient.h"
+#import "PPAgentMessage.h"
 #import "PPNovaMessageBubbleCell.h" // #import "PPNovaMessageBubbleCell.h" #import "ChatMessageCell.h"
 #import "PPNovaProductMessageCell.h"
 #import "PPNovaReviewMessageCell.h"
@@ -53,6 +55,7 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 static NSString * const PPNovaSmartSuggestionWashBreathKey = @"pp.nova.smartSuggestion.washBreath";
 static NSString * const PPNovaSmartSuggestionActionBreathKey = @"pp.nova.smartSuggestion.actionBreath";
 static NSString * const PPNovaSmartSuggestionColorShiftKey = @"pp.nova.smartSuggestion.colorShift";
+static const NSUInteger PPNovaSmartSuggestionPickerVisibleCount = 8;
 
 #pragma mark - Nova Output Presentation
 
@@ -676,6 +679,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) UIButton *smartSuggestionShuffleButton;
 @property (nonatomic, strong) UIStackView *smartSuggestionPickerStackView;
 @property (nonatomic, copy) NSArray<UIButton *> *smartSuggestionPickerButtons;
+@property (nonatomic, copy) NSArray<NSDictionary<NSString *, NSString *> *> *smartSuggestionPickerSuggestions;
 @property (nonatomic, strong) NSLayoutConstraint *smartSuggestionPickerBottomConstraint;
 
 @property (nonatomic, strong) LOTAnimationView *novaHeaderBackgroundLottie;
@@ -1273,6 +1277,58 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (![self pp_lastNovaTextMessageEquals:fallback]) {
         [self addNovaMessage:fallback requestID:requestID responseID:responseID];
     }
+}
+
+- (BOOL)pp_novaReplyLooksLikeManualResultList:(NSString *)text {
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        return NO;
+    }
+
+    NSArray<NSString *> *patterns = @[
+        @"(?m)^\\s*[*•-]\\s+\\S+",
+        @"(?m)^\\s*[0-9٠-٩]+[\\.)-]\\s+\\S+"
+    ];
+    for (NSString *pattern in patterns) {
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern options:0 error:nil];
+        if ([regex firstMatchInString:trimmed options:0 range:NSMakeRange(0, trimmed.length)]) {
+            return YES;
+        }
+    }
+
+    NSString *lower = trimmed.lowercaseString;
+    NSRegularExpression *digitRegex = [NSRegularExpression regularExpressionWithPattern:@"[0-9٠-٩]" options:0 error:nil];
+    BOOL hasDigit = [digitRegex firstMatchInString:trimmed options:0 range:NSMakeRange(0, trimmed.length)] != nil;
+    BOOL hasFoundVerb = [lower containsString:@"وجدت"] ||
+                        [lower containsString:@"لقِيت"] ||
+                        [lower containsString:@"لقيت"] ||
+                        [lower containsString:@"found"] ||
+                        [lower containsString:@"here are"];
+    NSArray<NSString *> *resultTerms = @[
+        @"نتائج", @"نتيجة", @"خيارات", @"خيار", @"خدمات", @"خدمة",
+        @"عيادات", @"عيادة", @"منتجات", @"منتج", @"results", @"options",
+        @"services", @"service", @"clinics", @"clinic", @"vets", @"products"
+    ];
+    BOOL hasResultTerm = NO;
+    for (NSString *term in resultTerms) {
+        if ([lower containsString:term]) {
+            hasResultTerm = YES;
+            break;
+        }
+    }
+    return hasDigit && hasFoundVerb && hasResultTerm;
+}
+
+- (NSString *)pp_novaCardFocusedAssistantTextFromText:(NSString *)text {
+    NSString *clean = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (clean.length == 0) {
+        return nil;
+    }
+    if ([self pp_novaReplyLooksLikeManualResultList:clean]) {
+        LOG_WARN(@"[PPNovaChat][Refs] manual_result_text_suppressed chars=%lu", (unsigned long)clean.length);
+        return nil;
+    }
+    return clean;
 }
 
 #pragma mark - Nova Presentation Runtime
@@ -1878,9 +1934,135 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                                            requestID:requestID
 	                                                           responseID:responseID];
 	                }
-	            }
-        });
-    }];
+		            }
+	        });
+	    }];
+	}
+
+- (void)pp_handleNovaAgentProxyReply:(PPAgentMessage *)reply
+                             userText:(NSString *)trimmedText
+                            requestID:(NSString *)requestID
+                   fallbackResponseID:(NSString *)fallbackResponseID
+                           generation:(NSUInteger)generation {
+    if (generation != self.novaRequestGeneration) {
+        return;
+    }
+
+    NSDictionary *responseData = [reply.responseData isKindOfClass:NSDictionary.class] ? reply.responseData : nil;
+    NSString *replyText = [reply.text ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *responseID = responseData
+        ? [self pp_novaResponseIDFromResponseData:responseData requestID:requestID source:@"agent_proxy"]
+        : (fallbackResponseID.length > 0 ? fallbackResponseID : [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"agent_proxy"]);
+    self.activeNovaResponseID = responseID;
+
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs =
+        [self pp_novaSuggestionRefsFromResponseData:responseData replyText:replyText];
+    NSUInteger backendResultCount = [self pp_novaBackendResultCountFromResponseData:responseData];
+    NSUInteger backendResultRefsCount = [self pp_novaBackendResultRefsCountFromResponseData:responseData];
+    BOOL cardsRequired = [self pp_novaCardsRequiredFromResponseData:responseData
+                                                         resultCount:backendResultCount
+                                                     resultRefsCount:backendResultRefsCount];
+    NSString *resultSource = [self pp_novaResultSourceFromResponseData:responseData];
+    BOOL mustRenderCells = cardsRequired || backendResultCount > 0 || suggestionRefs.count > 0;
+    BOOL hasCatalogIntent = [self pp_novaHasCatalogSearchIntentForUserText:trimmedText];
+
+    LOG_INFO(@"[PPNovaChat][AgentProxy] responseKeys=%@ assistantTextChars=%lu",
+             responseData ? [PPNovaChatViewController pp_sortedDictionaryKeys:responseData] : @[],
+             (unsigned long)replyText.length);
+    [self pp_logNovaCellPayloadWithRequestID:requestID
+                                  responseID:responseID
+                          backendResultCount:backendResultCount
+                       backendResultRefsCount:backendResultRefsCount
+                            parsedResultRefs:suggestionRefs.count
+                               cardsRequired:cardsRequired
+                                      source:resultSource];
+    [self pp_logNovaIncomingRefs:suggestionRefs requestID:requestID responseID:responseID source:@"agent_proxy"];
+
+    if (mustRenderCells && suggestionRefs.count == 0) {
+        [self pp_handleNovaCellRenderMissingWithRequestID:requestID
+                                               responseID:responseID
+                                       backendResultCount:backendResultCount
+                                    backendResultRefsCount:backendResultRefsCount
+                                         parsedResultRefs:0
+                                             cellsCreated:0
+                                                   source:resultSource
+                                                   reason:@"agent_proxy_parsed_refs_empty"];
+        return;
+    }
+
+    if (replyText.length == 0 && suggestionRefs.count == 0) {
+        [self hideNovaTyping];
+        if (hasCatalogIntent) {
+            [self pp_addNovaProductResultTextForRenderedCount:0
+                                                 proposedText:nil
+                                                     userText:trimmedText
+                                                       source:@"agent_proxy_empty_response"
+                                                    requestID:requestID
+                                                   responseID:responseID];
+        }
+        return;
+    }
+
+    NSString *pendingResolvedProductText = nil;
+    NSString *suggestionFallbackText = nil;
+    if (replyText.length > 0) {
+        NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:(suggestionRefs.count > 0)];
+        if (sanitizedReply.length > 0) {
+            if ([self pp_novaReplyContainsNoProductClaim:sanitizedReply]) {
+                if (suggestionRefs.count == 0) {
+                    [self hideNovaTyping];
+                    [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+                    return;
+                }
+            } else if (suggestionRefs.count > 0) {
+                pendingResolvedProductText = [self pp_novaCardFocusedAssistantTextFromText:sanitizedReply];
+            } else {
+                [self hideNovaTyping];
+                [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+                return;
+            }
+        } else if (suggestionRefs.count == 0) {
+            NSString *unstrippedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
+            [self hideNovaTyping];
+            if (unstrippedReply.length > 0) {
+                [self addNovaMessage:unstrippedReply requestID:requestID responseID:responseID];
+            } else if (hasCatalogIntent) {
+                [self pp_addNovaProductResultTextForRenderedCount:0
+                                                     proposedText:nil
+                                                         userText:trimmedText
+                                                           source:@"agent_proxy_text_stripped_empty"
+                                                        requestID:requestID
+                                                       responseID:responseID];
+            }
+            return;
+        } else {
+            suggestionFallbackText = [self pp_novaCardFocusedAssistantTextFromText:
+                                      [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO]];
+        }
+    }
+
+    if (suggestionRefs.count > 0) {
+        [self pp_fetchAndShowNovaSuggestionRefs:suggestionRefs
+                                   fallbackText:pendingResolvedProductText ?: suggestionFallbackText
+                                       userText:trimmedText
+                                      requestID:requestID
+                                     responseID:responseID
+                                     generation:generation
+                            backendResultCount:backendResultCount
+                         backendResultRefsCount:backendResultRefsCount
+                                cardsRequired:mustRenderCells
+                                  resultSource:resultSource];
+    } else {
+        [self hideNovaTyping];
+        if (hasCatalogIntent) {
+            [self pp_addNovaProductResultTextForRenderedCount:0
+                                                 proposedText:nil
+                                                     userText:trimmedText
+                                                       source:@"agent_proxy_no_refs"
+                                                    requestID:requestID
+                                                   responseID:responseID];
+        }
+    }
 }
 
 - (void)pp_startNovaRequestWatchdogForGeneration:(NSUInteger)generation userText:(NSString *)userText requestID:(NSString *)requestID {
@@ -3157,8 +3339,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     if (renderedCount > 0) {
         if (cleanProposed.length > 0 && ![self pp_novaReplyContainsNoProductClaim:cleanProposed]) {
-            textToShow = cleanProposed;
-            decision = @"proposed_text_with_rendered_products";
+            textToShow = [self pp_novaCardFocusedAssistantTextFromText:cleanProposed];
+            decision = textToShow.length > 0 ? @"proposed_text_with_rendered_products" : @"manual_result_text_suppressed";
         } else {
             decision = cleanProposed.length == 0 ? @"cards_only_no_ai_text" : @"cards_only_suppressed_no_product_text";
         }
@@ -5359,10 +5541,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     ]];
 }
 
-- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaSmartSuggestionSpecs {
-    if (self.dynamicSmartSuggestions.count > 0) {
-        return self.dynamicSmartSuggestions;
-    }
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaBaseSmartSuggestionSpecs {
     return @[
         @{@"titleKey": @"nova_smart_suggestion_cat_food",
           @"promptKey": @"nova_smart_suggestion_cat_food_prompt"},
@@ -5379,8 +5558,37 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         @{@"titleKey": @"nova_smart_suggestion_fish_setup",
           @"promptKey": @"nova_smart_suggestion_fish_setup_prompt"},
         @{@"titleKey": @"nova_smart_suggestion_live_pets",
-          @"promptKey": @"nova_smart_suggestion_live_pets_prompt"}
+          @"promptKey": @"nova_smart_suggestion_live_pets_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_services",
+          @"promptKey": @"nova_smart_suggestion_services_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_vets",
+          @"promptKey": @"nova_smart_suggestion_vets_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_adoption",
+          @"promptKey": @"nova_smart_suggestion_adoption_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_pet_ads",
+          @"promptKey": @"nova_smart_suggestion_pet_ads_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_bird_food",
+          @"promptKey": @"nova_smart_suggestion_bird_food_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_dog_grooming",
+          @"promptKey": @"nova_smart_suggestion_dog_grooming_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_cat_carrier",
+          @"promptKey": @"nova_smart_suggestion_cat_carrier_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_aquarium_cleaning",
+          @"promptKey": @"nova_smart_suggestion_aquarium_cleaning_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_rabbit_food",
+          @"promptKey": @"nova_smart_suggestion_rabbit_food_prompt"},
+        @{@"titleKey": @"nova_smart_suggestion_travel_kit",
+          @"promptKey": @"nova_smart_suggestion_travel_kit_prompt"}
     ];
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaSmartSuggestionSpecs {
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *combined = [NSMutableArray array];
+    if (self.dynamicSmartSuggestions.count > 0) {
+        [combined addObjectsFromArray:self.dynamicSmartSuggestions];
+    }
+    [combined addObjectsFromArray:[self pp_novaBaseSmartSuggestionSpecs]];
+    return [self pp_uniqueNovaSmartSuggestionSpecs:combined];
 }
 
 - (NSString *)pp_titleForNovaSmartSuggestionSpec:(NSDictionary<NSString *, NSString *> *)spec {
@@ -5399,6 +5607,148 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         prompt = [kLang(promptKey) stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     }
     return prompt ?: @"";
+}
+
+- (NSString *)pp_signatureForNovaSmartSuggestionSpec:(NSDictionary<NSString *, NSString *> *)spec {
+    NSString *title = [[self pp_titleForNovaSmartSuggestionSpec:spec] lowercaseString] ?: @"";
+    NSString *prompt = [[self pp_promptForNovaSmartSuggestionSpec:spec] lowercaseString] ?: @"";
+    return [NSString stringWithFormat:@"%@|%@", title, prompt];
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_uniqueNovaSmartSuggestionSpecs:(NSArray<NSDictionary<NSString *, NSString *> *> *)specs {
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *unique = [NSMutableArray array];
+    NSMutableSet<NSString *> *seen = [NSMutableSet set];
+
+    for (NSDictionary<NSString *, NSString *> *spec in specs) {
+        NSString *title = [self pp_titleForNovaSmartSuggestionSpec:spec];
+        NSString *prompt = [self pp_promptForNovaSmartSuggestionSpec:spec];
+        if (title.length == 0 || prompt.length == 0) {
+            continue;
+        }
+
+        NSString *signature = [self pp_signatureForNovaSmartSuggestionSpec:spec];
+        if (signature.length == 0 || [seen containsObject:signature]) {
+            continue;
+        }
+
+        [seen addObject:signature];
+        [unique addObject:spec];
+    }
+
+    return unique.copy;
+}
+
+- (NSString *)pp_signatureForNovaSmartSuggestionSet:(NSArray<NSDictionary<NSString *, NSString *> *> *)specs {
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    for (NSDictionary<NSString *, NSString *> *spec in specs) {
+        NSString *signature = [self pp_signatureForNovaSmartSuggestionSpec:spec];
+        if (signature.length > 0) {
+            [parts addObject:signature];
+        }
+    }
+    [parts sortUsingSelector:@selector(compare:)];
+    return [parts componentsJoinedByString:@"#"];
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_firstNovaSmartSuggestionSpecs:(NSArray<NSDictionary<NSString *, NSString *> *> *)specs
+                                                                                limit:(NSUInteger)limit {
+    if (specs.count == 0 || limit == 0) {
+        return @[];
+    }
+    NSUInteger count = MIN(limit, specs.count);
+    return [specs subarrayWithRange:NSMakeRange(0, count)];
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_randomNovaSmartSuggestionPickerSpecsAvoidingSpecs:(NSArray<NSDictionary<NSString *, NSString *> *> *)previousSpecs {
+    NSArray<NSDictionary<NSString *, NSString *> *> *allSuggestions = [self pp_novaSmartSuggestionSpecs];
+    if (allSuggestions.count <= 1) {
+        return allSuggestions ?: @[];
+    }
+
+    NSUInteger count = MIN(PPNovaSmartSuggestionPickerVisibleCount, allSuggestions.count);
+    NSString *previousSignature = [self pp_signatureForNovaSmartSuggestionSet:previousSpecs ?: @[]];
+    NSArray<NSDictionary<NSString *, NSString *> *> *candidate = nil;
+
+    for (NSUInteger attempt = 0; attempt < 6; attempt++) {
+        NSMutableArray<NSDictionary<NSString *, NSString *> *> *shuffled = [allSuggestions mutableCopy];
+        for (NSUInteger remaining = shuffled.count; remaining > 1; remaining--) {
+            NSUInteger index = remaining - 1;
+            NSUInteger randomIndex = (NSUInteger)arc4random_uniform((uint32_t)remaining);
+            [shuffled exchangeObjectAtIndex:index withObjectAtIndex:randomIndex];
+        }
+
+        candidate = [shuffled subarrayWithRange:NSMakeRange(0, count)];
+        NSString *candidateSignature = [self pp_signatureForNovaSmartSuggestionSet:candidate];
+        if (previousSignature.length == 0 || ![candidateSignature isEqualToString:previousSignature]) {
+            break;
+        }
+    }
+
+    return candidate ?: [self pp_firstNovaSmartSuggestionSpecs:allSuggestions limit:count];
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaSmartSuggestionPickerSpecs {
+    if (self.smartSuggestionPickerSuggestions.count > 0) {
+        return self.smartSuggestionPickerSuggestions;
+    }
+    return [self pp_firstNovaSmartSuggestionSpecs:[self pp_novaSmartSuggestionSpecs]
+                                           limit:PPNovaSmartSuggestionPickerVisibleCount];
+}
+
+- (NSUInteger)pp_indexOfNovaSmartSuggestionSpec:(NSDictionary<NSString *, NSString *> *)target
+                                  inSuggestions:(NSArray<NSDictionary<NSString *, NSString *> *> *)suggestions {
+    NSString *targetSignature = [self pp_signatureForNovaSmartSuggestionSpec:target];
+    if (targetSignature.length == 0) {
+        return NSNotFound;
+    }
+
+    __block NSUInteger foundIndex = NSNotFound;
+    [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, BOOL *stop) {
+        if ([[self pp_signatureForNovaSmartSuggestionSpec:spec] isEqualToString:targetSignature]) {
+            foundIndex = idx;
+            *stop = YES;
+        }
+    }];
+    return foundIndex;
+}
+
+- (void)pp_refreshNovaSmartSuggestionPickerChoicesAnimated:(BOOL)animated {
+    NSArray<NSDictionary<NSString *, NSString *> *> *previousSpecs = self.smartSuggestionPickerSuggestions;
+    self.smartSuggestionPickerSuggestions = [self pp_randomNovaSmartSuggestionPickerSpecsAvoidingSpecs:previousSpecs];
+
+    BOOL shouldAnimate = animated &&
+        self.smartSuggestionPickerVisible &&
+        !self.smartSuggestionPickerView.hidden &&
+        !UIAccessibilityIsReduceMotionEnabled();
+
+    void (^rebuild)(void) = ^{
+        [self pp_rebuildNovaSmartSuggestionButtons];
+    };
+
+    if (!shouldAnimate) {
+        rebuild();
+        return;
+    }
+
+    [UIView transitionWithView:self.smartSuggestionPickerStackView
+                      duration:0.22
+                       options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowUserInteraction
+                    animations:rebuild
+                    completion:^(__unused BOOL finished) {
+        [self.smartSuggestionPickerButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
+            button.alpha = 0.0;
+            button.transform = CGAffineTransformMakeTranslation(0.0, 6.0);
+            [UIView animateWithDuration:0.24
+                                  delay:MIN(idx, (NSUInteger)7) * 0.018
+                 usingSpringWithDamping:0.92
+                  initialSpringVelocity:0.10
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                button.alpha = 1.0;
+                button.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }];
+    }];
 }
 
 - (NSDictionary<NSString *, NSString *> *)pp_currentNovaSmartSuggestionSpec {
@@ -5543,13 +5893,24 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
         if (specs.count == 0) {
             self.dynamicSmartSuggestions = @[];
+            if (self.smartSuggestionPickerVisible) {
+                [self pp_refreshNovaSmartSuggestionPickerChoicesAnimated:YES];
+            } else {
+                self.smartSuggestionPickerSuggestions = nil;
+                [self pp_rebuildNovaSmartSuggestionButtons];
+            }
             return;
         }
         NSArray *sorted = [specs sortedArrayUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
             return [a[@"title"] compare:b[@"title"]];
         }];
         self.dynamicSmartSuggestions = sorted;
-        [self pp_rebuildNovaSmartSuggestionButtons];
+        if (self.smartSuggestionPickerVisible) {
+            [self pp_refreshNovaSmartSuggestionPickerChoicesAnimated:YES];
+        } else {
+            self.smartSuggestionPickerSuggestions = nil;
+            [self pp_rebuildNovaSmartSuggestionButtons];
+        }
     });
 }
 
@@ -5561,7 +5922,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [subview removeFromSuperview];
     }
 
-    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionPickerSpecs];
     NSMutableArray<UIButton *> *buttons = [NSMutableArray array];
     [suggestions enumerateObjectsUsingBlock:^(NSDictionary<NSString *,NSString *> *spec, NSUInteger idx, __unused BOOL *stop) {
         UIButton *button = [self pp_makeNovaSmartSuggestionPickerButtonWithTitle:[self pp_titleForNovaSmartSuggestionSpec:spec] index:idx];
@@ -5570,8 +5931,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }];
     self.smartSuggestionPickerButtons = buttons.copy;
 
-    if (suggestions.count > 0) {
-        self.smartSuggestionCurrentIndex = MIN(self.smartSuggestionCurrentIndex, suggestions.count - 1);
+    NSArray<NSDictionary<NSString *, NSString *> *> *allSuggestions = [self pp_novaSmartSuggestionSpecs];
+    if (allSuggestions.count > 0) {
+        self.smartSuggestionCurrentIndex = MIN(self.smartSuggestionCurrentIndex, allSuggestions.count - 1);
     } else {
         self.smartSuggestionCurrentIndex = 0;
     }
@@ -6113,7 +6475,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     self.smartSuggestionPickerVisible = YES;
     [self pp_stopNovaSmartSuggestionRotation];
-    [self pp_rebuildNovaSmartSuggestionButtons];
+    [self pp_refreshNovaSmartSuggestionPickerChoicesAnimated:NO];
     [self.view bringSubviewToFront:self.smartSuggestionPickerView];
     [self.view bringSubviewToFront:self.inputbar];
     self.smartSuggestionPickerView.hidden = NO;
@@ -6230,7 +6592,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_handleNovaSmartSuggestionPickerTap:(UIButton *)sender {
-    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionSpecs];
+    NSArray<NSDictionary<NSString *, NSString *> *> *suggestions = [self pp_novaSmartSuggestionPickerSpecs];
     if (suggestions.count == 0) {
         return;
     }
@@ -6238,10 +6600,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
-    self.smartSuggestionCurrentIndex = (NSUInteger)sender.tag;
+    NSDictionary<NSString *, NSString *> *selectedSpec = suggestions[(NSUInteger)sender.tag];
+    NSUInteger selectedIndex = [self pp_indexOfNovaSmartSuggestionSpec:selectedSpec
+                                                         inSuggestions:[self pp_novaSmartSuggestionSpecs]];
+    if (selectedIndex != NSNotFound) {
+        self.smartSuggestionCurrentIndex = selectedIndex;
+    }
     [self pp_configureCurrentNovaSmartSuggestionAnimated:YES];
 
-    NSString *prompt = [self pp_promptForNovaSmartSuggestionSpec:suggestions[(NSUInteger)sender.tag]];
+    NSString *prompt = [self pp_promptForNovaSmartSuggestionSpec:selectedSpec];
     if (prompt.length == 0) return;
 
     NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.12;
@@ -6267,7 +6634,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)pp_handleNovaSuggestionShuffleTapped:(UIButton *)sender {
     [self pp_handleNovaSmartSuggestionPressCancel:sender];
-    [self pp_advanceNovaSmartSuggestionAnimated:YES];
+    [self pp_refreshNovaSmartSuggestionPickerChoicesAnimated:YES];
 }
 
 - (void)pp_startTypingDotsAnimation {
@@ -6738,9 +7105,41 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                         cachedProductsBeforeSend:cachedProductsBeforeSend];
     [self pp_updateMemoryFromUserText:trimmedText];
     [self pp_logNovaIntentForUserText:trimmedText stage:@"submitted"];
+    [PPAnalytics logNovaMessageSentWithCharCount:trimmedText.length
+                                         isArabic:[self textContainsArabic:trimmedText]
+                                       sessionID:self.novaSessionId];
+    self.novaHasSentFirstMessage = YES;
+    self.novaRequestGeneration = self.novaRequestGeneration + 1;
+    NSUInteger generation = self.novaRequestGeneration;
+    [self pp_startNovaRequestWatchdogForGeneration:generation userText:trimmedText requestID:requestID];
 
     [self showNovaTyping];
-    [self sendNovaRequestForUserText:trimmedText requestID:requestID];
+
+    // Route through the Cloud Run proxy only; the legacy callable path is kept
+    // defined for now but must not race this send action.
+    NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"agent_proxy"];
+    PPAgentClient *agent = [PPAgentClient shared];
+    if (![agent.sessionId hasPrefix:@"s_"]) {
+        agent.sessionId = self.novaSessionId;
+    }
+    __weak typeof(self) weakSelf = self;
+    [agent sendMessage:trimmedText completion:^(PPAgentMessage *reply, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf || strongSelf.dismissed) return;
+            if (error) {
+                [strongSelf hideNovaTyping];
+                PPAgentMessage *fallback = [PPAgentMessage agentText:NSLocalizedString(@"nova_error_generic", nil)];
+                [strongSelf addNovaMessage:fallback.text requestID:requestID responseID:responseID];
+                return;
+            }
+            [strongSelf pp_handleNovaAgentProxyReply:reply
+                                             userText:trimmedText
+                                            requestID:requestID
+                                   fallbackResponseID:responseID
+                                           generation:generation];
+        });
+    }];
 }
 
 // Production-safe add-to-cart intent classifier.

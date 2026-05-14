@@ -249,8 +249,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:182.0],
-        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:182.0],
+        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:162.0],
+        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:162.0],
         [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-52.0],
         [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:54.0],
 
@@ -612,7 +612,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
         dotView.transform = CGAffineTransformIdentity;
     }];
 
-    _topBackgroundGlowView.alpha = 1.0;
+    _topBackgroundGlowView.alpha = 0.6;
     _topBackgroundGlowView.transform = CGAffineTransformIdentity;
     _middleBackgroundGlowView.alpha = 1.0;
     _middleBackgroundGlowView.transform = CGAffineTransformIdentity;

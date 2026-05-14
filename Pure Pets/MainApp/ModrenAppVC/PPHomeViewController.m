@@ -2835,6 +2835,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *con = [UIButtonConfiguration glassButtonConfiguration];
+        con.baseBackgroundColor = AppClearClr;
+        con.background.backgroundColor = AppClearClr;
+        con.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        button.configuration = con;
+    }
+    
+    
     button.backgroundColor = [brand colorWithAlphaComponent:0.10];
     button.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
     button.layer.borderColor = [brand colorWithAlphaComponent:0.28].CGColor;
@@ -2878,14 +2888,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
         [lot.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [lot.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [lot.widthAnchor constraintEqualToConstant:82.0],
-        [lot.heightAnchor constraintEqualToConstant:82.0],
+        [lot.widthAnchor constraintEqualToConstant:42.0],
+        [lot.heightAnchor constraintEqualToConstant:42.0],
     ]];
 
     // Lottie loads from Firebase Storage path LottieAnimations/nova.json via the project's helper.
     __weak typeof(self) weakSelf = self;
     __weak LOTAnimationView *weakLot = lot;
-    [AppClasses setAnimationNamed:@"Nselver"
+    [AppClasses setAnimationNamed:@"Ncolored"
                             ToView:lot
                          withSpeed:0.6
                         completion:^(BOOL success) {
@@ -5627,7 +5637,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 PPHomePremiumSearchCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomePremiumSearchCell"
                                                               forIndexPath:indexPath];
-         
+
+                __weak typeof(strongSelf) weakHome = strongSelf;
+                cell.onTap = ^{
+                    __strong typeof(weakHome) self = weakHome;
+                    if (!self) return;
+                    [self pp_openSmartSearch];
+                };
+
                 return cell;
             }
 

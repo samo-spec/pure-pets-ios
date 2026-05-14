@@ -2695,8 +2695,28 @@
 "nova_smart_suggestion_fish_setup_prompt" = "اعرض مستلزمات حوض الأسماك والطعام";
 "nova_smart_suggestion_live_pets" = "حيوانات متاحة";
 "nova_smart_suggestion_live_pets_prompt" = "اعرض الحيوانات المتاحة الآن";
-"nova_provider_products_title" = "منتجات %@";
-"nova_provider_products_prompt" = "اعرض منتجات %@";
+"nova_smart_suggestion_services" = "خدمات العناية";
+"nova_smart_suggestion_services_prompt" = "اعرض خدمات العناية بالحيوانات";
+"nova_smart_suggestion_vets" = "عيادات بيطرية";
+"nova_smart_suggestion_vets_prompt" = "اعرض العيادات البيطرية القريبة";
+"nova_smart_suggestion_adoption" = "تبني";
+"nova_smart_suggestion_adoption_prompt" = "اعرض حيوانات متاحة للتبني";
+"nova_smart_suggestion_pet_ads" = "إعلانات الحيوانات";
+"nova_smart_suggestion_pet_ads_prompt" = "اعرض إعلانات الحيوانات الأليفة";
+"nova_smart_suggestion_bird_food" = "طعام للطيور";
+"nova_smart_suggestion_bird_food_prompt" = "ابحث عن طعام ومكافآت للطيور";
+"nova_smart_suggestion_dog_grooming" = "عناية للكلاب";
+"nova_smart_suggestion_dog_grooming_prompt" = "اعرض خدمات عناية للكلاب";
+"nova_smart_suggestion_cat_carrier" = "شنطة للقطط";
+"nova_smart_suggestion_cat_carrier_prompt" = "ابحث عن شنطة تنقل لقطتي";
+"nova_smart_suggestion_aquarium_cleaning" = "عناية بالأحواض";
+"nova_smart_suggestion_aquarium_cleaning_prompt" = "ابحث عن مستلزمات تنظيف حوض الأسماك";
+"nova_smart_suggestion_rabbit_food" = "طعام للأرانب";
+"nova_smart_suggestion_rabbit_food_prompt" = "ابحث عن طعام للأرانب";
+"nova_smart_suggestion_travel_kit" = "مستلزمات سفر";
+"nova_smart_suggestion_travel_kit_prompt" = "اعرض مستلزمات سفر للحيوانات الأليفة";
+"nova_provider_products_title" = "اكسسوارات %@";
+"nova_provider_products_prompt" = "اعرض اكسسوارات %@";
 "nova_provider_ads_title" = "إعلانات %@";
 "nova_provider_ads_prompt" = "اعرض إعلانات %@";
 "nova_provider_ads_title_default" = "إعلانات الحيوانات";
@@ -2751,3 +2771,9 @@
 "nova_render_limited_details" = "التفاصيل المتاحة محدودة";
 "nova_render_more_results_hint" = "توجد خيارات إضافية. اطلب من نوفا تضييق النتائج.";
 "OrderCanceled" = "تم إلغاء الطلب";
+
+/* Nova chat */
+"nova_thinking" = "يفكر…";
+"nova_empty_sub" = "الطلبات، الصيدلية، الخدمات، الأطباء — حيوانك الأليف في محادثة واحدة.";
+"nova_error_generic" = "تعذّر الوصول إلى نوفا. حاول مرة أخرى.";
+"nova_error_offline" = "يبدو أنك غير متصل بالإنترنت.";

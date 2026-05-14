@@ -915,33 +915,29 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 - (CGFloat)pp_measuredBubbleWidthForAvailableWidth:(CGFloat)availableWidth {
     CGFloat maxLabelWidth = MAX(availableWidth - PPNovaBubbleHorizontalContentInset, 1.0);
     CGFloat targetContentWidth = 0.0;
-    NSString *plainText = self.messageLabel.attributedText.string.length > 0
-        ? self.messageLabel.attributedText.string
-        : (self.messageLabel.text ?: @"");
-    BOOL hasExplicitLineBreak = [plainText rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location != NSNotFound;
 
-    NSAttributedString *attributedText = self.messageLabel.attributedText;
-    if (attributedText.length > 0 && !self.messageLabel.hidden) {
-        if (!hasExplicitLineBreak) {
-            CGRect singleLineRect = [attributedText boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
-                                                                 options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                                 context:nil];
-            CGFloat singleLineWidth = ceil(CGRectGetWidth(singleLineRect));
-            if (singleLineWidth <= maxLabelWidth) {
-                targetContentWidth = MAX(targetContentWidth, singleLineWidth);
-            }
+    if (!self.messageLabel.hidden && (self.messageLabel.attributedText.length > 0 || self.messageLabel.text.length > 0)) {
+        // Use the label's own sizing logic to get accurate layout width
+        CGSize labelSize = [self.messageLabel sizeThatFits:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)];
+        targetContentWidth = ceil(labelSize.width);
+        
+        // Calculate unconstrained width to check if it fits on a single line
+        CGSize singleLineSize = [self.messageLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
+        CGFloat singleLineWidth = ceil(singleLineSize.width);
+        
+        NSString *plainText = self.messageLabel.attributedText.string.length > 0
+            ? self.messageLabel.attributedText.string
+            : (self.messageLabel.text ?: @"");
+        BOOL hasExplicitLineBreak = [plainText rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location != NSNotFound;
+
+        if (singleLineWidth <= maxLabelWidth && !hasExplicitLineBreak) {
+            targetContentWidth = MAX(targetContentWidth, singleLineWidth);
+        } else {
+            // If it exceeds max width or has manual line breaks, it will wrap.
+            // Labels sometimes report a small width if the longest wrapped line is short.
+            // To prevent "tall and skinny" single-word column bubbles, we enforce full available width.
+            targetContentWidth = MAX(targetContentWidth, maxLabelWidth);
         }
-        CGRect textRect = [attributedText boundingRectWithSize:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)
-                                                       options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                       context:nil];
-        targetContentWidth = MAX(targetContentWidth, ceil(CGRectGetWidth(textRect)));
-    } else if (!self.messageLabel.hidden && self.messageLabel.text.length > 0) {
-        NSDictionary *attributes = @{ NSFontAttributeName: self.messageLabel.font ?: [UIFont systemFontOfSize:16.0] };
-        CGRect textRect = [self.messageLabel.text boundingRectWithSize:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)
-                                                               options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                            attributes:attributes
-                                                               context:nil];
-        targetContentWidth = MAX(targetContentWidth, ceil(CGRectGetWidth(textRect)));
     }
 
     if (!self.typingDotsStack.hidden) {

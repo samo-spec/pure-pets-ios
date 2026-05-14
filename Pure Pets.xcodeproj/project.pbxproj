@@ -753,6 +753,9 @@
 		F2FD336E2F97CB000089BBB1 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F2FD336D2F97CB000089BBB1 /* Main.storyboard */; };
 		F2HXCOMPAT0001 /* HXCompatibilityCategories.m in Sources */ = {isa = PBXBuildFile; fileRef = F2HXCOMPAT0002 /* HXCompatibilityCategories.m */; };
 		F3B1D4D374BED117313D69D5 /* PPVaccinationEditorSheet.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B976AF49312A9A364D18D30 /* PPVaccinationEditorSheet.m */; };
+		8285DB81AC0E45CAAD4045C8 /* PPAgentClient.m in Sources */ = {isa = PBXBuildFile; fileRef = 54CF9E88F5084302B07E92AD /* PPAgentClient.m */; };
+		A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */ = {isa = PBXBuildFile; fileRef = 4A07F5F900EF407FA841676C /* PPAgentMessage.m */; };
+		58D87A909DD749A582377602 /* PPAgentResponseParser.m in Sources */ = {isa = PBXBuildFile; fileRef = C29F0C84BAB44CEDB1ECD4CC /* PPAgentResponseParser.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -2221,6 +2224,12 @@
 		F2FD336A2F9772EB0089BBB1 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = en; path = en.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		F2FD336D2F97CB000089BBB1 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		F2HXCOMPAT0002 /* HXCompatibilityCategories.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = HXCompatibilityCategories.m; path = "Pure Pets/DesignFiles/PP/PPStyles/HXCompatibilityCategories.m"; sourceTree = SOURCE_ROOT; };
+		38C7E48EFD674EB395BE62DA /* PPAgentClient.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentClient.h; sourceTree = "<group>"; };
+		54CF9E88F5084302B07E92AD /* PPAgentClient.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PPAgentClient.m; sourceTree = "<group>"; };
+		4F54411260FD45AF8B522280 /* PPAgentMessage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentMessage.h; sourceTree = "<group>"; };
+		4A07F5F900EF407FA841676C /* PPAgentMessage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PPAgentMessage.m; sourceTree = "<group>"; };
+		C919979EA9824470B116C5B4 /* PPAgentResponseParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PPAgentResponseParser.h; sourceTree = "<group>"; };
+		C29F0C84BAB44CEDB1ECD4CC /* PPAgentResponseParser.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = PPAgentResponseParser.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3352,7 +3361,13 @@
 				F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */,
 				F26E3AFF2E35B35F007BB3FF /* GeminiChatViewController.m */,
 				F26E3AFE2E35B34E007BB3FF /* GeminiChatViewController.h */,
-			);
+							38C7E48EFD674EB395BE62DA /* PPAgentClient.h */,
+				54CF9E88F5084302B07E92AD /* PPAgentClient.m */,
+				4F54411260FD45AF8B522280 /* PPAgentMessage.h */,
+				4A07F5F900EF407FA841676C /* PPAgentMessage.m */,
+				C919979EA9824470B116C5B4 /* PPAgentResponseParser.h */,
+				C29F0C84BAB44CEDB1ECD4CC /* PPAgentResponseParser.m */,
+);
 			path = GEMENI;
 			sourceTree = "<group>";
 		};
@@ -5758,6 +5773,9 @@
 				F22C07D22EF66C2F00C00EAC /* YYTextView.m in Sources */,
 				F25E7FF72EFF84A90089F659 /* PPHomeHelper.m in Sources */,
 				F2EAA0672FA9951C00E34CCD /* PPNovaChatViewController.m in Sources */,
+				8285DB81AC0E45CAAD4045C8 /* PPAgentClient.m in Sources */,
+				A460E46C1D4E4D60A910F3C7 /* PPAgentMessage.m in Sources */,
+				58D87A909DD749A582377602 /* PPAgentResponseParser.m in Sources */,
 				F22C07D32EF66C2F00C00EAC /* UIView+YYAdd.m in Sources */,
 				F22C07D42EF66C2F00C00EAC /* UIBezierPath+YYAdd.m in Sources */,
 				F22C07D52EF66C2F00C00EAC /* NSArray+YYAdd.m in Sources */,
