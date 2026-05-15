@@ -8,7 +8,7 @@
 //    - { output | response | answer | text | message | content }
 //    - { messages: [ { content/text } ] }   (ADK / LangChain shape)
 //    - Tool-call indicators (tool_calls / actions)
-//    - Suggestions / quick replies
+//    - Options / suggestions / quick replies
 //
 
 #import <Foundation/Foundation.h>

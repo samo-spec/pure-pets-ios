@@ -17,18 +17,26 @@
     if (!data) {
         data = [self resultPayloadFromAgentEventDictionary:json];
     }
+    if (!data && (json[@"assistantText"] || json[@"options"])) {
+        data = json;
+    }
     NSString *text = nil;
     NSString *tool = nil;
     NSArray  *sugg = nil;
     NSDictionary *responseData = nil;
     BOOL hasRenderablePayload = NO;
 
-    // 1) String directly
+    // 1) String directly, or a raw Nova JSON envelope returned as text.
     if ([data isKindOfClass:NSString.class]) {
-        text = [self isRawNovaEnvelopeText:data] ? nil : data;
+        NSDictionary *rawEnvelope = [self novaEnvelopeFromRawText:data];
+        if (rawEnvelope) {
+            data = rawEnvelope;
+        } else {
+            text = [self isRawNovaEnvelopeText:data] ? nil : data;
+        }
     }
     // 2) Dict with common keys
-    else if ([data isKindOfClass:NSDictionary.class]) {
+    if ([data isKindOfClass:NSDictionary.class]) {
         NSDictionary *d = data;
         NSDictionary *eventPayload = [self resultPayloadFromAgentEventDictionary:d];
         responseData = eventPayload ?: d;
@@ -77,7 +85,7 @@
         }
 
         // Suggestions / quick replies
-        id s = d[@"suggestions"] ?: d[@"quickReplies"];
+        id s = d[@"options"] ?: d[@"suggestions"] ?: d[@"quickReplies"];
         if ([s isKindOfClass:NSArray.class]) sugg = s;
 
         // Result payloads may carry cards even if assistantText is empty.
@@ -90,7 +98,7 @@
         }
     }
     // 3) Raw passthrough
-    else if (json[@"raw"]) {
+    else if (!text && json[@"raw"]) {
         id raw = json[@"raw"];
         text = ([raw isKindOfClass:NSString.class] && ![self isRawNovaEnvelopeText:raw]) ? raw : nil;
     }
@@ -155,6 +163,42 @@
     return nil;
 }
 
++ (NSDictionary *)novaEnvelopeFromRawText:(NSString *)text {
+    if (![text isKindOfClass:NSString.class]) {
+        return nil;
+    }
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if ([trimmed hasPrefix:@"```"]) {
+        NSRegularExpression *openFence = [NSRegularExpression regularExpressionWithPattern:@"^```(?:json)?\\s*"
+                                                                                   options:NSRegularExpressionCaseInsensitive
+                                                                                     error:nil];
+        trimmed = [openFence stringByReplacingMatchesInString:trimmed
+                                                      options:0
+                                                        range:NSMakeRange(0, trimmed.length)
+                                                 withTemplate:@""];
+        if ([trimmed hasSuffix:@"```"]) {
+            trimmed = [trimmed substringToIndex:trimmed.length - 3];
+        }
+        trimmed = [trimmed stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    }
+    if (![trimmed hasPrefix:@"{"] || ![trimmed hasSuffix:@"}"]) {
+        return nil;
+    }
+    NSData *data = [trimmed dataUsingEncoding:NSUTF8StringEncoding];
+    if (!data) {
+        return nil;
+    }
+    id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    if (![parsed isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    NSDictionary *dict = (NSDictionary *)parsed;
+    if (dict[@"assistantText"] || dict[@"options"] || dict[@"resultRefs"] || dict[@"product_ids"]) {
+        return dict;
+    }
+    return nil;
+}
+
 + (BOOL)isRawNovaEnvelopeText:(NSString *)text {
     if (![text isKindOfClass:NSString.class]) {
         return NO;
@@ -164,6 +208,7 @@
         return NO;
     }
     return [trimmed containsString:@"\"assistantText\""] ||
+           [trimmed containsString:@"\"options\""] ||
            [trimmed containsString:@"\"resultRefs\""] ||
            [trimmed containsString:@"\"cardsRequired\""] ||
            [trimmed containsString:@"\"product_ids\""];

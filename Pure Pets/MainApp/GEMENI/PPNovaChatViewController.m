@@ -56,6 +56,7 @@ static NSString * const PPNovaSmartSuggestionWashBreathKey = @"pp.nova.smartSugg
 static NSString * const PPNovaSmartSuggestionActionBreathKey = @"pp.nova.smartSuggestion.actionBreath";
 static NSString * const PPNovaSmartSuggestionColorShiftKey = @"pp.nova.smartSuggestion.colorShift";
 static const NSUInteger PPNovaSmartSuggestionPickerVisibleCount = 8;
+static const NSUInteger PPNovaInlineActionMaximumCount = 10;
 
 #pragma mark - Nova Output Presentation
 
@@ -607,7 +608,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 @end
 
-@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate>
+@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate, PPNovaMessageBubbleCellDelegate>
 
 @property (nonatomic, strong) UIView *ambientBackgroundView;
 @property (nonatomic, strong) UIView *novaChatBottomGlowView;
@@ -723,6 +724,32 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, copy, nullable) dispatch_block_t pendingNovaVisibleLayoutRefreshBlock;
 @property (nonatomic, assign) BOOL novaLastTableMutationRequestedAutoScroll;
 @property (nonatomic, assign) CFTimeInterval novaLastTableMutationTimestamp;
+
+- (void)pp_fetchAndShowNovaSuggestionRefs:(NSArray<NSDictionary<NSString *, NSString *> *> *)refs
+                             fallbackText:(NSString *)fallbackText
+                                 userText:(NSString *)userText
+                                requestID:(NSString *)requestID
+                               responseID:(NSString *)responseID
+                               generation:(NSUInteger)generation
+                        backendResultCount:(NSUInteger)backendResultCount
+                     backendResultRefsCount:(NSUInteger)backendResultRefsCount
+                             cardsRequired:(BOOL)cardsRequired
+                               resultSource:(NSString *)resultSource
+                                    options:(NSArray<NSDictionary<NSString *, NSString *> *> *)options;
+
+- (void)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
+                                       proposedText:(NSString *)proposedText
+                                           userText:(NSString *)userText
+                                             source:(NSString *)source
+                                          requestID:(NSString *)requestID
+                                         responseID:(NSString *)responseID
+                                            options:(NSArray<NSDictionary<NSString *, NSString *> *> *)options;
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaDisplayOptionsForIncomingText:(NSString *)text
+                                                                           explicitOptions:(NSArray<NSDictionary<NSString *, NSString *> *> *)options
+                                                                           derivedFromText:(BOOL *)derivedFromText;
+- (NSString *)pp_novaDisplayTextByRemovingInlineActionLinesFromText:(NSString *)text
+                                                     derivedOptions:(NSArray<NSDictionary<NSString *, NSString *> *> *)derivedOptions;
 
 @end
 
@@ -1076,6 +1103,197 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
              source ?: @"unknown");
 }
 
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaOptionsFromResponseData:(NSDictionary *)data {
+    id rawOptions = [data isKindOfClass:NSDictionary.class] ? data[@"options"] : nil;
+    if (![rawOptions isKindOfClass:NSArray.class]) {
+        return @[];
+    }
+
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *options = [NSMutableArray array];
+    NSMutableSet<NSString *> *seenIDs = [NSMutableSet set];
+    for (id rawOption in (NSArray *)rawOptions) {
+        if (![rawOption isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSDictionary *option = (NSDictionary *)rawOption;
+        NSString *identifier = [self pp_novaStringFromValue:option[@"id"]];
+        NSString *title = [self pp_novaStringFromValue:option[@"title"]];
+        NSString *message = [self pp_novaStringFromValue:option[@"message"]];
+        if (identifier.length == 0 || title.length == 0 || message.length == 0 || [seenIDs containsObject:identifier]) {
+            continue;
+        }
+        [seenIDs addObject:identifier];
+        [options addObject:@{
+            @"id": identifier,
+            @"title": title,
+            @"message": message
+        }];
+        if (options.count >= 6) {
+            break;
+        }
+    }
+    return [options copy];
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaDisplayOptionsForIncomingText:(NSString *)text
+                                                                           explicitOptions:(NSArray<NSDictionary<NSString *, NSString *> *> *)options
+                                                                           derivedFromText:(BOOL *)derivedFromText {
+    if (derivedFromText) {
+        *derivedFromText = NO;
+    }
+    if (options.count > 0) {
+        return [options copy];
+    }
+
+    NSArray<NSDictionary<NSString *, NSString *> *> *inlineOptions = [self pp_novaInlineActionOptionsFromReplyText:text];
+    if (inlineOptions.count > 0 && derivedFromText) {
+        *derivedFromText = YES;
+    }
+    return inlineOptions;
+}
+
+- (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaInlineActionOptionsFromReplyText:(NSString *)replyText {
+    NSString *trimmedReply = [replyText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmedReply.length == 0) {
+        return @[];
+    }
+
+    BOOL hasChoiceContext = [self pp_novaReplyLooksLikeChoicePrompt:trimmedReply];
+    NSMutableArray<NSDictionary<NSString *, NSString *> *> *options = [NSMutableArray array];
+    NSMutableSet<NSString *> *seenMessages = [NSMutableSet set];
+    __block NSUInteger addedQuestionCount = 0;
+
+    NSArray<NSString *> *lines = [trimmedReply componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet];
+    [lines enumerateObjectsUsingBlock:^(NSString *line, __unused NSUInteger idx, BOOL *stop) {
+        NSString *title = [self pp_novaInlineActionTitleFromLine:line];
+        if (title.length == 0) {
+            return;
+        }
+
+        BOOL isQuestion = [title rangeOfString:@"؟"].location != NSNotFound ||
+                          [title rangeOfString:@"?"].location != NSNotFound;
+        if (!hasChoiceContext && !isQuestion) {
+            return;
+        }
+
+        NSString *message = [self pp_novaInlineActionMessageFromTitle:title];
+        if (message.length < 2) {
+            return;
+        }
+
+        NSString *dedupeKey = [message.lowercaseString stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (dedupeKey.length == 0 || [seenMessages containsObject:dedupeKey]) {
+            return;
+        }
+
+        [seenMessages addObject:dedupeKey];
+        if (isQuestion) {
+            addedQuestionCount++;
+        }
+
+        [options addObject:@{
+            @"id": [NSString stringWithFormat:@"visible_option_%lu", (unsigned long)(options.count + 1)],
+            @"title": message,
+            @"message": message
+        }];
+        if (options.count >= PPNovaInlineActionMaximumCount) {
+            *stop = YES;
+        }
+    }];
+
+    if (options.count < 2) {
+        return @[];
+    }
+    if (!hasChoiceContext && addedQuestionCount < 2) {
+        return @[];
+    }
+    return [options copy];
+}
+
+- (BOOL)pp_novaReplyLooksLikeChoicePrompt:(NSString *)text {
+    if (text.length == 0) {
+        return NO;
+    }
+
+    NSArray<NSString *> *markers = @[
+        @"هل تبحث", @"هل تريد", @"ما نوع", @"أي نوع", @"اي نوع",
+        @"اختر", @"اختاري", @"اختار", @"الخيارات", @"خيارات",
+        @"are you looking", @"do you want", @"what type", @"what kind",
+        @"which", @"choose", @"pick", @"select", @"options"
+    ];
+    for (NSString *marker in markers) {
+        if ([text rangeOfString:marker options:(NSCaseInsensitiveSearch | NSDiacriticInsensitiveSearch)].location != NSNotFound) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (NSString *)pp_novaInlineActionTitleFromLine:(NSString *)line {
+    NSString *trimmed = [line stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmed.length == 0) {
+        return @"";
+    }
+
+    NSRegularExpression *prefixRegex =
+    [NSRegularExpression regularExpressionWithPattern:@"^\\s*(?:[•●◦▪▫*\\-–—]+|[0-9٠-٩]+[\\.)\\-]|[A-Za-z][\\.)\\-])\\s*"
+                                             options:0
+                                               error:nil];
+    if (!prefixRegex) {
+        return @"";
+    }
+
+    NSString *stripped = [prefixRegex stringByReplacingMatchesInString:trimmed
+                                                                options:0
+                                                                  range:NSMakeRange(0, trimmed.length)
+                                                           withTemplate:@""];
+    stripped = [stripped stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (stripped.length == 0 || [stripped isEqualToString:trimmed]) {
+        return @"";
+    }
+    return stripped;
+}
+
+- (NSString *)pp_novaInlineActionMessageFromTitle:(NSString *)title {
+    NSMutableCharacterSet *trimSet = [[NSCharacterSet whitespaceAndNewlineCharacterSet] mutableCopy];
+    [trimSet addCharactersInString:@"؟?؛;:：.!！"];
+    return [title stringByTrimmingCharactersInSet:trimSet];
+}
+
+- (NSString *)pp_novaDisplayTextByRemovingInlineActionLinesFromText:(NSString *)text
+                                                     derivedOptions:(NSArray<NSDictionary<NSString *, NSString *> *> *)derivedOptions {
+    if (text.length == 0 || derivedOptions.count == 0) {
+        return text ?: @"";
+    }
+
+    NSMutableSet<NSString *> *optionMessages = [NSMutableSet set];
+    for (NSDictionary<NSString *, NSString *> *option in derivedOptions) {
+        NSString *message = [self pp_novaStringFromValue:option[@"message"]];
+        NSString *key = [message.lowercaseString stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (key.length > 0) {
+            [optionMessages addObject:key];
+        }
+    }
+
+    NSMutableArray<NSString *> *keptLines = [NSMutableArray array];
+    NSArray<NSString *> *lines = [text componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet];
+    for (NSString *line in lines) {
+        NSString *title = [self pp_novaInlineActionTitleFromLine:line];
+        NSString *message = [self pp_novaInlineActionMessageFromTitle:title];
+        NSString *key = [message.lowercaseString stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (key.length > 0 && [optionMessages containsObject:key]) {
+            continue;
+        }
+        NSString *trimmedLine = [line stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (trimmedLine.length > 0) {
+            [keptLines addObject:trimmedLine];
+        }
+    }
+
+    NSString *displayText = [[keptLines componentsJoinedByString:@"\n"] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    return displayText ?: @"";
+}
+
 - (void)pp_logNovaIncomingObjects:(NSArray *)objects
                         requestID:(NSString *)requestID
                        responseID:(NSString *)responseID
@@ -1305,7 +1523,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                         [lower containsString:@"found"] ||
                         [lower containsString:@"here are"];
     NSArray<NSString *> *resultTerms = @[
-        @"نتائج", @"نتيجة", @"خيارات", @"خيار", @"خدمات", @"خدمة",
+        @"نتائج", @"نتيجة", @"خيار��ت", @"خيار", @"خدمات", @"خدمة",
         @"عيادات", @"عيادة", @"منتجات", @"منتج", @"results", @"options",
         @"services", @"service", @"clinics", @"clinic", @"vets", @"products"
     ];
@@ -1760,10 +1978,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	            NSString *serverAction = nil;
 	            NSString *responseID = nil;
 	            NSDictionary *responseData = nil;
+	            NSArray<NSDictionary<NSString *, NSString *> *> *replyOptions = @[];
 	            NSArray<NSDictionary<NSString *, NSString *> *> *suggestionRefs = @[];
 	            if ([result.data isKindOfClass:NSDictionary.class]) {
 	                NSDictionary *data = (NSDictionary *)result.data;
 	                responseData = data;
+	                replyOptions = [self pp_novaOptionsFromResponseData:data];
 	                responseID = [self pp_novaResponseIDFromResponseData:data requestID:requestID source:@"server"];
 	                self.activeNovaResponseID = responseID;
 	                LOG_INFO(@"[PPNovaChat][Debug] responseKeys=%@ httpStatus=%@",
@@ -1824,7 +2044,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                    [self hideNovaTyping];
 	                    NSString *sanitizedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:YES];
 	                    if (sanitizedReply.length > 0) {
-	                        [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                        [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID options:replyOptions];
 	                    }
 	                    return;
 	                }
@@ -1853,7 +2073,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                                             userText:trimmedText
 	                                                               source:@"server_empty_response"
 	                                                            requestID:requestID
-	                                                           responseID:responseID];
+	                                                           responseID:responseID
+	                                                              options:replyOptions];
 	                }
 	                return;
 	            }
@@ -1868,7 +2089,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                            pendingResolvedProductText = nil;
 	                        } else {
 	                            [self hideNovaTyping];
-	                            [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                            [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID options:replyOptions];
 	                            return;
 	                        }
 	                    } else if (suggestionRefs.count > 0) {
@@ -1878,7 +2099,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                        pendingResolvedProductText = sanitizedReply;
 	                    } else {
 	                        [self hideNovaTyping];
-	                        [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+	                        [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID options:replyOptions];
 	                        return;
 	                    }
 	                } else if (suggestionRefs.count == 0) {
@@ -1890,7 +2111,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                    NSString *unstrippedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
 	                    if (unstrippedReply.length > 0) {
 	                        [self hideNovaTyping];
-	                        [self addNovaMessage:unstrippedReply requestID:requestID responseID:responseID];
+	                        [self addNovaMessage:unstrippedReply requestID:requestID responseID:responseID options:replyOptions];
 	                        return;
 	                    } else {
 	                        [self hideNovaTyping];
@@ -1900,7 +2121,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                                                     userText:trimmedText
 	                                                                       source:@"server_text_stripped_empty"
 	                                                                    requestID:requestID
-	                                                                   responseID:responseID];
+	                                                                   responseID:responseID
+	                                                                      options:replyOptions];
 	                        }
 	                        return;
 	                    }
@@ -1915,15 +2137,16 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                // products it can resolve. Templated apologies on resolution
 	                // failure are gone.
 	                [self pp_fetchAndShowNovaSuggestionRefs:suggestionRefs
-	                                           fallbackText:pendingResolvedProductText ?: suggestionFallbackText
+	                                           fallbackText:suggestionFallbackText
 	                                               userText:trimmedText
 	                                              requestID:requestID
 	                                             responseID:responseID
 	                                             generation:generation
 	                                    backendResultCount:backendResultCount
 	                                 backendResultRefsCount:backendResultRefsCount
-	                                        cardsRequired:mustRenderCells
-	                                          resultSource:resultSource];
+	                                         cardsRequired:mustRenderCells
+	                                           resultSource:resultSource
+	                                                options:replyOptions];
 	            } else {
 	                [self hideNovaTyping];
 	                if (hasCatalogIntent) {
@@ -1932,7 +2155,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                                             userText:trimmedText
 	                                                               source:@"server_no_refs"
 	                                                            requestID:requestID
-	                                                           responseID:responseID];
+	                                                           responseID:responseID
+	                                                              options:replyOptions];
 	                }
 		            }
 	        });
@@ -1950,6 +2174,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     NSDictionary *responseData = [reply.responseData isKindOfClass:NSDictionary.class] ? reply.responseData : nil;
     NSString *replyText = [reply.text ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSArray<NSDictionary<NSString *, NSString *> *> *replyOptions = [self pp_novaOptionsFromResponseData:responseData];
     NSString *responseID = responseData
         ? [self pp_novaResponseIDFromResponseData:responseData requestID:requestID source:@"agent_proxy"]
         : (fallbackResponseID.length > 0 ? fallbackResponseID : [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"agent_proxy"]);
@@ -1998,7 +2223,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                      userText:trimmedText
                                                        source:@"agent_proxy_empty_response"
                                                     requestID:requestID
-                                                   responseID:responseID];
+                                                   responseID:responseID
+                                                      options:replyOptions];
         }
         return;
     }
@@ -2011,28 +2237,29 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             if ([self pp_novaReplyContainsNoProductClaim:sanitizedReply]) {
                 if (suggestionRefs.count == 0) {
                     [self hideNovaTyping];
-                    [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+                    [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID options:replyOptions];
                     return;
                 }
             } else if (suggestionRefs.count > 0) {
                 pendingResolvedProductText = [self pp_novaCardFocusedAssistantTextFromText:sanitizedReply];
             } else {
                 [self hideNovaTyping];
-                [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID];
+                [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID options:replyOptions];
                 return;
             }
         } else if (suggestionRefs.count == 0) {
             NSString *unstrippedReply = [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO];
             [self hideNovaTyping];
             if (unstrippedReply.length > 0) {
-                [self addNovaMessage:unstrippedReply requestID:requestID responseID:responseID];
+                [self addNovaMessage:unstrippedReply requestID:requestID responseID:responseID options:replyOptions];
             } else if (hasCatalogIntent) {
                 [self pp_addNovaProductResultTextForRenderedCount:0
                                                      proposedText:nil
                                                          userText:trimmedText
                                                            source:@"agent_proxy_text_stripped_empty"
                                                         requestID:requestID
-                                                       responseID:responseID];
+                                                       responseID:responseID
+                                                          options:replyOptions];
             }
             return;
         } else {
@@ -2051,7 +2278,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                             backendResultCount:backendResultCount
                          backendResultRefsCount:backendResultRefsCount
                                 cardsRequired:mustRenderCells
-                                  resultSource:resultSource];
+                                  resultSource:resultSource
+                                       options:replyOptions];
     } else {
         [self hideNovaTyping];
         if (hasCatalogIntent) {
@@ -2060,7 +2288,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                      userText:trimmedText
                                                        source:@"agent_proxy_no_refs"
                                                     requestID:requestID
-                                                   responseID:responseID];
+                                                   responseID:responseID
+                                                      options:replyOptions];
         }
     }
 }
@@ -2579,7 +2808,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                         backendResultCount:(NSUInteger)backendResultCount
                      backendResultRefsCount:(NSUInteger)backendResultRefsCount
                              cardsRequired:(BOOL)cardsRequired
-                               resultSource:(NSString *)resultSource {
+                               resultSource:(NSString *)resultSource
+                                    options:(NSArray<NSDictionary<NSString *, NSString *> *> *)options {
     if (refs.count == 0) {
         if (cardsRequired || backendResultCount > 0) {
             [self pp_handleNovaCellRenderMissingWithRequestID:requestID
@@ -2749,20 +2979,22 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                                     cellsCreated:0
 	                                                           source:resultSource ?: @"server"
 	                                                           reason:@"resolution_empty"];
-	            } else if (hasAssistantText) {
+	            } else if (hasAssistantText || options.count > 0) {
 	                [self pp_addNovaProductResultTextForRenderedCount:0
 	                                                     proposedText:fallbackText
 	                                                         userText:userText
 	                                                           source:@"server_resolution_empty_assistantText_preserved"
 	                                                        requestID:requestID
-	                                                       responseID:responseID];
+	                                                       responseID:responseID
+	                                                          options:options];
 	            } else if ([self pp_novaHasCatalogSearchIntentForUserText:userText]) {
 	                [self pp_addNovaProductResultTextForRenderedCount:0
 	                                                     proposedText:nil
 	                                                         userText:userText
 	                                                           source:@"server_resolution_empty"
 	                                                        requestID:requestID
-	                                                       responseID:responseID];
+	                                                       responseID:responseID
+	                                                          options:nil];
 	            }
 	            return;
 	        }
@@ -2796,7 +3028,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                                 userText:userText
 	                                                   source:@"server"
 	                                                requestID:requestID
-	                                               responseID:responseID];
+	                                               responseID:responseID
+	                                                  options:options];
 	        [self pp_showNovaSuggestionObjects:objects
 	                                    source:@"server"
 	                                 requestID:requestID
@@ -3156,7 +3389,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                  userText:trimmedText
                                                    source:@"local"
                                                 requestID:requestID
-                                               responseID:responseID];
+                                               responseID:responseID
+                                                  options:nil];
         [self pp_showNovaSuggestionObjects:ranked
                                     source:@"local"
                                  requestID:requestID
@@ -3326,7 +3560,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                            userText:(NSString *)userText
                                              source:(NSString *)source
                                           requestID:(NSString *)requestID
-                                         responseID:(NSString *)responseID {
+                                         responseID:(NSString *)responseID
+                                            options:(NSArray<NSDictionary<NSString *, NSString *> *> *)options {
     if (![self pp_canAttachNovaRenderForRequestID:requestID
                                        responseID:responseID
                                        generation:self.novaRequestGeneration
@@ -3353,26 +3588,21 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         }
     }
 
-    LOG_INFO(@"NOVA_PRODUCTS_COUNT request_id=%@ response_id=%@ count=%lu source=%@",
-             requestID ?: @"",
-             responseID ?: @"",
-             (unsigned long)renderedCount,
-             source ?: @"unknown");
-    LOG_INFO(@"NOVA_RENDERED_CELL_COUNT request_id=%@ response_id=%@ rendered=%lu source=%@",
-             requestID ?: @"",
-             responseID ?: @"",
-             (unsigned long)renderedCount,
-             source ?: @"unknown");
-    LOG_INFO(@"NOVA_TEXT_DECISION request_id=%@ response_id=%@ decision=%@ rendered=%lu source=%@ text=%@",
+    LOG_INFO(@"NOVA_TEXT_DECISION request_id=%@ response_id=%@ decision=%@ rendered=%lu source=%@ text=%@ hasOptions=%@",
              requestID ?: @"",
              responseID ?: @"",
              decision,
              (unsigned long)renderedCount,
              source ?: @"unknown",
-             textToShow ?: @"");
+             textToShow ?: @"",
+             options.count > 0 ? @"YES" : @"NO");
 
     if (textToShow.length > 0 && ![self pp_lastNovaTextMessageEquals:textToShow]) {
-        [self addNovaMessage:textToShow requestID:requestID responseID:responseID];
+        [self addNovaMessage:textToShow requestID:requestID responseID:responseID options:options];
+    } else if (options.count > 0) {
+        // If there's no text but there are options, we still want to show the options.
+        // Usually Nova always provides text, but this is a safety fallback.
+        [self addNovaMessage:@"" requestID:requestID responseID:responseID options:options];
     }
 }
 
@@ -6902,6 +7132,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
 
     PPNovaMessageBubbleCell *cell = [tableView dequeueReusableCellWithIdentifier:presentation.style.stableReuseIdentifier forIndexPath:indexPath];
+    cell.delegate = self;
     cell.accessibilityIdentifier = presentation.renderKey;
     [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
     /*
@@ -7024,6 +7255,26 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         cell.alpha = 1.0;
         cell.transform = CGAffineTransformIdentity;
     } completion:nil];
+}
+
+#pragma mark - PPNovaMessageBubbleCellDelegate
+
+- (void)novaMessageCell:(__unused PPNovaMessageBubbleCell *)cell
+   didTapActionAtIndex:(NSInteger)index
+                  title:(__unused NSString *)title
+           messageModel:(ChatMessageModel *)messageModel {
+    if (index < 0 || index >= (NSInteger)messageModel.novaOptions.count) {
+        return;
+    }
+    NSDictionary<NSString *, NSString *> *option = messageModel.novaOptions[(NSUInteger)index];
+    NSString *message = [self pp_novaStringFromValue:option[@"message"]];
+    if (message.length == 0) {
+        return;
+    }
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback prepare];
+    [feedback impactOccurred];
+    [self pp_handleNovaSubmittedText:message];
 }
 
 #pragma mark - PPNovaFloatingInputBarViewDelegate
@@ -7274,7 +7525,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)addNovaMessage:(NSString *)text requestID:(NSString *)requestID responseID:(NSString *)responseID {
-    [self addMessageWithText:text isIncoming:YES requestID:requestID responseID:responseID];
+    [self addNovaMessage:text requestID:requestID responseID:responseID options:nil];
+}
+
+- (void)addNovaMessage:(NSString *)text
+             requestID:(NSString *)requestID
+            responseID:(NSString *)responseID
+               options:(NSArray<NSDictionary<NSString *, NSString *> *> *)options {
+    [self addMessageWithText:text isIncoming:YES requestID:requestID responseID:responseID options:options];
 }
 
 // Adds a Nova-side system bubble (connectivity status, blocked-account, etc.)
@@ -7309,9 +7567,35 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                 isIncoming:(BOOL)isIncoming
                  requestID:(NSString *)requestID
                 responseID:(NSString *)responseID {
+    [self addMessageWithText:text isIncoming:isIncoming requestID:requestID responseID:responseID options:nil];
+}
+
+- (void)addMessageWithText:(NSString *)text
+                isIncoming:(BOOL)isIncoming
+                 requestID:(NSString *)requestID
+                responseID:(NSString *)responseID
+                   options:(NSArray<NSDictionary<NSString *, NSString *> *> *)options {
+    NSString *memoryText = text ?: @"";
+    NSString *displayText = memoryText;
+    BOOL derivedInlineOptions = NO;
+    NSArray<NSDictionary<NSString *, NSString *> *> *displayOptions = @[];
+    if (isIncoming) {
+        displayOptions = [self pp_novaDisplayOptionsForIncomingText:memoryText
+                                                    explicitOptions:options
+                                                    derivedFromText:&derivedInlineOptions];
+        if (derivedInlineOptions) {
+            displayText = [self pp_novaDisplayTextByRemovingInlineActionLinesFromText:memoryText
+                                                                       derivedOptions:displayOptions];
+            LOG_INFO(@"[PPNovaChat][Options] derived_visible_options=%lu display_text_chars=%lu original_text_chars=%lu",
+                     (unsigned long)displayOptions.count,
+                     (unsigned long)displayText.length,
+                     (unsigned long)memoryText.length);
+        }
+    }
+
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [[NSUUID UUID] UUIDString];
-    msg.text = text;
+    msg.text = displayText;
     msg.timestamp = [NSDate date];
     msg.status = ChatMessageStatusSent;
     msg.messageType = ChatMessageTypeText;
@@ -7321,8 +7605,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     // Lesson: text-only / clarification / correction / rejection bubbles never
     // own card payloads. Cards belong only to the response that returned them.
     msg.novaProducts = nil;
+    msg.novaOptions = (isIncoming && displayOptions.count > 0) ? [displayOptions copy] : nil;
 
-    [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:isIncoming ? @"nova" : @"user" text:text];
+    [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:isIncoming ? @"nova" : @"user" text:memoryText];
 
     [[PPChatFeedbackManager shared] playFeedbackForEvent:isIncoming ? PPChatFeedbackEventIncomingActiveChat : PPChatFeedbackEventOutgoingSend];
     [self pp_appendNovaMessageModel:msg updateReason:isIncoming ? @"insert_assistant_text" : @"insert_user_text"];

@@ -67,6 +67,10 @@
                                   : ChatMessageTypeText;
         _novaRequestID = dict[@"novaRequestID"] ?: dict[@"nova_request_id"];
         _novaResponseID = dict[@"novaResponseID"] ?: dict[@"nova_response_id"];
+        id novaOptions = dict[@"novaOptions"] ?: dict[@"nova_options"];
+        if ([novaOptions isKindOfClass:NSArray.class]) {
+            _novaOptions = novaOptions;
+        }
 
         // Media
         _fileURL      = dict[@"fileURL"] ?: dict[@"file_url"];
@@ -140,6 +144,7 @@
     dict[@"type"] = @(self.messageType);
     if (self.novaRequestID.length > 0) dict[@"novaRequestID"] = self.novaRequestID;
     if (self.novaResponseID.length > 0) dict[@"novaResponseID"] = self.novaResponseID;
+    if (self.novaOptions.count > 0) dict[@"novaOptions"] = self.novaOptions;
 
     if (self.fileURL)        dict[@"fileURL"] = self.fileURL;
     if (self.thumbnailURL)   dict[@"thumbnailURL"] = self.thumbnailURL;
@@ -203,6 +208,7 @@
     [coder encodeInteger:self.status forKey:@"status"];
     [coder encodeInteger:self.messageType forKey:@"type"];
     [coder encodeObject:self.novaProducts forKey:@"novaProducts"];
+    [coder encodeObject:self.novaOptions forKey:@"novaOptions"];
     [coder encodeObject:self.novaRequestID forKey:@"novaRequestID"];
     [coder encodeObject:self.novaResponseID forKey:@"novaResponseID"];
 
@@ -247,6 +253,8 @@
         _status = [coder decodeIntegerForKey:@"status"];
         _messageType = [coder decodeIntegerForKey:@"type"];
         _novaProducts = [coder decodeObjectOfClass:[NSArray class] forKey:@"novaProducts"];
+        NSSet *novaOptionClasses = [NSSet setWithObjects:NSArray.class, NSDictionary.class, NSString.class, nil];
+        _novaOptions = [coder decodeObjectOfClasses:novaOptionClasses forKey:@"novaOptions"];
         _novaRequestID = [coder decodeObjectOfClass:NSString.class forKey:@"novaRequestID"];
         _novaResponseID = [coder decodeObjectOfClass:NSString.class forKey:@"novaResponseID"];
 

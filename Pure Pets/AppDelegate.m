@@ -98,22 +98,11 @@
         [self pp_configureAppCheckIfAvailable];
         [FIRApp configure];
         [self pp_enableAppCheckTokenAutoRefreshIfAvailable];
-        // Firestore persistence is enabled by default in Firebase iOS SDK 12.x.
-        // Cache size uses the SDK default (100MB with auto-GC).
-
-        
-#if DEBUG
-        [FIRFirestore enableLogging:YES];
-        [[FIRConfiguration sharedInstance] setLoggerLevel:FIRLoggerLevelMin];
-#else
-        [FIRFirestore enableLogging:NO];
-        [[FIRConfiguration sharedInstance] setLoggerLevel:FIRLoggerLevelError];
-#endif
+      
         [FIRMessaging messaging].delegate = self;
     });
     
-    [FIRFirestore enableLogging:YES];
-    [[FIRConfiguration sharedInstance] setLoggerLevel:FIRLoggerLevelMin];
+    [[FIRConfiguration sharedInstance] setLoggerLevel:FIRLoggerLevelError];
 
     // ✅ Register global Firestore error observer (non-blocking banner)
     [PPFirestoreErrorNotifier registerGlobalObserver];
@@ -131,8 +120,7 @@
         }
     }];
     
-    [FIRAnalytics logEventWithName:@"test_event"
-                          parameters:@{@"status": @"app_opened"}];
+    //[FIRAnalytics logEventWithName:@"test_event" parameters:@{@"status": @"app_opened"}];
     
    
     [self initFIRInstallations];
@@ -212,13 +200,10 @@
     [[UILabel appearanceWhenContainedInInstancesOfClasses:@[[UITableViewHeaderFooterView class]]] setTextColor:headerColor];
         
     [[UITableViewHeaderFooterView appearance] setTintColor:[UIColor clearColor]];
-    //[[PPImageLoaderManager shared] clearDiskCache];
-    //[[PPImageLoaderManager shared] clearMemoryCache];
-    //[self clearAudioCache];
-    //[[NSURLCache sharedURLCache] removeAllCachedResponses];
-    #if DEBUG
-    [PPPaymentManager setSimulatedPaymentSuccessEnabled:NO];
-    #endif
+  
+    //#if DEBUG
+    //[PPPaymentManager setSimulatedPaymentSuccessEnabled:NO];
+    //#endif
 
     return YES;
 }
@@ -369,12 +354,10 @@
 {
     [self pp_linkFirebaseAppCheckSymbolsIfAvailable];
 
-    Class appCheckClass = NSClassFromString(@"FIRAppCheck");
-    SEL setter = NSSelectorFromString(@"setAppCheckProviderFactory:");
-    if (!appCheckClass || ![appCheckClass respondsToSelector:setter]) {
-        NSLog(@"[AppCheck] SDK not linked; skipping runtime provider setup.");
-        return;
-    }
+#if !PP_HAS_FIREBASE_APPCHECK
+    NSLog(@"[AppCheck] SDK not linked; skipping runtime provider setup.");
+    return;
+#endif
 
     id providerFactory = nil;
     NSString *selectedProviderName = nil;
@@ -388,11 +371,8 @@
     }
 
     if (!providerFactory) {
-        // Production/dev-default path for iOS devices that use DeviceCheck (more compatible in current Firebase setup).
         if ([self pp_shouldUseAppAttestAppCheckProvider] && @available(iOS 14.0, *)) {
-#if PP_HAS_FIREBASE_APPCHECK
             providerFactory = [[PPAppCheckAppAttestProviderFactory alloc] init];
-#endif
             if (providerFactory) {
                 selectedProviderName = @"AppAttest";
             } else {
@@ -407,7 +387,6 @@
         }
     }
 
-    // Safety fallback: simulator cannot perform App Attest / DeviceCheck properly.
 #if TARGET_OS_SIMULATOR
     if (!providerFactory) {
         providerFactory = [self pp_appCheckProviderFactoryForClassName:@"FIRAppCheckDebugProviderFactory"];
@@ -418,10 +397,8 @@
 #endif
 
 #if !DEBUG
-    if (@available(iOS 14.0, *)) {
-        if ([selectedProviderName isEqualToString:@"Debug"]) {
-            NSLog(@"[AppCheck] Debug provider forced in non-debug build. Use only for internal testing.");
-        }
+    if ([selectedProviderName isEqualToString:@"Debug"]) {
+        NSLog(@"[AppCheck] Debug provider forced in non-debug build. Use only for internal testing.");
     }
 #endif
 
@@ -430,17 +407,15 @@
         return;
     }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    [appCheckClass performSelector:setter withObject:providerFactory];
-#pragma clang diagnostic pop
+    // Direct call — the @import FirebaseAppCheck above guarantees the symbol is available.
+    [FIRAppCheck setAppCheckProviderFactory:providerFactory];
 
     if ([selectedProviderName hasPrefix:@"Debug"]) {
         NSDictionary<NSString *, NSString *> *env = [NSProcessInfo processInfo].environment ?: @{};
         NSString *debugTokenHint = env[@"FIRAAppCheckDebugToken"];
         BOOL hasExplicitToken = [debugTokenHint isKindOfClass:[NSString class]] && debugTokenHint.length > 0;
         if (!hasExplicitToken) {
-            NSLog(@"[AppCheck] Debug provider active. If requests are blocked, copy the printed debug token and add it in Firebase Console > App Check > Manage debug tokens.");
+            NSLog(@"[AppCheck] Debug provider active. If requests are blocked, copy the debug token and add it in Firebase Console > App Check > Manage debug tokens.");
         }
     }
     NSLog(@"[AppCheck] Provider configured: %@.", selectedProviderName ?: @"Unknown");

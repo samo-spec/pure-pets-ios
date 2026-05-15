@@ -218,8 +218,8 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.typingDots = [dots copy];
 
     self.actionStack = [[UIStackView alloc] init];
-    self.actionStack.axis = UILayoutConstraintAxisHorizontal;
-    self.actionStack.alignment = UIStackViewAlignmentLeading;
+    self.actionStack.axis = UILayoutConstraintAxisVertical;
+    self.actionStack.alignment = UIStackViewAlignmentFill;
     self.actionStack.spacing = 8.0;
     self.actionStack.hidden = YES;
     [self.contentStack addArrangedSubview:self.actionStack];
@@ -787,6 +787,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.messageLabel.attributedText = nil;
     self.messageLabel.text = self.assistantMessage ? nil : (messageModel.text ?: @"");
     [self pp_applyStyleForAssistant:self.assistantMessage typing:NO];
+    [self setActionTitles:[self pp_actionTitlesFromMessage:messageModel]];
     self.timeLabel.text = [self pp_formattedTime:messageModel.timestamp];
     [self pp_stopTypingAnimation];
     [self pp_configureStatusForMessage:messageModel];
@@ -819,6 +820,24 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.accessibilityLabel = kLang(@"nova_typing");
 }
 
+- (NSArray<NSString *> *)pp_actionTitlesFromMessage:(ChatMessageModel *)messageModel {
+    if (!self.assistantMessage || ![messageModel.novaOptions isKindOfClass:NSArray.class]) {
+        return nil;
+    }
+    NSMutableArray<NSString *> *titles = [NSMutableArray array];
+    for (NSDictionary<NSString *, NSString *> *option in messageModel.novaOptions) {
+        if (![option isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSString *title = [option[@"title"] isKindOfClass:NSString.class] ? option[@"title"] : @"";
+        title = [title stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (title.length > 0) {
+            [titles addObject:title];
+        }
+    }
+    return titles.count > 0 ? [titles copy] : nil;
+}
+
 - (void)setActionTitles:(nullable NSArray<NSString *> *)actionTitles {
     for (UIView *view in self.actionStack.arrangedSubviews) {
         [self.actionStack removeArrangedSubview:view];
@@ -838,6 +857,11 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.tag = (NSInteger)idx;
         button.titleLabel.font = [GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+        button.titleLabel.numberOfLines = 2;
+        button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        button.titleLabel.textAlignment = PPNovaAlignmentForText(title);
+        button.semanticContentAttribute = PPNovaSemanticForText(title);
+        button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
         button.contentEdgeInsets = UIEdgeInsetsMake(7.0, 11.0, 7.0, 11.0);
         button.layer.cornerRadius = 14.0;
         button.layer.masksToBounds = YES;

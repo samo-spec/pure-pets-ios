@@ -406,28 +406,6 @@ static NSString *PPPaymentFunctionsRegion(void)
     return configured.length > 0 ? configured : @"us-central1";
 }
 
-static void PPPaymentConfigureLimitedUseTokensIfSupported(FIRFunctions *functions)
-{
-    if (!functions) return;
-
-    SEL setter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
-    if (![functions respondsToSelector:setter]) {
-        return;
-    }
-
-    NSMethodSignature *signature = [functions methodSignatureForSelector:setter];
-    if (!signature) {
-        return;
-    }
-
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-    BOOL enabled = YES;
-    [invocation setSelector:setter];
-    [invocation setTarget:functions];
-    [invocation setArgument:&enabled atIndex:2];
-    [invocation invoke];
-}
-
 static FIRFunctions *PPPaymentFunctionsClient(void)
 {
     FIRFunctions *functions = nil;
@@ -437,7 +415,10 @@ static FIRFunctions *PPPaymentFunctionsClient(void)
     } else {
         functions = [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
     }
-    PPPaymentConfigureLimitedUseTokensIfSupported(functions);
+    // App Check tokens are auto-attached by FIRFunctions when FIRAppCheck is
+    // configured globally in AppDelegate. The previous private-API invocation
+    // (setUseAppCheckLimitedUseTokens: via NSInvocation) was removed — it
+    // silently failed on SDK 12.12.0 and blocked token attachment entirely.
     return functions;
 }
 
