@@ -14,7 +14,9 @@ NS_ASSUME_NONNULL_BEGIN
 typedef NS_ENUM(NSInteger, PPOrderStatus) {
     PPOrderStatusPending,
     PPOrderStatusPaid,
-    PPOrderStatusFailed
+    PPOrderStatusFailed,
+    PPOrderStatusCancelled,
+    PPOrderStatusAbandoned
 };
 
 @interface PPOrder : NSObject
