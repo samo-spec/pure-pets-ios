@@ -31,7 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Nova Product integration
 @property (nonatomic, copy, nullable) NSArray<PetAccessory *> *novaProducts;
-@property (nonatomic, copy, nullable) NSArray<NSDictionary<NSString *, NSString *> *> *novaOptions;
+@property (nonatomic, copy, nullable) NSArray<NSDictionary<NSString *, id> *> *novaOptions;
 @property (nonatomic, copy, nullable) NSString *novaRequestID;
 @property (nonatomic, copy, nullable) NSString *novaResponseID;
 

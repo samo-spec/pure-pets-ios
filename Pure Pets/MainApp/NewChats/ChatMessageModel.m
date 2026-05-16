@@ -253,7 +253,7 @@
         _status = [coder decodeIntegerForKey:@"status"];
         _messageType = [coder decodeIntegerForKey:@"type"];
         _novaProducts = [coder decodeObjectOfClass:[NSArray class] forKey:@"novaProducts"];
-        NSSet *novaOptionClasses = [NSSet setWithObjects:NSArray.class, NSDictionary.class, NSString.class, nil];
+        NSSet *novaOptionClasses = [NSSet setWithObjects:NSArray.class, NSDictionary.class, NSString.class, NSNumber.class, NSNull.class, nil];
         _novaOptions = [coder decodeObjectOfClasses:novaOptionClasses forKey:@"novaOptions"];
         _novaRequestID = [coder decodeObjectOfClass:NSString.class forKey:@"novaRequestID"];
         _novaResponseID = [coder decodeObjectOfClass:NSString.class forKey:@"novaResponseID"];

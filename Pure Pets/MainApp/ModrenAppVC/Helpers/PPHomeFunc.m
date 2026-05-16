@@ -702,7 +702,11 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
+    item.edgeSpacing = [NSCollectionLayoutEdgeSpacing
+                        spacingForLeading:[NSCollectionLayoutSpacing fixedSpacing:6]
+                        top:[NSCollectionLayoutSpacing fixedSpacing:0]
+                        trailing:[NSCollectionLayoutSpacing fixedSpacing:6]
+                        bottom:[NSCollectionLayoutSpacing fixedSpacing:0]];
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize

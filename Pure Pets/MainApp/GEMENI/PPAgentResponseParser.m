@@ -17,7 +17,7 @@
     if (!data) {
         data = [self resultPayloadFromAgentEventDictionary:json];
     }
-    if (!data && (json[@"assistantText"] || json[@"options"])) {
+    if (!data && (json[@"text"] || json[@"assistantText"] || json[@"options"] || json[@"cards"])) {
         data = json;
     }
     NSString *text = nil;
@@ -47,8 +47,8 @@
         }
 
         if (!eventPayload) {
-            for (NSString *k in @[ @"assistantText", @"output", @"response", @"answer",
-                                   @"text", @"message", @"content" ]) {
+            for (NSString *k in @[ @"text", @"assistantText", @"output", @"response", @"answer",
+                                   @"message", @"content" ]) {
                 id v = d[k];
                 if ([v isKindOfClass:NSString.class] && [(NSString *)v length]) {
                     text = v;
@@ -118,7 +118,7 @@
     if (![data isKindOfClass:NSDictionary.class]) {
         return NO;
     }
-    for (NSString *key in @[ @"resultRefs", @"result_refs", @"products", @"items" ]) {
+    for (NSString *key in @[ @"resultRefs", @"result_refs", @"cards", @"products", @"items" ]) {
         id value = data[key];
         if ([value isKindOfClass:NSArray.class] && [(NSArray *)value count] > 0) {
             return YES;
@@ -126,6 +126,10 @@
     }
     id resultSet = data[@"result_set"] ?: data[@"resultSet"];
     if ([resultSet isKindOfClass:NSDictionary.class]) {
+        id cards = resultSet[@"cards"];
+        if ([cards isKindOfClass:NSArray.class] && [(NSArray *)cards count] > 0) {
+            return YES;
+        }
         id items = resultSet[@"items"];
         if ([items isKindOfClass:NSArray.class] && [(NSArray *)items count] > 0) {
             return YES;
@@ -156,7 +160,12 @@
         NSDictionary *response = [functionResponse[@"response"] isKindOfClass:NSDictionary.class]
             ? functionResponse[@"response"]
             : nil;
-        if ([self hasRenderableResultPayload:response]) {
+        BOOL hasOptions = [response[@"options"] isKindOfClass:NSArray.class] ||
+                          [response[@"suggestions"] isKindOfClass:NSArray.class] ||
+                          [response[@"quickReplies"] isKindOfClass:NSArray.class];
+        BOOL hasText = [response[@"text"] isKindOfClass:NSString.class] ||
+                       [response[@"assistantText"] isKindOfClass:NSString.class];
+        if ([self hasRenderableResultPayload:response] || hasOptions || hasText) {
             return response;
         }
     }
@@ -168,6 +177,32 @@
         return nil;
     }
     NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSRegularExpression *fencedJSON = [NSRegularExpression regularExpressionWithPattern:@"```(?:json)?\\s*(\\{(?:.|\\n|\\r)*\\})\\s*```"
+                                                                                options:NSRegularExpressionCaseInsensitive
+                                                                                  error:nil];
+    NSTextCheckingResult *fencedMatch = [fencedJSON firstMatchInString:trimmed
+                                                               options:0
+                                                                 range:NSMakeRange(0, trimmed.length)];
+    if (fencedMatch && fencedMatch.numberOfRanges > 1) {
+        NSRange jsonRange = [fencedMatch rangeAtIndex:1];
+        NSString *jsonText = [trimmed substringWithRange:jsonRange];
+        NSData *jsonData = [jsonText dataUsingEncoding:NSUTF8StringEncoding];
+        id parsed = jsonData ? [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:nil] : nil;
+        if ([parsed isKindOfClass:NSDictionary.class]) {
+            NSMutableDictionary *dict = [(NSDictionary *)parsed mutableCopy];
+            if (dict[@"text"] || dict[@"assistantText"] || dict[@"options"] || dict[@"cards"] || dict[@"resultRefs"] || dict[@"product_ids"]) {
+                NSString *visibleText = [fencedJSON stringByReplacingMatchesInString:trimmed
+                                                                              options:0
+                                                                                range:NSMakeRange(0, trimmed.length)
+                                                                         withTemplate:@""];
+                visibleText = [visibleText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+                if (!dict[@"text"] && !dict[@"assistantText"] && visibleText.length > 0) {
+                    dict[@"text"] = visibleText;
+                }
+                return [dict copy];
+            }
+        }
+    }
     if ([trimmed hasPrefix:@"```"]) {
         NSRegularExpression *openFence = [NSRegularExpression regularExpressionWithPattern:@"^```(?:json)?\\s*"
                                                                                    options:NSRegularExpressionCaseInsensitive
@@ -193,7 +228,7 @@
         return nil;
     }
     NSDictionary *dict = (NSDictionary *)parsed;
-    if (dict[@"assistantText"] || dict[@"options"] || dict[@"resultRefs"] || dict[@"product_ids"]) {
+    if (dict[@"text"] || dict[@"assistantText"] || dict[@"options"] || dict[@"cards"] || dict[@"resultRefs"] || dict[@"product_ids"]) {
         return dict;
     }
     return nil;
@@ -208,7 +243,9 @@
         return NO;
     }
     return [trimmed containsString:@"\"assistantText\""] ||
+           [trimmed containsString:@"\"text\""] ||
            [trimmed containsString:@"\"options\""] ||
+           [trimmed containsString:@"\"cards\""] ||
            [trimmed containsString:@"\"resultRefs\""] ||
            [trimmed containsString:@"\"cardsRequired\""] ||
            [trimmed containsString:@"\"product_ids\""];

@@ -20,21 +20,145 @@
 @end
 
 #if PP_HAS_FIREBASE_APPCHECK
-@interface PPAppCheckAppAttestProviderFactory : NSObject <FIRAppCheckProviderFactory>
+static void PPFetchAppCheckTokenFromProvider(id<FIRAppCheckProvider> provider,
+                                             BOOL limitedUse,
+                                             void (^handler)(FIRAppCheckToken * _Nullable, NSError * _Nullable)) {
+    if (!provider) {
+        if (handler) {
+            handler(nil, [NSError errorWithDomain:@"PPAppCheckError" code:-1 userInfo:@{NSLocalizedDescriptionKey: @"Missing provider"}]);
+        }
+        return;
+    }
+    if (limitedUse && [provider respondsToSelector:@selector(getLimitedUseTokenWithCompletion:)]) {
+        [provider getLimitedUseTokenWithCompletion:handler];
+    } else {
+        [provider getTokenWithCompletion:handler];
+    }
+}
+
+static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
+    if (!error) return NO;
+    NSString *domain = error.domain ?: @"";
+    if ([domain containsString:@"AppCheck"] || [domain containsString:@"AppAttest"]) {
+        return YES;
+    }
+    return NO;
+}
+
+@interface PPResilientAppCheckProvider : NSObject <FIRAppCheckProvider>
+- (instancetype)initWithAppAttestProvider:(id<FIRAppCheckProvider>)appAttestProvider
+                      deviceCheckProvider:(id<FIRAppCheckProvider>)deviceCheckProvider;
 @end
 
-@implementation PPAppCheckAppAttestProviderFactory
+@interface PPResilientAppCheckProvider ()
+@property (nonatomic, strong, nullable) id<FIRAppCheckProvider> appAttestProvider;
+@property (nonatomic, strong, nullable) id<FIRAppCheckProvider> deviceCheckProvider;
+@property (atomic, assign) BOOL usingDeviceCheckFallback;
+@end
+
+@implementation PPResilientAppCheckProvider
+
+- (instancetype)initWithAppAttestProvider:(id<FIRAppCheckProvider>)appAttestProvider
+                      deviceCheckProvider:(id<FIRAppCheckProvider>)deviceCheckProvider {
+    self = [super init];
+    if (self) {
+        _appAttestProvider = appAttestProvider;
+        _deviceCheckProvider = deviceCheckProvider;
+        _usingDeviceCheckFallback = NO;
+    }
+    return self;
+}
+
+- (void)getTokenWithCompletion:(void (^)(FIRAppCheckToken * _Nullable, NSError * _Nullable))handler {
+    [self pp_getTokenLimitedUse:NO completion:handler];
+}
+
+- (void)getLimitedUseTokenWithCompletion:(void (^)(FIRAppCheckToken * _Nullable, NSError * _Nullable))handler {
+    [self pp_getTokenLimitedUse:YES completion:handler];
+}
+
+- (void)pp_getTokenLimitedUse:(BOOL)limitedUse completion:(void (^)(FIRAppCheckToken * _Nullable, NSError * _Nullable))handler {
+    id<FIRAppCheckProvider> deviceCheckProvider = self.deviceCheckProvider;
+    if (self.usingDeviceCheckFallback || !self.appAttestProvider) {
+        PPFetchAppCheckTokenFromProvider(deviceCheckProvider, limitedUse, handler);
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    PPFetchAppCheckTokenFromProvider(self.appAttestProvider, limitedUse, ^(FIRAppCheckToken * _Nullable token, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            if (handler) {
+                handler(token, error);
+            }
+            return;
+        }
+
+        if (!error || !PPAppCheckErrorLooksLikeAppAttestFailure(error)) {
+            if (handler) {
+                handler(token, error);
+            }
+            return;
+        }
+
+        self.usingDeviceCheckFallback = YES;
+        NSLog(@"[AppCheck] App Attest failed for Pure Pets IOS. Falling back to DeviceCheck for this launch. Error: %@",
+              error.localizedDescription ?: @"unknown error");
+        PPFetchAppCheckTokenFromProvider(deviceCheckProvider, limitedUse, ^(FIRAppCheckToken * _Nullable fallbackToken, NSError * _Nullable fallbackError) {
+            if (fallbackToken || !fallbackError) {
+                if (handler) {
+                    handler(fallbackToken, nil);
+                }
+                return;
+            }
+
+            if (handler) {
+                handler(nil, fallbackError ?: error);
+            }
+        });
+    });
+}
+
+@end
+
+@interface PPAppCheckProviderFactory : NSObject <FIRAppCheckProviderFactory>
+@end
+
+@implementation PPAppCheckProviderFactory
 
 - (id<FIRAppCheckProvider>)createProviderWithApp:(FIRApp *)app
 {
 #if TARGET_OS_SIMULATOR
-    (void)app;
-    return nil;
+    return [[FIRAppCheckDebugProvider alloc] initWithApp:app];
 #else
-    if (@available(iOS 14.0, *)) {
-        return [[FIRAppAttestProvider alloc] initWithApp:app];
+    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+    NSDictionary<NSString *, NSString *> *env = processInfo.environment ?: @{};
+    NSString *forceEnv = env[@"PP_FORCE_APPCHECK_DEBUG_PROVIDER"];
+    NSString *debugTokenEnv = env[@"FIRAAppCheckDebugToken"];
+    BOOL forceFromEnv = [forceEnv isKindOfClass:[NSString class]] && [@[@"1", @"true", @"yes"] containsObject:[forceEnv lowercaseString]];
+    BOOL hasDebugTokenEnv = [debugTokenEnv isKindOfClass:NSString.class] && debugTokenEnv.length > 0;
+    
+    if (forceFromEnv || hasDebugTokenEnv) {
+        NSLog(@"[AppCheck] Using Debug provider for Pure Pets IOS.");
+        return [[FIRAppCheckDebugProvider alloc] initWithApp:app];
     }
-    return nil;
+    
+    if (@available(iOS 14.0, *)) {
+        id<FIRAppCheckProvider> attestProvider = [[FIRAppAttestProvider alloc] initWithApp:app];
+        if (attestProvider) {
+            id<FIRAppCheckProvider> deviceCheckProvider = [[FIRDeviceCheckProvider alloc] initWithApp:app];
+            if (deviceCheckProvider) {
+                NSLog(@"[AppCheck] Using App Attest provider with DeviceCheck fallback.");
+                return [[PPResilientAppCheckProvider alloc] initWithAppAttestProvider:attestProvider
+                                                                   deviceCheckProvider:deviceCheckProvider];
+            }
+            NSLog(@"[AppCheck] Using App Attest provider.");
+            return attestProvider;
+        }
+    }
+
+    NSLog(@"[AppCheck] Using DeviceCheck provider (fallback).");
+    return [[FIRDeviceCheckProvider alloc] initWithApp:app];
 #endif
 }
 
@@ -246,46 +370,6 @@
 #endif
 }
 
-- (id)pp_appCheckProviderFactoryForClassName:(NSString *)className
-{
-    if (className.length == 0) {
-        return nil;
-    }
-
-#if PP_HAS_FIREBASE_APPCHECK
-    if ([className isEqualToString:@"FIRAppCheckDebugProviderFactory"]) {
-        return [[FIRAppCheckDebugProviderFactory alloc] init];
-    }
-    if ([className isEqualToString:@"FIRDeviceCheckProviderFactory"]) {
-        return [[FIRDeviceCheckProviderFactory alloc] init];
-    }
-#endif
-
-    Class factoryClass = NSClassFromString(className);
-    if (!factoryClass) {
-        factoryClass = NSClassFromString([@"FirebaseAppCheck." stringByAppendingString:className]);
-    }
-    if (!factoryClass) {
-        return nil;
-    }
-
-    id providerFactory = [[factoryClass alloc] init];
-    if (providerFactory) {
-        return providerFactory;
-    }
-
-    // Backward-compatible fallback for SDKs that expose a class factory method.
-    SEL providerFactorySelector = NSSelectorFromString(@"providerFactory");
-    if (![factoryClass respondsToSelector:providerFactorySelector]) {
-        return nil;
-    }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-    return [factoryClass performSelector:providerFactorySelector];
-#pragma clang diagnostic pop
-}
-
 - (BOOL)pp_isTruthyValue:(NSString *)value
 {
     NSString *trimmed = [value isKindOfClass:[NSString class]]
@@ -314,39 +398,16 @@
     return YES;
 }
 
-- (BOOL)pp_shouldUseAppAttestAppCheckProvider
-{
-#if TARGET_OS_SIMULATOR
-    return NO;
-#else
-    NSProcessInfo *processInfo = [NSProcessInfo processInfo];
-    NSDictionary<NSString *, NSString *> *env = processInfo.environment ?: @{};
-    NSString *forceEnv = env[@"PP_FORCE_APPCHECK_APPACTEST_PROVIDER"];
-    if ([self pp_isTruthyValue:forceEnv]) {
-        return YES;
-    }
-
-    NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
-    id forceDefaultsValue = [prefs objectForKey:@"PPForceAppCheckAppAttestProvider"];
-    if ([forceDefaultsValue isKindOfClass:[NSNumber class]]) {
-        return [(NSNumber *)forceDefaultsValue boolValue];
-    }
-    if ([forceDefaultsValue isKindOfClass:[NSString class]]) {
-        return [self pp_isTruthyValue:(NSString *)forceDefaultsValue];
-    }
-
-    return NO;
-#endif
-}
-
 - (BOOL)pp_shouldUseDebugAppCheckProvider
 {
 #if TARGET_OS_SIMULATOR
     return YES;
-#elif DEBUG
-    return [self pp_shouldForceDebugAppCheckProvider];
 #else
-    return NO;
+  #if DEBUG
+    return YES;
+  #else
+    return [self pp_shouldForceDebugAppCheckProvider];
+  #endif
 #endif
 }
 
@@ -359,66 +420,15 @@
     return;
 #endif
 
-    id providerFactory = nil;
-    NSString *selectedProviderName = nil;
-    BOOL shouldPreferDebugProvider = [self pp_shouldUseDebugAppCheckProvider];
-
-    if (shouldPreferDebugProvider) {
-        providerFactory = [self pp_appCheckProviderFactoryForClassName:@"FIRAppCheckDebugProviderFactory"];
-        if (providerFactory) {
-            selectedProviderName = @"Debug";
-        }
-    }
-
-    if (!providerFactory) {
-        if ([self pp_shouldUseAppAttestAppCheckProvider] && @available(iOS 14.0, *)) {
-            providerFactory = [[PPAppCheckAppAttestProviderFactory alloc] init];
-            if (providerFactory) {
-                selectedProviderName = @"AppAttest";
-            } else {
-                NSLog(@"[AppCheck] AppAttest provider requested but unavailable. Falling back to DeviceCheck.");
-            }
-        }
-    }
-    if (!providerFactory) {
-        providerFactory = [self pp_appCheckProviderFactoryForClassName:@"FIRDeviceCheckProviderFactory"];
-        if (providerFactory) {
-            selectedProviderName = @"DeviceCheck";
-        }
-    }
-
-#if TARGET_OS_SIMULATOR
-    if (!providerFactory) {
-        providerFactory = [self pp_appCheckProviderFactoryForClassName:@"FIRAppCheckDebugProviderFactory"];
-        if (providerFactory) {
-            selectedProviderName = @"Debug (simulator fallback)";
-        }
-    }
-#endif
-
-#if !DEBUG
-    if ([selectedProviderName isEqualToString:@"Debug"]) {
-        NSLog(@"[AppCheck] Debug provider forced in non-debug build. Use only for internal testing.");
-    }
-#endif
-
-    if (!providerFactory) {
-        NSLog(@"[AppCheck] No provider factory available; skipping setup.");
-        return;
-    }
-
-    // Direct call — the @import FirebaseAppCheck above guarantees the symbol is available.
+    PPAppCheckProviderFactory *providerFactory = [[PPAppCheckProviderFactory alloc] init];
     [FIRAppCheck setAppCheckProviderFactory:providerFactory];
-
-    if ([selectedProviderName hasPrefix:@"Debug"]) {
-        NSDictionary<NSString *, NSString *> *env = [NSProcessInfo processInfo].environment ?: @{};
-        NSString *debugTokenHint = env[@"FIRAAppCheckDebugToken"];
-        BOOL hasExplicitToken = [debugTokenHint isKindOfClass:[NSString class]] && debugTokenHint.length > 0;
-        if (!hasExplicitToken) {
-            NSLog(@"[AppCheck] Debug provider active. If requests are blocked, copy the debug token and add it in Firebase Console > App Check > Manage debug tokens.");
-        }
+    
+    NSDictionary<NSString *, NSString *> *env = [NSProcessInfo processInfo].environment ?: @{};
+    NSString *debugTokenHint = env[@"FIRAAppCheckDebugToken"];
+    BOOL hasExplicitToken = [debugTokenHint isKindOfClass:[NSString class]] && debugTokenHint.length > 0;
+    if (!hasExplicitToken && [self pp_shouldUseDebugAppCheckProvider]) {
+        NSLog(@"[AppCheck] Debug provider active. If requests are blocked, copy the debug token and add it in Firebase Console > App Check > Manage debug tokens.");
     }
-    NSLog(@"[AppCheck] Provider configured: %@.", selectedProviderName ?: @"Unknown");
 }
 
 - (void)pp_enableAppCheckTokenAutoRefreshIfAvailable

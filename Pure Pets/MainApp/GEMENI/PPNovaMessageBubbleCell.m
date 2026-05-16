@@ -825,14 +825,18 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         return nil;
     }
     NSMutableArray<NSString *> *titles = [NSMutableArray array];
-    for (NSDictionary<NSString *, NSString *> *option in messageModel.novaOptions) {
+    for (NSDictionary<NSString *, id> *option in messageModel.novaOptions) {
         if (![option isKindOfClass:NSDictionary.class]) {
             continue;
         }
         NSString *title = [option[@"title"] isKindOfClass:NSString.class] ? option[@"title"] : @"";
         title = [title stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        NSString *subtitle = [option[@"subtitle"] isKindOfClass:NSString.class] ? option[@"subtitle"] : @"";
+        subtitle = [subtitle stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
         if (title.length > 0) {
-            [titles addObject:title];
+            [titles addObject:subtitle.length > 0
+                ? [NSString stringWithFormat:@"%@\n%@", title, subtitle]
+                : title];
         }
     }
     return titles.count > 0 ? [titles copy] : nil;

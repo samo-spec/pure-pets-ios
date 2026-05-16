@@ -1250,8 +1250,14 @@ static inline void PPDispatchMain(void (^block)(void)) {
 - (void)pp_disableGoogleSignInAppCheckClientAssertionForOAuth
 {
     if (@available(iOS 14.0, *)) {
-        // Firebase App Check stays enabled. This only prevents GoogleSignIn's optional
-        // OAuth client_assertion from opening accounts.google.com with "Token failed".
+        // FIXME: Google Sign-In KVC hack for App Check.
+        // This clears the internal App Check token from GIDSignIn.sharedInstance to prevent
+        // 'Token failed' errors when opening accounts.google.com if the iOS OAuth Client ID 
+        // is not correctly registered in Firebase App Check under the Google Cloud Console.
+        // Once the OAuth client ID is correctly linked to App Check in the console, this KVC
+        // hack should be removed so Google Sign-In is fully protected by App Check.
+        // Firebase App Check itself stays enabled for all other Firebase requests.
+        
         NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
         if ([defaults boolForKey:kPPGoogleSignInAppCheckPreparedDefaultsKey]) {
             [defaults removeObjectForKey:kPPGoogleSignInAppCheckPreparedDefaultsKey];

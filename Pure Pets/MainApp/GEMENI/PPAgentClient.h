@@ -2,9 +2,10 @@
 //  PPAgentClient.h
 //  PurePets
 //
-//  Network client for the Nova chat agent. Sends user text to the
-//  Cloud Run proxy with Firebase ID token + App Check token, parses
-//  the response into a PPAgentMessage on the main queue.
+//  Network client for the Nova ADK agent. Creates ADK sessions lazily,
+//  persists the session mapping across relaunches, sends messages via
+//  /run with Firebase ID token + App Check, and parses ADK event arrays
+//  into PPAgentMessage on the main queue.
 //
 
 #import <Foundation/Foundation.h>
@@ -12,9 +13,8 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-// Proxy URL constant — replace the placeholder with the real Cloud Run URL.
-// Accessible externally so the view controller can gate fallback behavior.
-extern NSString * const kPPAgentProxyURL;
+// ADK Cloud Run base URL.
+extern NSString * const kPPAgentBaseURL;
 
 @interface PPAgentClient : NSObject
 

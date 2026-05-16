@@ -129,7 +129,7 @@ PPUniversalCellDelegate>
     [super viewDidLoad];
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClrDarker);
+    self.view.backgroundColor = AppBageColor();
     self.results = @[];
     self.allSearchResults = @[];
     self.searchQueue = dispatch_queue_create("com.purepets.search.controller", DISPATCH_QUEUE_SERIAL);
