@@ -48,6 +48,12 @@ NSString * const kPPAgentProxyURL = @"https://pp-nova-agent-proxy-646051621158.u
 
 - (NSURLSessionDataTask *)sendMessage:(NSString *)message
                            completion:(void (^)(PPAgentMessage *, NSError *))completion {
+    return [self sendMessage:message language:nil completion:completion];
+}
+
+- (NSURLSessionDataTask *)sendMessage:(NSString *)message
+                             language:(NSString *)language
+                           completion:(void (^)(PPAgentMessage *, NSError *))completion {
 
     FIRUser *user = FIRAuth.auth.currentUser;
     if (!user) {
@@ -87,10 +93,14 @@ NSString * const kPPAgentProxyURL = @"https://pp-nova-agent-proxy-646051621158.u
         [req setValue:NSLocale.currentLocale.localeIdentifier
             forHTTPHeaderField:@"Accept-Language"];
 
-        NSDictionary *body = @{
+        NSMutableDictionary *body = [NSMutableDictionary dictionaryWithDictionary:@{
             @"message"   : message ?: @"",
             @"sessionId" : self.sessionId
-        };
+        }];
+        NSString *trimmedLang = [language stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (trimmedLang.length > 0) {
+            body[@"language"] = trimmedLang.lowercaseString;
+        }
         req.HTTPBody = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
 
         NSURLSessionDataTask *t = [self.session dataTaskWithRequest:req

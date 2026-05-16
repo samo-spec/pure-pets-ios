@@ -1430,7 +1430,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
     CGFloat targetTopInset =
     [self shouldShowFilterChipBarForSection:self.viewModel.currentSection]
-    ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + 18.0)
+    ? (PPCurrentSectionsTabBarHeight() + kPPAccessoryFilterHeight + 12.0)
     : (PPCurrentSectionsTabBarHeight() + 12.0);
     CGRect sectionsFrame = self.sectionsSegmentedControl.frame;
     CGRect safeAreaFrame = self.view.safeAreaLayoutGuide.layoutFrame;
@@ -1451,7 +1451,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         }
 
         targetTopInset =
-        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 8.0);
+        MAX(0.0, maxVisibleY - CGRectGetMinY(safeAreaFrame) + 12.0);
     }
 
     CGFloat bottomInset = 0;
@@ -3320,9 +3320,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.sectionsTabBarHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [sectionsControl.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:8.0],
-        [sectionsControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:16.0],
-        [sectionsControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0]
+        [sectionsControl.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
+        [sectionsControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
+        [sectionsControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0]
     ]];
     
     UIView *filterContainer = [[UIView alloc] init];
@@ -3339,7 +3339,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.filterChipHeightConstraint.active = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:8.0],
+        [filterContainer.topAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.bottomAnchor constant:12.0],
         [filterContainer.leadingAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.leadingAnchor],
         [filterContainer.trailingAnchor constraintEqualToAnchor:self.sectionsSegmentedControl.trailingAnchor]
     ]];
@@ -3351,7 +3351,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     chipsStack.axis = UILayoutConstraintAxisHorizontal;
     chipsStack.alignment = UIStackViewAlignmentCenter;
     chipsStack.distribution = UIStackViewDistributionFillEqually;
-    chipsStack.spacing = 8.0;
+    chipsStack.spacing = 12.0;
     chipsStack.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.filterChipStackView = chipsStack;
     [filterContainer addSubview:chipsStack];

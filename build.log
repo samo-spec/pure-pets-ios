@@ -1,0 +1,21 @@
+2026-05-15 22:36:34.788 xcodebuild[50190:833256]  DVTFilePathFSEvents: Failed to start fs event stream.
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -workspace "Pure Pets.xcworkspace" -scheme "Pure Pets" -sdk iphonesimulator clean build
+
+Build settings from command line:
+    SDKROOT = iphonesimulator26.4
+
+2026-05-15 22:36:35.600 xcodebuild[50190:833254] [MT] DVTAssertions: Warning in DVTFrameworks/DVTFoundation/FileTypes/DVTFileDataTypeDetection.m:80
+Details:  detectedTypeIdentifier (com.apple.binary-property-list) does not conform to matchedTypeIdentifier in MagicFileDataTypeDetector extenson com.apple.property-list. When both are specified, this conformance is required unless overridden by setting allowNonInheritance. extension.identifier:Xcode.MagicFileDataTypeDetector.BinaryPlist
+Object:   <DVTFileDataTypeDetectionMagicCache: 0xaa5ddfcf0>
+Method:   -initWithExtension:
+Thread:   <_NSMainThread: 0x102b921c0>{number = 1, name = main}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-05-15 22:36:35.601 xcodebuild[50190:833254] [MT] DVTAssertions: Warning in DVTFrameworks/DVTFoundation/FileTypes/DVTFileDataTypeDetection.m:80
+Details:  detectedTypeIdentifier (com.apple.xml-property-list) does not conform to matchedTypeIdentifier in MagicFileDataTypeDetector extenson com.apple.property-list. When both are specified, this conformance is required unless overridden by setting allowNonInheritance. extension.identifier:Xcode.MagicFileDataTypeDetector.XMLPlist
+Object:   <DVTFileDataTypeDetectionMagicCache: 0xaa5dde760>
+Method:   -initWithExtension:
+Thread:   <_NSMainThread: 0x102b921c0>{number = 1, name = main}
+Please file a bug at https://feedbackassistant.apple.com with this warning message and any useful information you can provide.
+2026-05-15 22:36:35.608 xcodebuild[50190:833254] Writing error result bundle to /var/folders/n6/5p16xph116n5w19rfp1yvvxh0000gn/T/ResultBundle_2026-15-05_22-36-0035.xcresult
+xcodebuild: error: 'Pure Pets.xcworkspace' is not a workspace file.

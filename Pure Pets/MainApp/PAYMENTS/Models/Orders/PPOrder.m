@@ -6,8 +6,10 @@
 //
 
 #import "PPOrder.h"
-#import "PPFormatSupport.h"
+#import "CountryModel.h"
 @import FirebaseFirestore;
+
+static BOOL PPOrderStatusContainsToken(NSString *status, NSString *token);
 
 static NSString *PPOrderTrimmedString(id value)
 {
@@ -32,6 +34,62 @@ static NSString *PPOrderNormalizedStatusString(id value)
         normalized = [normalized stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
     }
     return normalized;
+}
+
+static NSString *PPOrderNormalizedDeliveryStatusString(id value)
+{
+    NSString *normalized = PPOrderNormalizedStatusString(value);
+    if (normalized.length == 0) return @"";
+
+    if (PPOrderStatusContainsToken(normalized, @"cancelled") ||
+        PPOrderStatusContainsToken(normalized, @"canceled")) {
+        return @"delivery_cancelled";
+    }
+    if (PPOrderStatusContainsToken(normalized, @"returned_to_store")) {
+        return @"returned_to_store";
+    }
+    if (PPOrderStatusContainsToken(normalized, @"failed") ||
+        PPOrderStatusContainsToken(normalized, @"rejected") ||
+        PPOrderStatusContainsToken(normalized, @"declined") ||
+        PPOrderStatusContainsToken(normalized, @"expired") ||
+        PPOrderStatusContainsToken(normalized, @"voided") ||
+        PPOrderStatusContainsToken(normalized, @"error")) {
+        return @"delivery_failed";
+    }
+    if (PPOrderStatusContainsToken(normalized, @"completed") ||
+        PPOrderStatusContainsToken(normalized, @"fulfilled")) {
+        return @"completed";
+    }
+    if (PPOrderStatusContainsToken(normalized, @"delivered")) {
+        return @"delivered";
+    }
+    if ([normalized isEqualToString:@"payment_pending"] ||
+        [normalized isEqualToString:@"payment_confirmed"]) {
+        return normalized;
+    }
+    if ([normalized isEqualToString:@"picked_up"]) {
+        return @"picked_up";
+    }
+    if ([normalized isEqualToString:@"in_transit"] ||
+        [normalized isEqualToString:@"out_for_delivery"] ||
+        PPOrderStatusContainsToken(normalized, @"shipped") ||
+        PPOrderStatusContainsToken(normalized, @"shipping")) {
+        return @"in_transit";
+    }
+    if ([normalized isEqualToString:@"delivery_assigned"] ||
+        [normalized isEqualToString:@"awaiting_handover"]) {
+        return normalized;
+    }
+    if ([normalized isEqualToString:@"ready_to_ship"] ||
+        [normalized isEqualToString:@"delivery_requested"] ||
+        [normalized isEqualToString:@"delivery_reassigned"]) {
+        return normalized;
+    }
+    if ([normalized isEqualToString:@"ready_for_delivery"] ||
+        [normalized isEqualToString:@"ready"]) {
+        return @"delivery_requested";
+    }
+    return @"";
 }
 
 static BOOL PPOrderStatusContainsToken(NSString *status, NSString *token)
@@ -218,7 +276,23 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     order.updatedAt = [self parseDateFromValue:data[@"updatedAt"]];
     order.statusUpdatedAt = [self parseDateFromValue:data[@"statusUpdatedAt"]];
     order.paidAt = [self parseDateFromValue:data[@"paidAt"]];
+    order.processedAt = [self parseDateFromValue:data[@"processedAt"]];
+    order.readyAt = [self parseDateFromValue:data[@"readyAt"]];
+    order.readyToShipAt = [self parseDateFromValue:data[@"readyToShipAt"]];
+    order.deliveryRequestedAt = [self parseDateFromValue:data[@"deliveryRequestedAt"]];
+    order.deliveryAcceptedAt = [self parseDateFromValue:data[@"deliveryAcceptedAt"]];
+    order.pickedUpAt = [self parseDateFromValue:data[@"pickedUpAt"]];
+    order.inTransitAt = [self parseDateFromValue:data[@"inTransitAt"]];
+    order.shippedAt = [self parseDateFromValue:data[@"shippedAt"]];
+    order.deliveredAt = [self parseDateFromValue:data[@"deliveredAt"]];
+    order.paymentPendingAt = [self parseDateFromValue:data[@"paymentPendingAt"]];
+    order.paymentConfirmedAt = [self parseDateFromValue:data[@"paymentConfirmedAt"]];
+    order.completedAt = [self parseDateFromValue:data[@"completedAt"]];
+    order.deliveryFailedAt = [self parseDateFromValue:data[@"deliveryFailedAt"]];
+    order.returnedToStoreAt = [self parseDateFromValue:data[@"returnedToStoreAt"]];
+    order.cancelledAt = [self parseDateFromValue:data[@"cancelledAt"] ?: data[@"canceledAt"]];
     order.paymentCollectedAt = [self parseDateFromValue:data[@"paymentCollectedAt"]];
+    order.estimatedDeliveryAt = [self parseDateFromValue:data[@"estimatedDeliveryAt"]];
 
     order.deliveryStatus = PPOrderTrimmedString(data[@"deliveryStatus"]);
 
@@ -267,6 +341,11 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     };
 }
 
+- (NSDictionary *)firestoreData
+{
+    return [self exportToDictionary];
+}
+
 - (BOOL)hasCapturedPayment
 {
     if ([self.paymentStatus isEqualToString:@"paid"]) return YES;
@@ -285,6 +364,11 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
     return [self.paymentMethodId isEqualToString:@"cash"];
 }
 
+- (BOOL)requiresPostDeliveryPaymentConfirmation
+{
+    return [self isCashOnDelivery] && ![self hasCapturedPayment];
+}
+
 - (NSString *)displayOrderReference
 {
     if (self.orderNumber.length > 0) {
@@ -298,16 +382,114 @@ static NSString *PPOrderNormalizedVerificationStatusString(id value, id paymentM
 
 - (NSString *)effectiveDeliveryStatus
 {
-    if (self.deliveryStatus.length > 0) {
-        return self.deliveryStatus;
+    NSString *explicitStatus = PPOrderNormalizedDeliveryStatusString(self.deliveryStatus);
+    if (explicitStatus.length > 0) {
+        return explicitStatus;
     }
-    if (self.status == PPOrderStatusPending) {
-        return @"preparing";
+
+    NSString *raw = PPOrderNormalizedStatusString(self.rawStatus);
+    if (PPOrderStatusContainsToken(raw, @"cancelled") ||
+        PPOrderStatusContainsToken(raw, @"canceled")) {
+        return @"delivery_cancelled";
     }
-    if (self.status == PPOrderStatusFailed) {
-        return @"cancelled";
+    if (PPOrderStatusContainsToken(raw, @"returned_to_store")) {
+        return @"returned_to_store";
     }
-    return @"pending";
+    if (PPOrderStatusContainsToken(raw, @"failed") ||
+        PPOrderStatusContainsToken(raw, @"rejected") ||
+        PPOrderStatusContainsToken(raw, @"declined") ||
+        PPOrderStatusContainsToken(raw, @"expired") ||
+        PPOrderStatusContainsToken(raw, @"voided") ||
+        PPOrderStatusContainsToken(raw, @"error")) {
+        return @"delivery_failed";
+    }
+    if (PPOrderStatusContainsToken(raw, @"completed") ||
+        PPOrderStatusContainsToken(raw, @"fulfilled")) {
+        return @"completed";
+    }
+    if (PPOrderStatusContainsToken(raw, @"delivered")) {
+        return [self requiresPostDeliveryPaymentConfirmation] ? @"payment_pending" : @"delivered";
+    }
+    if (PPOrderStatusContainsToken(raw, @"shipped") ||
+        PPOrderStatusContainsToken(raw, @"shipping") ||
+        PPOrderStatusContainsToken(raw, @"out_for_delivery") ||
+        PPOrderStatusContainsToken(raw, @"in_transit")) {
+        return self.inTransitAt ? @"in_transit" : @"picked_up";
+    }
+    if (PPOrderStatusContainsToken(raw, @"ready")) {
+        return (self.deliveryAcceptedAt || self.deliveryRequestedAt) ? @"awaiting_handover" : @"delivery_requested";
+    }
+    if (PPOrderStatusContainsToken(raw, @"processing") ||
+        PPOrderStatusContainsToken(raw, @"preparing") ||
+        PPOrderStatusContainsToken(raw, @"packed") ||
+        PPOrderStatusContainsToken(raw, @"confirmed") ||
+        PPOrderStatusContainsToken(raw, @"paid") ||
+        PPOrderStatusContainsToken(raw, @"success") ||
+        PPOrderStatusContainsToken(raw, @"approved") ||
+        PPOrderStatusContainsToken(raw, @"verified")) {
+        return @"ready_to_ship";
+    }
+
+    if (self.status == PPOrderStatusFailed || self.status == PPOrderStatusCancelled || self.status == PPOrderStatusAbandoned) {
+        return @"delivery_failed";
+    }
+    return @"preparing_for_shipment";
+}
+
+- (NSString *)customerVisibleStatusKey
+{
+    NSString *delivery = [self effectiveDeliveryStatus];
+    NSString *raw = PPOrderNormalizedStatusString(self.rawStatus);
+
+    if ([delivery isEqualToString:@"delivery_cancelled"] ||
+        PPOrderStatusContainsToken(raw, @"cancelled") ||
+        PPOrderStatusContainsToken(raw, @"canceled")) {
+        return @"delivery_cancelled";
+    }
+    if ([delivery isEqualToString:@"delivery_failed"] ||
+        [delivery isEqualToString:@"returned_to_store"] ||
+        PPOrderStatusContainsToken(raw, @"returned_to_store") ||
+        PPOrderStatusContainsToken(raw, @"failed") ||
+        PPOrderStatusContainsToken(raw, @"rejected") ||
+        PPOrderStatusContainsToken(raw, @"declined") ||
+        PPOrderStatusContainsToken(raw, @"expired") ||
+        PPOrderStatusContainsToken(raw, @"voided") ||
+        PPOrderStatusContainsToken(raw, @"error")) {
+        return @"delivery_delayed";
+    }
+    if ([delivery isEqualToString:@"completed"] ||
+        PPOrderStatusContainsToken(raw, @"completed") ||
+        PPOrderStatusContainsToken(raw, @"fulfilled")) {
+        return @"completed";
+    }
+    if ([delivery isEqualToString:@"delivered"] ||
+        [delivery isEqualToString:@"payment_pending"] ||
+        [delivery isEqualToString:@"payment_confirmed"] ||
+        PPOrderStatusContainsToken(raw, @"delivered")) {
+        return @"delivered";
+    }
+    if ([delivery isEqualToString:@"picked_up"] ||
+        [delivery isEqualToString:@"in_transit"] ||
+        PPOrderStatusContainsToken(raw, @"shipped") ||
+        PPOrderStatusContainsToken(raw, @"shipping") ||
+        PPOrderStatusContainsToken(raw, @"out_for_delivery") ||
+        PPOrderStatusContainsToken(raw, @"in_transit")) {
+        return @"on_the_way";
+    }
+    if ([delivery isEqualToString:@"delivery_assigned"] ||
+        [delivery isEqualToString:@"awaiting_handover"] ||
+        self.deliveryAcceptedAt != nil) {
+        return @"delivery_partner_assigned";
+    }
+    if ([delivery isEqualToString:@"ready_to_ship"] ||
+        [delivery isEqualToString:@"delivery_requested"] ||
+        [delivery isEqualToString:@"delivery_reassigned"] ||
+        self.deliveryRequestedAt != nil ||
+        self.readyToShipAt != nil ||
+        self.readyAt != nil) {
+        return @"ready_for_delivery";
+    }
+    return @"preparing_for_shipment";
 }
 
 + (NSDate *)parseDateFromValue:(id)value

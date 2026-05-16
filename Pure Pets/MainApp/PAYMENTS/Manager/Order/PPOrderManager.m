@@ -927,7 +927,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     FIRFirestore *db = FIRFirestore.firestore;
     FIRCollectionReference *ordersRef = [db collectionWithPath:@"Orders"];
     FIRQuery *pendingQuery = [[ordersRef queryWhereField:@"userId" isEqualTo:userId]
-                              queryWhereField:@"status" inArray:@[@"pending", @"failed", @"cancelled", @"abandoned"]];
+                              queryWhereField:@"status" in:@[@"pending", @"failed", @"cancelled", @"abandoned"]];
 
     [pendingQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error || !snapshot) {

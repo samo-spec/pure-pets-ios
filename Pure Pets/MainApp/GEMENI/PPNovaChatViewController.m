@@ -737,7 +737,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                resultSource:(NSString *)resultSource
                                     options:(NSArray<NSDictionary<NSString *, NSString *> *> *)options;
 
-- (void)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
+- (BOOL)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
                                        proposedText:(NSString *)proposedText
                                            userText:(NSString *)userText
                                              source:(NSString *)source
@@ -1104,22 +1104,46 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (NSArray<NSDictionary<NSString *, NSString *> *> *)pp_novaOptionsFromResponseData:(NSDictionary *)data {
-    id rawOptions = [data isKindOfClass:NSDictionary.class] ? data[@"options"] : nil;
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return @[];
+    }
+    id rawOptions = data[@"options"];
+    if (![rawOptions isKindOfClass:NSArray.class]) {
+        rawOptions = data[@"suggestions"] ?: data[@"quickReplies"] ?: data[@"novaOptions"];
+    }
+    if (![rawOptions isKindOfClass:NSArray.class]) {
+        id resultSet = data[@"result_set"] ?: data[@"resultSet"];
+        if ([resultSet isKindOfClass:NSDictionary.class]) {
+            rawOptions = ((NSDictionary *)resultSet)[@"options"];
+        }
+    }
     if (![rawOptions isKindOfClass:NSArray.class]) {
         return @[];
     }
 
     NSMutableArray<NSDictionary<NSString *, NSString *> *> *options = [NSMutableArray array];
     NSMutableSet<NSString *> *seenIDs = [NSMutableSet set];
+    NSUInteger autoIndex = 0;
     for (id rawOption in (NSArray *)rawOptions) {
         if (![rawOption isKindOfClass:NSDictionary.class]) {
+            autoIndex++;
             continue;
         }
         NSDictionary *option = (NSDictionary *)rawOption;
         NSString *identifier = [self pp_novaStringFromValue:option[@"id"]];
         NSString *title = [self pp_novaStringFromValue:option[@"title"]];
         NSString *message = [self pp_novaStringFromValue:option[@"message"]];
-        if (identifier.length == 0 || title.length == 0 || message.length == 0 || [seenIDs containsObject:identifier]) {
+        if (message.length == 0) message = [self pp_novaStringFromValue:option[@"value"]];
+        if (message.length == 0) message = [self pp_novaStringFromValue:option[@"payload"]];
+        // Title is the only field every agent emits — synthesize a stable id when missing
+        // so an absent `id` doesn't silently drop the row from the rendered list.
+        if (identifier.length == 0) {
+            identifier = [NSString stringWithFormat:@"opt_%lu_%@",
+                          (unsigned long)autoIndex,
+                          [[title lowercaseString] stringByReplacingOccurrencesOfString:@" " withString:@"_"]];
+        }
+        if (title.length == 0 || message.length == 0 || [seenIDs containsObject:identifier]) {
+            autoIndex++;
             continue;
         }
         [seenIDs addObject:identifier];
@@ -1128,6 +1152,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             @"title": title,
             @"message": message
         }];
+        autoIndex++;
         if (options.count >= 6) {
             break;
         }
@@ -3023,18 +3048,28 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                  resultSource ?: @"server",
                  objects.count > 1 ? @"ChatMessageTypeNovaProductList" : @"ChatMessageTypeNovaProduct");
 
-	        [self pp_addNovaProductResultTextForRenderedCount:objects.count
-	                                             proposedText:fallbackText
-	                                                 userText:userText
-	                                                   source:@"server"
-	                                                requestID:requestID
-	                                               responseID:responseID
-	                                                  options:options];
+	        BOOL optionsPlacedBeforeCards = [self pp_addNovaProductResultTextForRenderedCount:objects.count
+	                                                                             proposedText:fallbackText
+	                                                                                 userText:userText
+	                                                                                   source:@"server"
+	                                                                                requestID:requestID
+	                                                                               responseID:responseID
+	                                                                                  options:options];
 	        [self pp_showNovaSuggestionObjects:objects
 	                                    source:@"server"
 	                                 requestID:requestID
 	                                responseID:responseID
 	                                generation:generation];
+	        if (!optionsPlacedBeforeCards && options.count > 0) {
+	            // Options didn't ride on a text bubble before the cards (no AI text,
+	            // or it was suppressed). Surface them on an options-only bubble after
+	            // the cards so the user still has the tappable next-step buttons.
+	            LOG_INFO(@"[PPNovaChat][Options] placement=after_cards request_id=%@ response_id=%@ option_count=%lu",
+	                     requestID ?: @"",
+	                     responseID ?: @"",
+	                     (unsigned long)options.count);
+	            [self addNovaMessage:@"" requestID:requestID responseID:responseID options:options];
+	        }
 
         // Save the synthetic product marker to local memory so context is retained
         NSInteger n = (NSInteger)objects.count;
@@ -3555,7 +3590,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     return NO;
 }
 
-- (void)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
+- (BOOL)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
                                        proposedText:(NSString *)proposedText
                                            userText:(NSString *)userText
                                              source:(NSString *)source
@@ -3566,7 +3601,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                        responseID:responseID
                                        generation:self.novaRequestGeneration
                                            source:source]) {
-        return;
+        return NO;
     }
     NSString *cleanProposed = [proposedText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSString *decision = @"no_products";
@@ -3599,11 +3634,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     if (textToShow.length > 0 && ![self pp_lastNovaTextMessageEquals:textToShow]) {
         [self addNovaMessage:textToShow requestID:requestID responseID:responseID options:options];
-    } else if (options.count > 0) {
-        // If there's no text but there are options, we still want to show the options.
-        // Usually Nova always provides text, but this is a safety fallback.
-        [self addNovaMessage:@"" requestID:requestID responseID:responseID options:options];
+        return YES;
     }
+    if (options.count > 0 && renderedCount == 0) {
+        // No cards coming: the options must still be shown. Render them on an empty
+        // bubble so the user has something to tap. With cards we instead defer the
+        // options to a post-cards bubble (handled by the caller) so we never insert
+        // an awkward empty-bubble-with-options above the cards.
+        [self addNovaMessage:@"" requestID:requestID responseID:responseID options:options];
+        return YES;
+    }
+    return NO;
 }
 
 - (BOOL)pp_shouldAttemptLocalNovaShowcaseForUserText:(NSString *)userText {
@@ -7374,7 +7415,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         agent.sessionId = self.novaSessionId;
     }
     __weak typeof(self) weakSelf = self;
-    [agent sendMessage:trimmedText completion:^(PPAgentMessage *reply, NSError *error) {
+    NSString *userLang = [self textContainsArabic:trimmedText] ? @"ar" : @"en";
+    [agent sendMessage:trimmedText language:userLang completion:^(PPAgentMessage *reply, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf || strongSelf.dismissed) return;

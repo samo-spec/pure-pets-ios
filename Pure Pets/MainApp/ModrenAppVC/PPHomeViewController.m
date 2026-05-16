@@ -942,6 +942,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, copy) NSString *homeTitleViewMode; // @"location" (default) or @"search"
 @property (nonatomic, assign) BOOL homePremiumCareVisible; // remote-config toggle for PPPetCareViewController
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> homeConfigListener;
+// YES once the HomeConfig listener has reported (or the safety timeout has fired).
+// Until this flips, applyBaseSnapshot renders an empty snapshot so we don't show
+// the full default-section set just to relayout to the config-filtered set seconds
+// later — the staged reveal is handled by the premium entrance animation instead.
+@property (nonatomic, assign) BOOL didReceiveHomeConfig;
 - (void)handleSeeAllForSection:(PPHomeSection)section;
 - (void)openPremiumPetCare;
 - (NSArray<NSString *> *)pp_premiumCareAnimationNames;
@@ -1534,6 +1539,17 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 }
 - (void)applyBaseSnapshot
 {
+    // Until the HomeConfig listener (or the safety timeout) tells us which
+    // sections are visible, keep the snapshot empty. Rendering defaults first
+    // and relaying out after the config arrives produces the "everything appears
+    // then half of it disappears" flash we're trying to avoid. The premium
+    // entrance animation runs once below, on the first non-empty apply.
+    if (!self.didReceiveHomeConfig) {
+        NSDiffableDataSourceSnapshot *emptySnapshot = [[NSDiffableDataSourceSnapshot alloc] init];
+        [self.dataSource applySnapshot:emptySnapshot animatingDifferences:NO];
+        return;
+    }
+
     NSDiffableDataSourceSnapshot *snapshot = [[NSDiffableDataSourceSnapshot alloc] init];
     NSMutableArray<NSNumber *> *sections = [NSMutableArray array];
 
@@ -1694,11 +1710,21 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     // 🔒 Config-driven rebuilds may delete sections that currently have visible
     // cells. Animating that diff can crash mid-transition with
-    // NSInternalInconsistencyException. Animate only the very first apply.
-    BOOL isRebuild = self.didApplyInitialBaseSnapshot;
-    BOOL animate = !isRebuild;
+    // NSInternalInconsistencyException. We also want the premium entrance
+    // animation (not the diffable default) to drive the first reveal, so we
+    // always apply non-animated and let pp_beginPremiumHomeEntranceIfNeeded
+    // stage the fade-in below.
+    BOOL isFirstContentApply = !self.didApplyInitialBaseSnapshot;
     self.didApplyInitialBaseSnapshot = YES;
-    [self.dataSource applySnapshot:snapshot animatingDifferences:animate];
+    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+
+    // First time we render non-empty sections and the screen is on stage: kick
+    // the premium entrance. The chrome/glow + cell-stagger animation owns the
+    // reveal so users see a single composed motion instead of a snap-then-shift.
+    if (isFirstContentApply && sections.count > 0 && self.isViewLoaded && self.view.window != nil) {
+        [self pp_preparePremiumHomeEntranceStateIfNeeded];
+        [self pp_beginPremiumHomeEntranceIfNeeded];
+    }
 }
 
 - (void)pp_scheduleInitialMainKindsLayoutRefresh
@@ -2747,6 +2773,21 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self pp_startHomeConfigListener];
     [self pp_prefetchHomeEntranceAnimationsIfNeeded];
 
+    // Safety net: if HomeConfig never reports (fresh install offline, doc missing,
+    // listener stalled) we still need to render *something*. After 800ms with no
+    // signal, flip the gate and let applyBaseSnapshot fall back to defaultOrder.
+    __weak typeof(self) weakSelfHomeConfigTimeout = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelfHomeConfigTimeout) self = weakSelfHomeConfigTimeout;
+        if (!self || self.didReceiveHomeConfig) {
+            return;
+        }
+        NSLog(@"[HomeConfig] Listener silent for 800ms — using default sections fallback.");
+        self.didReceiveHomeConfig = YES;
+        [self applyBaseSnapshot];
+    });
+
     // 🔥 Fill top banner once banners are ready
     dispatch_async(dispatch_get_main_queue(), ^{
         [self fillCarouselBanner];
@@ -3097,6 +3138,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             } else {
                 strongSelf.homeConfigSections = sanitized;
             }
+
+            // The listener has spoken — applyBaseSnapshot is now allowed to
+            // render real sections (and run the premium entrance).
+            strongSelf.didReceiveHomeConfig = YES;
 
             BOOL titleModeChanged =
                 ![strongSelf.homeTitleViewMode isEqualToString:resolvedTitleViewMode];
@@ -7310,6 +7355,18 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)collectionView;
+
+    // First-reveal flash guard: when applyBaseSnapshot inserts sections after
+    // HomeConfig arrives, cells are composited at full opacity for one frame
+    // before pp_prepareVisibleHomeEntranceContentIfNeeded can fade them. Pre-
+    // fade them here so they're already in the entrance "before" state at the
+    // moment of display, then let the staggered animation reveal them.
+    if (!self.didRunPremiumHomeEntranceAnimation && ![self pp_shouldReduceHomeMotion]) {
+        [self pp_configureHomeEntranceInitialStateForCell:cell
+                                              atIndexPath:indexPath
+                                           lateAppearance:NO];
+    }
+
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionPetProfile ||
         section == PPHomeSectionPremiumSearch ||
@@ -7948,6 +8005,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.didPreparePremiumHomeEntrance || self.didRunPremiumHomeEntranceAnimation) {
         return;
     }
+    // Don't fade chrome while the snapshot is still empty — the user would
+    // stare at faded glow + faded nav chrome until HomeConfig finally lands.
+    // Wait until we actually have sections to reveal.
+    if (self.dataSource && self.dataSource.snapshot.numberOfItems == 0) {
+        return;
+    }
     self.didPreparePremiumHomeEntrance = YES;
 
     NSArray<UIView *> *glowViews = @[
@@ -8105,6 +8168,16 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [self.collectionView layoutIfNeeded];
+
+    // If the snapshot is still empty (e.g. HomeConfig hasn't arrived yet) there
+    // are no cells/headers to animate. Bail out WITHOUT setting the "done" flag
+    // so that the post-config apply in applyBaseSnapshot can retrigger this and
+    // get a real reveal. Setting the flag here would silently consume the only
+    // entrance we have.
+    if (self.collectionView.indexPathsForVisibleItems.count == 0) {
+        return;
+    }
+
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 
     NSArray<UIView *> *glowViews = @[

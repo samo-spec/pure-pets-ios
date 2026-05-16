@@ -30,6 +30,13 @@ extern NSString * const kPPAgentProxyURL;
                                     completion:(void (^)(PPAgentMessage * _Nullable reply,
                                                          NSError * _Nullable error))completion;
 
+/// Same as sendMessage:completion: but propagates a 2-letter language code ("ar"/"en")
+/// to the proxy so Nova replies in the same language as the user's message.
+- (nullable NSURLSessionDataTask *)sendMessage:(NSString *)message
+                                      language:(nullable NSString *)language
+                                    completion:(void (^)(PPAgentMessage * _Nullable reply,
+                                                         NSError * _Nullable error))completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

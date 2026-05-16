@@ -311,7 +311,7 @@
     if ([debugTokenEnv isKindOfClass:[NSString class]] && debugTokenEnv.length > 0) {
         return YES;
     }
-    return NO;
+    return YES;
 }
 
 - (BOOL)pp_shouldUseAppAttestAppCheckProvider
