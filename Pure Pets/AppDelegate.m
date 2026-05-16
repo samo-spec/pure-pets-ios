@@ -130,6 +130,8 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 {
 #if TARGET_OS_SIMULATOR
     return [[FIRAppCheckDebugProvider alloc] initWithApp:app];
+#elif defined(DEBUG) && DEBUG
+    return [[FIRAppCheckDebugProvider alloc] initWithApp:app];
 #else
     NSProcessInfo *processInfo = [NSProcessInfo processInfo];
     NSDictionary<NSString *, NSString *> *env = processInfo.environment ?: @{};

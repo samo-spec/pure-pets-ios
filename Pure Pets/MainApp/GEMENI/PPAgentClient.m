@@ -156,7 +156,9 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     [req setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
     if (acToken.length) [req setValue:acToken forHTTPHeaderField:@"X-Firebase-AppCheck"];
     [req setValue:@"application/json"                              forHTTPHeaderField:@"Content-Type"];
-    req.HTTPBody = [NSJSONSerialization dataWithJSONObject:@{} options:0 error:nil];
+    // Declare client_type so the root coordinator routes to nova_market_assistan.
+    NSDictionary *sessionBody = @{ @"state": @{ @"client_type": @"ios" } };
+    req.HTTPBody = [NSJSONSerialization dataWithJSONObject:sessionBody options:0 error:nil];
 
     [[self.session dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *resp, NSError *netErr) {
         if (netErr) { completion(nil, netErr); return; }
