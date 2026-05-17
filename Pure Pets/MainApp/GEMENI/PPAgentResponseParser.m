@@ -177,6 +177,32 @@
         return nil;
     }
     NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    for (NSDictionary<NSString *, id> *candidate in [self novaJSONDictionaryCandidatesFromText:trimmed]) {
+        NSDictionary *dict = [candidate[@"object"] isKindOfClass:NSDictionary.class] ? candidate[@"object"] : nil;
+        if (![self dictionaryLooksLikeNovaEnvelope:dict]) {
+            continue;
+        }
+        NSMutableDictionary *mutable = [dict mutableCopy];
+        if (!mutable[@"text"] && !mutable[@"assistantText"]) {
+            NSString *jsonText = [candidate[@"json"] isKindOfClass:NSString.class] ? candidate[@"json"] : @"";
+            NSString *visibleText = jsonText.length > 0
+                ? [trimmed stringByReplacingOccurrencesOfString:jsonText withString:@""]
+                : trimmed;
+            NSRegularExpression *fence = [NSRegularExpression regularExpressionWithPattern:@"```(?:json)?"
+                                                                                   options:NSRegularExpressionCaseInsensitive
+                                                                                     error:nil];
+            visibleText = [fence stringByReplacingMatchesInString:visibleText
+                                                          options:0
+                                                            range:NSMakeRange(0, visibleText.length)
+                                                     withTemplate:@""];
+            visibleText = [visibleText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+            if (visibleText.length > 0) {
+                mutable[@"text"] = visibleText;
+            }
+        }
+        return [mutable copy];
+    }
+
     NSRegularExpression *fencedJSON = [NSRegularExpression regularExpressionWithPattern:@"```(?:json)?\\s*(\\{(?:.|\\n|\\r)*\\})\\s*```"
                                                                                 options:NSRegularExpressionCaseInsensitive
                                                                                   error:nil];
@@ -238,6 +264,9 @@
     if (![text isKindOfClass:NSString.class]) {
         return NO;
     }
+    if ([self novaEnvelopeFromRawText:text]) {
+        return YES;
+    }
     NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (![trimmed hasPrefix:@"{"] || ![trimmed hasSuffix:@"}"]) {
         return NO;
@@ -249,6 +278,69 @@
            [trimmed containsString:@"\"resultRefs\""] ||
            [trimmed containsString:@"\"cardsRequired\""] ||
            [trimmed containsString:@"\"product_ids\""];
+}
+
++ (NSArray<NSDictionary<NSString *, id> *> *)novaJSONDictionaryCandidatesFromText:(NSString *)text {
+    if (![text isKindOfClass:NSString.class] || text.length == 0) {
+        return @[];
+    }
+    NSMutableArray<NSDictionary<NSString *, id> *> *candidates = [NSMutableArray array];
+    NSInteger depth = 0;
+    NSUInteger start = NSNotFound;
+    BOOL inString = NO;
+    BOOL escapeNext = NO;
+
+    for (NSUInteger idx = 0; idx < text.length; idx++) {
+        unichar ch = [text characterAtIndex:idx];
+        if (escapeNext) {
+            escapeNext = NO;
+            continue;
+        }
+        if (inString && ch == '\\') {
+            escapeNext = YES;
+            continue;
+        }
+        if (ch == '"') {
+            inString = !inString;
+            continue;
+        }
+        if (inString) {
+            continue;
+        }
+        if (ch == '{') {
+            if (depth == 0) {
+                start = idx;
+            }
+            depth++;
+        } else if (ch == '}' && depth > 0) {
+            depth--;
+            if (depth == 0 && start != NSNotFound) {
+                NSRange range = NSMakeRange(start, idx - start + 1);
+                NSString *body = [text substringWithRange:range];
+                NSData *data = [body dataUsingEncoding:NSUTF8StringEncoding];
+                id parsed = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+                if ([parsed isKindOfClass:NSDictionary.class]) {
+                    [candidates addObject:@{@"object": parsed, @"json": body}];
+                }
+                start = NSNotFound;
+            }
+        }
+    }
+    return [candidates copy];
+}
+
++ (BOOL)dictionaryLooksLikeNovaEnvelope:(NSDictionary *)dict {
+    if (![dict isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    for (NSString *key in @[ @"text", @"assistantText", @"options", @"cards",
+                             @"resultRefs", @"result_refs", @"product_ids",
+                             @"productIds", @"cardsRequired", @"cards_required" ]) {
+        if (dict[key]) {
+            return YES;
+        }
+    }
+    return NO;
 }
 
 + (NSError *)err:(NSString *)code {

@@ -24,7 +24,7 @@ static const CGFloat PPHomeSpacingBase    = 16.0;
 static const CGFloat PPInner = 8.0;
 static const CGFloat PPHomeSpacingSection = 24.0;
 static const CGFloat kHeaderHeight     = 64.0;
-static const CGFloat kHeaderHeightMin     = 54.0;
+static const CGFloat kHeaderHeightMin     = 56.0;
 
 
 // Standard card sizes
@@ -297,7 +297,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
 + (NSCollectionLayoutSection *)premiumSearchSectionForWidth:(CGFloat)availableWidth
 {
-    CGFloat searchHeight = 48.0;
+    CGFloat searchHeight = 52.0;
 
     NSCollectionLayoutSize *itemSize =
         [NSCollectionLayoutSize sizeWithWidthDimension:
@@ -703,9 +703,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
     item.edgeSpacing = [NSCollectionLayoutEdgeSpacing
-                        spacingForLeading:[NSCollectionLayoutSpacing fixedSpacing:6]
+                        spacingForLeading:[NSCollectionLayoutSpacing fixedSpacing:0]
                         top:[NSCollectionLayoutSpacing fixedSpacing:0]
-                        trailing:[NSCollectionLayoutSpacing fixedSpacing:6]
+                        trailing:[NSCollectionLayoutSpacing fixedSpacing:0]
                         bottom:[NSCollectionLayoutSpacing fixedSpacing:0]];
 
     NSCollectionLayoutGroup *group =
@@ -717,7 +717,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-    section.interGroupSpacing = PPHomeSpacingBase;
+    section.interGroupSpacing = PPHomeSpacingSmall;
     section.contentInsets = PPHomeFullWidthSectionInsets();
 
     return section;

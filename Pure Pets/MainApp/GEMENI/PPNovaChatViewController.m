@@ -51,7 +51,7 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 static const CGFloat PPNovaExpandedTableTopInset = 228.0;
 static const CGFloat PPNovaCollapsedTableTopInset = 124.0;
 static const CGFloat PPNovaTableBottomInset = 22.0;
-static NSString * const PPNovaDirectURL = @"https://nova-ufzhhjmzdq-uc.a.run.app";
+static NSString * const PPNovaDirectURL = @"https://nova-646051621158.us-central1.run.app";
 
 static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryEntryCell";
 static NSString * const PPNovaSmartSuggestionWashBreathKey = @"pp.nova.smartSuggestion.washBreath";
@@ -1985,6 +1985,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                          resultCount:backendResultCount
                                                      resultRefsCount:backendResultRefsCount];
     NSString *resultSource = [self pp_novaResultSourceFromResponseData:responseData];
+    BOOL hasVisibleAssistantPayload = replyText.length > 0 || replyOptions.count > 0;
+    BOOL hasNoRenderableCardPayload = backendResultCount == 0 && backendResultRefsCount == 0;
+    if (cardsRequired && hasNoRenderableCardPayload && hasVisibleAssistantPayload) {
+        cardsRequired = NO;
+        LOG_INFO(@"[PPNovaChat][Options] cards_required_suppressed_for_text_options request_id=%@ response_id=%@ option_count=%lu",
+                 requestID ?: @"",
+                 responseID ?: @"",
+                 (unsigned long)replyOptions.count);
+    }
     BOOL mustRenderCells = cardsRequired || backendResultCount > 0 || suggestionRefs.count > 0;
     BOOL hasCatalogIntent = [self pp_novaHasCatalogSearchIntentForUserText:trimmedText];
 
@@ -3952,7 +3961,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *backgroundView = [[UIView alloc] init];
     backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundView.userInteractionEnabled = NO;
-    backgroundView.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    backgroundView.backgroundColor = AppBageColor();
     [self.view addSubview:backgroundView];
     self.ambientBackgroundView = backgroundView;
 
@@ -3991,7 +4000,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIColor *surface = [self pp_novaHeaderSurfaceColor];
     UIColor *primaryText = [self pp_novaHeaderPrimaryTextColor];
     UIColor *secondaryText = [self pp_novaHeaderSecondaryTextColor];
-    self.ambientBackgroundView.backgroundColor = baseBackground;
+    //self.ambientBackgroundView.backgroundColor = baseBackground;
     self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
                                                                      [brand colorWithAlphaComponent:0.22]);
     self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
@@ -4003,15 +4012,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if ([self.novaHeaderChromeView isKindOfClass:UIVisualEffectView.class]) {
         ((UIVisualEffectView *)self.novaHeaderChromeView).effect = [UIBlurEffect effectWithStyle:[self pp_novaHeaderGlassBlurStyle]];
     }
-    self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.12],
-                                                                   [surface colorWithAlphaComponent:0.28]);
+    self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.0],
+                                                                   [surface colorWithAlphaComponent:0.0]);
     self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.16].CGColor;
     self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
                                                                     [brand colorWithAlphaComponent:0.26]);
     self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
     self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.18],
                                                                        [UIColor.whiteColor colorWithAlphaComponent:0.045]);
-    self.novaHeaderSheenView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.045],
+    self.novaHeaderSheenView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0],
                                                                   [brand colorWithAlphaComponent:0.085]);
     [self pp_installNovaHeaderLiquidBorderIfNeeded];
     UIColor *liquidBorder = PPNovaDynamicColor([brand colorWithAlphaComponent:0.14],
@@ -5639,8 +5648,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
           @"promptKey": @"nova_smart_suggestion_dog_toys_prompt"},
         @{@"titleKey": @"nova_smart_suggestion_cat_litter",
           @"promptKey": @"nova_smart_suggestion_cat_litter_prompt"},
-        @{@"titleKey": @"nova_smart_suggestion_fish_setup",
-          @"promptKey": @"nova_smart_suggestion_fish_setup_prompt"},
+   
         @{@"titleKey": @"nova_smart_suggestion_live_pets",
           @"promptKey": @"nova_smart_suggestion_live_pets_prompt"},
         @{@"titleKey": @"nova_smart_suggestion_services",
@@ -5657,10 +5665,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
           @"promptKey": @"nova_smart_suggestion_dog_grooming_prompt"},
         @{@"titleKey": @"nova_smart_suggestion_cat_carrier",
           @"promptKey": @"nova_smart_suggestion_cat_carrier_prompt"},
-        @{@"titleKey": @"nova_smart_suggestion_aquarium_cleaning",
-          @"promptKey": @"nova_smart_suggestion_aquarium_cleaning_prompt"},
-        @{@"titleKey": @"nova_smart_suggestion_rabbit_food",
-          @"promptKey": @"nova_smart_suggestion_rabbit_food_prompt"},
         @{@"titleKey": @"nova_smart_suggestion_travel_kit",
           @"promptKey": @"nova_smart_suggestion_travel_kit_prompt"}
     ];

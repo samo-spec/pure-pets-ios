@@ -44,10 +44,13 @@ static const CGFloat PPNovaBubbleMinimumWidth = 90.0;
 static const CGFloat PPNovaAssistantMinimumReadableWidth = 184.0;
 static const CGFloat PPNovaAssistantMaximumReadableFloor = 260.0;
 static const CGFloat PPNovaAssistantReadableWidthRatio = 0.52;
+static const CGFloat PPNovaAssistantWrappedWidthFloorRatio = 0.72;
+static const CGFloat PPNovaAssistantOptionsMinimumWidth = 242.0;
 static const CGFloat PPNovaAssistantHorizontalReserve = 120.0;
 static const CGFloat PPNovaUserHorizontalReserve = 86.0;
 static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
 static const CGFloat PPNovaBubbleCornerRadius = 24.0;
+static const CGFloat PPNovaBubbleWidthSearchStep = 8.0;
 static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
 @interface PPNovaMessageBubbleCell ()
@@ -945,26 +948,18 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     CGFloat targetContentWidth = 0.0;
 
     if (!self.messageLabel.hidden && (self.messageLabel.attributedText.length > 0 || self.messageLabel.text.length > 0)) {
-        // Use the label's own sizing logic to get accurate layout width
-        CGSize labelSize = [self.messageLabel sizeThatFits:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)];
-        targetContentWidth = ceil(labelSize.width);
-        
-        // Calculate unconstrained width to check if it fits on a single line
         CGSize singleLineSize = [self.messageLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
         CGFloat singleLineWidth = ceil(singleLineSize.width);
-        
         NSString *plainText = self.messageLabel.attributedText.string.length > 0
             ? self.messageLabel.attributedText.string
             : (self.messageLabel.text ?: @"");
         BOOL hasExplicitLineBreak = [plainText rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location != NSNotFound;
 
         if (singleLineWidth <= maxLabelWidth && !hasExplicitLineBreak) {
-            targetContentWidth = MAX(targetContentWidth, singleLineWidth);
+            targetContentWidth = MAX(targetContentWidth, [self pp_singleLineContentWidthForMeasuredWidth:singleLineWidth
+                                                                                            maxLabelWidth:maxLabelWidth]);
         } else {
-            // If it exceeds max width or has manual line breaks, it will wrap.
-            // Labels sometimes report a small width if the longest wrapped line is short.
-            // To prevent "tall and skinny" single-word column bubbles, we enforce full available width.
-            targetContentWidth = MAX(targetContentWidth, maxLabelWidth);
+            targetContentWidth = MAX(targetContentWidth, [self pp_balancedWrappedContentWidthForMaxLabelWidth:maxLabelWidth]);
         }
     }
 
@@ -979,10 +974,47 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
     if (!self.actionStack.hidden) {
         CGSize actionSize = [self.actionStack systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
-        targetContentWidth = MAX(targetContentWidth, ceil(actionSize.width));
+        CGFloat optionsReadableWidth = MIN(maxLabelWidth, MAX(PPNovaAssistantOptionsMinimumWidth - PPNovaBubbleHorizontalContentInset,
+                                                              floor(maxLabelWidth * PPNovaAssistantWrappedWidthFloorRatio)));
+        targetContentWidth = MAX(targetContentWidth, MAX(ceil(actionSize.width), optionsReadableWidth));
     }
 
     return targetContentWidth + PPNovaBubbleHorizontalContentInset;
+}
+
+- (CGFloat)pp_singleLineContentWidthForMeasuredWidth:(CGFloat)measuredWidth
+                                       maxLabelWidth:(CGFloat)maxLabelWidth {
+    CGFloat readableWidth = MIN(maxLabelWidth, MAX(measuredWidth, PPNovaBubbleMinimumWidth - PPNovaBubbleHorizontalContentInset));
+    if (self.assistantMessage && !self.typingMode) {
+        CGFloat assistantFloor = MIN(maxLabelWidth, MAX(PPNovaAssistantMinimumReadableWidth - PPNovaBubbleHorizontalContentInset,
+                                                        floor(maxLabelWidth * 0.58)));
+        readableWidth = MAX(readableWidth, assistantFloor);
+    }
+    return ceil(readableWidth);
+}
+
+- (CGFloat)pp_balancedWrappedContentWidthForMaxLabelWidth:(CGFloat)maxLabelWidth {
+    CGFloat minimumLabelWidth = MIN(maxLabelWidth, MAX(PPNovaAssistantMinimumReadableWidth - PPNovaBubbleHorizontalContentInset,
+                                                       floor(maxLabelWidth * PPNovaAssistantWrappedWidthFloorRatio)));
+    if (!self.assistantMessage || self.typingMode) {
+        minimumLabelWidth = MIN(maxLabelWidth, MAX(PPNovaBubbleMinimumWidth - PPNovaBubbleHorizontalContentInset,
+                                                   floor(maxLabelWidth * 0.64)));
+    }
+
+    CGSize widestSize = [self.messageLabel sizeThatFits:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)];
+    CGFloat widestHeight = ceil(widestSize.height);
+    CGFloat lineHeight = ceil(self.messageLabel.font.lineHeight ?: 18.0);
+    CGFloat toleratedHeight = widestHeight + MAX(6.0, lineHeight * 0.55);
+
+    CGFloat candidate = minimumLabelWidth;
+    while (candidate < maxLabelWidth) {
+        CGSize candidateSize = [self.messageLabel sizeThatFits:CGSizeMake(candidate, CGFLOAT_MAX)];
+        if (ceil(candidateSize.height) <= toleratedHeight) {
+            return ceil(candidate);
+        }
+        candidate += PPNovaBubbleWidthSearchStep;
+    }
+    return ceil(maxLabelWidth);
 }
 
 - (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize

@@ -1103,6 +1103,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) UIButton *novaFloatingButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *novaFloatingLottieView;
 @property (nonatomic, strong, nullable) UIView *novaFloatingHaloView;
+@property (nonatomic, assign) BOOL novaFloatingButtonScrollCompressed;
+@property (nonatomic, assign) NSUInteger novaFloatingScrollMotionGeneration;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
 @property (nonatomic, strong, nullable) PPHomeSmartSearchTitleView *homeSmartSearchView;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchWidthConstraint;
@@ -2883,18 +2885,20 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         con.background.backgroundColor = AppClearClr;
         con.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
         button.configuration = con;
+    } else {
+        button.backgroundColor = [brand colorWithAlphaComponent:0.10];
+        button.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+        button.layer.borderColor = [brand colorWithAlphaComponent:0.28].CGColor;
+
+        button.layer.shadowOpacity = 0.22;
+        button.layer.shadowRadius = 18.0;
+        button.layer.shadowOffset = CGSizeMake(0, 8);
     }
-    
-    
-    button.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    button.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
-    button.layer.borderColor = [brand colorWithAlphaComponent:0.28].CGColor;
+
 
     PPApplyCardShadow(button);
     button.layer.shadowColor = brand.CGColor;
-    button.layer.shadowOpacity = 0.22;
-    button.layer.shadowRadius = 18.0;
-    button.layer.shadowOffset = CGSizeMake(0, 8);
+
 
     [button addTarget:self
                action:@selector(novaFloatingButtonTapped)
@@ -2917,7 +2921,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.novaFloatingLottieView = lot;
 
     [NSLayoutConstraint activateConstraints:@[
-        [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPSpaceBase],
+        [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
         [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceBase],
         [button.widthAnchor constraintEqualToConstant:56.0],
         [button.heightAnchor constraintEqualToConstant:56.0],
@@ -2990,8 +2994,153 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [halo.layer addAnimation:breath forKey:@"pp_novaHaloBreath"];
 }
 
+- (void)pp_startNovaFloatingAmbientMotionIfNeeded
+{
+    if (!self.novaFloatingButton) {
+        return;
+    }
+
+    if (self.novaFloatingHaloView.superview == self.view) {
+        [self.view bringSubviewToFront:self.novaFloatingHaloView];
+    }
+    [self.view bringSubviewToFront:self.novaFloatingButton];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyNovaFloatingReduceMotionState];
+        return;
+    }
+
+    self.novaFloatingButton.alpha = 1.0;
+    self.novaFloatingLottieView.alpha = 1.0;
+    self.novaFloatingButton.transform = self.novaFloatingButtonScrollCompressed
+        ? self.novaFloatingButton.transform
+        : CGAffineTransformIdentity;
+
+    if (!self.novaFloatingLottieView.hidden) {
+        self.novaFloatingLottieView.animationSpeed = 0.6;
+        [self.novaFloatingLottieView play];
+    }
+    [self pp_startNovaFloatingHaloBreathing];
+}
+
+- (void)pp_stopNovaFloatingMotion
+{
+    self.novaFloatingScrollMotionGeneration++;
+    self.novaFloatingButtonScrollCompressed = NO;
+    [self.novaFloatingButton.layer removeAllAnimations];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloBreath"];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloPulseScale"];
+    [self.novaFloatingLottieView.layer removeAllAnimations];
+    [self.novaFloatingLottieView stop];
+    self.novaFloatingButton.transform = CGAffineTransformIdentity;
+    self.novaFloatingButton.alpha = 1.0;
+    self.novaFloatingLottieView.alpha = 1.0;
+    self.novaFloatingHaloView.transform = CGAffineTransformIdentity;
+    self.novaFloatingHaloView.alpha = 0.55;
+}
+
+- (void)pp_applyNovaFloatingReduceMotionState
+{
+    self.novaFloatingScrollMotionGeneration++;
+    self.novaFloatingButtonScrollCompressed = NO;
+    [self.novaFloatingButton.layer removeAllAnimations];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloBreath"];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloPulseScale"];
+    [self.novaFloatingLottieView.layer removeAllAnimations];
+    [self.novaFloatingLottieView stop];
+    self.novaFloatingButton.transform = CGAffineTransformIdentity;
+    self.novaFloatingButton.alpha = 1.0;
+    self.novaFloatingLottieView.alpha = 1.0;
+    self.novaFloatingHaloView.transform = CGAffineTransformIdentity;
+    self.novaFloatingHaloView.alpha = 0.55;
+}
+
+- (void)pp_setNovaFloatingButtonScrollCompressed:(BOOL)compressed velocityY:(CGFloat)velocityY
+{
+    UIButton *button = self.novaFloatingButton;
+    if (!button || button.hidden) {
+        return;
+    }
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyNovaFloatingReduceMotionState];
+        return;
+    }
+
+    if (self.novaFloatingButtonScrollCompressed == compressed) {
+        return;
+    }
+
+    self.novaFloatingButtonScrollCompressed = compressed;
+    self.novaFloatingScrollMotionGeneration++;
+
+    BOOL rtl = (PPHomeCurrentSemanticAttribute() == UISemanticContentAttributeForceRightToLeft);
+    CGFloat outwardX = rtl ? -4.0 : 4.0;
+    CGFloat fastScroll = MIN(1.0, fabs(velocityY) / 1400.0);
+    CGFloat tuckY = 8.0 + (4.0 * fastScroll);
+    CGFloat scale = 0.89 - (0.03 * fastScroll);
+    CGAffineTransform buttonTransform = compressed
+        ? CGAffineTransformScale(CGAffineTransformMakeTranslation(outwardX, tuckY), scale, scale)
+        : CGAffineTransformIdentity;
+    CGAffineTransform haloTransform = compressed
+        ? CGAffineTransformScale(CGAffineTransformMakeTranslation(outwardX, tuckY), 0.72, 0.72)
+        : CGAffineTransformIdentity;
+
+    NSTimeInterval duration = compressed ? 0.26 : 0.46;
+    CGFloat damping = compressed ? 0.98 : 0.78;
+    CGFloat initialVelocity = compressed ? 0.12 : 0.42;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+         usingSpringWithDamping:damping
+          initialSpringVelocity:initialVelocity
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        button.transform = buttonTransform;
+        button.alpha = compressed ? 0.78 : 1.0;
+        self.novaFloatingHaloView.transform = haloTransform;
+        self.novaFloatingHaloView.alpha = compressed ? 0.24 : 0.65;
+        self.novaFloatingLottieView.alpha = compressed ? 0.86 : 1.0;
+    } completion:nil];
+
+    self.novaFloatingLottieView.animationSpeed = compressed ? 0.38 : 0.6;
+    if (!compressed && !self.novaFloatingLottieView.hidden) {
+        [self.novaFloatingLottieView play];
+    }
+}
+
+- (void)pp_scheduleNovaFloatingScrollSettle
+{
+    NSUInteger generation = ++self.novaFloatingScrollMotionGeneration;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.14 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || generation != self.novaFloatingScrollMotionGeneration) {
+            return;
+        }
+        if (self.collectionView.isDragging || self.collectionView.isTracking || self.collectionView.isDecelerating) {
+            return;
+        }
+        [self pp_setNovaFloatingButtonScrollCompressed:NO velocityY:0.0];
+    });
+}
+
+- (void)pp_updateNovaFloatingButtonForScrollView:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    BOOL activeScroll = scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating;
+    if (activeScroll) {
+        CGFloat velocityY = [scrollView.panGestureRecognizer velocityInView:self.view].y;
+        [self pp_setNovaFloatingButtonScrollCompressed:YES velocityY:velocityY];
+    } else {
+        [self pp_scheduleNovaFloatingScrollSettle];
+    }
+}
+
 - (void)novaFloatingButtonTapped
 {
+    [self pp_setNovaFloatingButtonScrollCompressed:NO velocityY:0.0];
     PPTapFeedbackDown(self.novaFloatingButton);
 
     UIImpactFeedbackGenerator *haptic =
@@ -5235,6 +5384,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                                    object:nil];
     }
 
+    [self pp_startNovaFloatingAmbientMotionIfNeeded];
 }
 
 - (void)handleTimeChange
@@ -7190,6 +7340,46 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 // MARK: - UICollectionViewDelegate
 
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    [self pp_updateNovaFloatingButtonForScrollView:scrollView];
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    CGFloat velocityY = [scrollView.panGestureRecognizer velocityInView:self.view].y;
+    [self pp_setNovaFloatingButtonScrollCompressed:YES velocityY:velocityY];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    if (!decelerate) {
+        [self pp_scheduleNovaFloatingScrollSettle];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    [self pp_scheduleNovaFloatingScrollSettle];
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    [self pp_scheduleNovaFloatingScrollSettle];
+}
+
 - (void)collectionView:(UICollectionView *)collectionView
     didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
@@ -8569,6 +8759,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_stopHomeSmartSearchTimer];
     [self pp_detachHomeSmartSearchTitleViewIfNeeded];
     [self pp_detachHomeLocationTitleViewIfNeeded];
+    [self pp_stopNovaFloatingMotion];
 }
 
 // Show bottom card with haptic feedback

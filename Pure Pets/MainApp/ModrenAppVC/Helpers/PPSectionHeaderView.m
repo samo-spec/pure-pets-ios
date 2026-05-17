@@ -67,8 +67,8 @@
     [self.surfaceView addSubview:self.accentRailView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:4.0],
-        [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-4.0],
+        [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor constant:14.0],
+        [self.surfaceView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor constant:-14.0],
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor constant:2.0],
         [self.surfaceView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-2.0],
 

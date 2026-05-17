@@ -812,16 +812,21 @@
     UINotificationFeedbackGenerator *gen = [[UINotificationFeedbackGenerator alloc] init];
     [gen notificationOccurred:UINotificationFeedbackTypeSuccess];
 
-    // Callback to parent VC
-    if (self.onAuthResultSuccess) {
-        self.onAuthResultSuccess(authResult);
-    }
+    // Capture callback before dismissal so the signing controller's dismiss
+    // happens only after this sheet is fully gone (avoids the race where
+    // the parent's [self dismiss] is dropped while we're mid-transition).
+    void (^successCallback)(FIRAuthDataResult *) = self.onAuthResultSuccess;
 
-    // Fade out UI
+    // Fade out UI, then dismiss — fire the parent callback in the dismiss
+    // completion so the presentation chain is clean before the parent acts.
     [UIView animateWithDuration:0.25 animations:^{
         self.cardView.alpha = 0.0;
     } completion:^(BOOL finished) {
-        [self dismissViewControllerAnimated:YES completion:nil];
+        [self dismissViewControllerAnimated:YES completion:^{
+            if (successCallback) {
+                successCallback(authResult);
+            }
+        }];
     }];
 }
 

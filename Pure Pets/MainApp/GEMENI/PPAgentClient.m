@@ -9,7 +9,7 @@
 @import FirebaseAppCheck;
 
 // ADK Cloud Run base URL — all paths are relative to this.
-NSString * const kPPAgentBaseURL = @"https://nova-ufzhhjmzdq-uc.a.run.app";
+NSString * const kPPAgentBaseURL = @"https://nova-646051621158.us-central1.run.app";
 
 static NSString * const kPPAgentAppName   = @"app";
 // Maps VC-managed novaSessionId (UUID) → ADK server-assigned session UUID.
@@ -319,11 +319,17 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     if (bestFunctionResponse) {
         NSMutableDictionary *merged = [bestFunctionResponse mutableCopy];
         if (modelJSON) {
-            // Model-authored fields override tool defaults: text, options, cards.
+            // Model-authored structured envelope is the final client contract.
             for (NSString *k in @[@"text", @"assistantText", @"options",
-                                  @"suggestions", @"quickReplies", @"cards"]) {
+                                  @"suggestions", @"quickReplies", @"cards",
+                                  @"resultRefs", @"result_refs", @"product_ids",
+                                  @"productIds", @"cardsRequired", @"cards_required"]) {
                 id v = modelJSON[k];
                 if (v) merged[k] = v;
+            }
+            if (![self novaEnvelopeHasRenderableCardPayload:merged] &&
+                [self novaEnvelopeHasVisibleTextOrOptions:modelJSON]) {
+                [self clearCardRequirementInEnvelope:merged];
             }
         } else if (finalModelText
                    && !merged[@"text"]
@@ -346,18 +352,11 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     if (!trimmed.length) return nil;
 
-    NSRegularExpression *fenced =
-        [NSRegularExpression regularExpressionWithPattern:@"```(?:json)?\\s*(\\{(?:.|\\n|\\r)*\\})\\s*```"
-                                                  options:NSRegularExpressionCaseInsensitive
-                                                    error:nil];
-    NSTextCheckingResult *match = [fenced firstMatchInString:trimmed
-                                                     options:0
-                                                       range:NSMakeRange(0, trimmed.length)];
-    if (match && match.numberOfRanges > 1) {
-        NSString *body = [trimmed substringWithRange:[match rangeAtIndex:1]];
-        NSData *data = [body dataUsingEncoding:NSUTF8StringEncoding];
-        id parsed = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
-        if ([parsed isKindOfClass:NSDictionary.class]) return parsed;
+    for (NSDictionary<NSString *, id> *candidate in [self jsonDictionaryCandidatesFromText:trimmed]) {
+        NSDictionary *object = [candidate[@"object"] isKindOfClass:NSDictionary.class] ? candidate[@"object"] : nil;
+        if ([self dictionaryLooksLikeNovaEnvelope:object]) {
+            return object;
+        }
     }
 
     if ([trimmed hasPrefix:@"{"] && [trimmed hasSuffix:@"}"]) {
@@ -367,6 +366,130 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     }
 
     return nil;
+}
+
+- (NSArray<NSDictionary<NSString *, id> *> *)jsonDictionaryCandidatesFromText:(NSString *)text {
+    if (![text isKindOfClass:NSString.class] || text.length == 0) {
+        return @[];
+    }
+    NSMutableArray<NSDictionary<NSString *, id> *> *candidates = [NSMutableArray array];
+    NSInteger depth = 0;
+    NSUInteger start = NSNotFound;
+    BOOL inString = NO;
+    BOOL escapeNext = NO;
+
+    for (NSUInteger idx = 0; idx < text.length; idx++) {
+        unichar ch = [text characterAtIndex:idx];
+        if (escapeNext) {
+            escapeNext = NO;
+            continue;
+        }
+        if (inString && ch == '\\') {
+            escapeNext = YES;
+            continue;
+        }
+        if (ch == '"') {
+            inString = !inString;
+            continue;
+        }
+        if (inString) {
+            continue;
+        }
+        if (ch == '{') {
+            if (depth == 0) {
+                start = idx;
+            }
+            depth++;
+        } else if (ch == '}' && depth > 0) {
+            depth--;
+            if (depth == 0 && start != NSNotFound) {
+                NSRange range = NSMakeRange(start, idx - start + 1);
+                NSString *body = [text substringWithRange:range];
+                NSData *data = [body dataUsingEncoding:NSUTF8StringEncoding];
+                id parsed = data ? [NSJSONSerialization JSONObjectWithData:data options:0 error:nil] : nil;
+                if ([parsed isKindOfClass:NSDictionary.class]) {
+                    [candidates addObject:@{@"object": parsed, @"json": body}];
+                }
+                start = NSNotFound;
+            }
+        }
+    }
+    return [candidates copy];
+}
+
+- (BOOL)dictionaryLooksLikeNovaEnvelope:(NSDictionary *)dict {
+    if (![dict isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    for (NSString *key in @[@"text", @"assistantText", @"options", @"cards",
+                            @"resultRefs", @"result_refs", @"product_ids",
+                            @"productIds", @"cardsRequired", @"cards_required"]) {
+        if (dict[key]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (BOOL)novaEnvelopeHasVisibleTextOrOptions:(NSDictionary *)dict {
+    if (![dict isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    for (NSString *key in @[@"text", @"assistantText", @"output", @"response",
+                            @"answer", @"message", @"content"]) {
+        id value = dict[key];
+        if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+            return YES;
+        }
+    }
+    id options = dict[@"options"] ?: dict[@"suggestions"] ?: dict[@"quickReplies"];
+    return [options isKindOfClass:NSArray.class] && [(NSArray *)options count] > 0;
+}
+
+- (BOOL)novaEnvelopeHasRenderableCardPayload:(NSDictionary *)dict {
+    if (![dict isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    for (NSString *key in @[@"resultRefs", @"result_refs", @"cards", @"products", @"items", @"product_ids", @"productIds"]) {
+        id value = dict[key];
+        if ([value isKindOfClass:NSArray.class] && [(NSArray *)value count] > 0) {
+            return YES;
+        }
+    }
+    NSDictionary *resultSet = [dict[@"result_set"] isKindOfClass:NSDictionary.class] ? dict[@"result_set"] : nil;
+    if (!resultSet) {
+        resultSet = [dict[@"resultSet"] isKindOfClass:NSDictionary.class] ? dict[@"resultSet"] : nil;
+    }
+    for (NSString *key in @[@"cards", @"products", @"items", @"resultRefs", @"result_refs"]) {
+        id value = resultSet[key];
+        if ([value isKindOfClass:NSArray.class] && [(NSArray *)value count] > 0) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (void)clearCardRequirementInEnvelope:(NSMutableDictionary *)envelope {
+    if (![envelope isKindOfClass:NSMutableDictionary.class]) {
+        return;
+    }
+    envelope[@"cardsRequired"] = @NO;
+    envelope[@"cards_required"] = @NO;
+    envelope[@"textFallbackAllowed"] = @YES;
+    envelope[@"text_fallback_allowed"] = @YES;
+
+    for (NSString *key in @[@"result_set", @"resultSet", @"_compose_context", @"compose_context", @"composeContext"]) {
+        NSDictionary *nested = [envelope[key] isKindOfClass:NSDictionary.class] ? envelope[key] : nil;
+        if (!nested) {
+            continue;
+        }
+        NSMutableDictionary *mutableNested = [nested mutableCopy];
+        mutableNested[@"cardsRequired"] = @NO;
+        mutableNested[@"cards_required"] = @NO;
+        mutableNested[@"textFallbackAllowed"] = @YES;
+        mutableNested[@"text_fallback_allowed"] = @YES;
+        envelope[key] = [mutableNested copy];
+    }
 }
 
 #pragma mark - Helpers
