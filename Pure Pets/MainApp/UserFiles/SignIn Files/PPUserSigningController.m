@@ -23,8 +23,6 @@ static NSString * const kPPGoogleSignInClientIDKey = @"GIDClientID";
 static NSString * const kPPGoogleSignInServerClientIDKey = @"GIDServerClientID";
 static NSString * const kPPGoogleClientIDSuffix = @".apps.googleusercontent.com";
 static NSString * const kPPGoogleReversedClientIDPrefix = @"com.googleusercontent.apps.";
-static NSString * const kPPGoogleSignInAppCheckKVCKey = @"appCheck";
-static NSString * const kPPGoogleSignInAppCheckPreparedDefaultsKey = @"com.google.GIDAppCheckPreparedKey";
 
 #if DEBUG
 #define PPAuthDebugLog(...) NSLog(__VA_ARGS__)
@@ -1247,31 +1245,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
     return [[GIDConfiguration alloc] initWithClientID:safeClientID];
 }
 
-- (void)pp_disableGoogleSignInAppCheckClientAssertionForOAuth
-{
-    if (@available(iOS 14.0, *)) {
-        // FIXME: Google Sign-In KVC hack for App Check.
-        // This clears the internal App Check token from GIDSignIn.sharedInstance to prevent
-        // 'Token failed' errors when opening accounts.google.com if the iOS OAuth Client ID 
-        // is not correctly registered in Firebase App Check under the Google Cloud Console.
-        // Once the OAuth client ID is correctly linked to App Check in the console, this KVC
-        // hack should be removed so Google Sign-In is fully protected by App Check.
-        // Firebase App Check itself stays enabled for all other Firebase requests.
-        
-        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-        if ([defaults boolForKey:kPPGoogleSignInAppCheckPreparedDefaultsKey]) {
-            [defaults removeObjectForKey:kPPGoogleSignInAppCheckPreparedDefaultsKey];
-        }
-
-        @try {
-            [GIDSignIn.sharedInstance setValue:nil forKey:kPPGoogleSignInAppCheckKVCKey];
-            PPAuthDebugLog(@"[GoogleSignIn] OAuth App Check client assertion disabled for native sign-in.");
-        } @catch (NSException *exception) {
-            PPAuthDebugLog(@"[GoogleSignIn] Unable to disable OAuth App Check assertion: %@", exception.reason ?: exception.name);
-        }
-    }
-}
-
 - (BOOL)pp_configureGoogleSignInForClientID:(NSString *)clientID
 {
     GIDConfiguration *configuration = [self pp_googleConfigurationForClientID:clientID];
@@ -1279,7 +1252,6 @@ static inline void PPDispatchMain(void (^block)(void)) {
         return NO;
     }
     GIDSignIn.sharedInstance.configuration = configuration;
-    [self pp_disableGoogleSignInAppCheckClientAssertionForOAuth];
     return YES;
 }
 
@@ -1454,6 +1426,10 @@ static inline void PPDispatchMain(void (^block)(void)) {
     }
 
     PPAuthDebugLog(@"[GoogleSignIn] Attempt %lu using client ID %@", (unsigned long)(index + 1), [self pp_redactedGoogleClientIDForLog:clientID]);
+    PPAuthDebugLog(@"[GoogleSignIn] Configuration — clientID: %@ | serverClientID: %@ | redirectURI scheme: com.googleusercontent.apps.%@",
+                   GIDSignIn.sharedInstance.configuration.clientID,
+                   GIDSignIn.sharedInstance.configuration.serverClientID ?: @"(none)",
+                   [clientID stringByReplacingOccurrencesOfString:@".apps.googleusercontent.com" withString:@""]);
 
     __weak typeof(self) weakSelf = self;
     [GIDSignIn.sharedInstance signInWithPresentingViewController:self
@@ -1466,6 +1442,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 return;
             }
             if (error) {
+                PPAuthDebugLog(@"[GoogleSignIn] Error domain=%@ code=%ld description=%@ userInfo=%@",
+                               error.domain, (long)error.code, error.localizedDescription, error.userInfo);
                 if ([self pp_isGoogleSignInCancellationError:error]) {
                     [self pp_resetGoogleSignInLoadingState];
                     return;

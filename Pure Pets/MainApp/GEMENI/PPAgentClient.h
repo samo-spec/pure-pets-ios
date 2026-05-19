@@ -37,6 +37,13 @@ extern NSString * const kPPAgentBaseURL;
                                     completion:(void (^)(PPAgentMessage * _Nullable reply,
                                                          NSError * _Nullable error))completion;
 
+- (nullable NSURLSessionDataTask *)sendMessage:(NSString *)message
+                                      language:(nullable NSString *)language
+                                       idToken:(NSString *)idToken
+                                 appCheckToken:(nullable NSString *)appCheckToken
+                                    completion:(void (^)(PPAgentMessage * _Nullable reply,
+                                                         NSError * _Nullable error))completion;
+
 @end
 
 NS_ASSUME_NONNULL_END

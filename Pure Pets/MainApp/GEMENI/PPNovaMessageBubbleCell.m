@@ -920,6 +920,13 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
 - (CGFloat)pp_targetBubbleWidthForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
     CGFloat containerWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
+    CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
+    // Screen width is always a safe lower bound for assistant bubbles — the table view
+    // can never be wider than the screen. This prevents collapsed bubbles when the cell
+    // is first configured before the table view has completed its initial layout pass.
+    if (assistant && screenWidth > 1.0) {
+        containerWidth = MAX(containerWidth, screenWidth);
+    }
 
     CGFloat reserve = assistant ? PPNovaAssistantHorizontalReserve : PPNovaUserHorizontalReserve;
     CGFloat availableWidth = floor(containerWidth - reserve);
@@ -1147,29 +1154,9 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 }
 
 - (void)pp_configureStatusForMessage:(ChatMessageModel *)messageModel {
-    if (self.assistantMessage) {
-        self.statusImageView.hidden = YES;
-        return;
-    }
-
-    UIImage *icon = nil;
-    switch (messageModel.status) {
-        case ChatMessageStatusSending:
-            icon = [UIImage systemImageNamed:@"clock"];
-            break;
-        case ChatMessageStatusSent:
-            icon = [UIImage systemImageNamed:@"checkmark"];
-            break;
-        case ChatMessageStatusDelivered:
-        case ChatMessageStatusRead:
-            icon = [UIImage systemImageNamed:@"checkmark.circle.fill"];
-            break;
-        default:
-            icon = nil;
-            break;
-    }
-    self.statusImageView.image = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    self.statusImageView.hidden = (icon == nil);
+    (void)messageModel;
+    self.statusImageView.image = nil;
+    self.statusImageView.hidden = YES;
 }
 
 - (NSString *)pp_formattedTime:(NSDate *)date {

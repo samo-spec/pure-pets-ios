@@ -224,6 +224,7 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
         [self pp_configureAppCheckIfAvailable];
         [FIRApp configure];
         [self pp_enableAppCheckTokenAutoRefreshIfAvailable];
+        [GIDSignIn.sharedInstance configureWithCompletion:nil];
       
         [FIRMessaging messaging].delegate = self;
     });

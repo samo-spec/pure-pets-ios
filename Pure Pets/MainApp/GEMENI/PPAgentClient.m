@@ -9,7 +9,8 @@
 @import FirebaseAppCheck;
 
 // ADK Cloud Run base URL — all paths are relative to this.
-NSString * const kPPAgentBaseURL = @"https://nova-646051621158.us-central1.run.app";
+// Keep this aligned with Console's Nova runtime; client_type selects the iOS market assistant.
+NSString * const kPPAgentBaseURL = @"https://nova-ufzhhjmzdq-uc.a.run.app";
 
 static NSString * const kPPAgentAppName   = @"app";
 // Maps VC-managed novaSessionId (UUID) → ADK server-assigned session UUID.
@@ -69,9 +70,18 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     dispatch_group_t g = dispatch_group_create();
 
     dispatch_group_enter(g);
-    [user getIDTokenForcingRefresh:NO completion:^(NSString *t, NSError *e) {
-        idToken = t;
-        dispatch_group_leave(g);
+    [user getIDTokenForcingRefresh:YES completion:^(NSString *t, NSError *e) {
+        (void)e;
+        if (t.length > 0) {
+            idToken = t;
+            dispatch_group_leave(g);
+            return;
+        }
+        [user getIDTokenForcingRefresh:NO completion:^(NSString *cachedToken, NSError *cachedError) {
+            (void)cachedError;
+            idToken = cachedToken;
+            dispatch_group_leave(g);
+        }];
     }];
 
     dispatch_group_enter(g);
@@ -85,46 +95,65 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
             [self finish:completion msg:nil err:[self err:401 code:@"auth_token_failed"]];
             return;
         }
-        // acToken may be empty if App Check isn't enforced — the ADK server doesn't check it.
+        [self sendMessage:message
+                 language:language
+                  idToken:idToken
+            appCheckToken:acToken
+               completion:completion];
+    });
 
-        NSString *vcSessionId = self.sessionId ?: @"";
+    return nil;
+}
 
-        // Detect VC session reset — restore or create ADK session mapping.
-        if (![vcSessionId isEqualToString:self.lastKnownVCSessionId ?: @""]) {
-            self.lastKnownVCSessionId = vcSessionId;
-            self.adkSessionId = [self storedADKSessionIdForVCSession:vcSessionId];
-        }
+- (NSURLSessionDataTask *)sendMessage:(NSString *)message
+                             language:(NSString *)language
+                              idToken:(NSString *)idToken
+                        appCheckToken:(NSString *)appCheckToken
+                           completion:(void (^)(PPAgentMessage *, NSError *))completion {
+    FIRUser *user = FIRAuth.auth.currentUser;
+    if (!user) {
+        [self finish:completion msg:nil err:[self err:401 code:@"not_signed_in"]];
+        return nil;
+    }
+    NSString *acToken = appCheckToken ?: @"";
+    NSString *vcSessionId = self.sessionId ?: @"";
 
-        NSString *userId = user.uid;
+    // Detect VC session reset — restore or create ADK session mapping.
+    if (![vcSessionId isEqualToString:self.lastKnownVCSessionId ?: @""]) {
+        self.lastKnownVCSessionId = vcSessionId;
+        self.adkSessionId = [self storedADKSessionIdForVCSession:vcSessionId];
+    }
 
-        if (self.adkSessionId) {
+    NSString *userId = user.uid;
+
+    if (self.adkSessionId) {
+        [self doRunMessage:message
+                    userId:userId
+                   idToken:idToken
+                   acToken:acToken
+                  language:language
+         retryOnNotFound:YES
+                completion:completion];
+    } else {
+        [self createADKSessionForUser:userId
+                         vcSessionId:vcSessionId
+                             idToken:idToken
+                             acToken:acToken
+                          completion:^(NSString *adkSid, NSError *err) {
+            if (err || !adkSid) {
+                [self finish:completion msg:nil err:err ?: [self err:503 code:@"session_create_failed"]];
+                return;
+            }
+            self.adkSessionId = adkSid;
             [self doRunMessage:message
                         userId:userId
                        idToken:idToken
                        acToken:acToken
-             retryOnNotFound:YES
+                      language:language
+             retryOnNotFound:NO
                     completion:completion];
-        } else {
-            [self createADKSessionForUser:userId
-                             vcSessionId:vcSessionId
-                                 idToken:idToken
-                                 acToken:acToken
-                              completion:^(NSString *adkSid, NSError *err) {
-                if (err || !adkSid) {
-                    [self finish:completion msg:nil err:err ?: [self err:503 code:@"session_create_failed"]];
-                    return;
-                }
-                self.adkSessionId = adkSid;
-                [self doRunMessage:message
-                            userId:userId
-                           idToken:idToken
-                           acToken:acToken
-                 retryOnNotFound:NO
-                        completion:completion];
-            }];
-        }
-    });
-
+        }];
+    }
     return nil;
 }
 
@@ -153,7 +182,9 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
                         kPPAgentBaseURL, kPPAgentAppName, userId];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlStr]];
     req.HTTPMethod = @"POST";
-    [req setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
+    if (idToken.length) {
+        [req setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
+    }
     if (acToken.length) [req setValue:acToken forHTTPHeaderField:@"X-Firebase-AppCheck"];
     [req setValue:@"application/json"                              forHTTPHeaderField:@"Content-Type"];
     // Declare client_type so the root coordinator routes to nova_market_assistan.
@@ -180,16 +211,20 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
               userId:(NSString *)userId
              idToken:(NSString *)idToken
              acToken:(NSString *)acToken
+            language:(NSString *)language
     retryOnNotFound:(BOOL)retryOnNotFound
           completion:(void (^)(PPAgentMessage *, NSError *))completion {
 
     NSString *urlStr = [NSString stringWithFormat:@"%@/run", kPPAgentBaseURL];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:urlStr]];
     req.HTTPMethod = @"POST";
-    [req setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
+    if (idToken.length) {
+        [req setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
+    }
     if (acToken.length) [req setValue:acToken forHTTPHeaderField:@"X-Firebase-AppCheck"];
     [req setValue:@"application/json"                              forHTTPHeaderField:@"Content-Type"];
-    [req setValue:NSLocale.currentLocale.localeIdentifier          forHTTPHeaderField:@"Accept-Language"];
+    NSString *acceptLanguage = language.length > 0 ? language : NSLocale.currentLocale.localeIdentifier;
+    [req setValue:acceptLanguage                                  forHTTPHeaderField:@"Accept-Language"];
 
     NSDictionary *body = @{
         @"appName"   : kPPAgentAppName,
@@ -222,7 +257,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
                     return;
                 }
                 self.adkSessionId = adkSid;
-                [self doRunMessage:message userId:userId idToken:idToken acToken:acToken retryOnNotFound:NO completion:completion];
+                [self doRunMessage:message userId:userId idToken:idToken acToken:acToken language:language retryOnNotFound:NO completion:completion];
             }];
             return;
         }

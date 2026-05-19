@@ -1248,8 +1248,8 @@
     if (indexPath.section == PPProfileSectionLogout) {
         PPProfileActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileActionCell" forIndexPath:indexPath];
         [cell configureWithTitle:(kLang(@"logout") ?: @"Log Out") iconName:@"rectangle.portrait.and.arrow.right"];
-        cell.titleLabel.textColor = UIColor.systemRedColor;
-        cell.iconView.tintColor = UIColor.systemRedColor;
+        cell.titleLabel.textColor = AppErrorClr;
+        cell.iconView.tintColor = AppErrorClr;
         cell.accessibilityIdentifier = @"profile_logout_button";
         cell.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
         return cell;

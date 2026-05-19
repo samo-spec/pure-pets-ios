@@ -235,9 +235,9 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _largeOrbView.layer.masksToBounds = YES;
     
-    _topBackgroundGlowView.layer.cornerRadius = 272.0/2;
-    _middleBackgroundGlowView.layer.cornerRadius = 216.0/2;
-    _bottomLeadingGlowView.layer.cornerRadius = 344.0/2;
+    _topBackgroundGlowView.layer.cornerRadius = 246.0/2;
+    _middleBackgroundGlowView.layer.cornerRadius = 178.0/2;
+    _bottomLeadingGlowView.layer.cornerRadius = 226.0/2;
     _largeOrbView.layer.cornerRadius = 120.0/2;
     _iconPlateView.layer.cornerRadius = 48.0/2;
     _smallOrbView.layer.cornerRadius = 48.0/2;
@@ -249,21 +249,21 @@ static UIColor *PremiumSoftCardBorderColor(void)
         [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:162.0],
-        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:162.0],
-        [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-52.0],
-        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:54.0],
+        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:246.0],
+        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:246.0],
+        [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-82.0],
+        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:94.0],
 
         
-        [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:0],
-        [_middleBackgroundGlowView.heightAnchor constraintEqualToConstant:0],
-        [_middleBackgroundGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
-        [_middleBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:68.0],
+        [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:178.0],
+        [_middleBackgroundGlowView.heightAnchor constraintEqualToConstant:178.0],
+        [_middleBackgroundGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-88.0],
+        [_middleBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:46.0],
 
-        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:4.0],
-        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:4.0],
-        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-136.0],
-        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:132.0],
+        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:0.0],
+        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:0.0],
+        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-118.0],
+        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:104.0],
 
         [_largeOrbView.widthAnchor constraintEqualToConstant:0.0],
         [_largeOrbView.heightAnchor constraintEqualToConstant:0.0],
@@ -336,7 +336,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     view.userInteractionEnabled = NO;
     view.clipsToBounds = NO;
     view.layer.cornerRadius = radius;
-    view.layer.shadowRadius = 68.0;
+    view.layer.shadowRadius = 76.0;
     view.layer.shadowOpacity = 0.28;
     view.layer.shadowOffset = CGSizeZero;
     return view;
@@ -461,20 +461,20 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.17];
     [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.22]];
-    _topBackgroundGlowView.layer.shadowOpacity = 0.28;
-    _topBackgroundGlowView.layer.shadowRadius = 68.0;
+    _topBackgroundGlowView.layer.shadowOpacity = 0.32;
+    _topBackgroundGlowView.layer.shadowRadius = 76.0;
     _topBackgroundGlowView.layer.shadowOffset = CGSizeZero;
 
     _middleBackgroundGlowView.backgroundColor = glowHighlight;
     [_middleBackgroundGlowView pp_setShadowColor:glowHighlight];
-    _middleBackgroundGlowView.layer.shadowOpacity = 0.28;
-    _middleBackgroundGlowView.layer.shadowRadius = 68.0;
+    _middleBackgroundGlowView.layer.shadowOpacity = 0.30;
+    _middleBackgroundGlowView.layer.shadowRadius = 76.0;
     _middleBackgroundGlowView.layer.shadowOffset = CGSizeZero;
 
     _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
     [_bottomLeadingGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.16 : 0.18]];
-    _bottomLeadingGlowView.layer.shadowOpacity = 0.28;
-    _bottomLeadingGlowView.layer.shadowRadius = 68.0;
+    _bottomLeadingGlowView.layer.shadowOpacity = 0.30;
+    _bottomLeadingGlowView.layer.shadowRadius = 74.0;
     _bottomLeadingGlowView.layer.shadowOffset = CGSizeZero;
 
     _largeOrbView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.12 : 0.08];
@@ -553,19 +553,19 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     [self pp_addPetCareGlowTranslationToView:_topBackgroundGlowView
                                          key:@"pp.home.premiumCare.petCareGlowTop"
-                                           x:-16.0
-                                           y:12.0
-                                    duration:6.0];
+                                           x:-20.0
+                                           y:15.0
+                                    duration:3.8];
     [self pp_addPetCareGlowTranslationToView:_middleBackgroundGlowView
                                          key:@"pp.home.premiumCare.petCareGlowMiddle"
-                                           x:12.0
-                                           y:-10.0
-                                    duration:6.0];
+                                           x:16.0
+                                           y:-13.0
+                                    duration:4.2];
     [self pp_addPetCareGlowTranslationToView:_bottomLeadingGlowView
                                          key:@"pp.home.premiumCare.petCareGlowBottom"
-                                           x:18.0
-                                           y:-14.0
-                                    duration:7.4];
+                                           x:22.0
+                                           y:-17.0
+                                    duration:4.8];
 
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
@@ -591,7 +591,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
         CAAnimationGroup *dotAnimation = [CAAnimationGroup animation];
         dotAnimation.animations = @[scaleAnimation, opacityAnimation, floatAnimation];
-        dotAnimation.duration = 2.6 + ((double)idx * 0.35);
+        dotAnimation.duration = 1.9 + ((double)idx * 0.22);
         dotAnimation.autoreverses = YES;
         dotAnimation.repeatCount = HUGE_VALF;
         dotAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -616,7 +616,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _topBackgroundGlowView.transform = CGAffineTransformIdentity;
     _middleBackgroundGlowView.alpha = 1.0;
     _middleBackgroundGlowView.transform = CGAffineTransformIdentity;
-    _bottomLeadingGlowView.alpha = 1.0;
+    _bottomLeadingGlowView.alpha = 0.0;
     _bottomLeadingGlowView.transform = CGAffineTransformIdentity;
 }
 

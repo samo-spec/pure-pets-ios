@@ -210,7 +210,7 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
 
 - (nullable NSString *)_matchPetTypeInText:(NSString *)lower original:(NSString *)original {
     NSArray<NSDictionary *> *petKeywords = @[
-        @{@"label": @"cat",     @"keys": @[@"cat", @"cats", @"kitten", @"kitty",
+        @{@"label": @"cat",     @"keys": @[@"cat", @"cats", @"kitten", @"kitty",@"جاو",
                                             @"قط", @"قطة", @"قطه", @"قطتي", @"قطط", @"بسة", @"بسه", @"هر", @"هرة"]},
         @{@"label": @"dog",     @"keys": @[@"dog", @"dogs", @"puppy", @"pup",
                                             @"كلب", @"كلبة", @"كلبه", @"كلبي", @"جرو", @"كلاب"]},
@@ -241,6 +241,7 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
     NSArray<NSDictionary *> *needKeywords = @[
         @{@"label": @"food",     @"keys": @[@"food", @"feed", @"meal", @"kibble", @"treat", @"snack",
                                               @"dry food", @"wet food", @"dry", @"wet",
+                                            @"طقة", @"عضة", @"جومة",
                                               @"أكل", @"اكل", @"طعام", @"غذاء", @"دراي", @"وجبة", @"وجبه", @"تغذية"]},
         @{@"label": @"cage",     @"keys": @[@"cage", @"carrier", @"crate", @"kennel", @"bed",
                                               @"aquarium", @"tank",

@@ -913,6 +913,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeItemIdentifiers;
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *animatedHomeHeaderSections;
+@property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeHorizontalUniversalIdentifiers;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL petProfilesLoading;
@@ -1006,6 +1007,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                                               kind:(NSString *)kind
                                        atIndexPath:(NSIndexPath *)indexPath
                                     initialOrdinal:(NSUInteger)initialOrdinal;
+- (void)pp_animateHorizontalUniversalCellIfNeeded:(UICollectionViewCell *)cell
+                                      atIndexPath:(NSIndexPath *)indexPath
+                                          section:(PPHomeSection)section;
 - (nullable NSString *)pp_homeEntranceKeyForIndexPath:(NSIndexPath *)indexPath
                                                  kind:(nullable NSString *)kind;
 - (void)pp_refreshThemeSensitiveHomeContent;
@@ -2745,6 +2749,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.promoCarouselCards = PPHomePromoCarouselManager.sharedManager.cards ?: @[];
     self.animatedHomeItemIdentifiers = [NSMutableSet set];
     self.animatedHomeHeaderSections = [NSMutableSet set];
+    self.animatedHomeHorizontalUniversalIdentifiers = [NSMutableSet set];
     [self configureLocationStateMachine];
 
 
@@ -7572,6 +7577,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             [CATransaction commit];
         }
     }
+
+    [self pp_animateHorizontalUniversalCellIfNeeded:cell
+                                        atIndexPath:indexPath
+                                            section:section];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -8608,6 +8617,72 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                      animations:^{
         supplementaryView.alpha = 1.0;
         supplementaryView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (BOOL)pp_homeSectionUsesHorizontalUniversalCards:(PPHomeSection)section
+{
+    return section == PPHomeSectionSuggestions ||
+           section == PPHomeSectionAccessories ||
+           section == PPHomeSectionLastFood ||
+           section == PPHomeSectionAdsNearBy ||
+           section == PPHomeSectionNearbyServices ||
+           section == PPHomeSectionBuyAgain;
+}
+
+- (void)pp_animateHorizontalUniversalCellIfNeeded:(UICollectionViewCell *)cell
+                                      atIndexPath:(NSIndexPath *)indexPath
+                                          section:(PPHomeSection)section
+{
+    if (!cell || !indexPath || ![cell isKindOfClass:PPUniversalCell.class]) {
+        return;
+    }
+
+    if (![self pp_homeSectionUsesHorizontalUniversalCards:section]) {
+        return;
+    }
+
+    if (![self pp_isInitialHomeRevealSettled]) {
+        return;
+    }
+
+    if ([self pp_shouldReduceHomeMotion]) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        cell.contentView.alpha = 1.0;
+        return;
+    }
+
+    NSString *baseKey = [self pp_homeEntranceKeyForIndexPath:indexPath kind:nil];
+    if (baseKey.length == 0) {
+        baseKey = [NSString stringWithFormat:@"section-%ld-item-%ld", (long)section, (long)indexPath.item];
+    }
+    NSString *motionKey = [@"horizontal-universal-" stringByAppendingString:baseKey];
+    if ([self.animatedHomeHorizontalUniversalIdentifiers containsObject:motionKey]) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        cell.contentView.alpha = 1.0;
+        return;
+    }
+    [self.animatedHomeHorizontalUniversalIdentifiers addObject:motionKey];
+
+    [cell.layer removeAnimationForKey:@"pp.home.horizontalUniversal.display"];
+    CGFloat direction = Language.isRTL ? -1.0 : 1.0;
+    cell.alpha = 0.0;
+    cell.contentView.alpha = 0.78;
+    cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(direction * 26.0, 10.0),
+                                             CGAffineTransformMakeScale(0.970, 0.970));
+
+    NSTimeInterval delay = MIN((indexPath.item % 4) * 0.045, 0.135);
+    [UIView animateWithDuration:0.62
+                          delay:delay
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.14
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        cell.alpha = 1.0;
+        cell.contentView.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 

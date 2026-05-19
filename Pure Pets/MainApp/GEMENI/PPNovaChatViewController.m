@@ -51,7 +51,6 @@ static UIColor *PPNovaDynamicColor(UIColor *lightColor, UIColor *darkColor) {
 static const CGFloat PPNovaExpandedTableTopInset = 228.0;
 static const CGFloat PPNovaCollapsedTableTopInset = 124.0;
 static const CGFloat PPNovaTableBottomInset = 22.0;
-static NSString * const PPNovaDirectURL = @"https://nova-646051621158.us-central1.run.app";
 
 static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryEntryCell";
 static NSString * const PPNovaSmartSuggestionWashBreathKey = @"pp.nova.smartSuggestion.washBreath";
@@ -684,6 +683,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, copy) NSArray<UIButton *> *smartSuggestionPickerButtons;
 @property (nonatomic, copy) NSArray<NSDictionary<NSString *, NSString *> *> *smartSuggestionPickerSuggestions;
 @property (nonatomic, strong) NSLayoutConstraint *smartSuggestionPickerBottomConstraint;
+@property (nonatomic, strong) UIView *smartSuggestionSheetDimmingView;
+@property (nonatomic, strong) UIView *smartSuggestionSheetGrabberView;
 
 @property (nonatomic, strong) LOTAnimationView *novaHeaderBackgroundLottie;
 @property (nonatomic, copy) NSString *currentHeaderBgAnimationName;
@@ -696,10 +697,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) NSMutableArray<ChatMessageModel *> *messages;
 @property (nonatomic, strong) PPNovaFloatingInputBarView *inputbar;
 @property (nonatomic, strong) NSLayoutConstraint *inputBarBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *inputBarSafeAreaBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *inputBarKeyboardBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *typingBottomConstraint;
 @property (nonatomic, assign) CGFloat inputBarRestingBottomConstant;
+@property (nonatomic, assign) BOOL usesKeyboardLayoutGuideForNovaInput;
+@property (nonatomic, assign) CGFloat currentNovaKeyboardOffset;
 @property (nonatomic, copy, nullable) NSString *novaPendingPetType;
-@property (nonatomic, strong) NSURLSession *novaNetworkSession;
 
 
 // Nova Product / Cart Context
@@ -974,11 +978,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 #pragma mark - Backend
 
 - (void)setupNovaBackend {
-    NSURLSessionConfiguration *config = [NSURLSessionConfiguration defaultSessionConfiguration];
-    config.timeoutIntervalForRequest = 70.0;
-    self.novaNetworkSession = [NSURLSession sessionWithConfiguration:config];
-
-    LOG_INFO(@"[PPNovaChat][Debug] Initialized Nova backend with direct URL: %@ (timeout=70s)", PPNovaDirectURL);
+    LOG_INFO(@"[PPNovaChat][Debug] Initialized Nova backend with ADK runtime: %@ (timeout=60s)", kPPAgentBaseURL);
 }
 
 - (NSString *)pp_newNovaScopedIDWithPrefix:(NSString *)prefix {
@@ -1522,13 +1522,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
              source ?: @"unknown",
              reason ?: @"unknown");
     [self hideNovaTyping];
-    NSString *fallback = kLang(@"nova_cell_render_missing");
-    if (fallback.length == 0 || [fallback isEqualToString:@"nova_cell_render_missing"]) {
-        fallback = kLang(@"nova_suggestions_unavailable");
-    }
-    if (![self pp_lastNovaTextMessageEquals:fallback]) {
-        [self addNovaMessage:fallback requestID:requestID responseID:responseID];
-    }
 }
 
 - (BOOL)pp_novaReplyLooksLikeManualResultList:(NSString *)text {
@@ -1791,6 +1784,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)sendNovaRequestForUserText:(NSString *)userText requestID:(NSString *)requestID {
+    [self sendNovaRequestForUserText:userText visibleUserText:userText requestID:requestID];
+}
+
+- (void)sendNovaRequestForUserText:(NSString *)userText
+                   visibleUserText:(NSString *)visibleUserText
+                         requestID:(NSString *)requestID {
     NSString *trimmedText = [userText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) {
         [self hideNovaTyping];
@@ -1798,47 +1797,95 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
-    // Guard: Firebase Auth user must exist. If nil, show sign-in required
-    // instead of letting the callable fail with a cryptic App Check / auth error.
+    // Guard: Firebase Auth user must exist. Keep Nova open and show an inline
+    // auth error; sending a chat message should never dismiss the controller.
     FIRUser *currentUser = PPCurrentFIRAuthUser;
     if (!currentUser || currentUser.uid.length == 0) {
         [self hideNovaTyping];
         LOG_ERROR(@"[PPNovaChat][Debug] branch=no_firebase_user request_id=%@", requestID ?: @"");
-        [self pp_dismissNovaForSignInRequired];
+        [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_auth")];
         return;
     }
 
-    // Refresh the ID token if needed so the callable always carries a fresh one.
-    // The Firebase Callable SDK auto-attaches `Authorization: Bearer <id_token>`
-    // but only if the token is still valid. A stale token causes gRPC 16.
+    // Refresh the ID token if needed so Nova carries a fresh token. If refresh
+    // fails, fall back to the cached token before surfacing an inline error.
     __weak typeof(self) weakSelf = self;
     [currentUser getIDTokenForcingRefresh:YES completion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || self.dismissed) return;
 
         if (tokenError || idToken.length == 0) {
-            [self hideNovaTyping];
-            LOG_ERROR(@"[PPNovaChat][Debug] branch=token_refresh_failed error=%@ request_id=%@",
+            LOG_WARN(@"[PPNovaChat][Debug] branch=token_refresh_failed_try_cached error=%@ request_id=%@",
                       tokenError.localizedDescription ?: @"missing token",
                       requestID ?: @"");
-            [self pp_dismissNovaForSignInRequired];
+            [currentUser getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable cachedToken, NSError * _Nullable cachedTokenError) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || self.dismissed) return;
+
+                if (cachedToken.length == 0) {
+                    LOG_WARN(@"[PPNovaChat][Debug] branch=token_unavailable_continue_public_runtime error=%@ request_id=%@",
+                              cachedTokenError.localizedDescription ?: tokenError.localizedDescription ?: @"missing token",
+                              requestID ?: @"");
+                    [self pp_continueNovaRequestAfterTokenReady:trimmedText
+                                                visibleUserText:visibleUserText
+                                                      requestID:requestID
+                                                        idToken:@""];
+                    return;
+                }
+
+                LOG_INFO(@"[PPNovaChat][Debug] branch=token_cached request_id=%@ token_length=%lu",
+                         requestID ?: @"", (unsigned long)cachedToken.length);
+                [self pp_continueNovaRequestAfterTokenReady:trimmedText
+                                            visibleUserText:visibleUserText
+                                                  requestID:requestID
+                                                    idToken:cachedToken];
+            }];
             return;
         }
 
         LOG_INFO(@"[PPNovaChat][Debug] branch=token_refreshed request_id=%@ token_length=%lu",
                  requestID ?: @"", (unsigned long)idToken.length);
-
-        // Proceed with the actual request now that we have a fresh token.
-        [self pp_continueNovaRequestWithText:trimmedText requestID:requestID];
+        [self pp_continueNovaRequestAfterTokenReady:trimmedText
+                                    visibleUserText:visibleUserText
+                                          requestID:requestID
+                                            idToken:idToken];
     }];
 }
 
-- (void)pp_continueNovaRequestWithText:(NSString *)trimmedText requestID:(NSString *)requestID {
+- (void)pp_continueNovaRequestAfterTokenReady:(NSString *)trimmedText
+                              visibleUserText:(NSString *)visibleUserText
+                                    requestID:(NSString *)requestID
+                                      idToken:(NSString *)idToken {
+    __weak typeof(self) weakSelf = self;
+    [[FIRAppCheck appCheck] limitedUseTokenWithCompletion:^(FIRAppCheckToken * _Nullable appCheckToken, NSError * _Nullable appCheckError) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed) return;
+
+        if (appCheckError) {
+            LOG_WARN(@"[PPNovaChat][Debug] branch=app_check_token_unavailable error=%@ request_id=%@",
+                     appCheckError.localizedDescription ?: @"unknown",
+                     requestID ?: @"");
+        }
+
+        [self pp_continueNovaRequestWithText:trimmedText
+                             visibleUserText:visibleUserText
+                                   requestID:requestID
+                                     idToken:idToken
+                               appCheckToken:appCheckToken.token];
+    }];
+}
+
+- (void)pp_continueNovaRequestWithText:(NSString *)trimmedText
+                       visibleUserText:(NSString *)visibleUserText
+                             requestID:(NSString *)requestID
+                               idToken:(NSString *)idToken
+                         appCheckToken:(NSString *)appCheckToken {
     // pp_updateMemoryFromUserText is already called by the caller before
     // sendNovaRequestForUserText — do not duplicate here.
+    NSString *displayText = visibleUserText.length > 0 ? visibleUserText : trimmedText;
 
-    [PPAnalytics logNovaMessageSentWithCharCount:trimmedText.length
-                                         isArabic:[self textContainsArabic:trimmedText]
+    [PPAnalytics logNovaMessageSentWithCharCount:displayText.length
+                                         isArabic:[self textContainsArabic:displayText]
                                        sessionID:self.novaSessionId];
 
     // After the first request is dispatched, every subsequent message tells the
@@ -1849,114 +1896,75 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.novaRequestGeneration = self.novaRequestGeneration + 1;
     NSUInteger generation = self.novaRequestGeneration;
     [self pp_startNovaRequestWatchdogForGeneration:generation userText:trimmedText requestID:requestID];
-    [self pp_dispatchNovaRequest:trimmedText attempt:0 generation:generation requestID:requestID];
+    [self showNovaTyping];
+    [self pp_dispatchNovaRequest:trimmedText
+                  visibleUserText:displayText
+                          idToken:idToken
+                    appCheckToken:appCheckToken
+                          attempt:0
+                       generation:generation
+                        requestID:requestID];
 }
 
 - (void)pp_dispatchNovaRequest:(NSString *)trimmedText
+                visibleUserText:(NSString *)visibleUserText
+                        idToken:(NSString *)idToken
+                  appCheckToken:(NSString *)appCheckToken
                        attempt:(NSInteger)attempt
                     generation:(NSUInteger)generation
                      requestID:(NSString *)requestID {
     if (self.dismissed || generation != self.novaRequestGeneration) return;
-
-    __weak typeof(self) weakSelf = self;
-    FIRUser *currentUser = FIRAuth.auth.currentUser;
-    if (!currentUser) {
-        [self hideNovaTyping];
-        [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_auth")];
-        return;
+    NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"agent_proxy"];
+    PPAgentClient *agent = [PPAgentClient shared];
+    if (![agent.sessionId hasPrefix:@"s_"]) {
+        agent.sessionId = self.novaSessionId;
     }
 
-    [currentUser getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
-        __strong typeof(weakSelf) self = weakSelf;
-        if (!self || self.dismissed || generation != self.novaRequestGeneration) return;
-        
-        if (tokenError || !idToken) {
-            [self hideNovaTyping];
-            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_auth")];
-            return;
-        }
+    __weak typeof(self) weakSelf = self;
+    NSString *userLang = [self textContainsArabic:trimmedText] ? @"ar" : @"en";
+    LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_agent_runtime request_id=%@ attempt=%ld runtime=%@",
+             requestID ?: @"",
+             (long)attempt,
+             kPPAgentBaseURL);
+    [agent sendMessage:trimmedText
+              language:userLang
+               idToken:idToken
+         appCheckToken:appCheckToken
+            completion:^(PPAgentMessage *reply, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || self.dismissed || generation != self.novaRequestGeneration) return;
 
-        [[FIRAppCheck appCheck] limitedUseTokenWithCompletion:^(FIRAppCheckToken * _Nullable appCheckToken, NSError * _Nullable appCheckError) {
-            if (self.dismissed || generation != self.novaRequestGeneration) return;
-            
-            NSString *acToken = appCheckToken.token;
-            NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:PPNovaDirectURL]];
-            request.HTTPMethod = @"POST";
-            request.timeoutInterval = 70.0;
-            [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-            [request setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
-            if (acToken.length > 0) {
-                [request setValue:acToken forHTTPHeaderField:@"X-Firebase-AppCheck"];
-            }
-
-            NSDictionary *context = [self pp_currentContextDictionary];
-            NSDictionary *payload = @{
-                @"data": @{
-                    @"text": trimmedText ?: @"",
-                    @"sessionId": self.novaSessionId ?: @"",
-                    @"context": context ?: @{}
+            if (error) {
+                LOG_ERROR(@"[PPNovaChat][Debug] branch=agent_runtime_failed error=%@ request_id=%@ attempt=%ld runtime=%@",
+                          error.localizedDescription ?: @"unknown",
+                          requestID ?: @"",
+                          (long)attempt,
+                          kPPAgentBaseURL);
+                if (attempt < 2) {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                        [self pp_dispatchNovaRequest:trimmedText
+                                      visibleUserText:visibleUserText
+                                              idToken:idToken
+                                        appCheckToken:appCheckToken
+                                              attempt:attempt + 1
+                                           generation:generation
+                                            requestID:requestID];
+                    });
+                    return;
                 }
-            };
 
-            NSError *jsonError;
-            NSData *jsonData = [NSJSONSerialization dataWithJSONObject:payload options:0 error:&jsonError];
-            if (jsonError || !jsonData) {
                 [self hideNovaTyping];
                 [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
                 return;
             }
-            request.HTTPBody = jsonData;
 
-            LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_direct_url request_id=%@ attempt=%ld", requestID ?: @"", (long)attempt);
-
-            NSURLSessionDataTask *task = [self.novaNetworkSession dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    __strong typeof(weakSelf) self = weakSelf;
-                    if (!self || self.dismissed || generation != self.novaRequestGeneration) return;
-
-                    NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse *)response;
-                    if (error || (httpResponse.statusCode != 200 && httpResponse.statusCode != 204)) {
-                        LOG_ERROR(@"[PPNovaChat][Debug] branch=request_failed error=%@ status=%ld request_id=%@", 
-                                  error.localizedDescription ?: @"none", (long)httpResponse.statusCode, requestID ?: @"");
-                        
-                        if (attempt < 2) {
-                            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                                [self pp_dispatchNovaRequest:trimmedText attempt:attempt + 1 generation:generation requestID:requestID];
-                            });
-                        } else {
-                            [self hideNovaTyping];
-                            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
-                        }
-                        return;
-                    }
-
-                    if (!data) {
-                        [self hideNovaTyping];
-                        return;
-                    }
-
-                    NSError *respJsonError;
-                    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&respJsonError];
-                    
-                    // Direct HTTPS calls to Cloud Functions usually return { "result": { ... } }
-                    NSDictionary *result = json[@"result"];
-                    if (![result isKindOfClass:NSDictionary.class]) {
-                        result = json;
-                    }
-
-                    PPAgentMessage *reply = [[PPAgentMessage alloc] init];
-                    reply.text = result[@"text"];
-                    reply.responseData = result;
-
-                    [self pp_handleNovaAgentProxyReply:reply
-                                              userText:trimmedText
-                                             requestID:requestID
-                                    fallbackResponseID:nil
-                                            generation:generation];
-                });
-            }];
-            [task resume];
-        }];
+            [self pp_handleNovaAgentProxyReply:reply
+                                      userText:(visibleUserText.length > 0 ? visibleUserText : trimmedText)
+                                     requestID:requestID
+                            fallbackResponseID:responseID
+                                    generation:generation];
+        });
     }];
 }
 
@@ -2010,6 +2018,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_logNovaIncomingRefs:suggestionRefs requestID:requestID responseID:responseID source:@"agent_proxy"];
 
     if (mustRenderCells && suggestionRefs.count == 0) {
+        if (replyOptions.count > 0) {
+            [self hideNovaTyping];
+            NSString *sanitizedReply = replyText.length > 0
+                ? [self pp_sanitizeNovaReply:replyText hideStructuredSuggestions:NO]
+                : @"";
+            [self addNovaMessage:sanitizedReply requestID:requestID responseID:responseID options:replyOptions];
+            return;
+        }
         [self pp_handleNovaCellRenderMissingWithRequestID:requestID
                                                responseID:responseID
                                        backendResultCount:backendResultCount
@@ -2023,7 +2039,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     if (replyText.length == 0 && suggestionRefs.count == 0) {
         [self hideNovaTyping];
-        if (hasCatalogIntent) {
+        if (replyOptions.count > 0 || hasCatalogIntent) {
             [self pp_addNovaProductResultTextForRenderedCount:0
                                                  proposedText:nil
                                                      userText:trimmedText
@@ -4174,6 +4190,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.smartSuggestionPickerView.layer.borderColor = [suggestionAccent colorWithAlphaComponent:0.16].CGColor;
     self.smartSuggestionPickerView.layer.shadowColor = [self pp_resolvedNovaLayerColor:suggestionCompanion].CGColor;
     self.smartSuggestionPickerTitleLabel.textColor = primaryText;
+    self.smartSuggestionSheetGrabberView.backgroundColor = [secondaryText colorWithAlphaComponent:isDark ? 0.34 : 0.24];
     [self pp_updateNovaSmartSuggestionAutoSendButtonAnimated:NO];
 
     [self.smartSuggestionPickerButtons enumerateObjectsUsingBlock:^(UIButton *button, NSUInteger idx, __unused BOOL *stop) {
@@ -4634,7 +4651,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     loadingLottie.userInteractionEnabled = NO;
     loadingLottie.contentMode = UIViewContentModeScaleAspectFit;
     loadingLottie.loopAnimation = YES;
-    loadingLottie.animationSpeed = 1.0;
+    loadingLottie.animationSpeed = 0.5;
     loadingLottie.alpha = 0.0;
     loadingLottie.clipsToBounds = YES;
     [brandHalo addSubview:loadingLottie];
@@ -4642,7 +4659,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     UIView *brandRing = [[UIView alloc] init];
     brandRing.translatesAutoresizingMaskIntoConstraints = NO;
-    brandRing.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
+    brandRing.backgroundColor = [accentColor colorWithAlphaComponent:0.0];
     brandRing.layer.cornerRadius = 29.0;
     brandRing.layer.borderWidth = 1.2 / UIScreen.mainScreen.scale;
     brandRing.layer.borderColor = [accentColor colorWithAlphaComponent:0.24].CGColor;
@@ -5550,7 +5567,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self.view addSubview:self.inputbar];
 
     self.inputBarRestingBottomConstant = -10.0;
-    self.inputBarBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:self.inputBarRestingBottomConstant];
+    self.inputBarSafeAreaBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
+                                                                                       constant:self.inputBarRestingBottomConstant];
+    self.inputBarBottomConstraint = self.inputBarSafeAreaBottomConstraint;
+    if (@available(iOS 15.0, *)) {
+        self.usesKeyboardLayoutGuideForNovaInput = YES;
+        self.inputBarKeyboardBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor
+                                                                                           constant:self.inputBarRestingBottomConstant];
+        self.inputBarKeyboardBottomConstraint.active = NO;
+    } else {
+        self.usesKeyboardLayoutGuideForNovaInput = NO;
+    }
     NSLayoutConstraint *compactWidth = [self.inputbar.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-24.0];
     compactWidth.priority = 999.0;
     NSLayoutConstraint *readableWidth = [self.inputbar.widthAnchor constraintEqualToConstant:760.0];
@@ -6353,6 +6380,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     return button;
 }
 
+- (void)pp_handleNovaSuggestionSheetDimmingTap:(__unused UITapGestureRecognizer *)tap {
+    [self pp_hideNovaSmartSuggestionPickerAnimated:YES];
+}
+
 - (void)setupNovaSmartSuggestionPicker {
     if (self.smartSuggestionPickerView) {
         return;
@@ -6363,17 +6394,28 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         blurStyle = UIBlurEffectStyleSystemThinMaterial;
     }
 
+    UIView *dimmingView = [[UIView alloc] init];
+    dimmingView.translatesAutoresizingMaskIntoConstraints = NO;
+    dimmingView.backgroundColor = UIColor.blackColor;
+    dimmingView.alpha = 0.0;
+    dimmingView.hidden = YES;
+    dimmingView.userInteractionEnabled = YES;
+    [dimmingView addGestureRecognizer:[[UITapGestureRecognizer alloc] initWithTarget:self
+                                                                              action:@selector(pp_handleNovaSuggestionSheetDimmingTap:)]];
+    [self.view addSubview:dimmingView];
+    self.smartSuggestionSheetDimmingView = dimmingView;
+
     UIVisualEffectView *pickerView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:blurStyle]];
     pickerView.translatesAutoresizingMaskIntoConstraints = NO;
     pickerView.clipsToBounds = YES;
-    pickerView.layer.cornerRadius = 26.0;
+    pickerView.layer.cornerRadius = 30.0;
     pickerView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-    pickerView.layer.shadowOpacity = 0.16;
-    pickerView.layer.shadowRadius = 28.0;
-    pickerView.layer.shadowOffset = CGSizeMake(0.0, 16.0);
+    pickerView.layer.shadowOpacity = 0.20;
+    pickerView.layer.shadowRadius = 34.0;
+    pickerView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
     pickerView.alpha = 0.0;
     pickerView.hidden = YES;
-    pickerView.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
+    pickerView.transform = CGAffineTransformMakeTranslation(0.0, 42.0);
     pickerView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     pickerView.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     if (@available(iOS 13.0, *)) {
@@ -6381,6 +6423,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     [self.view addSubview:pickerView];
     self.smartSuggestionPickerView = pickerView;
+
+    UIView *grabberView = [[UIView alloc] init];
+    grabberView.translatesAutoresizingMaskIntoConstraints = NO;
+    grabberView.layer.cornerRadius = 2.5;
+    grabberView.userInteractionEnabled = NO;
+    [pickerView.contentView addSubview:grabberView];
+    self.smartSuggestionSheetGrabberView = grabberView;
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -6413,17 +6462,33 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [pickerView.contentView addSubview:pickerStack];
     self.smartSuggestionPickerStackView = pickerStack;
 
-    self.smartSuggestionPickerBottomConstraint = [pickerView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-10.0];
+    self.smartSuggestionPickerBottomConstraint = [pickerView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12.0];
+    NSLayoutConstraint *sheetWidth = [pickerView.widthAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.widthAnchor constant:-24.0];
+    sheetWidth.priority = 999.0;
 
     [NSLayoutConstraint activateConstraints:@[
-        self.smartSuggestionPickerBottomConstraint,
-        [pickerView.leadingAnchor constraintEqualToAnchor:self.inputbar.leadingAnchor],
-        [pickerView.trailingAnchor constraintEqualToAnchor:self.inputbar.trailingAnchor],
+        [dimmingView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [dimmingView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [dimmingView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [dimmingView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
 
-        [shuffleButton.topAnchor constraintEqualToAnchor:pickerView.contentView.topAnchor constant:14.0],
+        self.smartSuggestionPickerBottomConstraint,
+        [pickerView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [pickerView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:12.0],
+        [pickerView.trailingAnchor constraintLessThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-12.0],
+        [pickerView.topAnchor constraintGreaterThanOrEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:84.0],
+        [pickerView.widthAnchor constraintLessThanOrEqualToConstant:620.0],
+        sheetWidth,
+
+        [grabberView.topAnchor constraintEqualToAnchor:pickerView.contentView.topAnchor constant:10.0],
+        [grabberView.centerXAnchor constraintEqualToAnchor:pickerView.contentView.centerXAnchor],
+        [grabberView.widthAnchor constraintEqualToConstant:42.0],
+        [grabberView.heightAnchor constraintEqualToConstant:5.0],
+
+        [shuffleButton.topAnchor constraintEqualToAnchor:grabberView.bottomAnchor constant:13.0],
         [shuffleButton.leadingAnchor constraintEqualToAnchor:pickerView.contentView.leadingAnchor constant:14.0],
 
-        [autoSendButton.topAnchor constraintEqualToAnchor:pickerView.contentView.topAnchor constant:14.0],
+        [autoSendButton.topAnchor constraintEqualToAnchor:grabberView.bottomAnchor constant:13.0],
         [autoSendButton.trailingAnchor constraintEqualToAnchor:pickerView.contentView.trailingAnchor constant:-14.0],
 
         [titleLabel.centerYAnchor constraintEqualToAnchor:autoSendButton.centerYAnchor],
@@ -6561,27 +6626,32 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
+    [self.view endEditing:YES];
     self.smartSuggestionPickerVisible = YES;
     [self pp_stopNovaSmartSuggestionRotation];
     [self pp_refreshNovaSmartSuggestionPickerChoicesAnimated:NO];
+    [self.view bringSubviewToFront:self.smartSuggestionSheetDimmingView];
     [self.view bringSubviewToFront:self.smartSuggestionPickerView];
-    [self.view bringSubviewToFront:self.inputbar];
+    self.smartSuggestionSheetDimmingView.hidden = NO;
     self.smartSuggestionPickerView.hidden = NO;
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        self.smartSuggestionSheetDimmingView.alpha = 0.22;
         self.smartSuggestionPickerView.alpha = 1.0;
         self.smartSuggestionPickerView.transform = CGAffineTransformIdentity;
         return;
     }
 
+    self.smartSuggestionSheetDimmingView.alpha = 0.0;
     self.smartSuggestionPickerView.alpha = 0.0;
-    self.smartSuggestionPickerView.transform = CGAffineTransformMakeTranslation(0.0, 18.0);
-    [UIView animateWithDuration:0.38
+    self.smartSuggestionPickerView.transform = CGAffineTransformMakeTranslation(0.0, 52.0);
+    [UIView animateWithDuration:0.42
                           delay:0.0
-         usingSpringWithDamping:0.90
-          initialSpringVelocity:0.16
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.18
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
+        self.smartSuggestionSheetDimmingView.alpha = 0.22;
         self.smartSuggestionPickerView.alpha = 1.0;
         self.smartSuggestionPickerView.transform = CGAffineTransformIdentity;
     } completion:nil];
@@ -6608,9 +6678,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     self.smartSuggestionPickerVisible = NO;
     void (^finish)(void) = ^{
+        self.smartSuggestionSheetDimmingView.hidden = YES;
+        self.smartSuggestionSheetDimmingView.alpha = 0.0;
         self.smartSuggestionPickerView.hidden = YES;
         self.smartSuggestionPickerView.alpha = 0.0;
-        self.smartSuggestionPickerView.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
+        self.smartSuggestionPickerView.transform = CGAffineTransformMakeTranslation(0.0, 42.0);
         [self pp_startNovaSmartSuggestionRotationIfNeeded];
     };
 
@@ -6623,8 +6695,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
+        self.smartSuggestionSheetDimmingView.alpha = 0.0;
         self.smartSuggestionPickerView.alpha = 0.0;
-        self.smartSuggestionPickerView.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
+        self.smartSuggestionPickerView.transform = CGAffineTransformMakeTranslation(0.0, 44.0);
     } completion:^(__unused BOOL finished) {
         finish();
     }];
@@ -6909,15 +6982,18 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIViewAnimationCurve curve = [userInfo[UIKeyboardAnimationCurveUserInfoKey] integerValue];
 
     CGRect keyboardInView = [self.view convertRect:keyboardFrame fromView:nil];
-    CGFloat overlap = MAX(CGRectGetMaxY(self.view.bounds) - CGRectGetMinY(keyboardInView), 0.0);
+    CGRect keyboardIntersection = CGRectIntersection(self.view.bounds, keyboardInView);
+    CGFloat overlap = CGRectIsNull(keyboardIntersection) ? 0.0 : CGRectGetHeight(keyboardIntersection);
     CGFloat keyboardOffset = MAX(overlap - self.view.safeAreaInsets.bottom, 0.0);
+    self.currentNovaKeyboardOffset = keyboardOffset;
 
     self.emptyStateCenterYConstraint.constant = 8.0 - (keyboardOffset > 0 ? keyboardOffset / 2.0 : 0);
 
     BOOL wasNearBottom = [self pp_novaIsScrolledNearBottom];
     BOOL shouldCollapseHeader = keyboardOffset > 0.0 && !self.novaHeaderCollapsed;
  
-    CGFloat targetBottomConstant = keyboardOffset > 0.0
+    BOOL keyboardVisible = keyboardOffset > 0.5;
+    CGFloat targetBottomConstant = keyboardVisible
         ? -(keyboardOffset + 8.0)
         : self.inputBarRestingBottomConstant;
 
@@ -6925,13 +7001,29 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [self pp_setNovaHeaderCollapsed:YES animated:NO updateInsets:NO];
     }
 
+    if (duration <= 0.0) {
+        duration = 0.22;
+    }
     UIViewAnimationOptions options = ((UIViewAnimationOptions)curve << 16) |
         UIViewAnimationOptionBeginFromCurrentState |
         UIViewAnimationOptionAllowUserInteraction;
 
     [UIView animateWithDuration:duration delay:0.0 options:options animations:^{
-        self.inputBarBottomConstraint.constant = targetBottomConstant;
- 
+        if (self.usesKeyboardLayoutGuideForNovaInput && self.inputBarKeyboardBottomConstraint) {
+            if (keyboardVisible) {
+                self.inputBarSafeAreaBottomConstraint.active = NO;
+                self.inputBarKeyboardBottomConstraint.active = YES;
+                self.inputBarBottomConstraint = self.inputBarKeyboardBottomConstraint;
+            } else {
+                self.inputBarKeyboardBottomConstraint.active = NO;
+                self.inputBarSafeAreaBottomConstraint.active = YES;
+                self.inputBarBottomConstraint = self.inputBarSafeAreaBottomConstraint;
+            }
+            self.inputBarBottomConstraint.constant = self.inputBarRestingBottomConstant;
+        } else {
+            self.inputBarBottomConstraint.constant = targetBottomConstant;
+        }
+        [self.tableView setNeedsLayout];
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         if (wasNearBottom) {
@@ -7095,23 +7187,29 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (message.didAnimateInsert || UIAccessibilityIsReduceMotionEnabled()) {
         cell.alpha = 1.0;
         cell.transform = CGAffineTransformIdentity;
+        cell.contentView.alpha = 1.0;
         message.didAnimateInsert = YES;
         return;
     }
 
     message.didAnimateInsert = YES;
+    BOOL isIncoming = [message.senderID isEqualToString:@"nova_bot_id"];
+    CGFloat leadingDirection = Language.isRTL ? 1.0 : -1.0;
+    CGFloat horizontalOffset = isIncoming ? (leadingDirection * 10.0) : (-leadingDirection * 10.0);
     cell.alpha = 0.0;
-    cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 16.0),
-                                             CGAffineTransformMakeScale(0.985, 0.985));
-    NSTimeInterval delay = MIN(indexPath.row * 0.025, 0.09);
-    [UIView animateWithDuration:0.38
+    cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(horizontalOffset, 18.0),
+                                             CGAffineTransformMakeScale(0.982, 0.982));
+    cell.contentView.alpha = 0.82;
+    NSTimeInterval delay = MIN(indexPath.row * 0.018, 0.07);
+    [UIView animateWithDuration:0.44
                           delay:delay
-         usingSpringWithDamping:0.91
-          initialSpringVelocity:0.16
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.20
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         cell.alpha = 1.0;
         cell.transform = CGAffineTransformIdentity;
+        cell.contentView.alpha = 1.0;
     } completion:nil];
 }
 
@@ -7225,42 +7323,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                         cachedProductsBeforeSend:cachedProductsBeforeSend];
     [self pp_updateMemoryFromUserText:visibleText];
     [self pp_logNovaIntentForUserText:visibleText stage:@"submitted"];
-    [PPAnalytics logNovaMessageSentWithCharCount:visibleText.length
-                                         isArabic:[self textContainsArabic:visibleText]
-                                       sessionID:self.novaSessionId];
-    self.novaHasSentFirstMessage = YES;
-    self.novaRequestGeneration = self.novaRequestGeneration + 1;
-    NSUInteger generation = self.novaRequestGeneration;
-    [self pp_startNovaRequestWatchdogForGeneration:generation userText:visibleText requestID:requestID];
-
-    [self showNovaTyping];
-
-    // Route through the Cloud Run proxy only; the legacy callable path is kept
-    // defined for now but must not race this send action.
-    NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"agent_proxy"];
-    PPAgentClient *agent = [PPAgentClient shared];
-    if (![agent.sessionId hasPrefix:@"s_"]) {
-        agent.sessionId = self.novaSessionId;
-    }
-    __weak typeof(self) weakSelf = self;
-    NSString *userLang = [self textContainsArabic:visibleText] ? @"ar" : @"en";
-    [agent sendMessage:trimmedText language:userLang completion:^(PPAgentMessage *reply, NSError *error) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || strongSelf.dismissed) return;
-            if (error) {
-                [strongSelf hideNovaTyping];
-                PPAgentMessage *fallback = [PPAgentMessage agentText:NSLocalizedString(@"nova_error_generic", nil)];
-                [strongSelf addNovaMessage:fallback.text requestID:requestID responseID:responseID];
-                return;
-            }
-            [strongSelf pp_handleNovaAgentProxyReply:reply
-                                             userText:visibleText
-                                            requestID:requestID
-                                   fallbackResponseID:responseID
-                                           generation:generation];
-        });
-    }];
+    [self sendNovaRequestForUserText:trimmedText visibleUserText:visibleText requestID:requestID];
 }
 
 // Production-safe add-to-cart intent classifier.

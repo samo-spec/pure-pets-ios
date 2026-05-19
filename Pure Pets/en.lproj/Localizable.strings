@@ -2770,7 +2770,7 @@
 "nova_fallback_need_format" = "Got it, looking for %@. Which pet is it for?";
 "nova_fallback_prompt" = "Tell me your pet and what you need, like food, a carrier, toys, or care.";
 "nova_close_accessibility" = "Close";
-"nova_error_auth" = "Your session expired. Please reopen the chat.";
+"nova_error_auth" = "Couldn't verify your session. Try again.";
 "nova_error_signin_required" = "Sign in first so I can help you with Nova.";
 "nova_error_account_blocked" = "This account can't use Nova. Please contact Pure Pets support.";
 "nova_error_unavailable" = "Nova is unavailable right now. Try again in a moment.";
