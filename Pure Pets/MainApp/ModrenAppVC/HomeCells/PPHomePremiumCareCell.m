@@ -21,6 +21,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     UIImageView *_iconImageView;
     LOTAnimationView *_careAnimationView;
     NSMutableArray<UIView *> *_backgroundDotViews;
+    UIStackView *_contentStackView;
     UILabel *_eyebrowLabel;
     UILabel *_titleLabel;
     UILabel *_subtitleLabel;
@@ -40,6 +41,11 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     return @"PPHomePremiumCareCell";
 }
 
+static UIColor *PremiumSoftCardBorderColor(void)
+{
+    return [UIColor.whiteColor colorWithAlphaComponent:0.92];//[AppLightGrayColor colorWithAlphaComponent:0.84];
+}
+ 
 - (instancetype)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
@@ -51,9 +57,9 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     self.contentView.backgroundColor = UIColor.clearColor;
     self.isAccessibilityElement = YES;
     self.accessibilityTraits = UIAccessibilityTraitButton;
-    [self.contentView pp_setShadowColor:UIColor.blackColor];
-    self.contentView.layer.shadowRadius = 24.0;
-    self.contentView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
+    //[self.contentView pp_setShadowColor:UIColor.blackColor];
+    //self.contentView.layer.shadowRadius = 24.0;
+    //self.contentView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
 
     _surfaceView = [UIView new];
     if (@available(iOS 13.0, *)) {
@@ -67,6 +73,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     if (@available(iOS 13.0, *)) {
         _surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    _surfaceView.layer.borderColor = PremiumSoftCardBorderColor().CGColor;
     [self.contentView addSubview:_surfaceView];
 
     _gradientLayer = [CAGradientLayer layer];
@@ -76,27 +83,30 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     [_surfaceView.layer insertSublayer:_gradientLayer atIndex:0];
 
     _topBackgroundGlowView = [self pp_makePetCareGlowViewWithRadius:136.0];
+    _topBackgroundGlowView.hidden = NO;
+    _topBackgroundGlowView.clipsToBounds = NO;
+    _topBackgroundGlowView.alpha = 1;
     [_surfaceView addSubview:_topBackgroundGlowView];
 
     _middleBackgroundGlowView = [self pp_makePetCareGlowViewWithRadius:108.0];
     [_surfaceView addSubview:_middleBackgroundGlowView];
 
-    _bottomLeadingGlowView = [self pp_makePetCareGlowViewWithRadius:132.0];
+    _bottomLeadingGlowView = [self pp_makePetCareGlowViewWithRadius:172.0];
     [_surfaceView addSubview:_bottomLeadingGlowView];
 
     _largeOrbView = [[UIView alloc] init];
     _largeOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _largeOrbView.userInteractionEnabled = NO;
     _largeOrbView.layer.cornerRadius = 60.0;
-    
+    _largeOrbView.clipsToBounds = YES;
     [_surfaceView addSubview:_largeOrbView];
 
     _smallOrbView = [[UIView alloc] init];
     _smallOrbView.translatesAutoresizingMaskIntoConstraints = NO;
     _smallOrbView.userInteractionEnabled = NO;
     _smallOrbView.layer.cornerRadius = 24.0;
-    _largeOrbView.alpha = 0;
-    _largeOrbView.hidden = YES;
+    _largeOrbView.alpha = 1;
+    _largeOrbView.hidden = NO;
     [_surfaceView addSubview:_smallOrbView];
 
     _backgroundDotViews = [NSMutableArray arrayWithCapacity:5];
@@ -111,9 +121,9 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     _iconPlateView = [[UIView alloc] init];
     _iconPlateView.translatesAutoresizingMaskIntoConstraints = NO;
-    _iconPlateView.layer.cornerRadius = 38.0;
-    _iconPlateView.layer.borderWidth = 0.0;
-    _iconPlateView.clipsToBounds = YES;
+    _iconPlateView.layer.cornerRadius = 24.0;
+    _iconPlateView.layer.borderWidth = 0.8;
+    _iconPlateView.clipsToBounds = NO;
     if (@available(iOS 13.0, *)) {
         _iconPlateView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -136,22 +146,26 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     _eyebrowLabel = [[UILabel alloc] init];
     _eyebrowLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _eyebrowLabel.font = [GM boldFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightSemibold];
+    _eyebrowLabel.font = [GM boldFontWithSize:10.5] ?: [UIFont systemFontOfSize:10.5 weight:UIFontWeightSemibold];
     _eyebrowLabel.numberOfLines = 1;
+    _eyebrowLabel.adjustsFontSizeToFitWidth = YES;
+    _eyebrowLabel.minimumScaleFactor = 0.84;
     [_surfaceView addSubview:_eyebrowLabel];
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:22.0] ?: [UIFont systemFontOfSize:22.0 weight:UIFontWeightBold];
+    _titleLabel.font = [GM boldFontWithSize:21.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
     _titleLabel.numberOfLines = 1;
     _titleLabel.adjustsFontSizeToFitWidth = YES;
-    _titleLabel.minimumScaleFactor = 0.8;
+    _titleLabel.minimumScaleFactor = 0.78;
     [_surfaceView addSubview:_titleLabel];
 
     _subtitleLabel = [[UILabel alloc] init];
     _subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    _subtitleLabel.font = [GM MidFontWithSize:12.5] ?: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
     _subtitleLabel.numberOfLines = 2;
+    _subtitleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    [_subtitleLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisVertical];
     [_surfaceView addSubview:_subtitleLabel];
 
     /*_pillStackView = [[UIStackView alloc] init];
@@ -195,29 +209,64 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _ctaIconView.contentMode = UIViewContentModeScaleAspectFit;
     [_ctaView addSubview:_ctaIconView];
 
+    _contentStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
+        _eyebrowLabel,
+        _titleLabel,
+        _subtitleLabel,
+        _ctaView
+    ]];
+    _contentStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    _contentStackView.axis = UILayoutConstraintAxisVertical;
+    _contentStackView.alignment = UIStackViewAlignmentFill;
+    _contentStackView.distribution = UIStackViewDistributionFill;
+    _contentStackView.spacing = 5.0;
+    [_contentStackView setCustomSpacing:6.0 afterView:_titleLabel];
+    [_contentStackView setCustomSpacing:13.0 afterView:_subtitleLabel];
+    [_surfaceView addSubview:_contentStackView];
+
+    _topBackgroundGlowView.layer.masksToBounds = NO;
+    _topBackgroundGlowView.clipsToBounds = NO;
+
+    _middleBackgroundGlowView.layer.masksToBounds = NO;
+    _middleBackgroundGlowView.clipsToBounds = NO;
+
+    _bottomLeadingGlowView.layer.masksToBounds = NO;
+    _bottomLeadingGlowView.clipsToBounds = NO;
+
+    _largeOrbView.layer.masksToBounds = YES;
+    
+    _topBackgroundGlowView.layer.cornerRadius = 246.0/2;
+    _middleBackgroundGlowView.layer.cornerRadius = 178.0/2;
+    _bottomLeadingGlowView.layer.cornerRadius = 226.0/2;
+    _largeOrbView.layer.cornerRadius = 120.0/2;
+    _iconPlateView.layer.cornerRadius = 48.0/2;
+    _smallOrbView.layer.cornerRadius = 48.0/2;
+    
+    
     [NSLayoutConstraint activateConstraints:@[
         [_surfaceView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
         [_surfaceView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [_surfaceView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
         [_surfaceView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
-        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:272.0],
-        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:272.0],
+        [_topBackgroundGlowView.widthAnchor constraintEqualToConstant:246.0],
+        [_topBackgroundGlowView.heightAnchor constraintEqualToConstant:246.0],
         [_topBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-82.0],
-        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:104.0],
+        [_topBackgroundGlowView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:94.0],
 
-        [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:216.0],
-        [_middleBackgroundGlowView.heightAnchor constraintEqualToConstant:216.0],
-        [_middleBackgroundGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
-        [_middleBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:68.0],
+        
+        [_middleBackgroundGlowView.widthAnchor constraintEqualToConstant:178.0],
+        [_middleBackgroundGlowView.heightAnchor constraintEqualToConstant:178.0],
+        [_middleBackgroundGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-88.0],
+        [_middleBackgroundGlowView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:46.0],
 
-        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:156.0],
-        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:156.0],
-        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-96.0],
-        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:92.0],
+        [_bottomLeadingGlowView.widthAnchor constraintEqualToConstant:0.0],
+        [_bottomLeadingGlowView.heightAnchor constraintEqualToConstant:0.0],
+        [_bottomLeadingGlowView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:-118.0],
+        [_bottomLeadingGlowView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:104.0],
 
-        [_largeOrbView.widthAnchor constraintEqualToConstant:120.0],
-        [_largeOrbView.heightAnchor constraintEqualToConstant:120.0],
+        [_largeOrbView.widthAnchor constraintEqualToConstant:0.0],
+        [_largeOrbView.heightAnchor constraintEqualToConstant:0.0],
         [_largeOrbView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:24.0],
         [_largeOrbView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:-24.0],
 
@@ -226,43 +275,32 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         [_smallOrbView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:30.0],
         [_smallOrbView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:16.0],
 
-        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-22.0],
+        [_iconPlateView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-18.0],
         [_iconPlateView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:22.0],
-        [_iconPlateView.widthAnchor constraintEqualToConstant: 72.0],
-        [_iconPlateView.heightAnchor constraintEqualToConstant:72.0],
-
+        [_iconPlateView.widthAnchor constraintEqualToConstant:68.0],
+        [_iconPlateView.heightAnchor constraintEqualToConstant:68.0],
+        
         [_iconImageView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor],
         [_iconImageView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
-        [_iconImageView.widthAnchor constraintEqualToConstant:25.0],
-        [_iconImageView.heightAnchor constraintEqualToConstant:25.0],
+        [_iconImageView.widthAnchor constraintEqualToConstant:22.0],
+        [_iconImageView.heightAnchor constraintEqualToConstant:22.0],
 
         [_careAnimationView.centerXAnchor constraintEqualToAnchor:_iconPlateView.centerXAnchor ],
-        [_careAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor constant:3],
-        [_careAnimationView.widthAnchor constraintEqualToConstant:52.0],
-        [_careAnimationView.heightAnchor constraintEqualToConstant:52.0],
+        [_careAnimationView.centerYAnchor constraintEqualToAnchor:_iconPlateView.centerYAnchor],
+        [_careAnimationView.widthAnchor constraintEqualToConstant:48.0],
+        [_careAnimationView.heightAnchor constraintEqualToConstant:48.0],
 
-        [_eyebrowLabel.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
-        [_eyebrowLabel.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:18.0],
-        [_eyebrowLabel.trailingAnchor constraintLessThanOrEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-
-        [_titleLabel.leadingAnchor constraintEqualToAnchor:_eyebrowLabel.leadingAnchor],
-        [_titleLabel.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-12.0],
-        [_titleLabel.topAnchor constraintEqualToAnchor:_eyebrowLabel.bottomAnchor constant:5.0],
-
-        [_subtitleLabel.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        [_subtitleLabel.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_subtitleLabel.topAnchor constraintEqualToAnchor:_titleLabel.bottomAnchor constant:6.0],
+        [_contentStackView.leadingAnchor constraintEqualToAnchor:_surfaceView.leadingAnchor constant:20.0],
+        [_contentStackView.topAnchor constraintEqualToAnchor:_surfaceView.topAnchor constant:20.0],
+        [_contentStackView.trailingAnchor constraintEqualToAnchor:_iconPlateView.leadingAnchor constant:-14.0],
+        [_contentStackView.bottomAnchor constraintLessThanOrEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
 
        // [_pillStackView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
        // [_pillStackView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:12.0],
         //[_pillStackView.trailingAnchor constraintLessThanOrEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
        // [_pillStackView.heightAnchor constraintEqualToConstant:30.0],
 
-        [_ctaView.leadingAnchor constraintEqualToAnchor:_titleLabel.leadingAnchor],
-        //[_ctaView.trailingAnchor constraintEqualToAnchor:_surfaceView.trailingAnchor constant:-20.0],
-        [_ctaView.bottomAnchor constraintEqualToAnchor:_surfaceView.bottomAnchor constant:-18.0],
-        [_ctaView.heightAnchor constraintEqualToConstant:42.0],
-        [_ctaView.topAnchor constraintGreaterThanOrEqualToAnchor:_subtitleLabel.bottomAnchor constant:14.0],
+        [_ctaView.heightAnchor constraintEqualToConstant:40.0],
 
         [_ctaLabel.leadingAnchor constraintEqualToAnchor:_ctaView.leadingAnchor constant:14.0],
         [_ctaLabel.centerYAnchor constraintEqualToAnchor:_ctaView.centerYAnchor],
@@ -298,7 +336,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     view.userInteractionEnabled = NO;
     view.clipsToBounds = NO;
     view.layer.cornerRadius = radius;
-    view.layer.shadowRadius = 68.0;
+    view.layer.shadowRadius = 76.0;
     view.layer.shadowOpacity = 0.28;
     view.layer.shadowOffset = CGSizeZero;
     return view;
@@ -339,8 +377,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     _smallOrbView.layer.cornerRadius = CGRectGetHeight(_smallOrbView.bounds) * 0.5;
     _iconPlateView.layer.cornerRadius = CGRectGetHeight(_iconPlateView.bounds) * 0.5;
 
-    self.contentView.layer.shadowRadius = 28.0;
-    self.contentView.layer.shadowPath =
+     self.contentView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:_surfaceView.bounds
                                    cornerRadius:_surfaceView.layer.cornerRadius].CGPath;
 
@@ -404,9 +441,8 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     UIColor *titleColor = PPPetCareTextColor();
     UIColor *secondaryColor = PPPetCareSecondaryTextColor();
     UIColor *borderColor = PPPetCareBorderColor();
-    UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.4];
-    UIColor *controlFillColor = [accent colorWithAlphaComponent:isDark ? 0.35 : 0.09];
-    UIColor *controlBorderColor = borderColor;
+    UIColor *glowHighlight = [UIColor colorWithWhite:1.0 alpha:isDark ? 0.03 : 0.10];
+    
 
     _surfaceView.backgroundColor = surfaceColor;
     [_surfaceView pp_setBorderColor:borderColor];
@@ -416,34 +452,36 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     _gradientLayer.startPoint = CGPointMake(0.0, 0.0);
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
+    _gradientLayer.opacity = 1.0;
     _gradientLayer.colors = @[
-        (id)[AppPrimaryClrShiner colorWithAlphaComponent:isDark ? 0.20 : 0.16].CGColor,
+        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor,
         (id)[UIColor clearColor].CGColor
     ];
-    _gradientLayer.locations = @[@0.0, @1.0];
+    _gradientLayer.locations = nil;
 
-    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.06];
-    [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.12]];
-    _topBackgroundGlowView.layer.shadowOpacity = 0.16;
-    _topBackgroundGlowView.layer.shadowRadius = 48.0;
+    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.17];
+    [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.22]];
+    _topBackgroundGlowView.layer.shadowOpacity = 0.32;
+    _topBackgroundGlowView.layer.shadowRadius = 76.0;
     _topBackgroundGlowView.layer.shadowOffset = CGSizeZero;
 
     _middleBackgroundGlowView.backgroundColor = glowHighlight;
     [_middleBackgroundGlowView pp_setShadowColor:glowHighlight];
-    _middleBackgroundGlowView.layer.shadowOpacity = 0.18;
-    _middleBackgroundGlowView.layer.shadowRadius = 68.0;
+    _middleBackgroundGlowView.layer.shadowOpacity = 0.30;
+    _middleBackgroundGlowView.layer.shadowRadius = 76.0;
     _middleBackgroundGlowView.layer.shadowOffset = CGSizeZero;
-     _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
+
+    _bottomLeadingGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.10 : 0.12];
     [_bottomLeadingGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.16 : 0.18]];
-    _bottomLeadingGlowView.layer.shadowOpacity = 0.28;
-    _bottomLeadingGlowView.layer.shadowRadius = 68.0;
+    _bottomLeadingGlowView.layer.shadowOpacity = 0.30;
+    _bottomLeadingGlowView.layer.shadowRadius = 74.0;
     _bottomLeadingGlowView.layer.shadowOffset = CGSizeZero;
 
     _largeOrbView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.12 : 0.08];
     _smallOrbView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.0 : 0.0];
 
     _iconPlateView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.18 : 0.11];
-    [_iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.16]];
+    [_iconPlateView pp_setBorderColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.0]];
     _iconImageView.tintColor = accent;
     _eyebrowLabel.textColor = [accent colorWithAlphaComponent:isDark ? 0.92 : 0.82];
     _titleLabel.textColor = titleColor;
@@ -515,19 +553,19 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
     [self pp_addPetCareGlowTranslationToView:_topBackgroundGlowView
                                          key:@"pp.home.premiumCare.petCareGlowTop"
-                                           x:-16.0
-                                           y:12.0
-                                    duration:6.0];
+                                           x:-20.0
+                                           y:15.0
+                                    duration:3.8];
     [self pp_addPetCareGlowTranslationToView:_middleBackgroundGlowView
                                          key:@"pp.home.premiumCare.petCareGlowMiddle"
-                                           x:12.0
-                                           y:-10.0
-                                    duration:6.0];
+                                           x:16.0
+                                           y:-13.0
+                                    duration:4.2];
     [self pp_addPetCareGlowTranslationToView:_bottomLeadingGlowView
                                          key:@"pp.home.premiumCare.petCareGlowBottom"
-                                           x:18.0
-                                           y:-14.0
-                                    duration:7.4];
+                                           x:22.0
+                                           y:-17.0
+                                    duration:4.8];
 
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
@@ -553,7 +591,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
 
         CAAnimationGroup *dotAnimation = [CAAnimationGroup animation];
         dotAnimation.animations = @[scaleAnimation, opacityAnimation, floatAnimation];
-        dotAnimation.duration = 2.6 + ((double)idx * 0.35);
+        dotAnimation.duration = 1.9 + ((double)idx * 0.22);
         dotAnimation.autoreverses = YES;
         dotAnimation.repeatCount = HUGE_VALF;
         dotAnimation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
@@ -574,11 +612,11 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
         dotView.transform = CGAffineTransformIdentity;
     }];
 
-    _topBackgroundGlowView.alpha = 1.0;
+    _topBackgroundGlowView.alpha = 0.6;
     _topBackgroundGlowView.transform = CGAffineTransformIdentity;
-    _middleBackgroundGlowView.alpha = 0.7;
+    _middleBackgroundGlowView.alpha = 1.0;
     _middleBackgroundGlowView.transform = CGAffineTransformIdentity;
-    _bottomLeadingGlowView.alpha = 1.0;
+    _bottomLeadingGlowView.alpha = 0.0;
     _bottomLeadingGlowView.transform = CGAffineTransformIdentity;
 }
 
@@ -594,6 +632,7 @@ static NSString * const PPHomePremiumCareMedicineAnimationName = @"Health1";
     self.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.contentView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     _surfaceView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    _contentStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     _eyebrowLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
     _subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;

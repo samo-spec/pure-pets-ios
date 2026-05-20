@@ -75,7 +75,7 @@
         self.didWarmUp = YES;
         self.isWarmingUp = NO;
 
-        NSLog(@"🔥 SearchCache warm-up finished | ads=%lu acc=%lu services=%lu",
+        NSLog(@"SearchCache warm-up finished | ads=%lu acc=%lu services=%lu",
               (unsigned long)self.ads.count,
               (unsigned long)self.accessories.count,
               (unsigned long)self.services.count);

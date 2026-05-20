@@ -132,7 +132,7 @@ static UIColor *PPPetCareVetViewerQuietRowColor(void)
 {
     [super viewDidLoad];
     self.view.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
-    self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemGroupedBackgroundColor;
+    self.view.backgroundColor = AppBageColor() ?: UIColor.systemGroupedBackgroundColor;
     [self pp_setupLayout];
     [self pp_applyContent];
     [self pp_applyTheme];
@@ -696,7 +696,7 @@ static UIColor *PPPetCareVetViewerQuietRowColor(void)
     }
     UIColor *accent = PPPetCareVetViewerAccentColor();
     UIColor *secondaryGlow = [UIColor colorWithRed:0.30 green:0.62 blue:0.48 alpha:1.0];
-    self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemGroupedBackgroundColor;
+    self.view.backgroundColor = AppBageColor() ?: UIColor.systemGroupedBackgroundColor;
     self.backgroundGlowTopView.backgroundColor = [accent colorWithAlphaComponent:dark ? 0.16 : 0.11];
     self.backgroundGlowTopView.layer.shadowColor = accent.CGColor;
     self.backgroundGlowTopView.alpha = 1.0;

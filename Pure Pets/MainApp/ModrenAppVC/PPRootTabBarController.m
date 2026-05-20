@@ -1205,7 +1205,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.tabBar.centerXAnchor],
-        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-16],
+        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-12],
         [showAddMenuButton.widthAnchor constraintEqualToConstant:56],
         [showAddMenuButton.heightAnchor constraintEqualToConstant:56]
     ]];

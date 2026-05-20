@@ -144,27 +144,6 @@ static NSString *PPOrderResolvedPaymentProviderForMethod(NSString *paymentMethod
     return [PPOrderNormalizedPaymentMethodKey(paymentMethodID, nil) isEqualToString:@"cash"] ? @"CASH" : @"QIB";
 }
 
-static void PPOrderConfigureLimitedUseTokensIfSupported(FIRFunctions *functions) {
-    if (!functions) return;
-
-    SEL setter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
-    if (![functions respondsToSelector:setter]) {
-        return;
-    }
-
-    NSMethodSignature *signature = [functions methodSignatureForSelector:setter];
-    if (!signature) {
-        return;
-    }
-
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-    BOOL enabled = YES;
-    [invocation setSelector:setter];
-    [invocation setTarget:functions];
-    [invocation setArgument:&enabled atIndex:2];
-    [invocation invoke];
-}
-
 static FIRFunctions *PPOrderFunctionsClient(void) {
     FIRFunctions *functions = nil;
     NSString *customDomain = PPOrderTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
@@ -177,7 +156,10 @@ static FIRFunctions *PPOrderFunctionsClient(void) {
         }
         functions = [FIRFunctions functionsForRegion:region];
     }
-    PPOrderConfigureLimitedUseTokensIfSupported(functions);
+    // App Check tokens are auto-attached by FIRFunctions when FIRAppCheck is
+    // configured globally in AppDelegate. The previous private-API invocation
+    // (setUseAppCheckLimitedUseTokens: via NSInvocation) was removed — it
+    // silently failed on SDK 12.12.0 and blocked token attachment entirely.
     return functions;
 }
 
@@ -945,7 +927,7 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     FIRFirestore *db = FIRFirestore.firestore;
     FIRCollectionReference *ordersRef = [db collectionWithPath:@"Orders"];
     FIRQuery *pendingQuery = [[ordersRef queryWhereField:@"userId" isEqualTo:userId]
-                              queryWhereField:@"status" isEqualTo:@"pending"];
+                              queryWhereField:@"status" in:@[@"pending", @"failed", @"cancelled", @"abandoned"]];
 
     [pendingQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error || !snapshot) {
@@ -958,12 +940,13 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         PPOrder *bestMatch = nil;
         NSTimeInterval newestTime = 0;
         NSTimeInterval now = NSDate.date.timeIntervalSince1970;
-        NSTimeInterval maxAge = 24 * 60 * 60; // Reuse pending orders for 24h
+        NSTimeInterval maxAge = 24 * 60 * 60; // Reuse orders for 24h
 
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             PPOrder *candidate = [PPOrder orderFromSnapshot:doc];
             if (!candidate) continue;
-            if (!PPOrderMatchesCartForPaymentMethod(candidate, items, amount, shippingAddressID ?: @"", resolvedPaymentMethodID)) continue;
+            // Match cart irrespective of payment method
+            if (!PPOrderMatchesCart(candidate, items, amount, shippingAddressID ?: @"")) continue;
             if (!PPOrderIsRecent(candidate, now, maxAge)) continue;
 
             NSTimeInterval createdTime = candidate.createdAt.timeIntervalSince1970;
@@ -974,65 +957,30 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         }
 
         if (bestMatch) {
-            PPORDERLog(@"Reusing pending order | orderId=%@ | paymentMethod=%@",
+            NSString *actualMethod = PPOrderNormalizedPaymentMethodKey(bestMatch.paymentMethodId, bestMatch.paymentProvider);
+            BOOL needsMethodUpdate = ![resolvedPaymentMethodID isEqualToString:actualMethod];
+            BOOL needsStatusUpdate = ![bestMatch.rawStatus isEqualToString:@"pending"];
+
+            if (!needsMethodUpdate && !needsStatusUpdate) {
+                PPORDERLog(@"Reusing pending order directly | orderId=%@ | paymentMethod=%@",
+                           bestMatch.orderId ?: @"",
+                           bestMatch.paymentMethodId ?: @"");
+                if (completion) completion(bestMatch, nil);
+                return;
+            }
+
+            PPORDERLog(@"Preparing existing order for reuse/retry | orderId=%@ | oldStatus=%@ | paymentMethod=%@",
                        bestMatch.orderId ?: @"",
-                       bestMatch.paymentMethodId ?: @"");
-            if (completion) completion(bestMatch, nil);
-            return;
-        }
-
-        // ── Continuation: failed-order retry + new order creation ──────────
-        void (^continueWithOrderResolution)(void) = ^{
-        // Fallback: allow retry on recently cancelled orders by resetting to pending.
-        FIRQuery *failedQuery = [[ordersRef queryWhereField:@"userId" isEqualTo:userId]
-                                 queryWhereField:@"status" isEqualTo:@"failed"];
-
-        [failedQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable failedSnapshot, NSError * _Nullable failedError) {
-            if (failedError || !failedSnapshot) {
-                if (completion) completion(nil, failedError ?: [NSError errorWithDomain:@"PPOrder"
-                                                                                   code:500
-                                                                               userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_generic_error")}]);
-                return;
-            }
-
-            PPOrder *retryMatch = nil;
-            NSString *retryDocId = nil;
-            NSTimeInterval retryNewest = 0;
-
-            for (FIRDocumentSnapshot *doc in failedSnapshot.documents) {
-                PPOrder *candidate = [PPOrder orderFromSnapshot:doc];
-                if (!candidate) continue;
-                if (!PPOrderMatchesCartForPaymentMethod(candidate, items, amount, shippingAddressID ?: @"", resolvedPaymentMethodID)) continue;
-                if (!PPOrderIsRecent(candidate, now, maxAge)) continue;
-
-                NSTimeInterval createdTime = candidate.createdAt.timeIntervalSince1970;
-                if (createdTime > retryNewest) {
-                    retryNewest = createdTime;
-                    retryMatch = candidate;
-                    retryDocId = doc.documentID;
-                }
-            }
-
-            if (!retryMatch || retryDocId.length == 0) {
-                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
-                return;
-            }
-
-            if ([resolvedPaymentMethodID isEqualToString:@"cash"]) {
-                [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
-                return;
-            }
+                       bestMatch.rawStatus ?: @"",
+                       resolvedPaymentMethodID ?: @"");
 
             FIRFunctions *functions = PPOrderFunctionsClient();
             NSDictionary *payload = @{
-                @"orderId": retryDocId,
+                @"orderId": bestMatch.orderId ?: @"",
                 @"shippingAddressId": shippingAddressID ?: @"",
+                @"paymentMethodId": resolvedPaymentMethodID ?: @"",
                 @"shippingAddressSnapshot": shippingSnapshot.copy ?: @{}
             };
-
-            PPORDERLog(@"Preparing failed order for retry | orderId=%@ | paymentMethod=%@",
-                       retryDocId ?: @"",
-                       resolvedPaymentMethodID ?: @"");
 
             [[functions HTTPSCallableWithName:@"prepareOrderForRetry"]
              callWithObject:payload
@@ -1040,75 +988,40 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                 if (callableError || ![result.data isKindOfClass:NSDictionary.class]) {
                     // Fallback path: if callable is unavailable, create a new pending order.
                     PPORDERLog(@"prepareOrderForRetry unavailable, creating new pending order | orderId=%@ | error=%@",
-                               retryDocId ?: @"",
+                               bestMatch.orderId ?: @"",
                                callableError.localizedDescription ?: @"Invalid response");
                     [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
                     return;
                 }
 
-                retryMatch.status = PPOrderStatusPending;
-                retryMatch.rawStatus = @"pending";
-                retryMatch.paymentMethodId = @"qib";
-                retryMatch.paymentStatus = @"pending";
-                retryMatch.paymentProvider = @"QIB";
-                retryMatch.verificationStatus = @"pending";
-                retryMatch.failureReason = nil;
-                retryMatch.transactionId = nil;
-                retryMatch.paymentResponse = nil;
-                retryMatch.shippingAddressId = shippingAddressID ?: @"";
-                retryMatch.shippingAddressSnapshot = shippingSnapshot.copy;
-                retryMatch.updatedAt = NSDate.date;
-                PPORDERLog(@"Retry order prepared | orderId=%@ | paymentMethod=%@",
-                           retryMatch.orderId ?: retryDocId ?: @"",
-                           retryMatch.paymentMethodId ?: @"");
-                if (completion) completion(retryMatch, nil);
-            }];
-        }];
-        };
-
-        // ── Idempotency dedup guard ────────────────────────────────────────
-        // When an idempotencyKey is supplied, query Firestore for an existing
-        // order created with that key before falling through to creation.
-        // This prevents duplicate orders when a network timeout causes the
-        // client to retry after the backend already persisted the document.
-        if (idempotencyKey.length > 0) {
-            FIRQuery *idempotencyQuery = [[ordersRef queryWhereField:@"idempotencyKey" isEqualTo:idempotencyKey]
-                                          queryWhereField:@"userId" isEqualTo:userId];
-
-            [idempotencyQuery getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable idempSnapshot, NSError * _Nullable idempError) {
-                if (!idempError && idempSnapshot.documents.count > 0) {
-                    // Pick the newest order matching this key.
-                    PPOrder *existingOrder = nil;
-                    NSTimeInterval idempNewest = 0;
-                    for (FIRDocumentSnapshot *doc in idempSnapshot.documents) {
-                        PPOrder *candidate = [PPOrder orderFromSnapshot:doc];
-                        if (!candidate) continue;
-                        NSTimeInterval t = candidate.createdAt.timeIntervalSince1970;
-                        if (t > idempNewest) {
-                            idempNewest = t;
-                            existingOrder = candidate;
-                        }
-                    }
-                    if (existingOrder) {
-                        PPORDERLog(@"Reusing order by idempotency key | orderId=%@ | key=%@",
-                                   existingOrder.orderId ?: @"",
-                                   idempotencyKey);
-                        if (completion) completion(existingOrder, nil);
-                        return;
-                    }
+                bestMatch.status = PPOrderStatusPending;
+                bestMatch.rawStatus = @"pending";
+                bestMatch.paymentMethodId = resolvedPaymentMethodID;
+                if ([resolvedPaymentMethodID isEqualToString:@"cash"]) {
+                    bestMatch.paymentStatus = @"pending_collection";
+                    bestMatch.paymentProvider = @"CASH";
+                    bestMatch.verificationStatus = @"not_applicable";
+                } else {
+                    bestMatch.paymentStatus = @"pending";
+                    bestMatch.paymentProvider = @"QIB";
+                    bestMatch.verificationStatus = @"pending";
                 }
-
-                // No existing order for this key (or query error) — continue normally.
-                if (idempError) {
-                    PPORDERLog(@"Idempotency key query failed, continuing | key=%@ | error=%@",
-                               idempotencyKey,
-                               idempError.localizedDescription ?: @"");
-                }
-                continueWithOrderResolution();
+                bestMatch.failureReason = nil;
+                bestMatch.transactionId = nil;
+                bestMatch.paymentResponse = nil;
+                bestMatch.shippingAddressId = shippingAddressID ?: @"";
+                bestMatch.shippingAddressSnapshot = shippingSnapshot.copy;
+                bestMatch.updatedAt = NSDate.date;
+                PPORDERLog(@"Order updated via prepareOrderForRetry | orderId=%@ | paymentMethod=%@",
+                           bestMatch.orderId ?: @"",
+                           bestMatch.paymentMethodId ?: @"");
+                if (completion) completion(bestMatch, nil);
             }];
-        } else {
-            continueWithOrderResolution();
+            return;
         }
+
+        // ── No match found: Create new order ──────────
+        [self createPendingOrderWithItems:items amount:amount address:address paymentMethodId:resolvedPaymentMethodID idempotencyKey:idempotencyKey completion:completion];
     }];
 }
 

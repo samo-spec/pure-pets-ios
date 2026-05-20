@@ -18,8 +18,9 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 
 @property (nonatomic, strong) UIView *shadowView;
 @property (nonatomic, strong) UIVisualEffectView *materialView;
+@property (nonatomic, strong) UIView *ambientTintView;
 @property (nonatomic, strong) UIStackView *rowStack;
-@property (nonatomic, strong) UIButton *attachButton;
+@property (nonatomic, strong) UIButton *suggestionsButton;
 @property (nonatomic, strong) UIButton *sendButton;
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, strong) UILabel *placeholderLabel;
@@ -40,6 +41,16 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     return self;
 }
 
+-(void)setText:(NSString *)txt
+{
+    self.textView.text = txt ?: @"";
+    [self pp_updateTextHeightIfNeeded];
+    [self pp_updateStateAnimated:YES];
+    if ([self.delegate respondsToSelector:@selector(novaInputBar:didChangeText:)]) {
+        [self.delegate novaInputBar:self didChangeText:self.textView.text ?: @""];
+    }
+}
+
 - (void)setupUI {
     self.backgroundColor = UIColor.clearColor;
     self.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -48,9 +59,9 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.shadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.shadowView.backgroundColor = UIColor.clearColor;
     self.shadowView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.shadowView.layer.shadowOpacity = 0.13;
-    self.shadowView.layer.shadowRadius = 22.0;
-    self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    self.shadowView.layer.shadowOpacity = 0.12;
+    self.shadowView.layer.shadowRadius = 24.0;
+    self.shadowView.layer.shadowOffset = CGSizeMake(0.0, 12.0);
     [self addSubview:self.shadowView];
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleRegular;
@@ -61,27 +72,31 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.materialView.translatesAutoresizingMaskIntoConstraints = NO;
     self.materialView.layer.cornerRadius = 28.0;
     self.materialView.layer.masksToBounds = YES;
-    self.materialView.layer.borderWidth = 0.5 / UIScreen.mainScreen.scale;
-    self.materialView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.28].CGColor;
+    self.materialView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    self.materialView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
     if (@available(iOS 13.0, *)) {
         self.materialView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.shadowView addSubview:self.materialView];
+    self.materialView.contentView.clipsToBounds = YES;
+
+    self.ambientTintView = [[UIView alloc] init];
+    self.ambientTintView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.ambientTintView.userInteractionEnabled = NO;
+    self.ambientTintView.alpha = 0.18;
+    [self.materialView.contentView addSubview:self.ambientTintView];
 
     self.rowStack = [[UIStackView alloc] init];
     self.rowStack.translatesAutoresizingMaskIntoConstraints = NO;
     self.rowStack.axis = UILayoutConstraintAxisHorizontal;
     self.rowStack.alignment = UIStackViewAlignmentBottom;
-    self.rowStack.spacing = 0.0;
+    self.rowStack.spacing = 7.0;
     self.rowStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.materialView.contentView addSubview:self.rowStack];
 
-    self.attachButton = [self pp_makeIconButtonNamed:@"plus" accessibilityKey:@"nova_input_attach_accessibility"];
-    [self.attachButton addTarget:self action:@selector(pp_attachTapped) forControlEvents:UIControlEventTouchUpInside];
-    self.attachButton.hidden = YES;
-    self.attachButton.userInteractionEnabled = NO;
-    self.attachButton.accessibilityElementsHidden = YES;
-    [self.rowStack addArrangedSubview:self.attachButton];
+    self.suggestionsButton = [self pp_makeIconButtonNamed:@"sparkles" accessibilityKey:@"nova_input_suggestions_accessibility"];
+    [self.suggestionsButton addTarget:self action:@selector(pp_suggestionsTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.rowStack addArrangedSubview:self.suggestionsButton];
 
     self.textView = [[UITextView alloc] init];
     self.textView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -130,14 +145,19 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
         [self.materialView.bottomAnchor constraintEqualToAnchor:self.shadowView.bottomAnchor],
 
         [self.rowStack.topAnchor constraintEqualToAnchor:self.materialView.contentView.topAnchor constant:7.0],
-        [self.rowStack.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor constant:18.0],
-        [self.rowStack.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor constant:-18.0],
+        [self.ambientTintView.topAnchor constraintEqualToAnchor:self.materialView.contentView.topAnchor],
+        [self.ambientTintView.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor],
+        [self.ambientTintView.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor],
+        [self.ambientTintView.bottomAnchor constraintEqualToAnchor:self.materialView.contentView.bottomAnchor],
+
+        [self.rowStack.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor constant:7.0],
+        [self.rowStack.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor constant:-7.0],
         [self.rowStack.bottomAnchor constraintEqualToAnchor:self.materialView.contentView.bottomAnchor constant:-7.0],
 
-        [self.attachButton.widthAnchor constraintEqualToConstant:42.0],
-        [self.attachButton.heightAnchor constraintEqualToConstant:42.0],
-        [self.sendButton.widthAnchor constraintEqualToConstant:42.0],
-        [self.sendButton.heightAnchor constraintEqualToConstant:42.0],
+        [self.suggestionsButton.widthAnchor constraintEqualToConstant:38.0],
+        [self.suggestionsButton.heightAnchor constraintEqualToConstant:38.0],
+        [self.sendButton.widthAnchor constraintEqualToConstant:38.0],
+        [self.sendButton.heightAnchor constraintEqualToConstant:38.0],
         self.textViewHeightConstraint,
 
         [self.placeholderLabel.centerXAnchor constraintEqualToAnchor:self.textView.centerXAnchor],
@@ -151,16 +171,18 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     button.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    button.backgroundColor = PPNovaInputDynamicColor([UIColor colorWithWhite:0.95 alpha:1.0],
-                                                    [UIColor colorWithWhite:1.0 alpha:0.09]);
-    button.layer.cornerRadius = 21.0;
+    button.backgroundColor = PPNovaInputDynamicColor([UIColor colorWithWhite:1.0 alpha:0.82],
+                                                    [UIColor colorWithWhite:1.0 alpha:0.10]);
+    button.layer.cornerRadius = 19.0;
     button.layer.masksToBounds = YES;
+    button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    button.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.14].CGColor;
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
     UIImage *image = [UIImage systemImageNamed:systemName];
     if (@available(iOS 13.0, *)) {
-        UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:18.0 weight:UIImageSymbolWeightSemibold];
+        UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightSemibold];
         image = [image imageWithConfiguration:configuration];
     }
     [button setImage:image forState:UIControlStateNormal];
@@ -183,10 +205,20 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.textView.text = @"";
     [self pp_updateTextHeightIfNeeded];
     [self pp_updateStateAnimated:YES];
+    if ([self.delegate respondsToSelector:@selector(novaInputBar:didChangeText:)]) {
+        [self.delegate novaInputBar:self didChangeText:@""];
+    }
 }
 
-- (void)pp_attachTapped {
+- (void)focusTextInput {
+    [self.textView becomeFirstResponder];
+}
+
+- (void)pp_suggestionsTapped {
     [self pp_pressFeedback];
+    if ([self.delegate respondsToSelector:@selector(novaInputBarDidTapSuggestions:)]) {
+        [self.delegate novaInputBarDidTapSuggestions:self];
+    }
 }
 
 - (void)pp_sendTapped {
@@ -229,6 +261,8 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     UIColor *activeFill = brand;
     UIColor *idleFill = [brand colorWithAlphaComponent:0.32];
     UIColor *iconTint = UIColor.whiteColor;
+    UIColor *idleBorder = [UIColor.separatorColor colorWithAlphaComponent:0.18];
+    UIColor *activeBorder = [brand colorWithAlphaComponent:0.25];
 
     UIImage *image = [UIImage systemImageNamed:@"arrow.up"];
     if (@available(iOS 13.0, *)) {
@@ -242,6 +276,9 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
         self.sendButton.backgroundColor = hasText ? activeFill : idleFill;
         self.sendButton.tintColor = iconTint;
         [self.sendButton setImage:image forState:UIControlStateNormal];
+        self.materialView.layer.borderColor = (hasText ? activeBorder : idleBorder).CGColor;
+        self.shadowView.layer.shadowOpacity = hasText ? 0.17 : 0.12;
+        self.ambientTintView.alpha = hasText ? 0.25 : 0.18;
     };
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
@@ -257,13 +294,19 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 }
 
 - (void)pp_applyColors {
-    UIColor *surface = PPNovaInputDynamicColor([UIColor colorWithWhite:1.0 alpha:0.94],
+    UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    UIColor *surface = PPNovaInputDynamicColor([UIColor colorWithWhite:1.0 alpha:0.95],
                                              [UIColor colorWithWhite:0.10 alpha:0.94]);
     self.materialView.contentView.backgroundColor = surface;
-    self.materialView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.28].CGColor;
+    self.ambientTintView.backgroundColor = PPNovaInputDynamicColor([brand colorWithAlphaComponent:0.12],
+                                                                   [brand colorWithAlphaComponent:0.18]);
+    self.materialView.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
     self.textView.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    self.textView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    self.attachButton.tintColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    self.textView.tintColor = brand;
+    self.suggestionsButton.tintColor = brand;
+    self.suggestionsButton.backgroundColor = PPNovaInputDynamicColor([brand colorWithAlphaComponent:0.10],
+                                                                     [brand colorWithAlphaComponent:0.16]);
+    self.suggestionsButton.layer.borderColor = [brand colorWithAlphaComponent:0.16].CGColor;
     [self pp_updateStateAnimated:NO];
 }
 

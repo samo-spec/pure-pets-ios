@@ -930,7 +930,7 @@ typedef NS_ENUM(NSInteger, PPSplashLoadingPhase) {
             if (err) {
                 NSLog(@"❌ Failed to create new document: %@", err.localizedDescription);
             } else {
-                NSLog(@"🔥 Successfully created new document with ID %@", targetUID);
+                NSLog(@"Successfully created new document with ID %@", targetUID);
             }
         }];
     }]; */

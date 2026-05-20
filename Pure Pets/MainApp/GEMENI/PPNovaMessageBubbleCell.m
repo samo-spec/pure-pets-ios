@@ -44,10 +44,14 @@ static const CGFloat PPNovaBubbleMinimumWidth = 90.0;
 static const CGFloat PPNovaAssistantMinimumReadableWidth = 184.0;
 static const CGFloat PPNovaAssistantMaximumReadableFloor = 260.0;
 static const CGFloat PPNovaAssistantReadableWidthRatio = 0.52;
+static const CGFloat PPNovaAssistantWrappedWidthFloorRatio = 0.72;
+static const CGFloat PPNovaAssistantOptionsMinimumWidth = 242.0;
 static const CGFloat PPNovaAssistantHorizontalReserve = 120.0;
 static const CGFloat PPNovaUserHorizontalReserve = 86.0;
 static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
 static const CGFloat PPNovaBubbleCornerRadius = 24.0;
+static const CGFloat PPNovaBubbleWidthSearchStep = 8.0;
+static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
 @interface PPNovaMessageBubbleCell ()
 
@@ -95,11 +99,12 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     self.messageModel = nil;
     self.typingMode = NO;
     self.messageLabel.text = nil;
+    self.messageLabel.attributedText = nil;
     self.timeLabel.text = nil;
     self.statusImageView.image = nil;
     self.statusImageView.hidden = YES;
     self.configuredMaxWidth = 0.0;
-    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
     [self setActionTitles:nil];
@@ -122,7 +127,7 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     self.contentView.backgroundColor = UIColor.clearColor;
     self.clipsToBounds = NO;
     self.contentView.clipsToBounds = NO;
-    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
 
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
     self.avatarView = [[UIView alloc] init];
@@ -216,8 +221,8 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     self.typingDots = [dots copy];
 
     self.actionStack = [[UIStackView alloc] init];
-    self.actionStack.axis = UILayoutConstraintAxisHorizontal;
-    self.actionStack.alignment = UIStackViewAlignmentLeading;
+    self.actionStack.axis = UILayoutConstraintAxisVertical;
+    self.actionStack.alignment = UIStackViewAlignmentFill;
     self.actionStack.spacing = 8.0;
     self.actionStack.hidden = YES;
     [self.contentStack addArrangedSubview:self.actionStack];
@@ -286,76 +291,506 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     [self pp_applyStyleForAssistant:YES typing:NO];
 }
 
-- (NSAttributedString *)pp_attributedStringFromMarkdown:(NSString *)text font:(UIFont *)font textColor:(UIColor *)textColor {
-    if (text.length == 0) return [[NSAttributedString alloc] initWithString:@"" attributes:@{}];
-    
-    UIFontDescriptor *fontDescriptor = [font.fontDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitBold];
-    UIFont *boldFont = [UIFont fontWithDescriptor:fontDescriptor size:font.pointSize];
-    if (!boldFont) {
-        boldFont = [UIFont boldSystemFontOfSize:font.pointSize];
+- (UIFont *)pp_scaledFont:(UIFont *)font textStyle:(UIFontTextStyle)textStyle {
+    UIFont *safeFont = font ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightRegular];
+    UIFont *baseFont = nil;
+    if (safeFont.fontName.length > 0) {
+        baseFont = [UIFont fontWithName:safeFont.fontName size:safeFont.pointSize];
     }
-    
-    NSMutableParagraphStyle *paragraphStyle = [[NSMutableParagraphStyle alloc] init];
-    paragraphStyle.lineBreakMode = NSLineBreakByWordWrapping;
-    paragraphStyle.alignment = PPNovaAlignmentForText(text);
-    paragraphStyle.baseWritingDirection = PPNovaTextStartsRTL(text) ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
-    
-    NSDictionary *defaultAttributes = @{
-        NSFontAttributeName: font,
-        NSForegroundColorAttributeName: textColor,
-        NSParagraphStyleAttributeName: paragraphStyle
+    if (!baseFont) {
+        UIFontDescriptorSymbolicTraits traits = safeFont.fontDescriptor.symbolicTraits;
+        UIFontWeight weight = (traits & UIFontDescriptorTraitBold) ? UIFontWeightBold : UIFontWeightRegular;
+        baseFont = [UIFont systemFontOfSize:safeFont.pointSize weight:weight];
+    }
+    return [[UIFontMetrics metricsForTextStyle:textStyle] scaledFontForFont:baseFont];
+}
+
+- (UIFont *)pp_boldFontFromFont:(UIFont *)font {
+    UIFontDescriptor *descriptor = [font.fontDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitBold];
+    return descriptor ? [UIFont fontWithDescriptor:descriptor size:font.pointSize] : [UIFont boldSystemFontOfSize:font.pointSize];
+}
+
+- (UIFont *)pp_semiboldFontFromFont:(UIFont *)font {
+    UIFontDescriptor *descriptor = [font.fontDescriptor fontDescriptorWithSymbolicTraits:UIFontDescriptorTraitBold];
+    return descriptor ? [UIFont fontWithDescriptor:descriptor size:font.pointSize] : [UIFont systemFontOfSize:font.pointSize weight:UIFontWeightSemibold];
+}
+
+- (NSMutableParagraphStyle *)pp_paragraphStyleForText:(NSString *)text
+                                             lineKind:(NSString *)lineKind
+                                                  rtl:(BOOL)rtl {
+    NSMutableParagraphStyle *style = [[NSMutableParagraphStyle alloc] init];
+    style.lineBreakMode = NSLineBreakByWordWrapping;
+    style.alignment = rtl ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    style.baseWritingDirection = rtl ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
+    style.lineSpacing = 3.0;
+    style.paragraphSpacing = 6.0;
+    style.paragraphSpacingBefore = 0.0;
+
+    if ([lineKind isEqualToString:@"header"]) {
+        style.lineSpacing = 3.5;
+        style.paragraphSpacing = 10.0;
+    } else if ([lineKind isEqualToString:@"section"]) {
+        style.lineSpacing = 3.0;
+        style.paragraphSpacing = 8.0;
+        style.paragraphSpacingBefore = 3.0;
+    } else if ([lineKind isEqualToString:@"item"] || [lineKind isEqualToString:@"meta"]) {
+        style.lineSpacing = 2.5;
+        style.paragraphSpacing = 7.0;
+        style.headIndent = 17.0;
+        style.firstLineHeadIndent = 0.0;
+        if (rtl) {
+            style.tailIndent = -17.0;
+        }
+    }
+    return style;
+}
+
+- (NSDictionary<NSAttributedStringKey, id> *)pp_attributesWithFont:(UIFont *)font
+                                                             color:(UIColor *)color
+                                                         paragraph:(NSParagraphStyle *)paragraph {
+    return @{
+        NSFontAttributeName: font ?: [UIFont systemFontOfSize:16.0],
+        NSForegroundColorAttributeName: color ?: UIColor.labelColor,
+        NSParagraphStyleAttributeName: paragraph ?: [NSParagraphStyle defaultParagraphStyle]
     };
-    
-    NSMutableAttributedString *attributedString = [[NSMutableAttributedString alloc] initWithString:text attributes:defaultAttributes];
-    
-    // Parse **bold**
-    NSRegularExpression *boldRegex = [NSRegularExpression regularExpressionWithPattern:@"\\*\\*(.*?)\\*\\*" options:0 error:nil];
-    NSArray<NSTextCheckingResult *> *matches = [boldRegex matchesInString:attributedString.string options:0 range:NSMakeRange(0, attributedString.length)];
-    
-    for (NSTextCheckingResult *match in [matches reverseObjectEnumerator]) {
-        NSRange matchRange = match.range;
-        NSRange contentRange = [match rangeAtIndex:1];
-        NSString *content = [attributedString.string substringWithRange:contentRange];
-        
-        NSMutableAttributedString *boldString = [[NSMutableAttributedString alloc] initWithString:content attributes:defaultAttributes];
-        [boldString addAttribute:NSFontAttributeName value:boldFont range:NSMakeRange(0, boldString.length)];
-        
-        [attributedString replaceCharactersInRange:matchRange withAttributedString:boldString];
+}
+
+- (NSString *)pp_textByNormalizingNovaAnswerSpacing:(NSString *)text {
+    if (text.length == 0) return @"";
+
+    NSMutableString *result = [NSMutableString stringWithCapacity:text.length];
+    NSCharacterSet *decimalSet = [NSCharacterSet decimalDigitCharacterSet];
+    for (NSUInteger idx = 0; idx < text.length; idx++) {
+        unichar current = [text characterAtIndex:idx];
+        if (idx > 0) {
+            unichar previous = [text characterAtIndex:idx - 1];
+            BOOL previousArabic = ((previous >= 0x0600 && previous <= 0x06FF) ||
+                                   (previous >= 0x0750 && previous <= 0x077F) ||
+                                   (previous >= 0x08A0 && previous <= 0x08FF));
+            BOOL currentArabic = ((current >= 0x0600 && current <= 0x06FF) ||
+                                  (current >= 0x0750 && current <= 0x077F) ||
+                                  (current >= 0x08A0 && current <= 0x08FF));
+            BOOL previousDigit = [decimalSet characterIsMember:previous];
+            BOOL currentDigit = [decimalSet characterIsMember:current];
+            BOOL previousIsSpace = [[NSCharacterSet whitespaceAndNewlineCharacterSet] characterIsMember:previous];
+            BOOL currentIsSpace = [[NSCharacterSet whitespaceAndNewlineCharacterSet] characterIsMember:current];
+            if (!previousIsSpace && !currentIsSpace &&
+                ((previousArabic && currentDigit) || (previousDigit && currentArabic))) {
+                [result appendString:@" "];
+            }
+        }
+        [result appendFormat:@"%C", current];
     }
-    
-    // Parse *bold* (Single asterisks for italics or bold, treated as bold here for simplicity)
-    NSRegularExpression *singleRegex = [NSRegularExpression regularExpressionWithPattern:@"(?<!\\*)\\*(?!\\*)(.*?)(?<!\\*)\\*(?!\\*)" options:0 error:nil];
-    NSArray<NSTextCheckingResult *> *singleMatches = [singleRegex matchesInString:attributedString.string options:0 range:NSMakeRange(0, attributedString.length)];
-    
-    for (NSTextCheckingResult *match in [singleMatches reverseObjectEnumerator]) {
-        NSRange matchRange = match.range;
-        NSRange contentRange = [match rangeAtIndex:1];
-        NSString *content = [attributedString.string substringWithRange:contentRange];
-        
-        NSMutableAttributedString *boldString = [[NSMutableAttributedString alloc] initWithString:content attributes:defaultAttributes];
-        [boldString addAttribute:NSFontAttributeName value:boldFont range:NSMakeRange(0, boldString.length)];
-        
-        [attributedString replaceCharactersInRange:matchRange withAttributedString:boldString];
+
+    NSArray<NSArray<NSString *> *> *replacements = @[
+        @[@"بسعر\\s*(\\d)", @"بسعر $1"],
+        @[@"السعر:\\s*(\\d)", @"السعر: $1"],
+        @[@"الموقع:\\s*(\\S)", @"الموقع: $1"],
+        @[@"النوع:\\s*(\\S)", @"النوع: $1"],
+        @[@"Price:\\s*(\\d)", @"Price: $1"],
+        @[@"Location:\\s*(\\S)", @"Location: $1"],
+        @[@"Type:\\s*(\\S)", @"Type: $1"]
+    ];
+    NSString *normalized = result.copy;
+    for (NSArray<NSString *> *pair in replacements) {
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pair.firstObject
+                                                                               options:NSRegularExpressionCaseInsensitive
+                                                                                 error:nil];
+        if (!regex) continue;
+        normalized = [regex stringByReplacingMatchesInString:normalized
+                                                     options:0
+                                                       range:NSMakeRange(0, normalized.length)
+                                                withTemplate:pair.lastObject];
     }
-    
-    return attributedString;
+    return normalized;
+}
+
+- (BOOL)pp_textContainsMarkdownSyntax:(NSString *)text {
+    if (text.length == 0) return NO;
+    NSArray<NSString *> *patterns = @[@"\\*\\*[^\\n]+\\*\\*", @"(^|\\n)\\s*#{2,3}\\s+", @"(^|\\n)\\s*[-•*]\\s+", @"(^|\\n)\\s*\\d+[\\.)]\\s+"];
+    for (NSString *pattern in patterns) {
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern options:0 error:nil];
+        if ([regex firstMatchInString:text options:0 range:NSMakeRange(0, text.length)]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (NSString *)pp_trimmedLine:(NSString *)line {
+    return [line stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+}
+
+- (BOOL)pp_line:(NSString *)line matchesPattern:(NSString *)pattern {
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
+                                                                           options:NSRegularExpressionCaseInsensitive
+                                                                             error:nil];
+    return [regex firstMatchInString:line options:0 range:NSMakeRange(0, line.length)] != nil;
+}
+
+- (NSString *)pp_lineByRemovingPrefixWithPattern:(NSString *)pattern fromLine:(NSString *)line {
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
+                                                                           options:NSRegularExpressionCaseInsensitive
+                                                                             error:nil];
+    NSTextCheckingResult *match = [regex firstMatchInString:line options:0 range:NSMakeRange(0, line.length)];
+    if (!match || match.numberOfRanges < 2) return line;
+    return [line substringWithRange:[match rangeAtIndex:1]];
+}
+
+- (BOOL)pp_bodyLooksLikeGenericServiceOnly:(NSString *)body rtl:(BOOL)rtl {
+    NSString *normalized = body.lowercaseString ?: @"";
+    BOOL hasPrice = ([normalized rangeOfString:@"بسعر"].location != NSNotFound ||
+                     [normalized rangeOfString:@"السعر"].location != NSNotFound ||
+                     [normalized rangeOfString:@"price"].location != NSNotFound);
+    if (!hasPrice) return NO;
+    if (rtl) {
+        return [self pp_line:normalized matchesPattern:@"^خدمة\\s*(?:بسعر|السعر|[:：])"];
+    }
+    return [self pp_line:normalized matchesPattern:@"^service\\s*(?:for|price|[:：])"];
+}
+
+- (BOOL)pp_bodyLooksLikeGenericProductOnly:(NSString *)body rtl:(BOOL)rtl {
+    NSString *normalized = body.lowercaseString ?: @"";
+    BOOL hasPrice = ([normalized rangeOfString:@"بسعر"].location != NSNotFound ||
+                     [normalized rangeOfString:@"السعر"].location != NSNotFound ||
+                     [normalized rangeOfString:@"price"].location != NSNotFound);
+    if (!hasPrice) return NO;
+    if (rtl) {
+        return [self pp_line:normalized matchesPattern:@"^(?:منتج|عنصر)\\s*(?:بسعر|السعر|[:：])"];
+    }
+    return [self pp_line:normalized matchesPattern:@"^(?:product|item)\\s*(?:for|price|[:：])"];
+}
+
+- (NSString *)pp_priceValueFromBody:(NSString *)body {
+    NSArray<NSString *> *patterns = @[
+        @"(?:بسعر|السعر\\s*[:：]?)\\s*([^،,\\n]+)",
+        @"(?:price\\s*[:：]?|for)\\s*([^,\\n]+)"
+    ];
+    for (NSString *pattern in patterns) {
+        NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
+                                                                               options:NSRegularExpressionCaseInsensitive
+                                                                                 error:nil];
+        NSTextCheckingResult *match = [regex firstMatchInString:body options:0 range:NSMakeRange(0, body.length)];
+        if (match && match.numberOfRanges > 1) {
+            return [[body substringWithRange:[match rangeAtIndex:1]] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        }
+    }
+    return @"";
+}
+
+- (NSString *)pp_titleCandidateBeforeMetadataInBody:(NSString *)body {
+    NSArray<NSString *> *markers = @[@"بسعر", @"السعر", @"الموقع", @"النوع", @"الحالة", @"price", @"location", @"type", @"status", @"availability"];
+    NSUInteger firstMarker = NSNotFound;
+    NSString *lower = body.lowercaseString ?: @"";
+    for (NSString *marker in markers) {
+        NSRange range = [lower rangeOfString:marker.lowercaseString];
+        if (range.location != NSNotFound) {
+            firstMarker = firstMarker == NSNotFound ? range.location : MIN(firstMarker, range.location);
+        }
+    }
+    if (firstMarker == NSNotFound || firstMarker == 0) return @"";
+    NSString *title = [body substringToIndex:firstMarker];
+    title = [title stringByTrimmingCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@" -–—،,:：\t\n"]];
+    return title ?: @"";
+}
+
+- (NSMutableAttributedString *)pp_inlineAttributedText:(NSString *)rawText
+                                            attributes:(NSDictionary<NSAttributedStringKey, id> *)attributes
+                                              boldFont:(UIFont *)boldFont {
+    NSMutableAttributedString *result = [[NSMutableAttributedString alloc] init];
+    NSString *text = rawText ?: @"";
+    NSUInteger index = 0;
+    while (index < text.length) {
+        NSRange markerRange = [text rangeOfString:@"**" options:0 range:NSMakeRange(index, text.length - index)];
+        if (markerRange.location == NSNotFound) {
+            NSString *tail = [text substringFromIndex:index];
+            if (tail.length > 0) {
+                [result appendAttributedString:[[NSAttributedString alloc] initWithString:tail attributes:attributes]];
+            }
+            break;
+        }
+
+        if (markerRange.location > index) {
+            NSString *prefix = [text substringWithRange:NSMakeRange(index, markerRange.location - index)];
+            [result appendAttributedString:[[NSAttributedString alloc] initWithString:prefix attributes:attributes]];
+        }
+
+        NSUInteger contentStart = NSMaxRange(markerRange);
+        NSRange closeRange = [text rangeOfString:@"**" options:0 range:NSMakeRange(contentStart, text.length - contentStart)];
+        if (closeRange.location == NSNotFound) {
+            NSString *rest = [text substringFromIndex:markerRange.location];
+            [result appendAttributedString:[[NSAttributedString alloc] initWithString:rest attributes:attributes]];
+            break;
+        }
+
+        NSString *boldText = [text substringWithRange:NSMakeRange(contentStart, closeRange.location - contentStart)];
+        NSMutableDictionary *boldAttributes = attributes.mutableCopy;
+        boldAttributes[NSFontAttributeName] = boldFont ?: attributes[NSFontAttributeName];
+        [result appendAttributedString:[[NSAttributedString alloc] initWithString:boldText attributes:boldAttributes]];
+        index = NSMaxRange(closeRange);
+    }
+    return result;
+}
+
+- (void)pp_applyLabelStylingToAttributedString:(NSMutableAttributedString *)string
+                                    fullRange:(NSRange)fullRange
+                                     labelFont:(UIFont *)labelFont
+                                    labelColor:(UIColor *)labelColor {
+    if (fullRange.location == NSNotFound || NSMaxRange(fullRange) > string.length) return;
+    NSArray<NSString *> *labels = @[
+        @"السعر:", @"الموقع:", @"النوع:", @"الحالة:", @"المدينة:", @"المنطقة:", @"التوفر:",
+        @"Price:", @"Location:", @"Type:", @"Status:", @"City:", @"Area:", @"Availability:"
+    ];
+    NSString *substring = [string.string substringWithRange:fullRange];
+    for (NSString *label in labels) {
+        NSRange searchRange = NSMakeRange(0, substring.length);
+        while (searchRange.location < substring.length) {
+            NSRange found = [substring rangeOfString:label options:NSCaseInsensitiveSearch range:searchRange];
+            if (found.location == NSNotFound) break;
+            NSRange absolute = NSMakeRange(fullRange.location + found.location, found.length);
+            [string addAttribute:NSFontAttributeName value:labelFont range:absolute];
+            [string addAttribute:NSForegroundColorAttributeName value:labelColor range:absolute];
+            NSUInteger next = NSMaxRange(found);
+            searchRange = NSMakeRange(next, substring.length - next);
+        }
+    }
+}
+
+- (void)pp_appendAttributedLine:(NSAttributedString *)line
+                       toResult:(NSMutableAttributedString *)result {
+    if (line.length == 0) return;
+    if (result.length > 0) {
+        [result appendAttributedString:[[NSAttributedString alloc] initWithString:@"\n"]];
+    }
+    [result appendAttributedString:line];
+}
+
+- (void)pp_appendItemBody:(NSString *)body
+                  ordinal:(nullable NSString *)ordinal
+                   result:(NSMutableAttributedString *)result
+                      rtl:(BOOL)rtl
+                 bodyFont:(UIFont *)bodyFont
+                 boldFont:(UIFont *)boldFont
+                 metaFont:(UIFont *)metaFont
+                textColor:(UIColor *)textColor
+           secondaryColor:(UIColor *)secondaryColor
+              accentColor:(UIColor *)accentColor
+          fallbackContext:(NSString *)fallbackContext {
+    NSString *cleanBody = [self pp_textByNormalizingNovaAnswerSpacing:[self pp_trimmedLine:body]];
+    if (cleanBody.length == 0) return;
+
+    BOOL genericService = [self pp_bodyLooksLikeGenericServiceOnly:cleanBody rtl:rtl];
+    BOOL genericProduct = [self pp_bodyLooksLikeGenericProductOnly:cleanBody rtl:rtl];
+    BOOL mentionsBirds = [fallbackContext rangeOfString:@"طيور"].location != NSNotFound ||
+                         [fallbackContext.lowercaseString rangeOfString:@"bird"].location != NSNotFound;
+    NSString *fallbackTitle = nil;
+    if (genericService) {
+        fallbackTitle = mentionsBirds ? kLang(@"nova_render_fallback_bird_service") : kLang(@"nova_render_fallback_service");
+    } else if (genericProduct) {
+        fallbackTitle = kLang(@"nova_render_fallback_product");
+    }
+
+    NSString *prefix = ordinal.length > 0 ? [NSString stringWithFormat:@"%@ ", ordinal] : @"• ";
+    NSMutableParagraphStyle *itemParagraph = [self pp_paragraphStyleForText:cleanBody lineKind:@"item" rtl:rtl];
+    NSDictionary *itemAttributes = [self pp_attributesWithFont:bodyFont color:textColor paragraph:itemParagraph];
+    NSMutableDictionary *itemBoldAttributes = itemAttributes.mutableCopy;
+    itemBoldAttributes[NSFontAttributeName] = boldFont;
+
+    NSString *titleCandidate = fallbackTitle ?: [self pp_titleCandidateBeforeMetadataInBody:cleanBody];
+    NSString *priceValue = [self pp_priceValueFromBody:cleanBody];
+    if (titleCandidate.length > 0) {
+        NSMutableAttributedString *titleLine = [[NSMutableAttributedString alloc] initWithString:prefix attributes:itemAttributes];
+        [titleLine appendAttributedString:[[NSAttributedString alloc] initWithString:titleCandidate attributes:itemBoldAttributes]];
+        [self pp_appendAttributedLine:titleLine toResult:result];
+
+        if (priceValue.length > 0) {
+            NSString *priceLineText = [NSString stringWithFormat:@"%@ %@", kLang(@"nova_render_price_label"), priceValue];
+            NSMutableParagraphStyle *metaParagraph = [self pp_paragraphStyleForText:priceLineText lineKind:@"meta" rtl:rtl];
+            NSDictionary *metaAttributes = [self pp_attributesWithFont:metaFont color:secondaryColor paragraph:metaParagraph];
+            NSMutableAttributedString *metaLine = [[NSMutableAttributedString alloc] initWithString:priceLineText attributes:metaAttributes];
+            [self pp_applyLabelStylingToAttributedString:metaLine
+                                                fullRange:NSMakeRange(0, metaLine.length)
+                                                labelFont:[self pp_semiboldFontFromFont:metaFont]
+                                               labelColor:accentColor];
+            [self pp_appendAttributedLine:metaLine toResult:result];
+        }
+        if (fallbackTitle.length > 0) {
+            NSMutableParagraphStyle *metaParagraph = [self pp_paragraphStyleForText:kLang(@"nova_render_limited_details") lineKind:@"meta" rtl:rtl];
+            NSDictionary *metaAttributes = [self pp_attributesWithFont:metaFont color:secondaryColor paragraph:metaParagraph];
+            [self pp_appendAttributedLine:[[NSAttributedString alloc] initWithString:kLang(@"nova_render_limited_details") attributes:metaAttributes]
+                                 toResult:result];
+        }
+        return;
+    }
+
+    NSMutableAttributedString *line = [[NSMutableAttributedString alloc] initWithString:prefix attributes:itemAttributes];
+    [line appendAttributedString:[self pp_inlineAttributedText:cleanBody attributes:itemBoldAttributes boldFont:boldFont]];
+    [self pp_applyLabelStylingToAttributedString:line
+                                        fullRange:NSMakeRange(0, line.length)
+                                        labelFont:[self pp_semiboldFontFromFont:metaFont]
+                                       labelColor:accentColor];
+    [self pp_appendAttributedLine:line toResult:result];
+}
+
+- (NSAttributedString *)pp_attributedStringFromNovaText:(NSString *)text
+                                             baseFont:(UIFont *)font
+                                            textColor:(UIColor *)textColor
+                                       secondaryColor:(UIColor *)secondaryColor
+                                          accentColor:(UIColor *)accentColor
+                                     containsMarkdown:(BOOL *)containsMarkdown
+                                      fallbackItemCount:(NSUInteger *)fallbackItemCount
+                                                success:(BOOL *)success {
+    NSString *normalizedText = [self pp_textByNormalizingNovaAnswerSpacing:text ?: @""];
+    BOOL rtl = PPNovaTextStartsRTL(normalizedText);
+    BOOL markdown = [self pp_textContainsMarkdownSyntax:normalizedText];
+    if (containsMarkdown) *containsMarkdown = markdown;
+    if (fallbackItemCount) *fallbackItemCount = 0;
+    if (success) *success = NO;
+    if (normalizedText.length == 0) {
+        if (success) *success = YES;
+        return [[NSAttributedString alloc] initWithString:@"" attributes:@{}];
+    }
+
+    UIFont *bodyFont = [self pp_scaledFont:(font ?: ([GM MidFontWithSize:PPFontCallout] ?: [UIFont systemFontOfSize:16.0]))
+                                  textStyle:UIFontTextStyleBody];
+    UIFont *headerFont = [self pp_scaledFont:([GM boldFontWithSize:PPFontTitle3] ?: [UIFont systemFontOfSize:20.0 weight:UIFontWeightBold])
+                                   textStyle:UIFontTextStyleHeadline];
+    UIFont *sectionFont = [self pp_scaledFont:([GM boldFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold])
+                                    textStyle:UIFontTextStyleSubheadline];
+    UIFont *itemFont = [self pp_scaledFont:([GM boldFontWithSize:PPFontCallout] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold])
+                                 textStyle:UIFontTextStyleBody];
+    UIFont *metaFont = [self pp_scaledFont:([GM MidFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular])
+                                 textStyle:UIFontTextStyleFootnote];
+
+    NSMutableAttributedString *result = [[NSMutableAttributedString alloc] init];
+    NSArray<NSString *> *rawLines = [normalizedText componentsSeparatedByCharactersInSet:NSCharacterSet.newlineCharacterSet];
+    NSMutableArray<NSString *> *lines = [NSMutableArray array];
+    for (NSString *rawLine in rawLines) {
+        NSString *line = [self pp_trimmedLine:rawLine];
+        if (line.length > 0) {
+            [lines addObject:line];
+        }
+    }
+
+    NSUInteger itemCount = 0;
+    NSUInteger skippedItemCount = 0;
+    BOOL hasList = NO;
+    for (NSString *line in lines) {
+        if ([self pp_line:line matchesPattern:@"^\\s*(?:[-•*]\\s+|\\d+[\\.)]\\s+)"]) {
+            hasList = YES;
+            break;
+        }
+    }
+
+    for (NSUInteger idx = 0; idx < lines.count; idx++) {
+        NSString *line = lines[idx];
+        NSString *kind = @"body";
+        NSString *renderText = line;
+        NSString *ordinal = nil;
+
+        if ([line hasPrefix:@"### "]) {
+            kind = @"section";
+            renderText = [self pp_trimmedLine:[line substringFromIndex:4]];
+        } else if ([line hasPrefix:@"## "]) {
+            kind = @"header";
+            renderText = [self pp_trimmedLine:[line substringFromIndex:3]];
+        } else if ([self pp_line:line matchesPattern:@"^\\s*[-•*]\\s+(.+)$"]) {
+            kind = @"item";
+            renderText = [self pp_lineByRemovingPrefixWithPattern:@"^\\s*[-•*]\\s+(.+)$" fromLine:line];
+        } else if ([self pp_line:line matchesPattern:@"^\\s*(\\d+[\\.)])\\s+(.+)$"]) {
+            kind = @"item";
+            NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:@"^\\s*(\\d+[\\.)])\\s+(.+)$"
+                                                                                   options:0
+                                                                                     error:nil];
+            NSTextCheckingResult *match = [regex firstMatchInString:line options:0 range:NSMakeRange(0, line.length)];
+            if (match.numberOfRanges > 2) {
+                ordinal = [line substringWithRange:[match rangeAtIndex:1]];
+                renderText = [line substringWithRange:[match rangeAtIndex:2]];
+            }
+        } else if (idx == 0 && hasList && line.length <= 96) {
+            kind = @"header";
+        }
+
+        if ([kind isEqualToString:@"item"]) {
+            itemCount++;
+            if (itemCount > PPNovaMaximumFallbackTextItems) {
+                skippedItemCount++;
+                continue;
+            }
+            [self pp_appendItemBody:renderText
+                            ordinal:ordinal
+                             result:result
+                                rtl:rtl
+                           bodyFont:bodyFont
+                           boldFont:itemFont
+                           metaFont:metaFont
+                          textColor:textColor
+                     secondaryColor:secondaryColor
+                        accentColor:accentColor
+                    fallbackContext:normalizedText];
+            continue;
+        }
+
+        UIFont *lineFont = bodyFont;
+        UIColor *lineColor = textColor;
+        if ([kind isEqualToString:@"header"]) {
+            lineFont = headerFont;
+        } else if ([kind isEqualToString:@"section"]) {
+            lineFont = sectionFont;
+        } else if ([self pp_line:line matchesPattern:@"(?i)(تحذير|تنبيه|مهم|warning|safety|important)"]) {
+            lineFont = [self pp_semiboldFontFromFont:bodyFont];
+            lineColor = textColor;
+        }
+
+        NSMutableParagraphStyle *paragraph = [self pp_paragraphStyleForText:renderText lineKind:kind rtl:rtl];
+        NSDictionary *attributes = [self pp_attributesWithFont:lineFont color:lineColor paragraph:paragraph];
+        NSMutableAttributedString *lineString = [self pp_inlineAttributedText:renderText
+                                                                   attributes:attributes
+                                                                     boldFont:[self pp_boldFontFromFont:lineFont]];
+        [self pp_applyLabelStylingToAttributedString:lineString
+                                            fullRange:NSMakeRange(0, lineString.length)
+                                            labelFont:[self pp_semiboldFontFromFont:metaFont]
+                                           labelColor:accentColor];
+        [self pp_appendAttributedLine:lineString toResult:result];
+    }
+
+    if (skippedItemCount > 0) {
+        NSString *hint = kLang(@"nova_render_more_results_hint");
+        NSMutableParagraphStyle *paragraph = [self pp_paragraphStyleForText:hint lineKind:@"meta" rtl:rtl];
+        NSDictionary *attributes = [self pp_attributesWithFont:metaFont color:secondaryColor paragraph:paragraph];
+        [self pp_appendAttributedLine:[[NSAttributedString alloc] initWithString:hint attributes:attributes] toResult:result];
+    }
+
+    if (fallbackItemCount) *fallbackItemCount = itemCount;
+    if (success) *success = result.length > 0;
+    return result.length > 0 ? result : [[NSAttributedString alloc] initWithString:normalizedText
+                                                                        attributes:[self pp_attributesWithFont:bodyFont
+                                                                                                          color:textColor
+                                                                                                      paragraph:[self pp_paragraphStyleForText:normalizedText lineKind:@"body" rtl:rtl]]];
+}
+
+- (NSString *)pp_currentPlainMessageText {
+    if (self.messageLabel.attributedText.string.length > 0) {
+        return self.messageLabel.attributedText.string;
+    }
+    return self.messageLabel.text ?: @"";
 }
 
 - (void)configureWithMessage:(ChatMessageModel *)messageModel maxWidth:(CGFloat)maxWidth {
     self.messageModel = messageModel;
     self.typingMode = NO;
-    self.assistantMessage = YES;
+    self.assistantMessage = [messageModel.senderID isEqualToString:@"nova_bot_id"];
     CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
     self.configuredMaxWidth = resolvedMaxWidth;
-    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.contentView.bounds = CGRectMake(0.0, 0.0, resolvedMaxWidth, CGRectGetHeight(self.contentView.bounds));
 
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
-    self.messageLabel.text = messageModel.text ?: @"";
-    //self.messageLabel.semanticContentAttribute = PPNovaSemanticForText(self.messageLabel.text);
-    //self.messageLabel.textAlignment = PPNovaAlignmentForText(self.messageLabel.text);
+    self.messageLabel.attributedText = nil;
+    self.messageLabel.text = self.assistantMessage ? nil : (messageModel.text ?: @"");
     [self pp_applyStyleForAssistant:self.assistantMessage typing:NO];
+    [self setActionTitles:[self pp_actionTitlesFromMessage:messageModel]];
     self.timeLabel.text = [self pp_formattedTime:messageModel.timestamp];
     [self pp_stopTypingAnimation];
     [self pp_configureStatusForMessage:messageModel];
@@ -363,7 +798,7 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     [self setNeedsLayout];
     [self layoutIfNeeded];
 
-    self.accessibilityLabel = self.messageLabel.text;
+    self.accessibilityLabel = [self pp_currentPlainMessageText];
 }
 
 - (void)configureTypingWithMaxWidth:(CGFloat)maxWidth {
@@ -372,7 +807,7 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     self.assistantMessage = YES;
     CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
     self.configuredMaxWidth = resolvedMaxWidth;
-    self.contentView.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.contentView.bounds = CGRectMake(0.0, 0.0, resolvedMaxWidth, CGRectGetHeight(self.contentView.bounds));
 
     self.messageLabel.hidden = YES;
@@ -386,6 +821,28 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     [self.contentView layoutIfNeeded];
 
     self.accessibilityLabel = kLang(@"nova_typing");
+}
+
+- (NSArray<NSString *> *)pp_actionTitlesFromMessage:(ChatMessageModel *)messageModel {
+    if (!self.assistantMessage || ![messageModel.novaOptions isKindOfClass:NSArray.class]) {
+        return nil;
+    }
+    NSMutableArray<NSString *> *titles = [NSMutableArray array];
+    for (NSDictionary<NSString *, id> *option in messageModel.novaOptions) {
+        if (![option isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSString *title = [option[@"title"] isKindOfClass:NSString.class] ? option[@"title"] : @"";
+        title = [title stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        NSString *subtitle = [option[@"subtitle"] isKindOfClass:NSString.class] ? option[@"subtitle"] : @"";
+        subtitle = [subtitle stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (title.length > 0) {
+            [titles addObject:subtitle.length > 0
+                ? [NSString stringWithFormat:@"%@\n%@", title, subtitle]
+                : title];
+        }
+    }
+    return titles.count > 0 ? [titles copy] : nil;
 }
 
 - (void)setActionTitles:(nullable NSArray<NSString *> *)actionTitles {
@@ -407,6 +864,11 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.tag = (NSInteger)idx;
         button.titleLabel.font = [GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
+        button.titleLabel.numberOfLines = 2;
+        button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        button.titleLabel.textAlignment = PPNovaAlignmentForText(title);
+        button.semanticContentAttribute = PPNovaSemanticForText(title);
+        button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
         button.contentEdgeInsets = UIEdgeInsetsMake(7.0, 11.0, 7.0, 11.0);
         button.layer.cornerRadius = 14.0;
         button.layer.masksToBounds = YES;
@@ -427,8 +889,9 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
 
 - (void)pp_applyAlignmentForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
     CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
-    self.messageLabel.semanticContentAttribute = PPNovaSemanticForText(self.messageLabel.text ?: @"");
-    self.messageLabel.textAlignment = PPNovaAlignmentForText(self.messageLabel.text ?: @"");
+    NSString *plainText = [self pp_currentPlainMessageText];
+    self.messageLabel.semanticContentAttribute = PPNovaSemanticForText(plainText);
+    self.messageLabel.textAlignment = PPNovaAlignmentForText(plainText);
     self.bubbleWidthConstraint.constant = [self pp_targetBubbleWidthForAssistant:assistant maxWidth:resolvedMaxWidth];
     self.messageLabel.preferredMaxLayoutWidth = MAX(self.bubbleWidthConstraint.constant - PPNovaBubbleHorizontalContentInset, 1.0);
 
@@ -457,6 +920,13 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
 
 - (CGFloat)pp_targetBubbleWidthForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
     CGFloat containerWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
+    CGFloat screenWidth = UIScreen.mainScreen.bounds.size.width;
+    // Screen width is always a safe lower bound for assistant bubbles — the table view
+    // can never be wider than the screen. This prevents collapsed bubbles when the cell
+    // is first configured before the table view has completed its initial layout pass.
+    if (assistant && screenWidth > 1.0) {
+        containerWidth = MAX(containerWidth, screenWidth);
+    }
 
     CGFloat reserve = assistant ? PPNovaAssistantHorizontalReserve : PPNovaUserHorizontalReserve;
     CGFloat availableWidth = floor(containerWidth - reserve);
@@ -483,33 +953,21 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
 - (CGFloat)pp_measuredBubbleWidthForAvailableWidth:(CGFloat)availableWidth {
     CGFloat maxLabelWidth = MAX(availableWidth - PPNovaBubbleHorizontalContentInset, 1.0);
     CGFloat targetContentWidth = 0.0;
-    NSString *plainText = self.messageLabel.attributedText.string.length > 0
-        ? self.messageLabel.attributedText.string
-        : (self.messageLabel.text ?: @"");
-    BOOL hasExplicitLineBreak = [plainText rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location != NSNotFound;
 
-    NSAttributedString *attributedText = self.messageLabel.attributedText;
-    if (attributedText.length > 0 && !self.messageLabel.hidden) {
-        if (!hasExplicitLineBreak) {
-            CGRect singleLineRect = [attributedText boundingRectWithSize:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)
-                                                                 options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                                 context:nil];
-            CGFloat singleLineWidth = ceil(CGRectGetWidth(singleLineRect));
-            if (singleLineWidth <= maxLabelWidth) {
-                targetContentWidth = MAX(targetContentWidth, singleLineWidth);
-            }
+    if (!self.messageLabel.hidden && (self.messageLabel.attributedText.length > 0 || self.messageLabel.text.length > 0)) {
+        CGSize singleLineSize = [self.messageLabel sizeThatFits:CGSizeMake(CGFLOAT_MAX, CGFLOAT_MAX)];
+        CGFloat singleLineWidth = ceil(singleLineSize.width);
+        NSString *plainText = self.messageLabel.attributedText.string.length > 0
+            ? self.messageLabel.attributedText.string
+            : (self.messageLabel.text ?: @"");
+        BOOL hasExplicitLineBreak = [plainText rangeOfCharacterFromSet:NSCharacterSet.newlineCharacterSet].location != NSNotFound;
+
+        if (singleLineWidth <= maxLabelWidth && !hasExplicitLineBreak) {
+            targetContentWidth = MAX(targetContentWidth, [self pp_singleLineContentWidthForMeasuredWidth:singleLineWidth
+                                                                                            maxLabelWidth:maxLabelWidth]);
+        } else {
+            targetContentWidth = MAX(targetContentWidth, [self pp_balancedWrappedContentWidthForMaxLabelWidth:maxLabelWidth]);
         }
-        CGRect textRect = [attributedText boundingRectWithSize:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)
-                                                       options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                       context:nil];
-        targetContentWidth = MAX(targetContentWidth, ceil(CGRectGetWidth(textRect)));
-    } else if (!self.messageLabel.hidden && self.messageLabel.text.length > 0) {
-        NSDictionary *attributes = @{ NSFontAttributeName: self.messageLabel.font ?: [UIFont systemFontOfSize:16.0] };
-        CGRect textRect = [self.messageLabel.text boundingRectWithSize:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)
-                                                               options:NSStringDrawingUsesLineFragmentOrigin | NSStringDrawingUsesFontLeading
-                                                            attributes:attributes
-                                                               context:nil];
-        targetContentWidth = MAX(targetContentWidth, ceil(CGRectGetWidth(textRect)));
     }
 
     if (!self.typingDotsStack.hidden) {
@@ -523,10 +981,47 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
 
     if (!self.actionStack.hidden) {
         CGSize actionSize = [self.actionStack systemLayoutSizeFittingSize:UILayoutFittingCompressedSize];
-        targetContentWidth = MAX(targetContentWidth, ceil(actionSize.width));
+        CGFloat optionsReadableWidth = MIN(maxLabelWidth, MAX(PPNovaAssistantOptionsMinimumWidth - PPNovaBubbleHorizontalContentInset,
+                                                              floor(maxLabelWidth * PPNovaAssistantWrappedWidthFloorRatio)));
+        targetContentWidth = MAX(targetContentWidth, MAX(ceil(actionSize.width), optionsReadableWidth));
     }
 
     return targetContentWidth + PPNovaBubbleHorizontalContentInset;
+}
+
+- (CGFloat)pp_singleLineContentWidthForMeasuredWidth:(CGFloat)measuredWidth
+                                       maxLabelWidth:(CGFloat)maxLabelWidth {
+    CGFloat readableWidth = MIN(maxLabelWidth, MAX(measuredWidth, PPNovaBubbleMinimumWidth - PPNovaBubbleHorizontalContentInset));
+    if (self.assistantMessage && !self.typingMode) {
+        CGFloat assistantFloor = MIN(maxLabelWidth, MAX(PPNovaAssistantMinimumReadableWidth - PPNovaBubbleHorizontalContentInset,
+                                                        floor(maxLabelWidth * 0.58)));
+        readableWidth = MAX(readableWidth, assistantFloor);
+    }
+    return ceil(readableWidth);
+}
+
+- (CGFloat)pp_balancedWrappedContentWidthForMaxLabelWidth:(CGFloat)maxLabelWidth {
+    CGFloat minimumLabelWidth = MIN(maxLabelWidth, MAX(PPNovaAssistantMinimumReadableWidth - PPNovaBubbleHorizontalContentInset,
+                                                       floor(maxLabelWidth * PPNovaAssistantWrappedWidthFloorRatio)));
+    if (!self.assistantMessage || self.typingMode) {
+        minimumLabelWidth = MIN(maxLabelWidth, MAX(PPNovaBubbleMinimumWidth - PPNovaBubbleHorizontalContentInset,
+                                                   floor(maxLabelWidth * 0.64)));
+    }
+
+    CGSize widestSize = [self.messageLabel sizeThatFits:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)];
+    CGFloat widestHeight = ceil(widestSize.height);
+    CGFloat lineHeight = ceil(self.messageLabel.font.lineHeight ?: 18.0);
+    CGFloat toleratedHeight = widestHeight + MAX(6.0, lineHeight * 0.55);
+
+    CGFloat candidate = minimumLabelWidth;
+    while (candidate < maxLabelWidth) {
+        CGSize candidateSize = [self.messageLabel sizeThatFits:CGSizeMake(candidate, CGFLOAT_MAX)];
+        if (ceil(candidateSize.height) <= toleratedHeight) {
+            return ceil(candidate);
+        }
+        candidate += PPNovaBubbleWidthSearchStep;
+    }
+    return ceil(maxLabelWidth);
 }
 
 - (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize
@@ -606,11 +1101,36 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
     self.avatarView.layer.shadowOpacity = darkMode ? 0.18 : 0.12;
 
     self.messageLabel.textColor = assistant ? assistantText : userText;
-    
-    if (self.messageModel.text) {
-        self.messageLabel.attributedText = [self pp_attributedStringFromMarkdown:self.messageModel.text 
-                                                                             font:self.messageLabel.font 
-                                                                        textColor:self.messageLabel.textColor];
+
+    if (!typing && self.messageModel.text.length > 0) {
+        if (assistant) {
+            BOOL containsMarkdown = NO;
+            NSUInteger fallbackItemCount = 0;
+            BOOL attributedSuccess = NO;
+            NSUInteger resultCardCount = self.messageModel.novaProducts.count;
+            NSAttributedString *renderedText =
+                [self pp_attributedStringFromNovaText:self.messageModel.text
+                                             baseFont:nil
+                                            textColor:assistantText
+                                       secondaryColor:assistantMeta
+                                          accentColor:brand
+                                     containsMarkdown:&containsMarkdown
+                                    fallbackItemCount:&fallbackItemCount
+                                              success:&attributedSuccess];
+            self.messageLabel.text = nil;
+            self.messageLabel.attributedText = renderedText;
+            BOOL detectedRTL = PPNovaTextStartsRTL(renderedText.string ?: self.messageModel.text);
+            NSLog(@"[PPNovaChat][AnswerRender] message_id=%@ contains_markdown=%@ detected_rtl=%@ result_card_count=%lu fallback_text_item_count=%lu attributed_success=%@",
+                  self.messageModel.ID ?: @"",
+                  containsMarkdown ? @"YES" : @"NO",
+                  detectedRTL ? @"YES" : @"NO",
+                  (unsigned long)resultCardCount,
+                  (unsigned long)fallbackItemCount,
+                  attributedSuccess ? @"YES" : @"NO");
+        } else {
+            self.messageLabel.attributedText = nil;
+            self.messageLabel.text = self.messageModel.text ?: @"";
+        }
     }
     
     self.timeLabel.textColor = assistant ? assistantMeta : userMeta;
@@ -634,29 +1154,9 @@ static const CGFloat PPNovaBubbleCornerRadius = 24.0;
 }
 
 - (void)pp_configureStatusForMessage:(ChatMessageModel *)messageModel {
-    if (self.assistantMessage) {
-        self.statusImageView.hidden = YES;
-        return;
-    }
-
-    UIImage *icon = nil;
-    switch (messageModel.status) {
-        case ChatMessageStatusSending:
-            icon = [UIImage systemImageNamed:@"clock"];
-            break;
-        case ChatMessageStatusSent:
-            icon = [UIImage systemImageNamed:@"checkmark"];
-            break;
-        case ChatMessageStatusDelivered:
-        case ChatMessageStatusRead:
-            icon = [UIImage systemImageNamed:@"checkmark.circle.fill"];
-            break;
-        default:
-            icon = nil;
-            break;
-    }
-    self.statusImageView.image = [icon imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
-    self.statusImageView.hidden = (icon == nil);
+    (void)messageModel;
+    self.statusImageView.image = nil;
+    self.statusImageView.hidden = YES;
 }
 
 - (NSString *)pp_formattedTime:(NSDate *)date {

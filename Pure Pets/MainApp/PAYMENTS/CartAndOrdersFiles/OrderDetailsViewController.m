@@ -2486,7 +2486,10 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
 
 - (void)setupDefaults
 {
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    
+    UIColor *premiumBackground = [UIColor colorWithRed:0.98 green:0.97 blue:0.96 alpha:1.0];
+    
+    self.view.backgroundColor = premiumBackground;
     self.lineItems = [NSMutableArray array];
     self.accessoryCache = [NSMutableDictionary dictionary];
     self.inFlightAccessoryIDs = [NSMutableSet set];

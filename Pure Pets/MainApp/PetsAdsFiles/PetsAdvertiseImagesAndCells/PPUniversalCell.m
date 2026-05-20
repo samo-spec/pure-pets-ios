@@ -21,11 +21,11 @@
 #import "ServiceModel.h"
 #import "VetModel.h"
 
-static CGFloat const PPUniversalCardCornerRadius = 26.0;
+static CGFloat const PPUniversalCardCornerRadius = 28.0;
 static CGFloat const PPUniversalImageCornerRadius = 22.0;
 static CGFloat const PPUniversalOuterInset = 16.0;
 static CGFloat const PPUniversalInnerSpacing = 12.0;
-static CGFloat const PPUniversalButtonHeight = 36.0;
+static CGFloat const PPUniversalButtonHeight = 38.0;
 static CGFloat const PPUniversalPillHeight = 34.0;
 static CGFloat const PPUniversalCompactTitleHeight = 24.0;
 static CGFloat const PPUniversalCompactPriceHeight = 26.0;
@@ -80,14 +80,18 @@ static UIColor *PPUniversalCellSoftImageBorderColor(void)
 
 static UIColor *PPUniversalCellSoftShadowColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.16 green:0.13 blue:0.18 alpha:0.48],
-                                      [UIColor colorWithRed:0.08 green:0.04 blue:0.05 alpha:0.88]);
+    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.16 green:0.13 blue:0.18 alpha:0.0], [UIColor colorWithRed:0.08 green:0.04 blue:0.05 alpha:0.0]);
+   // return PPUniversalCellDynamicColor([UIColor colorWithRed:0.16 green:0.13 blue:0.18 alpha:0.48], [UIColor colorWithRed:0.08 green:0.04 blue:0.05 alpha:0.88]);
+
 }
 
 static UIColor *PPUniversalCellOuterShadowColor(void)
 {
-    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.15 alpha:0.46],
-                                      [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0.92]);
+    return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.15 alpha:0], [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0]);
+                               
+    
+   // return PPUniversalCellDynamicColor([UIColor colorWithRed:0.12 green:0.10 blue:0.15 alpha:0.46], [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0.92]);
+                              // [UIColor colorWithRed:0.02 green:0.01 blue:0.02 alpha:0.92]);
 }
 
 static CGFloat PPUniversalCellOuterShadowOpacity(BOOL isDark, BOOL selected)

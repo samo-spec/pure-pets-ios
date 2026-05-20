@@ -8,6 +8,13 @@
 #import "PPPaymentManager.h"
 @import FirebaseFunctions;
 @import FirebaseAuth;
+@import FirebaseCore;
+#if __has_include(<FirebaseAppCheck/FirebaseAppCheck.h>)
+@import FirebaseAppCheck;
+#define PP_PAYMENT_HAS_FIREBASE_APPCHECK 1
+#else
+#define PP_PAYMENT_HAS_FIREBASE_APPCHECK 0
+#endif
 #import "CountryModel.h"
 #import "CitiesManager.h"
 
@@ -30,6 +37,18 @@
 @property (nonatomic, weak) UIViewController *paymentPresenterVC;
 @property (nonatomic, assign) BOOL sdkDidPresent;
 @property (nonatomic, strong) NSDate *requestStartDate;
+
+- (void)pp_prepareCallableAuthContextForOrder:(PPOrder *)order
+                                    completion:(void (^)(NSString *idToken,
+                                                         NSString *appCheckToken,
+                                                         NSError *error))completion;
+- (void)createQIBSessionForOrder:(PPOrder *)order
+                        currency:(NSString *)currency
+                  viewController:(UIViewController *)viewController
+                           phone:(NSString *)phone
+                         idToken:(NSString *)idToken
+                   appCheckToken:(NSString *)appCheckToken
+                allowQARFallback:(BOOL)allowQARFallback;
 
 @end
 
@@ -406,40 +425,6 @@ static NSString *PPPaymentFunctionsRegion(void)
     return configured.length > 0 ? configured : @"us-central1";
 }
 
-static void PPPaymentConfigureLimitedUseTokensIfSupported(FIRFunctions *functions)
-{
-    if (!functions) return;
-
-    SEL setter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
-    if (![functions respondsToSelector:setter]) {
-        return;
-    }
-
-    NSMethodSignature *signature = [functions methodSignatureForSelector:setter];
-    if (!signature) {
-        return;
-    }
-
-    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-    BOOL enabled = YES;
-    [invocation setSelector:setter];
-    [invocation setTarget:functions];
-    [invocation setArgument:&enabled atIndex:2];
-    [invocation invoke];
-}
-
-static FIRFunctions *PPPaymentFunctionsClient(void)
-{
-    FIRFunctions *functions = nil;
-    NSString *customDomain = PPPaymentTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
-    if (customDomain.length > 0) {
-        functions = [FIRFunctions functionsForCustomDomain:customDomain];
-    } else {
-        functions = [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
-    }
-    PPPaymentConfigureLimitedUseTokensIfSupported(functions);
-    return functions;
-}
 
 static NSString *PPPaymentFunctionsMessageCandidate(id value, NSInteger depth)
 {
@@ -535,6 +520,36 @@ static NSString *PPPaymentFunctionsServerMessageFromError(NSError *error)
     return PPPaymentLocalizedKnownBackendMessage(candidate);
 }
 
+static FIRFunctionsErrorCode PPPaymentFunctionsErrorCodeFromStatus(NSString *status)
+{
+    NSString *normalized = [PPPaymentTrimmedString(status).uppercaseString copy];
+    if ([normalized isEqualToString:@"INVALID_ARGUMENT"]) return FIRFunctionsErrorCodeInvalidArgument;
+    if ([normalized isEqualToString:@"FAILED_PRECONDITION"]) return FIRFunctionsErrorCodeFailedPrecondition;
+    if ([normalized isEqualToString:@"NOT_FOUND"]) return FIRFunctionsErrorCodeNotFound;
+    if ([normalized isEqualToString:@"PERMISSION_DENIED"]) return FIRFunctionsErrorCodePermissionDenied;
+    if ([normalized isEqualToString:@"UNAUTHENTICATED"]) return FIRFunctionsErrorCodeUnauthenticated;
+    if ([normalized isEqualToString:@"UNAVAILABLE"]) return FIRFunctionsErrorCodeUnavailable;
+    if ([normalized isEqualToString:@"DEADLINE_EXCEEDED"]) return FIRFunctionsErrorCodeDeadlineExceeded;
+    if ([normalized isEqualToString:@"UNIMPLEMENTED"]) return FIRFunctionsErrorCodeUnimplemented;
+    if ([normalized isEqualToString:@"INTERNAL"]) return FIRFunctionsErrorCodeInternal;
+    if ([normalized isEqualToString:@"CANCELLED"]) return FIRFunctionsErrorCodeCancelled;
+    return FIRFunctionsErrorCodeUnknown;
+}
+
+static FIRFunctionsErrorCode PPPaymentFunctionsErrorCodeFromHTTPStatus(NSInteger statusCode)
+{
+    if (statusCode == 400) return FIRFunctionsErrorCodeInvalidArgument;
+    if (statusCode == 401) return FIRFunctionsErrorCodeUnauthenticated;
+    if (statusCode == 403) return FIRFunctionsErrorCodePermissionDenied;
+    if (statusCode == 404) return FIRFunctionsErrorCodeNotFound;
+    if (statusCode == 409) return FIRFunctionsErrorCodeFailedPrecondition;
+    if (statusCode == 412) return FIRFunctionsErrorCodeFailedPrecondition;
+    if (statusCode == 501) return FIRFunctionsErrorCodeUnimplemented;
+    if (statusCode == 503) return FIRFunctionsErrorCodeUnavailable;
+    if (statusCode == 504) return FIRFunctionsErrorCodeDeadlineExceeded;
+    return FIRFunctionsErrorCodeUnknown;
+}
+
 static BOOL PPPaymentShouldRetryWithQARForCallableError(NSError *error)
 {
     if (!error) return NO;
@@ -572,6 +587,9 @@ static NSString *PPPaymentFriendlyFunctionsErrorMessage(NSError *error)
         case FIRFunctionsErrorCodeNotFound:
             return serverMessage.length > 0 ? serverMessage : kLang(@"payment_backend_order_not_found");
         case FIRFunctionsErrorCodeUnauthenticated:
+            if ([FIRAuth auth].currentUser.uid.length > 0) {
+                return kLang(@"payment_backend_unreachable");
+            }
             return kLang(@"auth_register_required_title");
         case FIRFunctionsErrorCodePermissionDenied:
             return kLang(@"payment_backend_permission_denied");
@@ -653,6 +671,97 @@ static void PPQIBTryLoadFrameworkBundle(void)
         mgr = [PPPaymentManager new];
     });
     return mgr;
+}
+
+- (NSError *)pp_callableAuthContextErrorWithMessage:(NSString *)message
+                                               code:(NSInteger)code
+                                         underlying:(NSError *)underlying
+{
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    userInfo[NSLocalizedDescriptionKey] = message.length > 0 ? message : kLang(@"payment_backend_unreachable");
+    if (underlying) {
+        userInfo[NSUnderlyingErrorKey] = underlying;
+    }
+    return [NSError errorWithDomain:@"PPPayment" code:code userInfo:userInfo];
+}
+
+- (void)pp_prepareAppCheckContextForOrder:(PPOrder *)order
+                                  idToken:(NSString *)idToken
+                               completion:(void (^)(NSString *idToken,
+                                                    NSString *appCheckToken,
+                                                    NSError *error))completion
+{
+#if PP_PAYMENT_HAS_FIREBASE_APPCHECK
+    [[FIRAppCheck appCheck] tokenForcingRefresh:YES completion:^(FIRAppCheckToken *token, NSError *error) {
+        if (error || token.token.length == 0) {
+            PPORDERLog(@"Payment App Check context failed | orderId=%@ | error=%@",
+                       order.orderId ?: @"",
+                       error.localizedDescription ?: @"missing_app_check_token");
+            NSError *contextError =
+            [self pp_callableAuthContextErrorWithMessage:kLang(@"payment_backend_unreachable")
+                                                     code:401
+                                               underlying:error];
+            if (completion) {
+                completion(idToken ?: @"", @"", contextError);
+            }
+            return;
+        }
+
+        PPORDERLog(@"Payment App Check context ready | orderId=%@ | tokenPresent=1 | tokenType=regular",
+                   order.orderId ?: @"");
+        if (completion) {
+            completion(idToken ?: @"", token.token ?: @"", nil);
+        }
+    }];
+#else
+    NSError *contextError =
+    [self pp_callableAuthContextErrorWithMessage:kLang(@"payment_backend_unreachable")
+                                             code:401
+                                       underlying:nil];
+    if (completion) {
+        completion(idToken ?: @"", @"", contextError);
+    }
+#endif
+}
+
+- (void)pp_prepareCallableAuthContextForOrder:(PPOrder *)order
+                                    completion:(void (^)(NSString *idToken,
+                                                         NSString *appCheckToken,
+                                                         NSError *error))completion
+{
+    FIRUser *user = [FIRAuth auth].currentUser;
+    NSString *uid = user.uid ?: @"";
+    if (uid.length == 0) {
+        NSError *contextError =
+        [self pp_callableAuthContextErrorWithMessage:kLang(@"auth_register_required_subtitle")
+                                                 code:401
+                                           underlying:nil];
+        if (completion) {
+            completion(@"", @"", contextError);
+        }
+        return;
+    }
+
+    [user getIDTokenForcingRefresh:YES completion:^(NSString *token, NSError *error) {
+        if (error || token.length == 0) {
+            PPORDERLog(@"Payment Auth context failed | orderId=%@ | uidPresent=%d | error=%@",
+                       order.orderId ?: @"",
+                       uid.length > 0,
+                       error.localizedDescription ?: @"missing_id_token");
+            NSError *contextError =
+            [self pp_callableAuthContextErrorWithMessage:kLang(@"payment_backend_unreachable")
+                                                     code:401
+                                               underlying:error];
+            if (completion) {
+                completion(@"", @"", contextError);
+            }
+            return;
+        }
+
+        PPORDERLog(@"Payment Auth context ready | orderId=%@ | uidPresent=1",
+                   order.orderId ?: @"");
+        [self pp_prepareAppCheckContextForOrder:order idToken:token completion:completion];
+    }];
 }
 
 - (void)startPaymentForOrder:(PPOrder *)order
@@ -738,11 +847,38 @@ static void PPQIBTryLoadFrameworkBundle(void)
     if (requestedCurrency.length == 3) {
         order.currency = requestedCurrency;
     }
-    [self createQIBSessionForOrder:order
-                          currency:requestedCurrency
-                    viewController:viewController
-                             phone:phone
-                  allowQARFallback:YES];
+
+    __weak typeof(self) weakSelf = self;
+    [self pp_prepareCallableAuthContextForOrder:order completion:^(NSString *idToken, NSString *appCheckToken, NSError *authContextError) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) {
+            return;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (authContextError) {
+                PPORDERLog(@"Payment callable context unavailable | orderId=%@ | error=%@",
+                           order.orderId ?: @"",
+                           authContextError.localizedDescription ?: @"");
+                [self failWithError:authContextError];
+                return;
+            }
+
+            if (!self.isRequestInFlight) {
+                PPORDERLog(@"Payment callable context ignored after reset | orderId=%@",
+                           order.orderId ?: @"");
+                return;
+            }
+
+            [self createQIBSessionForOrder:order
+                                  currency:requestedCurrency
+                            viewController:viewController
+                                     phone:phone
+                                   idToken:idToken
+                             appCheckToken:appCheckToken
+                          allowQARFallback:YES];
+        });
+    }];
 }
 
 #pragma mark - QIB Callbacks (Device only)
@@ -1055,13 +1191,102 @@ static void PPQIBTryLoadFrameworkBundle(void)
     });
 }
 
+- (NSError *)pp_callableHTTPErrorWithStatusCode:(NSInteger)statusCode
+                                   responseBody:(NSDictionary *)responseBody
+                                fallbackMessage:(NSString *)fallbackMessage
+                                     underlying:(NSError *)underlying
+{
+    NSDictionary *errorBody = [responseBody[@"error"] isKindOfClass:NSDictionary.class] ? responseBody[@"error"] : nil;
+    NSString *status = PPPaymentSafeString(errorBody[@"status"]);
+    NSString *message = PPPaymentFunctionsMessageCandidate(errorBody ?: responseBody, 0);
+    if (message.length == 0) {
+        message = fallbackMessage.length > 0 ? fallbackMessage : kLang(@"payment_backend_unreachable");
+    }
+
+    FIRFunctionsErrorCode code = status.length > 0
+        ? PPPaymentFunctionsErrorCodeFromStatus(status)
+        : PPPaymentFunctionsErrorCodeFromHTTPStatus(statusCode);
+    NSMutableDictionary *userInfo = [NSMutableDictionary dictionary];
+    userInfo[NSLocalizedDescriptionKey] = message;
+    userInfo[@"httpStatusCode"] = @(statusCode);
+    if (status.length > 0) {
+        userInfo[@"status"] = status;
+    }
+    if (responseBody) {
+        userInfo[@"responseBody"] = responseBody;
+    }
+    if (underlying) {
+        userInfo[NSUnderlyingErrorKey] = underlying;
+    }
+    return [NSError errorWithDomain:@"FirebaseFunctionsManualCallable" code:code userInfo:userInfo];
+}
+
+- (void)pp_callCreateQIBSessionWithPayload:(NSDictionary *)payload
+                                   idToken:(NSString *)idToken
+                             appCheckToken:(NSString *)appCheckToken
+                                completion:(void (^)(NSDictionary *session, NSError *error))completion
+{
+    FIRFunctions *functions = nil;
+    NSString *customDomain = PPPaymentTrimmedString([[NSBundle mainBundle] objectForInfoDictionaryKey:@"PPQIBFunctionsCustomDomain"]);
+    if (customDomain.length > 0) {
+        functions = [FIRFunctions functionsForCustomDomain:customDomain];
+    } else {
+        functions = [FIRFunctions functionsForRegion:PPPaymentFunctionsRegion()];
+    }
+    
+    FIRHTTPSCallable *callable = [functions HTTPSCallableWithName:@"createQibSession"];
+    callable.timeoutInterval = 60.0;
+    
+    PPORDERLog(@"Creating QIB session via FIRFunctions HTTPSCallable | functionName=createQibSession");
+    
+    [callable callWithObject:payload ?: @{} completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            PPORDERLog(@"QIB FIRFunctions callable failed | error=%@", error.localizedDescription ?: @"");
+            if (completion) {
+                completion(nil, error);
+            }
+            return;
+        }
+        
+        NSDictionary *json = nil;
+        if ([result.data isKindOfClass:NSDictionary.class]) {
+            json = (NSDictionary *)result.data;
+        }
+        
+        id finalResult = json[@"result"];
+        if (!finalResult || finalResult == [NSNull null]) {
+            finalResult = json[@"data"];
+        }
+        if (![finalResult isKindOfClass:NSDictionary.class] && [json[@"sessionId"] isKindOfClass:NSString.class]) {
+            finalResult = json;
+        }
+        
+        if (![finalResult isKindOfClass:NSDictionary.class]) {
+            NSError *parseError = [self pp_callableHTTPErrorWithStatusCode:200
+                                                              responseBody:json ?: @{}
+                                                           fallbackMessage:kLang(@"payment_create_session_failed")
+                                                                underlying:nil];
+            PPORDERLog(@"QIB FIRFunctions callable response invalid | bodyKeys=%@", json.allKeys ?: @[]);
+            if (completion) {
+                completion(nil, parseError);
+            }
+            return;
+        }
+        
+        if (completion) {
+            completion((NSDictionary *)finalResult, nil);
+        }
+    }];
+}
+
 - (void)createQIBSessionForOrder:(PPOrder *)order
                         currency:(NSString *)currency
                   viewController:(UIViewController *)viewController
                            phone:(NSString *)phone
+                         idToken:(NSString *)idToken
+                   appCheckToken:(NSString *)appCheckToken
                 allowQARFallback:(BOOL)allowQARFallback
 {
-    FIRFunctions *functions = PPPaymentFunctionsClient();
     NSString *safeCurrency = PPPaymentTrimmedString(currency).uppercaseString;
     if (safeCurrency.length != 3) {
         safeCurrency = PPPaymentEffectiveCurrencyForOrder(order);
@@ -1073,69 +1298,94 @@ static void PPQIBTryLoadFrameworkBundle(void)
         }
     }
 
+    NSString *userEmail = @"";
+    if ([FIRAuth auth].currentUser.email.length > 0) {
+        userEmail = [FIRAuth auth].currentUser.email;
+    } else if (PPCurrentUser.UserEmail != nil && PPCurrentUser.UserEmail.length > 0) {
+        userEmail = PPCurrentUser.UserEmail;
+    } else {
+        userEmail = @"pure.pets.app@gmail.com";
+    }
+
+    NSString *userName = @"";
+    if ([FIRAuth auth].currentUser.displayName.length > 0) {
+        userName = [FIRAuth auth].currentUser.displayName;
+    } else if (PPCurrentUser.UserName != nil) {
+        userName = PPCurrentUser.UserName;
+    } else {
+        userName = @"Pure Pets";
+    }
+
     NSDictionary *payload = @{
         @"orderId": order.orderId ?: @"",
         @"amount": @((order.totalAmount > 0 ? order.totalAmount : order.amount)),
         @"currency": safeCurrency,
         @"phone": phone ?: @"",
+        @"email": userEmail ?: @"",
+        @"name": userName ?: @"",
         @"paymentAttemptId": self.paymentAttemptId ?: @""
     };
 
-    PPORDERLog(@"Creating QIB session | orderId=%@ | currency=%@ | amount=%.2f",
+    PPORDERLog(@"Creating QIB session | orderId=%@ | currency=%@ | amount=%.2f | authUIDPresent=%d",
                order.orderId ?: @"",
                safeCurrency ?: @"",
-               (order.totalAmount > 0 ? order.totalAmount : order.amount));
+               (order.totalAmount > 0 ? order.totalAmount : order.amount),
+               [FIRAuth auth].currentUser.uid.length > 0);
 
-    [[functions HTTPSCallableWithName:@"createQibSession"]
-     callWithObject:payload
-     completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-        if (error || ![result.data isKindOfClass:NSDictionary.class]) {
-            if (allowQARFallback &&
-                ![safeCurrency isEqualToString:@"QAR"] &&
-                PPPaymentShouldRetryWithQARForCallableError(error)) {
-                PPORDERLog(@"Retrying QIB session creation with QAR fallback | orderId=%@ | failedCurrency=%@ | error=%@",
+    [self pp_callCreateQIBSessionWithPayload:payload
+                                     idToken:idToken
+                               appCheckToken:appCheckToken
+                                  completion:^(NSDictionary *session, NSError *error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error || ![session isKindOfClass:NSDictionary.class]) {
+                if (allowQARFallback &&
+                    ![safeCurrency isEqualToString:@"QAR"] &&
+                    PPPaymentShouldRetryWithQARForCallableError(error)) {
+                    PPORDERLog(@"Retrying QIB session creation with QAR fallback | orderId=%@ | failedCurrency=%@ | error=%@",
+                               order.orderId ?: @"",
+                               safeCurrency ?: @"",
+                               error.localizedDescription ?: @"");
+                    [self createQIBSessionForOrder:order
+                                          currency:@"QAR"
+                                    viewController:viewController
+                                             phone:phone
+                                           idToken:idToken
+                                     appCheckToken:appCheckToken
+                                  allowQARFallback:NO];
+                    return;
+                }
+
+                NSError *resolvedError = error;
+                if (resolvedError) {
+                    NSString *friendly = PPPaymentFriendlyFunctionsErrorMessage(resolvedError);
+                    if (friendly.length > 0) {
+                        NSMutableDictionary *userInfo = [resolvedError.userInfo mutableCopy] ?: [NSMutableDictionary dictionary];
+                        userInfo[NSLocalizedDescriptionKey] = friendly;
+                        userInfo[NSUnderlyingErrorKey] = resolvedError;
+                        resolvedError = [NSError errorWithDomain:@"PPPayment" code:resolvedError.code userInfo:userInfo];
+                    }
+                } else {
+                    resolvedError = [NSError errorWithDomain:@"PPPayment"
+                                                         code:500
+                                                     userInfo:@{NSLocalizedDescriptionKey:
+                                                                    kLang(@"payment_create_session_failed")}];
+                }
+                PPORDERLog(@"Create QIB session failed | orderId=%@ | error=%@",
                            order.orderId ?: @"",
-                           safeCurrency ?: @"",
-                           error.localizedDescription ?: @"");
-                [self createQIBSessionForOrder:order
-                                      currency:@"QAR"
-                                viewController:viewController
-                                         phone:phone
-                              allowQARFallback:NO];
+                           resolvedError.localizedDescription ?: @"");
+                [self failWithError:resolvedError];
                 return;
             }
 
-            NSError *resolvedError = error;
-            if (resolvedError) {
-                NSString *friendly = PPPaymentFriendlyFunctionsErrorMessage(resolvedError);
-                if (friendly.length > 0) {
-                    NSMutableDictionary *userInfo = [resolvedError.userInfo mutableCopy] ?: [NSMutableDictionary dictionary];
-                    userInfo[NSLocalizedDescriptionKey] = friendly;
-                    userInfo[NSUnderlyingErrorKey] = resolvedError;
-                    resolvedError = [NSError errorWithDomain:@"PPPayment" code:resolvedError.code userInfo:userInfo];
-                }
-            } else {
-                resolvedError = [NSError errorWithDomain:@"PPPayment"
-                                                     code:500
-                                                 userInfo:@{NSLocalizedDescriptionKey:
-                                                                kLang(@"payment_create_session_failed")}];
-            }
-            PPORDERLog(@"Create QIB session failed | orderId=%@ | error=%@",
+            PPORDERLog(@"QIB session created | orderId=%@ | responseKeys=%@",
                        order.orderId ?: @"",
-                       resolvedError.localizedDescription ?: @"");
-            [self failWithError:resolvedError];
-            return;
-        }
-
-        NSDictionary *session = (NSDictionary *)result.data;
-        PPORDERLog(@"QIB session created | orderId=%@ | responseKeys=%@",
-                   order.orderId ?: @"",
-                   session.allKeys ?: @[]);
-        [self startQIBWithSession:session
-                            order:order
-                  viewController:viewController
-                           phone:phone
-                requestedCurrency:safeCurrency];
+                       session.allKeys ?: @[]);
+            [self startQIBWithSession:session
+                                order:order
+                      viewController:viewController
+                               phone:phone
+                    requestedCurrency:safeCurrency];
+        });
     }];
 }
 

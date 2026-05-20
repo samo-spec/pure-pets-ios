@@ -8,6 +8,9 @@
 #import "PPImageLoaderManager.h"
 #import "AppManager.h"
 #import "ServiceModel.h"
+#import "PetAd.h"
+#import "AdoptPetModel.h"
+#import "VetModel.h"
 
 @interface PPNovaProductMessageCell () <UICollectionViewDelegateFlowLayout, UICollectionViewDataSource, PPUniversalCellDelegate>
 
@@ -18,12 +21,17 @@
 @property (nonatomic, strong) NSArray *products;
 @property (nonatomic, assign) CGFloat maxWidth;
 @property (nonatomic, copy) NSString *messageID;
+@property (nonatomic, copy) NSString *renderKey;
 @property (nonatomic, assign) BOOL hasPerformedInitialScroll;
 @property (nonatomic, assign) CGFloat lastCollectionLayoutWidth;
 
 @end
 
 @implementation PPNovaProductMessageCell
+
++ (NSString *)reuseIdentifier {
+    return @"PPNovaProductMessageCell";
+}
 
 - (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
@@ -37,6 +45,7 @@
     [super prepareForReuse];
     self.products = @[];
     self.messageID = nil;
+    self.renderKey = nil;
     self.hasPerformedInitialScroll = NO;
     self.lastCollectionLayoutWidth = 0.0;
     self.countLabel.text = nil;
@@ -112,28 +121,47 @@
         [self.collectionView.topAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor constant:9.0],
         [self.collectionView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
         [self.collectionView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
-        [self.collectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-12.0],
+        [self.collectionView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-20.0],
         [self.collectionView.heightAnchor constraintEqualToConstant:286.0]
     ]];
 }
 
 - (void)configureWithMessage:(ChatMessageModel *)messageModel maxWidth:(CGFloat)maxWidth {
-    BOOL isNewMessage = ![self.messageID isEqualToString:messageModel.ID ?: @""];
+    NSString *nextMessageID = messageModel.ID ?: @"";
+    NSString *nextRenderKey = [self pp_renderKeyForMessage:messageModel];
+    BOOL isNewMessage = ![self.messageID isEqualToString:nextMessageID];
+    BOOL shouldReloadCards = isNewMessage || ![self.renderKey isEqualToString:nextRenderKey];
     self.messageID = messageModel.ID ?: @"";
+    self.renderKey = nextRenderKey;
     if (isNewMessage) {
         self.hasPerformedInitialScroll = NO;
     }
 
     self.products = [self pp_supportedNovaItemsFromArray:(NSArray *)messageModel.novaProducts];
     self.maxWidth = maxWidth;
+    LOG_INFO(@"NOVA_UNIVERSAL_CELL_RENDER_PREP message_id=%@ response_id=%@ item_count=%lu supported_count=%lu",
+             messageModel.ID ?: @"",
+             messageModel.novaResponseID ?: @"",
+             (unsigned long)((NSArray *)messageModel.novaProducts).count,
+             (unsigned long)self.products.count);
+    if (((NSArray *)messageModel.novaProducts).count > 0 && self.products.count == 0) {
+        LOG_WARN(@"NOVA_UNIVERSAL_CELL_RENDER_FAILURE message_id=%@ response_id=%@ reason=no_supported_items item_count=%lu",
+                 messageModel.ID ?: @"",
+                 messageModel.novaResponseID ?: @"",
+                 (unsigned long)((NSArray *)messageModel.novaProducts).count);
+    }
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.headerStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.collectionView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.titleLabel.text = kLang(@"nova_product_results");
     self.countLabel.text = [NSString stringWithFormat:kLang(@"nova_product_count_format"), (long)self.products.count];
-    [self.collectionView reloadData];
-    [self.collectionView.collectionViewLayout invalidateLayout];
-    [self pp_scrollToInitialProductIfNeeded];
+    if (shouldReloadCards) {
+        [self.collectionView reloadData];
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self pp_scrollToInitialProductIfNeededForRenderKey:nextRenderKey];
+    } else {
+        [self.collectionView.collectionViewLayout invalidateLayout];
+    }
 }
 
 - (void)updateAvailableWidth:(CGFloat)maxWidth {
@@ -158,15 +186,17 @@
     }
 }
 
-- (void)pp_scrollToInitialProductIfNeeded {
+- (void)pp_scrollToInitialProductIfNeededForRenderKey:(NSString *)renderKey {
     if (self.hasPerformedInitialScroll || self.products.count == 0) {
         return;
     }
 
+    NSString *capturedRenderKey = renderKey ?: @"";
     __weak typeof(self) weakSelf = self;
     dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self || self.products.count == 0 || self.collectionView.window == nil) {
+        if (!self || self.products.count == 0 || self.collectionView.window == nil ||
+            ![self.renderKey isEqualToString:capturedRenderKey]) {
             return;
         }
         self.hasPerformedInitialScroll = YES;
@@ -186,11 +216,20 @@
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:[PPUniversalCell reuseIdentifier] forIndexPath:indexPath];
-    
+    cell.transform = CGAffineTransformIdentity;
+    cell.alpha = 1.0;
+    if (indexPath.item >= self.products.count) {
+        LOG_WARN(@"NOVA_UNIVERSAL_CELL_RENDER_FAILURE message_id=%@ reason=index_out_of_bounds index=%ld count=%lu",
+                 self.messageID ?: @"",
+                 (long)indexPath.item,
+                 (unsigned long)self.products.count);
+        return cell;
+    }
+
     id item = self.products[indexPath.item];
     PPCellContext context = [self pp_cellContextForNovaItem:item];
     PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:item context:context];
-    
+
     [cell applyViewModel:vm
                  context:context
               layoutMode:PPCellLayoutModeMarket
@@ -203,6 +242,12 @@
     }];
 
     cell.delegate = self;
+    LOG_INFO(@"NOVA_UNIVERSAL_CELL_RENDER_SUCCESS message_id=%@ render_key=%@ index=%ld objectClass=%@ context=%ld",
+             self.messageID ?: @"",
+             self.renderKey ?: @"",
+             (long)indexPath.item,
+             NSStringFromClass([item class]),
+             (long)context);
     return cell;
 }
 
@@ -278,13 +323,63 @@
 }
 
 - (BOOL)pp_isSupportedNovaItem:(id)item {
-    return [item isKindOfClass:PetAccessory.class] ||
-           [item isKindOfClass:ServiceModel.class];
+    return [self pp_realNovaIDForItem:item].length > 0;
+}
+
+- (NSString *)pp_renderKeyForMessage:(ChatMessageModel *)messageModel {
+    NSMutableArray<NSString *> *ids = [NSMutableArray array];
+    for (id item in (NSArray *)messageModel.novaProducts) {
+        NSString *identifier = [self pp_realNovaIDForItem:item];
+        if (identifier.length > 0) {
+            [ids addObject:identifier];
+        }
+    }
+    return [NSString stringWithFormat:@"%@|%@|%@",
+            messageModel.ID ?: @"",
+            messageModel.novaResponseID ?: @"",
+            [ids componentsJoinedByString:@","]];
+}
+
+- (NSString *)pp_realNovaIDForItem:(id)item {
+    if ([item isKindOfClass:PetAccessory.class]) {
+        return ((PetAccessory *)item).accessoryID ?: @"";
+    }
+    if ([item isKindOfClass:ServiceModel.class]) {
+        return ((ServiceModel *)item).serviceID ?: @"";
+    }
+    if ([item isKindOfClass:PetAd.class]) {
+        return ((PetAd *)item).adID ?: @"";
+    }
+    if ([item isKindOfClass:AdoptPetModel.class]) {
+        return ((AdoptPetModel *)item).documentID ?: @"";
+    }
+    if ([item isKindOfClass:VetModel.class]) {
+        return ((VetModel *)item).vetID ?: @"";
+    }
+    return @"";
 }
 
 - (PPCellContext)pp_cellContextForNovaItem:(id)item {
     if ([item isKindOfClass:ServiceModel.class]) {
         return PPCellForServices;
+    }
+    if ([item isKindOfClass:VetModel.class]) {
+        return PPCellForVets;
+    }
+    if ([item isKindOfClass:AdoptPetModel.class]) {
+        return PPCellForAdopt;
+    }
+    if ([item isKindOfClass:PetAd.class]) {
+        return PPCellForAds;
+    }
+    if ([item isKindOfClass:PetAccessory.class]) {
+        PetAccessory *accessory = (PetAccessory *)item;
+        if (accessory.accessKindType == AccessTypeFood) {
+            return PPCellForFood;
+        }
+        if (accessory.accessKindType == AccessTypeLivePet) {
+            return PPCellForAds;
+        }
     }
     return PPCellForMarket;
 }

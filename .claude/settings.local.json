@@ -1,0 +1,14 @@
+{
+  "enabledMcpjsonServers": [
+    "firebase-admin",
+    "firebase-console",
+    "firebase-ios",
+    "firebase-android",
+    "pure-platform-admin",
+    "pure-platform-web",
+    "pure-platform-ios",
+    "pure-platform-android",
+    "figma",
+    "lottiefiles"
+  ]
+}

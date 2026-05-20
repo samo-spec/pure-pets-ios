@@ -230,9 +230,13 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
     ]];
 
     [self pp_setShadowColor:UIColor.blackColor];
-    self.layer.shadowOpacity = 0.05;
-    self.layer.shadowRadius = 12.0;
-    self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+    self.layer.shadowOpacity = 0.0;
+    self.layer.shadowRadius = 0.0;
+    self.layer.shadowOffset = CGSizeMake(0.0, 0.0);
+    
+    //self.layer.shadowOpacity = 0.05;
+    //self.layer.shadowRadius = 12.0;
+    //self.layer.shadowOffset = CGSizeMake(0.0, 6.0);
     [self pp_applyTheme];
 }
 
@@ -249,7 +253,7 @@ static inline UIColor *PPModernHomeActionBlendColors(UIColor *baseColor, UIColor
 
 - (void)configureWithQuickAction:(PPHomeQuickActionModel *)quickAction
 {
-    self.surfaceLayer.borderColor = [self pp_signalColorForQuickActionType:quickAction.type].CGColor;
+    self.surfaceLayer.borderColor = [[self pp_signalColorForQuickActionType:quickAction.type] colorWithAlphaComponent:0.5].CGColor;
 
     self.currentTitle = PPSafeString(quickAction.title);
     self.currentIconName = PPSafeString(quickAction.iconName);

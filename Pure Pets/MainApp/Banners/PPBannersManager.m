@@ -377,16 +377,9 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
         });
     }
 
-    [self stopListening];
-
-    __weak typeof(self) weakSelf = self;
-    self.listener = [[self.db collectionWithPath:kPPHomePromoCarouselCollectionPath]
-                     addSnapshotListener:^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        __strong typeof(weakSelf) strongSelf = weakSelf;
-        if (!strongSelf) return;
-
+    [self fetchOnceWithCompletion:^(NSArray<PPHomePromoCarouselCard *> * _Nullable cards, NSError * _Nullable error) {
         if (error) {
-            NSLog(@"[HomePromoCarousel] ❌ listener error: %@", error.localizedDescription);
+            NSLog(@"[HomePromoCarousel] ❌ fetch error: %@", error.localizedDescription);
             if (completion) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     completion(nil, error);
@@ -394,14 +387,11 @@ static NSString *PPHomePromoLocalizedString(NSString *en, NSString *ar) {
             }
             return;
         }
-        if (!snapshot) return;
-
-        strongSelf.cards = [strongSelf cardsFromSnapshot:snapshot];
-        [strongSelf saveCardsToCache];
-
+        self.cards = cards;
+        [self saveCardsToCache];
         if (completion) {
             dispatch_async(dispatch_get_main_queue(), ^{
-                completion(strongSelf.cards, nil);
+                completion(self.cards, nil);
             });
         }
     }];

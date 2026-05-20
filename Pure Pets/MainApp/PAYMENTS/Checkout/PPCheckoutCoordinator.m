@@ -139,6 +139,7 @@ static BOOL PPCheckoutIsFailedLikeStatus(NSString *status)
            PPCheckoutStatusContainsToken(status, @"declined") ||
            PPCheckoutStatusContainsToken(status, @"cancelled") ||
            PPCheckoutStatusContainsToken(status, @"canceled") ||
+           PPCheckoutStatusContainsToken(status, @"abandoned") ||
            PPCheckoutStatusContainsToken(status, @"expired") ||
            PPCheckoutStatusContainsToken(status, @"error") ||
            PPCheckoutStatusContainsToken(status, @"voided");
@@ -283,19 +284,10 @@ static FIRFunctions *PPCheckoutFunctionsClient(void)
         }
         functions = [FIRFunctions functionsForRegion:region];
     }
-
-    SEL setter = NSSelectorFromString(@"setUseAppCheckLimitedUseTokens:");
-    if (functions && [functions respondsToSelector:setter]) {
-        NSMethodSignature *signature = [functions methodSignatureForSelector:setter];
-        if (signature) {
-            NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
-            BOOL enabled = YES;
-            [invocation setSelector:setter];
-            [invocation setTarget:functions];
-            [invocation setArgument:&enabled atIndex:2];
-            [invocation invoke];
-        }
-    }
+    // App Check tokens are auto-attached by FIRFunctions when FIRAppCheck is
+    // configured globally in AppDelegate. The previous private-API invocation
+    // (setUseAppCheckLimitedUseTokens: via NSInvocation) was removed — it
+    // silently failed on SDK 12.12.0 and blocked token attachment entirely.
     return functions;
 }
 
@@ -1086,20 +1078,15 @@ NSString *const PPCheckoutErrorIsRetryableKey = @"PPCheckoutErrorIsRetryable";
 
     NSString *orderId = PPCheckoutTrimmedString(order.orderId);
     if (orderId.length > 0) {
-        FIRDocumentReference *orderRef =
-            [[FIRFirestore.firestore collectionWithPath:@"Orders"] documentWithPath:orderId];
-        [orderRef updateData:@{
-            @"status": @"cancelled",
-            @"paymentStatus": @"cancelled",
-            @"cancelledAt": [FIRFieldValue fieldValueForServerTimestamp],
-            @"statusUpdatedAt": [FIRFieldValue fieldValueForServerTimestamp],
-            @"cancellationReason": @"payment_cancelled_by_user"
-        } completion:^(NSError * _Nullable firestoreError) {
-            if (firestoreError) {
-                PPORDERLog(@"Failed to cancel order in Firestore | orderId=%@ | error=%@",
-                           orderId, firestoreError.localizedDescription ?: @"");
+        FIRFunctions *functions = PPCheckoutFunctionsClient();
+        [[functions HTTPSCallableWithName:@"cancelOrderCheckout"]
+         callWithObject:@{@"orderId": orderId}
+             completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+            if (error) {
+                PPORDERLog(@"Failed to cancel order via Cloud Function | orderId=%@ | error=%@",
+                           orderId, error.localizedDescription ?: @"");
             } else {
-                PPORDERLog(@"Order cancelled in Firestore | orderId=%@", orderId);
+                PPORDERLog(@"Order cancelled via Cloud Function | orderId=%@", orderId);
             }
         }];
     }

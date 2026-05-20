@@ -284,7 +284,8 @@
     // CARDS
     // ------------------------------------------------------------
     self.cardsListener =
-    [[db collectionWithPath:@"CardsCol"]
+    [[[db collectionWithPath:@"CardsCol"]
+      queryWhereField:@"UserID" isEqualTo:userID]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error) {
@@ -322,7 +323,8 @@
     // CAGES
     // ------------------------------------------------------------
     self.cagesListener =
-    [[db collectionWithPath:@"CagesCol"]
+    [[[db collectionWithPath:@"CagesCol"]
+      queryWhereField:@"UserID" isEqualTo:userID]
      addSnapshotListener:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error) {

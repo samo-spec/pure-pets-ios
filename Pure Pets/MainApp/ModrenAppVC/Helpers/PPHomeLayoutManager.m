@@ -45,7 +45,6 @@
                 @(PPHomeSectionCurrentOrders),
                 @(PPHomeSectionPremiumSearch),
                 @(PPHomeSectionQuickActions),
-                @(PPHomeSectionPremiumCare),
                 @(PPHomeSectionMainKinds),
                 @(PPHomeSectionCarousel),
                 @(PPHomeSectionSuggestions),

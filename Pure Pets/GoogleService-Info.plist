@@ -6,8 +6,6 @@
 	<string>646051621158-s8fj3lcm8ho5llsuitgh83tmea2vk0tq.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
 	<string>com.googleusercontent.apps.646051621158-s8fj3lcm8ho5llsuitgh83tmea2vk0tq</string>
-	<key>ANDROID_CLIENT_ID</key>
-	<string>646051621158-0087ev451b8ifsmtl9eheom32a4di3lf.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
 	<string>AIzaSyBlVRMGGq60XRi0oVs2lSBub1Zb5K1gees</string>
 	<key>GCM_SENDER_ID</key>
@@ -23,7 +21,7 @@
 	<key>IS_ADS_ENABLED</key>
 	<false/>
 	<key>IS_ANALYTICS_ENABLED</key>
-	<false/>
+	<true/>
 	<key>IS_APPINVITE_ENABLED</key>
 	<true/>
 	<key>IS_GCM_ENABLED</key>
@@ -32,6 +30,8 @@
 	<true/>
 	<key>GOOGLE_APP_ID</key>
 	<string>1:646051621158:ios:0346d1923005c9d0ad39e7</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.PB.Pure-Bird</string>
 	<key>DATABASE_URL</key>
 	<string>https://pure-pets-49199-default-rtdb.firebaseio.com</string>
 </dict>

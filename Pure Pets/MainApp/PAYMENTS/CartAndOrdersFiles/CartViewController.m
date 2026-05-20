@@ -387,9 +387,9 @@ static UIColor *PPCartScreenBackgroundColor(void)
 
 - (void)pp_applyCartScreenBackgroundColor
 {
-    UIColor *backgroundColor = PPCartScreenBackgroundColor();
-    self.view.backgroundColor = backgroundColor;
-    self.navigationController.view.backgroundColor = backgroundColor;
+
+    self.view.backgroundColor = AppBageColor();
+    self.navigationController.view.backgroundColor = AppBageColor();
     self.cartTableView.backgroundColor = UIColor.clearColor;
     self.cartTableView.backgroundView.backgroundColor = UIColor.clearColor;
 }

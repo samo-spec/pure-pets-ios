@@ -37,7 +37,6 @@
 #import "PPHomeHeroCell.h"
 #import "PPModerHomeCell.h"
 #import "PPModernHomeActionCell.h"
-#import "PPPremuimSearchbarCell.h"
 #import "PPHomeModels.h"
 #import "PPHUD.h"
 #import "PPCommerceFeedbackManager.h"
@@ -56,6 +55,10 @@
 #import "PPHomeLocationSheetViewController.h"
 #import "PPHomeInsetLabel.h"
 #import "PPHomeLocationTitleView.h"
+#import "PPHomeSmartSearchTitleView.h"
+#import "PPHomePremiumSearchCell.h"
+
+
 extern NSString * const PPThemePreferenceDidChangeNotification;
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -232,9 +235,9 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
     cardView.layer.borderWidth = 0.7;
     [cardView pp_setBorderColor:[PPPetsUISurfaceBorderColor() colorWithAlphaComponent:0.08]];
     [cardView pp_setShadowColor:UIColor.blackColor];
-    cardView.layer.shadowOpacity = 0.10f;
-    cardView.layer.shadowRadius = 24.0f;
-    cardView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
+    cardView.layer.shadowOpacity = 0.06f;
+    cardView.layer.shadowRadius = 14.0f;
+    cardView.layer.shadowOffset = CGSizeMake(0.0, 8.0);
     if (@available(iOS 13.0, *)) {
         cardView.layer.cornerCurve = kCACornerCurveContinuous;
     }
@@ -819,591 +822,7 @@ static void PPHomeApplyPromoGradientPalette(PPHomePromoCarouselCard *card, NSArr
 @implementation PPHomeUnavailableBuyAgainButton
 @end
 
-@interface PPHomeSmartSearchTitleView : UIControl
-@property (nonatomic, strong, readonly) UILabel *placeholderLabel;
-@property (nonatomic, assign) BOOL showSmartPillBackground;
-- (void)setQueryText:(NSString *)text animated:(BOOL)animated;
-@end
-
-@implementation PPHomeSmartSearchTitleView {
-    UIView *_chromeView;
-    UIButton *_glassChromeButton;
-    UIVisualEffectView *_chromeBlurView;
-    UIView *_chromeTintOverlay;
-    UIView *_leadingChipView;
-    UIImageView *_leadingIconView;
-    UIStackView *_textStackView;
-    UIStackView *_signalRowView;
-    UIView *_signalDotView;
-    UILabel *_signalLabel;
-    UILabel *_placeholderLabel;
-    UIView *_trailingOrbView;
-    UIImageView *_chevronView;
-    BOOL _signalAnimationsConfigured;
-    NSUInteger _placeholderColorIndex;
-}
-
-@synthesize placeholderLabel = _placeholderLabel;
-
-- (BOOL)pp_usesSystemGlassChrome
-{
-    return _glassChromeButton != nil;
-}
-
-- (void)pp_configureSystemGlassChromeIfNeeded
-{
-    if (!_glassChromeButton) {
-        return;
-    }
-
-    if (@available(iOS 26.0, *)) {
-        BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        UIColor *liquidBorderColor = AppForgroundColr ?: UIColor.whiteColor;
-        UIButtonConfiguration *configuration =
-            [UIButtonConfiguration clearGlassButtonConfiguration];
-        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        configuration.contentInsets = NSDirectionalEdgeInsetsZero;
-        configuration.baseForegroundColor = UIColor.clearColor;
-
-        UIBackgroundConfiguration *background =
-            configuration.background ?: [UIBackgroundConfiguration clearConfiguration];
-        background.backgroundInsets = NSDirectionalEdgeInsetsZero;
-        background.backgroundColor = UIColor.clearColor;
-        background.strokeColor = [liquidBorderColor colorWithAlphaComponent:isDark ? 0.34 : 0.68];
-        background.strokeWidth = 0.9;
-        background.visualEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleClear];
-        background.cornerRadius = CGRectGetHeight(self.bounds) > 0.0 ? CGRectGetHeight(self.bounds) * 0.5 : 21.0;
-        configuration.background = background;
-
-        _glassChromeButton.configuration = configuration;
-    }
-}
-
-- (CGSize)intrinsicContentSize
-{
-    return CGSizeMake(UIViewNoIntrinsicMetric, 44.0);
-}
-
-- (CGSize)sizeThatFits:(CGSize)size
-{
-    CGFloat width = CGRectGetWidth(self.bounds);
-    if (width <= 0.0 && isfinite(size.width) && size.width > 0.0) {
-        width = size.width;
-    }
-    return CGSizeMake(MAX(width, 1.0), 44.0);
-}
-
-- (instancetype)initWithFrame:(CGRect)frame
-{
-    CGRect initialFrame = CGRectEqualToRect(frame, CGRectZero)
-        ? CGRectMake(0.0, 0.0, 240.0, 44.0)
-        : frame;
-    self = [super initWithFrame:initialFrame];
-    if (!self) {
-        return nil;
-    }
-
-    self.backgroundColor = UIColor.clearColor;
-    self.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
-    self.accessibilityTraits = UIAccessibilityTraitButton;
-    self.accessibilityLabel =
-        kLang(@"home_nav_search_accessibility") ?:
-        (kLang(@"home_search_hint") ?: @"Open smart search");
-    self.accessibilityHint = kLang(@"home_search_hint") ?: @"What are you looking for?";
-    self.clipsToBounds = NO;
-    _showSmartPillBackground = NO;
-
-    [self pp_setShadowColor:[UIColor colorWithWhite:0.02 alpha:1.0]];
-    self.layer.shadowOpacity = 0.0f;
-    self.layer.shadowRadius = 0.0f;
-    self.layer.shadowOffset = CGSizeMake(0.0, 8.0);
-
-    UIView *chromeView = nil;
-    if (@available(iOS 26.0, *)) {
-        UIButton *glassButton = [UIButton buttonWithType:UIButtonTypeSystem];
-        glassButton.backgroundColor = UIColor.clearColor;
-        glassButton.userInteractionEnabled = NO;
-        chromeView = glassButton;
-        _glassChromeButton = glassButton;
-        [self pp_configureSystemGlassChromeIfNeeded];
-    } else {
-        chromeView = [[UIView alloc] initWithFrame:self.bounds];
-    }
-    chromeView.translatesAutoresizingMaskIntoConstraints = NO;
-    chromeView.backgroundColor = UIColor.clearColor;
-    chromeView.userInteractionEnabled = NO;
-    chromeView.layer.cornerRadius = 21.0;
-    chromeView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        chromeView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [self addSubview:chromeView];
-    _chromeView = chromeView;
-    [chromeView.heightAnchor constraintEqualToConstant:44.0].active = YES;
-
-    if (![self pp_usesSystemGlassChrome]) {
-        // Legacy frosted fallback for pre-iOS 26 runtimes.
-        UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-        blurView.translatesAutoresizingMaskIntoConstraints = NO;
-        blurView.userInteractionEnabled = NO;
-        blurView.alpha = 0.0;
-        [chromeView insertSubview:blurView atIndex:0];
-        _chromeBlurView = blurView;
-        [NSLayoutConstraint activateConstraints:@[
-            [blurView.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
-            [blurView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
-            [blurView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
-            [blurView.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
-        ]];
-
-        UIView *chromeTint = [[UIView alloc] init];
-        chromeTint.translatesAutoresizingMaskIntoConstraints = NO;
-        chromeTint.userInteractionEnabled = NO;
-        chromeTint.backgroundColor = UIColor.clearColor;
-        [chromeView insertSubview:chromeTint aboveSubview:blurView];
-        _chromeTintOverlay = chromeTint;
-        [NSLayoutConstraint activateConstraints:@[
-            [chromeTint.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
-            [chromeTint.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor],
-            [chromeTint.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor],
-            [chromeTint.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
-        ]];
-    }
-
-    UIView *leadingChipView = [UIView new];
-    leadingChipView.translatesAutoresizingMaskIntoConstraints = NO;
-    leadingChipView.userInteractionEnabled = NO;
-    leadingChipView.layer.cornerRadius = 14.0;
-    leadingChipView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        leadingChipView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [chromeView addSubview:leadingChipView];
-    _leadingChipView = leadingChipView;
-
-    UIImageView *leadingIconView =
-        [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"flame.fill"
-                                                         pointSize:12
-                                                            weight:UIImageSymbolWeightSemibold
-                                                             scale:UIImageSymbolScaleMedium
-                                                           palette:@[AppPrimaryClr ?: AppPrimaryClrShiner ?: UIColor.systemOrangeColor]
-                                                      makeTemplate:YES]];
-    leadingIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    leadingIconView.contentMode = UIViewContentModeScaleAspectFit;
-    leadingIconView.userInteractionEnabled = NO;
-    [leadingChipView addSubview:leadingIconView];
-    _leadingIconView = leadingIconView;
-
-    UIStackView *textStackView = [[UIStackView alloc] init];
-    textStackView.translatesAutoresizingMaskIntoConstraints = NO;
-    textStackView.axis = UILayoutConstraintAxisVertical;
-    textStackView.alignment = UIStackViewAlignmentFill;
-    textStackView.distribution = UIStackViewDistributionFill;
-    textStackView.spacing = 1.0;
-    textStackView.userInteractionEnabled = NO;
-    [chromeView addSubview:textStackView];
-    _textStackView = textStackView;
-
-    UIStackView *signalRowView = [[UIStackView alloc] init];
-    signalRowView.translatesAutoresizingMaskIntoConstraints = NO;
-    signalRowView.axis = UILayoutConstraintAxisHorizontal;
-    signalRowView.alignment = UIStackViewAlignmentCenter;
-    signalRowView.spacing = 4.0;
-    signalRowView.userInteractionEnabled = NO;
-    [textStackView addArrangedSubview:signalRowView];
-    _signalRowView = signalRowView;
-
-    UIView *signalDotView = [UIView new];
-    signalDotView.translatesAutoresizingMaskIntoConstraints = NO;
-    signalDotView.userInteractionEnabled = NO;
-    signalDotView.layer.cornerRadius = 2.75;
-    signalDotView.layer.masksToBounds = YES;
-    [signalRowView addArrangedSubview:signalDotView];
-    _signalDotView = signalDotView;
-
-    UILabel *signalLabel = [UILabel new];
-    signalLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    signalLabel.font = [GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold];
-    signalLabel.textAlignment = PPHomeCurrentTextAlignment();
-    signalLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    signalLabel.adjustsFontSizeToFitWidth = YES;
-    signalLabel.minimumScaleFactor = 0.84;
-    signalLabel.numberOfLines = 1;
-    signalLabel.userInteractionEnabled = NO;
-    signalLabel.text = kLang(@"home_nav_search_trending") ?: @"Trending";
-    [signalRowView addArrangedSubview:signalLabel];
-    _signalLabel = signalLabel;
-
-    UILabel *placeholderLabel = [UILabel new];
-    placeholderLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    placeholderLabel.font = [GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold];
-    placeholderLabel.textAlignment = PPHomeCurrentTextAlignment();
-    placeholderLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    placeholderLabel.adjustsFontSizeToFitWidth = YES;
-    placeholderLabel.allowsDefaultTighteningForTruncation = YES;
-    placeholderLabel.baselineAdjustment = UIBaselineAdjustmentAlignCenters;
-    placeholderLabel.minimumScaleFactor = 0.82;
-    placeholderLabel.numberOfLines = 1;
-    placeholderLabel.userInteractionEnabled = NO;
-    placeholderLabel.text = kLang(@"home_nav_search_example_cats") ?: @"Cats for sale";
-    [textStackView addArrangedSubview:placeholderLabel];
-    _placeholderLabel = placeholderLabel;
-
-    UIView *trailingOrbView = [UIView new];
-    trailingOrbView.translatesAutoresizingMaskIntoConstraints = NO;
-    trailingOrbView.userInteractionEnabled = NO;
-    trailingOrbView.layer.cornerRadius = 12.0;
-    trailingOrbView.layer.masksToBounds = YES;
-    if (@available(iOS 13.0, *)) {
-        trailingOrbView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
-    [chromeView addSubview:trailingOrbView];
-    _trailingOrbView = trailingOrbView;
-
-        NSString *forwardChevron = Language.isRTL ? @"chevron.left" : @"chevron.right";
-    UIImageView *chevronView =
-    [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:forwardChevron
-                                                         pointSize:11
-                                                            weight:UIImageSymbolWeightBold
-                                                             scale:UIImageSymbolScaleMedium
-                                                           palette:@[AppPrimaryTextClr ?: UIColor.labelColor]
-                                                      makeTemplate:YES]];
-    chevronView.translatesAutoresizingMaskIntoConstraints = NO;
-    chevronView.contentMode = UIViewContentModeScaleAspectFit;
-    chevronView.userInteractionEnabled = NO;
-    //chevronView.
-    chevronView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.0];
-    [trailingOrbView addSubview:chevronView];
-    _chevronView = chevronView;
-
-    [NSLayoutConstraint activateConstraints:@[
-        [chromeView.topAnchor constraintEqualToAnchor:self.topAnchor],
-        [chromeView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
-        [chromeView.trailingAnchor constraintEqualToAnchor:self.trailingAnchor],
-        [chromeView.bottomAnchor constraintEqualToAnchor:self.bottomAnchor],
-
-        [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:7.0],
-        [leadingChipView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [leadingChipView.widthAnchor constraintEqualToConstant:28.0],
-        [leadingChipView.heightAnchor constraintEqualToConstant:28.0],
-
-        [leadingIconView.centerXAnchor constraintEqualToAnchor:leadingChipView.centerXAnchor],
-        [leadingIconView.centerYAnchor constraintEqualToAnchor:leadingChipView.centerYAnchor],
-        [leadingIconView.widthAnchor constraintEqualToConstant:14.0],
-        [leadingIconView.heightAnchor constraintEqualToConstant:14.0],
-
-        [signalDotView.widthAnchor constraintEqualToConstant:5.5],
-        [signalDotView.heightAnchor constraintEqualToConstant:5.5],
-
-        [textStackView.leadingAnchor constraintEqualToAnchor:leadingChipView.trailingAnchor constant:10.0],
-        [textStackView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [textStackView.topAnchor constraintGreaterThanOrEqualToAnchor:chromeView.topAnchor constant:6.5],
-        [textStackView.bottomAnchor constraintLessThanOrEqualToAnchor:chromeView.bottomAnchor constant:-6.5],
-        [textStackView.trailingAnchor constraintEqualToAnchor:trailingOrbView.leadingAnchor constant:-10.0],
-
-        [trailingOrbView.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-7.0],
-        [trailingOrbView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [trailingOrbView.widthAnchor constraintEqualToConstant:24.0],
-        [trailingOrbView.heightAnchor constraintEqualToConstant:24.0],
-
-        [chevronView.centerXAnchor constraintEqualToAnchor:trailingOrbView.centerXAnchor],
-        [chevronView.centerYAnchor constraintEqualToAnchor:trailingOrbView.centerYAnchor],
-        [chevronView.widthAnchor constraintEqualToConstant:14.0],
-        [chevronView.heightAnchor constraintEqualToConstant:14.0]
-    ]];
-
-    [_placeholderLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow
-                                                       forAxis:UILayoutConstraintAxisHorizontal];
-    [_signalLabel setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                  forAxis:UILayoutConstraintAxisHorizontal];
-    [_trailingOrbView setContentCompressionResistancePriority:UILayoutPriorityRequired
-                                                      forAxis:UILayoutConstraintAxisHorizontal];
-
-    [self pp_applyPalette];
-    [self pp_updateInteractiveStateAnimated:YES];
-
-    return self;
-}
-
-- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event
-{
-    if (!self.userInteractionEnabled || self.hidden || self.alpha < 0.01) {
-        return nil;
-    }
-
-    CGRect hitFrame = CGRectInset(self.bounds, -6.0, -6.0);
-    if (CGRectContainsPoint(hitFrame, point)) {
-        return self;
-    }
-
-    return nil;
-}
-
-- (void)layoutSubviews
-{
-    [super layoutSubviews];
-    CGFloat width = CGRectGetWidth(self.bounds);
-    BOOL compact = width < 280.0;
-    _signalRowView.hidden = compact;
-    _textStackView.spacing = compact ? 0.0 : 0.5;
-    _signalLabel.font = compact
-        ? ([GM MidFontWithSize:8.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold])
-        : ([GM MidFontWithSize:9.0] ?: [UIFont systemFontOfSize:8.0 weight:UIFontWeightSemibold]);
-    _placeholderLabel.font = compact
-        ? ([GM boldFontWithSize:12.75] ?: [UIFont systemFontOfSize:12.75 weight:UIFontWeightSemibold])
-        : ([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]);
-    _chromeView.layer.cornerRadius = CGRectGetHeight(self.bounds) * 0.5;
-    _leadingChipView.layer.cornerRadius = CGRectGetHeight(_leadingChipView.bounds) * 0.5;
-    _trailingOrbView.layer.cornerRadius = CGRectGetHeight(_trailingOrbView.bounds) * 0.5;
-    _signalDotView.layer.cornerRadius = CGRectGetHeight(_signalDotView.bounds) * 0.5;
-    self.layer.shadowPath =
-        [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                   cornerRadius:CGRectGetHeight(self.bounds) * 0.5].CGPath;
-}
-
-- (void)didMoveToWindow
-{
-    [super didMoveToWindow];
-
-    if (!self.window) {
-        [_signalDotView.layer removeAnimationForKey:@"pp.home.smartSearch.signalPulse"];
-        _signalAnimationsConfigured = NO;
-        return;
-    }
-
-    if (_signalAnimationsConfigured || UIAccessibilityIsReduceMotionEnabled() || CGRectGetWidth(self.bounds) <= 0.0) {
-        return;
-    }
-
-    _signalAnimationsConfigured = YES;
-
-    CABasicAnimation *pulseScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
-    pulseScale.fromValue = @(0.88);
-    pulseScale.toValue = @(1.18);
-    pulseScale.timingFunction =
-        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-
-    CABasicAnimation *pulseOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
-    pulseOpacity.fromValue = @(0.60);
-    pulseOpacity.toValue = @(1.0);
-    pulseOpacity.timingFunction =
-        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-
-    CAAnimationGroup *signalPulse = [CAAnimationGroup animation];
-    signalPulse.duration = 1.6;
-    signalPulse.repeatCount = HUGE_VALF;
-    signalPulse.autoreverses = YES;
-    signalPulse.animations = @[pulseScale, pulseOpacity];
-    [_signalDotView.layer addAnimation:signalPulse forKey:@"pp.home.smartSearch.signalPulse"];
-}
-
-- (UIColor *)pp_nextPlaceholderColor
-{
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    NSArray<UIColor *> *palette = @[
-        [UIColor colorWithRed:0.96 green:0.40 blue:0.32 alpha:1.0],   // coral
-        [UIColor colorWithRed:0.20 green:0.65 blue:0.85 alpha:1.0],   // ocean blue
-        [UIColor colorWithRed:0.58 green:0.39 blue:0.87 alpha:1.0],   // amethyst
-        [UIColor colorWithRed:0.18 green:0.75 blue:0.54 alpha:1.0],   // emerald
-        [UIColor colorWithRed:0.94 green:0.60 blue:0.22 alpha:1.0],   // tangerine
-        [UIColor colorWithRed:0.84 green:0.32 blue:0.62 alpha:1.0],   // rose
-        [UIColor colorWithRed:0.30 green:0.55 blue:0.92 alpha:1.0],   // royal blue
-        [UIColor colorWithRed:0.16 green:0.72 blue:0.42 alpha:1.0],   // jade
-        [UIColor colorWithRed:0.78 green:0.52 blue:0.20 alpha:1.0],   // amber
-        [UIColor colorWithRed:0.46 green:0.32 blue:0.78 alpha:1.0],   // indigo
-        [UIColor colorWithRed:0.90 green:0.44 blue:0.46 alpha:1.0],   // blush
-        [UIColor colorWithRed:0.22 green:0.60 blue:0.72 alpha:1.0],   // teal
-    ];
-    UIColor *base = palette[_placeholderColorIndex % palette.count];
-    _placeholderColorIndex = (_placeholderColorIndex + 1) % palette.count;
-    return isDark ? [base colorWithAlphaComponent:0.96] : [base colorWithAlphaComponent:0.88];
-}
-
-
-- (void)setQueryText:(NSString *)text animated:(BOOL)animated
-{
-    NSString *safeText = PPSafeString(text);
-    if (safeText.length == 0) {
-        safeText = kLang(@"home_nav_search_example_cats") ?: @"Cats for sale";
-    }
-    if ([_placeholderLabel.text isEqualToString:safeText]) {
-        return;
-    }
-
-    UIColor *nextColor = [self pp_nextPlaceholderColor];
-    self.accessibilityValue = safeText;
-
-    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
-        _placeholderLabel.text = safeText;
-        _placeholderLabel.textColor = nextColor;
-        return;
-    }
-
-    [UIView animateWithDuration:0.14
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, -1.5);
-        self->_placeholderLabel.alpha = 0.0;
-        self->_signalRowView.alpha = 0.72;
-    } completion:^(__unused BOOL finished) {
-        self->_placeholderLabel.text = safeText;
-        self->_placeholderLabel.textColor = nextColor;
-        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, 2.0);
-
-        [UIView animateWithDuration:0.22
-                              delay:0.0
-             usingSpringWithDamping:0.86
-              initialSpringVelocity:0.28
-                            options:UIViewAnimationOptionCurveEaseInOut
-                         animations:^{
-            self->_placeholderLabel.transform = CGAffineTransformIdentity;
-            self->_placeholderLabel.alpha = 1.0;
-            self->_signalRowView.alpha = 1.0;
-        } completion:nil];
-    }];
-
-    [UIView animateWithDuration:0.18
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseInOut
-                     animations:^{
-        self->_leadingChipView.transform = CGAffineTransformMakeScale(1.04, 1.04);
-        self->_trailingOrbView.transform = CGAffineTransformMakeScale(1.03, 1.03);
-    } completion:^(__unused BOOL finished) {
-        [UIView animateWithDuration:0.24 delay:0.0 usingSpringWithDamping:0.82 initialSpringVelocity:0.25 options:UIViewAnimationOptionCurveEaseInOut animations:^{
-            self->_leadingChipView.transform = CGAffineTransformIdentity;
-            self->_trailingOrbView.transform = CGAffineTransformIdentity;
-        } completion:^(BOOL finished) {
-        }];
-    }];
-}
-
-- (void)tintColorDidChange
-{
-    [super tintColorDidChange];
-    // Nav-bar scroll-edge transitions can propagate tint updates while scrolling.
-    // Reapplying the steady home-search palette keeps the title view colors locked.
-    [self pp_applyPalette];
-}
-
-- (void)setHighlighted:(BOOL)highlighted
-{
-    [super setHighlighted:highlighted];
-    [self pp_updateInteractiveStateAnimated:YES];
-}
-- (void)pp_applyPalette
-{
-    UIColor *textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    UIColor *accentColor = AppPrimaryClr ?: AppPrimaryClrShiner ?: [UIColor colorWithRed:0.98 green:0.70 blue:0.42 alpha:1.0];
-    UIColor *surfaceColor = AppForgroundColr ?: [UIColor secondarySystemBackgroundColor];
-    UIColor *liquidBorderColor = AppForgroundColr ?: surfaceColor;
-    BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-    BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
-
-    _chromeView.backgroundColor = UIColor.clearColor;
-    if (usesSystemGlassChrome) {
-        [self pp_configureSystemGlassChromeIfNeeded];
-        _chromeView.layer.borderWidth = 0.0f;
-        [_chromeView pp_setBorderColor:UIColor.clearColor];
-        _chromeBlurView.alpha = 0.0;
-        _chromeTintOverlay.backgroundColor = UIColor.clearColor;
-    } else {
-        _chromeBlurView.alpha = 1.0;
-
-        UIBlurEffectStyle blurStyle = isDark
-            ? UIBlurEffectStyleSystemThinMaterialDark
-            : UIBlurEffectStyleSystemThinMaterialLight;
-        _chromeBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
-
-        CGFloat tintAlpha = isDark ? 0.28 : 0.14;
-        _chromeTintOverlay.backgroundColor = [surfaceColor colorWithAlphaComponent:tintAlpha];
-        _chromeView.layer.borderWidth = isDark ? 0.78f : 0.92f;
-        [_chromeView pp_setBorderColor:[liquidBorderColor colorWithAlphaComponent:isDark ? 0.30 : 0.58]];
-    }
-
-    _leadingChipView.backgroundColor =
-        [accentColor colorWithAlphaComponent:isDark ? 0.24 : 0.12];
-    _leadingChipView.layer.borderWidth = 1.0f;
-    [_leadingChipView pp_setBorderColor:[accentColor colorWithAlphaComponent:isDark ? 0.22 : 0.14]];
-    _leadingIconView.tintColor = accentColor;
-
-    _signalDotView.backgroundColor = AppPrimaryClrShiner ?: accentColor;
-    _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.72 : 0.58];
-    _placeholderLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.96 : 0.90];
-
-    _trailingOrbView.backgroundColor =
-        [textColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];
-    _trailingOrbView.layer.borderWidth = 1.0f;
-    [_trailingOrbView pp_setBorderColor:[textColor colorWithAlphaComponent:isDark ? 0.10 : 0.06]];
-    _chevronView.tintColor = [textColor colorWithAlphaComponent:isDark ? 0.74 : 0.54];
-    self.layer.shadowOpacity = usesSystemGlassChrome
-        ? (isDark ? 0.10f : 0.025f)
-        : (isDark ? 0.16f : 0.04f);
-}
-
-- (void)pp_updateInteractiveStateAnimated:(BOOL)animated
-{
-    void (^changes)(void) = ^{
-        BOOL isPressed = self.highlighted;
-        BOOL isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-        BOOL usesSystemGlassChrome = [self pp_usesSystemGlassChrome];
-        CGFloat chromeScale = usesSystemGlassChrome ? 0.992 : 0.988;
-        self->_chromeView.transform = isPressed ? CGAffineTransformMakeScale(chromeScale, chromeScale) : CGAffineTransformIdentity;
-        self->_leadingChipView.transform = isPressed ? CGAffineTransformMakeScale(0.96, 0.96) : CGAffineTransformIdentity;
-        self->_trailingOrbView.transform = isPressed ? CGAffineTransformMakeScale(0.97, 0.97) : CGAffineTransformIdentity;
-        CGFloat idleShadow = usesSystemGlassChrome ? (isDark ? 0.10f : 0.05f) : (isDark ? 0.16f : 0.08f);
-        CGFloat pressedShadow = usesSystemGlassChrome ? (isDark ? 0.14f : 0.08f) : (isDark ? 0.20f : 0.12f);
-        self.layer.shadowOpacity = self->_showSmartPillBackground ? (isPressed ? pressedShadow : idleShadow) : 0.0f;
-        self.layer.shadowRadius = isPressed ? (usesSystemGlassChrome ? 16.0f : 18.0f) : (usesSystemGlassChrome ? 12.0f : 14.0f);
-        self->_chromeView.alpha = self.enabled ? (isPressed ? 0.98 : 1.0) : 0.72;
-    };
-
-    if (!animated) {
-        changes();
-        return;
-    }
-
-    [UIView animateWithDuration:self.highlighted ? 0.12 : 0.24
-                          delay:0.0
-         usingSpringWithDamping:self.highlighted ? 1.0 : 0.82
-          initialSpringVelocity:0.22
-                        options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
-                     animations:changes
-                     completion:nil];
-}
-
-- (void)setShowSmartPillBackground:(BOOL)showSmartPillBackground
-{
-    if (_showSmartPillBackground == showSmartPillBackground) return;
-    _showSmartPillBackground = showSmartPillBackground;
-    [self pp_applySmartPillBackgroundVisibility];
-}
-
-- (void)pp_applySmartPillBackgroundVisibility
-{
-    [self pp_applyPalette];
-    [self pp_updateInteractiveStateAnimated:NO];
-}
-
-- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
-{
-    [super traitCollectionDidChange:previousTraitCollection];
-    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
-        [self pp_applyPalette];
-    }
-}
-
-@end
-
-
-
-
-
-
-
-
-
+ 
 static NSString * const PPNearbySelectedLatitudeKey = @"pp.home.nearby.latitude";
 static NSString * const PPNearbySelectedLongitudeKey = @"pp.home.nearby.longitude";
 static NSString * const PPNearbySelectedAreaNameKey = @"pp.home.nearby.areaName";
@@ -1494,6 +913,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
 @property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeItemIdentifiers;
 @property (nonatomic, strong) NSMutableSet<NSNumber *> *animatedHomeHeaderSections;
+@property (nonatomic, strong) NSMutableSet<NSString *> *animatedHomeHorizontalUniversalIdentifiers;
 @property (nonatomic, assign) BOOL currentOrdersLoading;
 @property (nonatomic, assign) BOOL currentOrdersLoaded;
 @property (nonatomic, assign) BOOL petProfilesLoading;
@@ -1521,7 +941,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, copy, nullable) NSString *currentPremiumCareAnimationName;
 @property (nonatomic, strong) NSArray<NSDictionary *> *homeConfigSections;
 @property (nonatomic, copy) NSString *homeTitleViewMode; // @"location" (default) or @"search"
+@property (nonatomic, assign) BOOL homePremiumCareVisible; // remote-config toggle for PPPetCareViewController
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> homeConfigListener;
+// YES once the HomeConfig listener has reported (or the safety timeout has fired).
+// Until this flips, applyBaseSnapshot renders an empty snapshot so we don't show
+// the full default-section set just to relayout to the config-filtered set seconds
+// later — the staged reveal is handled by the premium entrance animation instead.
+@property (nonatomic, assign) BOOL didReceiveHomeConfig;
 - (void)handleSeeAllForSection:(PPHomeSection)section;
 - (void)openPremiumPetCare;
 - (NSArray<NSString *> *)pp_premiumCareAnimationNames;
@@ -1581,6 +1007,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                                               kind:(NSString *)kind
                                        atIndexPath:(NSIndexPath *)indexPath
                                     initialOrdinal:(NSUInteger)initialOrdinal;
+- (void)pp_animateHorizontalUniversalCellIfNeeded:(UICollectionViewCell *)cell
+                                      atIndexPath:(NSIndexPath *)indexPath
+                                          section:(PPHomeSection)section;
 - (nullable NSString *)pp_homeEntranceKeyForIndexPath:(NSIndexPath *)indexPath
                                                  kind:(nullable NSString *)kind;
 - (void)pp_refreshThemeSensitiveHomeContent;
@@ -1678,6 +1107,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, strong) UIButton *novaFloatingButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *novaFloatingLottieView;
 @property (nonatomic, strong, nullable) UIView *novaFloatingHaloView;
+@property (nonatomic, assign) BOOL novaFloatingButtonScrollCompressed;
+@property (nonatomic, assign) NSUInteger novaFloatingScrollMotionGeneration;
 @property (nonatomic, strong, nullable) UIBarButtonItem *homeOptionsItem;
 @property (nonatomic, strong, nullable) PPHomeSmartSearchTitleView *homeSmartSearchView;
 @property (nonatomic, strong, nullable) NSLayoutConstraint *homeSmartSearchWidthConstraint;
@@ -1790,6 +1221,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     NSInteger sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
+    if (sectionIndex == NSNotFound) {
+       // sectionIndex = [self sectionIndexForType:PPHomeSectionPremiumCare];
+    }
     if (sectionIndex == NSNotFound || !self.collectionView) {
         return;
     }
@@ -2111,15 +1545,26 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 }
 - (void)applyBaseSnapshot
 {
+    // Until the HomeConfig listener (or the safety timeout) tells us which
+    // sections are visible, keep the snapshot empty. Rendering defaults first
+    // and relaying out after the config arrives produces the "everything appears
+    // then half of it disappears" flash we're trying to avoid. The premium
+    // entrance animation runs once below, on the first non-empty apply.
+    if (!self.didReceiveHomeConfig) {
+        NSDiffableDataSourceSnapshot *emptySnapshot = [[NSDiffableDataSourceSnapshot alloc] init];
+        [self.dataSource applySnapshot:emptySnapshot animatingDifferences:NO];
+        return;
+    }
+
     NSDiffableDataSourceSnapshot *snapshot = [[NSDiffableDataSourceSnapshot alloc] init];
     NSMutableArray<NSNumber *> *sections = [NSMutableArray array];
 
     NSArray *defaultOrder = @[
         @(PPHomeSectionHero),
-        @(PPHomeSectionCurrentOrders),
         @(PPHomeSectionPremiumSearch),
-        @(PPHomeSectionQuickActions),
         @(PPHomeSectionPremiumCare),
+        @(PPHomeSectionCurrentOrders),
+        @(PPHomeSectionQuickActions),
         @(PPHomeSectionMainKinds),
         @(PPHomeSectionCarousel),
         @(PPHomeSectionSuggestions),
@@ -2131,18 +1576,14 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         @(PPHomeSectionAdopt)
     ];
 
+    BOOL hasPremiumSearchConfig = NO;
     if (self.homeConfigSections.count > 0) {
         for (NSDictionary *sectionCfg in self.homeConfigSections) {
+            NSInteger sectionID = [sectionCfg[@"id"] integerValue];
             if (![sectionCfg[@"visible"] boolValue]) {
                 continue;
             }
-            NSInteger sectionID = [sectionCfg[@"id"] integerValue];
-            // 🔒 Services is force-hidden in this build; including the section
-            // identifier here would leave a stranded header with no items
-            // because the items branch below is gated on hideServiceSection.
-            if (sectionID == PPHomeSectionServices && self.hideServiceSection) {
-                continue;
-            }
+           
             [sections addObject:@(sectionID)];
         }
     } else {
@@ -2151,6 +1592,19 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     if (!self.hideServiceSection && ![sections containsObject:@(PPHomeSectionServices)]) {
         [sections addObject:@(PPHomeSectionServices)];
+    }
+
+    if (![sections containsObject:@(PPHomeSectionPremiumSearch)]) {
+        NSUInteger heroIndex = [sections indexOfObject:@(PPHomeSectionHero)];
+        NSUInteger insertIndex = (heroIndex == NSNotFound) ? 0 : heroIndex + 1;
+        [sections insertObject:@(PPHomeSectionPremiumSearch) atIndex:MIN(insertIndex, sections.count)];
+    }
+
+    // PremiumCare still mirrors the legacy premiumCareVisible field for older Console builds.
+    if (self.homePremiumCareVisible && ![sections containsObject:@(PPHomeSectionPremiumCare)]) {
+        [sections addObject:@(PPHomeSectionPremiumCare)];
+    } else if (!self.homePremiumCareVisible && [sections containsObject:@(PPHomeSectionPremiumCare)]) {
+        [sections removeObject:@(PPHomeSectionPremiumCare)];
     }
 
     NSArray<PPHomeItem *> *buyAgainItems = [self pp_homeBuyAgainItems];
@@ -2190,7 +1644,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     safeAppend(@[heroItem], @(PPHomeSectionHero));
 
     // ✅ Premium Search
-    PPHomeItem *premiumSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumSearch payload:@"premium-search-bar"];
+    PPHomeItem *premiumSearchItem = [[PPHomeItem alloc] initWithType:PPHomeItemTypePremiumSearch payload:@"premium-search-card"];
     safeAppend(@[premiumSearchItem], @(PPHomeSectionPremiumSearch));
 
     // ✅ Quick Actions
@@ -2262,11 +1716,21 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     // 🔒 Config-driven rebuilds may delete sections that currently have visible
     // cells. Animating that diff can crash mid-transition with
-    // NSInternalInconsistencyException. Animate only the very first apply.
-    BOOL isRebuild = self.didApplyInitialBaseSnapshot;
-    BOOL animate = !isRebuild;
+    // NSInternalInconsistencyException. We also want the premium entrance
+    // animation (not the diffable default) to drive the first reveal, so we
+    // always apply non-animated and let pp_beginPremiumHomeEntranceIfNeeded
+    // stage the fade-in below.
+    BOOL isFirstContentApply = !self.didApplyInitialBaseSnapshot;
     self.didApplyInitialBaseSnapshot = YES;
-    [self.dataSource applySnapshot:snapshot animatingDifferences:animate];
+    [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+
+    // First time we render non-empty sections and the screen is on stage: kick
+    // the premium entrance. The chrome/glow + cell-stagger animation owns the
+    // reveal so users see a single composed motion instead of a snap-then-shift.
+    if (isFirstContentApply && sections.count > 0 && self.isViewLoaded && self.view.window != nil) {
+        [self pp_preparePremiumHomeEntranceStateIfNeeded];
+        [self pp_beginPremiumHomeEntranceIfNeeded];
+    }
 }
 
 - (void)pp_scheduleInitialMainKindsLayoutRefresh
@@ -2333,6 +1797,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self refreshHeroSectionAppearance];
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAdopt)
     ]];
@@ -2390,6 +1855,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     [self pp_refreshVisibleHomeCardsForSections:@[
         @(PPHomeSectionPetProfile),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionAdopt)
     ]];
@@ -2498,6 +1964,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     NSArray<NSNumber *> *themeSections = @[
         @(PPHomeSectionSuggestions),
         @(PPHomeSectionAccessories),
+        @(PPHomeSectionPremiumSearch),
         @(PPHomeSectionPremiumCare),
         @(PPHomeSectionLastFood),
         @(PPHomeSectionNearbyServices),
@@ -2821,6 +2288,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if (section == PPHomeSectionHero ||
         section == PPHomeSectionCarousel ||
         section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         [parts addObject:[NSString stringWithFormat:@"static:%ld", (long)section]];
@@ -3121,6 +2589,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         }
 
         if (section == PPHomeSectionPetProfile ||
+            section == PPHomeSectionPremiumSearch ||
             section == PPHomeSectionPremiumCare ||
             section == PPHomeSectionAdopt) {
             [self.collectionView setNeedsLayout];
@@ -3196,6 +2665,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         section == PPHomeSectionAdsNearBy ||
         section == PPHomeSectionCurrentOrders ||
         section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt ||
         section == PPHomeSectionAccessories ||
@@ -3214,6 +2684,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     if (section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         [self.collectionView setNeedsLayout];
@@ -3278,6 +2749,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     self.promoCarouselCards = PPHomePromoCarouselManager.sharedManager.cards ?: @[];
     self.animatedHomeItemIdentifiers = [NSMutableSet set];
     self.animatedHomeHeaderSections = [NSMutableSet set];
+    self.animatedHomeHorizontalUniversalIdentifiers = [NSMutableSet set];
     [self configureLocationStateMachine];
 
 
@@ -3307,6 +2779,21 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self loadData];
     [self pp_startHomeConfigListener];
     [self pp_prefetchHomeEntranceAnimationsIfNeeded];
+
+    // Safety net: if HomeConfig never reports (fresh install offline, doc missing,
+    // listener stalled) we still need to render *something*. After 800ms with no
+    // signal, flip the gate and let applyBaseSnapshot fall back to defaultOrder.
+    __weak typeof(self) weakSelfHomeConfigTimeout = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.8 * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelfHomeConfigTimeout) self = weakSelfHomeConfigTimeout;
+        if (!self || self.didReceiveHomeConfig) {
+            return;
+        }
+        NSLog(@"[HomeConfig] Listener silent for 800ms — using default sections fallback.");
+        self.didReceiveHomeConfig = YES;
+        [self applyBaseSnapshot];
+    });
 
     // 🔥 Fill top banner once banners are ready
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -3396,15 +2883,27 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    button.backgroundColor = [brand colorWithAlphaComponent:0.10];
-    button.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
-    button.layer.borderColor = [brand colorWithAlphaComponent:0.28].CGColor;
+    
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *con = [UIButtonConfiguration glassButtonConfiguration];
+        con.baseBackgroundColor = AppClearClr;
+        con.background.backgroundColor = AppClearClr;
+        con.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        button.configuration = con;
+    } else {
+        button.backgroundColor = [brand colorWithAlphaComponent:0.10];
+        button.layer.borderWidth = 1.0 / [UIScreen mainScreen].scale;
+        button.layer.borderColor = [brand colorWithAlphaComponent:0.28].CGColor;
+
+        button.layer.shadowOpacity = 0.22;
+        button.layer.shadowRadius = 18.0;
+        button.layer.shadowOffset = CGSizeMake(0, 8);
+    }
+
 
     PPApplyCardShadow(button);
     button.layer.shadowColor = brand.CGColor;
-    button.layer.shadowOpacity = 0.22;
-    button.layer.shadowRadius = 18.0;
-    button.layer.shadowOffset = CGSizeMake(0, 8);
+
 
     [button addTarget:self
                action:@selector(novaFloatingButtonTapped)
@@ -3422,33 +2921,33 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     lot.userInteractionEnabled = NO;
     lot.contentMode = UIViewContentModeScaleAspectFit;
     lot.loopAnimation = YES;
-    lot.animationSpeed = 1.0;
+    lot.animationSpeed = 0.3;
     [button addSubview:lot];
     self.novaFloatingLottieView = lot;
 
     [NSLayoutConstraint activateConstraints:@[
-        [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPSpaceBase],
+        [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
         [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceBase],
         [button.widthAnchor constraintEqualToConstant:56.0],
         [button.heightAnchor constraintEqualToConstant:56.0],
 
         [halo.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [halo.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [halo.widthAnchor constraintEqualToConstant:72.0],
-        [halo.heightAnchor constraintEqualToConstant:72.0],
+        [halo.widthAnchor constraintEqualToConstant:0.0],
+        [halo.heightAnchor constraintEqualToConstant:0.0],
 
         [lot.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
         [lot.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
-        [lot.widthAnchor constraintEqualToConstant:66.0],
-        [lot.heightAnchor constraintEqualToConstant:66.0],
+        [lot.widthAnchor constraintEqualToConstant:42.0],
+        [lot.heightAnchor constraintEqualToConstant:42.0],
     ]];
 
     // Lottie loads from Firebase Storage path LottieAnimations/nova.json via the project's helper.
     __weak typeof(self) weakSelf = self;
     __weak LOTAnimationView *weakLot = lot;
-    [AppClasses setAnimationNamed:@"nova4"
+    [AppClasses setAnimationNamed:@"Ncolored"
                             ToView:lot
-                         withSpeed:1.0
+                         withSpeed:0.6
                         completion:^(BOOL success) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
@@ -3500,8 +2999,153 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [halo.layer addAnimation:breath forKey:@"pp_novaHaloBreath"];
 }
 
+- (void)pp_startNovaFloatingAmbientMotionIfNeeded
+{
+    if (!self.novaFloatingButton) {
+        return;
+    }
+
+    if (self.novaFloatingHaloView.superview == self.view) {
+        [self.view bringSubviewToFront:self.novaFloatingHaloView];
+    }
+    [self.view bringSubviewToFront:self.novaFloatingButton];
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyNovaFloatingReduceMotionState];
+        return;
+    }
+
+    self.novaFloatingButton.alpha = 1.0;
+    self.novaFloatingLottieView.alpha = 1.0;
+    self.novaFloatingButton.transform = self.novaFloatingButtonScrollCompressed
+        ? self.novaFloatingButton.transform
+        : CGAffineTransformIdentity;
+
+    if (!self.novaFloatingLottieView.hidden) {
+        self.novaFloatingLottieView.animationSpeed = 0.6;
+        [self.novaFloatingLottieView play];
+    }
+    [self pp_startNovaFloatingHaloBreathing];
+}
+
+- (void)pp_stopNovaFloatingMotion
+{
+    self.novaFloatingScrollMotionGeneration++;
+    self.novaFloatingButtonScrollCompressed = NO;
+    [self.novaFloatingButton.layer removeAllAnimations];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloBreath"];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloPulseScale"];
+    [self.novaFloatingLottieView.layer removeAllAnimations];
+    [self.novaFloatingLottieView stop];
+    self.novaFloatingButton.transform = CGAffineTransformIdentity;
+    self.novaFloatingButton.alpha = 1.0;
+    self.novaFloatingLottieView.alpha = 1.0;
+    self.novaFloatingHaloView.transform = CGAffineTransformIdentity;
+    self.novaFloatingHaloView.alpha = 0.55;
+}
+
+- (void)pp_applyNovaFloatingReduceMotionState
+{
+    self.novaFloatingScrollMotionGeneration++;
+    self.novaFloatingButtonScrollCompressed = NO;
+    [self.novaFloatingButton.layer removeAllAnimations];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloBreath"];
+    [self.novaFloatingHaloView.layer removeAnimationForKey:@"pp_novaHaloPulseScale"];
+    [self.novaFloatingLottieView.layer removeAllAnimations];
+    [self.novaFloatingLottieView stop];
+    self.novaFloatingButton.transform = CGAffineTransformIdentity;
+    self.novaFloatingButton.alpha = 1.0;
+    self.novaFloatingLottieView.alpha = 1.0;
+    self.novaFloatingHaloView.transform = CGAffineTransformIdentity;
+    self.novaFloatingHaloView.alpha = 0.55;
+}
+
+- (void)pp_setNovaFloatingButtonScrollCompressed:(BOOL)compressed velocityY:(CGFloat)velocityY
+{
+    UIButton *button = self.novaFloatingButton;
+    if (!button || button.hidden) {
+        return;
+    }
+
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        [self pp_applyNovaFloatingReduceMotionState];
+        return;
+    }
+
+    if (self.novaFloatingButtonScrollCompressed == compressed) {
+        return;
+    }
+
+    self.novaFloatingButtonScrollCompressed = compressed;
+    self.novaFloatingScrollMotionGeneration++;
+
+    BOOL rtl = (PPHomeCurrentSemanticAttribute() == UISemanticContentAttributeForceRightToLeft);
+    CGFloat outwardX = rtl ? -4.0 : 4.0;
+    CGFloat fastScroll = MIN(1.0, fabs(velocityY) / 1400.0);
+    CGFloat tuckY = 8.0 + (4.0 * fastScroll);
+    CGFloat scale = 0.89 - (0.03 * fastScroll);
+    CGAffineTransform buttonTransform = compressed
+        ? CGAffineTransformScale(CGAffineTransformMakeTranslation(outwardX, tuckY), scale, scale)
+        : CGAffineTransformIdentity;
+    CGAffineTransform haloTransform = compressed
+        ? CGAffineTransformScale(CGAffineTransformMakeTranslation(outwardX, tuckY), 0.72, 0.72)
+        : CGAffineTransformIdentity;
+
+    NSTimeInterval duration = compressed ? 0.26 : 0.46;
+    CGFloat damping = compressed ? 0.98 : 0.78;
+    CGFloat initialVelocity = compressed ? 0.12 : 0.42;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+         usingSpringWithDamping:damping
+          initialSpringVelocity:initialVelocity
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        button.transform = buttonTransform;
+        button.alpha = compressed ? 0.78 : 1.0;
+        self.novaFloatingHaloView.transform = haloTransform;
+        self.novaFloatingHaloView.alpha = compressed ? 0.24 : 0.65;
+        self.novaFloatingLottieView.alpha = compressed ? 0.86 : 1.0;
+    } completion:nil];
+
+    self.novaFloatingLottieView.animationSpeed = compressed ? 0.38 : 0.6;
+    if (!compressed && !self.novaFloatingLottieView.hidden) {
+        [self.novaFloatingLottieView play];
+    }
+}
+
+- (void)pp_scheduleNovaFloatingScrollSettle
+{
+    NSUInteger generation = ++self.novaFloatingScrollMotionGeneration;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.14 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || generation != self.novaFloatingScrollMotionGeneration) {
+            return;
+        }
+        if (self.collectionView.isDragging || self.collectionView.isTracking || self.collectionView.isDecelerating) {
+            return;
+        }
+        [self pp_setNovaFloatingButtonScrollCompressed:NO velocityY:0.0];
+    });
+}
+
+- (void)pp_updateNovaFloatingButtonForScrollView:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    BOOL activeScroll = scrollView.isTracking || scrollView.isDragging || scrollView.isDecelerating;
+    if (activeScroll) {
+        CGFloat velocityY = [scrollView.panGestureRecognizer velocityInView:self.view].y;
+        [self pp_setNovaFloatingButtonScrollCompressed:YES velocityY:velocityY];
+    } else {
+        [self pp_scheduleNovaFloatingScrollSettle];
+    }
+}
+
 - (void)novaFloatingButtonTapped
 {
+    [self pp_setNovaFloatingButtonScrollCompressed:NO velocityY:0.0];
     PPTapFeedbackDown(self.novaFloatingButton);
 
     UIImpactFeedbackGenerator *haptic =
@@ -3623,6 +3267,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             novaVisible = [remoteNova boolValue];
         }
 
+        BOOL premiumCareVisible = YES;
+        id remotePremiumCare = data[@"premiumCareVisible"];
+        if ([remotePremiumCare respondsToSelector:@selector(boolValue)]) {
+            premiumCareVisible = [remotePremiumCare boolValue];
+        }
+
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
@@ -3634,6 +3284,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                 strongSelf.novaFloatingHaloView.hidden = !novaVisible;
             }
 
+            strongSelf.homePremiumCareVisible = premiumCareVisible;
+
             if (sanitized.count == 0) {
                 // Empty config means "use defaults" — clear and rebuild.
                 strongSelf.homeConfigSections = @[];
@@ -3641,11 +3293,22 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
                 strongSelf.homeConfigSections = sanitized;
             }
 
+            // The listener has spoken — applyBaseSnapshot is now allowed to
+            // render real sections (and run the premium entrance).
+            strongSelf.didReceiveHomeConfig = YES;
+
             BOOL titleModeChanged =
                 ![strongSelf.homeTitleViewMode isEqualToString:resolvedTitleViewMode];
             strongSelf.homeTitleViewMode = resolvedTitleViewMode;
 
             [strongSelf applyBaseSnapshot];
+
+            // When HomeConfig changes (e.g. banners visibility toggled from Console),
+            // the carousel section may have just been added/removed from the snapshot.
+            // Refresh the banner data so the carousel renders current cards — the
+            // PromoCarouselManager keeps a live listener, so self.promoCarouselCards
+            // is already fresh, but fillCarouselBanner must update the snapshot payload.
+            [strongSelf fillCarouselBanner];
 
             BOOL expectsSearchTitle =
                 [resolvedTitleViewMode isEqualToString:@"search"];
@@ -5726,6 +5389,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                                    object:nil];
     }
 
+    [self pp_startNovaFloatingAmbientMotionIfNeeded];
 }
 
 - (void)handleTimeChange
@@ -5969,18 +5633,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             forCellWithReuseIdentifier:PPModerHomeCell.reuseIdentifier];
     [self.collectionView registerClass:PPModernHomeActionCell.class
             forCellWithReuseIdentifier:PPModernHomeActionCell.reuseIdentifier];
-    [self.collectionView registerClass:PPPremuimSearchbarCell.class
-            forCellWithReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier];
-    [self.collectionView registerClass:UICollectionViewCell.class
-            forCellWithReuseIdentifier:@"PPHomePremiumSearchSpacerCell"];
-    [self.collectionView registerClass:PPPremuimSearchbarCell.class
-            forSupplementaryViewOfKind:UICollectionElementKindSectionHeader
-                   withReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomeActionCell.class forCellWithReuseIdentifier:@"PPHomeActionCell"];
     [self.collectionView registerClass:PPHomePetProfileCardCell.class
             forCellWithReuseIdentifier:PPHomePetProfileCardCell.reuseIdentifier];
     [self.collectionView registerClass:PPHomePremiumCareCell.class
             forCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier];
+    [self.collectionView registerClass:PPHomePremiumSearchCell.class
+            forCellWithReuseIdentifier:@"PPHomePremiumSearchCell"];
+    
 
     [self.collectionView registerClass:PPCarouselContainerCell.class forCellWithReuseIdentifier:@"PPCarouselContainerCell"];
     [self.collectionView registerClass:PPHomeServicesCell.class forCellWithReuseIdentifier:PPHomeServicesCell.reuseIdentifier];
@@ -6112,17 +5772,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             return cell;
         }
 
-        if (section == PPHomeSectionPremiumSearch) {
-            UICollectionViewCell *cell =
-                [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomePremiumSearchSpacerCell"
-                                                          forIndexPath:indexPath];
-            cell.hidden = YES;
-            cell.contentView.hidden = YES;
-            cell.backgroundColor = UIColor.clearColor;
-            cell.contentView.backgroundColor = UIColor.clearColor;
-            return cell;
-        }
-
         if (section == PPHomeSectionCurrentOrders) {
             PPHomeOrderStatusCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomeOrderStatusCell.reuseIdentifier
@@ -6183,8 +5832,23 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                                 isLoading:strongSelf.petProfilesLoading];
             return cell;
         }
+   
+            if ( section == PPHomeSectionPremiumSearch) {
+                PPHomePremiumSearchCell *cell =
+                [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomePremiumSearchCell"
+                                                              forIndexPath:indexPath];
 
-        if (section == PPHomeSectionPremiumCare) {
+                __weak typeof(strongSelf) weakHome = strongSelf;
+                cell.onTap = ^{
+                    __strong typeof(weakHome) self = weakHome;
+                    if (!self) return;
+                    [self pp_openSmartSearch];
+                };
+
+                return cell;
+            }
+
+        if ( section == PPHomeSectionPremiumCare) {
             PPHomePremiumCareCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:PPHomePremiumCareCell.reuseIdentifier
                                                           forIndexPath:indexPath];
@@ -6584,23 +6248,6 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         if (indexPath.section >= (NSInteger)sectionIDs.count) return nil;
         NSNumber *sectionID = sectionIDs[indexPath.section];
         PPHomeSection section = (PPHomeSection)sectionID.integerValue;
-
-        if (section == PPHomeSectionPremiumSearch) {
-            PPPremuimSearchbarCell *searchView =
-                (PPPremuimSearchbarCell *)[collectionView dequeueReusableSupplementaryViewOfKind:kind
-                                                                             withReuseIdentifier:PPPremuimSearchbarCell.reuseIdentifier
-                                                                                    forIndexPath:indexPath];
-            [searchView configureWithTrendingQuery:[weakSelf pp_currentHomeSmartSearchPlaceholder]];
-            __weak typeof(weakSelf) weakSearch = weakSelf;
-            searchView.onTap = ^{
-                __strong typeof(weakSearch) self = weakSearch;
-                if (!self) return;
-                [self pp_openSmartSearch];
-            };
-            searchView.hidden = NO;
-            searchView.contentView.hidden = NO;
-            return searchView;
-        }
 
         PPHomeHeaderConfig *cfg =
             [weakSelf headerConfigForSection:section];
@@ -7698,6 +7345,46 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 
 // MARK: - UICollectionViewDelegate
 
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView
+{
+    [self pp_updateNovaFloatingButtonForScrollView:scrollView];
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    CGFloat velocityY = [scrollView.panGestureRecognizer velocityInView:self.view].y;
+    [self pp_setNovaFloatingButtonScrollCompressed:YES velocityY:velocityY];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    if (!decelerate) {
+        [self pp_scheduleNovaFloatingScrollSettle];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    [self pp_scheduleNovaFloatingScrollSettle];
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView
+{
+    if (scrollView != self.collectionView) {
+        return;
+    }
+    [self pp_scheduleNovaFloatingScrollSettle];
+}
+
 - (void)collectionView:(UICollectionView *)collectionView
     didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
@@ -7718,12 +7405,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     }
 
     switch (section) {
-        case PPHomeSectionPremiumSearch: {
-            [self pp_emitSelectionHaptic];
-            [self pp_openSmartSearch];
-            return;
-        }
-
         case PPHomeSectionQuickActions:
             return;
 
@@ -7781,6 +7462,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             return;
         }
 
+        case PPHomeSectionPremiumSearch:
         case PPHomeSectionPremiumCare: {
             [self pp_emitSelectionHaptic];
             [self openPremiumPetCare];
@@ -7868,8 +7550,21 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     forItemAtIndexPath:(NSIndexPath *)indexPath
 {
     (void)collectionView;
+
+    // First-reveal flash guard: when applyBaseSnapshot inserts sections after
+    // HomeConfig arrives, cells are composited at full opacity for one frame
+    // before pp_prepareVisibleHomeEntranceContentIfNeeded can fade them. Pre-
+    // fade them here so they're already in the entrance "before" state at the
+    // moment of display, then let the staggered animation reveal them.
+    if (!self.didRunPremiumHomeEntranceAnimation && ![self pp_shouldReduceHomeMotion]) {
+        [self pp_configureHomeEntranceInitialStateForCell:cell
+                                              atIndexPath:indexPath
+                                           lateAppearance:NO];
+    }
+
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
     if (section == PPHomeSectionPetProfile ||
+        section == PPHomeSectionPremiumSearch ||
         section == PPHomeSectionPremiumCare ||
         section == PPHomeSectionAdopt) {
         if ([self pp_isInitialHomeRevealSettled]) {
@@ -7882,6 +7577,10 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             [CATransaction commit];
         }
     }
+
+    [self pp_animateHorizontalUniversalCellIfNeeded:cell
+                                        atIndexPath:indexPath
+                                            section:section];
 }
 
 - (void)collectionView:(UICollectionView *)collectionView
@@ -8505,6 +8204,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.didPreparePremiumHomeEntrance || self.didRunPremiumHomeEntranceAnimation) {
         return;
     }
+    // Don't fade chrome while the snapshot is still empty — the user would
+    // stare at faded glow + faded nav chrome until HomeConfig finally lands.
+    // Wait until we actually have sections to reveal.
+    if (self.dataSource && self.dataSource.snapshot.numberOfItems == 0) {
+        return;
+    }
     self.didPreparePremiumHomeEntrance = YES;
 
     NSArray<UIView *> *glowViews = @[
@@ -8662,6 +8367,16 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
 
     [self.collectionView layoutIfNeeded];
+
+    // If the snapshot is still empty (e.g. HomeConfig hasn't arrived yet) there
+    // are no cells/headers to animate. Bail out WITHOUT setting the "done" flag
+    // so that the post-config apply in applyBaseSnapshot can retrigger this and
+    // get a real reveal. Setting the flag here would silently consume the only
+    // entrance we have.
+    if (self.collectionView.indexPathsForVisibleItems.count == 0) {
+        return;
+    }
+
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 
     NSArray<UIView *> *glowViews = @[
@@ -8837,6 +8552,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
         || section == PPHomeSectionPetProfile
+        || section == PPHomeSectionPremiumSearch
         || section == PPHomeSectionPremiumCare;
 
     NSTimeInterval duration = isHero ? 0.52 : (isPrimarySurface ? 0.40 : 0.30);
@@ -8904,6 +8620,72 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     } completion:nil];
 }
 
+- (BOOL)pp_homeSectionUsesHorizontalUniversalCards:(PPHomeSection)section
+{
+    return section == PPHomeSectionSuggestions ||
+           section == PPHomeSectionAccessories ||
+           section == PPHomeSectionLastFood ||
+           section == PPHomeSectionAdsNearBy ||
+           section == PPHomeSectionNearbyServices ||
+           section == PPHomeSectionBuyAgain;
+}
+
+- (void)pp_animateHorizontalUniversalCellIfNeeded:(UICollectionViewCell *)cell
+                                      atIndexPath:(NSIndexPath *)indexPath
+                                          section:(PPHomeSection)section
+{
+    if (!cell || !indexPath || ![cell isKindOfClass:PPUniversalCell.class]) {
+        return;
+    }
+
+    if (![self pp_homeSectionUsesHorizontalUniversalCards:section]) {
+        return;
+    }
+
+    if (![self pp_isInitialHomeRevealSettled]) {
+        return;
+    }
+
+    if ([self pp_shouldReduceHomeMotion]) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        cell.contentView.alpha = 1.0;
+        return;
+    }
+
+    NSString *baseKey = [self pp_homeEntranceKeyForIndexPath:indexPath kind:nil];
+    if (baseKey.length == 0) {
+        baseKey = [NSString stringWithFormat:@"section-%ld-item-%ld", (long)section, (long)indexPath.item];
+    }
+    NSString *motionKey = [@"horizontal-universal-" stringByAppendingString:baseKey];
+    if ([self.animatedHomeHorizontalUniversalIdentifiers containsObject:motionKey]) {
+        cell.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+        cell.contentView.alpha = 1.0;
+        return;
+    }
+    [self.animatedHomeHorizontalUniversalIdentifiers addObject:motionKey];
+
+    [cell.layer removeAnimationForKey:@"pp.home.horizontalUniversal.display"];
+    CGFloat direction = Language.isRTL ? -1.0 : 1.0;
+    cell.alpha = 0.0;
+    cell.contentView.alpha = 0.78;
+    cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(direction * 26.0, 10.0),
+                                             CGAffineTransformMakeScale(0.970, 0.970));
+
+    NSTimeInterval delay = MIN((indexPath.item % 4) * 0.045, 0.135);
+    [UIView animateWithDuration:0.62
+                          delay:delay
+         usingSpringWithDamping:0.88
+          initialSpringVelocity:0.14
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        cell.alpha = 1.0;
+        cell.contentView.alpha = 1.0;
+        cell.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
 - (void)pp_animateHomeCell:(UICollectionViewCell *)cell highlighted:(BOOL)highlighted
 {
     if (!cell) {
@@ -8941,6 +8723,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         || section == PPHomeSectionQuickActions
         || section == PPHomeSectionCurrentOrders
         || section == PPHomeSectionPetProfile
+        || section == PPHomeSectionPremiumSearch
         || section == PPHomeSectionPremiumCare;
 
     CGFloat translateY = isLateAppearance ? (isHero ? 8.0 : (isPrimarySurface ? 6.0 : 4.0))
@@ -9051,6 +8834,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_stopHomeSmartSearchTimer];
     [self pp_detachHomeSmartSearchTitleViewIfNeeded];
     [self pp_detachHomeLocationTitleViewIfNeeded];
+    [self pp_stopNovaFloatingMotion];
 }
 
 // Show bottom card with haptic feedback
@@ -9239,10 +9023,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 
-    self.homeCartButton.layer.shadowOpacity = 0.0;
-    self.homeCartButton.layer.shadowOffset = CGSizeMake(0, 0);
-    self.homeCartButton.layer.shadowRadius = 0;
-    self.homeCartButton.clipsToBounds = YES;
+   
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *configuration = self.homeCartButton.configuration;
@@ -9807,21 +9588,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         [self.homeSmartSearchView setQueryText:placeholder
                                       animated:animated];
     }
-
-    NSInteger searchSectionIndex = [self sectionIndexForType:PPHomeSectionPremiumSearch];
-    if (searchSectionIndex == NSNotFound || !self.collectionView) {
-        return;
-    }
-
-    NSIndexPath *indexPath = [NSIndexPath indexPathForItem:0 inSection:searchSectionIndex];
-    UICollectionReusableView *view =
-        [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
-                                                 atIndexPath:indexPath];
-    if (![view isKindOfClass:PPPremuimSearchbarCell.class]) {
-        return;
-    }
-
-    [(PPPremuimSearchbarCell *)view configureWithTrendingQuery:placeholder];
 }
 
 - (void)pp_startHomeSmartSearchTimerIfNeeded
@@ -10381,7 +10147,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)pp_applyOrderDetailsBackgroundAppearance
 {
-    self.view.backgroundColor = AppBackgroundClrDarker;// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    UIColor *premiumBackground = [UIColor colorWithHexString:@"#E8EDF2"];
+    UIColor *novaBackground = [UIColor colorWithRed:1.0 green:0.97 blue:0.98 alpha:1.0];
+    self.view.backgroundColor = AppBageColor();// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
     self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     [self pp_updatePremiumBackgroundGlowAppearance];
@@ -10446,9 +10214,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     glowView.alpha = 1.0;
     glowView.backgroundColor = [color colorWithAlphaComponent:surfaceAlpha];
-    glowView.layer.shadowColor = color.CGColor;
-    glowView.layer.shadowOpacity = shadowOpacity;
-    glowView.layer.shadowRadius = shadowRadius;
+    glowView.layer.shadowColor = AppClearClr.CGColor;
+    glowView.layer.shadowOpacity = 0;
+    glowView.layer.shadowRadius = 0;
 }
 
 - (void)pp_updatePremiumBackgroundGlowAppearance

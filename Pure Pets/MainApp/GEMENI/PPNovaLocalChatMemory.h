@@ -32,6 +32,19 @@ NS_ASSUME_NONNULL_BEGIN
 - (nullable NSString *)lastKnownPetType;
 - (nullable NSString *)lastKnownNeed;
 
+/// Returns all stored messages (thread-safe snapshot)
+- (NSArray<NSDictionary *> *)allMessages;
+
+/// Clears all stored messages from memory and disk
+- (void)clearAllMessages;
+
+/// Stable session ID so the backend Agent Runtime sees consistent conversation context.
+/// Returns nil if no session has ever been stored.
+- (nullable NSString *)lastKnownSessionId;
+
+/// Persist the session ID for reuse across VC lifecycles.
+- (void)setLastKnownSessionId:(NSString *)sessionId;
+
 @end
 
 NS_ASSUME_NONNULL_END

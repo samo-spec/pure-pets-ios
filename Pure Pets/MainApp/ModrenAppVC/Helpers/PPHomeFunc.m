@@ -17,26 +17,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 #pragma mark - Design Tokens (2026)
 
-/// Standard spacing unit — every inset/gap derives from this.
-static const CGFloat kStd = 12.0;
+// Home section spacing uses a local visual rhythm so adjacent compositional
+// sections do not accidentally double the visible gap.
+static const CGFloat PPHomeSpacingSmall   = 8.0;
+static const CGFloat PPHomeSpacingBase    = 16.0;
+static const CGFloat PPInner = 8.0;
+static const CGFloat PPHomeSpacingSection = 24.0;
+static const CGFloat kHeaderHeight     = 64.0;
+static const CGFloat kHeaderHeightMin     = 56.0;
 
-// Aliases so every call-site compiles (all resolve to kStd = 12)
- //static const CGFloat kSectionSpacing  = kStd;
-static const CGFloat kPadding         = kStd;
-//static const CGFloat kGapSmall        = kStd;
-static const CGFloat kGapMedium       = kStd;
-static const CGFloat kGapLarge        = kStd;
-
-
-static const CGFloat PPSize16        = 16;
-static const CGFloat PPSize12       = 16;
-static const CGFloat PPSize6       = 8;
-
-static const CGFloat kHeaderHeight     = 68.0;
-static const CGFloat kHeaderHeightMin     = 62.0;
-
-static const CGFloat kAccessoriesItemWidth  = 188;
-static const CGFloat kAccessoriesItemHeight = 320;
 
 // Standard card sizes
 static const CGFloat kCardMedium  = 188.0;
@@ -68,15 +57,38 @@ static inline BOOL PPHomeWidthIsCompactPhone(CGFloat width)
     return width < 375.0;
 }
 
-static inline CGFloat PPHomeHorizontalInset(CGFloat width)
+static inline CGFloat PPHomeSectionEdgeInset(void)
 {
-    if (PPHomeWidthIsTablet(width)) {
-        return 28.0;
-    }
-    if (PPHomeWidthIsWidePhone(width)) {
-        return 16.0;
-    }
-    return 16.0;
+    return MIN(PPHomeSpacingSmall, PPHomeSpacingSection * 0.4);
+}
+
+static inline CGFloat PPHomeItemHalfGap(void)
+{
+    return PPHomeSpacingBase * 0.4;
+}
+
+static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
+{
+    return NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(),
+                                       PPHomeSpacingBase,
+                                       PPHomeSpacingBase-4,
+                                       PPHomeSpacingBase);
+}
+
+static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
+{
+    return NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(),
+                                       PPHomeItemHalfGap(),
+                                       PPHomeSpacingBase+4,
+                                       PPHomeItemHalfGap());
+}
+
+static inline NSDirectionalEdgeInsets PPHomeHorizontalRailItemInsets(void)
+{
+    return NSDirectionalEdgeInsetsMake(0.0,
+                                       PPHomeItemHalfGap(),
+                                       0.0,
+                                       PPHomeItemHalfGap());
 }
 
 static inline CGFloat PPHomeHeroHeight(CGFloat width)
@@ -85,12 +97,12 @@ static inline CGFloat PPHomeHeroHeight(CGFloat width)
         return 170.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 150.0;
+        return 160.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 120.0;
+        return 140.0;
     }
-    return (PPIOS26() ? 150.0 : 150.0);
+    return (PPIOS26() ? 160.0 : 160.0);
 }
 
 static inline CGFloat PPHomeCurrentOrdersHeight(BOOL expanded, CGFloat width)
@@ -126,12 +138,12 @@ static inline CGFloat PPHomeMainKindsHorizontalItemWidth(CGFloat width)
         return 132.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 112.0;
+        return 94.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
         return 94.0;
     }
-    return 102.0;
+    return 94.0;
 }
 
 static inline CGFloat PPHomeMainKindsHorizontalItemHeight(CGFloat width)
@@ -140,12 +152,12 @@ static inline CGFloat PPHomeMainKindsHorizontalItemHeight(CGFloat width)
         return 146.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 116.0;
+        return 106.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 116.0;
+        return 106.0;
     }
-    return 116.0;
+    return 106.0;
 }
 
 static inline CGFloat PPHomeMainKindsGridItemHeight(CGFloat width)
@@ -165,13 +177,13 @@ static inline CGFloat PPHomeMainKindsGridItemHeight(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 242.0;
+        return 212.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 218.0;
+        return kCardMedium;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 184.0;
+        return 174.0;
     }
     return kCardMedium;
 }
@@ -179,15 +191,15 @@ static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 361.0;
+        return 351.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 361.0;
+        return 351.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 3120.0;
+        return 312.0;
     }
-    return kCardLarge + 15.0;
+    return kCardLarge + 5.0;
 }
 
 static inline CGFloat PPHomePetProfileHeight(CGFloat width)
@@ -211,27 +223,27 @@ static inline CGFloat PPHomeQuickActionHeight(CGFloat width)
         return 72.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 68.0;
+        return 64.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 62.0;
+        return 64.0;
     }
-    return 68.0;
+    return 64.0;
 }
 
 
 static inline CGFloat PPHomeCareHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 208.0;
+        return 204.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 138.0;
+        return 162.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 126.0;
+        return 162.0;
     }
-    return 116.0;
+    return 162.0;
 }
 
 static inline CGFloat PPHomeAdoptHeight(CGFloat width)
@@ -259,10 +271,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 {
     return [self heroSectionForWidth:UIScreen.mainScreen.bounds.size.width];
 }
-
 + (NSCollectionLayoutSection *)heroSectionForWidth:(CGFloat)availableWidth
 {
-    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
@@ -280,27 +290,20 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     [NSCollectionLayoutSection sectionWithGroup:group];
 
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(8.0, horizontalInset, 8.0, horizontalInset);
+    PPHomeFullWidthSectionInsets();
 
    return section;
 }
 
 + (NSCollectionLayoutSection *)premiumSearchSectionForWidth:(CGFloat)availableWidth
 {
-    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
-    CGFloat searchHeight = 74.0;
-
-    if (PPHomeWidthIsTablet(availableWidth)) {
-        searchHeight = 74.0;
-    } else if (PPHomeWidthIsCompactPhone(availableWidth)) {
-        searchHeight = 74.0;
-    }
+    CGFloat searchHeight = 52.0;
 
     NSCollectionLayoutSize *itemSize =
         [NSCollectionLayoutSize sizeWithWidthDimension:
          [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                         heightDimension:
-         [NSCollectionLayoutDimension absoluteDimension:1.0]];
+         [NSCollectionLayoutDimension absoluteDimension:searchHeight]];
 
     NSCollectionLayoutItem *item =
         [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -312,26 +315,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSCollectionLayoutSection *section =
         [NSCollectionLayoutSection sectionWithGroup:group];
 
-    section.orthogonalScrollingBehavior =
-        UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
+    section.orthogonalScrollingBehavior = UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.interGroupSpacing = 0.0;
-    section.contentInsets = NSDirectionalEdgeInsetsZero;
-
-    NSCollectionLayoutSize *searchSize =
-        [NSCollectionLayoutSize sizeWithWidthDimension:
-         [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
-                                        heightDimension:
-         [NSCollectionLayoutDimension absoluteDimension:searchHeight]];
-    NSCollectionLayoutBoundarySupplementaryItem *stickySearch =
-        [NSCollectionLayoutBoundarySupplementaryItem boundarySupplementaryItemWithLayoutSize:searchSize
-                                                                               elementKind:UICollectionElementKindSectionHeader
-                                                                                 alignment:NSRectAlignmentTop];
-    stickySearch.pinToVisibleBounds = YES;
-    stickySearch.zIndex = 1024;
-    float seartInset = PPIOS26() ? 16 : horizontalInset;
-
-    stickySearch.contentInsets = NSDirectionalEdgeInsetsMake(4.0, seartInset, 4.0, seartInset);
-    section.boundarySupplementaryItems = @[stickySearch];
+    section.contentInsets = PPHomeFullWidthSectionInsets();
 
     return section;
 }
@@ -350,7 +336,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  + (NSCollectionLayoutSection *)currentOrdersSectionExpanded:(BOOL)expanded
                                                    forWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
@@ -371,7 +356,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.orthogonalScrollingBehavior =
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(8.0, horizontalInset, 16.0, horizontalInset);
+     PPHomeFullWidthSectionInsets();
 
      return section;
  }
@@ -385,7 +370,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)mainKindsHorizontalSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension absoluteDimension:PPHomeMainKindsHorizontalItemWidth(availableWidth)]
@@ -395,10 +379,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0,
-                                                      PPSize6,
-                                                      0,
-                                                      PPSize6);
+     item.contentInsets = PPHomeHorizontalRailItemInsets();
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -413,7 +394,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.interGroupSpacing = 0;
 
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(kGapMedium, horizontalInset, kGapLarge, horizontalInset);
+     PPHomeHorizontalRailSectionInsets();
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                    pinned:NO]];
@@ -431,20 +412,16 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)accessoriesSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
      [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardWidth(availableWidth)]
                                      heightDimension:
-     [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardHeight(availableWidth) + 50.0]];
+     [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardHeight(availableWidth) + 0.0]];
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0,
-                                                      PPSize6,
-                                                      0,
-                                                      PPSize6);
+     item.contentInsets = PPHomeHorizontalRailItemInsets();
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -459,7 +436,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.interGroupSpacing = 0;
 
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSize12, horizontalInset, PPSize12, horizontalInset);
+     PPHomeHorizontalRailSectionInsets();
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin]];
 
@@ -473,12 +450,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)buyAgainSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSection *section = [self accessoriesSectionForWidth:availableWidth];
-     section.contentInsets = NSDirectionalEdgeInsetsMake(PPSize12,
-                                                         horizontalInset,
-                                                         PPSize12,
-                                                         horizontalInset);
+     section.contentInsets = PPHomeHorizontalRailSectionInsets();
      section.interGroupSpacing = 0;
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
      return section;
@@ -491,7 +464,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)petProfileSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
@@ -512,7 +484,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
      section.interGroupSpacing = 0.0;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(10.0, horizontalInset, 10.0, horizontalInset);
+     PPHomeFullWidthSectionInsets();
 
      return section;
  }
@@ -522,12 +494,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  }
 
  + (NSCollectionLayoutSection *)lastFoodSectionForWidth:(CGFloat)availableWidth {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSection *section = [self accessoriesSectionForWidth:availableWidth];
-     section.contentInsets = NSDirectionalEdgeInsetsMake(PPSize12,
-                                                         horizontalInset,
-                                                         PPSize12,
-                                                         horizontalInset);
+     section.contentInsets = PPHomeHorizontalRailSectionInsets();
      section.interGroupSpacing = 0;
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
      return section;
@@ -538,7 +506,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  }
 
  + (NSCollectionLayoutSection *)adoptSectionForWidth:(CGFloat)availableWidth {
-    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     // =========================
     // Single full-width card
     // =========================
@@ -567,9 +534,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
 
-    // 10pt margin on each side → width = view width - 20
+    // 12pt margin on each side
     section.contentInsets =
-    NSDirectionalEdgeInsetsMake(2, horizontalInset, PPSize16, horizontalInset);
+    PPHomeFullWidthSectionInsets();
 
     // ❌ No header
     // ❌ No orthogonal scrolling
@@ -580,7 +547,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     [NSCollectionLayoutDecorationItem
      backgroundDecorationItemWithElementKind:PPHomeSectionDividerKind];
 
-    divider.contentInsets = NSDirectionalEdgeInsetsMake(-12, 0, 0, 0);
+    divider.contentInsets = NSDirectionalEdgeInsetsMake(0, 0, 0, 0);
     //section.decorationItems = @[divider];
     
     return section;
@@ -596,16 +563,15 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)suggestionsSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
-      [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardWidth(availableWidth) + 10]
+      [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardWidth(availableWidth) + 0]
                                       heightDimension:
       [NSCollectionLayoutDimension absoluteDimension:PPHomeAccessoryCardHeight(availableWidth) + 0.0]];
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-     item.contentInsets = NSDirectionalEdgeInsetsMake(0,PPSize6,0,PPSize6);
+     item.contentInsets = PPHomeHorizontalRailItemInsets();
 
      NSCollectionLayoutGroup *group =
      [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -617,9 +583,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      section.orthogonalScrollingBehavior =
      UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
 
+     section.interGroupSpacing = 0;
 
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(PPSize12, horizontalInset, PPSize12, horizontalInset);
+     PPHomeHorizontalRailSectionInsets();
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight]];
      return section;
@@ -660,7 +627,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)mainKindsGridSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSInteger columnCount = PPHomeMainKindsGridColumnCount(availableWidth);
      CGFloat itemHeight = PPHomeMainKindsGridItemHeight(availableWidth);
      NSCollectionLayoutSize *itemSize =
@@ -682,14 +648,14 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                                      count:columnCount];
 
      group.interItemSpacing =
-     [NSCollectionLayoutSpacing fixedSpacing:(PPHomeWidthIsTablet(availableWidth) ? 8.0 : PPSize6)];
+     [NSCollectionLayoutSpacing fixedSpacing:PPHomeSpacingBase];
 
      NSCollectionLayoutSection *section =
      [NSCollectionLayoutSection sectionWithGroup:group];
 
-     section.interGroupSpacing = PPHomeWidthIsTablet(availableWidth) ? 8.0 : 6.0;
+     section.interGroupSpacing = PPHomeSpacingBase;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(12, horizontalInset, 12, horizontalInset);
+     PPHomeFullWidthSectionInsets();
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                    pinned:NO]];
@@ -722,21 +688,25 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  }
 
  + (NSCollectionLayoutSection *)quickActionsSectionForWidth:(CGFloat)availableWidth {
-    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
+    CGFloat horizontalInset = PPHomeSpacingBase;
     CGFloat contentWidth = MAX(0.0, availableWidth - (2.0 * horizontalInset));
-    CGFloat itemWidth  = MAX(156.0, floor(contentWidth * 0.48));
+    CGFloat itemWidth  = MAX(156.0, floor(contentWidth * 0.52));
     CGFloat itemHeight = PPHomeQuickActionHeight(availableWidth);
 
     NSCollectionLayoutSize *itemSize =
     [NSCollectionLayoutSize sizeWithWidthDimension:
-     [NSCollectionLayoutDimension estimatedDimension:itemWidth + 6]
+     [NSCollectionLayoutDimension estimatedDimension:itemWidth + PPHomeSpacingSmall]
                                      heightDimension:
      [NSCollectionLayoutDimension absoluteDimension:itemHeight - 0]];
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
 
-    item.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
+    item.edgeSpacing = [NSCollectionLayoutEdgeSpacing
+                        spacingForLeading:[NSCollectionLayoutSpacing fixedSpacing:0]
+                        top:[NSCollectionLayoutSpacing fixedSpacing:0]
+                        trailing:[NSCollectionLayoutSpacing fixedSpacing:0]
+                        bottom:[NSCollectionLayoutSpacing fixedSpacing:0]];
 
     NSCollectionLayoutGroup *group =
     [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:itemSize
@@ -747,8 +717,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-    section.interGroupSpacing = PPHomeWidthIsTablet(availableWidth) ? 16.0 : 12.0;
-    section.contentInsets = NSDirectionalEdgeInsetsMake(8.0, horizontalInset, 12.0, horizontalInset);
+    section.interGroupSpacing = PPHomeSpacingSmall;
+    section.contentInsets = PPHomeFullWidthSectionInsets();
 
     return section;
  }
@@ -759,12 +729,11 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)premiumCareSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      NSCollectionLayoutSize *itemSize =
      [NSCollectionLayoutSize sizeWithWidthDimension:
       [NSCollectionLayoutDimension fractionalWidthDimension:1.0]
                                       heightDimension:
-      [NSCollectionLayoutDimension absoluteDimension:PPHomeCareHeight(availableWidth) + 44.0]];
+      [NSCollectionLayoutDimension absoluteDimension:PPHomeCareHeight(availableWidth)]];
 
      NSCollectionLayoutItem *item =
      [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
@@ -780,7 +749,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
      section.interGroupSpacing = 0.0;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(10.0, horizontalInset, 16.0, horizontalInset);
+     PPHomeFullWidthSectionInsets();
 
      return section;
  }
@@ -791,10 +760,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)adsNearBySectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
-     CGFloat cardWidth  = PPHomeAccessoryCardWidth(availableWidth);
-     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 40.0;
-     CGFloat interGroupSpacing = PPHomeWidthIsTablet(availableWidth) ? 18.0 : 12.0;
+     CGFloat cardWidth  = PPHomeAccessoryCardWidth(availableWidth)-10;
+     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 10.0;
 
      NSCollectionLayoutSize *itemSize =
          [NSCollectionLayoutSize sizeWithWidthDimension:
@@ -813,11 +780,11 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior =
          UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-     section.interGroupSpacing = interGroupSpacing;
+     section.interGroupSpacing = PPHomeSpacingBase;
      section.contentInsets =
-         NSDirectionalEdgeInsetsMake(8.0, horizontalInset, 20.0, horizontalInset);
+         PPHomeFullWidthSectionInsets();
 
-     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight
+     section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeightMin
                                                                     pinned:NO]];
 
      return section;
@@ -829,10 +796,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
  + (NSCollectionLayoutSection *)nearbyServicesSectionForWidth:(CGFloat)availableWidth
  {
-     CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
      CGFloat cardWidth  = PPHomeAccessoryCardWidth(availableWidth);
-     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 60.0;
-     CGFloat interGroupSpacing = PPHomeWidthIsTablet(availableWidth) ? 18.0 : 12.0;
+     CGFloat cardHeight = PPHomeAccessoryCardHeight(availableWidth) + 40.0;
 
      NSCollectionLayoutSize *itemSize =
          [NSCollectionLayoutSize sizeWithWidthDimension:
@@ -852,9 +817,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior =
          UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-     section.interGroupSpacing = interGroupSpacing;
+     section.interGroupSpacing = PPHomeSpacingBase;
      section.contentInsets =
-         NSDirectionalEdgeInsetsMake(8.0, horizontalInset, 20.0, horizontalInset);
+         PPHomeFullWidthSectionInsets();
 
      section.boundarySupplementaryItems = @[[self sectionHeaderWithHeight:kHeaderHeight
                                                                    pinned:NO]];
@@ -894,9 +859,9 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
      NSCollectionLayoutSection *section =
      [NSCollectionLayoutSection sectionWithGroup:group];
 
-     section.interGroupSpacing = 0;
+     section.interGroupSpacing = PPHomeSpacingBase;
      section.contentInsets =
-     NSDirectionalEdgeInsetsMake(6, 12, 6, 12);
+     PPHomeHorizontalRailSectionInsets();
 
      return section;
  }
@@ -911,7 +876,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
                                        heightDimension:
           [NSCollectionLayoutDimension absoluteDimension:0]]];
 
-        item.contentInsets = NSDirectionalEdgeInsetsMake(0, 6, 0, 6);
+        item.contentInsets = PPHomeHorizontalRailItemInsets();
 
         NSCollectionLayoutGroup *group =
         [NSCollectionLayoutGroup horizontalGroupWithLayoutSize:
@@ -960,7 +925,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
 
  + (NSCollectionLayoutSection *)categoriesItemsSection {
-    
+    return [self categoriesItemsSectionForWidth:UIScreen.mainScreen.bounds.size.width];
+ }
+
+ + (NSCollectionLayoutSection *)categoriesItemsSectionForWidth:(CGFloat)availableWidth {
     CGFloat itemWidth  = 150;
     CGFloat itemHeight = 185;
 
@@ -972,7 +940,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     NSCollectionLayoutItem *item =
     [NSCollectionLayoutItem itemWithLayoutSize:itemSize];
-    item.contentInsets = NSDirectionalEdgeInsetsMake(0, 3, 6,3);
+    item.contentInsets = NSDirectionalEdgeInsetsZero;
 
     // =========================
     // Group (single card per page)
@@ -992,8 +960,8 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     //UICollectionLayoutSectionOrthogonalScrollingBehaviorGroupPagingCentered;
     section.orthogonalScrollingBehavior =
     UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
-    section.interGroupSpacing = 6;
-    section.contentInsets = NSDirectionalEdgeInsetsMake(6, 16, 16, 16);
+    section.interGroupSpacing = PPHomeSpacingBase;
+    section.contentInsets = PPHomeFullWidthSectionInsets();
 
     
     return section;
@@ -1008,7 +976,6 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
  }
 
  + (NSCollectionLayoutSection *)carouselSectionForWidth:(CGFloat)availableWidth {
-    CGFloat horizontalInset = PPHomeHorizontalInset(availableWidth);
     CGFloat preferredHeight = [PPBannerCollectionCell preferredCarouselSectionHeight];
     if (PPHomeWidthIsTablet(availableWidth)) {
         preferredHeight += 18.0;
@@ -1041,10 +1008,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     NSCollectionLayoutSection *section =
     [NSCollectionLayoutSection sectionWithGroup:group];
     section.interGroupSpacing = 0;
-    section.contentInsets = NSDirectionalEdgeInsetsMake([PPBannerCollectionCell preferredCarouselSectionTopInset],
-                                                        horizontalInset,
-                                                        [PPBannerCollectionCell preferredCarouselSectionBottomInset],
-                                                        horizontalInset);
+    section.contentInsets = PPHomeFullWidthSectionInsets();
 
 
     

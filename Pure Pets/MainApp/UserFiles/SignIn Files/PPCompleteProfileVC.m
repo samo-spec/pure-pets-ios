@@ -1517,11 +1517,13 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
                         if (resolvedUser && !reloadError) {
                             [UsrMgr cacheUser:resolvedUser];
                         }
-                        if (self.onProfileCompleted) {
-                            self.onProfileCompleted(resolvedUser);
-                        }
                         [PPHUD showSuccess:kLang(@"Saved")];
-                        [self dismissViewControllerAnimated:YES completion:nil];
+                        void (^completedCallback)(UserModel *) = self.onProfileCompleted;
+                        [self dismissViewControllerAnimated:YES completion:^{
+                            if (completedCallback) {
+                                completedCallback(resolvedUser);
+                            }
+                        }];
                     });
                 }];
             });
@@ -2272,10 +2274,13 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 - (void)onDismiss
 {
     [self.view endEditing:YES];
-    if (self.onProfileCompleted) {
-        self.onProfileCompleted(self.editingUser);
-    }
-    [self dismissViewControllerAnimated:YES completion:nil];
+    void (^completedCallback)(UserModel *) = self.onProfileCompleted;
+    UserModel *user = self.editingUser;
+    [self dismissViewControllerAnimated:YES completion:^{
+        if (completedCallback) {
+            completedCallback(user);
+        }
+    }];
 }
 
 @end

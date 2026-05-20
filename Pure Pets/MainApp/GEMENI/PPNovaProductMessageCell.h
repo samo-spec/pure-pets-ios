@@ -19,6 +19,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @property (nonatomic, weak) id<PPNovaProductMessageCellDelegate> delegate;
 
++ (NSString *)reuseIdentifier;
+
 - (void)configureWithMessage:(ChatMessageModel *)messageModel
                     maxWidth:(CGFloat)maxWidth;
 - (void)updateAvailableWidth:(CGFloat)maxWidth;
