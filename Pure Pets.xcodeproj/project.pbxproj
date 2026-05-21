@@ -655,6 +655,7 @@
 		F2C5F7732CA00D3300D7897A /* AAicon_check@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = F2C5F75F2CA00D3300D7897A /* AAicon_check@3x.png */; };
 		F2C5F7782CA01C0500D7897A /* UIView+DCAnimationKit.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */; };
 		F2C638602E5132A3007E4CE4 /* cities.json in Resources */ = {isa = PBXBuildFile; fileRef = F2C6385F2E5132A3007E4CE4 /* cities.json */; };
+		F2A1F0022FA8000100F0A002 /* thinking.json in Resources */ = {isa = PBXBuildFile; fileRef = F2A1F0012FA8000100F0A001 /* thinking.json */; };
 		F2C890112F5C100000A1B2C3 /* PPModrenSegmrnted.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */; };
 		F2C99E992F425B56004EA8C2 /* PPOrder.h in Sources */ = {isa = PBXBuildFile; fileRef = F273146C2F31168400FFA0B8 /* PPOrder.h */; };
 		F2C99E9B2F425B56004EA8C2 /* UserModel.h in Sources */ = {isa = PBXBuildFile; fileRef = F2E0E8722E7A3A3E00F0C084 /* UserModel.h */; };
@@ -2045,6 +2046,7 @@
 		F2C5F7762CA01C0500D7897A /* UIView+DCAnimationKit.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIView+DCAnimationKit.h"; sourceTree = "<group>"; };
 		F2C5F7772CA01C0500D7897A /* UIView+DCAnimationKit.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+DCAnimationKit.m"; sourceTree = "<group>"; };
 		F2C6385F2E5132A3007E4CE4 /* cities.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = cities.json; sourceTree = "<group>"; };
+		F2A1F0012FA8000100F0A001 /* thinking.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = thinking.json; sourceTree = "<group>"; };
 		F2C890132F5C100000A1B2C3 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = PPModrenSegmrnted.m; path = "Pure Pets/DesignFiles/PP/PPComponent/PPModrenSegmrnted.m"; sourceTree = SOURCE_ROOT; };
 		F2CA8DCE2F1DC1C800AD4416 /* PPChatsFunc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPChatsFunc.h; sourceTree = "<group>"; };
 		F2CA8DCF2F1DC1C800AD4416 /* PPChatsFunc.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPChatsFunc.m; sourceTree = "<group>"; };
@@ -4997,6 +4999,7 @@
 			children = (
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
 				F2F9C0012F9C000000000001 /* payment_checkout.json */,
+				F2A1F0012FA8000100F0A001 /* thinking.json */,
 				F2D44D1F2F3D611200999337 /* map_dark_style.json */,
 				F2C6385F2E5132A3007E4CE4 /* cities.json */,
 				F2916F082D54A3E400FF0394 /* Beiruti-Bold.ttf */,
@@ -5143,6 +5146,7 @@
 				F22CD3852C6709650098B6E9 /* star.png in Resources */,
 				F2D7F0EE2F135F9100105778 /* NoResult.json in Resources */,
 				F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */,
+				F2A1F0022FA8000100F0A002 /* thinking.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
 				F260D32A2C7B36EF0098C8F0 /* blank_button@3x.png in Resources */,
 				F22CD3822C6709650098B6E9 /* checkmark-round.png in Resources */,

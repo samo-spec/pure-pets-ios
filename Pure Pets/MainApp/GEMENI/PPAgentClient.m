@@ -10,7 +10,7 @@
 
 // ADK Cloud Run base URL — all paths are relative to this.
 // Keep this aligned with Console's Nova runtime; client_type selects the iOS market assistant.
-NSString * const kPPAgentBaseURL = @"https://nova-ufzhhjmzdq-uc.a.run.app";
+NSString * const kPPAgentBaseURL = @"https://nova-646051621158.us-central1.run.app";
 
 static NSString * const kPPAgentAppName   = @"app";
 // Maps VC-managed novaSessionId (UUID) → ADK server-assigned session UUID.
@@ -37,7 +37,8 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
 - (instancetype)init {
     if ((self = [super init])) {
         NSURLSessionConfiguration *cfg = NSURLSessionConfiguration.defaultSessionConfiguration;
-        cfg.timeoutIntervalForRequest = 60.0;
+        cfg.timeoutIntervalForRequest = 45.0;
+        cfg.timeoutIntervalForResource = 90.0;
         cfg.waitsForConnectivity      = YES;
         _session = [NSURLSession sessionWithConfiguration:cfg];
     }
@@ -70,16 +71,16 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     dispatch_group_t g = dispatch_group_create();
 
     dispatch_group_enter(g);
-    [user getIDTokenForcingRefresh:YES completion:^(NSString *t, NSError *e) {
+    [user getIDTokenForcingRefresh:NO completion:^(NSString *t, NSError *e) {
         (void)e;
         if (t.length > 0) {
             idToken = t;
             dispatch_group_leave(g);
             return;
         }
-        [user getIDTokenForcingRefresh:NO completion:^(NSString *cachedToken, NSError *cachedError) {
-            (void)cachedError;
-            idToken = cachedToken;
+        [user getIDTokenForcingRefresh:YES completion:^(NSString *refreshedToken, NSError *refreshError) {
+            (void)refreshError;
+            idToken = refreshedToken;
             dispatch_group_leave(g);
         }];
     }];
@@ -187,8 +188,14 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     }
     if (acToken.length) [req setValue:acToken forHTTPHeaderField:@"X-Firebase-AppCheck"];
     [req setValue:@"application/json"                              forHTTPHeaderField:@"Content-Type"];
-    // Declare client_type so the root coordinator routes to nova_market_assistan.
-    NSDictionary *sessionBody = @{ @"state": @{ @"client_type": @"ios" } };
+    // Declare client_type so the root coordinator routes to the market assistant.
+    NSDictionary *sessionBody = @{
+        @"state": @{
+            @"client_type": @"ios",
+            @"client_platform": @"ios",
+            @"client_session_id": vcSessionId ?: @""
+        }
+    };
     req.HTTPBody = [NSJSONSerialization dataWithJSONObject:sessionBody options:0 error:nil];
 
     [[self.session dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *resp, NSError *netErr) {
@@ -274,7 +281,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
         NSDictionary *envelope = [self normalizedEnvelopeFromADKResponse:responseObject];
         NSError *pErr = nil;
         PPAgentMessage *m = envelope ? [PPAgentResponseParser parseEnvelope:envelope error:&pErr] : nil;
-        if (!m && !pErr) pErr = [self err:0 code:@"empty_response"];
+        if (!m && !pErr) { NSLog(@"[PPAgentClient] empty_response raw JSON: %@", responseObject); pErr = [self err:0 code:@"empty_response"]; }
         [self finish:completion msg:m err:pErr];
     }] resume];
 }
@@ -290,7 +297,18 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
 /// Then merges them so the parser receives both text and card data in one dict.
 - (nullable NSDictionary *)normalizedEnvelopeFromADKResponse:(id)responseObject {
     // Passthrough for old proxy / single-dict shapes.
-    if ([responseObject isKindOfClass:NSDictionary.class]) return responseObject;
+    if ([responseObject isKindOfClass:NSDictionary.class]) {
+        NSDictionary *dict = (NSDictionary *)responseObject;
+        id events = [dict[@"events"] isKindOfClass:NSArray.class] ? dict[@"events"] : nil;
+        if (!events) {
+            events = [dict[@"result"] isKindOfClass:NSArray.class] ? dict[@"result"] : nil;
+        }
+        if ([events isKindOfClass:NSArray.class]) {
+            responseObject = events;
+        } else {
+            return responseObject;
+        }
+    }
     if (![responseObject isKindOfClass:NSArray.class]) return nil;
 
     NSArray *events = responseObject;
@@ -311,7 +329,14 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
             id funcResp = ((NSDictionary *)part)[@"functionResponse"]
                        ?: ((NSDictionary *)part)[@"function_response"];
             if ([funcResp isKindOfClass:NSDictionary.class]) {
-                NSDictionary *response = funcResp[@"response"];
+                id responseObject = funcResp[@"response"];
+                NSDictionary *response = [responseObject isKindOfClass:NSDictionary.class] ? responseObject : nil;
+                if (!response && [responseObject isKindOfClass:NSString.class]) {
+                    response = [self extractJSONEnvelopeFromText:responseObject];
+                    if (!response && ![self isInternalNovaDebugText:responseObject] && !finalModelText.length) {
+                        finalModelText = responseObject;
+                    }
+                }
                 if ([response isKindOfClass:NSDictionary.class]) {
                     // Renderable: cards/refs data OR quick-reply option chips.
                     for (NSString *key in @[@"resultRefs", @"result_refs", @"cards",
@@ -339,7 +364,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
             // Collect plain text from model turns (last one wins).
             if ([@"model" isEqualToString:content[@"role"]]) {
                 id txt = part[@"text"];
-                if ([txt isKindOfClass:NSString.class] && [(NSString *)txt length]) {
+                if ([txt isKindOfClass:NSString.class] && [(NSString *)txt length] && ![self isInternalNovaDebugText:txt]) {
                     finalModelText = txt;
                 }
             }
@@ -358,7 +383,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
             for (NSString *k in @[@"text", @"assistantText", @"options",
                                   @"suggestions", @"quickReplies", @"cards",
                                   @"resultRefs", @"result_refs", @"product_ids",
-                                  @"productIds", @"cardsRequired", @"cards_required"]) {
+                                  @"productIds", @"productIDs", @"cardsRequired", @"cards_required"]) {
                 id v = modelJSON[k];
                 if (v) merged[k] = v;
             }
@@ -367,6 +392,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
                 [self clearCardRequirementInEnvelope:merged];
             }
         } else if (finalModelText
+                   && ![self isInternalNovaDebugText:finalModelText]
                    && !merged[@"text"]
                    && !merged[@"assistantText"]) {
             merged[@"text"] = finalModelText;
@@ -375,9 +401,32 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     }
 
     if (modelJSON) return modelJSON;
-    if (finalModelText) return @{ @"text": finalModelText };
+    if (finalModelText && ![self isInternalNovaDebugText:finalModelText]) return @{ @"text": finalModelText };
 
-    return nil;
+    // Fallback if no text or payload was parsed
+    return @{ @"text": @"حدث خطأ أثناء معالجة الرد، يرجى المحاولة مرة أخرى." };
+}
+
+- (BOOL)isInternalNovaDebugText:(NSString *)text {
+    if (![text isKindOfClass:NSString.class]) {
+        return NO;
+    }
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (!trimmed.length) {
+        return NO;
+    }
+    NSString *lower = trimmed.lowercaseString;
+    NSRegularExpression *printCall = [NSRegularExpression regularExpressionWithPattern:@"(^|\\s)print\\s*\\("
+                                                                                options:NSRegularExpressionCaseInsensitive
+                                                                                  error:nil];
+    return [printCall firstMatchInString:trimmed options:0 range:NSMakeRange(0, trimmed.length)] != nil ||
+           [lower containsString:@"transfer_to_agent("] ||
+           [lower containsString:@".transfer_to_agent"] ||
+           [lower containsString:@"function_call"] ||
+           [lower containsString:@"functioncall"] ||
+           [lower containsString:@"function_response"] ||
+           [lower containsString:@"functionresponse"] ||
+           [lower containsString:@"tool_code"];
 }
 
 /// Extract a JSON dict from the model's text turn — either inside a ```json ... ```
@@ -458,7 +507,8 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     }
     for (NSString *key in @[@"text", @"assistantText", @"options", @"cards",
                             @"resultRefs", @"result_refs", @"product_ids",
-                            @"productIds", @"cardsRequired", @"cards_required"]) {
+                            @"productIds", @"productIDs", @"products", @"items", @"result_set",
+                            @"resultSet", @"cardsRequired", @"cards_required"]) {
         if (dict[key]) {
             return YES;
         }
@@ -473,7 +523,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     for (NSString *key in @[@"text", @"assistantText", @"output", @"response",
                             @"answer", @"message", @"content"]) {
         id value = dict[key];
-        if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0) {
+        if ([value isKindOfClass:NSString.class] && [(NSString *)value length] > 0 && ![self isInternalNovaDebugText:value]) {
             return YES;
         }
     }
@@ -485,7 +535,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     if (![dict isKindOfClass:NSDictionary.class]) {
         return NO;
     }
-    for (NSString *key in @[@"resultRefs", @"result_refs", @"cards", @"products", @"items", @"product_ids", @"productIds"]) {
+    for (NSString *key in @[@"resultRefs", @"result_refs", @"cards", @"products", @"items", @"product_ids", @"productIds", @"productIDs"]) {
         id value = dict[key];
         if ([value isKindOfClass:NSArray.class] && [(NSArray *)value count] > 0) {
             return YES;
@@ -495,7 +545,7 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     if (!resultSet) {
         resultSet = [dict[@"resultSet"] isKindOfClass:NSDictionary.class] ? dict[@"resultSet"] : nil;
     }
-    for (NSString *key in @[@"cards", @"products", @"items", @"resultRefs", @"result_refs"]) {
+    for (NSString *key in @[@"cards", @"products", @"items", @"resultRefs", @"result_refs", @"product_ids", @"productIds", @"productIDs"]) {
         id value = resultSet[key];
         if ([value isKindOfClass:NSArray.class] && [(NSArray *)value count] > 0) {
             return YES;

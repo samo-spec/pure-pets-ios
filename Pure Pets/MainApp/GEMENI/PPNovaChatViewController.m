@@ -58,6 +58,10 @@ static NSString * const PPNovaSmartSuggestionActionBreathKey = @"pp.nova.smartSu
 static NSString * const PPNovaSmartSuggestionColorShiftKey = @"pp.nova.smartSuggestion.colorShift";
 static const NSUInteger PPNovaSmartSuggestionPickerVisibleCount = 8;
 static const NSUInteger PPNovaInlineActionMaximumCount = 10;
+static const NSTimeInterval PPNovaRequestSoftWatchdogDelay = 35.0;
+static const NSInteger PPNovaMaximumRetryAttempts = 1;
+static const NSTimeInterval PPNovaRetryBackoffDelay = 0.6;
+static NSString * const PPNovaThinkingHeaderAnimationName = @"thinking";
 
 #pragma mark - Nova Output Presentation
 
@@ -1726,7 +1730,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                      responseID ?: @"",
                      source ?: @"unknown",
                      NSStringFromClass([object class]));
-            NSAssert(identifier.length > 0, @"Nova card output is missing a real retrieved ID.");
             continue;
         }
         [validObjects addObject:object];
@@ -1807,48 +1810,49 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
-    // Refresh the ID token if needed so Nova carries a fresh token. If refresh
-    // fails, fall back to the cached token before surfacing an inline error.
+    // Cached-token first keeps Nova fast on the common path. Firebase refreshes
+    // tokens before expiry; force refresh only when the cached token is missing.
     __weak typeof(self) weakSelf = self;
-    [currentUser getIDTokenForcingRefresh:YES completion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
+    [currentUser getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || self.dismissed) return;
 
-        if (tokenError || idToken.length == 0) {
-            LOG_WARN(@"[PPNovaChat][Debug] branch=token_refresh_failed_try_cached error=%@ request_id=%@",
-                      tokenError.localizedDescription ?: @"missing token",
-                      requestID ?: @"");
-            [currentUser getIDTokenForcingRefresh:NO completion:^(NSString * _Nullable cachedToken, NSError * _Nullable cachedTokenError) {
-                __strong typeof(weakSelf) self = weakSelf;
-                if (!self || self.dismissed) return;
-
-                if (cachedToken.length == 0) {
-                    LOG_WARN(@"[PPNovaChat][Debug] branch=token_unavailable_continue_public_runtime error=%@ request_id=%@",
-                              cachedTokenError.localizedDescription ?: tokenError.localizedDescription ?: @"missing token",
-                              requestID ?: @"");
-                    [self pp_continueNovaRequestAfterTokenReady:trimmedText
-                                                visibleUserText:visibleUserText
-                                                      requestID:requestID
-                                                        idToken:@""];
-                    return;
-                }
-
-                LOG_INFO(@"[PPNovaChat][Debug] branch=token_cached request_id=%@ token_length=%lu",
-                         requestID ?: @"", (unsigned long)cachedToken.length);
-                [self pp_continueNovaRequestAfterTokenReady:trimmedText
-                                            visibleUserText:visibleUserText
-                                                  requestID:requestID
-                                                    idToken:cachedToken];
-            }];
+        if (idToken.length > 0) {
+            LOG_INFO(@"[PPNovaChat][Debug] branch=token_cached request_id=%@ token_length=%lu",
+                     requestID ?: @"", (unsigned long)idToken.length);
+            [self pp_continueNovaRequestAfterTokenReady:trimmedText
+                                        visibleUserText:visibleUserText
+                                              requestID:requestID
+                                                idToken:idToken];
             return;
         }
 
-        LOG_INFO(@"[PPNovaChat][Debug] branch=token_refreshed request_id=%@ token_length=%lu",
-                 requestID ?: @"", (unsigned long)idToken.length);
-        [self pp_continueNovaRequestAfterTokenReady:trimmedText
-                                    visibleUserText:visibleUserText
-                                          requestID:requestID
-                                            idToken:idToken];
+        LOG_WARN(@"[PPNovaChat][Debug] branch=token_cached_missing_try_refresh error=%@ request_id=%@",
+                 tokenError.localizedDescription ?: @"missing token",
+                 requestID ?: @"");
+        [currentUser getIDTokenForcingRefresh:YES completion:^(NSString * _Nullable refreshedToken, NSError * _Nullable refreshError) {
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || self.dismissed) return;
+
+            if (refreshedToken.length == 0) {
+                LOG_WARN(@"[PPNovaChat][Debug] branch=token_unavailable_continue_public_runtime error=%@ request_id=%@",
+                          refreshError.localizedDescription ?:
+                      tokenError.localizedDescription ?: @"missing token",
+                      requestID ?: @"");
+                [self pp_continueNovaRequestAfterTokenReady:trimmedText
+                                            visibleUserText:visibleUserText
+                                                  requestID:requestID
+                                                    idToken:@""];
+                return;
+            }
+
+            LOG_INFO(@"[PPNovaChat][Debug] branch=token_refreshed request_id=%@ token_length=%lu",
+                     requestID ?: @"", (unsigned long)refreshedToken.length);
+            [self pp_continueNovaRequestAfterTokenReady:trimmedText
+                                        visibleUserText:visibleUserText
+                                              requestID:requestID
+                                                idToken:refreshedToken];
+        }];
     }];
 }
 
@@ -1941,8 +1945,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                           requestID ?: @"",
                           (long)attempt,
                           kPPAgentBaseURL);
-                if (attempt < 2) {
-                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                BOOL shouldRetry = attempt < PPNovaMaximumRetryAttempts &&
+                                   [PPNovaChatViewController pp_isRetryableNovaError:error];
+                if (shouldRetry) {
+                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(PPNovaRetryBackoffDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                         [self pp_dispatchNovaRequest:trimmedText
                                       visibleUserText:visibleUserText
                                               idToken:idToken
@@ -1955,7 +1961,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                 }
 
                 [self hideNovaTyping];
-                [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
+                NSString *userFacingError = [PPNovaChatViewController pp_userFacingErrorForNovaError:error] ?: kLang(@"nova_error_unavailable");
+                [self pp_addNovaSystemBubbleIfNew:userFacingError];
                 return;
             }
 
@@ -2117,9 +2124,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_startNovaRequestWatchdogForGeneration:(NSUInteger)generation userText:(NSString *)userText requestID:(NSString *)requestID {
-    NSString *query = [userText copy] ?: @"";
     __weak typeof(self) weakSelf = self;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(35.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(PPNovaRequestSoftWatchdogDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || self.dismissed || generation != self.novaRequestGeneration) {
             return;
@@ -2128,27 +2134,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             return;
         }
 
-	        LOG_WARN(@"[PPNovaChat][Debug] branch=request_watchdog_timeout generation=%lu",
-	                 (unsigned long)generation);
-	        [self hideNovaTyping];
-	        if ([self pp_novaHasCatalogSearchIntentForUserText:query] &&
-	            ![self pp_novaIsGenericConversationText:query]) {
-	            NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"local_watchdog"];
-	            self.activeNovaResponseID = responseID;
-	            [self pp_logNovaIncomingObjects:@[] requestID:requestID responseID:responseID source:@"local_watchdog"];
-	            [self pp_fetchAndShowLocalNovaShowcaseForUserText:query
-	                                                    introText:nil
-	                                                    requestID:requestID
-	                                                   responseID:responseID
-	                                                   generation:generation
-	                                                   completion:^(BOOL didShow) {
-	                if (!didShow) {
-	                    [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
-	                }
-	            }];
-	        } else {
-	            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
-	        }
+        LOG_WARN(@"[PPNovaChat][Debug] branch=request_watchdog_slow_request_still_waiting generation=%lu request_id=%@",
+                 (unsigned long)generation,
+                 requestID ?: @"");
+        self.typingLabel.text = kLang(@"nova_typing");
+        self.statusLabel.text = kLang(@"nova_status_thinking");
     });
 }
 
@@ -3574,15 +3564,24 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                          userText:(NSString *)userText
                                              need:(NSString *)needLabel
                                           petType:(NSString *)petTypeLabel {
-    NSString *haystack = [[NSString stringWithFormat:@"%@ %@",
-                           item.name ?: @"",
-                           item.desc ?: @""] lowercaseString];
+    NSString *nameHaystack = (item.name ?: @"").lowercaseString;
+    NSString *descriptionHaystack = (item.desc ?: @"").lowercaseString;
     NSString *need = needLabel.lowercaseString ?: @"";
     NSString *petType = petTypeLabel.lowercaseString ?: @"";
+    NSArray<NSString *> *needKeywords = [self pp_localNovaKeywordsForNeed:need];
+    NSArray<NSString *> *petTypeKeywords = [self pp_localNovaKeywordsForPetType:petType];
+    NSArray<NSString *> *userKeywords = [self pp_tokenKeywordsFromUserText:userText];
     NSInteger score = 0;
-    if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_localNovaKeywordsForNeed:need]]) score += 8;
-    if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_localNovaKeywordsForPetType:petType]]) score += 5;
-    if ([self pp_string:haystack containsAnyNovaKeyword:[self pp_tokenKeywordsFromUserText:userText]]) score += 3;
+    // Server-side Nova is the source of truth. This local watchdog fallback
+    // mirrors the same field priority with the iOS model fields available here:
+    // product name first, then description as a fallback when no richer index
+    // was delivered to the client model.
+    if ([self pp_string:nameHaystack containsAnyNovaKeyword:userKeywords]) score += 12;
+    if ([self pp_string:nameHaystack containsAnyNovaKeyword:needKeywords]) score += 10;
+    if ([self pp_string:nameHaystack containsAnyNovaKeyword:petTypeKeywords]) score += 6;
+    if ([self pp_string:descriptionHaystack containsAnyNovaKeyword:needKeywords]) score += 6;
+    if ([self pp_string:descriptionHaystack containsAnyNovaKeyword:petTypeKeywords]) score += 4;
+    if ([self pp_string:descriptionHaystack containsAnyNovaKeyword:userKeywords]) score += 3;
     return score;
 }
 
@@ -6849,9 +6848,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     [self pp_startTypingDotsAnimation];
 
-    NSInteger roll = arc4random_uniform(5) + 1;
-    NSString *thinkingAnim = [NSString stringWithFormat:@"novabg%ld", (long)roll];
-    [self pp_showThinkingHeaderLottieWithAnimation:thinkingAnim];
+    [self pp_showThinkingHeaderLottieWithAnimation:PPNovaThinkingHeaderAnimationName];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.typingContainer.alpha = 1.0;

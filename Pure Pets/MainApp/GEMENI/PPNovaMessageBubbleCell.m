@@ -103,7 +103,6 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.timeLabel.text = nil;
     self.statusImageView.image = nil;
     self.statusImageView.hidden = YES;
-    self.configuredMaxWidth = 0.0;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
@@ -1027,10 +1026,9 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 - (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize
         withHorizontalFittingPriority:(UILayoutPriority)horizontalFittingPriority
               verticalFittingPriority:(UILayoutPriority)verticalFittingPriority {
-    CGFloat configuredWidth = [self pp_resolvedContainerWidthForCandidate:self.configuredMaxWidth];
-    CGFloat fittingWidth = targetSize.width > 1.0 ? targetSize.width : configuredWidth;
-    if (configuredWidth > 1.0 && fittingWidth < configuredWidth) {
-        fittingWidth = configuredWidth;
+    CGFloat fittingWidth = targetSize.width > 1.0 ? targetSize.width : self.configuredMaxWidth;
+    if (self.configuredMaxWidth > 1.0 && fittingWidth < self.configuredMaxWidth) {
+        fittingWidth = self.configuredMaxWidth;
     }
     fittingWidth = [self pp_resolvedContainerWidthForCandidate:fittingWidth];
     if (fittingWidth > 1.0) {

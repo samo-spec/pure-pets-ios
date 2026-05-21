@@ -32,7 +32,7 @@
         if (rawEnvelope) {
             data = rawEnvelope;
         } else {
-            text = [self isRawNovaEnvelopeText:data] ? nil : data;
+            text = ([self isRawNovaEnvelopeText:data] || [self isInternalNovaDebugText:data]) ? nil : data;
         }
     }
     // 2) Dict with common keys
@@ -50,7 +50,10 @@
             for (NSString *k in @[ @"text", @"assistantText", @"output", @"response", @"answer",
                                    @"message", @"content" ]) {
                 id v = d[k];
-                if ([v isKindOfClass:NSString.class] && [(NSString *)v length]) {
+                if ([v isKindOfClass:NSString.class] &&
+                    [(NSString *)v length] &&
+                    ![self isRawNovaEnvelopeText:v] &&
+                    ![self isInternalNovaDebugText:v]) {
                     text = v;
                     break;
                 }
@@ -65,7 +68,9 @@
                 for (id m in msgs) {
                     if (![m isKindOfClass:NSDictionary.class]) continue;
                     id c = m[@"content"] ?: m[@"text"];
-                    if ([c isKindOfClass:NSString.class]) {
+                    if ([c isKindOfClass:NSString.class] &&
+                        ![self isRawNovaEnvelopeText:c] &&
+                        ![self isInternalNovaDebugText:c]) {
                         [parts addObject:c];
                     }
                 }
@@ -100,7 +105,13 @@
     // 3) Raw passthrough
     else if (!text && json[@"raw"]) {
         id raw = json[@"raw"];
-        text = ([raw isKindOfClass:NSString.class] && ![self isRawNovaEnvelopeText:raw]) ? raw : nil;
+        text = ([raw isKindOfClass:NSString.class] &&
+                ![self isRawNovaEnvelopeText:raw] &&
+                ![self isInternalNovaDebugText:raw]) ? raw : nil;
+    }
+
+    if ([self isInternalNovaDebugText:text]) {
+        text = nil;
     }
 
     if (!text.length && !hasRenderablePayload) {
@@ -118,7 +129,7 @@
     if (![data isKindOfClass:NSDictionary.class]) {
         return NO;
     }
-    for (NSString *key in @[ @"resultRefs", @"result_refs", @"cards", @"products", @"items" ]) {
+    for (NSString *key in @[ @"resultRefs", @"result_refs", @"cards", @"products", @"items", @"product_ids", @"productIds", @"productIDs" ]) {
         id value = data[key];
         if ([value isKindOfClass:NSArray.class] && [(NSArray *)value count] > 0) {
             return YES;
@@ -157,9 +168,10 @@
         NSDictionary *functionResponse = [partDict[@"functionResponse"] isKindOfClass:NSDictionary.class]
             ? partDict[@"functionResponse"]
             : ([partDict[@"function_response"] isKindOfClass:NSDictionary.class] ? partDict[@"function_response"] : nil);
-        NSDictionary *response = [functionResponse[@"response"] isKindOfClass:NSDictionary.class]
-            ? functionResponse[@"response"]
-            : nil;
+        id responseObject = functionResponse[@"response"];
+        NSDictionary *response = [responseObject isKindOfClass:NSDictionary.class]
+            ? responseObject
+            : ([responseObject isKindOfClass:NSString.class] ? [self novaEnvelopeFromRawText:responseObject] : nil);
         BOOL hasOptions = [response[@"options"] isKindOfClass:NSArray.class] ||
                           [response[@"suggestions"] isKindOfClass:NSArray.class] ||
                           [response[@"quickReplies"] isKindOfClass:NSArray.class];
@@ -197,7 +209,9 @@
                                                      withTemplate:@""];
             visibleText = [visibleText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
             if (visibleText.length > 0) {
-                mutable[@"text"] = visibleText;
+                if (![self isInternalNovaDebugText:visibleText]) {
+                    mutable[@"text"] = visibleText;
+                }
             }
         }
         return [mutable copy];
@@ -216,14 +230,16 @@
         id parsed = jsonData ? [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:nil] : nil;
         if ([parsed isKindOfClass:NSDictionary.class]) {
             NSMutableDictionary *dict = [(NSDictionary *)parsed mutableCopy];
-            if (dict[@"text"] || dict[@"assistantText"] || dict[@"options"] || dict[@"cards"] || dict[@"resultRefs"] || dict[@"product_ids"]) {
+            if (dict[@"text"] || dict[@"assistantText"] || dict[@"options"] || dict[@"cards"] || dict[@"resultRefs"] || dict[@"product_ids"] || dict[@"productIds"] || dict[@"productIDs"]) {
                 NSString *visibleText = [fencedJSON stringByReplacingMatchesInString:trimmed
                                                                               options:0
                                                                                 range:NSMakeRange(0, trimmed.length)
                                                                          withTemplate:@""];
                 visibleText = [visibleText stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
                 if (!dict[@"text"] && !dict[@"assistantText"] && visibleText.length > 0) {
-                    dict[@"text"] = visibleText;
+                    if (![self isInternalNovaDebugText:visibleText]) {
+                        dict[@"text"] = visibleText;
+                    }
                 }
                 return [dict copy];
             }
@@ -254,7 +270,7 @@
         return nil;
     }
     NSDictionary *dict = (NSDictionary *)parsed;
-    if (dict[@"text"] || dict[@"assistantText"] || dict[@"options"] || dict[@"cards"] || dict[@"resultRefs"] || dict[@"product_ids"]) {
+    if (dict[@"text"] || dict[@"assistantText"] || dict[@"options"] || dict[@"cards"] || dict[@"resultRefs"] || dict[@"product_ids"] || dict[@"productIds"] || dict[@"productIDs"]) {
         return dict;
     }
     return nil;
@@ -277,7 +293,9 @@
            [trimmed containsString:@"\"cards\""] ||
            [trimmed containsString:@"\"resultRefs\""] ||
            [trimmed containsString:@"\"cardsRequired\""] ||
-           [trimmed containsString:@"\"product_ids\""];
+           [trimmed containsString:@"\"product_ids\""] ||
+           [trimmed containsString:@"\"productIds\""] ||
+           [trimmed containsString:@"\"productIDs\""];
 }
 
 + (NSArray<NSDictionary<NSString *, id> *> *)novaJSONDictionaryCandidatesFromText:(NSString *)text {
@@ -335,12 +353,35 @@
     }
     for (NSString *key in @[ @"text", @"assistantText", @"options", @"cards",
                              @"resultRefs", @"result_refs", @"product_ids",
-                             @"productIds", @"cardsRequired", @"cards_required" ]) {
+                             @"productIds", @"productIDs", @"products", @"items", @"result_set",
+                             @"resultSet", @"cardsRequired", @"cards_required" ]) {
         if (dict[key]) {
             return YES;
         }
     }
     return NO;
+}
+
++ (BOOL)isInternalNovaDebugText:(NSString *)text {
+    if (![text isKindOfClass:NSString.class]) {
+        return NO;
+    }
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (!trimmed.length) {
+        return NO;
+    }
+    NSString *lower = trimmed.lowercaseString;
+    NSRegularExpression *printCall = [NSRegularExpression regularExpressionWithPattern:@"(^|\\s)print\\s*\\("
+                                                                                options:NSRegularExpressionCaseInsensitive
+                                                                                  error:nil];
+    return [printCall firstMatchInString:trimmed options:0 range:NSMakeRange(0, trimmed.length)] != nil ||
+           [lower containsString:@"transfer_to_agent("] ||
+           [lower containsString:@".transfer_to_agent"] ||
+           [lower containsString:@"function_call"] ||
+           [lower containsString:@"functioncall"] ||
+           [lower containsString:@"function_response"] ||
+           [lower containsString:@"functionresponse"] ||
+           [lower containsString:@"tool_code"];
 }
 
 + (NSError *)err:(NSString *)code {

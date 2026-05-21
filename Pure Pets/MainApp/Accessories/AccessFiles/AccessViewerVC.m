@@ -2124,11 +2124,34 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
     _moreButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _moreButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _moreButton.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
-    [_moreButton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    _moreButton.titleLabel.font = [GM boldFontWithSize:13];
     [_moreButton addTarget:self action:@selector(pp_toggleExpanded) forControlEvents:UIControlEventTouchUpInside];
-    _moreButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
+    [_moreButton addTarget:self action:@selector(pp_moreButtonTouchDown) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+    [_moreButton addTarget:self action:@selector(pp_moreButtonTouchUp) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
     _moreButton.hidden = YES;
+
+    UIImageSymbolConfiguration *symConfig = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightSemibold];
+    UIImage *chevron = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symConfig];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.contentInsets = NSDirectionalEdgeInsetsMake(8, 16, 8, 16);
+        config.image = chevron;
+        config.imagePlacement = NSDirectionalRectEdgeTrailing;
+        config.imagePadding = 6;
+        config.baseForegroundColor = AppPrimaryClr;
+        UIBackgroundConfiguration *bg = [UIBackgroundConfiguration clearConfiguration];
+        bg.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
+        bg.cornerRadius = 17;
+        config.background = bg;
+        _moreButton.configuration = config;
+    } else {
+        [_moreButton setImage:chevron forState:UIControlStateNormal];
+        _moreButton.tintColor = AppPrimaryClr;
+        _moreButton.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
+        _moreButton.layer.cornerRadius = 17;
+        _moreButton.clipsToBounds = YES;
+    }
 
     [self addSubview:self.surfaceView];
     [self.surfaceView addSubview:self.titleLabel];
@@ -2155,11 +2178,9 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [_textView.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor  constant:kAVCardPadding],
         [_textView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-kAVCardPadding],
 
-        [_moreButton.topAnchor      constraintEqualToAnchor:_textView.bottomAnchor constant:kAVSpace8],
-        [_moreButton.leadingAnchor  constraintEqualToAnchor:_textView.leadingAnchor],
-        [_moreButton.trailingAnchor constraintEqualToAnchor:_textView.trailingAnchor],
-        [_moreButton.heightAnchor   constraintEqualToConstant:28.0],
-        [_moreButton.bottomAnchor   constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-kAVSpace12],
+        [_moreButton.topAnchor      constraintEqualToAnchor:_textView.bottomAnchor constant:kAVSpace12],
+        [_moreButton.centerXAnchor  constraintEqualToAnchor:self.surfaceView.centerXAnchor],
+        [_moreButton.bottomAnchor   constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-kAVCardPadding],
     ]];
 }
 
@@ -2168,9 +2189,14 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)pp_toggleExpanded {
     self.isExpanded = !self.isExpanded;
     [self pp_applyLineLimit];
-    [self invalidateIntrinsicContentSize];
-    [self.superview setNeedsLayout];
-    [self.superview layoutIfNeeded];
+
+    CGFloat rotation = self.isExpanded ? M_PI : 0;
+    [UIView animateWithDuration:0.4 delay:0 usingSpringWithDamping:0.7 initialSpringVelocity:0.6 options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
+        self.moreButton.imageView.transform = CGAffineTransformMakeRotation(rotation);
+        [self invalidateIntrinsicContentSize];
+        [self.superview setNeedsLayout];
+        [self.superview layoutIfNeeded];
+    } completion:nil];
 }
 
 - (void)pp_applyLineLimit {
@@ -2183,7 +2209,16 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     } else {
         _textView.textContainer.maximumNumberOfLines = 8;
         [_moreButton setTitle:kLang(@"description_show_more") ?: @"Show more" forState:UIControlStateNormal];
+        self.moreButton.imageView.transform = CGAffineTransformIdentity;
     }
+}
+
+- (void)pp_moreButtonTouchDown {
+    PPTapFeedbackDown(self.moreButton);
+}
+
+- (void)pp_moreButtonTouchUp {
+    PPTapFeedbackUp(self.moreButton);
 }
 
 - (BOOL)pp_needsTruncation {

@@ -7,6 +7,49 @@
 
 #import "AppClasses.h"
 
+static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BOOL *found, NSError **error) {
+    if (found) {
+        *found = NO;
+    }
+
+    if (![storagePath isKindOfClass:NSString.class] || storagePath.length == 0) {
+        return nil;
+    }
+
+    NSString *fileName = storagePath.lastPathComponent;
+    NSString *extension = fileName.pathExtension.length > 0 ? fileName.pathExtension : @"json";
+    if (![extension.lowercaseString isEqualToString:@"json"]) {
+        return nil;
+    }
+
+    NSString *resourceName = fileName.stringByDeletingPathExtension;
+    NSString *path = [[NSBundle mainBundle] pathForResource:resourceName ofType:extension];
+    if (path.length == 0) {
+        return nil;
+    }
+
+    if (found) {
+        *found = YES;
+    }
+
+    NSData *data = [NSData dataWithContentsOfFile:path options:0 error:error];
+    if (!data) {
+        return nil;
+    }
+
+    id json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:error];
+    if (![json isKindOfClass:NSDictionary.class]) {
+        if (error) {
+            *error = [NSError errorWithDomain:@"LottieFetch"
+                                         code:-3
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Bundled Lottie JSON is not a dictionary"}];
+        }
+        return nil;
+    }
+
+    return (NSDictionary *)json;
+}
+
 @implementation AppClasses
 
 +(void)addShadowToView:(UIView *)view
@@ -395,6 +438,22 @@
         return;
     }
 
+    BOOL foundBundledJSON = NO;
+    NSError *bundledError = nil;
+    NSDictionary *bundledJSON = PPBundledLottieJSONForStoragePath(storagePath, &foundBundledJSON, &bundledError);
+    if (foundBundledJSON) {
+        if (bundledJSON) {
+            [cache setObject:bundledJSON forKey:cacheKey];
+            NSLog(@"✅ Loaded bundled Lottie JSON");
+            if (completion) completion(bundledJSON, nil);
+            return;
+        }
+
+        NSLog(@"❌ Failed to parse bundled Lottie JSON: %@", bundledError.localizedDescription);
+        if (completion) completion(nil, bundledError ?: [NSError errorWithDomain:@"LottieFetch" code:-3 userInfo:@{NSLocalizedDescriptionKey:@"Invalid bundled Lottie JSON"}]);
+        return;
+    }
+
     // Not cached — fetch from Firebase Storage
     FIRStorage *storage = [FIRStorage storage];
     FIRStorageReference *ref = [storage referenceWithPath:storagePath];
@@ -707,7 +766,6 @@
 }
 
 @end
-
 
 
 
