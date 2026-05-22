@@ -18,5 +18,6 @@ typedef NS_ENUM(NSInteger, PPChatFeedbackEvent) {
 + (instancetype)shared;
 
 - (void)playFeedbackForEvent:(PPChatFeedbackEvent)event;
+- (void)playNovaFeedbackForEvent:(PPChatFeedbackEvent)event;
 
 @end

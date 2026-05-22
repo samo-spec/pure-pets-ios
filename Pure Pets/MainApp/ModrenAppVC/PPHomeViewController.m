@@ -65,6 +65,7 @@ static NSString * const PPHomeConfigCacheSectionsKey = @"sections";
 static NSString * const PPHomeConfigCacheTitleModeKey = @"titleViewMode";
 static NSString * const PPHomeConfigCachePremiumCareVisibleKey = @"premiumCareVisible";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
+static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
 
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -948,6 +949,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, copy) NSString *homeTitleViewMode; // @"location" (default) or @"search"
 @property (nonatomic, assign) BOOL homePremiumCareVisible; // remote-config toggle for PPPetCareViewController
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> homeConfigListener;
+@property (nonatomic, copy, nullable) NSString *lastAppliedHomeConfigOrderSignature;
+@property (nonatomic, assign) BOOL shouldResetHomeScrollForConfigOrderChange;
 // YES once the HomeConfig listener has reported (or the safety timeout has fired).
 // Until this flips, applyBaseSnapshot renders an empty snapshot so we don't show
 // the full default-section set just to relayout to the config-filtered set seconds
@@ -1078,8 +1081,12 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_cacheHomeConfigSections:(NSArray<NSDictionary *> *)sections
                      titleViewMode:(NSString *)titleViewMode
                 premiumCareVisible:(BOOL)premiumCareVisible
-                novaFloatingVisible:(BOOL)novaFloatingVisible;
+               novaFloatingVisible:(BOOL)novaFloatingVisible
+                     novaUseGenkit:(BOOL)novaUseGenkit;
 - (BOOL)pp_applyCachedHomeConfigIfAvailable;
+- (NSString *)pp_homeConfigOrderSignatureForSectionIdentifiers:(NSArray<NSNumber *> *)sectionIdentifiers;
+- (void)pp_fetchHomeConfigFromServerOnceWithDocumentReference:(FIRDocumentReference *)docRef;
+- (void)pp_applyHomeConfigSnapshot:(FIRDocumentSnapshot *)snapshot source:(NSString *)source;
 - (NSArray<PPHomeItem *> *)pp_buildItemsForSection:(PPHomeSection)section;
 - (NSArray<PPHomeBuyAgainSnapshotItem *> *)pp_buyAgainSnapshotItemsFromOrders:(NSArray<PPOrder *> *)orders
                                                                         limit:(NSInteger)limit;
@@ -1742,7 +1749,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 - (void)pp_cacheHomeConfigSections:(NSArray<NSDictionary *> *)sections
                      titleViewMode:(NSString *)titleViewMode
                 premiumCareVisible:(BOOL)premiumCareVisible
-                novaFloatingVisible:(BOOL)novaFloatingVisible
+               novaFloatingVisible:(BOOL)novaFloatingVisible
+                     novaUseGenkit:(BOOL)novaUseGenkit
 {
     if (sections.count == 0) {
         return;
@@ -1752,9 +1760,13 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCacheSectionsKey : sections,
         PPHomeConfigCacheTitleModeKey : titleViewMode ?: @"location",
         PPHomeConfigCachePremiumCareVisibleKey : @(premiumCareVisible),
-        PPHomeConfigCacheNovaFloatingVisibleKey : @(novaFloatingVisible)
+        PPHomeConfigCacheNovaFloatingVisibleKey : @(novaFloatingVisible),
+        PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
+    
+    // We also set it individually so other view controllers can read it easily
+    [[NSUserDefaults standardUserDefaults] setBool:novaUseGenkit forKey:@"pp_nova_use_genkit"];
 }
 
 - (BOOL)pp_applyCachedHomeConfigIfAvailable
@@ -1793,6 +1805,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.homeConfigSections = [self pp_resolvedHomeConfigSectionsFromSanitizedSections:sanitized
                                                                legacyPremiumCareVisible:premiumCareVisible];
     self.didReceiveHomeConfig = YES;
+    self.lastAppliedHomeConfigOrderSignature =
+        [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
 
     if (self.novaFloatingButton) {
         self.novaFloatingButton.hidden = !novaVisible;
@@ -1801,8 +1815,25 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         self.novaFloatingHaloView.hidden = !novaVisible;
     }
 
-    NSLog(@"[HomeConfig] Applied cached Console section order.");
+    NSLog(@"[HomeConfig] Applied cached Console section order: %@",
+          self.lastAppliedHomeConfigOrderSignature ?: @"");
     return YES;
+}
+
+- (NSString *)pp_homeConfigOrderSignatureForSectionIdentifiers:(NSArray<NSNumber *> *)sectionIdentifiers
+{
+    if (sectionIdentifiers.count == 0) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithCapacity:sectionIdentifiers.count];
+    for (NSNumber *sectionID in sectionIdentifiers) {
+        if (![sectionID isKindOfClass:NSNumber.class]) {
+            continue;
+        }
+        [parts addObject:sectionID.stringValue];
+    }
+    return [parts componentsJoinedByString:@"|"];
 }
 
 - (void)pp_reloadHomeCollectionLayoutPreservingScrollOffset {
@@ -1830,6 +1861,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         self.collectionView.contentOffset = CGPointMake(preservedOffset.x, targetOffsetY);
     }];
     [CATransaction commit];
+
+    if (self.shouldResetHomeScrollForConfigOrderChange) {
+        self.shouldResetHomeScrollForConfigOrderChange = NO;
+        CGFloat topOffsetY = -self.collectionView.adjustedContentInset.top;
+        [self.collectionView setContentOffset:CGPointMake(0.0, topOffsetY) animated:NO];
+    }
 }
 
 /// Live section order from `AppConfigCol/HomeConfig.sections` (Console Home Control).
@@ -3080,6 +3117,8 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         NSLog(@"[HomeConfig] Listener silent for 800ms — using default sections fallback.");
         self.homeConfigSections = [self pp_mergeHomeConfigSectionsWithCatalog:@[]];
         self.didReceiveHomeConfig = YES;
+        self.lastAppliedHomeConfigOrderSignature =
+            [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
         [self applyBaseSnapshot];
     });
 
@@ -3519,11 +3558,16 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 - (void)pp_startHomeConfigListener {
     [self.homeConfigListener remove];
 
-    FIRFirestore *db = [FIRFirestore firestore];
+    FIRFirestore *db = AppMgr.dF ?: [FIRFirestore firestore];
     FIRDocumentReference *docRef = [[db collectionWithPath:@"AppConfigCol"] documentWithPath:@"HomeConfig"];
 
+    [self pp_fetchHomeConfigFromServerOnceWithDocumentReference:docRef];
+
     __weak typeof(self) weakSelf = self;
-    self.homeConfigListener = [docRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    self.homeConfigListener =
+        [docRef addSnapshotListenerWithIncludeMetadataChanges:YES
+                                                     listener:^(FIRDocumentSnapshot * _Nullable snapshot,
+                                                                NSError * _Nullable error) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
 
@@ -3532,107 +3576,164 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             return;
         }
 
-        if (!snapshot.exists) {
+        if (!snapshot) {
+            NSLog(@"[HomeConfig] Listener returned an empty snapshot.");
             return;
         }
 
-        NSDictionary *data = snapshot.data ?: @{};
-        NSArray<NSDictionary *> *sanitized =
-            [self pp_sanitizedHomeConfigSections:data[@"sections"]];
-
-        // Read title-view mode from the remote config doc.
-        NSString *remoteMode = data[@"titleViewMode"];
-        NSString *resolvedTitleViewMode = @"location";
-        if ([remoteMode isKindOfClass:NSString.class] &&
-            ([remoteMode isEqualToString:@"location"] || [remoteMode isEqualToString:@"search"])) {
-            resolvedTitleViewMode = remoteMode;
-        }
-
-        BOOL novaVisible = YES;
-        id remoteNova = data[@"novaFloatingVisible"];
-        if ([remoteNova respondsToSelector:@selector(boolValue)]) {
-            novaVisible = [remoteNova boolValue];
-        }
-
-        BOOL premiumCareVisible = YES;
-        id remotePremiumCare = data[@"premiumCareVisible"];
-        if ([remotePremiumCare respondsToSelector:@selector(boolValue)]) {
-            premiumCareVisible = [remotePremiumCare boolValue];
-        }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
-
-            if (strongSelf.novaFloatingButton) {
-                strongSelf.novaFloatingButton.hidden = !novaVisible;
-            }
-            if (strongSelf.novaFloatingHaloView) {
-                strongSelf.novaFloatingHaloView.hidden = !novaVisible;
-            }
-
-            strongSelf.homePremiumCareVisible = premiumCareVisible;
-
-            NSArray<NSDictionary *> *merged =
-                [strongSelf pp_resolvedHomeConfigSectionsFromSanitizedSections:sanitized
-                                                        legacyPremiumCareVisible:premiumCareVisible];
-            strongSelf.homeConfigSections = merged;
-            [strongSelf pp_cacheHomeConfigSections:merged
-                                     titleViewMode:resolvedTitleViewMode
-                                premiumCareVisible:premiumCareVisible
-                                novaFloatingVisible:novaVisible];
-
-            NSMutableArray<NSString *> *orderedIDs = [NSMutableArray arrayWithCapacity:merged.count];
-            for (NSDictionary *row in merged) {
-                [orderedIDs addObject:[NSString stringWithFormat:@"%@", row[@"id"]]];
-            }
-            NSLog(@"[HomeConfig] Applied section order: %@", [orderedIDs componentsJoinedByString:@", "]);
-
-            // The listener has spoken — applyBaseSnapshot is now allowed to
-            // render real sections (and run the premium entrance).
-            strongSelf.didReceiveHomeConfig = YES;
-
-            BOOL titleModeChanged =
-                ![strongSelf.homeTitleViewMode isEqualToString:resolvedTitleViewMode];
-            strongSelf.homeTitleViewMode = resolvedTitleViewMode;
-
-            [strongSelf applyBaseSnapshot];
-
-            // When HomeConfig changes (e.g. banners visibility toggled from Console),
-            // the carousel section may have just been added/removed from the snapshot.
-            // Refresh the banner data so the carousel renders current cards — the
-            // PromoCarouselManager keeps a live listener, so self.promoCarouselCards
-            // is already fresh, but fillCarouselBanner must update the snapshot payload.
-            [strongSelf fillCarouselBanner];
-
-            BOOL expectsSearchTitle =
-                [resolvedTitleViewMode isEqualToString:@"search"];
-            BOOL showingSearchTitle =
-                strongSelf.homeSmartSearchView &&
-                strongSelf.navigationItem.titleView == strongSelf.homeSmartSearchView;
-            BOOL showingLocationTitle =
-                strongSelf.homeLocationTitleView &&
-                strongSelf.navigationItem.titleView == strongSelf.homeLocationTitleView;
-            BOOL titleViewMatchesConfig =
-                expectsSearchTitle ? showingSearchTitle : showingLocationTitle;
-
-            if (titleModeChanged || !titleViewMatchesConfig) {
-                if ([strongSelf pp_canOwnHomeNavigationChrome]) {
-                    [strongSelf configureNavigationBar];
-                } else {
-                    [strongSelf pp_detachHomeSmartSearchTitleViewIfNeeded];
-                    [strongSelf pp_detachHomeLocationTitleViewIfNeeded];
-                }
-            } else if (expectsSearchTitle) {
-                [strongSelf pp_updateHomeSmartSearchTitleViewWidth];
-                [strongSelf pp_updateHomeSmartSearchPlaceholderAnimated:NO];
-                [strongSelf pp_startHomeSmartSearchTimerIfNeeded];
-            } else {
-                [strongSelf pp_refreshHomeLocationTitleViewAnimated:NO];
-                [strongSelf.homeLocationTitleView startLivingMotion];
-            }
-        });
+        NSString *source = snapshot.metadata.isFromCache ? @"listener-cache" : @"listener-server";
+        [self pp_applyHomeConfigSnapshot:snapshot source:source];
     }];
+}
+
+- (void)pp_fetchHomeConfigFromServerOnceWithDocumentReference:(FIRDocumentReference *)docRef
+{
+    if (!docRef) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [docRef getDocumentWithSource:FIRFirestoreSourceServer
+                       completion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        if (error) {
+            NSLog(@"[HomeConfig] Server fetch error: %@", error.localizedDescription);
+            return;
+        }
+
+        if (!snapshot) {
+            NSLog(@"[HomeConfig] Server fetch returned an empty snapshot.");
+            return;
+        }
+
+        [self pp_applyHomeConfigSnapshot:snapshot source:@"server-fetch"];
+    }];
+}
+
+- (void)pp_applyHomeConfigSnapshot:(FIRDocumentSnapshot *)snapshot source:(NSString *)source
+{
+    if (!snapshot.exists) {
+        NSLog(@"[HomeConfig] %@ snapshot missing.", source ?: @"unknown");
+        return;
+    }
+
+    NSDictionary *data = snapshot.data ?: @{};
+    NSArray<NSDictionary *> *sanitized =
+        [self pp_sanitizedHomeConfigSections:data[@"sections"]];
+
+    NSString *remoteMode = data[@"titleViewMode"];
+    NSString *resolvedTitleViewMode = @"location";
+    if ([remoteMode isKindOfClass:NSString.class] &&
+        ([remoteMode isEqualToString:@"location"] || [remoteMode isEqualToString:@"search"])) {
+        resolvedTitleViewMode = remoteMode;
+    }
+
+    BOOL novaVisible = YES;
+    id remoteNova = data[@"novaFloatingVisible"];
+    if ([remoteNova respondsToSelector:@selector(boolValue)]) {
+        novaVisible = [remoteNova boolValue];
+    }
+
+    BOOL novaUseGenkit = NO;
+    id remoteNovaGenkit = data[@"novaUseGenkit"];
+    if ([remoteNovaGenkit respondsToSelector:@selector(boolValue)]) {
+        novaUseGenkit = [remoteNovaGenkit boolValue];
+    }
+    novaUseGenkit = YES;
+    
+    
+    BOOL premiumCareVisible = YES;
+    id remotePremiumCare = data[@"premiumCareVisible"];
+    if ([remotePremiumCare respondsToSelector:@selector(boolValue)]) {
+        premiumCareVisible = [remotePremiumCare boolValue];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        NSString *previousSignature = strongSelf.lastAppliedHomeConfigOrderSignature ?: @"";
+        if (previousSignature.length == 0 && strongSelf.dataSource) {
+            previousSignature =
+                [strongSelf pp_homeConfigOrderSignatureForSectionIdentifiers:strongSelf.dataSource.snapshot.sectionIdentifiers];
+        }
+
+        if (strongSelf.novaFloatingButton) {
+            strongSelf.novaFloatingButton.hidden = !novaVisible;
+        }
+        if (strongSelf.novaFloatingHaloView) {
+            strongSelf.novaFloatingHaloView.hidden = !novaVisible;
+        }
+
+        strongSelf.homePremiumCareVisible = premiumCareVisible;
+
+        NSArray<NSDictionary *> *merged =
+            [strongSelf pp_resolvedHomeConfigSectionsFromSanitizedSections:sanitized
+                                                    legacyPremiumCareVisible:premiumCareVisible];
+        strongSelf.homeConfigSections = merged;
+        [strongSelf pp_cacheHomeConfigSections:merged
+                                 titleViewMode:resolvedTitleViewMode
+                            premiumCareVisible:premiumCareVisible
+                           novaFloatingVisible:novaVisible
+                                 novaUseGenkit:novaUseGenkit];
+
+        NSArray<NSNumber *> *nextIdentifiers = [strongSelf pp_orderedHomeSectionIdentifiers];
+        NSString *nextSignature =
+            [strongSelf pp_homeConfigOrderSignatureForSectionIdentifiers:nextIdentifiers];
+        BOOL orderChanged =
+            previousSignature.length > 0 &&
+            nextSignature.length > 0 &&
+            ![previousSignature isEqualToString:nextSignature];
+
+        strongSelf.lastAppliedHomeConfigOrderSignature = nextSignature;
+        strongSelf.shouldResetHomeScrollForConfigOrderChange = orderChanged;
+
+        NSLog(@"[HomeConfig] Applied %@ section order: %@ changed=%@",
+              source ?: @"unknown",
+              nextSignature ?: @"",
+              orderChanged ? @"YES" : @"NO");
+
+        strongSelf.didReceiveHomeConfig = YES;
+
+        BOOL titleModeChanged =
+            ![(strongSelf.homeTitleViewMode ?: @"location") isEqualToString:resolvedTitleViewMode];
+        strongSelf.homeTitleViewMode = resolvedTitleViewMode;
+
+        [strongSelf applyBaseSnapshot];
+
+        // HomeConfig can add/remove the carousel section; keep its payload current.
+        [strongSelf fillCarouselBanner];
+
+        BOOL expectsSearchTitle =
+            [resolvedTitleViewMode isEqualToString:@"search"];
+        BOOL showingSearchTitle =
+            strongSelf.homeSmartSearchView &&
+            strongSelf.navigationItem.titleView == strongSelf.homeSmartSearchView;
+        BOOL showingLocationTitle =
+            strongSelf.homeLocationTitleView &&
+            strongSelf.navigationItem.titleView == strongSelf.homeLocationTitleView;
+        BOOL titleViewMatchesConfig =
+            expectsSearchTitle ? showingSearchTitle : showingLocationTitle;
+
+        if (titleModeChanged || !titleViewMatchesConfig) {
+            if ([strongSelf pp_canOwnHomeNavigationChrome]) {
+                [strongSelf configureNavigationBar];
+            } else {
+                [strongSelf pp_detachHomeSmartSearchTitleViewIfNeeded];
+                [strongSelf pp_detachHomeLocationTitleViewIfNeeded];
+            }
+        } else if (expectsSearchTitle) {
+            [strongSelf pp_updateHomeSmartSearchTitleViewWidth];
+            [strongSelf pp_updateHomeSmartSearchPlaceholderAnimated:NO];
+            [strongSelf pp_startHomeSmartSearchTimerIfNeeded];
+        } else {
+            [strongSelf pp_refreshHomeLocationTitleViewAnimated:NO];
+            [strongSelf.homeLocationTitleView startLivingMotion];
+        }
+    });
 }
 
 - (void)handleBrowseHistoryUpdate

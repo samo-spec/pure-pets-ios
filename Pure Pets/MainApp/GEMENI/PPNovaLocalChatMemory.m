@@ -91,6 +91,13 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
 }
 
 - (void)addMessageWithRole:(NSString *)role text:(NSString *)text {
+    [self addMessageWithRole:role text:text messageId:nil sessionId:nil];
+}
+
+- (void)addMessageWithRole:(NSString *)role
+                      text:(NSString *)text
+                 messageId:(nullable NSString *)messageId
+                 sessionId:(nullable NSString *)sessionId {
     if (!self.isMemoryEnabled || text.length == 0 || role.length == 0) return;
     
     // Privacy safeguard: do not store credit card formats or apparent tokens
@@ -117,14 +124,21 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
         }
     }
     
-    NSDictionary *msg = @{
+    NSString *resolvedMessageId = [messageId isKindOfClass:NSString.class] && messageId.length > 0
+        ? messageId
+        : [[NSUUID UUID] UUIDString];
+    NSMutableDictionary *msg = [@{
+        @"id": resolvedMessageId,
         @"role": role,
         @"text": safeText,
         @"timestamp": @(now)
-    };
+    } mutableCopy];
+    if ([sessionId isKindOfClass:NSString.class] && sessionId.length > 0) {
+        msg[@"sessionId"] = sessionId;
+    }
     
     dispatch_async(self.ioQueue, ^{
-        [self.messages addObject:msg];
+        [self.messages addObject:[msg copy]];
         if (self.messages.count > kMaxMessagesToKeep) {
             [self.messages removeObjectAtIndex:0];
         }
@@ -171,6 +185,65 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
         result = [self.messages copy];
     });
     return result ?: @[];
+}
+
+- (NSArray<NSDictionary *> *)starredMessages {
+    __block NSArray *result = nil;
+    dispatch_sync(self.ioQueue, ^{
+        NSMutableArray<NSDictionary *> *starred = [NSMutableArray array];
+        for (NSDictionary *message in self.messages) {
+            if ([message[@"starred"] respondsToSelector:@selector(boolValue)] &&
+                [message[@"starred"] boolValue]) {
+                [starred addObject:message];
+            }
+        }
+        result = [starred copy];
+    });
+    return result ?: @[];
+}
+
+- (void)setMessageStarred:(BOOL)starred messageId:(NSString *)messageId {
+    if (messageId.length == 0) {
+        return;
+    }
+    dispatch_async(self.ioQueue, ^{
+        BOOL didChange = NO;
+        for (NSUInteger idx = 0; idx < self.messages.count; idx++) {
+            NSDictionary *message = self.messages[idx];
+            NSString *storedId = [message[@"id"] isKindOfClass:NSString.class] ? message[@"id"] : @"";
+            NSString *legacyId = [message[@"messageId"] isKindOfClass:NSString.class] ? message[@"messageId"] : @"";
+            if (![storedId isEqualToString:messageId] && ![legacyId isEqualToString:messageId]) {
+                continue;
+            }
+            NSMutableDictionary *updated = [message mutableCopy];
+            updated[@"starred"] = @(starred);
+            self.messages[idx] = [updated copy];
+            didChange = YES;
+            break;
+        }
+        if (didChange) {
+            [self _saveToDiskUnsafe];
+        }
+    });
+}
+
+- (BOOL)isMessageStarred:(NSString *)messageId {
+    if (messageId.length == 0) {
+        return NO;
+    }
+    __block BOOL starred = NO;
+    dispatch_sync(self.ioQueue, ^{
+        for (NSDictionary *message in self.messages) {
+            NSString *storedId = [message[@"id"] isKindOfClass:NSString.class] ? message[@"id"] : @"";
+            NSString *legacyId = [message[@"messageId"] isKindOfClass:NSString.class] ? message[@"messageId"] : @"";
+            if ([storedId isEqualToString:messageId] || [legacyId isEqualToString:messageId]) {
+                starred = [message[@"starred"] respondsToSelector:@selector(boolValue)] &&
+                    [message[@"starred"] boolValue];
+                break;
+            }
+        }
+    });
+    return starred;
 }
 
 - (void)clearAllMessages {

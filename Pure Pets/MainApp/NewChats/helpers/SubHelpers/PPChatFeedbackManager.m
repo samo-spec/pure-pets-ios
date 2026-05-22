@@ -8,6 +8,7 @@
 
 #import "PPChatFeedbackManager.h"
 #import <AudioToolbox/AudioToolbox.h>
+#import <AVFoundation/AVFoundation.h>
 #import <UIKit/UIKit.h>
 
 @interface PPChatFeedbackManager ()
@@ -15,6 +16,7 @@
 @property (nonatomic, strong) UIImpactFeedbackGenerator *lightImpact;
 @property (nonatomic, strong) UINotificationFeedbackGenerator *notificationFeedback;
 @property (nonatomic, strong) dispatch_queue_t stateQueue;
+@property (nonatomic, strong) AVAudioPlayer *novaWaterBubblePlayer;
 @end
 
 @implementation PPChatFeedbackManager
@@ -33,8 +35,13 @@
     self = [super init];
     if (self) {
         _lastEventPlaybackDates = [NSMutableDictionary dictionary];
-        _lightImpact =
-            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        if (@available(iOS 13.0, *)) {
+            _lightImpact =
+                [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+        } else {
+            _lightImpact =
+                [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        }
         _notificationFeedback =
             [[UINotificationFeedbackGenerator alloc] init];
         _stateQueue = dispatch_queue_create("com.purepets.chat.feedback",
@@ -76,6 +83,55 @@
     return canPlay;
 }
 
+- (void)playPremiumImpactWithIntensity:(CGFloat)intensity
+{
+    if (@available(iOS 13.0, *)) {
+        [self.lightImpact impactOccurredWithIntensity:intensity];
+    } else {
+        [self.lightImpact impactOccurred];
+    }
+}
+
+- (AVAudioPlayer *)pp_novaWaterBubblePlayer
+{
+    if (self.novaWaterBubblePlayer) {
+        return self.novaWaterBubblePlayer;
+    }
+
+    NSURL *url = [[NSBundle mainBundle] URLForResource:@"water-bubble" withExtension:@"mp3"];
+    if (!url) {
+        url = [[NSBundle mainBundle] URLForResource:@"water-bubble" withExtension:@"wav"];
+    }
+    if (!url) {
+        return nil;
+    }
+
+    NSError *error = nil;
+    AVAudioPlayer *player = [[AVAudioPlayer alloc] initWithContentsOfURL:url error:&error];
+    if (!player || error) {
+        return nil;
+    }
+
+    player.numberOfLoops = 0;
+    player.volume = 0.26f;
+    [player prepareToPlay];
+    self.novaWaterBubblePlayer = player;
+    return player;
+}
+
+- (void)pp_playNovaWaterBubbleToneWithVolume:(float)volume
+{
+    AVAudioPlayer *player = [self pp_novaWaterBubblePlayer];
+    if (!player) {
+        AudioServicesPlaySystemSound(1103);
+        return;
+    }
+
+    player.volume = volume;
+    player.currentTime = 0;
+    [player play];
+}
+
 - (BOOL)shouldPlayForEvent:(PPChatFeedbackEvent)event
 {
     UIApplicationState appState = UIApplication.sharedApplication.applicationState;
@@ -93,6 +149,42 @@
     return NO;
 }
 
+- (void)playNovaFeedbackForEvent:(PPChatFeedbackEvent)event
+{
+    if (![self shouldPlayForEvent:event]) {
+        return;
+    }
+
+    if (![self reservePlaybackSlotForEvent:event]) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.lightImpact prepare];
+
+        switch (event) {
+            case PPChatFeedbackEventOutgoingSend: {
+                [self playPremiumImpactWithIntensity:0.16];
+                [self pp_playNovaWaterBubbleToneWithVolume:0.12f];
+            } break;
+
+            case PPChatFeedbackEventIncomingActiveChat: {
+                [self playPremiumImpactWithIntensity:0.12];
+                [self pp_playNovaWaterBubbleToneWithVolume:0.28f];
+            } break;
+
+            case PPChatFeedbackEventIncomingOutsideChat: {
+                [self playPremiumImpactWithIntensity:0.12];
+                [self pp_playNovaWaterBubbleToneWithVolume:0.28f];
+            } break;
+
+            case PPChatFeedbackEventMessageRead: {
+                [self playPremiumImpactWithIntensity:0.10];
+            } break;
+        }
+    });
+}
+
 - (void)playFeedbackForEvent:(PPChatFeedbackEvent)event {
     if (![self shouldPlayForEvent:event]) {
         return;
@@ -108,29 +200,29 @@
 
         switch (event) {
 
-            // 📤 Outgoing message (Send)
+            // Outgoing message (send)
             case PPChatFeedbackEventOutgoingSend: {
-                [self.lightImpact impactOccurred];
-                AudioServicesPlaySystemSound(1104);
+                [self playPremiumImpactWithIntensity:0.58];
+                AudioServicesPlaySystemSound(1020);
             } break;
 
-            // 📥 Incoming while chat is OPEN
+            // Incoming while chat is open
             case PPChatFeedbackEventIncomingActiveChat: {
                 [self.notificationFeedback
                  notificationOccurred:UINotificationFeedbackTypeSuccess];
-                AudioServicesPlaySystemSound(1105);
+                AudioServicesPlaySystemSound(1103);
             } break;
 
-            // 📥 Incoming while app active but chat NOT visible
+            // Incoming while app is active but chat is not visible
             case PPChatFeedbackEventIncomingOutsideChat: {
                 [self.notificationFeedback
                  notificationOccurred:UINotificationFeedbackTypeSuccess];
                 AudioServicesPlaySystemSound(1007); //1016
             } break;
 
-            // 👁 Message read (optional, subtle)
+            // Message read (optional, subtle)
             case PPChatFeedbackEventMessageRead: {
-                [self.lightImpact impactOccurred];
+                [self playPremiumImpactWithIntensity:0.42];
             } break;
         }
     });

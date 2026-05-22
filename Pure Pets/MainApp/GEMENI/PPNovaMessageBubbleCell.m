@@ -4,6 +4,7 @@
 //
 
 #import "PPNovaMessageBubbleCell.h"
+#import <math.h>
 
 static UIColor *PPNovaCellDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     if (@available(iOS 13.0, *)) {
@@ -40,16 +41,16 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     return PPNovaTextStartsRTL(text) ? NSTextAlignmentRight : NSTextAlignmentLeft;
 }
 
-static const CGFloat PPNovaBubbleMinimumWidth = 90.0;
-static const CGFloat PPNovaAssistantMinimumReadableWidth = 184.0;
-static const CGFloat PPNovaAssistantMaximumReadableFloor = 260.0;
-static const CGFloat PPNovaAssistantReadableWidthRatio = 0.52;
-static const CGFloat PPNovaAssistantWrappedWidthFloorRatio = 0.72;
+static const CGFloat PPNovaBubbleMinimumWidth = 96.0;
+static const CGFloat PPNovaAssistantMinimumReadableWidth = 220.0;
+static const CGFloat PPNovaAssistantMaximumReadableFloor = 320.0;
+static const CGFloat PPNovaAssistantReadableWidthRatio = 0.62;
+static const CGFloat PPNovaAssistantWrappedWidthFloorRatio = 0.78;
 static const CGFloat PPNovaAssistantOptionsMinimumWidth = 242.0;
-static const CGFloat PPNovaAssistantHorizontalReserve = 120.0;
+static const CGFloat PPNovaAssistantHorizontalReserve = 96.0;
 static const CGFloat PPNovaUserHorizontalReserve = 86.0;
-static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
-static const CGFloat PPNovaBubbleCornerRadius = 24.0;
+static const CGFloat PPNovaBubbleHorizontalContentInset = 34.0;
+static const CGFloat PPNovaBubbleCornerRadius = 26.0;
 static const CGFloat PPNovaBubbleWidthSearchStep = 8.0;
 static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
@@ -103,6 +104,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.timeLabel.text = nil;
     self.statusImageView.image = nil;
     self.statusImageView.hidden = YES;
+    self.statusImageView.transform = CGAffineTransformIdentity;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
@@ -114,6 +116,12 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 }
 
 - (void)layoutSubviews {
+    CGFloat currentWidth = CGRectGetWidth(self.contentView.bounds);
+    if (currentWidth > 1.0 && fabs(currentWidth - self.configuredMaxWidth) > 0.5) {
+        self.configuredMaxWidth = [self pp_resolvedContainerWidthForCandidate:currentWidth];
+        [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:self.configuredMaxWidth];
+    }
+
     [super layoutSubviews];
 
     self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
@@ -193,7 +201,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.messageLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:bodyFont];
     self.messageLabel.adjustsFontForContentSizeCategory = YES;
     [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.messageLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.contentStack addArrangedSubview:self.messageLabel];
 
@@ -251,6 +259,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     //[self.contentStack setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
 
     self.bubbleWidthConstraint = [self.bubbleShadowView.widthAnchor constraintEqualToConstant:PPNovaBubbleMinimumWidth];
+    self.bubbleWidthConstraint.priority = UILayoutPriorityRequired;
     self.bubbleWidthConstraint.active = YES;
 
     NSLayoutConstraint *avatarEdge = [self.avatarView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0];
@@ -258,6 +267,8 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     NSLayoutConstraint *assistantLimit = [self.bubbleShadowView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:70.0];
     NSLayoutConstraint *userPrimary = [self.bubbleShadowView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0];
     NSLayoutConstraint *userLimit = [self.bubbleShadowView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-70.0];
+    assistantLimit.priority = UILayoutPriorityDefaultHigh;
+    userLimit.priority = UILayoutPriorityDefaultHigh;
 
     self.assistantConstraints = @[assistantPrimary, assistantLimit];
     self.userConstraints = @[userPrimary, userLimit];
@@ -281,10 +292,10 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         [self.bubbleMaterialView.trailingAnchor constraintEqualToAnchor:self.bubbleShadowView.trailingAnchor],
         [self.bubbleMaterialView.bottomAnchor constraintEqualToAnchor:self.bubbleShadowView.bottomAnchor],
 
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor constant:20.0],
-        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.leadingAnchor constant:15.0],
-        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.trailingAnchor constant:-15.0],
-        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.bottomAnchor constant:-18.0]
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor constant:18.0],
+        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.leadingAnchor constant:17.0],
+        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.trailingAnchor constant:-17.0],
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.bottomAnchor constant:-16.0]
     ]];
 
     [self pp_applyStyleForAssistant:YES typing:NO];
@@ -800,6 +811,37 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.accessibilityLabel = [self pp_currentPlainMessageText];
 }
 
+- (void)setNovaStarred:(BOOL)starred {
+    if (!starred) {
+        self.statusImageView.image = nil;
+        self.statusImageView.hidden = YES;
+        self.statusImageView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    UIImage *starImage = nil;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:10.5
+                                                                                                    weight:UIImageSymbolWeightSemibold];
+        starImage = [UIImage systemImageNamed:@"star.fill" withConfiguration:configuration];
+    }
+    self.statusImageView.image = starImage;
+    self.statusImageView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    self.statusImageView.hidden = (starImage == nil);
+
+    if (!UIAccessibilityIsReduceMotionEnabled() && starImage) {
+        self.statusImageView.transform = CGAffineTransformMakeScale(0.72, 0.72);
+        [UIView animateWithDuration:0.28
+                              delay:0.0
+             usingSpringWithDamping:0.76
+              initialSpringVelocity:0.16
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.statusImageView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
+}
+
 - (void)configureTypingWithMaxWidth:(CGFloat)maxWidth {
     self.messageModel = nil;
     self.typingMode = YES;
@@ -942,6 +984,11 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     }
 
     CGFloat targetWidth = MIN(availableWidth, MAX(minimumWidth, measuredWidth));
+    if (assistant && !self.typingMode) {
+        CGFloat comfortableWidth = floor(containerWidth * 0.58);
+        comfortableWidth = MIN(PPNovaAssistantMaximumReadableFloor, MAX(PPNovaAssistantMinimumReadableWidth, comfortableWidth));
+        targetWidth = MAX(targetWidth, MIN(availableWidth, comfortableWidth));
+    }
     if (self.typingMode) {
         targetWidth = MAX(targetWidth, 86.0);
     }
@@ -993,7 +1040,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     CGFloat readableWidth = MIN(maxLabelWidth, MAX(measuredWidth, PPNovaBubbleMinimumWidth - PPNovaBubbleHorizontalContentInset));
     if (self.assistantMessage && !self.typingMode) {
         CGFloat assistantFloor = MIN(maxLabelWidth, MAX(PPNovaAssistantMinimumReadableWidth - PPNovaBubbleHorizontalContentInset,
-                                                        floor(maxLabelWidth * 0.58)));
+                                                        floor(maxLabelWidth * 0.68)));
         readableWidth = MAX(readableWidth, assistantFloor);
     }
     return ceil(readableWidth);
@@ -1047,16 +1094,16 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
 - (void)pp_applyStyleForAssistant:(BOOL)assistant typing:(BOOL)typing {
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    UIColor *assistantFill = PPNovaCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.93],
-                                                   [UIColor colorWithWhite:1.0 alpha:0.105]);
+    UIColor *assistantFill = PPNovaCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.97],
+                                                   [UIColor colorWithWhite:1.0 alpha:0.14]);
     UIColor *assistantText = PPNovaCellDynamicColor(AppPrimaryTextClr ?: UIColor.blackColor,
                                                    UIColor.whiteColor);
     UIColor *assistantMeta = PPNovaCellDynamicColor([UIColor colorWithWhite:0.16 alpha:0.46],
                                                    [UIColor colorWithWhite:1.0 alpha:0.46]);
-    UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.13],
-                                                     [UIColor.whiteColor colorWithAlphaComponent:0.09]);
-    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.90],
-                                              [brand colorWithAlphaComponent:0.76]);
+    UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.16],
+                                                     [UIColor.whiteColor colorWithAlphaComponent:0.12]);
+    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.86],
+                                              [brand colorWithAlphaComponent:0.78]);
     UIColor *userText = UIColor.whiteColor;
     UIColor *userMeta = [UIColor.whiteColor colorWithAlphaComponent:0.72];
     UIColor *userBorder = PPNovaCellDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.34],
@@ -1087,9 +1134,9 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
     self.bubbleShadowView.layer.shadowColor = shadowColor.CGColor;
-    self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.18 : 0.075) : (darkMode ? 0.20 : 0.13);
-    self.bubbleShadowView.layer.shadowRadius = assistant ? 18.0 : 17.0;
-    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 8.0 : 9.0);
+    self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.20 : 0.09) : (darkMode ? 0.22 : 0.15);
+    self.bubbleShadowView.layer.shadowRadius = assistant ? 20.0 : 18.0;
+    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 9.0 : 10.0);
 
     self.avatarView.backgroundColor = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.11],
                                                             [brand colorWithAlphaComponent:0.18]);

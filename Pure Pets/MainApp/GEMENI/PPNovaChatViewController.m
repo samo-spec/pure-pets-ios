@@ -6,6 +6,7 @@
 #import "PPNovaChatViewController.h"
 #import "ChatMessageModel.h"
 #import "PPAgentClient.h"
+#import "PPNovaGenkitService.h"
 #import "PPAgentMessage.h"
 #import "PPNovaMessageBubbleCell.h" // #import "PPNovaMessageBubbleCell.h" #import "ChatMessageCell.h"
 #import "PPNovaProductMessageCell.h"
@@ -62,6 +63,14 @@ static const NSTimeInterval PPNovaRequestSoftWatchdogDelay = 35.0;
 static const NSInteger PPNovaMaximumRetryAttempts = 1;
 static const NSTimeInterval PPNovaRetryBackoffDelay = 0.6;
 static NSString * const PPNovaThinkingHeaderAnimationName = @"thinking";
+
+static NSArray<NSString *> *PPNovaThinkingHeroAnimationNames(void) {
+    return @[
+        @"novabgnew.json",
+        @"novabgnew1.json",
+        @"novabgnew2.json"
+    ];
+}
 
 #pragma mark - Nova Output Presentation
 
@@ -162,6 +171,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) UILabel *roleLabel;
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) UILabel *messageLabel;
+@property (nonatomic, strong) UIImageView *starImageView;
 
 @end
 
@@ -182,6 +192,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.messageLabel.text = nil;
     self.roleLabel.text = nil;
     self.timeLabel.text = nil;
+    self.starImageView.hidden = YES;
 }
 
 - (void)pp_setupHistoryCell {
@@ -235,6 +246,19 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [content addSubview:timeLabel];
     self.timeLabel = timeLabel;
 
+    UIImageView *starImageView = [[UIImageView alloc] init];
+    starImageView.translatesAutoresizingMaskIntoConstraints = NO;
+    starImageView.contentMode = UIViewContentModeScaleAspectFit;
+    starImageView.hidden = YES;
+    starImageView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:11.0
+                                                                                          weight:UIImageSymbolWeightSemibold];
+        starImageView.image = [UIImage systemImageNamed:@"star.fill" withConfiguration:cfg];
+    }
+    [content addSubview:starImageView];
+    self.starImageView = starImageView;
+
     UILabel *messageLabel = [[UILabel alloc] init];
     messageLabel.translatesAutoresizingMaskIntoConstraints = NO;
     messageLabel.font = [GM fontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightRegular];
@@ -258,7 +282,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
         [roleLabel.leadingAnchor constraintEqualToAnchor:roleDot.trailingAnchor constant:8.0],
         [roleLabel.centerYAnchor constraintEqualToAnchor:roleDot.centerYAnchor],
-        [roleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:timeLabel.leadingAnchor constant:-10.0],
+        [roleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:starImageView.leadingAnchor constant:-8.0],
+
+        [starImageView.trailingAnchor constraintEqualToAnchor:timeLabel.leadingAnchor constant:-7.0],
+        [starImageView.centerYAnchor constraintEqualToAnchor:roleLabel.centerYAnchor],
+        [starImageView.widthAnchor constraintEqualToConstant:13.0],
+        [starImageView.heightAnchor constraintEqualToConstant:13.0],
 
         [timeLabel.trailingAnchor constraintEqualToAnchor:content.trailingAnchor constant:-16.0],
         [timeLabel.centerYAnchor constraintEqualToAnchor:roleLabel.centerYAnchor],
@@ -286,6 +315,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.roleDotView.layer.shadowColor = accent.CGColor;
     self.roleLabel.text = isUser ? kLang(@"nova_history_role_user") : kLang(@"nova_history_role_nova");
     self.roleLabel.textColor = accent;
+    self.starImageView.hidden = !([message[@"starred"] respondsToSelector:@selector(boolValue)] &&
+                                  [message[@"starred"] boolValue]);
 
     NSString *text = [message[@"text"] isKindOfClass:NSString.class] ? message[@"text"] : @"";
     NSString *trimmed = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -317,14 +348,20 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 @interface PPNovaHistorySheetViewController ()
 
+@property (nonatomic, copy) NSArray<NSDictionary *> *allHistoryMessages;
+@property (nonatomic, copy) NSArray<NSDictionary *> *starredHistoryMessages;
 @property (nonatomic, copy) NSArray<NSDictionary *> *historyMessages;
 @property (nonatomic, strong) UIView *headerView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UILabel *subtitleLabel;
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) UIButton *clearButton;
+@property (nonatomic, strong) UISegmentedControl *filterControl;
 @property (nonatomic, strong) UIView *emptyStateView;
+@property (nonatomic, strong) UILabel *emptyTitleLabel;
+@property (nonatomic, strong) UILabel *emptyCopyLabel;
 @property (nonatomic, assign) BOOL didRunEntranceAnimation;
+@property (nonatomic, assign) NSInteger selectedHistoryScopeIndex;
 
 @end
 
@@ -337,7 +374,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         if (source.count > 80) {
             source = [source subarrayWithRange:NSMakeRange(source.count - 80, 80)];
         }
-        self.historyMessages = [[[source reverseObjectEnumerator] allObjects] copy];
+        NSArray<NSDictionary *> *reversed = [[[source reverseObjectEnumerator] allObjects] copy];
+        self.allHistoryMessages = reversed;
+        NSMutableArray<NSDictionary *> *starred = [NSMutableArray array];
+        for (NSDictionary *message in reversed) {
+            if ([message[@"starred"] respondsToSelector:@selector(boolValue)] &&
+                [message[@"starred"] boolValue]) {
+                [starred addObject:message];
+            }
+        }
+        self.starredHistoryMessages = starred.copy;
+        self.historyMessages = self.allHistoryMessages;
         self.modalPresentationStyle = UIModalPresentationPageSheet;
     }
     return self;
@@ -379,9 +426,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     subtitleLabel.font = [GM MidFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
     subtitleLabel.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.78];
     subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
-    subtitleLabel.text = self.historyMessages.count > 0
-        ? [NSString stringWithFormat:kLang(@"nova_chat_history_subtitle_format"), (long)self.historyMessages.count]
-        : kLang(@"nova_no_history");
     [header addSubview:subtitleLabel];
     self.subtitleLabel = subtitleLabel;
 
@@ -418,9 +462,27 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     [clearButton setTitle:kLang(@"nova_history_clear_button") forState:UIControlStateNormal];
     [clearButton addTarget:self action:@selector(pp_handleClearHistoryTapped) forControlEvents:UIControlEventTouchUpInside];
-    clearButton.hidden = self.historyMessages.count == 0;
+    clearButton.hidden = self.allHistoryMessages.count == 0;
     [header addSubview:clearButton];
     self.clearButton = clearButton;
+
+    UISegmentedControl *filterControl = [[UISegmentedControl alloc] initWithItems:@[
+        kLang(@"nova_history_tab_all"),
+        kLang(@"nova_history_tab_starred")
+    ]];
+    filterControl.translatesAutoresizingMaskIntoConstraints = NO;
+    filterControl.selectedSegmentIndex = 0;
+    filterControl.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [filterControl addTarget:self action:@selector(pp_handleHistoryFilterChanged:) forControlEvents:UIControlEventValueChanged];
+    if (@available(iOS 13.0, *)) {
+        filterControl.selectedSegmentTintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+        [filterControl setTitleTextAttributes:@{ NSForegroundColorAttributeName: UIColor.whiteColor }
+                                      forState:UIControlStateSelected];
+        [filterControl setTitleTextAttributes:@{ NSForegroundColorAttributeName: AppPrimaryTextClr ?: UIColor.labelColor }
+                                      forState:UIControlStateNormal];
+    }
+    [header addSubview:filterControl];
+    self.filterControl = filterControl;
 
     UITableView *tableView = [[UITableView alloc] initWithFrame:CGRectZero style:UITableViewStylePlain];
     tableView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -449,8 +511,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     emptyTitle.font = [GM boldFontWithSize:PPFontHeadline] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold];
     emptyTitle.textColor = AppPrimaryTextClr ?: UIColor.blackColor;
     emptyTitle.textAlignment = NSTextAlignmentCenter;
-    emptyTitle.text = kLang(@"nova_history_empty_title");
     [emptyView addSubview:emptyTitle];
+    self.emptyTitleLabel = emptyTitle;
 
     UILabel *emptyCopy = [[UILabel alloc] init];
     emptyCopy.translatesAutoresizingMaskIntoConstraints = NO;
@@ -458,8 +520,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     emptyCopy.textColor = [AppSecondaryTextClr colorWithAlphaComponent:0.78];
     emptyCopy.textAlignment = NSTextAlignmentCenter;
     emptyCopy.numberOfLines = 0;
-    emptyCopy.text = kLang(@"nova_history_empty_subtitle");
     [emptyView addSubview:emptyCopy];
+    self.emptyCopyLabel = emptyCopy;
 
     [NSLayoutConstraint activateConstraints:@[
         [header.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:18.0],
@@ -482,9 +544,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [clearButton.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:10.0],
         [clearButton.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [clearButton.heightAnchor constraintEqualToConstant:36.0],
-        [clearButton.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-6.0],
 
-        [tableView.topAnchor constraintEqualToAnchor:header.bottomAnchor constant:16.0],
+        [filterControl.topAnchor constraintEqualToAnchor:clearButton.bottomAnchor constant:12.0],
+        [filterControl.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
+        [filterControl.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-22.0],
+        [filterControl.heightAnchor constraintEqualToConstant:34.0],
+        [filterControl.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-6.0],
+
+        [tableView.topAnchor constraintEqualToAnchor:header.bottomAnchor constant:14.0],
         [tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
@@ -502,6 +569,62 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [emptyCopy.trailingAnchor constraintEqualToAnchor:emptyView.trailingAnchor],
         [emptyCopy.bottomAnchor constraintEqualToAnchor:emptyView.bottomAnchor]
     ]];
+
+    [self pp_applyHistoryScopeAnimated:NO];
+}
+
+- (void)pp_handleHistoryFilterChanged:(UISegmentedControl *)sender {
+    self.selectedHistoryScopeIndex = MAX(0, sender.selectedSegmentIndex);
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback prepare];
+    [feedback impactOccurred];
+    [self pp_applyHistoryScopeAnimated:YES];
+}
+
+- (void)pp_applyHistoryScopeAnimated:(BOOL)animated {
+    BOOL showingStarred = self.selectedHistoryScopeIndex == 1;
+    self.historyMessages = showingStarred ? (self.starredHistoryMessages ?: @[]) : (self.allHistoryMessages ?: @[]);
+    [self pp_updateHistorySummaryLabels];
+
+    BOOL hasMessages = self.historyMessages.count > 0;
+    self.tableView.hidden = !hasMessages;
+    self.emptyStateView.hidden = hasMessages;
+
+    void (^reloadBlock)(void) = ^{
+        [self.tableView reloadData];
+    };
+
+    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView transitionWithView:self.tableView
+                          duration:0.22
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowUserInteraction
+                        animations:reloadBlock
+                        completion:nil];
+        self.emptyStateView.alpha = hasMessages ? 0.0 : 1.0;
+        self.emptyStateView.transform = hasMessages ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
+    } else {
+        reloadBlock();
+        self.emptyStateView.alpha = hasMessages ? 0.0 : 1.0;
+        self.emptyStateView.transform = CGAffineTransformIdentity;
+    }
+}
+
+- (void)pp_updateHistorySummaryLabels {
+    BOOL showingStarred = self.selectedHistoryScopeIndex == 1;
+    NSUInteger count = self.historyMessages.count;
+    if (showingStarred) {
+        self.subtitleLabel.text = count > 0
+            ? [NSString stringWithFormat:kLang(@"nova_chat_history_starred_subtitle_format"), (long)count]
+            : kLang(@"nova_no_starred_history");
+        self.emptyTitleLabel.text = kLang(@"nova_history_starred_empty_title");
+        self.emptyCopyLabel.text = kLang(@"nova_history_starred_empty_subtitle");
+    } else {
+        self.subtitleLabel.text = count > 0
+            ? [NSString stringWithFormat:kLang(@"nova_chat_history_subtitle_format"), (long)count]
+            : kLang(@"nova_no_history");
+        self.emptyTitleLabel.text = kLang(@"nova_history_empty_title");
+        self.emptyCopyLabel.text = kLang(@"nova_history_empty_subtitle");
+    }
 }
 
 - (void)pp_closeHistorySheet {
@@ -516,9 +639,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                           style:UIAlertActionStyleDestructive
                                                         handler:^(__unused UIAlertAction *action) {
         [[PPNovaLocalChatMemory sharedMemory] clearAllMessages];
+        self.allHistoryMessages = @[];
+        self.starredHistoryMessages = @[];
         self.historyMessages = @[];
         self.clearButton.hidden = YES;
-        self.subtitleLabel.text = kLang(@"nova_no_history");
+        self.selectedHistoryScopeIndex = 0;
+        self.filterControl.selectedSegmentIndex = 0;
+        [self pp_updateHistorySummaryLabels];
         self.emptyStateView.hidden = NO;
         [self.tableView reloadData];
 
@@ -982,7 +1109,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 #pragma mark - Backend
 
 - (void)setupNovaBackend {
-    LOG_INFO(@"[PPNovaChat][Debug] Initialized Nova backend with ADK runtime: %@ (timeout=60s)", kPPAgentBaseURL);
+    BOOL useGenkit = [[NSUserDefaults standardUserDefaults] boolForKey:@"pp_nova_use_genkit"];
+    if (useGenkit) {
+        LOG_INFO(@"[PPNovaChat][Debug] Initialized Nova backend with Genkit Callable (novaGenkitChat)");
+    } else {
+        LOG_INFO(@"[PPNovaChat][Debug] Initialized Nova backend with ADK runtime: %@ (timeout=60s)", kPPAgentBaseURL);
+    }
 }
 
 - (NSString *)pp_newNovaScopedIDWithPrefix:(NSString *)prefix {
@@ -1926,6 +2058,61 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     __weak typeof(self) weakSelf = self;
     NSString *userLang = [self textContainsArabic:trimmedText] ? @"ar" : @"en";
+
+    // Forced to YES for testing Genkit backend
+    BOOL useGenkit = YES; // [[NSUserDefaults standardUserDefaults] boolForKey:@"pp_nova_use_genkit"];
+    if (useGenkit) {
+        LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_genkit_callable request_id=%@ attempt=%ld",
+                 requestID ?: @"", (long)attempt);
+
+        // PPNovaGenkitService already handles auth & appcheck implicitly via FIRFunctions
+        [[PPNovaGenkitService sharedService] sendMessage:trimmedText
+                                               sessionId:self.novaSessionId
+                                                language:userLang
+                                                 context:nil
+                                              completion:^(NSString * _Nullable text, NSDictionary * _Nullable metadata, NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || self.dismissed || generation != self.novaRequestGeneration) return;
+
+                if (error) {
+                    LOG_ERROR(@"[PPNovaChat][Debug] branch=genkit_failed error=%@ request_id=%@ attempt=%ld",
+                              error.localizedDescription ?: @"unknown",
+                              requestID ?: @"",
+                              (long)attempt);
+                    BOOL shouldRetry = attempt < PPNovaMaximumRetryAttempts &&
+                                       [PPNovaChatViewController pp_isRetryableNovaError:error];
+                    if (shouldRetry) {
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(PPNovaRetryBackoffDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                            [self pp_dispatchNovaRequest:trimmedText
+                                          visibleUserText:visibleUserText
+                                                  idToken:idToken
+                                            appCheckToken:appCheckToken
+                                                  attempt:attempt + 1
+                                               generation:generation
+                                                requestID:requestID];
+                        });
+                        return;
+                    }
+
+                    [self hideNovaTyping];
+                    NSString *userFacingError = [PPNovaChatViewController pp_userFacingErrorForNovaError:error] ?: kLang(@"nova_error_unavailable");
+                    [self pp_addNovaSystemBubbleIfNew:userFacingError];
+                    return;
+                }
+
+                PPAgentMessage *reply = [PPAgentMessage agentText:text ?: @""];
+                reply.responseData = metadata;
+                [self pp_handleNovaAgentProxyReply:reply
+                                          userText:(visibleUserText.length > 0 ? visibleUserText : trimmedText)
+                                         requestID:requestID
+                                fallbackResponseID:responseID
+                                        generation:generation];
+            });
+        }];
+        return;
+    }
+
     LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_agent_runtime request_id=%@ attempt=%ld runtime=%@",
              requestID ?: @"",
              (long)attempt,
@@ -4369,6 +4556,70 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     return self.novaHeaderCollapsed ? 0.42 : 0.72;
 }
 
+- (void)pp_loadBundledNovaLoaderIntoView:(LOTAnimationView *)animationView {
+    if (!animationView) {
+        return;
+    }
+
+    NSString *path = [[NSBundle mainBundle] pathForResource:@"NovaLoader" ofType:@"json"];
+    NSData *data = path.length > 0 ? [NSData dataWithContentsOfFile:path] : nil;
+    if (data.length == 0) {
+        return;
+    }
+
+    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+    LOTComposition *composition = [json isKindOfClass:NSDictionary.class] ? [LOTComposition animationFromJSON:json] : nil;
+    if (!composition) {
+        return;
+    }
+
+    animationView.animationSpeed = 0.82;
+    animationView.loopAnimation = YES;
+    [animationView setSceneModel:composition];
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        [animationView play];
+    }
+}
+
+- (NSString *)pp_randomNovaThinkingHeroAnimationName {
+    NSArray<NSString *> *allNames = PPNovaThinkingHeroAnimationNames();
+    if (allNames.count == 0) {
+        return PPNovaThinkingHeaderAnimationName;
+    }
+
+    NSMutableArray<NSString *> *candidates = [allNames mutableCopy];
+    if (candidates.count > 1 && self.currentHeaderBgAnimationName.length > 0) {
+        [candidates removeObject:self.currentHeaderBgAnimationName];
+    }
+
+    uint32_t count = (uint32_t)MAX(candidates.count, 1);
+    return candidates[arc4random_uniform(count)] ?: PPNovaThinkingHeaderAnimationName;
+}
+
+- (BOOL)pp_loadBundledThinkingFallbackIntoView:(LOTAnimationView *)animationView {
+    if (!animationView) {
+        return NO;
+    }
+
+    NSString *path = [[NSBundle mainBundle] pathForResource:PPNovaThinkingHeaderAnimationName ofType:@"json"];
+    NSData *data = path.length > 0 ? [NSData dataWithContentsOfFile:path] : nil;
+    if (data.length == 0) {
+        return NO;
+    }
+
+    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+    LOTComposition *composition = [json isKindOfClass:NSDictionary.class] ? [LOTComposition animationFromJSON:json] : nil;
+    if (!composition) {
+        return NO;
+    }
+
+    animationView.animationSpeed = 1.0;
+    animationView.loopAnimation = YES;
+    animationView.animationProgress = 0.0;
+    [animationView setSceneModel:composition];
+    return YES;
+}
+
 - (void)pp_loadNovaIdentityAnimationIntoView:(LOTAnimationView *)animationView {
     if (!animationView) {
         return;
@@ -4645,16 +4896,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [contentView addSubview:brandHalo];
     self.headerBrandHaloView = brandHalo;
 
-    LOTAnimationView *loadingLottie = [LOTAnimationView animationNamed:@"nova_loading"];
+    LOTAnimationView *loadingLottie = [[LOTAnimationView alloc] init];
     loadingLottie.translatesAutoresizingMaskIntoConstraints = NO;
     loadingLottie.userInteractionEnabled = NO;
     loadingLottie.contentMode = UIViewContentModeScaleAspectFit;
     loadingLottie.loopAnimation = YES;
-    loadingLottie.animationSpeed = 0.5;
+    loadingLottie.animationSpeed = 0.82;
     loadingLottie.alpha = 0.0;
     loadingLottie.clipsToBounds = YES;
     [brandHalo addSubview:loadingLottie];
     self.novaLoadingLottie = loadingLottie;
+    [self pp_loadBundledNovaLoaderIntoView:loadingLottie];
 
     UIView *brandRing = [[UIView alloc] init];
     brandRing.translatesAutoresizingMaskIntoConstraints = NO;
@@ -5482,7 +5734,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)pp_showThinkingHeaderLottieWithAnimation:(NSString *)animationName {
     self.novaHeaderThinkingAnimationVisible = YES;
-    [self pp_transitionHeaderBackgroundToAnimation:animationName];
+    NSString *heroAnimationName = [animationName isEqualToString:PPNovaThinkingHeaderAnimationName]
+        ? [self pp_randomNovaThinkingHeroAnimationName]
+        : (animationName.length > 0 ? animationName : [self pp_randomNovaThinkingHeroAnimationName]);
+    [self pp_transitionHeaderBackgroundToAnimation:heroAnimationName];
 
     [self.novaLoadingLottie play];
     [UIView animateWithDuration:0.3 animations:^{
@@ -5531,10 +5786,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         if (!self || self.dismissed) return;
 
         __weak typeof(self) wself = self;
-        [AppClasses setAnimationNamed:animationName
-                               ToView:self.novaHeaderBackgroundLottie
-                            withSpeed:1.0
-                           completion:^(BOOL success) {
+        [Styling setAnimationNamed:animationName
+                            toView:self.novaHeaderBackgroundLottie
+                         withSpeed:1.0
+                     loopAnimation:YES
+                          autoplay:NO
+                        completion:^(BOOL success) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(wself) self = wself;
                 if (!self || self.dismissed) return;
@@ -5542,7 +5799,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                 // If it changed AGAIN while we were loading, don't show the old one.
                 if (![self.currentHeaderBgAnimationName isEqualToString:animationName]) return;
 
-                if (success) {
+                BOOL canPlay = success;
+                if (!canPlay && [PPNovaThinkingHeroAnimationNames() containsObject:animationName]) {
+                    canPlay = [self pp_loadBundledThinkingFallbackIntoView:self.novaHeaderBackgroundLottie];
+                    self.currentHeaderBgAnimationName = PPNovaThinkingHeaderAnimationName;
+                }
+
+                if (canPlay) {
                     [self.novaHeaderBackgroundLottie play];
                     [UIView animateWithDuration:0.38
                                           delay:0.06
@@ -7082,6 +7345,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     cell.delegate = self;
     cell.accessibilityIdentifier = presentation.renderKey;
     [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
+    [cell setNovaStarred:[[PPNovaLocalChatMemory sharedMemory] isMessageStarred:msg.ID ?: @""]];
     /*
      [cell configureWithMessage:msg.text
                            date:msg.timestamp
@@ -7144,6 +7408,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             PPNovaMessageBubbleCell *cell = (PPNovaMessageBubbleCell *)visibleCell;
             cell.accessibilityIdentifier = presentation.renderKey;
             [cell configureWithMessage:message maxWidth:presentation.style.maxWidth];
+            [cell setNovaStarred:[[PPNovaLocalChatMemory sharedMemory] isMessageStarred:message.ID ?: @""]];
             continue;
         }
 
@@ -7208,6 +7473,155 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         cell.transform = CGAffineTransformIdentity;
         cell.contentView.alpha = 1.0;
     } completion:nil];
+}
+
+- (UIContextMenuConfiguration *)tableView:(UITableView *)tableView
+ contextMenuConfigurationForRowAtIndexPath:(NSIndexPath *)indexPath
+                                    point:(CGPoint)point {
+    (void)tableView;
+    (void)point;
+    if (@available(iOS 13.0, *)) {
+        if (indexPath.row < 0 || indexPath.row >= (NSInteger)self.messages.count) {
+            return nil;
+        }
+        ChatMessageModel *message = self.messages[indexPath.row];
+        if (![self pp_canShowPremiumActionsForNovaMessage:message]) {
+            return nil;
+        }
+
+        __weak typeof(self) weakSelf = self;
+        NSString *identifier = message.ID ?: [[NSUUID UUID] UUIDString];
+        return [UIContextMenuConfiguration configurationWithIdentifier:identifier
+                                                       previewProvider:nil
+                                                        actionProvider:^UIMenu * _Nullable(NSArray<UIMenuElement *> * _Nonnull suggestedActions) {
+            (void)suggestedActions;
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return nil;
+            }
+
+            BOOL starred = [[PPNovaLocalChatMemory sharedMemory] isMessageStarred:message.ID ?: @""];
+            NSString *starTitle = starred ? kLang(@"nova_message_action_unstar") : kLang(@"nova_message_action_star");
+            UIImage *starImage = [UIImage systemImageNamed:(starred ? @"star.slash" : @"star.fill")];
+            UIAction *starAction = [UIAction actionWithTitle:starTitle
+                                                       image:starImage
+                                                  identifier:nil
+                                                     handler:^(__unused UIAction *action) {
+                [self pp_toggleStarForNovaMessage:message atIndexPath:indexPath];
+            }];
+
+            NSString *resendText = [self pp_resendTextForNovaMessage:message row:indexPath.row];
+            UIAction *resendAction = [UIAction actionWithTitle:kLang(@"nova_message_action_resend")
+                                                         image:[UIImage systemImageNamed:@"arrow.clockwise"]
+                                                    identifier:nil
+                                                       handler:^(__unused UIAction *action) {
+                [self pp_resendNovaMessage:message fromRow:indexPath.row];
+            }];
+            if (resendText.length == 0) {
+                resendAction.attributes = UIMenuElementAttributesDisabled;
+            }
+
+            UIAction *replyAction = [UIAction actionWithTitle:kLang(@"nova_message_action_reply")
+                                                        image:[UIImage systemImageNamed:@"arrowshape.turn.up.left"]
+                                                   identifier:nil
+                                                      handler:^(__unused UIAction *action) {
+                [self pp_replyToNovaMessage:message];
+            }];
+
+            return [UIMenu menuWithTitle:@""
+                                children:@[starAction, resendAction, replyAction]];
+        }];
+    }
+    return nil;
+}
+
+- (BOOL)pp_canShowPremiumActionsForNovaMessage:(ChatMessageModel *)message {
+    if (![message isKindOfClass:ChatMessageModel.class]) {
+        return NO;
+    }
+    if (message.messageType != ChatMessageTypeText) {
+        return NO;
+    }
+    NSString *trimmed = [message.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    return trimmed.length > 0 || message.novaOptions.count > 0;
+}
+
+- (NSString *)pp_trimmedNovaMessageText:(ChatMessageModel *)message {
+    NSString *text = [message.text isKindOfClass:NSString.class] ? message.text : @"";
+    return [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+}
+
+- (NSString *)pp_novaSnippetForMessageText:(NSString *)text maxLength:(NSUInteger)maxLength {
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+    if (trimmed.length <= maxLength) {
+        return trimmed;
+    }
+    NSString *prefix = [trimmed substringToIndex:maxLength];
+    return [[prefix stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] stringByAppendingString:@"..."];
+}
+
+- (NSString *)pp_resendTextForNovaMessage:(ChatMessageModel *)message row:(NSInteger)row {
+    NSString *text = [self pp_trimmedNovaMessageText:message];
+    if (text.length == 0) {
+        return @"";
+    }
+    if (![message.senderID isEqualToString:@"nova_bot_id"]) {
+        return text;
+    }
+    for (NSInteger idx = row - 1; idx >= 0; idx--) {
+        ChatMessageModel *candidate = self.messages[(NSUInteger)idx];
+        if (![candidate.senderID isEqualToString:@"nova_bot_id"]) {
+            NSString *candidateText = [self pp_trimmedNovaMessageText:candidate];
+            if (candidateText.length > 0) {
+                return candidateText;
+            }
+        }
+    }
+    return @"";
+}
+
+- (void)pp_playNovaPremiumActionFeedback {
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback prepare];
+    [feedback impactOccurred];
+}
+
+- (void)pp_toggleStarForNovaMessage:(ChatMessageModel *)message atIndexPath:(NSIndexPath *)indexPath {
+    if (message.ID.length == 0) {
+        return;
+    }
+    BOOL currentlyStarred = [[PPNovaLocalChatMemory sharedMemory] isMessageStarred:message.ID];
+    BOOL nextStarred = !currentlyStarred;
+    [[PPNovaLocalChatMemory sharedMemory] setMessageStarred:nextStarred messageId:message.ID];
+    [self pp_playNovaPremiumActionFeedback];
+
+    UITableViewCell *cell = [self.tableView cellForRowAtIndexPath:indexPath];
+    if ([cell isKindOfClass:PPNovaMessageBubbleCell.class]) {
+        [(PPNovaMessageBubbleCell *)cell setNovaStarred:nextStarred];
+    }
+}
+
+- (void)pp_resendNovaMessage:(ChatMessageModel *)message fromRow:(NSInteger)row {
+    NSString *text = [self pp_resendTextForNovaMessage:message row:row];
+    if (text.length == 0) {
+        return;
+    }
+    [self pp_playNovaPremiumActionFeedback];
+    [self pp_handleNovaSubmittedText:text displayText:text];
+}
+
+- (void)pp_replyToNovaMessage:(ChatMessageModel *)message {
+    NSString *text = [self pp_trimmedNovaMessageText:message];
+    if (text.length == 0) {
+        return;
+    }
+    BOOL isNova = [message.senderID isEqualToString:@"nova_bot_id"];
+    NSString *role = isNova ? kLang(@"nova_message_reply_role_nova") : kLang(@"nova_message_reply_role_you");
+    NSString *snippet = [self pp_novaSnippetForMessageText:text maxLength:260];
+    NSString *draft = [NSString stringWithFormat:kLang(@"nova_message_reply_draft_format"), role, snippet];
+    [self pp_playNovaPremiumActionFeedback];
+    [self.inputbar setText:draft ?: @""];
+    [self.inputbar focusTextInput];
 }
 
 #pragma mark - PPNovaMessageBubbleCellDelegate
@@ -7538,9 +7952,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     msg.novaProducts = nil;
     msg.novaOptions = (isIncoming && displayOptions.count > 0) ? [displayOptions copy] : nil;
 
-    [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:isIncoming ? @"nova" : @"user" text:memoryText];
+    [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:isIncoming ? @"nova" : @"user"
+                                                        text:memoryText
+                                                   messageId:msg.ID
+                                                   sessionId:self.novaSessionId];
 
-    [[PPChatFeedbackManager shared] playFeedbackForEvent:isIncoming ? PPChatFeedbackEventIncomingActiveChat : PPChatFeedbackEventOutgoingSend];
+    [[PPChatFeedbackManager shared] playNovaFeedbackForEvent:isIncoming ? PPChatFeedbackEventIncomingActiveChat : PPChatFeedbackEventOutgoingSend];
     [self pp_appendNovaMessageModel:msg updateReason:isIncoming ? @"insert_assistant_text" : @"insert_user_text"];
 
     LOG_INFO(@"[PPNovaChat][RenderBinding] text_bubble_attached request_id=%@ response_id=%@ attached_to_message_id=%@ role=%@ incoming_card_count=0 reused_previous_payload=NO",
