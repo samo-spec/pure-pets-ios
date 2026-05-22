@@ -56,6 +56,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Optional text if you’re not binding to a model.
 @property (nonatomic, copy, nullable) NSString *descriptionText;
+
+/// Host scroll view — used to keep scroll position stable when expanding/collapsing.
+@property (nonatomic, weak, nullable) UIScrollView *hostScrollView;
+
 - (void)handleShareAction;
 
 @end

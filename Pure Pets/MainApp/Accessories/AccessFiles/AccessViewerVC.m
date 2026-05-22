@@ -552,6 +552,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)pp_buildDescriptionSection {
 
     self.descView = [[PPAccessoryDescriptionView alloc] init];
+    self.descView.hostScrollView = self.scrollView;
     [self.contentView addSubview:self.descView];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -2066,7 +2067,6 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
 @property (nonatomic, strong) NSLayoutConstraint *textViewHeightConstraint;
 @property (nonatomic, copy) NSString *fullDescriptionText;
 @property (nonatomic, assign) BOOL isExpanded;
-@property (nonatomic, assign) BOOL isReadMorePulseActive;
 @property (nonatomic, assign) CGFloat lastMeasuredTextWidth;
 @end
 
@@ -2132,7 +2132,7 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
 
     _moreButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _moreButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _moreButton.titleLabel.font = [GM boldFontWithSize:13];
+    _moreButton.titleLabel.font = [GM boldFontWithSize:14];
     [_moreButton addTarget:self action:@selector(pp_toggleExpanded) forControlEvents:UIControlEventTouchUpInside];
     [_moreButton addTarget:self action:@selector(pp_moreButtonTouchDown) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
     [_moreButton addTarget:self action:@selector(pp_moreButtonTouchUp) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
@@ -2148,6 +2148,11 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
         config.imagePlacement = NSDirectionalRectEdgeTrailing;
         config.imagePadding = 6;
         config.baseForegroundColor = AppPrimaryClr;
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> * _Nonnull(NSDictionary<NSAttributedStringKey, id> * _Nonnull incoming) {
+            NSMutableDictionary *attrs = [incoming mutableCopy];
+            attrs[NSFontAttributeName] = [GM boldFontWithSize:14];
+            return attrs;
+        };
         UIBackgroundConfiguration *bg = [UIBackgroundConfiguration clearConfiguration];
         bg.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
         bg.cornerRadius = 17;
@@ -2219,30 +2224,17 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
     }
 
     self.isExpanded = !self.isExpanded;
-    [self pp_performReadMoreSurfacePulse];
+    [self pp_applyLineLimitAnimated:YES];
 
-    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.34;
     CGFloat rotation = self.isExpanded ? (CGFloat)M_PI : 0.0;
-
-    [UIView transitionWithView:_textView
-                      duration:duration
-                       options:UIViewAnimationOptionTransitionCrossDissolve |
-                               UIViewAnimationOptionBeginFromCurrentState |
-                               UIViewAnimationOptionAllowUserInteraction
-                    animations:^{
-        [self pp_applyLineLimitAnimated:NO];
-        self.moreButton.imageView.transform = CGAffineTransformMakeRotation(rotation);
-        [self pp_propagateLayoutToScrollContent];
-    }
-                    completion:nil];
-
+    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.28;
     [UIView animateWithDuration:duration
                           delay:0.0
-         usingSpringWithDamping:0.82
-          initialSpringVelocity:0.45
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                        options:UIViewAnimationOptionCurveEaseInOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        [self pp_propagateLayoutToScrollContent];
+        self.moreButton.imageView.transform = CGAffineTransformMakeRotation(rotation);
     }
                      completion:nil];
 }
@@ -2269,77 +2261,71 @@ static const NSInteger kPPAccessoryDescCollapsedLines = 8;
         self.moreButton.imageView.transform = CGAffineTransformIdentity;
     }
 
-    CGFloat targetHeight = [self pp_targetTextViewHeight];
-    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
-        self.textViewHeightConstraint.constant = targetHeight;
-        [self pp_propagateLayoutToScrollContent];
-        return;
-    }
-
-    [UIView animateWithDuration:0.34
-                          delay:0.0
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.35
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
-                     animations:^{
-        self.textViewHeightConstraint.constant = targetHeight;
-        [self pp_propagateLayoutToScrollContent];
-    }
-                     completion:nil];
+    [self pp_setTextViewHeight:[self pp_targetTextViewHeight] animated:animated];
 }
 
 - (void)pp_updateMoreButtonTitle:(NSString *)title {
+    UIFont *toggleFont = [GM boldFontWithSize:14];
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = self.moreButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
         config.title = title;
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> * _Nonnull(NSDictionary<NSAttributedStringKey, id> * _Nonnull incoming) {
+            NSMutableDictionary *attrs = [incoming mutableCopy];
+            attrs[NSFontAttributeName] = toggleFont;
+            return attrs;
+        };
         self.moreButton.configuration = config;
         return;
     }
     [self.moreButton setTitle:title forState:UIControlStateNormal];
+    self.moreButton.titleLabel.font = toggleFont;
 }
 
-- (void)pp_performReadMoreSurfacePulse {
-    if (self.isReadMorePulseActive || UIAccessibilityIsReduceMotionEnabled() || !self.surfaceView) {
+- (void)pp_setTextViewHeight:(CGFloat)targetHeight animated:(BOOL)animated {
+    UIScrollView *scrollView = self.hostScrollView;
+    CGFloat anchorScreenY = 0.0;
+    BOOL shouldAnchorScroll = scrollView != nil;
+
+    if (shouldAnchorScroll) {
+        CGRect anchorFrame = [self.moreButton convertRect:self.moreButton.bounds toView:scrollView];
+        anchorScreenY = CGRectGetMinY(anchorFrame) - scrollView.contentOffset.y;
+    }
+
+    void (^layoutUpdates)(void) = ^{
+        self.textViewHeightConstraint.constant = targetHeight;
+        [self.superview setNeedsLayout];
+        [self.superview layoutIfNeeded];
+
+        if (!shouldAnchorScroll) {
+            return;
+        }
+
+        CGRect anchorFrameAfter = [self.moreButton convertRect:self.moreButton.bounds toView:scrollView];
+        CGFloat drift = (CGRectGetMinY(anchorFrameAfter) - scrollView.contentOffset.y) - anchorScreenY;
+        if (fabs(drift) <= 0.5) {
+            return;
+        }
+
+        CGPoint offset = scrollView.contentOffset;
+        offset.y += drift;
+        CGFloat minY = -scrollView.adjustedContentInset.top;
+        CGFloat maxY = MAX(minY, scrollView.contentSize.height - scrollView.bounds.size.height + scrollView.adjustedContentInset.bottom);
+        offset.y = MIN(MAX(minY, offset.y), maxY);
+        scrollView.contentOffset = offset;
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        layoutUpdates();
         return;
     }
 
-    self.isReadMorePulseActive = YES;
-    CGFloat originalAlpha = self.surfaceView.alpha > 0.0 ? self.surfaceView.alpha : 1.0;
-
-    [UIView animateKeyframesWithDuration:0.34
-                                   delay:0.0
-                                 options:UIViewKeyframeAnimationOptionBeginFromCurrentState |
-                                         UIViewKeyframeAnimationOptionAllowUserInteraction |
-                                         UIViewKeyframeAnimationOptionCalculationModeCubic
-                              animations:^{
-        [UIView addKeyframeWithRelativeStartTime:0.0
-                                relativeDuration:0.38
-                                      animations:^{
-            self.surfaceView.transform = CGAffineTransformMakeScale(0.985, 0.985);
-            self.surfaceView.alpha = MAX(originalAlpha * 0.92, 0.82);
-        }];
-        [UIView addKeyframeWithRelativeStartTime:0.38
-                                relativeDuration:0.62
-                                      animations:^{
-            self.surfaceView.transform = CGAffineTransformIdentity;
-            self.surfaceView.alpha = originalAlpha;
-        }];
-    } completion:^(__unused BOOL finished) {
-        self.isReadMorePulseActive = NO;
-    }];
-}
-
-- (void)pp_propagateLayoutToScrollContent {
-    UIView *ancestor = self.superview;
-    while (ancestor) {
-        [ancestor setNeedsLayout];
-        if ([ancestor isKindOfClass:[UIScrollView class]]) {
-            break;
-        }
-        ancestor = ancestor.superview;
-    }
-    [self invalidateIntrinsicContentSize];
-    [self.superview layoutIfNeeded];
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseInOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:layoutUpdates
+                     completion:nil];
 }
 
 - (CGFloat)pp_textLayoutWidth {
