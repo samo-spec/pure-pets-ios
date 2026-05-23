@@ -925,8 +925,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                // sheet.detents = @[ [UISheetPresentationControllerDetent largeDetent]];//customDetent,
                 
                 sheet.detents = @[
-                    [UISheetPresentationControllerDetent customDetentWithIdentifier:@"92" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                        return context.maximumDetentValue * 0.92;
+                    [UISheetPresentationControllerDetent customDetentWithIdentifier:@"99" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                        return context.maximumDetentValue * 0.99;
                     }]
                 ];
                 
@@ -4179,7 +4179,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *backgroundView = [[UIView alloc] init];
     backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundView.userInteractionEnabled = NO;
-    backgroundView.backgroundColor = AppBageColor();
+    backgroundView.backgroundColor = [AppBageColor() colorWithAlphaComponent:0.7];
+    self.view.backgroundColor = AppClearClr;
     [self.view addSubview:backgroundView];
     self.ambientBackgroundView = backgroundView;
 
