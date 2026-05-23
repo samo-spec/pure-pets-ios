@@ -834,6 +834,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, assign) CGFloat inputBarRestingBottomConstant;
 @property (nonatomic, assign) BOOL usesKeyboardLayoutGuideForNovaInput;
 @property (nonatomic, assign) CGFloat currentNovaKeyboardOffset;
+@property (nonatomic, assign) BOOL novaKeyboardTransitionActive;
 @property (nonatomic, copy, nullable) NSString *novaPendingPetType;
 
 
@@ -1080,10 +1081,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     if (!self.didInitialInset && CGRectGetHeight(self.inputbar.frame) > 0) {
         self.didInitialInset = YES;
-        UIEdgeInsets currentInset = self.tableView.contentInset;
-        currentInset.bottom = 0.0;
-        self.tableView.contentInset = currentInset;
-        self.tableView.scrollIndicatorInsets = currentInset;
+        [self pp_updateNovaTableBottomInsetForCurrentLayout];
     }
 
     CGFloat tableWidth = CGRectGetWidth(self.tableView.bounds);
@@ -1092,7 +1090,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
 
     self.lastNovaTableLayoutWidth = tableWidth;
-    [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"table_width_changed"];
+    if (self.novaKeyboardTransitionActive) {
+        [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"table_width_changed_after_keyboard"];
+    } else {
+        [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"table_width_changed"];
+    }
 }
 
 - (void)dealloc {
@@ -5481,9 +5483,42 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CGFloat topInset = (self.novaHeaderCollapsed ? PPNovaCollapsedTableTopInset : PPNovaExpandedTableTopInset) + 12.0;
     UIEdgeInsets inset = self.tableView.contentInset;
     inset.top = topInset;
-    inset.bottom = 0.0;
     self.tableView.contentInset = inset;
     self.tableView.scrollIndicatorInsets = inset;
+}
+
+- (void)pp_updateNovaTableBottomInsetForCurrentLayout {
+    if (!self.tableView || !self.inputbar || CGRectGetHeight(self.view.bounds) <= 0.0) {
+        return;
+    }
+
+    CGFloat inputBarMinY = CGRectGetMinY(self.inputbar.frame);
+    if (inputBarMinY <= 0.0) {
+        return;
+    }
+
+    CGFloat obscuredHeight = MAX(CGRectGetMaxY(self.view.bounds) - inputBarMinY, 0.0);
+    CGFloat targetBottomInset = MAX(obscuredHeight + PPNovaTableBottomInset, PPNovaTableBottomInset);
+
+    UIEdgeInsets inset = self.tableView.contentInset;
+    inset.bottom = targetBottomInset;
+    self.tableView.contentInset = inset;
+    self.tableView.scrollIndicatorInsets = inset;
+}
+
+- (void)pp_pinNovaTableToBottomIfNeeded:(BOOL)shouldPin {
+    if (!shouldPin || !self.tableView || self.messages.count == 0) {
+        return;
+    }
+
+    [self.tableView layoutIfNeeded];
+    CGFloat boundsHeight = CGRectGetHeight(self.tableView.bounds);
+    CGFloat contentHeight = self.tableView.contentSize.height;
+    UIEdgeInsets inset = self.tableView.contentInset;
+    CGFloat minimumOffsetY = -inset.top;
+    CGFloat bottomOffsetY = MAX(contentHeight + inset.bottom - boundsHeight, minimumOffsetY);
+    CGPoint targetOffset = CGPointMake(self.tableView.contentOffset.x, bottomOffsetY);
+    [self.tableView setContentOffset:targetOffset animated:NO];
 }
 
 - (void)pp_handleNovaHeaderControlPressDown:(UIButton *)sender {
@@ -7209,7 +7244,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [self.tableView.topAnchor constraintEqualToAnchor:self.novaHeaderView.bottomAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
+        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
     ]];
 
     self.tableView.delegate = self;
@@ -7285,6 +7320,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (duration <= 0.0) {
         duration = 0.22;
     }
+    self.novaKeyboardTransitionActive = YES;
     UIViewAnimationOptions options = ((UIViewAnimationOptions)curve << 16) |
         UIViewAnimationOptionBeginFromCurrentState |
         UIViewAnimationOptionAllowUserInteraction;
@@ -7304,12 +7340,16 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         } else {
             self.inputBarBottomConstraint.constant = targetBottomConstant;
         }
-        [self.tableView setNeedsLayout];
         [self.view layoutIfNeeded];
+        [self pp_updateNovaTableBottomInsetForCurrentLayout];
+        [self pp_pinNovaTableToBottomIfNeeded:wasNearBottom];
     } completion:^(BOOL finished) {
+        self.novaKeyboardTransitionActive = NO;
         if (wasNearBottom) {
-            [self scrollToBottomAnimated:NO];
+            [self pp_updateNovaTableBottomInsetForCurrentLayout];
+            [self pp_pinNovaTableToBottomIfNeeded:YES];
         }
+        [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"keyboard_settled"];
     }];
 }
 
@@ -7446,19 +7486,29 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.pendingNovaVisibleLayoutRefreshBlock = nil;
     }
 
+    NSTimeInterval delay = self.novaKeyboardTransitionActive ? 0.24 : 0.055;
     __weak typeof(self) weakSelf = self;
     dispatch_block_t block = dispatch_block_create(0, ^{
         __strong typeof(weakSelf) self = weakSelf;
         if (!self || self.dismissed) return;
+        if (self.novaKeyboardTransitionActive) {
+            [self pp_scheduleNovaVisibleLayoutRefreshForReason:reason ?: @"keyboard_deferred"];
+            return;
+        }
         self.pendingNovaVisibleLayoutRefreshBlock = nil;
         LOG_INFO(@"[PPNovaChat][TableUpdate] debounced_visible_refresh reason=%@", reason ?: @"unknown");
         [self pp_refreshVisibleNovaCellLayoutForCurrentTableWidth];
     });
     self.pendingNovaVisibleLayoutRefreshBlock = block;
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.055 * NSEC_PER_SEC)), dispatch_get_main_queue(), block);
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)), dispatch_get_main_queue(), block);
 }
 
 - (void)pp_refreshVisibleNovaCellLayoutForCurrentTableWidth {
+    if (self.novaKeyboardTransitionActive) {
+        [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"keyboard_deferred_visible_refresh"];
+        return;
+    }
+
     CGFloat width = [self pp_novaMessageLayoutWidthForTableView:self.tableView];
     [self pp_updateVisibleNovaMessageCellWidthsForTableWidth:width];
     [UIView performWithoutAnimation:^{
@@ -7710,15 +7760,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     BOOL wasNearBottom = [self pp_novaIsScrolledNearBottom];
 
-    [UIView animateWithDuration:0.18 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction animations:^{
-        UIEdgeInsets currentInset = self.tableView.contentInset;
-        currentInset.bottom = 0.0;
-        self.tableView.contentInset = currentInset;
-        self.tableView.scrollIndicatorInsets = currentInset;
+    [UIView animateWithDuration:0.24 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
         [self.view layoutIfNeeded];
+        [self pp_updateNovaTableBottomInsetForCurrentLayout];
+        [self pp_pinNovaTableToBottomIfNeeded:wasNearBottom];
     } completion:^(__unused BOOL finished) {
         if (wasNearBottom) {
-            [self scrollToBottomAnimated:NO];
+            [self pp_updateNovaTableBottomInsetForCurrentLayout];
+            [self pp_pinNovaTableToBottomIfNeeded:YES];
         }
     }];
 }

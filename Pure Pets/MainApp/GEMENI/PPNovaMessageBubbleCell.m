@@ -5,6 +5,7 @@
 
 #import "PPNovaMessageBubbleCell.h"
 #import <math.h>
+#import <QuartzCore/QuartzCore.h>
 
 static UIColor *PPNovaCellDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     if (@available(iOS 13.0, *)) {
@@ -56,6 +57,11 @@ static const CGFloat PPNovaTypingAnimationWidth = 58.0;
 static const CGFloat PPNovaTypingAnimationHeight = 58.0;
 static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
+static NSString * const PPNovaTypingAuraSweepAnimationKey = @"pp_nova_typing_aura_sweep";
+static NSString * const PPNovaTypingAuraOpacityAnimationKey = @"pp_nova_typing_aura_opacity";
+static NSString * const PPNovaTypingBubbleBreathAnimationKey = @"pp_nova_typing_bubble_breath";
+static NSString * const PPNovaTypingShadowBreathAnimationKey = @"pp_nova_typing_shadow_breath";
+static NSString * const PPNovaTypingAvatarBreathAnimationKey = @"pp_nova_typing_avatar_breath";
 
 @interface PPNovaMessageBubbleCell ()
 
@@ -63,6 +69,8 @@ static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
 @property (nonatomic, strong) UILabel *avatarLabel;
 @property (nonatomic, strong) UIView *bubbleShadowView;
 @property (nonatomic, strong) UIVisualEffectView *bubbleMaterialView;
+@property (nonatomic, strong) UIView *typingAuraView;
+@property (nonatomic, strong) CAGradientLayer *typingAuraGradientLayer;
 @property (nonatomic, strong) UIStackView *contentStack;
 @property (nonatomic, strong) UILabel *messageLabel;
 @property (nonatomic, strong) UIStackView *metaStack;
@@ -80,6 +88,7 @@ static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
 @property (nonatomic, assign) BOOL assistantMessage;
 @property (nonatomic, assign) BOOL typingMode;
 @property (nonatomic, assign) BOOL typingAnimationLoaded;
+@property (nonatomic, assign) BOOL typingLiveMotionActive;
 
 @end
 
@@ -129,6 +138,21 @@ static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
 
     self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
                                                                         cornerRadius:self.bubbleMaterialView.layer.cornerRadius].CGPath;
+    self.typingAuraGradientLayer.frame = self.typingAuraView.bounds;
+}
+
+- (void)didMoveToWindow {
+    [super didMoveToWindow];
+
+    if (!self.window) {
+        [self.typingAnimationView stop];
+        [self pp_stopTypingLiveMotion];
+        return;
+    }
+
+    if (self.typingMode) {
+        [self pp_startTypingAnimation];
+    }
 }
 
 - (void)setupUI {
@@ -188,6 +212,20 @@ static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
         self.bubbleMaterialView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.contentView addSubview:self.bubbleMaterialView];
+
+    self.typingAuraView = [[UIView alloc] init];
+    self.typingAuraView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.typingAuraView.userInteractionEnabled = NO;
+    self.typingAuraView.hidden = YES;
+    self.typingAuraView.alpha = 0.0;
+    self.typingAuraView.backgroundColor = UIColor.clearColor;
+    [self.bubbleMaterialView.contentView addSubview:self.typingAuraView];
+
+    self.typingAuraGradientLayer = [CAGradientLayer layer];
+    self.typingAuraGradientLayer.startPoint = CGPointMake(0.0, 0.5);
+    self.typingAuraGradientLayer.endPoint = CGPointMake(1.0, 0.5);
+    self.typingAuraGradientLayer.locations = @[@(0.00), @(0.18), @(0.42), @(0.72)];
+    [self.typingAuraView.layer addSublayer:self.typingAuraGradientLayer];
 
     self.contentStack = [[UIStackView alloc] init];
     self.contentStack.translatesAutoresizingMaskIntoConstraints = NO;
@@ -287,6 +325,11 @@ static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
         [self.bubbleMaterialView.leadingAnchor constraintEqualToAnchor:self.bubbleShadowView.leadingAnchor],
         [self.bubbleMaterialView.trailingAnchor constraintEqualToAnchor:self.bubbleShadowView.trailingAnchor],
         [self.bubbleMaterialView.bottomAnchor constraintEqualToAnchor:self.bubbleShadowView.bottomAnchor],
+
+        [self.typingAuraView.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor],
+        [self.typingAuraView.leadingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.leadingAnchor],
+        [self.typingAuraView.trailingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.trailingAnchor],
+        [self.typingAuraView.bottomAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.bottomAnchor],
 
         [self.contentStack.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor constant:18.0],
         [self.contentStack.leadingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.leadingAnchor constant:17.0],
@@ -1178,6 +1221,7 @@ static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
     self.statusImageView.tintColor = userMeta;
 
     self.typingAnimationView.alpha = typing ? 1.0 : 0.0;
+    [self pp_updateTypingAuraForBrand:brand darkMode:darkMode typing:typing];
 
     for (UIButton *button in self.actionStack.arrangedSubviews) {
         if (![button isKindOfClass:UIButton.class]) continue;
@@ -1206,22 +1250,136 @@ static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
     return [formatter stringFromDate:date ?: NSDate.date];
 }
 
+- (void)pp_updateTypingAuraForBrand:(UIColor *)brand darkMode:(BOOL)darkMode typing:(BOOL)typing {
+    UIColor *resolvedBrand = brand ?: UIColor.systemOrangeColor;
+    if (@available(iOS 13.0, *)) {
+        resolvedBrand = [resolvedBrand resolvedColorWithTraitCollection:self.traitCollection];
+    }
+
+    UIColor *clear = [UIColor.whiteColor colorWithAlphaComponent:0.0];
+    UIColor *softBrand = [resolvedBrand colorWithAlphaComponent:darkMode ? 0.22 : 0.13];
+    UIColor *warmGlow = [UIColor.whiteColor colorWithAlphaComponent:darkMode ? 0.14 : 0.30];
+    self.typingAuraGradientLayer.colors = @[
+        (__bridge id)clear.CGColor,
+        (__bridge id)softBrand.CGColor,
+        (__bridge id)warmGlow.CGColor,
+        (__bridge id)clear.CGColor
+    ];
+    self.typingAuraGradientLayer.locations = @[@(0.00), @(0.18), @(0.42), @(0.72)];
+
+    self.typingAuraView.hidden = !typing;
+    self.typingAuraView.alpha = typing ? (UIAccessibilityIsReduceMotionEnabled() ? 0.32 : 0.72) : 0.0;
+}
+
 - (void)pp_startTypingAnimation {
     [self pp_loadTypingAnimationIfNeeded];
 
     if (UIAccessibilityIsReduceMotionEnabled()) {
         [self.typingAnimationView stop];
         self.typingAnimationView.animationProgress = 0.42;
+        [self pp_applyReducedTypingLiveMotion];
         return;
     }
 
     self.typingAnimationView.animationProgress = 0.0;
     [self.typingAnimationView play];
+    [self pp_startTypingLiveMotion];
 }
 
 - (void)pp_stopTypingAnimation {
     [self.typingAnimationView stop];
     self.typingAnimationView.animationProgress = 0.0;
+    [self pp_stopTypingLiveMotion];
+}
+
+- (void)pp_startTypingLiveMotion {
+    if (!self.typingMode || self.typingLiveMotionActive || !self.window) {
+        return;
+    }
+
+    self.typingLiveMotionActive = YES;
+    self.typingAuraView.hidden = NO;
+    self.typingAuraView.alpha = 0.72;
+
+    CAMediaTimingFunction *softTiming = [CAMediaTimingFunction functionWithControlPoints:0.38 :0.00 :0.20 :1.00];
+
+    CAKeyframeAnimation *auraSweep = [CAKeyframeAnimation animationWithKeyPath:@"locations"];
+    auraSweep.values = @[
+        @[@(0.00), @(0.18), @(0.42), @(0.72)],
+        @[@(0.16), @(0.36), @(0.62), @(0.92)],
+        @[@(0.00), @(0.18), @(0.42), @(0.72)]
+    ];
+    auraSweep.duration = 5.8;
+    auraSweep.repeatCount = HUGE_VALF;
+    auraSweep.timingFunctions = @[softTiming, softTiming];
+    auraSweep.removedOnCompletion = NO;
+    [self.typingAuraGradientLayer addAnimation:auraSweep forKey:PPNovaTypingAuraSweepAnimationKey];
+
+    CABasicAnimation *auraOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    auraOpacity.fromValue = @(0.46);
+    auraOpacity.toValue = @(0.82);
+    auraOpacity.duration = 3.9;
+    auraOpacity.autoreverses = YES;
+    auraOpacity.repeatCount = HUGE_VALF;
+    auraOpacity.timingFunction = softTiming;
+    auraOpacity.removedOnCompletion = NO;
+    [self.typingAuraView.layer addAnimation:auraOpacity forKey:PPNovaTypingAuraOpacityAnimationKey];
+
+    CAKeyframeAnimation *bubbleBreath = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+    bubbleBreath.values = @[@(1.0), @(1.014), @(1.0)];
+    bubbleBreath.keyTimes = @[@(0.0), @(0.52), @(1.0)];
+    bubbleBreath.duration = 4.6;
+    bubbleBreath.repeatCount = HUGE_VALF;
+    bubbleBreath.timingFunctions = @[softTiming, softTiming];
+    bubbleBreath.removedOnCompletion = NO;
+    [self.bubbleMaterialView.layer addAnimation:bubbleBreath forKey:PPNovaTypingBubbleBreathAnimationKey];
+
+    CGFloat restingShadowOpacity = self.bubbleShadowView.layer.shadowOpacity;
+    CABasicAnimation *shadowBreath = [CABasicAnimation animationWithKeyPath:@"shadowOpacity"];
+    shadowBreath.fromValue = @(restingShadowOpacity);
+    shadowBreath.toValue = @(MIN(restingShadowOpacity + 0.055, 0.28));
+    shadowBreath.duration = 4.6;
+    shadowBreath.autoreverses = YES;
+    shadowBreath.repeatCount = HUGE_VALF;
+    shadowBreath.timingFunction = softTiming;
+    shadowBreath.removedOnCompletion = NO;
+    [self.bubbleShadowView.layer addAnimation:shadowBreath forKey:PPNovaTypingShadowBreathAnimationKey];
+
+    CAKeyframeAnimation *avatarBreath = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+    avatarBreath.values = @[@(1.0), @(1.055), @(1.0)];
+    avatarBreath.keyTimes = @[@(0.0), @(0.50), @(1.0)];
+    avatarBreath.duration = 4.2;
+    avatarBreath.beginTime = CACurrentMediaTime() + 0.18;
+    avatarBreath.repeatCount = HUGE_VALF;
+    avatarBreath.timingFunctions = @[softTiming, softTiming];
+    avatarBreath.removedOnCompletion = NO;
+    [self.avatarView.layer addAnimation:avatarBreath forKey:PPNovaTypingAvatarBreathAnimationKey];
+}
+
+- (void)pp_applyReducedTypingLiveMotion {
+    self.typingLiveMotionActive = NO;
+    self.typingAuraView.hidden = !self.typingMode;
+    self.typingAuraView.alpha = self.typingMode ? 0.32 : 0.0;
+    [self.typingAuraGradientLayer removeAnimationForKey:PPNovaTypingAuraSweepAnimationKey];
+    [self.typingAuraView.layer removeAnimationForKey:PPNovaTypingAuraOpacityAnimationKey];
+    [self.bubbleMaterialView.layer removeAnimationForKey:PPNovaTypingBubbleBreathAnimationKey];
+    [self.bubbleShadowView.layer removeAnimationForKey:PPNovaTypingShadowBreathAnimationKey];
+    [self.avatarView.layer removeAnimationForKey:PPNovaTypingAvatarBreathAnimationKey];
+    self.bubbleMaterialView.layer.transform = CATransform3DIdentity;
+    self.avatarView.layer.transform = CATransform3DIdentity;
+}
+
+- (void)pp_stopTypingLiveMotion {
+    self.typingLiveMotionActive = NO;
+    [self.typingAuraGradientLayer removeAnimationForKey:PPNovaTypingAuraSweepAnimationKey];
+    [self.typingAuraView.layer removeAnimationForKey:PPNovaTypingAuraOpacityAnimationKey];
+    [self.bubbleMaterialView.layer removeAnimationForKey:PPNovaTypingBubbleBreathAnimationKey];
+    [self.bubbleShadowView.layer removeAnimationForKey:PPNovaTypingShadowBreathAnimationKey];
+    [self.avatarView.layer removeAnimationForKey:PPNovaTypingAvatarBreathAnimationKey];
+    self.typingAuraView.alpha = 0.0;
+    self.typingAuraView.hidden = YES;
+    self.bubbleMaterialView.layer.transform = CATransform3DIdentity;
+    self.avatarView.layer.transform = CATransform3DIdentity;
 }
 
 - (void)pp_loadTypingAnimationIfNeeded {
