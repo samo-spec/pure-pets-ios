@@ -432,6 +432,7 @@ static inline UIColor *AppBageColor(void)
             //return [UIColor colorWithRed:0.11 green:0.11 blue:0.12 alpha:1.0];
         }
         return [UIColor colorWithRed:0.949 green:0.941 blue:0.929 alpha:1.0];
+        //return [UIColor colorWithRed:0.949 green:0.941 blue:0.929 alpha:1.0];
         //return [UIColor colorWithRed:0.969 green:0.961 blue:0.949 alpha:1.0];
     }];
 }

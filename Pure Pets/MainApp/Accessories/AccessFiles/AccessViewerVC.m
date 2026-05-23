@@ -552,6 +552,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 - (void)pp_buildDescriptionSection {
 
     self.descView = [[PPAccessoryDescriptionView alloc] init];
+    self.descView.hostScrollView = self.scrollView;
     [self.contentView addSubview:self.descView];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -2056,12 +2057,17 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 
 
+static const NSInteger kPPAccessoryDescCollapsedLines = 8;
+
 @interface PPAccessoryDescriptionView ()
 @property (nonatomic, strong) UIView *surfaceView;
 @property (nonatomic, strong) UILabel *titleLabel;
 @property (nonatomic, strong) UITextView *textView;
 @property (nonatomic, strong) UIButton *moreButton;
+@property (nonatomic, strong) NSLayoutConstraint *textViewHeightConstraint;
+@property (nonatomic, copy) NSString *fullDescriptionText;
 @property (nonatomic, assign) BOOL isExpanded;
+@property (nonatomic, assign) CGFloat lastMeasuredTextWidth;
 @end
 
 @implementation PPAccessoryDescriptionView
@@ -2120,15 +2126,47 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     _textView.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.78];
     _textView.textAlignment = NSTextAlignmentNatural;
     _textView.adjustsFontForContentSizeCategory = YES;
-    _textView.textContainer.maximumNumberOfLines = 8;
+    _textView.clipsToBounds = YES;
+    _textView.textContainer.maximumNumberOfLines = 0;
+    _textView.textContainer.lineBreakMode = NSLineBreakByWordWrapping;
 
     _moreButton = [UIButton buttonWithType:UIButtonTypeSystem];
     _moreButton.translatesAutoresizingMaskIntoConstraints = NO;
-    _moreButton.titleLabel.font = [GM boldFontWithSize:13] ?: [UIFont systemFontOfSize:13 weight:UIFontWeightSemibold];
-    [_moreButton setTitleColor:AppPrimaryClr forState:UIControlStateNormal];
+    _moreButton.titleLabel.font = [GM boldFontWithSize:14];
     [_moreButton addTarget:self action:@selector(pp_toggleExpanded) forControlEvents:UIControlEventTouchUpInside];
-    _moreButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
+    [_moreButton addTarget:self action:@selector(pp_moreButtonTouchDown) forControlEvents:UIControlEventTouchDown | UIControlEventTouchDragEnter];
+    [_moreButton addTarget:self action:@selector(pp_moreButtonTouchUp) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
     _moreButton.hidden = YES;
+
+    UIImageSymbolConfiguration *symConfig = [UIImageSymbolConfiguration configurationWithPointSize:11 weight:UIImageSymbolWeightSemibold];
+    UIImage *chevron = [UIImage systemImageNamed:@"chevron.down" withConfiguration:symConfig];
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+        config.contentInsets = NSDirectionalEdgeInsetsMake(8, 16, 8, 16);
+        config.image = chevron;
+        config.imagePlacement = NSDirectionalRectEdgeTrailing;
+        config.imagePadding = 6;
+        config.baseForegroundColor = AppPrimaryClr;
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> * _Nonnull(NSDictionary<NSAttributedStringKey, id> * _Nonnull incoming) {
+            NSMutableDictionary *attrs = [incoming mutableCopy];
+            attrs[NSFontAttributeName] = [GM boldFontWithSize:14];
+            return attrs;
+        };
+        UIBackgroundConfiguration *bg = [UIBackgroundConfiguration clearConfiguration];
+        bg.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
+        bg.cornerRadius = 17;
+        config.background = bg;
+        _moreButton.configuration = config;
+    } else {
+        [_moreButton setImage:chevron forState:UIControlStateNormal];
+        _moreButton.tintColor = AppPrimaryClr;
+        _moreButton.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:0.1];
+        _moreButton.layer.cornerRadius = 17;
+        _moreButton.clipsToBounds = YES;
+    }
+    [self pp_updateMoreButtonTitle:kLang(@"ReadMore")];
+    _moreButton.accessibilityHint = kLang(@"ReadMore");
 
     [self addSubview:self.surfaceView];
     [self.surfaceView addSubview:self.titleLabel];
@@ -2154,67 +2192,218 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
         [_textView.topAnchor      constraintEqualToAnchor:divider.bottomAnchor                constant:kAVSpace12],
         [_textView.leadingAnchor  constraintEqualToAnchor:self.surfaceView.leadingAnchor  constant:kAVCardPadding],
         [_textView.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-kAVCardPadding],
-
-        [_moreButton.topAnchor      constraintEqualToAnchor:_textView.bottomAnchor constant:kAVSpace8],
-        [_moreButton.leadingAnchor  constraintEqualToAnchor:_textView.leadingAnchor],
-        [_moreButton.trailingAnchor constraintEqualToAnchor:_textView.trailingAnchor],
-        [_moreButton.heightAnchor   constraintEqualToConstant:28.0],
-        [_moreButton.bottomAnchor   constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-kAVSpace12],
     ]];
+
+    self.textViewHeightConstraint = [_textView.heightAnchor constraintEqualToConstant:44.0];
+    self.textViewHeightConstraint.priority = UILayoutPriorityRequired;
+    self.textViewHeightConstraint.active = YES;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [_moreButton.topAnchor      constraintEqualToAnchor:_textView.bottomAnchor constant:kAVSpace12],
+        [_moreButton.centerXAnchor  constraintEqualToAnchor:self.surfaceView.centerXAnchor],
+        [_moreButton.bottomAnchor   constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:-kAVCardPadding],
+    ]];
+}
+
+#pragma mark - Layout
+
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    CGFloat width = [self pp_textLayoutWidth];
+    if (width > 0.0 && fabs(width - self.lastMeasuredTextWidth) > 1.0) {
+        self.lastMeasuredTextWidth = width;
+        [self pp_applyLineLimitAnimated:NO];
+    }
 }
 
 #pragma mark - Toggle
 
 - (void)pp_toggleExpanded {
+    if (![self pp_needsTruncation]) {
+        return;
+    }
+
     self.isExpanded = !self.isExpanded;
-    [self pp_applyLineLimit];
-    [self invalidateIntrinsicContentSize];
-    [self.superview setNeedsLayout];
-    [self.superview layoutIfNeeded];
+    [self pp_applyLineLimitAnimated:YES];
+
+    CGFloat rotation = self.isExpanded ? (CGFloat)M_PI : 0.0;
+    NSTimeInterval duration = UIAccessibilityIsReduceMotionEnabled() ? 0.16 : 0.28;
+    [UIView animateWithDuration:duration
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseInOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.moreButton.imageView.transform = CGAffineTransformMakeRotation(rotation);
+    }
+                     completion:nil];
 }
 
 - (void)pp_applyLineLimit {
-    BOOL needsTruncation = [self pp_needsTruncation];
-    self.moreButton.hidden = !needsTruncation && !self.isExpanded;
+    [self pp_applyLineLimitAnimated:NO];
+}
 
-    if (self.isExpanded) {
-        _textView.textContainer.maximumNumberOfLines = 0;
-        [_moreButton setTitle:kLang(@"description_show_less") ?: @"Show less" forState:UIControlStateNormal];
-    } else {
-        _textView.textContainer.maximumNumberOfLines = 8;
-        [_moreButton setTitle:kLang(@"description_show_more") ?: @"Show more" forState:UIControlStateNormal];
+- (void)pp_applyLineLimitAnimated:(BOOL)animated {
+    BOOL needsTruncation = [self pp_needsTruncation];
+    self.moreButton.hidden = !needsTruncation;
+    self.moreButton.alpha = needsTruncation ? 1.0 : 0.0;
+    self.moreButton.userInteractionEnabled = needsTruncation;
+
+    if (!needsTruncation) {
+        self.isExpanded = NO;
     }
+
+    NSString *toggleTitle = self.isExpanded ? kLang(@"ShowLess") : kLang(@"ReadMore");
+    [self pp_updateMoreButtonTitle:toggleTitle];
+
+    if (!self.isExpanded) {
+        _textView.contentOffset = CGPointZero;
+        self.moreButton.imageView.transform = CGAffineTransformIdentity;
+    }
+
+    [self pp_setTextViewHeight:[self pp_targetTextViewHeight] animated:animated];
+}
+
+- (void)pp_updateMoreButtonTitle:(NSString *)title {
+    UIFont *toggleFont = [GM boldFontWithSize:14];
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = self.moreButton.configuration ?: [UIButtonConfiguration plainButtonConfiguration];
+        config.title = title;
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey, id> * _Nonnull(NSDictionary<NSAttributedStringKey, id> * _Nonnull incoming) {
+            NSMutableDictionary *attrs = [incoming mutableCopy];
+            attrs[NSFontAttributeName] = toggleFont;
+            return attrs;
+        };
+        self.moreButton.configuration = config;
+        return;
+    }
+    [self.moreButton setTitle:title forState:UIControlStateNormal];
+    self.moreButton.titleLabel.font = toggleFont;
+}
+
+- (void)pp_setTextViewHeight:(CGFloat)targetHeight animated:(BOOL)animated {
+    UIScrollView *scrollView = self.hostScrollView;
+    CGFloat anchorScreenY = 0.0;
+    BOOL shouldAnchorScroll = scrollView != nil;
+
+    if (shouldAnchorScroll) {
+        CGRect anchorFrame = [self.moreButton convertRect:self.moreButton.bounds toView:scrollView];
+        anchorScreenY = CGRectGetMinY(anchorFrame) - scrollView.contentOffset.y;
+    }
+
+    void (^layoutUpdates)(void) = ^{
+        self.textViewHeightConstraint.constant = targetHeight;
+        [self.superview setNeedsLayout];
+        [self.superview layoutIfNeeded];
+
+        if (!shouldAnchorScroll) {
+            return;
+        }
+
+        CGRect anchorFrameAfter = [self.moreButton convertRect:self.moreButton.bounds toView:scrollView];
+        CGFloat drift = (CGRectGetMinY(anchorFrameAfter) - scrollView.contentOffset.y) - anchorScreenY;
+        if (fabs(drift) <= 0.5) {
+            return;
+        }
+
+        CGPoint offset = scrollView.contentOffset;
+        offset.y += drift;
+        CGFloat minY = -scrollView.adjustedContentInset.top;
+        CGFloat maxY = MAX(minY, scrollView.contentSize.height - scrollView.bounds.size.height + scrollView.adjustedContentInset.bottom);
+        offset.y = MIN(MAX(minY, offset.y), maxY);
+        scrollView.contentOffset = offset;
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        layoutUpdates();
+        return;
+    }
+
+    [UIView animateWithDuration:0.28
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseInOut |
+                                UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:layoutUpdates
+                     completion:nil];
+}
+
+- (CGFloat)pp_textLayoutWidth {
+    CGFloat width = CGRectGetWidth(self.bounds) - (kAVCardPadding * 2.0);
+    if (width > 0.0) {
+        return width;
+    }
+    return UIScreen.mainScreen.bounds.size.width - (kAVSectionInset * 2.0) - (kAVCardPadding * 2.0);
+}
+
+- (CGFloat)pp_targetTextViewHeight {
+    NSString *text = self.fullDescriptionText.length > 0 ? self.fullDescriptionText : _textView.text;
+    CGFloat width = [self pp_textLayoutWidth];
+    if (text.length == 0 || width <= 0.0) {
+        return 44.0;
+    }
+
+    NSInteger lineLimit = self.isExpanded ? 0 : kPPAccessoryDescCollapsedLines;
+    return [self pp_textHeightForText:text width:width lineLimit:lineLimit];
+}
+
+- (CGFloat)pp_textHeightForText:(NSString *)text width:(CGFloat)width lineLimit:(NSInteger)lineLimit {
+    UIFont *font = _textView.font ?: [GM MidFontWithSize:15];
+    CGRect rect = [text boundingRectWithSize:CGSizeMake(width, CGFLOAT_MAX)
+                                     options:NSStringDrawingUsesLineFragmentOrigin
+                                  attributes:@{NSFontAttributeName: font}
+                                     context:nil];
+    CGFloat fullHeight = ceil(CGRectGetHeight(rect));
+    if (lineLimit <= 0) {
+        return MAX(fullHeight, font.lineHeight);
+    }
+
+    CGFloat collapsedHeight = ceil(font.lineHeight * (CGFloat)lineLimit);
+    return MAX(MIN(fullHeight, collapsedHeight), font.lineHeight);
+}
+
+- (void)pp_moreButtonTouchDown {
+    PPTapFeedbackDown(self.moreButton);
+}
+
+- (void)pp_moreButtonTouchUp {
+    PPTapFeedbackUp(self.moreButton);
 }
 
 - (BOOL)pp_needsTruncation {
-    NSString *text = _textView.text;
-    if (text.length == 0) return NO;
-    UIFont *font = _textView.font ?: [GM MidFontWithSize:15];
-    CGFloat availableWidth = UIScreen.mainScreen.bounds.size.width - (kAVSectionInset * 2.0) - (kAVCardPadding * 2.0);
-    CGFloat lineHeight = font.lineHeight;
-    CGFloat eightLineHeight = lineHeight * 8.0;
-    CGSize constraintSize = CGSizeMake(availableWidth, CGFLOAT_MAX);
-    CGRect textRect = [text boundingRectWithSize:constraintSize
-                                         options:NSStringDrawingUsesLineFragmentOrigin
-                                      attributes:@{NSFontAttributeName: font}
-                                         context:nil];
-    return CGRectGetHeight(textRect) > eightLineHeight;
+    NSString *text = self.fullDescriptionText.length > 0 ? self.fullDescriptionText : _textView.text;
+    if (text.length == 0) {
+        return NO;
+    }
+
+    CGFloat width = [self pp_textLayoutWidth];
+    if (width <= 0.0) {
+        return NO;
+    }
+
+    CGFloat fullHeight = [self pp_textHeightForText:text width:width lineLimit:0];
+    CGFloat collapsedHeight = [self pp_textHeightForText:text width:width lineLimit:kPPAccessoryDescCollapsedLines];
+    return fullHeight > collapsedHeight + 1.0;
+}
+
+- (void)pp_bindDescriptionText:(NSString *)text {
+    self.fullDescriptionText = text.length > 0 ? text : kLang(@"accessory_view_no_description");
+    _textView.text = self.fullDescriptionText;
+    self.isExpanded = NO;
+    self.lastMeasuredTextWidth = 0.0;
+    [self pp_applyLineLimit];
 }
 
 #pragma mark - Binding
 
 - (void)setAccessory:(PetAccessory *)accessory {
     _accessory = accessory;
-    self.textView.text = accessory.desc.length > 0 ? accessory.desc : kLang(@"accessory_view_no_description");
-    self.isExpanded = NO;
-    [self pp_applyLineLimit];
+    [self pp_bindDescriptionText:accessory.desc];
 }
 
 - (void)setDescriptionText:(NSString *)descriptionText {
     _descriptionText = descriptionText;
-    self.textView.text = descriptionText.length > 0 ? descriptionText : kLang(@"accessory_view_no_description");
-    self.isExpanded = NO;
-    [self pp_applyLineLimit];
+    [self pp_bindDescriptionText:descriptionText];
 }
 
 - (void)handleShareAction {

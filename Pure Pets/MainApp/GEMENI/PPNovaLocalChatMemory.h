@@ -22,6 +22,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// Append a message to local memory (persisted immediately)
 - (void)addMessageWithRole:(NSString *)role text:(NSString *)text;
 
+/// Append a message with a stable local id so UI-only metadata like stars can be restored.
+- (void)addMessageWithRole:(NSString *)role
+                      text:(NSString *)text
+                 messageId:(nullable NSString *)messageId
+                 sessionId:(nullable NSString *)sessionId;
+
 /// Retrieve up to the `limit` most recent messages as an array of dictionaries: @{@"role":..., @"text":...}
 - (NSArray<NSDictionary *> *)recentHistoryLimit:(NSUInteger)limit;
 
@@ -34,6 +40,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 /// Returns all stored messages (thread-safe snapshot)
 - (NSArray<NSDictionary *> *)allMessages;
+
+/// Returns only messages marked as starred.
+- (NSArray<NSDictionary *> *)starredMessages;
+
+/// Update and query the local starred state for a saved Nova message.
+- (void)setMessageStarred:(BOOL)starred messageId:(NSString *)messageId;
+- (BOOL)isMessageStarred:(NSString *)messageId;
 
 /// Clears all stored messages from memory and disk
 - (void)clearAllMessages;

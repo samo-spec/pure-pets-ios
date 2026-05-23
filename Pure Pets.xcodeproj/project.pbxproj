@@ -733,6 +733,8 @@
 		F2EF8EEB2F87765600A797B3 /* PPProfileAddressCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EEA2F87765600A797B3 /* PPProfileAddressCell.m */; };
 		F2EF8EED2F87768700A797B3 /* PPProfileActionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EEC2F87768700A797B3 /* PPProfileActionCell.m */; };
 		F2EF8EF12F8783AB00A797B3 /* PPProfileBaseCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2EF8EF02F8783AB00A797B3 /* PPProfileBaseCell.m */; };
+		F2F25BCC2FC1398C0006BDF7 /* PPNovaGenkitService.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F25BCB2FC1398C0006BDF7 /* PPNovaGenkitService.m */; };
+		F2F25BD62FC146070006BDF7 /* NovaTyping.json in Resources */ = {isa = PBXBuildFile; fileRef = F2F25BD52FC146070006BDF7 /* NovaTyping.json */; };
 		F2F33FFB2D7912AC00BDBD25 /* ChildsDataManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F33FFA2D7912AC00BDBD25 /* ChildsDataManager.m */; };
 		F2F38FAE2EA68288004B148A /* PPUniversalCellHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F38FAD2EA68288004B148A /* PPUniversalCellHelper.m */; settings = {COMPILER_FLAGS = "-w"; }; };
 		F2F44A122FA7014000D19D01 /* PPHomeLocationTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F44A112FA7014000D19D01 /* PPHomeLocationTitleView.m */; };
@@ -2190,6 +2192,9 @@
 		F2EF8EEE2F87769100A797B3 /* PPProfileActionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileActionCell.h; sourceTree = "<group>"; };
 		F2EF8EEF2F87839800A797B3 /* PPProfileBaseCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProfileBaseCell.h; sourceTree = "<group>"; };
 		F2EF8EF02F8783AB00A797B3 /* PPProfileBaseCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProfileBaseCell.m; sourceTree = "<group>"; };
+		F2F25BCA2FC1398C0006BDF7 /* PPNovaGenkitService.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaGenkitService.h; sourceTree = "<group>"; };
+		F2F25BCB2FC1398C0006BDF7 /* PPNovaGenkitService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaGenkitService.m; sourceTree = "<group>"; };
+		F2F25BD52FC146070006BDF7 /* NovaTyping.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = NovaTyping.json; sourceTree = "<group>"; };
 		F2F33FF92D79128500BDBD25 /* ChildsDataManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ChildsDataManager.h; sourceTree = "<group>"; };
 		F2F33FFA2D7912AC00BDBD25 /* ChildsDataManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ChildsDataManager.m; sourceTree = "<group>"; };
 		F2F38FAC2EA68288004B148A /* PPUniversalCellHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPUniversalCellHelper.h; sourceTree = "<group>"; };
@@ -3347,6 +3352,8 @@
 		F26E3AFD2E35B344007BB3FF /* GEMENI */ = {
 			isa = PBXGroup;
 			children = (
+				F2F25BCA2FC1398C0006BDF7 /* PPNovaGenkitService.h */,
+				F2F25BCB2FC1398C0006BDF7 /* PPNovaGenkitService.m */,
 				F24D2AB52FAC4EB50015EC83 /* PPNovaLocalChatMemory.h */,
 				F24D2AB62FAC4EB50015EC83 /* PPNovaLocalChatMemory.m */,
 				F24D2AB22FABEF5B0015EC83 /* PPNovaReviewMessageCell.h */,
@@ -4995,6 +5002,7 @@
 		F2FE42C42D06EEE00082D346 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				F2F25BD52FC146070006BDF7 /* NovaTyping.json */,
 				F2D7F0ED2F135F9100105778 /* NoResult.json */,
 				F2F9C0012F9C000000000001 /* payment_checkout.json */,
 				F2D44D1F2F3D611200999337 /* map_dark_style.json */,
@@ -5145,6 +5153,7 @@
 				F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */,
 				F2D0C5E52C4BE1BB0023CE53 /* Assets.xcassets in Resources */,
 				F260D32A2C7B36EF0098C8F0 /* blank_button@3x.png in Resources */,
+				F2F25BD62FC146070006BDF7 /* NovaTyping.json in Resources */,
 				F22CD3822C6709650098B6E9 /* checkmark-round.png in Resources */,
 				F2BA434C2CCA489D00943394 /* ABCellMailStyleMenuView.xib in Resources */,
 				F22CD3812C6709650098B6E9 /* alert-round.png in Resources */,
@@ -5863,6 +5872,7 @@
 				F2AB48D82C72D43D00D88603 /* KafkaReplicatorHeader.m in Sources */,
 				F27365F82F858773000AB3DD /* PPModernAvatarRenderer.m in Sources */,
 				F20956792F8567D2007C4ABA /* PPNotificationsHubViewController.m in Sources */,
+				F2F25BCC2FC1398C0006BDF7 /* PPNovaGenkitService.m in Sources */,
 				F2CD9CA52CAB16AA00C0827B /* UISearchBar+FMAdd.m in Sources */,
 				F2F38FAE2EA68288004B148A /* PPUniversalCellHelper.m in Sources */,
 				F2B1172B2CEB399A00D4F847 /* ACSimulatorRemoteNotificationsService.m in Sources */,

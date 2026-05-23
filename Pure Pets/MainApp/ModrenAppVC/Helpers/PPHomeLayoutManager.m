@@ -39,20 +39,21 @@
         if (self.sectionIdentifierProvider) {
             sectionType = self.sectionIdentifierProvider(sectionIndex);
         } else {
-            // Fallback to old behavior if provider not set (should not happen)
+            // Fallback mirrors Console `HomeControlPanel` / `pp_defaultHomeSectionCatalogOrder`.
             NSArray<NSNumber *> *renderOrder = @[
                 @(PPHomeSectionHero),
-                @(PPHomeSectionCurrentOrders),
                 @(PPHomeSectionPremiumSearch),
+                @(PPHomeSectionPremiumCare),
                 @(PPHomeSectionQuickActions),
                 @(PPHomeSectionMainKinds),
-                @(PPHomeSectionCarousel),
-                @(PPHomeSectionSuggestions),
+                @(PPHomeSectionCurrentOrders),
                 @(PPHomeSectionAccessories),
+                @(PPHomeSectionSuggestions),
+                @(PPHomeSectionCarousel),
                 @(PPHomeSectionLastFood),
-                @(PPHomeSectionNearbyServices),
-                @(PPHomeSectionPetProfile),
                 @(PPHomeSectionAdsNearBy),
+                @(PPHomeSectionPetProfile),
+                @(PPHomeSectionNearbyServices),
                 @(PPHomeSectionAdopt),
                 @(PPHomeSectionBuyAgain),
                 @(PPHomeSectionServices),

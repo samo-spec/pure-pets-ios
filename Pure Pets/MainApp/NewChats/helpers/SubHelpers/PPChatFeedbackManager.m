@@ -33,8 +33,13 @@
     self = [super init];
     if (self) {
         _lastEventPlaybackDates = [NSMutableDictionary dictionary];
-        _lightImpact =
-            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        if (@available(iOS 13.0, *)) {
+            _lightImpact =
+                [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+        } else {
+            _lightImpact =
+                [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        }
         _notificationFeedback =
             [[UINotificationFeedbackGenerator alloc] init];
         _stateQueue = dispatch_queue_create("com.purepets.chat.feedback",
@@ -76,6 +81,15 @@
     return canPlay;
 }
 
+- (void)playPremiumImpactWithIntensity:(CGFloat)intensity
+{
+    if (@available(iOS 13.0, *)) {
+        [self.lightImpact impactOccurredWithIntensity:intensity];
+    } else {
+        [self.lightImpact impactOccurred];
+    }
+}
+
 - (BOOL)shouldPlayForEvent:(PPChatFeedbackEvent)event
 {
     UIApplicationState appState = UIApplication.sharedApplication.applicationState;
@@ -93,6 +107,39 @@
     return NO;
 }
 
+- (void)playNovaFeedbackForEvent:(PPChatFeedbackEvent)event
+{
+    if (![self shouldPlayForEvent:event]) {
+        return;
+    }
+
+    if (![self reservePlaybackSlotForEvent:event]) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.lightImpact prepare];
+
+        switch (event) {
+            case PPChatFeedbackEventOutgoingSend: {
+                [self playPremiumImpactWithIntensity:0.05];
+            } break;
+
+            case PPChatFeedbackEventIncomingActiveChat: {
+                [self playPremiumImpactWithIntensity:0.12];
+            } break;
+
+            case PPChatFeedbackEventIncomingOutsideChat: {
+                [self playPremiumImpactWithIntensity:0.12];
+            } break;
+
+            case PPChatFeedbackEventMessageRead: {
+                [self playPremiumImpactWithIntensity:0.10];
+            } break;
+        }
+    });
+}
+
 - (void)playFeedbackForEvent:(PPChatFeedbackEvent)event {
     if (![self shouldPlayForEvent:event]) {
         return;
@@ -108,29 +155,29 @@
 
         switch (event) {
 
-            // 📤 Outgoing message (Send)
+            // Outgoing message (send)
             case PPChatFeedbackEventOutgoingSend: {
-                [self.lightImpact impactOccurred];
-                AudioServicesPlaySystemSound(1104);
+                [self playPremiumImpactWithIntensity:0.58];
+                AudioServicesPlaySystemSound(1020);
             } break;
 
-            // 📥 Incoming while chat is OPEN
+            // Incoming while chat is open
             case PPChatFeedbackEventIncomingActiveChat: {
                 [self.notificationFeedback
                  notificationOccurred:UINotificationFeedbackTypeSuccess];
-                AudioServicesPlaySystemSound(1105);
+                AudioServicesPlaySystemSound(1103);
             } break;
 
-            // 📥 Incoming while app active but chat NOT visible
+            // Incoming while app is active but chat is not visible
             case PPChatFeedbackEventIncomingOutsideChat: {
                 [self.notificationFeedback
                  notificationOccurred:UINotificationFeedbackTypeSuccess];
                 AudioServicesPlaySystemSound(1007); //1016
             } break;
 
-            // 👁 Message read (optional, subtle)
+            // Message read (optional, subtle)
             case PPChatFeedbackEventMessageRead: {
-                [self.lightImpact impactOccurred];
+                [self playPremiumImpactWithIntensity:0.42];
             } break;
         }
     });

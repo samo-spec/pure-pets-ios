@@ -29,6 +29,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)configureTypingWithMaxWidth:(CGFloat)maxWidth;
 - (void)setActionTitles:(nullable NSArray<NSString *> *)actionTitles;
+- (void)setNovaStarred:(BOOL)starred;
 
 @end
 

@@ -60,6 +60,13 @@
 
 
 extern NSString * const PPThemePreferenceDidChangeNotification;
+static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
+static NSString * const PPHomeConfigCacheSectionsKey = @"sections";
+static NSString * const PPHomeConfigCacheTitleModeKey = @"titleViewMode";
+static NSString * const PPHomeConfigCachePremiumCareVisibleKey = @"premiumCareVisible";
+static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
+static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
+
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
     return [Language semanticAttributeForCurrentLanguage];
@@ -869,7 +876,6 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, assign) BOOL accessoriesLoaded;
 @property (nonatomic, assign) BOOL nearbyLoaded;
 @property (nonatomic, assign) BOOL nearbyLoading;
-@property (nonatomic, assign) BOOL hideServiceSection;
 @property (nonatomic, strong) NSArray<ServiceModel *> *nearbyServiceProviders;
 @property (nonatomic, assign) BOOL nearbyServicesLoaded;
 @property (nonatomic, assign) BOOL nearbyServicesLoading;
@@ -943,6 +949,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 @property (nonatomic, copy) NSString *homeTitleViewMode; // @"location" (default) or @"search"
 @property (nonatomic, assign) BOOL homePremiumCareVisible; // remote-config toggle for PPPetCareViewController
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> homeConfigListener;
+@property (nonatomic, copy, nullable) NSString *lastAppliedHomeConfigOrderSignature;
+@property (nonatomic, assign) BOOL shouldResetHomeScrollForConfigOrderChange;
 // YES once the HomeConfig listener has reported (or the safety timeout has fired).
 // Until this flips, applyBaseSnapshot renders an empty snapshot so we don't show
 // the full default-section set just to relayout to the config-filtered set seconds
@@ -988,6 +996,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_animateHomeCell:(UICollectionViewCell *)cell highlighted:(BOOL)highlighted;
 - (BOOL)pp_isInitialHomeRevealSettled;
 - (BOOL)pp_shouldReduceHomeMotion;
+- (BOOL)pp_shouldDeferHomeLayoutStabilization;
+- (NSArray<NSNumber *> *)pp_collectionSectionIndexesOrderedForEntrance;
+- (NSArray<NSIndexPath *> *)pp_sortedVisibleIndexPathsForEntrance;
 - (void)pp_preparePremiumHomeEntranceStateIfNeeded;
 - (void)pp_prepareVisibleHomeEntranceContentIfNeeded;
 - (void)pp_beginPremiumHomeEntranceIfNeeded;
@@ -1060,6 +1071,22 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (nullable PPOrder *)pp_featuredHomeOrder;
 - (NSArray<PPHomeItem *> *)pp_homeCurrentOrderItems;
 - (NSArray<PPHomeItem *> *)pp_homeBuyAgainItems;
+- (NSArray<NSNumber *> *)pp_orderedHomeSectionIdentifiers;
+- (NSArray<NSDictionary *> *)pp_mergeHomeConfigSectionsWithCatalog:(NSArray<NSDictionary *> *)stored;
+- (BOOL)pp_defaultVisibilityForHomeSection:(PPHomeSection)section;
+- (void)pp_reloadHomeCollectionLayoutPreservingScrollOffset;
+- (BOOL)pp_isHomeSectionVisibleInConfig:(PPHomeSection)section;
+- (NSArray<NSDictionary *> *)pp_resolvedHomeConfigSectionsFromSanitizedSections:(NSArray<NSDictionary *> *)sanitized
+                                                        legacyPremiumCareVisible:(BOOL)premiumCareVisible;
+- (void)pp_cacheHomeConfigSections:(NSArray<NSDictionary *> *)sections
+                     titleViewMode:(NSString *)titleViewMode
+                premiumCareVisible:(BOOL)premiumCareVisible
+               novaFloatingVisible:(BOOL)novaFloatingVisible
+                     novaUseGenkit:(BOOL)novaUseGenkit;
+- (BOOL)pp_applyCachedHomeConfigIfAvailable;
+- (NSString *)pp_homeConfigOrderSignatureForSectionIdentifiers:(NSArray<NSNumber *> *)sectionIdentifiers;
+- (void)pp_fetchHomeConfigFromServerOnceWithDocumentReference:(FIRDocumentReference *)docRef;
+- (void)pp_applyHomeConfigSnapshot:(FIRDocumentSnapshot *)snapshot source:(NSString *)source;
 - (NSArray<PPHomeItem *> *)pp_buildItemsForSection:(PPHomeSection)section;
 - (NSArray<PPHomeBuyAgainSnapshotItem *> *)pp_buyAgainSnapshotItemsFromOrders:(NSArray<PPOrder *> *)orders
                                                                         limit:(NSInteger)limit;
@@ -1543,6 +1570,361 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 
     return cards.copy;
 }
+/// Canonical fallback order — mirrors Console `HomeControlPanel` / `IOS_SECTION_CATALOG`.
+- (NSArray<NSNumber *> *)pp_defaultHomeSectionCatalogOrder {
+    return @[
+        @(PPHomeSectionHero),
+        @(PPHomeSectionPremiumSearch),
+        @(PPHomeSectionPremiumCare),
+        @(PPHomeSectionQuickActions),
+        @(PPHomeSectionMainKinds),
+        @(PPHomeSectionCurrentOrders),
+        @(PPHomeSectionAccessories),
+        @(PPHomeSectionSuggestions),
+        @(PPHomeSectionCarousel),
+        @(PPHomeSectionLastFood),
+        @(PPHomeSectionAdsNearBy),
+        @(PPHomeSectionPetProfile),
+        @(PPHomeSectionNearbyServices),
+        @(PPHomeSectionAdopt),
+        @(PPHomeSectionBuyAgain),
+        @(PPHomeSectionServices),
+    ];
+}
+
+static NSInteger PPHomeSectionIDFromConfigValue(id value)
+{
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)value integerValue];
+    }
+    if ([value isKindOfClass:NSString.class]) {
+        NSString *raw = [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+        if (raw.length == 0) {
+            return NSNotFound;
+        }
+        NSInteger numeric = raw.integerValue;
+        if ([raw isEqualToString:[@(numeric) stringValue]]) {
+            return numeric;
+        }
+        static NSDictionary<NSString *, NSNumber *> *typeNameMap;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            typeNameMap = @{
+                @"PPHomeSectionHero" : @(PPHomeSectionHero),
+                @"PPHomeSectionQuickActions" : @(PPHomeSectionQuickActions),
+                @"PPHomeSectionCurrentOrders" : @(PPHomeSectionCurrentOrders),
+                @"PPHomeSectionServices" : @(PPHomeSectionServices),
+                @"PPHomeSectionCarousel" : @(PPHomeSectionCarousel),
+                @"PPHomeSectionMainKinds" : @(PPHomeSectionMainKinds),
+                @"PPHomeSectionSuggestions" : @(PPHomeSectionSuggestions),
+                @"PPHomeSectionAccessories" : @(PPHomeSectionAccessories),
+                @"PPHomeSectionPetProfile" : @(PPHomeSectionPetProfile),
+                @"PPHomeSectionPremiumCare" : @(PPHomeSectionPremiumCare),
+                @"PPHomeSectionLastFood" : @(PPHomeSectionLastFood),
+                @"PPHomeSectionNearbyServices" : @(PPHomeSectionNearbyServices),
+                @"PPHomeSectionAdsNearBy" : @(PPHomeSectionAdsNearBy),
+                @"PPHomeSectionAdopt" : @(PPHomeSectionAdopt),
+                @"PPHomeSectionBuyAgain" : @(PPHomeSectionBuyAgain),
+                @"PPHomeSectionPremiumSearch" : @(PPHomeSectionPremiumSearch),
+            };
+        });
+        NSNumber *mapped = typeNameMap[raw];
+        if (mapped) {
+            return mapped.integerValue;
+        }
+    }
+    return NSNotFound;
+}
+
+- (BOOL)pp_isHomeSectionVisibleInConfig:(PPHomeSection)section {
+    if (self.homeConfigSections.count == 0) {
+        switch (section) {
+            case PPHomeSectionServices:
+                return [self pp_defaultVisibilityForHomeSection:section];
+            case PPHomeSectionPremiumCare:
+                return self.homePremiumCareVisible;
+            default:
+                return YES;
+        }
+    }
+
+    for (NSDictionary *sectionCfg in self.homeConfigSections) {
+        NSInteger sectionID = PPHomeSectionIDFromConfigValue(sectionCfg[@"id"]);
+        if (sectionID != section) {
+            continue;
+        }
+        BOOL visible = [sectionCfg[@"visible"] boolValue];
+        if (section == PPHomeSectionPremiumCare) {
+            return visible && self.homePremiumCareVisible;
+        }
+        return visible;
+    }
+
+    return NO;
+}
+
+- (BOOL)pp_shouldRenderHomeSection:(PPHomeSection)section {
+    if (![self pp_isHomeSectionVisibleInConfig:section]) {
+        return NO;
+    }
+
+    return YES;
+}
+
+/// Appends catalog sections missing from stored Console config (preserves operator order).
+- (NSArray<NSDictionary *> *)pp_mergeHomeConfigSectionsWithCatalog:(NSArray<NSDictionary *> *)stored {
+    NSArray<NSNumber *> *catalogOrder = [self pp_defaultHomeSectionCatalogOrder];
+    if (stored.count == 0) {
+        NSMutableArray<NSDictionary *> *seeded = [NSMutableArray arrayWithCapacity:catalogOrder.count];
+        for (NSNumber *sectionID in catalogOrder) {
+            [seeded addObject:@{
+                @"id" : sectionID,
+                @"visible" : @([self pp_defaultVisibilityForHomeSection:(PPHomeSection)sectionID.integerValue]),
+                @"type" : @""
+            }];
+        }
+        return seeded.copy;
+    }
+
+    NSMutableSet<NSNumber *> *presentIDs = [NSMutableSet set];
+    for (NSDictionary *row in stored) {
+        NSInteger sectionID = PPHomeSectionIDFromConfigValue(row[@"id"]);
+        if (sectionID != NSNotFound) {
+            [presentIDs addObject:@(sectionID)];
+        }
+    }
+
+    NSMutableArray<NSDictionary *> *merged = [stored mutableCopy];
+    for (NSNumber *sectionID in catalogOrder) {
+        if ([presentIDs containsObject:sectionID]) {
+            continue;
+        }
+        [merged addObject:@{
+            @"id" : sectionID,
+            @"visible" : @([self pp_defaultVisibilityForHomeSection:(PPHomeSection)sectionID.integerValue]),
+            @"type" : @""
+        }];
+    }
+    return merged.copy;
+}
+
+- (BOOL)pp_defaultVisibilityForHomeSection:(PPHomeSection)section {
+    switch (section) {
+        case PPHomeSectionServices:
+            return NO;
+        default:
+            return YES;
+    }
+}
+
+- (NSArray<NSDictionary *> *)pp_resolvedHomeConfigSectionsFromSanitizedSections:(NSArray<NSDictionary *> *)sanitized
+                                                        legacyPremiumCareVisible:(BOOL)premiumCareVisible
+{
+    BOOL hasPremiumCareSection =
+        [sanitized indexOfObjectPassingTest:^BOOL(NSDictionary *row, NSUInteger idx, BOOL *stop) {
+            (void)idx;
+            (void)stop;
+            return PPHomeSectionIDFromConfigValue(row[@"id"]) == PPHomeSectionPremiumCare;
+        }] != NSNotFound;
+
+    NSArray<NSDictionary *> *merged = [self pp_mergeHomeConfigSectionsWithCatalog:sanitized];
+    if (hasPremiumCareSection) {
+        return merged;
+    }
+
+    NSMutableArray<NSDictionary *> *adjusted = [merged mutableCopy];
+    for (NSUInteger idx = 0; idx < adjusted.count; idx++) {
+        NSDictionary *row = adjusted[idx];
+        if (PPHomeSectionIDFromConfigValue(row[@"id"]) != PPHomeSectionPremiumCare) {
+            continue;
+        }
+        NSMutableDictionary *mutableRow = [row mutableCopy];
+        mutableRow[@"visible"] = @(premiumCareVisible);
+        adjusted[idx] = mutableRow;
+        break;
+    }
+    return adjusted.copy;
+}
+
+- (void)pp_cacheHomeConfigSections:(NSArray<NSDictionary *> *)sections
+                     titleViewMode:(NSString *)titleViewMode
+                premiumCareVisible:(BOOL)premiumCareVisible
+               novaFloatingVisible:(BOOL)novaFloatingVisible
+                     novaUseGenkit:(BOOL)novaUseGenkit
+{
+    if (sections.count == 0) {
+        return;
+    }
+
+    NSDictionary *payload = @{
+        PPHomeConfigCacheSectionsKey : sections,
+        PPHomeConfigCacheTitleModeKey : titleViewMode ?: @"location",
+        PPHomeConfigCachePremiumCareVisibleKey : @(premiumCareVisible),
+        PPHomeConfigCacheNovaFloatingVisibleKey : @(novaFloatingVisible),
+        PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit)
+    };
+    [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
+    
+    // We also set it individually so other view controllers can read it easily
+    [[NSUserDefaults standardUserDefaults] setBool:novaUseGenkit forKey:@"pp_nova_use_genkit"];
+}
+
+- (BOOL)pp_applyCachedHomeConfigIfAvailable
+{
+    NSDictionary *payload = [[NSUserDefaults standardUserDefaults] dictionaryForKey:PPHomeConfigCacheKey];
+    if (![payload isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+
+    NSArray<NSDictionary *> *sanitized = [self pp_sanitizedHomeConfigSections:payload[PPHomeConfigCacheSectionsKey]];
+    if (sanitized.count == 0) {
+        return NO;
+    }
+
+    BOOL premiumCareVisible = YES;
+    id cachedPremiumCare = payload[PPHomeConfigCachePremiumCareVisibleKey];
+    if ([cachedPremiumCare respondsToSelector:@selector(boolValue)]) {
+        premiumCareVisible = [cachedPremiumCare boolValue];
+    }
+
+    BOOL novaVisible = YES;
+    id cachedNovaVisible = payload[PPHomeConfigCacheNovaFloatingVisibleKey];
+    if ([cachedNovaVisible respondsToSelector:@selector(boolValue)]) {
+        novaVisible = [cachedNovaVisible boolValue];
+    }
+
+    NSString *cachedMode = payload[PPHomeConfigCacheTitleModeKey];
+    NSString *resolvedTitleViewMode = @"location";
+    if ([cachedMode isKindOfClass:NSString.class] &&
+        ([cachedMode isEqualToString:@"location"] || [cachedMode isEqualToString:@"search"])) {
+        resolvedTitleViewMode = cachedMode;
+    }
+
+    self.homePremiumCareVisible = premiumCareVisible;
+    self.homeTitleViewMode = resolvedTitleViewMode;
+    self.homeConfigSections = [self pp_resolvedHomeConfigSectionsFromSanitizedSections:sanitized
+                                                               legacyPremiumCareVisible:premiumCareVisible];
+    self.didReceiveHomeConfig = YES;
+    self.lastAppliedHomeConfigOrderSignature =
+        [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
+
+    if (self.novaFloatingButton) {
+        self.novaFloatingButton.hidden = !novaVisible;
+    }
+    if (self.novaFloatingHaloView) {
+        self.novaFloatingHaloView.hidden = !novaVisible;
+    }
+
+    NSLog(@"[HomeConfig] Applied cached Console section order: %@",
+          self.lastAppliedHomeConfigOrderSignature ?: @"");
+    return YES;
+}
+
+- (NSString *)pp_homeConfigOrderSignatureForSectionIdentifiers:(NSArray<NSNumber *> *)sectionIdentifiers
+{
+    if (sectionIdentifiers.count == 0) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray arrayWithCapacity:sectionIdentifiers.count];
+    for (NSNumber *sectionID in sectionIdentifiers) {
+        if (![sectionID isKindOfClass:NSNumber.class]) {
+            continue;
+        }
+        [parts addObject:sectionID.stringValue];
+    }
+    return [parts componentsJoinedByString:@"|"];
+}
+
+- (void)pp_reloadHomeCollectionLayoutPreservingScrollOffset {
+    if (!self.isViewLoaded || !self.collectionView || !self.layoutManager) {
+        return;
+    }
+
+    CGPoint preservedOffset = self.collectionView.contentOffset;
+    UICollectionViewCompositionalLayout *layout = [self.layoutManager buildLayout];
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [UIView performWithoutAnimation:^{
+        [self.collectionView setCollectionViewLayout:layout animated:NO];
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+
+        CGFloat minOffsetY = -self.collectionView.adjustedContentInset.top;
+        CGFloat maxOffsetY = MAX(minOffsetY,
+                                 self.collectionView.contentSize.height -
+                                 CGRectGetHeight(self.collectionView.bounds) +
+                                 self.collectionView.adjustedContentInset.bottom);
+        CGFloat targetOffsetY = MIN(MAX(preservedOffset.y, minOffsetY), maxOffsetY);
+        self.collectionView.contentOffset = CGPointMake(preservedOffset.x, targetOffsetY);
+    }];
+    [CATransaction commit];
+
+    if (self.shouldResetHomeScrollForConfigOrderChange) {
+        self.shouldResetHomeScrollForConfigOrderChange = NO;
+        CGFloat topOffsetY = -self.collectionView.adjustedContentInset.top;
+        [self.collectionView setContentOffset:CGPointMake(0.0, topOffsetY) animated:NO];
+    }
+}
+
+/// Live section order from `AppConfigCol/HomeConfig.sections` (Console Home Control).
+- (NSArray<NSNumber *> *)pp_orderedHomeSectionIdentifiers {
+    NSMutableArray<NSNumber *> *sections = [NSMutableArray array];
+
+    if (self.homeConfigSections.count > 0) {
+        for (NSDictionary *sectionCfg in self.homeConfigSections) {
+            NSInteger sectionID = PPHomeSectionIDFromConfigValue(sectionCfg[@"id"]);
+            if (sectionID == NSNotFound) {
+                continue;
+            }
+            if (![self pp_shouldRenderHomeSection:(PPHomeSection)sectionID]) {
+                continue;
+            }
+            [sections addObject:@(sectionID)];
+        }
+        return sections.copy;
+    }
+
+    for (NSNumber *sectionID in [self pp_defaultHomeSectionCatalogOrder]) {
+        if ([self pp_shouldRenderHomeSection:(PPHomeSection)sectionID.integerValue]) {
+            [sections addObject:sectionID];
+        }
+    }
+    return sections.copy;
+}
+
+- (void)pp_insertHomeSectionIdentifier:(NSNumber *)sectionIdentifier
+                            intoSnapshot:(NSDiffableDataSourceSnapshot *)snapshot {
+    if ([snapshot.sectionIdentifiers containsObject:sectionIdentifier]) {
+        return;
+    }
+
+    NSArray<NSNumber *> *resolvedOrder = [self pp_orderedHomeSectionIdentifiers];
+    NSUInteger targetIndex = [resolvedOrder indexOfObject:sectionIdentifier];
+    if (targetIndex == NSNotFound) {
+        [snapshot appendSectionsWithIdentifiers:@[sectionIdentifier]];
+        return;
+    }
+
+    NSNumber *insertBefore = nil;
+    for (NSUInteger idx = targetIndex + 1; idx < resolvedOrder.count; idx++) {
+        NSNumber *candidate = resolvedOrder[idx];
+        if ([snapshot.sectionIdentifiers containsObject:candidate]) {
+            insertBefore = candidate;
+            break;
+        }
+    }
+
+    if (insertBefore) {
+        [snapshot insertSectionsWithIdentifiers:@[sectionIdentifier]
+                      beforeSectionWithIdentifier:insertBefore];
+    } else {
+        [snapshot appendSectionsWithIdentifiers:@[sectionIdentifier]];
+    }
+}
+
 - (void)applyBaseSnapshot
 {
     // Until the HomeConfig listener (or the safety timeout) tells us which
@@ -1557,70 +1939,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     NSDiffableDataSourceSnapshot *snapshot = [[NSDiffableDataSourceSnapshot alloc] init];
-    NSMutableArray<NSNumber *> *sections = [NSMutableArray array];
-
-    NSArray *defaultOrder = @[
-        @(PPHomeSectionHero),
-        @(PPHomeSectionPremiumSearch),
-        @(PPHomeSectionPremiumCare),
-        @(PPHomeSectionCurrentOrders),
-        @(PPHomeSectionQuickActions),
-        @(PPHomeSectionMainKinds),
-        @(PPHomeSectionCarousel),
-        @(PPHomeSectionSuggestions),
-        @(PPHomeSectionAccessories),
-        @(PPHomeSectionLastFood),
-        @(PPHomeSectionNearbyServices),
-        @(PPHomeSectionPetProfile),
-        @(PPHomeSectionAdsNearBy),
-        @(PPHomeSectionAdopt)
-    ];
-
-    BOOL hasPremiumSearchConfig = NO;
-    if (self.homeConfigSections.count > 0) {
-        for (NSDictionary *sectionCfg in self.homeConfigSections) {
-            NSInteger sectionID = [sectionCfg[@"id"] integerValue];
-            if (![sectionCfg[@"visible"] boolValue]) {
-                continue;
-            }
-           
-            [sections addObject:@(sectionID)];
-        }
-    } else {
-        [sections addObjectsFromArray:defaultOrder];
-    }
-
-    if (!self.hideServiceSection && ![sections containsObject:@(PPHomeSectionServices)]) {
-        [sections addObject:@(PPHomeSectionServices)];
-    }
-
-    if (![sections containsObject:@(PPHomeSectionPremiumSearch)]) {
-        NSUInteger heroIndex = [sections indexOfObject:@(PPHomeSectionHero)];
-        NSUInteger insertIndex = (heroIndex == NSNotFound) ? 0 : heroIndex + 1;
-        [sections insertObject:@(PPHomeSectionPremiumSearch) atIndex:MIN(insertIndex, sections.count)];
-    }
-
-    // PremiumCare still mirrors the legacy premiumCareVisible field for older Console builds.
-    if (self.homePremiumCareVisible && ![sections containsObject:@(PPHomeSectionPremiumCare)]) {
-        [sections addObject:@(PPHomeSectionPremiumCare)];
-    } else if (!self.homePremiumCareVisible && [sections containsObject:@(PPHomeSectionPremiumCare)]) {
-        [sections removeObject:@(PPHomeSectionPremiumCare)];
-    }
-
-    NSArray<PPHomeItem *> *buyAgainItems = [self pp_homeBuyAgainItems];
-    BOOL buyAgainEnabledInConfig = YES;
-    if (self.homeConfigSections.count > 0) {
-        for (NSDictionary *sectionCfg in self.homeConfigSections) {
-            if ([sectionCfg[@"id"] integerValue] == PPHomeSectionBuyAgain) {
-                buyAgainEnabledInConfig = [sectionCfg[@"visible"] boolValue];
-                break;
-            }
-        }
-    }
-
-    if (buyAgainItems.count > 0 && buyAgainEnabledInConfig && ![sections containsObject:@(PPHomeSectionBuyAgain)]) {
-        [sections addObject:@(PPHomeSectionBuyAgain)];
-    }
+    NSArray<NSNumber *> *sections = [self pp_orderedHomeSectionIdentifiers];
 
     // 🔒 Deduplicate section identifiers to prevent diffable data source crash
     // when Firestore remote config contains duplicate ids.
@@ -1628,7 +1947,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     if (dedupedSections.count != sections.count) {
         NSLog(@"[HomeConfig] WARNING: Duplicate section identifiers detected — deduplicated from %lu to %lu",
               (unsigned long)sections.count, (unsigned long)dedupedSections.count);
-        sections = [dedupedSections.array mutableCopy];
+        sections = dedupedSections.array;
     }
 
     [snapshot appendSectionsWithIdentifiers:sections];
@@ -1658,15 +1977,13 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     safeAppend(quickActions, @(PPHomeSectionQuickActions));
 
     // ✅ Services
-    if (!self.hideServiceSection) {
-        NSMutableArray *servicesItems = [NSMutableArray array];
-        for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
-            PPHomeItem *item = [PPHomeItem new];
-            item.payload = service;
-            [servicesItems addObject:item];
-        }
-        safeAppend(servicesItems, @(PPHomeSectionServices));
+    NSMutableArray *servicesItems = [NSMutableArray array];
+    for (PPHomeServiceItem *service in [PPHomeServiceItem defaultHomeServices]) {
+        PPHomeItem *item = [PPHomeItem new];
+        item.payload = service;
+        [servicesItems addObject:item];
     }
+    safeAppend(servicesItems, @(PPHomeSectionServices));
 
     // ✅ Current Orders
     safeAppend([self pp_homeCurrentOrderItems], @(PPHomeSectionCurrentOrders));
@@ -1700,7 +2017,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     safeAppend(@[adoptItem], @(PPHomeSectionAdopt));
 
     // ✅ Buy Again
-    safeAppend(buyAgainItems, @(PPHomeSectionBuyAgain));
+    safeAppend([self pp_homeBuyAgainItems], @(PPHomeSectionBuyAgain));
 
     // Dynamic sections (Suggestions, Accessories, LastFood, NearbyServices, AdsNearBy)
     NSArray<NSNumber *> *dynamicSections = @[
@@ -1723,13 +2040,25 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     BOOL isFirstContentApply = !self.didApplyInitialBaseSnapshot;
     self.didApplyInitialBaseSnapshot = YES;
     [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
+    [self pp_reloadHomeCollectionLayoutPreservingScrollOffset];
 
-    // First time we render non-empty sections and the screen is on stage: kick
-    // the premium entrance. The chrome/glow + cell-stagger animation owns the
-    // reveal so users see a single composed motion instead of a snap-then-shift.
+    // First time we render non-empty sections and the screen is on stage: stage
+    // every visible surface in one non-animated pass, then run the premium
+    // entrance so order matches Console Home Control without a layout jump.
     if (isFirstContentApply && sections.count > 0 && self.isViewLoaded && self.view.window != nil) {
-        [self pp_preparePremiumHomeEntranceStateIfNeeded];
+        self.didPrepareVisibleHomeEntranceContent = NO;
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        [UIView performWithoutAnimation:^{
+            [self pp_preparePremiumHomeEntranceStateIfNeeded];
+            [self.collectionView setNeedsLayout];
+            [self.collectionView layoutIfNeeded];
+            [self pp_prepareVisibleHomeEntranceContentIfNeeded];
+        }];
+        [CATransaction commit];
         [self pp_beginPremiumHomeEntranceIfNeeded];
+    } else if (isFirstContentApply && sections.count > 0) {
+        [self pp_preparePremiumHomeEntranceStateIfNeeded];
     }
 }
 
@@ -1752,6 +2081,10 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_stabilizeHomeCollectionLayoutIfNeeded
 {
     if (!self.isViewLoaded || !self.collectionView || !self.layoutManager || !self.dataSource) {
+        return;
+    }
+
+    if ([self pp_shouldDeferHomeLayoutStabilization]) {
         return;
     }
 
@@ -2625,16 +2958,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     }
 
     if (section == PPHomeSectionBuyAgain) {
-        BOOL enabledInConfig = YES;
-        if (self.homeConfigSections.count > 0) {
-            for (NSDictionary *sectionCfg in self.homeConfigSections) {
-                if ([sectionCfg[@"id"] integerValue] == PPHomeSectionBuyAgain) {
-                    enabledInConfig = [sectionCfg[@"visible"] boolValue];
-                    break;
-                }
-            }
-        }
-        if (!enabledInConfig) {
+        if (![self pp_shouldRenderHomeSection:PPHomeSectionBuyAgain]) {
             if (sectionExists) {
                 [snapshot deleteSectionsWithIdentifiers:@[sectionIdentifier]];
                 [self.dataSource applySnapshot:snapshot animatingDifferences:NO];
@@ -2642,15 +2966,9 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             return;
         }
 
-        if (!sectionExists && newItems.count > 0) {
-            [snapshot appendSectionsWithIdentifiers:@[sectionIdentifier]];
+        if (!sectionExists) {
+            [self pp_insertHomeSectionIdentifier:sectionIdentifier intoSnapshot:snapshot];
             sectionExists = YES;
-        } else if (sectionExists && newItems.count == 0) {
-            [snapshot deleteSectionsWithIdentifiers:@[sectionIdentifier]];
-            [self.dataSource applySnapshot:snapshot animatingDifferences:YES];
-            return;
-        } else if (!sectionExists) {
-            return;
         }
     } else if (!sectionExists) {
         return;
@@ -2707,8 +3025,8 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [super viewDidLoad];
 
     self.isMainKindsExpanded = NO; // collapsed = horizontal
-    self.hideServiceSection = YES;
     self.homeTitleViewMode = @"location";
+    self.homePremiumCareVisible = YES;
     self.nearbyServiceProviders = @[];
     self.nearbyServicesLoaded = NO;
     self.nearbyServicesLoading = NO;
@@ -2759,6 +3077,7 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     [self pp_applyCurrentLanguageDirectionToHomeUI];
     [self setupNovaFloatingButton];
     [self configureDataSource];
+    [self pp_applyCachedHomeConfigIfAvailable];
     [self applyBaseSnapshot];   // 🔥 NEW
     [self refreshHeroSectionAppearance];
 
@@ -2790,8 +3109,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
         if (!self || self.didReceiveHomeConfig) {
             return;
         }
+        if ([self pp_applyCachedHomeConfigIfAvailable]) {
+            NSLog(@"[HomeConfig] Listener silent for 800ms — using cached Console sections.");
+            [self applyBaseSnapshot];
+            return;
+        }
         NSLog(@"[HomeConfig] Listener silent for 800ms — using default sections fallback.");
+        self.homeConfigSections = [self pp_mergeHomeConfigSectionsWithCatalog:@[]];
         self.didReceiveHomeConfig = YES;
+        self.lastAppliedHomeConfigOrderSignature =
+            [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
         [self applyBaseSnapshot];
     });
 
@@ -3194,12 +3521,11 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             continue;
         }
         NSDictionary *row = (NSDictionary *)raw;
-        id idValue = row[@"id"];
-        if (![idValue respondsToSelector:@selector(integerValue)]) {
-            continue;
+        NSInteger sectionID = PPHomeSectionIDFromConfigValue(row[@"id"]);
+        if (sectionID == NSNotFound) {
+            sectionID = PPHomeSectionIDFromConfigValue(row[@"type"]);
         }
-        NSInteger sectionID = [idValue integerValue];
-        if (sectionID < 0 || sectionID > maxKnownID) {
+        if (sectionID == NSNotFound || sectionID < 0 || sectionID > maxKnownID) {
             NSLog(@"[HomeConfig] Dropping unknown section id %ld", (long)sectionID);
             continue;
         }
@@ -3232,11 +3558,16 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
 - (void)pp_startHomeConfigListener {
     [self.homeConfigListener remove];
 
-    FIRFirestore *db = [FIRFirestore firestore];
+    FIRFirestore *db = AppMgr.dF ?: [FIRFirestore firestore];
     FIRDocumentReference *docRef = [[db collectionWithPath:@"AppConfigCol"] documentWithPath:@"HomeConfig"];
 
+    [self pp_fetchHomeConfigFromServerOnceWithDocumentReference:docRef];
+
     __weak typeof(self) weakSelf = self;
-    self.homeConfigListener = [docRef addSnapshotListener:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    self.homeConfigListener =
+        [docRef addSnapshotListenerWithIncludeMetadataChanges:YES
+                                                     listener:^(FIRDocumentSnapshot * _Nullable snapshot,
+                                                                NSError * _Nullable error) {
         __strong typeof(weakSelf) self = weakSelf;
         if (!self) return;
 
@@ -3245,99 +3576,164 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
             return;
         }
 
-        if (!snapshot.exists) {
+        if (!snapshot) {
+            NSLog(@"[HomeConfig] Listener returned an empty snapshot.");
             return;
         }
 
-        NSDictionary *data = snapshot.data ?: @{};
-        NSArray<NSDictionary *> *sanitized =
-            [self pp_sanitizedHomeConfigSections:data[@"sections"]];
-
-        // Read title-view mode from the remote config doc.
-        NSString *remoteMode = data[@"titleViewMode"];
-        NSString *resolvedTitleViewMode = @"location";
-        if ([remoteMode isKindOfClass:NSString.class] &&
-            ([remoteMode isEqualToString:@"location"] || [remoteMode isEqualToString:@"search"])) {
-            resolvedTitleViewMode = remoteMode;
-        }
-
-        BOOL novaVisible = YES;
-        id remoteNova = data[@"novaFloatingVisible"];
-        if ([remoteNova respondsToSelector:@selector(boolValue)]) {
-            novaVisible = [remoteNova boolValue];
-        }
-
-        BOOL premiumCareVisible = YES;
-        id remotePremiumCare = data[@"premiumCareVisible"];
-        if ([remotePremiumCare respondsToSelector:@selector(boolValue)]) {
-            premiumCareVisible = [remotePremiumCare boolValue];
-        }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
-
-            if (strongSelf.novaFloatingButton) {
-                strongSelf.novaFloatingButton.hidden = !novaVisible;
-            }
-            if (strongSelf.novaFloatingHaloView) {
-                strongSelf.novaFloatingHaloView.hidden = !novaVisible;
-            }
-
-            strongSelf.homePremiumCareVisible = premiumCareVisible;
-
-            if (sanitized.count == 0) {
-                // Empty config means "use defaults" — clear and rebuild.
-                strongSelf.homeConfigSections = @[];
-            } else {
-                strongSelf.homeConfigSections = sanitized;
-            }
-
-            // The listener has spoken — applyBaseSnapshot is now allowed to
-            // render real sections (and run the premium entrance).
-            strongSelf.didReceiveHomeConfig = YES;
-
-            BOOL titleModeChanged =
-                ![strongSelf.homeTitleViewMode isEqualToString:resolvedTitleViewMode];
-            strongSelf.homeTitleViewMode = resolvedTitleViewMode;
-
-            [strongSelf applyBaseSnapshot];
-
-            // When HomeConfig changes (e.g. banners visibility toggled from Console),
-            // the carousel section may have just been added/removed from the snapshot.
-            // Refresh the banner data so the carousel renders current cards — the
-            // PromoCarouselManager keeps a live listener, so self.promoCarouselCards
-            // is already fresh, but fillCarouselBanner must update the snapshot payload.
-            [strongSelf fillCarouselBanner];
-
-            BOOL expectsSearchTitle =
-                [resolvedTitleViewMode isEqualToString:@"search"];
-            BOOL showingSearchTitle =
-                strongSelf.homeSmartSearchView &&
-                strongSelf.navigationItem.titleView == strongSelf.homeSmartSearchView;
-            BOOL showingLocationTitle =
-                strongSelf.homeLocationTitleView &&
-                strongSelf.navigationItem.titleView == strongSelf.homeLocationTitleView;
-            BOOL titleViewMatchesConfig =
-                expectsSearchTitle ? showingSearchTitle : showingLocationTitle;
-
-            if (titleModeChanged || !titleViewMatchesConfig) {
-                if ([strongSelf pp_canOwnHomeNavigationChrome]) {
-                    [strongSelf configureNavigationBar];
-                } else {
-                    [strongSelf pp_detachHomeSmartSearchTitleViewIfNeeded];
-                    [strongSelf pp_detachHomeLocationTitleViewIfNeeded];
-                }
-            } else if (expectsSearchTitle) {
-                [strongSelf pp_updateHomeSmartSearchTitleViewWidth];
-                [strongSelf pp_updateHomeSmartSearchPlaceholderAnimated:NO];
-                [strongSelf pp_startHomeSmartSearchTimerIfNeeded];
-            } else {
-                [strongSelf pp_refreshHomeLocationTitleViewAnimated:NO];
-                [strongSelf.homeLocationTitleView startLivingMotion];
-            }
-        });
+        NSString *source = snapshot.metadata.isFromCache ? @"listener-cache" : @"listener-server";
+        [self pp_applyHomeConfigSnapshot:snapshot source:source];
     }];
+}
+
+- (void)pp_fetchHomeConfigFromServerOnceWithDocumentReference:(FIRDocumentReference *)docRef
+{
+    if (!docRef) {
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [docRef getDocumentWithSource:FIRFirestoreSourceServer
+                       completion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        if (error) {
+            NSLog(@"[HomeConfig] Server fetch error: %@", error.localizedDescription);
+            return;
+        }
+
+        if (!snapshot) {
+            NSLog(@"[HomeConfig] Server fetch returned an empty snapshot.");
+            return;
+        }
+
+        [self pp_applyHomeConfigSnapshot:snapshot source:@"server-fetch"];
+    }];
+}
+
+- (void)pp_applyHomeConfigSnapshot:(FIRDocumentSnapshot *)snapshot source:(NSString *)source
+{
+    if (!snapshot.exists) {
+        NSLog(@"[HomeConfig] %@ snapshot missing.", source ?: @"unknown");
+        return;
+    }
+
+    NSDictionary *data = snapshot.data ?: @{};
+    NSArray<NSDictionary *> *sanitized =
+        [self pp_sanitizedHomeConfigSections:data[@"sections"]];
+
+    NSString *remoteMode = data[@"titleViewMode"];
+    NSString *resolvedTitleViewMode = @"location";
+    if ([remoteMode isKindOfClass:NSString.class] &&
+        ([remoteMode isEqualToString:@"location"] || [remoteMode isEqualToString:@"search"])) {
+        resolvedTitleViewMode = remoteMode;
+    }
+
+    BOOL novaVisible = YES;
+    id remoteNova = data[@"novaFloatingVisible"];
+    if ([remoteNova respondsToSelector:@selector(boolValue)]) {
+        novaVisible = [remoteNova boolValue];
+    }
+
+    BOOL novaUseGenkit = NO;
+    id remoteNovaGenkit = data[@"novaUseGenkit"];
+    if ([remoteNovaGenkit respondsToSelector:@selector(boolValue)]) {
+        novaUseGenkit = [remoteNovaGenkit boolValue];
+    }
+    novaUseGenkit = YES;
+    
+    
+    BOOL premiumCareVisible = YES;
+    id remotePremiumCare = data[@"premiumCareVisible"];
+    if ([remotePremiumCare respondsToSelector:@selector(boolValue)]) {
+        premiumCareVisible = [remotePremiumCare boolValue];
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        NSString *previousSignature = strongSelf.lastAppliedHomeConfigOrderSignature ?: @"";
+        if (previousSignature.length == 0 && strongSelf.dataSource) {
+            previousSignature =
+                [strongSelf pp_homeConfigOrderSignatureForSectionIdentifiers:strongSelf.dataSource.snapshot.sectionIdentifiers];
+        }
+
+        if (strongSelf.novaFloatingButton) {
+            strongSelf.novaFloatingButton.hidden = !novaVisible;
+        }
+        if (strongSelf.novaFloatingHaloView) {
+            strongSelf.novaFloatingHaloView.hidden = !novaVisible;
+        }
+
+        strongSelf.homePremiumCareVisible = premiumCareVisible;
+
+        NSArray<NSDictionary *> *merged =
+            [strongSelf pp_resolvedHomeConfigSectionsFromSanitizedSections:sanitized
+                                                    legacyPremiumCareVisible:premiumCareVisible];
+        strongSelf.homeConfigSections = merged;
+        [strongSelf pp_cacheHomeConfigSections:merged
+                                 titleViewMode:resolvedTitleViewMode
+                            premiumCareVisible:premiumCareVisible
+                           novaFloatingVisible:novaVisible
+                                 novaUseGenkit:novaUseGenkit];
+
+        NSArray<NSNumber *> *nextIdentifiers = [strongSelf pp_orderedHomeSectionIdentifiers];
+        NSString *nextSignature =
+            [strongSelf pp_homeConfigOrderSignatureForSectionIdentifiers:nextIdentifiers];
+        BOOL orderChanged =
+            previousSignature.length > 0 &&
+            nextSignature.length > 0 &&
+            ![previousSignature isEqualToString:nextSignature];
+
+        strongSelf.lastAppliedHomeConfigOrderSignature = nextSignature;
+        strongSelf.shouldResetHomeScrollForConfigOrderChange = orderChanged;
+
+        NSLog(@"[HomeConfig] Applied %@ section order: %@ changed=%@",
+              source ?: @"unknown",
+              nextSignature ?: @"",
+              orderChanged ? @"YES" : @"NO");
+
+        strongSelf.didReceiveHomeConfig = YES;
+
+        BOOL titleModeChanged =
+            ![(strongSelf.homeTitleViewMode ?: @"location") isEqualToString:resolvedTitleViewMode];
+        strongSelf.homeTitleViewMode = resolvedTitleViewMode;
+
+        [strongSelf applyBaseSnapshot];
+
+        // HomeConfig can add/remove the carousel section; keep its payload current.
+        [strongSelf fillCarouselBanner];
+
+        BOOL expectsSearchTitle =
+            [resolvedTitleViewMode isEqualToString:@"search"];
+        BOOL showingSearchTitle =
+            strongSelf.homeSmartSearchView &&
+            strongSelf.navigationItem.titleView == strongSelf.homeSmartSearchView;
+        BOOL showingLocationTitle =
+            strongSelf.homeLocationTitleView &&
+            strongSelf.navigationItem.titleView == strongSelf.homeLocationTitleView;
+        BOOL titleViewMatchesConfig =
+            expectsSearchTitle ? showingSearchTitle : showingLocationTitle;
+
+        if (titleModeChanged || !titleViewMatchesConfig) {
+            if ([strongSelf pp_canOwnHomeNavigationChrome]) {
+                [strongSelf configureNavigationBar];
+            } else {
+                [strongSelf pp_detachHomeSmartSearchTitleViewIfNeeded];
+                [strongSelf pp_detachHomeLocationTitleViewIfNeeded];
+            }
+        } else if (expectsSearchTitle) {
+            [strongSelf pp_updateHomeSmartSearchTitleViewWidth];
+            [strongSelf pp_updateHomeSmartSearchPlaceholderAnimated:NO];
+            [strongSelf pp_startHomeSmartSearchTimerIfNeeded];
+        } else {
+            [strongSelf pp_refreshHomeLocationTitleViewAnimated:NO];
+            [strongSelf.homeLocationTitleView startLivingMotion];
+        }
+    });
 }
 
 - (void)handleBrowseHistoryUpdate
@@ -5336,9 +5732,11 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 {
     [super viewDidAppear:animated];
     self.isHomeScreenVisible = YES;
-    [self pp_stabilizeHomeCollectionLayoutIfNeeded];
     [self pp_advancePremiumCareAnimationForAppearance];
     [self pp_beginPremiumHomeEntranceIfNeeded];
+    if ([self pp_isInitialHomeRevealSettled]) {
+        [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+    }
     [self pp_centerNearbySectionIfPossible];
     [self updateCartQuantityBadge];
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -7557,9 +7955,12 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     // fade them here so they're already in the entrance "before" state at the
     // moment of display, then let the staggered animation reveal them.
     if (!self.didRunPremiumHomeEntranceAnimation && ![self pp_shouldReduceHomeMotion]) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
         [self pp_configureHomeEntranceInitialStateForCell:cell
                                               atIndexPath:indexPath
                                            lateAppearance:NO];
+        [CATransaction commit];
     }
 
     PPHomeSection section = [self sectionTypeForIndexPath:indexPath];
@@ -8172,6 +8573,60 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     return UIAccessibilityIsReduceMotionEnabled();
 }
 
+- (BOOL)pp_shouldDeferHomeLayoutStabilization
+{
+    if (self.isPremiumHomeEntranceAnimating) {
+        return YES;
+    }
+
+    // Hold layout stabilization until the first config-ordered entrance finishes.
+    if (self.didApplyInitialBaseSnapshot && ![self pp_isInitialHomeRevealSettled]) {
+        return YES;
+    }
+
+    return NO;
+}
+
+- (NSArray<NSNumber *> *)pp_collectionSectionIndexesOrderedForEntrance
+{
+    if (!self.dataSource) {
+        return @[];
+    }
+
+    NSMutableArray<NSNumber *> *ordered = [NSMutableArray array];
+    for (NSNumber *sectionID in self.dataSource.snapshot.sectionIdentifiers) {
+        NSInteger collectionSection = [self sectionIndexForType:(PPHomeSection)sectionID.integerValue];
+        if (collectionSection != NSNotFound) {
+            [ordered addObject:@(collectionSection)];
+        }
+    }
+    return ordered.copy;
+}
+
+- (NSArray<NSIndexPath *> *)pp_sortedVisibleIndexPathsForEntrance
+{
+    NSArray<NSIndexPath *> *visibleIndexPaths = self.collectionView.indexPathsForVisibleItems;
+    if (visibleIndexPaths.count <= 1) {
+        return visibleIndexPaths;
+    }
+
+    return [visibleIndexPaths sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *obj1, NSIndexPath *obj2) {
+        if (obj1.section < obj2.section) {
+            return NSOrderedAscending;
+        }
+        if (obj1.section > obj2.section) {
+            return NSOrderedDescending;
+        }
+        if (obj1.item < obj2.item) {
+            return NSOrderedAscending;
+        }
+        if (obj1.item > obj2.item) {
+            return NSOrderedDescending;
+        }
+        return NSOrderedSame;
+    }];
+}
+
 - (BOOL)pp_isInitialHomeRevealSettled
 {
     return self.didRunPremiumHomeEntranceAnimation && !self.isPremiumHomeEntranceAnimating;
@@ -8268,30 +8723,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    NSArray<NSIndexPath *> *visibleIndexPaths =
-        [self.collectionView.indexPathsForVisibleItems sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *obj1, NSIndexPath *obj2) {
-        if (obj1.section < obj2.section) {
-            return NSOrderedAscending;
-        }
-        if (obj1.section > obj2.section) {
-            return NSOrderedDescending;
-        }
-        if (obj1.item < obj2.item) {
-            return NSOrderedAscending;
-        }
-        if (obj1.item > obj2.item) {
-            return NSOrderedDescending;
-        }
-        return NSOrderedSame;
-    }];
-
-    NSMutableOrderedSet<NSNumber *> *sectionIndexes = [NSMutableOrderedSet orderedSet];
-    for (NSIndexPath *indexPath in visibleIndexPaths) {
-        [sectionIndexes addObject:@(indexPath.section)];
-    }
+    NSArray<NSIndexPath *> *visibleIndexPaths = [self pp_sortedVisibleIndexPathsForEntrance];
+    NSArray<NSNumber *> *orderedCollectionSections = [self pp_collectionSectionIndexesOrderedForEntrance];
 
     NSUInteger visibleItemCount = visibleIndexPaths.count;
-    NSUInteger visibleSectionCount = sectionIndexes.count;
+    NSUInteger visibleSectionCount = orderedCollectionSections.count;
     if (visibleItemCount == 0 && visibleSectionCount == 0) {
         return;
     }
@@ -8305,17 +8741,22 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     self.lastPreparedHomeEntranceItemCount = visibleItemCount;
     self.lastPreparedHomeEntranceSectionCount = visibleSectionCount;
 
-    [sectionIndexes.array enumerateObjectsUsingBlock:^(NSNumber * _Nonnull sectionNumber, NSUInteger idx, BOOL * _Nonnull stop) {
+    __block NSUInteger headerOrdinal = 0;
+    [orderedCollectionSections enumerateObjectsUsingBlock:^(NSNumber * _Nonnull sectionNumber, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)idx;
         (void)stop;
         NSIndexPath *headerIndexPath = [NSIndexPath indexPathForItem:0 inSection:sectionNumber.integerValue];
         UICollectionReusableView *header =
             [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
                                                      atIndexPath:headerIndexPath];
+        if (!header) {
+            return;
+        }
         [self pp_configureHomeEntranceInitialStateForSupplementaryView:header
                                                                   kind:UICollectionElementKindSectionHeader
                                                            atIndexPath:headerIndexPath
                                                         lateAppearance:NO];
+        headerOrdinal += 1;
     }];
 
     [visibleIndexPaths enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull indexPath, NSUInteger idx, BOOL * _Nonnull stop) {
@@ -8366,7 +8807,14 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    [self.collectionView layoutIfNeeded];
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [UIView performWithoutAnimation:^{
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+        [self pp_prepareVisibleHomeEntranceContentIfNeeded];
+    }];
+    [CATransaction commit];
 
     // If the snapshot is still empty (e.g. HomeConfig hasn't arrived yet) there
     // are no cells/headers to animate. Bail out WITHOUT setting the "done" flag
@@ -8376,8 +8824,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.collectionView.indexPathsForVisibleItems.count == 0) {
         return;
     }
-
-    [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 
     NSArray<UIView *> *glowViews = @[
         self.pp_premiumBackgroundGlowViewTop ?: [UIView new],
@@ -8464,6 +8910,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
         self.isPremiumHomeEntranceAnimating = NO;
+        [self pp_stabilizeHomeCollectionLayoutIfNeeded];
         [self pp_refreshInitialHomeRevealDependentContent];
         [self pp_centerNearbySectionIfPossible];
     });
@@ -8475,44 +8922,35 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    NSArray<NSIndexPath *> *visibleIndexPaths =
-        [self.collectionView.indexPathsForVisibleItems sortedArrayUsingComparator:^NSComparisonResult(NSIndexPath *obj1, NSIndexPath *obj2) {
-        if (obj1.section < obj2.section) {
-            return NSOrderedAscending;
-        }
-        if (obj1.section > obj2.section) {
-            return NSOrderedDescending;
-        }
-        if (obj1.item < obj2.item) {
-            return NSOrderedAscending;
-        }
-        if (obj1.item > obj2.item) {
-            return NSOrderedDescending;
-        }
-        return NSOrderedSame;
-    }];
+    NSArray<NSIndexPath *> *visibleIndexPaths = [self pp_sortedVisibleIndexPathsForEntrance];
+    NSArray<NSNumber *> *orderedCollectionSections = [self pp_collectionSectionIndexesOrderedForEntrance];
+    __block NSUInteger entranceOrdinal = 0;
 
-    NSMutableOrderedSet<NSNumber *> *sectionIndexes = [NSMutableOrderedSet orderedSet];
-    for (NSIndexPath *indexPath in visibleIndexPaths) {
-        [sectionIndexes addObject:@(indexPath.section)];
-    }
-
-    [sectionIndexes.array enumerateObjectsUsingBlock:^(NSNumber * _Nonnull sectionNumber, NSUInteger idx, BOOL * _Nonnull stop) {
+    [orderedCollectionSections enumerateObjectsUsingBlock:^(NSNumber * _Nonnull sectionNumber, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)idx;
         (void)stop;
         NSIndexPath *headerIndexPath = [NSIndexPath indexPathForItem:0 inSection:sectionNumber.integerValue];
         UICollectionReusableView *header =
             [self.collectionView supplementaryViewForElementKind:UICollectionElementKindSectionHeader
                                                      atIndexPath:headerIndexPath];
+        if (!header) {
+            return;
+        }
         [self pp_animateHomeEntranceForSupplementaryView:header
                                                    kind:UICollectionElementKindSectionHeader
                                             atIndexPath:headerIndexPath
-                                         initialOrdinal:idx];
+                                         initialOrdinal:entranceOrdinal];
+        entranceOrdinal += 1;
     }];
 
     [visibleIndexPaths enumerateObjectsUsingBlock:^(NSIndexPath * _Nonnull indexPath, NSUInteger idx, BOOL * _Nonnull stop) {
+        (void)idx;
         (void)stop;
         UICollectionViewCell *cell = [self.collectionView cellForItemAtIndexPath:indexPath];
-        [self pp_animateHomeEntranceForCell:cell atIndexPath:indexPath initialOrdinal:idx];
+        [self pp_animateHomeEntranceForCell:cell
+                                atIndexPath:indexPath
+                             initialOrdinal:entranceOrdinal];
+        entranceOrdinal += 1;
     }];
 }
 
@@ -8555,8 +8993,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         || section == PPHomeSectionPremiumSearch
         || section == PPHomeSectionPremiumCare;
 
-    NSTimeInterval duration = isHero ? 0.52 : (isPrimarySurface ? 0.40 : 0.30);
-    NSTimeInterval delay = MIN(0.05 + (0.028 * initialOrdinal), 0.22);
+    NSTimeInterval duration = isHero ? 0.48 : (isPrimarySurface ? 0.38 : 0.32);
+    NSTimeInterval delay = MIN(0.04 + (0.032 * initialOrdinal), 0.24);
+    CGFloat damping = isHero ? 0.84 : 0.88;
 
     [self pp_configureHomeEntranceInitialStateForCell:cell
                                           atIndexPath:indexPath
@@ -8564,6 +9003,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [UIView animateWithDuration:duration
                           delay:delay
+         usingSpringWithDamping:damping
+          initialSpringVelocity:0.12
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         cell.alpha = 1.0;
@@ -8603,8 +9044,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
-    NSTimeInterval delay = isLateAppearance ? 0.0 : MIN(0.04 + (0.024 * initialOrdinal), 0.18);
-    NSTimeInterval duration = isLateAppearance ? 0.18 : 0.28;
+    NSTimeInterval delay = isLateAppearance ? 0.0 : MIN(0.03 + (0.028 * initialOrdinal), 0.20);
+    NSTimeInterval duration = isLateAppearance ? 0.18 : 0.30;
 
     [self pp_configureHomeEntranceInitialStateForSupplementaryView:supplementaryView
                                                               kind:kind
@@ -8613,6 +9054,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     [UIView animateWithDuration:duration
                           delay:delay
+         usingSpringWithDamping:0.9
+          initialSpringVelocity:0.1
                         options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
         supplementaryView.alpha = 1.0;
@@ -8726,12 +9169,14 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         || section == PPHomeSectionPremiumSearch
         || section == PPHomeSectionPremiumCare;
 
-    CGFloat translateY = isLateAppearance ? (isHero ? 8.0 : (isPrimarySurface ? 6.0 : 4.0))
-                                          : (isHero ? 24.0 : (isPrimarySurface ? 16.0 : 10.0));
-    CGFloat scale = isLateAppearance ? (isHero ? 0.994 : (isPrimarySurface ? 0.996 : 0.998))
-                                     : (isHero ? 0.986 : (isPrimarySurface ? 0.990 : 0.994));
-    CGFloat initialAlpha = isLateAppearance ? 0.0 : (isHero ? 0.0 : 0.02);
+    CGFloat translateY = isLateAppearance ? (isHero ? 6.0 : (isPrimarySurface ? 4.0 : 3.0))
+                                          : (isHero ? 14.0 : (isPrimarySurface ? 10.0 : 7.0));
+    CGFloat scale = isLateAppearance ? (isHero ? 0.996 : (isPrimarySurface ? 0.997 : 0.998))
+                                     : (isHero ? 0.992 : (isPrimarySurface ? 0.994 : 0.996));
+    CGFloat initialAlpha = isLateAppearance ? 0.0 : (isHero ? 0.0 : 0.04);
 
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     [cell.layer removeAllAnimations];
     [cell.contentView.layer removeAllAnimations];
     cell.contentView.layer.transform = CATransform3DIdentity;
@@ -8741,6 +9186,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     cell.alpha = initialAlpha;
     CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0, translateY);
     cell.transform = CGAffineTransformScale(transform, scale, scale);
+    [CATransaction commit];
 }
 
 - (void)pp_configureHomeEntranceInitialStateForSupplementaryView:(UICollectionReusableView *)supplementaryView
@@ -8752,12 +9198,15 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         return;
     }
 
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     [supplementaryView.layer removeAllAnimations];
     supplementaryView.layer.transform = CATransform3DIdentity;
     supplementaryView.layer.opacity = 1.0f;
     supplementaryView.layer.zPosition = 0.0f;
     supplementaryView.alpha = 0.0;
-    supplementaryView.transform = CGAffineTransformMakeTranslation(0.0, isLateAppearance ? 4.0 : 10.0);
+    supplementaryView.transform = CGAffineTransformMakeTranslation(0.0, isLateAppearance ? 3.0 : 8.0);
+    [CATransaction commit];
 }
 
 
@@ -10310,7 +10759,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [self pp_updateHomeSmartSearchTitleViewWidth];
     [self pp_updateHomeLocationTitleViewWidth];
 
-    [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+    if (![self pp_shouldDeferHomeLayoutStabilization]) {
+        [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+    }
     [self pp_prepareVisibleHomeEntranceContentIfNeeded];
 }
 

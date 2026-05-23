@@ -4,6 +4,7 @@
 //
 
 #import "PPNovaMessageBubbleCell.h"
+#import <math.h>
 
 static UIColor *PPNovaCellDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     if (@available(iOS 13.0, *)) {
@@ -40,18 +41,21 @@ static NSTextAlignment PPNovaAlignmentForText(NSString *text) {
     return PPNovaTextStartsRTL(text) ? NSTextAlignmentRight : NSTextAlignmentLeft;
 }
 
-static const CGFloat PPNovaBubbleMinimumWidth = 90.0;
-static const CGFloat PPNovaAssistantMinimumReadableWidth = 184.0;
-static const CGFloat PPNovaAssistantMaximumReadableFloor = 260.0;
-static const CGFloat PPNovaAssistantReadableWidthRatio = 0.52;
-static const CGFloat PPNovaAssistantWrappedWidthFloorRatio = 0.72;
+static const CGFloat PPNovaBubbleMinimumWidth = 96.0;
+static const CGFloat PPNovaAssistantMinimumReadableWidth = 220.0;
+static const CGFloat PPNovaAssistantMaximumReadableFloor = 320.0;
+static const CGFloat PPNovaAssistantReadableWidthRatio = 0.62;
+static const CGFloat PPNovaAssistantWrappedWidthFloorRatio = 0.78;
 static const CGFloat PPNovaAssistantOptionsMinimumWidth = 242.0;
-static const CGFloat PPNovaAssistantHorizontalReserve = 120.0;
+static const CGFloat PPNovaAssistantHorizontalReserve = 96.0;
 static const CGFloat PPNovaUserHorizontalReserve = 86.0;
-static const CGFloat PPNovaBubbleHorizontalContentInset = 30.0;
-static const CGFloat PPNovaBubbleCornerRadius = 24.0;
+static const CGFloat PPNovaBubbleHorizontalContentInset = 34.0;
+static const CGFloat PPNovaBubbleCornerRadius = 26.0;
 static const CGFloat PPNovaBubbleWidthSearchStep = 8.0;
+static const CGFloat PPNovaTypingAnimationWidth = 58.0;
+static const CGFloat PPNovaTypingAnimationHeight = 58.0;
 static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
+static NSString * const PPNovaTypingAnimationResourceName = @"NovaTyping";
 
 @interface PPNovaMessageBubbleCell ()
 
@@ -64,8 +68,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 @property (nonatomic, strong) UIStackView *metaStack;
 @property (nonatomic, strong) UILabel *timeLabel;
 @property (nonatomic, strong) UIImageView *statusImageView;
-@property (nonatomic, strong) UIStackView *typingDotsStack;
-@property (nonatomic, copy) NSArray<UIView *> *typingDots;
+@property (nonatomic, strong) LOTAnimationView *typingAnimationView;
 @property (nonatomic, strong) UIStackView *actionStack;
 
 @property (nonatomic, strong) NSLayoutConstraint *bubbleWidthConstraint;
@@ -76,6 +79,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 @property (nonatomic, strong, nullable) ChatMessageModel *messageModel;
 @property (nonatomic, assign) BOOL assistantMessage;
 @property (nonatomic, assign) BOOL typingMode;
+@property (nonatomic, assign) BOOL typingAnimationLoaded;
 
 @end
 
@@ -103,10 +107,10 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.timeLabel.text = nil;
     self.statusImageView.image = nil;
     self.statusImageView.hidden = YES;
-    self.configuredMaxWidth = 0.0;
+    self.statusImageView.transform = CGAffineTransformIdentity;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.messageLabel.hidden = NO;
-    self.typingDotsStack.hidden = YES;
+    self.typingAnimationView.hidden = YES;
     [self setActionTitles:nil];
     [self pp_stopTypingAnimation];
     self.alpha = 1.0;
@@ -115,6 +119,12 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 }
 
 - (void)layoutSubviews {
+    CGFloat currentWidth = CGRectGetWidth(self.contentView.bounds);
+    if (currentWidth > 1.0 && fabs(currentWidth - self.configuredMaxWidth) > 0.5) {
+        self.configuredMaxWidth = [self pp_resolvedContainerWidthForCandidate:currentWidth];
+        [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:self.configuredMaxWidth];
+    }
+
     [super layoutSubviews];
 
     self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
@@ -194,31 +204,24 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.messageLabel.font = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleBody] scaledFontForFont:bodyFont];
     self.messageLabel.adjustsFontForContentSizeCategory = YES;
     [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];
-    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+    [self.messageLabel setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.messageLabel setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
     [self.contentStack addArrangedSubview:self.messageLabel];
 
-    self.typingDotsStack = [[UIStackView alloc] init];
-    self.typingDotsStack.axis = UILayoutConstraintAxisHorizontal;
-    self.typingDotsStack.alignment = UIStackViewAlignmentCenter;
-    self.typingDotsStack.spacing = 5.0;
-    self.typingDotsStack.hidden = YES;
-    [self.contentStack addArrangedSubview:self.typingDotsStack];
-
-    NSMutableArray<UIView *> *dots = [NSMutableArray arrayWithCapacity:3];
-    for (NSInteger i = 0; i < 3; i++) {
-        UIView *dot = [[UIView alloc] init];
-        dot.translatesAutoresizingMaskIntoConstraints = NO;
-        dot.backgroundColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
-        dot.layer.cornerRadius = 3.5;
-        [self.typingDotsStack addArrangedSubview:dot];
-        [NSLayoutConstraint activateConstraints:@[
-            [dot.widthAnchor constraintEqualToConstant:7.0],
-            [dot.heightAnchor constraintEqualToConstant:7.0]
-        ]];
-        [dots addObject:dot];
-    }
-    self.typingDots = [dots copy];
+    self.typingAnimationView = [[LOTAnimationView alloc] init];
+    self.typingAnimationView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.typingAnimationView.contentMode = UIViewContentModeScaleAspectFill;
+    self.typingAnimationView.loopAnimation = YES;
+    self.typingAnimationView.animationSpeed = 0.72;
+    self.typingAnimationView.userInteractionEnabled = NO;
+    self.typingAnimationView.backgroundColor = UIColor.clearColor;
+    self.typingAnimationView.hidden = YES;
+    self.typingAnimationView.clipsToBounds = YES;
+    [self.contentStack addArrangedSubview:self.typingAnimationView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.typingAnimationView.widthAnchor constraintEqualToConstant:PPNovaTypingAnimationWidth],
+        [self.typingAnimationView.heightAnchor constraintEqualToConstant:PPNovaTypingAnimationHeight]
+    ]];
 
     self.actionStack = [[UIStackView alloc] init];
     self.actionStack.axis = UILayoutConstraintAxisVertical;
@@ -252,6 +255,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     //[self.contentStack setContentHuggingPriority:UILayoutPriorityDefaultHigh forAxis:UILayoutConstraintAxisHorizontal];
 
     self.bubbleWidthConstraint = [self.bubbleShadowView.widthAnchor constraintEqualToConstant:PPNovaBubbleMinimumWidth];
+    self.bubbleWidthConstraint.priority = UILayoutPriorityRequired;
     self.bubbleWidthConstraint.active = YES;
 
     NSLayoutConstraint *avatarEdge = [self.avatarView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-16.0];
@@ -259,6 +263,8 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     NSLayoutConstraint *assistantLimit = [self.bubbleShadowView.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.contentView.leadingAnchor constant:70.0];
     NSLayoutConstraint *userPrimary = [self.bubbleShadowView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:16.0];
     NSLayoutConstraint *userLimit = [self.bubbleShadowView.trailingAnchor constraintLessThanOrEqualToAnchor:self.contentView.trailingAnchor constant:-70.0];
+    assistantLimit.priority = UILayoutPriorityDefaultHigh;
+    userLimit.priority = UILayoutPriorityDefaultHigh;
 
     self.assistantConstraints = @[assistantPrimary, assistantLimit];
     self.userConstraints = @[userPrimary, userLimit];
@@ -282,10 +288,10 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         [self.bubbleMaterialView.trailingAnchor constraintEqualToAnchor:self.bubbleShadowView.trailingAnchor],
         [self.bubbleMaterialView.bottomAnchor constraintEqualToAnchor:self.bubbleShadowView.bottomAnchor],
 
-        [self.contentStack.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor constant:20.0],
-        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.leadingAnchor constant:15.0],
-        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.trailingAnchor constant:-15.0],
-        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.bottomAnchor constant:-18.0]
+        [self.contentStack.topAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.topAnchor constant:18.0],
+        [self.contentStack.leadingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.leadingAnchor constant:17.0],
+        [self.contentStack.trailingAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.trailingAnchor constant:-17.0],
+        [self.contentStack.bottomAnchor constraintEqualToAnchor:self.bubbleMaterialView.contentView.bottomAnchor constant:-16.0]
     ]];
 
     [self pp_applyStyleForAssistant:YES typing:NO];
@@ -786,7 +792,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.contentView.bounds = CGRectMake(0.0, 0.0, resolvedMaxWidth, CGRectGetHeight(self.contentView.bounds));
 
     self.messageLabel.hidden = NO;
-    self.typingDotsStack.hidden = YES;
+    self.typingAnimationView.hidden = YES;
     self.messageLabel.attributedText = nil;
     self.messageLabel.text = self.assistantMessage ? nil : (messageModel.text ?: @"");
     [self pp_applyStyleForAssistant:self.assistantMessage typing:NO];
@@ -801,6 +807,37 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.accessibilityLabel = [self pp_currentPlainMessageText];
 }
 
+- (void)setNovaStarred:(BOOL)starred {
+    if (!starred) {
+        self.statusImageView.image = nil;
+        self.statusImageView.hidden = YES;
+        self.statusImageView.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    UIImage *starImage = nil;
+    if (@available(iOS 13.0, *)) {
+        UIImageSymbolConfiguration *configuration = [UIImageSymbolConfiguration configurationWithPointSize:10.5
+                                                                                                    weight:UIImageSymbolWeightSemibold];
+        starImage = [UIImage systemImageNamed:@"star.fill" withConfiguration:configuration];
+    }
+    self.statusImageView.image = starImage;
+    self.statusImageView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
+    self.statusImageView.hidden = (starImage == nil);
+
+    if (!UIAccessibilityIsReduceMotionEnabled() && starImage) {
+        self.statusImageView.transform = CGAffineTransformMakeScale(0.72, 0.72);
+        [UIView animateWithDuration:0.28
+                              delay:0.0
+             usingSpringWithDamping:0.76
+              initialSpringVelocity:0.16
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.statusImageView.transform = CGAffineTransformIdentity;
+        } completion:nil];
+    }
+}
+
 - (void)configureTypingWithMaxWidth:(CGFloat)maxWidth {
     self.messageModel = nil;
     self.typingMode = YES;
@@ -811,7 +848,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.contentView.bounds = CGRectMake(0.0, 0.0, resolvedMaxWidth, CGRectGetHeight(self.contentView.bounds));
 
     self.messageLabel.hidden = YES;
-    self.typingDotsStack.hidden = NO;
+    self.typingAnimationView.hidden = NO;
     self.timeLabel.text = kLang(@"nova_typing");
     self.statusImageView.hidden = YES;
     [self pp_applyStyleForAssistant:YES typing:YES];
@@ -943,6 +980,11 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     }
 
     CGFloat targetWidth = MIN(availableWidth, MAX(minimumWidth, measuredWidth));
+    if (assistant && !self.typingMode) {
+        CGFloat comfortableWidth = floor(containerWidth * 0.58);
+        comfortableWidth = MIN(PPNovaAssistantMaximumReadableFloor, MAX(PPNovaAssistantMinimumReadableWidth, comfortableWidth));
+        targetWidth = MAX(targetWidth, MIN(availableWidth, comfortableWidth));
+    }
     if (self.typingMode) {
         targetWidth = MAX(targetWidth, 86.0);
     }
@@ -970,8 +1012,8 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         }
     }
 
-    if (!self.typingDotsStack.hidden) {
-        targetContentWidth = MAX(targetContentWidth, 42.0);
+    if (!self.typingAnimationView.hidden) {
+        targetContentWidth = MAX(targetContentWidth, PPNovaTypingAnimationWidth);
     }
 
     if (self.timeLabel.text.length > 0) {
@@ -994,7 +1036,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     CGFloat readableWidth = MIN(maxLabelWidth, MAX(measuredWidth, PPNovaBubbleMinimumWidth - PPNovaBubbleHorizontalContentInset));
     if (self.assistantMessage && !self.typingMode) {
         CGFloat assistantFloor = MIN(maxLabelWidth, MAX(PPNovaAssistantMinimumReadableWidth - PPNovaBubbleHorizontalContentInset,
-                                                        floor(maxLabelWidth * 0.58)));
+                                                        floor(maxLabelWidth * 0.68)));
         readableWidth = MAX(readableWidth, assistantFloor);
     }
     return ceil(readableWidth);
@@ -1027,10 +1069,9 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 - (CGSize)systemLayoutSizeFittingSize:(CGSize)targetSize
         withHorizontalFittingPriority:(UILayoutPriority)horizontalFittingPriority
               verticalFittingPriority:(UILayoutPriority)verticalFittingPriority {
-    CGFloat configuredWidth = [self pp_resolvedContainerWidthForCandidate:self.configuredMaxWidth];
-    CGFloat fittingWidth = targetSize.width > 1.0 ? targetSize.width : configuredWidth;
-    if (configuredWidth > 1.0 && fittingWidth < configuredWidth) {
-        fittingWidth = configuredWidth;
+    CGFloat fittingWidth = targetSize.width > 1.0 ? targetSize.width : self.configuredMaxWidth;
+    if (self.configuredMaxWidth > 1.0 && fittingWidth < self.configuredMaxWidth) {
+        fittingWidth = self.configuredMaxWidth;
     }
     fittingWidth = [self pp_resolvedContainerWidthForCandidate:fittingWidth];
     if (fittingWidth > 1.0) {
@@ -1049,16 +1090,16 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
 - (void)pp_applyStyleForAssistant:(BOOL)assistant typing:(BOOL)typing {
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
-    UIColor *assistantFill = PPNovaCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.93],
-                                                   [UIColor colorWithWhite:1.0 alpha:0.105]);
+    UIColor *assistantFill = PPNovaCellDynamicColor([UIColor colorWithWhite:1.0 alpha:0.97],
+                                                   [UIColor colorWithWhite:1.0 alpha:0.14]);
     UIColor *assistantText = PPNovaCellDynamicColor(AppPrimaryTextClr ?: UIColor.blackColor,
                                                    UIColor.whiteColor);
     UIColor *assistantMeta = PPNovaCellDynamicColor([UIColor colorWithWhite:0.16 alpha:0.46],
                                                    [UIColor colorWithWhite:1.0 alpha:0.46]);
-    UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.13],
-                                                     [UIColor.whiteColor colorWithAlphaComponent:0.09]);
-    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.90],
-                                              [brand colorWithAlphaComponent:0.76]);
+    UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.16],
+                                                     [UIColor.whiteColor colorWithAlphaComponent:0.12]);
+    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.86],
+                                              [brand colorWithAlphaComponent:0.78]);
     UIColor *userText = UIColor.whiteColor;
     UIColor *userMeta = [UIColor.whiteColor colorWithAlphaComponent:0.72];
     UIColor *userBorder = PPNovaCellDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.34],
@@ -1089,9 +1130,9 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
     self.bubbleShadowView.layer.shadowColor = shadowColor.CGColor;
-    self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.18 : 0.075) : (darkMode ? 0.20 : 0.13);
-    self.bubbleShadowView.layer.shadowRadius = assistant ? 18.0 : 17.0;
-    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 8.0 : 9.0);
+    self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.20 : 0.09) : (darkMode ? 0.22 : 0.15);
+    self.bubbleShadowView.layer.shadowRadius = assistant ? 20.0 : 18.0;
+    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 9.0 : 10.0);
 
     self.avatarView.backgroundColor = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.11],
                                                             [brand colorWithAlphaComponent:0.18]);
@@ -1136,13 +1177,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.timeLabel.textColor = assistant ? assistantMeta : userMeta;
     self.statusImageView.tintColor = userMeta;
 
-    for (UIView *dot in self.typingDots) {
-        dot.backgroundColor = [brand colorWithAlphaComponent:typing ? 0.96 : 0.76];
-        dot.layer.shadowColor = brand.CGColor;
-        dot.layer.shadowOpacity = typing ? 0.16 : 0.0;
-        dot.layer.shadowRadius = 3.0;
-        dot.layer.shadowOffset = CGSizeZero;
-    }
+    self.typingAnimationView.alpha = typing ? 1.0 : 0.0;
 
     for (UIButton *button in self.actionStack.arrangedSubviews) {
         if (![button isKindOfClass:UIButton.class]) continue;
@@ -1172,46 +1207,44 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 }
 
 - (void)pp_startTypingAnimation {
+    [self pp_loadTypingAnimationIfNeeded];
+
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        for (UIView *dot in self.typingDots) {
-            dot.layer.opacity = 1.0;
-            [dot.layer removeAllAnimations];
-        }
+        [self.typingAnimationView stop];
+        self.typingAnimationView.animationProgress = 0.42;
         return;
     }
 
-    CFTimeInterval baseTime = CACurrentMediaTime();
-    [self.typingDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
-        [dot.layer removeAllAnimations];
-        CAKeyframeAnimation *floatAnimation = [CAKeyframeAnimation animationWithKeyPath:@"transform.translation.y"];
-        floatAnimation.values = @[@0.0, @(-3.5), @0.0];
-        floatAnimation.keyTimes = @[@0.0, @0.45, @1.0];
-        floatAnimation.duration = 0.92;
-        floatAnimation.repeatCount = HUGE_VALF;
-        floatAnimation.beginTime = baseTime + (idx * 0.13);
-        floatAnimation.timingFunctions = @[
-            [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
-            [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]
-        ];
-        [dot.layer addAnimation:floatAnimation forKey:@"pp_novaTypingFloat"];
-
-        CABasicAnimation *fade = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        fade.fromValue = @0.45;
-        fade.toValue = @1.0;
-        fade.duration = 0.92;
-        fade.autoreverses = YES;
-        fade.repeatCount = HUGE_VALF;
-        fade.beginTime = baseTime + (idx * 0.13);
-        fade.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [dot.layer addAnimation:fade forKey:@"pp_novaTypingFade"];
-    }];
+    self.typingAnimationView.animationProgress = 0.0;
+    [self.typingAnimationView play];
 }
 
 - (void)pp_stopTypingAnimation {
-    for (UIView *dot in self.typingDots) {
-        [dot.layer removeAllAnimations];
-        dot.layer.opacity = 1.0;
+    [self.typingAnimationView stop];
+    self.typingAnimationView.animationProgress = 0.0;
+}
+
+- (void)pp_loadTypingAnimationIfNeeded {
+    if (self.typingAnimationLoaded || !self.typingAnimationView) {
+        return;
     }
+    self.typingAnimationLoaded = YES;
+
+    NSString *path = [[NSBundle mainBundle] pathForResource:PPNovaTypingAnimationResourceName ofType:@"json"];
+    NSData *data = path.length > 0 ? [NSData dataWithContentsOfFile:path] : nil;
+    if (data.length == 0) {
+        return;
+    }
+
+    NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:kNilOptions error:nil];
+    LOTComposition *composition = [json isKindOfClass:NSDictionary.class] ? [LOTComposition animationFromJSON:json] : nil;
+    if (!composition) {
+        return;
+    }
+
+    self.typingAnimationView.loopAnimation = YES;
+    self.typingAnimationView.animationSpeed = 0.72;
+    [self.typingAnimationView setSceneModel:composition];
 }
 
 - (void)pp_actionButtonTapped:(UIButton *)sender {
