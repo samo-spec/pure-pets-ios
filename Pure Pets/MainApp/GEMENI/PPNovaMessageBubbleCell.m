@@ -5,6 +5,17 @@
 
 #import "PPNovaMessageBubbleCell.h"
 #import <math.h>
+#import "Styling.h"
+#if __has_include(<Lottie/Lottie.h>)
+#import <Lottie/Lottie.h>
+#elif __has_include("Lottie.h")
+#import "Lottie.h"
+#elif __has_include(<lottie-ios_Oc/Lottie.h>)
+#import <lottie-ios_Oc/Lottie.h>
+#elif __has_include(<lottie_ios_Oc/Lottie.h>)
+#import <lottie_ios_Oc/Lottie.h>
+#endif
+
 
 static UIColor *PPNovaCellDynamicColor(UIColor *lightColor, UIColor *darkColor) {
     if (@available(iOS 13.0, *)) {
@@ -67,6 +78,7 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 @property (nonatomic, strong) UIImageView *statusImageView;
 @property (nonatomic, strong) UIStackView *typingDotsStack;
 @property (nonatomic, copy) NSArray<UIView *> *typingDots;
+@property (nonatomic, strong) LOTAnimationView *typingLottieView;
 @property (nonatomic, strong) UIStackView *actionStack;
 
 @property (nonatomic, strong) NSLayoutConstraint *bubbleWidthConstraint;
@@ -108,6 +120,8 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
+    self.typingLottieView.hidden = YES;
+    [self.typingLottieView stop];
     [self setActionTitles:nil];
     [self pp_stopTypingAnimation];
     self.alpha = 1.0;
@@ -226,6 +240,17 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
         [dots addObject:dot];
     }
     self.typingDots = [dots copy];
+
+    self.typingLottieView = [[LOTAnimationView alloc] init];
+    self.typingLottieView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.typingLottieView.hidden = YES;
+    self.typingLottieView.contentMode = UIViewContentModeScaleAspectFit;
+    [self.contentStack addArrangedSubview:self.typingLottieView];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.typingLottieView.widthAnchor constraintEqualToConstant:55.0],
+        [self.typingLottieView.heightAnchor constraintEqualToConstant:24.0]
+    ]];
+
 
     self.actionStack = [[UIStackView alloc] init];
     self.actionStack.axis = UILayoutConstraintAxisVertical;
@@ -797,6 +822,8 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
 
     self.messageLabel.hidden = NO;
     self.typingDotsStack.hidden = YES;
+    self.typingLottieView.hidden = YES;
+    [self.typingLottieView stop];
     self.messageLabel.attributedText = nil;
     self.messageLabel.text = self.assistantMessage ? nil : (messageModel.text ?: @"");
     [self pp_applyStyleForAssistant:self.assistantMessage typing:NO];
@@ -851,8 +878,16 @@ static const NSUInteger PPNovaMaximumFallbackTextItems = 5;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.contentView.bounds = CGRectMake(0.0, 0.0, resolvedMaxWidth, CGRectGetHeight(self.contentView.bounds));
 
-    self.messageLabel.hidden = YES;
-    self.typingDotsStack.hidden = NO;
+        self.messageLabel.hidden = YES;
+    self.typingDotsStack.hidden = YES;
+    
+    self.typingLottieView.hidden = NO;
+    if (!self.typingLottieView.sceneModel) {
+        [Styling setAnimationNamed:@"NovaTyping" toView:self.typingLottieView withSpeed:1.0 completion:nil];
+    } else {
+        [self.typingLottieView play];
+    }
+    
     self.timeLabel.text = kLang(@"nova_typing");
     self.statusImageView.hidden = YES;
     [self pp_applyStyleForAssistant:YES typing:YES];
