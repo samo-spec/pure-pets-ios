@@ -7106,28 +7106,29 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)showNovaTyping {
-    self.typingLabel.text = kLang(@"nova_typing");
     self.statusLabel.text = kLang(@"nova_status_thinking");
-
-    [self pp_startTypingDotsAnimation];
 
     [self pp_showThinkingHeaderLottieWithAnimation:PPNovaThinkingHeaderAnimationName];
 
-    if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.typingContainer.alpha = 1.0;
-        self.typingContainer.transform = CGAffineTransformIdentity;
-        return;
-    }
+    self.typingContainer.alpha = 0.0;
 
-    [UIView animateWithDuration:0.42
-                          delay:0.0
-         usingSpringWithDamping:0.86
-          initialSpringVelocity:0.4
-                        options:UIViewAnimationOptionCurveEaseOut
-                     animations:^{
-        self.typingContainer.alpha = 1.0;
-        self.typingContainer.transform = CGAffineTransformIdentity;
-    } completion:nil];
+    BOOL alreadyHasThinking = NO;
+    for (ChatMessageModel *m in self.messages) {
+        if ([m.ID isEqualToString:@"nova_thinking_message_id"]) {
+            alreadyHasThinking = YES;
+            break;
+        }
+    }
+    if (!alreadyHasThinking) {
+        ChatMessageModel *thinkingMsg = [[ChatMessageModel alloc] init];
+        thinkingMsg.ID = @"nova_thinking_message_id";
+        thinkingMsg.senderID = @"nova_bot_id";
+        thinkingMsg.text = @"";
+        thinkingMsg.messageType = ChatMessageTypeText;
+        [self.messages addObject:thinkingMsg];
+        [self.tableView reloadData];
+        [self scrollToBottomAnimated:YES];
+    }
 }
 
 - (void)hideNovaTyping {
@@ -7135,17 +7136,19 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     [self pp_hideThinkingHeaderLottie];
 
-    [UIView animateWithDuration:0.22
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseIn
-                     animations:^{
-        self.typingContainer.alpha = 0.0;
-        self.typingContainer.transform = CGAffineTransformMakeScale(0.94, 0.94);
-    } completion:^(BOOL finished) {
-        if (self.typingContainer.alpha == 0.0) {
-            [self pp_stopTypingDotsAnimation];
+    self.typingContainer.alpha = 0.0;
+
+    ChatMessageModel *thinkingMsg = nil;
+    for (ChatMessageModel *m in self.messages) {
+        if ([m.ID isEqualToString:@"nova_thinking_message_id"]) {
+            thinkingMsg = m;
+            break;
         }
-    }];
+    }
+    if (thinkingMsg) {
+        [self.messages removeObject:thinkingMsg];
+        [self.tableView reloadData];
+    }
 }
 
 - (void)setupTableView {
@@ -7344,8 +7347,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     PPNovaMessageBubbleCell *cell = [tableView dequeueReusableCellWithIdentifier:presentation.style.stableReuseIdentifier forIndexPath:indexPath];
     cell.delegate = self;
     cell.accessibilityIdentifier = presentation.renderKey;
-    [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
-    [cell setNovaStarred:[[PPNovaLocalChatMemory sharedMemory] isMessageStarred:msg.ID ?: @""]];
+    if ([msg.ID isEqualToString:@"nova_thinking_message_id"]) {
+        [cell configureTypingWithMaxWidth:presentation.style.maxWidth];
+    } else {
+        [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
+        [cell setNovaStarred:[[PPNovaLocalChatMemory sharedMemory] isMessageStarred:msg.ID ?: @""]];
+    }
     /*
      [cell configureWithMessage:msg.text
                            date:msg.timestamp

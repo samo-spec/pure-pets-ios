@@ -113,7 +113,7 @@
     }
 
     player.numberOfLoops = 0;
-    player.volume = 0.26f;
+    player.volume = 0.06f;
     [player prepareToPlay];
     self.novaWaterBubblePlayer = player;
     return player;
@@ -164,8 +164,8 @@
 
         switch (event) {
             case PPChatFeedbackEventOutgoingSend: {
-                [self playPremiumImpactWithIntensity:0.16];
-                [self pp_playNovaWaterBubbleToneWithVolume:0.12f];
+                [self playPremiumImpactWithIntensity:0.05];
+                [self pp_playNovaWaterBubbleToneWithVolume:0.20f];
             } break;
 
             case PPChatFeedbackEventIncomingActiveChat: {
