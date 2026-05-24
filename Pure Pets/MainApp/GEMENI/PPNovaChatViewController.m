@@ -921,15 +921,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     PPNovaChatViewController *novaVC = [[PPNovaChatViewController alloc] init];
     novaVC.modalInPresentation = YES;
     if (@available(iOS 15.0, *)) {
-        novaVC.modalPresentationStyle = UIModalPresentationPageSheet;
+        novaVC.modalPresentationStyle = UIModalPresentationFullScreen;
         UISheetPresentationController *sheet = novaVC.sheetPresentationController;
         if (sheet) {
             if (@available(iOS 16.0, *)) {
                // sheet.detents = @[ [UISheetPresentationControllerDetent largeDetent]];//customDetent,
                 
                 sheet.detents = @[
-                    [UISheetPresentationControllerDetent customDetentWithIdentifier:@"99" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-                        return context.maximumDetentValue * 0.99;
+                    [UISheetPresentationControllerDetent customDetentWithIdentifier:@"1" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                        return context.maximumDetentValue * 1;
                     }]
                 ];
                 
@@ -937,7 +937,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             } else {
                 sheet.detents = @[[UISheetPresentationControllerDetent largeDetent]];
             }
-            sheet.prefersGrabberVisible = YES;
+            sheet.prefersGrabberVisible = NO;
             sheet.preferredCornerRadius = 42.0;
             // Prevent the sheet from resizing when the keyboard appears.
             // Nova manages its own input bar offset via keyboard notifications.
@@ -4206,7 +4206,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *backgroundView = [[UIView alloc] init];
     backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundView.userInteractionEnabled = NO;
-    backgroundView.backgroundColor = [AppBageColor() colorWithAlphaComponent:0.7];
+    backgroundView.backgroundColor = [AppBageColor() colorWithAlphaComponent:1];
     self.view.backgroundColor = AppClearClr;
     [self.view addSubview:backgroundView];
     self.ambientBackgroundView = backgroundView;
@@ -4817,7 +4817,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     contentView.clipsToBounds = YES;
 
     [NSLayoutConstraint activateConstraints:@[
-        [chromeView.topAnchor constraintEqualToAnchor:header.topAnchor constant:14.0],
+        [chromeView.topAnchor constraintEqualToAnchor:header.topAnchor constant:PPStatusBarHeight + 16],
         [chromeView.leadingAnchor constraintEqualToAnchor:header.leadingAnchor constant:16.0],
         [chromeView.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-16.0],
         [chromeView.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-8.0]
@@ -5626,6 +5626,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_handleNovaCloseTapped:(UIButton *)sender {
+    self.inputbar.hidden = YES;
     [self pp_handleNovaHeaderControlPressUp:sender];
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:nil];
