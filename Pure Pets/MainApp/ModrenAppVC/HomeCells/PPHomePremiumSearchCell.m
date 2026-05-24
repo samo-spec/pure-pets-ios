@@ -146,6 +146,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     self.contentView.backgroundColor = UIColor.clearColor;
     self.contentView.clipsToBounds = NO;
     self.clipsToBounds = NO;
+    self.layer.masksToBounds = NO;
     self.semanticContentAttribute = PPPSB_CurrentSemantic();
     self.contentView.semanticContentAttribute = PPPSB_CurrentSemantic();
     self.isAccessibilityElement = YES;
@@ -154,8 +155,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     self.layer.shadowOpacity = 0.0f;
     self.layer.shadowRadius = 0.0f;
     self.layer.shadowOffset = CGSizeZero;
-    [self pp_setShadowColor:UIColor.clearColor];
-/*
+ /*
  if (@available(iOS 26.0, *)) {
      UIButtonConfiguration *configuration =
      [UIButtonConfiguration glassButtonConfiguration];
@@ -182,6 +182,8 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
         chromeView = glassButton;
         _glassChromeButton = glassButton;
 
+       
+        
     } else {
         chromeView = [[UIView alloc] initWithFrame:self.contentView.bounds];
     }
@@ -190,13 +192,18 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
 
     chromeView.userInteractionEnabled = NO;
     chromeView.layer.cornerRadius = PPPSBChromeCornerRadius ;
-    chromeView.layer.masksToBounds = YES;
+    chromeView.layer.masksToBounds = NO;
 
 
     if (@available(iOS 13.0, *)) {
         chromeView.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.contentView addSubview:chromeView];
+    
+    self.contentView.clipsToBounds = NO;
+    self.contentView.layer.masksToBounds = NO;
+    
+    
     _chromeView = chromeView;
     [chromeView.heightAnchor constraintEqualToConstant:44.0].active = YES;
 
@@ -356,20 +363,20 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     [self.contentView addSubview:_tapButton];
 
     [NSLayoutConstraint activateConstraints:@[
-        [_tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],
-        [_tapButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [_tapButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [_tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor ],
+        [_tapButton.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:4],
+        [_tapButton.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-4],
         [_tapButton.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor],
 
         [chromeView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:0.0],
-        [chromeView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor],
-        [chromeView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor],
+        [chromeView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:4],
+        [chromeView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-4],
         [chromeView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-0.0],
 
         [leadingChipView.leadingAnchor constraintEqualToAnchor:chromeView.leadingAnchor constant:7.0],
         [leadingChipView.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
-        [leadingChipView.widthAnchor constraintEqualToConstant:28.0],
-        [leadingChipView.heightAnchor constraintEqualToConstant:28.0],
+        [leadingChipView.widthAnchor constraintEqualToConstant:32.0],
+        [leadingChipView.heightAnchor constraintEqualToConstant:32.0],
 
         [leadingIconView.centerXAnchor constraintEqualToAnchor:leadingChipView.centerXAnchor],
         [leadingIconView.centerYAnchor constraintEqualToAnchor:leadingChipView.centerYAnchor],

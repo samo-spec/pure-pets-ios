@@ -224,15 +224,16 @@ static UIColor *PremiumSoftCardBorderColor(void)
     [_contentStackView setCustomSpacing:13.0 afterView:_subtitleLabel];
     [_surfaceView addSubview:_contentStackView];
 
-    _topBackgroundGlowView.layer.masksToBounds = NO;
-    _topBackgroundGlowView.clipsToBounds = NO;
+    _topBackgroundGlowView.layer.masksToBounds = YES;
+    _topBackgroundGlowView.clipsToBounds = YES;
 
-    _middleBackgroundGlowView.layer.masksToBounds = NO;
-    _middleBackgroundGlowView.clipsToBounds = NO;
+    _middleBackgroundGlowView.layer.masksToBounds = YES;
+    _middleBackgroundGlowView.clipsToBounds = YES;
 
-    _bottomLeadingGlowView.layer.masksToBounds = NO;
-    _bottomLeadingGlowView.clipsToBounds = NO;
+    _bottomLeadingGlowView.layer.masksToBounds = YES;
+    _bottomLeadingGlowView.clipsToBounds = YES;
 
+    _largeOrbView.layer.masksToBounds = YES;
     _largeOrbView.layer.masksToBounds = YES;
     
     _topBackgroundGlowView.layer.cornerRadius = 246.0/2;

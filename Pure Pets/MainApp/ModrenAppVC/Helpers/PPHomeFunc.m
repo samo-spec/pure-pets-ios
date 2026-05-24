@@ -22,7 +22,7 @@ NS_ASSUME_NONNULL_BEGIN
 static const CGFloat PPHomeSpacingSmall   = 8.0;
 static const CGFloat PPHomeSpacingBase    = 16.0;
 static const CGFloat PPInner = 8.0;
-static const CGFloat PPHomeSpacingSection = 24.0;
+static const CGFloat PPHomeSpacingSection = 16.0;
 static const CGFloat kHeaderHeight     = 64.0;
 static const CGFloat kHeaderHeightMin     = 56.0;
 
@@ -59,7 +59,8 @@ static inline BOOL PPHomeWidthIsCompactPhone(CGFloat width)
 
 static inline CGFloat PPHomeSectionEdgeInset(void)
 {
-    return MIN(PPHomeSpacingSmall, PPHomeSpacingSection * 0.4);
+    // Vertical spacing between sections set to 16pt
+    return PPHomeSpacingBase;
 }
 
 static inline CGFloat PPHomeItemHalfGap(void)
@@ -71,7 +72,15 @@ static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(),
                                        PPHomeSpacingBase,
-                                       PPHomeSpacingBase-4,
+                                       PPHomeSpacingBase,
+                                       PPHomeSpacingBase);
+}
+
+static inline NSDirectionalEdgeInsets PPHomeHalfFullWidthSectionInsets(void)
+{
+    return NSDirectionalEdgeInsetsMake(8,
+                                       PPHomeSpacingBase,
+                                       8,
                                        PPHomeSpacingBase);
 }
 
@@ -79,7 +88,7 @@ static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 {
     return NSDirectionalEdgeInsetsMake(PPHomeSectionEdgeInset(),
                                        PPHomeItemHalfGap(),
-                                       PPHomeSpacingBase+4,
+                                       PPHomeSpacingBase,
                                        PPHomeItemHalfGap());
 }
 
@@ -191,13 +200,13 @@ static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 351.0;
+        return 361.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 351.0;
+        return 361.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 312.0;
+        return 322.0;
     }
     return kCardLarge + 5.0;
 }
@@ -297,7 +306,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
 + (NSCollectionLayoutSection *)premiumSearchSectionForWidth:(CGFloat)availableWidth
 {
-    CGFloat searchHeight = 52.0;
+    CGFloat searchHeight = 56.0;
 
     NSCollectionLayoutSize *itemSize =
         [NSCollectionLayoutSize sizeWithWidthDimension:
@@ -317,7 +326,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
     section.orthogonalScrollingBehavior = UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
     section.interGroupSpacing = 0.0;
-    section.contentInsets = PPHomeFullWidthSectionInsets();
+    section.contentInsets = NSDirectionalEdgeInsetsMake(4,
+                                                        PPHomeSpacingBase,
+                                                        8,
+                                                        PPHomeSpacingBase);
 
     return section;
 }
@@ -718,7 +730,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
     section.interGroupSpacing = PPHomeSpacingSmall;
-    section.contentInsets = PPHomeFullWidthSectionInsets();
+    section.contentInsets =  NSDirectionalEdgeInsetsMake(4,
+                                                                PPHomeSpacingBase,
+                                                                16,
+                                                                PPHomeSpacingBase);
 
     return section;
  }
@@ -861,7 +876,10 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.interGroupSpacing = PPHomeSpacingBase;
      section.contentInsets =
-     PPHomeHorizontalRailSectionInsets();
+     NSDirectionalEdgeInsetsMake(8,
+                                        16,
+                                        18,
+                                        16);
 
      return section;
  }

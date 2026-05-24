@@ -55,7 +55,7 @@
     self.surfaceView.userInteractionEnabled = YES;
     self.surfaceView.clipsToBounds = NO;
     self.surfaceView.layer.cornerCurve = kCACornerCurveContinuous;
-    self.surfaceView.layer.cornerRadius = 18.0;
+    self.surfaceView.layer.cornerRadius = 20.0;
     self.surfaceView.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
     [self addSubview:self.surfaceView];
 
@@ -114,7 +114,7 @@
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionButton.hidden = YES;
     self.actionButton.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
-    self.actionButton.layer.cornerRadius = 15.0;
+    self.actionButton.layer.cornerRadius = 12.0;
     self.actionButton.layer.cornerCurve = kCACornerCurveContinuous;
     self.actionButton.clipsToBounds = YES;
     self.actionButton.titleLabel.adjustsFontSizeToFitWidth = YES;
@@ -189,7 +189,7 @@
     cfg.baseForegroundColor = [self pp_accentColor];
 
     UIBackgroundConfiguration *background = [UIBackgroundConfiguration clearConfiguration];
-    background.cornerRadius = 15.0;
+    background.cornerRadius = 12.0;
     background.strokeWidth = 1.0 / UIScreen.mainScreen.scale;
     background.strokeColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.28 : 0.18];
     background.backgroundColor = [[self pp_accentColor] colorWithAlphaComponent:[self pp_isDarkMode] ? 0.13 : 0.09];
