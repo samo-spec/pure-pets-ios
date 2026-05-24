@@ -942,7 +942,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             // Prevent the sheet from resizing when the keyboard appears.
             // Nova manages its own input bar offset via keyboard notifications.
             if (@available(iOS 16.0, *)) {
-                sheet.prefersEdgeAttachedInCompactHeight = YES;
+                // NO → sheet never enters narrow edge-attached mode when keyboard shows.
+                sheet.prefersEdgeAttachedInCompactHeight = NO;
                 sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = NO;
             }
         }
@@ -1101,6 +1102,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     CGFloat tableWidth = CGRectGetWidth(self.tableView.bounds);
     if (tableWidth <= 1.0 || fabs(tableWidth - self.lastNovaTableLayoutWidth) <= 1.0) {
+        return;
+    }
+    // During keyboard animation the sheet can momentarily report a narrower width.
+    // Ignore decreases while the keyboard is transitioning — the real width is stable.
+    if (self.novaKeyboardTransitionActive && tableWidth < self.lastNovaTableLayoutWidth) {
         return;
     }
 
@@ -7515,6 +7521,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (tableRows <= 0) return;
     NSInteger bottomRow = MIN((NSInteger)self.messages.count, tableRows) - 1;
     if (bottomRow < 0) return;
+
+    // Always sync the bottom inset before scrolling so the thinking bubble (and any
+    // newly inserted row) lands above the input bar, not behind it.
+    [self pp_updateNovaTableBottomInsetForCurrentLayout];
+
     NSIndexPath *bottomIP = [NSIndexPath indexPathForRow:bottomRow inSection:0];
     [self.tableView scrollToRowAtIndexPath:bottomIP atScrollPosition:UITableViewScrollPositionBottom animated:animated];
 }
