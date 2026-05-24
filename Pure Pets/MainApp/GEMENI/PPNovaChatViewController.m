@@ -5586,6 +5586,42 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_setNovaTableBottomGap:0.0];
 }
 
+- (BOOL)pp_hasNovaThinkingMessage {
+    for (ChatMessageModel *message in self.messages) {
+        if ([message.ID isEqualToString:@"nova_thinking_message_id"]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (void)pp_keepNovaThinkingMessageVisibleAfterLayout {
+    if (![self pp_hasNovaThinkingMessage] || !self.tableView || !self.inputbar) {
+        return;
+    }
+
+    [self.view layoutIfNeeded];
+    [self pp_updateNovaTableBottomInsetForCurrentLayout];
+    [self.tableView layoutIfNeeded];
+    if (self.novaKeyboardTransitionActive) {
+        [self pp_scheduleNovaScrollToBottomAfterKeyboardAnimated:NO];
+        return;
+    }
+
+    [self pp_setNovaTableBottomGap:0.0];
+}
+
+- (void)pp_scheduleNovaThinkingMessageVisibilityAfterLayout {
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed) {
+            return;
+        }
+        [self pp_keepNovaThinkingMessageVisibleAfterLayout];
+    });
+}
+
 - (void)pp_handleNovaHeaderControlPressDown:(UIButton *)sender {
     if (UIAccessibilityIsReduceMotionEnabled()) {
         sender.alpha = 0.78;
@@ -7304,6 +7340,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                  oldRowCount:oldRowCount
                                             shouldAutoScroll:YES
                                                 updateReason:@"insert_thinking"];
+        [self pp_scheduleNovaThinkingMessageVisibilityAfterLayout];
     }
 }
 
@@ -7480,7 +7517,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         }
         [self.view layoutIfNeeded];
         [self pp_updateNovaTableBottomInsetForCurrentLayout];
-        if (wasNearBottom) {
+        if (wasNearBottom || [self pp_hasNovaThinkingMessage]) {
             [self pp_setNovaTableBottomGap:0.0];
         } else {
             [self pp_setNovaTableContentOffsetClamped:preservedContentOffset];
@@ -7488,11 +7525,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     } completion:^(BOOL finished) {
         self.novaKeyboardTransitionActive = NO;
         [self pp_updateNovaTableBottomInsetForCurrentLayout];
-        if (wasNearBottom) {
+        if (wasNearBottom || [self pp_hasNovaThinkingMessage]) {
             [self pp_setNovaTableBottomGap:0.0];
         } else {
             [self pp_setNovaTableContentOffsetClamped:preservedContentOffset];
         }
+        [self pp_scheduleNovaThinkingMessageVisibilityAfterLayout];
         [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"keyboard_settled"];
     }];
 }
@@ -7937,16 +7975,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     CGFloat keyboardOffset = -(self.inputBarBottomConstraint.constant) - 8.0;
     if (keyboardOffset < 0) keyboardOffset = 0;
 
-    BOOL wasNearBottom = [self pp_novaIsScrolledNearBottom];
+    BOOL shouldKeepBottomVisible = [self pp_novaIsScrolledNearBottom] || [self pp_hasNovaThinkingMessage];
 
     [UIView animateWithDuration:0.24 delay:0.0 options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction animations:^{
         [self.view layoutIfNeeded];
         [self pp_updateNovaTableBottomInsetForCurrentLayout];
-        [self pp_pinNovaTableToBottomIfNeeded:wasNearBottom];
+        [self pp_pinNovaTableToBottomIfNeeded:shouldKeepBottomVisible];
     } completion:^(__unused BOOL finished) {
-        if (wasNearBottom) {
+        if (shouldKeepBottomVisible) {
             [self pp_updateNovaTableBottomInsetForCurrentLayout];
             [self pp_pinNovaTableToBottomIfNeeded:YES];
+            [self pp_scheduleNovaThinkingMessageVisibilityAfterLayout];
         }
     }];
 }
