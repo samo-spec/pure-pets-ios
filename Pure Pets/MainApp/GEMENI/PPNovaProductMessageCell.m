@@ -131,6 +131,7 @@
     NSString *nextRenderKey = [self pp_renderKeyForMessage:messageModel];
     BOOL isNewMessage = ![self.messageID isEqualToString:nextMessageID];
     BOOL shouldReloadCards = isNewMessage || ![self.renderKey isEqualToString:nextRenderKey];
+    BOOL widthChanged = fabs(self.maxWidth - maxWidth) > 1.0;
     self.messageID = messageModel.ID ?: @"";
     self.renderKey = nextRenderKey;
     if (isNewMessage) {
@@ -156,11 +157,19 @@
     self.titleLabel.text = kLang(@"nova_product_results");
     self.countLabel.text = [NSString stringWithFormat:kLang(@"nova_product_count_format"), (long)self.products.count];
     if (shouldReloadCards) {
-        [self.collectionView reloadData];
-        [self.collectionView.collectionViewLayout invalidateLayout];
+        [UIView performWithoutAnimation:^{
+            [self.collectionView reloadData];
+            [self.collectionView.collectionViewLayout invalidateLayout];
+        }];
         [self pp_scrollToInitialProductIfNeededForRenderKey:nextRenderKey];
-    } else {
-        [self.collectionView.collectionViewLayout invalidateLayout];
+    } else if (widthChanged) {
+        CGPoint preservedOffset = self.collectionView.contentOffset;
+        [UIView performWithoutAnimation:^{
+            [self.collectionView.collectionViewLayout invalidateLayout];
+            [self.collectionView setNeedsLayout];
+            [self.collectionView layoutIfNeeded];
+            [self.collectionView setContentOffset:preservedOffset animated:NO];
+        }];
     }
 }
 
@@ -172,9 +181,13 @@
         return;
     }
     self.maxWidth = maxWidth;
-    [self.collectionView.collectionViewLayout invalidateLayout];
-    [self.collectionView setNeedsLayout];
-    [self.collectionView layoutIfNeeded];
+    CGPoint preservedOffset = self.collectionView.contentOffset;
+    [UIView performWithoutAnimation:^{
+        [self.collectionView.collectionViewLayout invalidateLayout];
+        [self.collectionView setNeedsLayout];
+        [self.collectionView layoutIfNeeded];
+        [self.collectionView setContentOffset:preservedOffset animated:NO];
+    }];
 }
 
 - (void)layoutSubviews {
@@ -182,7 +195,11 @@
     CGFloat width = CGRectGetWidth(self.collectionView.bounds);
     if (width > 1.0 && fabs(width - self.lastCollectionLayoutWidth) > 1.0) {
         self.lastCollectionLayoutWidth = width;
-        [self.collectionView.collectionViewLayout invalidateLayout];
+        CGPoint preservedOffset = self.collectionView.contentOffset;
+        [UIView performWithoutAnimation:^{
+            [self.collectionView.collectionViewLayout invalidateLayout];
+            [self.collectionView setContentOffset:preservedOffset animated:NO];
+        }];
     }
 }
 

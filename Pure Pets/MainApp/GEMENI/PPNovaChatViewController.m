@@ -823,6 +823,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) LOTAnimationView *novaLoadingLottie; // Added for thinking state
 @property (nonatomic, strong) LOTAnimationView *novaEmptyLoaderLottie;
 @property (nonatomic, assign) BOOL novaHeaderThinkingAnimationVisible;
+@property (nonatomic, copy, nullable) NSString *novaActiveThinkingHeroAnimationName;
 
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<ChatMessageModel *> *messages;
@@ -862,6 +863,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, assign) NSUInteger activeNovaCachedProductsBeforeSend;
 @property (nonatomic, assign) BOOL activeNovaClearedCachedProducts;
 @property (nonatomic, copy, nullable) dispatch_block_t pendingNovaVisibleLayoutRefreshBlock;
+@property (nonatomic, copy, nullable) dispatch_block_t pendingNovaScrollToBottomBlock;
 @property (nonatomic, assign) BOOL novaLastTableMutationRequestedAutoScroll;
 @property (nonatomic, assign) CFTimeInterval novaLastTableMutationTimestamp;
 
@@ -1102,6 +1104,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (self.pendingNovaVisibleLayoutRefreshBlock) {
         dispatch_block_cancel(self.pendingNovaVisibleLayoutRefreshBlock);
         self.pendingNovaVisibleLayoutRefreshBlock = nil;
+    }
+    if (self.pendingNovaScrollToBottomBlock) {
+        dispatch_block_cancel(self.pendingNovaScrollToBottomBlock);
+        self.pendingNovaScrollToBottomBlock = nil;
     }
     [self.statusDot.layer removeAllAnimations];
     [self.headerBrandRingView.layer removeAllAnimations];
@@ -4217,11 +4223,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)pp_applyNovaSurfaceColors {
     UIColor *brand = [self pp_novaHeaderAccentColor];
-    UIColor *baseBackground = [self pp_novaHeaderCanvasColor];
     UIColor *surface = [self pp_novaHeaderSurfaceColor];
     UIColor *primaryText = [self pp_novaHeaderPrimaryTextColor];
     UIColor *secondaryText = [self pp_novaHeaderSecondaryTextColor];
-    //self.ambientBackgroundView.backgroundColor = baseBackground;
     self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
                                                                      [brand colorWithAlphaComponent:0.22]);
     self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
@@ -4613,6 +4617,16 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     uint32_t count = (uint32_t)MAX(candidates.count, 1);
     return candidates[arc4random_uniform(count)] ?: PPNovaThinkingHeaderAnimationName;
+}
+
+- (BOOL)pp_isNovaThinkingHeroAnimationName:(NSString *)animationName {
+    if (animationName.length == 0) {
+        return NO;
+    }
+    if ([animationName isEqualToString:PPNovaThinkingHeaderAnimationName]) {
+        return YES;
+    }
+    return [PPNovaThinkingHeroAnimationNames() containsObject:animationName];
 }
 
 - (BOOL)pp_loadBundledThinkingFallbackIntoView:(LOTAnimationView *)animationView {
@@ -5506,19 +5520,51 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.tableView.scrollIndicatorInsets = inset;
 }
 
+- (void)pp_setNovaTableBottomGap:(CGFloat)bottomGap {
+    if (!self.tableView) {
+        return;
+    }
+
+    [self.tableView layoutIfNeeded];
+    UIEdgeInsets inset = self.tableView.contentInset;
+    CGFloat boundsHeight = CGRectGetHeight(self.tableView.bounds);
+    CGFloat contentHeight = self.tableView.contentSize.height;
+    CGFloat minimumOffsetY = -inset.top;
+    CGFloat maximumOffsetY = MAX(contentHeight + inset.bottom - boundsHeight, minimumOffsetY);
+    CGFloat targetOffsetY = contentHeight + inset.bottom - boundsHeight - MAX(bottomGap, 0.0);
+    targetOffsetY = MIN(MAX(targetOffsetY, minimumOffsetY), maximumOffsetY);
+    if (!isfinite(targetOffsetY)) {
+        return;
+    }
+
+    CGPoint targetOffset = CGPointMake(self.tableView.contentOffset.x, targetOffsetY);
+    [self.tableView setContentOffset:targetOffset animated:NO];
+}
+
+- (void)pp_setNovaTableContentOffsetClamped:(CGPoint)contentOffset {
+    if (!self.tableView) {
+        return;
+    }
+
+    UIEdgeInsets inset = self.tableView.contentInset;
+    CGFloat boundsHeight = CGRectGetHeight(self.tableView.bounds);
+    CGFloat contentHeight = self.tableView.contentSize.height;
+    CGFloat minimumOffsetY = -inset.top;
+    CGFloat maximumOffsetY = MAX(contentHeight + inset.bottom - boundsHeight, minimumOffsetY);
+    CGFloat targetOffsetY = MIN(MAX(contentOffset.y, minimumOffsetY), maximumOffsetY);
+    if (!isfinite(targetOffsetY)) {
+        return;
+    }
+
+    [self.tableView setContentOffset:CGPointMake(contentOffset.x, targetOffsetY) animated:NO];
+}
+
 - (void)pp_pinNovaTableToBottomIfNeeded:(BOOL)shouldPin {
     if (!shouldPin || !self.tableView || self.messages.count == 0) {
         return;
     }
 
-    [self.tableView layoutIfNeeded];
-    CGFloat boundsHeight = CGRectGetHeight(self.tableView.bounds);
-    CGFloat contentHeight = self.tableView.contentSize.height;
-    UIEdgeInsets inset = self.tableView.contentInset;
-    CGFloat minimumOffsetY = -inset.top;
-    CGFloat bottomOffsetY = MAX(contentHeight + inset.bottom - boundsHeight, minimumOffsetY);
-    CGPoint targetOffset = CGPointMake(self.tableView.contentOffset.x, bottomOffsetY);
-    [self.tableView setContentOffset:targetOffset animated:NO];
+    [self pp_setNovaTableBottomGap:0.0];
 }
 
 - (void)pp_handleNovaHeaderControlPressDown:(UIButton *)sender {
@@ -5601,6 +5647,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)pp_startHeaderLiveAnimations {
     BOOL reduceMotion = UIAccessibilityIsReduceMotionEnabled();
+    BOOL headerBackgroundIsThinkingHero = [self pp_isNovaThinkingHeroAnimationName:self.currentHeaderBgAnimationName];
+    BOOL shouldPlayHeaderBackground = self.currentHeaderBgAnimationName.length > 0 &&
+        (self.novaHeaderThinkingAnimationVisible || !headerBackgroundIsThinkingHero);
 
     [self.statusDot.layer removeAllAnimations];
     [self.novaHeaderBottomGlowView.layer removeAllAnimations];
@@ -5627,7 +5676,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.headerBrandRingView.transform = self.novaHeaderCollapsed ? CGAffineTransformMakeScale(0.94, 0.94) : CGAffineTransformIdentity;
         self.headerBrandMarkView.transform = self.headerBrandRingView.transform;
         [self.novaHeaderBackgroundLottie stop];
-        self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
+        self.novaHeaderBackgroundLottie.alpha = shouldPlayHeaderBackground ? [self pp_novaHeaderBackgroundAlphaForCurrentState] : 0.0;
         [self.novaRingBackgroundLottie stop];
         [self.novaHeaderMotionDots enumerateObjectsUsingBlock:^(UIView *dot, NSUInteger idx, __unused BOOL *stop) {
             dot.alpha = self.novaHeaderCollapsed ? 0.12 : (idx % 2 == 0 ? 0.28 : 0.20);
@@ -5636,8 +5685,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
-    [self.novaHeaderBackgroundLottie play];
-    self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
+    if (shouldPlayHeaderBackground) {
+        [self.novaHeaderBackgroundLottie play];
+        self.novaHeaderBackgroundLottie.alpha = [self pp_novaHeaderBackgroundAlphaForCurrentState];
+    } else {
+        [self.novaHeaderBackgroundLottie stop];
+        self.novaHeaderBackgroundLottie.alpha = 0.0;
+    }
     [self.novaRingBackgroundLottie play];
 
     CABasicAnimation *scale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
@@ -5789,6 +5843,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     NSString *heroAnimationName = [animationName isEqualToString:PPNovaThinkingHeaderAnimationName]
         ? [self pp_randomNovaThinkingHeroAnimationName]
         : (animationName.length > 0 ? animationName : [self pp_randomNovaThinkingHeroAnimationName]);
+    self.novaActiveThinkingHeroAnimationName = heroAnimationName;
+    LOG_INFO(@"[PPNovaChat][ThinkingHero] play name=%@", heroAnimationName ?: @"");
     [self pp_transitionHeaderBackgroundToAnimation:heroAnimationName];
 
     [self.novaLoadingLottie play];
@@ -5797,10 +5853,53 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }];
 }
 
+- (void)pp_stopThinkingHeroHeaderBackgroundIfNeededAnimated:(BOOL)animated {
+    if (!self.novaHeaderBackgroundLottie) {
+        self.novaActiveThinkingHeroAnimationName = nil;
+        return;
+    }
+
+    NSString *activeHero = self.novaActiveThinkingHeroAnimationName ?: self.currentHeaderBgAnimationName;
+    if (![self pp_isNovaThinkingHeroAnimationName:activeHero]) {
+        self.novaActiveThinkingHeroAnimationName = nil;
+        return;
+    }
+
+    void (^finish)(void) = ^{
+        if (self.novaHeaderThinkingAnimationVisible) {
+            return;
+        }
+        LOG_INFO(@"[PPNovaChat][ThinkingHero] stop name=%@", activeHero ?: @"");
+        [self.novaHeaderBackgroundLottie stop];
+        self.novaHeaderBackgroundLottie.animationProgress = 0.0;
+        self.novaHeaderBackgroundLottie.alpha = 0.0;
+        if ([self.currentHeaderBgAnimationName isEqualToString:activeHero] ||
+            [self pp_isNovaThinkingHeroAnimationName:self.currentHeaderBgAnimationName]) {
+            self.currentHeaderBgAnimationName = nil;
+        }
+        self.novaActiveThinkingHeroAnimationName = nil;
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        finish();
+        return;
+    }
+
+    [UIView animateWithDuration:0.24
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.novaHeaderBackgroundLottie.alpha = 0.0;
+    } completion:^(__unused BOOL finished) {
+        finish();
+    }];
+}
+
 - (void)pp_hideThinkingHeaderLottie {
     self.novaHeaderThinkingAnimationVisible = NO;
 
     //[self pp_transitionHeaderBackgroundToAnimation:@"novawave"];
+    [self pp_stopThinkingHeroHeaderBackgroundIfNeededAnimated:YES];
 
     [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.24
                           delay:0.0
@@ -5881,14 +5980,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self.view addSubview:self.inputbar];
 
     self.inputBarRestingBottomConstant = -10.0;
-    self.inputBarSafeAreaBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor
+    self.inputBarSafeAreaBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor
                                                                                        constant:self.inputBarRestingBottomConstant];
     self.inputBarBottomConstraint = self.inputBarSafeAreaBottomConstraint;
     if (@available(iOS 15.0, *)) {
         self.usesKeyboardLayoutGuideForNovaInput = YES;
         self.inputBarKeyboardBottomConstraint = [self.inputbar.bottomAnchor constraintEqualToAnchor:self.view.keyboardLayoutGuide.topAnchor
                                                                                            constant:self.inputBarRestingBottomConstant];
-        self.inputBarKeyboardBottomConstraint.active = NO;
+        self.inputBarBottomConstraint = self.inputBarKeyboardBottomConstraint;
     } else {
         self.usesKeyboardLayoutGuideForNovaInput = NO;
     }
@@ -7172,14 +7271,19 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         }
     }
     if (!alreadyHasThinking) {
+        NSInteger oldRowCount = [self.tableView numberOfRowsInSection:0];
         ChatMessageModel *thinkingMsg = [[ChatMessageModel alloc] init];
         thinkingMsg.ID = @"nova_thinking_message_id";
         thinkingMsg.senderID = @"nova_bot_id";
         thinkingMsg.text = @"";
         thinkingMsg.messageType = ChatMessageTypeText;
         [self.messages addObject:thinkingMsg];
-        [self.tableView reloadData];
-        [self scrollToBottomAnimated:YES];
+        NSIndexPath *insertedIndexPath = [NSIndexPath indexPathForRow:(NSInteger)self.messages.count - 1 inSection:0];
+        [self pp_applyNovaTableMutationWithInsertedIndexPath:insertedIndexPath
+                                           deletedIndexPaths:@[]
+                                                 oldRowCount:oldRowCount
+                                            shouldAutoScroll:YES
+                                                updateReason:@"insert_thinking"];
     }
 }
 
@@ -7192,15 +7296,25 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.typingContainer.alpha = 0.0;
 
     ChatMessageModel *thinkingMsg = nil;
-    for (ChatMessageModel *m in self.messages) {
+    NSInteger thinkingIndex = -1;
+    for (NSInteger idx = 0; idx < (NSInteger)self.messages.count; idx++) {
+        ChatMessageModel *m = self.messages[idx];
         if ([m.ID isEqualToString:@"nova_thinking_message_id"]) {
             thinkingMsg = m;
+            thinkingIndex = idx;
             break;
         }
     }
-    if (thinkingMsg) {
+    if (thinkingMsg && thinkingIndex >= 0) {
+        NSInteger oldRowCount = [self.tableView numberOfRowsInSection:0];
+        BOOL shouldAutoScroll = [self pp_novaIsScrolledNearBottom];
         [self.messages removeObject:thinkingMsg];
-        [self.tableView reloadData];
+        NSIndexPath *deletedIndexPath = [NSIndexPath indexPathForRow:thinkingIndex inSection:0];
+        [self pp_applyNovaTableMutationWithInsertedIndexPath:nil
+                                           deletedIndexPaths:@[deletedIndexPath]
+                                                 oldRowCount:oldRowCount
+                                            shouldAutoScroll:shouldAutoScroll
+                                                updateReason:@"remove_thinking"];
     }
 }
 
@@ -7280,12 +7394,21 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_stopHeaderLiveAnimations];
     [self pp_stopAmbientBackgroundAnimations];
     [self pp_stopTypingDotsAnimation];
+    if (!self.novaHeaderThinkingAnimationVisible) {
+        [self pp_stopThinkingHeroHeaderBackgroundIfNeededAnimated:NO];
+    }
 }
 
 - (void)pp_appWillEnterForeground:(__unused NSNotification *)note {
     if (self.dismissed || self.view.window == nil) return;
     [self pp_startHeaderLiveAnimations];
     [self pp_startAmbientBackgroundAnimations];
+    if (self.novaHeaderThinkingAnimationVisible) {
+        [self.novaLoadingLottie play];
+        self.novaLoadingLottie.alpha = 0.7;
+    } else {
+        [self pp_stopThinkingHeroHeaderBackgroundIfNeededAnimated:NO];
+    }
     if (self.typingContainer.alpha > 0.5) {
         [self pp_startTypingDotsAnimation];
     }
@@ -7306,6 +7429,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.emptyStateCenterYConstraint.constant = 8.0 - (keyboardOffset > 0 ? keyboardOffset / 2.0 : 0);
 
     BOOL wasNearBottom = [self pp_novaIsScrolledNearBottom];
+    CGPoint preservedContentOffset = self.tableView.contentOffset;
     BOOL shouldCollapseHeader = keyboardOffset > 0.0 && !self.novaHeaderCollapsed;
  
     BOOL keyboardVisible = keyboardOffset > 0.5;
@@ -7314,7 +7438,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         : self.inputBarRestingBottomConstant;
 
     if (shouldCollapseHeader) {
-        [self pp_setNovaHeaderCollapsed:YES animated:NO updateInsets:NO];
+        [self pp_setNovaHeaderCollapsed:YES animated:YES updateInsets:NO];
     }
 
     if (duration <= 0.0) {
@@ -7327,27 +7451,27 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     [UIView animateWithDuration:duration delay:0.0 options:options animations:^{
         if (self.usesKeyboardLayoutGuideForNovaInput && self.inputBarKeyboardBottomConstraint) {
-            if (keyboardVisible) {
-                self.inputBarSafeAreaBottomConstraint.active = NO;
-                self.inputBarKeyboardBottomConstraint.active = YES;
-                self.inputBarBottomConstraint = self.inputBarKeyboardBottomConstraint;
-            } else {
-                self.inputBarKeyboardBottomConstraint.active = NO;
-                self.inputBarSafeAreaBottomConstraint.active = YES;
-                self.inputBarBottomConstraint = self.inputBarSafeAreaBottomConstraint;
-            }
+            self.inputBarSafeAreaBottomConstraint.active = NO;
+            self.inputBarKeyboardBottomConstraint.active = YES;
+            self.inputBarBottomConstraint = self.inputBarKeyboardBottomConstraint;
             self.inputBarBottomConstraint.constant = self.inputBarRestingBottomConstant;
         } else {
             self.inputBarBottomConstraint.constant = targetBottomConstant;
         }
         [self.view layoutIfNeeded];
         [self pp_updateNovaTableBottomInsetForCurrentLayout];
-        [self pp_pinNovaTableToBottomIfNeeded:wasNearBottom];
+        if (wasNearBottom) {
+            [self pp_setNovaTableBottomGap:0.0];
+        } else {
+            [self pp_setNovaTableContentOffsetClamped:preservedContentOffset];
+        }
     } completion:^(BOOL finished) {
         self.novaKeyboardTransitionActive = NO;
+        [self pp_updateNovaTableBottomInsetForCurrentLayout];
         if (wasNearBottom) {
-            [self pp_updateNovaTableBottomInsetForCurrentLayout];
-            [self pp_pinNovaTableToBottomIfNeeded:YES];
+            [self pp_setNovaTableBottomGap:0.0];
+        } else {
+            [self pp_setNovaTableContentOffsetClamped:preservedContentOffset];
         }
         [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"keyboard_settled"];
     }];
@@ -7364,6 +7488,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)scrollToBottomAnimated:(BOOL)animated {
+    if (self.novaKeyboardTransitionActive) {
+        [self pp_scheduleNovaScrollToBottomAfterKeyboardAnimated:animated];
+        return;
+    }
+    if (self.pendingNovaScrollToBottomBlock) {
+        dispatch_block_cancel(self.pendingNovaScrollToBottomBlock);
+        self.pendingNovaScrollToBottomBlock = nil;
+    }
+
     if (self.messages.count == 0) return;
     NSInteger tableRows = [self.tableView numberOfRowsInSection:0];
     if (tableRows <= 0) return;
@@ -7371,6 +7504,27 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (bottomRow < 0) return;
     NSIndexPath *bottomIP = [NSIndexPath indexPathForRow:bottomRow inSection:0];
     [self.tableView scrollToRowAtIndexPath:bottomIP atScrollPosition:UITableViewScrollPositionBottom animated:animated];
+}
+
+- (void)pp_scheduleNovaScrollToBottomAfterKeyboardAnimated:(BOOL)animated {
+    if (self.pendingNovaScrollToBottomBlock) {
+        dispatch_block_cancel(self.pendingNovaScrollToBottomBlock);
+        self.pendingNovaScrollToBottomBlock = nil;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t block = dispatch_block_create(0, ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed) return;
+        self.pendingNovaScrollToBottomBlock = nil;
+        if (self.novaKeyboardTransitionActive) {
+            [self pp_scheduleNovaScrollToBottomAfterKeyboardAnimated:animated];
+            return;
+        }
+        [self scrollToBottomAnimated:animated];
+    });
+    self.pendingNovaScrollToBottomBlock = block;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.18 * NSEC_PER_SEC)), dispatch_get_main_queue(), block);
 }
 
 #pragma mark - Data Source & Delegate
