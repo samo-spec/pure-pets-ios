@@ -939,6 +939,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             }
             sheet.prefersGrabberVisible = YES;
             sheet.preferredCornerRadius = 42.0;
+            // Prevent the sheet from resizing when the keyboard appears.
+            // Nova manages its own input bar offset via keyboard notifications.
+            if (@available(iOS 16.0, *)) {
+                sheet.prefersEdgeAttachedInCompactHeight = YES;
+                sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = NO;
+            }
         }
     } else {
         novaVC.modalPresentationStyle = UIModalPresentationFullScreen;
@@ -1073,6 +1079,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
     [self pp_applyNovaSurfaceColors];
+}
+
+- (void)viewWillTransition:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    // Do NOT call super — prevents UISheetPresentationController from invalidating
+    // detents (and resizing the sheet) when the keyboard appears/disappears.
+    // Nova handles its own input bar offset via keyboardWillChangeFrame:.
+    [coordinator animateAlongsideTransition:nil completion:nil];
 }
 
 - (void)viewDidLayoutSubviews {
