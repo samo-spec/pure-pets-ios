@@ -141,10 +141,17 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
 
     [super layoutSubviews];
 
+    // Snap layer geometry without implicit CALayer animations. During the keyboard
+    // show/hide animation the table reframes and re-lays out its visible cells; if
+    // shadowPath / gradient-layer frames animate implicitly with a competing timing,
+    // the bubble shadows visibly shake. Disabling actions makes them update instantly.
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
     self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
                                                                         cornerRadius:self.bubbleMaterialView.layer.cornerRadius].CGPath;
     self.typingAuraGradientLayer.frame = self.typingAuraView.bounds;
     self.typingSignalGradientLayer.frame = self.typingSignalView.bounds;
+    [CATransaction commit];
 }
 
 - (void)didMoveToWindow {

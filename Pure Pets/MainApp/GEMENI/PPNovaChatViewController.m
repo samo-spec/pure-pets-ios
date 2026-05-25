@@ -5525,13 +5525,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
-    CGFloat inputBarMinY = CGRectGetMinY(self.inputbar.frame);
-    if (inputBarMinY <= 0.0) {
+    // The table's bottom edge is pinned to the input bar's top and rides the
+    // keyboard, so content can no longer be obscured by the input bar/keyboard.
+    // Only a fixed breathing-room inset is needed above the bottom edge. Keeping
+    // this constant (instead of deriving it from live frames) avoids the inset
+    // churning mid keyboard animation, which is what made bottom cells jitter.
+    CGFloat targetBottomInset = PPNovaTableBottomInset;
+    if (self.tableView.contentInset.bottom == targetBottomInset) {
         return;
     }
-
-    CGFloat obscuredHeight = MAX(CGRectGetMaxY(self.view.bounds) - inputBarMinY, 0.0);
-    CGFloat targetBottomInset = MAX(obscuredHeight + PPNovaTableBottomInset, PPNovaTableBottomInset);
 
     UIEdgeInsets inset = self.tableView.contentInset;
     inset.bottom = targetBottomInset;
@@ -7415,7 +7417,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [self.tableView.topAnchor constraintEqualToAnchor:self.novaHeaderView.bottomAnchor],
         [self.tableView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        // The table's bottom tracks the input bar's top, and the input bar's bottom
+        // follows the keyboard (keyboardLayoutGuide). So when the keyboard shows, the
+        // table shrinks and its bottom edge rides just above the keyboard — the newest
+        // message stays visible instead of hiding behind the keyboard.
+        [self.tableView.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor],
     ]];
 
     self.tableView.delegate = self;
@@ -7517,7 +7523,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         }
         [self.view layoutIfNeeded];
         [self pp_updateNovaTableBottomInsetForCurrentLayout];
-        if (wasNearBottom || [self pp_hasNovaThinkingMessage]) {
+        if (keyboardVisible || wasNearBottom || [self pp_hasNovaThinkingMessage]) {
             [self pp_setNovaTableBottomGap:0.0];
         } else {
             [self pp_setNovaTableContentOffsetClamped:preservedContentOffset];
@@ -7525,7 +7531,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     } completion:^(BOOL finished) {
         self.novaKeyboardTransitionActive = NO;
         [self pp_updateNovaTableBottomInsetForCurrentLayout];
-        if (wasNearBottom || [self pp_hasNovaThinkingMessage]) {
+        if (keyboardVisible || wasNearBottom || [self pp_hasNovaThinkingMessage]) {
             [self pp_setNovaTableBottomGap:0.0];
         } else {
             [self pp_setNovaTableContentOffsetClamped:preservedContentOffset];
