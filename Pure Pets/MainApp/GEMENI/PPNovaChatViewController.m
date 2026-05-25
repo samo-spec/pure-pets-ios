@@ -894,30 +894,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                      derivedOptions:(NSArray<NSDictionary<NSString *, id> *> *)derivedOptions;
 - (NSString *)pp_novaSubmittedTextForNovaOption:(NSDictionary<NSString *, id> *)option;
 - (void)pp_handleNovaSubmittedText:(NSString *)text displayText:(NSString *)displayText;
+- (BOOL)pp_shouldUseNovaGenkitCallable;
 
 @end
 
 @implementation PPNovaChatViewController
 
 + (void)presentNovaFromViewController:(UIViewController *)presentingVC {
-    // Auth gate. Logged-out users see the standard sign-in flow instead of a
-    // dead Nova chat that would only ever return "session expired" from the
-    // server. requireSignInFrom: returns YES if already signed in (continue),
-    // NO if it just presented sign-in (re-present Nova on success).
-    if (presentingVC) {
-        BOOL alreadyAuthed =
-            [PPUserSigningManager requireSignInFrom:presentingVC
-                                            success:^(UserModel * _Nonnull user) {
-                                                if (user && presentingVC) {
-                                                    [PPNovaChatViewController presentNovaFromViewController:presentingVC];
-                                                }
-                                            }
-                                          cancelled:nil];
-        if (!alreadyAuthed) {
-            return;
-        }
-    }
-
     PPNovaChatViewController *novaVC = [[PPNovaChatViewController alloc] init];
     novaVC.modalInPresentation = YES;
     if (@available(iOS 15.0, *)) {
@@ -1144,8 +1127,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 #pragma mark - Backend
 
+- (BOOL)pp_shouldUseNovaGenkitCallable {
+    // Keep Nova on the callable bridge while the Genkit backend is the active
+    // production path. The legacy ADK runtime remains below as rollback code.
+    return YES;
+}
+
 - (void)setupNovaBackend {
-    BOOL useGenkit = [[NSUserDefaults standardUserDefaults] boolForKey:@"pp_nova_use_genkit"];
+    BOOL useGenkit = [self pp_shouldUseNovaGenkitCallable];
     if (useGenkit) {
         LOG_INFO(@"[PPNovaChat][Debug] Initialized Nova backend with Genkit Callable (novaGenkitChat)");
     } else {
@@ -1968,6 +1957,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
+    if ([self pp_shouldUseNovaGenkitCallable]) {
+        [self pp_continueNovaRequestAfterTokenReady:trimmedText
+                                    visibleUserText:visibleUserText
+                                          requestID:requestID
+                                            idToken:@""];
+        return;
+    }
+
     // Guard: Firebase Auth user must exist. Keep Nova open and show an inline
     // auth error; sending a chat message should never dismiss the controller.
     FIRUser *currentUser = PPCurrentFIRAuthUser;
@@ -2028,6 +2025,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                               visibleUserText:(NSString *)visibleUserText
                                     requestID:(NSString *)requestID
                                       idToken:(NSString *)idToken {
+    if ([self pp_shouldUseNovaGenkitCallable]) {
+        LOG_INFO(@"[PPNovaChat][Debug] branch=app_check_preflight_skipped_genkit_callable request_id=%@",
+                 requestID ?: @"");
+        [self pp_continueNovaRequestWithText:trimmedText
+                             visibleUserText:visibleUserText
+                                   requestID:requestID
+                                     idToken:idToken
+                               appCheckToken:@""];
+        return;
+    }
+
     __weak typeof(self) weakSelf = self;
     [[FIRAppCheck appCheck] limitedUseTokenWithCompletion:^(FIRAppCheckToken * _Nullable appCheckToken, NSError * _Nullable appCheckError) {
         __strong typeof(weakSelf) self = weakSelf;
@@ -2102,13 +2110,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     __weak typeof(self) weakSelf = self;
     NSString *userLang = [self textContainsArabic:trimmedText] ? @"ar" : @"en";
 
-    // Forced to YES for testing Genkit backend
-    BOOL useGenkit = YES; // [[NSUserDefaults standardUserDefaults] boolForKey:@"pp_nova_use_genkit"];
+    BOOL useGenkit = [self pp_shouldUseNovaGenkitCallable];
     if (useGenkit) {
         LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_genkit_callable request_id=%@ attempt=%ld",
                  requestID ?: @"", (long)attempt);
 
-        // PPNovaGenkitService already handles auth & appcheck implicitly via FIRFunctions
+        // PPNovaGenkitService posts to the novaGenkitChat callable over HTTPS with the
+        // signed-in user's Bearer ID token; the server allows a guest fallback when none.
         [[PPNovaGenkitService sharedService] sendMessage:trimmedText
                                                sessionId:self.novaSessionId
                                                 language:userLang

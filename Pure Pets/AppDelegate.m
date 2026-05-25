@@ -36,12 +36,42 @@ static void PPFetchAppCheckTokenFromProvider(id<FIRAppCheckProvider> provider,
     }
 }
 
+static BOOL PPAppCheckTextLooksLikeAppAttestFailure(NSString *text) {
+    if (![text isKindOfClass:NSString.class] || text.length == 0) {
+        return NO;
+    }
+
+    NSString *lower = text.lowercaseString;
+    return [lower containsString:@"appattest"] ||
+           [lower containsString:@"app attest"] ||
+           [lower containsString:@"app_attest"] ||
+           [lower containsString:@"app attestation"] ||
+           [lower containsString:@"exchangeappattestattestation"];
+}
+
 static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
     if (!error) return NO;
-    NSString *domain = error.domain ?: @"";
-    if ([domain containsString:@"AppCheck"] || [domain containsString:@"AppAttest"]) {
+
+    if (PPAppCheckTextLooksLikeAppAttestFailure(error.domain) ||
+        PPAppCheckTextLooksLikeAppAttestFailure(error.localizedDescription) ||
+        PPAppCheckTextLooksLikeAppAttestFailure(error.localizedFailureReason) ||
+        PPAppCheckTextLooksLikeAppAttestFailure(error.localizedRecoverySuggestion)) {
         return YES;
     }
+
+    NSDictionary *userInfo = [error.userInfo isKindOfClass:NSDictionary.class] ? error.userInfo : nil;
+    for (id value in userInfo.allValues) {
+        if ([value isKindOfClass:NSString.class] &&
+            PPAppCheckTextLooksLikeAppAttestFailure((NSString *)value)) {
+            return YES;
+        }
+
+        if ([value isKindOfClass:NSError.class] &&
+            PPAppCheckErrorLooksLikeAppAttestFailure((NSError *)value)) {
+            return YES;
+        }
+    }
+
     return NO;
 }
 
