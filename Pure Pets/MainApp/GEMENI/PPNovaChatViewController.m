@@ -7494,7 +7494,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                  oldRowCount:oldRowCount
                                             shouldAutoScroll:YES
                                                 updateReason:@"insert_thinking"];
-        [self pp_scheduleNovaThinkingMessageVisibilityAfterLayout];
     }
 }
 
@@ -7848,8 +7847,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         if ([visibleCell isKindOfClass:PPNovaMessageBubbleCell.class]) {
             PPNovaMessageBubbleCell *cell = (PPNovaMessageBubbleCell *)visibleCell;
             cell.accessibilityIdentifier = presentation.renderKey;
-            [cell configureWithMessage:message maxWidth:presentation.style.maxWidth];
-            [cell setNovaStarred:[[PPNovaLocalChatMemory sharedMemory] isMessageStarred:message.ID ?: @""]];
+            if ([message.ID isEqualToString:@"nova_thinking_message_id"]) {
+                [cell configureTypingWithMaxWidth:presentation.style.maxWidth];
+            } else {
+                [cell configureWithMessage:message maxWidth:presentation.style.maxWidth];
+                [cell setNovaStarred:[[PPNovaLocalChatMemory sharedMemory] isMessageStarred:message.ID ?: @""]];
+            }
             continue;
         }
 

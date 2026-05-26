@@ -324,9 +324,11 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.actionStack = [[UIStackView alloc] init];
     self.actionStack.axis = UILayoutConstraintAxisVertical;
     self.actionStack.alignment = UIStackViewAlignmentFill;
-    self.actionStack.spacing = 8.0;
+    self.actionStack.spacing = PPSpaceSM;
     self.actionStack.hidden = YES;
     [self.contentStack addArrangedSubview:self.actionStack];
+    [self.contentStack setCustomSpacing:PPSpaceMD afterView:self.messageLabel];
+    [self.contentStack setCustomSpacing:PPSpaceMD afterView:self.actionStack];
 
     self.metaStack = [[UIStackView alloc] init];
     self.metaStack.axis = UILayoutConstraintAxisHorizontal;
@@ -986,6 +988,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.messageLabel.hidden = YES;
     self.typingAnimationView.hidden = NO;
     self.typingSignalView.hidden = YES;
+    [self setActionTitles:nil];
     self.timeLabel.text = kLang(@"nova_typing");
     self.statusImageView.hidden = YES;
     [self pp_applyStyleForAssistant:YES typing:YES];
@@ -1037,19 +1040,21 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     [actionTitles enumerateObjectsUsingBlock:^(NSString *title, NSUInteger idx, __unused BOOL *stop) {
         UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
         button.tag = (NSInteger)idx;
-        button.titleLabel.font = [GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
-        button.titleLabel.numberOfLines = 2;
-        button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        button.titleLabel.numberOfLines = 0;
+        button.titleLabel.lineBreakMode = NSLineBreakByWordWrapping;
         button.titleLabel.textAlignment = PPNovaAlignmentForText(title);
         button.semanticContentAttribute = PPNovaSemanticForText(title);
         button.contentHorizontalAlignment = UIControlContentHorizontalAlignmentLeading;
-        button.contentEdgeInsets = UIEdgeInsetsMake(7.0, 11.0, 7.0, 11.0);
-        button.layer.cornerRadius = 14.0;
+        button.contentEdgeInsets = UIEdgeInsetsMake(PPSpaceMD, PPSpaceBase, PPSpaceMD, PPSpaceBase);
+        button.layer.cornerRadius = PPCornerMedium;
         button.layer.masksToBounds = YES;
+        button.adjustsImageWhenHighlighted = NO;
+        button.accessibilityLabel = [title stringByReplacingOccurrencesOfString:@"\n" withString:@", "];
         if (@available(iOS 13.0, *)) {
             button.layer.cornerCurve = kCACornerCurveContinuous;
         }
         [button setTitle:title forState:UIControlStateNormal];
+        [button.heightAnchor constraintGreaterThanOrEqualToConstant:PPTouchTargetMin].active = YES;
         [button addTarget:self action:@selector(pp_actionButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
         [button addTarget:self action:@selector(pp_pressDown:) forControlEvents:UIControlEventTouchDown];
         [button addTarget:self action:@selector(pp_pressUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
@@ -1059,6 +1064,73 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     if (self.configuredMaxWidth > 1.0) {
         [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:self.configuredMaxWidth];
     }
+}
+
+- (NSAttributedString *)pp_attributedActionTitleForText:(NSString *)text
+                                               titleColor:(UIColor *)titleColor
+                                            subtitleColor:(UIColor *)subtitleColor {
+    NSArray<NSString *> *lines = [text componentsSeparatedByString:@"\n"];
+    NSString *title = lines.count > 0 ? lines.firstObject : (text ?: @"");
+    NSString *subtitle = lines.count > 1
+        ? [[lines subarrayWithRange:NSMakeRange(1, lines.count - 1)] componentsJoinedByString:@"\n"]
+        : @"";
+    BOOL rtl = PPNovaTextStartsRTL(text);
+    NSMutableParagraphStyle *titleStyle = [[NSMutableParagraphStyle alloc] init];
+    titleStyle.alignment = rtl ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    titleStyle.baseWritingDirection = rtl ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
+    titleStyle.lineBreakMode = NSLineBreakByWordWrapping;
+    titleStyle.lineSpacing = 1.0;
+
+    UIFont *titleFont = [self pp_scaledFont:([GM boldFontWithSize:PPFontSubheadline] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold])
+                                  textStyle:UIFontTextStyleSubheadline];
+    UIFont *subtitleFont = [self pp_scaledFont:([GM MidFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightRegular])
+                                     textStyle:UIFontTextStyleFootnote];
+    NSMutableAttributedString *result =
+        [[NSMutableAttributedString alloc] initWithString:title ?: @""
+                                                attributes:@{
+                                                    NSFontAttributeName: titleFont,
+                                                    NSForegroundColorAttributeName: titleColor,
+                                                    NSParagraphStyleAttributeName: titleStyle
+                                                }];
+    if (subtitle.length > 0) {
+        NSMutableParagraphStyle *subtitleStyle = [titleStyle mutableCopy];
+        subtitleStyle.lineSpacing = 2.0;
+        [result appendAttributedString:
+         [[NSAttributedString alloc] initWithString:[NSString stringWithFormat:@"\n%@", subtitle]
+                                         attributes:@{
+                                             NSFontAttributeName: subtitleFont,
+                                             NSForegroundColorAttributeName: subtitleColor,
+                                             NSParagraphStyleAttributeName: subtitleStyle
+                                         }]];
+    }
+    return result;
+}
+
+- (void)pp_applyActionButtonStyle:(UIButton *)button assistant:(BOOL)assistant brand:(UIColor *)brand {
+    NSString *title = [button titleForState:UIControlStateNormal] ?: @"";
+    UIColor *primaryColor = assistant
+        ? PPNovaCellDynamicColor(AppPrimaryTextClr ?: UIColor.blackColor, UIColor.whiteColor)
+        : UIColor.whiteColor;
+    UIColor *secondaryColor = assistant
+        ? PPNovaCellDynamicColor([UIColor colorWithWhite:0.14 alpha:0.56], [UIColor.whiteColor colorWithAlphaComponent:0.62])
+        : [UIColor.whiteColor colorWithAlphaComponent:0.76];
+    UIColor *fillColor = assistant
+        ? PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.055], [UIColor.whiteColor colorWithAlphaComponent:0.065])
+        : [UIColor.whiteColor colorWithAlphaComponent:0.12];
+    UIColor *borderColor = assistant
+        ? PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.13], [UIColor.whiteColor colorWithAlphaComponent:0.11])
+        : [UIColor.whiteColor colorWithAlphaComponent:0.18];
+    if (@available(iOS 13.0, *)) {
+        borderColor = [borderColor resolvedColorWithTraitCollection:self.traitCollection];
+    }
+
+    button.backgroundColor = fillColor;
+    button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
+    button.layer.borderColor = borderColor.CGColor;
+    [button setAttributedTitle:[self pp_attributedActionTitleForText:title
+                                                            titleColor:primaryColor
+                                                         subtitleColor:secondaryColor]
+                      forState:UIControlStateNormal];
 }
 
 - (void)pp_applyAlignmentForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
@@ -1321,10 +1393,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
 
     for (UIButton *button in self.actionStack.arrangedSubviews) {
         if (![button isKindOfClass:UIButton.class]) continue;
-        button.backgroundColor = assistant ? [brand colorWithAlphaComponent:0.10] : [UIColor.whiteColor colorWithAlphaComponent:0.15];
-        button.layer.borderWidth = 1.0 / UIScreen.mainScreen.scale;
-        button.layer.borderColor = (assistant ? [brand colorWithAlphaComponent:0.14] : [UIColor.whiteColor colorWithAlphaComponent:0.22]).CGColor;
-        [button setTitleColor:(assistant ? brand : UIColor.whiteColor) forState:UIControlStateNormal];
+        [self pp_applyActionButtonStyle:button assistant:assistant brand:brand];
     }
 }
 
@@ -1541,15 +1610,23 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
 }
 
 - (void)pp_pressDown:(UIView *)view {
-    if (UIAccessibilityIsReduceMotionEnabled()) return;
-    [UIView animateWithDuration:0.10 delay:0.0 options:UIViewAnimationOptionCurveEaseOut animations:^{
-        view.transform = CGAffineTransformMakeScale(0.965, 0.965);
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : PPAnimDurationFast
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        view.alpha = 0.92;
+        if (!UIAccessibilityIsReduceMotionEnabled()) {
+            view.transform = CGAffineTransformMakeScale(0.985, 0.985);
+        }
     } completion:nil];
 }
 
 - (void)pp_pressUp:(UIView *)view {
-    if (UIAccessibilityIsReduceMotionEnabled()) return;
-    [UIView animateWithDuration:0.20 delay:0.0 usingSpringWithDamping:0.88 initialSpringVelocity:0.2 options:UIViewAnimationOptionCurveEaseOut animations:^{
+    [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.18
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        view.alpha = 1.0;
         view.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
