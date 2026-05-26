@@ -294,8 +294,14 @@ static NSString *PPOrderFriendlyFunctionsErrorMessage(NSError *error) {
             return kLang(@"payment_backend_unreachable");
         case FIRFunctionsErrorCodeFailedPrecondition:
             return serverMessage.length > 0 ? serverMessage : kLang(@"payment_backend_setup_incomplete");
+        case FIRFunctionsErrorCodeInternal:
+            // Cloud Run returned a non-Firebase-formatted error (e.g. IAM 401) or an
+            // unhandled exception. The raw message ("An internal error has occurred,
+            // print and inspect...") is never user-safe — show the generic unreachable
+            // message and let the caller offer a retry.
+            return kLang(@"payment_backend_unreachable");
         default:
-            return serverMessage;
+            return serverMessage.length > 0 ? serverMessage : kLang(@"payment_backend_unreachable");
     }
 }
 
@@ -351,14 +357,16 @@ static BOOL PPOrderAddressHasMinimumData(PPAddressModel *address) {
     if (!address) return NO;
     if (PPOrderAddressEffectiveID(address).length == 0) return NO;
 
-    NSString *line1 = PPOrderTrimmedString(address.addressLine1);
-    NSString *fullName = PPOrderTrimmedString(address.fullName);
-    NSString *locationName = PPOrderTrimmedString(address.locatioName);
-    NSString *displayName = PPOrderTrimmedString(address.displayName);
-    return (line1.length > 0 ||
-            fullName.length > 0 ||
-            locationName.length > 0 ||
-            displayName.length > 0);
+    // Mirror the server-side hasValidShippingSnapshot requirements exactly so
+    // we reject incomplete addresses on the client before the server does.
+    // Server requires: fullName, addressLine1, postalCode all non-empty;
+    //                  cityID > 0; stateID > 0.
+    if (PPOrderTrimmedString(address.fullName).length == 0) return NO;
+    if (PPOrderTrimmedString(address.addressLine1).length == 0) return NO;
+    if (PPOrderTrimmedString(address.postalCode).length == 0) return NO;
+    if (address.cityID <= 0) return NO;
+    if (address.stateID <= 0) return NO;
+    return YES;
 }
 
 static NSDictionary *PPOrderShippingSnapshotFromAddress(PPAddressModel *address, NSString *expectedUserID) {

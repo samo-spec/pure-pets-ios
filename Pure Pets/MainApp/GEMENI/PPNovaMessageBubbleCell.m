@@ -147,8 +147,8 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     // the bubble shadows visibly shake. Disabling actions makes them update instantly.
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
-                                                                        cornerRadius:self.bubbleMaterialView.layer.cornerRadius].CGPath;
+    //self.bubbleShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bubbleShadowView.bounds
+    //                                                                   cornerRadius:self.bubbleMaterialView.layer.cornerRadius].CGPath;
     self.typingAuraGradientLayer.frame = self.typingAuraView.bounds;
     self.typingSignalGradientLayer.frame = self.typingSignalView.bounds;
     [CATransaction commit];
@@ -205,12 +205,12 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.bubbleShadowView = [[UIView alloc] init];
     self.bubbleShadowView.translatesAutoresizingMaskIntoConstraints = NO;
     self.bubbleShadowView.backgroundColor = UIColor.clearColor;
-    self.bubbleShadowView.layer.shadowColor = UIColor.blackColor.CGColor;
-    self.bubbleShadowView.layer.shadowOpacity = 0.08;
+    //self.bubbleShadowView.layer.shadowColor = UIColor.blackColor.CGColor;
+    //self.bubbleShadowView.layer.shadowOpacity = 0.08;
     self.bubbleShadowView.layer.shadowRadius = 20.0;
-    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    self.bubbleShadowView.layer.shouldRasterize = YES;
-    self.bubbleShadowView.layer.rasterizationScale = UIScreen.mainScreen.scale;
+    ///self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    //self.bubbleShadowView.layer.shouldRasterize = YES;
+    //self.bubbleShadowView.layer.rasterizationScale = UIScreen.mainScreen.scale;
     [self.contentView addSubview:self.bubbleShadowView];
 
     UIBlurEffectStyle blurStyle = UIBlurEffectStyleRegular;
@@ -1338,10 +1338,10 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     if (@available(iOS 13.0, *)) {
         darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
-    self.bubbleShadowView.layer.shadowColor = shadowColor.CGColor;
-    self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.20 : 0.09) : (darkMode ? 0.22 : 0.15);
-    self.bubbleShadowView.layer.shadowRadius = assistant ? 20.0 : 18.0;
-    self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 9.0 : 10.0);
+    //self.bubbleShadowView.layer.shadowColor = shadowColor.CGColor;
+    //self.bubbleShadowView.layer.shadowOpacity = assistant ? (darkMode ? 0.20 : 0.09) : (darkMode ? 0.22 : 0.15);
+    //self.bubbleShadowView.layer.shadowRadius = assistant ? 20.0 : 18.0;
+    //self.bubbleShadowView.layer.shadowOffset = CGSizeMake(0.0, assistant ? 9.0 : 10.0);
 
     self.avatarView.backgroundColor = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.11],
                                                             [brand colorWithAlphaComponent:0.18]);

@@ -895,34 +895,19 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
     NSDictionary *safeResponse = [response isKindOfClass:NSDictionary.class] ? response : @{};
 
-    // When the QIB SDK returns a non-terminal response (empty dict, no
-    // recognizable status, no transactionId) it almost always means the user
-    // tapped "Cancel" inside the SDK UI and the SDK dismissed itself without
-    // setting a proper cancel status.  Treat this as a user cancellation
-    // instead of silently ignoring it (which would leave the app stuck in a
-    // loading state until the checkout timeout fires).
-    BOOL isTerminal = PPPaymentResponseHasTerminalResult(safeResponse);
+    // Only treat as cancellation when the SDK explicitly signals it.
+    // Non-terminal and ambiguous responses (empty dict, unknown status,
+    // transactionId without a status) are forwarded to verifyQibPayment so
+    // the server can authoritatively check with QIB's gateway.  This prevents
+    // real payments from being silently lost when the SDK's status is unclear
+    // — the server will return "failure" if no payment was made, giving the
+    // user a retryable error instead of an invisible dropped payment.
     BOOL looksLikeCancellation = PPPaymentResponseIsCancellation(safeResponse);
 
-    if (!isTerminal && !looksLikeCancellation) {
-        PPORDERLog(@"QIB returned non-terminal response — treating as user cancellation | status=%@ | keys=%@",
-                   PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"(empty)",
-                   safeResponse.allKeys ?: @[]);
-        looksLikeCancellation = YES;
-    }
-
-    // QIB SDK sometimes returns a transactionId with no recognizable status
-    // (e.g. user closed the webview mid-payment).  PPPaymentResponseHasTerminalResult
-    // marks that as terminal, but without an explicit success or failure status the
-    // response is ambiguous and must NOT advance the order into verification.
-    // Treat it as a user cancellation.
-    if (isTerminal && !looksLikeCancellation &&
-        !PPPaymentResponseIsExplicitSuccess(safeResponse) &&
-        !PPPaymentResponseIsExplicitFailure(safeResponse)) {
-        PPORDERLog(@"QIB returned ambiguous terminal response (transactionId only, no status) — treating as cancellation | keys=%@",
-                   safeResponse.allKeys ?: @[]);
-        looksLikeCancellation = YES;
-    }
+    NSString *statusForLog = PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"(empty)";
+    BOOL isTerminal = PPPaymentResponseHasTerminalResult(safeResponse);
+    PPORDERLog(@"QIB callback received | terminal=%d | cancellation=%d | status=%@ | keys=%@",
+               isTerminal, looksLikeCancellation, statusForLog, safeResponse.allKeys ?: @[]);
 
     // Capture completion and reset BEFORE invoking the callback.
     // This prevents re-entrant or duplicate callbacks from corrupting state.

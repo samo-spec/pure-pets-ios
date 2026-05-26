@@ -5760,7 +5760,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return;
     }
 
-    [self pp_setNovaTableBottomGap:0.0];
+    // A just-inserted thinking row can finish sizing after the outgoing bubble's
+    // scroll begins. Correct to the final measured bottom with one calm motion.
+    [self scrollToBottomAnimated:YES];
 }
 
 - (void)pp_scheduleNovaThinkingMessageVisibilityAfterLayout {
@@ -5813,9 +5815,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     } completion:nil];
 }
 
+
 - (void)pp_handleNovaCloseTapped:(UIButton *)sender {
     self.inputbar.hidden = YES;
     self.novaChatBottomGlowView.hidden = YES;
+    self.novaHeaderTopGlowView.hidden = YES;
+    self.novaHeaderBottomGlowView.hidden = YES;
      [self pp_handleNovaHeaderControlPressUp:sender];
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:nil];
@@ -7494,6 +7499,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                  oldRowCount:oldRowCount
                                             shouldAutoScroll:YES
                                                 updateReason:@"insert_thinking"];
+        [self pp_scheduleNovaThinkingMessageVisibilityAfterLayout];
     }
 }
 
@@ -7722,9 +7728,21 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     // Always sync the bottom inset before scrolling so the thinking bubble (and any
     // newly inserted row) lands above the input bar, not behind it.
     [self pp_updateNovaTableBottomInsetForCurrentLayout];
+    // Self-sizing rows can finish measuring after insertion. Resolve their final
+    // height before starting the single smooth scroll, otherwise the thinking row
+    // can settle a few points below the composer.
+    [self.tableView layoutIfNeeded];
 
-    NSIndexPath *bottomIP = [NSIndexPath indexPathForRow:bottomRow inSection:0];
-    [self.tableView scrollToRowAtIndexPath:bottomIP atScrollPosition:UITableViewScrollPositionBottom animated:animated];
+    UIEdgeInsets inset = self.tableView.contentInset;
+    CGFloat minimumOffsetY = -inset.top;
+    CGFloat targetOffsetY = MAX(self.tableView.contentSize.height + inset.bottom - CGRectGetHeight(self.tableView.bounds),
+                                minimumOffsetY);
+    if (!isfinite(targetOffsetY)) return;
+
+    // Scrolling to the computed content bottom includes the protected inset above
+    // the floating composer; scrollToRow: can stop before that inset is visible.
+    CGPoint targetOffset = CGPointMake(self.tableView.contentOffset.x, targetOffsetY);
+    [self.tableView setContentOffset:targetOffset animated:animated];
 }
 
 - (void)pp_scheduleNovaScrollToBottomAfterKeyboardAnimated:(BOOL)animated {
