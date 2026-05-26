@@ -57,6 +57,10 @@ static NSString * const PPNovaHistoryEntryCellReuseIdentifier = @"PPNovaHistoryE
 static NSString * const PPNovaSmartSuggestionWashBreathKey = @"pp.nova.smartSuggestion.washBreath";
 static NSString * const PPNovaSmartSuggestionActionBreathKey = @"pp.nova.smartSuggestion.actionBreath";
 static NSString * const PPNovaSmartSuggestionColorShiftKey = @"pp.nova.smartSuggestion.colorShift";
+static NSString * const PPNovaThinkingTopGlowColorShiftKey = @"pp.nova.thinking.topGlow.colorShift";
+static NSString * const PPNovaThinkingBottomGlowColorShiftKey = @"pp.nova.thinking.bottomGlow.colorShift";
+static NSString * const PPNovaThinkingTopGlowBreathKey = @"pp.nova.thinking.topGlow.breath";
+static NSString * const PPNovaThinkingBottomGlowBreathKey = @"pp.nova.thinking.bottomGlow.breath";
 static const NSUInteger PPNovaSmartSuggestionPickerVisibleCount = 8;
 static const NSUInteger PPNovaInlineActionMaximumCount = 10;
 static const NSTimeInterval PPNovaRequestSoftWatchdogDelay = 35.0;
@@ -634,7 +638,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)pp_handleClearHistoryTapped {
     UIAlertController *confirm = [UIAlertController alertControllerWithTitle:kLang(@"nova_history_clear_confirm_title")
                                                                     message:kLang(@"nova_history_clear_confirm_message")
-                                                             preferredStyle:UIAlertControllerStyleActionSheet];
+                                                              preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction *clearAction = [UIAlertAction actionWithTitle:kLang(@"nova_history_clear_confirm_action")
                                                           style:UIAlertActionStyleDestructive
                                                         handler:^(__unused UIAlertAction *action) {
@@ -858,6 +862,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, assign) CGFloat lastNovaTableLayoutWidth;
 @property (nonatomic, assign) NSUInteger novaRequestGeneration;
 @property (nonatomic, assign) BOOL novaIsRequestPending;
+@property (nonatomic, assign) BOOL novaAmbientThinkingPaletteActive;
 @property (nonatomic, copy, nullable) NSString *activeNovaRequestID;
 @property (nonatomic, copy, nullable) NSString *activeNovaResponseID;
 @property (nonatomic, assign) NSUInteger activeNovaCachedProductsBeforeSend;
@@ -2068,11 +2073,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                          isArabic:[self textContainsArabic:displayText]
                                        sessionID:self.novaSessionId];
 
-    // After the first request is dispatched, every subsequent message tells the
-    // backend isFirstAssistantMessage=false so the Agent Runtime enforces the
-    // STRICT GREETING RULE (no hello, no re-welcome).
-    self.novaHasSentFirstMessage = YES;
-
     self.novaRequestGeneration = self.novaRequestGeneration + 1;
     NSUInteger generation = self.novaRequestGeneration;
     [self pp_startNovaRequestWatchdogForGeneration:generation userText:trimmedText requestID:requestID];
@@ -2091,6 +2091,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                           attempt:0
                        generation:generation
                         requestID:requestID];
+
+    // Flip only after the first request has built its context. Retries and all
+    // later turns must not reintroduce a greeting.
+    self.novaHasSentFirstMessage = YES;
 }
 
 - (void)pp_dispatchNovaRequest:(NSString *)trimmedText
@@ -2117,10 +2121,15 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
         // PPNovaGenkitService posts to the novaGenkitChat callable over HTTPS with the
         // signed-in user's Bearer ID token; the server allows a guest fallback when none.
+        NSMutableDictionary *conversationContext = [[self pp_currentContextDictionary] mutableCopy];
+        NSArray *recentContextHistory = [self pp_currentHistoryArray];
+        if (recentContextHistory.count > 0) {
+            conversationContext[@"history"] = recentContextHistory;
+        }
         [[PPNovaGenkitService sharedService] sendMessage:trimmedText
                                                sessionId:self.novaSessionId
                                                 language:userLang
-                                                 context:nil
+                                                 context:conversationContext
                                               completion:^(NSString * _Nullable text, NSDictionary * _Nullable metadata, NSError * _Nullable error) {
             dispatch_async(dispatch_get_main_queue(), ^{
                 __strong typeof(weakSelf) self = weakSelf;
@@ -4133,8 +4142,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (self.novaMemoryLanguage.length > 0) ctx[@"language"] = self.novaMemoryLanguage;
 
     // Tell the backend this is the first assistant message so Nova can deliver
-    // a natural, contextual greeting. After the first reply lands, the flag
-    // flips to NO for all subsequent messages (enforcing the STRICT GREETING RULE).
+    // a natural, contextual greeting. Once the first request captures context,
+    // later turns and retries send NO to avoid repeated greetings.
     ctx[@"isFirstAssistantMessage"] = @(!self.novaHasSentFirstMessage);
 
     // Personalization signals — keep optional, never block on missing values.
@@ -4179,10 +4188,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (NSArray *)pp_currentHistoryArray {
     // We used to synthesize history here, but we now rely on PPNovaLocalChatMemory
-    // which accurately preserves history across sessions. We return up to 12
-    // recent items to give the backend proxy a rich contextual window.
-
-    NSArray *localHistory = [[PPNovaLocalChatMemory sharedMemory] recentHistoryLimit:12];
+    // which accurately preserves history across sessions. Keep only a small
+    // recent window so continuity does not inflate each AI request.
+    NSArray *localHistory = [[PPNovaLocalChatMemory sharedMemory] recentHistoryLimit:8];
     NSMutableArray *history = [NSMutableArray array];
 
     // The geminiProxy.js expects objects in the shape:
@@ -4214,7 +4222,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIView *backgroundView = [[UIView alloc] init];
     backgroundView.translatesAutoresizingMaskIntoConstraints = NO;
     backgroundView.userInteractionEnabled = NO;
-    backgroundView.backgroundColor = [AppBageColor() colorWithAlphaComponent:1];
+    backgroundView.backgroundColor = [AppBackgroundClr colorWithAlphaComponent:1];
     self.view.backgroundColor = AppClearClr;
     [self.view addSubview:backgroundView];
     self.ambientBackgroundView = backgroundView;
@@ -4253,9 +4261,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIColor *surface = [self pp_novaHeaderSurfaceColor];
     UIColor *primaryText = [self pp_novaHeaderPrimaryTextColor];
     UIColor *secondaryText = [self pp_novaHeaderSecondaryTextColor];
-    self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
-                                                                     [brand colorWithAlphaComponent:0.22]);
-    self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
+    if (!self.novaAmbientThinkingPaletteActive) {
+        self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
+                                                                         [brand colorWithAlphaComponent:0.22]);
+        self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
+    }
     self.emptyStatePulseView.backgroundColor = [brand colorWithAlphaComponent:0.10];
     [self pp_applyNovaSmartSuggestionColorsWithBrand:brand
                                              surface:surface
@@ -4267,9 +4277,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.0],
                                                                    [surface colorWithAlphaComponent:0.0]);
     self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.16].CGColor;
-    self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
-                                                                    [brand colorWithAlphaComponent:0.26]);
-    self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
+    if (!self.novaAmbientThinkingPaletteActive) {
+        self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
+                                                                        [brand colorWithAlphaComponent:0.26]);
+        self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
+    }
     self.novaHeaderBottomGlowView.backgroundColor = PPNovaDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.18],
                                                                        [UIColor.whiteColor colorWithAlphaComponent:0.045]);
     self.novaHeaderSheenView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0],
@@ -4311,6 +4323,136 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                                         [UIColor.whiteColor colorWithAlphaComponent:0.68]);
         dot.layer.shadowColor = brand.CGColor;
     }];
+}
+
+- (NSArray<UIColor *> *)pp_novaThinkingAmbientPalette {
+    BOOL darkMode = NO;
+    if (@available(iOS 13.0, *)) {
+        darkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    return @[
+        darkMode ? [UIColor colorWithRed:0.36 green:0.20 blue:0.72 alpha:0.18]
+                 : [UIColor colorWithRed:0.36 green:0.20 blue:0.72 alpha:0.10],
+        darkMode ? [UIColor colorWithRed:0.10 green:0.52 blue:0.90 alpha:0.18]
+                 : [UIColor colorWithRed:0.10 green:0.52 blue:0.90 alpha:0.10],
+        darkMode ? [UIColor colorWithRed:0.18 green:0.72 blue:0.62 alpha:0.18]
+                 : [UIColor colorWithRed:0.18 green:0.72 blue:0.62 alpha:0.10]
+    ];
+}
+
+- (void)pp_addNovaAmbientOpacityBreathFrom:(NSNumber *)fromValue
+                                         to:(NSNumber *)toValue
+                                   duration:(NSTimeInterval)duration
+                                      layer:(CALayer *)layer
+                                        key:(NSString *)key {
+    if (!layer || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    CABasicAnimation *breath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    breath.fromValue = fromValue;
+    breath.toValue = toValue;
+    breath.duration = duration;
+    breath.autoreverses = YES;
+    breath.repeatCount = HUGE_VALF;
+    breath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [layer addAnimation:breath forKey:key];
+}
+
+- (void)pp_addNovaThinkingColorShiftToLayer:(CALayer *)layer
+                                    palette:(NSArray<UIColor *> *)palette
+                                        key:(NSString *)key
+                                 beginDelay:(NSTimeInterval)beginDelay {
+    if (!layer || palette.count < 3 || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    CAKeyframeAnimation *colorShift = [CAKeyframeAnimation animationWithKeyPath:@"backgroundColor"];
+    colorShift.values = @[
+        (__bridge id)palette[0].CGColor,
+        (__bridge id)palette[1].CGColor,
+        (__bridge id)palette[2].CGColor,
+        (__bridge id)palette[0].CGColor
+    ];
+    colorShift.keyTimes = @[@0.0, @0.33, @0.66, @1.0];
+    colorShift.duration = 4.8;
+    colorShift.repeatCount = HUGE_VALF;
+    colorShift.timingFunctions = @[
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]
+    ];
+    colorShift.beginTime = CACurrentMediaTime() + beginDelay;
+    [layer addAnimation:colorShift forKey:key];
+}
+
+- (void)pp_setNovaAmbientThinkingPaletteActive:(BOOL)active animated:(BOOL)animated {
+    if (!self.novaHeaderTopGlowView || !self.novaChatBottomGlowView) {
+        self.novaAmbientThinkingPaletteActive = active;
+        return;
+    }
+    if (self.novaAmbientThinkingPaletteActive == active &&
+        (active ? [self.novaHeaderTopGlowView.layer animationForKey:PPNovaThinkingTopGlowColorShiftKey] != nil : YES)) {
+        return;
+    }
+
+    self.novaAmbientThinkingPaletteActive = active;
+    [self.novaHeaderTopGlowView.layer removeAnimationForKey:@"pp_novaHeaderTopHaloBreath"];
+    [self.novaChatBottomGlowView.layer removeAnimationForKey:@"pp_novaBottomGlowBreath"];
+    [self.novaHeaderTopGlowView.layer removeAnimationForKey:PPNovaThinkingTopGlowColorShiftKey];
+    [self.novaChatBottomGlowView.layer removeAnimationForKey:PPNovaThinkingBottomGlowColorShiftKey];
+    [self.novaHeaderTopGlowView.layer removeAnimationForKey:PPNovaThinkingTopGlowBreathKey];
+    [self.novaChatBottomGlowView.layer removeAnimationForKey:PPNovaThinkingBottomGlowBreathKey];
+
+    UIColor *brand = [self pp_novaHeaderAccentColor];
+    NSArray<UIColor *> *palette = [self pp_novaThinkingAmbientPalette];
+    void (^applyColors)(void) = ^{
+        if (active) {
+            self.novaHeaderTopGlowView.backgroundColor = palette[0];
+            self.novaChatBottomGlowView.backgroundColor = palette[1];
+            self.novaHeaderTopGlowView.layer.shadowColor = [self pp_resolvedNovaLayerColor:palette[1]].CGColor;
+            self.novaChatBottomGlowView.layer.shadowColor = [self pp_resolvedNovaLayerColor:palette[2]].CGColor;
+        } else {
+            self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
+                                                                            [brand colorWithAlphaComponent:0.26]);
+            self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
+                                                                             [brand colorWithAlphaComponent:0.22]);
+            self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
+            self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
+        }
+    };
+    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView animateWithDuration:active ? 0.38 : 0.48
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                         animations:applyColors
+                         completion:nil];
+    } else {
+        applyColors();
+    }
+
+    if (active) {
+        [self pp_addNovaThinkingColorShiftToLayer:self.novaHeaderTopGlowView.layer
+                                          palette:palette
+                                              key:PPNovaThinkingTopGlowColorShiftKey
+                                       beginDelay:0.0];
+        [self pp_addNovaThinkingColorShiftToLayer:self.novaChatBottomGlowView.layer
+                                          palette:palette
+                                              key:PPNovaThinkingBottomGlowColorShiftKey
+                                       beginDelay:0.24];
+        [self pp_addNovaAmbientOpacityBreathFrom:@0.72 to:@1.0 duration:1.6
+                                           layer:self.novaHeaderTopGlowView.layer
+                                             key:PPNovaThinkingTopGlowBreathKey];
+        [self pp_addNovaAmbientOpacityBreathFrom:@1.0 to:@0.72 duration:1.6
+                                           layer:self.novaChatBottomGlowView.layer
+                                             key:PPNovaThinkingBottomGlowBreathKey];
+    } else {
+        [self pp_addNovaAmbientOpacityBreathFrom:@0.78 to:@1.0 duration:5.4
+                                           layer:self.novaHeaderTopGlowView.layer
+                                             key:@"pp_novaHeaderTopHaloBreath"];
+        [self pp_addNovaAmbientOpacityBreathFrom:@1.0 to:@0.74 duration:6.2
+                                           layer:self.novaChatBottomGlowView.layer
+                                             key:@"pp_novaBottomGlowBreath"];
+    }
 }
 
 - (UIColor *)pp_resolvedNovaLayerColor:(UIColor *)color {
@@ -4599,7 +4741,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (CGFloat)pp_novaHeaderBackgroundAlphaForCurrentState {
-    return self.novaHeaderCollapsed ? 0.35 : 0.65;
+    return self.novaHeaderCollapsed ? 0.55 : 0.65;
 }
 
 - (CGFloat)pp_novaHeaderSheenAlphaForCurrentState {
@@ -5673,7 +5815,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)pp_handleNovaCloseTapped:(UIButton *)sender {
     self.inputbar.hidden = YES;
-    [self pp_handleNovaHeaderControlPressUp:sender];
+    self.novaChatBottomGlowView.hidden = YES;
+     [self pp_handleNovaHeaderControlPressUp:sender];
     [self.view endEditing:YES];
     [self dismissViewControllerAnimated:YES completion:nil];
 }
@@ -7326,6 +7469,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.statusLabel.text = kLang(@"nova_status_thinking");
 
     [self pp_showThinkingHeaderLottieWithAnimation:PPNovaThinkingHeaderAnimationName];
+    [self pp_setNovaAmbientThinkingPaletteActive:YES animated:YES];
 
     self.typingContainer.alpha = 0.0;
 
@@ -7359,6 +7503,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.statusLabel.text = kLang(@"nova_status_online");
 
     [self pp_hideThinkingHeaderLottie];
+    [self pp_setNovaAmbientThinkingPaletteActive:NO animated:YES];
 
     self.typingContainer.alpha = 0.0;
 
@@ -7753,31 +7898,27 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     ChatMessageModel *message = self.messages[indexPath.row];
     if (message.didAnimateInsert || UIAccessibilityIsReduceMotionEnabled()) {
+        [cell.contentView.layer removeAllAnimations];
         cell.alpha = 1.0;
         cell.transform = CGAffineTransformIdentity;
         cell.contentView.alpha = 1.0;
+        cell.contentView.transform = CGAffineTransformIdentity;
         message.didAnimateInsert = YES;
         return;
     }
 
     message.didAnimateInsert = YES;
-    BOOL isIncoming = [message.senderID isEqualToString:@"nova_bot_id"];
-    CGFloat leadingDirection = Language.isRTL ? 1.0 : -1.0;
-    CGFloat horizontalOffset = isIncoming ? (leadingDirection * 10.0) : (-leadingDirection * 10.0);
-    cell.alpha = 0.0;
-    cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(horizontalOffset, 18.0),
-                                             CGAffineTransformMakeScale(0.982, 0.982));
-    cell.contentView.alpha = 0.82;
-    NSTimeInterval delay = MIN(indexPath.row * 0.018, 0.07);
-    [UIView animateWithDuration:0.44
-                          delay:delay
-         usingSpringWithDamping:0.88
-          initialSpringVelocity:0.20
-                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+    [cell.contentView.layer removeAllAnimations];
+    cell.alpha = 1.0;
+    cell.transform = CGAffineTransformIdentity;
+    cell.contentView.alpha = 0.0;
+    cell.contentView.transform = CGAffineTransformMakeTranslation(0.0, 7.0);
+    [UIView animateWithDuration:0.25
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        cell.alpha = 1.0;
-        cell.transform = CGAffineTransformIdentity;
         cell.contentView.alpha = 1.0;
+        cell.contentView.transform = CGAffineTransformIdentity;
     } completion:nil];
 }
 
@@ -7932,10 +8073,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 #pragma mark - PPNovaMessageBubbleCellDelegate
 
-- (void)novaMessageCell:(__unused PPNovaMessageBubbleCell *)cell
+- (void)novaMessageCell:(PPNovaMessageBubbleCell *)cell
    didTapActionAtIndex:(NSInteger)index
                   title:(__unused NSString *)title
            messageModel:(ChatMessageModel *)messageModel {
+    if (self.novaIsRequestPending) {
+        LOG_INFO(@"[PPNovaChat][Options] ignored_tap_while_request_pending");
+        return;
+    }
     if (index < 0 || index >= (NSInteger)messageModel.novaOptions.count) {
         return;
     }
@@ -7945,6 +8090,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     NSString *visibleTitle = optionTitle.length > 0 ? optionTitle : message;
     if (message.length == 0 || visibleTitle.length == 0) {
         return;
+    }
+    messageModel.novaOptions = nil;
+    NSIndexPath *optionsIndexPath = [self.tableView indexPathForCell:cell];
+    if (optionsIndexPath) {
+        [self.tableView reloadRowsAtIndexPaths:@[optionsIndexPath]
+                              withRowAnimation:UITableViewRowAnimationFade];
     }
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [feedback prepare];
@@ -8009,6 +8160,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_handleNovaSubmittedText:(NSString *)text displayText:(NSString *)displayText {
+    if (self.novaIsRequestPending) {
+        LOG_INFO(@"[PPNovaChat][Debug] branch=ignored_submit_while_request_pending");
+        return;
+    }
     NSString *trimmedText = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
     if (trimmedText.length == 0) return;
     NSString *visibleText = [displayText stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];

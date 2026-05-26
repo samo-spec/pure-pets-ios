@@ -109,6 +109,8 @@ static NSDate * PPDateFromValue(id value) {
         @"petID": self.petID ?: @"",
         @"name": self.name ?: @"",
         @"breed": self.breed ?: @"",
+        @"categoryId": @(MAX(0, self.categoryId)),
+        @"categoryName": self.categoryName ?: @"",
         @"ageInMonths": @(MAX(0, self.ageInMonths)),
         @"imageURL": self.imageURL ?: @"",
         @"isDefaultPet": @(self.isDefaultPet),
