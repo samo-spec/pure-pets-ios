@@ -178,7 +178,7 @@ static NSString *PPPaymentStatusFromStringCandidate(NSString *value)
     NSString *normalized = PPPaymentNormalizedStatusString(trimmed);
     if (normalized.length > 0 &&
         (PPPaymentStatusMatchesAnyKeyword(normalized, @[@"success", @"succeeded", @"paid", @"approved", @"authorized", @"captured", @"completed"]) ||
-         PPPaymentStatusMatchesAnyKeyword(normalized, @[@"failed", @"failure", @"declined", @"rejected", @"cancelled", @"canceled", @"cancel", @"error", @"expired", @"voided"]) ||
+         PPPaymentStatusMatchesAnyKeyword(normalized, @[@"failed", @"failure", @"declined", @"rejected", @"cancelled", @"canceled", @"cancel", @"error", @"expired", @"voided", @"force_close", @"forceclose"]) ||
          PPPaymentStatusMatchesAnyKeyword(normalized, @[@"pending", @"processing", @"initiated", @"created", @"in_progress", @"verifying", @"verification_pending"]))) {
         return normalized;
     }
@@ -301,8 +301,11 @@ static NSString *PPPaymentExtractTransactionIdFromResponse(NSDictionary *respons
 
 static BOOL PPPaymentResponseIsCancellation(NSDictionary *response)
 {
+    // PPPaymentStatusFromStringCandidate now recognises "force_close" / "forceclose"
+    // (added to the failure/cancel keyword group above), so the generic extractor
+    // will return "force_close" when the QIB SDK sends {status: "force_close"} on dismiss.
     NSString *status = PPPaymentExtractStatusFromResponseObject(response, 0);
-    return PPPaymentStatusMatchesAnyKeyword(status, @[@"cancelled", @"canceled", @"cancel"]);
+    return PPPaymentStatusMatchesAnyKeyword(status, @[@"cancelled", @"canceled", @"cancel", @"force_close", @"forceclose"]);
 }
 
 static BOOL PPPaymentResponseIsExplicitSuccess(NSDictionary *response)
@@ -323,7 +326,7 @@ static BOOL PPPaymentResponseHasTerminalResult(NSDictionary *response)
     if (PPPaymentStatusMatchesAnyKeyword(status, @[@"success", @"succeeded", @"paid", @"approved", @"authorized", @"captured", @"completed"])) {
         return YES;
     }
-    if (PPPaymentStatusMatchesAnyKeyword(status, @[@"failed", @"failure", @"declined", @"rejected", @"cancelled", @"canceled", @"cancel", @"error", @"expired", @"voided"])) {
+    if (PPPaymentStatusMatchesAnyKeyword(status, @[@"failed", @"failure", @"declined", @"rejected", @"cancelled", @"canceled", @"cancel", @"error", @"expired", @"voided", @"force_close", @"forceclose"])) {
         return YES;
     }
     if (PPPaymentStatusMatchesAnyKeyword(status, @[@"pending", @"processing", @"initiated", @"created", @"in_progress", @"verifying", @"verification_pending"])) {
@@ -848,37 +851,27 @@ static void PPQIBTryLoadFrameworkBundle(void)
         order.currency = requestedCurrency;
     }
 
+    // The FIRFunctions callable attaches both the Firebase Auth token and the
+    // App Check token automatically.  The manual preflight (getIDTokenForcingRefresh
+    // + FIRAppCheck tokenForcingRefresh) was unnecessary and was causing App Attest
+    // re-attestation failures that blocked createQibSession from ever being called.
+    // The UID presence check above is sufficient to guard against logged-out users.
     __weak typeof(self) weakSelf = self;
-    [self pp_prepareCallableAuthContextForOrder:order completion:^(NSString *idToken, NSString *appCheckToken, NSError *authContextError) {
+    dispatch_async(dispatch_get_main_queue(), ^{
         __strong typeof(weakSelf) self = weakSelf;
-        if (!self) {
+        if (!self || !self.isRequestInFlight) {
+            PPORDERLog(@"Payment request cancelled before session start | orderId=%@",
+                       order.orderId ?: @"");
             return;
         }
-
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if (authContextError) {
-                PPORDERLog(@"Payment callable context unavailable | orderId=%@ | error=%@",
-                           order.orderId ?: @"",
-                           authContextError.localizedDescription ?: @"");
-                [self failWithError:authContextError];
-                return;
-            }
-
-            if (!self.isRequestInFlight) {
-                PPORDERLog(@"Payment callable context ignored after reset | orderId=%@",
-                           order.orderId ?: @"");
-                return;
-            }
-
-            [self createQIBSessionForOrder:order
-                                  currency:requestedCurrency
-                            viewController:viewController
-                                     phone:phone
-                                   idToken:idToken
-                             appCheckToken:appCheckToken
-                          allowQARFallback:YES];
-        });
-    }];
+        [self createQIBSessionForOrder:order
+                              currency:requestedCurrency
+                        viewController:viewController
+                                 phone:phone
+                               idToken:@""
+                         appCheckToken:@""
+                      allowQARFallback:YES];
+    });
 }
 
 #pragma mark - QIB Callbacks (Device only)
@@ -906,8 +899,11 @@ static void PPQIBTryLoadFrameworkBundle(void)
 
     NSString *statusForLog = PPPaymentExtractStatusFromResponseObject(safeResponse, 0) ?: @"(empty)";
     BOOL isTerminal = PPPaymentResponseHasTerminalResult(safeResponse);
-    PPORDERLog(@"QIB callback received | terminal=%d | cancellation=%d | status=%@ | keys=%@",
-               isTerminal, looksLikeCancellation, statusForLog, safeResponse.allKeys ?: @[]);
+    BOOL isExplicitSuccess = PPPaymentResponseIsExplicitSuccess(safeResponse);
+    BOOL isExplicitFailure = PPPaymentResponseIsExplicitFailure(safeResponse);
+    PPORDERLog(@"QIB callback received | terminal=%d | success=%d | failure=%d | cancellation=%d | status=%@ | keys=%@",
+               isTerminal, isExplicitSuccess, isExplicitFailure, looksLikeCancellation,
+               statusForLog, safeResponse.allKeys ?: @[]);
 
     // Capture completion and reset BEFORE invoking the callback.
     // This prevents re-entrant or duplicate callbacks from corrupting state.

@@ -519,6 +519,10 @@
     } else {
         [cell configureWithTitle:title subtitle:subtitle image:image];
     }
+    if (self.optionCellBackgroundColor) {
+        cell.backgroundColor = self.optionCellBackgroundColor;
+        cell.contentView.backgroundColor = self.optionCellBackgroundColor;
+    }
     // --- Determine selection state safely ---
     BOOL selected = NO;
     id currentValue = self.rowDescriptor.value;

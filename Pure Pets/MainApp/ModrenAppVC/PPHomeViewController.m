@@ -82,37 +82,16 @@ static NSArray<UIBarButtonItem *> *PPHomeBarButtonItems(UIBarButtonItem * _Nulla
     return item ? @[item] : @[];
 }
 
-static UIMenu * _Nullable PPHomeCombinedInlineMenu(UIMenu * _Nullable primaryMenu,
-                                                   UIMenu * _Nullable secondaryMenu)
-{
-    NSMutableArray<UIMenuElement *> *children = [NSMutableArray arrayWithCapacity:2];
-    if (primaryMenu) {
-        [children addObject:primaryMenu];
-    }
-    if (secondaryMenu) {
-        [children addObject:secondaryMenu];
-    }
-    if (children.count == 0) {
-        return nil;
-    }
-
-    return [UIMenu menuWithTitle:@""
-                           image:nil
-                      identifier:nil
-                         options:UIMenuOptionsDisplayInline
-                        children:children];
-}
-
-static void PPHomeConfigurePrimaryMenuButton(UIButton * _Nullable button,
-                                             UIMenu * _Nullable primaryMenu,
-                                             UIMenu * _Nullable secondaryMenu)
+static void PPHomePrepareProfileMenuButton(UIButton * _Nullable button)
 {
     if (!button) {
         return;
     }
 
-    button.menu = PPHomeCombinedInlineMenu(primaryMenu, secondaryMenu);
-    button.showsMenuAsPrimaryAction = (button.menu != nil);
+    if (@available(iOS 14.0, *)) {
+        button.menu = nil;
+        button.showsMenuAsPrimaryAction = NO;
+    }
 }
 
 static void PPHomeApplySemanticToViewTree(UIView * _Nullable view, UISemanticContentAttribute semantic)
@@ -867,8 +846,22 @@ typedef NS_ENUM(NSInteger, PPNearbyLocationState) {
     PPNearbyLocationStateDenied
 };
 
+typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
+    PPHomeProfileMenuActionProfile = 0,
+    PPHomeProfileMenuActionLogin,
+    PPHomeProfileMenuActionFavorites,
+    PPHomeProfileMenuActionMyAds,
+    PPHomeProfileMenuActionCart,
+    PPHomeProfileMenuActionOrders,
+    PPHomeProfileMenuActionProduction,
+    PPHomeProfileMenuActionSettings,
+    PPHomeProfileMenuActionSupport
+};
+
 
 @interface PPHomeViewController ()<UICollectionViewDelegate, UICollectionViewDataSourcePrefetching, BannerTapsCollectionDelegate,PPUniversalCellDelegate, CLLocationManagerDelegate>
+- (void)pp_handleProfileMenuAction:(PPHomeProfileMenuAction)action;
+
  @property (nonatomic, assign) BOOL warmUpCache;
 @property (nonatomic, assign) BOOL chatsListenerStarted;
 @property (nonatomic, copy, nullable) NSString *unreadListenerUserID;
@@ -3743,28 +3736,20 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 }
 
 - (void)pp_refreshNavigationMenusForCurrentUser {
-    if (@available(iOS 14.0, *)) {
-        // Profile button now holds both user + app actions
-        UIBarButtonItem *profileItem = self.homeProfileItem
-            ?: self.navigationItem.leftBarButtonItems.firstObject
-            ?: self.navigationItem.leftBarButtonItem;
-        UIView *customView = profileItem.customView;
-        // customView may be the container; find tagged button (8801)
-        UIButton *profileButton = nil;
-        if ([customView isKindOfClass:UIButton.class]) {
-            profileButton = (UIButton *)customView;
-        } else {
-            UIView *tagged = [customView viewWithTag:8801];
-            if ([tagged isKindOfClass:UIButton.class]) {
-                profileButton = (UIButton *)tagged;
-            }
-        }
-        if (profileButton) {
-            UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
-            UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
-            PPHomeConfigurePrimaryMenuButton(profileButton, userMenu, appMenu);
+    UIBarButtonItem *profileItem = self.homeProfileItem
+        ?: self.navigationItem.leftBarButtonItems.firstObject
+        ?: self.navigationItem.leftBarButtonItem;
+    UIView *customView = profileItem.customView;
+    UIButton *profileButton = nil;
+    if ([customView isKindOfClass:UIButton.class]) {
+        profileButton = (UIButton *)customView;
+    } else {
+        UIView *tagged = [customView viewWithTag:8801];
+        if ([tagged isKindOfClass:UIButton.class]) {
+            profileButton = (UIButton *)tagged;
         }
     }
+    PPHomePrepareProfileMenuButton(profileButton);
 }
 
 - (void)handleUserProfileSyncNotification:(NSNotification *)notification
@@ -9581,6 +9566,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (@available(iOS 13.0, *)) {
         button.layer.cornerCurve = kCACornerCurveContinuous;
     }
+    [button addTarget:self
+               action:@selector(profileTapped:)
+     forControlEvents:UIControlEventTouchUpInside];
 
     [container addSubview:button];
     [NSLayoutConstraint activateConstraints:@[
@@ -9643,12 +9631,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         ]];
     }
 
-    if (@available(iOS 14.0, *)) {
-        // Combine user actions + app actions into a single profile menu
-        UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
-        UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
-        PPHomeConfigurePrimaryMenuButton(button, userMenu, appMenu);
-    }
+    PPHomePrepareProfileMenuButton(button);
 
     return [[UIBarButtonItem alloc] initWithCustomView:container];
 }
@@ -10154,9 +10137,112 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 #pragma mark - Top/Nav UI
 - (void)profileTapped:(UIButton *)sender {
-    // Menu is already presented via `showsMenuAsPrimaryAction`.
-    // Keep this as a safe no-op fallback.
-    (void)sender;
+    NSMutableArray<FTPopOverMenuModel *> *menuItems = [NSMutableArray array];
+    NSMutableArray<NSNumber *> *menuActions = [NSMutableArray array];
+    void (^appendAction)(NSString *, NSString *, PPHomeProfileMenuAction) =
+    ^(NSString *title, NSString *imageName, PPHomeProfileMenuAction action) {
+        FTPopOverMenuModel *item = [[FTPopOverMenuModel alloc] init];
+        item.title = title ?: @"";
+        item.image = [UIImage systemImageNamed:imageName];
+        [menuItems addObject:item];
+        [menuActions addObject:@(action)];
+    };
+
+    if (UserManager.sharedManager.currentUser) {
+        appendAction(kLang(@"showProfile"), @"person.circle.fill", PPHomeProfileMenuActionProfile);
+    } else {
+        appendAction(kLang(@"go_to_login"), @"person.crop.circle.fill.badge.plus", PPHomeProfileMenuActionLogin);
+    }
+    appendAction(kLang(@"showfav"), @"star.fill", PPHomeProfileMenuActionFavorites);
+    appendAction(kLang(@"myadsTitle"), @"circle.hexagonpath.fill", PPHomeProfileMenuActionMyAds);
+    appendAction(kLang(@"Cart"), @"cart.fill", PPHomeProfileMenuActionCart);
+    appendAction(kLang(@"OrderHistory"), @"bag.fill", PPHomeProfileMenuActionOrders);
+
+    UserModel *currentUser = UserManager.sharedManager.currentUser;
+    if ([currentUser.prodectionStatus isEqualToString:@"active"]) {
+        appendAction(kLang(@"showProdection"), @"doc.on.doc.fill", PPHomeProfileMenuActionProduction);
+    }
+    appendAction(kLang(@"Setting"), @"gear", PPHomeProfileMenuActionSettings);
+    appendAction(kLang(@"supprot"), @"person.crop.circle.badge.questionmark", PPHomeProfileMenuActionSupport);
+
+    FTPopOverMenuConfiguration *configuration = [GM configMenu:nil];
+    configuration.textFont = [GM MidFontWithSize:16];
+
+    __weak typeof(self) weakSelf = self;
+    [FTPopOverMenu showForSender:sender
+                   withMenuArray:menuItems
+                      imageArray:nil
+                   configuration:configuration
+                       doneBlock:^(NSInteger selectedIndex) {
+        if (selectedIndex < 0 || selectedIndex >= (NSInteger)menuActions.count) {
+            return;
+        }
+        [weakSelf pp_handleProfileMenuAction:(PPHomeProfileMenuAction)menuActions[selectedIndex].integerValue];
+    }
+                    dismissBlock:nil];
+}
+
+- (void)pp_handleProfileMenuAction:(PPHomeProfileMenuAction)action {
+    switch (action) {
+        case PPHomeProfileMenuActionProfile: {
+            ProfileVC *vc = [ProfileVC new];
+            vc.view.layer.cornerRadius = 42;
+            vc.view.backgroundColor = AppBackgroundClr;
+            vc.view.clipsToBounds = YES;
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        case PPHomeProfileMenuActionLogin:
+            [PPUserSigningManager presentSignInFrom:self
+                                    withCountryCode:CitiesManager.shared.CurrentCountry.countryCode
+                                  presentationStyle:PPSignInPresentationStyleSheet
+                               autoDismissOnSuccess:YES
+                                             success:^(UserModel *user) {
+                [PPFunc reloadAppUI];
+                [[AppDataListenerManager shared] stopAllListeners];
+                [[AppDataListenerManager shared] startListenersForUser:PPCurrentUser.ID];
+            } failure:nil cancelled:nil];
+            break;
+        case PPHomeProfileMenuActionFavorites: {
+            if (![PPFunc PPUserCheck]) return;
+            MyItemsViewController *vc = [[MyItemsViewController alloc] initWithMode:MyItemsModeFavorites];
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        case PPHomeProfileMenuActionMyAds: {
+            if (![PPFunc PPUserCheck]) return;
+            MyItemsViewController *vc = [[MyItemsViewController alloc] initWithMode:MyItemsModeMyAds];
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        case PPHomeProfileMenuActionCart: {
+            if (![PPFunc PPUserCheck]) return;
+            CartViewController *vc = [CartViewController new];
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        case PPHomeProfileMenuActionOrders: {
+            if (![PPFunc PPUserCheck]) return;
+            OrderHistoryViewController *vc = [OrderHistoryViewController new];
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        case PPHomeProfileMenuActionProduction: {
+            MainController *vc = [MainController new];
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        case PPHomeProfileMenuActionSettings: {
+            SettingVC *vc = [SettingVC new];
+            [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle70];
+            break;
+        }
+        case PPHomeProfileMenuActionSupport: {
+            CompanyLocationVC *vc = [CompanyLocationVC new];
+            [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+    }
 }
 
 - (void)presentMenu:(UIMenu *)menu fromView:(UIView *)sourceView {
@@ -10300,10 +10386,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     container.clipsToBounds = NO;
     container.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
 
-    // Menu + tap safely coexist — combined user + app actions
-    UIMenu *userMenu = [PPActionButton userActionsArrayfor:self];
-    UIMenu *appMenu  = [PPActionButton appActionsArrayfor:self];
-    PPHomeConfigurePrimaryMenuButton(container, userMenu, appMenu);
+    PPHomePrepareProfileMenuButton(container);
 
     if (target && action) {
         [container addTarget:target

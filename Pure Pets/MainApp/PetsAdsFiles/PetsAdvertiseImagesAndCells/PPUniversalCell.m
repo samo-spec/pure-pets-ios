@@ -569,6 +569,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_resetReusableVisualState;
 - (NSString *)pp_imageSignatureForViewModel:(PPUniversalCellViewModel *)vm;
 - (NSString *)pp_cartLookupIdentifierForViewModel:(PPUniversalCellViewModel *)vm;
+- (BOOL)pp_isHostedByNovaProductMessageCell;
 - (BOOL)pp_supportsSelectionAccent;
 - (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated;
 - (void)pp_runContainerTapImpulse;
@@ -1079,7 +1080,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
     }
 
-    self.cardView.backgroundColor = PPUniversalCellSoftSurfaceColor();
+    self.cardView.backgroundColor = [self pp_isHostedByNovaProductMessageCell]
+        ? [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.4]
+        : PPUniversalCellSoftSurfaceColor();
     self.cardView.layer.cornerRadius = PPUniversalCardCornerRadius;
     self.cardView.layer.borderWidth = isDark ? 0.72 : 0.88;
     [self.cardView pp_setBorderColor:PPUniversalCellSoftCardBorderColor()];
@@ -1307,6 +1310,18 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     UIResponder *responder = self.nextResponder;
     while (responder) {
         if ([NSStringFromClass(responder.class) isEqualToString:@"PPHomeViewController"]) {
+            return YES;
+        }
+        responder = responder.nextResponder;
+    }
+    return NO;
+}
+
+- (BOOL)pp_isHostedByNovaProductMessageCell
+{
+    UIResponder *responder = self.nextResponder;
+    while (responder) {
+        if ([NSStringFromClass(responder.class) isEqualToString:@"PPNovaProductMessageCell"]) {
             return YES;
         }
         responder = responder.nextResponder;

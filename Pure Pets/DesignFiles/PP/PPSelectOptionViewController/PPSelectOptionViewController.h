@@ -37,6 +37,7 @@ typedef NS_ENUM(NSInteger, PPSelectOptionPresentationStyle) {
 @property (nonatomic, assign) BOOL showSearchBar; // default YES
 @property (nonatomic, assign) PPSelectOptionPresentationStyle presentationStyle; // default .Sheet
 @property (nonatomic, strong) UIView *searchContainer;
+@property (nonatomic, strong, nullable) UIColor *optionCellBackgroundColor;
 
 /// Callback when a row is picked (returns your original model)
 @property (nonatomic, copy) PPSelectOptionBlock onSelectOption;

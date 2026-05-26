@@ -40,6 +40,7 @@
 @property (nonatomic, assign) BOOL isVerifyingCode;
 @property (nonatomic, assign) BOOL isRequestingResend;
 @property (nonatomic, assign) BOOL didAnimateEntrance;
+@property (nonatomic, copy, nullable) NSString *pendingAutomaticSubmissionCode;
 
 @end
 
@@ -236,6 +237,9 @@
      
     self.codeField.textContentType = UITextContentTypeOneTimeCode;
     self.codeField.keyboardType = UIKeyboardTypeASCIICapableNumberPad;
+    self.codeField.autocorrectionType = UITextAutocorrectionTypeNo;
+    self.codeField.spellCheckingType = UITextSpellCheckingTypeNo;
+    self.codeField.smartInsertDeleteType = UITextSmartInsertDeleteTypeNo;
     self.codeField.tintColor = UIColor.clearColor;
     self.codeField.textAlignment = NSTextAlignmentCenter;
     self.codeField.font =  [GM boldFontWithSize:1];
@@ -422,22 +426,44 @@
 }
 
 - (void)codeChanged:(UITextField *)field {
-    field.text = [self normalizedOTPDigitsFromInput:field.text];
+    NSString *digits = [self normalizedOTPDigitsFromInput:field.text];
+    field.text = digits;
 
     UIImpactFeedbackGenerator *h = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [h impactOccurred];
 
-    self.continueButton.enabled = (field.text.length == 6 && !self.isVerifyingCode && !self.isRequestingResend);
+    self.continueButton.enabled = (digits.length == 6 && !self.isVerifyingCode && !self.isRequestingResend);
     self.continueButton.alpha = self.continueButton.enabled ? 1.0 : 0.6;
     [self refreshDigitBoxesAnimated:YES];
 
-    if (field.text.length == 6) {
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(200 * NSEC_PER_MSEC)),
-                       dispatch_get_main_queue(), ^{
-            [self verifyPhoneCode:field.text on:self];
-        });
+    if (digits.length != 6) {
+        self.pendingAutomaticSubmissionCode = nil;
+        return;
     }
 
+    if (self.isVerifyingCode ||
+        self.isRequestingResend ||
+        [self.pendingAutomaticSubmissionCode isEqualToString:digits]) {
+        return;
+    }
+
+    // A one-time-code suggestion inserts all six digits in one edit event.
+    // Let the visual boxes update, then submit only the current inserted code.
+    self.pendingAutomaticSubmissionCode = digits;
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(200 * NSEC_PER_MSEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self ||
+            self.isVerifyingCode ||
+            self.isRequestingResend ||
+            ![self.pendingAutomaticSubmissionCode isEqualToString:self.codeField.text]) {
+            return;
+        }
+        NSString *submittedCode = self.pendingAutomaticSubmissionCode;
+        self.pendingAutomaticSubmissionCode = nil;
+        [self verifyPhoneCode:submittedCode on:self];
+    });
 }
 
 - (void)refreshDigitBoxesAnimated:(BOOL)animated {
@@ -545,6 +571,7 @@
             weakSelf.isRequestingResend = NO;
             if (success) {
                 weakSelf.codeField.text = @"";
+                weakSelf.pendingAutomaticSubmissionCode = nil;
                 weakSelf.continueButton.enabled = NO;
                 weakSelf.continueButton.alpha = 0.6;
                 [weakSelf refreshDigitBoxesAnimated:NO];
@@ -702,6 +729,7 @@
 
     // clear code
     self.codeField.text = @"";
+    self.pendingAutomaticSubmissionCode = nil;
     self.continueButton.enabled = NO;
     self.continueButton.alpha = 0.6;
     [self refreshDigitBoxesAnimated:NO];
@@ -724,6 +752,7 @@
         return;
     }
     
+    self.pendingAutomaticSubmissionCode = nil;
     self.isVerifyingCode = YES;
 
     if (self.onCodeVerificationRequested) {

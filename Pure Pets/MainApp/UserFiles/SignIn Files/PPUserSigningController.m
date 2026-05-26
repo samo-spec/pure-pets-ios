@@ -432,7 +432,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         [Styling addLiquidGlassBorderToView:self.countryCodePickerBtn cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
     }
     if (self.phoneNumberField) {
-        [Styling addLiquidGlassBorderToView:self.phoneNumberField cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.16]];
+        [Styling addLiquidGlassBorderToView:self.phoneNumberField cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.86]];
     }
     if (self.continuePhoneButton) {
         [Styling addLiquidGlassBorderToView:self.continuePhoneButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
@@ -466,6 +466,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         });
         
     }];
+    vc.optionCellBackgroundColor = UIColor.secondarySystemBackgroundColor;
     [self presentViewController:vc animated:YES completion:nil];
     
 }
@@ -511,8 +512,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.phoneNumberField.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.10 : 0.94];
     self.phoneNumberField.delegate = self;
     [self.phoneNumberField addTarget:self action:@selector(handlePhoneFieldChanged:) forControlEvents:UIControlEventEditingChanged];
-    // Phone Stack
-    self.phoneStack = [[UIStackView alloc] initWithArrangedSubviews:Language.isRTL ?@[ self.phoneNumberField,self.countryCodePickerBtn] : @[self.countryCodePickerBtn, self.phoneNumberField]];
+    // Keep international number entry physical order stable across languages.
+    self.phoneStack = [[UIStackView alloc] initWithArrangedSubviews:@[self.countryCodePickerBtn, self.phoneNumberField]];
     self.phoneStack.axis = UILayoutConstraintAxisHorizontal;
     self.phoneStack.spacing = 10;
     self.phoneStack.distribution = UIStackViewDistributionFill;
