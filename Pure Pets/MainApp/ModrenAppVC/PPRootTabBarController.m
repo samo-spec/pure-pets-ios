@@ -27,6 +27,7 @@
 
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
+#import "PPNovaChatViewController.h"
 
 // ...
 
@@ -39,11 +40,20 @@ static NSInteger const PPRootTabIndexChats = 1;
 static NSInteger const PPRootTabIndexAdd = 2;
 static NSInteger const PPRootTabIndexOrders = 3;
 static NSInteger const PPRootTabIndexSettings = 4;
+static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
+static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
-@interface PPRootTabBarController ()
+@interface PPRootTabBarController () <UITabBarDelegate>
 @property (nonatomic, strong) UIButton *leadingTabButton;
 @property (nonatomic, strong) UIButton *emptyCard;
- @property (nonatomic, strong) PPNewBottomBar *bottomBar;
+@property (nonatomic, strong) PPNewBottomBar *bottomBar;
+@property (nonatomic, strong) UITabBar *premiumTabDockView;
+@property (nonatomic, strong) NSArray<UITabBarItem *> *premiumTabItems;
+@property (nonatomic, strong) UIButton *premiumNovaButton;
+@property (nonatomic, strong, nullable) LOTAnimationView *premiumNovaLottieView;
+@property (nonatomic, assign) BOOL premiumNovaVisibleByConfiguration;
+@property (nonatomic, assign) BOOL premiumBottomNavigationHidden;
+@property (nonatomic, assign) BOOL premiumNavigationDidAnimateIn;
 @property (nonatomic, strong) CAGradientLayer *bottomFadeLayer;
 @property (nonatomic, strong) CALayer *tabBarTopSeparatorLayer;
 @property (nonatomic, strong, nullable) UIControl *blockedOverlayView;
@@ -58,6 +68,17 @@ static NSInteger const PPRootTabIndexSettings = 4;
 - (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience;
 - (nullable PPSearchViewController *)pp_existingSearchControllerInNavigationController:(UINavigationController *)navigationController;
 - (void)pp_openSearchExperienceFromCurrentContextOpeningAccessories:(BOOL)openAccessories;
+- (void)pp_setupPremiumBottomNavigation;
+- (void)pp_setupPremiumNovaButton;
+- (void)pp_novaButtonTapped;
+- (void)pp_handleNovaFloatingVisibilityUpdate:(NSNotification *)notification;
+- (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected;
+- (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated;
+- (void)pp_animatePremiumBottomNavigationEntranceIfNeeded;
+- (void)pp_premiumControlTouchDown:(UIButton *)sender;
+- (void)pp_premiumControlTouchUp:(UIButton *)sender;
+- (void)pp_setPremiumBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated;
+- (void)pp_updatePremiumChatsBadgeWithCount:(NSInteger)count;
 - (void)pp_updateTabBarSelectionIndicatorIfNeeded;
 - (void)pp_updateTabBarTopSeparatorIfNeeded;
 - (UIImage *)pp_tabBarSelectionIndicatorImageForItemSize:(CGSize)itemSize
@@ -68,6 +89,13 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
 @implementation PPRootTabBarController
  
+- (void)setSelectedIndex:(NSUInteger)selectedIndex
+{
+    [super setSelectedIndex:selectedIndex];
+    if (self.premiumTabItems.count > 0) {
+        [self pp_applyPremiumTabSelectionAnimated:NO];
+    }
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -153,7 +181,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
     //[self addBottomFadeBelowTabBar];
     [self configureAppearance];
 
-    [self addPlusTabBarButton];
+    [self pp_setupPremiumBottomNavigation];
     
     [self updateUnreads];
     
@@ -190,6 +218,11 @@ static NSInteger const PPRootTabIndexSettings = 4;
            selector:@selector(pp_handleUserAccessUpdate:)
                name:PPUserManagerDidUpdateUserAccessNotification
              object:nil];
+    [[NSNotificationCenter defaultCenter]
+        addObserver:self
+           selector:@selector(pp_handleNovaFloatingVisibilityUpdate:)
+               name:PPNovaFloatingVisibilityDidChangeNotification
+             object:nil];
     //[self configureTabBarIndicatorColor];
 
 }
@@ -198,6 +231,11 @@ static NSInteger const PPRootTabIndexSettings = 4;
     [super viewWillAppear:animated];
     [UserManager.sharedManager startListeningCurrentUserBlockedState];
     [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+    [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
 }
 
 - (void)dealloc {
@@ -278,64 +316,21 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
 - (void)openAccessoriesAll
 {
-    [UIView animateWithDuration:0.25 animations:^{
-        self.tabBar.alpha = 1.0;
-        //self.tabBar.transform = CGAffineTransformIdentity;
-    }];
+    [self pp_setPremiumBottomNavigationHidden:NO animated:YES];
 }
 - (void)showSystemTabBar
 {
-    [UIView animateWithDuration:0.25 animations:^{
-        self.tabBar.alpha = 1.0;
-        //self.tabBar.transform = CGAffineTransformIdentity;
-    }];
+    [self pp_setPremiumBottomNavigationHidden:NO animated:YES];
 }
 
 - (void)hideSystemTabBar
 {
-    [UIView animateWithDuration:0.25 animations:^{
-        self.tabBar.alpha = 0.0;
-       // self.tabBar.transform =
-       // CGAffineTransformMakeTranslation(0, self.tabBar.bounds.size.height);
-    }];
+    [self pp_setPremiumBottomNavigationHidden:YES animated:YES];
 }
 
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
-    NSMutableArray<UIView *> *bottomNavigationViews = [NSMutableArray array];
-    if (self.tabBar) [bottomNavigationViews addObject:self.tabBar];
-    if (self.bottomBar) [bottomNavigationViews addObject:self.bottomBar];
-    if (self.emptyCard) [bottomNavigationViews addObject:self.emptyCard];
-
-    if (!hidden) {
-        for (UIView *view in bottomNavigationViews) {
-            view.hidden = NO;
-        }
-    }
-
-    void (^changes)(void) = ^{
-        for (UIView *view in bottomNavigationViews) {
-            view.alpha = hidden ? 0.0 : 1.0;
-        }
-    };
-
-    void (^completion)(BOOL) = ^(__unused BOOL finished) {
-        for (UIView *view in bottomNavigationViews) {
-            view.hidden = hidden;
-        }
-    };
-
-    if (!animated) {
-        changes();
-        completion(YES);
-        return;
-    }
-
-    [UIView animateWithDuration:0.22
-                          delay:0.0
-                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
-                     animations:changes
-                     completion:completion];
+    [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
 }
 
 -(void)viewWillLayoutSubviews
@@ -350,6 +345,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
     [self pp_updateBlockedOverlayTopInset];
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
+    [self pp_applyPremiumTabSelectionAnimated:NO];
     
 }
 
@@ -923,6 +919,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
     if (@available(iOS 15.0, *)) {
         item.badgeColor = AppPrimaryClr;
     }
+    [self pp_updatePremiumChatsBadgeWithCount:totalUnreadCount];
 
     NSLog(@"🔔 [TabUnread] total = %ld", (long)totalUnreadCount);
 }
@@ -1061,16 +1058,17 @@ static NSInteger const PPRootTabIndexSettings = 4;
 
 - (void)pp_updateTabBarSelectionIndicatorIfNeeded
 {
-    if (!self.tabBar || self.tabBar.items.count == 0) {
+    UITabBar *dockTabBar = self.premiumTabDockView;
+    if (!dockTabBar || dockTabBar.items.count == 0) {
         return;
     }
 
-    CGSize tabBarSize = self.tabBar.bounds.size;
+    CGSize tabBarSize = dockTabBar.bounds.size;
     if (tabBarSize.width <= 0.0 || tabBarSize.height <= 0.0) {
         return;
     }
 
-    CGFloat itemWidth = floor(tabBarSize.width / MAX(1.0, (CGFloat)self.tabBar.items.count));
+    CGFloat itemWidth = floor(tabBarSize.width / MAX(1.0, (CGFloat)dockTabBar.items.count));
     if (itemWidth <= 0.0) {
         return;
     }
@@ -1079,7 +1077,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
     CGSize indicatorSize = CGSizeMake(MIN(60.0, MAX(44.0, itemWidth - 18.0)), 34.0);
     UIColor *fillColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:(PPIOS26() ? 0.12 : 0.10)];
     UIColor *strokeColor = [(AppPrimaryClr ?: UIColor.systemTealColor) colorWithAlphaComponent:0.14];
-    self.tabBar.selectionIndicatorImage =
+    dockTabBar.selectionIndicatorImage =
         [self pp_tabBarSelectionIndicatorImageForItemSize:itemSize
                                             indicatorSize:indicatorSize
                                                 fillColor:fillColor
@@ -1100,7 +1098,7 @@ static NSInteger const PPRootTabIndexSettings = 4;
     UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:itemSize format:format];
     return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull rendererContext) {
         CGRect indicatorRect = CGRectMake((itemSize.width - indicatorSize.width) * 0.5,
-                                          6.0,
+                                          (itemSize.height - indicatorSize.height) * 0.5,
                                           indicatorSize.width,
                                           indicatorSize.height);
         UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:indicatorRect cornerRadius:17.0];
@@ -1110,6 +1108,447 @@ static NSInteger const PPRootTabIndexSettings = 4;
         path.lineWidth = 0.75;
         [path stroke];
     }];
+}
+
+- (void)pp_setupPremiumBottomNavigation
+{
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.tabBar.userInteractionEnabled = NO;
+    [self addPlusTabBarButton];
+    [self pp_setupPremiumNovaButton];
+
+    UITabBar *dockView = [[UITabBar alloc] init];
+    dockView.translatesAutoresizingMaskIntoConstraints = NO;
+    dockView.delegate = self;
+    dockView.itemPositioning = UITabBarItemPositioningFill;
+    dockView.backgroundColor = UIColor.clearColor;
+    dockView.tintColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    dockView.unselectedItemTintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
+    dockView.layer.cornerRadius = 31.0;
+    PPApplyContinuousCorners(dockView, 31.0);
+    [dockView pp_setShadowColor:UIColor.blackColor];
+    dockView.layer.shadowOpacity = 0.08;
+    dockView.layer.shadowRadius = 22.0;
+    dockView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    dockView.layer.masksToBounds = NO;
+    dockView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    [self.view addSubview:dockView];
+    self.premiumTabDockView = dockView;
+
+    UITabBarAppearance *appearance = [[UITabBarAppearance alloc] init];
+    [appearance configureWithTransparentBackground];
+    if (@available(iOS 26.0, *)) {
+        appearance.backgroundEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
+    } else {
+        appearance.backgroundEffect =
+            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        appearance.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.12];
+    }
+    appearance.shadowColor = UIColor.clearColor;
+    appearance.stackedLayoutAppearance.normal.iconColor =
+        [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
+    appearance.stackedLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    appearance.inlineLayoutAppearance.normal.iconColor =
+        [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
+    appearance.inlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    appearance.compactInlineLayoutAppearance.normal.iconColor =
+        [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
+    appearance.compactInlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    dockView.standardAppearance = appearance;
+    if (@available(iOS 15.0, *)) {
+        dockView.scrollEdgeAppearance = appearance;
+    }
+    dockView.clipsToBounds = YES;
+    dockView.layer.borderWidth = 0.5;
+    [dockView pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.10]];
+
+    NSArray<NSNumber *> *visibleTabIndexes = @[
+        @(PPRootTabIndexHome),
+        @(PPRootTabIndexChats),
+        @(PPRootTabIndexOrders),
+        @(PPRootTabIndexSettings)
+    ];
+    NSMutableArray<UITabBarItem *> *items = [NSMutableArray arrayWithCapacity:visibleTabIndexes.count];
+    for (NSNumber *tabIndexValue in visibleTabIndexes) {
+        NSInteger index = tabIndexValue.integerValue;
+        UITabBarItem *sourceItem = self.viewControllers[index].tabBarItem;
+        UITabBarItem *item =
+            [[UITabBarItem alloc] initWithTitle:nil
+                                         image:[self pp_premiumSymbolForTabIndex:index selected:NO]
+                                 selectedImage:[self pp_premiumSymbolForTabIndex:index selected:YES]];
+        item.tag = index;
+        item.accessibilityLabel = sourceItem.accessibilityLabel ?: sourceItem.title;
+        item.accessibilityHint = sourceItem.accessibilityHint;
+        [items addObject:item];
+    }
+    dockView.items = items.copy;
+    self.premiumTabItems = items.copy;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:PPSpaceMD],
+        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPSpaceBase],
+        [dockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceSM],
+        [dockView.heightAnchor constraintEqualToConstant:62.0]
+    ]];
+
+    [self pp_applyPremiumTabSelectionAnimated:NO];
+    if (!UIAccessibilityIsReduceMotionEnabled()) {
+        dockView.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
+        self.leadingTabButton.alpha = 0.0;
+        self.leadingTabButton.transform =
+            CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 12.0),
+                                    CGAffineTransformMakeScale(0.94, 0.94));
+        self.premiumNovaButton.alpha = 0.0;
+        self.premiumNovaButton.transform =
+            CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 8.0),
+                                    CGAffineTransformMakeScale(0.94, 0.94));
+    }
+    [self.view bringSubviewToFront:dockView];
+    [self.view bringSubviewToFront:self.leadingTabButton];
+    [self.view bringSubviewToFront:self.premiumNovaButton];
+}
+
+- (void)pp_setupPremiumNovaButton
+{
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.adjustsImageWhenHighlighted = NO;
+    button.layer.cornerRadius = 27.0;
+    PPApplyContinuousCorners(button, 27.0);
+    button.layer.masksToBounds = NO;
+    [button pp_setShadowColor:accentColor];
+    button.layer.shadowOpacity = 0.10;
+    button.layer.shadowRadius = 14.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 6.0);
+
+    if (@available(iOS 26.0, *)) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration glassButtonConfiguration];
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.baseForegroundColor = accentColor;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(6.0, 6.0, 6.0, 6.0);
+        button.configuration = configuration;
+    } else {
+        button.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.88];
+        button.layer.borderWidth = 0.5;
+        [button pp_setBorderColor:[accentColor colorWithAlphaComponent:0.16]];
+    }
+
+    button.accessibilityLabel = kLang(@"nova_chat_accessibility") ?: @"Chat with Nova";
+    button.accessibilityTraits = UIAccessibilityTraitButton;
+    [button addTarget:self action:@selector(pp_novaButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_premiumControlTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_premiumControlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
+    [self.view addSubview:button];
+    self.premiumNovaButton = button;
+    self.premiumNovaVisibleByConfiguration = YES;
+
+    LOTAnimationView *animationView = [[LOTAnimationView alloc] init];
+    animationView.translatesAutoresizingMaskIntoConstraints = NO;
+    animationView.userInteractionEnabled = NO;
+    animationView.contentMode = UIViewContentModeScaleAspectFit;
+    animationView.loopAnimation = YES;
+    animationView.animationSpeed = 0.6;
+    [button addSubview:animationView];
+    self.premiumNovaLottieView = animationView;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [button.centerXAnchor constraintEqualToAnchor:self.leadingTabButton.centerXAnchor],
+        [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-PPSpaceMD],
+        [button.widthAnchor constraintEqualToConstant:54.0],
+        [button.heightAnchor constraintEqualToConstant:54.0],
+        [animationView.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
+        [animationView.centerYAnchor constraintEqualToAnchor:button.centerYAnchor],
+        [animationView.widthAnchor constraintEqualToConstant:42.0],
+        [animationView.heightAnchor constraintEqualToConstant:42.0]
+    ]];
+
+    __weak typeof(self) weakSelf = self;
+    __weak LOTAnimationView *weakAnimationView = animationView;
+    [AppClasses setAnimationNamed:@"Ncolored"
+                            ToView:animationView
+                         withSpeed:0.6
+                        completion:^(BOOL success) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            LOTAnimationView *strongAnimationView = weakAnimationView;
+            if (!strongSelf || !strongAnimationView) {
+                return;
+            }
+            if (success) {
+                [strongAnimationView play];
+                return;
+            }
+            strongAnimationView.hidden = YES;
+            UIImageSymbolConfiguration *configuration =
+                [UIImageSymbolConfiguration configurationWithPointSize:20.0
+                                                                 weight:UIImageSymbolWeightMedium];
+            UIImage *fallbackIcon =
+                [UIImage systemImageNamed:@"sparkles" withConfiguration:configuration];
+            if (@available(iOS 26.0, *)) {
+                UIButtonConfiguration *buttonConfiguration =
+                    strongSelf.premiumNovaButton.configuration;
+                buttonConfiguration.image = fallbackIcon;
+                buttonConfiguration.baseForegroundColor = accentColor;
+                strongSelf.premiumNovaButton.configuration = buttonConfiguration;
+            } else {
+                [strongSelf.premiumNovaButton setImage:fallbackIcon forState:UIControlStateNormal];
+                strongSelf.premiumNovaButton.tintColor = accentColor;
+            }
+        });
+    }];
+}
+
+- (void)pp_novaButtonTapped
+{
+    if (@available(iOS 10.0, *)) {
+        UIImpactFeedbackGenerator *feedback =
+            [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+        [feedback impactOccurred];
+    }
+    [PPNovaChatViewController presentNovaFromViewController:self];
+}
+
+- (void)pp_handleNovaFloatingVisibilityUpdate:(NSNotification *)notification
+{
+    id visibleValue = notification.userInfo[PPNovaFloatingVisibilityValueKey];
+    if (![visibleValue respondsToSelector:@selector(boolValue)]) {
+        return;
+    }
+    self.premiumNovaVisibleByConfiguration = [visibleValue boolValue];
+    self.premiumNovaButton.hidden =
+        !self.premiumNovaVisibleByConfiguration || self.premiumBottomNavigationHidden;
+}
+
+- (UIImage *)pp_premiumSymbolForTabIndex:(NSInteger)index selected:(BOOL)selected
+{
+    NSString *normalSymbolName = @"circle";
+    NSString *selectedSymbolName = @"circle.fill";
+    switch (index) {
+        case PPRootTabIndexHome:
+            normalSymbolName = @"house";
+            selectedSymbolName = @"house.fill";
+            break;
+        case PPRootTabIndexChats:
+            normalSymbolName = @"bubble.left.and.bubble.right";
+            selectedSymbolName = @"bubble.left.and.bubble.right.fill";
+            break;
+        case PPRootTabIndexOrders:
+            normalSymbolName = @"bag";
+            selectedSymbolName = @"bag.fill";
+            break;
+        case PPRootTabIndexSettings:
+            normalSymbolName = @"slider.horizontal.3";
+            selectedSymbolName = @"slider.horizontal.3";
+            break;
+        default:
+            break;
+    }
+    UIImageSymbolConfiguration *symbolConfiguration =
+        [UIImageSymbolConfiguration configurationWithPointSize:19.0
+                                                         weight:UIImageSymbolWeightMedium
+                                                          scale:UIImageSymbolScaleMedium];
+    return [UIImage systemImageNamed:(selected ? selectedSymbolName : normalSymbolName)
+                   withConfiguration:symbolConfiguration];
+}
+
+- (void)tabBar:(UITabBar *)tabBar didSelectItem:(UITabBarItem *)item
+{
+    if (tabBar != self.premiumTabDockView) {
+        return;
+    }
+    NSInteger index = item.tag;
+    if (index < 0 || index >= (NSInteger)self.viewControllers.count) {
+        return;
+    }
+    UIViewController *viewController = self.viewControllers[index];
+    if (![self tabBarController:self shouldSelectViewController:viewController]) {
+        [self pp_applyPremiumTabSelectionAnimated:NO];
+        return;
+    }
+
+    BOOL isChangingTabs = self.selectedIndex != (NSUInteger)index;
+    [super setSelectedIndex:(NSUInteger)index];
+    [self tabBarController:self didSelectViewController:viewController];
+    [self pp_applyPremiumTabSelectionAnimated:isChangingTabs];
+}
+
+- (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated
+{
+    NSUInteger activeIndex =
+        self.selectedIndex == PPRootTabIndexAdd ? self.pp_lastSelectedIndex : self.selectedIndex;
+    UITabBarItem *selectedItem = nil;
+    for (UITabBarItem *item in self.premiumTabItems) {
+        if (item.tag == (NSInteger)activeIndex) {
+            selectedItem = item;
+            break;
+        }
+    }
+    if (!selectedItem || self.premiumTabDockView.selectedItem == selectedItem) {
+        return;
+    }
+    void (^updates)(void) = ^{
+        self.premiumTabDockView.selectedItem = selectedItem;
+    };
+    if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
+        [UIView transitionWithView:self.premiumTabDockView
+                          duration:0.22
+                           options:UIViewAnimationOptionTransitionCrossDissolve |
+                                   UIViewAnimationOptionBeginFromCurrentState |
+                                   UIViewAnimationOptionAllowUserInteraction
+                        animations:updates
+                        completion:nil];
+    } else {
+        updates();
+    }
+}
+
+- (void)pp_animatePremiumBottomNavigationEntranceIfNeeded
+{
+    if (self.premiumNavigationDidAnimateIn) {
+        return;
+    }
+    self.premiumNavigationDidAnimateIn = YES;
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.premiumTabDockView.transform = CGAffineTransformIdentity;
+        self.leadingTabButton.alpha = 1.0;
+        self.leadingTabButton.transform = CGAffineTransformIdentity;
+        self.premiumNovaButton.alpha = 1.0;
+        self.premiumNovaButton.transform = CGAffineTransformIdentity;
+        return;
+    }
+
+    [UIView animateWithDuration:0.46
+                          delay:0.03
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.16
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.premiumTabDockView.transform = CGAffineTransformIdentity;
+    } completion:nil];
+    [UIView animateWithDuration:0.40
+                          delay:0.08
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.22
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.leadingTabButton.alpha = 1.0;
+        self.leadingTabButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
+    [UIView animateWithDuration:0.42
+                          delay:0.14
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.premiumNovaButton.alpha = 1.0;
+        self.premiumNovaButton.transform = CGAffineTransformIdentity;
+    } completion:nil];
+}
+
+- (void)pp_premiumControlTouchDown:(UIButton *)sender
+{
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        sender.transform = CGAffineTransformMakeScale(0.95, 0.95);
+    } completion:nil];
+}
+
+- (void)pp_premiumControlTouchUp:(UIButton *)sender
+{
+    if (sender == self.leadingTabButton || sender == self.premiumNovaButton) {
+        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.20
+                              delay:0.0
+             usingSpringWithDamping:0.84
+              initialSpringVelocity:0.30
+                            options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            sender.transform = CGAffineTransformIdentity;
+        } completion:nil];
+        return;
+    }
+    [self pp_applyPremiumTabSelectionAnimated:!UIAccessibilityIsReduceMotionEnabled()];
+}
+
+- (void)pp_updatePremiumChatsBadgeWithCount:(NSInteger)count
+{
+    UITabBarItem *chatsItem = nil;
+    for (UITabBarItem *item in self.premiumTabItems) {
+        if (item.tag == PPRootTabIndexChats) {
+            chatsItem = item;
+            break;
+        }
+    }
+    if (!chatsItem) {
+        return;
+    }
+    chatsItem.badgeValue =
+        count > 0 ? (count > 99 ? @"99+" : [NSString stringWithFormat:@"%ld", (long)count]) : nil;
+    if (@available(iOS 10.0, *)) {
+        chatsItem.badgeColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    }
+}
+
+- (void)pp_setPremiumBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.premiumBottomNavigationHidden = hidden;
+    NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:3];
+    if (self.premiumTabDockView) {
+        [navigationViews addObject:self.premiumTabDockView];
+    }
+    if (self.leadingTabButton) {
+        [navigationViews addObject:self.leadingTabButton];
+    }
+    if (self.premiumNovaButton) {
+        [navigationViews addObject:self.premiumNovaButton];
+    }
+
+    if (!hidden) {
+        for (UIView *view in navigationViews) {
+            view.hidden = NO;
+        }
+        self.premiumNovaButton.hidden = !self.premiumNovaVisibleByConfiguration;
+    }
+    void (^changes)(void) = ^{
+        self.premiumTabDockView.alpha = 1.0;
+        self.leadingTabButton.alpha = hidden ? 0.0 : 1.0;
+        self.premiumNovaButton.alpha = hidden ? 0.0 : 1.0;
+        if (!UIAccessibilityIsReduceMotionEnabled()) {
+            self.premiumTabDockView.transform =
+                hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
+            self.leadingTabButton.transform =
+                hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
+            self.premiumNovaButton.transform =
+                hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
+        } else {
+            self.premiumTabDockView.transform = CGAffineTransformIdentity;
+            self.leadingTabButton.transform = CGAffineTransformIdentity;
+            self.premiumNovaButton.transform = CGAffineTransformIdentity;
+        }
+    };
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        for (UIView *view in navigationViews) {
+            view.hidden = hidden;
+        }
+    };
+    if (!animated) {
+        changes();
+        completion(YES);
+        return;
+    }
+    [UIView animateWithDuration:PPAnimDurationNormal
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                     animations:changes
+                     completion:completion];
 }
 
 - (void)addPlusTabBarButton {
@@ -1124,96 +1563,51 @@ static NSInteger const PPRootTabIndexSettings = 4;
                                                      weight:UIImageSymbolWeightSemibold
                                                       scale:UIImageSymbolScaleLarge];
 
-    UIImage *icon =
-    [[UIImage systemImageNamed:@"plus"
-              withConfiguration:symbolConfig]
-     imageWithTintColor:AppPrimaryClr
-     renderingMode:UIImageRenderingModeAlwaysOriginal];
- 
-    // Keep launch-safe classic layout on iOS < 26.
+    UIImage *icon = [[UIImage systemImageNamed:@"plus" withConfiguration:symbolConfig]
+                     imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    UIColor *accentColor = AppPrimaryClr ?: UIColor.systemTealColor;
     if (@available(iOS 26.0, *)) {
-        
-        UIButtonConfiguration *cfg;
-        cfg = [UIButtonConfiguration glassButtonConfiguration];
-        cfg.contentInsets = NSDirectionalEdgeInsetsMake(14, 14, 14, 14);
-        cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
-        cfg.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.18];
-        cfg.background.cornerRadius = 18;
-        cfg.image = icon;
-        cfg.baseForegroundColor = AppForgroundColr;
-
-        showAddMenuButton.configuration = cfg;
-        
-        
-        CAGradientLayer *g = [CAGradientLayer layer];
-        g.colors = @[
-            (__bridge id)[AppForgroundColr colorWithAlphaComponent:1.2].CGColor,
-            (__bridge id)[AppForgroundColr colorWithAlphaComponent:1.0].CGColor
-        ];
-        g.frame = CGRectMake(0, 0, 56, 56);
-        g.cornerRadius = 16;
-        
-        //[showAddMenuButton.layer insertSublayer:g atIndex:0];
-    }
-    else {
-        icon =
-        [[UIImage systemImageNamed:@"plus"
-                  withConfiguration:symbolConfig]
-         imageWithTintColor:AppForgroundColr
-         renderingMode:UIImageRenderingModeAlwaysTemplate];
-        
-        // Legacy APIs for iOS < 18
+        UIButtonConfiguration *configuration =
+            [UIButtonConfiguration glassButtonConfiguration];
+        configuration.image = icon;
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.baseForegroundColor = accentColor;
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(16.0, 16.0, 16.0, 16.0);
+        showAddMenuButton.configuration = configuration;
+    } else {
         [showAddMenuButton setImage:icon forState:UIControlStateNormal];
-        showAddMenuButton.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
-        showAddMenuButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
-        showAddMenuButton.contentVerticalAlignment = UIControlContentVerticalAlignmentCenter;
-        // Place image on top, title below, with spacing
-       
-        
-        //showAddMenuButton.titleEdgeInsets = UIEdgeInsetsMake(imageSize.height + spacing, -imageSize.width, 0, 0);
-        //showAddMenuButton.imageEdgeInsets = UIEdgeInsetsMake(-titleSize.height - spacing, 0, 0, -titleSize.width);
-        showAddMenuButton.layer.cornerRadius = 26;
-        showAddMenuButton.clipsToBounds = YES;
+        showAddMenuButton.backgroundColor =
+            [UIColor.systemBackgroundColor colorWithAlphaComponent:0.92];
+        showAddMenuButton.tintColor = accentColor;
+        showAddMenuButton.layer.borderWidth = 0.5;
+        [showAddMenuButton pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.10]];
     }
-
-    
-
-    showAddMenuButton.tintColor = AppForgroundColr;
-    showAddMenuButton.imageView.tintColor = AppForgroundColr;
-
-    // Shadow + clipping — version-specific handling
-    if (@available(iOS 26.0, *)) {
-        // iOS 26+: Glass button — external shadow for depth, no clipping
-        [showAddMenuButton pp_setShadowColor:UIColor.blackColor];
-        showAddMenuButton.layer.shadowOpacity = 0.08;
-        showAddMenuButton.layer.shadowRadius = 10;
-        showAddMenuButton.layer.shadowOffset = CGSizeMake(0, 4);
-        showAddMenuButton.layer.masksToBounds = NO;
-        showAddMenuButton.clipsToBounds = NO;
-    }
-    // iOS <26: cornerRadius + clipsToBounds already set above — keep them intact
+    showAddMenuButton.layer.cornerRadius = 28.0;
+    PPApplyContinuousCorners(showAddMenuButton, 28.0);
+    [showAddMenuButton pp_setShadowColor:UIColor.blackColor];
+    showAddMenuButton.layer.shadowOpacity = 0.06;
+    showAddMenuButton.layer.shadowRadius = 16.0;
+    showAddMenuButton.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    showAddMenuButton.layer.masksToBounds = NO;
 
     [showAddMenuButton addTarget:self action:@selector(presentBottomSheet) forControlEvents:UIControlEventTouchUpInside];
+    [showAddMenuButton addTarget:self action:@selector(pp_premiumControlTouchDown:) forControlEvents:UIControlEventTouchDown];
+    [showAddMenuButton addTarget:self action:@selector(pp_premiumControlTouchUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchUpOutside | UIControlEventTouchCancel];
 
     // ── Accessibility: Add new post button ──
     showAddMenuButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_add_new", @"Add new post");
     showAddMenuButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_add_new_hint", @"Create a new pet ad, accessory listing, or adoption post");
     showAddMenuButton.accessibilityTraits = UIAccessibilityTraitButton;
 
-    [self.tabBar addSubview:showAddMenuButton];
+    [self.view addSubview:showAddMenuButton];
     self.leadingTabButton = showAddMenuButton;
 
     [NSLayoutConstraint activateConstraints:@[
-        [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.tabBar.centerXAnchor],
-        [showAddMenuButton.centerYAnchor constraintEqualToAnchor:self.tabBar.centerYAnchor constant:-12],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:56],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:56]
+        [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPSpaceBase],
+        [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-11.0],
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:56.0],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:56.0]
     ]];
-    
-    // 🔒 Force DARK mode for glass button only
-    if (@available(iOS 13.0, *)) {
-        showAddMenuButton.overrideUserInterfaceStyle = UIUserInterfaceStyleDark;
-    }
 }
 
 - (void)leadingTabTapped {

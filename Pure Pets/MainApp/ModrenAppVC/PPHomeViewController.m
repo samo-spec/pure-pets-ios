@@ -66,6 +66,8 @@ static NSString * const PPHomeConfigCacheTitleModeKey = @"titleViewMode";
 static NSString * const PPHomeConfigCachePremiumCareVisibleKey = @"premiumCareVisible";
 static NSString * const PPHomeConfigCacheNovaFloatingVisibleKey = @"novaFloatingVisible";
 static NSString * const PPHomeConfigCacheNovaUseGenkitKey = @"novaUseGenkit";
+static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
+static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
 static UISemanticContentAttribute PPHomeCurrentSemanticAttribute(void)
 {
@@ -1801,12 +1803,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     self.lastAppliedHomeConfigOrderSignature =
         [self pp_homeConfigOrderSignatureForSectionIdentifiers:[self pp_orderedHomeSectionIdentifiers]];
 
-    if (self.novaFloatingButton) {
-        self.novaFloatingButton.hidden = !novaVisible;
-    }
-    if (self.novaFloatingHaloView) {
-        self.novaFloatingHaloView.hidden = !novaVisible;
-    }
+    [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
+                                                        object:self
+                                                      userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
 
     NSLog(@"[HomeConfig] Applied cached Console section order: %@",
           self.lastAppliedHomeConfigOrderSignature ?: @"");
@@ -3068,7 +3067,6 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     [self setupCollectionView];
     [self pp_applyOrderDetailsBackgroundAppearance];
     [self pp_applyCurrentLanguageDirectionToHomeUI];
-    [self setupNovaFloatingButton];
     [self configureDataSource];
     [self pp_applyCachedHomeConfigIfAvailable];
     [self applyBaseSnapshot];   // 🔥 NEW
@@ -3654,12 +3652,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 [strongSelf pp_homeConfigOrderSignatureForSectionIdentifiers:strongSelf.dataSource.snapshot.sectionIdentifiers];
         }
 
-        if (strongSelf.novaFloatingButton) {
-            strongSelf.novaFloatingButton.hidden = !novaVisible;
-        }
-        if (strongSelf.novaFloatingHaloView) {
-            strongSelf.novaFloatingHaloView.hidden = !novaVisible;
-        }
+        [[NSNotificationCenter defaultCenter] postNotificationName:PPNovaFloatingVisibilityDidChangeNotification
+                                                            object:strongSelf
+                                                          userInfo:@{ PPNovaFloatingVisibilityValueKey : @(novaVisible) }];
 
         strongSelf.homePremiumCareVisible = premiumCareVisible;
 
