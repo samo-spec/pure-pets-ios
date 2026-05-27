@@ -3245,7 +3245,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     [NSLayoutConstraint activateConstraints:@[
         [button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16],
-        [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceBase],
+        [button.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-12 ],
         [button.widthAnchor constraintEqualToConstant:56.0],
         [button.heightAnchor constraintEqualToConstant:56.0],
 
@@ -10862,7 +10862,25 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)viewSafeAreaInsetsDidChange
 {
     [super viewSafeAreaInsetsDidChange];
+    [self pp_updateCollectionViewDockBottomInset];
     [self pp_stabilizeHomeCollectionLayoutIfNeeded];
+}
+
+- (void)pp_updateCollectionViewDockBottomInset
+{
+    // The custom premiumTabDockView is only present on iOS 26+; its top sits
+    // 58 pt above the safe-area guide (button height 56 + 2 pt offset).
+    // UIScrollViewContentInsetAdjustmentAutomatic already adds the safe-area
+    // bottom, so we only need the extra clearance above that baseline.
+    CGFloat extra = PPIOS26() ? 66.0 : 0.0;
+    UIEdgeInsets inset = self.collectionView.contentInset;
+    if (fabs(inset.bottom - extra) > 0.5) {
+        inset.bottom = extra;
+        self.collectionView.contentInset = inset;
+        UIEdgeInsets indicator = self.collectionView.scrollIndicatorInsets;
+        indicator.bottom = extra;
+        self.collectionView.scrollIndicatorInsets = indicator;
+    }
 }
 
 - (void)viewWillTransitionToSize:(CGSize)size

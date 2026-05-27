@@ -1151,7 +1151,7 @@
  
 
 "This will be listed as a used item." = "سيتم إدراج هذا كإكسسوار مستخدم (مستعمل).";
-"Notifications" = "تنبيهات";
+"Notifications" = "محادثات";
 
 
 /// MARK: - Accessory / Food Form - General
@@ -2677,7 +2677,7 @@
 "nova_suggestion_auto_send" = "إرسال تلقائي";
 "nova_suggestion_auto_send_on" = "مفعّل";
 "nova_suggestion_auto_send_off" = "غير مفعّل";
-"nova_smart_suggestion_auto_hint" = "اضغط على اقتراح لإرساله فورًا";
+"nova_smart_suggestion_auto_hint" = "";
 "nova_smart_suggestion_fill_hint" = "اضغط على اقتراح لوضعه في خانة الكتابة";
 "nova_smart_suggestion_cat_food" = "طعام للقطط";
 "nova_smart_suggestion_cat_food_prompt" = "أحتاج طعامًا مناسبًا لقطتي";

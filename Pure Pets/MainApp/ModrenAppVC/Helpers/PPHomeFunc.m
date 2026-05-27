@@ -306,7 +306,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
 + (NSCollectionLayoutSection *)premiumSearchSectionForWidth:(CGFloat)availableWidth
 {
-    CGFloat searchHeight = 56.0;
+    CGFloat searchHeight = 52.0;
 
     NSCollectionLayoutSize *itemSize =
         [NSCollectionLayoutSize sizeWithWidthDimension:

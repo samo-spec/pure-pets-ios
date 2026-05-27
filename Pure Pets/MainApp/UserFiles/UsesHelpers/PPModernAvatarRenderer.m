@@ -87,8 +87,8 @@
         [border stroke];
         
         // Initials
-        CGFloat fontSize = safeSize * 0.36;
-        UIFont *font = [UIFont boldSystemFontOfSize:fontSize];
+        CGFloat fontSize = safeSize * 0.38;
+        UIFont *font = [GM BlackFontWithSize:fontSize];
         
         NSMutableParagraphStyle *styleP = [NSMutableParagraphStyle new];
         styleP.alignment = NSTextAlignmentCenter;

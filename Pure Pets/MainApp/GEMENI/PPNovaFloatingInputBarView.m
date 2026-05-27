@@ -91,12 +91,14 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.rowStack.axis = UILayoutConstraintAxisHorizontal;
     self.rowStack.alignment = UIStackViewAlignmentBottom;
     self.rowStack.spacing = 7.0;
-    self.rowStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    //self.rowStack.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.materialView.contentView addSubview:self.rowStack];
 
     self.suggestionsButton = [self pp_makeIconButtonNamed:@"sparkles" accessibilityKey:@"nova_input_suggestions_accessibility"];
     [self.suggestionsButton addTarget:self action:@selector(pp_suggestionsTapped) forControlEvents:UIControlEventTouchUpInside];
-    [self.rowStack addArrangedSubview:self.suggestionsButton];
+    self.suggestionsButton.hidden = YES;
+    self.suggestionsButton.alpha = 0;
+    //[self.rowStack addArrangedSubview:self.suggestionsButton];
 
     self.textView = [[UITextView alloc] init];
     self.textView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -107,8 +109,8 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.textView.font = [GM fontWithSize:PPFontBody] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightRegular];
     self.textView.adjustsFontForContentSizeCategory = YES;
     self.textView.scrollEnabled = NO;
-    self.textView.textAlignment = NSTextAlignmentCenter;
-    self.textView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.textView.textAlignment = GM.setAligment;
+    //self.textView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.textView.textContainerInset = UIEdgeInsetsMake(8.0, 0.0, 8.0, 0.0);
     self.textView.textContainer.lineFragmentPadding = 0.0;
     self.textView.returnKeyType = UIReturnKeyDefault;
@@ -121,9 +123,10 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.placeholderLabel.textColor = PPNovaInputDynamicColor([UIColor colorWithWhite:0.25 alpha:0.38],
                                                              [UIColor colorWithWhite:1.0 alpha:0.38]);
     self.placeholderLabel.font = self.textView.font;
-    self.placeholderLabel.textAlignment = NSTextAlignmentCenter;
+    self.placeholderLabel.textAlignment = GM.setAligment;
     self.placeholderLabel.adjustsFontForContentSizeCategory = YES;
-    self.placeholderLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    //self.placeholderLabel.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
+    self.placeholderLabel.userInteractionEnabled = NO;
     [self.textView addSubview:self.placeholderLabel];
 
     self.sendButton = [self pp_makeIconButtonNamed:@"arrow.up" accessibilityKey:@"nova_input_send_accessibility"];
@@ -150,20 +153,22 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
         [self.ambientTintView.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor],
         [self.ambientTintView.bottomAnchor constraintEqualToAnchor:self.materialView.contentView.bottomAnchor],
 
-        [self.rowStack.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor constant:7.0],
+        [self.rowStack.leadingAnchor constraintEqualToAnchor:self.materialView.contentView.leadingAnchor constant:12.0],
         [self.rowStack.trailingAnchor constraintEqualToAnchor:self.materialView.contentView.trailingAnchor constant:-7.0],
         [self.rowStack.bottomAnchor constraintEqualToAnchor:self.materialView.contentView.bottomAnchor constant:-7.0],
 
-        [self.suggestionsButton.widthAnchor constraintEqualToConstant:38.0],
-        [self.suggestionsButton.heightAnchor constraintEqualToConstant:38.0],
+        //[self.suggestionsButton.widthAnchor constraintEqualToConstant:0.0],
+        //[self.suggestionsButton.heightAnchor constraintEqualToConstant:0.0],
         [self.sendButton.widthAnchor constraintEqualToConstant:38.0],
         [self.sendButton.heightAnchor constraintEqualToConstant:38.0],
         self.textViewHeightConstraint,
 
-        [self.placeholderLabel.centerXAnchor constraintEqualToAnchor:self.textView.centerXAnchor],
+        // Placeholder aligns exactly with where the textView's text starts
+        // (lineFragmentPadding=0, textContainerInset.left=0 → flush to textView leading).
+        // centerY keeps it visually centred in the single-line state.
+        [self.placeholderLabel.leadingAnchor constraintEqualToAnchor:self.textView.leadingAnchor],
         [self.placeholderLabel.centerYAnchor constraintEqualToAnchor:self.textView.centerYAnchor],
-        [self.placeholderLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:self.textView.leadingAnchor constant:8.0],
-        [self.placeholderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.textView.trailingAnchor constant:-8.0]
+        [self.placeholderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:self.textView.trailingAnchor]
     ]];
 }
 
@@ -272,7 +277,7 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
 
     void (^changes)(void) = ^{
         self.placeholderLabel.alpha = hasText ? 0.0 : 1.0;
-        self.textView.textAlignment = hasText ? Language.alignmentForCurrentLanguage : NSTextAlignmentCenter;
+        self.textView.textAlignment = Language.alignmentForCurrentLanguage;
         self.sendButton.backgroundColor = hasText ? activeFill : idleFill;
         self.sendButton.tintColor = iconTint;
         [self.sendButton setImage:image forState:UIControlStateNormal];

@@ -25,6 +25,7 @@
     UIImageView *_chevronView;
     BOOL _signalAnimationsConfigured;
     NSUInteger _placeholderColorIndex;
+    UIColor *_currentCycleColor; // preserves the last cycling color across palette reloads
 }
 
 @synthesize placeholderLabel = _placeholderLabel;
@@ -416,6 +417,7 @@
     }
 
     UIColor *nextColor = [self pp_nextPlaceholderColor];
+    _currentCycleColor = nextColor;
     self.accessibilityValue = safeText;
 
     if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
@@ -424,23 +426,33 @@
         return;
     }
 
-    [UIView animateWithDuration:0.14
+    // Phase 1 — exit: text slides up and fades out with a slight scale-down
+    [UIView animateWithDuration:0.13
                           delay:0.0
-                        options:UIViewAnimationOptionCurveEaseOut
+                        options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, -1.5);
+        self->_placeholderLabel.transform = CGAffineTransformConcat(
+            CGAffineTransformMakeTranslation(0.0, -8.0),
+            CGAffineTransformMakeScale(0.94, 0.94)
+        );
         self->_placeholderLabel.alpha = 0.0;
-        self->_signalRowView.alpha = 0.72;
+        self->_signalRowView.alpha = 0.55;
     } completion:^(__unused BOOL finished) {
+        // Swap text + color while invisible
         self->_placeholderLabel.text = safeText;
         self->_placeholderLabel.textColor = nextColor;
-        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, 2.0);
+        // Start position: below + slightly smaller
+        self->_placeholderLabel.transform = CGAffineTransformConcat(
+            CGAffineTransformMakeTranslation(0.0, 11.0),
+            CGAffineTransformMakeScale(0.92, 0.92)
+        );
 
-        [UIView animateWithDuration:0.22
+        // Phase 2 — enter: spring up into place
+        [UIView animateWithDuration:0.34
                               delay:0.0
-             usingSpringWithDamping:0.86
-              initialSpringVelocity:0.28
-                            options:UIViewAnimationOptionCurveEaseInOut
+             usingSpringWithDamping:0.76
+              initialSpringVelocity:0.40
+                            options:UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
             self->_placeholderLabel.transform = CGAffineTransformIdentity;
             self->_placeholderLabel.alpha = 1.0;
@@ -448,18 +460,40 @@
         } completion:nil];
     }];
 
-    [UIView animateWithDuration:0.18
-                          delay:0.0
-                        options:UIViewAnimationOptionCurveEaseInOut
+    // Leading chip: punchy scale pop timed to coincide with text arrival
+    [UIView animateWithDuration:0.12
+                          delay:0.11
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
                      animations:^{
-        self->_leadingChipView.transform = CGAffineTransformMakeScale(1.04, 1.04);
-        self->_trailingOrbView.transform = CGAffineTransformMakeScale(1.03, 1.03);
+        self->_leadingChipView.transform = CGAffineTransformMakeScale(1.12, 1.12);
+        self->_leadingIconView.alpha = 0.65;
     } completion:^(__unused BOOL finished) {
-        [UIView animateWithDuration:0.24 delay:0.0 usingSpringWithDamping:0.82 initialSpringVelocity:0.25 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+        [UIView animateWithDuration:0.32
+                              delay:0.0
+             usingSpringWithDamping:0.70
+              initialSpringVelocity:0.35
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
             self->_leadingChipView.transform = CGAffineTransformIdentity;
+            self->_leadingIconView.alpha = 1.0;
+        } completion:nil];
+    }];
+
+    // Trailing orb: lighter echo pulse with a short delay
+    [UIView animateWithDuration:0.12
+                          delay:0.18
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self->_trailingOrbView.transform = CGAffineTransformMakeScale(1.07, 1.07);
+    } completion:^(__unused BOOL finished) {
+        [UIView animateWithDuration:0.26
+                              delay:0.0
+             usingSpringWithDamping:0.76
+              initialSpringVelocity:0.22
+                            options:UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
             self->_trailingOrbView.transform = CGAffineTransformIdentity;
-        } completion:^(BOOL finished) {
-        }];
+        } completion:nil];
     }];
 }
 
@@ -514,7 +548,9 @@
 
     _signalDotView.backgroundColor = AppPrimaryClrShiner ?: accentColor;
     _signalLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.72 : 0.58];
-    _placeholderLabel.textColor = [textColor colorWithAlphaComponent:isDark ? 0.96 : 0.90];
+    // Preserve active cycle color; only fall back to default before the first rotation fires
+    _placeholderLabel.textColor = _currentCycleColor
+        ?: [textColor colorWithAlphaComponent:isDark ? 0.96 : 0.90];
 
     _trailingOrbView.backgroundColor =
         [textColor colorWithAlphaComponent:isDark ? 0.10 : 0.05];

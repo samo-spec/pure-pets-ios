@@ -1173,11 +1173,11 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     dockView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.view addSubview:dockView];
     self.premiumTabDockView = dockView;
-
+    
     UITabBarAppearance *appearance = [[UITabBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
     appearance.backgroundEffect = nil;
-    appearance.backgroundColor = UIColor.clearColor;
+    appearance.backgroundColor = UIColor.redColor;
     appearance.shadowColor = UIColor.clearColor;
 
     UIColor *normalIconColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
@@ -1230,14 +1230,16 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
     CGFloat dockHeight = 64.0;
     if (@available(iOS 26.0, *)) {
-        dockHeight = 83.0;
+        dockHeight = 86.0;
     }
     [NSLayoutConstraint activateConstraints:@[
-        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:PPIOS26() ? 0 : 4],
-        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-(PPIOS26() ? 0 : 4)],
+        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:PPIOS26() ? -6 : 4],
+        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-(PPIOS26() ? -2 : 4)],
         [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-2],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
+    
+   
 
     [self pp_applyPremiumTabSelectionAnimated:NO];
     if (!UIAccessibilityIsReduceMotionEnabled()) {
@@ -1333,7 +1335,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
     [NSLayoutConstraint activateConstraints:@[
         [button.centerXAnchor constraintEqualToAnchor:self.leadingTabButton.centerXAnchor],
-        [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-16.0],
+        [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-10.0],
         [button.widthAnchor constraintEqualToConstant:54.0],
         [button.heightAnchor constraintEqualToConstant:54.0],
         [animationView.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
@@ -1696,9 +1698,17 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     [NSLayoutConstraint activateConstraints:@[
         [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
         [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:56.0],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:56.0]
+        [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
+        [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
     ]];
+
+    if (@available(iOS 17.0, *)) {
+        __weak UIButton *weakButton = showAddMenuButton;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakButton.imageView addSymbolEffect:[[NSSymbolWiggleEffect wiggleForwardEffect] effectWithByLayer]
+                                         options:[NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:3.0]]];
+        });
+    }
 }
 
 - (void)leadingTabTapped {

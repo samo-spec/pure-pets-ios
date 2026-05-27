@@ -4330,7 +4330,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     self.novaHeaderChromeView.backgroundColor = PPNovaDynamicColor([surface colorWithAlphaComponent:0.0],
                                                                    [surface colorWithAlphaComponent:0.0]);
-    self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.16].CGColor;
+    self.novaHeaderChromeView.layer.borderColor = [brand colorWithAlphaComponent:0.0].CGColor;
     if (!self.novaAmbientThinkingPaletteActive) {
         self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
                                                                         [brand colorWithAlphaComponent:0.26]);
@@ -4501,7 +4501,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                            layer:self.novaChatBottomGlowView.layer
                                              key:PPNovaThinkingBottomGlowBreathKey];
         
-        self.novaHeaderChromeView.alpha=0.1;
+        self.novaHeaderChromeView.alpha=0.5;
     } else {
         [self pp_addNovaAmbientOpacityBreathFrom:@0.78 to:@1.0 duration:5.4
                                            layer:self.novaHeaderTopGlowView.layer
@@ -4510,7 +4510,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                            layer:self.novaChatBottomGlowView.layer
                                              key:@"pp_novaBottomGlowBreath"];
         
-        self.novaHeaderChromeView.alpha=0.7;
+        self.novaHeaderChromeView.alpha=0.9;
     }
 }
 
@@ -6914,10 +6914,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIButton *surfaceButton = [UIButton buttonWithType:UIButtonTypeCustom];
     surfaceButton.translatesAutoresizingMaskIntoConstraints = NO;
     surfaceButton.backgroundColor = UIColor.clearColor;
-    surfaceButton.accessibilityTraits = UIAccessibilityTraitButton;
-    [surfaceButton addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressDown:) forControlEvents:UIControlEventTouchDown];
-    [surfaceButton addTarget:self action:@selector(pp_handleNovaSmartSuggestionPressCancel:) forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
-    [surfaceButton addTarget:self action:@selector(pp_handleNovaSmartSuggestionPillTapped:) forControlEvents:UIControlEventTouchUpInside];
+    surfaceButton.accessibilityTraits = UIAccessibilityTraitNone;
+    surfaceButton.userInteractionEnabled = NO;
     [suggestionView.contentView addSubview:surfaceButton];
     self.smartSuggestionSurfaceButton = surfaceButton;
 
