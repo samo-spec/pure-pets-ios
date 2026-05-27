@@ -32,7 +32,7 @@ static const CGFloat kCardMedium  = 188.0;
 static const CGFloat kCardLarge   = 248.0;
 
 static const CGFloat kCurrentOrdersExpandedItemHeight = 236.0;
-static const CGFloat kCurrentOrdersCollapsedItemHeight = 83.0;
+static const CGFloat kCurrentOrdersCollapsedItemHeight = 93.0;
 
 static inline CGFloat PPHomeResolvedWidth(CGFloat width)
 {
@@ -367,8 +367,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
 
      section.orthogonalScrollingBehavior =
      UICollectionLayoutSectionOrthogonalScrollingBehaviorNone;
-     section.contentInsets =
-     PPHomeFullWidthSectionInsets();
+     section.contentInsets = NSDirectionalEdgeInsetsMake(4,PPHomeSpacingBase,16,PPHomeSpacingBase);
 
      return section;
  }
@@ -730,10 +729,7 @@ static inline NSInteger PPHomeMainKindsGridColumnCount(CGFloat width)
     section.orthogonalScrollingBehavior =
         UICollectionLayoutSectionOrthogonalScrollingBehaviorContinuousGroupLeadingBoundary;
     section.interGroupSpacing = PPHomeSpacingSmall;
-    section.contentInsets =  NSDirectionalEdgeInsetsMake(4,
-                                                                PPHomeSpacingBase,
-                                                                16,
-                                                                PPHomeSpacingBase);
+    section.contentInsets =  NSDirectionalEdgeInsetsMake(4,PPHomeSpacingBase,16,PPHomeSpacingBase);
 
     return section;
  }

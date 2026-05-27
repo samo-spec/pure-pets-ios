@@ -9,6 +9,17 @@
     "pure-platform-ios",
     "pure-platform-android",
     "figma",
-    "lottiefiles"
+    "lottiefiles",
+    "memory",
+    "sequential-thinking",
+    "filesystem",
+    "fetch",
+    "firebase-mcp",
+    "pure-platform-infra",
+    "github",
+    "puppeteer",
+    "sentry",
+    "sqlite",
+    "apple-docs"
   ]
 }

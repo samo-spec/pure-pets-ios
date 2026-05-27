@@ -1144,12 +1144,21 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
 - (void)pp_setupPremiumBottomNavigation
 {
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
-    self.tabBar.userInteractionEnabled = NO;
     [self pp_setupPremiumBottomFade];
     [self addPlusTabBarButton];
     [self pp_setupPremiumNovaButton];
+
+    if (!PPIOS26()) {
+        // On iOS < 26 keep the original system tab bar visible and skip the custom dock
+        self.tabBar.hidden = NO;
+        self.tabBar.alpha = 1.0;
+        self.tabBar.userInteractionEnabled = YES;
+        return;
+    }
+
+    self.tabBar.hidden = YES;
+    self.tabBar.alpha = 0.0;
+    self.tabBar.userInteractionEnabled = NO;
 
     UITabBar *dockView = [[UITabBar alloc] init];
     dockView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -1257,7 +1266,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     fadeView.userInteractionEnabled = NO;
     fadeView.backgroundColor = UIColor.clearColor;
 
-    UIColor *fadeColor = AppBackgroundClr ?: UIColor.whiteColor;
+    UIColor *fadeColor = bageColor ?: AppBackgroundClr ?: UIColor.systemBackgroundColor;
     CAGradientLayer *gradientLayer = (CAGradientLayer *)fadeView.layer;
     gradientLayer.colors = @[
         (__bridge id)[fadeColor colorWithAlphaComponent:0.0].CGColor,
@@ -1274,7 +1283,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
         [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [fadeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [fadeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [fadeView.heightAnchor constraintEqualToConstant:90.0]
+        [fadeView.heightAnchor constraintEqualToConstant:70.0]
     ]];
 }
 
@@ -1435,9 +1444,20 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     }
 
     BOOL isChangingTabs = self.selectedIndex != (NSUInteger)index;
+    if (!isChangingTabs) {
+        // Same tab tapped: pop one level toward root on each tap
+        if ([viewController isKindOfClass:[UINavigationController class]]) {
+            UINavigationController *nav = (UINavigationController *)viewController;
+            if (nav.viewControllers.count > 1) {
+                [nav popViewControllerAnimated:YES];
+            }
+        }
+        return;
+    }
+
     [super setSelectedIndex:(NSUInteger)index];
     [self tabBarController:self didSelectViewController:viewController];
-    [self pp_applyPremiumTabSelectionAnimated:isChangingTabs];
+    [self pp_applyPremiumTabSelectionAnimated:YES];
 }
 
 - (void)pp_applyPremiumTabSelectionAnimated:(BOOL)animated
@@ -1563,8 +1583,13 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
 - (void)pp_setPremiumBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
-    self.tabBar.hidden = YES;
-    self.tabBar.alpha = 0.0;
+    if (PPIOS26()) {
+        self.tabBar.hidden = YES;
+        self.tabBar.alpha = 0.0;
+    } else {
+        self.tabBar.hidden = hidden;
+        self.tabBar.alpha = hidden ? 0.0 : 1.0;
+    }
     self.premiumBottomNavigationHidden = hidden;
     NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:3];
     if (self.premiumTabDockView) {
