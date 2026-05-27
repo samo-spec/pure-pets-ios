@@ -1224,9 +1224,9 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
         dockHeight = 83.0;
     }
     [NSLayoutConstraint activateConstraints:@[
-        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:4.0],
-        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0],
-        [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor],
+        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:PPIOS26() ? 0 : 4],
+        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-(PPIOS26() ? 0 : 4)],
+        [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-2],
         [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
 
@@ -1274,7 +1274,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
         [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [fadeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [fadeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
-        [fadeView.heightAnchor constraintEqualToConstant:150.0]
+        [fadeView.heightAnchor constraintEqualToConstant:90.0]
     ]];
 }
 
@@ -1669,8 +1669,8 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     self.leadingTabButton = showAddMenuButton;
 
     [NSLayoutConstraint activateConstraints:@[
-        [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
-        [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-1.0],
+        [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
+        [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
         [showAddMenuButton.widthAnchor constraintEqualToConstant:56.0],
         [showAddMenuButton.heightAnchor constraintEqualToConstant:56.0]
     ]];

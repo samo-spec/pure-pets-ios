@@ -274,9 +274,9 @@
         availableWidth = self.contentView.bounds.size.width > 0 ? self.contentView.bounds.size.width : self.maxWidth;
     }
     CGFloat horizontalInset = 36.0;
-    CGFloat lineSpacing = 14.0;
+    CGFloat lineSpacing = 12.0;
     CGFloat cardWidth = floor((availableWidth - horizontalInset - lineSpacing) / 2.0);
-    cardWidth = MAX(154.0, MIN(cardWidth, 198.0));
+    cardWidth = MAX(154.0, MIN(cardWidth, 208.0));
     return CGSizeMake(cardWidth, 270.0);
 }
 

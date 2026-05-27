@@ -900,6 +900,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (NSString *)pp_novaSubmittedTextForNovaOption:(NSDictionary<NSString *, id> *)option;
 - (void)pp_handleNovaSubmittedText:(NSString *)text displayText:(NSString *)displayText;
 - (nullable PetAccessory *)pp_novaCartProductForStructuredAction:(NSDictionary<NSString *, id> *)payload;
+- (BOOL)pp_novaIsInternalMemoryMarkerText:(NSString *)text;
+- (BOOL)pp_novaResponseRequiresClientCartConfirmation:(NSDictionary *)data;
 - (BOOL)pp_shouldUseNovaGenkitCallable;
 
 @end
@@ -2271,6 +2273,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     NSDictionary *responseData = [reply.responseData isKindOfClass:NSDictionary.class] ? reply.responseData : nil;
     NSString *replyText = [reply.text ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSArray<NSDictionary<NSString *, id> *> *replyOptions = [self pp_novaOptionsFromResponseData:responseData];
+    BOOL cartConfirmationMustComeFromClient = [self pp_novaResponseRequiresClientCartConfirmation:responseData];
+    if (cartConfirmationMustComeFromClient && replyText.length > 0) {
+        LOG_INFO(@"[PPNovaChat][CartAction] suppressing_prewrite_cart_text request_id=%@",
+                 requestID ?: @"");
+        replyText = @"";
+    }
     NSString *responseID = responseData
         ? [self pp_novaResponseIDFromResponseData:responseData requestID:requestID source:@"agent_proxy"]
         : (fallbackResponseID.length > 0 ? fallbackResponseID : [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"agent_proxy"]);
@@ -2816,6 +2824,37 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     return @"";
 }
 
+- (BOOL)pp_novaIsInternalMemoryMarkerText:(NSString *)text {
+    NSString *trimmed = [self pp_novaStringFromValue:text];
+    if (![trimmed hasPrefix:@"[Nova showed "]) {
+        return NO;
+    }
+    return [trimmed hasSuffix:@"]"] && [trimmed containsString:@" product"];
+}
+
+- (BOOL)pp_novaResponseRequiresClientCartConfirmation:(NSDictionary *)data {
+    if (![data isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    NSString *commerceAction = [self pp_novaStringFromValue:data[@"commerceAction"]];
+    if (![commerceAction isEqualToString:@"add_to_cart"]) {
+        return NO;
+    }
+    NSArray *clientActions = [data[@"clientActions"] isKindOfClass:NSArray.class] ? data[@"clientActions"] : @[];
+    for (id rawAction in clientActions) {
+        if (![rawAction isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSDictionary *action = (NSDictionary *)rawAction;
+        NSString *type = [self pp_novaStringFromValue:action[@"type"]];
+        NSString *targetID = [self pp_novaStringFromValue:action[@"targetId"]];
+        if ([type isEqualToString:@"add_to_cart"] && targetID.length > 0) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
 - (NSString *)pp_novaCompactJSONStringFromObject:(id)object {
     if (!object || ![NSJSONSerialization isValidJSONObject:object]) {
         return @"";
@@ -3183,19 +3222,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	            [self addNovaMessage:@"" requestID:requestID responseID:responseID options:options];
 	        }
 
-        // Save the synthetic product marker to local memory so context is retained
-        NSInteger n = (NSInteger)objects.count;
-        NSMutableArray *names = [NSMutableArray array];
-        for (NSInteger pidx = 0; pidx < MIN(n, 4); pidx++) {
-            NSString *name = [self pp_novaDisplayNameForSuggestionObject:objects[pidx]];
-            if (name.length > 0) [names addObject:name];
-        }
-        if (names.count > 0) {
-            NSString *marker = [NSString stringWithFormat:@"[Nova showed %ld product%@: %@]",
-                                (long)n, n == 1 ? @"" : @"s",
-                                [names componentsJoinedByString:@", "]];
-            [[PPNovaLocalChatMemory sharedMemory] addMessageWithRole:@"nova" text:marker];
-        }
+        // Do not store card-render markers as model history. They are internal
+        // UI state, and letting them reach Nova can make debug text visible.
     };
 
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(8.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -4235,9 +4263,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     // We convert the PPNovaLocalChatMemory dict to match what the proxy currently parses smoothly.
 
     for (NSDictionary *dict in localHistory) {
+        NSString *text = [self pp_novaStringFromValue:dict[@"text"]];
+        if ([self pp_novaIsInternalMemoryMarkerText:text]) {
+            continue;
+        }
         [history addObject:@{
             @"role": dict[@"role"],
-            @"parts": @[@{ @"text": dict[@"text"] }]
+            @"parts": @[@{ @"text": text ?: @"" }]
         }];
     }
 

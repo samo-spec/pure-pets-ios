@@ -9,6 +9,17 @@
 static const NSUInteger kMaxMessagesToKeep = 100;
 static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
 
+static BOOL PPNovaLocalMemoryIsInternalMarkerText(NSString *text) {
+    if (![text isKindOfClass:NSString.class]) {
+        return NO;
+    }
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (![trimmed hasPrefix:@"[Nova showed "]) {
+        return NO;
+    }
+    return [trimmed hasSuffix:@"]"] && [trimmed containsString:@" product"];
+}
+
 @interface PPNovaLocalChatMemory ()
 @property (nonatomic, strong) NSMutableArray<NSDictionary *> *messages;
 @property (nonatomic, strong) dispatch_queue_t ioQueue;
@@ -99,6 +110,7 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
                  messageId:(nullable NSString *)messageId
                  sessionId:(nullable NSString *)sessionId {
     if (!self.isMemoryEnabled || text.length == 0 || role.length == 0) return;
+    if (PPNovaLocalMemoryIsInternalMarkerText(text)) return;
     
     // Privacy safeguard: do not store credit card formats or apparent tokens
     // (Simple heuristic: replace strings of digits > 12 if found, though true 
@@ -161,10 +173,14 @@ static const NSTimeInterval kMaxAgeSeconds = 30 * 24 * 60 * 60; // 30 days
     NSMutableArray *formatted = [NSMutableArray array];
     for (NSDictionary *dict in result) {
         NSString *role = dict[@"role"];
+        NSString *text = dict[@"text"];
+        if (PPNovaLocalMemoryIsInternalMarkerText(text)) {
+            continue;
+        }
         if ([role isEqualToString:@"nova"]) role = @"model";
         [formatted addObject:@{
             @"role": role ?: @"user",
-            @"text": dict[@"text"] ?: @""
+            @"text": text ?: @""
         }];
     }
     return formatted;
