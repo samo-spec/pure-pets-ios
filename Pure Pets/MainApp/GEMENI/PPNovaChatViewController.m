@@ -899,6 +899,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                                      derivedOptions:(NSArray<NSDictionary<NSString *, id> *> *)derivedOptions;
 - (NSString *)pp_novaSubmittedTextForNovaOption:(NSDictionary<NSString *, id> *)option;
 - (void)pp_handleNovaSubmittedText:(NSString *)text displayText:(NSString *)displayText;
+- (nullable PetAccessory *)pp_novaCartProductForStructuredAction:(NSDictionary<NSString *, id> *)payload;
 - (BOOL)pp_shouldUseNovaGenkitCallable;
 
 @end
@@ -1267,14 +1268,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             rawOptions = ((NSDictionary *)resultSet)[@"options"];
         }
     }
-    if (![rawOptions isKindOfClass:NSArray.class]) {
-        return @[];
-    }
-
     NSMutableArray<NSDictionary<NSString *, id> *> *options = [NSMutableArray array];
     NSMutableSet<NSString *> *seenIDs = [NSMutableSet set];
     NSUInteger autoIndex = 0;
-    for (id rawOption in (NSArray *)rawOptions) {
+    NSArray *validatedRawOptions = [rawOptions isKindOfClass:NSArray.class] ? rawOptions : @[];
+    for (id rawOption in validatedRawOptions) {
         if (![rawOption isKindOfClass:NSDictionary.class]) {
             autoIndex++;
             continue;
@@ -1318,6 +1316,45 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         if (options.count >= 6) {
             break;
         }
+    }
+
+    // Server commerce actions are semantic only. The client supplies localized
+    // titles and later verifies the target against the actually rendered card.
+    NSArray *clientActions = [data[@"clientActions"] isKindOfClass:NSArray.class] ? data[@"clientActions"] : @[];
+    for (id rawAction in clientActions) {
+        if (options.count >= 6) {
+            break;
+        }
+        if (![rawAction isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSDictionary *action = (NSDictionary *)rawAction;
+        NSString *type = [self pp_novaStringFromValue:action[@"type"]];
+        NSString *identifier = [self pp_novaStringFromValue:action[@"id"]];
+        NSString *targetID = [self pp_novaStringFromValue:action[@"targetId"]];
+        if (![type isEqualToString:@"add_to_cart"] || targetID.length == 0) {
+            continue;
+        }
+        if (identifier.length == 0) {
+            identifier = [NSString stringWithFormat:@"client_action_add_%@", targetID];
+        }
+        if ([seenIDs containsObject:identifier]) {
+            continue;
+        }
+        [seenIDs addObject:identifier];
+        NSString *targetKind = [self pp_novaStringFromValue:action[@"targetKind"]];
+        NSMutableDictionary *payload = [@{
+            @"clientAction": type,
+            @"targetId": targetID
+        } mutableCopy];
+        if (targetKind.length > 0) {
+            payload[@"targetKind"] = targetKind;
+        }
+        [options addObject:@{
+            @"id": identifier,
+            @"title": kLang(@"a11y_btn_add_to_cart"),
+            @"payload": payload.copy
+        }];
     }
     return [options copy];
 }
@@ -8107,9 +8144,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     NSDictionary<NSString *, id> *option = messageModel.novaOptions[(NSUInteger)index];
     NSString *optionTitle = [self pp_novaStringFromValue:option[@"title"]];
+    NSDictionary<NSString *, id> *payload = [option[@"payload"] isKindOfClass:NSDictionary.class] ? option[@"payload"] : nil;
+    NSString *clientAction = [self pp_novaStringFromValue:payload[@"clientAction"]];
     NSString *message = [self pp_novaSubmittedTextForNovaOption:option];
     NSString *visibleTitle = optionTitle.length > 0 ? optionTitle : message;
-    if (message.length == 0 || visibleTitle.length == 0) {
+    if (visibleTitle.length == 0 || (message.length == 0 && clientAction.length == 0)) {
         return;
     }
     messageModel.novaOptions = nil;
@@ -8121,6 +8160,19 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
     [feedback prepare];
     [feedback impactOccurred];
+
+    if ([clientAction isEqualToString:@"add_to_cart"]) {
+        NSString *requestID = [self pp_newNovaScopedIDWithPrefix:@"request"];
+        NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"structured_cart_action"];
+        [self addUserMessage:visibleTitle requestID:requestID];
+        PetAccessory *product = [self pp_novaCartProductForStructuredAction:payload];
+        if (product) {
+            [self pp_handleAddToCartForProduct:product requestID:requestID responseID:responseID];
+        } else {
+            [PPHUD showError:kLang(@"nova_cart_item_unavailable")];
+        }
+        return;
+    }
     [self pp_handleNovaSubmittedText:message displayText:visibleTitle];
 }
 
@@ -8197,20 +8249,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self pp_stopNovaSmartSuggestionRotation];
     [self addUserMessage:visibleText requestID:requestID];
 
-    // Preserve the existing typed add-to-cart shortcut, but keep structured
-    // option taps routed back to Nova so their payload can drive the next turn.
-    if ([visibleText isEqualToString:trimmedText] && [self pp_isAddToCartIntent:trimmedText]) {
-        NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"cart"];
-        if (self.pendingCartProduct) {
-            [self pp_handleAddToCartForProduct:self.pendingCartProduct requestID:requestID responseID:responseID];
-            return;
-        } else if (self.lastShownProducts.count > 1) {
-            NSString *reply = kLang(@"nova_add_to_cart_which");
-            [self addNovaMessage:reply requestID:requestID responseID:responseID];
-            return;
-        }
-    }
-
     NSUInteger cachedProductsBeforeSend = self.lastShownProducts.count;
     [self pp_prepareNovaRenderStateForRequestID:requestID
                         cachedProductsBeforeSend:cachedProductsBeforeSend];
@@ -8219,82 +8257,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self sendNovaRequestForUserText:trimmedText visibleUserText:visibleText requestID:requestID];
 }
 
-// Production-safe add-to-cart intent classifier.
-// Adding to cart is irreversible from a trust standpoint — false positives are far worse
-// than false negatives. Rules:
-//   1. Cap total length (≤30 chars) — true affirmations are short.
-//   2. Reject if any negation token is present (English/Arabic).
-//   3. Tier 1: bare-word exact match (e.g., "اريد" alone — but not "اريد المساعدة").
-//   4. Tier 2: prefix + word-boundary match with ≤15-char tail
-//      (e.g., "yes please" YES; "yes I have a question" NO).
-- (BOOL)pp_isAddToCartIntent:(NSString *)text {
-    if (text.length == 0) return NO;
-    NSString *trimmed = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
-    if (trimmed.length == 0 || trimmed.length > 30) return NO;
-    NSString *lower = [trimmed lowercaseString];
-
-    // -- Negations short-circuit --------------------------------------------------
-    NSArray<NSString *> *englishNegations = @[
-        @"don't", @"dont", @"do not", @"not", @"no", @"never", @"won't", @"wont"
-    ];
-    for (NSString *neg in englishNegations) {
-        if ([self pp_lowercase:lower containsWord:neg]) return NO;
+- (nullable PetAccessory *)pp_novaCartProductForStructuredAction:(NSDictionary<NSString *, id> *)payload {
+    NSString *targetID = [self pp_novaStringFromValue:payload[@"targetId"]];
+    if (targetID.length == 0) {
+        return nil;
     }
-    NSArray<NSString *> *arabicNegationsSubstr = @[
-        @"لا ", @" لا", @"لست", @"ليس", @"ليست",
-        @"ما ", @" ما", @"مش ", @"مو ", @"مب "
-    ];
-    for (NSString *neg in arabicNegationsSubstr) {
-        if ([trimmed containsString:neg]) return NO;
+    for (PetAccessory *product in self.lastShownProducts) {
+        if ([product isKindOfClass:PetAccessory.class] && [product.accessoryID isEqualToString:targetID]) {
+            return product;
+        }
     }
-    if ([trimmed isEqualToString:@"لا"] || [trimmed isEqualToString:@"ما"]) return NO;
-
-    // -- Tier 1: bare-word exact match. Words too generic for substring matching --
-    // ("اريد" alone is fine; "اريد المساعدة" must NOT trigger.)
-    NSArray<NSString *> *exactOnly = @[
-        @"اريد", @"أريد", @"بدي", @"ابي", @"أبي", @"ودي",
-        @"حسنا", @"حسناً", @"موافق", @"please"
-    ];
-    for (NSString *aff in exactOnly) {
-        if ([trimmed isEqualToString:aff] || [lower isEqualToString:aff.lowercaseString]) return YES;
-    }
-
-    // -- Tier 2: prefix + boundary + short tail -----------------------------------
-    NSArray<NSString *> *prefixAffirmatives = @[
-        @"yes", @"yep", @"yeah", @"yup", @"sure", @"ok", @"okay",
-        @"add it", @"add to cart", @"add",
-        @"buy it", @"buy", @"take it", @"i want it", @"i'll take",
-        @"do it", @"go ahead", @"please add",
-        @"نعم", @"ايوه", @"ايوا", @"ايه",
-        @"اضف", @"أضف", @"اضفه", @"أضفه", @"اضيفه", @"أضيفه", @"اضفها", @"أضفها",
-        @"اشتري", @"اشتريه",
-        @"تمام", @"ماشي", @"يلا", @"هيا", @"اوكي", @"أوكي"
-    ];
-    for (NSString *aff in prefixAffirmatives) {
-        NSString *lp = aff.lowercaseString;
-        if (![lower hasPrefix:lp]) continue;
-        NSInteger affLen = (NSInteger)lp.length;
-        if ((NSInteger)lower.length == affLen) return YES;
-        unichar nextChar = [lower characterAtIndex:affLen];
-        BOOL isWordBoundary = (nextChar == ' ' || nextChar == ',' || nextChar == '.' ||
-                               nextChar == '!' || nextChar == '\t' || nextChar == 0x060C);
-        if (!isWordBoundary) continue;
-        if ((NSInteger)lower.length - affLen <= 15) return YES;
-    }
-    return NO;
-}
-
-- (BOOL)pp_lowercase:(NSString *)haystack containsWord:(NSString *)word {
-    if (word.length == 0 || haystack.length == 0) return NO;
-    NSString *escaped = [NSRegularExpression escapedPatternForString:word];
-    NSString *pattern = [NSString stringWithFormat:@"(^|\\W)%@(\\W|$)", escaped];
-    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:pattern
-                                                                           options:NSRegularExpressionCaseInsensitive
-                                                                             error:nil];
-    if (!regex) return NO;
-    return [regex numberOfMatchesInString:haystack
-                                  options:0
-                                    range:NSMakeRange(0, haystack.length)] > 0;
+    return nil;
 }
 
 - (void)pp_handleAddToCartForProduct:(PetAccessory *)product {

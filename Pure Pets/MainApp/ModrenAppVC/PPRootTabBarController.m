@@ -43,11 +43,17 @@ static NSInteger const PPRootTabIndexSettings = 4;
 static NSString * const PPNovaFloatingVisibilityDidChangeNotification = @"PPNovaFloatingVisibilityDidChangeNotification";
 static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
-@interface PPRootTabBarController () <UITabBarDelegate>
+@class PPPremiumDockBarDelegate;
+
+@interface PPRootTabBarController ()
 @property (nonatomic, strong) UIButton *leadingTabButton;
 @property (nonatomic, strong) UIButton *emptyCard;
 @property (nonatomic, strong) PPNewBottomBar *bottomBar;
 @property (nonatomic, strong) UITabBar *premiumTabDockView;
+@property (nonatomic, strong) PPPremiumDockBarDelegate *premiumDockDelegate;
+@property (nonatomic, strong) UIView *premiumBottomFadeView;
+- (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item;
+- (void)pp_setupPremiumBottomFade;
 @property (nonatomic, strong) NSArray<UITabBarItem *> *premiumTabItems;
 @property (nonatomic, strong) UIButton *premiumNovaButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *premiumNovaLottieView;
@@ -87,8 +93,34 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
                                              strokeColor:(UIColor *)strokeColor;
 @end
 
+#pragma mark - Premium Dock Delegate
+
+// The premium dock is a standalone UITabBar. Its delegate must NOT be the
+// UITabBarController itself: UIKit would then run its items-vs-viewControllers
+// consistency check on the dock's foreign items and crash on selection
+// (NSInternalInconsistencyException: "No view controller matches the UITabBarItem").
+// Routing selection through a dedicated object avoids that association.
+@interface PPPremiumDockBarDelegate : NSObject <UITabBarDelegate>
+@property (nonatomic, weak) PPRootTabBarController *controller;
+@end
+
+@implementation PPPremiumDockBarDelegate
+- (void)tabBar:(UITabBar *)tabBar didSelectItem:(UITabBarItem *)item {
+    [self.controller pp_premiumDockDidSelectItem:item];
+}
+@end
+
+// Gradient-backed view: the layer auto-resizes with the view's bounds, so the
+// bottom fade tracks layout without manual frame updates.
+@interface PPBottomFadeView : UIView
+@end
+
+@implementation PPBottomFadeView
++ (Class)layerClass { return [CAGradientLayer class]; }
+@end
+
 @implementation PPRootTabBarController
- 
+
 - (void)setSelectedIndex:(NSUInteger)selectedIndex
 {
     [super setSelectedIndex:selectedIndex];
@@ -1115,22 +1147,19 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     self.tabBar.hidden = YES;
     self.tabBar.alpha = 0.0;
     self.tabBar.userInteractionEnabled = NO;
+    [self pp_setupPremiumBottomFade];
     [self addPlusTabBarButton];
     [self pp_setupPremiumNovaButton];
 
     UITabBar *dockView = [[UITabBar alloc] init];
     dockView.translatesAutoresizingMaskIntoConstraints = NO;
-    dockView.delegate = self;
+    self.premiumDockDelegate = [[PPPremiumDockBarDelegate alloc] init];
+    self.premiumDockDelegate.controller = self;
+    dockView.delegate = self.premiumDockDelegate;
     dockView.itemPositioning = UITabBarItemPositioningFill;
-    dockView.backgroundColor = UIColor.clearColor;
     dockView.tintColor = AppPrimaryClr ?: UIColor.systemTealColor;
     dockView.unselectedItemTintColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
-    dockView.layer.cornerRadius = 31.0;
-    PPApplyContinuousCorners(dockView, 31.0);
-    [dockView pp_setShadowColor:UIColor.blackColor];
-    dockView.layer.shadowOpacity = 0.08;
-    dockView.layer.shadowRadius = 22.0;
-    dockView.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    dockView.backgroundColor = UIColor.clearColor;
     dockView.layer.masksToBounds = NO;
     dockView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.view addSubview:dockView];
@@ -1138,30 +1167,35 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
     UITabBarAppearance *appearance = [[UITabBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
-    if (@available(iOS 26.0, *)) {
-        appearance.backgroundEffect = [UIGlassEffect effectWithStyle:UIGlassEffectStyleRegular];
-    } else {
-        appearance.backgroundEffect =
-            [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
-        appearance.backgroundColor = [UIColor.systemBackgroundColor colorWithAlphaComponent:0.12];
-    }
+    appearance.backgroundEffect = nil;
+    appearance.backgroundColor = UIColor.clearColor;
     appearance.shadowColor = UIColor.clearColor;
-    appearance.stackedLayoutAppearance.normal.iconColor =
-        [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
-    appearance.stackedLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    appearance.inlineLayoutAppearance.normal.iconColor =
-        [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
-    appearance.inlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
-    appearance.compactInlineLayoutAppearance.normal.iconColor =
-        [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
-    appearance.compactInlineLayoutAppearance.selected.iconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+
+    UIColor *normalIconColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.76];
+    UIColor *selectedIconColor = AppPrimaryClr ?: UIColor.systemTealColor;
+    UIFont *titleFont = [GM boldFontWithSize:10] ?: [UIFont systemFontOfSize:10 weight:UIFontWeightSemibold];
+    NSDictionary<NSAttributedStringKey, id> *normalTitleAttributes =
+        @{ NSFontAttributeName: titleFont, NSForegroundColorAttributeName: normalIconColor };
+    NSDictionary<NSAttributedStringKey, id> *selectedTitleAttributes =
+        @{ NSFontAttributeName: titleFont, NSForegroundColorAttributeName: selectedIconColor };
+
+    NSArray<UITabBarItemAppearance *> *itemAppearances = @[
+        appearance.stackedLayoutAppearance,
+        appearance.inlineLayoutAppearance,
+        appearance.compactInlineLayoutAppearance
+    ];
+    for (UITabBarItemAppearance *itemAppearance in itemAppearances) {
+        itemAppearance.normal.iconColor = normalIconColor;
+        itemAppearance.selected.iconColor = selectedIconColor;
+        itemAppearance.normal.titleTextAttributes = normalTitleAttributes;
+        itemAppearance.selected.titleTextAttributes = selectedTitleAttributes;
+    }
+
     dockView.standardAppearance = appearance;
     if (@available(iOS 15.0, *)) {
         dockView.scrollEdgeAppearance = appearance;
     }
-    dockView.clipsToBounds = YES;
-    dockView.layer.borderWidth = 0.5;
-    [dockView pp_setBorderColor:[UIColor.labelColor colorWithAlphaComponent:0.10]];
+    dockView.clipsToBounds = NO;
 
     NSArray<NSNumber *> *visibleTabIndexes = @[
         @(PPRootTabIndexHome),
@@ -1174,7 +1208,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
         NSInteger index = tabIndexValue.integerValue;
         UITabBarItem *sourceItem = self.viewControllers[index].tabBarItem;
         UITabBarItem *item =
-            [[UITabBarItem alloc] initWithTitle:nil
+            [[UITabBarItem alloc] initWithTitle:sourceItem.title
                                          image:[self pp_premiumSymbolForTabIndex:index selected:NO]
                                  selectedImage:[self pp_premiumSymbolForTabIndex:index selected:YES]];
         item.tag = index;
@@ -1185,11 +1219,15 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     dockView.items = items.copy;
     self.premiumTabItems = items.copy;
 
+    CGFloat dockHeight = 64.0;
+    if (@available(iOS 26.0, *)) {
+        dockHeight = 83.0;
+    }
     [NSLayoutConstraint activateConstraints:@[
-        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:PPSpaceMD],
-        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPSpaceBase],
-        [dockView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-PPSpaceSM],
-        [dockView.heightAnchor constraintEqualToConstant:62.0]
+        [dockView.leadingAnchor constraintEqualToAnchor:self.leadingTabButton.trailingAnchor constant:4.0],
+        [dockView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-4.0],
+        [dockView.topAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor],
+        [dockView.heightAnchor constraintEqualToConstant:dockHeight]
     ]];
 
     [self pp_applyPremiumTabSelectionAnimated:NO];
@@ -1207,6 +1245,37 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     [self.view bringSubviewToFront:dockView];
     [self.view bringSubviewToFront:self.leadingTabButton];
     [self.view bringSubviewToFront:self.premiumNovaButton];
+}
+
+- (void)pp_setupPremiumBottomFade
+{
+    if (self.premiumBottomFadeView) {
+        return;
+    }
+    PPBottomFadeView *fadeView = [[PPBottomFadeView alloc] init];
+    fadeView.translatesAutoresizingMaskIntoConstraints = NO;
+    fadeView.userInteractionEnabled = NO;
+    fadeView.backgroundColor = UIColor.clearColor;
+
+    UIColor *fadeColor = AppBackgroundClr ?: UIColor.whiteColor;
+    CAGradientLayer *gradientLayer = (CAGradientLayer *)fadeView.layer;
+    gradientLayer.colors = @[
+        (__bridge id)[fadeColor colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)fadeColor.CGColor
+    ];
+    gradientLayer.startPoint = CGPointMake(0.5, 0.0);
+    gradientLayer.endPoint = CGPointMake(0.5, 1.0);
+    gradientLayer.locations = @[@0.0, @0.85];
+
+    [self.view addSubview:fadeView];
+    self.premiumBottomFadeView = fadeView;
+
+    [NSLayoutConstraint activateConstraints:@[
+        [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [fadeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [fadeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [fadeView.heightAnchor constraintEqualToConstant:150.0]
+    ]];
 }
 
 - (void)pp_setupPremiumNovaButton
@@ -1255,7 +1324,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
     [NSLayoutConstraint activateConstraints:@[
         [button.centerXAnchor constraintEqualToAnchor:self.leadingTabButton.centerXAnchor],
-        [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-PPSpaceMD],
+        [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-16.0],
         [button.widthAnchor constraintEqualToConstant:54.0],
         [button.heightAnchor constraintEqualToConstant:54.0],
         [animationView.centerXAnchor constraintEqualToAnchor:button.centerXAnchor],
@@ -1353,11 +1422,8 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
                    withConfiguration:symbolConfiguration];
 }
 
-- (void)tabBar:(UITabBar *)tabBar didSelectItem:(UITabBarItem *)item
+- (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item
 {
-    if (tabBar != self.premiumTabDockView) {
-        return;
-    }
     NSInteger index = item.tag;
     if (index < 0 || index >= (NSInteger)self.viewControllers.count) {
         return;
@@ -1603,8 +1669,8 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     self.leadingTabButton = showAddMenuButton;
 
     [NSLayoutConstraint activateConstraints:@[
-        [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPSpaceBase],
-        [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-11.0],
+        [showAddMenuButton.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-16.0],
+        [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-1.0],
         [showAddMenuButton.widthAnchor constraintEqualToConstant:56.0],
         [showAddMenuButton.heightAnchor constraintEqualToConstant:56.0]
     ]];
