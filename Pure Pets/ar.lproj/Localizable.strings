@@ -2760,17 +2760,12 @@
 "nova_input_attach_accessibility" = "إضافة مرفق";
 "nova_input_suggestions_accessibility" = "عرض الاقتراحات الذكية";
 "nova_input_send_accessibility" = "إرسال الرسالة";
-"nova_greeting" = "أهلاً. اكتب ما يحتاجه حيوانك وسأرشدك إلى الاختيار الأنسب من بيور بتس.";
 "nova_product_results" = "اختيارات مناسبة";
 "nova_product_count_format" = "%ld عنصر";
 "nova_add_to_cart_which" = "أي منتج أضيفه للسلة؟";
 "nova_added_to_cart" = "تمت الإضافة للسلة";
 "nova_add_to_cart_failed" = "عذراً، لم أتمكن من الإضافة للسلة. حاول مرة أخرى.";
 "nova_cart_item_unavailable" = "لم يعد هذا المنتج متاحاً للإضافة. يرجى اختياره مرة أخرى من أحدث النتائج.";
-"nova_fallback_pet_need_format" = "تمام. لـ%@، أقدر أساعدك تختار %@ مناسب من بيور بتس. تفضل خيار اقتصادي أم مميز؟";
-"nova_fallback_pet_format" = "للـ%@، هل تبحث عن طعام، حاملة، ألعاب، أو عناية؟";
-"nova_fallback_need_format" = "تمام، تبحث عن %@. لأي حيوان؟";
-"nova_fallback_prompt" = "اكتب نوع حيوانك وما تحتاجه، مثل الطعام، الحاملة، الألعاب، أو العناية.";
 "nova_close_accessibility" = "إغلاق";
 "nova_error_auth" = "تعذّر التحقق من الجلسة. حاول مرة أخرى.";
 "nova_error_signin_required" = "سجّل دخولك أولًا حتى أساعدك من خلال نوفا.";
@@ -2778,12 +2773,7 @@
 "nova_error_unavailable" = "الخدمة غير متاحة حالياً. حاول بعد قليل.";
 "nova_cell_render_missing" = "تم العثور على نتائج، لكن لم يتم عرض البطاقات بسبب مشكلة في ربط الواجهة.";
 "nova_suggestions_unavailable" = "لم أستطع تحميل هذه الاختيارات. اكتب نوع حيوانك وما تحتاجه وسأحاول مرة أخرى.";
-"nova_render_fallback_service" = "خدمة عناية";
-"nova_render_fallback_bird_service" = "خدمة عناية بالطيور";
-"nova_render_fallback_product" = "منتج من بيور بتس";
 "nova_render_price_label" = "السعر:";
-"nova_render_limited_details" = "التفاصيل المتاحة محدودة";
-"nova_render_more_results_hint" = "توجد خيارات إضافية. اطلب من نوفا تضييق النتائج.";
 "OrderCanceled" = "تم إلغاء الطلب";
 
 /* Nova chat */

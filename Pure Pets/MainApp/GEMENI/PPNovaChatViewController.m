@@ -59,8 +59,10 @@ static NSString * const PPNovaSmartSuggestionActionBreathKey = @"pp.nova.smartSu
 static NSString * const PPNovaSmartSuggestionColorShiftKey = @"pp.nova.smartSuggestion.colorShift";
 static NSString * const PPNovaThinkingTopGlowColorShiftKey = @"pp.nova.thinking.topGlow.colorShift";
 static NSString * const PPNovaThinkingBottomGlowColorShiftKey = @"pp.nova.thinking.bottomGlow.colorShift";
+static NSString * const PPNovaThinkingCenterRightGlowColorShiftKey = @"pp.nova.thinking.centerRightGlow.colorShift";
 static NSString * const PPNovaThinkingTopGlowBreathKey = @"pp.nova.thinking.topGlow.breath";
 static NSString * const PPNovaThinkingBottomGlowBreathKey = @"pp.nova.thinking.bottomGlow.breath";
+static NSString * const PPNovaThinkingCenterRightGlowBreathKey = @"pp.nova.thinking.centerRightGlow.breath";
 static const NSUInteger PPNovaSmartSuggestionPickerVisibleCount = 8;
 static const NSUInteger PPNovaInlineActionMaximumCount = 10;
 static const NSTimeInterval PPNovaRequestSoftWatchdogDelay = 35.0;
@@ -68,11 +70,14 @@ static const NSInteger PPNovaMaximumRetryAttempts = 1;
 static const NSTimeInterval PPNovaRetryBackoffDelay = 0.6;
 static NSString * const PPNovaThinkingHeaderAnimationName = @"thinking";
 
+/*
+ @"novabgnew.json",
+ @"novabgnew1.json",
+ @"novabgnew2.json"
+ */
+
 static NSArray<NSString *> *PPNovaThinkingHeroAnimationNames(void) {
     return @[
-        @"novabgnew.json",
-        @"novabgnew1.json",
-        @"novabgnew2.json"
     ];
 }
 
@@ -749,6 +754,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) UIView *novaHeaderContentView;
 @property (nonatomic, strong) UIView *ambientBackgroundView;
 @property (nonatomic, strong) UIView *novaChatBottomGlowView;
+@property (nonatomic, strong) UIView *novaChatCenterRightGlowView;
 @property (nonatomic, strong) UIView *novaHeaderView;
 @property (nonatomic, strong) UIView *novaHeaderChromeView;
 @property (nonatomic, strong) UIView *novaHeaderTopGlowView;
@@ -1126,6 +1132,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self.novaHeaderLiquidHighlightLayer removeAllAnimations];
     [self.emptyStatePulseView.layer removeAllAnimations];
     [self.novaChatBottomGlowView.layer removeAllAnimations];
+    [self.novaChatCenterRightGlowView.layer removeAllAnimations];
     [self pp_stopNovaSmartSuggestionLiveMotion];
     [self pp_stopNovaSmartSuggestionRotation];
     for (UIView *dot in self.typingDots) {
@@ -2429,7 +2436,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         LOG_WARN(@"[PPNovaChat][Debug] branch=request_watchdog_slow_request_still_waiting generation=%lu request_id=%@",
                  (unsigned long)generation,
                  requestID ?: @"");
-        self.typingLabel.text = kLang(@"nova_typing");
+        self.typingLabel.text = nil;
         self.statusLabel.text = kLang(@"nova_status_thinking");
     });
 }
@@ -4295,6 +4302,20 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [backgroundView addSubview:bottomGlowView];
     self.novaChatBottomGlowView = bottomGlowView;
 
+    UIView *centerRightGlowView = [[UIView alloc] init];
+    centerRightGlowView.translatesAutoresizingMaskIntoConstraints = NO;
+    centerRightGlowView.userInteractionEnabled = NO;
+    centerRightGlowView.layer.cornerRadius = 124.0;
+    centerRightGlowView.layer.shadowOpacity = 0.20;
+    centerRightGlowView.layer.shadowRadius = 34.0;
+    centerRightGlowView.layer.shadowOffset = CGSizeZero;
+    centerRightGlowView.alpha = 0.0;
+    if (@available(iOS 13.0, *)) {
+        centerRightGlowView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    [backgroundView addSubview:centerRightGlowView];
+    self.novaChatCenterRightGlowView = centerRightGlowView;
+
     [NSLayoutConstraint activateConstraints:@[
         [backgroundView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [backgroundView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -4304,7 +4325,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [bottomGlowView.widthAnchor constraintEqualToConstant:340.0],
         [bottomGlowView.heightAnchor constraintEqualToConstant:340.0],
         [bottomGlowView.leadingAnchor constraintEqualToAnchor:backgroundView.leadingAnchor constant:-96.0],
-        [bottomGlowView.bottomAnchor constraintEqualToAnchor:backgroundView.bottomAnchor constant:128.0]
+        [bottomGlowView.bottomAnchor constraintEqualToAnchor:backgroundView.bottomAnchor constant:128.0],
+
+        [centerRightGlowView.widthAnchor constraintEqualToConstant:248.0],
+        [centerRightGlowView.heightAnchor constraintEqualToConstant:248.0],
+        [centerRightGlowView.centerYAnchor constraintEqualToAnchor:backgroundView.centerYAnchor constant:58.0],
+        [centerRightGlowView.trailingAnchor constraintEqualToAnchor:backgroundView.trailingAnchor constant:108.0]
     ]];
 
     [self pp_applyNovaSurfaceColors];
@@ -4319,6 +4345,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
                                                                          [brand colorWithAlphaComponent:0.22]);
         self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
+        self.novaChatCenterRightGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.14],
+                                                                              [brand colorWithAlphaComponent:0.20]);
+        self.novaChatCenterRightGlowView.layer.shadowColor = brand.CGColor;
     }
     self.emptyStatePulseView.backgroundColor = [brand colorWithAlphaComponent:0.10];
     [self pp_applyNovaSmartSuggestionColorsWithBrand:brand
@@ -4439,7 +4468,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_setNovaAmbientThinkingPaletteActive:(BOOL)active animated:(BOOL)animated {
-    if (!self.novaHeaderTopGlowView || !self.novaChatBottomGlowView) {
+    if (!self.novaHeaderTopGlowView || !self.novaChatBottomGlowView || !self.novaChatCenterRightGlowView) {
         self.novaAmbientThinkingPaletteActive = active;
         return;
     }
@@ -4451,10 +4480,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.novaAmbientThinkingPaletteActive = active;
     [self.novaHeaderTopGlowView.layer removeAnimationForKey:@"pp_novaHeaderTopHaloBreath"];
     [self.novaChatBottomGlowView.layer removeAnimationForKey:@"pp_novaBottomGlowBreath"];
+    [self.novaChatCenterRightGlowView.layer removeAnimationForKey:@"pp_novaCenterRightGlowBreath"];
     [self.novaHeaderTopGlowView.layer removeAnimationForKey:PPNovaThinkingTopGlowColorShiftKey];
     [self.novaChatBottomGlowView.layer removeAnimationForKey:PPNovaThinkingBottomGlowColorShiftKey];
+    [self.novaChatCenterRightGlowView.layer removeAnimationForKey:PPNovaThinkingCenterRightGlowColorShiftKey];
     [self.novaHeaderTopGlowView.layer removeAnimationForKey:PPNovaThinkingTopGlowBreathKey];
     [self.novaChatBottomGlowView.layer removeAnimationForKey:PPNovaThinkingBottomGlowBreathKey];
+    [self.novaChatCenterRightGlowView.layer removeAnimationForKey:PPNovaThinkingCenterRightGlowBreathKey];
 
     UIColor *brand = [self pp_novaHeaderAccentColor];
     NSArray<UIColor *> *palette = [self pp_novaThinkingAmbientPalette];
@@ -4462,16 +4494,21 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         if (active) {
             self.novaHeaderTopGlowView.backgroundColor = palette[0];
             self.novaChatBottomGlowView.backgroundColor = palette[1];
+            self.novaChatCenterRightGlowView.backgroundColor = palette[2];
             self.novaHeaderTopGlowView.layer.shadowColor = [self pp_resolvedNovaLayerColor:palette[1]].CGColor;
             self.novaChatBottomGlowView.layer.shadowColor = [self pp_resolvedNovaLayerColor:palette[2]].CGColor;
+            self.novaChatCenterRightGlowView.layer.shadowColor = [self pp_resolvedNovaLayerColor:palette[0]].CGColor;
            
         } else {
             self.novaHeaderTopGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.30],
                                                                             [brand colorWithAlphaComponent:0.26]);
             self.novaChatBottomGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.13],
                                                                              [brand colorWithAlphaComponent:0.22]);
+            self.novaChatCenterRightGlowView.backgroundColor = PPNovaDynamicColor([brand colorWithAlphaComponent:0.14],
+                                                                                  [brand colorWithAlphaComponent:0.20]);
             self.novaHeaderTopGlowView.layer.shadowColor = brand.CGColor;
             self.novaChatBottomGlowView.layer.shadowColor = brand.CGColor;
+            self.novaChatCenterRightGlowView.layer.shadowColor = brand.CGColor;
             
         }
     };
@@ -4494,12 +4531,19 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                           palette:palette
                                               key:PPNovaThinkingBottomGlowColorShiftKey
                                        beginDelay:0.24];
+        [self pp_addNovaThinkingColorShiftToLayer:self.novaChatCenterRightGlowView.layer
+                                          palette:palette
+                                              key:PPNovaThinkingCenterRightGlowColorShiftKey
+                                       beginDelay:0.12];
         [self pp_addNovaAmbientOpacityBreathFrom:@0.72 to:@1.0 duration:1.6
                                            layer:self.novaHeaderTopGlowView.layer
                                              key:PPNovaThinkingTopGlowBreathKey];
         [self pp_addNovaAmbientOpacityBreathFrom:@1.0 to:@0.72 duration:1.6
                                            layer:self.novaChatBottomGlowView.layer
                                              key:PPNovaThinkingBottomGlowBreathKey];
+        [self pp_addNovaAmbientOpacityBreathFrom:@0.78 to:@1.0 duration:1.7
+                                           layer:self.novaChatCenterRightGlowView.layer
+                                             key:PPNovaThinkingCenterRightGlowBreathKey];
         
         self.novaHeaderChromeView.alpha=0.5;
     } else {
@@ -4509,6 +4553,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [self pp_addNovaAmbientOpacityBreathFrom:@1.0 to:@0.74 duration:6.2
                                            layer:self.novaChatBottomGlowView.layer
                                              key:@"pp_novaBottomGlowBreath"];
+        [self pp_addNovaAmbientOpacityBreathFrom:@0.76 to:@1.0 duration:6.0
+                                           layer:self.novaChatCenterRightGlowView.layer
+                                             key:@"pp_novaCenterRightGlowBreath"];
         
         self.novaHeaderChromeView.alpha=0.9;
     }
@@ -4649,6 +4696,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)pp_startAmbientBackgroundAnimations {
     [self.emptyStatePulseView.layer removeAllAnimations];
     [self.novaChatBottomGlowView.layer removeAllAnimations];
+    [self.novaChatCenterRightGlowView.layer removeAllAnimations];
     [self.novaHeaderTopGlowView.layer removeAllAnimations];
     [self.smartSuggestionAccentWashView.layer removeAnimationForKey:PPNovaSmartSuggestionWashBreathKey];
     [self.smartSuggestionActionImageView.layer removeAnimationForKey:PPNovaSmartSuggestionActionBreathKey];
@@ -4656,6 +4704,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (UIAccessibilityIsReduceMotionEnabled()) {
         self.emptyStatePulseView.transform = CGAffineTransformIdentity;
         self.novaChatBottomGlowView.transform = CGAffineTransformIdentity;
+        self.novaChatCenterRightGlowView.transform = CGAffineTransformIdentity;
         self.novaHeaderTopGlowView.transform = CGAffineTransformIdentity;
         self.smartSuggestionAccentWashView.layer.opacity = 1.0;
         self.smartSuggestionActionImageView.transform = CGAffineTransformIdentity;
@@ -4727,12 +4776,40 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     bottomGlowBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
     [self.novaChatBottomGlowView.layer addAnimation:bottomGlowBreath forKey:@"pp_novaBottomGlowBreath"];
 
+    CABasicAnimation *centerRightGlowScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    centerRightGlowScale.fromValue = @0.972;
+    centerRightGlowScale.toValue = @1.042;
+    centerRightGlowScale.duration = 7.1;
+    centerRightGlowScale.autoreverses = YES;
+    centerRightGlowScale.repeatCount = HUGE_VALF;
+    centerRightGlowScale.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaChatCenterRightGlowView.layer addAnimation:centerRightGlowScale forKey:@"pp_novaCenterRightGlowScale"];
+
+    CABasicAnimation *centerRightGlowDrift = [CABasicAnimation animationWithKeyPath:@"transform.translation.x"];
+    centerRightGlowDrift.fromValue = @(-8.0);
+    centerRightGlowDrift.toValue = @(12.0);
+    centerRightGlowDrift.duration = 8.6;
+    centerRightGlowDrift.autoreverses = YES;
+    centerRightGlowDrift.repeatCount = HUGE_VALF;
+    centerRightGlowDrift.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaChatCenterRightGlowView.layer addAnimation:centerRightGlowDrift forKey:@"pp_novaCenterRightGlowDrift"];
+
+    CABasicAnimation *centerRightGlowBreath = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    centerRightGlowBreath.fromValue = @0.84;
+    centerRightGlowBreath.toValue = @1.0;
+    centerRightGlowBreath.duration = 6.4;
+    centerRightGlowBreath.autoreverses = YES;
+    centerRightGlowBreath.repeatCount = HUGE_VALF;
+    centerRightGlowBreath.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+    [self.novaChatCenterRightGlowView.layer addAnimation:centerRightGlowBreath forKey:@"pp_novaCenterRightGlowBreath"];
+
     [self pp_startNovaSmartSuggestionLiveMotionIfNeeded];
 }
 
 - (void)pp_stopAmbientBackgroundAnimations {
     [self.emptyStatePulseView.layer removeAllAnimations];
     [self.novaChatBottomGlowView.layer removeAllAnimations];
+    [self.novaChatCenterRightGlowView.layer removeAllAnimations];
     [self.novaHeaderTopGlowView.layer removeAllAnimations];
     [self pp_stopNovaSmartSuggestionLiveMotion];
 }
@@ -5079,6 +5156,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     backgroundLottie.loopAnimation = YES;
     backgroundLottie.animationSpeed = 0.92;
     backgroundLottie.alpha = 0.0;
+    backgroundLottie.clipsToBounds = YES;
+    backgroundLottie.layer.masksToBounds = YES;
     [contentView addSubview:backgroundLottie];
     self.novaHeaderBackgroundLottie = backgroundLottie;
     //self.currentHeaderBgAnimationName = @"novawave";
@@ -5155,6 +5234,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     loadingLottie.animationSpeed = 0.82;
     loadingLottie.alpha = 0.0;
     loadingLottie.clipsToBounds = YES;
+    loadingLottie.layer.masksToBounds = YES;
     [brandHalo addSubview:loadingLottie];
     self.novaLoadingLottie = loadingLottie;
     [self pp_loadBundledNovaLoaderIntoView:loadingLottie];
@@ -5201,6 +5281,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     identityLottie.alpha = 0.0;
     identityLottie.transform = CGAffineTransformMakeScale(0.94, 0.94);
     identityLottie.clipsToBounds = YES;
+    identityLottie.layer.masksToBounds = YES;
     [brandMark addSubview:identityLottie];
     self.novaRingBackgroundLottie = identityLottie;
     [self pp_loadNovaIdentityAnimationIntoView:identityLottie];
@@ -6283,6 +6364,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.typingLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.typingLabel.font = [GM MidFontWithSize:PPFontFootnote] ?: [UIFont systemFontOfSize:PPFontFootnote weight:UIFontWeightMedium];
     self.typingLabel.textColor = [AppPrimaryTextClr colorWithAlphaComponent:0.78];
+    self.typingLabel.hidden = YES;
+    self.typingLabel.text = nil;
     [content addSubview:self.typingLabel];
 
     self.typingBottomConstraint = [capsule.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-8];

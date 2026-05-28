@@ -53,8 +53,8 @@ static const CGFloat PPNovaUserHorizontalReserve = 86.0;
 static const CGFloat PPNovaBubbleHorizontalContentInset = 34.0;
 static const CGFloat PPNovaBubbleCornerRadius = 26.0;
 static const CGFloat PPNovaBubbleWidthSearchStep = 8.0;
-static const CGFloat PPNovaTypingAnimationWidth = 58.0;
-static const CGFloat PPNovaTypingAnimationHeight = 58.0;
+static const CGFloat PPNovaTypingAnimationWidth = 64.0;
+static const CGFloat PPNovaTypingAnimationHeight = 64.0;
 static const CGFloat PPNovaThinkingSignalWidth = 76.0;
 static const CGFloat PPNovaThinkingSignalHeight = 34.0;
 static const CGFloat PPNovaThinkingDotSize = 6.0;
@@ -722,14 +722,6 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
 
     BOOL genericService = [self pp_bodyLooksLikeGenericServiceOnly:cleanBody rtl:rtl];
     BOOL genericProduct = [self pp_bodyLooksLikeGenericProductOnly:cleanBody rtl:rtl];
-    BOOL mentionsBirds = [fallbackContext rangeOfString:@"طيور"].location != NSNotFound ||
-                         [fallbackContext.lowercaseString rangeOfString:@"bird"].location != NSNotFound;
-    NSString *fallbackTitle = nil;
-    if (genericService) {
-        fallbackTitle = mentionsBirds ? kLang(@"nova_render_fallback_bird_service") : kLang(@"nova_render_fallback_service");
-    } else if (genericProduct) {
-        fallbackTitle = kLang(@"nova_render_fallback_product");
-    }
 
     NSString *prefix = ordinal.length > 0 ? [NSString stringWithFormat:@"%@ ", ordinal] : @"• ";
     NSMutableParagraphStyle *itemParagraph = [self pp_paragraphStyleForText:cleanBody lineKind:@"item" rtl:rtl];
@@ -737,7 +729,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     NSMutableDictionary *itemBoldAttributes = itemAttributes.mutableCopy;
     itemBoldAttributes[NSFontAttributeName] = boldFont;
 
-    NSString *titleCandidate = fallbackTitle ?: [self pp_titleCandidateBeforeMetadataInBody:cleanBody];
+    NSString *titleCandidate = (genericService || genericProduct) ? @"" : [self pp_titleCandidateBeforeMetadataInBody:cleanBody];
     NSString *priceValue = [self pp_priceValueFromBody:cleanBody];
     if (titleCandidate.length > 0) {
         NSMutableAttributedString *titleLine = [[NSMutableAttributedString alloc] initWithString:prefix attributes:itemAttributes];
@@ -754,12 +746,6 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                                                 labelFont:[self pp_semiboldFontFromFont:metaFont]
                                                labelColor:accentColor];
             [self pp_appendAttributedLine:metaLine toResult:result];
-        }
-        if (fallbackTitle.length > 0) {
-            NSMutableParagraphStyle *metaParagraph = [self pp_paragraphStyleForText:kLang(@"nova_render_limited_details") lineKind:@"meta" rtl:rtl];
-            NSDictionary *metaAttributes = [self pp_attributesWithFont:metaFont color:secondaryColor paragraph:metaParagraph];
-            [self pp_appendAttributedLine:[[NSAttributedString alloc] initWithString:kLang(@"nova_render_limited_details") attributes:metaAttributes]
-                                 toResult:result];
         }
         return;
     }
@@ -897,13 +883,6 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
         [self pp_appendAttributedLine:lineString toResult:result];
     }
 
-    if (skippedItemCount > 0) {
-        NSString *hint = kLang(@"nova_render_more_results_hint");
-        NSMutableParagraphStyle *paragraph = [self pp_paragraphStyleForText:hint lineKind:@"meta" rtl:rtl];
-        NSDictionary *attributes = [self pp_attributesWithFont:metaFont color:secondaryColor paragraph:paragraph];
-        [self pp_appendAttributedLine:[[NSAttributedString alloc] initWithString:hint attributes:attributes] toResult:result];
-    }
-
     if (fallbackItemCount) *fallbackItemCount = itemCount;
     if (success) *success = result.length > 0;
     return result.length > 0 ? result : [[NSAttributedString alloc] initWithString:normalizedText
@@ -989,7 +968,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.typingAnimationView.hidden = NO;
     self.typingSignalView.hidden = YES;
     [self setActionTitles:nil];
-    self.timeLabel.text = kLang(@"nova_typing");
+    self.timeLabel.text = nil;
     self.statusImageView.hidden = YES;
     [self pp_applyStyleForAssistant:YES typing:YES];
     [self pp_applyAlignmentForAssistant:YES maxWidth:resolvedMaxWidth];
@@ -1307,16 +1286,16 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                                                    [UIColor colorWithWhite:1.0 alpha:0.46]);
     UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.16],
                                                      [UIColor.whiteColor colorWithAlphaComponent:0.12]);
-    UIColor *userFill = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.86],
-                                              [brand colorWithAlphaComponent:0.78]);
+    UIColor *userFill = PPNovaCellDynamicColor([UIColor colorWithRed:0.78 green:0.37 blue:0.27 alpha:1.0],
+                                              [UIColor colorWithRed:0.40 green:0.34 blue:0.70 alpha:1.0]);
     UIColor *userText = UIColor.whiteColor;
-    UIColor *userMeta = [UIColor.whiteColor colorWithAlphaComponent:0.72];
-    UIColor *userBorder = PPNovaCellDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.34],
-                                                [UIColor.whiteColor colorWithAlphaComponent:0.18]);
+    UIColor *userMeta = [UIColor.whiteColor colorWithAlphaComponent:0.76];
+    UIColor *userBorder = PPNovaCellDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
+                                                [UIColor.whiteColor colorWithAlphaComponent:0.16]);
 
     UIVisualEffect *assistantEffect = nil;
     if (assistant) {
-        UIBlurEffectStyle blurStyle = UIBlurEffectStyleRegular;
+        UIBlurEffectStyle blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
         if (@available(iOS 13.0, *)) {
             blurStyle = UIBlurEffectStyleSystemUltraThinMaterial;
         }

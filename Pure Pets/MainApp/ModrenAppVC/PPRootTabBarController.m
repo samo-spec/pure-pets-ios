@@ -54,6 +54,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 @property (nonatomic, strong) UIView *premiumBottomFadeView;
 - (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item;
 - (void)pp_setupPremiumBottomFade;
+- (void)pp_updatePremiumBottomFadeAppearance;
 @property (nonatomic, strong) NSArray<UITabBarItem *> *premiumTabItems;
 @property (nonatomic, strong) UIButton *premiumNovaButton;
 @property (nonatomic, strong, nullable) LOTAnimationView *premiumNovaLottieView;
@@ -261,6 +262,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self pp_updatePremiumBottomFadeAppearance];
     [UserManager.sharedManager startListeningCurrentUserBlockedState];
     [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
 }
@@ -375,10 +377,21 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
 
+    [self pp_updatePremiumBottomFadeAppearance];
     [self pp_updateBlockedOverlayTopInset];
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
     [self pp_applyPremiumTabSelectionAnimated:NO];
     
+}
+
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
+{
+    [super traitCollectionDidChange:previousTraitCollection];
+    if (@available(iOS 13.0, *)) {
+        if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+            [self pp_updatePremiumBottomFadeAppearance];
+        }
+    }
 }
 
 #pragma mark - Blocked Overlay
@@ -1261,6 +1274,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 - (void)pp_setupPremiumBottomFade
 {
     if (self.premiumBottomFadeView) {
+        [self pp_updatePremiumBottomFadeAppearance];
         return;
     }
     PPBottomFadeView *fadeView = [[PPBottomFadeView alloc] init];
@@ -1268,18 +1282,14 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     fadeView.userInteractionEnabled = NO;
     fadeView.backgroundColor = UIColor.clearColor;
 
-    UIColor *fadeColor = bageColor ?: AppBackgroundClr ?: UIColor.systemBackgroundColor;
     CAGradientLayer *gradientLayer = (CAGradientLayer *)fadeView.layer;
-    gradientLayer.colors = @[
-        (__bridge id)[fadeColor colorWithAlphaComponent:0.0].CGColor,
-        (__bridge id)fadeColor.CGColor
-    ];
     gradientLayer.startPoint = CGPointMake(0.5, 0.0);
     gradientLayer.endPoint = CGPointMake(0.5, 1.0);
     gradientLayer.locations = @[@0.0, @0.85];
 
     [self.view addSubview:fadeView];
     self.premiumBottomFadeView = fadeView;
+    [self pp_updatePremiumBottomFadeAppearance];
 
     [NSLayoutConstraint activateConstraints:@[
         [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -1287,6 +1297,28 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
         [fadeView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
         [fadeView.heightAnchor constraintEqualToConstant:70.0]
     ]];
+}
+
+- (void)pp_updatePremiumBottomFadeAppearance
+{
+    if (!self.premiumBottomFadeView) {
+        return;
+    }
+
+    BOOL isDark = NO;
+    if (@available(iOS 12.0, *)) {
+        isDark = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+    }
+
+    UIColor *fadeColor = isDark
+        ? UIColor.blackColor
+        : (bageColor ?: AppBackgroundClr ?: UIColor.systemBackgroundColor);
+
+    CAGradientLayer *gradientLayer = (CAGradientLayer *)self.premiumBottomFadeView.layer;
+    gradientLayer.colors = @[
+        (__bridge id)[fadeColor colorWithAlphaComponent:0.0].CGColor,
+        (__bridge id)fadeColor.CGColor
+    ];
 }
 
 - (void)pp_setupPremiumNovaButton
@@ -1667,6 +1699,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
         configuration.baseForegroundColor = accentColor;
         configuration.contentInsets = NSDirectionalEdgeInsetsMake(16.0, 16.0, 16.0, 16.0);
         showAddMenuButton.configuration = configuration;
+        showAddMenuButton.tintColor = accentColor;
     } else {
         [showAddMenuButton setImage:icon forState:UIControlStateNormal];
         showAddMenuButton.backgroundColor =

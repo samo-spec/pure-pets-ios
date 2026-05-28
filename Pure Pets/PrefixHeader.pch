@@ -396,7 +396,7 @@ static inline BOOL PPIsSmallScreen(void) {
 }
 
 #define PPIsRL Language.isRTL
-#define PPBar PPBottomBarManager.shared.bar
+#define MenuActionTitleFont [GM MidFontWithSize:15]
 #define PPBarMgr PPBottomBarManager.shared
 #define PPIsLight ([[UITraitCollection currentTraitCollection] userInterfaceStyle] == UIUserInterfaceStyleLight)
 #define PPIs26 @available(iOS 26.0, *)

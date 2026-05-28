@@ -13,6 +13,92 @@
 //
 
 #import "PPMenuHelper.h"
+#import <objc/runtime.h>
+
+@interface UIAction (PPMenuHelperActionTitleFont)
++ (instancetype)pp_purepets_actionWithTitle:(NSString *)title
+                                      image:(UIImage *)image
+                                 identifier:(UIActionIdentifier)identifier
+                                    handler:(void (^)(__kindof UIAction *action))handler;
+@end
+
+static BOOL PPMenuHelperShouldSkipAutoFontForCurrentMenuAction(void) {
+    NSArray<NSString *> *symbols = [NSThread callStackSymbols];
+    for (NSString *symbol in symbols) {
+        if ([symbol containsString:@"PPHomeViewController"] &&
+            [symbol containsString:@"pp_buildProfileMenuElements"]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static void PPMenuHelperApplyMenuActionTitleFont(UIAction *action) {
+    if (!action) return;
+
+    NSString *title = action.title ?: @"";
+    if (title.length == 0) return;
+
+    UIFont *font = MenuActionTitleFont ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    NSAttributedString *attributedTitle = [[NSAttributedString alloc] initWithString:title
+                                                                           attributes:@{
+        NSFontAttributeName: font
+    }];
+    @try {
+        [action setValue:attributedTitle forKey:@"attributedTitle"];
+    } @catch (__unused NSException *exception) {
+    }
+}
+
+static void PPMenuHelperApplyMenuActionStyle(UIAction *action, UIFont *font, UIColor *color) {
+    if (!action) return;
+
+    NSString *title = action.title ?: @"";
+    if (title.length == 0) return;
+
+    NSMutableDictionary<NSAttributedStringKey, id> *attributes = [NSMutableDictionary dictionary];
+    attributes[NSFontAttributeName] = font ?: MenuActionTitleFont ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium];
+    if (color) {
+        attributes[NSForegroundColorAttributeName] = color;
+    }
+
+    NSAttributedString *attributedTitle = [[NSAttributedString alloc] initWithString:title
+                                                                           attributes:attributes];
+    @try {
+        [action setValue:attributedTitle forKey:@"attributedTitle"];
+    } @catch (__unused NSException *exception) {
+    }
+}
+
+@implementation UIAction (PPMenuHelperActionTitleFont)
+
++ (void)load {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        Method originalMethod = class_getClassMethod(self, @selector(actionWithTitle:image:identifier:handler:));
+        Method swizzledMethod = class_getClassMethod(self, @selector(pp_purepets_actionWithTitle:image:identifier:handler:));
+        if (originalMethod && swizzledMethod) {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
+    });
+}
+
++ (instancetype)pp_purepets_actionWithTitle:(NSString *)title
+                                      image:(UIImage *)image
+                                 identifier:(UIActionIdentifier)identifier
+                                    handler:(void (^)(__kindof UIAction *action))handler
+{
+    UIAction *action = [self pp_purepets_actionWithTitle:title
+                                                   image:image
+                                              identifier:identifier
+                                                 handler:handler];
+    if (!PPMenuHelperShouldSkipAutoFontForCurrentMenuAction()) {
+        PPMenuHelperApplyMenuActionTitleFont(action);
+    }
+    return action;
+}
+
+@end
 
 @implementation PPMenuHelper
 
@@ -39,18 +125,6 @@
         if (isDestructive) {
             action.attributes = UIMenuElementAttributesDestructive;
         }
-        
-        UIFont *useFont = [GM MidFontWithSize:16];
-        UIColor *useColor = UIColor.labelColor;
-        
-        NSDictionary *attributes = @{
-            NSFontAttributeName: useFont,
-            NSForegroundColorAttributeName: useColor
-        };
-        
-        
-        NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:t attributes:attributes];
-        // KVC hack removed
 
         [actions addObject:action];        
     }
@@ -117,19 +191,7 @@
                                          handler:^(__kindof UIAction * _Nonnull act) {
         if (handler) handler(act);
     }];
-    
-    // Apply attributed title
-    UIFont *useFont = font ?: [GM MidFontWithSize:16];
-    UIColor *useColor = color ?: UIColor.redColor;
-    
-    NSDictionary *attributes = @{
-        NSFontAttributeName: useFont,
-        NSForegroundColorAttributeName: useColor
-    };
-    
-    
-    NSAttributedString *attrTitle = [[NSAttributedString alloc] initWithString:title attributes:attributes];
-    // KVC hack removed
+    PPMenuHelperApplyMenuActionStyle(action, font ?: MenuActionTitleFont, color);
     
     return action;
 }
@@ -274,4 +336,3 @@
 }
 
 @end
-

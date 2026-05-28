@@ -2772,17 +2772,12 @@
 "nova_input_attach_accessibility" = "Add attachment";
 "nova_input_suggestions_accessibility" = "Show smart suggestions";
 "nova_input_send_accessibility" = "Send message";
-"nova_greeting" = "Hi. Tell me what your pet needs and I'll guide you to the right Pure Pets pick.";
 "nova_product_results" = "Curated picks";
 "nova_product_count_format" = "%ld items";
 "nova_add_to_cart_which" = "Which one should I add to the cart?";
 "nova_added_to_cart" = "Added to cart";
 "nova_add_to_cart_failed" = "Sorry, I couldn't add it to cart. Please try again.";
 "nova_cart_item_unavailable" = "This item is no longer available to add. Please choose it again from the latest results.";
-"nova_fallback_pet_need_format" = "Got it. For your %@, I can help pick the right %@ from Pure Pets. Want a budget option or a premium pick?";
-"nova_fallback_pet_format" = "For your %@, are you looking for food, a carrier, toys, or care?";
-"nova_fallback_need_format" = "Got it, looking for %@. Which pet is it for?";
-"nova_fallback_prompt" = "Tell me your pet and what you need, like food, a carrier, toys, or care.";
 "nova_close_accessibility" = "Close";
 "nova_error_auth" = "Couldn't verify your session. Try again.";
 "nova_error_signin_required" = "Sign in first so I can help you with Nova.";
@@ -2790,12 +2785,7 @@
 "nova_error_unavailable" = "Nova is unavailable right now. Try again in a moment.";
 "nova_cell_render_missing" = "Results were found, but the cards were not displayed because of a UI binding issue.";
 "nova_suggestions_unavailable" = "I couldn't load those picks. Tell me your pet and what you need, and I'll try again.";
-"nova_render_fallback_service" = "Care service";
-"nova_render_fallback_bird_service" = "Bird care service";
-"nova_render_fallback_product" = "Pure Pets item";
 "nova_render_price_label" = "Price:";
-"nova_render_limited_details" = "Details are limited";
-"nova_render_more_results_hint" = "More options are available. Ask Nova to narrow the list.";
 "OrderCanceled" = "OrderCanceled";
 
 /* Nova chat */

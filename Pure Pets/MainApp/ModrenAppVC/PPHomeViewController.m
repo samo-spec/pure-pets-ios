@@ -58,6 +58,11 @@
 #import "PPHomeSmartSearchTitleView.h"
 #import "PPHomePremiumSearchCell.h"
 
+// Forward declaration so PPHomePrepareProfileMenuButton can call pp_buildProfileMenuElements
+@class PPHomeViewController;
+@interface PPHomeViewController (PPProfileMenuForward)
+- (NSArray<UIMenuElement *> *)pp_buildProfileMenuElements;
+@end
 
 extern NSString * const PPThemePreferenceDidChangeNotification;
 static NSString * const PPHomeConfigCacheKey = @"PPHomeConfig.cache.v1";
@@ -84,16 +89,18 @@ static NSArray<UIBarButtonItem *> *PPHomeBarButtonItems(UIBarButtonItem * _Nulla
     return item ? @[item] : @[];
 }
 
-static void PPHomePrepareProfileMenuButton(UIButton * _Nullable button)
+static void PPHomePrepareProfileMenuButton(UIButton * _Nullable button, PPHomeViewController * _Nullable host)
 {
-    if (!button) {
-        return;
-    }
-
-    if (@available(iOS 14.0, *)) {
-        button.menu = nil;
-        button.showsMenuAsPrimaryAction = NO;
-    }
+    if (!button) { return; }
+    __weak PPHomeViewController *weakHost = host;
+    UIMenu *menu = [UIMenu menuWithTitle:@"" children:@[
+        [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *)) {
+            PPHomeViewController *strongHost = weakHost;
+            completion(strongHost ? [strongHost pp_buildProfileMenuElements] : @[]);
+        }]
+    ]];
+    button.menu = menu;
+    button.showsMenuAsPrimaryAction = YES;
 }
 
 static void PPHomeApplySemanticToViewTree(UIView * _Nullable view, UISemanticContentAttribute semantic)
@@ -3744,7 +3751,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
             profileButton = (UIButton *)tagged;
         }
     }
-    PPHomePrepareProfileMenuButton(profileButton);
+    PPHomePrepareProfileMenuButton(profileButton, self);
 }
 
 - (void)handleUserProfileSyncNotification:(NSNotification *)notification
@@ -9626,7 +9633,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         ]];
     }
 
-    PPHomePrepareProfileMenuButton(button);
+    PPHomePrepareProfileMenuButton(button, self);
 
     return [[UIBarButtonItem alloc] initWithCustomView:container];
 }
@@ -10132,49 +10139,60 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 #pragma mark - Top/Nav UI
 - (void)profileTapped:(UIButton *)sender {
-    NSMutableArray<FTPopOverMenuModel *> *menuItems = [NSMutableArray array];
-    NSMutableArray<NSNumber *> *menuActions = [NSMutableArray array];
-    void (^appendAction)(NSString *, NSString *, PPHomeProfileMenuAction) =
-    ^(NSString *title, NSString *imageName, PPHomeProfileMenuAction action) {
-        FTPopOverMenuModel *item = [[FTPopOverMenuModel alloc] init];
-        item.title = title ?: @"";
-        item.image = [UIImage systemImageNamed:imageName];
-        [menuItems addObject:item];
-        [menuActions addObject:@(action)];
+    // Menu is presented natively via button.menu / showsMenuAsPrimaryAction — this selector is kept
+    // only so addTarget: references remain valid; it is never reached on iOS 14+.
+    (void)sender;
+}
+
+- (NSArray<UIMenuElement *> *)pp_buildProfileMenuElements {
+    __weak typeof(self) weakSelf = self;
+    UIFont *itemFont = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
+
+    UIAction *(^makeAction)(NSString *, NSString *, PPHomeProfileMenuAction) =
+    ^UIAction *(NSString *title, NSString *imageName, PPHomeProfileMenuAction menuAction) {
+        UIAction *action = [UIAction actionWithTitle:title ?: @""
+                                              image:[UIImage systemImageNamed:imageName]
+                                         identifier:nil
+                                            handler:^(__kindof UIAction *a) {
+            [weakSelf pp_handleProfileMenuAction:menuAction];
+        }];
+        NSAttributedString *attrTitle = [[NSAttributedString alloc]
+            initWithString:title ?: @""
+                attributes:@{NSFontAttributeName: itemFont}];
+        [action setValue:attrTitle forKey:@"attributedTitle"];
+        return action;
     };
 
-    if (UserManager.sharedManager.currentUser) {
-        appendAction(kLang(@"showProfile"), @"person.circle.fill", PPHomeProfileMenuActionProfile);
-    } else {
-        appendAction(kLang(@"go_to_login"), @"person.crop.circle.fill.badge.plus", PPHomeProfileMenuActionLogin);
-    }
-    appendAction(kLang(@"showfav"), @"star.fill", PPHomeProfileMenuActionFavorites);
-    appendAction(kLang(@"myadsTitle"), @"circle.hexagonpath.fill", PPHomeProfileMenuActionMyAds);
-    appendAction(kLang(@"Cart"), @"cart.fill", PPHomeProfileMenuActionCart);
-    appendAction(kLang(@"OrderHistory"), @"bag.fill", PPHomeProfileMenuActionOrders);
+    // Account
+    UIAction *accountAction = UserManager.sharedManager.currentUser
+        ? makeAction(kLang(@"showProfile"), @"person.circle.fill", PPHomeProfileMenuActionProfile)
+        : makeAction(kLang(@"go_to_login"), @"person.crop.circle.fill.badge.plus", PPHomeProfileMenuActionLogin);
+    UIMenu *accountSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil
+                                           options:UIMenuOptionsDisplayInline
+                                          children:@[accountAction]];
 
-    UserModel *currentUser = UserManager.sharedManager.currentUser;
-    if ([currentUser.prodectionStatus isEqualToString:@"active"]) {
-        appendAction(kLang(@"showProdection"), @"doc.on.doc.fill", PPHomeProfileMenuActionProduction);
+    // Activity
+    NSMutableArray<UIAction *> *activityActions = [NSMutableArray array];
+    [activityActions addObject:makeAction(kLang(@"showfav"), @"star.fill", PPHomeProfileMenuActionFavorites)];
+    [activityActions addObject:makeAction(kLang(@"myadsTitle"), @"circle.hexagonpath.fill", PPHomeProfileMenuActionMyAds)];
+    [activityActions addObject:makeAction(kLang(@"Cart"), @"cart.fill", PPHomeProfileMenuActionCart)];
+    [activityActions addObject:makeAction(kLang(@"OrderHistory"), @"bag.fill", PPHomeProfileMenuActionOrders)];
+    if ([UserManager.sharedManager.currentUser.prodectionStatus isEqualToString:@"active"]) {
+        [activityActions addObject:makeAction(kLang(@"showProdection"), @"doc.on.doc.fill", PPHomeProfileMenuActionProduction)];
     }
-    appendAction(kLang(@"Setting"), @"gear", PPHomeProfileMenuActionSettings);
-    appendAction(kLang(@"supprot"), @"person.crop.circle.badge.questionmark", PPHomeProfileMenuActionSupport);
+    UIMenu *activitySection = [UIMenu menuWithTitle:@"" image:nil identifier:nil
+                                            options:UIMenuOptionsDisplayInline
+                                           children:activityActions];
 
-    FTPopOverMenuConfiguration *configuration = [GM configMenu:nil];
-    configuration.textFont = [GM MidFontWithSize:16];
+    // Tools
+    UIMenu *toolsSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil
+                                         options:UIMenuOptionsDisplayInline
+                                        children:@[
+        makeAction(kLang(@"Setting"), @"gear", PPHomeProfileMenuActionSettings),
+        makeAction(kLang(@"supprot"), @"person.crop.circle.badge.questionmark", PPHomeProfileMenuActionSupport),
+    ]];
 
-    __weak typeof(self) weakSelf = self;
-    [FTPopOverMenu showForSender:sender
-                   withMenuArray:menuItems
-                      imageArray:nil
-                   configuration:configuration
-                       doneBlock:^(NSInteger selectedIndex) {
-        if (selectedIndex < 0 || selectedIndex >= (NSInteger)menuActions.count) {
-            return;
-        }
-        [weakSelf pp_handleProfileMenuAction:(PPHomeProfileMenuAction)menuActions[selectedIndex].integerValue];
-    }
-                    dismissBlock:nil];
+    return @[accountSection, activitySection, toolsSection];
 }
 
 - (void)pp_handleProfileMenuAction:(PPHomeProfileMenuAction)action {
@@ -10381,7 +10399,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     container.clipsToBounds = NO;
     container.semanticContentAttribute = PPHomeCurrentSemanticAttribute();
 
-    PPHomePrepareProfileMenuButton(container);
+    PPHomePrepareProfileMenuButton(container, self);
 
     if (target && action) {
         [container addTarget:target
@@ -10676,7 +10694,11 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UIColor *premiumBackground = [UIColor colorWithHexString:@"#E8EDF2"];
     UIColor *novaBackground = [UIColor colorWithRed:1.0 green:0.97 blue:0.98 alpha:1.0];
-    self.view.backgroundColor = AppBageColor();// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    UIColor *backgroundColor = AppBageColor();// [UIColor colorNamed:@"AppBackgroundColorDarker"]; //PPBackgroundColorForIOS26() ;
+    self.view.backgroundColor = backgroundColor;
+    self.navigationController.view.backgroundColor = backgroundColor;
+    self.tabBarController.view.backgroundColor = backgroundColor;
+    self.view.window.backgroundColor = backgroundColor;
     self.collectionView.backgroundColor = AppClearClr;
     [self pp_installPremiumBackgroundGlowViewsIfNeeded];
     [self pp_updatePremiumBackgroundGlowAppearance];
@@ -10755,7 +10777,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     UIColor *primaryColor = NewBgColor ?: AppPrimaryClr ?: UIColor.systemPinkColor;
     UIColor *secondaryColor = AppPrimaryClr ?: [primaryColor colorWithAlphaComponent:1.0];
-    UIColor *ambientColor = isDark ? UIColor.whiteColor : UIColor.blackColor;
+    UIColor *bottomFadeColor = isDark
+        ? UIColor.blackColor
+        : [UIColor colorWithRed:0.98 green:0.66 blue:0.46 alpha:1.0];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewTop
                             color:AppSurfColor
@@ -10770,8 +10794,8 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
                      shadowRadius:isDark ? 72.0 : 64.0];
 
     [self pp_applyPremiumGlowView:self.pp_premiumBackgroundGlowViewBottom
-                            color:ambientColor
-                     surfaceAlpha:isDark ? 0.05 : 0.025
+                            color:bottomFadeColor
+                     surfaceAlpha:isDark ? 0.030 : 0.050
                     shadowOpacity:isDark ? 0.08f : 0.045f
                      shadowRadius:isDark ? 62.0 : 54.0];
 }

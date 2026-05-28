@@ -32,7 +32,8 @@
     
     self.fallbackLabel = [[UILabel alloc] init];
     self.fallbackLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.fallbackLabel.text = @"[Review UI Placeholder]";
+    self.fallbackLabel.text = @"";
+    self.fallbackLabel.hidden = YES;
     self.fallbackLabel.textColor = [UIColor systemGrayColor];
     self.fallbackLabel.font = [UIFont italicSystemFontOfSize:14.0];
     self.fallbackLabel.textAlignment = NSTextAlignmentCenter;

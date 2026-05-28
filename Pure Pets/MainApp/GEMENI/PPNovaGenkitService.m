@@ -74,7 +74,9 @@ static NSString *PPNovaGenkitErrorSummary(NSError *error) {
     return [parts componentsJoinedByString:@" "];
 }
 
-@implementation PPNovaGenkitService
+@implementation PPNovaGenkitService {
+    NSURLSession *_session;
+}
 
 + (instancetype)sharedService {
     static PPNovaGenkitService *shared = nil;
@@ -83,6 +85,24 @@ static NSString *PPNovaGenkitErrorSummary(NSError *error) {
         shared = [[self alloc] init];
     });
     return shared;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        // Ephemeral configuration (no on-disk cache) is intentional for chat
+        // privacy. The session itself is reused across every Nova turn so
+        // TCP/TLS connection state is preserved — saves ~100–250ms per turn
+        // on cellular vs creating and invalidating a session per request.
+        NSURLSessionConfiguration *configuration = NSURLSessionConfiguration.ephemeralSessionConfiguration;
+        configuration.timeoutIntervalForRequest = 60.0;
+        configuration.timeoutIntervalForResource = 75.0;
+        if ([configuration respondsToSelector:@selector(setWaitsForConnectivity:)]) {
+            configuration.waitsForConnectivity = YES;
+        }
+        _session = [NSURLSession sessionWithConfiguration:configuration];
+    }
+    return self;
 }
 
 - (void)sendMessage:(NSString *)message
@@ -118,6 +138,8 @@ static NSString *PPNovaGenkitErrorSummary(NSError *error) {
         return;
     }
 
+    NSURLSession *session = _session;
+
     // Builds and fires the request with whatever auth token we resolved. A nil
     // token means we send as a guest — the server accepts both (optional auth).
     void (^performSend)(NSString * _Nullable) = ^(NSString * _Nullable authToken) {
@@ -136,19 +158,9 @@ static NSString *PPNovaGenkitErrorSummary(NSError *error) {
         }
         NSLog(@"[PPNovaGenkitService] novaGenkitChat sending auth=%@", authToken.length > 0 ? @"bearer" : @"guest");
 
-        NSURLSessionConfiguration *configuration = NSURLSessionConfiguration.ephemeralSessionConfiguration;
-        configuration.timeoutIntervalForRequest = 60.0;
-        configuration.timeoutIntervalForResource = 75.0;
-        if ([configuration respondsToSelector:@selector(setWaitsForConnectivity:)]) {
-            configuration.waitsForConnectivity = YES;
-        }
-
-        NSURLSession *session = [NSURLSession sessionWithConfiguration:configuration];
         [[session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data,
                                                                  NSURLResponse * _Nullable response,
                                                                  NSError * _Nullable error) {
-            [session finishTasksAndInvalidate];
-
             if (error) {
                 NSLog(@"[PPNovaGenkitService] novaGenkitChat HTTP failed %@", PPNovaGenkitErrorSummary(error));
                 if (completion) {

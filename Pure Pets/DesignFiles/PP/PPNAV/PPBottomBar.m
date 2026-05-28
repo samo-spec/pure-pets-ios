@@ -2340,11 +2340,12 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     if (@available(iOS 26.0, *)) {
         cfg = [UIButtonConfiguration glassButtonConfiguration];
         UIImage *img = [UIImage systemImageNamed:imageName] ? [UIImage pp_symbolNamed:imageName pointSize:18 weight:UIImageSymbolWeightSemibold scale:UIImageSymbolScaleLarge palette:@[[AppPrimaryClr colorWithAlphaComponent:1.2],[AppPrimaryClr colorWithAlphaComponent:1.2]] makeTemplate:YES] : [UIImage imageNamed:imageName];
-            //cfg.baseForegroundColor=[AppPrimaryClr colorWithAlphaComponent:1.2];
+            cfg.baseForegroundColor = AppPrimaryClr ?: UIColor.systemBlueColor;
           
             cfg.image = img;
         cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
             btn.configuration = cfg;
+            btn.tintColor = AppPrimaryClr ?: UIColor.systemBlueColor;
             btn.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
             [btn.widthAnchor constraintEqualToConstant:btnSize].active = YES;
             [btn.heightAnchor constraintEqualToConstant:btnSize].active = YES;
@@ -2354,18 +2355,22 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         {
             cfg = [UIButtonConfiguration filledButtonConfiguration];
             UIImage *img;
+            UIColor *iconColor = ([imageName isEqualToString:@"plus"]
+                                  ? (AppPrimaryClr ?: UIColor.systemBlueColor)
+                                  : AppForgroundColr);
             if([imageName isEqualToString:@"plus"])
-                img = [UIImage systemImageNamed:imageName] ? [UIImage pp_symbolNamed:imageName pointSize:18 weight:UIImageSymbolWeightMedium scale:UIImageSymbolScaleMedium palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:YES] : [UIImage imageNamed:imageName];
+                img = [UIImage systemImageNamed:imageName] ? [UIImage pp_symbolNamed:imageName pointSize:18 weight:UIImageSymbolWeightMedium scale:UIImageSymbolScaleMedium palette:@[iconColor, iconColor] makeTemplate:YES] : [UIImage imageNamed:imageName];
             else
-                img = [UIImage systemImageNamed:imageName] ? [UIImage pp_symbolNamed:imageName pointSize:18 weight:UIImageSymbolWeightMedium scale:UIImageSymbolScaleMedium palette:@[AppForgroundColr,AppForgroundColr] makeTemplate:YES] : [UIImage imageNamed:imageName];
+                img = [UIImage systemImageNamed:imageName] ? [UIImage pp_symbolNamed:imageName pointSize:18 weight:UIImageSymbolWeightMedium scale:UIImageSymbolScaleMedium palette:@[iconColor, iconColor] makeTemplate:YES] : [UIImage imageNamed:imageName];
                 
-            cfg.baseForegroundColor=AppForgroundColr;
+            cfg.baseForegroundColor=iconColor;
             cfg.baseBackgroundColor=[AppPrimaryClr colorWithAlphaComponent:0.8];
             cfg.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
 
             cfg.image = img;
             UIButton *btn = [UIButton  buttonWithConfiguration:cfg primaryAction:nil];
             //btn.configuration = cfg;
+            btn.tintColor = iconColor;
             btn.translatesAutoresizingMaskIntoConstraints = NO;
             btn.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
 

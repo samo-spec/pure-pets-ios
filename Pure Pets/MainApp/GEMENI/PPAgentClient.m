@@ -403,8 +403,9 @@ static NSString * const kADKSessionMapKey = @"pp_nova_adk_session_map";
     if (modelJSON) return modelJSON;
     if (finalModelText && ![self isInternalNovaDebugText:finalModelText]) return @{ @"text": finalModelText };
 
-    // Fallback if no text or payload was parsed
-    return @{ @"text": @"حدث خطأ أثناء معالجة الرد، يرجى المحاولة مرة أخرى." };
+    // No client-authored Nova prose. Let the caller handle this as an
+    // empty_response error instead of injecting visible assistant text.
+    return nil;
 }
 
 - (BOOL)isInternalNovaDebugText:(NSString *)text {
