@@ -1416,6 +1416,10 @@ static char PPListAppliedBottomClearanceKey;
     self.premiumBottomFadeView = fadeView;
     [self pp_updatePremiumBottomFadeAppearance];
 
+    if (!PPIOS26()) {
+        fadeView.alpha = 0.0;
+    }
+
     [NSLayoutConstraint activateConstraints:@[
         [fadeView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [fadeView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
@@ -1490,8 +1494,13 @@ static char PPListAppliedBottomClearanceKey;
     [button addSubview:animationView];
     self.premiumNovaLottieView = animationView;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [button.centerXAnchor constraintEqualToAnchor:self.leadingTabButton.centerXAnchor],
+    NSMutableArray<NSLayoutConstraint *> *novaConstraints = [NSMutableArray array];
+    if (@available(iOS 26.0, *)) {
+        [novaConstraints addObject:[button.centerXAnchor constraintEqualToAnchor:self.leadingTabButton.centerXAnchor]];
+    } else {
+        [novaConstraints addObject:[button.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0]];
+    }
+    [novaConstraints addObjectsFromArray:@[
         [button.bottomAnchor constraintEqualToAnchor:self.leadingTabButton.topAnchor constant:-10.0],
         [button.widthAnchor constraintEqualToConstant:54.0],
         [button.heightAnchor constraintEqualToConstant:54.0],
@@ -1500,6 +1509,7 @@ static char PPListAppliedBottomClearanceKey;
         [animationView.widthAnchor constraintEqualToConstant:42.0],
         [animationView.heightAnchor constraintEqualToConstant:42.0]
     ]];
+    [NSLayoutConstraint activateConstraints:novaConstraints];
 
     __weak typeof(self) weakSelf = self;
     __weak LOTAnimationView *weakAnimationView = animationView;
@@ -1854,19 +1864,26 @@ static char PPListAppliedBottomClearanceKey;
     [self.view addSubview:showAddMenuButton];
     self.leadingTabButton = showAddMenuButton;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
-        [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
-        [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
-        [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
-    ]];
-
-    if (@available(iOS 17.0, *)) {
+    if (@available(iOS 26.0, *)) {
+        [NSLayoutConstraint activateConstraints:@[
+            [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
+            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
+            [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
+            [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
+        ]];
+        // Symbol effect (iOS 26+ only)
         __weak UIButton *weakButton = showAddMenuButton;
         dispatch_async(dispatch_get_main_queue(), ^{
             [weakButton.imageView addSymbolEffect:[[NSSymbolWiggleEffect wiggleForwardEffect] effectWithByLayer]
                                          options:[NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodicWithDelay:3.0]]];
         });
+    } else {
+        [NSLayoutConstraint activateConstraints:@[
+            [showAddMenuButton.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
+            [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
+            [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
+        ]];
     }
 }
 

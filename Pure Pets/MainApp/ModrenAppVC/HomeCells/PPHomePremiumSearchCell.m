@@ -444,7 +444,11 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     _placeholderLabel.font = compact
         ? ([GM boldFontWithSize:12.75] ?: [UIFont systemFontOfSize:12.75 weight:UIFontWeightSemibold])
         : ([GM boldFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightSemibold]);
-    _chromeView.layer.cornerRadius = 6;
+    if (@available(iOS 26.0, *)) {
+        _chromeView.layer.cornerRadius = 6;
+    } else {
+        _chromeView.layer.cornerRadius = 22.0;
+    }
     _leadingChipView.layer.cornerRadius = CGRectGetHeight(_leadingChipView.bounds) * 0.5;
     _trailingSearchView.layer.cornerRadius = CGRectGetHeight(_trailingSearchView.bounds) * 0.5;
     _signalDotView.layer.cornerRadius = 2.75;

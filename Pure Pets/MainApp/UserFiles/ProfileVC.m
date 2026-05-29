@@ -33,6 +33,15 @@
 @import FirebaseStorage;
 @import PhotosUI;
 
+/// Bottom content inset that keeps the last row clear of the floating tab-bar
+/// dock. The table is pinned to the safe-area bottom, while the dock's top
+/// anchor sits `dockHeight` above it (see PPRootTabBarController). Returning
+/// `dockHeight + 12` ends content 12pt above the dock's top anchor.
+static CGFloat PPProfileBottomBarClearance(void) {
+    CGFloat dockHeight = PPIOS26() ? 86.0 : 64.0; // mirrors PPRootTabBarController dock height
+    return dockHeight + 12.0;                      // tab-bar top anchor + 12pt breathing room
+}
+
 
 
 
@@ -210,8 +219,8 @@
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
-    self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
-    self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    self.tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, PPProfileBottomBarClearance(), 0.0);
+    self.tableView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, PPProfileBottomBarClearance(), 0.0);
     [self pp_runProfileEntranceAnimationIfNeeded];
 }
 
@@ -449,8 +458,8 @@
     tableView.keyboardDismissMode = UIScrollViewKeyboardDismissModeInteractive;
     tableView.rowHeight = UITableViewAutomaticDimension;
     tableView.estimatedRowHeight = 84.0;
-    tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
-    tableView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, 24.0, 0.0);
+    tableView.contentInset = UIEdgeInsetsMake(6.0, 0.0, PPProfileBottomBarClearance(), 0.0);
+    tableView.scrollIndicatorInsets = UIEdgeInsetsMake(6.0, 0.0, PPProfileBottomBarClearance(), 0.0);
     if (@available(iOS 15.0, *)) {
         tableView.sectionHeaderTopPadding = 0.0;
     }
