@@ -2788,14 +2788,16 @@ CGImageRef YYCGImageCreateWithWebPData(CFDataRef webpData,
 - (void)saveToAlbumWithCompletionBlock:(void(^)(NSURL *assetURL, NSError *error))completionBlock {
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         NSData *data = [self _imageDataRepresentationForSystem:YES];
-        ALAssetsLibrary *library = [[ALAssetsLibrary alloc] init];
-        [library writeImageDataToSavedPhotosAlbum:data metadata:nil completionBlock:^(NSURL *assetURL, NSError *error){
+        [[PHPhotoLibrary sharedPhotoLibrary] performChanges:^{
+            PHAssetCreationRequest *request = [PHAssetCreationRequest creationRequestForAsset];
+            [request addResourceWithType:PHAssetResourceTypePhoto data:data options:nil];
+        } completionHandler:^(BOOL success, NSError * _Nullable error) {
             if (!completionBlock) return;
             if (pthread_main_np()) {
-                completionBlock(assetURL, error);
+                completionBlock(nil, error);
             } else {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    completionBlock(assetURL, error);
+                    completionBlock(nil, error);
                 });
             }
         }];

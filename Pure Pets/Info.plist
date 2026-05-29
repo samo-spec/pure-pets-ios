@@ -47,6 +47,16 @@
 	<string>$(PRODUCT_MODULE_NAME).NotificationService</string>
 	<key>NSLocalizedDescription</key>
 	<string>Request</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Pure Pets uses your camera to capture photos for pet ads, bird cards, and profile pictures.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pure Pets needs access to your photo library to select and upload images for pet ads, accessories, and your profile.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Pure Pets saves images to your photo library when you download pet photos or listing images.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Pure Pets uses your microphone when recording videos for pet stories and ads.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Pure Pets uses your location to find nearby veterinarians, show pet listings in your area, and suggest relevant services.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Beiruti-Medium.ttf</string>

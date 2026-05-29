@@ -103,7 +103,8 @@ NSString *const Jh_DeleteIcon = @"close";
 
 -(instancetype)init
 {
-    @throw [NSException exceptionWithName:NSGenericException reason:@"initWithTag:(NSString *)tagM rowType:(NSString *)rowType title:(NSString *)title must be used" userInfo:nil];
+    NSLog(@"[XLForm] XLFormRowDescriptor must be initialized with initWithTag:rowType:title:. Returning nil.");
+    return nil;
 }
 
 -(instancetype)initWithTag:(NSString *)tagM rowType:(NSString *)rowType title:(NSString *)title images:(NSArray *)images;
