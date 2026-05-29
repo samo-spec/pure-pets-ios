@@ -1012,20 +1012,9 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     PPDataViewLog(@"[VC] calling switchToSection:%ld", (long)section);
     [self activateSection:section userInitiated:NO];
     
-    // 🔑 Restore subkind state BEFORE menus are built
-    NSString *subKey = [self subKindKeyForMainKind:self.input.mainKind];
-    NSInteger savedSubKindID =
-    [[NSUserDefaults standardUserDefaults] integerForKey:subKey];
-
-    self.viewModel.currentSubKindID = savedSubKindID;
-    
-    if(self.viewModel.currentSubKindID > 0 && self.input.mainKind)
-    {
-        SubKindModel *subKind = [self.input.mainKind subKindForID:self.viewModel.currentSubKindID];
-        if (subKind) {
-            [self.viewModel reloadForSubKind:subKind];
-            [self updateSubKindsButtonTitle:subKind.SubKindName subKind:subKind];
-        }
+    self.viewModel.currentSubKindID = 0;
+    if (self.input.mainKind) {
+        [self updateSubKindsButtonTitle:self.input.mainKind.KindName];
     }
 
     [self.scrollOffsetsBySection removeAllObjects];
@@ -2347,21 +2336,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         // 2️⃣ Update input
         self.input.mainKind = model;
          
-         NSString *subKey = [self subKindKeyForMainKind:model];
-         NSInteger savedSubKindID =
-         [[NSUserDefaults standardUserDefaults] integerForKey:subKey];
-
-         SubKindModel *savedSubKind =
-         [model subKindForID:savedSubKindID];
-
          [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
-         if (savedSubKind) {
-             self.viewModel.currentSubKindID = savedSubKind.ID;
-             [self updateSubKindsButtonTitle:savedSubKind.SubKindName subKind:savedSubKind animated:YES];
-         } else {
-             self.viewModel.currentSubKindID = 0; // All
-             [self updateSubKindsButtonTitle:model.KindName animated:YES];
-         }
+         self.viewModel.currentSubKindID = 0;
+         [self updateSubKindsButtonTitle:model.KindName animated:YES];
          [self refreshsubKindsMenu];
          
 
@@ -2446,21 +2423,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         self.KindsButton.menu =
         [self mainMenu];
          
-         NSString *subKey = [self subKindKeyForMainKind:model];
-         NSInteger savedSubKindID =
-         [[NSUserDefaults standardUserDefaults] integerForKey:subKey];
-
-         SubKindModel *savedSubKind =
-         [model subKindForID:savedSubKindID];
-
          [self pp_beginMotionTransition:PPDataViewMotionReasonMainKindChange direction:0];
-         if (savedSubKind) {
-             self.viewModel.currentSubKindID = savedSubKind.ID;
-             [self updateSubKindsButtonTitle:savedSubKind.SubKindName subKind:savedSubKind animated:YES];
-         } else {
-             self.viewModel.currentSubKindID = 0; // All
-             [self updateSubKindsButtonTitle:model.KindName animated:YES];
-         }
+         self.viewModel.currentSubKindID = 0;
+         [self updateSubKindsButtonTitle:model.KindName animated:YES];
          [self refreshsubKindsMenu];
          
 
@@ -2620,20 +2585,8 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     
     sectionsBtn.menu = [self subKindsMenu];
     
-    NSString *subKey = [self subKindKeyForMainKind:self.input.mainKind];
-    NSInteger savedSubKindID =
-    [[NSUserDefaults standardUserDefaults] integerForKey:subKey];
-
-    SubKindModel *savedSubKind =
-    [self.input.mainKind subKindForID:savedSubKindID];
-
-    if (savedSubKind) {
-        self.viewModel.currentSubKindID = savedSubKind.ID;
-        [self updateSubKindsButtonTitle:savedSubKind.SubKindName subKind:savedSubKind];
-    } else {
-        self.viewModel.currentSubKindID = 0; // All
-        [self updateSubKindsButtonTitle:self.input.mainKind.KindName];
-    }
+    self.viewModel.currentSubKindID = 0;
+    [self updateSubKindsButtonTitle:self.input.mainKind.KindName];
 
     // AllCategories mode: show the section header title & hide chevron until user picks a kind
     if (self.input.sourceTarget == PPDeepLinkTargetAllCategories) {

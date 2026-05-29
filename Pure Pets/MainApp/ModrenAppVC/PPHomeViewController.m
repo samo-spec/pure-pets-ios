@@ -953,6 +953,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 @property (nonatomic, strong, nullable) id<FIRListenerRegistration> homeConfigListener;
 @property (nonatomic, copy, nullable) NSString *lastAppliedHomeConfigOrderSignature;
 @property (nonatomic, assign) BOOL shouldResetHomeScrollForConfigOrderChange;
+@property (nonatomic, assign) BOOL didApplyServerHomeConfig;
 // YES once the HomeConfig listener has reported (or the safety timeout has fired).
 // Until this flips, applyBaseSnapshot renders an empty snapshot so we don't show
 // the full default-section set just to relayout to the config-filtered set seconds
@@ -1196,6 +1197,8 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 - (NSArray<NSString *> *)pp_resolvedHomeSmartSearchPlaceholders;
 - (NSString *)pp_currentHomeSmartSearchPlaceholder;
 - (void)pp_updateHomeSmartSearchPlaceholderAnimated:(BOOL)animated;
+- (void)pp_applyHomeSmartSearchPlaceholderToVisiblePremiumSearchCells:(NSString *)placeholder
+                                                              animated:(BOOL)animated;
 - (void)pp_startHomeSmartSearchTimerIfNeeded;
 - (void)pp_stopHomeSmartSearchTimer;
 - (void)pp_scheduleSmartSearchTimerWithInterval:(NSTimeInterval)interval;
@@ -1766,6 +1769,7 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         PPHomeConfigCacheNovaUseGenkitKey : @(novaUseGenkit)
     };
     [[NSUserDefaults standardUserDefaults] setObject:payload forKey:PPHomeConfigCacheKey];
+    [[NSUserDefaults standardUserDefaults] synchronize];
     
     // We also set it individually so other view controllers can read it easily
     [[NSUserDefaults standardUserDefaults] setBool:novaUseGenkit forKey:@"pp_nova_use_genkit"];
@@ -3617,6 +3621,12 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         return;
     }
 
+    BOOL isCacheSource = [source hasSuffix:@"cache"];
+    if (isCacheSource && self.didApplyServerHomeConfig) {
+        NSLog(@"[HomeConfig] Ignoring cached listener snapshot because server ordering is already active.");
+        return;
+    }
+
     NSDictionary *data = snapshot.data ?: @{};
     NSArray<NSDictionary *> *sanitized =
         [self pp_sanitizedHomeConfigSections:data[@"sections"]];
@@ -3692,6 +3702,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
               orderChanged ? @"YES" : @"NO");
 
         strongSelf.didReceiveHomeConfig = YES;
+        if (![source hasSuffix:@"cache"]) {
+            strongSelf.didApplyServerHomeConfig = YES;
+        }
 
         BOOL titleModeChanged =
             ![(strongSelf.homeTitleViewMode ?: @"location") isEqualToString:resolvedTitleViewMode];
@@ -5681,6 +5694,12 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
 - (void)handleAppWillEnterForeground
 {
+    BOOL appliedCachedHomeConfig = [self pp_applyCachedHomeConfigIfAvailable];
+    if (appliedCachedHomeConfig) {
+        [self applyBaseSnapshot];
+    }
+    [self pp_startHomeConfigListener];
+
     if (![self pp_canOwnHomeNavigationChrome]) {
         [self pp_detachHomeSmartSearchTitleViewIfNeeded];
         [self pp_detachHomeLocationTitleViewIfNeeded];
@@ -5719,6 +5738,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 {
     [super viewDidAppear:animated];
     self.isHomeScreenVisible = YES;
+    [self pp_startHomeSmartSearchTimerIfNeeded];
     [self pp_advancePremiumCareAnimationForAppearance];
     [self pp_beginPremiumHomeEntranceIfNeeded];
     if ([self pp_isInitialHomeRevealSettled]) {
@@ -6222,6 +6242,8 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
                 PPHomePremiumSearchCell *cell =
                 [collectionView dequeueReusableCellWithReuseIdentifier:@"PPHomePremiumSearchCell"
                                                               forIndexPath:indexPath];
+                [cell setQueryText:[strongSelf pp_currentHomeSmartSearchPlaceholder]
+                          animated:NO];
 
                 __weak typeof(strongSelf) weakHome = strongSelf;
                 cell.onTap = ^{
@@ -7572,6 +7594,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
 - (void)dealloc
 {
     [[PPHomePromoCarouselManager sharedManager] stopListening];
+    [self.homeConfigListener remove];
     [self pp_stopCurrentOrdersListener];
     [self stopNearbyRefreshTimer];
     [self pp_stopHomeSmartSearchTimer];
@@ -10021,6 +10044,30 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if (self.homeSmartSearchView) {
         [self.homeSmartSearchView setQueryText:placeholder
                                       animated:animated];
+    }
+
+    [self pp_applyHomeSmartSearchPlaceholderToVisiblePremiumSearchCells:placeholder
+                                                               animated:animated];
+}
+
+- (void)pp_applyHomeSmartSearchPlaceholderToVisiblePremiumSearchCells:(NSString *)placeholder
+                                                              animated:(BOOL)animated
+{
+    if (!self.isViewLoaded || !self.collectionView) {
+        return;
+    }
+
+    NSString *safePlaceholder = PPSafeString(placeholder);
+    if (safePlaceholder.length == 0) {
+        return;
+    }
+
+    for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
+        if (![cell isKindOfClass:PPHomePremiumSearchCell.class]) {
+            continue;
+        }
+        [(PPHomePremiumSearchCell *)cell setQueryText:safePlaceholder
+                                             animated:animated];
     }
 }
 

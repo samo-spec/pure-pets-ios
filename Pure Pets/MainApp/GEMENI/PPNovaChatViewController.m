@@ -7,10 +7,12 @@
 #import "ChatMessageModel.h"
 #import "PPAgentClient.h"
 #import "PPNovaGenkitService.h"
+#import <Pure_Pets-Swift.h>
 #import "PPAgentMessage.h"
 #import "PPNovaMessageBubbleCell.h" // #import "PPNovaMessageBubbleCell.h" #import "ChatMessageCell.h"
 #import "PPNovaProductMessageCell.h"
 #import "PPNovaReviewMessageCell.h"
+#import "NovaConfirmationCell.h"
 #import "PPNovaFloatingInputBarView.h"
 #import "AppManager.h"
 #import "PPNavigationController.h"
@@ -90,6 +92,7 @@ typedef NS_ENUM(NSInteger, PPNovaOutputType) {
     PPNovaOutputTypeAdoptCards,
     PPNovaOutputTypeVetCards,
     PPNovaOutputTypeServiceCards,
+    PPNovaOutputTypeCartConfirmation,
     PPNovaOutputTypeSystemFallback
 };
 
@@ -107,6 +110,7 @@ static NSString *PPNovaOutputTypeName(PPNovaOutputType type) {
         case PPNovaOutputTypeAdoptCards: return @"adoptCards";
         case PPNovaOutputTypeVetCards: return @"vetCards";
         case PPNovaOutputTypeServiceCards: return @"serviceCards";
+        case PPNovaOutputTypeCartConfirmation: return @"cartConfirmation";
         case PPNovaOutputTypeSystemFallback: return @"systemFallback";
     }
     return @"text";
@@ -749,7 +753,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 @end
 
-@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate, PPNovaMessageBubbleCellDelegate>
+@interface PPNovaChatViewController () <UITableViewDelegate, UITableViewDataSource, PPNovaFloatingInputBarViewDelegate, PPNovaProductMessageCellDelegate, PPNovaMessageBubbleCellDelegate, NovaConfirmationCellDelegate>
 
 @property (nonatomic, strong) UIView *novaHeaderContentView;
 @property (nonatomic, strong) UIView *ambientBackgroundView;
@@ -888,7 +892,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                      backendResultRefsCount:(NSUInteger)backendResultRefsCount
                              cardsRequired:(BOOL)cardsRequired
                                resultSource:(NSString *)resultSource
-                                    options:(NSArray<NSDictionary<NSString *, id> *> *)options;
+                                    options:(NSArray<NSDictionary<NSString *, id> *> *)options
+                      cartConfirmationTitle:(nullable NSString *)cartConfirmationTitle;
 
 - (BOOL)pp_addNovaProductResultTextForRenderedCount:(NSUInteger)renderedCount
                                        proposedText:(NSString *)proposedText
@@ -908,6 +913,13 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (nullable PetAccessory *)pp_novaCartProductForStructuredAction:(NSDictionary<NSString *, id> *)payload;
 - (BOOL)pp_novaIsInternalMemoryMarkerText:(NSString *)text;
 - (BOOL)pp_novaResponseRequiresClientCartConfirmation:(NSDictionary *)data;
+- (BOOL)pp_novaOptionsContainAddToCartAction:(NSArray<NSDictionary<NSString *, id> *> *)options;
+- (nullable PetAccessory *)pp_novaCartProductForConfirmationFromOptions:(NSArray<NSDictionary<NSString *, id> *> *)options
+                                                                 objects:(NSArray *)objects;
+- (void)pp_addNovaCartConfirmationForProduct:(PetAccessory *)product
+                                runtimeTitle:(nullable NSString *)runtimeTitle
+                                    requestID:(nullable NSString *)requestID
+                                   responseID:(nullable NSString *)responseID;
 - (BOOL)pp_shouldUseNovaGenkitCallable;
 
 @end
@@ -1025,6 +1037,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         self.novaHeaderView.transform = CGAffineTransformIdentity;
         self.novaHeaderTopGlowView.alpha = 1.0;
         self.novaChatBottomGlowView.alpha = 1.0;
+        self.novaChatCenterRightGlowView.alpha = 1.0;
     } else {
         [UIView animateWithDuration:0.46
                               delay:0.05
@@ -1042,6 +1055,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                          animations:^{
             self.novaHeaderTopGlowView.alpha = 1.0;
             self.novaChatBottomGlowView.alpha = 1.0;
+            self.novaChatCenterRightGlowView.alpha = 1.0;
         } completion:nil];
     }
 
@@ -1145,6 +1159,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (BOOL)pp_shouldUseNovaGenkitCallable {
     // Keep Nova on the callable bridge while the Genkit backend is the active
     // production path. The legacy ADK runtime remains below as rollback code.
+    return YES;
+}
+
+- (BOOL)pp_shouldStreamNovaCallable {
+    // Use the Firebase Functions Swift SDK streaming consumer to call
+    // novaGenkitChat. Wire-level streaming lets the server start sending the
+    // metadata chunk (card IDs, options) before the answer text completes.
+    // Set to NO to fall back to the buffered PPNovaGenkitService path.
     return YES;
 }
 
@@ -1834,6 +1856,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         message.messageType == ChatMessageTypeNovaProductList) {
         return [self pp_novaOutputTypeForCardObjects:(NSArray *)message.novaProducts];
     }
+    if (message.messageType == ChatMessageTypeCartConfirmation) {
+        return PPNovaOutputTypeCartConfirmation;
+    }
     if (message.messageType == ChatMessageTypeSystem ||
         message.messageType == ChatMessageTypeNovaReview) {
         return PPNovaOutputTypeSystemFallback;
@@ -1843,6 +1868,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (NSString *)pp_novaStableReuseIdentifierForOutputType:(PPNovaOutputType)outputType
                                             messageType:(ChatMessageType)messageType {
+    if (messageType == ChatMessageTypeCartConfirmation) {
+        return [NovaConfirmationCell reuseIdentifier];
+    }
     if (messageType == ChatMessageTypeNovaReview) {
         return [PPNovaReviewMessageCell reuseIdentifier];
     }
@@ -1854,6 +1882,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (PPNovaPresentationAlignment)pp_novaAlignmentForMessage:(ChatMessageModel *)message
                                                outputType:(PPNovaOutputType)outputType {
+    if (outputType == PPNovaOutputTypeCartConfirmation) {
+        return PPNovaPresentationAlignmentAssistant;
+    }
     if (outputType == PPNovaOutputTypeSystemFallback) {
         return PPNovaPresentationAlignmentCentered;
     }
@@ -1873,7 +1904,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         message.text.length > 0;
     style.stableReuseIdentifier = [self pp_novaStableReuseIdentifierForOutputType:outputType
                                                                       messageType:message.messageType];
-    style.renderStyle = style.shouldRenderCards ? @"horizontalCards" : @"bubble";
+    style.renderStyle = outputType == PPNovaOutputTypeCartConfirmation ? @"cartConfirmation" : (style.shouldRenderCards ? @"horizontalCards" : @"bubble");
     style.maxWidth = MAX(tableWidth, 1.0);
 
     UIColor *brand = AppPrimaryClr ?: UIColor.systemOrangeColor;
@@ -1888,6 +1919,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     style.spacing = style.shouldRenderCards ? 10.0 : 8.0;
     style.visualWeight = style.shouldRenderCards ? 0.86 : (style.shouldRenderAssistantText ? 0.70 : 0.62);
     style.priority = style.shouldRenderCards ? 80 : (style.shouldRenderAssistantText ? 70 : 60);
+    if (outputType == PPNovaOutputTypeCartConfirmation) {
+        style.visualWeight = 0.78;
+        style.priority = 76;
+    }
     if (outputType == PPNovaOutputTypeSystemFallback) {
         style.visualWeight = 0.54;
         style.priority = 45;
@@ -2162,16 +2197,114 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     BOOL useGenkit = [self pp_shouldUseNovaGenkitCallable];
     if (useGenkit) {
-        LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_genkit_callable request_id=%@ attempt=%ld",
-                 requestID ?: @"", (long)attempt);
-
-        // PPNovaGenkitService posts to the novaGenkitChat callable over HTTPS with the
-        // signed-in user's Bearer ID token; the server allows a guest fallback when none.
         NSMutableDictionary *conversationContext = [[self pp_currentContextDictionary] mutableCopy];
         NSArray *recentContextHistory = [self pp_currentHistoryArray];
         if (recentContextHistory.count > 0) {
             conversationContext[@"history"] = recentContextHistory;
         }
+
+        BOOL useStreaming = [self pp_shouldStreamNovaCallable];
+        if (useStreaming) {
+            LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_genkit_streaming request_id=%@ attempt=%ld",
+                     requestID ?: @"", (long)attempt);
+
+            // Firebase Functions Swift SDK streaming. PPNovaStreamingService fires
+            // onMetadata before any text is generated (foundation for early-cards
+            // UX, currently logged only) and onTextDelta per token. onComplete
+            // returns the same final {text, metadata} shape the buffered path
+            // delivers — so rendering goes through the same proxy handler.
+            [[PPNovaStreamingService shared] sendMessage:trimmedText
+                                               sessionId:self.novaSessionId
+                                                language:userLang
+                                                 context:conversationContext
+                                              onMetadata:^(NSDictionary *streamMetadata) {
+                LOG_INFO(@"[PPNovaChat][Debug] streaming_metadata_received request_id=%@ keys=%lu",
+                         requestID ?: @"",
+                         (unsigned long)streamMetadata.allKeys.count);
+            }
+                                             onTextDelta:^(NSString *delta) {
+                // Reserved for progressive text rendering. Atomic final render
+                // happens in onComplete until typewriter UX ships.
+            }
+                                              onComplete:^(NSString * _Nullable text, NSDictionary * _Nullable metadata, NSError * _Nullable error) {
+                __strong typeof(weakSelf) self = weakSelf;
+                if (!self || self.dismissed || generation != self.novaRequestGeneration) return;
+
+                if (error) {
+                    // Streaming failed (network blip, SDK protocol mismatch, or
+                    // the backend not yet supporting streaming). Silently fall
+                    // back to the buffered PPNovaGenkitService for THIS turn so
+                    // the user never sees streaming failures rendered as a
+                    // Nova message — Nova must never appear to say a fixed
+                    // iOS-side string.
+                    LOG_ERROR(@"[PPNovaChat][Debug] branch=genkit_streaming_failed_falling_back_to_buffered error=%@ request_id=%@ attempt=%ld",
+                              error.localizedDescription ?: @"unknown",
+                              requestID ?: @"",
+                              (long)attempt);
+                    [[PPNovaGenkitService sharedService] sendMessage:trimmedText
+                                                           sessionId:self.novaSessionId
+                                                            language:userLang
+                                                             context:conversationContext
+                                                          completion:^(NSString * _Nullable bufferedText, NSDictionary * _Nullable bufferedMetadata, NSError * _Nullable bufferedError) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            __strong typeof(weakSelf) self2 = weakSelf;
+                            if (!self2 || self2.dismissed || generation != self2.novaRequestGeneration) return;
+
+                            if (bufferedError) {
+                                // BOTH streaming and buffered failed — only now
+                                // surface the existing error bubble.
+                                LOG_ERROR(@"[PPNovaChat][Debug] branch=genkit_buffered_fallback_failed error=%@ request_id=%@ attempt=%ld",
+                                          bufferedError.localizedDescription ?: @"unknown",
+                                          requestID ?: @"",
+                                          (long)attempt);
+                                BOOL shouldRetry = attempt < PPNovaMaximumRetryAttempts &&
+                                                   [PPNovaChatViewController pp_isRetryableNovaError:bufferedError];
+                                if (shouldRetry) {
+                                    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(PPNovaRetryBackoffDelay * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                                        [self2 pp_dispatchNovaRequest:trimmedText
+                                                       visibleUserText:visibleUserText
+                                                               idToken:idToken
+                                                         appCheckToken:appCheckToken
+                                                               attempt:attempt + 1
+                                                            generation:generation
+                                                             requestID:requestID];
+                                    });
+                                    return;
+                                }
+                                [self2 hideNovaTyping];
+                                NSString *userFacingError = [PPNovaChatViewController pp_userFacingErrorForNovaError:bufferedError] ?: kLang(@"nova_error_unavailable");
+                                [self2 pp_addNovaSystemBubbleIfNew:userFacingError];
+                                return;
+                            }
+
+                            PPAgentMessage *reply = [PPAgentMessage agentText:bufferedText ?: @""];
+                            reply.responseData = bufferedMetadata;
+                            [self2 pp_handleNovaAgentProxyReply:reply
+                                                       userText:(visibleUserText.length > 0 ? visibleUserText : trimmedText)
+                                                      requestID:requestID
+                                             fallbackResponseID:responseID
+                                                     generation:generation];
+                        });
+                    }];
+                    return;
+                }
+
+                PPAgentMessage *reply = [PPAgentMessage agentText:text ?: @""];
+                reply.responseData = metadata;
+                [self pp_handleNovaAgentProxyReply:reply
+                                          userText:(visibleUserText.length > 0 ? visibleUserText : trimmedText)
+                                         requestID:requestID
+                                fallbackResponseID:responseID
+                                        generation:generation];
+            }];
+            return;
+        }
+
+        LOG_INFO(@"[PPNovaChat][Debug] branch=dispatch_genkit_callable request_id=%@ attempt=%ld",
+                 requestID ?: @"", (long)attempt);
+
+        // PPNovaGenkitService posts to the novaGenkitChat callable over HTTPS with the
+        // signed-in user's Bearer ID token; the server allows a guest fallback when none.
         [[PPNovaGenkitService sharedService] sendMessage:trimmedText
                                                sessionId:self.novaSessionId
                                                 language:userLang
@@ -2281,6 +2414,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     NSString *replyText = [reply.text ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
     NSArray<NSDictionary<NSString *, id> *> *replyOptions = [self pp_novaOptionsFromResponseData:responseData];
     BOOL cartConfirmationMustComeFromClient = [self pp_novaResponseRequiresClientCartConfirmation:responseData];
+    NSString *cartConfirmationTitle = cartConfirmationMustComeFromClient ? replyText : @"";
     if (cartConfirmationMustComeFromClient && replyText.length > 0) {
         LOG_INFO(@"[PPNovaChat][CartAction] suppressing_prewrite_cart_text request_id=%@",
                  requestID ?: @"");
@@ -2295,6 +2429,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [self pp_novaSuggestionRefsFromResponseData:responseData replyText:replyText];
     NSUInteger backendResultCount = [self pp_novaBackendResultCountFromResponseData:responseData];
     NSUInteger backendResultRefsCount = [self pp_novaBackendResultRefsCountFromResponseData:responseData];
+    NSString *backendError = [self pp_novaStringFromValue:responseData[@"error"]];
     BOOL cardsRequired = [self pp_novaCardsRequiredFromResponseData:responseData
                                                          resultCount:backendResultCount
                                                      resultRefsCount:backendResultRefsCount];
@@ -2345,6 +2480,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     if (replyText.length == 0 && suggestionRefs.count == 0) {
         [self hideNovaTyping];
+        if (backendError.length > 0) {
+            LOG_WARN(@"[PPNovaChat][AgentProxy] empty_backend_error request_id=%@ response_id=%@ error=%@",
+                     requestID ?: @"",
+                     responseID ?: @"",
+                     backendError);
+            [self pp_addNovaSystemBubbleIfNew:kLang(@"nova_error_unavailable")];
+            return;
+        }
         if (replyOptions.count > 0 || hasCatalogIntent) {
             [self pp_addNovaProductResultTextForRenderedCount:0
                                                  proposedText:nil
@@ -2404,10 +2547,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                      responseID:responseID
                                      generation:generation
                             backendResultCount:backendResultCount
-                         backendResultRefsCount:backendResultRefsCount
-                                cardsRequired:mustRenderCells
-                                  resultSource:resultSource
-                                       options:replyOptions];
+                                     backendResultRefsCount:backendResultRefsCount
+                                            cardsRequired:mustRenderCells
+                                              resultSource:resultSource
+                                                   options:replyOptions
+                                    cartConfirmationTitle:cartConfirmationTitle];
     } else {
         [self hideNovaTyping];
         if (hasCatalogIntent) {
@@ -2847,6 +2991,51 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     return [commerceAction isEqualToString:@"add_to_cart"];
 }
 
+- (BOOL)pp_novaOptionsContainAddToCartAction:(NSArray<NSDictionary<NSString *, id> *> *)options {
+    for (NSDictionary<NSString *, id> *option in options ?: @[]) {
+        if (![option isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSDictionary<NSString *, id> *payload = [option[@"payload"] isKindOfClass:NSDictionary.class] ? option[@"payload"] : nil;
+        NSString *clientAction = [self pp_novaStringFromValue:payload[@"clientAction"]];
+        if ([clientAction isEqualToString:@"add_to_cart"]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+- (nullable PetAccessory *)pp_novaCartProductForConfirmationFromOptions:(NSArray<NSDictionary<NSString *, id> *> *)options
+                                                                 objects:(NSArray *)objects {
+    NSMutableArray<PetAccessory *> *cartableProducts = [NSMutableArray array];
+    for (id object in objects ?: @[]) {
+        if ([object isKindOfClass:PetAccessory.class]) {
+            [cartableProducts addObject:(PetAccessory *)object];
+        }
+    }
+    if (cartableProducts.count == 0) {
+        return nil;
+    }
+
+    for (NSDictionary<NSString *, id> *option in options ?: @[]) {
+        if (![option isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSDictionary<NSString *, id> *payload = [option[@"payload"] isKindOfClass:NSDictionary.class] ? option[@"payload"] : nil;
+        NSString *clientAction = [self pp_novaStringFromValue:payload[@"clientAction"]];
+        NSString *targetID = [self pp_novaStringFromValue:payload[@"targetId"]];
+        if (![clientAction isEqualToString:@"add_to_cart"] || targetID.length == 0) {
+            continue;
+        }
+        for (PetAccessory *product in cartableProducts) {
+            if ([product.accessoryID isEqualToString:targetID]) {
+                return product;
+            }
+        }
+    }
+    return cartableProducts.count == 1 ? cartableProducts.firstObject : nil;
+}
+
 - (NSString *)pp_novaCompactJSONStringFromObject:(id)object {
     if (!object || ![NSJSONSerialization isValidJSONObject:object]) {
         return @"";
@@ -2977,7 +3166,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                      backendResultRefsCount:(NSUInteger)backendResultRefsCount
                              cardsRequired:(BOOL)cardsRequired
                                resultSource:(NSString *)resultSource
-                                    options:(NSArray<NSDictionary<NSString *, id> *> *)options {
+                                    options:(NSArray<NSDictionary<NSString *, id> *> *)options
+                      cartConfirmationTitle:(NSString *)cartConfirmationTitle {
     if (refs.count == 0) {
         if (cardsRequired || backendResultCount > 0) {
             [self pp_handleNovaCellRenderMissingWithRequestID:requestID
@@ -3191,27 +3381,42 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                  resultSource ?: @"server",
                  objects.count > 1 ? @"ChatMessageTypeNovaProductList" : @"ChatMessageTypeNovaProduct");
 
+            BOOL shouldShowCartConfirmation = [self pp_novaOptionsContainAddToCartAction:options];
+            NSArray<NSDictionary<NSString *, id> *> *displayOptions = shouldShowCartConfirmation ? @[] : options;
 	        BOOL optionsPlacedBeforeCards = [self pp_addNovaProductResultTextForRenderedCount:objects.count
 	                                                                             proposedText:fallbackText
 	                                                                                 userText:userText
 	                                                                                   source:@"server"
 	                                                                                requestID:requestID
 	                                                                               responseID:responseID
-	                                                                                  options:options];
+	                                                                                  options:displayOptions];
 	        [self pp_showNovaSuggestionObjects:objects
 	                                    source:@"server"
 	                                 requestID:requestID
 	                                responseID:responseID
 	                                generation:generation];
-	        if (!optionsPlacedBeforeCards && options.count > 0) {
+            PetAccessory *cartConfirmationProduct = shouldShowCartConfirmation
+                ? [self pp_novaCartProductForConfirmationFromOptions:options objects:objects]
+                : nil;
+            if (cartConfirmationProduct) {
+                LOG_INFO(@"[PPNovaChat][CartAction] confirmation_cell_added request_id=%@ response_id=%@ product_id=%@",
+                         requestID ?: @"",
+                         responseID ?: @"",
+                         cartConfirmationProduct.accessoryID ?: @"");
+                [self pp_addNovaCartConfirmationForProduct:cartConfirmationProduct
+                                              runtimeTitle:cartConfirmationTitle
+                                                  requestID:requestID
+                                                 responseID:responseID];
+            }
+	        if (!shouldShowCartConfirmation && !optionsPlacedBeforeCards && displayOptions.count > 0) {
 	            // Options didn't ride on a text bubble before the cards (no AI text,
 	            // or it was suppressed). Surface them on an options-only bubble after
 	            // the cards so the user still has the tappable next-step buttons.
 	            LOG_INFO(@"[PPNovaChat][Options] placement=after_cards request_id=%@ response_id=%@ option_count=%lu",
 	                     requestID ?: @"",
 	                     responseID ?: @"",
-	                     (unsigned long)options.count);
-	            [self addNovaMessage:@"" requestID:requestID responseID:responseID options:options];
+	                     (unsigned long)displayOptions.count);
+	            [self addNovaMessage:@"" requestID:requestID responseID:responseID options:displayOptions];
 	        }
 
         // Do not store card-render markers as model history. They are internal
@@ -5658,6 +5863,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_setNovaHeaderCollapsed:(BOOL)collapsed animated:(BOOL)animated updateInsets:(BOOL)updateInsets {
+    collapsed = NO;
     if (!self.novaHeaderView || self.novaHeaderCollapsed == collapsed) {
         return;
     }
@@ -5924,6 +6130,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (void)pp_handleNovaCloseTapped:(UIButton *)sender {
     self.inputbar.hidden = YES;
     self.novaChatBottomGlowView.hidden = YES;
+    self.novaChatCenterRightGlowView.hidden = YES;
     self.novaHeaderTopGlowView.hidden = YES;
     self.novaHeaderBottomGlowView.hidden = YES;
      [self pp_handleNovaHeaderControlPressUp:sender];
@@ -6997,8 +7204,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     UIButton *surfaceButton = [UIButton buttonWithType:UIButtonTypeCustom];
     surfaceButton.translatesAutoresizingMaskIntoConstraints = NO;
     surfaceButton.backgroundColor = UIColor.clearColor;
-    surfaceButton.accessibilityTraits = UIAccessibilityTraitNone;
+    surfaceButton.accessibilityTraits = UIAccessibilityTraitButton;
     surfaceButton.userInteractionEnabled = NO;
+    [surfaceButton addTarget:self
+                      action:@selector(pp_handleNovaSmartSuggestionPressDown:)
+            forControlEvents:UIControlEventTouchDown];
+    [surfaceButton addTarget:self
+                      action:@selector(pp_handleNovaSmartSuggestionPressCancel:)
+            forControlEvents:UIControlEventTouchCancel | UIControlEventTouchDragExit | UIControlEventTouchUpOutside];
+    [surfaceButton addTarget:self
+                      action:@selector(pp_handleNovaSmartSuggestionPillTapped:)
+            forControlEvents:UIControlEventTouchUpInside];
     [suggestionView.contentView addSubview:surfaceButton];
     self.smartSuggestionSurfaceButton = surfaceButton;
 
@@ -7466,11 +7682,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_handleNovaSmartSuggestionPillTapped:(UIButton *)sender {
-    if ([self pp_hasUserMessageInCurrentNovaSession]) {
+    [self pp_handleNovaSmartSuggestionPressCancel:sender];
+    NSString *visibleSuggestion = [self.smartSuggestionTextLabel.text stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (visibleSuggestion.length == 0) {
         return;
     }
-    [self pp_handleNovaSmartSuggestionPressCancel:sender];
-    [self pp_showNovaSmartSuggestionPickerAnimated:YES];
+    [self pp_handleNovaSubmittedText:visibleSuggestion displayText:visibleSuggestion];
 }
 
 - (void)pp_handleNovaSmartSuggestionPickerTap:(UIButton *)sender {
@@ -7636,6 +7853,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self.tableView registerClass:[PPNovaMessageBubbleCell class] forCellReuseIdentifier:[PPNovaMessageBubbleCell reuseIdentifier]];
     [self.tableView registerClass:[PPNovaProductMessageCell class] forCellReuseIdentifier:[PPNovaProductMessageCell reuseIdentifier]];
     [self.tableView registerClass:[PPNovaReviewMessageCell class] forCellReuseIdentifier:[PPNovaReviewMessageCell reuseIdentifier]];
+    [self.tableView registerClass:[NovaConfirmationCell class] forCellReuseIdentifier:[NovaConfirmationCell reuseIdentifier]];
 
     self.tableView.rowHeight = UITableViewAutomaticDimension;
     self.tableView.estimatedRowHeight = 92;
@@ -7889,6 +8107,14 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         return cell;
     }
 
+    if (msg.messageType == ChatMessageTypeCartConfirmation) {
+        NovaConfirmationCell *cell = [tableView dequeueReusableCellWithIdentifier:presentation.style.stableReuseIdentifier forIndexPath:indexPath];
+        cell.delegate = self;
+        cell.accessibilityIdentifier = presentation.renderKey;
+        [cell configureWithMessage:msg maxWidth:presentation.style.maxWidth];
+        return cell;
+    }
+
     PPNovaMessageBubbleCell *cell = [tableView dequeueReusableCellWithIdentifier:presentation.style.stableReuseIdentifier forIndexPath:indexPath];
     cell.delegate = self;
     cell.accessibilityIdentifier = presentation.renderKey;
@@ -7920,6 +8146,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     if (msg.messageType == ChatMessageTypeNovaReview) {
         return 130.0;
+    }
+    if (msg.messageType == ChatMessageTypeCartConfirmation) {
+        return 178.0;
     }
     return 102.0;
 }
@@ -8224,7 +8453,10 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [self addUserMessage:visibleTitle requestID:requestID];
         PetAccessory *product = [self pp_novaCartProductForStructuredAction:payload];
         if (product) {
-            [self pp_handleAddToCartForProduct:product requestID:requestID responseID:responseID];
+            [self pp_addNovaCartConfirmationForProduct:product
+                                          runtimeTitle:nil
+                                              requestID:requestID
+                                             responseID:responseID];
         } else {
             [PPHUD showError:kLang(@"nova_cart_item_unavailable")];
         }
@@ -8327,6 +8559,47 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     return nil;
 }
 
+- (void)pp_addNovaCartConfirmationForProduct:(PetAccessory *)product
+                                runtimeTitle:(NSString *)runtimeTitle
+                                    requestID:(NSString *)requestID
+                                   responseID:(NSString *)responseID {
+    if (![product isKindOfClass:PetAccessory.class]) {
+        return;
+    }
+    ChatMessageModel *msg = [[ChatMessageModel alloc] init];
+    msg.ID = [[NSUUID UUID] UUIDString];
+    msg.messageType = ChatMessageTypeCartConfirmation;
+    msg.text = [runtimeTitle stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet] ?: @"";
+    msg.novaProducts = @[product];
+    msg.novaRequestID = requestID;
+    msg.novaResponseID = responseID;
+    msg.timestamp = [NSDate date];
+    msg.senderID = @"nova_bot_id";
+    msg.status = ChatMessageStatusSent;
+    self.pendingCartProduct = product;
+    [self pp_appendNovaMessageModel:msg updateReason:@"insert_cart_confirmation"];
+}
+
+- (void)pp_removeNovaConfirmationCell:(NovaConfirmationCell *)cell {
+    NSIndexPath *indexPath = cell ? [self.tableView indexPathForCell:cell] : nil;
+    if (!indexPath || indexPath.row < 0 || indexPath.row >= (NSInteger)self.messages.count) {
+        return;
+    }
+    ChatMessageModel *message = self.messages[indexPath.row];
+    if (message.messageType != ChatMessageTypeCartConfirmation) {
+        return;
+    }
+
+    NSInteger oldRowCount = [self.tableView numberOfRowsInSection:0];
+    [self.messages removeObjectAtIndex:(NSUInteger)indexPath.row];
+    [self.tableView beginUpdates];
+    if (oldRowCount > indexPath.row) {
+        [self.tableView deleteRowsAtIndexPaths:@[indexPath] withRowAnimation:UITableViewRowAnimationFade];
+    }
+    [self.tableView endUpdates];
+    [self updateNovaEmptyStateAnimated:YES];
+}
+
 - (void)pp_handleAddToCartForProduct:(PetAccessory *)product {
     [self pp_handleAddToCartForProduct:product requestID:nil responseID:nil];
 }
@@ -8358,14 +8631,90 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
         [PPHUD dismiss];
         if (success) {
-            NSString *msg = kLang(@"nova_added_to_cart");
-            [self addNovaMessage:msg requestID:requestID responseID:responseID];
+            [PPHUD showSuccess:kLang(@"nova_added_to_cart")];
             self.pendingCartProduct = nil; // Clear after adding
+            [self pp_sendNovaCartConfirmationFollowUpForProduct:product];
         } else {
-            NSString *msg = kLang(@"nova_add_to_cart_failed");
-            [self addNovaMessage:msg requestID:requestID responseID:responseID];
+            [PPHUD showError:kLang(@"nova_add_to_cart_failed")];
         }
     });
+}
+
+- (void)pp_sendNovaCartConfirmationFollowUpForProduct:(PetAccessory *)product {
+    if (![product isKindOfClass:PetAccessory.class] || self.dismissed || self.novaIsRequestPending) {
+        return;
+    }
+    if (![self pp_shouldUseNovaGenkitCallable]) {
+        return;
+    }
+
+    NSString *requestID = [self pp_newNovaScopedIDWithPrefix:@"request"];
+    NSString *responseID = [self pp_novaResponseIDFromResponseData:nil
+                                                          requestID:requestID
+                                                             source:@"cart_event_follow_up"];
+    NSString *languageCode = [[Language currentLanguageCode] isEqualToString:@"en"] ? @"en" : @"ar";
+    NSString *eventMessage = [languageCode isEqualToString:@"ar"]
+        ? @"اكتملت إضافة المنتج إلى السلة"
+        : @"cart action completed";
+
+    NSMutableDictionary *conversationContext = [[self pp_currentContextDictionary] mutableCopy];
+    NSArray *recentContextHistory = [self pp_currentHistoryArray];
+    if (recentContextHistory.count > 0) {
+        conversationContext[@"history"] = recentContextHistory;
+    }
+    NSMutableDictionary *clientEvent = [@{
+        @"type": @"cart_add_completed",
+        @"status": @"completed",
+        @"targetKind": product.isPetMedicine ? @"medicine" : @"product"
+    } mutableCopy];
+    if (product.accessoryID.length > 0) {
+        clientEvent[@"targetId"] = product.accessoryID;
+    }
+    if (product.name.length > 0) {
+        clientEvent[@"productName"] = product.name;
+    }
+    conversationContext[@"clientEvent"] = clientEvent.copy;
+
+    NSUInteger generation = self.novaRequestGeneration + 1;
+    self.novaRequestGeneration = generation;
+    [self pp_prepareNovaRenderStateForRequestID:requestID cachedProductsBeforeSend:self.lastShownProducts.count];
+    self.activeNovaResponseID = responseID;
+    self.novaIsRequestPending = YES;
+    self.novaHasSentFirstMessage = YES;
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.novaIsRequestPending && generation == self.novaRequestGeneration) {
+            [self showNovaTyping];
+        }
+    });
+
+    __weak typeof(self) weakSelf = self;
+    [[PPNovaGenkitService sharedService] sendMessage:eventMessage
+                                           sessionId:self.novaSessionId
+                                            language:languageCode
+                                             context:conversationContext.copy
+                                          completion:^(NSString * _Nullable text, NSDictionary * _Nullable metadata, NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self || self.dismissed || generation != self.novaRequestGeneration) {
+                return;
+            }
+            if (error) {
+                LOG_WARN(@"[PPNovaChat][CartAction] follow_up_failed request_id=%@ error=%@",
+                         requestID ?: @"",
+                         error.localizedDescription ?: @"unknown");
+                [self hideNovaTyping];
+                return;
+            }
+            PPAgentMessage *reply = [PPAgentMessage agentText:text ?: @""];
+            reply.responseData = metadata;
+            [self pp_handleNovaAgentProxyReply:reply
+                                      userText:eventMessage
+                                     requestID:requestID
+                            fallbackResponseID:responseID
+                                    generation:generation];
+        });
+    }];
 }
 
 - (void)addUserMessage:(NSString *)text {
@@ -8806,7 +9155,38 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (![item isKindOfClass:PetAccessory.class]) {
         return;
     }
-    [self pp_handleAddToCartForProduct:(PetAccessory *)item];
+    NSString *requestID = [self pp_newNovaScopedIDWithPrefix:@"request"];
+    NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"product_card_cart_action"];
+    [self pp_addNovaCartConfirmationForProduct:(PetAccessory *)item
+                                  runtimeTitle:nil
+                                      requestID:requestID
+                                     responseID:responseID];
+}
+
+#pragma mark - NovaConfirmationCellDelegate
+
+- (void)novaConfirmationCellDidConfirm:(NovaConfirmationCell *)cell product:(PetAccessory *)product {
+    if (![product isKindOfClass:PetAccessory.class]) {
+        [PPHUD showError:kLang(@"nova_cart_item_unavailable")];
+        [self pp_removeNovaConfirmationCell:cell];
+        return;
+    }
+    NSIndexPath *indexPath = [self.tableView indexPathForCell:cell];
+    ChatMessageModel *message = (indexPath && indexPath.row >= 0 && indexPath.row < (NSInteger)self.messages.count)
+        ? self.messages[indexPath.row]
+        : nil;
+    NSString *requestID = message.novaRequestID;
+    NSString *responseID = message.novaResponseID;
+    [self pp_removeNovaConfirmationCell:cell];
+    [self pp_handleAddToCartForProduct:product requestID:requestID responseID:responseID];
+}
+
+- (void)novaConfirmationCellDidCancel:(NovaConfirmationCell *)cell {
+    UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+    [feedback prepare];
+    [feedback impactOccurred];
+    [self pp_removeNovaConfirmationCell:cell];
+    self.pendingCartProduct = nil;
 }
 
 - (void)novaProductCell_didTapProduct:(id)item {

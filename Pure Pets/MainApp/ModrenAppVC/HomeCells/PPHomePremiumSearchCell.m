@@ -30,6 +30,7 @@ static NSString * const PPPSBLeadingFireLottiePrimaryPath = @"LottieAnimations/F
 static NSString * const PPPSBLeadingFireLottieRootPath = @"Fire.json";
 static NSString * const PPPSBSignalPulseAnimationKey = @"pp.home.premiumSearch.signalPulse";
 static NSString * const PPPSBIconBreathAnimationKey = @"pp.home.premiumSearch.iconBreath";
+static NSString * const PPPSBSearchHaloPulseAnimationKey = @"pp.home.premiumSearch.searchHaloPulse";
 
 static NSArray<NSString *> *PPPSB_SmartSearchPlaceholdersForWidth(CGFloat width)
 {
@@ -110,6 +111,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     UILabel *_placeholderLabel;
     UIView *_trailingSearchView;
     UIImageView *_trailingSearchIconView;
+    CAShapeLayer *_searchIconHaloLayer;
     BOOL _signalAnimationsConfigured;
     NSUInteger _placeholderColorIndex;
     NSUInteger _placeholderTransitionGeneration;
@@ -337,6 +339,20 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     [chromeView addSubview:trailingSearchView];
     _trailingSearchView = trailingSearchView;
 
+    CAShapeLayer *searchIconHaloLayer = [CAShapeLayer layer];
+    searchIconHaloLayer.opacity = 0.0f;
+    searchIconHaloLayer.fillColor = (AppPrimaryClr ?: UIColor.systemOrangeColor).CGColor;
+    searchIconHaloLayer.actions = @{
+        @"opacity": [NSNull null],
+        @"path": [NSNull null],
+        @"fillColor": [NSNull null],
+        @"transform": [NSNull null],
+        @"bounds": [NSNull null],
+        @"position": [NSNull null]
+    };
+    [trailingSearchView.layer insertSublayer:searchIconHaloLayer atIndex:0];
+    _searchIconHaloLayer = searchIconHaloLayer;
+
     UIImageView *trailingSearchIconView =
         [[UIImageView alloc] initWithImage:[UIImage pp_symbolNamed:@"magnifyingglass"
                                                          pointSize:16.0
@@ -432,6 +448,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     _leadingChipView.layer.cornerRadius = CGRectGetHeight(_leadingChipView.bounds) * 0.5;
     _trailingSearchView.layer.cornerRadius = CGRectGetHeight(_trailingSearchView.bounds) * 0.5;
     _signalDotView.layer.cornerRadius = 2.75;
+    [self pp_layoutSearchIconHaloLayer];
     self.layer.shadowPath = nil;
     [self pp_updateLeadingFireLottiePlayback];
 }
@@ -477,23 +494,68 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     signalPulse.animations = @[pulseScale, pulseOpacity];
     [_signalDotView.layer addAnimation:signalPulse forKey:PPPSBSignalPulseAnimationKey];
 
-    CAKeyframeAnimation *iconBreath = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
-    iconBreath.values = @[@(1.0), @(1.055), @(1.0)];
-    iconBreath.keyTimes = @[@(0.0), @(0.44), @(1.0)];
-    iconBreath.duration = 4.8;
-    iconBreath.repeatCount = HUGE_VALF;
-    iconBreath.timingFunctions = @[
-        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut],
-        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]
-    ];
-    [_trailingSearchIconView.layer addAnimation:iconBreath forKey:PPPSBIconBreathAnimationKey];
+   
 }
 
 - (void)pp_stopAmbientMotion
 {
     [_signalDotView.layer removeAnimationForKey:PPPSBSignalPulseAnimationKey];
-    [_trailingSearchIconView.layer removeAnimationForKey:PPPSBIconBreathAnimationKey];
+     [_searchIconHaloLayer removeAnimationForKey:PPPSBSearchHaloPulseAnimationKey];
     _signalAnimationsConfigured = NO;
+}
+
+- (void)pp_layoutSearchIconHaloLayer
+{
+    if (!_searchIconHaloLayer || CGRectIsEmpty(_trailingSearchView.bounds)) {
+        return;
+    }
+
+    CGRect bounds = _trailingSearchView.bounds;
+    CGFloat diameter = MIN(CGRectGetWidth(bounds), CGRectGetHeight(bounds)) - 2.0;
+    CGRect haloRect = CGRectMake((CGRectGetWidth(bounds) - diameter) * 0.5,
+                                 (CGRectGetHeight(bounds) - diameter) * 0.5,
+                                 diameter,
+                                 diameter);
+    _searchIconHaloLayer.frame = bounds;
+    _searchIconHaloLayer.path =
+        [UIBezierPath bezierPathWithOvalInRect:haloRect].CGPath;
+}
+
+- (void)pp_performSearchIconFocusPulseWithColor:(UIColor *)color
+{
+    if (!_trailingSearchView || !_trailingSearchIconView || UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    UIColor *accent = color ?: (AppPrimaryClr ?: UIColor.systemOrangeColor);
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    _searchIconHaloLayer.fillColor = [accent colorWithAlphaComponent:0.18].CGColor;
+    _searchIconHaloLayer.opacity = 0.0f;
+    [CATransaction commit];
+
+    [_searchIconHaloLayer removeAnimationForKey:PPPSBSearchHaloPulseAnimationKey];
+    CABasicAnimation *haloOpacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+    haloOpacity.fromValue = @(0.0);
+    haloOpacity.toValue = @(1.0);
+    haloOpacity.duration = 0.18;
+    haloOpacity.autoreverses = YES;
+    haloOpacity.timingFunction =
+        [CAMediaTimingFunction functionWithControlPoints:0.20f :0.0f :0.0f :1.0f];
+
+    CABasicAnimation *haloScale = [CABasicAnimation animationWithKeyPath:@"transform.scale"];
+    haloScale.fromValue = @(0.72);
+    haloScale.toValue = @(1.18);
+    haloScale.duration = 0.36;
+    haloScale.timingFunction =
+        [CAMediaTimingFunction functionWithControlPoints:0.20f :0.0f :0.0f :1.0f];
+
+    CAAnimationGroup *haloGroup = [CAAnimationGroup animation];
+    haloGroup.duration = 0.42;
+    haloGroup.animations = @[haloOpacity, haloScale];
+    haloGroup.removedOnCompletion = YES;
+    [_searchIconHaloLayer addAnimation:haloGroup forKey:PPPSBSearchHaloPulseAnimationKey];
+
 }
 
 - (UIColor *)pp_nextPlaceholderColor
@@ -556,6 +618,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
         _placeholderTransitionGeneration++;
         [_placeholderSettleAnimator stopAnimation:YES];
         _placeholderSettleAnimator = nil;
+        [_searchIconHaloLayer removeAnimationForKey:PPPSBSearchHaloPulseAnimationKey];
         _placeholderLabel.text = safeText;
         _placeholderLabel.textColor = nextColor;
         _placeholderLabel.transform = CGAffineTransformIdentity;
@@ -563,8 +626,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
         _signalRowView.alpha = 1.0;
         _leadingChipView.transform = CGAffineTransformIdentity;
         _trailingSearchView.transform = CGAffineTransformIdentity;
-        _trailingSearchIconView.transform = CGAffineTransformIdentity;
-        return;
+         return;
     }
 
     [self pp_performPremiumPlaceholderTransitionToText:safeText
@@ -583,16 +645,24 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
 
     BOOL rtl = PPPSB_CurrentSemantic() == UISemanticContentAttributeForceRightToLeft;
     CGFloat inlineDirection = rtl ? -1.0 : 1.0;
+    [self pp_performSearchIconFocusPulseWithColor:textColor];
 
-    [UIView animateWithDuration:0.16
+    [UIView animateWithDuration:0.18
                           delay:0.0
                         options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, -4.0);
+        CGAffineTransform exitTransform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, -5.0),
+                                                                  CGAffineTransformMakeScale(0.982, 0.982));
+        self->_placeholderLabel.transform = exitTransform;
         self->_placeholderLabel.alpha = 0.0;
-        self->_signalRowView.alpha = 0.74;
+        self->_signalRowView.alpha = 0.64;
         if (accentMotion) {
-            self->_trailingSearchIconView.transform = CGAffineTransformMakeTranslation(inlineDirection * 1.5, 0.0);
+            self->_leadingChipView.transform = CGAffineTransformMakeScale(0.972, 0.972);
+            self->_trailingSearchView.transform = CGAffineTransformMakeScale(0.955, 0.955);
+            CGAffineTransform iconExit =
+                CGAffineTransformConcat(CGAffineTransformMakeTranslation(inlineDirection * 2.0, 0.0),
+                                        CGAffineTransformMakeScale(0.94, 0.94));
+           
         }
     } completion:^(__unused BOOL finished) {
         if (generation != self->_placeholderTransitionGeneration) {
@@ -601,17 +671,23 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
 
         self->_placeholderLabel.text = safeText;
         self->_placeholderLabel.textColor = textColor;
-        self->_placeholderLabel.transform = CGAffineTransformMakeTranslation(0.0, 7.0);
+        self->_placeholderLabel.transform =
+            CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 8.0),
+                                    CGAffineTransformMakeScale(1.012, 1.012));
+        self->_placeholderLabel.alpha = 0.0;
         if (accentMotion) {
-            self->_leadingChipView.transform = CGAffineTransformMakeScale(1.026, 1.026);
-            self->_trailingSearchView.transform = CGAffineTransformMakeScale(1.024, 1.024);
-            self->_trailingSearchIconView.transform = CGAffineTransformMakeTranslation(-inlineDirection * 1.2, 0.0);
+            self->_leadingChipView.transform = CGAffineTransformMakeScale(1.032, 1.032);
+            self->_trailingSearchView.transform = CGAffineTransformMakeScale(1.055, 1.055);
+            CGAffineTransform iconEnter =
+                CGAffineTransformConcat(CGAffineTransformMakeTranslation(-inlineDirection * 1.5, 0.0),
+                                        CGAffineTransformMakeScale(1.05, 1.05));
+          
         }
 
         UIViewPropertyAnimator *settleAnimator =
-            [[UIViewPropertyAnimator alloc] initWithDuration:0.42
-                                                controlPoint1:CGPointMake(0.4, 0.0)
-                                                controlPoint2:CGPointMake(0.2, 1.0)
+            [[UIViewPropertyAnimator alloc] initWithDuration:0.48
+                                                controlPoint1:CGPointMake(0.20, 0.0)
+                                                controlPoint2:CGPointMake(0.0, 1.0)
                                                    animations:^{
             self->_placeholderLabel.transform = CGAffineTransformIdentity;
             self->_placeholderLabel.alpha = 1.0;
@@ -690,6 +766,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     _trailingSearchView.backgroundColor = AppClearClr;
     _trailingSearchView.layer.borderWidth = 0.0f;
     [_trailingSearchView pp_setBorderColor:[textColor colorWithAlphaComponent:isDark ? 0.18 : 0.14]];
+    _searchIconHaloLayer.fillColor = [accentColor colorWithAlphaComponent:isDark ? 0.22 : 0.18].CGColor;
     _trailingSearchIconView.image = [UIImage pp_symbolNamed:@"magnifyingglass"
                                                   pointSize:16.0
                                                      weight:UIImageSymbolWeightSemibold
@@ -853,12 +930,14 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
     _placeholderTransitionGeneration++;
     [_placeholderSettleAnimator stopAnimation:YES];
     _placeholderSettleAnimator = nil;
+    [_searchIconHaloLayer removeAnimationForKey:PPPSBSearchHaloPulseAnimationKey];
     [self pp_stopAmbientMotion];
     _chromeView.transform = CGAffineTransformIdentity;
     _chromeView.alpha = 1.0;
     _leadingChipView.transform = CGAffineTransformIdentity;
     _trailingSearchView.transform = CGAffineTransformIdentity;
     _trailingSearchIconView.transform = CGAffineTransformIdentity;
+    _searchIconHaloLayer.opacity = 0.0f;
 #if PPPSB_HAS_LOTTIE
     if (_leadingLottieView && [_leadingLottieSignature hasPrefix:@"loaded"]) {
         _leadingLottieView.loopAnimation = YES;

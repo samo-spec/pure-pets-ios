@@ -2763,8 +2763,13 @@
 "nova_product_results" = "اختيارات مناسبة";
 "nova_product_count_format" = "%ld عنصر";
 "nova_add_to_cart_which" = "أي منتج أضيفه للسلة؟";
+"nova_cart_confirmation_title" = "تأكيد الإضافة إلى السلة";
+"nova_cart_confirmation_subtitle_format" = "سيتم إضافة %@ بعد تأكيدك.";
+"nova_cart_confirmation_item" = "هذا المنتج";
+"nova_cart_confirm_add" = "إضافة للسلة";
+"nova_cart_confirm_cancel" = "إلغاء";
 "nova_added_to_cart" = "تمت الإضافة للسلة";
-"nova_add_to_cart_failed" = "عذراً، لم أتمكن من الإضافة للسلة. حاول مرة أخرى.";
+"nova_add_to_cart_failed" = "لم تتم الإضافة للسلة. حاول مرة أخرى.";
 "nova_cart_item_unavailable" = "لم يعد هذا المنتج متاحاً للإضافة. يرجى اختياره مرة أخرى من أحدث النتائج.";
 "nova_close_accessibility" = "إغلاق";
 "nova_error_auth" = "تعذّر التحقق من الجلسة. حاول مرة أخرى.";

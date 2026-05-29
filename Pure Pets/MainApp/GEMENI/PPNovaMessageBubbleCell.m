@@ -1286,11 +1286,10 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                                                    [UIColor colorWithWhite:1.0 alpha:0.46]);
     UIColor *assistantBorder = PPNovaCellDynamicColor([brand colorWithAlphaComponent:0.16],
                                                      [UIColor.whiteColor colorWithAlphaComponent:0.12]);
-    UIColor *userFill = PPNovaCellDynamicColor([UIColor colorWithRed:0.78 green:0.37 blue:0.27 alpha:1.0],
-                                              [UIColor colorWithRed:0.40 green:0.34 blue:0.70 alpha:1.0]);
+    UIColor *userFill = brand;
     UIColor *userText = UIColor.whiteColor;
     UIColor *userMeta = [UIColor.whiteColor colorWithAlphaComponent:0.76];
-    UIColor *userBorder = PPNovaCellDynamicColor([UIColor.whiteColor colorWithAlphaComponent:0.28],
+    UIColor *userBorder = PPNovaCellDynamicColor([AppPrimaryClrShiner colorWithAlphaComponent:0.88],
                                                 [UIColor.whiteColor colorWithAlphaComponent:0.16]);
 
     UIVisualEffect *assistantEffect = nil;

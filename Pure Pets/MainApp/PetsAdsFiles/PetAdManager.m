@@ -131,6 +131,22 @@ static NSArray<PetAd *> *PPFilterAdsByVisibleCategories(NSArray<PetAd *> *ads) {
         }]];
 }
 
+static NSDate *PPAdSortDate(PetAd *ad) {
+    return ad.postedDate ?: ad.createdAt ?: ad.updatedAt ?: [NSDate distantPast];
+}
+
+static NSArray<PetAd *> *PPSortedAdsNewestFirst(NSArray<PetAd *> *ads) {
+    return [ads sortedArrayUsingComparator:^NSComparisonResult(PetAd *left, PetAd *right) {
+        NSDate *leftDate = PPAdSortDate(left);
+        NSDate *rightDate = PPAdSortDate(right);
+        NSComparisonResult dateResult = [rightDate compare:leftDate];
+        if (dateResult != NSOrderedSame) {
+            return dateResult;
+        }
+        return [(left.adID ?: @"") compare:(right.adID ?: @"") options:NSCaseInsensitiveSearch];
+    }];
+}
+
 static NSString *PPItemCollectionPathForFavoritesCollection(NSString *favoritesCollection) {
     NSString *canonical = PPCanonicalFavoritesCollection(favoritesCollection);
     if (canonical.length == 0) return nil;
@@ -331,8 +347,6 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
                    isEqualTo:@(subKindID)];
     }
 
-    query = [query queryOrderedByField:@"postedDate" descending:YES];
-
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
         if (error || !snapshot) {
@@ -357,7 +371,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(PPFilterAdsByVisibleCategories(ads));
+                if (completion) completion(PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(ads)));
             });
         });
     }];
@@ -366,9 +380,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
 
 - (void)fetchAdsForAllMainKinds:(void (^)(NSArray<PetAd *> *ads))completion
 {
-    FIRQuery *query =
-    [PPPublicPetAdsQuery([self.db collectionWithPath:kPetAdsCollection])
-     queryOrderedByField:@"postedDate" descending:YES];
+    FIRQuery *query = PPPublicPetAdsQuery([self.db collectionWithPath:kPetAdsCollection]);
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
@@ -393,7 +405,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(PPFilterAdsByVisibleCategories(ads));
+                if (completion) completion(PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(ads)));
             });
         });
     }];
@@ -616,10 +628,7 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
         return;
     }
 
-    FIRQuery *query =
-    [[PPPublicPetAdsQuery([self.db collectionWithPath:kPetAdsCollection])
-      queryOrderedByField:@"postedDate" descending:YES]
-     queryLimitedTo:limit];
+    FIRQuery *query = PPPublicPetAdsQuery([self.db collectionWithPath:kPetAdsCollection]);
 
     [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
 
@@ -643,7 +652,11 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
             }
 
             dispatch_async(dispatch_get_main_queue(), ^{
-                if (completion) completion(PPFilterAdsByVisibleCategories(ads));
+                NSArray<PetAd *> *sorted = PPSortedAdsNewestFirst(PPFilterAdsByVisibleCategories(ads));
+                if (sorted.count > (NSUInteger)limit) {
+                    sorted = [sorted subarrayWithRange:NSMakeRange(0, (NSUInteger)limit)];
+                }
+                if (completion) completion(sorted);
             });
         });
     }];
@@ -1746,28 +1759,56 @@ if (completion) completion(ad, nil);
 }
 
 + (void)fetchAdsWithIDs:(NSArray<NSString *> *)adIDs completion:(void (^)(NSArray<PetAd *> *ads))completion {
-    if (adIDs.count == 0) {
+    NSMutableOrderedSet<NSString *> *cleanIDs = [NSMutableOrderedSet orderedSet];
+    for (NSString *adID in adIDs) {
+        NSString *cleanID = [adID isKindOfClass:NSString.class]
+            ? [adID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet]
+            : @"";
+        if (cleanID.length > 0) {
+            [cleanIDs addObject:cleanID];
+        }
+    }
+
+    if (cleanIDs.count == 0) {
         dispatch_async(dispatch_get_main_queue(), ^{ completion(@[]); });
         return;
     }
 
     FIRFirestore *db = [FIRFirestore firestore];
-    NSMutableArray<PetAd *> *results = [NSMutableArray array];
+    NSMutableDictionary<NSString *, PetAd *> *resultsByID = [NSMutableDictionary dictionary];
+    dispatch_queue_t syncQueue = dispatch_queue_create("com.purepets.petads.fetchByIDs", DISPATCH_QUEUE_SERIAL);
     dispatch_group_t group = dispatch_group_create();
 
-    for (NSString *adID in adIDs) {
+    for (NSString *adID in cleanIDs.array) {
         dispatch_group_enter(group);
         [[[db collectionWithPath:kPetAdsCollection] documentWithPath:adID]
          getDocumentWithCompletion:^(FIRDocumentSnapshot *doc, NSError *error) {
-            if (doc.exists) {
-                [results addObject:[PetAd adFromFirestoreData:doc.data documentID:doc.documentID]];
+            if (error) {
+                NSLog(@"[PetAdManager] fetchAdsWithIDs failed id=%@ error=%@", adID, error.localizedDescription);
+            }
+            if (doc.exists && doc.data) {
+                PetAd *ad = [PetAd adFromFirestoreData:doc.data documentID:doc.documentID];
+                if (ad && !ad.isDeleted && !ad.isBlocked) {
+                    dispatch_sync(syncQueue, ^{
+                        resultsByID[doc.documentID] = ad;
+                    });
+                }
             }
             dispatch_group_leave(group);
         }];
     }
 
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-        completion([results copy]);
+        NSMutableArray<PetAd *> *ordered = [NSMutableArray arrayWithCapacity:cleanIDs.count];
+        for (NSString *adID in cleanIDs.array) {
+            PetAd *ad = resultsByID[adID];
+            if (ad) {
+                [ordered addObject:ad];
+            } else {
+                NSLog(@"[PetAdManager] fetchAdsWithIDs unresolved id=%@", adID);
+            }
+        }
+        completion(ordered.copy);
     });
 }
 

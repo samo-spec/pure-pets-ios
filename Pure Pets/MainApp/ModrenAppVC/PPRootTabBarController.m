@@ -28,6 +28,7 @@
 #import "SettingVC.h"
 #import "PPNotificationsHubViewController.h"
 #import "PPNovaChatViewController.h"
+#import <objc/runtime.h>
 
 // ...
 
@@ -70,6 +71,9 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 @property (nonatomic, strong, nullable) NSLayoutConstraint *blockedOverlayTopConstraint;
 @property (nonatomic, assign) NSInteger pp_lastSelectedIndex;
 @property (nonatomic, strong, nullable) UIViewController *addActionPlaceholderViewController;
+- (CGFloat)pp_bottomNavigationContentClearance;
+- (void)pp_applyBottomNavigationClearanceToVisibleLists;
+- (void)pp_applyBottomNavigationClearance:(CGFloat)clearance toListViewsInView:(UIView *)view;
 - (UIViewController *)pp_makeAddActionPlaceholderViewController;
 - (UIViewController *)pp_makeSettingsRootViewController;
 - (nullable UINavigationController *)pp_preferredNavigationControllerForSearchExperience;
@@ -111,6 +115,10 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 }
 @end
 
+static char PPListBaseContentInsetKey;
+static char PPListBaseIndicatorInsetKey;
+static char PPListAppliedBottomClearanceKey;
+
 // Gradient-backed view: the layer auto-resizes with the view's bounds, so the
 // bottom fade tracks layout without manual frame updates.
 @interface PPBottomFadeView : UIView
@@ -128,6 +136,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     if (self.premiumTabItems.count > 0) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
+    [self pp_applyBottomNavigationClearanceToVisibleLists];
 }
 
 - (void)viewDidLoad {
@@ -381,6 +390,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     [self pp_updateBlockedOverlayTopInset];
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
     [self pp_applyPremiumTabSelectionAnimated:NO];
+    [self pp_applyBottomNavigationClearanceToVisibleLists];
     
 }
 
@@ -1269,6 +1279,121 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
     [self.view bringSubviewToFront:dockView];
     [self.view bringSubviewToFront:self.leadingTabButton];
     [self.view bringSubviewToFront:self.premiumNovaButton];
+    [self pp_applyBottomNavigationClearanceToVisibleLists];
+}
+
+- (CGFloat)pp_bottomNavigationContentClearance
+{
+    if (self.premiumBottomNavigationHidden) {
+        return 0.0;
+    }
+
+    CGFloat extraBreathingRoom = 12.0;
+    if (PPIOS26() && self.leadingTabButton && !self.leadingTabButton.hidden) {
+        CGRect buttonFrame = [self.leadingTabButton.superview convertRect:self.leadingTabButton.frame
+                                                                    toView:self.view];
+        CGRect dockFrame = CGRectNull;
+        if (self.premiumTabDockView && !self.premiumTabDockView.hidden) {
+            dockFrame = [self.premiumTabDockView.superview convertRect:self.premiumTabDockView.frame
+                                                                toView:self.view];
+        }
+
+        CGRect visibleBarFrame = CGRectIsNull(dockFrame) ? buttonFrame : CGRectUnion(buttonFrame, dockFrame);
+        if (!CGRectIsEmpty(visibleBarFrame)) {
+            CGFloat safeBottomY = CGRectGetMaxY(self.view.bounds) - self.view.safeAreaInsets.bottom;
+            CGFloat overlapAboveSafeArea = MAX(0.0, safeBottomY - CGRectGetMinY(visibleBarFrame));
+            return ceil(overlapAboveSafeArea + extraBreathingRoom);
+        }
+    }
+
+    if (!self.tabBar.hidden && self.tabBar.alpha > 0.01) {
+        return extraBreathingRoom;
+    }
+
+    return 0.0;
+}
+
+- (void)pp_applyBottomNavigationClearanceToVisibleLists
+{
+    CGFloat clearance = [self pp_bottomNavigationContentClearance];
+    for (UIViewController *controller in self.viewControllers) {
+        if (!controller.isViewLoaded) {
+            continue;
+        }
+        [self pp_applyBottomNavigationClearance:clearance toListViewsInView:controller.view];
+    }
+}
+
+- (void)pp_applyBottomNavigationClearance:(CGFloat)clearance toListViewsInView:(UIView *)view
+{
+    if (!view) {
+        return;
+    }
+
+    BOOL isSupportedList = [view isKindOfClass:UITableView.class] || [view isKindOfClass:UICollectionView.class];
+    if (isSupportedList) {
+        UIScrollView *scrollView = (UIScrollView *)view;
+        if (CGRectGetHeight(scrollView.bounds) >= 180.0) {
+            NSValue *baseContentValue = objc_getAssociatedObject(scrollView, &PPListBaseContentInsetKey);
+            NSValue *baseIndicatorValue = objc_getAssociatedObject(scrollView, &PPListBaseIndicatorInsetKey);
+            UIEdgeInsets baseContentInset = baseContentValue ? baseContentValue.UIEdgeInsetsValue : scrollView.contentInset;
+            UIEdgeInsets baseIndicatorInset = baseIndicatorValue ? baseIndicatorValue.UIEdgeInsetsValue : scrollView.scrollIndicatorInsets;
+            NSNumber *previousClearanceValue = objc_getAssociatedObject(scrollView, &PPListAppliedBottomClearanceKey);
+            CGFloat previousClearance = previousClearanceValue ? previousClearanceValue.doubleValue : 0.0;
+
+            if (baseContentValue) {
+                UIEdgeInsets expectedContentInset = baseContentInset;
+                expectedContentInset.bottom = MAX(baseContentInset.bottom, previousClearance);
+                if (!UIEdgeInsetsEqualToEdgeInsets(scrollView.contentInset, expectedContentInset)) {
+                    UIEdgeInsets refreshedBase = scrollView.contentInset;
+                    refreshedBase.bottom = scrollView.contentInset.bottom > expectedContentInset.bottom
+                        ? scrollView.contentInset.bottom
+                        : baseContentInset.bottom;
+                    baseContentInset = refreshedBase;
+                }
+            }
+            if (baseIndicatorValue) {
+                UIEdgeInsets expectedIndicatorInset = baseIndicatorInset;
+                expectedIndicatorInset.bottom = MAX(baseIndicatorInset.bottom, previousClearance);
+                if (!UIEdgeInsetsEqualToEdgeInsets(scrollView.scrollIndicatorInsets, expectedIndicatorInset)) {
+                    UIEdgeInsets refreshedBase = scrollView.scrollIndicatorInsets;
+                    refreshedBase.bottom = scrollView.scrollIndicatorInsets.bottom > expectedIndicatorInset.bottom
+                        ? scrollView.scrollIndicatorInsets.bottom
+                        : baseIndicatorInset.bottom;
+                    baseIndicatorInset = refreshedBase;
+                }
+            }
+
+            objc_setAssociatedObject(scrollView,
+                                     &PPListBaseContentInsetKey,
+                                     [NSValue valueWithUIEdgeInsets:baseContentInset],
+                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(scrollView,
+                                     &PPListBaseIndicatorInsetKey,
+                                     [NSValue valueWithUIEdgeInsets:baseIndicatorInset],
+                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+            objc_setAssociatedObject(scrollView,
+                                     &PPListAppliedBottomClearanceKey,
+                                     @(clearance),
+                                     OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+
+            UIEdgeInsets contentInset = baseContentInset;
+            contentInset.bottom = MAX(baseContentInset.bottom, clearance);
+            UIEdgeInsets indicatorInset = baseIndicatorInset;
+            indicatorInset.bottom = MAX(baseIndicatorInset.bottom, clearance);
+
+            if (!UIEdgeInsetsEqualToEdgeInsets(scrollView.contentInset, contentInset)) {
+                scrollView.contentInset = contentInset;
+            }
+            if (!UIEdgeInsetsEqualToEdgeInsets(scrollView.scrollIndicatorInsets, indicatorInset)) {
+                scrollView.scrollIndicatorInsets = indicatorInset;
+            }
+        }
+    }
+
+    for (UIView *subview in view.subviews) {
+        [self pp_applyBottomNavigationClearance:clearance toListViewsInView:subview];
+    }
 }
 
 - (void)pp_setupPremiumBottomFade
@@ -1663,6 +1788,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
         for (UIView *view in navigationViews) {
             view.hidden = hidden;
         }
+        [self pp_applyBottomNavigationClearanceToVisibleLists];
     };
     if (!animated) {
         changes();

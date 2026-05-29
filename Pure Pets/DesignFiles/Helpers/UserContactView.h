@@ -37,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
          whatsappCallback:(nullable dispatch_block_t)whatsappBlock;
 
 - (void)setContactTitleText:(NSString *)titleText;
+/// Service-provider layout: keeps action buttons under the name and frees more width for provider name.
+- (void)setServiceProviderContactLayoutEnabled:(BOOL)enabled;
 
 @end
 

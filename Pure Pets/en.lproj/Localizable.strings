@@ -2775,8 +2775,13 @@
 "nova_product_results" = "Curated picks";
 "nova_product_count_format" = "%ld items";
 "nova_add_to_cart_which" = "Which one should I add to the cart?";
+"nova_cart_confirmation_title" = "Confirm add to cart";
+"nova_cart_confirmation_subtitle_format" = "%@ will be added after you confirm.";
+"nova_cart_confirmation_item" = "This item";
+"nova_cart_confirm_add" = "Add to cart";
+"nova_cart_confirm_cancel" = "Cancel";
 "nova_added_to_cart" = "Added to cart";
-"nova_add_to_cart_failed" = "Sorry, I couldn't add it to cart. Please try again.";
+"nova_add_to_cart_failed" = "Couldn’t add it to cart. Please try again.";
 "nova_cart_item_unavailable" = "This item is no longer available to add. Please choose it again from the latest results.";
 "nova_close_accessibility" = "Close";
 "nova_error_auth" = "Couldn't verify your session. Try again.";

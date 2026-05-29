@@ -77,22 +77,9 @@
         _currentSection = [PPHomeHelper sectionFromSourceTarget:sourceTarget];
     }
     
-    // ─────────────────────────────────────────────
-    // 🔑 Restore saved SubKind (title + image)
-    // ─────────────────────────────────────────────
-
-    NSString *subKey = [self subKindKeyForMainKind:mainKind];
-    NSInteger savedSubKindID =
-    [[NSUserDefaults standardUserDefaults] integerForKey:subKey];
-
-    // 0 means "All"
-    self.currentSubKindID = savedSubKindID;
-
-    if (savedSubKindID != 0) {
-        self.currentSubKindID = savedSubKindID;
-    } else {
-        self.currentSubKindID = 0;
-    }
+    // Main-kind entry must start at "All". A previously selected breed/subkind
+    // should not silently narrow a fresh category browse to one item.
+    self.currentSubKindID = 0;
     
     
     
@@ -276,6 +263,7 @@
 
     // Reset filters
     self.filterState = nil;
+    self.currentSubKindID = 0;
 
     // Clear current items
     [self.mutableItems removeAllObjects];

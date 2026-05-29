@@ -19,10 +19,25 @@
 @property (nonatomic, strong) UIView *topGlowView;
 @property (nonatomic, strong) UIView *bottomGlowView;
 @property (nonatomic, strong) UILabel *eyebrowLabel;
+@property (nonatomic, strong) UIStackView *textStackView;
 @property (nonatomic, strong) UIStackView *actionsStackView;
 @property (nonatomic, strong) NSLayoutConstraint *callButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *chatButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *whatsappButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *avatarCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *avatarTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *textStackCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *textStackTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *textStackTrailingToActionsConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *textStackTrailingToSurfaceConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackCenterYConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackTopConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackLeadingConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackLeadingToSurfaceConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackTrailingCompactConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackTrailingExpandedConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackBottomConstraint;
+@property (nonatomic, assign) BOOL serviceProviderLayoutEnabled;
 @property (nonatomic, assign) BOOL didStartLiveMotion;
 
 @end
@@ -114,16 +129,16 @@
     self.nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.nameLabel.textAlignment = GM.setAligment;
  
-    UIStackView *textStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+    self.textStackView = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.eyebrowLabel,
         self.nameLabel
     ]];
-    textStack.translatesAutoresizingMaskIntoConstraints = NO;
-    textStack.axis = UILayoutConstraintAxisVertical;
-    textStack.spacing = 3.0;
-    textStack.alignment = UIStackViewAlignmentFill;
-    [textStack setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
-    [self.surfaceView addSubview:textStack];
+    self.textStackView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.textStackView.axis = UILayoutConstraintAxisVertical;
+    self.textStackView.spacing = 3.0;
+    self.textStackView.alignment = UIStackViewAlignmentFill;
+    [self.textStackView setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+    [self.surfaceView addSubview:self.textStackView];
 
     self.verifiedBadgeView = [[UIImageView alloc] init];
     self.verifiedBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -188,6 +203,20 @@
     self.chatButtonWidthConstraint = [self.chatButton.widthAnchor constraintEqualToConstant:78.0];
     self.whatsappButtonWidthConstraint = [self.whatsappButton.widthAnchor constraintEqualToConstant:44.0];
 
+    self.avatarCenterYConstraint = [self.avatarImageView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor];
+    self.avatarTopConstraint = [self.avatarImageView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0];
+    self.textStackCenterYConstraint = [self.textStackView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor];
+    self.textStackTopConstraint = [self.textStackView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:14.0];
+    self.textStackTrailingToActionsConstraint = [self.textStackView.trailingAnchor constraintLessThanOrEqualToAnchor:actionsStack.leadingAnchor constant:-12.0];
+    self.textStackTrailingToSurfaceConstraint = [self.textStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0];
+    self.actionsStackCenterYConstraint = [actionsStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor];
+    self.actionsStackTopConstraint = [actionsStack.topAnchor constraintEqualToAnchor:self.textStackView.bottomAnchor constant:10.0];
+    self.actionsStackLeadingConstraint = [actionsStack.leadingAnchor constraintEqualToAnchor:self.textStackView.leadingAnchor];
+    self.actionsStackLeadingToSurfaceConstraint = [actionsStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0];
+    self.actionsStackTrailingCompactConstraint = [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0];
+    self.actionsStackTrailingExpandedConstraint = [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0];
+    self.actionsStackBottomConstraint = [actionsStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-12.0];
+
     [NSLayoutConstraint activateConstraints:@[
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor],
         [self.surfaceView.leadingAnchor constraintEqualToAnchor:self.leadingAnchor],
@@ -205,9 +234,9 @@
         [self.bottomGlowView.bottomAnchor constraintEqualToAnchor:self.surfaceView.bottomAnchor constant:64.0],
 
         [self.avatarImageView.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:18.0],
-        [self.avatarImageView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
         [self.avatarImageView.widthAnchor constraintEqualToConstant:52.0],
         [self.avatarImageView.heightAnchor constraintEqualToConstant:52.0],
+        self.avatarCenterYConstraint,
 
         [self.verifiedBadgeView.trailingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:2.0],
         [self.verifiedBadgeView.topAnchor constraintEqualToAnchor:self.avatarImageView.topAnchor constant:-1.0],
@@ -219,12 +248,12 @@
         [self.statusIndicatorView.widthAnchor constraintEqualToConstant:10],
         [self.statusIndicatorView.heightAnchor constraintEqualToConstant:10],
 
-        [textStack.leadingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:14.0],
-        [textStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
-        [textStack.trailingAnchor constraintLessThanOrEqualToAnchor:actionsStack.leadingAnchor constant:-12.0],
+        [self.textStackView.leadingAnchor constraintEqualToAnchor:self.avatarImageView.trailingAnchor constant:14.0],
+        self.textStackCenterYConstraint,
+        self.textStackTrailingToActionsConstraint,
 
-        [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0],
-        [actionsStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor],
+        self.actionsStackTrailingCompactConstraint,
+        self.actionsStackCenterYConstraint,
 
         self.callButtonWidthConstraint,
         [self.callButton.heightAnchor constraintEqualToConstant:44.0],
@@ -235,6 +264,7 @@
     ]];
 
     [self pp_updateActionPresentationForWhatsAppVisible:NO];
+    [self setServiceProviderContactLayoutEnabled:NO];
 }
 
 #pragma mark - Button Factory
@@ -295,23 +325,30 @@
 - (void)pp_updateActionPresentationForWhatsAppVisible:(BOOL)whatsAppVisible
 {
     self.whatsappButton.hidden = !whatsAppVisible;
-    self.actionsStackView.spacing = whatsAppVisible ? 8.0 : 10.0;
+    BOOL compactIconOnly = whatsAppVisible && !self.serviceProviderLayoutEnabled;
+    self.actionsStackView.spacing = compactIconOnly ? 8.0 : 10.0;
+    self.actionsStackView.distribution = self.serviceProviderLayoutEnabled ? UIStackViewDistributionFillEqually : UIStackViewDistributionFill;
 
-    CGFloat actionWidth = whatsAppVisible ? 44.0 : 78.0;
+    CGFloat actionWidth = compactIconOnly ? 44.0 : 78.0;
     self.callButtonWidthConstraint.constant = actionWidth;
     self.chatButtonWidthConstraint.constant = actionWidth;
     self.whatsappButtonWidthConstraint.constant = 44.0;
+    self.callButtonWidthConstraint.active = !self.serviceProviderLayoutEnabled;
+    self.chatButtonWidthConstraint.active = !self.serviceProviderLayoutEnabled;
+    self.whatsappButtonWidthConstraint.active = !self.serviceProviderLayoutEnabled;
 
     NSArray<UIButton *> *buttons = @[self.callButton, self.chatButton, self.whatsappButton];
     for (UIButton *button in buttons) {
         button.imageEdgeInsets = UIEdgeInsetsZero;
         button.titleEdgeInsets = UIEdgeInsetsZero;
-        button.contentEdgeInsets = UIEdgeInsetsMake(0.0, whatsAppVisible ? 0.0 : 12.0, 0.0, whatsAppVisible ? 0.0 : 12.0);
+        button.contentEdgeInsets = UIEdgeInsetsMake(0.0, compactIconOnly ? 0.0 : 10.0, 0.0, compactIconOnly ? 0.0 : 10.0);
         button.titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+        button.titleLabel.adjustsFontSizeToFitWidth = YES;
+        button.titleLabel.minimumScaleFactor = 0.78;
         button.layer.cornerRadius = 22.0;
     }
 
-    if (whatsAppVisible) {
+    if (compactIconOnly) {
         [self.callButton setTitle:nil forState:UIControlStateNormal];
         [self.chatButton setTitle:nil forState:UIControlStateNormal];
         [self.whatsappButton setTitle:nil forState:UIControlStateNormal];
@@ -321,8 +358,10 @@
         [self.whatsappButton setTitle:kLang(@"WhatsApp") forState:UIControlStateNormal];
         self.callButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
         self.chatButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+        self.whatsappButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
         self.callButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
         self.chatButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+        self.whatsappButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
     }
 
     UIColor *accent = AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"];
@@ -415,6 +454,37 @@
 - (void)setContactTitleText:(NSString *)titleText
 {
     self.eyebrowLabel.text = titleText.length > 0 ? titleText : kLang(@"Contact Advertiser");
+}
+
+- (void)setServiceProviderContactLayoutEnabled:(BOOL)enabled
+{
+    if (self.serviceProviderLayoutEnabled == enabled) {
+        return;
+    }
+    self.serviceProviderLayoutEnabled = enabled;
+
+    self.avatarCenterYConstraint.active = !enabled;
+    self.textStackCenterYConstraint.active = !enabled;
+    self.textStackTrailingToActionsConstraint.active = !enabled;
+    self.actionsStackCenterYConstraint.active = !enabled;
+    self.actionsStackTrailingCompactConstraint.active = !enabled;
+
+    self.avatarTopConstraint.active = enabled;
+    self.textStackTopConstraint.active = enabled;
+    self.textStackTrailingToSurfaceConstraint.active = enabled;
+    self.actionsStackTopConstraint.active = enabled;
+    self.actionsStackLeadingConstraint.active = NO;
+    self.actionsStackLeadingToSurfaceConstraint.active = enabled;
+    self.actionsStackTrailingExpandedConstraint.active = enabled;
+    self.actionsStackBottomConstraint.active = enabled;
+
+    self.nameLabel.numberOfLines = enabled ? 2 : 1;
+    self.nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
+    self.eyebrowLabel.numberOfLines = 1;
+    [self pp_updateActionPresentationForWhatsAppVisible:!self.whatsappButton.hidden];
+
+    [self setNeedsLayout];
+    [self layoutIfNeeded];
 }
 
 #pragma mark - Actions

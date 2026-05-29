@@ -894,6 +894,7 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     self.providerContactView = [[UserContactView alloc] init];
     self.providerContactView.translatesAutoresizingMaskIntoConstraints = NO;
     [self.providerContactView setContactTitleText:kLang(@"service_view_provider_title")];
+    [self.providerContactView setServiceProviderContactLayoutEnabled:YES];
     [self.providerSectionView addSubview:self.providerContactView];
 
     self.providerMetaLabel = [[UILabel alloc] init];
@@ -932,7 +933,7 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
         [self.providerContactView.topAnchor constraintEqualToAnchor:self.providerTitleLabel.bottomAnchor constant:14.0],
         [self.providerContactView.leadingAnchor constraintEqualToAnchor:self.providerSectionView.leadingAnchor constant:18.0],
         [self.providerContactView.trailingAnchor constraintEqualToAnchor:self.providerSectionView.trailingAnchor constant:-18.0],
-        [self.providerContactView.heightAnchor constraintEqualToConstant:84.0],
+        [self.providerContactView.heightAnchor constraintEqualToConstant:144.0],
 
         [self.providerMetaLabel.topAnchor constraintEqualToAnchor:self.providerContactView.bottomAnchor constant:14.0],
         [self.providerMetaLabel.leadingAnchor constraintEqualToAnchor:self.providerSectionView.leadingAnchor constant:20.0],

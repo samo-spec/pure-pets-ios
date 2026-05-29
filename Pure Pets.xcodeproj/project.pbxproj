@@ -125,6 +125,7 @@
 		F22840FF2C5591C200D77937 /* MainCollectionViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22840FE2C5591C200D77937 /* MainCollectionViewCell.m */; };
 		F228641D2D57947800967C23 /* PhoneNumberCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F228641C2D57947800967C23 /* PhoneNumberCell.m */; };
 		F229DCC02D3B0D070015B67D /* FileUploadManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F229DCBF2D3B0D070015B67D /* FileUploadManager.m */; };
+		F22B21A62FC90A5400071898 /* PPNovaStreamingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22B21A52FC90A5400071898 /* PPNovaStreamingService.swift */; };
 		F22C07852EF66C2F00C00EAC /* YYTextDebugOption.m in Sources */ = {isa = PBXBuildFile; fileRef = F22C07422EF66C2F00C00EAC /* YYTextDebugOption.m */; };
 		F22C07862EF66C2F00C00EAC /* YYWeakProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = F22C07812EF66C2F00C00EAC /* YYWeakProxy.m */; };
 		F22C07872EF66C2F00C00EAC /* NSObject+YYAddForKVO.m in Sources */ = {isa = PBXBuildFile; fileRef = F22C06E92EF66C2F00C00EAC /* NSObject+YYAddForKVO.m */; };
@@ -219,6 +220,7 @@
 		F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */; };
 		F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */; };
 		F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */; };
+		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
 		F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */; };
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
@@ -1018,6 +1020,7 @@
 		F228641C2D57947800967C23 /* PhoneNumberCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PhoneNumberCell.m; sourceTree = "<group>"; };
 		F229DCBF2D3B0D070015B67D /* FileUploadManager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FileUploadManager.m; sourceTree = "<group>"; };
 		F229DCC32D3B0D6A0015B67D /* FileUploadManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FileUploadManager.h; sourceTree = "<group>"; };
+		F22B21A52FC90A5400071898 /* PPNovaStreamingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPNovaStreamingService.swift; sourceTree = "<group>"; };
 		F22C06D42EF66C2F00C00EAC /* NSArray+YYAdd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSArray+YYAdd.h"; sourceTree = "<group>"; };
 		F22C06D52EF66C2F00C00EAC /* NSArray+YYAdd.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "NSArray+YYAdd.m"; sourceTree = "<group>"; };
 		F22C06D62EF66C2F00C00EAC /* NSBundle+YYAdd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "NSBundle+YYAdd.h"; sourceTree = "<group>"; };
@@ -1197,6 +1200,8 @@
 		F22CD37B2C6709650098B6E9 /* FCAlertView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FCAlertView.m; sourceTree = "<group>"; };
 		F22ED2412FA9FF4900F72C2B /* PPNovaProductMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaProductMessageCell.h; sourceTree = "<group>"; };
 		F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaProductMessageCell.m; sourceTree = "<group>"; };
+		F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NovaConfirmationCell.h; sourceTree = "<group>"; };
+		F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NovaConfirmationCell.m; sourceTree = "<group>"; };
 		F22ED2442FAA100F72C2B /* PPNovaMessageBubbleCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaMessageBubbleCell.h; sourceTree = "<group>"; };
 		F22ED2442FAAC91C00F72C2B /* PPAnalytics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAnalytics.h; sourceTree = "<group>"; };
 		F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaMessageBubbleCell.m; sourceTree = "<group>"; };
@@ -3352,6 +3357,7 @@
 		F26E3AFD2E35B344007BB3FF /* GEMENI */ = {
 			isa = PBXGroup;
 			children = (
+				F22B21A52FC90A5400071898 /* PPNovaStreamingService.swift */,
 				F2F25BCA2FC1398C0006BDF7 /* PPNovaGenkitService.h */,
 				F2F25BCB2FC1398C0006BDF7 /* PPNovaGenkitService.m */,
 				F24D2AB52FAC4EB50015EC83 /* PPNovaLocalChatMemory.h */,
@@ -3364,6 +3370,8 @@
 				F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */,
 				F22ED2412FA9FF4900F72C2B /* PPNovaProductMessageCell.h */,
 				F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */,
+				F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */,
+				F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */,
 				F2EAA0652FA9951C00E34CCD /* PPNovaChatViewController.h */,
 				F2EAA0662FA9951C00E34CCD /* PPNovaChatViewController.m */,
 				F26E3AFF2E35B35F007BB3FF /* GeminiChatViewController.m */,
@@ -5207,9 +5215,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5224,9 +5236,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Pure Pets/Pods-Pure Pets-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5276,7 +5292,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 			shellPath = /bin/sh;
-			shellScript = "\n";
+			shellScript = "
+";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -5563,6 +5580,7 @@
 				F20F31BF2D177602001D1D57 /* PGDatePicker+Date.m in Sources */,
 				F20F31C02D177602001D1D57 /* PGDatePickManager.m in Sources */,
 				F22ED2432FA9FF4900F72C2B /* PPNovaProductMessageCell.m in Sources */,
+				F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */,
 				F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */,
 				F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */,
 				F20F31C12D177602001D1D57 /* PGPickerTableView.m in Sources */,
@@ -5679,6 +5697,7 @@
 				F22C078A2EF66C2F00C00EAC /* YYTextMagnifier.m in Sources */,
 				F22C078B2EF66C2F00C00EAC /* UIButton+YYWebImage.m in Sources */,
 				F22C078C2EF66C2F00C00EAC /* YYWebImageManager.m in Sources */,
+				F22B21A62FC90A5400071898 /* PPNovaStreamingService.swift in Sources */,
 				F22C078D2EF66C2F00C00EAC /* _YYWebImageSetter.m in Sources */,
 				F23DDE662F8AC9AC0020D4F4 /* PPFilterModels.m in Sources */,
 				F22C078E2EF66C2F00C00EAC /* NSAttributedString+YYText.m in Sources */,
