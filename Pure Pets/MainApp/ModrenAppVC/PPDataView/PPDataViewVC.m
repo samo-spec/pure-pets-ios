@@ -3265,6 +3265,22 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         sectionsControl.layer.shadowOpacity = 0.1;
         sectionsControl.layer.shadowRadius = 4;
         sectionsControl.layer.shadowOffset = CGSizeMake(0, 2);
+
+        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
+        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
+        blurView.translatesAutoresizingMaskIntoConstraints = NO;
+        blurView.layer.cornerRadius = 17.0;
+        blurView.clipsToBounds = YES;
+        if (@available(iOS 13.0, *)) {
+            blurView.layer.cornerCurve = kCACornerCurveContinuous;
+        }
+        [self.view addSubview:blurView];
+        [NSLayoutConstraint activateConstraints:@[
+            [blurView.topAnchor constraintEqualToAnchor:sectionsControl.topAnchor],
+            [blurView.leadingAnchor constraintEqualToAnchor:sectionsControl.leadingAnchor],
+            [blurView.trailingAnchor constraintEqualToAnchor:sectionsControl.trailingAnchor],
+            [blurView.bottomAnchor constraintEqualToAnchor:sectionsControl.bottomAnchor]
+        ]];
     }
 
     [self.view addSubview:sectionsControl];

@@ -194,7 +194,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
 
     chromeView.userInteractionEnabled = NO;
     chromeView.layer.cornerRadius = PPPSBChromeCornerRadius ;
-    chromeView.layer.masksToBounds = NO;
+    chromeView.layer.masksToBounds = !PPIOS26();
 
 
     if (@available(iOS 13.0, *)) {

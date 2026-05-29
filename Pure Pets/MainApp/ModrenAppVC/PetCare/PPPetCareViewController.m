@@ -445,6 +445,19 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+
+    if (!PPIOS26()) {
+        UIView *dimView = [self.view viewWithTag:8726];
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn
+                         animations:^{
+            dimView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.0];
+        } completion:^(BOOL finished) {
+            [dimView removeFromSuperview];
+        }];
+    }
+
     [self pp_applyKeyboardManagerOverridesIfNeeded];
     [self pp_installNavigationTitleControl];
     [self pp_installCartNavigationButton];
@@ -2274,6 +2287,20 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     viewer.hidesBottomBarWhenPushed = YES;
     UINavigationController *nav = self.navigationController;
     if (nav) {
+        if (!PPIOS26()) {
+            UIView *dimView = [[UIView alloc] initWithFrame:self.view.bounds];
+            dimView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.0];
+            dimView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+            dimView.tag = 8726;
+            dimView.accessibilityLabel = @"pp.serviceViewerDim";
+            [self.view addSubview:dimView];
+            [UIView animateWithDuration:0.22
+                                  delay:0.0
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                dimView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.22];
+            } completion:nil];
+        }
         [nav pushViewController:viewer animated:YES];
         return;
     }
