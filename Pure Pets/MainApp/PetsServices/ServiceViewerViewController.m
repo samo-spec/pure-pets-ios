@@ -700,6 +700,11 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
     [self startReviewsListenerIfNeeded];
 }
 
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    [self pp_setPremiumTabDockHidden:YES animated:animated];
+}
+
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
 
@@ -717,7 +722,18 @@ static UIColor *PPServiceViewerWarmAccentColor(void) {
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
+    if (exiting) {
+        [self pp_setPremiumTabDockHidden:NO animated:animated];
+    }
     [self pp_stopLiveBackgroundMotion];
+}
+
+- (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)self.tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
+    }
 }
 
 - (void)viewDidLayoutSubviews {

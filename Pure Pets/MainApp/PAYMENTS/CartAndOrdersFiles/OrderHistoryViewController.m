@@ -22,6 +22,7 @@
 static NSString * const kOrderHistoryCellID = @"OrderCell";
 static NSInteger const kOrderHistoryPageSize = 12;
 static CGFloat const kOrderHistoryRowHeight = 128.0;
+static CGFloat const kOrderHistoryContentBottomInset = 132.0;
 static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
 
 static NSString * const kOrderHistoryFilterAll = @"all";
@@ -224,7 +225,8 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.tableView.layoutMargins = UIEdgeInsetsZero;
     self.tableView.separatorInset = UIEdgeInsetsZero;
     self.tableView.cellLayoutMarginsFollowReadableWidth = NO;
-    self.tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, 96.0, 0.0);
+    self.tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, kOrderHistoryContentBottomInset, 0.0);
+    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     if (@available(iOS 11.0, *)) {
         self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
         self.tableView.insetsContentViewsToSafeArea = NO;
@@ -320,8 +322,25 @@ static NSString *PPOrderHistoryCanonicalFilterKeyForStatus(NSString *statusKey)
     self.backgroundBottomGlowView.layer.cornerRadius = CGRectGetWidth(self.backgroundBottomGlowView.bounds) * 0.5;
 
     self.tableView.frame = self.view.bounds;
+    [self pp_applyPremiumBottomContentInset];
     [self layoutHeroHeader];
     self.initialLoader.center = self.view.center;
+}
+
+- (void)pp_applyPremiumBottomContentInset
+{
+    if (!self.tableView) {
+        return;
+    }
+    UIEdgeInsets contentInset = self.tableView.contentInset;
+    contentInset.top = MAX(contentInset.top, 4.0);
+    contentInset.bottom = MAX(contentInset.bottom, kOrderHistoryContentBottomInset);
+    self.tableView.contentInset = contentInset;
+
+    UIEdgeInsets indicatorInset = self.tableView.scrollIndicatorInsets;
+    indicatorInset.top = MAX(indicatorInset.top, 4.0);
+    indicatorInset.bottom = MAX(indicatorInset.bottom, kOrderHistoryContentBottomInset);
+    self.tableView.scrollIndicatorInsets = indicatorInset;
 }
 
 - (void)setupBackdrop

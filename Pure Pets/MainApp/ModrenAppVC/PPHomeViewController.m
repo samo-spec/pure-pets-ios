@@ -9265,11 +9265,6 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
         [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:NO];
     }
-    if (PPIOS26()) {
-        self.tabBarController.tabBar.hidden = YES;
-        self.tabBarController.tabBar.alpha = 0.0;
-        self.tabBarController.tabBar.userInteractionEnabled = NO;
-    }
 
     if (!self.didApplyInitialHomeAppearanceRefresh) {
         self.didApplyInitialHomeAppearanceRefresh = YES;

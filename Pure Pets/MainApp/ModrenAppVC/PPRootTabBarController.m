@@ -46,7 +46,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
 @class PPPremiumDockBarDelegate;
 
-@interface PPRootTabBarController ()
+@interface PPRootTabBarController () <UINavigationControllerDelegate>
 @property (nonatomic, strong) UIButton *leadingTabButton;
 @property (nonatomic, strong) UIButton *emptyCard;
 @property (nonatomic, strong) PPNewBottomBar *bottomBar;
@@ -133,6 +133,7 @@ static char PPListAppliedBottomClearanceKey;
 - (void)setSelectedIndex:(NSUInteger)selectedIndex
 {
     [super setSelectedIndex:selectedIndex];
+    [self pp_assertPremiumTabBarState];
     if (self.premiumTabItems.count > 0) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
@@ -208,6 +209,16 @@ static char PPListAppliedBottomClearanceKey;
         settingsNav
     ];
 
+    // ── Centralized tab bar state management ──
+    // Set self as delegate for every tab's navigation controller so
+    // navigationController:didShowViewController:animated: fires after
+    // every push/pop transition and can re-assert the correct tab bar state.
+    for (UIViewController *vc in self.viewControllers) {
+        if ([vc isKindOfClass:UINavigationController.class]) {
+            [(UINavigationController *)vc setDelegate:self];
+        }
+    }
+
     // ── Accessibility: Tab bar items ──
     homeNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_home", @"Home tab");
     homeNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_home_hint", @"Browse pet ads and services");
@@ -224,7 +235,17 @@ static char PPListAppliedBottomClearanceKey;
     [self configureAppearance];
 
     [self pp_setupPremiumBottomNavigation];
-    
+
+    // ── KVO guard against UIKit tabBar flashes ──
+    // UITabBarController internally sets self.tabBar.hidden = NO during pop
+    // transitions. This KVO immediately reverts that on iOS 26+.
+    if (PPIOS26()) {
+        [self.tabBar addObserver:self
+                      forKeyPath:@"hidden"
+                         options:NSKeyValueObservingOptionNew
+                         context:kPPTabBarHiddenObservationContext];
+    }
+
     [self updateUnreads];
     
     
@@ -271,11 +292,7 @@ static char PPListAppliedBottomClearanceKey;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
-    if (PPIOS26()) {
-        self.tabBar.hidden = YES;
-        self.tabBar.alpha = 0.0;
-        self.tabBar.userInteractionEnabled = NO;
-    }
+    [self pp_assertPremiumTabBarState];
     [self pp_updatePremiumBottomFadeAppearance];
     [UserManager.sharedManager startListeningCurrentUserBlockedState];
     [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
@@ -284,9 +301,78 @@ static char PPListAppliedBottomClearanceKey;
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
+    [self pp_assertPremiumTabBarState];
+}
+
+#pragma mark - Centralized Tab Bar State
+
+/// Single source of truth for which tab bar (system vs premium dock) is visible.
+/// Called after every navigation push/pop transition and tab switch.
+/// iOS 26+ → system tabBar permanently hidden, premium dock shown exclusively.
+/// iOS < 26 → system tabBar visible, premium dock never created.
+- (void)pp_assertPremiumTabBarState
+{
+    if (PPIOS26()) {
+        self.tabBar.hidden = YES;
+        self.tabBar.alpha = 0.0;
+        self.tabBar.userInteractionEnabled = NO;
+    }
+}
+
+#pragma mark - UINavigationControllerDelegate
+
+/// Fires BEFORE the push/pop animation begins. Preemptively hide the system
+/// tabBar so UIKit's internal transition machinery starts from hidden state.
+- (void)navigationController:(UINavigationController *)navigationController
+      willShowViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated
+{
+    [self pp_assertPremiumTabBarState];
+    // After the transition completes, re-assert in case UIKit altered state mid-animation
+    if (animated) {
+        id<UIViewControllerTransitionCoordinator> coordinator = navigationController.transitionCoordinator;
+        [coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+            [self pp_assertPremiumTabBarState];
+        }];
+    }
+}
+
+/// Fires AFTER the push/pop animation completes. Final re-assertion.
+- (void)navigationController:(UINavigationController *)navigationController
+       didShowViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated
+{
+    [self pp_assertPremiumTabBarState];
+}
+
+#pragma mark - KVO: prevent tabBar flash during navigation transitions
+
+/// UIKit's UITabBarController internally toggles self.tabBar.hidden during
+/// push/pop transitions. On iOS 26+ we observe the hidden property and
+/// immediately revert any attempt to show the system tabBar.
+static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationContext;
+
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary<NSKeyValueChangeKey, id> *)change
+                       context:(void *)context
+{
+    if (context == kPPTabBarHiddenObservationContext && PPIOS26()) {
+        if (object == self.tabBar && !self.tabBar.hidden) {
+            self.tabBar.hidden = YES;
+            self.tabBar.alpha = 0.0;
+            self.tabBar.userInteractionEnabled = NO;
+        }
+        return;
+    }
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
 }
 
 - (void)dealloc {
+    if (PPIOS26()) {
+        @try { [self.tabBar removeObserver:self forKeyPath:@"hidden" context:kPPTabBarHiddenObservationContext]; }
+        @catch (NSException *e) {}
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -368,7 +454,7 @@ static char PPListAppliedBottomClearanceKey;
 }
 - (void)showSystemTabBar
 {
-    [self pp_setPremiumBottomNavigationHidden:NO animated:YES];
+    [self pp_setPremiumBottomNavigationHidden:YES animated:YES];
 }
 
 - (void)hideSystemTabBar

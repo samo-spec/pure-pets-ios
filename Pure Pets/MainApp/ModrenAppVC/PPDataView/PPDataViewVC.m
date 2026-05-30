@@ -274,6 +274,11 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 {
     [super viewWillAppear:animated];
 
+    // Restore premium dock after returning from pushed viewer/detail screens
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:NO];
+    }
+
     UINavigationController *nav = self.navigationController;
     if (!nav) return;
 

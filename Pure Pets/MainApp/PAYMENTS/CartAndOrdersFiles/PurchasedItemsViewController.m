@@ -21,6 +21,29 @@ static NSString *PPPurchasedTrimmedString(id value)
     return [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
 }
 
+static NSString *PPPurchasedNormalizedStatusString(id value)
+{
+    NSString *normalized = [[PPPurchasedTrimmedString(value) lowercaseString] copy];
+    if (normalized.length == 0) return @"";
+    normalized = [normalized stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+    normalized = [normalized stringByReplacingOccurrencesOfString:@"-" withString:@"_"];
+    while ([normalized containsString:@"__"]) {
+        normalized = [normalized stringByReplacingOccurrencesOfString:@"__" withString:@"_"];
+    }
+    return normalized;
+}
+
+static BOOL PPPurchasedStatusMatchesKeyword(NSString *statusKey, NSString *keyword)
+{
+    NSString *status = PPPurchasedNormalizedStatusString(statusKey);
+    NSString *needle = PPPurchasedNormalizedStatusString(keyword);
+    if (status.length == 0 || needle.length == 0) return NO;
+    if ([status isEqualToString:needle]) return YES;
+    NSString *wrappedStatus = [NSString stringWithFormat:@"_%@_", status];
+    NSString *wrappedNeedle = [NSString stringWithFormat:@"_%@_", needle];
+    return [wrappedStatus containsString:wrappedNeedle] || [status containsString:needle];
+}
+
 @interface PPPurchasedProduct : NSObject
 @property (nonatomic, copy) NSString *itemID;
 @property (nonatomic, copy) NSString *fallbackName;
@@ -443,9 +466,32 @@ static NSString *PPPurchasedTrimmedString(id value)
 
 - (BOOL)pp_shouldIncludeOrderForPurchasedItems:(PPOrder *)order
 {
-    if ([order hasCapturedPayment]) return YES;
-    NSString *status = order.customerVisibleStatusKey ?: @"";
-    return [status isEqualToString:@"delivered"] || [status isEqualToString:@"completed"];
+    if (![order isKindOfClass:PPOrder.class] || order.items.count == 0) {
+        return NO;
+    }
+
+    NSString *status = [PPOrder normalizedStatusFromRawValue:[order customerVisibleStatusKey]];
+    NSArray<NSString *> *failureStatuses = @[
+        @"abandoned",
+        @"cancelled",
+        @"canceled",
+        @"declined",
+        @"delivery_cancelled",
+        @"delivery_delayed",
+        @"error",
+        @"expired",
+        @"failed",
+        @"payment_failed",
+        @"rejected",
+        @"voided"
+    ];
+    for (NSString *failureStatus in failureStatuses) {
+        if (PPPurchasedStatusMatchesKeyword(status, failureStatus)) {
+            return NO;
+        }
+    }
+
+    return YES;
 }
 
 - (NSArray<NSString *> *)pp_itemIDsFromPurchasedProducts:(NSArray<PPPurchasedProduct *> *)products
@@ -529,6 +575,18 @@ static NSString *PPPurchasedTrimmedString(id value)
         id value = dictionary[key];
         if (value && ![value isKindOfClass:NSNull.class]) return value;
     }
+
+    NSArray<NSString *> *nestedKeys = @[@"product", @"item", @"accessory", @"snapshot"];
+    for (NSString *nestedKey in nestedKeys) {
+        NSDictionary *nested = [dictionary[nestedKey] isKindOfClass:NSDictionary.class] ? dictionary[nestedKey] : nil;
+        if (!nested) continue;
+
+        for (NSString *key in keys) {
+            id value = nested[key];
+            if (value && ![value isKindOfClass:NSNull.class]) return value;
+        }
+    }
+
     return nil;
 }
 
