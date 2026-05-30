@@ -154,7 +154,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     [self.filterButton setImage:[UIImage systemImageNamed:@"line.3.horizontal.decrease"] forState:UIControlStateNormal];
     self.filterButton.tintColor = GM.appPrimaryColor;
     self.filterButton.backgroundColor = [GM.appPrimaryColor colorWithAlphaComponent:0.10];
-    self.filterButton.layer.cornerRadius = 24;
+    self.filterButton.layer.cornerRadius = 22;
     self.filterButton.layer.masksToBounds = YES;
     self.filterButton.accessibilityLabel = kLang(@"filterPPAction");
     [self.filterButton addTarget:self action:@selector(pp_toggleFilter) forControlEvents:UIControlEventTouchUpInside];
@@ -170,6 +170,8 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     self.filterBadgeLabel.textAlignment = NSTextAlignmentCenter;
     self.filterBadgeLabel.layer.cornerRadius = 8.0;
     self.filterBadgeLabel.layer.masksToBounds = YES;
+    self.filterBadgeLabel.layer.borderColor = AppPrimaryClr.CGColor;
+    self.filterBadgeLabel.layer.borderWidth = 0.8;
     self.filterBadgeLabel.hidden = YES;
     [self.filterButton addSubview:self.filterBadgeLabel];
 
@@ -198,21 +200,26 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
         [self.searchAccentView.widthAnchor constraintEqualToConstant:22.0],
         [self.searchAccentView.heightAnchor constraintEqualToConstant:22.0],
 
-        [self.searchBar.leadingAnchor constraintEqualToAnchor:self.searchSurfaceView.leadingAnchor constant:10.0],
-        [self.searchBar.topAnchor constraintEqualToAnchor:self.searchSurfaceView.topAnchor constant:5.0],
-        [self.searchBar.bottomAnchor constraintEqualToAnchor:self.searchSurfaceView.bottomAnchor constant:-5.0],
+       
 
-        [self.filterButton.leadingAnchor constraintEqualToAnchor:self.searchBar.trailingAnchor constant:8],
+
         [self.filterButton.trailingAnchor constraintEqualToAnchor:self.searchSurfaceView.trailingAnchor constant:-8.0],
         [self.filterButton.centerYAnchor constraintEqualToAnchor:self.searchSurfaceView.centerYAnchor],
-        [self.filterButton.widthAnchor constraintEqualToConstant:48],
-        [self.filterButton.heightAnchor constraintEqualToConstant:48],
+        [self.filterButton.widthAnchor constraintEqualToConstant:44],
+        [self.filterButton.heightAnchor constraintEqualToConstant:44],
 
-        [self.filterBadgeLabel.topAnchor constraintEqualToAnchor:self.filterButton.topAnchor constant:6.0],
-        [self.filterBadgeLabel.trailingAnchor constraintEqualToAnchor:self.filterButton.trailingAnchor constant:-6.0],
+        [self.filterBadgeLabel.topAnchor constraintEqualToAnchor:self.filterButton.topAnchor constant:3.0],
+        [self.filterBadgeLabel.trailingAnchor constraintEqualToAnchor:self.filterButton.trailingAnchor constant:-3.0],
         [self.filterBadgeLabel.widthAnchor constraintGreaterThanOrEqualToConstant:16.0],
         [self.filterBadgeLabel.heightAnchor constraintEqualToConstant:16.0],
-
+        
+        
+        [self.searchBar.leadingAnchor constraintEqualToAnchor:self.searchSurfaceView.leadingAnchor constant:6.0],
+        [self.searchBar.topAnchor constraintEqualToAnchor:self.searchSurfaceView.topAnchor constant:5.0],
+        [self.searchBar.bottomAnchor constraintEqualToAnchor:self.searchSurfaceView.bottomAnchor constant:-5.0],
+        [self.searchBar.trailingAnchor constraintEqualToAnchor:self.filterButton.leadingAnchor constant:-8.0],
+        
+        
         [self.filterView.topAnchor constraintEqualToAnchor:self.searchContainer.bottomAnchor constant:10],
         [self.filterView.leadingAnchor constraintEqualToAnchor:self.searchContainer.leadingAnchor],
         [self.filterView.trailingAnchor constraintEqualToAnchor:self.searchContainer.trailingAnchor],
@@ -244,7 +251,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
         ? [[UIColor whiteColor] colorWithAlphaComponent:0.08]
     : [[UIColor whiteColor] colorWithAlphaComponent:0.84] ;
 
-    self.searchSurfaceView.backgroundColor = surfaceColor;
+    self.searchSurfaceView.backgroundColor = AppBackgroundClr;
     self.searchSurfaceView.layer.borderWidth = 0.75;
     [self.searchSurfaceView pp_setBorderColor:borderColor];
     [self.searchSurfaceView pp_setShadowColor:UIColor.blackColor];
@@ -799,7 +806,7 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
   sizeForItemAtIndexPath:(NSIndexPath *)indexPath {
     CGFloat available = collectionView.bounds.size.width - (12 * 3);
     CGFloat width = floor(available / 2.0);
-    return CGSizeMake(width, width + 45.0);
+    return CGSizeMake(width, width + 65.0);
 }
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {

@@ -200,15 +200,15 @@ static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 361.0;
+        return 381.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 361.0;
+        return 381.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
-        return 322.0;
+        return 342.0;
     }
-    return kCardLarge + 5.0;
+    return kCardLarge + 25.0;
 }
 
 static inline CGFloat PPHomePetProfileHeight(CGFloat width)

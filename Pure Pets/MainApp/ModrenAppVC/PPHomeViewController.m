@@ -8353,11 +8353,16 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         case PPHomeQuickActionTypeAdopt:
             [self pp_openAdoptFlow];
             break;
-        case PPHomeQuickActionTypeRequestService:
-            [self handleDeepLinkWithTarget:PPDeepLinkTargetServices
-                                  mainKind:nil
-                                    source:PPInputSourceHomeServicesSection];
+        case PPHomeQuickActionTypeRequestService: {
+            PPDataViewInput *input = [PPDataViewInput inputWithMainKind:nil
+                                                           sourceTarget:PPDeepLinkTargetServices
+                                                                 source:PPInputSourceHomeServicesSection];
+            input.initialSectionOverride = @(PPDataSectionServices);
+            PPDataViewVC *vc = [[PPDataViewVC alloc] initWithInput:input];
+            vc.pp_transitionStyle = PPTransitionStyleNone;
+            [PPHomeHelper pushViewControllerSafely:vc from:self animated:YES];
             break;
+        }
     }
 }
 
