@@ -8,6 +8,7 @@
 #import "PPPetCareVetViewrVC.h"
 #import "VetModel.h"
 #import "PPImageLoaderManager.h"
+#import "PPRootTabBarController.h"
 
 static CGFloat const PPPetCareVetViewerSideInset = 18.0;
 static CGFloat const PPPetCareVetViewerSectionSpacing = 14.0;
@@ -142,11 +143,28 @@ static UIColor *PPPetCareVetViewerQuietRowColor(void)
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
+    }
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto
                       button:nil
                        title:nil
                     showBack:YES];
     self.navigationItem.title = PPPetCareVetViewerLocalized(@"pet_care_veterinarians", @"Veterinarians");
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+    NSArray<UIViewController *> *stack = self.navigationController.viewControllers;
+    NSUInteger index = [stack indexOfObject:self];
+    UIViewController *previousController = (index != NSNotFound && index > 0) ? stack[index - 1] : nil;
+    BOOL returnsToPetCareList = [previousController isKindOfClass:NSClassFromString(@"PPPetCareViewController")];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        !returnsToPetCareList &&
+        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
+    }
 }
 
 - (void)viewDidAppear:(BOOL)animated

@@ -13,6 +13,7 @@
 #import "PPNotificationsHubViewController.h"
 #import "PPPetProfilesViewController.h"
 #import "PPModernAvatarRenderer.h"
+#import "PPRootTabBarController.h"
 
 
 #import "PPProfileTextFieldCell.h"
@@ -175,6 +176,9 @@ static CGFloat PPProfileBottomBarClearance(void) {
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
+    }
     self.view.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.tableView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     [self.animatedCellKeys removeAllObjects];
@@ -213,7 +217,6 @@ static CGFloat PPProfileBottomBarClearance(void) {
         });
     }];
 
-    //[[NSNotificationCenter defaultCenter] postNotificationName:PPHideSystemTabBarNotification object:nil];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -230,7 +233,10 @@ static CGFloat PPProfileBottomBarClearance(void) {
     self.isRunningProfileEntranceAnimation = NO;
     self.allowsCellDisplayAnimation = NO;
     [PPHUD dismiss];
-    [[NSNotificationCenter defaultCenter] postNotificationName:PPShowSystemTabBarNotification object:nil];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
+    }
 }
 
 - (void)viewWillLayoutSubviews

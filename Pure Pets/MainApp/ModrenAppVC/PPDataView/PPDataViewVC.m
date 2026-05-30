@@ -154,6 +154,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, strong) id imageLoader;
 
 @property (nonatomic, strong) PPModrenSegmrnted *sectionsSegmentedControl;
+@property (nonatomic, strong) UIVisualEffectView *sectionsSegmentedBlurView;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewTop;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewMid;
 @property (nonatomic, strong) UIView *pp_premiumBackgroundGlowViewBottom;
@@ -198,6 +199,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 @property (nonatomic, assign) NSInteger pendingCellEntranceAnimationLimit;
 @property (nonatomic, assign) PPDataViewMotionReason pendingCellEntranceMotionReason;
 @property (nonatomic, assign) NSInteger pendingCellEntranceDirection;
+@property (nonatomic, assign) BOOL didRunSectionsSegmentedEntrance;
 - (void)pp_prefetchImagesAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths;
 - (void)pp_prefetchTopImagesWithLimit:(NSInteger)limit;
 - (void)updateSectionsTabBarSelectionIndicatorIfNeeded;
@@ -241,6 +243,9 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
                          animated:(BOOL)animated;
 - (void)pp_applyNavigationChangeAnimationToButton:(UIButton *)button updates:(dispatch_block_t)updates;
 - (void)pp_applyFeedbackPulseToView:(UIView *)view;
+- (void)pp_prepareSectionsSegmentedEntranceInitialState;
+- (void)pp_runSectionsSegmentedEntranceIfNeeded;
+- (void)pp_setSectionsSegmentedEntranceVisibleWithoutAnimation;
 - (NSArray<UICollectionViewCell *> *)pp_sortedVisibleCollectionCells;
 - (NSString *)pp_cellAnimationKeyForIndexPath:(NSIndexPath *)indexPath;
 - (void)pp_prepareCellEntranceAnimationsForReason:(PPDataViewMotionReason)reason direction:(NSInteger)direction;
@@ -263,7 +268,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
         _didlayout = YES;
         [self updateNavMainKindTitle];
     }
-    
+
  }
 - (void)viewWillAppear:(BOOL)animated
 {
@@ -450,12 +455,13 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
     self.pendingCellEntranceAnimationLimit = 0;
     self.pendingCellEntranceMotionReason = PPDataViewMotionReasonNone;
     self.pendingCellEntranceDirection = 0;
+    self.didRunSectionsSegmentedEntrance = NO;
     [self pp_applyPremiumDataViewBackgroundAppearance];
     [self emptyStateInit];
     [self setupSectionsTabBar];
     // 🔥 FIX: normalize AllKinds EARLY
     [self normalizeInitialMainKind];
-    
+
     [self setupNavigation];
     [self setupViewModel];
    
@@ -697,6 +703,75 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
                          animations:^{
             view.transform = CGAffineTransformIdentity;
         } completion:nil];
+    }];
+}
+
+- (void)pp_prepareSectionsSegmentedEntranceInitialState
+{
+    if (!self.sectionsSegmentedControl) {
+        return;
+    }
+
+    CGAffineTransform startTransform =
+        CGAffineTransformTranslate(CGAffineTransformIdentity, 0.0, -12.0);
+    startTransform = CGAffineTransformScale(startTransform, 0.985, 0.985);
+
+    self.sectionsSegmentedControl.alpha = 0.0;
+    self.sectionsSegmentedControl.transform = startTransform;
+    self.sectionsSegmentedControl.userInteractionEnabled = NO;
+
+    self.sectionsSegmentedBlurView.alpha = 0.0;
+    self.sectionsSegmentedBlurView.transform = startTransform;
+}
+
+- (void)pp_setSectionsSegmentedEntranceVisibleWithoutAnimation
+{
+    self.sectionsSegmentedControl.alpha = 1.0;
+    self.sectionsSegmentedControl.transform = CGAffineTransformIdentity;
+    self.sectionsSegmentedControl.userInteractionEnabled = YES;
+
+    self.sectionsSegmentedBlurView.alpha = 1.0;
+    self.sectionsSegmentedBlurView.transform = CGAffineTransformIdentity;
+}
+
+- (void)pp_runSectionsSegmentedEntranceIfNeeded
+{
+    if (![NSThread isMainThread]) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self pp_runSectionsSegmentedEntranceIfNeeded];
+        });
+        return;
+    }
+
+    if (self.didRunSectionsSegmentedEntrance || !self.sectionsSegmentedControl) {
+        return;
+    }
+
+    self.didRunSectionsSegmentedEntrance = YES;
+
+    if (![self pp_allowsPremiumMotion]) {
+        [self pp_setSectionsSegmentedEntranceVisibleWithoutAnimation];
+        return;
+    }
+
+    [self.sectionsSegmentedControl.layer removeAllAnimations];
+    [self.sectionsSegmentedBlurView.layer removeAllAnimations];
+    self.sectionsSegmentedControl.userInteractionEnabled = NO;
+
+    [UIView animateWithDuration:0.46
+                          delay:0.04
+         usingSpringWithDamping:0.92
+          initialSpringVelocity:0.10
+                        options:UIViewAnimationOptionBeginFromCurrentState |
+                                UIViewAnimationOptionCurveEaseOut |
+                                UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.sectionsSegmentedControl.alpha = 1.0;
+        self.sectionsSegmentedControl.transform = CGAffineTransformIdentity;
+        self.sectionsSegmentedBlurView.alpha = 1.0;
+        self.sectionsSegmentedBlurView.transform = CGAffineTransformIdentity;
+    } completion:^(__unused BOOL finished) {
+        self.sectionsSegmentedControl.userInteractionEnabled = YES;
     }];
 }
 
@@ -1105,7 +1180,7 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
 
 - (void)pp_applyPremiumDataViewBackgroundAppearance
 {
-    self.view.backgroundColor = AppBackgroundClrDarker;
+    self.view.backgroundColor = AppBageColor();
     if (!self.collectionView) {
         return;
     }
@@ -1385,6 +1460,11 @@ static CGFloat PPCurrentSectionsTabBarHeight(void)
             [weakSelf updateSubKindsButtonTitle:subKind.SubKindName subKind:subKind];
         }
     };
+
+    self.viewModel.onInitialSectionsDataLoaded = ^{
+        [weakSelf pp_runSectionsSegmentedEntranceIfNeeded];
+    };
+
     self.viewModel.onAppendData = ^(NSArray<NSIndexPath *> *indexPaths) {
         PPDataViewLog(@"\n================ onAppendData =================");
         PPDataViewLog(@"[VC] indexPaths.count = %ld", (long)indexPaths.count);
@@ -2395,6 +2475,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         blurView.translatesAutoresizingMaskIntoConstraints = NO;
         blurView.layer.cornerRadius = 22;
         blurView.clipsToBounds = YES;
+        if (@available(iOS 13.0, *)) {
+            blurView.layer.cornerCurve = kCACornerCurveContinuous;
+        }
         blurView.userInteractionEnabled = NO;
         [self.navContainerView insertSubview:blurView atIndex:0];
         [NSLayoutConstraint activateConstraints:@[
@@ -2527,6 +2610,11 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
     self.cartButton.menu = [self actionsArrayFrom:self collectionView:nil];
     self.cartButton.hidden = NO;
     self.cartButton.alpha = 1.0;
+
+    if (!PPIOS26()) {
+        self.cartButton.layer.cornerRadius = 18;
+        self.cartButton.clipsToBounds = YES;
+    }
 
     self.mainKindsWidthConstraint =
     [self.KindsButton.widthAnchor constraintEqualToConstant:36];
@@ -3259,7 +3347,9 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
               forControlEvents:UIControlEventValueChanged];
 
     self.sectionsSegmentedControl = sectionsControl;
-    
+
+    [self.view addSubview:sectionsControl];
+
     if (!PPIOS26()) {
         [sectionsControl pp_setShadowColor:UIColor.blackColor];
         sectionsControl.layer.shadowOpacity = 0.1;
@@ -3269,11 +3359,13 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemThinMaterial];
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
         blurView.translatesAutoresizingMaskIntoConstraints = NO;
-        blurView.layer.cornerRadius = 17.0;
+        blurView.userInteractionEnabled = NO;
+        blurView.layer.cornerRadius = PPCurrentSectionsTabBarHeight() * 0.5;
         blurView.clipsToBounds = YES;
         if (@available(iOS 13.0, *)) {
             blurView.layer.cornerCurve = kCACornerCurveContinuous;
         }
+        self.sectionsSegmentedBlurView = blurView;
         [self.view addSubview:blurView];
         [NSLayoutConstraint activateConstraints:@[
             [blurView.topAnchor constraintEqualToAnchor:sectionsControl.topAnchor],
@@ -3282,8 +3374,6 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
             [blurView.bottomAnchor constraintEqualToAnchor:sectionsControl.bottomAnchor]
         ]];
     }
-
-    [self.view addSubview:sectionsControl];
     self.sectionsTabBarHeightConstraint =
     [sectionsControl.heightAnchor constraintEqualToConstant:PPCurrentSectionsTabBarHeight()];
     self.sectionsTabBarHeightConstraint.active = YES;
@@ -3293,6 +3383,7 @@ cancelPrefetchingForItemsAtIndexPaths:(NSArray<NSIndexPath *> *)indexPaths
         [sectionsControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:12.0],
         [sectionsControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-12.0]
     ]];
+    [self pp_prepareSectionsSegmentedEntranceInitialState];
     
     UIView *filterContainer = [[UIView alloc] init];
     filterContainer.translatesAutoresizingMaskIntoConstraints = NO;

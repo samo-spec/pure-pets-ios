@@ -601,12 +601,6 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.contactView = [[UserContactView alloc] initWithFrame:CGRectZero];
     self.contactView.translatesAutoresizingMaskIntoConstraints = NO;
     self.contactView.alpha = 1.0;
-    self.contactView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.65];
-    self.contactView.layer.cornerRadius = 22.0;
-    [self.contactView pp_setShadowColor:UIColor.blackColor];
-    self.contactView.layer.shadowOpacity = 0.06;
-    self.contactView.layer.shadowRadius = 12.0;
-    self.contactView.layer.shadowOffset = CGSizeMake(0, 6);
     self.contactView.semanticContentAttribute = GM.setSemantic;
 
     self.contactGradientLayer = [CAGradientLayer layer];
@@ -616,7 +610,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     ];
     self.contactGradientLayer.startPoint = CGPointMake(0.0, 0.5);
     self.contactGradientLayer.endPoint = CGPointMake(1.0, 0.5);
-    self.contactGradientLayer.cornerRadius = 22.0;
+    self.contactGradientLayer.cornerRadius = 26.0;
     [self.contactView.layer insertSublayer:self.contactGradientLayer atIndex:0];
 
     [self.view addSubview:self.contactView];
@@ -721,6 +715,13 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
         }
         [AppClasses callPhoneNumber:owner.MobileNo fromViewController:strongSelf];
     }];
+
+    [self.contactView.callButton setTitle:nil forState:UIControlStateNormal];
+    [self.contactView.callButton setTitle:nil forState:UIControlStateHighlighted];
+    [self.contactView.callButton setTitle:nil forState:UIControlStateDisabled];
+    [self.contactView.chatButton setTitle:nil forState:UIControlStateNormal];
+    [self.contactView.chatButton setTitle:nil forState:UIControlStateHighlighted];
+    [self.contactView.chatButton setTitle:nil forState:UIControlStateDisabled];
 
     [UIView animateWithDuration:0.24 animations:^{
         weakSelf.contactView.alpha = 1.0;

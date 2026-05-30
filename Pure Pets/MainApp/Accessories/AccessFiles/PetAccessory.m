@@ -269,6 +269,12 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         _name = dict[@"name"] ?: @"";
         _desc = dict[@"desc"] ?: @"";
         _price = dict[@"price"] ?: @(0);
+        id finalPriceValue = dict[@"finalPrice"];
+        if ([finalPriceValue respondsToSelector:@selector(doubleValue)] &&
+            [_price doubleValue] <= 0.0 &&
+            [finalPriceValue doubleValue] > 0.0) {
+            _price = @([finalPriceValue doubleValue]);
+        }
         _discountPercent = dict[@"discountPercent"];
         _discountAmount = dict[@"discountAmount"];
         _weightText = PPAccessoryStringValueForKeys(dict, (@[
@@ -341,7 +347,10 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
         _isNew = [dict[@"isNew"] boolValue];
         _hasOffer = [dict[@"hasOffer"] boolValue];
         _showInAppMarket = [dict[@"showInAppMarket"] boolValue];
-        
+        _isBlocked = [dict[@"isBlocked"] boolValue];
+        _isDeleted = [dict[@"isDeleted"] boolValue];
+        _isDisabled = [dict[@"isDisabled"] boolValue];
+
         _quantity = [dict[@"quantity"] integerValue];
         _searchTitle = dict[@"searchTitle"];
         if(isPPDebugMode)
@@ -382,6 +391,9 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     copy.isNew = source.isNew;
     copy.hasOffer = source.hasOffer;
     copy.showInAppMarket = source.showInAppMarket;
+    copy.isBlocked = source.isBlocked;
+    copy.isDeleted = source.isDeleted;
+    copy.isDisabled = source.isDisabled;
     return copy;
 }
 

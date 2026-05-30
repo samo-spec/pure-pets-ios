@@ -118,6 +118,8 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.messageLabel.text = nil;
     self.messageLabel.attributedText = nil;
     self.timeLabel.text = nil;
+    self.timeLabel.hidden = YES;
+    self.metaStack.hidden = YES;
     self.statusImageView.image = nil;
     self.statusImageView.hidden = YES;
     self.statusImageView.transform = CGAffineTransformIdentity;
@@ -339,6 +341,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.timeLabel = [[UILabel alloc] init];
     self.timeLabel.font = [GM fontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightRegular];
     self.timeLabel.adjustsFontForContentSizeCategory = YES;
+    self.timeLabel.hidden = YES;
     [self.metaStack addArrangedSubview:self.timeLabel];
 
     self.statusImageView = [[UIImageView alloc] init];
@@ -912,9 +915,11 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.typingSignalView.hidden = YES;
     self.messageLabel.attributedText = nil;
     self.messageLabel.text = self.assistantMessage ? nil : (messageModel.text ?: @"");
+    self.timeLabel.text = [self pp_formattedTime:messageModel.timestamp];
+    self.timeLabel.hidden = YES;
+    self.metaStack.hidden = YES;
     [self pp_applyStyleForAssistant:self.assistantMessage typing:NO];
     [self setActionTitles:[self pp_actionTitlesFromMessage:messageModel]];
-    self.timeLabel.text = [self pp_formattedTime:messageModel.timestamp];
     [self pp_stopTypingAnimation];
     [self pp_configureStatusForMessage:messageModel];
     [self pp_applyAlignmentForAssistant:self.assistantMessage maxWidth:resolvedMaxWidth];
@@ -929,6 +934,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
         self.statusImageView.image = nil;
         self.statusImageView.hidden = YES;
         self.statusImageView.transform = CGAffineTransformIdentity;
+        self.metaStack.hidden = YES;
         return;
     }
 
@@ -941,6 +947,8 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.statusImageView.image = starImage;
     self.statusImageView.tintColor = AppPrimaryClr ?: UIColor.systemOrangeColor;
     self.statusImageView.hidden = (starImage == nil);
+    self.timeLabel.hidden = YES;
+    self.metaStack.hidden = (starImage == nil);
 
     if (!UIAccessibilityIsReduceMotionEnabled() && starImage) {
         self.statusImageView.transform = CGAffineTransformMakeScale(0.72, 0.72);
@@ -969,6 +977,8 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.typingSignalView.hidden = YES;
     [self setActionTitles:nil];
     self.timeLabel.text = nil;
+    self.timeLabel.hidden = YES;
+    self.metaStack.hidden = YES;
     self.statusImageView.hidden = YES;
     [self pp_applyStyleForAssistant:YES typing:YES];
     [self pp_applyAlignmentForAssistant:YES maxWidth:resolvedMaxWidth];
@@ -1112,6 +1122,45 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                       forState:UIControlStateNormal];
 }
 
+- (NSAttributedString *)pp_messageTextByAppendingInlineTimeToText:(NSAttributedString *)text
+                                                        textColor:(UIColor *)textColor
+                                                        metaColor:(UIColor *)metaColor {
+    if (text.length == 0 || self.timeLabel.text.length == 0) {
+        return text;
+    }
+
+    NSMutableAttributedString *result = [text mutableCopy];
+    NSString *plainText = result.string ?: @"";
+    BOOL rtl = PPNovaTextStartsRTL(plainText);
+    __block NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
+    paragraph.alignment = rtl ? NSTextAlignmentRight : NSTextAlignmentLeft;
+    paragraph.baseWritingDirection = rtl ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
+    paragraph.lineBreakMode = NSLineBreakByWordWrapping;
+    [result enumerateAttribute:NSParagraphStyleAttributeName
+                       inRange:NSMakeRange(0, result.length)
+                       options:NSAttributedStringEnumerationReverse
+                    usingBlock:^(id value, __unused NSRange range, BOOL *stop) {
+        if ([value isKindOfClass:NSParagraphStyle.class]) {
+            paragraph = [(NSParagraphStyle *)value mutableCopy];
+            *stop = YES;
+        }
+    }];
+
+    UIFont *timeFont = [GM fontWithSize:PPFontCaption2] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightRegular];
+    timeFont = [[UIFontMetrics metricsForTextStyle:UIFontTextStyleCaption2] scaledFontForFont:timeFont];
+    NSString *inlineTime = [NSString stringWithFormat:@"   %@", self.timeLabel.text];
+    UIColor *resolvedMetaColor = metaColor ?: [textColor colorWithAlphaComponent:0.58];
+    NSAttributedString *timeString = [[NSAttributedString alloc] initWithString:inlineTime
+                                                                      attributes:@{
+        NSFontAttributeName: timeFont,
+        NSForegroundColorAttributeName: resolvedMetaColor ?: UIColor.grayColor,
+        NSParagraphStyleAttributeName: paragraph,
+        NSBaselineOffsetAttributeName: @(-1.0)
+    }];
+    [result appendAttributedString:timeString];
+    return result;
+}
+
 - (void)pp_applyAlignmentForAssistant:(BOOL)assistant maxWidth:(CGFloat)maxWidth {
     CGFloat resolvedMaxWidth = [self pp_resolvedContainerWidthForCandidate:maxWidth];
     NSString *plainText = [self pp_currentPlainMessageText];
@@ -1204,7 +1253,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
         targetContentWidth = MAX(targetContentWidth, PPNovaTypingAnimationWidth);
     }
 
-    if (self.timeLabel.text.length > 0) {
+    if (!self.metaStack.hidden && self.timeLabel.text.length > 0) {
         CGSize timeSize = [self.timeLabel sizeThatFits:CGSizeMake(maxLabelWidth, CGFLOAT_MAX)];
         targetContentWidth = MAX(targetContentWidth, ceil(timeSize.width));
     }
@@ -1346,7 +1395,9 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                                     fallbackItemCount:&fallbackItemCount
                                               success:&attributedSuccess];
             self.messageLabel.text = nil;
-            self.messageLabel.attributedText = renderedText;
+            self.messageLabel.attributedText = [self pp_messageTextByAppendingInlineTimeToText:renderedText
+                                                                                     textColor:assistantText
+                                                                                     metaColor:assistantMeta];
             BOOL detectedRTL = PPNovaTextStartsRTL(renderedText.string ?: self.messageModel.text);
             NSLog(@"[PPNovaChat][AnswerRender] message_id=%@ contains_markdown=%@ detected_rtl=%@ result_card_count=%lu fallback_text_item_count=%lu attributed_success=%@",
                   self.messageModel.ID ?: @"",
@@ -1356,8 +1407,22 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
                   (unsigned long)fallbackItemCount,
                   attributedSuccess ? @"YES" : @"NO");
         } else {
-            self.messageLabel.attributedText = nil;
-            self.messageLabel.text = self.messageModel.text ?: @"";
+            NSString *userTextValue = self.messageModel.text ?: @"";
+            NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
+            BOOL rtl = PPNovaTextStartsRTL(userTextValue);
+            paragraph.alignment = rtl ? NSTextAlignmentRight : NSTextAlignmentLeft;
+            paragraph.baseWritingDirection = rtl ? NSWritingDirectionRightToLeft : NSWritingDirectionLeftToRight;
+            paragraph.lineBreakMode = NSLineBreakByWordWrapping;
+            NSAttributedString *baseText = [[NSAttributedString alloc] initWithString:userTextValue
+                                                                           attributes:@{
+                NSFontAttributeName: self.messageLabel.font ?: [UIFont systemFontOfSize:16.0],
+                NSForegroundColorAttributeName: userText,
+                NSParagraphStyleAttributeName: paragraph
+            }];
+            self.messageLabel.text = nil;
+            self.messageLabel.attributedText = [self pp_messageTextByAppendingInlineTimeToText:baseText
+                                                                                     textColor:userText
+                                                                                     metaColor:userMeta];
         }
     }
     

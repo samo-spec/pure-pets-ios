@@ -518,7 +518,7 @@ static BOOL PPHomeLocationTitleShouldReduceMotion(void)
         self.tintOverlayView.backgroundColor = [surface colorWithAlphaComponent:(dark ? 0.28 : 0.14)];
         self.blurView.layer.borderWidth = dark ? 0.78f : 0.92f;
         self.blurView.layer.borderColor =
-            [liquidBorder colorWithAlphaComponent:(dark ? 0.30 : 0.58)].CGColor;
+            [liquidBorder colorWithAlphaComponent:(dark ? 0.50 : 0.80)].CGColor;
     }
 
     self.haloView.backgroundColor = UIColor.clearColor;

@@ -63,7 +63,7 @@ static UIColor *PPUniversalCellDynamicColor(UIColor *light, UIColor *dark)
 
 static UIColor *PPUniversalCellSoftSurfaceColor(void)
 {
-    return PPUniversalCellDynamicColor([AppBackgroundClr colorWithAlphaComponent:1],
+    return PPUniversalCellDynamicColor([AppBackgroundClr colorWithAlphaComponent:0.92],
                                       [UIColor colorWithWhite:0.12 alpha:0.82]);
 }
 

@@ -271,6 +271,11 @@ static char PPListAppliedBottomClearanceKey;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    if (PPIOS26()) {
+        self.tabBar.hidden = YES;
+        self.tabBar.alpha = 0.0;
+        self.tabBar.userInteractionEnabled = NO;
+    }
     [self pp_updatePremiumBottomFadeAppearance];
     [UserManager.sharedManager startListeningCurrentUserBlockedState];
     [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
@@ -373,7 +378,7 @@ static char PPListAppliedBottomClearanceKey;
 
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
-    [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
+    [self setPremiumTabDockViewHidden:hidden animation:animated];
 }
 
 -(void)viewWillLayoutSubviews
@@ -1764,6 +1769,9 @@ static char PPListAppliedBottomClearanceKey;
     if (self.premiumTabDockView) {
         [navigationViews addObject:self.premiumTabDockView];
     }
+    if (self.premiumBottomFadeView && PPIOS26()) {
+        [navigationViews addObject:self.premiumBottomFadeView];
+    }
     if (self.leadingTabButton) {
         [navigationViews addObject:self.leadingTabButton];
     }
@@ -1778,7 +1786,8 @@ static char PPListAppliedBottomClearanceKey;
         self.premiumNovaButton.hidden = !self.premiumNovaVisibleByConfiguration;
     }
     void (^changes)(void) = ^{
-        self.premiumTabDockView.alpha = 1.0;
+        self.premiumTabDockView.alpha = hidden ? 0.0 : 1.0;
+        self.premiumBottomFadeView.alpha = (hidden || !PPIOS26()) ? 0.0 : 1.0;
         self.leadingTabButton.alpha = hidden ? 0.0 : 1.0;
         self.premiumNovaButton.alpha = hidden ? 0.0 : 1.0;
         if (!UIAccessibilityIsReduceMotionEnabled()) {
@@ -1810,6 +1819,11 @@ static char PPListAppliedBottomClearanceKey;
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
                      animations:changes
                      completion:completion];
+}
+
+- (void)setPremiumTabDockViewHidden:(BOOL)hidden animation:(BOOL)animated
+{
+    [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
 }
 
 - (void)addPlusTabBarButton {

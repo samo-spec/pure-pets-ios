@@ -12,6 +12,7 @@
 #import "CartManager.h"
 #import "CartViewController.h"
 #import "PPNavigationController.h"
+#import "PPRootTabBarController.h"
 #import "PPHomeHelper.h"
 #import "UIView+Badge.h"
 #import "AppClasses.h"
@@ -445,6 +446,9 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
+    }
 
     if (!PPIOS26()) {
         UIView *dimView = [self.view viewWithTag:8726];
@@ -472,6 +476,10 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [self.searchField resignFirstResponder];
     [self.heroAnimationView stop];
     [self pp_restoreKeyboardManagerOverridesIfNeeded];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection

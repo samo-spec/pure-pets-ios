@@ -264,12 +264,13 @@
     if (@available(iOS 15.0, *)) {
         UISheetPresentationController *sheet = vc.sheetPresentationController;
         sheet.detents = @[
-            [UISheetPresentationControllerDetent mediumDetent],
             [UISheetPresentationControllerDetent largeDetent]
         ];
-        sheet.prefersGrabberVisible = YES;
+        sheet.prefersGrabberVisible = NO;
         sheet.preferredCornerRadius = 30;
-        sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = YES;
+        sheet.prefersEdgeAttachedInCompactHeight = YES;
+        sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = NO;
     }
     [self presentViewController:vc animated:YES completion:nil];
 }

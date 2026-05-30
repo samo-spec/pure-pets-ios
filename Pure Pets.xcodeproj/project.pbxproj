@@ -119,6 +119,7 @@
 		F2201FE82E11D7CA005DBD9F /* CartItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FE72E11D7C9005DBD9F /* CartItem.m */; };
 		F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEC2E11DB7E005DBD9F /* CartViewController.m */; };
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
+		F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */; };
 		F2201FF82E12C893005DBD9F /* FloatingQuantityButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
 		F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */; };
@@ -1008,6 +1009,8 @@
 		F2201FEC2E11DB7E005DBD9F /* CartViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartViewController.m; sourceTree = "<group>"; };
 		F2201FEE2E11F3D1005DBD9F /* OrderHistoryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderHistoryViewController.h; sourceTree = "<group>"; };
 		F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderHistoryViewController.m; sourceTree = "<group>"; };
+		F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PurchasedItemsViewController.h; sourceTree = "<group>"; };
+		F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchasedItemsViewController.m; sourceTree = "<group>"; };
 		F2201FF62E12C893005DBD9F /* FloatingQuantityButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingQuantityButton.h; sourceTree = "<group>"; };
 		F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingQuantityButton.m; sourceTree = "<group>"; };
 		F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessViewerVC.h; sourceTree = "<group>"; };
@@ -4931,6 +4934,8 @@
 				F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */,
 				F2201FEE2E11F3D1005DBD9F /* OrderHistoryViewController.h */,
 				F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */,
+				F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */,
+				F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */,
 				F2201FEB2E11DB6A005DBD9F /* CartViewController.h */,
 				F2201FEC2E11DB7E005DBD9F /* CartViewController.m */,
 				F2201FE62E11D7BF005DBD9F /* CartItem.h */,
@@ -5665,6 +5670,7 @@
 				F241C4522E254D3A00CC9BE9 /* ServiceModel.m in Sources */,
 				F2449C402D0DBACA00DB6BBC /* AppManager.m in Sources */,
 				F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */,
+				F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */,
 				F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */,
 				F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */,
 				F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */,
