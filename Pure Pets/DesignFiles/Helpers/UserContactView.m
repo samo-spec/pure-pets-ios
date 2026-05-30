@@ -210,7 +210,7 @@
     self.textStackTrailingToActionsConstraint = [self.textStackView.trailingAnchor constraintLessThanOrEqualToAnchor:actionsStack.leadingAnchor constant:-12.0];
     self.textStackTrailingToSurfaceConstraint = [self.textStackView.trailingAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0];
     self.actionsStackCenterYConstraint = [actionsStack.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor];
-    self.actionsStackTopConstraint = [actionsStack.topAnchor constraintEqualToAnchor:self.textStackView.bottomAnchor constant:10.0];
+    self.actionsStackTopConstraint = [actionsStack.topAnchor constraintEqualToAnchor:self.textStackView.bottomAnchor constant:18.0];
     self.actionsStackLeadingConstraint = [actionsStack.leadingAnchor constraintEqualToAnchor:self.textStackView.leadingAnchor];
     self.actionsStackLeadingToSurfaceConstraint = [actionsStack.leadingAnchor constraintEqualToAnchor:self.surfaceView.leadingAnchor constant:16.0];
     self.actionsStackTrailingCompactConstraint = [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0];
