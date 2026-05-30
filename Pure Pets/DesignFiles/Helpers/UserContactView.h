@@ -23,6 +23,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, strong) UIButton *callButton;
 @property (nonatomic, strong) UIButton *chatButton;
 @property (nonatomic, strong) UIButton *whatsappButton;
+@property (nonatomic, strong) UIButton *emailButton;
 @property (nonatomic, strong) UILabel *nameLabel;
 @property (nonatomic, strong) UIImageView *avatarImageView;
 
@@ -35,6 +36,12 @@ NS_ASSUME_NONNULL_BEGIN
              chatCallback:(dispatch_block_t)chatBlock
              callCallback:(dispatch_block_t)callBlock
          whatsappCallback:(nullable dispatch_block_t)whatsappBlock;
+
+- (void)configureWithUser:(UserModel *)user
+             chatCallback:(dispatch_block_t)chatBlock
+             callCallback:(dispatch_block_t)callBlock
+         whatsappCallback:(nullable dispatch_block_t)whatsappBlock
+            emailCallback:(nullable dispatch_block_t)emailBlock;
 
 - (void)setContactTitleText:(NSString *)titleText;
 /// Service-provider layout: keeps action buttons under the name and frees more width for provider name.

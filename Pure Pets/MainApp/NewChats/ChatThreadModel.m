@@ -18,6 +18,7 @@ static NSString *PPCurrentChatIdentity(void) {
 }
 
 static NSString * const PPSupportAvatarToken = @"purepets://support-logo";
+static NSString * const PPPurePetsOfficialSupportUserID = @"PUIDPOFFICILAL20262214";
 
 static NSString *PPChatTrimmedString(id value) {
     if (![value isKindOfClass:NSString.class]) {
@@ -38,6 +39,10 @@ static BOOL PPChatBoolValue(id value) {
 }
 
 static NSString *PPThreadOtherUserID(ChatThreadModel *thread) {
+    if ([ChatThreadModel isSupportThread:thread]) {
+        return PPPurePetsOfficialSupportUserID;
+    }
+
     NSString *myUID = PPCurrentChatIdentity();
     for (NSString *userID in thread.memberIDs) {
         if (userID.length > 0 && ![userID isEqualToString:myUID]) {
@@ -61,16 +66,8 @@ static UserModel *PPResolvedBaseOtherUser(ChatThreadModel *thread) {
 }
 
 static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseUser) {
-    NSString *supportUserID = PPChatTrimmedString(thread.supportUserID);
-    if (supportUserID.length == 0) {
-        supportUserID = baseUser.ID.length > 0 ? baseUser.ID : PPThreadOtherUserID(thread);
-    }
-    if (supportUserID.length == 0) {
-        return nil;
-    }
-
     UserModel *displayUser = [UserModel new];
-    displayUser.ID = supportUserID;
+    displayUser.ID = PPPurePetsOfficialSupportUserID;
     displayUser.UserName = kLang(@"Support") ?: @"Support";
     displayUser.UserImageUrl = [NSURL URLWithString:PPSupportAvatarToken];
     displayUser.isOnline = baseUser.isOnline;
@@ -283,7 +280,26 @@ static UserModel *PPBrandedSupportUser(ChatThreadModel *thread, UserModel *baseU
     return thread.supportThread ||
         [thread.conversationType.lowercaseString isEqualToString:@"support"] ||
         [thread.threadType.lowercaseString isEqualToString:@"support"] ||
-        thread.supportUserID.length > 0;
+        thread.supportUserID.length > 0 ||
+        [thread.memberIDs containsObject:PPPurePetsOfficialSupportUserID];
+}
+
++ (NSString *)purePetsOfficialSupportUserID
+{
+    return PPPurePetsOfficialSupportUserID;
+}
+
++ (NSString *)canonicalSupportThreadIDForCustomerID:(NSString *)customerID
+{
+    NSString *customer = PPChatTrimmedString(customerID);
+    if (customer.length == 0 ||
+        [customer isEqualToString:PPPurePetsOfficialSupportUserID]) {
+        return @"";
+    }
+
+    return ([customer compare:PPPurePetsOfficialSupportUserID] == NSOrderedAscending)
+        ? [NSString stringWithFormat:@"%@_%@", customer, PPPurePetsOfficialSupportUserID]
+        : [NSString stringWithFormat:@"%@_%@", PPPurePetsOfficialSupportUserID, customer];
 }
 
 + (UserModel *)resolveOtherUserFromThread:(ChatThreadModel *)thread

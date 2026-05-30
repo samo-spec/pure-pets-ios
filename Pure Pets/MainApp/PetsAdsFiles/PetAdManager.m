@@ -1653,10 +1653,12 @@ if (completion) completion(ad, nil);
                                        collectionWithPath:kUsersCollection] documentWithPath:normalizedUserID]
                                        collectionWithPath:normalizedCollection] documentWithPath:adID];
     
-    [docRef getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *error) {
+    [docRef getDocumentWithSource:FIRFirestoreSourceCache completion:^(FIRDocumentSnapshot *snapshot, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
-                NSLog(@"❌ Favorite check error: %@", error.localizedDescription);
+                if (error.code != FIRFirestoreErrorCodeUnavailable) {
+                    NSLog(@"❌ Favorite check error: %@", error.localizedDescription);
+                }
                 completion(NO);
             } else {
                 completion(snapshot.exists);
@@ -1677,10 +1679,12 @@ if (completion) completion(ad, nil);
 
     FIRCollectionReference *favCol = [[[[FIRFirestore firestore] collectionWithPath:kUsersCollection] documentWithPath:normalizedUserID] collectionWithPath:normalizedCollection];
     
-    [favCol getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
+    [favCol getDocumentsWithSource:FIRFirestoreSourceCache completion:^(FIRQuerySnapshot *snapshot, NSError *error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) {
-                NSLog(@"❌ Fetch favorites error: %@", error.localizedDescription);
+                if (error.code != FIRFirestoreErrorCodeUnavailable) {
+                    NSLog(@"❌ Fetch favorites error: %@", error.localizedDescription);
+                }
                 completion(@[]);
                 return;
             }

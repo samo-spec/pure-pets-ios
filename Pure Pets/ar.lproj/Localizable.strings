@@ -2760,6 +2760,7 @@
 "nova_input_attach_accessibility" = "إضافة مرفق";
 "nova_input_suggestions_accessibility" = "عرض الاقتراحات الذكية";
 "nova_input_send_accessibility" = "إرسال الرسالة";
+"nova_scroll_to_latest_accessibility" = "الانتقال إلى أحدث رسالة";
 "nova_product_results" = "اختيارات مناسبة";
 "nova_product_count_format" = "%ld عنصر";
 "nova_add_to_cart_which" = "أي منتج أضيفه للسلة؟";
@@ -2786,3 +2787,23 @@
 "nova_empty_sub" = "الطلبات، الصيدلية، الخدمات، الأطباء — حيوانك الأليف في محادثة واحدة.";
 "nova_error_generic" = "تعذّر الوصول إلى نوفا. حاول مرة أخرى.";
 "nova_error_offline" = "يبدو أنك غير متصل بالإنترنت.";
+
+/* Purchased items */
+"purchased_items_title" = "المشتريات";
+"purchased_profile_menu_title" = "المشتريات";
+"purchased_items_empty_title" = "لا توجد مشتريات بعد.";
+"purchased_item_buy_again" = "شراء مرة أخرى";
+"purchased_item_added_to_cart" = "تمت إضافة المنتج إلى السلة";
+"purchased_item_quantity" = "الكمية";
+"purchased_item_latest_purchase" = "آخر شراء";
+"purchased_item_unavailable" = "هذا المنتج لم يعد متاحاً.";
+"purchased_item_hidden" = "هذا المنتج غير متاح حالياً.";
+"purchased_item_unknown_product" = "منتج";
+
+/* Firebase session */
+"pp_auth_sign_in_required" = "يرجى تسجيل الدخول للمتابعة.";
+"pp_auth_session_refresh_failed" = "تعذر تحديث جلستك. حاول مرة أخرى.";
+"pp_app_check_unavailable" = "تعذر التحقق من هذا الجهاز حالياً. حاول مرة أخرى.";
+"pp_support_open_failed" = "تعذر فتح محادثة الدعم حالياً.";
+"pp_support_config_failed" = "تعذر تحميل إعدادات محادثة الدعم.";
+"pp_order_support_submit_failed" = "تعذر إرسال طلب الدعم. حاول مرة أخرى.";

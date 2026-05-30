@@ -15,6 +15,7 @@
 #import "PPAddressModel.h"
 #import "CountryModel.h"
 #import "CitiesManager.h"
+#import "PPFirebaseSessionBridge.h"
 
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
 
@@ -1542,6 +1543,70 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
     }];
 }
 
+- (void)pp_callCreateOrderSupportRequestWithPayload:(NSDictionary *)payload
+                                             draft:(PPOrderSupportDraft *)draft
+                                             order:(PPOrder *)order
+                                       requestType:(NSString *)requestType
+                            forceCredentialRefresh:(BOOL)forceCredentialRefresh
+                                      didRetryAuth:(BOOL)didRetryAuth
+                                        completion:(void (^)(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error))completion
+{
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:forceCredentialRefresh completion:^(NSError * _Nullable authError) {
+        if (authError) {
+            if (completion) completion(nil, NO, authError);
+            return;
+        }
+
+        [[PPOrderFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
+         callWithObject:payload ?: @{}
+         completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+            if (error) {
+                if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
+                    [self pp_callCreateOrderSupportRequestWithPayload:payload
+                                                                draft:draft
+                                                                order:order
+                                                          requestType:requestType
+                                               forceCredentialRefresh:YES
+                                                         didRetryAuth:YES
+                                                           completion:completion];
+                    return;
+                }
+                if (completion) {
+                    completion(nil, NO, [PPFirebaseSessionBridge publicErrorForError:error fallbackKey:@"pp_order_support_submit_failed"]);
+                }
+                return;
+            }
+
+            NSDictionary *data = [result.data isKindOfClass:NSDictionary.class] ? (NSDictionary *)result.data : @{};
+            NSString *requestID = PPOrderSupportSafeString(data[@"requestId"]);
+            BOOL deduplicated = [data[@"deduplicated"] boolValue];
+
+            PPOrderSupportRequest *request = nil;
+            if (requestID.length > 0) {
+                request = [PPOrderSupportRequest requestFromDictionary:@{
+                    @"requestId": requestID,
+                    @"orderId": order.orderId ?: @"",
+                    @"userId": [FIRAuth auth].currentUser.uid ?: @"",
+                    @"type": requestType ?: @"support",
+                    @"reasonCode": draft.reasonCode ?: @"other",
+                    @"reasonTitle": draft.reasonTitle ?: @"",
+                    @"issueCategory": draft.issueCategory ?: @"",
+                    @"subject": draft.subject ?: @"",
+                    @"notes": draft.notes ?: @"",
+                    @"itemIDs": draft.selectedItemIDs ?: @[],
+                    @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[],
+                    @"status": data[@"status"] ?: PPOrderRequestStatusPendingReview,
+                    @"finalResolution": data[@"finalResolution"] ?: PPOrderRequestStatusPendingReview,
+                    @"createdAt": [NSDate date],
+                    @"updatedAt": [NSDate date]
+                } documentID:requestID];
+            }
+
+            if (completion) completion(request, deduplicated, nil);
+        }];
+    }];
+}
+
 - (void)submitSupportDraft:(PPOrderSupportDraft *)draft
                   forOrder:(PPOrder *)order
                 completion:(void (^)(PPOrderSupportRequest * _Nullable request, BOOL deduplicated, NSError * _Nullable error))completion
@@ -1567,41 +1632,13 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
         @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[]
     };
 
-    [[PPOrderFunctionsClient() HTTPSCallableWithName:@"createOrderSupportRequest"]
-     callWithObject:payload
-     completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-        if (error) {
-            if (completion) completion(nil, NO, error);
-            return;
-        }
-
-        NSDictionary *data = [result.data isKindOfClass:NSDictionary.class] ? (NSDictionary *)result.data : @{};
-        NSString *requestID = PPOrderSupportSafeString(data[@"requestId"]);
-        BOOL deduplicated = [data[@"deduplicated"] boolValue];
-
-        PPOrderSupportRequest *request = nil;
-        if (requestID.length > 0) {
-            request = [PPOrderSupportRequest requestFromDictionary:@{
-                @"requestId": requestID,
-                @"orderId": order.orderId ?: @"",
-                @"userId": [FIRAuth auth].currentUser.uid ?: @"",
-                @"type": requestType ?: @"support",
-                @"reasonCode": draft.reasonCode ?: @"other",
-                @"reasonTitle": draft.reasonTitle ?: @"",
-                @"issueCategory": draft.issueCategory ?: @"",
-                @"subject": draft.subject ?: @"",
-                @"notes": draft.notes ?: @"",
-                @"itemIDs": draft.selectedItemIDs ?: @[],
-                @"attachments": [[draft.attachments valueForKey:@"dictionaryValue"] isKindOfClass:NSArray.class] ? [draft.attachments valueForKey:@"dictionaryValue"] : @[],
-                @"status": data[@"status"] ?: PPOrderRequestStatusPendingReview,
-                @"finalResolution": data[@"finalResolution"] ?: PPOrderRequestStatusPendingReview,
-                @"createdAt": [NSDate date],
-                @"updatedAt": [NSDate date]
-            } documentID:requestID];
-        }
-
-        if (completion) completion(request, deduplicated, nil);
-    }];
+    [self pp_callCreateOrderSupportRequestWithPayload:payload
+                                               draft:draft
+                                               order:order
+                                         requestType:requestType
+                              forceCredentialRefresh:NO
+                                        didRetryAuth:NO
+                                          completion:completion];
 }
 
 - (void)uploadEvidenceImages:(NSArray<UIImage *> *)images

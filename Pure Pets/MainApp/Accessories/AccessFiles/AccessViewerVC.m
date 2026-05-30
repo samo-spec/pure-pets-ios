@@ -1689,6 +1689,7 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self pp_setPremiumTabDockHidden:YES animated:animated];
     
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:@"" showBack:YES];
     if (@available(iOS 26.0, *))
@@ -1782,6 +1783,21 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 
           
         }];
+	}
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
+    if (exiting) {
+        [self pp_setPremiumTabDockHidden:NO animated:animated];
+    }
+}
+
+- (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)self.tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
     }
 }
 

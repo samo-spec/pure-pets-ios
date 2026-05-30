@@ -13,6 +13,7 @@
 @property (nonatomic, copy) dispatch_block_t chatBlock;
 @property (nonatomic, copy) dispatch_block_t callBlock;
 @property (nonatomic, copy) dispatch_block_t whatsappBlock;
+@property (nonatomic, copy) dispatch_block_t emailBlock;
 @property (nonatomic, strong) UIImageView *verifiedBadgeView;
 @property (nonatomic, strong) UIView *statusIndicatorView;
 @property (nonatomic, strong) UIView *surfaceView;
@@ -24,6 +25,7 @@
 @property (nonatomic, strong) NSLayoutConstraint *callButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *chatButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *whatsappButtonWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *emailButtonWidthConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *avatarCenterYConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *avatarTopConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *textStackCenterYConstraint;
@@ -177,10 +179,17 @@
     [self.whatsappButton addTarget:self action:@selector(whatsappTapped) forControlEvents:UIControlEventTouchUpInside];
     self.whatsappButton.hidden = YES;
 
+    self.emailButton = [self actionButtonWithSymbol:@"envelope.fill"];
+    self.emailButton.accessibilityLabel = NSLocalizedString(@"a11y_btn_email_advertiser", @"Email advertiser");
+    self.emailButton.accessibilityHint  = NSLocalizedString(@"a11y_btn_email_advertiser_hint", @"Double-tap to send email to this person");
+    [self.emailButton addTarget:self action:@selector(emailTapped) forControlEvents:UIControlEventTouchUpInside];
+    self.emailButton.hidden = YES;
+
     UIStackView *actionsStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         self.callButton,
         self.chatButton,
-        self.whatsappButton
+        self.whatsappButton,
+        self.emailButton
     ]];
     actionsStack.translatesAutoresizingMaskIntoConstraints = NO;
     actionsStack.axis = UILayoutConstraintAxisHorizontal;
@@ -196,13 +205,16 @@
     self.callButton.enabled = NO;
     self.chatButton.enabled = NO;
     self.whatsappButton.enabled = NO;
+    self.emailButton.enabled = NO;
     self.callButton.alpha = 0.55;
     self.chatButton.alpha = 0.55;
     self.whatsappButton.alpha = 0.55;
+    self.emailButton.alpha = 0.55;
 
     self.callButtonWidthConstraint = [self.callButton.widthAnchor constraintEqualToConstant:78.0];
     self.chatButtonWidthConstraint = [self.chatButton.widthAnchor constraintEqualToConstant:78.0];
     self.whatsappButtonWidthConstraint = [self.whatsappButton.widthAnchor constraintEqualToConstant:44.0];
+    self.emailButtonWidthConstraint = [self.emailButton.widthAnchor constraintEqualToConstant:44.0];
 
     self.avatarCenterYConstraint = [self.avatarImageView.centerYAnchor constraintEqualToAnchor:self.surfaceView.centerYAnchor];
     self.avatarTopConstraint = [self.avatarImageView.topAnchor constraintEqualToAnchor:self.surfaceView.topAnchor constant:16.0];
@@ -263,9 +275,11 @@
         [self.chatButton.heightAnchor constraintEqualToConstant:44.0],
         self.whatsappButtonWidthConstraint,
         [self.whatsappButton.heightAnchor constraintEqualToConstant:44.0],
+        self.emailButtonWidthConstraint,
+        [self.emailButton.heightAnchor constraintEqualToConstant:44.0],
     ]];
 
-    [self pp_updateActionPresentationForWhatsAppVisible:NO];
+    [self pp_updateActionPresentationForAvailableButtons];
     [self setServiceProviderContactLayoutEnabled:NO];
 }
 
@@ -284,6 +298,7 @@
                                                      scale:UIImageSymbolScaleLarge];
 
     BOOL isWhatsApp = [symbol isEqualToString:@"whatsApp"];
+    BOOL isEmail = [symbol containsString:@"envelope"];
     UIImage *img = [UIImage imageNamed:symbol];
     if (isWhatsApp) {
         img = [img imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
@@ -301,6 +316,8 @@
         [btn setTitle:kLang(@"Call") forState:UIControlStateNormal];
     } else if (isWhatsApp) {
         [btn setTitle:kLang(@"WhatsApp") forState:UIControlStateNormal];
+    } else if (isEmail) {
+        [btn setTitle:kLang(@"Email") forState:UIControlStateNormal];
     } else {
         [btn setTitle:kLang(@"Chat") forState:UIControlStateNormal];
     }
@@ -309,7 +326,8 @@
     BOOL primary = [symbol containsString:@"phone"];
     UIColor *accent = AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"];
     UIColor *whatsappAccent = [UIColor colorWithRed:0.16 green:0.67 blue:0.38 alpha:1.0];
-    UIColor *buttonAccent = isWhatsApp ? whatsappAccent : accent;
+    UIColor *emailAccent = [UIColor colorWithRed:0.18 green:0.44 blue:0.82 alpha:1.0];
+    UIColor *buttonAccent = isWhatsApp ? whatsappAccent : (isEmail ? emailAccent : accent);
     btn.backgroundColor = primary ? [accent colorWithAlphaComponent:0.78] : UIColor.clearColor;
     btn.tintColor = primary ? UIColor.whiteColor : buttonAccent;
     [btn setTitleColor:(primary ? UIColor.whiteColor : buttonAccent) forState:UIControlStateNormal];
@@ -324,10 +342,15 @@
     return btn;
 }
 
-- (void)pp_updateActionPresentationForWhatsAppVisible:(BOOL)whatsAppVisible
+- (void)pp_updateActionPresentationForAvailableButtons
 {
-    self.whatsappButton.hidden = !whatsAppVisible;
-    BOOL compactIconOnly = whatsAppVisible && !self.serviceProviderLayoutEnabled;
+    BOOL hasCall = !self.callButton.hidden;
+    BOOL hasChat = !self.chatButton.hidden;
+    BOOL hasWhatsApp = !self.whatsappButton.hidden;
+    BOOL hasEmail = !self.emailButton.hidden;
+    NSInteger visibleCount = (hasCall ? 1 : 0) + (hasChat ? 1 : 0) + (hasWhatsApp ? 1 : 0) + (hasEmail ? 1 : 0);
+
+    BOOL compactIconOnly = visibleCount >= 2;
     self.actionsStackView.spacing = compactIconOnly ? 8.0 : 10.0;
     self.actionsStackView.distribution = self.serviceProviderLayoutEnabled ? UIStackViewDistributionFillEqually : UIStackViewDistributionFill;
 
@@ -335,11 +358,13 @@
     self.callButtonWidthConstraint.constant = actionWidth;
     self.chatButtonWidthConstraint.constant = actionWidth;
     self.whatsappButtonWidthConstraint.constant = 44.0;
+    self.emailButtonWidthConstraint.constant = 44.0;
     self.callButtonWidthConstraint.active = !self.serviceProviderLayoutEnabled;
     self.chatButtonWidthConstraint.active = !self.serviceProviderLayoutEnabled;
     self.whatsappButtonWidthConstraint.active = !self.serviceProviderLayoutEnabled;
+    self.emailButtonWidthConstraint.active = !self.serviceProviderLayoutEnabled;
 
-    NSArray<UIButton *> *buttons = @[self.callButton, self.chatButton, self.whatsappButton];
+    NSArray<UIButton *> *buttons = @[self.callButton, self.chatButton, self.whatsappButton, self.emailButton];
     for (UIButton *button in buttons) {
         button.imageEdgeInsets = UIEdgeInsetsZero;
         button.titleEdgeInsets = UIEdgeInsetsZero;
@@ -354,34 +379,53 @@
         [self.callButton setTitle:nil forState:UIControlStateNormal];
         [self.chatButton setTitle:nil forState:UIControlStateNormal];
         [self.whatsappButton setTitle:nil forState:UIControlStateNormal];
+        [self.emailButton setTitle:nil forState:UIControlStateNormal];
     } else {
-        [self.callButton setTitle:kLang(@"Call") forState:UIControlStateNormal];
-        [self.chatButton setTitle:kLang(@"Chat") forState:UIControlStateNormal];
-        [self.whatsappButton setTitle:kLang(@"WhatsApp") forState:UIControlStateNormal];
-        self.callButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
-        self.chatButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
-        self.whatsappButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
-        self.callButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
-        self.chatButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
-        self.whatsappButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+        if (hasCall) {
+            [self.callButton setTitle:kLang(@"Call") forState:UIControlStateNormal];
+            self.callButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+            self.callButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+        }
+        if (hasChat) {
+            [self.chatButton setTitle:kLang(@"Chat") forState:UIControlStateNormal];
+            self.chatButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+            self.chatButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+        }
+        if (hasWhatsApp) {
+            [self.whatsappButton setTitle:kLang(@"WhatsApp") forState:UIControlStateNormal];
+            self.whatsappButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+            self.whatsappButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+        }
+        if (hasEmail) {
+            [self.emailButton setTitle:kLang(@"Email") forState:UIControlStateNormal];
+            self.emailButton.imageEdgeInsets = UIEdgeInsetsMake(0, -3, 0, 3);
+            self.emailButton.titleEdgeInsets = UIEdgeInsetsMake(0, 3, 0, -3);
+        }
     }
 
     UIColor *accent = AppPrimaryClr ?: [UIColor colorWithHexString:@"#CF375B"];
     UIColor *whatsappAccent = [UIColor colorWithRed:0.16 green:0.67 blue:0.38 alpha:1.0];
+    UIColor *emailAccent = [UIColor colorWithRed:0.18 green:0.44 blue:0.82 alpha:1.0];
+
     self.callButton.backgroundColor = [accent colorWithAlphaComponent:0.78];
     self.callButton.tintColor = UIColor.whiteColor;
     [self.callButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
     [self.callButton pp_setBorderColor:UIColor.clearColor];
 
-    self.chatButton.backgroundColor = [accent colorWithAlphaComponent:whatsAppVisible ? 0.10 : 0.0];
+    self.chatButton.backgroundColor = [accent colorWithAlphaComponent:compactIconOnly ? 0.10 : 0.0];
     self.chatButton.tintColor = accent;
     [self.chatButton setTitleColor:accent forState:UIControlStateNormal];
     [self.chatButton pp_setBorderColor:[accent colorWithAlphaComponent:0.42]];
 
-    self.whatsappButton.backgroundColor = [whatsappAccent colorWithAlphaComponent:whatsAppVisible ? 0.13 : 0.0];
+    self.whatsappButton.backgroundColor = [whatsappAccent colorWithAlphaComponent:compactIconOnly ? 0.13 : 0.0];
     self.whatsappButton.tintColor = whatsappAccent;
     [self.whatsappButton setTitleColor:whatsappAccent forState:UIControlStateNormal];
     [self.whatsappButton pp_setBorderColor:[whatsappAccent colorWithAlphaComponent:0.40]];
+
+    self.emailButton.backgroundColor = [emailAccent colorWithAlphaComponent:compactIconOnly ? 0.13 : 0.0];
+    self.emailButton.tintColor = emailAccent;
+    [self.emailButton setTitleColor:emailAccent forState:UIControlStateNormal];
+    [self.emailButton pp_setBorderColor:[emailAccent colorWithAlphaComponent:0.40]];
 }
 
 - (void)layoutSubviews
@@ -393,6 +437,7 @@
     self.callButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
     self.chatButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
     self.whatsappButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
+    self.emailButton.semanticContentAttribute = Language.isRTL ? UISemanticContentAttributeForceRightToLeft : UISemanticContentAttributeForceLeftToRight;
     self.actionsStackView.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     self.topGlowView.layer.cornerRadius = 132/2;
     
@@ -410,7 +455,8 @@
     [self configureWithUser:user
                chatCallback:chatBlock
                callCallback:callBlock
-           whatsappCallback:nil];
+           whatsappCallback:nil
+              emailCallback:nil];
 }
 
 - (void)configureWithUser:(UserModel *)user
@@ -418,25 +464,55 @@
              callCallback:(dispatch_block_t)callBlock
          whatsappCallback:(dispatch_block_t)whatsappBlock
 {
+    [self configureWithUser:user
+               chatCallback:chatBlock
+               callCallback:callBlock
+           whatsappCallback:whatsappBlock
+              emailCallback:nil];
+}
+
+- (void)configureWithUser:(UserModel *)user
+             chatCallback:(dispatch_block_t)chatBlock
+             callCallback:(dispatch_block_t)callBlock
+         whatsappCallback:(dispatch_block_t)whatsappBlock
+            emailCallback:(dispatch_block_t)emailBlock
+{
     self.chatBlock = chatBlock;
     self.callBlock = callBlock;
     self.whatsappBlock = whatsappBlock;
+    self.emailBlock = emailBlock;
 
     self.nameLabel.text = user.PPBestDisplayName ?: user.UserName ?: kLang(@"Contact Advertiser");
     self.verifiedBadgeView.hidden = !user.isVerified;
 
-    BOOL canContact = ![user.ID isEqualToString:PPCurrentUser.ID];
-    BOOL hasWhatsApp = whatsappBlock != nil;
-    self.callButton.enabled = canContact;
-    self.chatButton.enabled = canContact;
-    self.whatsappButton.enabled = canContact && hasWhatsApp;
-    self.callButton.alpha = canContact ? 1.0 : 0.55;
-    self.chatButton.alpha = canContact ? 1.0 : 0.55;
-    self.whatsappButton.alpha = (canContact && hasWhatsApp) ? 1.0 : 0.55;
-    [self pp_updateActionPresentationForWhatsAppVisible:hasWhatsApp];
+    BOOL isOwnProfile = [user.ID isEqualToString:PPCurrentUser.ID];
+    BOOL hasPhone = user.MobileNo.length > 0;
+    BOOL hasEmail = user.UserEmail.length > 0;
+    BOOL canChat = !isOwnProfile && !user.isChatEffectivelyBlocked && user.canUseChatFeature;
+    BOOL canCall = !isOwnProfile && hasPhone;
+    BOOL canWhatsApp = !isOwnProfile && hasPhone && whatsappBlock != nil;
+    BOOL canEmail = !isOwnProfile && hasEmail && emailBlock != nil;
+
+    self.callButton.hidden = !canCall;
+    self.callButton.enabled = canCall;
+    self.callButton.alpha = canCall ? 1.0 : 0.0;
+
+    self.chatButton.hidden = !canChat;
+    self.chatButton.enabled = canChat;
+    self.chatButton.alpha = canChat ? 1.0 : 0.0;
+
+    self.whatsappButton.hidden = !canWhatsApp;
+    self.whatsappButton.enabled = canWhatsApp;
+    self.whatsappButton.alpha = canWhatsApp ? 1.0 : 0.0;
+
+    self.emailButton.hidden = !canEmail;
+    self.emailButton.enabled = canEmail;
+    self.emailButton.alpha = canEmail ? 1.0 : 0.0;
+
+    [self pp_updateActionPresentationForAvailableButtons];
 
     // ── Accessibility: Update contact view label with user name ──
-    self.isAccessibilityElement = NO; // Let children be individually accessible
+    self.isAccessibilityElement = NO;
     NSString *displayName = self.nameLabel.text;
     self.callButton.accessibilityLabel = [NSString stringWithFormat:
         NSLocalizedString(@"a11y_btn_call_user_format", @"Call %@"), displayName];
@@ -444,13 +520,13 @@
         NSLocalizedString(@"a11y_btn_chat_user_format", @"Chat with %@"), displayName];
     self.whatsappButton.accessibilityLabel = [NSString stringWithFormat:
         NSLocalizedString(@"a11y_btn_whatsapp_user_format", @"WhatsApp %@"), displayName];
+    self.emailButton.accessibilityLabel = [NSString stringWithFormat:
+        NSLocalizedString(@"a11y_btn_email_user_format", @"Email %@"), displayName];
     
     [PPImageLoaderManager.shared setImageOnImageView:self.avatarImageView url:user.UserImageUrl.absoluteString placeholder:[PPModernAvatarRenderer avatarImageForName:user.UserName size:44] complation:^(UIImage * _Nonnull image,
                                                                                                                                                         NSString * _Nullable urlString) {
         
     }];
-    // Assume you already load images elsewhere (SDWebImage / PPImageLoader)
-    // self.avatarImageView.image = ...
 }
 
 - (void)setContactTitleText:(NSString *)titleText
@@ -484,7 +560,7 @@
     self.nameLabel.numberOfLines = enabled ? 2 : 1;
     self.nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
     self.eyebrowLabel.numberOfLines = 1;
-    [self pp_updateActionPresentationForWhatsAppVisible:!self.whatsappButton.hidden];
+    [self pp_updateActionPresentationForAvailableButtons];
 
     [self setNeedsLayout];
     [self layoutIfNeeded];
@@ -510,6 +586,13 @@
 {
     if (self.whatsappBlock) {
         self.whatsappBlock();
+    }
+}
+
+- (void)emailTapped
+{
+    if (self.emailBlock) {
+        self.emailBlock();
     }
 }
 

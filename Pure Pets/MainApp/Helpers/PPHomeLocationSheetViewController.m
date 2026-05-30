@@ -288,24 +288,36 @@
     [self pp_reloadContent];
 }
 
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+    if (!_didAnimateEntrance && !UIAccessibilityIsReduceMotionEnabled()) {
+        NSArray<UIView *> *arrangedViews = _contentStack.arrangedSubviews ?: @[];
+        for (UIView *view in arrangedViews) {
+            view.alpha = 0.0;
+            view.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
+        }
+    }
+}
+
 - (void)viewDidAppear:(BOOL)animated
 {
     [super viewDidAppear:animated];
     if (_didAnimateEntrance || UIAccessibilityIsReduceMotionEnabled()) {
+        if (!_didAnimateEntrance) {
+            _didAnimateEntrance = YES;
+            for (UIView *view in _contentStack.arrangedSubviews ?: @[]) {
+                view.alpha = 1.0;
+                view.transform = CGAffineTransformIdentity;
+            }
+        }
         return;
     }
 
     _didAnimateEntrance = YES;
     NSArray<UIView *> *arrangedViews = _contentStack.arrangedSubviews ?: @[];
-    [_recentStack.arrangedSubviews enumerateObjectsUsingBlock:^(__kindof UIView * _Nonnull view, NSUInteger idx, BOOL * _Nonnull stop) {
-        (void)idx;
-        (void)stop;
-    }];
-
     NSInteger index = 0;
     for (UIView *view in arrangedViews) {
-        view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 14.0);
         [UIView animateWithDuration:0.34
                               delay:0.03 * index
              usingSpringWithDamping:0.86
@@ -317,8 +329,6 @@
         } completion:nil];
         index += 1;
     }
-    
-    
 }
 
 - (void)viewDidLayoutSubviews

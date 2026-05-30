@@ -20,6 +20,7 @@ typedef NS_ENUM(NSInteger, PPContactChannel) {
     PPContactChannelChat      = 1,
     PPContactChannelWhatsapp  = 2,
     PPContactChannelSupport   = 3,
+    PPContactChannelEmail     = 4,
 };
 
 @interface PPAnalytics : NSObject

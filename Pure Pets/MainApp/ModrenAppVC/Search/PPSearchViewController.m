@@ -168,6 +168,7 @@ PPUniversalCellDelegate>
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    [self pp_setRootBottomNavigationHidden:YES animated:animated];
     [self pp_applySearchKeyboardManagerOverridesIfNeeded];
     [self pp_schedulePendingSearchFieldFocusIfNeeded];
 }
@@ -177,6 +178,31 @@ PPUniversalCellDelegate>
     [super viewWillDisappear:animated];
     [[self pp_searchTextField] resignFirstResponder];
     [self pp_restoreSearchKeyboardManagerOverridesIfNeeded];
+
+    BOOL isLeavingSearch =
+        self.isMovingFromParentViewController ||
+        self.isBeingDismissed ||
+        self.navigationController.isBeingDismissed;
+    if (!isLeavingSearch) {
+        return;
+    }
+
+    [self pp_setRootBottomNavigationHidden:NO animated:animated];
+    id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
+    if (coordinator) {
+        __weak typeof(self) weakSelf = self;
+        [coordinator animateAlongsideTransition:nil
+                                     completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+            if (!context.isCancelled) {
+                return;
+            }
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            [self pp_setRootBottomNavigationHidden:YES animated:YES];
+        }];
+    }
 }
 
 - (void)viewDidLayoutSubviews
@@ -210,6 +236,44 @@ PPUniversalCellDelegate>
         self.pendingDebounceBlock = nil;
     }
     [self pp_restoreSearchKeyboardManagerOverridesIfNeeded];
+}
+
+- (void)pp_setRootBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    UITabBarController *tabBarController = self.tabBarController;
+    if ([tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
+        return;
+    }
+    if ([tabBarController respondsToSelector:@selector(pp_setBottomNavigationHidden:animated:)]) {
+        [(id)tabBarController pp_setBottomNavigationHidden:hidden animated:animated];
+        return;
+    }
+
+    UITabBar *tabBar = tabBarController.tabBar;
+    if (!tabBar) {
+        return;
+    }
+    if (!hidden) {
+        tabBar.hidden = NO;
+    }
+
+    void (^changes)(void) = ^{
+        tabBar.alpha = hidden ? 0.0 : 1.0;
+    };
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        tabBar.hidden = hidden;
+    };
+    if (!animated) {
+        changes();
+        completion(YES);
+        return;
+    }
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                     animations:changes
+                     completion:completion];
 }
 
 #pragma mark - Public

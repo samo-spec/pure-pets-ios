@@ -13,6 +13,7 @@
 #import "PPNotificationsHubViewController.h"
 #import "PPPetProfilesViewController.h"
 #import "PPModernAvatarRenderer.h"
+#import "PPRootTabBarController.h"
 
 
 #import "PPProfileTextFieldCell.h"
@@ -175,6 +176,9 @@ static CGFloat PPProfileBottomBarClearance(void) {
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
+    }
     self.view.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     self.tableView.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
     [self.animatedCellKeys removeAllObjects];
@@ -213,7 +217,6 @@ static CGFloat PPProfileBottomBarClearance(void) {
         });
     }];
 
-    //[[NSNotificationCenter defaultCenter] postNotificationName:PPHideSystemTabBarNotification object:nil];
 }
 
 - (void)viewDidAppear:(BOOL)animated
@@ -230,7 +233,10 @@ static CGFloat PPProfileBottomBarClearance(void) {
     self.isRunningProfileEntranceAnimation = NO;
     self.allowsCellDisplayAnimation = NO;
     [PPHUD dismiss];
-    [[NSNotificationCenter defaultCenter] postNotificationName:PPShowSystemTabBarNotification object:nil];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
+    }
 }
 
 - (void)viewWillLayoutSubviews
@@ -1257,8 +1263,11 @@ static CGFloat PPProfileBottomBarClearance(void) {
     if (indexPath.section == PPProfileSectionLogout) {
         PPProfileActionCell *cell = [tableView dequeueReusableCellWithIdentifier:@"PPProfileActionCell" forIndexPath:indexPath];
         [cell configureWithTitle:(kLang(@"logout") ?: @"Log Out") iconName:@"rectangle.portrait.and.arrow.right"];
-        cell.titleLabel.textColor = AppErrorClr;
-        cell.iconView.tintColor = AppErrorClr;
+        cell.contentView.backgroundColor = UIColor.systemRedColor;
+        cell.contentView.layer.cornerRadius = 14;
+        cell.contentView.layer.masksToBounds = YES;
+        cell.titleLabel.textColor = AppForgroundColr;
+        cell.iconView.tintColor = AppForgroundColr;
         cell.accessibilityIdentifier = @"profile_logout_button";
         cell.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
         return cell;
@@ -1286,7 +1295,7 @@ static CGFloat PPProfileBottomBarClearance(void) {
     cell.backgroundColor = UIColor.clearColor;
     cell.clipsToBounds = NO;
     cell.selectionStyle = UITableViewCellSelectionStyleNone;
-    cell.contentView.backgroundColor = [self pp_profileSurfaceColor];
+    cell.contentView.backgroundColor = indexPath.section == PPProfileSectionLogout ? [UIColor.redColor colorWithAlphaComponent:0.82]  :  [self pp_profileSurfaceColor];
     cell.contentView.layer.cornerRadius = 20.0;
     cell.contentView.layer.masksToBounds = YES;
     cell.contentView.layer.borderWidth = 1.0;

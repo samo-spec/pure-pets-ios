@@ -119,6 +119,7 @@
 		F2201FE82E11D7CA005DBD9F /* CartItem.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FE72E11D7C9005DBD9F /* CartItem.m */; };
 		F2201FED2E11DBE2005DBD9F /* CartViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEC2E11DB7E005DBD9F /* CartViewController.m */; };
 		F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */; };
+		F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */; };
 		F2201FF82E12C893005DBD9F /* FloatingQuantityButton.m in Sources */ = {isa = PBXBuildFile; fileRef = F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */; };
 		F22653232DE3A8AB004D7AB4 /* AccessViewerVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F22653222DE3A8AB004D7AB4 /* AccessViewerVC.m */; };
 		F22819642CD36D2D005E57FF /* XLFormImageSelectorCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22819632CD36D2D005E57FF /* XLFormImageSelectorCell.m */; };
@@ -220,7 +221,6 @@
 		F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */; };
 		F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */; };
 		F22ED2492FAA101F72C2B /* PPNovaFloatingInputBarView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2482FAA101F72C2B /* PPNovaFloatingInputBarView.m */; };
-		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
 		F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */; };
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
@@ -445,6 +445,16 @@
 		F27FAEAE2D2F363200EA6B56 /* JPVideoPlayerManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FAE882D2F363200EA6B56 /* JPVideoPlayerManager.m */; };
 		F27FAEAF2D2F363200EA6B56 /* JPVideoPlayer.bundle in Resources */ = {isa = PBXBuildFile; fileRef = F27FAE762D2F363200EA6B56 /* JPVideoPlayer.bundle */; };
 		F27FC1702C52F63B007B855C /* selectTableViewCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F27FC16F2C52F63B007B855C /* selectTableViewCell.m */; };
+		F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */; };
+		F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46A2FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m */; };
+		F281B4812FCB6735009118F2 /* PPRatingView.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4752FCB6735009118F2 /* PPRatingView.m */; };
+		F281B4822FCB6735009118F2 /* PPSearchFilterView.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4792FCB6735009118F2 /* PPSearchFilterView.m */; };
+		F281B4832FCB6735009118F2 /* PPS.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4772FCB6735009118F2 /* PPS.m */; };
+		F281B4842FCB6735009118F2 /* PPModrenSegmrnted.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4712FCB6735009118F2 /* PPModrenSegmrnted.m */; };
+		F281B4852FCB6735009118F2 /* PPSectionHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B47B2FCB6735009118F2 /* PPSectionHeader.m */; };
+		F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */; };
+		F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46F2FCB6735009118F2 /* PPMenuHelper.m */; };
+		F281B4882FCB6735009118F2 /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4732FCB6735009118F2 /* PPProductCard.m */; };
 		F282C1122F0D7BF9001C110A /* PPSPinnerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1112F0D7B5A001C110A /* PPSPinnerView.m */; };
 		F282C1172F0EC788001C110A /* PPBrowseHistoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1162F0EC788001C110A /* PPBrowseHistoryManager.m */; };
 		F283FABC2E542933001EF0BA /* UserContactView.m in Sources */ = {isa = PBXBuildFile; fileRef = F283FABB2E542933001EF0BA /* UserContactView.m */; };
@@ -639,6 +649,7 @@
 		F2BC30D62E43E385003F603D /* UIScreen.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC30D52E43E385003F603D /* UIScreen.m */; };
 		F2BC865C2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */; };
 		F2C085552F935AF8001C27DA /* PPAuditLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C085542F935AF8001C27DA /* PPAuditLogger.m */; };
+		F2C0A9032FC8A00100C0A901 /* NovaConfirmationCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */; };
 		F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */; };
 		F2C158352E2100D100EFDC91 /* EmptyStateView.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C158342E2100D100EFDC91 /* EmptyStateView.m */; };
 		F2C16F8F2D6B63DC00B2887E /* ImagePicker.m in Sources */ = {isa = PBXBuildFile; fileRef = F2C16F8E2D6B63DC00B2887E /* ImagePicker.m */; };
@@ -754,6 +765,7 @@
 		F2F807CD2E8BEBE90034FF2D /* PPBannersManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807C22E8BEBE90034FF2D /* PPBannersManager.m */; };
 		F2F807D12E8BEE5D0034FF2D /* PPBannerCollectionCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2F807D02E8BEE5D0034FF2D /* PPBannerCollectionCell.m */; };
 		F2F9C0022F9C000000000002 /* payment_checkout.json in Resources */ = {isa = PBXBuildFile; fileRef = F2F9C0012F9C000000000001 /* payment_checkout.json */; };
+		F2FAE1022FC2000000A10001 /* PPFirebaseSessionBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FAE1012FC2000000A10001 /* PPFirebaseSessionBridge.m */; };
 		F2FBFEDD2C82935300E84C14 /* FTPopOverMenu.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FBFEDC2C82935200E84C14 /* FTPopOverMenu.m */; };
 		F2FCEBAC2ECCCD7B002A9F67 /* PPVerificationCodeViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAB2ECCCD6A002A9F67 /* PPVerificationCodeViewController.m */; };
 		F2FCEBAF2ECD09BF002A9F67 /* PPCompleteProfileVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */; };
@@ -1008,6 +1020,8 @@
 		F2201FEC2E11DB7E005DBD9F /* CartViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CartViewController.m; sourceTree = "<group>"; };
 		F2201FEE2E11F3D1005DBD9F /* OrderHistoryViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = OrderHistoryViewController.h; sourceTree = "<group>"; };
 		F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = OrderHistoryViewController.m; sourceTree = "<group>"; };
+		F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PurchasedItemsViewController.h; sourceTree = "<group>"; };
+		F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PurchasedItemsViewController.m; sourceTree = "<group>"; };
 		F2201FF62E12C893005DBD9F /* FloatingQuantityButton.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FloatingQuantityButton.h; sourceTree = "<group>"; };
 		F2201FF72E12C893005DBD9F /* FloatingQuantityButton.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = FloatingQuantityButton.m; sourceTree = "<group>"; };
 		F22653212DE3A8AB004D7AB4 /* AccessViewerVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AccessViewerVC.h; sourceTree = "<group>"; };
@@ -1200,8 +1214,6 @@
 		F22CD37B2C6709650098B6E9 /* FCAlertView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FCAlertView.m; sourceTree = "<group>"; };
 		F22ED2412FA9FF4900F72C2B /* PPNovaProductMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaProductMessageCell.h; sourceTree = "<group>"; };
 		F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaProductMessageCell.m; sourceTree = "<group>"; };
-		F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NovaConfirmationCell.h; sourceTree = "<group>"; };
-		F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NovaConfirmationCell.m; sourceTree = "<group>"; };
 		F22ED2442FAA100F72C2B /* PPNovaMessageBubbleCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaMessageBubbleCell.h; sourceTree = "<group>"; };
 		F22ED2442FAAC91C00F72C2B /* PPAnalytics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAnalytics.h; sourceTree = "<group>"; };
 		F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaMessageBubbleCell.m; sourceTree = "<group>"; };
@@ -1623,6 +1635,26 @@
 		F27FAE992D2F363200EA6B56 /* UIView+WebVideoCache.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIView+WebVideoCache.m"; sourceTree = "<group>"; };
 		F27FC16E2C52F63B007B855C /* selectTableViewCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = selectTableViewCell.h; sourceTree = "<group>"; };
 		F27FC16F2C52F63B007B855C /* selectTableViewCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = selectTableViewCell.m; sourceTree = "<group>"; };
+		F281B4692FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = XLFormRowFullWidthTextFieldCell.h; sourceTree = "<group>"; };
+		F281B46A2FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = XLFormRowFullWidthTextFieldCell.m; sourceTree = "<group>"; };
+		F281B46C2FCB6735009118F2 /* PPDiscountBadge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPDiscountBadge.h; sourceTree = "<group>"; };
+		F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPDiscountBadge.m; sourceTree = "<group>"; };
+		F281B46E2FCB6735009118F2 /* PPMenuHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPMenuHelper.h; sourceTree = "<group>"; };
+		F281B46F2FCB6735009118F2 /* PPMenuHelper.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPMenuHelper.m; sourceTree = "<group>"; };
+		F281B4702FCB6735009118F2 /* PPModrenSegmrnted.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPModrenSegmrnted.h; sourceTree = "<group>"; };
+		F281B4712FCB6735009118F2 /* PPModrenSegmrnted.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPModrenSegmrnted.m; sourceTree = "<group>"; };
+		F281B4722FCB6735009118F2 /* PPProductCard.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPProductCard.h; sourceTree = "<group>"; };
+		F281B4732FCB6735009118F2 /* PPProductCard.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPProductCard.m; sourceTree = "<group>"; };
+		F281B4742FCB6735009118F2 /* PPRatingView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPRatingView.h; sourceTree = "<group>"; };
+		F281B4752FCB6735009118F2 /* PPRatingView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPRatingView.m; sourceTree = "<group>"; };
+		F281B4762FCB6735009118F2 /* PPS.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPS.h; sourceTree = "<group>"; };
+		F281B4772FCB6735009118F2 /* PPS.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPS.m; sourceTree = "<group>"; };
+		F281B4782FCB6735009118F2 /* PPSearchFilterView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSearchFilterView.h; sourceTree = "<group>"; };
+		F281B4792FCB6735009118F2 /* PPSearchFilterView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSearchFilterView.m; sourceTree = "<group>"; };
+		F281B47A2FCB6735009118F2 /* PPSectionHeader.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSectionHeader.h; sourceTree = "<group>"; };
+		F281B47B2FCB6735009118F2 /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSectionHeader.m; sourceTree = "<group>"; };
+		F281B47C2FCB6735009118F2 /* UITabBarItem+PPFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UITabBarItem+PPFactory.h"; sourceTree = "<group>"; };
+		F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPFactory.m"; sourceTree = "<group>"; };
 		F282C1102F0D7B53001C110A /* PPSPinnerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSPinnerView.h; sourceTree = "<group>"; };
 		F282C1112F0D7B5A001C110A /* PPSPinnerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSPinnerView.m; sourceTree = "<group>"; };
 		F282C1152F0EC788001C110A /* PPBrowseHistoryManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBrowseHistoryManager.h; sourceTree = "<group>"; };
@@ -2016,6 +2048,8 @@
 		F2BC865B2FA6667E0065BF67 /* PPHomeSmartSearchTitleView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeSmartSearchTitleView.m; sourceTree = "<group>"; };
 		F2C085532F935AF8001C27DA /* PPAuditLogger.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuditLogger.h; sourceTree = "<group>"; };
 		F2C085542F935AF8001C27DA /* PPAuditLogger.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuditLogger.m; sourceTree = "<group>"; };
+		F2C0A9012FC8A00100C0A901 /* NovaConfirmationCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NovaConfirmationCell.h; sourceTree = "<group>"; };
+		F2C0A9022FC8A00100C0A901 /* NovaConfirmationCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = NovaConfirmationCell.m; sourceTree = "<group>"; };
 		F2C0DE032FA1000000000003 /* PPPremuimChekoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PPPremuimChekoutView.swift; sourceTree = "<group>"; };
 		F2C158332E2100C700EFDC91 /* EmptyStateView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EmptyStateView.h; sourceTree = "<group>"; };
 		F2C158342E2100D100EFDC91 /* EmptyStateView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = EmptyStateView.m; sourceTree = "<group>"; };
@@ -2231,6 +2265,8 @@
 		F2F807CF2E8BEE3E0034FF2D /* PPBannerCollectionCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBannerCollectionCell.h; sourceTree = "<group>"; };
 		F2F807D02E8BEE5D0034FF2D /* PPBannerCollectionCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPBannerCollectionCell.m; sourceTree = "<group>"; };
 		F2F9C0012F9C000000000001 /* payment_checkout.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = payment_checkout.json; sourceTree = "<group>"; };
+		F2FAE1002FC2000000A10001 /* PPFirebaseSessionBridge.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPFirebaseSessionBridge.h; sourceTree = "<group>"; };
+		F2FAE1012FC2000000A10001 /* PPFirebaseSessionBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPFirebaseSessionBridge.m; sourceTree = "<group>"; };
 		F2FBFEDB2C82935200E84C14 /* FTPopOverMenu.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FTPopOverMenu.h; sourceTree = "<group>"; };
 		F2FBFEDC2C82935200E84C14 /* FTPopOverMenu.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FTPopOverMenu.m; sourceTree = "<group>"; };
 		F2FCEBAA2ECCCD64002A9F67 /* PPVerificationCodeViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVerificationCodeViewController.h; sourceTree = "<group>"; };
@@ -3821,6 +3857,41 @@
 			path = JPVideoPlayer;
 			sourceTree = "<group>";
 		};
+		F281B46B2FCB6735009118F2 /* PPLeftRight */ = {
+			isa = PBXGroup;
+			children = (
+				F281B4692FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.h */,
+				F281B46A2FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m */,
+			);
+			path = PPLeftRight;
+			sourceTree = "<group>";
+		};
+		F281B47E2FCB6735009118F2 /* PPComponent */ = {
+			isa = PBXGroup;
+			children = (
+				F281B46B2FCB6735009118F2 /* PPLeftRight */,
+				F281B46C2FCB6735009118F2 /* PPDiscountBadge.h */,
+				F281B46D2FCB6735009118F2 /* PPDiscountBadge.m */,
+				F281B46E2FCB6735009118F2 /* PPMenuHelper.h */,
+				F281B46F2FCB6735009118F2 /* PPMenuHelper.m */,
+				F281B4702FCB6735009118F2 /* PPModrenSegmrnted.h */,
+				F281B4712FCB6735009118F2 /* PPModrenSegmrnted.m */,
+				F281B4722FCB6735009118F2 /* PPProductCard.h */,
+				F281B4732FCB6735009118F2 /* PPProductCard.m */,
+				F281B4742FCB6735009118F2 /* PPRatingView.h */,
+				F281B4752FCB6735009118F2 /* PPRatingView.m */,
+				F281B4762FCB6735009118F2 /* PPS.h */,
+				F281B4772FCB6735009118F2 /* PPS.m */,
+				F281B4782FCB6735009118F2 /* PPSearchFilterView.h */,
+				F281B4792FCB6735009118F2 /* PPSearchFilterView.m */,
+				F281B47A2FCB6735009118F2 /* PPSectionHeader.h */,
+				F281B47B2FCB6735009118F2 /* PPSectionHeader.m */,
+				F281B47C2FCB6735009118F2 /* UITabBarItem+PPFactory.h */,
+				F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */,
+			);
+			path = PPComponent;
+			sourceTree = "<group>";
+		};
 		F282C1132F0EC700001C110A /* SmartSuggest */ = {
 			isa = PBXGroup;
 			children = (
@@ -4450,6 +4521,7 @@
 		F2B1A62C2E6EA63F0019FC7C /* PP */ = {
 			isa = PBXGroup;
 			children = (
+				F281B47E2FCB6735009118F2 /* PPComponent */,
 				F2A83AD02F88781B00930857 /* PPNAV */,
 				F29952652F2DB8D300F50031 /* ZYCircleProgressView */,
 				F28A09FD2EE772E900EE5055 /* ScaledCenterCarousel */,
@@ -4574,6 +4646,8 @@
 				2221DBD8E981594F5FCCC240 /* PPOfflineBannerView.m */,
 				B7885155DFA157651B6B5E91 /* PPImageUploadValidator.h */,
 				B318ACA3F725E90A2D19812B /* PPImageUploadValidator.m */,
+				F2FAE1002FC2000000A10001 /* PPFirebaseSessionBridge.h */,
+				F2FAE1012FC2000000A10001 /* PPFirebaseSessionBridge.m */,
 			);
 			path = Helpers;
 			sourceTree = "<group>";
@@ -4931,6 +5005,8 @@
 				F25B387D2E173CB60066D504 /* OrderDetailsViewController.m */,
 				F2201FEE2E11F3D1005DBD9F /* OrderHistoryViewController.h */,
 				F2201FEF2E11F3D9005DBD9F /* OrderHistoryViewController.m */,
+				F2201FF22E1203A1005DBD9F /* PurchasedItemsViewController.h */,
+				F2201FF32E1203A1005DBD9F /* PurchasedItemsViewController.m */,
 				F2201FEB2E11DB6A005DBD9F /* CartViewController.h */,
 				F2201FEC2E11DB7E005DBD9F /* CartViewController.m */,
 				F2201FE62E11D7BF005DBD9F /* CartItem.h */,
@@ -5618,6 +5694,16 @@
 				F2CDBD4D2D12632200FE7FA2 /* ImageModel.m in Sources */,
 				F2AB48D72C72D43D00D88603 /* KafkaNativeHeader.m in Sources */,
 				F2B6F7A72E37B4D000AC0DAE /* ChMessagingController.m in Sources */,
+				F281B47F2FCB6735009118F2 /* PPDiscountBadge.m in Sources */,
+				F281B4802FCB6735009118F2 /* XLFormRowFullWidthTextFieldCell.m in Sources */,
+				F281B4812FCB6735009118F2 /* PPRatingView.m in Sources */,
+				F281B4822FCB6735009118F2 /* PPSearchFilterView.m in Sources */,
+				F281B4832FCB6735009118F2 /* PPS.m in Sources */,
+				F281B4842FCB6735009118F2 /* PPModrenSegmrnted.m in Sources */,
+				F281B4852FCB6735009118F2 /* PPSectionHeader.m in Sources */,
+				F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */,
+				F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */,
+				F281B4882FCB6735009118F2 /* PPProductCard.m in Sources */,
 				F2AB48DA2C72D43D00D88603 /* KafkaArcLayer.m in Sources */,
 				F27FA1432CE492B000A9A078 /* NullSafe.m in Sources */,
 				F2AB488D2C72CF3C00D88603 /* JGProgressHUDAnimation.m in Sources */,
@@ -5665,6 +5751,7 @@
 				F241C4522E254D3A00CC9BE9 /* ServiceModel.m in Sources */,
 				F2449C402D0DBACA00DB6BBC /* AppManager.m in Sources */,
 				F2201FF02E120379005DBD9F /* OrderHistoryViewController.m in Sources */,
+				F2201FF42E1203A1005DBD9F /* PurchasedItemsViewController.m in Sources */,
 				F2C0DE042FA1000000000004 /* PPPremuimChekoutView.swift in Sources */,
 				F2A83AD52F88781C00930857 /* PPNavigationController.m in Sources */,
 				F2A83AD62F88781C00930857 /* PPBottomBarManager.m in Sources */,
@@ -5916,6 +6003,7 @@
 				F27FAE9C2D2F363200EA6B56 /* JPVideoPlayerCompat.m in Sources */,
 				F27FAE9D2D2F363200EA6B56 /* JPVideoPlayerResourceLoader.m in Sources */,
 				F2B6F7A42E37AF6500AC0DAE /* ChManager.m in Sources */,
+				F2FAE1022FC2000000A10001 /* PPFirebaseSessionBridge.m in Sources */,
 				F27FAE9E2D2F363200EA6B56 /* JPVideoPlayerCache.m in Sources */,
 				F27FAE9F2D2F363200EA6B56 /* JPGCDExtensions.m in Sources */,
 				F27FAEA02D2F363200EA6B56 /* JPVideoPlayerControlViews.m in Sources */,

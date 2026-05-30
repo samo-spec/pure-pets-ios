@@ -276,7 +276,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     [IQKeyboardManager sharedManager].enableAutoToolbar = NO;
     self.typingAutoHideThreshold = 0.0; // px from bottom
 
-    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBageColor();
     [self setupInputView];
     [self setupTableView];
     [self setupInitialLoadIndicator];
@@ -1335,10 +1335,13 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
 
     FIRStorageReference *ref =
     [[[FIRStorage storage] reference]
-     child:[NSString stringWithFormat:@"chat_audio/%@.m4a", msg.ID]];
+     child:[NSString stringWithFormat:@"chat_media/audio/%@.m4a", msg.ID]];
 
+    FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+    metadata.contentType = @"audio/mp4";
+    msg.mimeType = metadata.contentType;
     FIRStorageUploadTask *task =
-    [ref putData:data metadata:nil];
+    [ref putData:data metadata:metadata];
 
     msg.isUploading = YES;
     msg.transferProgress = 0;
@@ -2187,9 +2190,12 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 
     FIRStorageReference *ref =
     [[[FIRStorage storage] reference]
-     child:[NSString stringWithFormat:@"chat_video/%@.mp4", msg.ID]];
+     child:[NSString stringWithFormat:@"chat_media/videos/%@.mp4", msg.ID]];
 
-    FIRStorageUploadTask *task = [ref putFile:localURL metadata:nil];
+    FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+    metadata.contentType = @"video/mp4";
+    msg.mimeType = metadata.contentType;
+    FIRStorageUploadTask *task = [ref putFile:localURL metadata:metadata];
 
     msg.isUploading = YES;
     msg.isLocalPending = YES;
@@ -2532,23 +2538,35 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
             }
         }
 
-        [PPHUD showError:error.localizedDescription.length > 0
-         ? error.localizedDescription
-         : kLang(@"SomethingWentWrong")];
+        NSLog(@"❌ [ChatUI] handleSendFailureForMessage — code=%ld domain=%@ desc=%@",
+              (long)error.code, error.domain, error.localizedDescription);
+
+        NSString *hudMessage = error.localizedDescription.length > 0
+            ? error.localizedDescription
+            : kLang(@"SomethingWentWrong");
+        [PPHUD showError:hudMessage];
 
         if (self.isPresentingFailureAlert) return;
         self.isPresentingFailureAlert = YES;
 
+        NSString *retryMessage = kLang(@"chat_retry_send_message");
+        if (retryMessage.length == 0) {
+            retryMessage = kLang(@"SomethingWentWrong");
+        }
+        NSString *alertMsg = error.localizedDescription.length > 0
+            ? [NSString stringWithFormat:@"%@\n\n%@", error.localizedDescription, retryMessage]
+            : retryMessage;
+
         UIAlertController *alert =
-            [UIAlertController alertControllerWithTitle:@"Message failed"
-                                                message:@"Retry sending this message?"
+            [UIAlertController alertControllerWithTitle:kLang(@"chat_message_failed_title")
+                                                message:alertMsg
                                          preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
                                                   style:UIAlertActionStyleCancel
                                                 handler:^(__unused UIAlertAction * _Nonnull action) {
             self.isPresentingFailureAlert = NO;
         }]];
-        [alert addAction:[UIAlertAction actionWithTitle:@"Retry"
+        [alert addAction:[UIAlertAction actionWithTitle:kLang(@"KLang_Retry")
                                                   style:UIAlertActionStyleDefault
                                                 handler:^(__unused UIAlertAction * _Nonnull action) {
             self.isPresentingFailureAlert = NO;

@@ -449,6 +449,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self pp_setPremiumTabDockHidden:YES animated:animated];
     [self pp_updateNavigationTitle];
     [self ios26Bar];
     [self pp_refreshMediaLocalizedText];
@@ -461,7 +462,17 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
     BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
+    if (exiting) {
+        [self pp_setPremiumTabDockHidden:NO animated:animated];
+    }
     if (exiting) [self.imageCollection clearAllImages];
+}
+
+- (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)self.tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
+    }
 }
 
 #pragma mark - Draft Storage

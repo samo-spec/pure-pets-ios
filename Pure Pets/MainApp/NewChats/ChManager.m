@@ -16,12 +16,14 @@ static NSString * const kFieldOnline  = @"online";
 static NSString * const kFieldisOnline  = @"isOnline";
 static NSString * const kFieldLastSeen = @"lastSeen";
 static NSString * const kPPSupportAvatarToken = @"purepets://support-logo";
+static NSString * const PURE_PETS_OFFICIAL_USER_ID = @"PUIDPOFFICILAL20262214";
 
 #import "ChManager.h"
 #import <UIKit/UIKit.h>
 #import "PPOverlayCoordinator.h"
 #import "UserManager.h"
 #import "UserModel.h"
+#import "PPFirebaseSessionBridge.h"
 
 static NSDate *PPThreadActivityDate(ChatThreadModel *thread) {
     if (![thread isKindOfClass:ChatThreadModel.class]) {
@@ -44,8 +46,17 @@ static NSString *PPSupportTrimmedString(id value) {
 
 static UserModel *PPSupportUserFromConfig(NSDictionary *config) {
     NSString *supportUserId = PPSupportTrimmedString(config[@"supportUserId"]);
+
     if (supportUserId.length == 0) {
-        return nil;
+        NSLog(@"⚠️ [SupportChat] CommerceConfig/supportChat is missing supportUserId. "
+              @"Falling back to official UID: %@", PURE_PETS_OFFICIAL_USER_ID);
+        supportUserId = PURE_PETS_OFFICIAL_USER_ID;
+    }
+
+    if (![supportUserId isEqualToString:PURE_PETS_OFFICIAL_USER_ID]) {
+        NSLog(@"⚠️ [SupportChat] Firestore supportUserId (%@) does not match official UID (%@). "
+              @"Update CommerceConfig/supportChat to use the canonical support account.",
+              supportUserId, PURE_PETS_OFFICIAL_USER_ID);
     }
 
     UserModel *supportUser = [UserModel new];
@@ -197,7 +208,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         if (error || !threadId.length) {
             NSLog(@"❌ [SupportChat] Failed to create support thread: %@", error.localizedDescription ?: @"unknown error");
-            PPSupportPresentUnavailableAlert(strongController, kLang(@"Could not open support chat right now.") ?: @"Could not open support chat right now.");
+            NSString *message = error ? [PPFirebaseSessionBridge publicMessageForError:error fallbackKey:@"pp_support_open_failed"] : (kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
+            PPSupportPresentUnavailableAlert(strongController, message);
             return;
         }
 
@@ -207,7 +219,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         [threadRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable readError) {
             if (readError || !snapshot.exists) {
                 NSLog(@"❌ [SupportChat] Failed to read support thread after creation: %@", readError.localizedDescription);
-                PPSupportPresentUnavailableAlert(strongController, kLang(@"Could not open support chat right now.") ?: @"Could not open support chat right now.");
+                PPSupportPresentUnavailableAlert(strongController, kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.");
                 return;
             }
 
@@ -240,26 +252,61 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         return;
     }
 
-    [[FIRAuth auth].currentUser getIDTokenWithCompletion:^(NSString * _Nullable idToken, NSError * _Nullable tokenError) {
-        if (tokenError || !idToken.length) {
-            if (completion) completion(nil, tokenError ?: [NSError errorWithDomain:@"ChManager" code:401 userInfo:@{NSLocalizedDescriptionKey: @"Missing auth token"}]);
+    [self pp_sendOpenSupportChatPayload:jsonData
+                                    url:url
+                    forceCredentialRefresh:NO
+                             didRetryAuth:NO
+                             completion:completion];
+}
 
+- (void)pp_sendOpenSupportChatPayload:(NSData *)jsonData
+                                  url:(NSURL *)url
+                 forceCredentialRefresh:(BOOL)forceCredentialRefresh
+                           didRetryAuth:(BOOL)didRetryAuth
+                             completion:(void (^)(NSString * _Nullable threadId, NSError * _Nullable error))completion
+{
+    NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+    request.HTTPMethod = @"POST";
+    request.timeoutInterval = 20;
+    request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
+    request.HTTPBody = jsonData;
+    [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+
+    PPFirebaseSessionAuthorizationOptions options =
+        PPFirebaseSessionAuthorizationOptionRequireSignedIn |
+        PPFirebaseSessionAuthorizationOptionIncludeAppCheck;
+    if (forceCredentialRefresh) {
+        options |= PPFirebaseSessionAuthorizationOptionForceRefreshAuth;
+        options |= PPFirebaseSessionAuthorizationOptionForceRefreshAppCheck;
+    }
+
+    [PPFirebaseSessionBridge authorizeRequest:request options:options completion:^(NSError * _Nullable authError) {
+        if (authError) {
+            if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:authError]) {
+                NSLog(@"⚠️ [SupportChat] Credential preflight failed before request. Retrying with forced refresh: %@",
+                      authError.localizedDescription ?: @"unknown error");
+                [self pp_sendOpenSupportChatPayload:jsonData
+                                                url:url
+                              forceCredentialRefresh:YES
+                                       didRetryAuth:YES
+                                         completion:completion];
+                return;
+            }
+            NSLog(@"❌ [SupportChat] Credential preflight failed after retry=%d: %@",
+                  didRetryAuth, authError.localizedDescription ?: @"unknown error");
+            if (completion) completion(nil, authError);
             return;
         }
-
-        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-        request.HTTPMethod = @"POST";
-        request.timeoutInterval = 20;
-        request.cachePolicy = NSURLRequestReloadIgnoringLocalCacheData;
-        request.HTTPBody = jsonData;
-        [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
-        [request setValue:[NSString stringWithFormat:@"Bearer %@", idToken] forHTTPHeaderField:@"Authorization"];
 
         NSURLSessionConfiguration *config = [NSURLSessionConfiguration ephemeralSessionConfiguration];
         NSURLSession *session = [NSURLSession sessionWithConfiguration:config];
 
         NSURLSessionDataTask *task = [session dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error) {
+                if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:error]) {
+                    [self pp_sendOpenSupportChatPayload:jsonData url:url forceCredentialRefresh:YES didRetryAuth:YES completion:completion];
+                    return;
+                }
                 if (completion) completion(nil, error);
                 return;
             }
@@ -274,10 +321,31 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
                 if (responseData.length > 0) {
                     errorDict = [NSJSONSerialization JSONObjectWithData:responseData options:0 error:nil];
                 }
-                NSString *message = [errorDict isKindOfClass:NSDictionary.class] ? (errorDict[@"message"] ?: errorDict[@"error"]) : nil;
-                if (!message.length) message = @"Server error";
-                if (completion) completion(nil, [NSError errorWithDomain:@"ChManager" code:http.statusCode userInfo:@{NSLocalizedDescriptionKey: message}]);
-
+                NSString *message = nil;
+                if ([errorDict isKindOfClass:NSDictionary.class]) {
+                    id directMessage = errorDict[@"message"];
+                    id errorValue = errorDict[@"error"];
+                    if ([directMessage isKindOfClass:NSString.class]) {
+                        message = directMessage;
+                    } else if ([errorValue isKindOfClass:NSString.class]) {
+                        message = errorValue;
+                    } else if ([errorValue isKindOfClass:NSDictionary.class] &&
+                               [errorValue[@"message"] isKindOfClass:NSString.class]) {
+                        message = errorValue[@"message"];
+                    } else if ([errorValue isKindOfClass:NSDictionary.class] &&
+                               [errorValue[@"status"] isKindOfClass:NSString.class]) {
+                        message = errorValue[@"status"];
+                    }
+                }
+                if (!message.length) message = kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now.";
+                NSError *httpError = [NSError errorWithDomain:@"ChManager"
+                                                         code:http.statusCode
+                                                     userInfo:@{NSLocalizedDescriptionKey: message}];
+                if (!didRetryAuth && [PPFirebaseSessionBridge isAuthOrAppCheckError:httpError]) {
+                    [self pp_sendOpenSupportChatPayload:jsonData url:url forceCredentialRefresh:YES didRetryAuth:YES completion:completion];
+                    return;
+                }
+                if (completion) completion(nil, [PPFirebaseSessionBridge publicErrorForError:httpError fallbackKey:@"pp_support_open_failed"]);
                 return;
             }
 
@@ -285,8 +353,10 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
             NSString *threadId = [result isKindOfClass:NSDictionary.class] ? ([result[@"threadId"] isKindOfClass:NSString.class] ? result[@"threadId"] : @"") : @"";
 
             if (!threadId.length) {
-                if (completion) completion(nil, [NSError errorWithDomain:@"ChManager" code:500 userInfo:@{NSLocalizedDescriptionKey: @"Invalid response from server"}]);
-
+                NSError *responseError = [NSError errorWithDomain:@"ChManager"
+                                                              code:500
+                                                          userInfo:@{NSLocalizedDescriptionKey: kLang(@"pp_support_open_failed") ?: @"Could not open support chat right now."}];
+                if (completion) completion(nil, responseError);
                 return;
             }
 
@@ -313,7 +383,7 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
     [supportRef getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *error) {
         if (error) {
             NSLog(@"❌ [SupportChat] Failed to load support config: %@", error.localizedDescription);
-            PPSupportPresentUnavailableAlert(controller, kLang(@"Could not load support chat configuration.") ?: @"Could not load support chat configuration.");
+            PPSupportPresentUnavailableAlert(controller, [PPFirebaseSessionBridge publicMessageForError:error fallbackKey:@"pp_support_config_failed"]);
             return;
         }
 
@@ -392,7 +462,14 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
              completion:^(NSError * _Nullable error) {
 
         if (error) {
-            NSLog(@"❌ [SendMessage] Message write failed: %@", error.localizedDescription);
+            NSLog(@"❌ [SendMessage] Message write failed — code=%ld domain=%@ desc=%@ info=%@",
+                  (long)error.code, error.domain, error.localizedDescription, error.userInfo);
+
+            // 🔍 Additional App Check diagnostic
+            if ([error.domain isEqualToString:FIRFirestoreErrorDomain] &&
+                error.code == FIRFirestoreErrorCodePermissionDenied) {
+                NSLog(@"🔐 [SendMessage] PERMISSION_DENIED — possible App Check or security rules rejection on this device");
+            }
 
             if (completion) {
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -1559,10 +1636,13 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
         FIRStorageReference *ref =
             [[[FIRStorage storage] reference]
-             child:[NSString stringWithFormat:@"chat_images/%@.jpg", msg.ID]];
+             child:[NSString stringWithFormat:@"chat_media/images/%@.jpg", msg.ID]];
 
+        FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+        metadata.contentType = @"image/jpeg";
+        msg.mimeType = metadata.contentType;
         FIRStorageUploadTask *task =
-            [ref putData:imageData metadata:nil];
+            [ref putData:imageData metadata:metadata];
 
         // 🔁 PROGRESS
         [task observeStatus:FIRStorageTaskStatusProgress
@@ -1648,10 +1728,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     FIRStorageReference *ref =
         [[[FIRStorage storage] reference]
-         child:[NSString stringWithFormat:@"chat_video_thumbs/%@.jpg", msg.ID]];
+         child:[NSString stringWithFormat:@"chat_media/video_thumbnails/%@.jpg", msg.ID]];
 
+    FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+    metadata.contentType = @"image/jpeg";
     FIRStorageUploadTask *task =
-        [ref putData:data metadata:nil];
+        [ref putData:data metadata:metadata];
 
     [task observeStatus:FIRStorageTaskStatusSuccess handler:^(FIRStorageTaskSnapshot *snap) {
 
@@ -1688,10 +1770,12 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     FIRStorageReference *ref =
         [[[FIRStorage storage] reference]
-         child:[NSString stringWithFormat:@"chat_video_thumbs/%@.jpg", msgID]];
+         child:[NSString stringWithFormat:@"chat_media/video_thumbnails/%@.jpg", msgID]];
 
+    FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+    metadata.contentType = @"image/jpeg";
     FIRStorageUploadTask *task =
-        [ref putData:data metadata:nil];
+        [ref putData:data metadata:metadata];
 
     [task observeStatus:FIRStorageTaskStatusFailure handler:^(FIRStorageTaskSnapshot *snap) {
         NSLog(@"❌ [VideoThumb] Upload failed msgID=%@ error=%@",
@@ -1763,13 +1847,16 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
 
     FIRStorageReference *videoRef =
         [[[FIRStorage storage] reference]
-         child:[NSString stringWithFormat:@"chat_videos/%@.mp4", msg.ID]];
+         child:[NSString stringWithFormat:@"chat_media/videos/%@.mp4", msg.ID]];
 
     msg.isUploading = YES;
     msg.transferProgress = 0;
 
+    FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+    metadata.contentType = @"video/mp4";
+    msg.mimeType = metadata.contentType;
     FIRStorageUploadTask *task =
-        [videoRef putData:videoData metadata:nil];
+        [videoRef putData:videoData metadata:metadata];
 
     [task observeStatus:FIRStorageTaskStatusProgress handler:^(FIRStorageTaskSnapshot *snap) {
         msg.transferProgress =

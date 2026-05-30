@@ -247,6 +247,44 @@ NS_ASSUME_NONNULL_BEGIN
                               completion:nil];
 }
 
++ (void)presentFloatingSheetFrom:(UIViewController *)presenter
+                        sheetVC:(UIViewController *)sheetVC
+                     detentStyle:(PPSheetDetentStyle)style
+                    withCompletion:(void (^_Nullable)(void))completion
+{
+    if (!presenter || !sheetVC) return;
+
+    sheetVC.modalPresentationStyle = UIModalPresentationPageSheet;
+
+    if (@available(iOS 15.0, *)) {
+        UISheetPresentationController *sheet =
+            sheetVC.sheetPresentationController;
+
+        if (@available(iOS 16.0, *)) {
+            sheet.detents = @[
+                [UISheetPresentationControllerDetent customDetentWithIdentifier:@"99" resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
+                    return context.maximumDetentValue * 0.98;
+                }]
+            ];
+        } else {
+            sheet.detents = @[[UISheetPresentationControllerDetent largeDetent]];
+        }
+
+        sheet.prefersEdgeAttachedInCompactHeight = NO;
+        sheet.widthFollowsPreferredContentSizeWhenEdgeAttached = NO;
+        sheet.prefersGrabberVisible = YES;
+        sheet.preferredCornerRadius = 42.0;
+        sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
+    }
+
+    UIViewController *safePresenter =
+        presenter.presentedViewController ?: presenter;
+
+    [safePresenter presentViewController:sheetVC
+                                animated:YES
+                              completion:completion];
+}
+
  
 
 + (void)presentSheetFrom:(UIViewController *)presentingVC

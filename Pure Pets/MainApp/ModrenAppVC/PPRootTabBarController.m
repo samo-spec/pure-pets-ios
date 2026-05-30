@@ -46,11 +46,11 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 
 @class PPPremiumDockBarDelegate;
 
-@interface PPRootTabBarController ()
+@interface PPRootTabBarController () <UINavigationControllerDelegate>
 @property (nonatomic, strong) UIButton *leadingTabButton;
 @property (nonatomic, strong) UIButton *emptyCard;
-@property (nonatomic, strong) PPNewBottomBar *bottomBar;
-@property (nonatomic, strong) UITabBar *premiumTabDockView;
+
+@property (nonatomic, strong) UITabBar *premiumTabbarView;
 @property (nonatomic, strong) PPPremiumDockBarDelegate *premiumDockDelegate;
 @property (nonatomic, strong) UIView *premiumBottomFadeView;
 - (void)pp_premiumDockDidSelectItem:(UITabBarItem *)item;
@@ -118,6 +118,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 static char PPListBaseContentInsetKey;
 static char PPListBaseIndicatorInsetKey;
 static char PPListAppliedBottomClearanceKey;
+static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationContext;
 
 // Gradient-backed view: the layer auto-resizes with the view's bounds, so the
 // bottom fade tracks layout without manual frame updates.
@@ -133,6 +134,7 @@ static char PPListAppliedBottomClearanceKey;
 - (void)setSelectedIndex:(NSUInteger)selectedIndex
 {
     [super setSelectedIndex:selectedIndex];
+    [self pp_assertPremiumTabBarState];
     if (self.premiumTabItems.count > 0) {
         [self pp_applyPremiumTabSelectionAnimated:NO];
     }
@@ -208,6 +210,16 @@ static char PPListAppliedBottomClearanceKey;
         settingsNav
     ];
 
+    // ── Centralized tab bar state management ──
+    // Set self as delegate for every tab's navigation controller so
+    // navigationController:didShowViewController:animated: fires after
+    // every push/pop transition and can re-assert the correct tab bar state.
+    for (UIViewController *vc in self.viewControllers) {
+        if ([vc isKindOfClass:UINavigationController.class]) {
+            [(UINavigationController *)vc setDelegate:self];
+        }
+    }
+
     // ── Accessibility: Tab bar items ──
     homeNav.tabBarItem.accessibilityLabel     = NSLocalizedString(@"a11y_tab_home", @"Home tab");
     homeNav.tabBarItem.accessibilityHint      = NSLocalizedString(@"a11y_tab_home_hint", @"Browse pet ads and services");
@@ -224,7 +236,17 @@ static char PPListAppliedBottomClearanceKey;
     [self configureAppearance];
 
     [self pp_setupPremiumBottomNavigation];
-    
+
+    // ── KVO guard against UIKit tabBar flashes ──
+    // UITabBarController internally sets self.tabBar.hidden = NO during pop
+    // transitions. This KVO immediately reverts that on iOS 26+.
+    if (PPIOS26()) {
+        [self.tabBar addObserver:self
+                      forKeyPath:@"hidden"
+                         options:NSKeyValueObservingOptionNew
+                         context:kPPTabBarHiddenObservationContext];
+    }
+
     [self updateUnreads];
     
     
@@ -271,6 +293,7 @@ static char PPListAppliedBottomClearanceKey;
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self pp_assertPremiumTabBarState];
     [self pp_updatePremiumBottomFadeAppearance];
     [UserManager.sharedManager startListeningCurrentUserBlockedState];
     [self pp_applyBlockedState:(UserManager.sharedManager.isCurrentUserBlocked || UserManager.sharedManager.isCurrentUserEffectivelyBlocked) animated:NO];
@@ -279,9 +302,76 @@ static char PPListAppliedBottomClearanceKey;
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
+    [self pp_assertPremiumTabBarState];
+}
+
+#pragma mark - Centralized Tab Bar State
+
+/// Single source of truth for which tab bar (system vs premium dock) is visible.
+/// Called after every navigation push/pop transition and tab switch.
+/// iOS 26+ → system tabBar permanently hidden, premium dock shown exclusively.
+/// iOS < 26 → system tabBar visible, premium dock never created.
+- (void)pp_assertPremiumTabBarState
+{
+    if (PPIOS26()) {
+        self.tabBar.hidden = YES;
+        self.tabBar.alpha = 0.0;
+        self.tabBar.userInteractionEnabled = NO;
+    }
+}
+
+#pragma mark - UINavigationControllerDelegate
+
+/// Fires BEFORE the push/pop animation begins. Preemptively hide the system
+/// tabBar so UIKit's internal transition machinery starts from hidden state.
+- (void)navigationController:(UINavigationController *)navigationController
+      willShowViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated
+{
+    [self pp_assertPremiumTabBarState];
+    // After the transition completes, re-assert in case UIKit altered state mid-animation
+    if (animated) {
+        id<UIViewControllerTransitionCoordinator> coordinator = navigationController.transitionCoordinator;
+        [coordinator animateAlongsideTransition:nil completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+            [self pp_assertPremiumTabBarState];
+        }];
+    }
+}
+
+/// Fires AFTER the push/pop animation completes. Final re-assertion.
+- (void)navigationController:(UINavigationController *)navigationController
+       didShowViewController:(UIViewController *)viewController
+                    animated:(BOOL)animated
+{
+    [self pp_assertPremiumTabBarState];
+}
+
+#pragma mark - KVO: prevent tabBar flash during navigation transitions
+
+/// UIKit's UITabBarController internally toggles self.tabBar.hidden during
+/// push/pop transitions. On iOS 26+ we observe the hidden property and
+/// immediately revert any attempt to show the system tabBar.
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary<NSKeyValueChangeKey, id> *)change
+                       context:(void *)context
+{
+    if (context == kPPTabBarHiddenObservationContext && PPIOS26()) {
+        if (object == self.tabBar && !self.tabBar.hidden) {
+            self.tabBar.hidden = YES;
+            self.tabBar.alpha = 0.0;
+            self.tabBar.userInteractionEnabled = NO;
+        }
+        return;
+    }
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
 }
 
 - (void)dealloc {
+    if (PPIOS26()) {
+        @try { [self.tabBar removeObserver:self forKeyPath:@"hidden" context:kPPTabBarHiddenObservationContext]; }
+        @catch (NSException *e) {}
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
@@ -373,7 +463,7 @@ static char PPListAppliedBottomClearanceKey;
 
 - (void)pp_setBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
 {
-    [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
+    [self setPremiumTabDockViewHidden:hidden animation:animated];
 }
 
 -(void)viewWillLayoutSubviews
@@ -1113,7 +1203,7 @@ static char PPListAppliedBottomClearanceKey;
 
 - (void)pp_updateTabBarSelectionIndicatorIfNeeded
 {
-    UITabBar *dockTabBar = self.premiumTabDockView;
+    UITabBar *dockTabBar = self.premiumTabbarView;
     if (!dockTabBar || dockTabBar.items.count == 0) {
         return;
     }
@@ -1195,7 +1285,7 @@ static char PPListAppliedBottomClearanceKey;
     dockView.layer.masksToBounds = NO;
     dockView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [self.view addSubview:dockView];
-    self.premiumTabDockView = dockView;
+    self.premiumTabbarView = dockView;
     
     UITabBarAppearance *appearance = [[UITabBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
@@ -1293,8 +1383,8 @@ static char PPListAppliedBottomClearanceKey;
         CGRect buttonFrame = [self.leadingTabButton.superview convertRect:self.leadingTabButton.frame
                                                                     toView:self.view];
         CGRect dockFrame = CGRectNull;
-        if (self.premiumTabDockView && !self.premiumTabDockView.hidden) {
-            dockFrame = [self.premiumTabDockView.superview convertRect:self.premiumTabDockView.frame
+        if (self.premiumTabbarView && !self.premiumTabbarView.hidden) {
+            dockFrame = [self.premiumTabbarView.superview convertRect:self.premiumTabbarView.frame
                                                                 toView:self.view];
         }
 
@@ -1640,14 +1730,14 @@ static char PPListAppliedBottomClearanceKey;
             break;
         }
     }
-    if (!selectedItem || self.premiumTabDockView.selectedItem == selectedItem) {
+    if (!selectedItem || self.premiumTabbarView.selectedItem == selectedItem) {
         return;
     }
     void (^updates)(void) = ^{
-        self.premiumTabDockView.selectedItem = selectedItem;
+        self.premiumTabbarView.selectedItem = selectedItem;
     };
     if (animated && !UIAccessibilityIsReduceMotionEnabled()) {
-        [UIView transitionWithView:self.premiumTabDockView
+        [UIView transitionWithView:self.premiumTabbarView
                           duration:0.22
                            options:UIViewAnimationOptionTransitionCrossDissolve |
                                    UIViewAnimationOptionBeginFromCurrentState |
@@ -1666,7 +1756,7 @@ static char PPListAppliedBottomClearanceKey;
     }
     self.premiumNavigationDidAnimateIn = YES;
     if (UIAccessibilityIsReduceMotionEnabled()) {
-        self.premiumTabDockView.transform = CGAffineTransformIdentity;
+        self.premiumTabbarView.transform = CGAffineTransformIdentity;
         self.leadingTabButton.alpha = 1.0;
         self.leadingTabButton.transform = CGAffineTransformIdentity;
         self.premiumNovaButton.alpha = 1.0;
@@ -1680,7 +1770,7 @@ static char PPListAppliedBottomClearanceKey;
           initialSpringVelocity:0.16
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction
                      animations:^{
-        self.premiumTabDockView.transform = CGAffineTransformIdentity;
+        self.premiumTabbarView.transform = CGAffineTransformIdentity;
     } completion:nil];
     [UIView animateWithDuration:0.40
                           delay:0.08
@@ -1755,14 +1845,20 @@ static char PPListAppliedBottomClearanceKey;
     if (PPIOS26()) {
         self.tabBar.hidden = YES;
         self.tabBar.alpha = 0.0;
+        self.tabBar.userInteractionEnabled = NO;
     } else {
-        self.tabBar.hidden = hidden;
-        self.tabBar.alpha = hidden ? 0.0 : 1.0;
+        if (!hidden) {
+            self.tabBar.hidden = NO;
+        }
+        self.tabBar.userInteractionEnabled = !hidden;
     }
     self.premiumBottomNavigationHidden = hidden;
-    NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:3];
-    if (self.premiumTabDockView) {
-        [navigationViews addObject:self.premiumTabDockView];
+    NSMutableArray<UIView *> *navigationViews = [NSMutableArray arrayWithCapacity:4];
+    if (PPIOS26() && self.premiumTabbarView) {
+        [navigationViews addObject:self.premiumTabbarView];
+    }
+    if (self.premiumBottomFadeView && PPIOS26()) {
+        [navigationViews addObject:self.premiumBottomFadeView];
     }
     if (self.leadingTabButton) {
         [navigationViews addObject:self.leadingTabButton];
@@ -1778,18 +1874,29 @@ static char PPListAppliedBottomClearanceKey;
         self.premiumNovaButton.hidden = !self.premiumNovaVisibleByConfiguration;
     }
     void (^changes)(void) = ^{
-        self.premiumTabDockView.alpha = 1.0;
+        if (PPIOS26()) {
+            self.tabBar.alpha = 0.0;
+            self.premiumTabbarView.alpha = hidden ? 0.0 : 1.0;
+            self.premiumBottomFadeView.alpha = hidden ? 0.0 : 1.0;
+        } else {
+            self.tabBar.alpha = hidden ? 0.0 : 1.0;
+            self.premiumTabbarView.alpha = 0.0;
+            self.premiumBottomFadeView.alpha = 0.0;
+        }
         self.leadingTabButton.alpha = hidden ? 0.0 : 1.0;
         self.premiumNovaButton.alpha = hidden ? 0.0 : 1.0;
         if (!UIAccessibilityIsReduceMotionEnabled()) {
-            self.premiumTabDockView.transform =
+            self.premiumTabbarView.transform =
                 hidden ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
+            self.tabBar.transform =
+                (!PPIOS26() && hidden) ? CGAffineTransformMakeTranslation(0.0, 10.0) : CGAffineTransformIdentity;
             self.leadingTabButton.transform =
                 hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
             self.premiumNovaButton.transform =
                 hidden ? CGAffineTransformMakeTranslation(0.0, 8.0) : CGAffineTransformIdentity;
         } else {
-            self.premiumTabDockView.transform = CGAffineTransformIdentity;
+            self.premiumTabbarView.transform = CGAffineTransformIdentity;
+            self.tabBar.transform = CGAffineTransformIdentity;
             self.leadingTabButton.transform = CGAffineTransformIdentity;
             self.premiumNovaButton.transform = CGAffineTransformIdentity;
         }
@@ -1797,6 +1904,19 @@ static char PPListAppliedBottomClearanceKey;
     void (^completion)(BOOL) = ^(__unused BOOL finished) {
         for (UIView *view in navigationViews) {
             view.hidden = hidden;
+        }
+        if (PPIOS26()) {
+            self.tabBar.hidden = YES;
+            self.tabBar.alpha = 0.0;
+            self.tabBar.transform = CGAffineTransformIdentity;
+            self.tabBar.userInteractionEnabled = NO;
+        } else {
+            self.tabBar.hidden = hidden;
+            if (!hidden) {
+                self.tabBar.alpha = 1.0;
+            }
+            self.tabBar.transform = CGAffineTransformIdentity;
+            self.tabBar.userInteractionEnabled = !hidden;
         }
         [self pp_applyBottomNavigationClearanceToVisibleLists];
     };
@@ -1810,6 +1930,16 @@ static char PPListAppliedBottomClearanceKey;
                         options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
                      animations:changes
                      completion:completion];
+}
+
+- (void)setPremiumTabDockViewHidden:(BOOL)hidden animation:(BOOL)animated
+{
+    [self pp_setPremiumBottomNavigationHidden:hidden animated:animated];
+}
+
+- (void)setpremiumTabbarViewHidden:(BOOL)hidden animation:(BOOL)animated
+{
+    [self setPremiumTabDockViewHidden:hidden animation:animated];
 }
 
 - (void)addPlusTabBarButton {
@@ -1867,7 +1997,7 @@ static char PPListAppliedBottomClearanceKey;
     if (@available(iOS 26.0, *)) {
         [NSLayoutConstraint activateConstraints:@[
             [showAddMenuButton.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:24.0],
-            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:2.0],
+            [showAddMenuButton.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:10.0],
             [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
         ]];

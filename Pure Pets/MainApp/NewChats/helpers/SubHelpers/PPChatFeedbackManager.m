@@ -5,7 +5,6 @@
 //  Created by Mohammed Ahmed on 25/01/2026.
 //
 
-
 #import "PPChatFeedbackManager.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import <UIKit/UIKit.h>
@@ -13,6 +12,8 @@
 @interface PPChatFeedbackManager ()
 @property (nonatomic, strong) NSMutableDictionary<NSNumber *, NSDate *> *lastEventPlaybackDates;
 @property (nonatomic, strong) UIImpactFeedbackGenerator *lightImpact;
+@property (nonatomic, strong) UIImpactFeedbackGenerator *mediumImpact;
+@property (nonatomic, strong) UISelectionFeedbackGenerator *selectionFeedback;
 @property (nonatomic, strong) UINotificationFeedbackGenerator *notificationFeedback;
 @property (nonatomic, strong) dispatch_queue_t stateQueue;
 @end
@@ -36,10 +37,14 @@
         if (@available(iOS 13.0, *)) {
             _lightImpact =
                 [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleSoft];
+            _mediumImpact =
+                [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleRigid];
         } else {
             _lightImpact =
                 [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+            _mediumImpact = _lightImpact;
         }
+        _selectionFeedback = [[UISelectionFeedbackGenerator alloc] init];
         _notificationFeedback =
             [[UINotificationFeedbackGenerator alloc] init];
         _stateQueue = dispatch_queue_create("com.purepets.chat.feedback",
@@ -52,15 +57,15 @@
 {
     switch (event) {
         case PPChatFeedbackEventOutgoingSend:
-            return 0.05;
+            return 0.04;
         case PPChatFeedbackEventIncomingActiveChat:
-            return 0.15;
+            return 0.10;
         case PPChatFeedbackEventIncomingOutsideChat:
-            return 0.40;
+            return 0.30;
         case PPChatFeedbackEventMessageRead:
-            return 0.20;
+            return 0.15;
     }
-    return 0.20;
+    return 0.15;
 }
 
 - (BOOL)reservePlaybackSlotForEvent:(PPChatFeedbackEvent)event
@@ -81,15 +86,6 @@
     return canPlay;
 }
 
-- (void)playPremiumImpactWithIntensity:(CGFloat)intensity
-{
-    if (@available(iOS 13.0, *)) {
-        [self.lightImpact impactOccurredWithIntensity:intensity];
-    } else {
-        [self.lightImpact impactOccurred];
-    }
-}
-
 - (BOOL)shouldPlayForEvent:(PPChatFeedbackEvent)event
 {
     UIApplicationState appState = UIApplication.sharedApplication.applicationState;
@@ -107,6 +103,36 @@
     return NO;
 }
 
+#pragma mark - Premium Sound Engine
+
+- (void)pp_playSendSound
+{
+    AudioServicesPlaySystemSound(1104);
+}
+
+- (void)pp_playReceiveSound
+{
+    AudioServicesPlaySystemSound(1105);
+}
+
+- (void)pp_subtleImpactWithDelay:(NSTimeInterval)delay
+{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        [self.selectionFeedback selectionChanged];
+    });
+}
+
+- (void)pp_successNotificationWithDelay:(NSTimeInterval)delay
+{
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        [self.notificationFeedback notificationOccurred:UINotificationFeedbackTypeSuccess];
+    });
+}
+
+#pragma mark - Public API
+
 - (void)playNovaFeedbackForEvent:(PPChatFeedbackEvent)event
 {
     if (![self shouldPlayForEvent:event]) {
@@ -119,22 +145,25 @@
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.lightImpact prepare];
+        [self.selectionFeedback prepare];
 
         switch (event) {
             case PPChatFeedbackEventOutgoingSend: {
-                [self playPremiumImpactWithIntensity:0.05];
+                [self.lightImpact impactOccurredWithIntensity:0.62];
             } break;
 
             case PPChatFeedbackEventIncomingActiveChat: {
-                [self playPremiumImpactWithIntensity:0.12];
+                [self.lightImpact impactOccurredWithIntensity:0.45];
+                [self.notificationFeedback notificationOccurred:UINotificationFeedbackTypeSuccess];
             } break;
 
             case PPChatFeedbackEventIncomingOutsideChat: {
-                [self playPremiumImpactWithIntensity:0.12];
+                [self.lightImpact impactOccurredWithIntensity:0.45];
+                [self.notificationFeedback notificationOccurred:UINotificationFeedbackTypeSuccess];
             } break;
 
             case PPChatFeedbackEventMessageRead: {
-                [self playPremiumImpactWithIntensity:0.10];
+                [self.lightImpact impactOccurredWithIntensity:0.32];
             } break;
         }
     });
@@ -151,58 +180,36 @@
 
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.lightImpact prepare];
+        [self.mediumImpact prepare];
+        [self.selectionFeedback prepare];
         [self.notificationFeedback prepare];
 
         switch (event) {
 
-            // Outgoing message (send)
             case PPChatFeedbackEventOutgoingSend: {
-                [self playPremiumImpactWithIntensity:0.58];
-                AudioServicesPlaySystemSound(1020);
+                [self pp_playSendSound];
+                [self.lightImpact impactOccurredWithIntensity:0.66];
+                [self pp_subtleImpactWithDelay:0.05];
             } break;
 
-            // Incoming while chat is open
             case PPChatFeedbackEventIncomingActiveChat: {
-                [self.notificationFeedback
-                 notificationOccurred:UINotificationFeedbackTypeSuccess];
-                AudioServicesPlaySystemSound(1103);
+                [self pp_playReceiveSound];
+                [self.lightImpact impactOccurredWithIntensity:0.45];
+                [self pp_subtleImpactWithDelay:0.04];
+                [self pp_successNotificationWithDelay:0.06];
             } break;
 
-            // Incoming while app is active but chat is not visible
             case PPChatFeedbackEventIncomingOutsideChat: {
-                [self.notificationFeedback
-                 notificationOccurred:UINotificationFeedbackTypeSuccess];
-                AudioServicesPlaySystemSound(1007); //1016
+                [self pp_playReceiveSound];
+                [self.lightImpact impactOccurredWithIntensity:0.45];
+                [self.notificationFeedback notificationOccurred:UINotificationFeedbackTypeSuccess];
             } break;
 
-            // Message read (optional, subtle)
             case PPChatFeedbackEventMessageRead: {
-                [self playPremiumImpactWithIntensity:0.42];
+                [self.mediumImpact impactOccurredWithIntensity:0.48];
             } break;
         }
     });
 }
 
 @end
-/*
- // UI Sounds
- 1312:  SMS Received (Vibrate) - good for silent mode
- 1020:  "Tweet Sent" - for message sent confirmation
- 1057:  "Tock" - keyboard tap (good for typing indicators)
- 1073:  "Tink" - error/alerts
- 1075:  "Tink" - alternative
- 1102:  "Bleep" - minor notification
- 1103:  "Bloom" - light notification
- 1104:  "SentMessage" - message sent
- 1105:  "ReceivedMessage"
- 1107:  "SentMail" - for email-like chats
- 1108:  "MailReceived"
- 1109:  "MailSent"
- 1110:  "SentMessage" alternative
- 1111:  "Keypress"
- 1113:  "Tock" alternative
- 1114:  "Tock" softer
- 1117:  "CameraShutter" - for photo messages
- 1150:  "Lock" - for chat locking/security
- 1151:  "Unlock" - for unlocking chat
- */

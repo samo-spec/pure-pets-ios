@@ -25,6 +25,7 @@
 @property (nonatomic, strong) NSMutableArray<PPUniversalCellViewModel *> *mutableItems;
 @property (nonatomic, copy) NSArray *latestRawResults;
 @property (nonatomic, assign) NSUInteger requestVersion;
+@property (nonatomic, assign) BOOL didNotifyInitialSectionsDataLoaded;
 
 @end
 
@@ -395,8 +396,17 @@
             weakSelf.currentPage = 1;
             weakSelf.hasMore = NO;
 
+            BOOL shouldNotifyInitialSectionsDataLoaded = !weakSelf.didNotifyInitialSectionsDataLoaded;
+            if (shouldNotifyInitialSectionsDataLoaded) {
+                weakSelf.didNotifyInitialSectionsDataLoaded = YES;
+            }
+
             if (weakSelf.onReloadData) {
                 weakSelf.onReloadData();
+            }
+
+            if (shouldNotifyInitialSectionsDataLoaded && weakSelf.onInitialSectionsDataLoaded) {
+                weakSelf.onInitialSectionsDataLoaded();
             }
         }];
     }];

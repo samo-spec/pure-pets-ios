@@ -284,8 +284,8 @@ static UIColor *PPNovaInputDynamicColor(UIColor *lightColor, UIColor *darkColor)
     self.textView.textAlignment = alignment;
     self.placeholderLabel.semanticContentAttribute = semantic;
     self.placeholderLabel.textAlignment = alignment;
-    self.placeholderLeadingConstraint.active = YES;
-    self.placeholderTrailingConstraint.active = YES;
+    self.placeholderLeadingConstraint.active = !rtl;
+    self.placeholderTrailingConstraint.active = rtl;
 }
 
 - (void)pp_updateStateAnimated:(BOOL)animated {

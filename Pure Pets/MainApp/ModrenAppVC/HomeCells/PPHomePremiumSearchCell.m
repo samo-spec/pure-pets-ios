@@ -194,7 +194,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
 
     chromeView.userInteractionEnabled = NO;
     chromeView.layer.cornerRadius = PPPSBChromeCornerRadius ;
-    chromeView.layer.masksToBounds = NO;
+    chromeView.layer.masksToBounds = !PPIOS26();
 
 
     if (@available(iOS 13.0, *)) {
@@ -758,7 +758,7 @@ static NSString *PPPSB_DefaultSmartSearchPlaceholderForWidth(CGFloat width)
         _chromeBlurView.effect = [UIBlurEffect effectWithStyle:blurStyle];
 
         _chromeView.layer.borderWidth = isDark ? 0.78f : 0.92f;
-        [_chromeView pp_setBorderColor:[liquidBorderColor colorWithAlphaComponent:isDark ? 0.30 : 0.58]];
+        [_chromeView pp_setBorderColor:[liquidBorderColor colorWithAlphaComponent:isDark ? 0.50 : 0.80]];
     }
 
     _leadingChipView.backgroundColor = AppClearClr;

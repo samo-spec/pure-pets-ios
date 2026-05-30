@@ -53,6 +53,9 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL isNew;
 @property (nonatomic, assign) BOOL hasOffer;
 @property (nonatomic, assign) BOOL showInAppMarket;
+@property (nonatomic, assign) BOOL isBlocked;
+@property (nonatomic, assign) BOOL isDeleted;
+@property (nonatomic, assign) BOOL isDisabled;
 
 // Computed type helpers
 @property (nonatomic, readonly) BOOL isLivePet;
@@ -88,4 +91,3 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
-

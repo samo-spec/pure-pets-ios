@@ -12,6 +12,7 @@
 #import "CartManager.h"
 #import "CartViewController.h"
 #import "PPNavigationController.h"
+#import "PPRootTabBarController.h"
 #import "PPHomeHelper.h"
 #import "UIView+Badge.h"
 #import "AppClasses.h"
@@ -357,6 +358,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)pp_styleNavigationSectionControl;
 - (void)pp_installCartNavigationButton;
 - (void)pp_updateCartBadge;
+- (void)pp_applyFilterButtonAppearance;
 - (void)pp_applyKeyboardManagerOverridesIfNeeded;
 - (void)pp_restoreKeyboardManagerOverridesIfNeeded;
 - (void)pp_presentMedicineDetails:(VetMedicineModel *)medicine;
@@ -445,6 +447,22 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:YES animation:animated];
+    }
+
+    if (!PPIOS26()) {
+        UIView *dimView = [self.view viewWithTag:8726];
+        [UIView animateWithDuration:0.18
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn
+                         animations:^{
+            dimView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.0];
+        } completion:^(BOOL finished) {
+            [dimView removeFromSuperview];
+        }];
+    }
+
     [self pp_applyKeyboardManagerOverridesIfNeeded];
     [self pp_installNavigationTitleControl];
     [self pp_installCartNavigationButton];
@@ -459,6 +477,10 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     [self.searchField resignFirstResponder];
     [self.heroAnimationView stop];
     [self pp_restoreKeyboardManagerOverridesIfNeeded];
+    if ((self.isMovingFromParentViewController || self.isBeingDismissed) &&
+        [self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:animated];
+    }
 }
 
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection
@@ -690,11 +712,11 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     if (@available(iOS 13.0, *)) {
         _filterButton.layer.cornerCurve = kCACornerCurveContinuous;
     }
-    [_filterButton setImage:[[UIImage systemImageNamed:@"slider.horizontal.3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate] forState:UIControlStateNormal];
     _filterButton.accessibilityLabel = PPPetCareLocalized(@"pet_care_filter_by", @"Filter By");
     if (@available(iOS 14.0, *)) {
         _filterButton.showsMenuAsPrimaryAction = YES;
     }
+    [self pp_applyFilterButtonAppearance];
     [_bottomSearchBarView addSubview:_filterButton];
 
     _filterBadgeView = [[UIView alloc] init];
@@ -752,7 +774,7 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
 
     UILayoutGuide *safe = self.view.safeAreaLayoutGuide;
     self.bottomSearchBarBottomConstraint =
-        [_bottomSearchBarView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+        [_bottomSearchBarView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:0.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [contentView.topAnchor constraintEqualToAnchor:safe.topAnchor],
@@ -1356,7 +1378,9 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     }
 
     CGFloat safeBottom = self.view.safeAreaInsets.bottom;
-    CGFloat bottomInset = self.keyboardOverlap > 0.0 ? self.keyboardOverlap + 12.0 : safeBottom + 12.0;
+    CGFloat restingInset = PPIOS26() ? 12.0 : MAX(safeBottom - 8.0, 12.0);
+    CGFloat keyboardInset = self.keyboardOverlap + 12.0;
+    CGFloat bottomInset = self.keyboardOverlap > 0.0 ? keyboardInset : restingInset;
     self.bottomSearchBarBottomConstraint.constant = -bottomInset;
     [self pp_updateCollectionBottomInsets];
 
@@ -1399,6 +1423,35 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     UIEdgeInsets indicatorInset = self.collectionView.scrollIndicatorInsets;
     indicatorInset.bottom = bottomChrome;
     self.collectionView.scrollIndicatorInsets = indicatorInset;
+}
+
+- (void)pp_applyFilterButtonAppearance
+{
+    if (!self.filterButton) {
+        return;
+    }
+
+    UIImage *filterIcon = [[UIImage systemImageNamed:@"slider.horizontal.3"] imageWithRenderingMode:UIImageRenderingModeAlwaysTemplate];
+    if (PPIOS26()) {
+        UIButtonConfiguration *configuration = [UIButtonConfiguration glassButtonConfiguration];
+        configuration.image = filterIcon;
+        configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+        configuration.baseForegroundColor = PPPetCareTextColor();
+        configuration.contentInsets = NSDirectionalEdgeInsetsMake(0.0, 0.0, 0.0, 0.0);
+        self.filterButton.configuration = configuration;
+        self.filterButton.backgroundColor = UIColor.clearColor;
+        self.filterButton.tintColor = PPPetCareTextColor();
+        self.filterButton.layer.borderWidth = 0.0;
+        self.filterButton.clipsToBounds = NO;
+        return;
+    }
+
+    self.filterButton.configuration = nil;
+    [self.filterButton setImage:filterIcon forState:UIControlStateNormal];
+    self.filterButton.backgroundColor = PPPetCareSearchSurfaceColor();
+    self.filterButton.tintColor = PPPetCareTextColor();
+    self.filterButton.layer.borderWidth = 1.0;
+    [self.filterButton pp_setBorderColor:PPPetCareSearchBorderColor()];
 }
 
 - (void)pp_keyboardWillChangeFrame:(NSNotification *)notification
@@ -1772,11 +1825,10 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     self.searchField.tintColor = PPPetCareAccentColor();
     self.searchIconView.tintColor = PPPetCareTextColor();
 
-    self.filterButton.tintColor = PPPetCareTextColor();
-    self.filterButton.backgroundColor = PPPetCareSearchSurfaceColor();
-    [self.filterButton pp_setBorderColor:PPPetCareSearchBorderColor()];
+    [self pp_applyFilterButtonAppearance];
 
-    self.filterBadgeView.layer.borderColor = self.filterButton.backgroundColor.CGColor;
+    UIColor *badgeBorderColor = PPIOS26() ? [PPPetCareSurfaceColor() colorWithAlphaComponent:0.72] : self.filterButton.backgroundColor;
+    self.filterBadgeView.layer.borderColor = badgeBorderColor.CGColor;
 
     [self pp_styleNavigationSectionControl];
 }
@@ -2274,6 +2326,20 @@ static LOTComposition *PPPetCarePremiumHeroComposition(PPPetCareInitialSection s
     viewer.hidesBottomBarWhenPushed = YES;
     UINavigationController *nav = self.navigationController;
     if (nav) {
+        if (!PPIOS26()) {
+            UIView *dimView = [[UIView alloc] initWithFrame:self.view.bounds];
+            dimView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.0];
+            dimView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+            dimView.tag = 8726;
+            dimView.accessibilityLabel = @"pp.serviceViewerDim";
+            [self.view addSubview:dimView];
+            [UIView animateWithDuration:0.22
+                                  delay:0.0
+                                options:UIViewAnimationOptionCurveEaseOut
+                             animations:^{
+                dimView.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.22];
+            } completion:nil];
+        }
         [nav pushViewController:viewer animated:YES];
         return;
     }

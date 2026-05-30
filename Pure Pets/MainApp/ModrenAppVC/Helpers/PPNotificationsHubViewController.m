@@ -690,7 +690,7 @@ static NSString *PPHubInboxSymbolName(NSDictionary *payload)
 {
     [super viewDidLoad];
 
-    self.view.backgroundColor = AppBackgroundClrDarker;// PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBageColor();// PPBackgroundColorForIOS26(AppBackgroundClr);
     self.selectedIndex = 0;
 
     self.chatsVC = [UserChatsViewController new];

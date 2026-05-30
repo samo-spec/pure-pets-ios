@@ -22,7 +22,7 @@
 static const CGFloat PPChatStoriesHeaderHiddenHeight = 8.0;
 static const CGFloat PPChatStoriesHeaderVisibleHeight = 156.0;
 static const CGFloat PPChatListContentTopInset = 10.0;
-static const CGFloat PPChatListContentBottomInset = 28.0;
+static const CGFloat PPChatListContentBottomInset = 128.0;
 static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 
 @interface UserChatsViewController ()
@@ -84,6 +84,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 
     CGFloat height = self.storiesHeaderVisible ? PPChatStoriesHeaderVisibleHeight : PPChatStoriesHeaderHiddenHeight;
     [self pp_applyStoriesHeaderHeight:height];
+    [self pp_applyPremiumBottomContentInset];
 }
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -117,7 +118,7 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
 #pragma mark - Setup
 
 - (void)pp_configureAppearance {
-    self.view.backgroundColor = AppClearClr;// PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.view.backgroundColor = AppBageColor();// PPBackgroundColorForIOS26(AppBackgroundClr);
 }
 
 - (void)pp_configureTableView {
@@ -152,6 +153,22 @@ static const CGFloat PPChatListEstimatedRowHeight = 84.0;
         [self.tableView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
+}
+
+- (void)pp_applyPremiumBottomContentInset
+{
+    if (!self.tableView) {
+        return;
+    }
+    UIEdgeInsets contentInset = self.tableView.contentInset;
+    contentInset.top = PPChatListContentTopInset;
+    contentInset.bottom = MAX(contentInset.bottom, PPChatListContentBottomInset);
+    self.tableView.contentInset = contentInset;
+
+    UIEdgeInsets indicatorInset = self.tableView.scrollIndicatorInsets;
+    indicatorInset.top = PPChatListContentTopInset;
+    indicatorInset.bottom = MAX(indicatorInset.bottom, PPChatListContentBottomInset);
+    self.tableView.scrollIndicatorInsets = indicatorInset;
 }
 
 - (void)pp_configureStoriesHeader {

@@ -48,6 +48,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (instancetype)initWithDictionary:(NSDictionary *)dict;
 + (BOOL)isSupportThread:(ChatThreadModel *)thread;
++ (NSString *)purePetsOfficialSupportUserID;
++ (NSString *)canonicalSupportThreadIDForCustomerID:(NSString *)customerID;
 + (UserModel *)resolveOtherUserFromThread:(ChatThreadModel *)thread;
 @end
 

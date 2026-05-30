@@ -406,12 +406,28 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self pp_setPremiumTabDockHidden:YES animated:animated];
     [self pp_refreshTitle];
+}
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
+    if (exiting) {
+        [self pp_setPremiumTabDockHidden:NO animated:animated];
+    }
 }
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     [self pp_updateImageFooterLayoutIfNeeded];
+}
+
+- (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)self.tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
+    }
 }
 
 - (void)setDraftMainKind:(MainKindsModel *)draftMainKind {

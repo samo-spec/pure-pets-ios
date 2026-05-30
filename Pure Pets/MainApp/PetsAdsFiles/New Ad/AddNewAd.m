@@ -1621,6 +1621,10 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
+    BOOL exiting = self.isMovingFromParentViewController || self.isBeingDismissed || self.navigationController.isBeingDismissed;
+    if (exiting) {
+        [self pp_setPremiumTabDockHidden:NO animated:animated];
+    }
     NSLog(@"[PPImages] viewWillDisappear - preserving media state");
 }
 
@@ -3377,6 +3381,7 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 
 - (void)viewWillAppear:(BOOL)animated {
     [super viewWillAppear:animated];
+    [self pp_setPremiumTabDockHidden:YES animated:animated];
     //[PPBarMgr hide];
     self.view.semanticContentAttribute = PPAdCurrentSemanticAttribute();
     self.tableView.semanticContentAttribute = PPAdCurrentSemanticAttribute();
@@ -3402,6 +3407,13 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
                                                    subtitle:subKindName ?: nil];
     [self pp_navBarSetTitleViewCenteredSmallWidth:topView];
   
+}
+
+- (void)pp_setPremiumTabDockHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)self.tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
+    }
 }
 
 - (UIView *)pp_modernBlurTitleViewWithTitle:(NSString *)title subtitle:(NSString *)subtitle {

@@ -11,6 +11,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy, nullable) void (^onReloadData)(void);
 @property (nonatomic, copy, nullable) void (^onAppendData)(NSArray<NSIndexPath *> * _Nonnull indexPaths);
 @property (nonatomic, copy, nullable) void (^onError)(NSError * _Nonnull error);
+@property (nonatomic, copy, nullable) void (^onInitialSectionsDataLoaded)(void);
  
 
 // State

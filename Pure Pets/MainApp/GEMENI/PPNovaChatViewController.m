@@ -561,7 +561,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         [filterControl.topAnchor constraintEqualToAnchor:clearButton.bottomAnchor constant:12.0],
         [filterControl.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [filterControl.trailingAnchor constraintEqualToAnchor:header.trailingAnchor constant:-22.0],
-        [filterControl.heightAnchor constraintEqualToConstant:34.0],
+        [filterControl.heightAnchor constraintEqualToConstant:54.0],
         [filterControl.bottomAnchor constraintEqualToAnchor:header.bottomAnchor constant:-6.0],
 
         [tableView.topAnchor constraintEqualToAnchor:header.bottomAnchor constant:14.0],
@@ -842,6 +842,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, strong) UITableView *tableView;
 @property (nonatomic, strong) NSMutableArray<ChatMessageModel *> *messages;
 @property (nonatomic, strong) PPNovaFloatingInputBarView *inputbar;
+@property (nonatomic, strong) UIButton *scrollToBottomButton;
 @property (nonatomic, strong) NSLayoutConstraint *inputBarBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *inputBarSafeAreaBottomConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *inputBarKeyboardBottomConstraint;
@@ -881,6 +882,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 @property (nonatomic, copy, nullable) dispatch_block_t pendingNovaScrollToBottomBlock;
 @property (nonatomic, assign) BOOL novaLastTableMutationRequestedAutoScroll;
 @property (nonatomic, assign) CFTimeInterval novaLastTableMutationTimestamp;
+@property (nonatomic, assign) BOOL novaScrollToBottomButtonVisible;
 
 - (void)pp_fetchAndShowNovaSuggestionRefs:(NSArray<NSDictionary<NSString *, NSString *> *> *)refs
                              fallbackText:(NSString *)fallbackText
@@ -920,6 +922,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                 runtimeTitle:(nullable NSString *)runtimeTitle
                                     requestID:(nullable NSString *)requestID
                                    responseID:(nullable NSString *)responseID;
+- (void)pp_removeNovaCartConfirmationForProduct:(nullable PetAccessory *)product
+                                tableAnimation:(UITableViewRowAnimation)animation;
 - (BOOL)pp_shouldUseNovaGenkitCallable;
 
 @end
@@ -984,6 +988,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     self.title = @"";
     self.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.view.backgroundColor = AppBackgroundClr ?: UIColor.systemBackgroundColor;
+    [self pp_applyNovaRootClipping];
     self.messages = [NSMutableArray array];
     self.smartSuggestionAutoSendEnabled = YES;
 
@@ -993,6 +998,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self setupInputView];
     [self setupTypingIndicator];
     [self setupTableView];
+    [self pp_setupScrollToBottomButton];
     [self setupNovaEmptyState];
 
     [self registerForKeyboardNotifications];
@@ -1102,6 +1108,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
+    [self pp_applyNovaRootClipping];
     [self pp_updateNovaHeaderCollapsedGeometry];
     [self pp_updateNovaHeaderLiquidBorderPath];
     self.smartSuggestionAccentGradientLayer.frame = self.smartSuggestionAccentWashView.bounds;
@@ -2198,8 +2205,9 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     BOOL useGenkit = [self pp_shouldUseNovaGenkitCallable];
     if (useGenkit) {
         NSMutableDictionary *conversationContext = [[self pp_currentContextDictionary] mutableCopy];
-        NSArray *recentContextHistory = [self pp_currentHistoryArray];
-        if (recentContextHistory.count > 0) {
+        BOOL openingAssistantTurn = !self.novaHasSentFirstMessage;
+        NSArray *recentContextHistory = openingAssistantTurn ? @[] : [self pp_currentHistoryArray];
+        if (!openingAssistantTurn && recentContextHistory.count > 0) {
             conversationContext[@"history"] = recentContextHistory;
         }
 
@@ -3008,11 +3016,27 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 - (nullable PetAccessory *)pp_novaCartProductForConfirmationFromOptions:(NSArray<NSDictionary<NSString *, id> *> *)options
                                                                  objects:(NSArray *)objects {
     NSMutableArray<PetAccessory *> *cartableProducts = [NSMutableArray array];
+    NSMutableSet<NSString *> *seenProductIDs = [NSMutableSet set];
+    void (^appendProduct)(PetAccessory *) = ^(PetAccessory *product) {
+        if (![product isKindOfClass:PetAccessory.class] || product.accessoryID.length == 0) {
+            return;
+        }
+        if ([seenProductIDs containsObject:product.accessoryID]) {
+            return;
+        }
+        [seenProductIDs addObject:product.accessoryID];
+        [cartableProducts addObject:product];
+    };
     for (id object in objects ?: @[]) {
         if ([object isKindOfClass:PetAccessory.class]) {
-            [cartableProducts addObject:(PetAccessory *)object];
+            appendProduct((PetAccessory *)object);
         }
     }
+    for (PetAccessory *product in self.lastShownProducts ?: @[]) {
+        appendProduct(product);
+    }
+    appendProduct(self.lastSuggestedProduct);
+    appendProduct(self.pendingCartProduct);
     if (cartableProducts.count == 0) {
         return nil;
     }
@@ -3382,7 +3406,22 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                  objects.count > 1 ? @"ChatMessageTypeNovaProductList" : @"ChatMessageTypeNovaProduct");
 
             BOOL shouldShowCartConfirmation = [self pp_novaOptionsContainAddToCartAction:options];
-            NSArray<NSDictionary<NSString *, id> *> *displayOptions = shouldShowCartConfirmation ? @[] : options;
+            PetAccessory *cartConfirmationProduct = shouldShowCartConfirmation
+                ? [self pp_novaCartProductForConfirmationFromOptions:options objects:objects]
+                : nil;
+            if (cartConfirmationProduct) {
+                LOG_INFO(@"[PPNovaChat][CartAction] confirmation_cell_added_without_cards request_id=%@ response_id=%@ product_id=%@",
+                         requestID ?: @"",
+                         responseID ?: @"",
+                         cartConfirmationProduct.accessoryID ?: @"");
+                [self pp_addNovaCartConfirmationForProduct:cartConfirmationProduct
+                                              runtimeTitle:cartConfirmationTitle
+                                                  requestID:requestID
+                                                 responseID:responseID];
+                return;
+            }
+
+            NSArray<NSDictionary<NSString *, id> *> *displayOptions = options;
 	        BOOL optionsPlacedBeforeCards = [self pp_addNovaProductResultTextForRenderedCount:objects.count
 	                                                                             proposedText:fallbackText
 	                                                                                 userText:userText
@@ -3395,20 +3434,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                 requestID:requestID
 	                                responseID:responseID
 	                                generation:generation];
-            PetAccessory *cartConfirmationProduct = shouldShowCartConfirmation
-                ? [self pp_novaCartProductForConfirmationFromOptions:options objects:objects]
-                : nil;
-            if (cartConfirmationProduct) {
-                LOG_INFO(@"[PPNovaChat][CartAction] confirmation_cell_added request_id=%@ response_id=%@ product_id=%@",
-                         requestID ?: @"",
-                         responseID ?: @"",
-                         cartConfirmationProduct.accessoryID ?: @"");
-                [self pp_addNovaCartConfirmationForProduct:cartConfirmationProduct
-                                              runtimeTitle:cartConfirmationTitle
-                                                  requestID:requestID
-                                                 responseID:responseID];
-            }
-	        if (!shouldShowCartConfirmation && !optionsPlacedBeforeCards && displayOptions.count > 0) {
+	        if (!optionsPlacedBeforeCards && displayOptions.count > 0) {
 	            // Options didn't ride on a text bubble before the cards (no AI text,
 	            // or it was suppressed). Surface them on an options-only bubble after
 	            // the cards so the user still has the tappable next-step buttons.
@@ -4418,7 +4444,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         ctx[@"localHour"] = @(hour);
     }
 
-    NSString *facts = [self pp_buildPreviousUserFactsString];
+    NSString *facts = self.novaHasSentFirstMessage ? [self pp_buildPreviousUserFactsString] : @"";
     if (facts.length > 0) {
         ctx[@"previousUserFacts"] = facts;
     }
@@ -4483,6 +4509,21 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 #pragma mark - Setup UI
+
+- (void)pp_applyNovaRootClipping {
+    self.view.clipsToBounds = YES;
+    self.view.layer.masksToBounds = YES;
+    self.view.layer.cornerRadius = 42.0;
+    if (@available(iOS 11.0, *)) {
+        self.view.layer.maskedCorners = kCALayerMinXMinYCorner |
+                                        kCALayerMaxXMinYCorner |
+                                        kCALayerMinXMaxYCorner |
+                                        kCALayerMaxXMaxYCorner;
+    }
+    if (@available(iOS 13.0, *)) {
+        self.view.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+}
 
 - (void)setupAmbientBackground {
     UIView *backgroundView = [[UIView alloc] init];
@@ -5519,7 +5560,8 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     subtitleLabel.minimumScaleFactor = 0.86;
     [contentView addSubview:subtitleLabel];
     self.headerSubtitleLabel = subtitleLabel;
-
+    contentView.layer.shadowRadius = 30.0;
+    contentView.clipsToBounds = YES;
     UIView *liveCapsule = [[UIView alloc] init];
     liveCapsule.translatesAutoresizingMaskIntoConstraints = NO;
     liveCapsule.backgroundColor = [accentColor colorWithAlphaComponent:0.10];
@@ -5863,7 +5905,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 - (void)pp_setNovaHeaderCollapsed:(BOOL)collapsed animated:(BOOL)animated updateInsets:(BOOL)updateInsets {
-    collapsed = NO;
+    //collapsed = NO;
     if (!self.novaHeaderView || self.novaHeaderCollapsed == collapsed) {
         return;
     }
@@ -7902,6 +7944,121 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     [self.tableView addGestureRecognizer:dismissTap];
 }
 
+- (void)pp_setupScrollToBottomButton {
+    UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
+    button.translatesAutoresizingMaskIntoConstraints = NO;
+    button.alpha = 0.0;
+    button.hidden = YES;
+    button.transform = CGAffineTransformMakeScale(0.82, 0.82);
+    button.tintColor = UIColor.whiteColor;
+    button.backgroundColor = [PPNovaDynamicColor([UIColor colorWithWhite:0.12 alpha:0.74],
+                                                 [UIColor colorWithWhite:1.0 alpha:0.16]) colorWithAlphaComponent:0.88];
+    button.layer.cornerRadius = 20.0;
+    button.layer.masksToBounds = NO;
+    button.layer.shadowColor = UIColor.blackColor.CGColor;
+    button.layer.shadowOpacity = 0.18;
+    button.layer.shadowRadius = 16.0;
+    button.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    button.accessibilityLabel = kLang(@"nova_scroll_to_latest_accessibility");
+    if (@available(iOS 13.0, *)) {
+        button.layer.cornerCurve = kCACornerCurveContinuous;
+        UIImageSymbolConfiguration *cfg = [UIImageSymbolConfiguration configurationWithPointSize:15.0
+                                                                                          weight:UIImageSymbolWeightSemibold];
+        [button setImage:[UIImage systemImageNamed:@"arrow.down" withConfiguration:cfg] forState:UIControlStateNormal];
+    } else {
+        [button setTitle:@"↓" forState:UIControlStateNormal];
+    }
+    [button addTarget:self action:@selector(pp_scrollToBottomButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+    [button addTarget:self action:@selector(pp_scrollButtonPressDown:) forControlEvents:UIControlEventTouchDown];
+    [button addTarget:self action:@selector(pp_scrollButtonPressUp:) forControlEvents:UIControlEventTouchUpInside | UIControlEventTouchCancel | UIControlEventTouchDragExit];
+    [self.view addSubview:button];
+    self.scrollToBottomButton = button;
+
+    NSLayoutXAxisAnchor *horizontalAnchor = Language.isRTL ? self.view.safeAreaLayoutGuide.leadingAnchor : self.view.safeAreaLayoutGuide.trailingAnchor;
+    NSLayoutConstraint *horizontalConstraint = Language.isRTL
+        ? [button.leadingAnchor constraintEqualToAnchor:horizontalAnchor constant:22.0]
+        : [button.trailingAnchor constraintEqualToAnchor:horizontalAnchor constant:-22.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [button.widthAnchor constraintEqualToConstant:40.0],
+        [button.heightAnchor constraintEqualToConstant:40.0],
+        horizontalConstraint,
+        [button.bottomAnchor constraintEqualToAnchor:self.inputbar.topAnchor constant:-14.0]
+    ]];
+    [self.view bringSubviewToFront:button];
+    [self pp_updateScrollToBottomButtonVisibilityAnimated:NO];
+}
+
+- (void)pp_scrollToBottomButtonTapped:(UIButton *)sender {
+    [self pp_scrollButtonPressUp:sender];
+    if (@available(iOS 10.0, *)) {
+        UIImpactFeedbackGenerator *feedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [feedback impactOccurred];
+    }
+    [self scrollToBottomAnimated:YES];
+}
+
+- (void)pp_scrollButtonPressDown:(UIView *)view {
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    [UIView animateWithDuration:0.10
+                          delay:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        view.transform = CGAffineTransformMakeScale(0.92, 0.92);
+    } completion:nil];
+}
+
+- (void)pp_scrollButtonPressUp:(UIView *)view {
+    if (UIAccessibilityIsReduceMotionEnabled()) return;
+    CGFloat visibleScale = self.novaScrollToBottomButtonVisible ? 1.0 : 0.82;
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+         usingSpringWithDamping:0.84
+          initialSpringVelocity:0.18
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        view.transform = CGAffineTransformMakeScale(visibleScale, visibleScale);
+    } completion:nil];
+}
+
+- (void)pp_setScrollToBottomButtonVisible:(BOOL)visible animated:(BOOL)animated {
+    if (!self.scrollToBottomButton || self.novaScrollToBottomButtonVisible == visible) {
+        return;
+    }
+    self.novaScrollToBottomButtonVisible = visible;
+    if (visible) {
+        self.scrollToBottomButton.hidden = NO;
+    }
+
+    void (^changes)(void) = ^{
+        self.scrollToBottomButton.alpha = visible ? 1.0 : 0.0;
+        self.scrollToBottomButton.transform = visible ? CGAffineTransformIdentity : CGAffineTransformMakeScale(0.82, 0.82);
+    };
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        if (!visible) {
+            self.scrollToBottomButton.hidden = YES;
+        }
+    };
+
+    if (!animated || UIAccessibilityIsReduceMotionEnabled()) {
+        changes();
+        completion(YES);
+        return;
+    }
+    [UIView animateWithDuration:(visible ? 0.34 : 0.18)
+                          delay:0.0
+         usingSpringWithDamping:(visible ? 0.86 : 1.0)
+          initialSpringVelocity:0.16
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionBeginFromCurrentState
+                     animations:changes
+                     completion:completion];
+}
+
+- (void)pp_updateScrollToBottomButtonVisibilityAnimated:(BOOL)animated {
+    BOOL shouldShow = self.messages.count > 0 && ![self pp_novaIsScrolledNearBottom];
+    [self pp_setScrollToBottomButtonVisible:shouldShow animated:animated];
+}
+
 - (void)pp_dismissKeyboardOnTap:(UITapGestureRecognizer *)tap {
     [self.view endEditing:YES];
 }
@@ -8008,6 +8165,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         }
         [self pp_scheduleNovaThinkingMessageVisibilityAfterLayout];
         [self pp_scheduleNovaVisibleLayoutRefreshForReason:@"keyboard_settled"];
+        [self pp_updateScrollToBottomButtonVisibilityAnimated:YES];
     }];
 }
 
@@ -8055,6 +8213,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     // the floating composer; scrollToRow: can stop before that inset is visible.
     CGPoint targetOffset = CGPointMake(self.tableView.contentOffset.x, targetOffsetY);
     [self.tableView setContentOffset:targetOffset animated:animated];
+    [self pp_updateScrollToBottomButtonVisibilityAnimated:YES];
 }
 
 - (void)pp_scheduleNovaScrollToBottomAfterKeyboardAnimated:(BOOL)animated {
@@ -8079,6 +8238,24 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 }
 
 #pragma mark - Data Source & Delegate
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if (scrollView == self.tableView) {
+        [self pp_updateScrollToBottomButtonVisibilityAnimated:YES];
+    }
+}
+
+- (void)scrollViewDidEndScrollingAnimation:(UIScrollView *)scrollView {
+    if (scrollView == self.tableView) {
+        [self pp_updateScrollToBottomButtonVisibilityAnimated:YES];
+    }
+}
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView {
+    if (scrollView == self.tableView) {
+        [self pp_updateScrollToBottomButtonVisibilityAnimated:YES];
+    }
+}
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section {
     return self.messages.count;
@@ -8556,6 +8733,12 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             return product;
         }
     }
+    if ([self.lastSuggestedProduct.accessoryID isEqualToString:targetID]) {
+        return self.lastSuggestedProduct;
+    }
+    if ([self.pendingCartProduct.accessoryID isEqualToString:targetID]) {
+        return self.pendingCartProduct;
+    }
     return nil;
 }
 
@@ -8566,6 +8749,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     if (![product isKindOfClass:PetAccessory.class]) {
         return;
     }
+    [self pp_removeNovaCartConfirmationForProduct:product tableAnimation:UITableViewRowAnimationNone];
     ChatMessageModel *msg = [[ChatMessageModel alloc] init];
     msg.ID = [[NSUUID UUID] UUIDString];
     msg.messageType = ChatMessageTypeCartConfirmation;
@@ -8578,6 +8762,47 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     msg.status = ChatMessageStatusSent;
     self.pendingCartProduct = product;
     [self pp_appendNovaMessageModel:msg updateReason:@"insert_cart_confirmation"];
+}
+
+- (void)pp_removeNovaCartConfirmationForProduct:(PetAccessory *)product
+                                tableAnimation:(UITableViewRowAnimation)animation {
+    NSString *targetID = [product isKindOfClass:PetAccessory.class] ? product.accessoryID : nil;
+    NSMutableArray<NSIndexPath *> *indexPaths = [NSMutableArray array];
+    NSMutableIndexSet *indexes = [NSMutableIndexSet indexSet];
+
+    [self.messages enumerateObjectsUsingBlock:^(ChatMessageModel *message, NSUInteger idx, __unused BOOL *stop) {
+        if (message.messageType != ChatMessageTypeCartConfirmation) {
+            return;
+        }
+        PetAccessory *messageProduct = nil;
+        for (id object in message.novaProducts ?: @[]) {
+            if ([object isKindOfClass:PetAccessory.class]) {
+                messageProduct = (PetAccessory *)object;
+                break;
+            }
+        }
+        BOOL matchesTarget = targetID.length == 0 ||
+            [messageProduct.accessoryID isEqualToString:targetID];
+        if (matchesTarget) {
+            [indexes addIndex:idx];
+            [indexPaths addObject:[NSIndexPath indexPathForRow:(NSInteger)idx inSection:0]];
+        }
+    }];
+
+    if (indexes.count == 0) {
+        return;
+    }
+
+    [self.messages removeObjectsAtIndexes:indexes];
+    [self.tableView beginUpdates];
+    [self.tableView deleteRowsAtIndexPaths:indexPaths withRowAnimation:animation];
+    [self.tableView endUpdates];
+    [self updateNovaEmptyStateAnimated:YES];
+
+    if (targetID.length == 0 ||
+        [self.pendingCartProduct.accessoryID isEqualToString:targetID]) {
+        self.pendingCartProduct = nil;
+    }
 }
 
 - (void)pp_removeNovaConfirmationCell:(NovaConfirmationCell *)cell {
@@ -8916,6 +9141,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         } else {
             [self.tableView setContentOffset:preservedOffset animated:NO];
         }
+        [self pp_updateScrollToBottomButtonVisibilityAnimated:YES];
         return;
     }
 
@@ -8935,6 +9161,7 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
         } else {
             [self.tableView setContentOffset:preservedOffset animated:NO];
         }
+        [self pp_updateScrollToBottomButtonVisibilityAnimated:YES];
     }];
     [self.tableView beginUpdates];
     if (deletedIndexPaths.count > 0) {
@@ -9157,10 +9384,11 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
     }
     NSString *requestID = [self pp_newNovaScopedIDWithPrefix:@"request"];
     NSString *responseID = [self pp_novaResponseIDFromResponseData:nil requestID:requestID source:@"product_card_cart_action"];
-    [self pp_addNovaCartConfirmationForProduct:(PetAccessory *)item
-                                  runtimeTitle:nil
-                                      requestID:requestID
-                                     responseID:responseID];
+    [self pp_removeNovaCartConfirmationForProduct:(PetAccessory *)item
+                                  tableAnimation:UITableViewRowAnimationFade];
+    [self pp_handleAddToCartForProduct:(PetAccessory *)item
+                              requestID:requestID
+                             responseID:responseID];
 }
 
 #pragma mark - NovaConfirmationCellDelegate

@@ -31,6 +31,7 @@ static NSString * const kOrderDetailsItemCellID = @"OrderItemCell";
 static NSString * const kOrderDetailsPlaceholderCellID = @"OrderDetailsPlaceholderCell";
 static CGFloat const kOrderDetailsHeaderCornerRadius = 16.0;
 static CGFloat const kOrderDetailsButtonCornerRadius = 18.0;
+static CGFloat const kOrderDetailsContentBottomInset = 132.0;
 static NSString * const kOrderSupportPhoneNumber = @"+97459997720";
 static NSInteger const kOrderSupportComposerMaxAttachments = 4;
 
@@ -2489,7 +2490,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     
     UIColor *premiumBackground = [UIColor colorWithRed:0.98 green:0.97 blue:0.96 alpha:1.0];
     
-    self.view.backgroundColor = premiumBackground;
+    self.view.backgroundColor = AppBageColor();
     self.lineItems = [NSMutableArray array];
     self.accessoryCache = [NSMutableDictionary dictionary];
     self.inFlightAccessoryIDs = [NSMutableSet set];
@@ -2617,7 +2618,8 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     self.tableView.rowHeight = 96.0;
     self.tableView.showsVerticalScrollIndicator = NO;
     self.tableView.sectionFooterHeight = 0.01;
-    self.tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, 24.0, 0.0);
+    self.tableView.contentInset = UIEdgeInsetsMake(4.0, 0.0, kOrderDetailsContentBottomInset, 0.0);
+    self.tableView.scrollIndicatorInsets = self.tableView.contentInset;
     if (@available(iOS 11.0, *)) {
         self.tableView.contentInsetAdjustmentBehavior = UIScrollViewContentInsetAdjustmentAutomatic;
     }
@@ -2988,6 +2990,7 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     CGFloat width = CGRectGetWidth(self.view.bounds);
     CGFloat height = CGRectGetHeight(self.view.bounds);
     self.tableView.frame = self.view.bounds;
+    [self pp_applyPremiumBottomContentInset];
     self.loadingOverlay.frame = self.view.bounds;
     self.loadingIndicator.center = self.loadingOverlay.center;
     self.backgroundTopGlowView.frame = CGRectMake(-72.0,
@@ -3001,6 +3004,22 @@ typedef NS_ENUM(NSInteger, PPOrderProgressTimelineRowState) {
     
     [self layoutHeaderView];
     [self layoutFooterView];
+}
+
+- (void)pp_applyPremiumBottomContentInset
+{
+    if (!self.tableView) {
+        return;
+    }
+    UIEdgeInsets contentInset = self.tableView.contentInset;
+    contentInset.top = MAX(contentInset.top, 4.0);
+    contentInset.bottom = MAX(contentInset.bottom, kOrderDetailsContentBottomInset);
+    self.tableView.contentInset = contentInset;
+
+    UIEdgeInsets indicatorInset = self.tableView.scrollIndicatorInsets;
+    indicatorInset.top = MAX(indicatorInset.top, 4.0);
+    indicatorInset.bottom = MAX(indicatorInset.bottom, kOrderDetailsContentBottomInset);
+    self.tableView.scrollIndicatorInsets = indicatorInset;
 }
 
 - (void)layoutHeaderView

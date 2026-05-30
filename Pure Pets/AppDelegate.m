@@ -46,7 +46,21 @@ static BOOL PPAppCheckTextLooksLikeAppAttestFailure(NSString *text) {
            [lower containsString:@"app attest"] ||
            [lower containsString:@"app_attest"] ||
            [lower containsString:@"app attestation"] ||
-           [lower containsString:@"exchangeappattestattestation"];
+           [lower containsString:@"exchangeappattestattestation"] ||
+            [lower containsString:@"attestation"] ||
+            [lower containsString:@"dc"] ||
+            [lower containsString:@"devicecheck"] ||
+            [lower containsString:@"attestkey"] ||
+            [lower containsString:@"keyid"] ||
+            [lower containsString:@"invalidkey"];
+}
+
+static BOOL PPAppCheckTokenIsNilOrEmpty(FIRAppCheckToken *token) {
+    if (!token) return YES;
+    if (![token isKindOfClass:FIRAppCheckToken.class]) return YES;
+    if (![token.token isKindOfClass:NSString.class]) return YES;
+    if (token.token.length == 0) return YES;
+    return NO;
 }
 
 static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
@@ -124,23 +138,31 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
             return;
         }
 
-        if (!error || !PPAppCheckErrorLooksLikeAppAttestFailure(error)) {
+        // ✅ Valid token — use it directly
+        if (!PPAppCheckTokenIsNilOrEmpty(token)) {
             if (handler) {
-                handler(token, error);
+                handler(token, nil);
             }
             return;
         }
 
+        // 🔄 Token is nil/empty — fall back to DeviceCheck unconditionally
+        BOOL looksLikeAttestFailure = PPAppCheckErrorLooksLikeAppAttestFailure(error);
         self.usingDeviceCheckFallback = YES;
-        NSLog(@"[AppCheck] App Attest failed for Pure Pets IOS. Falling back to DeviceCheck for this launch. Error: %@",
-              error.localizedDescription ?: @"unknown error");
+        NSLog(@"[AppCheck] App Attest returned nil/empty token (error=%@). Falling back to DeviceCheck for this launch.",
+              error.localizedDescription ?: @"none");
+
         PPFetchAppCheckTokenFromProvider(deviceCheckProvider, limitedUse, ^(FIRAppCheckToken * _Nullable fallbackToken, NSError * _Nullable fallbackError) {
-            if (fallbackToken || !fallbackError) {
+            if (!PPAppCheckTokenIsNilOrEmpty(fallbackToken)) {
                 if (handler) {
                     handler(fallbackToken, nil);
                 }
                 return;
             }
+
+            NSLog(@"[AppCheck] DeviceCheck fallback also failed (error=%@). Original App Attest error=%@",
+                  fallbackError.localizedDescription ?: @"none",
+                  error.localizedDescription ?: @"none");
 
             if (handler) {
                 handler(nil, fallbackError ?: error);

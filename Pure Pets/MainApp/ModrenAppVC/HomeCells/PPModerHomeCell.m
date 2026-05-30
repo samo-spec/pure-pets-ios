@@ -2,6 +2,13 @@
 #import "MainKindsModel.h"
 #import "PPImageLoaderManager.h"
 
+/// iPad shows these cells much larger, so the plate + kind artwork looked tiny at
+/// the phone sizing. Scale them up on iPad only; phones stay unchanged.
+static inline CGFloat PPModerHomeImageSizeScale(void)
+{
+    return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 2.0 : 1.0;
+}
+
 static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *darkColor)
 {
     if (@available(iOS 13.0, *)) {
@@ -112,7 +119,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.imagePlateView = [[UIView alloc] init];
     self.imagePlateView.translatesAutoresizingMaskIntoConstraints = NO;
     self.imagePlateView.userInteractionEnabled = NO;
-    self.imagePlateView.layer.cornerRadius = 24.0;
+    self.imagePlateView.layer.cornerRadius = 24.0 * PPModerHomeImageSizeScale();
     self.imagePlateView.layer.masksToBounds = YES;
     self.imagePlateView.layer.borderWidth = 1.0;
     if (@available(iOS 13.0, *)) {
@@ -384,10 +391,11 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 
 - (void)pp_updateImageSizingForAll:(BOOL)isAll
 {
-    self.imagePlateWidthConstraint.constant = isAll ? 48.0 : 52.0;
-    self.imagePlateHeightConstraint.constant = isAll ? 48.0 : 52.0;
-    self.kindImageWidthConstraint.constant = isAll ? 24.0 : 40.0;
-    self.kindImageHeightConstraint.constant = isAll ? 24.0 : 40.0;
+    CGFloat scale = PPModerHomeImageSizeScale(); // 2x on iPad, 1x elsewhere
+    self.imagePlateWidthConstraint.constant = (isAll ? 48.0 : 52.0) * scale;
+    self.imagePlateHeightConstraint.constant = (isAll ? 48.0 : 52.0) * scale;
+    self.kindImageWidthConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
+    self.kindImageHeightConstraint.constant = (isAll ? 24.0 : 40.0) * scale;
 }
 
 #pragma mark - Layout

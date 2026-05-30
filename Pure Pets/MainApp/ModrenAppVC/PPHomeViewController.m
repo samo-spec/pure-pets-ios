@@ -3,6 +3,7 @@
 #import "MainBannerModel.h"
 #import "PPChatsFunc.h"
 #import "PetAdoptCollectionViewCell.h"
+#import "PPUniversalCell.h"
 #import "PPBannerCollectionCell.h"
 #import "PPBannersCollection.h"
 #import "PPBannersManager.h"
@@ -10,6 +11,7 @@
 #import "PPCategoryCardCell.h"
 #import "PPHomeFunc.h"
 #import "PPHomeViewController.h"
+#import "PPRootTabBarController.h"
 #import "PPSPinnerView.h"
 #import "PPSearchViewController.h"
 #import "PPDataViewInput.h"
@@ -32,6 +34,7 @@
 #import "CountryModel.h"
 #import "OrderDetailsViewController.h"
 #import "OrderHistoryViewController.h"
+#import "PurchasedItemsViewController.h"
 #import "PPOrder.h"
 #import "PPRolePermission.h"
 #import "PPHomeHeroCell.h"
@@ -861,6 +864,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     PPHomeProfileMenuActionFavorites,
     PPHomeProfileMenuActionMyAds,
     PPHomeProfileMenuActionCart,
+    PPHomeProfileMenuActionPurchased,
     PPHomeProfileMenuActionOrders,
     PPHomeProfileMenuActionProduction,
     PPHomeProfileMenuActionSettings,
@@ -870,6 +874,7 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
 
 @interface PPHomeViewController ()<UICollectionViewDelegate, UICollectionViewDataSourcePrefetching, BannerTapsCollectionDelegate,PPUniversalCellDelegate, CLLocationManagerDelegate>
 - (void)pp_handleProfileMenuAction:(PPHomeProfileMenuAction)action;
+- (void)pp_openPurchasedItems;
 
  @property (nonatomic, assign) BOOL warmUpCache;
 @property (nonatomic, assign) BOOL chatsListenerStarted;
@@ -2171,6 +2176,14 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
                 NSNumber *sectionNumber = @([self sectionTypeForIndexPath:indexPath]);
                 if (![sectionsToRefresh containsObject:sectionNumber]) {
                     continue;
+                }
+
+                // Layout alone does NOT re-resolve dynamic CGColor borders (e.g.
+                // PPUniversalCell card/image borders). When the theme toggles in-app,
+                // already-visible cells keep their stale (light) border until reuse.
+                // Ask theme-aware cells to re-resolve their colors for the current traits.
+                if ([cell respondsToSelector:@selector(refreshThemeAppearance)]) {
+                    [(id)cell refreshThemeAppearance];
                 }
 
                 [cell setNeedsLayout];
@@ -5592,8 +5605,10 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     if (self.navigationController) {
         [self.navigationController pushViewController:picker animated:YES];
     } else {
-        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:picker];
-        [self presentViewController:nav animated:YES completion:nil];
+        picker.view.layer.cornerRadius = 42;
+        [PPFunc presentFloatingSheetFrom:self sheetVC:picker detentStyle:PPSheetDetentStyle80];
+        //UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:picker];
+        //[self presentViewController:nav animated:YES completion:nil];
     }
 }
 
@@ -5656,7 +5671,14 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     };
 
     [self pp_emitSoftImpactHaptic];
+    
+    [PPFunc presentFloatingSheetFrom:self sheetVC:sheet detentStyle:PPSheetDetentStyle80 withCompletion:^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        self.isPresentingHomeLocationSheet = NO;
+    }];
 
+   /*
     [self presentViewController:sheet
                        animated:YES
                      completion:^{
@@ -5664,6 +5686,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
         if (!self) return;
         self.isPresentingHomeLocationSheet = NO;
     }];
+    */
 }
 
 - (void)switchHomeLocationBackToAutomatic
@@ -7314,9 +7337,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
             break;
 
         case PPHomeSectionBuyAgain:
-            [self handleDeepLinkWithTarget:PPDeepLinkTargetAccessories
-                                  mainKind:nil
-                                    source:PPInputSourceHomeAccessoriesSection];
+            [self pp_openPurchasedItems];
             break;
 
         case PPHomeSectionLastFood:
@@ -9251,6 +9272,9 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
+    if ([self.tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(PPRootTabBarController *)self.tabBarController setPremiumTabDockViewHidden:NO animation:NO];
+    }
 
     if (!self.didApplyInitialHomeAppearanceRefresh) {
         self.didApplyInitialHomeAppearanceRefresh = YES;
@@ -9731,12 +9755,12 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 {
     UINavigationBar *navigationBar = self.navigationController.navigationBar;
     if (!navigationBar) {
-        return 220.0;
+        return 160.0;
     }
 
     CGFloat navBarWidth = CGRectGetWidth(navigationBar.bounds);
     if (navBarWidth <= 0.0) {
-        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 220.0;
+        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 160.0;
     }
 
     UIBarButtonItem *leftItem = self.navigationItem.leftBarButtonItem ?: self.navigationItem.leftBarButtonItems.firstObject;
@@ -9749,7 +9773,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
     CGFloat availableWidth = navBarWidth - sideMargins - leftWidth - rightWidth - breathingRoom;
     if (availableWidth <= 0.0) {
-        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 220.0;
+        return self.homeSmartSearchWidthConstraint.constant > 0.0 ? self.homeSmartSearchWidthConstraint.constant : 160.0;
     }
 
     return floor(availableWidth);
@@ -9788,7 +9812,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 - (CGFloat)pp_preferredNavigationLocationTitleWidth
 {
     CGFloat width = [self pp_preferredNavigationSearchWidth];
-    return width > 0.0 ? floor(width) : 220.0;
+    return width > 0.0 ? floor(width) : 160.0;
 }
 
 - (void)pp_updateHomeLocationTitleViewWidth
@@ -9891,7 +9915,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             [[PPHomeLocationTitleView alloc] initWithFrame:CGRectMake(0.0, 0.0, width, 46.0)];
         self.homeLocationTitleView.translatesAutoresizingMaskIntoConstraints = NO;
         self.homeLocationTitleWidthConstraint =
-            [self.homeLocationTitleView.widthAnchor constraintEqualToConstant:MAX(width, 220.0)];
+            [self.homeLocationTitleView.widthAnchor constraintEqualToConstant:MAX(width, 160.0)];
         self.homeLocationTitleWidthConstraint.priority = UILayoutPriorityRequired;
         self.homeLocationTitleWidthConstraint.active = YES;
         [self.homeLocationTitleView.heightAnchor constraintEqualToConstant:46.0].active = YES;
@@ -10223,6 +10247,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     [activityActions addObject:makeAction(kLang(@"showfav"), @"star.fill", PPHomeProfileMenuActionFavorites)];
     [activityActions addObject:makeAction(kLang(@"myadsTitle"), @"circle.hexagonpath.fill", PPHomeProfileMenuActionMyAds)];
     [activityActions addObject:makeAction(kLang(@"Cart"), @"cart.fill", PPHomeProfileMenuActionCart)];
+    [activityActions addObject:makeAction(kLang(@"purchased_profile_menu_title"), @"bag.badge.plus", PPHomeProfileMenuActionPurchased)];
     [activityActions addObject:makeAction(kLang(@"OrderHistory"), @"bag.fill", PPHomeProfileMenuActionOrders)];
     if ([UserManager.sharedManager.currentUser.prodectionStatus isEqualToString:@"active"]) {
         [activityActions addObject:makeAction(kLang(@"showProdection"), @"doc.on.doc.fill", PPHomeProfileMenuActionProduction)];
@@ -10281,6 +10306,10 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             [self.navigationController pushViewController:vc animated:YES];
             break;
         }
+        case PPHomeProfileMenuActionPurchased: {
+            [self pp_openPurchasedItems];
+            break;
+        }
         case PPHomeProfileMenuActionOrders: {
             if (![PPFunc PPUserCheck]) return;
             OrderHistoryViewController *vc = [OrderHistoryViewController new];
@@ -10303,6 +10332,13 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
             break;
         }
     }
+}
+
+- (void)pp_openPurchasedItems
+{
+    if (![PPFunc PPUserCheck]) return;
+    PurchasedItemsViewController *vc = [PurchasedItemsViewController new];
+    [self.navigationController pushViewController:vc animated:YES];
 }
 
 - (void)presentMenu:(UIMenu *)menu fromView:(UIView *)sourceView {

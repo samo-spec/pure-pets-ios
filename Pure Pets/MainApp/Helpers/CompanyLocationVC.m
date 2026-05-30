@@ -59,6 +59,37 @@ static CGFloat const kPPChromeHorizontalInset = 16.0;
 {
     [super viewWillAppear:animated];
     [self pp_navBarApplyBase:PPNavBarBaseLayoutAuto button:nil title:kLang(@"supprot") showBack:YES];
+    [self pp_setRootBottomNavigationHidden:YES animated:animated];
+}
+
+- (void)viewWillDisappear:(BOOL)animated
+{
+    [super viewWillDisappear:animated];
+
+    BOOL isLeavingLocationScreen =
+        self.isMovingFromParentViewController ||
+        self.isBeingDismissed ||
+        self.navigationController.isBeingDismissed;
+    if (!isLeavingLocationScreen) {
+        return;
+    }
+
+    [self pp_setRootBottomNavigationHidden:NO animated:animated];
+    id<UIViewControllerTransitionCoordinator> coordinator = self.transitionCoordinator;
+    if (coordinator) {
+        __weak typeof(self) weakSelf = self;
+        [coordinator animateAlongsideTransition:nil
+                                     completion:^(id<UIViewControllerTransitionCoordinatorContext> context) {
+            if (!context.isCancelled) {
+                return;
+            }
+            __strong typeof(weakSelf) self = weakSelf;
+            if (!self) {
+                return;
+            }
+            [self pp_setRootBottomNavigationHidden:YES animated:YES];
+        }];
+    }
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -108,6 +139,44 @@ static CGFloat const kPPChromeHorizontalInset = 16.0;
 
     self.headerView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.headerView.bounds cornerRadius:self.headerView.layer.cornerRadius].CGPath;
     self.bottomView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.bottomView.bounds cornerRadius:self.bottomView.layer.cornerRadius].CGPath;
+}
+
+- (void)pp_setRootBottomNavigationHidden:(BOOL)hidden animated:(BOOL)animated
+{
+    UITabBarController *tabBarController = self.tabBarController;
+    if ([tabBarController respondsToSelector:@selector(setPremiumTabDockViewHidden:animation:)]) {
+        [(id)tabBarController setPremiumTabDockViewHidden:hidden animation:animated];
+        return;
+    }
+    if ([tabBarController respondsToSelector:@selector(pp_setBottomNavigationHidden:animated:)]) {
+        [(id)tabBarController pp_setBottomNavigationHidden:hidden animated:animated];
+        return;
+    }
+
+    UITabBar *tabBar = tabBarController.tabBar;
+    if (!tabBar) {
+        return;
+    }
+    if (!hidden) {
+        tabBar.hidden = NO;
+    }
+
+    void (^changes)(void) = ^{
+        tabBar.alpha = hidden ? 0.0 : 1.0;
+    };
+    void (^completion)(BOOL) = ^(__unused BOOL finished) {
+        tabBar.hidden = hidden;
+    };
+    if (!animated) {
+        changes();
+        completion(YES);
+        return;
+    }
+    [UIView animateWithDuration:0.22
+                          delay:0.0
+                        options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionCurveEaseInOut
+                     animations:changes
+                     completion:completion];
 }
 
 #pragma mark - Setup

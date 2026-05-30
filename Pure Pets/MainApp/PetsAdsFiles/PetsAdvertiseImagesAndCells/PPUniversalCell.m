@@ -63,7 +63,7 @@ static UIColor *PPUniversalCellDynamicColor(UIColor *light, UIColor *dark)
 
 static UIColor *PPUniversalCellSoftSurfaceColor(void)
 {
-    return PPUniversalCellDynamicColor([AppBackgroundClr colorWithAlphaComponent:1],
+    return PPUniversalCellDynamicColor([AppBackgroundClr colorWithAlphaComponent:0.92],
                                       [UIColor colorWithWhite:0.12 alpha:0.82]);
 }
 
@@ -324,11 +324,18 @@ static CGFloat PPUniversalCellAdsPinterestBodyHeight(CGFloat cellWidth,
                                                              contentWidth,
                                                              2,
                                                              PPUniversalCompactTitleHeight);
+    BOOL hasPrice = [vm isKindOfClass:PPUniversalCellViewModel.class] &&
+                    (vm.priceText.length > 0 ||
+                     vm.finalPrice != nil ||
+                     vm.price != nil);
+    CGFloat priceHeight = hasPrice ? PPUniversalCompactPriceHeight : 0.0;
+    CGFloat titleToPriceSpacing = hasPrice ? PPUniversalCompactTitleToPriceSpacing : 0.0;
+    CGFloat priceToActionSpacing = hasPrice ? PPUniversalCompactPriceToActionSpacing : PPUniversalCompactTitleToPriceSpacing;
 
     return ceil(titleHeight +
-                PPUniversalCompactTitleToPriceSpacing +
-                PPUniversalCompactPriceHeight +
-                PPUniversalCompactPriceToActionSpacing +
+                titleToPriceSpacing +
+                priceHeight +
+                priceToActionSpacing +
                 PPUniversalButtonHeight);
 }
 
@@ -543,6 +550,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 @property (nonatomic, strong) NSLayoutConstraint *imageAspectConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *fullWidthImageWidthConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *titleTopToBodyConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *titleTopToBodyPullConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *priceTopToTitleConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *priceTopToSubtitleConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *subtitleHeightConstraint;
@@ -631,6 +640,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.imageView];
     self.imageView.image = [UIImage imageNamed:@"placeholder"];
     self.priceLabel.attributedText = nil;
+    self.priceContainerView.hidden = NO;
+    self.priceHeightConstraint.constant = PPUniversalCompactPriceHeight;
     self.titleLabel.text = @"";
     self.subtitleLabel.text = @"";
     self.priceLabel.text = @"";
@@ -948,7 +959,6 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.menuButton.topAnchor constraintEqualToAnchor:self.imageContainer.topAnchor constant:10.0],
         [self.menuButton.trailingAnchor constraintEqualToAnchor:self.imageContainer.trailingAnchor constant:-10.0],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.bodyContainer.topAnchor],
         [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.bodyContainer.leadingAnchor],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor],
 
@@ -1016,6 +1026,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.imageAspectConstraint = [self.imageContainer.heightAnchor constraintEqualToAnchor:self.imageContainer.widthAnchor multiplier:0.82];
     self.imageAspectConstraint.active = YES;
     self.fullWidthImageWidthConstraint = [self.imageContainer.widthAnchor constraintEqualToConstant:136.0];
+    self.titleTopToBodyConstraint = [self.titleLabel.topAnchor constraintGreaterThanOrEqualToAnchor:self.bodyContainer.topAnchor];
+    self.titleTopToBodyPullConstraint = [self.titleLabel.topAnchor constraintEqualToAnchor:self.bodyContainer.topAnchor];
+    self.titleTopToBodyPullConstraint.priority = UILayoutPriorityDefaultLow;
     self.priceTopToTitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:4.0];
     self.priceTopToSubtitleConstraint = [self.priceContainerView.topAnchor constraintEqualToAnchor:self.subtitleLabel.bottomAnchor constant:4.0];
     self.subtitleHeightConstraint = [self.subtitleLabel.heightAnchor constraintEqualToConstant:0.0];
@@ -1030,6 +1043,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.priceContainerTrailingToBodyConstraint = [self.priceContainerView.trailingAnchor constraintEqualToAnchor:self.bodyContainer.trailingAnchor];
     self.priceContainerTrailingToFavConstraint = [self.priceContainerView.trailingAnchor constraintEqualToAnchor:self.bodyFavButton.leadingAnchor constant:-10.0];
     self.priceTopToTitleConstraint.active = YES;
+    self.titleTopToBodyConstraint.active = YES;
+    self.titleTopToBodyPullConstraint.active = YES;
     self.subtitleHeightConstraint.active = YES;
     self.oldPriceCollapsedConstraint.active = YES;
     self.availabilityLeadingToBodyConstraint.active = YES;
@@ -1347,7 +1362,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
     self.subtitleLabel.hidden = shouldHideSubtitle;
 
-    BOOL hasPrice = vm.priceText.length > 0 || vm.finalPrice != nil || vm.price != nil;
+    BOOL isAdoptContext = (self.context == PPCellForAdopt);
+    BOOL hasPrice = !isAdoptContext && (vm.priceText.length > 0 || vm.finalPrice != nil || vm.price != nil);
+    self.priceContainerView.hidden = !hasPrice;
+    self.priceHeightConstraint.constant = hasPrice ? PPUniversalCompactPriceHeight : 0.0;
     self.priceLabel.attributedText = hasPrice ? [self pp_attributedPriceForViewModel:vm] : nil;
     self.priceLabel.text = hasPrice ? nil : @"";
     self.priceTopToTitleConstraint.active = shouldHideSubtitle;
@@ -1358,7 +1376,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                                  vm.price.doubleValue > 0.0 &&
                                  vm.finalPrice.doubleValue > 0.0 &&
                                  fabs(vm.price.doubleValue - vm.finalPrice.doubleValue) > 0.009);
-    if (showsDiscountedPrice) {
+    if (hasPrice && showsDiscountedPrice) {
         NSString *original = PPUniversalCellFormattedPrice(vm.price,
                                                            PPUniversalCellDisplayCurrencyCode(vm.currencyCode));
         NSDictionary *attrs = @{
@@ -1514,7 +1532,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         }
     }
 
-    if ([self pp_isAdContext]) {
+    if ([self pp_isAdContext] || self.context == PPCellForAdopt) {
         title = @"";
     }
 
@@ -1611,7 +1629,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.fullWidthImageWidthConstraint.constant = MIN(164.0, MAX(126.0, UIScreen.mainScreen.bounds.size.width * 0.30));
 
     self.imageAspectConstraint.active = NO;
-    if (!fullWidth) {
+    if (!fullWidth && PPUniversalCellUsesAdsPinterestLayout(self.context, self.layoutMode, self.vm.ModelObject)) {
         self.imageAspectConstraint = [self.imageContainer.heightAnchor constraintEqualToAnchor:self.imageContainer.widthAnchor
                                                                                     multiplier:[self pp_imageAspectRatioForCurrentContent]];
         self.imageAspectConstraint.priority = UILayoutPriorityDefaultHigh;
@@ -1633,7 +1651,9 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         return PPUniversalCellAdsPinterestAspectRatio(self.vm);
     }
 
-    if ([self pp_isAdContext]) {
+    if (self.context == PPCellForAdopt) {
+        fallback = 1.12;
+    } else if ([self pp_isAdContext]) {
         fallback = 0.98;
     } else if ([self pp_isServiceLikeContext]) {
         fallback = 0.74;

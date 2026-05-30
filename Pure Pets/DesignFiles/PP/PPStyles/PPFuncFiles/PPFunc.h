@@ -28,6 +28,10 @@ NS_ASSUME_NONNULL_BEGIN
 + (void)presentFloatingSheetFrom:(UIViewController *)presenter
                         sheetVC:(UIViewController *)sheetVC
                      detentStyle:(PPSheetDetentStyle)style;
++ (void)presentFloatingSheetFrom:(UIViewController *)presenter
+                        sheetVC:(UIViewController *)sheetVC
+                     detentStyle:(PPSheetDetentStyle)style
+                    withCompletion:(void (^_Nullable)(void))completion;
 + (void)presentSheetFrom:(UIViewController *)presentingVC
                 sheetVC:(UIViewController *)sheetVC
             detentStyle:(PPSheetDetentStyle)style;
