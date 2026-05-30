@@ -37,6 +37,7 @@
 @property (nonatomic, strong) NSLayoutConstraint *actionsStackTrailingCompactConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *actionsStackTrailingExpandedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *actionsStackBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *actionsStackTopAboveAvatarConstraint;
 @property (nonatomic, assign) BOOL serviceProviderLayoutEnabled;
 @property (nonatomic, assign) BOOL didStartLiveMotion;
 
@@ -216,6 +217,7 @@
     self.actionsStackTrailingCompactConstraint = [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0];
     self.actionsStackTrailingExpandedConstraint = [actionsStack.trailingAnchor constraintEqualToAnchor:self.surfaceView.trailingAnchor constant:-16.0];
     self.actionsStackBottomConstraint = [actionsStack.bottomAnchor constraintLessThanOrEqualToAnchor:self.surfaceView.bottomAnchor constant:-12.0];
+    self.actionsStackTopAboveAvatarConstraint = [actionsStack.topAnchor constraintGreaterThanOrEqualToAnchor:self.avatarImageView.bottomAnchor constant:12.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.surfaceView.topAnchor constraintEqualToAnchor:self.topAnchor],
@@ -477,6 +479,7 @@
     self.actionsStackLeadingToSurfaceConstraint.active = enabled;
     self.actionsStackTrailingExpandedConstraint.active = enabled;
     self.actionsStackBottomConstraint.active = enabled;
+    self.actionsStackTopAboveAvatarConstraint.active = enabled;
 
     self.nameLabel.numberOfLines = enabled ? 2 : 1;
     self.nameLabel.lineBreakMode = NSLineBreakByTruncatingTail;
