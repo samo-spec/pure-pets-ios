@@ -39,6 +39,7 @@ do { \
 #import "PPPermissionHelper.h"
 #import "PPImageLoaderManager.h"
 #import "PPModernAvatarRenderer.h"
+#import "PPFirebaseSessionBridge.h"
 
 
 static CGFloat ChatMediaHeight(CGFloat maxWidth,
@@ -82,6 +83,14 @@ static UIImage * _Nullable ChatPreparedImageForUpload(UIImage * _Nullable image,
     return [renderer imageWithActions:^(UIGraphicsImageRendererContext * _Nonnull context) {
         [image drawInRect:CGRectMake(0, 0, targetSize.width, targetSize.height)];
     }];
+}
+
+static BOOL PPChatRequiresBelowIOS26StorageCredentialPreflight(void)
+{
+    if (@available(iOS 26.0, *)) {
+        return NO;
+    }
+    return YES;
 }
 
 static NSString * const PPChatPremiumHeaderSupportAvatarToken = @"purepets://support-logo";
@@ -1331,6 +1340,35 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
 {
     if (!msg) return;
 
+    if (!PPChatRequiresBelowIOS26StorageCredentialPreflight()) {
+        // iOS 26+ approved path: preserve the existing upload implementation.
+        [self pp_uploadAudioMessageApprovedIOS26Path:msg];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
+                                                       completion:^(NSError * _Nullable authError) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        if (authError) {
+            [strongSelf handleSendFailureForMessage:msg
+                                              error:authError
+                                        retryAction:^{
+                [strongSelf uploadAudioMessage:msg];
+            }];
+            return;
+        }
+
+        [strongSelf pp_uploadAudioMessageApprovedIOS26Path:msg];
+    }];
+}
+
+- (void)pp_uploadAudioMessageApprovedIOS26Path:(ChatMessageModel *)msg
+{
+    if (!msg) return;
+
     NSURL *localURL = [NSURL URLWithString:msg.fileURL];
     NSData *data = [NSData dataWithContentsOfURL:localURL];
     if (!data) {
@@ -1782,59 +1820,87 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     if (!msg || !image) return;
 
     __weak typeof(self) weakSelf = self;
-    [self ensureThreadThen:^(NSString *threadID) {
+    dispatch_block_t sendImage = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
-        [[ChManager sharedManager]
-         sendImageMessage:image
-         message:msg
-         inThread:threadID
-         progress:^(CGFloat progress) {
-            dispatch_async(dispatch_get_main_queue(), ^{
-                msg.isUploading = YES;
-                msg.status = ChatMessageStatusSending;
-                msg.isLocalPending = YES;
-                msg.transferProgress = MAX(0.0, MIN(progress, 1.0));
+        [strongSelf ensureThreadThen:^(NSString *threadID) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
 
-                NSInteger row = [strongSelf.messages indexOfObject:msg];
-                if (row == NSNotFound) return;
+            [[ChManager sharedManager]
+             sendImageMessage:image
+             message:msg
+             inThread:threadID
+             progress:^(CGFloat progress) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    msg.isUploading = YES;
+                    msg.status = ChatMessageStatusSending;
+                    msg.isLocalPending = YES;
+                    msg.transferProgress = MAX(0.0, MIN(progress, 1.0));
 
-                NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-                ChatImageMessageCell *cell =
-                    (ChatImageMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-                if ([cell isKindOfClass:ChatImageMessageCell.class]) {
-                    [cell updateUploadingState:msg];
+                    NSInteger row = [strongSelf.messages indexOfObject:msg];
+                    if (row == NSNotFound) return;
+
+                    NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
+                    ChatImageMessageCell *cell =
+                        (ChatImageMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
+                    if ([cell isKindOfClass:ChatImageMessageCell.class]) {
+                        [cell updateUploadingState:msg];
+                    }
+                });
+             }
+             completion:^(NSError * _Nullable error) {
+                if (error) {
+                    [strongSelf handleSendFailureForMessage:msg
+                                                      error:error
+                                                retryAction:^{
+                        [strongSelf performImageSendForMessage:msg image:image];
+                    }];
+                    return;
                 }
-            });
-         }
-         completion:^(NSError * _Nullable error) {
-            if (error) {
-                [strongSelf handleSendFailureForMessage:msg
-                                                  error:error
-                                            retryAction:^{
-                    [strongSelf performImageSendForMessage:msg image:image];
-                }];
-                return;
-            }
 
-            dispatch_async(dispatch_get_main_queue(), ^{
-                msg.isUploading = NO;
-                msg.isLocalPending = NO;
-                msg.transferProgress = 1.0;
-                msg.status = ChatMessageStatusSent;
-                [strongSelf updateMessageStatus:msg];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    msg.isUploading = NO;
+                    msg.isLocalPending = NO;
+                    msg.transferProgress = 1.0;
+                    msg.status = ChatMessageStatusSent;
+                    [strongSelf updateMessageStatus:msg];
 
-                NSInteger row = [strongSelf.messages indexOfObject:msg];
-                if (row == NSNotFound) return;
-                NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
-                ChatImageMessageCell *cell =
-                    (ChatImageMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
-                if ([cell isKindOfClass:ChatImageMessageCell.class]) {
-                    [cell updateUploadingState:msg];
-                }
-            });
-         }];
+                    NSInteger row = [strongSelf.messages indexOfObject:msg];
+                    if (row == NSNotFound) return;
+                    NSIndexPath *ip = [NSIndexPath indexPathForRow:row inSection:0];
+                    ChatImageMessageCell *cell =
+                        (ChatImageMessageCell *)[strongSelf.tableView cellForRowAtIndexPath:ip];
+                    if ([cell isKindOfClass:ChatImageMessageCell.class]) {
+                        [cell updateUploadingState:msg];
+                    }
+                });
+             }];
+        }];
+    };
+
+    if (!PPChatRequiresBelowIOS26StorageCredentialPreflight()) {
+        // iOS 26+ approved path: same image send flow, no compatibility preflight.
+        sendImage();
+        return;
+    }
+
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
+                                                       completion:^(NSError * _Nullable authError) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        if (authError) {
+            [strongSelf handleSendFailureForMessage:msg
+                                              error:authError
+                                        retryAction:^{
+                [strongSelf performImageSendForMessage:msg image:image];
+            }];
+            return;
+        }
+
+        sendImage();
     }];
 }
 
@@ -2073,7 +2139,11 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     __weak typeof(self) weakSelf = self;
 
     // 2️⃣ Insert immediately (spinner visible)
-    [self ensureThreadThen:^(NSString *threadID) {
+    dispatch_block_t beginVideoSend = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        [strongSelf ensureThreadThen:^(NSString *threadID) {
 
         [weakSelf insertOutgoingMessageImmediately:msg];
         [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventOutgoingSend];
@@ -2114,6 +2184,30 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         }];
 
        
+        }];
+    };
+
+    if (!PPChatRequiresBelowIOS26StorageCredentialPreflight()) {
+        // iOS 26+ approved path: same video send flow, no compatibility preflight.
+        beginVideoSend();
+        return;
+    }
+
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
+                                                       completion:^(NSError * _Nullable authError) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        if (authError) {
+            [strongSelf handleSendFailureForMessage:msg
+                                              error:authError
+                                        retryAction:^{
+                [strongSelf handleConfirmedVideoSendWithURL:videoURL];
+            }];
+            return;
+        }
+
+        beginVideoSend();
     }];
 }
 
@@ -2171,6 +2265,35 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
 
 // Production-ready video upload with UI/main thread safety, duplicate guard, error handling, and single Firestore send
 - (void)uploadVideoMessage:(ChatMessageModel *)msg
+{
+    if (!msg) return;
+
+    if (!PPChatRequiresBelowIOS26StorageCredentialPreflight()) {
+        // iOS 26+ approved path: preserve the existing upload implementation.
+        [self pp_uploadVideoMessageApprovedIOS26Path:msg];
+        return;
+    }
+
+    __weak typeof(self) weakSelf = self;
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
+                                                       completion:^(NSError * _Nullable authError) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        if (authError) {
+            [strongSelf handleSendFailureForMessage:msg
+                                              error:authError
+                                        retryAction:^{
+                [strongSelf uploadVideoMessage:msg];
+            }];
+            return;
+        }
+
+        [strongSelf pp_uploadVideoMessageApprovedIOS26Path:msg];
+    }];
+}
+
+- (void)pp_uploadVideoMessageApprovedIOS26Path:(ChatMessageModel *)msg
 {
     if (!msg) return;
 

@@ -2820,6 +2820,10 @@
 "pp_support_config_failed" = "Could not load support chat configuration.";
 "pp_order_support_submit_failed" = "Could not send your support request. Please try again.";
 
+/* Chat send errors */
+"chat_message_failed_title" = "Message not sent";
+"chat_retry_send_message" = "Check your connection and try sending the message again.";
+
 /* Premium intro */
 "intro_brand_kicker" = "Care, thoughtfully connected";
 "intro_skip" = "Skip";

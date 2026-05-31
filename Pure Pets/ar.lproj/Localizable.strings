@@ -2808,6 +2808,10 @@
 "pp_support_config_failed" = "تعذر تحميل إعدادات محادثة الدعم.";
 "pp_order_support_submit_failed" = "تعذر إرسال طلب الدعم. حاول مرة أخرى.";
 
+/* Chat send errors */
+"chat_message_failed_title" = "لم يتم إرسال الرسالة";
+"chat_retry_send_message" = "تحقق من الاتصال وحاول إرسال الرسالة مرة أخرى.";
+
 /* Premium intro */
 "intro_brand_kicker" = "عناية متكاملة بكل اهتمام";
 "intro_skip" = "تخطي";
