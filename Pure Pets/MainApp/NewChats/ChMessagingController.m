@@ -93,6 +93,21 @@ static BOOL PPChatRequiresBelowIOS26StorageCredentialPreflight(void)
     return YES;
 }
 
+static NSString *PPChatLocalizedStringOrFallback(NSString *key, NSString *fallbackKey)
+{
+    NSString *value = kLang(key);
+    if (value.length > 0 && ![value isEqualToString:key]) {
+        return value;
+    }
+
+    NSString *fallback = fallbackKey.length > 0 ? kLang(fallbackKey) : nil;
+    if (fallback.length > 0 && ![fallback isEqualToString:fallbackKey]) {
+        return fallback;
+    }
+
+    return @"";
+}
+
 static NSString * const PPChatPremiumHeaderSupportAvatarToken = @"purepets://support-logo";
 
 static BOOL PPChatPremiumHeaderUsesSupportLogo(UserModel * _Nullable user)
@@ -2685,16 +2700,13 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         if (self.isPresentingFailureAlert) return;
         self.isPresentingFailureAlert = YES;
 
-        NSString *retryMessage = kLang(@"chat_retry_send_message");
-        if (retryMessage.length == 0) {
-            retryMessage = kLang(@"SomethingWentWrong");
-        }
+        NSString *retryMessage = PPChatLocalizedStringOrFallback(@"chat_retry_send_message", @"SomethingWentWrong");
         NSString *alertMsg = error.localizedDescription.length > 0
             ? [NSString stringWithFormat:@"%@\n\n%@", error.localizedDescription, retryMessage]
             : retryMessage;
 
         UIAlertController *alert =
-            [UIAlertController alertControllerWithTitle:kLang(@"chat_message_failed_title")
+            [UIAlertController alertControllerWithTitle:PPChatLocalizedStringOrFallback(@"chat_message_failed_title", @"SomethingWentWrong")
                                                 message:alertMsg
                                          preferredStyle:UIAlertControllerStyleAlert];
         [alert addAction:[UIAlertAction actionWithTitle:kLang(@"cancel")
