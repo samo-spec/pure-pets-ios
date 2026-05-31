@@ -924,6 +924,17 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
                                    responseID:(nullable NSString *)responseID;
 - (void)pp_removeNovaCartConfirmationForProduct:(nullable PetAccessory *)product
                                 tableAnimation:(UITableViewRowAnimation)animation;
+- (NSTimeInterval)pp_novaPremiumWordRevealDurationForText:(nullable NSString *)text;
+- (void)pp_stageNovaResolvedObjects:(NSArray *)objects
+                             source:(NSString *)source
+                          requestID:(NSString *)requestID
+                         responseID:(NSString *)responseID
+                         generation:(NSUInteger)generation
+                confirmationProduct:(nullable PetAccessory *)confirmationProduct
+                  confirmationTitle:(nullable NSString *)confirmationTitle
+                            options:(NSArray<NSDictionary<NSString *, id> *> *)options
+            optionsPlacedBeforeCards:(BOOL)optionsPlacedBeforeCards
+                              delay:(NSTimeInterval)delay;
 - (BOOL)pp_shouldUseNovaGenkitCallable;
 
 @end
@@ -3409,18 +3420,6 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
             PetAccessory *cartConfirmationProduct = shouldShowCartConfirmation
                 ? [self pp_novaCartProductForConfirmationFromOptions:options objects:objects]
                 : nil;
-            if (cartConfirmationProduct) {
-                LOG_INFO(@"[PPNovaChat][CartAction] confirmation_cell_added_without_cards request_id=%@ response_id=%@ product_id=%@",
-                         requestID ?: @"",
-                         responseID ?: @"",
-                         cartConfirmationProduct.accessoryID ?: @"");
-                [self pp_addNovaCartConfirmationForProduct:cartConfirmationProduct
-                                              runtimeTitle:cartConfirmationTitle
-                                                  requestID:requestID
-                                                 responseID:responseID];
-                return;
-            }
-
             NSArray<NSDictionary<NSString *, id> *> *displayOptions = options;
 	        BOOL optionsPlacedBeforeCards = [self pp_addNovaProductResultTextForRenderedCount:objects.count
 	                                                                             proposedText:fallbackText
@@ -3429,21 +3428,19 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 	                                                                                requestID:requestID
 	                                                                               responseID:responseID
 	                                                                                  options:displayOptions];
-	        [self pp_showNovaSuggestionObjects:objects
-	                                    source:@"server"
-	                                 requestID:requestID
-	                                responseID:responseID
-	                                generation:generation];
-	        if (!optionsPlacedBeforeCards && displayOptions.count > 0) {
-	            // Options didn't ride on a text bubble before the cards (no AI text,
-	            // or it was suppressed). Surface them on an options-only bubble after
-	            // the cards so the user still has the tappable next-step buttons.
-	            LOG_INFO(@"[PPNovaChat][Options] placement=after_cards request_id=%@ response_id=%@ option_count=%lu",
-	                     requestID ?: @"",
-	                     responseID ?: @"",
-	                     (unsigned long)displayOptions.count);
-	            [self addNovaMessage:@"" requestID:requestID responseID:responseID options:displayOptions];
-	        }
+            NSTimeInterval sequenceDelay = optionsPlacedBeforeCards
+                ? [self pp_novaPremiumWordRevealDurationForText:fallbackText]
+                : 0.0;
+            [self pp_stageNovaResolvedObjects:objects
+                                       source:@"server"
+                                    requestID:requestID
+                                   responseID:responseID
+                                   generation:generation
+                          confirmationProduct:cartConfirmationProduct
+                            confirmationTitle:cartConfirmationTitle
+                                      options:displayOptions
+                      optionsPlacedBeforeCards:optionsPlacedBeforeCards
+                                        delay:sequenceDelay];
 
         // Do not store card-render markers as model history. They are internal
         // UI state, and letting them reach Nova can make debug text visible.
@@ -3455,6 +3452,86 @@ static BOOL PPNovaOutputTypeRendersCards(PPNovaOutputType type) {
 
     dispatch_group_notify(group, dispatch_get_main_queue(), ^{
         finish(NO);
+    });
+}
+
+- (NSTimeInterval)pp_novaPremiumWordRevealDurationForText:(NSString *)text {
+    if (UIAccessibilityIsReduceMotionEnabled() || text.length == 0) {
+        return 0.0;
+    }
+    __block NSUInteger wordCount = 0;
+    [text enumerateSubstringsInRange:NSMakeRange(0, text.length)
+                             options:NSStringEnumerationByWords
+                          usingBlock:^(__unused NSString *substring,
+                                       __unused NSRange substringRange,
+                                       __unused NSRange enclosingRange,
+                                       __unused BOOL *stop) {
+        wordCount += 1;
+    }];
+    if (wordCount == 0) {
+        return 0.0;
+    }
+    NSTimeInterval step = MAX(0.018, MIN(0.050, 1.65 / (NSTimeInterval)wordCount));
+    return MIN(1.65, step * wordCount) + 0.12;
+}
+
+- (void)pp_stageNovaResolvedObjects:(NSArray *)objects
+                             source:(NSString *)source
+                          requestID:(NSString *)requestID
+                         responseID:(NSString *)responseID
+                         generation:(NSUInteger)generation
+                confirmationProduct:(PetAccessory *)confirmationProduct
+                  confirmationTitle:(NSString *)confirmationTitle
+                            options:(NSArray<NSDictionary<NSString *, id> *> *)options
+            optionsPlacedBeforeCards:(BOOL)optionsPlacedBeforeCards
+                              delay:(NSTimeInterval)delay {
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(MAX(0.0, delay) * NSEC_PER_SEC)),
+                   dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.dismissed ||
+            ![self pp_canAttachNovaRenderForRequestID:requestID
+                                           responseID:responseID
+                                           generation:generation
+                                               source:source]) {
+            return;
+        }
+
+        [self pp_showNovaSuggestionObjects:objects
+                                    source:source
+                                 requestID:requestID
+                                responseID:responseID
+                                generation:generation];
+
+        NSTimeInterval followUpDelay = UIAccessibilityIsReduceMotionEnabled() ? 0.0 : 0.38;
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(followUpDelay * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            if (!self || self.dismissed ||
+                ![self pp_canAttachNovaRenderForRequestID:requestID
+                                               responseID:responseID
+                                               generation:generation
+                                                   source:source]) {
+                return;
+            }
+            if (confirmationProduct) {
+                LOG_INFO(@"[PPNovaChat][CartAction] confirmation_cell_staged_after_cards request_id=%@ response_id=%@ product_id=%@",
+                         requestID ?: @"",
+                         responseID ?: @"",
+                         confirmationProduct.accessoryID ?: @"");
+                [self pp_addNovaCartConfirmationForProduct:confirmationProduct
+                                              runtimeTitle:confirmationTitle
+                                                  requestID:requestID
+                                                 responseID:responseID];
+                return;
+            }
+            if (!optionsPlacedBeforeCards && options.count > 0) {
+                LOG_INFO(@"[PPNovaChat][Options] placement=after_cards request_id=%@ response_id=%@ option_count=%lu",
+                         requestID ?: @"",
+                         responseID ?: @"",
+                         (unsigned long)options.count);
+                [self addNovaMessage:@"" requestID:requestID responseID:responseID options:options];
+            }
+        });
     });
 }
 

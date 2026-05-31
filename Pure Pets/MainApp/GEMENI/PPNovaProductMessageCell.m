@@ -24,6 +24,7 @@
 @property (nonatomic, copy) NSString *renderKey;
 @property (nonatomic, assign) BOOL hasPerformedInitialScroll;
 @property (nonatomic, assign) CGFloat lastCollectionLayoutWidth;
+@property (nonatomic, copy) NSString *lastAnimatedRenderKey;
 
 @end
 
@@ -48,6 +49,7 @@
     self.renderKey = nil;
     self.hasPerformedInitialScroll = NO;
     self.lastCollectionLayoutWidth = 0.0;
+    self.lastAnimatedRenderKey = nil;
     self.countLabel.text = nil;
     for (UICollectionViewCell *cell in self.collectionView.visibleCells) {
         cell.transform = CGAffineTransformIdentity;
@@ -162,6 +164,7 @@
             [self.collectionView.collectionViewLayout invalidateLayout];
         }];
         [self pp_scrollToInitialProductIfNeededForRenderKey:nextRenderKey];
+        [self pp_animateCardsEntranceIfNeededForRenderKey:nextRenderKey];
     } else if (widthChanged) {
         CGPoint preservedOffset = self.collectionView.contentOffset;
         [UIView performWithoutAnimation:^{
@@ -171,6 +174,52 @@
             [self.collectionView setContentOffset:preservedOffset animated:NO];
         }];
     }
+}
+
+- (void)pp_animateCardsEntranceIfNeededForRenderKey:(NSString *)renderKey {
+    if (UIAccessibilityIsReduceMotionEnabled() || renderKey.length == 0 ||
+        [self.lastAnimatedRenderKey isEqualToString:renderKey]) {
+        return;
+    }
+    self.lastAnimatedRenderKey = renderKey;
+    __weak typeof(self) weakSelf = self;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || self.collectionView.window == nil ||
+            ![self.renderKey isEqualToString:renderKey]) {
+            return;
+        }
+        [self.collectionView layoutIfNeeded];
+        NSArray<UICollectionViewCell *> *visibleCells =
+            [self.collectionView.visibleCells sortedArrayUsingComparator:^NSComparisonResult(UICollectionViewCell *first, UICollectionViewCell *second) {
+                NSIndexPath *firstPath = [self.collectionView indexPathForCell:first];
+                NSIndexPath *secondPath = [self.collectionView indexPathForCell:second];
+                if (firstPath.item == secondPath.item) return NSOrderedSame;
+                return firstPath.item < secondPath.item ? NSOrderedAscending : NSOrderedDescending;
+            }];
+        self.headerStack.alpha = 0.0;
+        self.headerStack.transform = CGAffineTransformMakeTranslation(0.0, 5.0);
+        [UIView animateWithDuration:0.32
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            self.headerStack.alpha = 1.0;
+            self.headerStack.transform = CGAffineTransformIdentity;
+        } completion:nil];
+
+        [visibleCells enumerateObjectsUsingBlock:^(UICollectionViewCell *cell, NSUInteger idx, __unused BOOL *stop) {
+            cell.alpha = 0.0;
+            cell.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 12.0),
+                                                     CGAffineTransformMakeScale(0.985, 0.985));
+            [UIView animateWithDuration:0.36
+                                  delay:0.045 * idx
+                                options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                             animations:^{
+                cell.alpha = 1.0;
+                cell.transform = CGAffineTransformIdentity;
+            } completion:nil];
+        }];
+    });
 }
 
 - (void)updateAvailableWidth:(CGFloat)maxWidth {

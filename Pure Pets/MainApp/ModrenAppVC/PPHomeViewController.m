@@ -1960,6 +1960,9 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
 
     [snapshot appendSectionsWithIdentifiers:sections];
 
+    NSLog(@"[Home] Sections in snapshot (%lu): %@", (unsigned long)sections.count,
+          [sections componentsJoinedByString:@", "]);
+
     void (^safeAppend)(NSArray *, NSNumber *) = ^(NSArray *items, NSNumber *section) {
         if ([sections containsObject:section]) {
             [snapshot appendItemsWithIdentifiers:items intoSectionWithIdentifier:section];
@@ -1994,7 +1997,14 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     safeAppend(servicesItems, @(PPHomeSectionServices));
 
     // ✅ Current Orders
-    safeAppend([self pp_homeCurrentOrderItems], @(PPHomeSectionCurrentOrders));
+    NSArray *currentOrderItems = [self pp_homeCurrentOrderItems];
+    NSLog(@"[Home] CurrentOrdersSection: visible=%@ items=%lu currentOrders=%lu loading=%d featured=%@",
+          [sections containsObject:@(PPHomeSectionCurrentOrders)] ? @"YES" : @"NO",
+          (unsigned long)currentOrderItems.count,
+          (unsigned long)self.currentOrders.count,
+          self.currentOrdersLoading,
+          [self pp_featuredHomeOrder] ? @"yes" : @"nil");
+    safeAppend(currentOrderItems, @(PPHomeSectionCurrentOrders));
 
     // ✅ Carousel
     PPHomeItem *carouselItem = [PPHomeItem new];
@@ -4400,12 +4410,15 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
     id activeOrder = self.currentOrders.firstObject;
     if ([activeOrder isKindOfClass:PPOrder.class]) {
         PPOrder *order = (PPOrder *)activeOrder;
+        NSLog(@"[Home][Orders] featured candidate: orderId=%@ statusKey=%@", order.orderId ?: @"nil", [self pp_homeOrderStatusKey:order] ?: @"nil");
 
         if ([self pp_shouldHideTerminalHomeOrder:order]) {
+            NSLog(@"[Home][Orders] featured=HIDDEN (terminal)");
             return nil;
         }
 
         if ([self pp_isActiveHomeOrder:order]) {
+            NSLog(@"[Home][Orders] featured=ACTIVE");
             return order;
         }
 
@@ -4413,9 +4426,13 @@ static NSInteger PPHomeSectionIDFromConfigValue(id value)
         if ([createdDate isKindOfClass:NSDate.class]) {
             NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:createdDate];
             if (elapsed <= PPHomeCompletedLastOrderVisibilityInterval) {
+                NSLog(@"[Home][Orders] featured=RECENT (%.0fs ago)", elapsed);
                 return order;
             }
         }
+        NSLog(@"[Home][Orders] featured=EXPIRED");
+    } else {
+        NSLog(@"[Home][Orders] featured=nil — currentOrders empty or firstObject not PPOrder");
     }
 
     return nil;
@@ -5175,6 +5192,7 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
     }
 
     [self pp_startCurrentOrdersListenerForUserID:userID requestToken:requestToken];
+    NSLog(@"[Home][CurrentOrders] started listener userID=%@ requestToken=%ld force=%d", userID, (long)requestToken, force);
 }
 
 - (void)pp_stopCurrentOrdersListener
@@ -5248,6 +5266,11 @@ static NSInteger const PPLastFoodVisibleLimit = 10;
 
     self.recentOrders = recentOrders.copy;
     self.currentOrders = resolvedOrders.copy;
+
+    NSLog(@"[Home][CurrentOrders] snapshot received: total=%lu active=%lu featured=%@",
+          (unsigned long)recentOrders.count,
+          (unsigned long)resolvedOrders.count,
+          [self pp_featuredHomeOrder] ? @"yes" : @"nil");
 
     PPOrder *featuredOrder = [self pp_featuredHomeOrder];
     NSString *nextObservedOrderID = [featuredOrder isKindOfClass:PPOrder.class]
@@ -9505,7 +9528,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
     }
     [NSLayoutConstraint deactivateConstraints:sizeConstraints];
 
-    CGFloat cartButtonSide = 35.0;
+    CGFloat cartButtonSide = 44.0;
     self.homeCartButton.translatesAutoresizingMaskIntoConstraints = YES;
     self.homeCartButton.frame = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
     self.homeCartButton.bounds = CGRectMake(0.0, 0.0, cartButtonSide, cartButtonSide);
@@ -9921,7 +9944,7 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         self.homeLocationTitleView.translatesAutoresizingMaskIntoConstraints = NO;
         self.homeLocationTitleWidthConstraint =
             [self.homeLocationTitleView.widthAnchor constraintEqualToConstant:MAX(width, 160.0)];
-        self.homeLocationTitleWidthConstraint.priority = UILayoutPriorityRequired;
+        self.homeLocationTitleWidthConstraint.priority = UILayoutPriorityDefaultHigh;
         self.homeLocationTitleWidthConstraint.active = YES;
         [self.homeLocationTitleView.heightAnchor constraintEqualToConstant:46.0].active = YES;
         [self.homeLocationTitleView addTarget:self

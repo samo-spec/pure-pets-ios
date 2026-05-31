@@ -2819,3 +2819,20 @@
 "pp_support_open_failed" = "Could not open support chat right now.";
 "pp_support_config_failed" = "Could not load support chat configuration.";
 "pp_order_support_submit_failed" = "Could not send your support request. Please try again.";
+
+/* Premium intro */
+"intro_brand_kicker" = "Care, thoughtfully connected";
+"intro_skip" = "Skip";
+"intro_skip_accessibility" = "Skip introduction";
+"intro_continue" = "Continue";
+"intro_begin" = "Start exploring";
+"intro_footer" = "Built around the pets you love";
+"intro_panel1_eyebrow" = "TRUSTED CARE";
+"intro_panel1_title" = "Everything they need,\nheld in one place";
+"intro_panel1_subtitle" = "Discover thoughtful care, trusted veterinary support, and everyday essentials chosen around your pet.";
+"intro_panel2_eyebrow" = "EFFORTLESS ROUTINE";
+"intro_panel2_title" = "A calmer way to care\nevery single day";
+"intro_panel2_subtitle" = "Shop essentials, find services, and keep the important moments close without the usual noise.";
+"intro_panel3_eyebrow" = "ONE PURE PETS HOME";
+"intro_panel3_title" = "Their world,\nbeautifully connected";
+"intro_panel3_subtitle" = "From discovery to delivery, Pure Pets brings every part of their care into one refined experience.";

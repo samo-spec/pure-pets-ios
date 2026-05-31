@@ -14,6 +14,8 @@
 @property (nonatomic, strong) CAGradientLayer *ambientGlowLayer;
 @property (nonatomic, strong) CAGradientLayer *bottomShadeLayer;
 @property (nonatomic, strong) CAGradientLayer *locationTopFadeLayer;
+@property (nonatomic, strong) CAGradientLayer *locationLiquidBorderLayer;
+@property (nonatomic, strong) CAShapeLayer *locationLiquidBorderMaskLayer;
 @property (nonatomic, strong) UIView *orbViewA;
 @property (nonatomic, strong) UIView *orbViewB;
 @property (nonatomic, strong) UILabel *brandLabel;
@@ -63,6 +65,7 @@
 @property (nonatomic, assign) BOOL orderPeekVisible;
 @property (nonatomic, assign) BOOL orderPeekExpanded;
 @property (nonatomic, strong) UIColor *orderPeekStatusColor;
+- (void)pp_updateLocationLiquidBorderWithAccent:(UIColor *)accent;
 @end
 
 static inline UIColor *PPBlendColors(UIColor *a, UIColor *b, CGFloat t)
@@ -578,6 +581,18 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationTopFadeLayer.needsDisplayOnBoundsChange = YES;
     [self.locationControl.layer addSublayer:self.locationTopFadeLayer];
 
+    self.locationLiquidBorderLayer = [CAGradientLayer layer];
+    self.locationLiquidBorderLayer.startPoint = CGPointMake(0.0, 0.0);
+    self.locationLiquidBorderLayer.endPoint = CGPointMake(1.0, 1.0);
+    self.locationLiquidBorderLayer.needsDisplayOnBoundsChange = YES;
+    self.locationLiquidBorderMaskLayer = [CAShapeLayer layer];
+    self.locationLiquidBorderMaskLayer.fillColor = UIColor.clearColor.CGColor;
+    self.locationLiquidBorderMaskLayer.strokeColor = UIColor.whiteColor.CGColor;
+    self.locationLiquidBorderMaskLayer.lineWidth = 1.15;
+    self.locationLiquidBorderLayer.mask = self.locationLiquidBorderMaskLayer;
+    [self.locationControl.layer addSublayer:self.locationLiquidBorderLayer];
+    [self pp_updateLocationLiquidBorderWithAccent:PPLocationAccentColor(@"")];
+
     self.actionButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.actionButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.actionButton.layer.cornerRadius = PPButtonHeightLG / 2.0;
@@ -834,6 +849,11 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     static CGFloat const kLocationFadeHeight = 16.0;
     CGRect locationBounds = self.locationControl.bounds;
     self.locationTopFadeLayer.frame = CGRectMake(0.0, 0.0, CGRectGetWidth(locationBounds), MIN(kLocationFadeHeight, CGRectGetHeight(locationBounds) * 0.5));
+    self.locationLiquidBorderLayer.frame = locationBounds;
+    self.locationLiquidBorderMaskLayer.frame = locationBounds;
+    self.locationLiquidBorderMaskLayer.path =
+        [UIBezierPath bezierPathWithRoundedRect:CGRectInset(locationBounds, 0.65, 0.65)
+                                  cornerRadius:MAX(0.0, self.locationControl.layer.cornerRadius - 0.65)].CGPath;
 
     self.heroShadowView.layer.cornerRadius = self.heroSurfaceView.layer.cornerRadius;
     self.heroShadowView.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.heroShadowView.bounds
@@ -1397,6 +1417,7 @@ static inline NSString *PPTrimHeroLine(NSString *line)
         (id)[glassFill colorWithAlphaComponent:0.0].CGColor
     ];
     [self.locationControl pp_setBorderColor:glassBorder];
+    [self pp_updateLocationLiquidBorderWithAccent:accent];
     self.locationIconPlateView.backgroundColor = iconPlateFill;
     [self.locationIconPlateView pp_setBorderColor:iconPlateBorder];
     self.locationStatusChipView.backgroundColor = chipFill;
@@ -1407,6 +1428,28 @@ static inline NSString *PPTrimHeroLine(NSString *line)
     self.locationChevronView.tintColor = [chipTextColor colorWithAlphaComponent:(locationState == PPHomeHeroLocationStateDenied ? 0.72 : 0.88)];
     self.locationIconView.tintColor = [UIColor colorWithWhite:1.0 alpha:(locationState == PPHomeHeroLocationStateDenied ? 0.94 : 0.98)];
     [self pp_updateLocationPulseForState:locationState];
+}
+
+- (void)pp_updateLocationLiquidBorderWithAccent:(UIColor *)accent
+{
+    UIColor *resolvedAccent = accent ?: UIColor.whiteColor;
+    self.locationLiquidBorderLayer.colors = @[
+        (id)[UIColor colorWithWhite:1.0 alpha:0.84].CGColor,
+        (id)[resolvedAccent colorWithAlphaComponent:0.42].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.18].CGColor,
+        (id)[UIColor colorWithWhite:1.0 alpha:0.72].CGColor
+    ];
+    self.locationLiquidBorderLayer.locations = @[@0.0, @0.32, @0.66, @1.0];
+
+    if (!UIAccessibilityIsReduceMotionEnabled() &&
+        ![self.locationLiquidBorderLayer animationForKey:@"pp.hero.location.liquidBorder"]) {
+        CABasicAnimation *shimmer = [CABasicAnimation animationWithKeyPath:@"locations"];
+        shimmer.fromValue = @[@-0.34, @0.0, @0.34, @0.68];
+        shimmer.toValue = @[@0.32, @0.66, @1.0, @1.34];
+        shimmer.duration = 5.6;
+        shimmer.repeatCount = HUGE_VALF;
+        [self.locationLiquidBorderLayer addAnimation:shimmer forKey:@"pp.hero.location.liquidBorder"];
+    }
 }
 
 #pragma mark - Palette

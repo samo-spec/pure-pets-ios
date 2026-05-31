@@ -13,6 +13,7 @@
 #import "PPRolePermission.h"
 #import "UserManager.h"
 #import "AppClasses.h"
+#import "PPIntroViewController.h"
 #if __has_include(<Lottie/Lottie.h>)
 #import <Lottie/Lottie.h>
 #elif __has_include("Lottie.h")
@@ -71,6 +72,8 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
 @property (nonatomic, strong, nullable) NSLayoutConstraint *blockedOverlayTopConstraint;
 @property (nonatomic, assign) NSInteger pp_lastSelectedIndex;
 @property (nonatomic, strong, nullable) UIViewController *addActionPlaceholderViewController;
+@property (nonatomic, assign) BOOL didAttemptIntroPresentation;
+@property (nonatomic, strong, nullable) PPIntroViewController *activeIntroViewController;
 - (CGFloat)pp_bottomNavigationContentClearance;
 - (void)pp_applyBottomNavigationClearanceToVisibleLists;
 - (void)pp_applyBottomNavigationClearance:(CGFloat)clearance toListViewsInView:(UIView *)view;
@@ -303,6 +306,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [super viewDidAppear:animated];
     [self pp_animatePremiumBottomNavigationEntranceIfNeeded];
     [self pp_assertPremiumTabBarState];
+    [self pp_showIntroIfNeeded];
 }
 
 #pragma mark - Centralized Tab Bar State
@@ -318,6 +322,34 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         self.tabBar.alpha = 0.0;
         self.tabBar.userInteractionEnabled = NO;
     }
+}
+
+- (void)pp_showIntroIfNeeded {
+    if (self.didAttemptIntroPresentation) return;
+    self.didAttemptIntroPresentation = YES;
+
+    if (![PPIntroViewController shouldShowIntro]) return;
+
+    UIWindow *window = self.view.window;
+    if (!window) {
+        for (UIScene *candidateScene in UIApplication.sharedApplication.connectedScenes) {
+            if ([candidateScene isKindOfClass:UIWindowScene.class]) {
+                UIWindowScene *windowScene = (UIWindowScene *)candidateScene;
+                if (windowScene.windows.count == 0) continue;
+                window = windowScene.windows.firstObject;
+                break;
+            }
+        }
+    }
+    if (!window) return;
+
+    PPIntroViewController *intro = [[PPIntroViewController alloc] init];
+    self.activeIntroViewController = intro;
+    intro.view.frame = window.bounds;
+    __weak typeof(self) weakSelf = self;
+    [intro showOverWindow:window completion:^{
+        weakSelf.activeIntroViewController = nil;
+    }];
 }
 
 #pragma mark - UINavigationControllerDelegate

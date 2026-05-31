@@ -77,7 +77,7 @@ static const void *kPPEmptyStateTokenKey = &kPPEmptyStateTokenKey;
 
             if (empty.reloadButton) {
                 NSString *buttonTitle = config.buttonTitle ?: @"";
-                [empty.reloadButton setTitle:buttonTitle forState:UIControlStateNormal];
+                [empty setReloadButtonTitle:buttonTitle];
                 empty.reloadButton.hidden = (buttonTitle.length == 0);
                 [empty.reloadButton removeTarget:nil action:NULL forControlEvents:UIControlEventTouchUpInside];
                 if (buttonTitle.length > 0 && config.target && config.action) {

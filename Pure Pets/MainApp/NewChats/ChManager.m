@@ -55,8 +55,9 @@ static UserModel *PPSupportUserFromConfig(NSDictionary *config) {
 
     if (![supportUserId isEqualToString:PURE_PETS_OFFICIAL_USER_ID]) {
         NSLog(@"⚠️ [SupportChat] Firestore supportUserId (%@) does not match official UID (%@). "
-              @"Update CommerceConfig/supportChat to use the canonical support account.",
+              @"Using the canonical support account for this session.",
               supportUserId, PURE_PETS_OFFICIAL_USER_ID);
+        supportUserId = PURE_PETS_OFFICIAL_USER_ID;
     }
 
     UserModel *supportUser = [UserModel new];
@@ -2165,7 +2166,8 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         return;
     }
 
-    void (^sendRequest)(NSString * _Nullable) = ^(NSString * _Nullable idToken) {
+    __block void (^authorizeAndSendRequest)(BOOL forceAuthRefresh);
+    authorizeAndSendRequest = ^(BOOL forceAuthRefresh) {
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
         request.HTTPMethod = @"POST";
         request.timeoutInterval = 15;
@@ -2173,66 +2175,82 @@ static void PPSupportPresentUnavailableAlert(UIViewController *controller, NSStr
         request.HTTPBody = jsonData;
         [request setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
 
-        // Attach auth token when available (works with secured or open HTTP functions).
-        if (idToken.length > 0) {
-            NSString *bearer = [NSString stringWithFormat:@"Bearer %@", idToken];
-            [request setValue:bearer forHTTPHeaderField:@"Authorization"];
+        PPFirebaseSessionAuthorizationOptions options =
+            PPFirebaseSessionAuthorizationOptionRequireSignedIn;
+        if (forceAuthRefresh) {
+            options |= PPFirebaseSessionAuthorizationOptionForceRefreshAuth;
         }
 
-        NSURLSessionConfiguration *config =
-            [NSURLSessionConfiguration ephemeralSessionConfiguration];
-        NSURLSession *session =
-            [NSURLSession sessionWithConfiguration:config];
-
-        NSURLSessionDataTask *task =
-        [session dataTaskWithRequest:request
-                   completionHandler:^(NSData *data,
-                                       NSURLResponse *response,
-                                       NSError *error) {
-
-            if (error) {
-                NSLog(@"❌ [Push][Network] %@", error.localizedDescription);
+        [PPFirebaseSessionBridge authorizeRequest:request
+                                          options:options
+                                       completion:^(NSError * _Nullable authError) {
+            if (authError) {
+                NSLog(@"❌ [Push][Auth] Credential preparation failed after forceRefresh=%d: %@",
+                      forceAuthRefresh,
+                      authError.localizedDescription ?: @"unknown");
+                authorizeAndSendRequest = nil;
                 finish(NO);
                 return;
             }
 
-            NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
-            NSString *resp =
-                data ? [[NSString alloc] initWithData:data
-                                             encoding:NSUTF8StringEncoding] : @"<no body>";
+            NSURLSessionConfiguration *config =
+                [NSURLSessionConfiguration ephemeralSessionConfiguration];
+            NSURLSession *session =
+                [NSURLSession sessionWithConfiguration:config];
 
-            if (http.statusCode != 200) {
-                NSLog(@"🚨 [Push][Server] %ld → %@",
-                      (long)http.statusCode, resp);
-                finish(NO);
-                return;
-            }
+            NSURLSessionDataTask *task =
+            [session dataTaskWithRequest:request
+                       completionHandler:^(NSData *data,
+                                           NSURLResponse *response,
+                                           NSError *error) {
 
-            NSLog(@"✅ [Push] Delivered → %@", resp);
+                if (error) {
+                    NSLog(@"❌ [Push][Network] %@", error.localizedDescription);
+                    authorizeAndSendRequest = nil;
+                    finish(NO);
+                    return;
+                }
 
-            BOOL accepted = NO;
-            if (data.length > 0) {
-                NSDictionary *json =
-                    [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-                NSString *messageId = [json[@"messageId"] description];
-                accepted = messageId.length > 0;
-            }
-            finish(accepted);
+                NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
+                NSString *resp =
+                    data ? [[NSString alloc] initWithData:data
+                                                 encoding:NSUTF8StringEncoding] : @"<no body>";
+
+                if (http.statusCode == 401 && !forceAuthRefresh) {
+                    NSLog(@"⚠️ [Push][Server] 401 received. Retrying once with refreshed Auth credentials.");
+                    authorizeAndSendRequest(YES);
+                    return;
+                }
+
+                if (http.statusCode != 200) {
+                    NSLog(@"🚨 [Push][Server] %ld → %@",
+                          (long)http.statusCode, resp);
+                    authorizeAndSendRequest = nil;
+                    finish(NO);
+                    return;
+                }
+
+                NSLog(@"✅ [Push] Delivered → %@", resp);
+
+                BOOL accepted = NO;
+                if (data.length > 0) {
+                    NSDictionary *json =
+                        [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+                    NSString *messageId = [json[@"messageId"] description];
+                    accepted = messageId.length > 0;
+                }
+                authorizeAndSendRequest = nil;
+                finish(accepted);
+            }];
+
+            [task resume];
         }];
-
-        [task resume];
     };
 
     // ─────────────────────────────
-    // 4️⃣ Include Firebase ID token if available
+    // 4️⃣ Require Firebase ID token and retry once after a server 401
     // ─────────────────────────────
-    [authUser getIDTokenWithCompletion:^(NSString * _Nullable token, NSError * _Nullable error) {
-        if (error) {
-            NSLog(@"⚠️ [Push] ID token fetch failed, sending without Authorization header: %@",
-                  error.localizedDescription);
-        }
-        sendRequest(token);
-    }];
+    authorizeAndSendRequest(NO);
 }
 
  

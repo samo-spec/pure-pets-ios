@@ -455,6 +455,7 @@
 		F281B4862FCB6735009118F2 /* UITabBarItem+PPFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */; };
 		F281B4872FCB6735009118F2 /* PPMenuHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B46F2FCB6735009118F2 /* PPMenuHelper.m */; };
 		F281B4882FCB6735009118F2 /* PPProductCard.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B4732FCB6735009118F2 /* PPProductCard.m */; };
+		F281B48B2FCBBFD1009118F2 /* PPIntroViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F281B48A2FCBBFD1009118F2 /* PPIntroViewController.m */; };
 		F282C1122F0D7BF9001C110A /* PPSPinnerView.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1112F0D7B5A001C110A /* PPSPinnerView.m */; };
 		F282C1172F0EC788001C110A /* PPBrowseHistoryManager.m in Sources */ = {isa = PBXBuildFile; fileRef = F282C1162F0EC788001C110A /* PPBrowseHistoryManager.m */; };
 		F283FABC2E542933001EF0BA /* UserContactView.m in Sources */ = {isa = PBXBuildFile; fileRef = F283FABB2E542933001EF0BA /* UserContactView.m */; };
@@ -1655,6 +1656,8 @@
 		F281B47B2FCB6735009118F2 /* PPSectionHeader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSectionHeader.m; sourceTree = "<group>"; };
 		F281B47C2FCB6735009118F2 /* UITabBarItem+PPFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UITabBarItem+PPFactory.h"; sourceTree = "<group>"; };
 		F281B47D2FCB6735009118F2 /* UITabBarItem+PPFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UITabBarItem+PPFactory.m"; sourceTree = "<group>"; };
+		F281B4892FCBBFD1009118F2 /* PPIntroViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPIntroViewController.h; sourceTree = "<group>"; };
+		F281B48A2FCBBFD1009118F2 /* PPIntroViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPIntroViewController.m; sourceTree = "<group>"; };
 		F282C1102F0D7B53001C110A /* PPSPinnerView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPSPinnerView.h; sourceTree = "<group>"; };
 		F282C1112F0D7B5A001C110A /* PPSPinnerView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPSPinnerView.m; sourceTree = "<group>"; };
 		F282C1152F0EC788001C110A /* PPBrowseHistoryManager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPBrowseHistoryManager.h; sourceTree = "<group>"; };
@@ -4935,6 +4938,8 @@
 		F2DF5DC72EFBE5B3009C7B6F /* ModrenAppVC */ = {
 			isa = PBXGroup;
 			children = (
+				F281B4892FCBBFD1009118F2 /* PPIntroViewController.h */,
+				F281B48A2FCBBFD1009118F2 /* PPIntroViewController.m */,
 				F282C1132F0EC700001C110A /* SmartSuggest */,
 				F213021C2F0C6546006E71AB /* Search */,
 				F28DD5992F049B7900FF2671 /* PPDataView */,
@@ -5443,6 +5448,7 @@
 				F2B641BE2F4A95E60092C2BF /* PPStoriesManager.m in Sources */,
 				F2B641BB2F4A95690092C2BF /* PPStory.m in Sources */,
 				F2C2252D2F11BF7700569B36 /* CreateAdCoordinator.m in Sources */,
+				F281B48B2FCBBFD1009118F2 /* PPIntroViewController.m in Sources */,
 				F27A48292EE07CAA0044040E /* PPCoreBridge.swift in Sources */,
 				F273147B2F3118A000FFA0B8 /* PPPaymentManager.m in Sources */,
 				F24F9BAE2EE65405002AAD27 /* PPAdsBrowser.m in Sources */,

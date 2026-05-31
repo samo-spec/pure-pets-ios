@@ -91,6 +91,7 @@ NS_ASSUME_NONNULL_BEGIN
 // Layout helpers
  - (void)updateFromDictionary:(NSDictionary *)dict;
 @property (nonatomic, assign) BOOL didAnimateInsert;
+@property (nonatomic, assign) BOOL didAnimateNovaWordReveal;
  
 @end
 

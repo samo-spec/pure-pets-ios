@@ -93,6 +93,10 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
 @property (nonatomic, assign) BOOL typingMode;
 @property (nonatomic, assign) BOOL typingAnimationLoaded;
 @property (nonatomic, assign) BOOL typingLiveMotionActive;
+@property (nonatomic, assign) NSUInteger wordRevealGeneration;
+@property (nonatomic, copy, nullable) NSString *wordRevealMessageID;
+@property (nonatomic, strong, nullable) NSMutableAttributedString *wordRevealAttributedText;
+- (void)pp_applyPremiumWordRevealIfNeededForMessage:(ChatMessageModel *)messageModel;
 
 @end
 
@@ -114,6 +118,9 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     [super prepareForReuse];
 
     self.messageModel = nil;
+    self.wordRevealGeneration += 1;
+    self.wordRevealMessageID = nil;
+    self.wordRevealAttributedText = nil;
     self.typingMode = NO;
     self.messageLabel.text = nil;
     self.messageLabel.attributedText = nil;
@@ -919,6 +926,7 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     self.timeLabel.hidden = YES;
     self.metaStack.hidden = YES;
     [self pp_applyStyleForAssistant:self.assistantMessage typing:NO];
+    [self pp_applyPremiumWordRevealIfNeededForMessage:messageModel];
     [self setActionTitles:[self pp_actionTitlesFromMessage:messageModel]];
     [self pp_stopTypingAnimation];
     [self pp_configureStatusForMessage:messageModel];
@@ -927,6 +935,74 @@ static NSString * const PPNovaTypingBubbleAlphaAnimationKey = @"pp_nova_typing_b
     [self layoutIfNeeded];
 
     self.accessibilityLabel = [self pp_currentPlainMessageText];
+}
+
+- (void)pp_applyPremiumWordRevealIfNeededForMessage:(ChatMessageModel *)messageModel {
+    if (!self.assistantMessage || self.typingMode || messageModel.text.length == 0 ||
+        UIAccessibilityIsReduceMotionEnabled()) {
+        return;
+    }
+
+    NSString *messageID = messageModel.ID ?: @"";
+    if (self.wordRevealAttributedText.length > 0 &&
+        [self.wordRevealMessageID isEqualToString:messageID]) {
+        self.messageLabel.attributedText = self.wordRevealAttributedText;
+        return;
+    }
+    if (messageModel.didAnimateNovaWordReveal || self.messageLabel.attributedText.length == 0) {
+        return;
+    }
+
+    messageModel.didAnimateNovaWordReveal = YES;
+    self.wordRevealGeneration += 1;
+    NSUInteger generation = self.wordRevealGeneration;
+    self.wordRevealMessageID = messageID;
+
+    NSAttributedString *finalText = [self.messageLabel.attributedText copy];
+    NSMutableAttributedString *revealedText = [finalText mutableCopy];
+    NSMutableArray<NSValue *> *wordRanges = [NSMutableArray array];
+    [finalText.string enumerateSubstringsInRange:NSMakeRange(0, finalText.length)
+                                         options:NSStringEnumerationByWords
+                                      usingBlock:^(__unused NSString *substring,
+                                                   NSRange substringRange,
+                                                   __unused NSRange enclosingRange,
+                                                   __unused BOOL *stop) {
+        [wordRanges addObject:[NSValue valueWithRange:substringRange]];
+    }];
+    if (wordRanges.count == 0) {
+        return;
+    }
+
+    [revealedText addAttribute:NSForegroundColorAttributeName
+                         value:[UIColor clearColor]
+                         range:NSMakeRange(0, revealedText.length)];
+    self.wordRevealAttributedText = revealedText;
+    self.messageLabel.attributedText = revealedText;
+
+    NSTimeInterval step = MAX(0.018, MIN(0.050, 1.65 / (NSTimeInterval)wordRanges.count));
+    [wordRanges enumerateObjectsUsingBlock:^(NSValue *rangeValue, NSUInteger idx, __unused BOOL *stop) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(step * idx * NSEC_PER_SEC)),
+                       dispatch_get_main_queue(), ^{
+            if (generation != self.wordRevealGeneration ||
+                ![self.wordRevealMessageID isEqualToString:messageID]) {
+                return;
+            }
+            NSRange range = rangeValue.rangeValue;
+            [finalText enumerateAttributesInRange:range
+                                         options:0
+                                      usingBlock:^(NSDictionary<NSAttributedStringKey, id> *attrs,
+                                                   NSRange attrsRange,
+                                                   __unused BOOL *innerStop) {
+                [revealedText setAttributes:attrs range:attrsRange];
+            }];
+            self.messageLabel.attributedText = revealedText;
+            if (idx + 1 == wordRanges.count) {
+                self.wordRevealAttributedText = nil;
+                self.wordRevealMessageID = nil;
+                self.messageLabel.attributedText = finalText;
+            }
+        });
+    }];
 }
 
 - (void)setNovaStarred:(BOOL)starred {

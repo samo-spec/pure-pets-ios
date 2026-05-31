@@ -174,9 +174,11 @@ willConnectToSession:(UISceneSession *)session
     if (![scene isKindOfClass:[UIWindowScene class]]) return;
     UIWindowScene *windowScene = (UIWindowScene *)scene;
     self.window = [[UIWindow alloc] initWithWindowScene:windowScene];
+    UIColor *launchBackgroundColor = AppForgroundColr ?: UIColor.systemBackgroundColor;
+    self.window.backgroundColor = launchBackgroundColor;
     [self applySavedInterfaceStyleToWindow:self.window];
-    UIStoryboard *sb = [UIStoryboard storyboardWithName:@"Main" bundle:nil];
     SplashViewController *splash = [SplashViewController new];
+    splash.view.backgroundColor = launchBackgroundColor;
     splash.view.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.window.rootViewController = splash;
     [self pp_applyCurrentLanguageSemanticToWindow:self.window];

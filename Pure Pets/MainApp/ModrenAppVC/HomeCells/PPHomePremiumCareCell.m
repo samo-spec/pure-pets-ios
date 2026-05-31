@@ -455,12 +455,12 @@ static UIColor *PremiumSoftCardBorderColor(void)
     _gradientLayer.endPoint = CGPointMake(1.0, 1.0);
     _gradientLayer.opacity = 1.0;
     _gradientLayer.colors = @[
-        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor,
+        (id)[accent colorWithAlphaComponent:isDark ? 0.20 : 0.13].CGColor  ,
         (id)[UIColor clearColor].CGColor
     ];
     _gradientLayer.locations = nil;
 
-    _topBackgroundGlowView.backgroundColor = [accent colorWithAlphaComponent:isDark ? 0.14 : 0.17];
+    _topBackgroundGlowView.backgroundColor = [isDark ? accent : [UIColor colorWithHexString:@"#4a306d"] colorWithAlphaComponent:isDark ? 0.14 : 0.17];
     [_topBackgroundGlowView pp_setShadowColor:[accent colorWithAlphaComponent:isDark ? 0.24 : 0.22]];
     _topBackgroundGlowView.layer.shadowOpacity = 0.32;
     _topBackgroundGlowView.layer.shadowRadius = 76.0;
@@ -500,8 +500,8 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     [_backgroundDotViews enumerateObjectsUsingBlock:^(UIView * _Nonnull dotView, NSUInteger idx, BOOL * _Nonnull stop) {
         (void)stop;
-        dotView.backgroundColor = (idx % 2 == 0) ? accent : UIColor.whiteColor;
-        dotView.alpha = isDark ? 0.20 : 0.16;
+        dotView.backgroundColor = (idx % 2 == 0) ? [UIColor colorWithHexString:@"#4a306d"] : UIColor.whiteColor;
+        dotView.alpha = isDark ? 0.20 : 0.26;
         dotView.layer.cornerRadius = CGRectGetWidth(dotView.bounds) > 0.0
             ? CGRectGetWidth(dotView.bounds) * 0.5
             : ((idx % 2 == 0) ? 2.5 : 2.0);

@@ -297,6 +297,15 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     self.tableView.estimatedSectionFooterHeight = 0;
 
     [self viewDidLoadRecordData];
+
+    if ([AVAudioSession sharedInstance].recordPermission == AVAudioSessionRecordPermissionUndetermined) {
+        [[AVAudioSession sharedInstance] requestRecordPermission:^(BOOL granted) {
+            if (granted) {
+                DLog(@"Microphone permission granted");
+            }
+        }];
+    }
+
     [self fetchInitForDidLoad];
 
     [self ensureThreadThen:^(NSString *threadID) { }];

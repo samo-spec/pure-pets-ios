@@ -2807,3 +2807,20 @@
 "pp_support_open_failed" = "تعذر فتح محادثة الدعم حالياً.";
 "pp_support_config_failed" = "تعذر تحميل إعدادات محادثة الدعم.";
 "pp_order_support_submit_failed" = "تعذر إرسال طلب الدعم. حاول مرة أخرى.";
+
+/* Premium intro */
+"intro_brand_kicker" = "عناية متكاملة بكل اهتمام";
+"intro_skip" = "تخطي";
+"intro_skip_accessibility" = "تخطي المقدمة";
+"intro_continue" = "متابعة";
+"intro_begin" = "ابدأ الاستكشاف";
+"intro_footer" = "صمم حول الحيوانات التي تحبها";
+"intro_panel1_eyebrow" = "عناية موثوقة";
+"intro_panel1_title" = "كل ما يحتاجه محبوبك\nفي مكان واحد";
+"intro_panel1_subtitle" = "اكتشف عناية مدروسة، ودعما بيطريا موثوقا، واحتياجات يومية مختارة لحيوانك الأليف.";
+"intro_panel2_eyebrow" = "روتين أسهل";
+"intro_panel2_title" = "طريقة أهدأ للعناية\nفي كل يوم";
+"intro_panel2_subtitle" = "تسوق الاحتياجات، واعثر على الخدمات، واحتفظ بالتفاصيل المهمة قريبة منك دون تعقيد.";
+"intro_panel3_eyebrow" = "تجربة بيور بتس";
+"intro_panel3_title" = "عالم محبوبك\nمتصل بأناقة";
+"intro_panel3_subtitle" = "من الاكتشاف حتى التوصيل، تجمع بيور بتس كل جوانب العناية في تجربة واحدة راقية.";

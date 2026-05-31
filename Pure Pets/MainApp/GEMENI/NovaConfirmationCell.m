@@ -16,6 +16,7 @@
 @property (nonatomic, strong) UIButton *cancelButton;
 @property (nonatomic, strong, nullable) PetAccessory *product;
 @property (nonatomic, assign) CGFloat maxWidth;
+@property (nonatomic, copy) NSString *messageID;
 
 @end
 
@@ -36,6 +37,7 @@
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.product = nil;
+    self.messageID = nil;
     self.titleLabel.text = nil;
     self.subtitleLabel.text = nil;
     self.contentView.alpha = 1.0;
@@ -160,6 +162,8 @@
 }
 
 - (void)configureWithMessage:(ChatMessageModel *)messageModel maxWidth:(CGFloat)maxWidth {
+    BOOL shouldAnimateEntrance = ![self.messageID isEqualToString:messageModel.ID ?: @""];
+    self.messageID = messageModel.ID ?: @"";
     self.maxWidth = maxWidth;
     self.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     self.cardView.contentView.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
@@ -184,6 +188,26 @@
     NSString *productName = product.name.length > 0 ? product.name : kLang(@"nova_cart_confirmation_item");
     self.subtitleLabel.text = [NSString stringWithFormat:kLang(@"nova_cart_confirmation_subtitle_format"), productName];
     self.accessibilityLabel = [NSString stringWithFormat:@"%@. %@", self.titleLabel.text ?: @"", self.subtitleLabel.text ?: @""];
+    if (shouldAnimateEntrance) {
+        [self pp_animatePremiumEntrance];
+    }
+}
+
+- (void)pp_animatePremiumEntrance {
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        self.cardView.contentView.alpha = 1.0;
+        self.cardView.contentView.transform = CGAffineTransformIdentity;
+        return;
+    }
+    self.cardView.contentView.alpha = 0.0;
+    self.cardView.contentView.transform = CGAffineTransformMakeTranslation(0.0, 8.0);
+    [UIView animateWithDuration:0.38
+                          delay:0.06
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        self.cardView.contentView.alpha = 1.0;
+        self.cardView.contentView.transform = CGAffineTransformIdentity;
+    } completion:nil];
 }
 
 - (void)pp_buttonTouchDown:(UIButton *)button {

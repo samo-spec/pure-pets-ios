@@ -100,11 +100,11 @@
         } else {
             self.reloadButton = [PPButtonHelper pp_buttonWithTitle:buttonTitle font:[GM boldFontWithSize:16] textColor:[AppPrimaryClr colorWithAlphaComponent:1.1] corners:22 imageName:nil target:target config:[UIButtonConfiguration filledButtonConfiguration] btnSize:50 action:action];
         }
+        [self setReloadButtonTitle:buttonTitle];
        //  self.reloadButton.backgroundColor = appfo ?: UIColor.systemGray6Color;
        // [self.reloadButton setTitleColor:UIColor.darkGrayColor forState:UIControlStateNormal];
        // self.reloadButton.layer.cornerRadius = 22;
        // self.reloadButton.clipsToBounds = YES;
-        [self.reloadButton addTarget:target action:action forControlEvents:UIControlEventTouchUpInside];
         [self.stackView addArrangedSubview:self.reloadButton];
         self.reloadButton.translatesAutoresizingMaskIntoConstraints = NO;
         [NSLayoutConstraint activateConstraints:@[
@@ -148,6 +148,34 @@
                  emptyIconSize:250
                  isNetworkFile:isNetworkFile
                         action:action];
+}
+
+- (void)setReloadButtonTitle:(NSString *)title
+{
+    if (!self.reloadButton) return;
+
+    NSString *safeTitle = title ?: @"";
+    UIFont *font = [GM boldFontWithSize:16] ?: [UIFont systemFontOfSize:16.0 weight:UIFontWeightSemibold];
+    UIColor *textColor = [AppPrimaryClr colorWithAlphaComponent:1.0] ?: UIColor.labelColor;
+
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *configuration = self.reloadButton.configuration;
+        if (configuration) {
+            configuration.attributedTitle =
+                [[NSAttributedString alloc] initWithString:safeTitle
+                                                attributes:@{
+                                                    NSFontAttributeName: font,
+                                                    NSForegroundColorAttributeName: textColor
+                                                }];
+            configuration.baseForegroundColor = textColor;
+            self.reloadButton.configuration = configuration;
+            return;
+        }
+    }
+
+    [self.reloadButton setTitle:safeTitle forState:UIControlStateNormal];
+    [self.reloadButton setTitleColor:textColor forState:UIControlStateNormal];
+    self.reloadButton.titleLabel.font = font;
 }
 
 // Update stackView's size and position on bounds changes

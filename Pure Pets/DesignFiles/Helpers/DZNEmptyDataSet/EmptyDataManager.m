@@ -168,7 +168,7 @@
         case EmptyDataTypeCart:
         {
             text = textDataEmptyDataTypeCart;
-            font = [UIFont boldSystemFontOfSize:16.0];
+            font = [GM boldFontWithSize:16.0] ?: [UIFont boldSystemFontOfSize:16.0];
             break;
         }
         default:
