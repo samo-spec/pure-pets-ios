@@ -2144,46 +2144,50 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         if (!strongSelf) return;
 
         [strongSelf ensureThreadThen:^(NSString *threadID) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
 
-        [weakSelf insertOutgoingMessageImmediately:msg];
-        [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventOutgoingSend];
+            [strongSelf insertOutgoingMessageImmediately:msg];
+            [[PPChatFeedbackManager shared] playFeedbackForEvent:PPChatFeedbackEventOutgoingSend];
 
-        // 3️⃣ Generate thumbnail async (safe)
-        [weakSelf generateVideoThumbnail:videoURL
-                              completion:^(UIImage *thumb) {
+            // 3️⃣ Generate thumbnail async (safe)
+            [strongSelf generateVideoThumbnail:videoURL
+                                    completion:^(UIImage *thumb) {
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf) return;
 
-            if (!thumb) return;
+                if (!thumb) return;
 
-            msg.thumbnailImage = thumb;
+                msg.thumbnailImage = thumb;
 
-            NSInteger row = [weakSelf.messages indexOfObject:msg];
-            if (row == NSNotFound) return;
+                NSInteger row = [strongSelf.messages indexOfObject:msg];
+                if (row == NSNotFound) return;
 
-            NSIndexPath *ip =
-                [NSIndexPath indexPathForRow:row inSection:0];
-            msg.status = ChatMessageStatusSending;
-            ChatVideoMessageCell *cell =
-                (ChatVideoMessageCell *)
-                [weakSelf.tableView cellForRowAtIndexPath:ip];
-            [self updateMessageStatus:msg];
-            if ([cell isKindOfClass:ChatVideoMessageCell.class]) {
-                [cell updateThumbnail:thumb];
-            }
-            
-            [ChManager.sharedManager uploadVideoThumbnail:thumb
-                                                messageID:msg.ID
-                                               completion:^(NSString * _Nonnull thumbURL) {
-                if (thumbURL.length > 0) {
-                    msg.thumbnailURL = thumbURL;
+                NSIndexPath *ip =
+                    [NSIndexPath indexPathForRow:row inSection:0];
+                msg.status = ChatMessageStatusSending;
+                ChatVideoMessageCell *cell =
+                    (ChatVideoMessageCell *)
+                    [strongSelf.tableView cellForRowAtIndexPath:ip];
+                [strongSelf updateMessageStatus:msg];
+                if ([cell isKindOfClass:ChatVideoMessageCell.class]) {
+                    [cell updateThumbnail:thumb];
                 }
-                
-                // 4️⃣ Upload independently
-                [weakSelf uploadVideoMessage:msg];
-            }];
-                
-        }];
 
-       
+                [ChManager.sharedManager uploadVideoThumbnail:thumb
+                                                    messageID:msg.ID
+                                                   completion:^(NSString * _Nonnull thumbURL) {
+                    __strong typeof(weakSelf) strongSelf = weakSelf;
+                    if (!strongSelf) return;
+                    if (thumbURL.length > 0) {
+                        msg.thumbnailURL = thumbURL;
+                    }
+
+                    // 4️⃣ Upload independently
+                    [strongSelf uploadVideoMessage:msg];
+                }];
+
+            }];
         }];
     };
 
