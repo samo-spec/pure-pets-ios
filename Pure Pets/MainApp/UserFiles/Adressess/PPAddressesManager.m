@@ -188,9 +188,27 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
     });
 }
 
+- (NSArray<PPAddressModel *> * _Nullable)pp_cachedAddressesForUserID:(NSString *)userID
+{
+    UserModel *current = UserManager.sharedManager.currentUser;
+    if (!current || ![current.Addresses isKindOfClass:NSArray.class]) {
+        return nil;
+    }
+
+    NSString *currentUID = current.ID ?: @"";
+    if (userID.length > 0 &&
+        currentUID.length > 0 &&
+        ![currentUID isEqualToString:userID]) {
+        return nil;
+    }
+
+    return [current.Addresses copy];
+}
+
 - (void)pp_commitAddressData:(NSDictionary *)data
                 documentID:(NSString *)documentID
               makeDefault:(BOOL)makeDefault
+    knownExistingAddresses:(NSArray<PPAddressModel *> * _Nullable)knownExistingAddresses
                 completion:(PPVoidCompletion _Nullable)completion
 {
     FIRCollectionReference *collection = self.userAddressesCollection;
@@ -208,6 +226,44 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
                 [self pp_notifyAddressesChangedForUserID:uid];
             }
             if (completion) completion(error == nil, error);
+        }];
+        return;
+    }
+
+    if (knownExistingAddresses) {
+        FIRWriteBatch *batch = [self.db batch];
+        NSDate *now = [NSDate date];
+        NSMutableSet<NSString *> *seenIDs = [NSMutableSet set];
+        for (PPAddressModel *existingAddress in knownExistingAddresses) {
+            if (![existingAddress isKindOfClass:PPAddressModel.class]) {
+                continue;
+            }
+            NSString *existingID = existingAddress.documentID.length > 0 ? existingAddress.documentID : existingAddress.addressID;
+            existingID = [existingID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+            if (existingID.length == 0 ||
+                [existingID isEqualToString:documentID] ||
+                [seenIDs containsObject:existingID]) {
+                continue;
+            }
+            [seenIDs addObject:existingID];
+            FIRDocumentReference *existingRef = [collection documentWithPath:existingID];
+            [batch updateData:@{@"isDefault": @NO, @"updatedAt": now} forDocument:existingRef];
+        }
+
+        NSMutableDictionary *targetData = [data mutableCopy];
+        targetData[@"isDefault"] = @YES;
+        targetData[@"updatedAt"] = now;
+        [batch setData:targetData forDocument:targetRef merge:YES];
+
+        [batch commitWithCompletion:^(NSError * _Nullable commitError) {
+            if (!commitError) {
+                [self getAllAddressesWithCompletion:nil];
+                [self pp_notifyAddressesChangedForUserID:uid];
+            } else {
+                NSLog(@"[PPAddressesManager] ⚠️ Cached default-swap batch failed, resyncing: %@", commitError.localizedDescription);
+                [self getAllAddressesWithCompletion:nil];
+            }
+            if (completion) completion(commitError == nil, commitError);
         }];
         return;
     }
@@ -294,50 +350,33 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
     }
     address.addressID = address.documentID;
 
-    FIRCollectionReference *collection = self.userAddressesCollection;
-    FIRDocumentReference *docRef = [collection documentWithPath:address.documentID];
+    NSArray<PPAddressModel *> *cachedAddresses = [self pp_cachedAddressesForUserID:uid] ?: @[];
+    BOOL hasDefault = NO;
+    for (PPAddressModel *existingAddress in cachedAddresses) {
+        if (![existingAddress isKindOfClass:PPAddressModel.class]) {
+            continue;
+        }
+        if (existingAddress.isDefault) {
+            hasDefault = YES;
+            break;
+        }
+    }
 
-    [docRef getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
-        if (error) {
-            if (completion) completion(nil, error);
+    BOOL shouldMakeDefault = address.isDefault || !hasDefault;
+    address.isDefault = shouldMakeDefault;
+
+    NSMutableDictionary *data = [self pp_firestorePayloadForAddress:address userID:uid isCreate:YES];
+    data[@"isDefault"] = @(shouldMakeDefault);
+    [self pp_commitAddressData:data
+                    documentID:address.documentID
+                   makeDefault:shouldMakeDefault
+        knownExistingAddresses:shouldMakeDefault ? cachedAddresses : nil
+                    completion:^(BOOL success, NSError * _Nullable commitError) {
+        if (!success || commitError) {
+            if (completion) completion(nil, commitError);
             return;
         }
-        if (snapshot.exists) {
-            NSError *dupError = [self pp_errorWithCode:409 description:@"Address ID already exists. Please retry."];
-            if (completion) completion(nil, dupError);
-            return;
-        }
-
-        [collection getDocumentsWithCompletion:^(FIRQuerySnapshot * _Nullable addressesSnapshot, NSError * _Nullable listError) {
-            if (listError || !addressesSnapshot) {
-                if (completion) completion(nil, listError ?: [self pp_errorWithCode:500 description:@"Unable to load addresses."]);
-                return;
-            }
-
-            BOOL hasDefault = NO;
-            for (FIRDocumentSnapshot *doc in addressesSnapshot.documents) {
-                if ([doc.data[@"isDefault"] boolValue]) {
-                    hasDefault = YES;
-                    break;
-                }
-            }
-
-            BOOL shouldMakeDefault = address.isDefault || !hasDefault;
-            address.isDefault = shouldMakeDefault;
-
-            NSMutableDictionary *data = [self pp_firestorePayloadForAddress:address userID:uid isCreate:YES];
-            data[@"isDefault"] = @(shouldMakeDefault);
-            [self pp_commitAddressData:data
-                            documentID:address.documentID
-                          makeDefault:shouldMakeDefault
-                            completion:^(BOOL success, NSError * _Nullable commitError) {
-                if (!success || commitError) {
-                    if (completion) completion(nil, commitError);
-                    return;
-                }
-                if (completion) completion(address, nil);
-            }];
-        }];
+        if (completion) completion(address, nil);
     }];
 }
 
@@ -376,6 +415,7 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
         [self pp_commitAddressData:data
                         documentID:address.documentID
                       makeDefault:address.isDefault
+            knownExistingAddresses:[self pp_cachedAddressesForUserID:uid]
                         completion:^(BOOL success, NSError * _Nullable commitError) {
             if (completion) completion(success ? address : nil, commitError);
         }];
@@ -449,6 +489,7 @@ static NSString *const PPAddressesErrorDomain = @"PPAddressesManager";
     [self pp_commitAddressData:data
                     documentID:address.documentID
                   makeDefault:YES
+        knownExistingAddresses:[self pp_cachedAddressesForUserID:[self currentAuthenticatedUserID] ?: @""]
                     completion:completion];
 }
 

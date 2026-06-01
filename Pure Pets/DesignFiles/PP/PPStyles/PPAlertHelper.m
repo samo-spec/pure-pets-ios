@@ -1,6 +1,14 @@
 
+#import "PPFirebaseSessionBridge.h"
+
 static UIWindow *ppAlertOverlayWindow = nil;
 static UIViewController *ppAlertRootViewController = nil;
+
+static NSString *PPAlertSanitizedText(NSString *text, NSString *fallbackKey)
+{
+    if (text.length == 0) return text;
+    return [PPFirebaseSessionBridge publicMessageForText:text fallbackKey:fallbackKey] ?: text;
+}
 
 @implementation PPAlert {
     UIButton *_containerView;
@@ -617,19 +625,25 @@ static UIViewController *ppAlertRootViewController = nil;
 
 + (void)showErrorIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle {
     UIImage *icon = [UIImage systemImageNamed:@"multiply.circle"];
-    PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeError title:title subtitle:subtitle icon:icon confirmTitle:kLang(@"OK") cancelTitle:nil confirmAction:nil cancelAction:nil];
+    NSString *safeTitle = PPAlertSanitizedText(title, @"Error");
+    NSString *safeSubtitle = PPAlertSanitizedText(subtitle, @"SomethingWentWrong");
+    PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeError title:safeTitle subtitle:safeSubtitle icon:icon confirmTitle:kLang(@"OK") cancelTitle:nil confirmAction:nil cancelAction:nil];
     [alert showInViewController:vc];
 }
 
 + (void)showWarningIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle {
     UIImage *icon = [UIImage systemImageNamed:@"icon_warning"];
-    PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeWarning title:title subtitle:subtitle icon:icon confirmTitle:kLang(@"OK") cancelTitle:nil confirmAction:nil cancelAction:nil];
+    NSString *safeTitle = PPAlertSanitizedText(title, @"warningTitle");
+    NSString *safeSubtitle = PPAlertSanitizedText(subtitle, @"SomethingWentWrong");
+    PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeWarning title:safeTitle subtitle:safeSubtitle icon:icon confirmTitle:kLang(@"OK") cancelTitle:nil confirmAction:nil cancelAction:nil];
     [alert showInViewController:vc];
 }
 
 + (void)showInfoIn:(UIViewController *)vc title:(NSString *)title subtitle:(NSString * _Nullable)subtitle {
     UIImage *icon = [UIImage systemImageNamed:@"icon_info"];
-    PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeInfo title:title subtitle:subtitle icon:icon confirmTitle:kLang(@"OK") cancelTitle:nil confirmAction:nil cancelAction:nil];
+    NSString *safeTitle = PPAlertSanitizedText(title, @"Info");
+    NSString *safeSubtitle = PPAlertSanitizedText(subtitle, @"SomethingWentWrong");
+    PPAlert *alert = [[PPAlert alloc] initWithType:PPAlertTypeInfo title:safeTitle subtitle:safeSubtitle icon:icon confirmTitle:kLang(@"OK") cancelTitle:nil confirmAction:nil cancelAction:nil];
     [alert showInViewController:vc];
 }
 
@@ -793,7 +807,6 @@ static UIViewController *ppAlertRootViewController = nil;
 }
 
 @end
-
 
 
 

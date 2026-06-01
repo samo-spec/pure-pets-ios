@@ -271,12 +271,66 @@ static NSString *PPOrderFunctionsServerMessageFromError(NSError *error) {
     return PPOrderLocalizedKnownBackendMessage(candidate);
 }
 
+static BOOL PPOrderTextContainsAnyToken(NSString *text, NSArray<NSString *> *tokens) {
+    NSString *lowercase = [PPOrderTrimmedString(text).lowercaseString copy];
+    if (lowercase.length == 0) return NO;
+    for (NSString *token in tokens ?: @[]) {
+        if (![token isKindOfClass:NSString.class] || token.length == 0) continue;
+        if ([lowercase containsString:token.lowercaseString]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static BOOL PPOrderErrorLooksLikeAppCheck(NSError *error, NSString *serverMessage) {
+    NSString *combined = [NSString stringWithFormat:@"%@ %@ %@ %@",
+                          error.domain ?: @"",
+                          error.localizedDescription ?: @"",
+                          error.localizedFailureReason ?: @"",
+                          serverMessage ?: @""];
+    return PPOrderTextContainsAnyToken(combined, @[
+        @"app check", @"appcheck", @"app attest", @"appattest", @"devicecheck"
+    ]);
+}
+
+static BOOL PPOrderErrorLooksLikeAuth(NSError *error, NSString *serverMessage) {
+    NSString *combined = [NSString stringWithFormat:@"%@ %@ %@ %@",
+                          error.domain ?: @"",
+                          error.localizedDescription ?: @"",
+                          error.localizedFailureReason ?: @"",
+                          serverMessage ?: @""];
+    return PPOrderTextContainsAnyToken(combined, @[
+        @"unauthenticated", @"auth token", @"id token", @"refresh your session"
+    ]);
+}
+
+static BOOL PPOrderErrorLooksLikeUnsafeInternal(NSError *error, NSString *serverMessage) {
+    NSString *combined = [NSString stringWithFormat:@"%@ %@ %@ %@",
+                          error.domain ?: @"",
+                          error.localizedDescription ?: @"",
+                          error.localizedFailureReason ?: @"",
+                          serverMessage ?: @""];
+    return PPOrderTextContainsAnyToken(combined, @[
+        @"internal error", @"print and inspect", @"firebasefunctions"
+    ]);
+}
+
 static NSString *PPOrderFriendlyFunctionsErrorMessage(NSError *error) {
     if (!error) return @"";
 
     NSString *domain = [PPOrderTrimmedString(error.domain).lowercaseString copy];
     BOOL isFunctionsError = [domain containsString:@"functions"];
     NSString *serverMessage = PPOrderFunctionsServerMessageFromError(error);
+    if (PPOrderErrorLooksLikeAppCheck(error, serverMessage)) {
+        return kLang(@"pp_app_check_unavailable");
+    }
+    if (PPOrderErrorLooksLikeAuth(error, serverMessage)) {
+        return kLang(@"pp_auth_session_refresh_failed");
+    }
+    if (PPOrderErrorLooksLikeUnsafeInternal(error, serverMessage)) {
+        return kLang(@"payment_backend_unreachable");
+    }
     if (!isFunctionsError) {
         return serverMessage;
     }
@@ -788,83 +842,93 @@ static NSData *PPOrderCompressedJPEGData(UIImage *image, NSInteger maxSizeKB) {
                resolvedPaymentMethodID ?: @"",
                resolvedPaymentProvider ?: @"");
 
-    [[functions HTTPSCallableWithName:@"createPendingOrder"]
-     callWithObject:payload
-     completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
-        if (error || ![result.data isKindOfClass:NSDictionary.class]) {
-            NSError *resolvedError = PPOrderWrappedCallableError(error);
-            NSError *finalError = resolvedError ?: [NSError errorWithDomain:@"PPOrder"
-                                                                       code:500
-                                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_generic_error")}];
-            PPORDERLog(@"Create pending order failed | paymentMethod=%@ | error=%@",
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:NO completion:^(NSError * _Nullable authError) {
+        if (authError) {
+            PPORDERLog(@"Create pending order auth preflight failed | paymentMethod=%@ | error=%@",
                        resolvedPaymentMethodID ?: @"",
-                       finalError.localizedDescription ?: @"Unknown");
-            if (completion) completion(nil, finalError);
+                       authError.localizedDescription ?: @"Unknown");
+            if (completion) completion(nil, authError);
             return;
         }
 
-        NSDictionary *root = (NSDictionary *)result.data;
-        NSDictionary *orderDict = [root[@"order"] isKindOfClass:NSDictionary.class] ? root[@"order"] : root;
-        NSString *orderId = PPOrderTrimmedString(root[@"orderId"]);
-        if (orderId.length == 0) {
-            orderId = PPOrderTrimmedString(orderDict[@"orderId"]);
-        }
+        [[functions HTTPSCallableWithName:@"createPendingOrder"]
+         callWithObject:payload
+         completion:^(FIRHTTPSCallableResult * _Nullable result, NSError * _Nullable error) {
+            if (error || ![result.data isKindOfClass:NSDictionary.class]) {
+                NSError *resolvedError = PPOrderWrappedCallableError(error);
+                NSError *finalError = resolvedError ?: [NSError errorWithDomain:@"PPOrder"
+                                                                           code:500
+                                                                       userInfo:@{NSLocalizedDescriptionKey: kLang(@"checkout_generic_error")}];
+                PPORDERLog(@"Create pending order failed | paymentMethod=%@ | error=%@",
+                           resolvedPaymentMethodID ?: @"",
+                           finalError.localizedDescription ?: @"Unknown");
+                if (completion) completion(nil, finalError);
+                return;
+            }
 
-        PPOrder *order = [PPOrder new];
-        order.orderId = orderId ?: @"";
-        NSString *orderNumber = PPOrderTrimmedString(root[@"orderNumber"]);
-        if (orderNumber.length == 0) {
-            orderNumber = PPOrderTrimmedString(orderDict[@"orderNumber"]);
-        }
-        if (orderNumber.length == 0) {
-            orderNumber = PPOrderTrimmedString(root[@"displayOrderNumber"]);
-        }
-        if (orderNumber.length == 0) {
-            orderNumber = PPOrderTrimmedString(orderDict[@"displayOrderNumber"]);
-        }
-        order.orderNumber = orderNumber.length > 0 ? orderNumber.uppercaseString : nil;
-        order.userId = userId;
-        order.status = PPOrderStatusPending;
-        order.rawStatus = @"pending";
-        order.amount = [orderDict[@"amount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"amount"] doubleValue] : amount;
-        order.shippingFee = [orderDict[@"shippingFee"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"shippingFee"] doubleValue] : 0.0;
-        double totalAmount = [orderDict[@"totalAmount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"totalAmount"] doubleValue] : order.amount;
-        order.totalAmount = totalAmount > 0 ? totalAmount : order.amount;
-        NSString *currency = PPOrderTrimmedString(orderDict[@"currency"]);
-        order.currency = currency.length > 0 ? currency : PPOrderResolvedCurrencyCode();
-        order.paymentMethodId = [PPOrder normalizedPaymentMethodFromRawValue:orderDict[@"paymentMethodId"]
-                                                                    provider:orderDict[@"paymentProvider"]];
-        order.paymentStatus = [PPOrder normalizedPaymentStatusFromRawValue:orderDict[@"paymentStatus"]
-                                                             paymentMethod:order.paymentMethodId
-                                                                    status:order.rawStatus
-                                                               transaction:nil
-                                                                    paidAt:nil
-                                                         paymentCollectedAt:nil];
-        NSString *provider = PPOrderTrimmedString(orderDict[@"paymentProvider"]);
-        order.paymentProvider = provider.length > 0 ? provider : resolvedPaymentProvider;
-        NSString *verificationStatus = PPOrderTrimmedString(orderDict[@"verificationStatus"]);
-        order.verificationStatus = verificationStatus.length > 0
-        ? PPOrderNormalizedStatusString(verificationStatus)
-        : ([order isCashOnDelivery] ? @"not_applicable" : @"pending");
-        order.items = [orderDict[@"items"] isKindOfClass:NSArray.class] ? orderDict[@"items"] : (items ?: @[]);
-        NSString *resolvedShippingID = PPOrderTrimmedString(orderDict[@"shippingAddressId"]);
-        order.shippingAddressId = resolvedShippingID.length > 0 ? resolvedShippingID : (shippingAddressID ?: @"");
-        order.shippingAddressSnapshot = [orderDict[@"shippingAddressSnapshot"] isKindOfClass:NSDictionary.class] ? orderDict[@"shippingAddressSnapshot"] : shippingSnapshot.copy;
+            NSDictionary *root = (NSDictionary *)result.data;
+            NSDictionary *orderDict = [root[@"order"] isKindOfClass:NSDictionary.class] ? root[@"order"] : root;
+            NSString *orderId = PPOrderTrimmedString(root[@"orderId"]);
+            if (orderId.length == 0) {
+                orderId = PPOrderTrimmedString(orderDict[@"orderId"]);
+            }
 
-        NSNumber *createdAtMillis = [orderDict[@"createdAtMillis"] respondsToSelector:@selector(doubleValue)] ? orderDict[@"createdAtMillis"] : nil;
-        NSDate *createdAt = createdAtMillis ? [NSDate dateWithTimeIntervalSince1970:(createdAtMillis.doubleValue / 1000.0)] : NSDate.date;
-        NSNumber *updatedAtMillis = [orderDict[@"updatedAtMillis"] respondsToSelector:@selector(doubleValue)] ? orderDict[@"updatedAtMillis"] : nil;
-        NSDate *updatedAt = updatedAtMillis ? [NSDate dateWithTimeIntervalSince1970:(updatedAtMillis.doubleValue / 1000.0)] : createdAt;
-        order.createdAt = createdAt;
-        order.updatedAt = updatedAt;
+            PPOrder *order = [PPOrder new];
+            order.orderId = orderId ?: @"";
+            NSString *orderNumber = PPOrderTrimmedString(root[@"orderNumber"]);
+            if (orderNumber.length == 0) {
+                orderNumber = PPOrderTrimmedString(orderDict[@"orderNumber"]);
+            }
+            if (orderNumber.length == 0) {
+                orderNumber = PPOrderTrimmedString(root[@"displayOrderNumber"]);
+            }
+            if (orderNumber.length == 0) {
+                orderNumber = PPOrderTrimmedString(orderDict[@"displayOrderNumber"]);
+            }
+            order.orderNumber = orderNumber.length > 0 ? orderNumber.uppercaseString : nil;
+            order.userId = userId;
+            order.status = PPOrderStatusPending;
+            order.rawStatus = @"pending";
+            order.amount = [orderDict[@"amount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"amount"] doubleValue] : amount;
+            order.shippingFee = [orderDict[@"shippingFee"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"shippingFee"] doubleValue] : 0.0;
+            double totalAmount = [orderDict[@"totalAmount"] respondsToSelector:@selector(doubleValue)] ? [orderDict[@"totalAmount"] doubleValue] : order.amount;
+            order.totalAmount = totalAmount > 0 ? totalAmount : order.amount;
+            NSString *currency = PPOrderTrimmedString(orderDict[@"currency"]);
+            order.currency = currency.length > 0 ? currency : PPOrderResolvedCurrencyCode();
+            order.paymentMethodId = [PPOrder normalizedPaymentMethodFromRawValue:orderDict[@"paymentMethodId"]
+                                                                        provider:orderDict[@"paymentProvider"]];
+            order.paymentStatus = [PPOrder normalizedPaymentStatusFromRawValue:orderDict[@"paymentStatus"]
+                                                                 paymentMethod:order.paymentMethodId
+                                                                        status:order.rawStatus
+                                                                   transaction:nil
+                                                                        paidAt:nil
+                                                             paymentCollectedAt:nil];
+            NSString *provider = PPOrderTrimmedString(orderDict[@"paymentProvider"]);
+            order.paymentProvider = provider.length > 0 ? provider : resolvedPaymentProvider;
+            NSString *verificationStatus = PPOrderTrimmedString(orderDict[@"verificationStatus"]);
+            order.verificationStatus = verificationStatus.length > 0
+            ? PPOrderNormalizedStatusString(verificationStatus)
+            : ([order isCashOnDelivery] ? @"not_applicable" : @"pending");
+            order.items = [orderDict[@"items"] isKindOfClass:NSArray.class] ? orderDict[@"items"] : (items ?: @[]);
+            NSString *resolvedShippingID = PPOrderTrimmedString(orderDict[@"shippingAddressId"]);
+            order.shippingAddressId = resolvedShippingID.length > 0 ? resolvedShippingID : (shippingAddressID ?: @"");
+            order.shippingAddressSnapshot = [orderDict[@"shippingAddressSnapshot"] isKindOfClass:NSDictionary.class] ? orderDict[@"shippingAddressSnapshot"] : shippingSnapshot.copy;
 
-        PPORDERLog(@"Create pending order resolved | orderId=%@ | orderNumber=%@ | paymentMethod=%@ | paymentStatus=%@",
-                   order.orderId ?: @"",
-                   order.orderNumber ?: @"",
-                   order.paymentMethodId ?: @"",
-                   order.paymentStatus ?: @"");
+            NSNumber *createdAtMillis = [orderDict[@"createdAtMillis"] respondsToSelector:@selector(doubleValue)] ? orderDict[@"createdAtMillis"] : nil;
+            NSDate *createdAt = createdAtMillis ? [NSDate dateWithTimeIntervalSince1970:(createdAtMillis.doubleValue / 1000.0)] : NSDate.date;
+            NSNumber *updatedAtMillis = [orderDict[@"updatedAtMillis"] respondsToSelector:@selector(doubleValue)] ? orderDict[@"updatedAtMillis"] : nil;
+            NSDate *updatedAt = updatedAtMillis ? [NSDate dateWithTimeIntervalSince1970:(updatedAtMillis.doubleValue / 1000.0)] : createdAt;
+            order.createdAt = createdAt;
+            order.updatedAt = updatedAt;
 
-        if (completion) completion(order, nil);
+            PPORDERLog(@"Create pending order resolved | orderId=%@ | orderNumber=%@ | paymentMethod=%@ | paymentStatus=%@",
+                       order.orderId ?: @"",
+                       order.orderNumber ?: @"",
+                       order.paymentMethodId ?: @"",
+                       order.paymentStatus ?: @"");
+
+            if (completion) completion(order, nil);
+        }];
     }];
 }
 

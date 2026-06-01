@@ -93,6 +93,11 @@ static BOOL PPChatRequiresBelowIOS26StorageCredentialPreflight(void)
     return YES;
 }
 
+static void PPChatEnsureBelowIOS26StorageCredentialReadiness(void (^completion)(NSError * _Nullable authError))
+{
+    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:NO completion:completion];
+}
+
 static NSString *PPChatLocalizedStringOrFallback(NSString *key, NSString *fallbackKey)
 {
     NSString *value = kLang(key);
@@ -1362,11 +1367,10 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
     }
 
     __weak typeof(self) weakSelf = self;
-    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
-                                                       completion:^(NSError * _Nullable authError) {
+    PPChatEnsureBelowIOS26StorageCredentialReadiness(^(NSError * _Nullable authError) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
-
+        
         if (authError) {
             [strongSelf handleSendFailureForMessage:msg
                                               error:authError
@@ -1375,9 +1379,8 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
             }];
             return;
         }
-
-        [strongSelf pp_uploadAudioMessageApprovedIOS26Path:msg];
-    }];
+        
+    });
 }
 
 - (void)pp_uploadAudioMessageApprovedIOS26Path:(ChatMessageModel *)msg
@@ -1901,8 +1904,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
         return;
     }
 
-    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
-                                                       completion:^(NSError * _Nullable authError) {
+    PPChatEnsureBelowIOS26StorageCredentialReadiness(^(NSError * _Nullable authError) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
@@ -1916,7 +1918,7 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
         }
 
         sendImage();
-    }];
+    });
 }
 
 
@@ -2212,8 +2214,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         return;
     }
 
-    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
-                                                       completion:^(NSError * _Nullable authError) {
+    PPChatEnsureBelowIOS26StorageCredentialReadiness(^(NSError * _Nullable authError) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
@@ -2227,7 +2228,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         }
 
         beginVideoSend();
-    }];
+    });     
 }
 
 
@@ -2294,8 +2295,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
     }
 
     __weak typeof(self) weakSelf = self;
-    [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES
-                                                       completion:^(NSError * _Nullable authError) {
+    PPChatEnsureBelowIOS26StorageCredentialReadiness(^(NSError * _Nullable authError) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
 
@@ -2309,7 +2309,7 @@ didFinishPicking:(NSArray<PHPickerResult *> *)results
         }
 
         [strongSelf pp_uploadVideoMessageApprovedIOS26Path:msg];
-    }];
+    });
 }
 
 - (void)pp_uploadVideoMessageApprovedIOS26Path:(ChatMessageModel *)msg

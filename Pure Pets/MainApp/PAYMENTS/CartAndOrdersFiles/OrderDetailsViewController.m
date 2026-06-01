@@ -21,6 +21,7 @@
 #import "CartManager.h"
 #import "PPHomeViewController.h"
 #import "Styling.h"
+#import "PPFirebaseSessionBridge.h"
 #import <AudioToolbox/AudioToolbox.h>
 #import <math.h>
 @import FirebaseFirestore;
@@ -957,8 +958,11 @@ static NSArray<NSDictionary *> *PPOrderSupportComposerItems(PPOrder *order)
 
 - (void)showMessage:(NSString *)message title:(NSString *)title
 {
+    NSString *safeMessage = message.length > 0
+        ? [PPFirebaseSessionBridge publicMessageForText:message fallbackKey:@"pp_order_support_submit_failed"]
+        : message;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title
-                                                                   message:message
+                                                                   message:safeMessage
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:kLang(@"OK") style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];

@@ -157,7 +157,7 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
             if (failure) {
                 NSError *topPresenterError = [NSError errorWithDomain:@"PPAuth"
                                                                   code:2002
-                                                              userInfo:@{NSLocalizedDescriptionKey: @"Unable to find a valid presenter."}];
+                                                              userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_presenter_missing")}];
                 failure(topPresenterError);
             }
             return;
@@ -250,15 +250,15 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
                        cancelled:(void (^)(void))cancelled {
     
     // Show alert with message first, then present sign-in
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Sign In Required"
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"auth_signin_required_title")
                                                                    message:message
                                                             preferredStyle:UIAlertControllerStyleAlert];
     
-    [alert addAction:[UIAlertAction actionWithTitle:@"Sign In" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"auth_signin_required_action") style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         [self presentSignInFrom:presentingVC success:success failure:nil cancelled:cancelled];
     }]];
     
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
+    [alert addAction:[UIAlertAction actionWithTitle:kLang(@"Cancel") style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
         if (cancelled) {
             cancelled();
         }

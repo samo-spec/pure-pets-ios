@@ -20,6 +20,7 @@
 #import "UIImageView+YYWebImage.h"
 #import "YYMemoryCache.h"
 #import "YYDiskCache.h"
+#import "PPFirebaseSessionBridge.h"
 //64605 1621158
  
 #import <CoreTelephony/CTTelephonyNetworkInfo.h>
@@ -33,6 +34,12 @@ NSString *const kfirstNameRow = @"firstNameRow";
 NSString *const kLastNameRow = @"LastNameRow";
 NSString *const kUserEmailRow = @"UserEmailRow";
 NSString *const kUserAboutRow = @"UserAboutRow";
+
+static NSString *GMPublicAlertText(NSString *text, NSString *fallbackKey)
+{
+    if (text.length == 0) return text;
+    return [PPFirebaseSessionBridge publicMessageForText:text fallbackKey:fallbackKey] ?: text;
+}
 NSString *const kcodeRow = @"codeRow";
 
 static char kGMActivityOverlayAssocKey;      // association key
@@ -1942,7 +1949,7 @@ CGSize getImageSizeSafely(UIImage *image) {
  
     [alert showAlertInView:viewController
                  withTitle:title // "Not Logged In"
-              withSubtitle:message // "Do you want to login now?"
+              withSubtitle:GMPublicAlertText(message, @"SomethingWentWrong") // "Do you want to login now?"
            withCustomImage:imageName ? [UIImage imageNamed:imageName] : nil
        withDoneButtonTitle:kLang(@"ok") // "Login"
                 andButtons:@[]]; // "Cancel"
@@ -1961,7 +1968,7 @@ CGSize getImageSizeSafely(UIImage *image) {
  
     [alert showAlertInView:viewController
                  withTitle:title // "Not Logged In"
-              withSubtitle:message // "Do you want to login now?"
+              withSubtitle:GMPublicAlertText(message, @"SomethingWentWrong") // "Do you want to login now?"
            withCustomImage:nil
        withDoneButtonTitle:kLang(@"ok") // "Login"
                 andButtons:@[]]; // "Cancel"

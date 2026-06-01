@@ -17,6 +17,7 @@
 #endif
 #import "CountryModel.h"
 #import "CitiesManager.h"
+#import "PPFirebaseSessionBridge.h"
 
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
 
@@ -53,6 +54,7 @@
 @end
 
 static NSString * const PPPaymentSimulatedPaymentSuccessDefaultsKey = @"PPSimulatedPaymentSuccessEnabled";
+static NSString * const PPPaymentOfficialEmailFallback = @"admin@pure-pets.net";
 
 static UIViewController *PPPaymentTopViewControllerFromRoot(UIViewController *rootViewController)
 {
@@ -523,6 +525,55 @@ static NSString *PPPaymentFunctionsServerMessageFromError(NSError *error)
     return PPPaymentLocalizedKnownBackendMessage(candidate);
 }
 
+static BOOL PPPaymentTextContainsAnyToken(NSString *text, NSArray<NSString *> *tokens)
+{
+    NSString *lowercase = [PPPaymentTrimmedString(text).lowercaseString copy];
+    if (lowercase.length == 0) return NO;
+    for (NSString *token in tokens ?: @[]) {
+        if (![token isKindOfClass:NSString.class] || token.length == 0) continue;
+        if ([lowercase containsString:token.lowercaseString]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static BOOL PPPaymentErrorLooksLikeAppCheck(NSError *error, NSString *serverMessage)
+{
+    NSString *combined = [NSString stringWithFormat:@"%@ %@ %@ %@",
+                          error.domain ?: @"",
+                          error.localizedDescription ?: @"",
+                          error.localizedFailureReason ?: @"",
+                          serverMessage ?: @""];
+    return PPPaymentTextContainsAnyToken(combined, @[
+        @"app check", @"appcheck", @"app attest", @"appattest", @"devicecheck"
+    ]);
+}
+
+static BOOL PPPaymentErrorLooksLikeAuth(NSError *error, NSString *serverMessage)
+{
+    NSString *combined = [NSString stringWithFormat:@"%@ %@ %@ %@",
+                          error.domain ?: @"",
+                          error.localizedDescription ?: @"",
+                          error.localizedFailureReason ?: @"",
+                          serverMessage ?: @""];
+    return PPPaymentTextContainsAnyToken(combined, @[
+        @"unauthenticated", @"auth token", @"id token", @"refresh your session"
+    ]);
+}
+
+static BOOL PPPaymentErrorLooksLikeUnsafeInternal(NSError *error, NSString *serverMessage)
+{
+    NSString *combined = [NSString stringWithFormat:@"%@ %@ %@ %@",
+                          error.domain ?: @"",
+                          error.localizedDescription ?: @"",
+                          error.localizedFailureReason ?: @"",
+                          serverMessage ?: @""];
+    return PPPaymentTextContainsAnyToken(combined, @[
+        @"internal error", @"print and inspect", @"firebasefunctions"
+    ]);
+}
+
 static FIRFunctionsErrorCode PPPaymentFunctionsErrorCodeFromStatus(NSString *status)
 {
     NSString *normalized = [PPPaymentTrimmedString(status).uppercaseString copy];
@@ -580,6 +631,15 @@ static NSString *PPPaymentFriendlyFunctionsErrorMessage(NSError *error)
     NSString *domain = [PPPaymentTrimmedString(error.domain).lowercaseString copy];
     BOOL isFunctionsError = [domain containsString:@"functions"];
     NSString *serverMessage = PPPaymentFunctionsServerMessageFromError(error);
+    if (PPPaymentErrorLooksLikeAppCheck(error, serverMessage)) {
+        return kLang(@"pp_app_check_unavailable");
+    }
+    if (PPPaymentErrorLooksLikeAuth(error, serverMessage)) {
+        return kLang(@"pp_auth_session_refresh_failed");
+    }
+    if (PPPaymentErrorLooksLikeUnsafeInternal(error, serverMessage)) {
+        return kLang(@"payment_backend_unreachable");
+    }
     if (!isFunctionsError) {
         return serverMessage;
     }
@@ -596,6 +656,8 @@ static NSString *PPPaymentFriendlyFunctionsErrorMessage(NSError *error)
             return kLang(@"auth_register_required_title");
         case FIRFunctionsErrorCodePermissionDenied:
             return kLang(@"payment_backend_permission_denied");
+        case FIRFunctionsErrorCodeInternal:
+            return kLang(@"payment_backend_unreachable");
         case FIRFunctionsErrorCodeDeadlineExceeded:
         case FIRFunctionsErrorCodeUnavailable:
             return kLang(@"payment_backend_unreachable");
@@ -745,25 +807,47 @@ static void PPQIBTryLoadFrameworkBundle(void)
         return;
     }
 
-    [user getIDTokenForcingRefresh:YES completion:^(NSString *token, NSError *error) {
-        if (error || token.length == 0) {
-            PPORDERLog(@"Payment Auth context failed | orderId=%@ | uidPresent=%d | error=%@",
-                       order.orderId ?: @"",
-                       uid.length > 0,
-                       error.localizedDescription ?: @"missing_id_token");
-            NSError *contextError =
-            [self pp_callableAuthContextErrorWithMessage:kLang(@"payment_backend_unreachable")
-                                                     code:401
-                                               underlying:error];
-            if (completion) {
-                completion(@"", @"", contextError);
-            }
+    [user getIDTokenForcingRefresh:NO completion:^(NSString *token, NSError *error) {
+        if (!error && token.length > 0) {
+            PPORDERLog(@"Payment Auth context ready | orderId=%@ | uidPresent=1",
+                       order.orderId ?: @"");
+            [self pp_prepareAppCheckContextForOrder:order idToken:token completion:completion];
             return;
         }
 
-        PPORDERLog(@"Payment Auth context ready | orderId=%@ | uidPresent=1",
-                   order.orderId ?: @"");
-        [self pp_prepareAppCheckContextForOrder:order idToken:token completion:completion];
+        PPORDERLog(@"Payment Auth context cached token failed | orderId=%@ | uidPresent=%d | error=%@",
+                   order.orderId ?: @"",
+                   uid.length > 0,
+                   error.localizedDescription ?: @"missing_id_token");
+        [PPFirebaseSessionBridge ensureFreshAuthSessionForcingRefresh:YES completion:^(NSError * _Nullable authError) {
+            if (authError) {
+                PPORDERLog(@"Payment Auth context failed | orderId=%@ | uidPresent=%d | error=%@",
+                           order.orderId ?: @"",
+                           uid.length > 0,
+                           authError.localizedDescription ?: @"missing_id_token");
+                if (completion) {
+                    completion(@"", @"", authError);
+                }
+                return;
+            }
+
+            [user getIDTokenForcingRefresh:NO completion:^(NSString *refreshedToken, NSError *refreshedError) {
+                if (refreshedError || refreshedToken.length == 0) {
+                    PPORDERLog(@"Payment Auth context refresh replay failed | orderId=%@ | uidPresent=%d | error=%@",
+                               order.orderId ?: @"",
+                               uid.length > 0,
+                               refreshedError.localizedDescription ?: @"missing_id_token");
+                    if (completion) {
+                        completion(@"", @"", refreshedError);
+                    }
+                    return;
+                }
+
+                PPORDERLog(@"Payment Auth context repaired | orderId=%@ | uidPresent=1",
+                           order.orderId ?: @"");
+                [self pp_prepareAppCheckContextForOrder:order idToken:refreshedToken completion:completion];
+            }];
+        }];
     }];
 }
 
@@ -1137,7 +1221,8 @@ static void PPQIBTryLoadFrameworkBundle(void)
         PPPaymentSetValueForCandidateKeys(params, @[@"referenceId", @"referenceID", @"reference_id"], order.orderId ?: @"");
         PPPaymentSetValueForCandidateKeys(params, @[@"productDescription", @"productDesc"], @"Pure Pets Order");
         PPPaymentSetValueForCandidateKeys(params, @[@"name"], PPCurrentUser.UserName ?: @"Pure Pets");
-        PPPaymentSetValueForCandidateKeys(params, @[@"email"], PPCurrentUser.UserEmail ?: @"");
+        NSString *sdkEmail = PPPaymentTrimmedString(PPCurrentUser.UserEmail);
+        PPPaymentSetValueForCandidateKeys(params, @[@"email"], sdkEmail.length > 0 ? sdkEmail : PPPaymentOfficialEmailFallback);
         PPPaymentSetValueForCandidateKeys(params, @[@"phone"], phone ?: @"");
         PPPaymentSetValueForCandidateKeys(params, @[@"address"], (addressLine1.length > 0 ? addressLine1 : (fallbackLocation.length > 0 ? fallbackLocation : @"Address")));
         PPPaymentSetValueForCandidateKeys(params, @[@"city"], (fallbackLocation.length > 0 ? fallbackLocation : (displayName.length > 0 ? displayName : @"City")));
@@ -1285,7 +1370,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
     } else if (PPCurrentUser.UserEmail != nil && PPCurrentUser.UserEmail.length > 0) {
         userEmail = PPCurrentUser.UserEmail;
     } else {
-        userEmail = @"pure.pets.app@gmail.com";
+        userEmail = PPPaymentOfficialEmailFallback;
     }
 
     NSString *userName = @"";

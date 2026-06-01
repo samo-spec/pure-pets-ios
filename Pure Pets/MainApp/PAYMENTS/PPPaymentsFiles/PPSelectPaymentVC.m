@@ -1644,8 +1644,19 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     return [self pp_checkoutMessage:trimmed containsAnyToken:@[
         @"firebase",
+        @"firebasefunctions",
         @"functions",
         @"exception",
+        @"internal error",
+        @"print and inspect",
+        @"app check",
+        @"appcheck",
+        @"app attest",
+        @"appattest",
+        @"devicecheck",
+        @"unauthenticated",
+        @"auth token",
+        @"id token",
         @"qibsessionid",
         @"paymentattemptid",
         @"backend response",
@@ -1715,6 +1726,18 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
     if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"permission denied", @"not allowed"]]) {
         return kLang(@"payment_backend_permission_denied");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"app check", @"appcheck", @"app attest", @"appattest", @"devicecheck"]]) {
+        return kLang(@"pp_app_check_unavailable");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"unauthenticated", @"auth token", @"id token", @"refresh your session"]]) {
+        return kLang(@"pp_auth_session_refresh_failed");
+    }
+
+    if ([self pp_checkoutMessage:rawReason containsAnyToken:@[@"internal error", @"print and inspect"]]) {
+        return kLang(@"payment_backend_unreachable");
     }
 
     if ([self pp_checkoutMessageContainsTechnicalIdentifier:rawReason]) {

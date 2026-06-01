@@ -99,6 +99,7 @@ static NSString * const PPNovaFloatingVisibilityValueKey = @"visible";
                                            indicatorSize:(CGSize)indicatorSize
                                                fillColor:(UIColor *)fillColor
                                              strokeColor:(UIColor *)strokeColor;
+- (void)pp_raiseBelowIOS26AddButtonAboveSystemTabBar;
 @end
 
 #pragma mark - Premium Dock Delegate
@@ -513,6 +514,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
     [self pp_updateTabBarSelectionIndicatorIfNeeded];
     [self pp_applyPremiumTabSelectionAnimated:NO];
     [self pp_applyBottomNavigationClearanceToVisibleLists];
+    [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
     
 }
 
@@ -1298,6 +1300,7 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
         self.tabBar.hidden = NO;
         self.tabBar.alpha = 1.0;
         self.tabBar.userInteractionEnabled = YES;
+        [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
         return;
     }
 
@@ -2046,7 +2049,20 @@ static void *kPPTabBarHiddenObservationContext = &kPPTabBarHiddenObservationCont
             [showAddMenuButton.widthAnchor constraintEqualToConstant:58.0],
             [showAddMenuButton.heightAnchor constraintEqualToConstant:58.0]
         ]];
+        [self pp_raiseBelowIOS26AddButtonAboveSystemTabBar];
     }
+}
+
+- (void)pp_raiseBelowIOS26AddButtonAboveSystemTabBar
+{
+    if (PPIOS26() || !self.leadingTabButton) {
+        return;
+    }
+
+    self.leadingTabButton.hidden = self.premiumBottomNavigationHidden;
+    self.leadingTabButton.layer.zPosition = 1000.0;
+    self.leadingTabButton.layer.masksToBounds = NO;
+    [self.view bringSubviewToFront:self.leadingTabButton];
 }
 
 - (void)leadingTabTapped {

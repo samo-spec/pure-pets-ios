@@ -6,7 +6,7 @@
 /// the phone sizing. Scale them up on iPad only; phones stay unchanged.
 static inline CGFloat PPModerHomeImageSizeScale(void)
 {
-    return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 2.0 : 1.0;
+    return (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) ? 2.0 : 1.4;
 }
 
 static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *darkColor)
@@ -21,7 +21,7 @@ static inline UIColor *PPModerHomeDynamicColor(UIColor *lightColor, UIColor *dar
 
 static inline UIColor *PPModerHomeLightSurfaceColor(void)
 {
-    return AppForgroundColr ?: [UIColor colorWithWhite:0.955 alpha:1.0];
+    return AppBackgroundClr ?: [UIColor colorWithWhite:0.955 alpha:1.0];
 }
 
 @interface PPModerHomeCell ()
@@ -310,7 +310,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
                                                   [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
     UIColor *surfaceBottom = PPModerHomeDynamicColor(PPModerHomeLightSurfaceColor(),
                                                      [UIColor colorWithRed:0.07 green:0.08 blue:0.10 alpha:1.0]);
-    UIColor *borderColor = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
+    UIColor *borderColor = PPModerHomeDynamicColor([[UIColor darkGrayColor] colorWithAlphaComponent:0.95],
                                                    [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
@@ -323,8 +323,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         (__bridge id)surfaceTop.CGColor,
         (__bridge id)surfaceBottom.CGColor
     ];
-    self.surfaceView.backgroundColor = AppForgroundColr;
-    [self.surfaceView pp_setBorderColor:borderColor];
+    self.surfaceView.backgroundColor = UIColor.whiteColor;
+    [self.surfaceView pp_setBorderColor:AppPrimaryClr];
 
     [self pp_applyBottomGlowPalette];
 
@@ -354,7 +354,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.isKindSelected = selected;
     UIColor *accent = self.currentAccentColor ?: [self pp_accentColorForKind:self.currentKind isAll:self.isAllOption];
     UIColor *selectedBorder = [accent colorWithAlphaComponent:0.42];
-    UIColor *regularBorder = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.055],
+    UIColor *regularBorder = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.65],
                                                      [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
@@ -420,16 +420,17 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     CGFloat glowX = Language.isRTL
         ? CGRectGetWidth(surfaceBounds) - glowDiameter + 24.0
         : -24.0;
-    CGFloat glowY = CGRectGetHeight(surfaceBounds) - glowDiameter + 30.0;
+    CGFloat glowY = CGRectGetHeight(surfaceBounds) - glowDiameter + 40.0;
     self.bottomGlowLayer.frame = CGRectIntegral(CGRectMake(glowX,
                                                             glowY,
                                                             glowDiameter,
                                                             glowDiameter));
-    self.bottomGlowLayer.cornerRadius = glowDiameter * 0.5;
+    float corners = glowDiameter * 0.90;
+    self.bottomGlowLayer.cornerRadius = corners;
     [self pp_applyBottomGlowPalette];
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds
-                                    cornerRadius:PPNewCornerMin].CGPath;
+                                    cornerRadius:corners].CGPath;
     [CATransaction commit];
 }
 

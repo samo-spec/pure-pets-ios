@@ -2353,9 +2353,16 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         bgButton.layer.masksToBounds = NO;
      } else {
          
- 
-        // 🌫️ Fallback for iOS <26
+  
+        // 🌫️ Fallback for iOS <26 (iOS 15+)
         bgButton = [UIButton buttonWithType:UIButtonTypeSystem];
+        UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
+        cfg.cornerStyle = style;
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
+        cfg.background.cornerRadius = 16;
+        cfg.background.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
+        cfg.baseBackgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
+        bgButton.configuration = cfg;
         bgButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.15];
         bgButton.layer.cornerRadius = 16;
         bgButton.layer.masksToBounds = YES;

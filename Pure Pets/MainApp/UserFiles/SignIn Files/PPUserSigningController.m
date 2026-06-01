@@ -23,6 +23,7 @@ static NSString * const kPPGoogleSignInClientIDKey = @"GIDClientID";
 static NSString * const kPPGoogleSignInServerClientIDKey = @"GIDServerClientID";
 static NSString * const kPPGoogleClientIDSuffix = @".apps.googleusercontent.com";
 static NSString * const kPPGoogleReversedClientIDPrefix = @"com.googleusercontent.apps.";
+static NSString * const kPPHomeNearbySelectedAreaNameDefaultsKey = @"pp.home.nearby.areaName";
 
 #if DEBUG
 #define PPAuthDebugLog(...) NSLog(__VA_ARGS__)
@@ -159,10 +160,11 @@ static inline void PPDispatchMain(void (^block)(void)) {
         self.view.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
     }
     else if (@available(iOS 15.0, *)) {
-        UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
+        UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
         UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
         blurView.frame = self.view.bounds;
         blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        blurView.alpha = 0.92;
         [self.view addSubview:blurView];
         self.backgroundView = blurView;
     } else {
@@ -317,6 +319,96 @@ static inline void PPDispatchMain(void (^block)(void)) {
 }
 
 
+- (void)pp_applyBelowIOS26PhoneFallbackChrome {
+    if (@available(iOS 26.0, *)) {
+        return;
+    }
+
+    CGFloat controlCornerRadius = 22.0;
+    UIColor *fieldBackground = [AppForgroundColr colorWithAlphaComponent:0.98];
+    UIColor *subtleBorder = [AppPrimaryClr colorWithAlphaComponent:0.16];
+
+    if (self.phoneSectionCard) {
+        self.phoneSectionCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98];
+        self.phoneSectionCard.layer.cornerRadius = 28.0;
+        self.phoneSectionCard.layer.borderWidth = 1.0;
+        self.phoneSectionCard.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.08].CGColor;
+        self.phoneSectionCard.layer.masksToBounds = YES;
+    }
+
+    if (self.socialSectionCard) {
+        self.socialSectionCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98];
+        self.socialSectionCard.layer.cornerRadius = 26.0;
+        self.socialSectionCard.layer.borderWidth = 1.0;
+        self.socialSectionCard.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.07].CGColor;
+        self.socialSectionCard.layer.masksToBounds = YES;
+    }
+
+    if (self.heroBadgeView) {
+        self.heroBadgeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92];
+        self.heroBadgeView.layer.cornerRadius = 20.0;
+        self.heroBadgeView.layer.borderWidth = 1.0;
+        self.heroBadgeView.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.08].CGColor;
+        self.heroBadgeView.layer.masksToBounds = YES;
+    }
+
+    if (self.countryCodePickerBtn) {
+        UIButtonConfiguration *config = self.countryCodePickerBtn.configuration;
+        config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
+        config.background.backgroundColor = fieldBackground;
+        config.background.cornerRadius = controlCornerRadius;
+        config.baseForegroundColor = AppPrimaryClr;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(0, 12, 0, 12);
+        config.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+        self.countryCodePickerBtn.configuration = config;
+        self.countryCodePickerBtn.backgroundColor = fieldBackground;
+        self.countryCodePickerBtn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+        self.countryCodePickerBtn.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+        self.countryCodePickerBtn.layer.cornerRadius = controlCornerRadius;
+        self.countryCodePickerBtn.layer.borderWidth = 1.0;
+        self.countryCodePickerBtn.layer.borderColor = subtleBorder.CGColor;
+        self.countryCodePickerBtn.layer.masksToBounds = YES;
+        self.countryCodePickerBtn.titleLabel.adjustsFontSizeToFitWidth = YES;
+        self.countryCodePickerBtn.titleLabel.minimumScaleFactor = 0.82;
+    }
+
+    if (self.phoneNumberField) {
+        self.phoneNumberField.backgroundColor = fieldBackground;
+        self.phoneNumberField.layer.cornerRadius = controlCornerRadius;
+        self.phoneNumberField.layer.borderWidth = 1.0;
+        self.phoneNumberField.layer.borderColor = subtleBorder.CGColor;
+        self.phoneNumberField.layer.masksToBounds = YES;
+    }
+
+    if (self.continuePhoneButton) {
+        BOOL enabled = self.continuePhoneButton.enabled;
+        UIColor *buttonBackground = enabled ? AppPrimaryClr : [AppPrimaryClr colorWithAlphaComponent:0.10];
+        UIColor *buttonTextColor = enabled ? UIColor.whiteColor : [AppPrimaryClr colorWithAlphaComponent:0.64];
+        UIButtonConfiguration *config = self.continuePhoneButton.configuration;
+        config.background.backgroundColor = buttonBackground;
+        config.background.cornerRadius = controlCornerRadius;
+        config.baseForegroundColor = buttonTextColor;
+        config.contentInsets = NSDirectionalEdgeInsetsMake(0, 18, 0, 18);
+        config.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
+        self.continuePhoneButton.configuration = config;
+        self.continuePhoneButton.backgroundColor = buttonBackground;
+        self.continuePhoneButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+        self.continuePhoneButton.layer.cornerRadius = controlCornerRadius;
+        self.continuePhoneButton.layer.borderWidth = enabled ? 0.0 : 1.0;
+        self.continuePhoneButton.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.28].CGColor;
+        self.continuePhoneButton.layer.masksToBounds = YES;
+        self.continuePhoneButton.alpha = 1.0;
+    }
+
+    if (self.closeButton) {
+        self.closeButton.layer.cornerRadius = 22.0;
+        self.closeButton.layer.borderWidth = 1.0;
+        self.closeButton.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.08].CGColor;
+        self.closeButton.layer.masksToBounds = YES;
+    }
+}
+
+
 
 -(void)viewWillAppear:(BOOL)animated
 {
@@ -349,8 +441,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         [self setContinuePhoneButtonTitle:self.phoneCooldownRemaining > 0 ? [NSString stringWithFormat:@"%@ (%lds)", kLang(@"Continue with Mobile"), (long)self.phoneCooldownRemaining] : kLang(@"Continue with Mobile")];
         
     } else {
-        self.countryCodePickerBtn.layer.cornerRadius = 18;
-        self.countryCodePickerBtn.clipsToBounds = YES;
+        [self pp_applyBelowIOS26PhoneFallbackChrome];
     }
     
     //[Styling addLiquidGlassBorderToView:self.continuePhoneButton cornerRadius:20];
@@ -413,14 +504,18 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.backgroundTopGlowView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.12];
     self.backgroundBottomGlowView.backgroundColor = [[UIColor systemBlueColor] colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.08];
 
-    if (self.heroBadgeView) {
-        [Styling addLiquidGlassBorderToView:self.heroBadgeView cornerRadius:20 color:[AppBackgroundClr colorWithAlphaComponent:0.20]];
-    }
-    if (self.phoneSectionCard) {
-        [Styling addLiquidGlassBorderToView:self.phoneSectionCard cornerRadius:28 color:[AppBackgroundClr colorWithAlphaComponent:0.18]];
-    }
-    if (self.socialSectionCard) {
-        [Styling addLiquidGlassBorderToView:self.socialSectionCard cornerRadius:26 color:[AppBackgroundClr colorWithAlphaComponent:0.16]];
+    if (@available(iOS 26.0, *)) {
+        if (self.heroBadgeView) {
+            [Styling addLiquidGlassBorderToView:self.heroBadgeView cornerRadius:20 color:[AppBackgroundClr colorWithAlphaComponent:0.20]];
+        }
+        if (self.phoneSectionCard) {
+            [Styling addLiquidGlassBorderToView:self.phoneSectionCard cornerRadius:28 color:[AppBackgroundClr colorWithAlphaComponent:0.18]];
+        }
+        if (self.socialSectionCard) {
+            [Styling addLiquidGlassBorderToView:self.socialSectionCard cornerRadius:26 color:[AppBackgroundClr colorWithAlphaComponent:0.16]];
+        }
+    } else {
+        [self pp_applyBelowIOS26PhoneFallbackChrome];
     }
     if (self.appleSignInButton) {
          self.appleSignInButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.appleSignInButton.bounds cornerRadius:20.0].CGPath;
@@ -428,17 +523,19 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (self.googleSignInButton) {
          self.googleSignInButton.layer.shadowPath = [UIBezierPath bezierPathWithRoundedRect:self.googleSignInButton.bounds cornerRadius:20.0].CGPath;
     }
-    if (self.countryCodePickerBtn) {
-        [Styling addLiquidGlassBorderToView:self.countryCodePickerBtn cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
-    }
-    if (self.phoneNumberField) {
-        [Styling addLiquidGlassBorderToView:self.phoneNumberField cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.86]];
-    }
-    if (self.continuePhoneButton) {
-        [Styling addLiquidGlassBorderToView:self.continuePhoneButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
-    }
-    if (self.closeButton) {
-        [Styling addLiquidGlassBorderToView:self.closeButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
+    if (@available(iOS 26.0, *)) {
+        if (self.countryCodePickerBtn) {
+            [Styling addLiquidGlassBorderToView:self.countryCodePickerBtn cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.18]];
+        }
+        if (self.phoneNumberField) {
+            [Styling addLiquidGlassBorderToView:self.phoneNumberField cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.86]];
+        }
+        if (self.continuePhoneButton) {
+            [Styling addLiquidGlassBorderToView:self.continuePhoneButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.10]];
+        }
+        if (self.closeButton) {
+            [Styling addLiquidGlassBorderToView:self.closeButton cornerRadius:18 color:[[UIColor whiteColor] colorWithAlphaComponent:0.12]];
+        }
     }
 }
 
@@ -891,22 +988,116 @@ static inline void PPDispatchMain(void (^block)(void)) {
     return nil;
 }
 
+- (CountryCodeModel *)pp_countryForAppCountry:(CountryModel *)country
+                                  inCountries:(NSArray<CountryCodeModel *> *)countries {
+    if (!country || countries.count == 0) {
+        return nil;
+    }
+
+    CountryCodeModel *byISO =
+    [self pp_countryWithISOCode:PPSafeString(country.iso)
+                     inCountries:countries];
+    if (byISO) {
+        return byISO;
+    }
+
+    return [self pp_countryWithPhoneCode:PPSafeString(country.countryCode)
+                              inCountries:countries];
+}
+
+- (NSString *)pp_normalizedCountryLookupText:(NSString *)text {
+    NSString *safe =
+    [[PPSafeString(text) lowercaseString] stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (safe.length == 0) {
+        return @"";
+    }
+
+    NSCharacterSet *separators =
+    [NSCharacterSet characterSetWithCharactersInString:@",،.-_/\\|()[]{}"];
+    NSString *joined =
+    [[safe componentsSeparatedByCharactersInSet:separators] componentsJoinedByString:@" "];
+    NSArray<NSString *> *parts =
+    [joined componentsSeparatedByCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSMutableArray<NSString *> *filtered = [NSMutableArray arrayWithCapacity:parts.count];
+    for (NSString *part in parts) {
+        if (part.length > 0) {
+            [filtered addObject:part];
+        }
+    }
+    return [filtered componentsJoinedByString:@" "];
+}
+
+- (BOOL)pp_locationText:(NSString *)locationText matchesCandidate:(NSString *)candidate {
+    NSString *normalizedLocation = [self pp_normalizedCountryLookupText:locationText];
+    NSString *normalizedCandidate = [self pp_normalizedCountryLookupText:candidate];
+    if (normalizedLocation.length == 0 || normalizedCandidate.length == 0) {
+        return NO;
+    }
+
+    return [normalizedLocation containsString:normalizedCandidate] ||
+           [normalizedCandidate containsString:normalizedLocation];
+}
+
+- (CountryCodeModel *)pp_countryFromSavedHomeAreaInCountries:(NSArray<CountryCodeModel *> *)countries {
+    if (countries.count == 0) {
+        return nil;
+    }
+
+    NSString *savedArea =
+    [[NSUserDefaults standardUserDefaults] stringForKey:kPPHomeNearbySelectedAreaNameDefaultsKey];
+    if ([self pp_normalizedCountryLookupText:savedArea].length == 0) {
+        return nil;
+    }
+
+    for (CountryModel *country in CitiesManager.shared.countries) {
+        if ([self pp_locationText:savedArea matchesCandidate:country.enName] ||
+            [self pp_locationText:savedArea matchesCandidate:country.arName]) {
+            return [self pp_countryForAppCountry:country inCountries:countries];
+        }
+
+        for (CityModel *city in country.cities) {
+            if ([self pp_locationText:savedArea matchesCandidate:city.enName] ||
+                [self pp_locationText:savedArea matchesCandidate:city.arName]) {
+                return [self pp_countryForAppCountry:country inCountries:countries];
+            }
+
+            for (StateModel *state in city.states) {
+                if ([self pp_locationText:savedArea matchesCandidate:state.enName] ||
+                    [self pp_locationText:savedArea matchesCandidate:state.arName]) {
+                    return [self pp_countryForAppCountry:country inCountries:countries];
+                }
+            }
+        }
+    }
+
+    return nil;
+}
+
 - (CountryCodeModel *)pp_resolveAutomaticCountryFromCountries:(NSArray<CountryCodeModel *> *)countries {
     if (countries.count == 0) {
         return nil;
     }
 
-    NSInteger explicitCountryID = UserManager.sharedManager.currentUser.CountryID;
-    if (explicitCountryID <= 0) {
-        explicitCountryID = [[NSUserDefaults standardUserDefaults] integerForKey:@"CountryID"];
-    }
+    NSInteger currentUserCountryID = UserManager.sharedManager.currentUser.CountryID;
+    NSInteger savedCountryID = [[NSUserDefaults standardUserDefaults] integerForKey:@"CountryID"];
 
     CountryModel *currentCountry = CitiesManager.shared.CurrentCountry;
     NSString *carrierISO = [GM getCurrentCountryFromCarrier];
     NSString *localeISO = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
 
-    CountryCodeModel *resolved =
-    [self pp_countryWithID:explicitCountryID inCountries:countries];
+    CountryCodeModel *resolved = nil;
+    if (PPIOS26()) {
+        NSInteger explicitCountryID = currentUserCountryID > 0 ? currentUserCountryID : savedCountryID;
+        resolved = [self pp_countryWithID:explicitCountryID inCountries:countries];
+    } else {
+        resolved = [self pp_countryWithID:currentUserCountryID inCountries:countries];
+        if (!resolved) {
+            resolved = [self pp_countryFromSavedHomeAreaInCountries:countries];
+        }
+        if (!resolved) {
+            resolved = [self pp_countryWithID:savedCountryID inCountries:countries];
+        }
+    }
     if (!resolved) {
         resolved = [self pp_countryWithISOCode:PPSafeString(carrierISO) inCountries:countries];
     }
@@ -986,7 +1177,71 @@ static inline void PPDispatchMain(void (^block)(void)) {
 - (void)pp_lockCountryCodePicker {
     self.countryCodePickerBtn.enabled = NO;
     self.countryCodePickerBtn.userInteractionEnabled = NO;
-    self.countryCodePickerBtn.accessibilityHint = kLang(@"Auto-selected from current country") ?: @"Auto-selected from current country";
+    self.countryCodePickerBtn.accessibilityHint = kLang(@"auth_country_code_auto_selected");
+}
+
+- (NSString *)pp_joinedErrorTextForError:(NSError *)error {
+    if (!error) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    if (error.domain.length > 0) {
+        [parts addObject:error.domain];
+    }
+    if (error.localizedDescription.length > 0) {
+        [parts addObject:error.localizedDescription];
+    }
+    for (id value in (error.userInfo ?: @{}).allValues) {
+        if ([value isKindOfClass:NSString.class]) {
+            [parts addObject:(NSString *)value];
+        } else if ([value isKindOfClass:NSError.class]) {
+            NSString *nested = [self pp_joinedErrorTextForError:(NSError *)value];
+            if (nested.length > 0) {
+                [parts addObject:nested];
+            }
+        }
+    }
+    return [[parts componentsJoinedByString:@" "] lowercaseString];
+}
+
+- (NSString *)pp_localizedAuthMessageForError:(NSError *)error fallbackKey:(NSString *)fallbackKey {
+    NSString *joined = [self pp_joinedErrorTextForError:error];
+    if ([joined containsString:@"too_long"] || [joined containsString:@"too long"]) {
+        return kLang(@"auth_phone_error_too_long");
+    }
+    if ([joined containsString:@"too_short"] || [joined containsString:@"too short"]) {
+        return kLang(@"auth_phone_error_too_short");
+    }
+    if ([joined containsString:@"missing_phone"] || [joined containsString:@"missing phone"]) {
+        return kLang(@"auth_phone_required_message");
+    }
+    if ([joined containsString:@"invalid_phone"] || [joined containsString:@"invalid phone"]) {
+        return kLang(@"auth_phone_error_invalid");
+    }
+    if ([joined containsString:@"quota"] ||
+        [joined containsString:@"too_many"] ||
+        [joined containsString:@"too many"] ||
+        [joined containsString:@"rate limit"]) {
+        return kLang(@"auth_phone_error_rate_limited");
+    }
+    if ([joined containsString:@"network"] ||
+        [joined containsString:@"offline"] ||
+        [joined containsString:@"connection"]) {
+        return kLang(@"auth_network_error_message");
+    }
+    if ([joined containsString:@"app check"] ||
+        [joined containsString:@"appcheck"] ||
+        [joined containsString:@"app_not_verified"] ||
+        [joined containsString:@"app not verified"]) {
+        return kLang(@"auth_app_verification_failed_message");
+    }
+    if ([joined containsString:@"cancel"]) {
+        return kLang(@"auth_error_message");
+    }
+
+    NSString *fallback = fallbackKey.length > 0 ? kLang(fallbackKey) : nil;
+    return fallback.length > 0 ? fallback : kLang(@"auth_error_message");
 }
 
 - (NSString *)normalizedPhoneDigitsFromRawInput:(NSString *)rawInput hasInvalidCharacters:(BOOL *)hasInvalidCharacters {
@@ -1021,12 +1276,16 @@ static inline void PPDispatchMain(void (^block)(void)) {
 - (void)setContinuePhoneButtonTitle:(NSString *)title {
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = self.continuePhoneButton.configuration;
+        UIColor *titleColor = UIColor.whiteColor;
+        if (!PPIOS26() && self.continuePhoneButton && !self.continuePhoneButton.enabled) {
+            titleColor = [AppPrimaryClr colorWithAlphaComponent:0.64];
+        }
         NSDictionary *attributes = @{
             NSFontAttributeName: [GM boldFontWithSize:17],
-            NSForegroundColorAttributeName: UIColor.whiteColor
+            NSForegroundColorAttributeName: titleColor
         };
         config.attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:attributes];
-        config.baseForegroundColor = UIColor.whiteColor;
+        config.baseForegroundColor = titleColor;
         self.continuePhoneButton.configuration = config;
     } else {
         [self.continuePhoneButton setTitle:title forState:UIControlStateNormal];
@@ -1050,6 +1309,10 @@ static inline void PPDispatchMain(void (^block)(void)) {
         [self setContinuePhoneButtonTitle:[NSString stringWithFormat:@"%@ (%lds)", kLang(@"Continue with Mobile"), (long)self.phoneCooldownRemaining]];
     } else {
         [self setContinuePhoneButtonTitle:kLang(@"Continue with Mobile")];
+    }
+
+    if (!PPIOS26()) {
+        [self pp_applyBelowIOS26PhoneFallbackChrome];
     }
 
     [self refreshPhoneLiveState];
@@ -1100,14 +1363,14 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (hasInvalidCharacters) {
         [PPAlertHelper showWarningIn:self
                                title:kLang(@"auth_error_title")
-                            subtitle:kLang(@"Please enter digits only.")];
+                            subtitle:kLang(@"auth_phone_digits_only")];
         return;
     }
     
     if (phoneDigits.length < kPPMinimumPhoneDigits) {
         [PPAlertHelper showWarningIn:self
                                title:kLang(@"auth_error_title")
-                            subtitle:kLang(@"Please enter a valid mobile number.")];
+                            subtitle:kLang(@"auth_phone_error_invalid")];
         return;
     }
     
@@ -1136,17 +1399,18 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 [self notifySignInFailure:error];
                 [PPAlertHelper showErrorIn:self
                                      title:kLang(@"auth_sending_code_failed_title")
-                                  subtitle:error.localizedDescription];
+                                  subtitle:[self pp_localizedAuthMessageForError:error
+                                                                    fallbackKey:@"auth_sending_code_failed_message"]];
                 return;
             }
             if (verificationID.length == 0) {
                 NSError *verificationError = [NSError errorWithDomain:@"PPAuth"
                                                                  code:1001
-                                                             userInfo:@{NSLocalizedDescriptionKey: kLang(@"Unable to start verification. Please try again.")}];
+                                                             userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_verification_start_failed")}];
                 [self notifySignInFailure:verificationError];
                 [PPAlertHelper showErrorIn:self
                                      title:kLang(@"auth_sending_code_failed_title")
-                                  subtitle:kLang(@"Unable to start verification. Please try again.")];
+                                  subtitle:kLang(@"auth_verification_start_failed")];
                 return;
             }
             
@@ -1190,11 +1454,11 @@ static inline void PPDispatchMain(void (^block)(void)) {
         [self updateContinuePhoneButtonState];
         NSError *iosVersionError = [NSError errorWithDomain:@"PPAuth"
                                                        code:1005
-                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"Apple Sign-In requires iOS 13 or later.")}];
+                                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_apple_requires_ios13")}];
         [self notifySignInFailure:iosVersionError];
         [PPAlertHelper showWarningIn:self
                                title:kLang(@"auth_error_title")
-                            subtitle:kLang(@"Apple Sign-In requires iOS 13 or later.")];
+                            subtitle:kLang(@"auth_apple_requires_ios13")];
     }
 }
 
@@ -1385,7 +1649,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if ([self pp_googleErrorIndicatesOAuthAssertionFailure:error]) {
         return kLang(@"auth_google_failed_message");
     }
-    return error.localizedDescription.length > 0 ? error.localizedDescription : kLang(@"auth_google_failed_message");
+    return [self pp_localizedAuthMessageForError:error fallbackKey:@"auth_google_failed_message"];
 }
 
 - (void)pp_resetGoogleSignInLoadingState
@@ -1527,7 +1791,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
             if (completion) {
                 NSError *deallocatedError = [NSError errorWithDomain:@"PPAuth"
                                                                 code:1002
-                                                            userInfo:@{NSLocalizedDescriptionKey: kLang(@"Session expired. Please try again.")}];
+                                                            userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_session_expired_message")}];
                 completion(NO, deallocatedError);
             }
             return;
@@ -1553,7 +1817,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         if (completion) {
             NSError *invalidPhoneError = [NSError errorWithDomain:@"PPAuth"
                                                              code:1003
-                                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"Please enter a valid mobile number.")}];
+                                                         userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_phone_error_invalid")}];
             completion(NO, invalidPhoneError);
         }
         return;
@@ -1565,7 +1829,14 @@ static inline void PPDispatchMain(void (^block)(void)) {
         PPDispatchMain(^{
             if (error) {
                 if (completion) {
-                    completion(NO, error);
+                    NSError *displayError = [NSError errorWithDomain:error.domain ?: @"PPAuth"
+                                                                 code:error.code
+                                                             userInfo:@{
+                        NSLocalizedDescriptionKey: [self pp_localizedAuthMessageForError:error
+                                                                             fallbackKey:@"auth_sending_code_failed_message"],
+                        NSUnderlyingErrorKey: error
+                    }];
+                    completion(NO, displayError);
                 }
                 return;
             }
@@ -1573,7 +1844,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 if (completion) {
                     NSError *verificationError = [NSError errorWithDomain:@"PPAuth"
                                                                      code:1004
-                                                                 userInfo:@{NSLocalizedDescriptionKey: kLang(@"Unable to resend verification code. Please try again.")}];
+                                                                 userInfo:@{NSLocalizedDescriptionKey: kLang(@"auth_resend_code_failed_message")}];
                     completion(NO, verificationError);
                 }
                 return;
@@ -1630,7 +1901,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
                 [self notifySignInFailure:error];
                 [PPAlertHelper showErrorIn:self
                                      title:kLang(@"auth_firebase_error_title")
-                                  subtitle:error.localizedDescription];
+                                  subtitle:[self pp_localizedAuthMessageForError:error
+                                                                    fallbackKey:@"auth_error_message"]];
                 return;
             }
             
@@ -1703,7 +1975,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
                     [self notifySignInFailure:error];
                     [PPAlertHelper showErrorIn:self
                                          title:kLang(@"auth_apple_failed_title")
-                                      subtitle:error.localizedDescription];
+                                      subtitle:[self pp_localizedAuthMessageForError:error
+                                                                        fallbackKey:@"auth_apple_no_token"]];
                     return;
                 }
                 
@@ -1723,7 +1996,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
         [self notifySignInFailure:error];
         [PPAlertHelper showWarningIn:self
                              title:kLang(@"auth_apple_failed_title")
-                          subtitle:error.localizedDescription.length ? error.localizedDescription : kLang(@"auth_apple_no_token")];
+                          subtitle:[self pp_localizedAuthMessageForError:error
+                                                              fallbackKey:@"auth_apple_no_token"]];
     });
 }
 
@@ -1744,7 +2018,10 @@ static inline void PPDispatchMain(void (^block)(void)) {
         
         if (error) {
             [self notifySignInFailure:error];
-            [PPAlertHelper showErrorIn:self title:@"Error" subtitle:error.localizedDescription];
+            [PPAlertHelper showErrorIn:self
+                                 title:kLang(@"auth_error_title")
+                              subtitle:[self pp_localizedAuthMessageForError:error
+                                                                 fallbackKey:@"auth_error_message"]];
             return;
         }
         

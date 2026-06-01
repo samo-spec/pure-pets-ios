@@ -57,6 +57,26 @@ static NSString *PPFirebaseSessionCombinedErrorText(NSError *error)
     return [[parts componentsJoinedByString:@" "] lowercaseString];
 }
 
+static BOOL PPFirebaseSessionTextContainsAnyToken(NSString *text,
+                                                  NSArray<NSString *> *tokens)
+{
+    if (text.length == 0) return NO;
+    NSString *lower = text.lowercaseString;
+    for (NSString *token in tokens) {
+        if (token.length > 0 && [lower containsString:token.lowercaseString]) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+static NSString *PPFirebaseSessionFallbackMessage(NSString *fallbackKey)
+{
+    NSString *fallback = fallbackKey.length ? (kLang(fallbackKey) ?: nil) : nil;
+    if (fallback.length) return fallback;
+    return kLang(@"SomethingWentWrong") ?: @"";
+}
+
 static BOOL PPFirebaseSessionErrorContainsBridgeCode(NSError *error,
                                                      PPFirebaseSessionBridgeErrorCode code)
 {
@@ -81,6 +101,122 @@ static void PPFirebaseSessionLogFailure(NSString *stage, NSError *error)
           (long)underlying.code);
 }
 
+static NSError *PPFirebaseSessionRefreshError(NSError * _Nullable underlying)
+{
+    return PPFirebaseSessionError(PPFirebaseSessionBridgeErrorCodeUnauthenticated,
+                                  @"pp_auth_session_refresh_failed",
+                                  @"We could not refresh your session. Please try again.",
+                                  underlying);
+}
+
+static void PPFirebaseSessionGetIDTokenWithRepair(FIRUser *user,
+                                                  BOOL forceRefresh,
+                                                  NSString *stage,
+                                                  void (^completion)(NSString * _Nullable token, NSError * _Nullable error))
+{
+    [user getIDTokenForcingRefresh:forceRefresh completion:^(NSString * _Nullable token, NSError * _Nullable error) {
+        if (!error && token.length > 0) {
+            if (completion) completion(token, nil);
+            return;
+        }
+
+        if (error) {
+            PPFirebaseSessionLogFailure(stage, error);
+        } else {
+            NSLog(@"[PPFirebaseSessionBridge] %@ failed: token was empty", stage ?: @"auth token lookup");
+        }
+
+        [user reloadWithCompletion:^(NSError * _Nullable reloadError) {
+            if (reloadError) {
+                PPFirebaseSessionLogFailure(@"auth user reload", reloadError);
+                if (completion) completion(nil, reloadError ?: error);
+                return;
+            }
+
+            FIRUser *currentUser = [FIRAuth auth].currentUser;
+            if (!currentUser.uid.length || ![currentUser.uid isEqualToString:user.uid]) {
+                if (completion) completion(nil, error);
+                return;
+            }
+
+            [currentUser getIDTokenForcingRefresh:forceRefresh completion:^(NSString * _Nullable repairedToken, NSError * _Nullable repairError) {
+                if (!repairError && repairedToken.length > 0) {
+                    if (completion) completion(repairedToken, nil);
+                    return;
+                }
+
+                if (repairError) {
+                    PPFirebaseSessionLogFailure(forceRefresh ? @"reloaded forced auth refresh" : @"reloaded auth token lookup",
+                                                repairError);
+                } else {
+                    NSLog(@"[PPFirebaseSessionBridge] %@ failed: token was empty",
+                          forceRefresh ? @"reloaded forced auth refresh" : @"reloaded auth token lookup");
+                }
+
+                if (!forceRefresh) {
+                    [currentUser getIDTokenForcingRefresh:YES completion:^(NSString * _Nullable refreshedToken, NSError * _Nullable refreshError) {
+                        if (!refreshError && refreshedToken.length > 0) {
+                            if (completion) completion(refreshedToken, nil);
+                            return;
+                        }
+                        if (refreshError) {
+                            PPFirebaseSessionLogFailure(@"request auth token refresh fallback", refreshError);
+                        } else {
+                            NSLog(@"[PPFirebaseSessionBridge] request auth token refresh fallback failed: token was empty");
+                        }
+                        if (completion) completion(nil, refreshError ?: repairError ?: error);
+                    }];
+                    return;
+                }
+
+                if (completion) completion(nil, repairError ?: error);
+            }];
+        }];
+    }];
+}
+
+static void PPFirebaseSessionEnsureCachedSession(FIRUser *user,
+                                                 BOOL didReload,
+                                                 void (^completion)(NSError * _Nullable error))
+{
+    [user getIDTokenResultWithCompletion:^(FIRAuthTokenResult * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            PPFirebaseSessionLogFailure(didReload ? @"reloaded cached auth token lookup" : @"cached auth token lookup",
+                                        error);
+            if (!didReload) {
+                [user reloadWithCompletion:^(NSError * _Nullable reloadError) {
+                    if (reloadError) {
+                        PPFirebaseSessionLogFailure(@"auth user reload", reloadError);
+                        PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionRefreshError(reloadError));
+                        return;
+                    }
+
+                    FIRUser *currentUser = [FIRAuth auth].currentUser;
+                    if (!currentUser.uid.length || ![currentUser.uid isEqualToString:user.uid]) {
+                        PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionRefreshError(error));
+                        return;
+                    }
+                    PPFirebaseSessionEnsureCachedSession(currentUser, YES, completion);
+                }];
+                return;
+            }
+
+            PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionRefreshError(error));
+            return;
+        }
+
+        NSDate *expiry = result.expirationDate ?: [NSDate distantPast];
+        if ([expiry timeIntervalSinceNow] > 300) {
+            PPFirebaseSessionCompleteOnMain(completion, nil);
+            return;
+        }
+
+        PPFirebaseSessionGetIDTokenWithRepair(user, YES, @"expiring auth token refresh", ^(__unused NSString * _Nullable token, NSError * _Nullable forceError) {
+            PPFirebaseSessionCompleteOnMain(completion, forceError ? PPFirebaseSessionRefreshError(forceError) : nil);
+        });
+    }];
+}
+
 @implementation PPFirebaseSessionBridge
 
 + (void)ensureFreshAuthSessionForcingRefresh:(BOOL)forceRefresh
@@ -96,47 +232,13 @@ static void PPFirebaseSessionLogFailure(NSString *stage, NSError *error)
     }
 
     if (forceRefresh) {
-        [user getIDTokenForcingRefresh:YES completion:^(__unused NSString * _Nullable token, NSError * _Nullable error) {
-            if (error) {
-                PPFirebaseSessionLogFailure(@"forced auth refresh", error);
-                PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionError(PPFirebaseSessionBridgeErrorCodeUnauthenticated,
-                                                                                  @"pp_auth_session_refresh_failed",
-                                                                                  @"We could not refresh your session. Please try again.",
-                                                                                  error));
-                return;
-            }
-            PPFirebaseSessionCompleteOnMain(completion, nil);
-        }];
+        PPFirebaseSessionGetIDTokenWithRepair(user, YES, @"forced auth refresh", ^(__unused NSString * _Nullable token, NSError * _Nullable error) {
+            PPFirebaseSessionCompleteOnMain(completion, error ? PPFirebaseSessionRefreshError(error) : nil);
+        });
         return;
     }
 
-    [user getIDTokenResultWithCompletion:^(FIRAuthTokenResult * _Nullable result, NSError * _Nullable error) {
-        if (error) {
-            PPFirebaseSessionLogFailure(@"cached auth token lookup", error);
-            PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionError(PPFirebaseSessionBridgeErrorCodeUnauthenticated,
-                                                                              @"pp_auth_session_refresh_failed",
-                                                                              @"We could not refresh your session. Please try again.",
-                                                                              error));
-            return;
-        }
-
-        NSDate *expiry = result.expirationDate ?: [NSDate distantPast];
-        if ([expiry timeIntervalSinceNow] > 300) {
-            PPFirebaseSessionCompleteOnMain(completion, nil);
-            return;
-        }
-
-        [user getIDTokenForcingRefresh:YES completion:^(__unused NSString * _Nullable token, NSError * _Nullable forceError) {
-            if (forceError) {
-                PPFirebaseSessionLogFailure(@"expiring auth token refresh", forceError);
-            }
-            PPFirebaseSessionCompleteOnMain(completion,
-                                            forceError ? PPFirebaseSessionError(PPFirebaseSessionBridgeErrorCodeUnauthenticated,
-                                                                               @"pp_auth_session_refresh_failed",
-                                                                               @"We could not refresh your session. Please try again.",
-                                                                               forceError) : nil);
-        }];
-    }];
+    PPFirebaseSessionEnsureCachedSession(user, NO, completion);
 }
 
 + (void)authorizeRequest:(NSMutableURLRequest *)request
@@ -201,43 +303,17 @@ static void PPFirebaseSessionLogFailure(NSString *stage, NSError *error)
     }
 
     BOOL forceAuth = (options & PPFirebaseSessionAuthorizationOptionForceRefreshAuth) != 0;
-    [user getIDTokenForcingRefresh:forceAuth completion:^(NSString * _Nullable token, NSError * _Nullable error) {
+    PPFirebaseSessionGetIDTokenWithRepair(user,
+                                          forceAuth,
+                                          forceAuth ? @"forced request auth refresh" : @"request auth token lookup",
+                                          ^(NSString * _Nullable token, NSError * _Nullable error) {
         if (error || token.length == 0) {
-            if (!forceAuth) {
-                [user getIDTokenForcingRefresh:YES completion:^(NSString * _Nullable refreshedToken, NSError * _Nullable refreshError) {
-                    if (refreshError || refreshedToken.length == 0) {
-                        if (refreshError) {
-                            PPFirebaseSessionLogFailure(@"request auth token refresh fallback", refreshError);
-                        } else {
-                            NSLog(@"[PPFirebaseSessionBridge] request auth token refresh fallback failed: token was empty");
-                        }
-                        PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionError(PPFirebaseSessionBridgeErrorCodeUnauthenticated,
-                                                                                          @"pp_auth_session_refresh_failed",
-                                                                                          @"We could not refresh your session. Please try again.",
-                                                                                          refreshError ?: error));
-                        return;
-                    }
-                    [request setValue:[NSString stringWithFormat:@"Bearer %@", refreshedToken] forHTTPHeaderField:@"Authorization"];
-                    finishWithAppCheck();
-                }];
-                return;
-            }
-            if (error) {
-                PPFirebaseSessionLogFailure(forceAuth ? @"forced request auth refresh" : @"request auth token lookup",
-                                            error);
-            } else {
-                NSLog(@"[PPFirebaseSessionBridge] %@ failed: token was empty",
-                      forceAuth ? @"forced request auth refresh" : @"request auth token lookup");
-            }
-            PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionError(PPFirebaseSessionBridgeErrorCodeUnauthenticated,
-                                                                              @"pp_auth_session_refresh_failed",
-                                                                              @"We could not refresh your session. Please try again.",
-                                                                              error));
+            PPFirebaseSessionCompleteOnMain(completion, PPFirebaseSessionRefreshError(error));
             return;
         }
         [request setValue:[NSString stringWithFormat:@"Bearer %@", token] forHTTPHeaderField:@"Authorization"];
         finishWithAppCheck();
-    }];
+    });
 }
 
 + (BOOL)isAuthOrAppCheckError:(NSError *)error
@@ -264,6 +340,51 @@ static void PPFirebaseSessionLogFailure(NSString *stage, NSError *error)
            [text containsString:@"devicecheck"];
 }
 
++ (NSString *)publicMessageForText:(NSString * _Nullable)text
+                        fallbackKey:(NSString * _Nullable)fallbackKey
+{
+    if (text.length == 0) {
+        return PPFirebaseSessionFallbackMessage(fallbackKey);
+    }
+
+    NSString *lower = text.lowercaseString;
+    if (PPFirebaseSessionTextContainsAnyToken(lower, @[
+        @"app check", @"appcheck", @"app attest", @"appattest", @"devicecheck"
+    ])) {
+        return kLang(@"pp_app_check_unavailable") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+    }
+
+    if (PPFirebaseSessionTextContainsAnyToken(lower, @[
+        @"unauthenticated", @"auth token", @"id token", @"user token", @"session refresh"
+    ])) {
+        return kLang(@"pp_auth_session_refresh_failed") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+    }
+
+    if (PPFirebaseSessionTextContainsAnyToken(lower, @[
+        @"client is offline",
+        @"network is unavailable",
+        @"network connection was lost",
+        @"the internet connection appears to be offline",
+        @"failed to get document because the client is offline"
+    ])) {
+        return kLang(@"offline_action_message") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
+    }
+
+    if (PPFirebaseSessionTextContainsAnyToken(lower, @[
+        @"an internal error has occurred",
+        @"print and inspect",
+        @"firebasefunctions",
+        @"functionsinternal",
+        @"internal error",
+        @"permission denied",
+        @"missing or insufficient permissions"
+    ])) {
+        return PPFirebaseSessionFallbackMessage(fallbackKey);
+    }
+
+    return text;
+}
+
 + (NSError *)publicErrorForError:(NSError *)error
                      fallbackKey:(NSString *)fallbackKey
 {
@@ -282,7 +403,7 @@ static void PPFirebaseSessionLogFailure(NSString *stage, NSError *error)
                          fallbackKey:(NSString *)fallbackKey
 {
     if (PPFirebaseSessionErrorContainsBridgeCode(error, PPFirebaseSessionBridgeErrorCodeAppCheckUnavailable)) {
-        return kLang(@"pp_app_check_unavailable") ?: @"We could not verify this device right now. Please try again.";
+        return kLang(@"pp_app_check_unavailable") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
     }
 
     if ([self isAuthOrAppCheckError:error]) {
@@ -292,15 +413,22 @@ static void PPFirebaseSessionLogFailure(NSString *stage, NSError *error)
             [text containsString:@"app attest"] ||
             [text containsString:@"appattest"] ||
             [text containsString:@"devicecheck"]) {
-            return kLang(@"pp_app_check_unavailable") ?: @"We could not verify this device right now. Please try again.";
+            return kLang(@"pp_app_check_unavailable") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
         }
-        return kLang(@"pp_auth_session_refresh_failed") ?: @"We could not refresh your session. Please try again.";
+        return kLang(@"pp_auth_session_refresh_failed") ?: PPFirebaseSessionFallbackMessage(@"SomethingWentWrong");
     }
 
+    if (error.localizedDescription.length) {
+        NSString *publicText = [self publicMessageForText:error.localizedDescription
+                                              fallbackKey:fallbackKey];
+        if (publicText.length && ![publicText isEqualToString:error.localizedDescription]) {
+            return publicText;
+        }
+    }
     NSString *fallback = fallbackKey.length ? (kLang(fallbackKey) ?: nil) : nil;
     if (fallback.length) return fallback;
     if (error.localizedDescription.length) return error.localizedDescription;
-    return kLang(@"SomethingWentWrong") ?: @"Something went wrong.";
+    return PPFirebaseSessionFallbackMessage(fallbackKey);
 }
 
 @end

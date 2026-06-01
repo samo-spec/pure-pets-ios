@@ -86,6 +86,7 @@
     [self setupButtons];
     [self setupConstraints];
     [self registerKeyboardNotifications];
+    [self pp_applyModernChrome];
 
     [self startTimer];
 
@@ -101,6 +102,7 @@
     [super viewDidAppear:animated];
     self.modalInPresentation = YES;
     self.presentationController.delegate = self;
+    [self.codeField becomeFirstResponder];
     [self animateVerificationEntranceIfNeeded];
 }
 
@@ -124,6 +126,30 @@
     self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundBottomGlowView.userInteractionEnabled = NO;
     [self.view addSubview:self.backgroundBottomGlowView];
+}
+
+- (void)pp_applyModernChrome {
+    self.view.backgroundColor = PPBackgroundColorForIOS26([AppBackgroundClr colorWithAlphaComponent:0.96]);
+    self.cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.58 : 0.98];
+    self.cardView.layer.cornerRadius = 34.0;
+    self.cardView.layer.shadowOpacity = 0.12;
+    self.cardView.layer.shadowRadius = 28.0;
+    self.cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+
+    self.heroIconWrapView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.10];
+    self.titleLabel.font = [GM boldFontWithSize:28];
+    self.instructionLabel.font = [GM MidFontWithSize:14];
+    self.codeField.keyboardType = UIKeyboardTypeNumberPad;
+    self.codeField.textContentType = UITextContentTypeOneTimeCode;
+    self.codeField.tintColor = UIColor.clearColor;
+
+    self.continueButton.layer.cornerRadius = 22.0;
+    self.continueButton.layer.shadowOpacity = 0.14;
+    self.continueButton.layer.shadowRadius = 18.0;
+    self.continueButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+
+    self.resendButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.90];
+    self.resendButton.layer.cornerRadius = 18.0;
 }
 
 - (void)setupScroll {
@@ -152,7 +178,7 @@
 
 - (void)setupCard {
     self.cardView = [[UIView alloc] init];
-    self.cardView.layer.cornerRadius = 32;
+    self.cardView.layer.cornerRadius = 34;
     self.cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.56 : 0.96];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.userInteractionEnabled = YES;
@@ -166,7 +192,7 @@
     self.heroIconWrapView = [[UIView alloc] init];
     self.heroIconWrapView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroIconWrapView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.12];
-    self.heroIconWrapView.layer.cornerRadius = 28.0;
+    self.heroIconWrapView.layer.cornerRadius = 30.0;
     self.heroIconWrapView.layer.masksToBounds = YES;
     [self.cardView addSubview:self.heroIconWrapView];
 
@@ -186,7 +212,7 @@
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.text = kLang(@"verification_title");
-    self.titleLabel.font =  [GM boldFontWithSize:26];
+    self.titleLabel.font =  [GM boldFontWithSize:28];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.textColor = UIColor.labelColor;
@@ -212,7 +238,7 @@
     self.instructionLabel = [[UILabel alloc] init];
     self.instructionLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.instructionLabel.text = kLang(@"otp_enter_code_instruction");
-    self.instructionLabel.font = [GM MidFontWithSize:13];
+    self.instructionLabel.font = [GM MidFontWithSize:14];
     self.instructionLabel.textAlignment = NSTextAlignmentCenter;
     self.instructionLabel.textColor = UIColor.tertiaryLabelColor;
 
@@ -236,7 +262,7 @@
     self.codeField = [[UITextField alloc] init];
      
     self.codeField.textContentType = UITextContentTypeOneTimeCode;
-    self.codeField.keyboardType = UIKeyboardTypeASCIICapableNumberPad;
+    self.codeField.keyboardType = UIKeyboardTypeNumberPad;
     self.codeField.autocorrectionType = UITextAutocorrectionTypeNo;
     self.codeField.spellCheckingType = UITextSpellCheckingTypeNo;
     self.codeField.smartInsertDeleteType = UITextSmartInsertDeleteTypeNo;
@@ -246,7 +272,7 @@
     self.codeField.placeholder = kLang(@"otp_placeholder");
     self.codeField.delegate = self;
     self.codeField.textColor = UIColor.clearColor;
-    self.codeField.layer.cornerRadius = 8;
+    self.codeField.layer.cornerRadius = 12;
     self.codeField.backgroundColor = UIColor.clearColor;
     [self.codeField addTarget:self action:@selector(codeChanged:) forControlEvents:UIControlEventEditingChanged];
     self.codeField.translatesAutoresizingMaskIntoConstraints = NO;
@@ -264,13 +290,13 @@
         UIView *digitView = [[UIView alloc] init];
         digitView.translatesAutoresizingMaskIntoConstraints = NO;
         digitView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.08 : 0.82];
-        digitView.layer.cornerRadius = 16.0;
+        digitView.layer.cornerRadius = 18.0;
         digitView.layer.masksToBounds = YES;
         [digitView.heightAnchor constraintEqualToConstant:58].active = YES;
 
         UILabel *digitLabel = [[UILabel alloc] init];
         digitLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        digitLabel.font = [GM boldFontWithSize:26];
+        digitLabel.font = [GM boldFontWithSize:28];
         digitLabel.textAlignment = NSTextAlignmentCenter;
         digitLabel.textColor = UIColor.labelColor;
         [digitView addSubview:digitLabel];
@@ -301,7 +327,7 @@
         config = [UIButtonConfiguration filledButtonConfiguration];
     }
     config.baseBackgroundColor = AppPrimaryClr;
-    config.cornerStyle = UIButtonConfigurationCornerStyleLarge;
+    config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
 
     config.attributedTitle =
         [[NSAttributedString alloc] initWithString:kLang(@"otp_verify_button")
@@ -309,10 +335,9 @@
             NSFontAttributeName: [GM boldFontWithSize:17]
                                         }];
 
-    config.contentInsets = NSDirectionalEdgeInsetsMake(12, 12, 12, 12);
+    config.contentInsets = NSDirectionalEdgeInsetsMake(14, 18, 14, 18);
     config.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
  
-    config.cornerStyle = UIButtonConfigurationCornerStyleFixed;
     config.background.cornerRadius = 22;
     config.background.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.1];
     config.baseForegroundColor = AppForgroundColr;
@@ -320,7 +345,7 @@
     self.continueButton = [UIButton buttonWithType:UIButtonTypeSystem];
     self.continueButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.continueButton.configuration = config;
-    self.continueButton.clipsToBounds = YES;
+    self.continueButton.clipsToBounds = NO;
     self.continueButton.enabled = NO;
     self.continueButton.alpha = 0.6;
 
@@ -340,7 +365,7 @@
     self.resendButton.translatesAutoresizingMaskIntoConstraints = NO;
     self.resendButton.titleLabel.font = [GM boldFontWithSize:13];
     [ self.resendButton setTitleColor:AppButtonMixColorClr forState:UIControlStateNormal];
-    self.resendButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.08 : 0.78];
+    self.resendButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.88];
     self.resendButton.layer.cornerRadius = 18.0;
     self.resendButton.layer.masksToBounds = YES;
     self.resendButton.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
@@ -429,8 +454,10 @@
     NSString *digits = [self normalizedOTPDigitsFromInput:field.text];
     field.text = digits;
 
-    UIImpactFeedbackGenerator *h = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
-    [h impactOccurred];
+    if (digits.length > 0) {
+        UIImpactFeedbackGenerator *h = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
+        [h impactOccurred];
+    }
 
     self.continueButton.enabled = (digits.length == 6 && !self.isVerifyingCode && !self.isRequestingResend);
     self.continueButton.alpha = self.continueButton.enabled ? 1.0 : 0.6;
@@ -485,10 +512,10 @@
 
         if (animated && filled) {
             digitView.transform = CGAffineTransformMakeScale(0.94, 0.94);
-            [UIView animateWithDuration:0.18
+            [UIView animateWithDuration:0.20
                                   delay:0.0
-                 usingSpringWithDamping:0.82
-                  initialSpringVelocity:0.18
+                 usingSpringWithDamping:0.84
+                  initialSpringVelocity:0.16
                                 options:UIViewAnimationOptionCurveEaseOut
                              animations:^{
                 digitView.transform = CGAffineTransformIdentity;
@@ -500,6 +527,35 @@
 - (void)didTapContinue {
     if (self.codeField.text.length == 6) {
         [self verifyPhoneCode:self.codeField.text on:self];
+    }
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)textField {
+    [self pp_applyFocusStateAnimated:YES];
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField {
+    [self pp_applyFocusStateAnimated:NO];
+}
+
+- (void)pp_applyFocusStateAnimated:(BOOL)animated {
+    void (^layoutBlock)(void) = ^{
+        [self.scrollView layoutIfNeeded];
+        [self.contentView layoutIfNeeded];
+        [self.cardView layoutIfNeeded];
+        [self.view layoutIfNeeded];
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.22
+                              delay:0.0
+             usingSpringWithDamping:0.92
+              initialSpringVelocity:0.1
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:layoutBlock
+                         completion:nil];
+    } else {
+        layoutBlock();
     }
 }
 
@@ -546,6 +602,64 @@
     [self.resendButton setTitle:formatted forState:UIControlStateNormal];
 }
 
+- (NSString *)pp_joinedVerificationErrorText:(NSError *)error {
+    if (!error) {
+        return @"";
+    }
+
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    if (error.domain.length > 0) {
+        [parts addObject:error.domain];
+    }
+    if (error.localizedDescription.length > 0) {
+        [parts addObject:error.localizedDescription];
+    }
+    for (id value in (error.userInfo ?: @{}).allValues) {
+        if ([value isKindOfClass:NSString.class]) {
+            [parts addObject:(NSString *)value];
+        } else if ([value isKindOfClass:NSError.class]) {
+            NSString *nested = [self pp_joinedVerificationErrorText:(NSError *)value];
+            if (nested.length > 0) {
+                [parts addObject:nested];
+            }
+        }
+    }
+    return [[parts componentsJoinedByString:@" "] lowercaseString];
+}
+
+- (NSString *)pp_localizedVerificationMessageForError:(NSError *)error fallbackKey:(NSString *)fallbackKey {
+    NSString *joined = [self pp_joinedVerificationErrorText:error];
+    if ([joined containsString:@"too_long"] || [joined containsString:@"too long"]) {
+        return kLang(@"auth_phone_error_too_long");
+    }
+    if ([joined containsString:@"too_short"] || [joined containsString:@"too short"]) {
+        return kLang(@"auth_phone_error_too_short");
+    }
+    if ([joined containsString:@"invalid_phone"] || [joined containsString:@"invalid phone"]) {
+        return kLang(@"auth_phone_error_invalid");
+    }
+    if ([joined containsString:@"quota"] ||
+        [joined containsString:@"too_many"] ||
+        [joined containsString:@"too many"] ||
+        [joined containsString:@"rate limit"]) {
+        return kLang(@"auth_phone_error_rate_limited");
+    }
+    if ([joined containsString:@"network"] ||
+        [joined containsString:@"offline"] ||
+        [joined containsString:@"connection"]) {
+        return kLang(@"auth_network_error_message");
+    }
+    if ([joined containsString:@"app check"] ||
+        [joined containsString:@"appcheck"] ||
+        [joined containsString:@"app_not_verified"] ||
+        [joined containsString:@"app not verified"]) {
+        return kLang(@"auth_app_verification_failed_message");
+    }
+
+    NSString *fallback = fallbackKey.length > 0 ? kLang(fallbackKey) : nil;
+    return fallback.length > 0 ? fallback : kLang(@"auth_error_message");
+}
+
 - (void)didTapResend {
     if (self.isRequestingResend) {
         return;
@@ -582,7 +696,8 @@
             
             weakSelf.resendButton.enabled = YES;
             [weakSelf.resendButton setTitle:kLang(@"resend_code") forState:UIControlStateNormal];
-            NSString *message = error.localizedDescription.length ? error.localizedDescription : kLang(@"Unable to resend code. Please try again.");
+            NSString *message = [weakSelf pp_localizedVerificationMessageForError:error
+                                                                      fallbackKey:@"auth_resend_code_failed_message"];
             [weakSelf showResendFailureAlertWithMessage:message];
         });
     });
@@ -674,6 +789,7 @@
 -(void)viewDidLayoutSubviews
 {
     [super viewDidLayoutSubviews];
+    [self pp_applyModernChrome];
 }
 
 
@@ -778,9 +894,8 @@
                     if (invalidCode) {
                         [self showInvalidCodeError];
                     } else {
-                        NSString *message = error.localizedDescription.length
-                        ? error.localizedDescription
-                        : kLang(@"StatusSaveFailed");
+                        NSString *message = [self pp_localizedVerificationMessageForError:error
+                                                                              fallbackKey:@"auth_error_message"];
                         [self showResendFailureAlertWithMessage:message];
                     }
                     return;

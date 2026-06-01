@@ -17,6 +17,7 @@
 #import "CountryCodeModel.h"
 #import "CountryModel.h"
 #import "Language.h"
+#import "PPFirebaseSessionBridge.h"
 
 @import FirebaseAuth;
 @import FirebaseStorage;
@@ -1066,6 +1067,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
         return;
     }
 
+    [self pp_applyEditingRelayoutForFieldKind:[self pp_fieldKindForIndexPath:indexPath] animated:YES];
     [self pp_focusFieldAtIndexPath:indexPath];
 }
 
@@ -1180,6 +1182,16 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     [self pp_updateProfileProgressUI];
 }
 
+- (void)textFieldDidBeginEditing:(UITextField *)textField
+{
+    [self pp_applyEditingRelayoutForFieldKind:(PPProfileFieldKind)textField.tag animated:YES];
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)textField
+{
+    [self pp_applyEditingRelayoutForFieldKind:(PPProfileFieldKind)textField.tag animated:NO];
+}
+
 - (void)textViewDidChange:(UITextView *)textView
 {
     if ((PPProfileFieldKind)textView.tag == PPProfileFieldKindAbout) {
@@ -1198,6 +1210,16 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
     [self.tableView beginUpdates];
     [self.tableView endUpdates];
+}
+
+- (void)textViewDidBeginEditing:(UITextView *)textView
+{
+    [self pp_applyEditingRelayoutForFieldKind:(PPProfileFieldKind)textView.tag animated:YES];
+}
+
+- (void)textViewDidEndEditing:(UITextView *)textView
+{
+    [self pp_applyEditingRelayoutForFieldKind:(PPProfileFieldKind)textView.tag animated:NO];
 }
 
 - (BOOL)textFieldShouldReturn:(UITextField *)textField
@@ -1302,6 +1324,36 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
             [((PPProfileTextViewCell *)cell).textView becomeFirstResponder];
         }
     });
+}
+
+- (void)pp_applyEditingRelayoutForFieldKind:(PPProfileFieldKind)fieldKind animated:(BOOL)animated
+{
+    NSIndexPath *indexPath = [self pp_indexPathForFieldKind:fieldKind];
+    if (!indexPath) {
+        return;
+    }
+
+    [self.tableView beginUpdates];
+    [self.tableView endUpdates];
+
+    void (^layoutBlock)(void) = ^{
+        [self.tableView scrollToRowAtIndexPath:indexPath
+                              atScrollPosition:UITableViewScrollPositionMiddle
+                                      animated:NO];
+        [self.view layoutIfNeeded];
+    };
+
+    if (animated) {
+        [UIView animateWithDuration:0.22
+                              delay:0.0
+             usingSpringWithDamping:0.92
+              initialSpringVelocity:0.1
+                            options:UIViewAnimationOptionCurveEaseOut
+                         animations:layoutBlock
+                         completion:nil];
+    } else {
+        layoutBlock();
+    }
 }
 
 #pragma mark - Country Picker
@@ -1631,8 +1683,11 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
 - (void)pp_presentAlertWithTitle:(NSString *)title message:(NSString *)message
 {
+    NSString *safeMessage = message.length > 0
+        ? [PPFirebaseSessionBridge publicMessageForText:message fallbackKey:@"SomethingWentWrong"]
+        : message;
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:title ?: @""
-                                                                   message:message ?: @""
+                                                                   message:safeMessage ?: @""
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:kLang(@"ok_button")
                                               style:UIAlertActionStyleDefault

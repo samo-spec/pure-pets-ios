@@ -1051,6 +1051,12 @@
 "auth_enter_phone_message" = "يرجى إدخال رقم الجوال للمتابعة.";
 "auth_phone_required_title" = "رقم مفقود";
 "auth_phone_required_message" = "يرجى إدخال رقم جوالك.";
+"auth_phone_digits_only" = "يرجى إدخال أرقام فقط.";
+"auth_phone_error_invalid" = "يرجى التحقق من رقم الجوال والمحاولة مرة أخرى.";
+"auth_phone_error_too_long" = "رقم الجوال طويل جداً. يرجى التحقق من رمز الدولة والرقم.";
+"auth_phone_error_too_short" = "رقم الجوال قصير جداً. يرجى التحقق منه والمحاولة مرة أخرى.";
+"auth_phone_error_rate_limited" = "تم طلب الرمز مرات كثيرة. يرجى الانتظار قليلاً ثم المحاولة مرة أخرى.";
+"auth_country_code_auto_selected" = "تم اختيار رمز الدولة حسب بلدك الحالي.";
 
 /* ---------------------------- */
 /* Sending Verification Code */
@@ -1058,6 +1064,9 @@
 "auth_sending_code_title" = "جاري إرسال الرمز…";
 "auth_sending_code_failed_title" = "تعذر إرسال الرمز";
 "auth_sending_code_failed_message" = "يرجى التحقق من الرقم والمحاولة مرة أخرى.";
+"auth_verification_start_failed" = "تعذر بدء التحقق. يرجى المحاولة مرة أخرى.";
+"auth_resend_code_failed_message" = "تعذر إعادة إرسال الرمز. يرجى المحاولة مرة أخرى.";
+"auth_app_verification_failed_message" = "تعذر التحقق من جلسة التطبيق. يرجى فتح التطبيق من جديد والمحاولة مرة أخرى.";
 
 /* ---------------------------- */
 /* Verification Code Screen */
@@ -1093,6 +1102,14 @@
 "auth_network_error_message" = "يرجى التحقق من اتصال الإنترنت.";
 
 "auth_firebase_error_title" = "خطأ في المصادقة";
+"auth_presenter_missing" = "تعذر فتح تسجيل الدخول الآن. يرجى المحاولة مرة أخرى.";
+"auth_signin_required_title" = "تسجيل الدخول مطلوب";
+"auth_signin_required_action" = "تسجيل الدخول";
+"auth_apple_requires_ios13" = "تسجيل الدخول عبر Apple يتطلب iOS 13 أو أحدث.";
+"error_missing_authenticated_user" = "تعذر العثور على جلسة تسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.";
+"error_please_try_again_in_a_moment" = "يرجى المحاولة مرة أخرى بعد قليل.";
+"error_unable_to_present_signin" = "تعذر فتح تسجيل الدخول الآن. يرجى المحاولة مرة أخرى.";
+"error_user_creation_is_disabled" = "إعداد الحساب غير متاح حالياً. يرجى المحاولة لاحقاً.";
 
 /* ---------------------------- */
 /* Login Success */

@@ -27,6 +27,30 @@
 
 @end
 
+static NSString *PPListenerSafeIdentifierString(id obj)
+{
+    if (![obj respondsToSelector:@selector(ID)]) {
+        return @"";
+    }
+
+    NSString *value = @"";
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    id rawValue = nil;
+    @try {
+        rawValue = [obj performSelector:@selector(ID)];
+    } @catch (__unused NSException *exception) {
+        rawValue = nil;
+    }
+#pragma clang diagnostic pop
+    if ([rawValue isKindOfClass:NSString.class]) {
+        value = rawValue;
+    } else if ([rawValue respondsToSelector:@selector(stringValue)]) {
+        value = [rawValue stringValue];
+    }
+    return value ?: @"";
+}
+
 @interface AppDataListenerManager ()
 @property (nonatomic, strong) id<FIRListenerRegistration> cardsListener;
 @property (nonatomic, strong) id<FIRListenerRegistration> cagesListener;
@@ -66,6 +90,10 @@
 
 - (void)sortArrayByDateDesc:(NSMutableArray *)array
 {
+    if (![array isKindOfClass:NSMutableArray.class]) {
+        return;
+    }
+
     for (NSObject *obj in array) {
         [self applySortDateIfNeeded:obj];
     }
@@ -76,8 +104,8 @@
         NSDate *d2 = [obj2 pp_sortDate];
 
         if (!d1 && !d2) {
-            NSString *id1 = [obj1 respondsToSelector:@selector(ID)] ? [obj1 valueForKey:@"ID"] : @"";
-            NSString *id2 = [obj2 respondsToSelector:@selector(ID)] ? [obj2 valueForKey:@"ID"] : @"";
+            NSString *id1 = PPListenerSafeIdentifierString(obj1);
+            NSString *id2 = PPListenerSafeIdentifierString(obj2);
             return [id1 compare:id2];
         }
         if (!d1) return NSOrderedDescending;
@@ -86,8 +114,8 @@
         NSComparisonResult primary = [d2 compare:d1]; // newest first
         if (primary != NSOrderedSame) return primary;
 
-        NSString *id1 = [obj1 respondsToSelector:@selector(ID)] ? [obj1 valueForKey:@"ID"] : @"";
-        NSString *id2 = [obj2 respondsToSelector:@selector(ID)] ? [obj2 valueForKey:@"ID"] : @"";
+        NSString *id1 = PPListenerSafeIdentifierString(obj1);
+        NSString *id2 = PPListenerSafeIdentifierString(obj2);
         return [id1 compare:id2];
     }];
 }
@@ -142,10 +170,12 @@
         // Create local variables to apply changes
         NSMutableArray<CardModel *> *all = self.AllCardsDocs ?: [NSMutableArray array];
         NSMutableDictionary<NSString *, CardModel *> *map = self.AllCardsByID ?: [NSMutableDictionary dictionary];
+        NSMutableArray<CardModel *> *userCards = self.UserCardsDocs ?: [NSMutableArray array];
 
         // Ensure arrays are mutable copies
         all = [all mutableCopy];
         map = [map mutableCopy];
+        userCards = [userCards mutableCopy];
 
         // Build list of index updates for UI
         NSMutableArray<NSIndexPath *> *insertedIndexPaths = [NSMutableArray array];
@@ -171,9 +201,7 @@
                     [insertedIndexPaths addObject:[NSIndexPath indexPathForItem:idx inSection:0]];
                     // If belongs to user, add to UserCardsDocs
                     if ([model.UserID isEqualToString:userID]) {
-                        NSMutableArray *user = self.UserCardsDocs ?: [NSMutableArray array];
-                        [user addObject:model];
-                        self.UserCardsDocs = user;
+                        [userCards addObject:model];
                     }
                     break;
                 }
@@ -196,24 +224,22 @@
                         [insertedIndexPaths addObject:[NSIndexPath indexPathForItem:all.count-1 inSection:0]];
                     }
                     // Also update UserCardsDocs: add/remove depending on userID match
-                    NSMutableArray *user = self.UserCardsDocs ?: [NSMutableArray array];
-                    BOOL inUser = [user indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                    BOOL inUser = [userCards indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                         return [obj.docID isEqualToString:docID];
                     }] != NSNotFound;
                     BOOL shouldBeInUser = [model.UserID isEqualToString:userID];
-                    if (!inUser && shouldBeInUser) [user addObject:model];
+                    if (!inUser && shouldBeInUser) [userCards addObject:model];
                     else if (inUser && !shouldBeInUser) {
-                        NSUInteger uidx = [user indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                        NSUInteger uidx = [userCards indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                             return [obj.docID isEqualToString:docID];
                         }];
-                        if (uidx != NSNotFound) [user removeObjectAtIndex:uidx];
+                        if (uidx != NSNotFound) [userCards removeObjectAtIndex:uidx];
                     } else if (inUser && shouldBeInUser) {
-                        NSUInteger uidx = [user indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                        NSUInteger uidx = [userCards indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                             return [obj.docID isEqualToString:docID];
                         }];
-                        if (uidx != NSNotFound) user[uidx] = model;
+                        if (uidx != NSNotFound) userCards[uidx] = model;
                     }
-                    self.UserCardsDocs = user;
                     break;
                 }
                 case FIRDocumentChangeTypeRemoved: {
@@ -228,23 +254,22 @@
                     [map removeObjectForKey:docID];
 
                     // Remove from user list if present
-                    NSMutableArray *user = self.UserCardsDocs ?: [NSMutableArray array];
-                    NSUInteger uidx = [user indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                    NSUInteger uidx = [userCards indexOfObjectPassingTest:^BOOL(CardModel * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
                         return [obj.docID isEqualToString:docID];
                     }];
-                    if (uidx != NSNotFound) [user removeObjectAtIndex:uidx];
-                    self.UserCardsDocs = user;
+                    if (uidx != NSNotFound) [userCards removeObjectAtIndex:uidx];
                     break;
                 }
             } // switch
         } // for changes
 
         // Assign back to shared manager atomically
-        self.AllCardsDocs = [all mutableCopy];
-        self.AllCardsByID = [map mutableCopy];
-
-        // Post notification on main thread with change info for collection view updates
         dispatch_async(dispatch_get_main_queue(), ^{
+            self.AllCardsDocs = [all mutableCopy];
+            self.AllCardsByID = [map mutableCopy];
+            self.UserCardsDocs = [userCards mutableCopy];
+
+            // Post notification on main thread with change info for collection view updates
             [[NSNotificationCenter defaultCenter]
              postNotificationName:@"cardsUpdatedWithDiffs"
              object:nil
@@ -267,18 +292,26 @@
     id (^mapAndFilter)(Class, FIRQuerySnapshot *, NSPredicate *) =
     ^id(Class modelClass, FIRQuerySnapshot *snapshot, NSPredicate *predicate) {
 
-        if (![modelClass respondsToSelector:@selector(fromSnapshot:)]) return @[];
+        if (!modelClass || ![modelClass respondsToSelector:@selector(fromSnapshot:)]) {
+            return [NSMutableArray array];
+        }
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-        NSMutableArray *arr = [modelClass performSelector:@selector(fromSnapshot:) withObject:snapshot];
+        id rawArray = nil;
+        @try {
+            rawArray = [modelClass performSelector:@selector(fromSnapshot:) withObject:snapshot];
+        } @catch (__unused NSException *exception) {
+            rawArray = nil;
+        }
 #pragma clang diagnostic pop
 
-        if (predicate)
-            return [[arr filteredArrayUsingPredicate:predicate] mutableCopy];
-        else
-            return arr;
-    };
+        NSMutableArray *arr = [rawArray isKindOfClass:NSArray.class] ? [rawArray mutableCopy] : [NSMutableArray array];
+        if (predicate) {
+            return [[arr filteredArrayUsingPredicate:predicate] mutableCopy] ?: [NSMutableArray array];
+        }
+        return arr;
+    }; 
 
     // ------------------------------------------------------------
     // CARDS
@@ -296,22 +329,24 @@
 
         NSMutableArray *all = mapAndFilter(CardModel.class, snapshot, nil);
         if (!all) all = [NSMutableArray array];
-        NSArray *filtered =
-            [all filteredArrayUsingPredicate:
-             [NSPredicate predicateWithFormat:@"UserID == %@ AND (isDeleted == 0 OR isDeleted == nil) AND (isSold == 0 OR isSold == nil)", userID]];
+        NSMutableArray *filtered =
+            [[all filteredArrayUsingPredicate:
+              [NSPredicate predicateWithFormat:@"UserID == %@ AND (isDeleted == 0 OR isDeleted == nil) AND (isSold == 0 OR isSold == nil)", userID]] mutableCopy];
 
         // Invalidate pp_sortDate cache before sorting
         for (NSObject *obj in all) { obj.pp_sortDate = nil; }
         for (NSObject *obj in filtered) { obj.pp_sortDate = nil; }
 
-        self.AllCardsDocs = all;
-        self.UserCardsDocs = filtered.mutableCopy;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            self.AllCardsDocs = all;
+            self.UserCardsDocs = [filtered mutableCopy];
 
-        [self sortArrayByDateDesc:self.AllCardsDocs];
-        [self sortArrayByDateDesc:self.UserCardsDocs];
+            [self sortArrayByDateDesc:self.AllCardsDocs];
+            [self sortArrayByDateDesc:self.UserCardsDocs];
 
-        [[NSNotificationCenter defaultCenter]
-            postNotificationName:@"cardsUpdated" object:nil];
+            [[NSNotificationCenter defaultCenter]
+                postNotificationName:@"cardsUpdated" object:nil];
+        });
         
         //[self handleCardsSnapshot:snapshot userID:userID];
     }];
@@ -476,7 +511,7 @@
             obj.pp_sortDate = nil;
         }
 
-        self.BuyerArray = filteredSales.mutableCopy;
+        self.BuyerArray = [filteredSales mutableCopy];
         [self sortArrayByDateDesc:self.BuyerArray];
 
         [[NSNotificationCenter defaultCenter]

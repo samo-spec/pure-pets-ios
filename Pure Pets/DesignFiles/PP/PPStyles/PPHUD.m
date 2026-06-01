@@ -1,5 +1,6 @@
 //  PPHUD.m
 #import "PPHUD.h"
+#import "PPFirebaseSessionBridge.h"
  
 static JGProgressHUD *_pphud;
 
@@ -26,6 +27,11 @@ static UIView *_PP_host(UIView *preferred) {
 static void _PP_applyFonts(JGProgressHUD *hud) {
     hud.textLabel.font   = [Styling fontBold:16];
     hud.detailTextLabel.font = [Styling fontMedium:13];
+}
+
+static NSString *_PP_publicHUDText(NSString *text, NSString *fallbackKey) {
+    if (text.length == 0) return text;
+    return [PPFirebaseSessionBridge publicMessageForText:text fallbackKey:fallbackKey] ?: text;
 }
 
 
@@ -203,8 +209,8 @@ static void _PP_applyFonts(JGProgressHUD *hud) {
     _PP_main(^{
         if (!_pphud) _pphud = [JGProgressHUD progressHUDWithStyle:JGProgressHUDStyleExtraLight];
         _pphud.indicatorView = [JGProgressHUDErrorIndicatorView new];
-        _pphud.textLabel.text = title ?: @"";
-        _pphud.detailTextLabel.text = subtitle ?: @"";
+        _pphud.textLabel.text = _PP_publicHUDText(title, @"SomethingWentWrong") ?: @"";
+        _pphud.detailTextLabel.text = _PP_publicHUDText(subtitle, @"SomethingWentWrong") ?: @"";
         
         _pphud.textLabel.font = [Styling fontMedium:16];
         _pphud.detailTextLabel.font = [Styling fontMedium:14];

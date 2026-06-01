@@ -66,39 +66,58 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
 
 
 + (void)startWhatsAppWith:(NSString *)phoneNumber  fromViewController:(UIViewController *)viewController{
-    
-    NSString *wa = [NSString stringWithFormat:@"https://wa.me/%@", phoneNumber ?: @""];
+    NSString *cleanedNumber = [[phoneNumber componentsSeparatedByCharactersInSet:
+                               [[NSCharacterSet characterSetWithCharactersInString:@"+0123456789"] invertedSet]]
+                               componentsJoinedByString:@""];
+    if (cleanedNumber.length == 0) {
+        return;
+    }
+
+    NSString *wa = [NSString stringWithFormat:@"https://wa.me/%@", cleanedNumber];
     NSURL *u = [NSURL URLWithString:wa];
-    if (u) { [[UIApplication sharedApplication] openURL:u options:@{} completionHandler:nil]; }
-        
+    if (!u) {
+        return;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[UIApplication sharedApplication] openURL:u options:@{} completionHandler:nil];
+    });
 }
 + (void)callPhoneNumber:(NSString *)phoneNumber  fromViewController:(UIViewController *)viewController{
     // Remove any non-numeric characters
     NSString *cleanedNumber = [[phoneNumber componentsSeparatedByCharactersInSet:
                                [[NSCharacterSet characterSetWithCharactersInString:@"+0123456789"] invertedSet]]
                                componentsJoinedByString:@""];
+    if (cleanedNumber.length == 0) {
+        return;
+    }
     
     // Create the phone URL
     NSString *phoneURLString = [NSString stringWithFormat:@"telprompt://%@", cleanedNumber];
     NSURL *phoneURL = [NSURL URLWithString:phoneURLString];
+    if (!phoneURL) {
+        return;
+    }
     
     // Check if device can make calls
-    if ([[UIApplication sharedApplication] canOpenURL:phoneURL]) {
-        if (@available(iOS 10.0, *)) {
-            [[UIApplication sharedApplication] openURL:phoneURL options:@{} completionHandler:nil];
-        } else {
-            // Fallback for earlier versions
-            [[UIApplication sharedApplication] openURL:phoneURL];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if ([[UIApplication sharedApplication] canOpenURL:phoneURL]) {
+            if (@available(iOS 10.0, *)) {
+                [[UIApplication sharedApplication] openURL:phoneURL options:@{} completionHandler:nil];
+            } else {
+                // Fallback for earlier versions
+                [[UIApplication sharedApplication] openURL:phoneURL];
+            }
+        } else if (viewController) {
+            // Device can't make calls or simulator
+            UIAlertController *alert = [UIAlertController
+                                       alertControllerWithTitle:@"Error"
+                                       message:@"Your device cannot make phone calls"
+                                       preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+            [viewController presentViewController:alert animated:YES completion:nil];
         }
-    } else {
-        // Device can't make calls or simulator
-        UIAlertController *alert = [UIAlertController
-                                   alertControllerWithTitle:@"Error"
-                                   message:@"Your device cannot make phone calls"
-                                   preferredStyle:UIAlertControllerStyleAlert];
-        [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-        [viewController presentViewController:alert animated:YES completion:nil];
-    }
+    });
 }
 
 
@@ -766,8 +785,6 @@ static NSDictionary *PPBundledLottieJSONForStoragePath(NSString *storagePath, BO
 }
 
 @end
-
-
 
 
 

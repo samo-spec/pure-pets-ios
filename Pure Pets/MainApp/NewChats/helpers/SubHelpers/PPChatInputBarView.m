@@ -67,6 +67,28 @@ static UIColor *PPChatInputBarControlTintColor(UITraitCollection *traitCollectio
         : (AppPrimaryTextClr ?: UIColor.labelColor);
 }
 
+static UIViewController *PPChatInputBarResolvedPresenter(UIView *view, UIViewController *preferredPresenter)
+{
+    UIViewController *presenter = preferredPresenter;
+    if (presenter.isViewLoaded && presenter.view.window) {
+        return presenter;
+    }
+
+    UIResponder *responder = view;
+    while (responder) {
+        responder = responder.nextResponder;
+        if ([responder isKindOfClass:UIViewController.class]) {
+            UIViewController *candidate = (UIViewController *)responder;
+            if (candidate.isViewLoaded && candidate.view.window) {
+                return candidate;
+            }
+            presenter = candidate;
+        }
+    }
+
+    return presenter;
+}
+
 @interface PPChatInputBarView () <UITextViewDelegate,UIGestureRecognizerDelegate,PPRecordingBarViewDelegate>
 
 @property (nonatomic, strong) UITextView *textView;
@@ -890,8 +912,6 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
         if (@available(iOS 18.0, *)) {
             [self.actionsButton.imageView setSymbolImage:image withContentTransition:[NSSymbolReplaceContentTransition magicTransitionWithFallback: NSSymbolReplaceContentTransition.replaceDownUpTransition.transitionWithByLayer] options: [NSSymbolEffectOptions optionsWithRepeatBehavior:[NSSymbolEffectOptionsRepeatBehavior behaviorPeriodic]]];
         }
-        else
-            [self.actionsButton setImage:image forState:UIControlStateNormal];
     };
 
     
@@ -1176,7 +1196,14 @@ shouldRecognizeSimultaneouslyWithGestureRecognizer:(UIGestureRecognizer *)otherG
     alert.popoverPresentationController.sourceView = self.mediaButton;
     alert.popoverPresentationController.sourceRect = self.mediaButton.bounds;
 
-    [self.parentContainerViewController presentViewController:alert animated:YES completion:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *presenter = PPChatInputBarResolvedPresenter(self, self.parentContainerViewController);
+        if (!presenter) {
+            NSLog(@"[PPChatInputBarView] Unable to present attachment sheet: missing presenter");
+            return;
+        }
+        [presenter presentViewController:alert animated:YES completion:nil];
+    });
 }
 
 - (void)appendRecordingWaveSample:(float)level

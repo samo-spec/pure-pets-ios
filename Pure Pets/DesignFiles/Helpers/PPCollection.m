@@ -86,9 +86,13 @@
 #pragma mark - Public
 
 - (void)reloadWithItems:(NSArray *)items {
-    self.allItems = items;
-    self.filteredItems = items;
-    [_mainCollectionView reloadData];
+    NSArray *safeItems = [items isKindOfClass:NSArray.class] ? [items copy] : @[];
+    self.allItems = safeItems;
+    self.filteredItems = safeItems;
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.mainCollectionView reloadData];
+    });
 }
 
 #pragma mark - UICollectionViewDataSource
@@ -106,6 +110,9 @@
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     if (collectionView == _optionsCollectionView) {
+        if (indexPath.item >= self.optionsArray.count) {
+            return [collectionView dequeueReusableCellWithReuseIdentifier:@"OptionCell" forIndexPath:indexPath];
+        }
         UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"OptionCell" forIndexPath:indexPath];
         MainKindsModel *model = self.optionsArray[indexPath.item];
 
@@ -124,11 +131,21 @@
         [cell.contentView addSubview:label];
         return cell;
     } else {
+        if (indexPath.item >= self.filteredItems.count) {
+            return [collectionView dequeueReusableCellWithReuseIdentifier:@"MainCell" forIndexPath:indexPath];
+        }
         UICollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"MainCell" forIndexPath:indexPath];
         // Your custom cell should have a configure method.
         if ([cell respondsToSelector:@selector(configureWithModel:)]) {
             id model = self.filteredItems[indexPath.item];
-            [cell performSelector:@selector(configureWithModel:) withObject:model];
+            @try {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                [cell performSelector:@selector(configureWithModel:) withObject:model];
+#pragma clang diagnostic pop
+            } @catch (__unused NSException *exception) {
+                // Leave the reused cell blank rather than crashing on a bad configure path.
+            }
         }
         return cell;
     }
@@ -138,6 +155,9 @@
 
 - (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     if (collectionView == _optionsCollectionView) {
+        if (indexPath.item >= self.optionsArray.count) {
+            return;
+        }
         self.selectedOptionIndex = indexPath.item;
         MainKindsModel *selected = self.optionsArray[indexPath.item];
 
@@ -154,6 +174,9 @@
 
         if (self.onSelectOption) self.onSelectOption(selected, indexPath.item);
     } else {
+        if (indexPath.item >= self.filteredItems.count) {
+            return;
+        }
         id item = self.filteredItems[indexPath.item];
         if (self.onSelectCell) self.onSelectCell(item, indexPath);
     }

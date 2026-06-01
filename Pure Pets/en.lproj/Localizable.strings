@@ -1080,6 +1080,12 @@
 "auth_enter_phone_message" = "Please enter your mobile number to continue.";
 "auth_phone_required_title" = "Missing Number";
 "auth_phone_required_message" = "Please enter your mobile number.";
+"auth_phone_digits_only" = "Please enter numbers only.";
+"auth_phone_error_invalid" = "Please check your mobile number and try again.";
+"auth_phone_error_too_long" = "This mobile number is too long. Please check the country code and number.";
+"auth_phone_error_too_short" = "This mobile number is too short. Please check it and try again.";
+"auth_phone_error_rate_limited" = "Too many code requests. Please wait a moment, then try again.";
+"auth_country_code_auto_selected" = "Country code is selected from your current country.";
 
 /* ---------------------------- */
 /* Sending Verification Code */
@@ -1087,6 +1093,9 @@
 "auth_sending_code_title" = "Sending Code…";
 "auth_sending_code_failed_title" = "Unable to Send Code";
 "auth_sending_code_failed_message" = "Please check your number and try again.";
+"auth_verification_start_failed" = "We could not start verification. Please try again.";
+"auth_resend_code_failed_message" = "We could not resend the code. Please try again.";
+"auth_app_verification_failed_message" = "We could not verify this app session. Please reopen the app and try again.";
 
 /* ---------------------------- */
 /* Verification Code Screen */
@@ -1122,6 +1131,14 @@
 "auth_network_error_message" = "Please check your connection and try again.";
 
 "auth_firebase_error_title" = "Authentication Error";
+"auth_presenter_missing" = "We could not open sign-in right now. Please try again.";
+"auth_signin_required_title" = "Sign In Required";
+"auth_signin_required_action" = "Sign In";
+"auth_apple_requires_ios13" = "Apple Sign-In requires iOS 13 or later.";
+"error_missing_authenticated_user" = "We could not find your signed-in session. Please sign in again.";
+"error_please_try_again_in_a_moment" = "Please try again in a moment.";
+"error_unable_to_present_signin" = "We could not open sign-in right now. Please try again.";
+"error_user_creation_is_disabled" = "Account setup is not available right now. Please try again later.";
 
 /* ---------------------------- */
 /* Login Success */
