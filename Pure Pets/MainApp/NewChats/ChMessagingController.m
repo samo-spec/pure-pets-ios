@@ -1379,7 +1379,8 @@ static UIColor *PPChatPremiumHeaderSecondaryTextColor(void)
             }];
             return;
         }
-        
+
+        [strongSelf pp_uploadAudioMessageApprovedIOS26Path:msg];
     });
 }
 

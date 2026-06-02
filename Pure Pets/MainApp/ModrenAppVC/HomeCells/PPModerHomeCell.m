@@ -91,7 +91,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
     self.surfaceView = [[UIView alloc] init];
     self.surfaceView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceView.userInteractionEnabled = NO;
-    self.surfaceView.layer.cornerRadius = PPNewCornerMin;
+    self.surfaceView.layer.cornerRadius = PPNewCornerMin + 4;
     self.surfaceView.layer.masksToBounds = YES;
     self.surfaceView.layer.borderWidth = 1.0;
     if (@available(iOS 13.0, *)) {
@@ -310,8 +310,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
                                                   [UIColor colorWithRed:0.10 green:0.11 blue:0.13 alpha:1.0]);
     UIColor *surfaceBottom = PPModerHomeDynamicColor(PPModerHomeLightSurfaceColor(),
                                                      [UIColor colorWithRed:0.07 green:0.08 blue:0.10 alpha:1.0]);
-    UIColor *borderColor = PPModerHomeDynamicColor([[UIColor darkGrayColor] colorWithAlphaComponent:0.95],
-                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.08]);
+    UIColor *borderColor = PPModerHomeDynamicColor([AppForgroundColr colorWithAlphaComponent:0.95],
+                                                   [AppForgroundColr colorWithAlphaComponent:0.08]);
     UIColor *plateColor = PPModerHomeDynamicColor([[UIColor whiteColor] colorWithAlphaComponent:0.68],
                                                   [[UIColor whiteColor] colorWithAlphaComponent:0.055]);
     UIColor *plateBorder = PPModerHomeDynamicColor([[UIColor blackColor] colorWithAlphaComponent:0.045],
@@ -323,8 +323,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
         (__bridge id)surfaceTop.CGColor,
         (__bridge id)surfaceBottom.CGColor
     ];
-    self.surfaceView.backgroundColor = UIColor.whiteColor;
-    [self.surfaceView pp_setBorderColor:AppPrimaryClr];
+    self.surfaceView.backgroundColor = AppForgroundColr;
+    [self.surfaceView pp_setBorderColor:borderColor];
 
     [self pp_applyBottomGlowPalette];
 
@@ -425,7 +425,7 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
                                                             glowY,
                                                             glowDiameter,
                                                             glowDiameter));
-    float corners = glowDiameter * 0.90;
+    float corners = glowDiameter * 0.5;
     self.bottomGlowLayer.cornerRadius = corners;
     [self pp_applyBottomGlowPalette];
     self.layer.shadowPath =

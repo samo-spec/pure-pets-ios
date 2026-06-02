@@ -6,7 +6,8 @@
 //
 
 #import "AccessViewerVC.h"
-#import "AccessoryCollectionViewCell.h"
+#import "PPUniversalCell.h"
+#import "PPUniversalCellViewModel.h"
 #import "PPAdSharingHelper.h"
 #import "CartManager.h"
 #import "PPCommerceFeedbackManager.h"
@@ -782,8 +783,8 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
     self.accessoryCollectionView.showsHorizontalScrollIndicator = NO;
     self.accessoryCollectionView.decelerationRate = UIScrollViewDecelerationRateFast;
     self.accessoryCollectionView.clipsToBounds    = NO;
-    [self.accessoryCollectionView registerClass:[AccessoryCollectionViewCell class]
-                     forCellWithReuseIdentifier:@"AccessoryCollectionViewCell"];
+    [self.accessoryCollectionView registerClass:[PPUniversalCell class]
+                     forCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier];
     [self.suggestionsContainerView addSubview:self.accessoryCollectionView];
 
     // ── Empty-state label ──
@@ -1971,10 +1972,30 @@ static const CGFloat kAVSectionBorderWidth   = 1.0;
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
-    AccessoryCollectionViewCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"AccessoryCollectionViewCell" forIndexPath:indexPath];
+    PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:PPUniversalCell.reuseIdentifier forIndexPath:indexPath];
     if (indexPath.item >= (NSInteger)self.suggestedAccessories.count) return cell;
+
     PetAccessory *accessory = self.suggestedAccessories[indexPath.item];
-    [cell configureWithAccessory:accessory];
+    PPCellContext context = accessory.accessKindType == AccessTypeFood ? PPCellForFood : PPCellForMarket;
+    PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:accessory context:context];
+    cell.showsSubtitle = YES;
+    cell.hideTopBadge = NO;
+    [cell applyViewModel:vm
+                 context:context
+              layoutMode:PPCellLayoutModeSquare
+            discountMode:PPDiscountStyleBadge
+             imageLoader:^(UIImageView *imageView,
+                           NSString *url,
+                           UIImage *placeholder,
+                           UIView *card) {
+        (void)card;
+        UIImage *resolvedPlaceholder = placeholder ?: imageView.image ?: [UIImage imageNamed:@"placeholder"];
+        [[PPImageLoaderManager shared] setImageOnImageView:imageView
+                                                       url:url
+                                               placeholder:resolvedPlaceholder
+                                           transitionStyle:PPImageTransitionStyleNone
+                                                complation:nil];
+    }];
     return cell;
 }
 

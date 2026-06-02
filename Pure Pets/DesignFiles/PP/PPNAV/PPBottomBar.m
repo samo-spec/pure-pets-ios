@@ -270,8 +270,6 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 @property (nonatomic, strong) UIVisualEffectView *blurBackground;
 @property (nonatomic, strong) UIButton *BackgroundB;
 @property (nonatomic, strong) UIView *surfaceTintView;
-@property (nonatomic, strong) UIView *surfaceHighlightView;
-@property (nonatomic, strong) CAGradientLayer *surfaceGradientLayer;
 @property (nonatomic, strong) UIStackView *contentStack;
 @property (nonatomic, strong) UIStackView *priceStack;
 @property (nonatomic, strong) UIView *successHaloView;
@@ -314,7 +312,6 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.BackgroundB.layer.cornerRadius = surfaceRadius;
     self.blurBackground.layer.cornerRadius = surfaceRadius;
     self.surfaceTintView.layer.cornerRadius = surfaceRadius;
-    self.surfaceGradientLayer.frame = self.BackgroundB.bounds;
     self.buttonSheenLayer.frame = self.addToCartButton.bounds;
     [self pp_bringShowCartBadgeToFront];
     if (!self.didRunEntranceAnimation && self.bounds.size.height > 0.0) {
@@ -347,15 +344,11 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 - (void)pp_refreshChromeColors
 {
     BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
-    self.BackgroundB.backgroundColor = PPIOS26() ? [AppBackgroundClr colorWithAlphaComponent:0.8] : PPBBCartSurfaceFillColor();
+    self.BackgroundB.backgroundColor = PPBBCartSurfaceFillColor();
     [self.BackgroundB pp_setBorderColor:PPBBCartSurfaceStrokeColor()];
-    self.surfaceTintView.backgroundColor = PPIOS26() ? AppClearClr : PPBBCartSurfaceTintColor();
-    self.surfaceGradientLayer.colors = @[
-        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.7 : (PPIOS26() ? 0.60 : 0.22)].CGColor,
-        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:legacyIPadBar ? 0.045 : (PPIOS26() ? 0.08 : 0.045)].CGColor,
-        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:legacyIPadBar ? 0.020 : (PPIOS26() ? 0.065 : 0.035)].CGColor
-    ];
-    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.44 : 0.22)];
+    self.surfaceTintView.backgroundColor = legacyIPadBar
+        ? [UIColor colorWithWhite:1.0 alpha:0.04]
+        : PPBBCartSurfaceTintColor();
     self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:legacyIPadBar ? 0.12 : (PPIOS26() ? 0.12 : 0.18)];
 
     self.totalContainer.backgroundColor = PPBBCartBadgeFillColor();
@@ -902,32 +895,14 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
     self.surfaceTintView = [[UIView alloc] init];
     self.surfaceTintView.translatesAutoresizingMaskIntoConstraints = NO;
     self.surfaceTintView.userInteractionEnabled = NO;
-    self.surfaceTintView.backgroundColor =  PPIOS26() ? AppClearClr :PPBBCartSurfaceTintColor();
+    self.surfaceTintView.backgroundColor = PPBBCartSurfaceTintColor();
     self.surfaceTintView.clipsToBounds = YES;
     PPApplyContinuousCorners(self.surfaceTintView, PPBBCartBarCornerRadius());
     [self.BackgroundB addSubview:self.surfaceTintView];
 
-    self.surfaceGradientLayer = [CAGradientLayer layer];
-    self.surfaceGradientLayer.startPoint = CGPointMake(0.18, 0.0);
-    self.surfaceGradientLayer.endPoint = CGPointMake(0.82, 1.0);
-    BOOL legacyIPadBar = PPBBCartUsesLegacyIPadBelowIOS18();
-    self.surfaceGradientLayer.colors = @[
-        (__bridge id)[UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.30 : 0.22)].CGColor,
-        (__bridge id)[PPBBCartColor(AppPrimaryClr, UIColor.systemBlueColor) colorWithAlphaComponent:legacyIPadBar ? 0.035 : (PPIOS26() ? 0.08 : 0.045)].CGColor,
-        (__bridge id)[UIColor.blackColor colorWithAlphaComponent:legacyIPadBar ? 0.020 : (PPIOS26() ? 0.045 : 0.035)].CGColor
-    ];
-    self.surfaceGradientLayer.locations = @[@0.0, @0.56, @1.0];
-    [self.surfaceTintView.layer addSublayer:self.surfaceGradientLayer];
-
-    self.surfaceHighlightView = [[UIView alloc] init];
-    self.surfaceHighlightView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.surfaceHighlightView.userInteractionEnabled = NO;
-    self.surfaceHighlightView.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:legacyIPadBar ? 0.08 : (PPIOS26() ? 0.34 : 0.22)];
-    [self.BackgroundB addSubview:self.surfaceHighlightView];
-
     self.separator = [[UIView alloc] init];
     self.separator.translatesAutoresizingMaskIntoConstraints = NO;
-    self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:legacyIPadBar ? 0.12 : (PPIOS26() ? 0.12 : 0.18)];
+    self.separator.backgroundColor = [UIColor.separatorColor colorWithAlphaComponent:(PPIOS26() ? 0.12 : 0.18)];
     [self.BackgroundB addSubview:self.separator];
 
     CGFloat horizontalInset = PPBBCartSurfaceHorizontalInset();
@@ -952,11 +927,6 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         [self.surfaceTintView.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor],
         [self.surfaceTintView.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor],
         [self.surfaceTintView.bottomAnchor constraintEqualToAnchor:self.BackgroundB.bottomAnchor],
-
-        [self.surfaceHighlightView.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
-        [self.surfaceHighlightView.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceXL],
-        [self.surfaceHighlightView.trailingAnchor constraintEqualToAnchor:self.BackgroundB.trailingAnchor constant:-PPSpaceXL],
-        [self.surfaceHighlightView.heightAnchor constraintEqualToConstant:0.8],
 
         [self.separator.topAnchor constraintEqualToAnchor:self.BackgroundB.topAnchor],
         [self.separator.leadingAnchor constraintEqualToAnchor:self.BackgroundB.leadingAnchor constant:PPSpaceXL],
@@ -1606,6 +1576,8 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         
     }
     _items = tabbaritemsArr;
+    self.tabBar.itemPositioning = UITabBarItemPositioningFill;
+    self.tabBar.itemSpacing = 0.0;
     self.tabBar.items = _items;
     
     // FIX: Force layout so titles do not disappear
@@ -1678,7 +1650,7 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
         NSDictionary<NSAttributedStringKey, id> *clearSelectedTitle =
         @{ NSForegroundColorAttributeName: [AppPrimaryClr colorWithAlphaComponent:1.0] ,
-           NSFontAttributeName: [GM boldFontWithSize:12]};
+           NSFontAttributeName: [GM boldFontWithSize:10.5]};
 
         appearance.stackedLayoutAppearance.selected.titleTextAttributes = clearSelectedTitle;
         appearance.inlineLayoutAppearance.selected.titleTextAttributes = clearSelectedTitle;
@@ -1686,10 +1658,16 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
 
         NSDictionary<NSAttributedStringKey, id> *normalTitle =
         @{ NSForegroundColorAttributeName: AppButtonMixColorClr ,
-           NSFontAttributeName: [GM boldFontWithSize:12]};
+           NSFontAttributeName: [GM MidFontWithSize:10.5]};
         appearance.stackedLayoutAppearance.normal.titleTextAttributes = normalTitle;
         appearance.inlineLayoutAppearance.normal.titleTextAttributes = normalTitle;
         appearance.compactInlineLayoutAppearance.normal.titleTextAttributes = normalTitle;
+        appearance.stackedLayoutAppearance.normal.titlePositionAdjustment = UIOffsetMake(0.0, -1.0);
+        appearance.stackedLayoutAppearance.selected.titlePositionAdjustment = UIOffsetMake(0.0, -1.0);
+        appearance.inlineLayoutAppearance.normal.titlePositionAdjustment = UIOffsetMake(0.0, -1.0);
+        appearance.inlineLayoutAppearance.selected.titlePositionAdjustment = UIOffsetMake(0.0, -1.0);
+        appearance.compactInlineLayoutAppearance.normal.titlePositionAdjustment = UIOffsetMake(0.0, -1.0);
+        appearance.compactInlineLayoutAppearance.selected.titlePositionAdjustment = UIOffsetMake(0.0, -1.0);
         
     
 
@@ -1910,18 +1888,23 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         UIButtonConfiguration *cfg = [UIButtonConfiguration plainButtonConfiguration];
         cfg.image = img;
         cfg.imagePlacement = _hideTitles ? NSDirectionalRectEdgeAll : NSDirectionalRectEdgeTop;
-        cfg.imagePadding = 4;
+        cfg.imagePadding = 2;
         cfg.background.backgroundColor = UIColor.clearColor;
-         cfg.contentInsets = NSDirectionalEdgeInsetsMake(4, 4, 4, 4);
+        cfg.contentInsets = NSDirectionalEdgeInsetsMake(3, 1, 3, 1);
+        cfg.titleLineBreakMode = NSLineBreakByClipping;
 
         if(_hideTitles == NO)
         {
+            NSMutableParagraphStyle *paragraph = [[NSMutableParagraphStyle alloc] init];
+            paragraph.alignment = NSTextAlignmentCenter;
+            paragraph.lineBreakMode = NSLineBreakByClipping;
             // Title styling (separate text color)
             NSAttributedString *attrTitle =
             [[NSAttributedString alloc] initWithString:title
                                             attributes:@{
-                NSFontAttributeName: [GM MidFontWithSize:12],
-                NSForegroundColorAttributeName: AppPrimaryTextClr
+                NSFontAttributeName: [GM MidFontWithSize:10.5],
+                NSForegroundColorAttributeName: AppPrimaryTextClr,
+                NSParagraphStyleAttributeName: paragraph
             }];
             cfg.attributedTitle = attrTitle;
         }
@@ -1932,6 +1915,12 @@ static NSDictionary *PPBBCartRetintedLottieJSON(NSDictionary *jsonDict) {
         btn.translatesAutoresizingMaskIntoConstraints = NO;
         btn.configuration = cfg;
         btn.accessibilityIdentifier = iconName; // <– add this line
+        btn.titleLabel.numberOfLines = 1;
+        btn.titleLabel.adjustsFontSizeToFitWidth = YES;
+        btn.titleLabel.minimumScaleFactor = 0.62;
+        btn.titleLabel.lineBreakMode = NSLineBreakByClipping;
+        btn.titleLabel.textAlignment = NSTextAlignmentCenter;
+        btn.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
 
         // Tint color fallback (for iOS < 15)
         [btn.titleLabel setTextColor:AppPrimaryTextClr];
