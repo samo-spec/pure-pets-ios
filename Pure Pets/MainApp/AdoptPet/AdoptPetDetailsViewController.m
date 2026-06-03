@@ -10,6 +10,11 @@
 #import "GM.h"
 #import "UserContactView.h"
 #import <QuartzCore/QuartzCore.h>
+#import <AVKit/AVKit.h>
+#import "EnumValues.h"
+#import "FullScreenImageViewerController.h"
+
+static NSInteger const PPAdoptGalleryVideoBadgeTag = 81042;
 
 static NSString *PPAdoptTrimmedString(id value)
 {
@@ -22,6 +27,17 @@ static NSString *PPAdoptTrimmedString(id value)
 static NSString *PPAdoptDisplayValue(NSString *value)
 {
     return value.length > 0 ? value : @"-";
+}
+
+static NSString *PPAdoptMediaStringValue(id value)
+{
+    if ([value isKindOfClass:NSString.class]) {
+        return (NSString *)value;
+    }
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)value stringValue];
+    }
+    return @"";
 }
 
 static NSString *PPAdoptAgeValue(NSInteger months)
@@ -48,6 +64,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 
 @interface PPAdoptGalleryCell : UICollectionViewCell
 @property (nonatomic, strong) UIImageView *imageView;
+- (void)configureVideoBadgeVisible:(BOOL)visible;
 @end
 
 @implementation PPAdoptGalleryCell
@@ -77,6 +94,35 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 - (void)prepareForReuse {
     [super prepareForReuse];
     self.imageView.image = nil;
+    [self configureVideoBadgeVisible:NO];
+}
+
+- (void)configureVideoBadgeVisible:(BOOL)visible
+{
+    UIView *existing = [self.contentView viewWithTag:PPAdoptGalleryVideoBadgeTag];
+    if (!visible) {
+        [existing removeFromSuperview];
+        return;
+    }
+    if (existing) {
+        existing.hidden = NO;
+        return;
+    }
+    UIImageView *badge = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"play.circle.fill"]];
+    badge.tag = PPAdoptGalleryVideoBadgeTag;
+    badge.translatesAutoresizingMaskIntoConstraints = NO;
+    badge.tintColor = UIColor.whiteColor;
+    badge.contentMode = UIViewContentModeScaleAspectFit;
+    badge.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.20];
+    badge.layer.cornerRadius = 24.0;
+    badge.clipsToBounds = YES;
+    [self.contentView addSubview:badge];
+    [NSLayoutConstraint activateConstraints:@[
+        [badge.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [badge.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
+        [badge.widthAnchor constraintEqualToConstant:48.0],
+        [badge.heightAnchor constraintEqualToConstant:48.0]
+    ]];
 }
 
 @end
@@ -215,6 +261,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 @property (nonatomic, strong) UIStackView *contentStack;
 @property (nonatomic, strong) UIView *heroContainer;
 @property (nonatomic, strong) UICollectionView *imagesCV;
+@property (nonatomic, strong) NSArray<NSDictionary *> *mediaItems;
 @property (nonatomic, strong) NSLayoutConstraint *imagesHeightConstraint;
 @property (nonatomic, strong) UIView *heroShadeView;
 @property (nonatomic, strong) CAGradientLayer *heroGradientLayer;
@@ -254,6 +301,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
     self.view.semanticContentAttribute = GM.setSemantic;
 
+    [self pp_buildMediaItems];
     [self pp_buildFactItems];
     [self pp_setupScrollView];
     [self pp_setupHero];
@@ -278,6 +326,42 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 }
 
 #pragma mark - Build Data
+
+- (void)pp_buildMediaItems
+{
+    NSMutableArray<NSDictionary *> *items = [NSMutableArray array];
+    if (PPReusableVideoMediaEnabled() && [self.model.imageMeta isKindOfClass:NSArray.class]) {
+        for (NSDictionary *meta in self.model.imageMeta) {
+            if (![meta isKindOfClass:NSDictionary.class]) {
+                continue;
+            }
+            NSString *type = [PPAdoptMediaStringValue(meta[@"media_type"]) lowercaseString];
+            BOOL isVideo = [type isEqualToString:@"video"];
+            NSString *displayURL = isVideo ? PPAdoptMediaStringValue(meta[@"thumbnail_url"]) : PPAdoptMediaStringValue(meta[@"url"]);
+            if (displayURL.length == 0) {
+                displayURL = PPAdoptMediaStringValue(meta[@"url"]);
+            }
+            if (displayURL.length == 0) {
+                continue;
+            }
+            [items addObject:@{
+                @"media_type": isVideo ? @"video" : @"image",
+                @"display_url": displayURL,
+                @"video_url": isVideo ? PPAdoptMediaStringValue(meta[@"url"]) : @""
+            }];
+        }
+    }
+
+    if (items.count == 0) {
+        for (NSString *url in self.model.imageURLs) {
+            NSString *cleanURL = PPAdoptTrimmedString(url);
+            if (cleanURL.length > 0) {
+                [items addObject:@{@"media_type": @"image", @"display_url": cleanURL, @"video_url": @""}];
+            }
+        }
+    }
+    self.mediaItems = items.copy;
+}
 
 - (void)pp_buildFactItems {
     NSString *kind = [MainKindsModel kindNameForID:self.model.kindID] ?: @"-";
@@ -676,7 +760,7 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     }
     self.detailsBodyLabel.attributedText = [self pp_bodyText:details];
 
-    NSInteger pageCount = MAX(self.model.imageURLs.count, 1);
+    NSInteger pageCount = MAX(self.mediaItems.count, 1);
     self.pageControl.numberOfPages = pageCount;
     self.pageControl.currentPage = 0;
     self.pageControl.hidden = (pageCount < 2);
@@ -815,13 +899,16 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
 #pragma mark - UICollectionViewDataSource
 
 - (NSInteger)collectionView:(UICollectionView *)collectionView numberOfItemsInSection:(NSInteger)section {
-    return MAX(self.model.imageURLs.count, 1);
+    return MAX(self.mediaItems.count, 1);
 }
 
 - (__kindof UICollectionViewCell *)collectionView:(UICollectionView *)collectionView cellForItemAtIndexPath:(NSIndexPath *)indexPath {
     PPAdoptGalleryCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PPAdoptGalleryCell" forIndexPath:indexPath];
 
-    NSString *imageURL = (indexPath.item < self.model.imageURLs.count) ? PPAdoptTrimmedString(self.model.imageURLs[indexPath.item]) : @"";
+    NSDictionary *media = (indexPath.item < self.mediaItems.count) ? self.mediaItems[indexPath.item] : nil;
+    NSString *imageURL = PPAdoptMediaStringValue(media[@"display_url"]);
+    BOOL isVideo = PPReusableVideoMediaEnabled() && [PPAdoptMediaStringValue(media[@"media_type"]) isEqualToString:@"video"];
+    [cell configureVideoBadgeVisible:isVideo];
     if (imageURL.length > 0) {
         [GM setImageFromFirebaseURLString:imageURL
                                 imageView:cell.imageView
@@ -833,6 +920,27 @@ static NSString *PPAdoptCreatedValue(NSDate *date)
     }
 
     return cell;
+}
+
+- (void)collectionView:(UICollectionView *)collectionView didSelectItemAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (indexPath.item >= self.mediaItems.count) {
+        return;
+    }
+    NSDictionary *media = self.mediaItems[indexPath.item];
+    BOOL isVideo = PPReusableVideoMediaEnabled() && [PPAdoptMediaStringValue(media[@"media_type"]) isEqualToString:@"video"];
+    NSString *videoURLString = PPAdoptMediaStringValue(media[@"video_url"]);
+    if (!isVideo || videoURLString.length == 0) {
+        return;
+    }
+    NSURL *videoURL = [NSURL URLWithString:videoURLString];
+    if (!videoURL) {
+        return;
+    }
+    PPPremiumVideoPlayerViewController *playerVC =
+    [[PPPremiumVideoPlayerViewController alloc] initWithURL:videoURL];
+    UIViewController *presenter = AppMgr.topViewController ?: self;
+    [presenter presentViewController:playerVC animated:YES completion:nil];
 }
 
 #pragma mark - UICollectionViewDelegateFlowLayout

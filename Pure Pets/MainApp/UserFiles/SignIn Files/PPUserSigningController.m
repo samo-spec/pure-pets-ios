@@ -9,6 +9,8 @@
 #import "PPUserSigningController.h"
 #import "CitiesManager.h"
 #import "CountryModel.h"
+#import "PPRootTabBarController.h"
+#import "PPAuthScaffoldView.h"
 
 static NSString * const kPPUsersCollection = @"UsersCol";
 static NSString * const kPPDefaultsAuthVerificationIDKey = @"authVerificationID";
@@ -17,6 +19,7 @@ static NSString * const kPPFirestoreUserNameField = @"UserName";
 static NSString * const kPPSheetCustomMediumDetentIdentifier = @"pp_auth_custom_medium";
 static NSUInteger const kPPMinimumPhoneDigits = 6;
 static NSTimeInterval const kPPSMSCooldownSeconds = 30.0;
+static NSTimeInterval const kPPPhoneVerificationStartTimeoutSeconds = 30.0;
 static NSInteger const kPPAppleSignInMaxRetryCount = 1;
 static NSInteger const kPPGoogleSignInConfigMissingCode = 1010;
 static NSString * const kPPGoogleSignInClientIDKey = @"GIDClientID";
@@ -48,6 +51,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIStackView *containerStack;
 @property (nonatomic, strong) UIView *backgroundView;
+@property (nonatomic, strong) PPAuthScaffoldView *authScaffoldView;
 @property (nonatomic, strong) UIView *backgroundTopGlowView;
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 @property (nonatomic, strong) UIView *phoneSectionCard;
@@ -56,6 +60,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 @property (nonatomic, strong) UIView *heroBadgeView;
 @property (nonatomic, strong) UIImageView *heroBadgeIconView;
 @property (nonatomic, strong) UILabel *heroBadgeLabel;
+@property (nonatomic, strong) PPAuthStepIndicatorView *stepIndicatorView;
 
 // Header
 @property (nonatomic, strong) UILabel *titleLabel;
@@ -83,6 +88,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
 @property (nonatomic, assign) BOOL keyboardObserversRegistered;
 @property (nonatomic, assign) BOOL shouldFocusPhoneFieldOnAppear;
 @property (nonatomic, assign) BOOL isAuthenticating;
+@property (nonatomic, assign) BOOL isRequestingPhoneVerification;
+@property (nonatomic, assign) NSUInteger phoneVerificationRequestToken;
 @property (nonatomic, assign) NSInteger appleSignInRetryCount;
 @property (nonatomic, assign) NSInteger phoneCooldownRemaining;
 @property (nonatomic, strong, nullable) NSTimer *phoneCooldownTimer;
@@ -115,6 +122,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    self.navigationItem.hidesBackButton = YES;
     [self setupView];
     [self setupConstraints];
     self.shouldFocusPhoneFieldOnAppear = YES;
@@ -152,73 +160,40 @@ static inline void PPDispatchMain(void (^block)(void)) {
     
     // Create UI hierarchy
     [self createUI];
+    [self pp_configureNavigationChrome];
 }
 
 - (void)setupBackground {
-    if (@available(iOS 26.0, *))
-    {
-        self.view.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
-    }
-    else if (@available(iOS 15.0, *)) {
-        UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
-        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-        blurView.frame = self.view.bounds;
-        blurView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        blurView.alpha = 0.92;
-        [self.view addSubview:blurView];
-        self.backgroundView = blurView;
-    } else {
-        self.view.backgroundColor = PPBackgroundColorForIOS26([UIColor systemBackgroundColor]);
-    }
+    self.authScaffoldView = [[PPAuthScaffoldView alloc] initWithFrame:self.view.bounds];
+    self.authScaffoldView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.authScaffoldView.topAccentView.hidden = YES;
+    [self.view addSubview:self.authScaffoldView];
+    self.backgroundView = self.authScaffoldView;
 }
 
 - (void)setupAmbientBackground {
     self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundTopGlowView.userInteractionEnabled = NO;
-    self.backgroundTopGlowView.alpha = 0.94;
+    self.backgroundTopGlowView.alpha = 0.0;
+    self.backgroundTopGlowView.hidden = YES;
     [self.view addSubview:self.backgroundTopGlowView];
 
     self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundBottomGlowView.userInteractionEnabled = NO;
-    self.backgroundBottomGlowView.alpha = 0.82;
+    self.backgroundBottomGlowView.alpha = 0.28;
     [self.view addSubview:self.backgroundBottomGlowView];
+    [self.backgroundTopGlowView pp_setShadowColor:[AppPrimaryClr colorWithAlphaComponent:0.45]];
+    self.backgroundTopGlowView.layer.shadowOpacity = 0.20;
+    self.backgroundTopGlowView.layer.shadowRadius = 72.0;
+    self.backgroundTopGlowView.layer.shadowOffset = CGSizeZero;
+    [self.backgroundBottomGlowView pp_setShadowColor:[[UIColor systemBlueColor] colorWithAlphaComponent:0.25]];
+    self.backgroundBottomGlowView.layer.shadowOpacity = 0.16;
+    self.backgroundBottomGlowView.layer.shadowRadius = 78.0;
+    self.backgroundBottomGlowView.layer.shadowOffset = CGSizeZero;
 }
 
 - (void)configureModalPresentation {
-    CGFloat height = UIScreen.mainScreen.bounds.size.height;
-    
-    UISheetPresentationControllerDetent *customMedium = [UISheetPresentationControllerDetent mediumDetent];
-    if (@available(iOS 16.0, *)) {
-        customMedium = [UISheetPresentationControllerDetent customDetentWithIdentifier:kPPSheetCustomMediumDetentIdentifier
-                                                                              resolver:^CGFloat(id<UISheetPresentationControllerDetentResolutionContext> context) {
-            return height * 0.80; // your custom medium height
-        }];
-    } else {
-        // Fallback on earlier versions
-    }
-    switch (self.presentationStyle) {
-        case PPUserSigningPresentationStyleSheet:
-            if (@available(iOS 15.0, *)) {
-                self.modalPresentationStyle = UIModalPresentationPageSheet;
-                UISheetPresentationController *sheet = self.sheetPresentationController;
-                sheet.detents = @[customMedium];
-                sheet.prefersGrabberVisible = YES;
-                sheet.preferredCornerRadius = 42.0;
-                sheet.prefersScrollingExpandsWhenScrolledToEdge = NO;
-                if (@available(iOS 16.0, *)) {
-                    sheet.selectedDetentIdentifier = kPPSheetCustomMediumDetentIdentifier;
-                }
-                
-            } else {
-                self.modalPresentationStyle = UIModalPresentationFormSheet;
-                self.modalInPresentation  = NO;
-            }
-            break;
-            
-        case PPUserSigningPresentationStyleFullScreen:
-            self.modalPresentationStyle = UIModalPresentationFullScreen;
-            break;
-    }
+    self.modalPresentationStyle = UIModalPresentationFullScreen;
     self.modalInPresentation  = NO;
 }
 
@@ -243,6 +218,11 @@ static inline void PPDispatchMain(void (^block)(void)) {
     
     // Header
     [self setupHeader];
+
+    self.stepIndicatorView = [[PPAuthStepIndicatorView alloc] initWithStepTitles:[PPAuthScaffoldView defaultStepTitles]];
+    [self.stepIndicatorView updateCurrentStepIndex:0 completedStepIndex:-1 animated:NO];
+    [self.containerStack addArrangedSubview:self.stepIndicatorView];
+    [self.stepIndicatorView.heightAnchor constraintEqualToConstant:64.0].active = YES;
     
     // Phone Auth Section
     [self setupPhoneAuthSection];
@@ -260,62 +240,57 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
 
 - (void)setupHeader {
-    UIStackView *headerStack = [[UIStackView alloc] init];
-    headerStack.axis = UILayoutConstraintAxisVertical;
-    headerStack.spacing = 12;
-    headerStack.alignment = UIStackViewAlignmentCenter;
+    UIStackView *headerStack =
+    [PPAuthScaffoldView headerStackWithTitle:kLang(@"auth_title_welcome")
+                                    subtitle:kLang(@"auth_subtitle_continue")
+                                     eyebrow:nil];
+    self.titleLabel = (UILabel *)(headerStack.arrangedSubviews.count > 0 ? headerStack.arrangedSubviews[0] : nil);
+    self.subtitleLabel = (UILabel *)(headerStack.arrangedSubviews.count > 1 ? headerStack.arrangedSubviews[1] : nil);
+    self.heroBadgeView = nil;
+}
 
-    self.heroBadgeView = [[UIView alloc] initWithFrame:CGRectZero];
-    self.heroBadgeView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroBadgeView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.16 : 0.74];
-    self.heroBadgeView.layer.cornerRadius = 20.0;
-    self.heroBadgeView.layer.masksToBounds = YES;
+- (void)pp_configureNavigationChrome {
+    self.navigationController.navigationBarHidden = NO;
+    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+    [appearance configureWithTransparentBackground];
+    appearance.backgroundColor = UIColor.clearColor;
+    appearance.shadowColor = UIColor.clearColor;
+    self.navigationController.navigationBar.standardAppearance = appearance;
+    self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
+    self.navigationController.navigationBar.compactAppearance = appearance;
+    self.navigationController.navigationBar.tintColor = AppPrimaryClr ?: UIColor.labelColor;
 
-    self.heroBadgeIconView = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"sparkles"]];
-    self.heroBadgeIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroBadgeIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.heroBadgeIconView.tintColor = AppPrimaryClr;
-    [self.heroBadgeView addSubview:self.heroBadgeIconView];
+    UIStackView *titleStack = [[UIStackView alloc] init];
+    titleStack.axis = UILayoutConstraintAxisVertical;
+    titleStack.alignment = UIStackViewAlignmentCenter;
+    titleStack.spacing = 1.0;
 
-    self.heroBadgeLabel = [[UILabel alloc] init];
-    self.heroBadgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.heroBadgeLabel.text = kLang(@"auth_phone_live_hint");
-    self.heroBadgeLabel.font = [GM boldFontWithSize:13];
-    self.heroBadgeLabel.textColor = UIColor.labelColor;
-    [self.heroBadgeView addSubview:self.heroBadgeLabel];
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.text = kLang(@"auth_title_welcome");
+    titleLabel.font = [GM boldFontWithSize:18.0] ?: [UIFont systemFontOfSize:18.0 weight:UIFontWeightBold];
+    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
+    titleLabel.textAlignment = NSTextAlignmentCenter;
 
-    [NSLayoutConstraint activateConstraints:@[
-        [self.heroBadgeIconView.leadingAnchor constraintEqualToAnchor:self.heroBadgeView.leadingAnchor constant:12],
-        [self.heroBadgeIconView.centerYAnchor constraintEqualToAnchor:self.heroBadgeView.centerYAnchor],
-        [self.heroBadgeIconView.widthAnchor constraintEqualToConstant:14],
-        [self.heroBadgeIconView.heightAnchor constraintEqualToConstant:14],
-        [self.heroBadgeLabel.leadingAnchor constraintEqualToAnchor:self.heroBadgeIconView.trailingAnchor constant:8],
-        [self.heroBadgeLabel.trailingAnchor constraintEqualToAnchor:self.heroBadgeView.trailingAnchor constant:-14],
-        [self.heroBadgeLabel.topAnchor constraintEqualToAnchor:self.heroBadgeView.topAnchor constant:10],
-        [self.heroBadgeLabel.bottomAnchor constraintEqualToAnchor:self.heroBadgeView.bottomAnchor constant:-10]
-    ]];
-    
-    // Title Label
-    self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.text = kLang(@"auth_title_welcome");
-    self.titleLabel.font = [GM boldFontWithSize:32];
-    self.titleLabel.textColor = [UIColor labelColor];
-    self.titleLabel.textAlignment = NSTextAlignmentCenter;
-    self.titleLabel.numberOfLines = 0;
-    
-    // Subtitle Label
-    self.subtitleLabel = [[UILabel alloc] init];
-    self.subtitleLabel.text = kLang(@"auth_subtitle_continue");
-    self.subtitleLabel.font = [GM MidFontWithSize:16];
-    self.subtitleLabel.textColor = [UIColor secondaryLabelColor];
-    self.subtitleLabel.textAlignment = NSTextAlignmentCenter;
-    self.subtitleLabel.numberOfLines = 0;
-    self.subtitleLabel.alpha = 0.92;
-    
-    [headerStack addArrangedSubview:self.heroBadgeView];
-    [headerStack addArrangedSubview:self.titleLabel];
-    [headerStack addArrangedSubview:self.subtitleLabel];
-    [self.containerStack addArrangedSubview:headerStack];
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.text = kLang(@"auth_subtitle_continue");
+    subtitleLabel.font = [GM MidFontWithSize:11.0] ?: [UIFont systemFontOfSize:11.0 weight:UIFontWeightMedium];
+    subtitleLabel.textColor = UIColor.secondaryLabelColor;
+    subtitleLabel.textAlignment = NSTextAlignmentCenter;
+
+    [titleStack addArrangedSubview:titleLabel];
+    [titleStack addArrangedSubview:subtitleLabel];
+    self.navigationItem.titleView = titleStack;
+    self.titleLabel = titleLabel;
+    self.subtitleLabel = subtitleLabel;
+
+    if (self.presentationStyle == PPUserSigningPresentationStyleSheet) {
+        UIBarButtonItem *closeItem = [[UIBarButtonItem alloc] initWithTitle:kLang(@"Maybe Later")
+                                                                      style:UIBarButtonItemStylePlain
+                                                                     target:self
+                                                                     action:@selector(handleClose)];
+        closeItem.tintColor = UIColor.secondaryLabelColor;
+        self.navigationItem.leftBarButtonItem = closeItem;
+    }
 }
 
 
@@ -329,27 +304,11 @@ static inline void PPDispatchMain(void (^block)(void)) {
     UIColor *subtleBorder = [AppPrimaryClr colorWithAlphaComponent:0.16];
 
     if (self.phoneSectionCard) {
-        self.phoneSectionCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98];
-        self.phoneSectionCard.layer.cornerRadius = 28.0;
-        self.phoneSectionCard.layer.borderWidth = 1.0;
-        self.phoneSectionCard.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.08].CGColor;
-        self.phoneSectionCard.layer.masksToBounds = YES;
+        [PPAuthScaffoldView applyPremiumCardStyleToView:self.phoneSectionCard];
     }
 
     if (self.socialSectionCard) {
-        self.socialSectionCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.98];
-        self.socialSectionCard.layer.cornerRadius = 26.0;
-        self.socialSectionCard.layer.borderWidth = 1.0;
-        self.socialSectionCard.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.07].CGColor;
-        self.socialSectionCard.layer.masksToBounds = YES;
-    }
-
-    if (self.heroBadgeView) {
-        self.heroBadgeView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.92];
-        self.heroBadgeView.layer.cornerRadius = 20.0;
-        self.heroBadgeView.layer.borderWidth = 1.0;
-        self.heroBadgeView.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.08].CGColor;
-        self.heroBadgeView.layer.masksToBounds = YES;
+        [PPAuthScaffoldView applyPremiumCardStyleToView:self.socialSectionCard];
     }
 
     if (self.countryCodePickerBtn) {
@@ -373,38 +332,16 @@ static inline void PPDispatchMain(void (^block)(void)) {
     }
 
     if (self.phoneNumberField) {
-        self.phoneNumberField.backgroundColor = fieldBackground;
-        self.phoneNumberField.layer.cornerRadius = controlCornerRadius;
-        self.phoneNumberField.layer.borderWidth = 1.0;
-        self.phoneNumberField.layer.borderColor = subtleBorder.CGColor;
-        self.phoneNumberField.layer.masksToBounds = YES;
+        [PPAuthScaffoldView applyInputStyleToView:self.phoneNumberField];
     }
 
     if (self.continuePhoneButton) {
         BOOL enabled = self.continuePhoneButton.enabled;
-        UIColor *buttonBackground = enabled ? AppPrimaryClr : [AppPrimaryClr colorWithAlphaComponent:0.10];
-        UIColor *buttonTextColor = enabled ? UIColor.whiteColor : [AppPrimaryClr colorWithAlphaComponent:0.64];
-        UIButtonConfiguration *config = self.continuePhoneButton.configuration;
-        config.background.backgroundColor = buttonBackground;
-        config.background.cornerRadius = controlCornerRadius;
-        config.baseForegroundColor = buttonTextColor;
-        config.contentInsets = NSDirectionalEdgeInsetsMake(0, 18, 0, 18);
-        config.titleAlignment = UIButtonConfigurationTitleAlignmentCenter;
-        self.continuePhoneButton.configuration = config;
-        self.continuePhoneButton.backgroundColor = buttonBackground;
-        self.continuePhoneButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
-        self.continuePhoneButton.layer.cornerRadius = controlCornerRadius;
-        self.continuePhoneButton.layer.borderWidth = enabled ? 0.0 : 1.0;
-        self.continuePhoneButton.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.28].CGColor;
-        self.continuePhoneButton.layer.masksToBounds = YES;
-        self.continuePhoneButton.alpha = 1.0;
+        [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continuePhoneButton enabled:enabled loading:self.isAuthenticating];
     }
 
     if (self.closeButton) {
-        self.closeButton.layer.cornerRadius = 22.0;
-        self.closeButton.layer.borderWidth = 1.0;
-        self.closeButton.layer.borderColor = [AppPrimaryClr colorWithAlphaComponent:0.08].CGColor;
-        self.closeButton.layer.masksToBounds = YES;
+        [PPAuthScaffoldView applySecondaryButtonStyleToButton:self.closeButton];
     }
 }
 
@@ -469,6 +406,13 @@ static inline void PPDispatchMain(void (^block)(void)) {
 -(void)viewWillDisappear:(BOOL)animated
 {
     [super viewWillDisappear:animated];
+    if (self.isRequestingPhoneVerification) {
+        self.phoneVerificationRequestToken += 1;
+        self.isRequestingPhoneVerification = NO;
+        self.isAuthenticating = NO;
+        [self setInteractionEnabled:YES];
+        [self updateContinuePhoneButtonState];
+    }
     [PPHUD dismiss];
     if (self.keyboardObserversRegistered) {
         [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
@@ -488,21 +432,21 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
     CGFloat width = CGRectGetWidth(self.view.bounds);
     CGFloat height = CGRectGetHeight(self.view.bounds);
-    CGFloat topGlowSize = MIN(240.0, width * 0.56);
-    CGFloat bottomGlowSize = MIN(220.0, width * 0.52);
+    CGFloat topGlowSize = MIN(380.0, MAX(240.0, width * 0.82));
+    CGFloat bottomGlowSize = MIN(340.0, MAX(220.0, width * 0.72));
 
-    self.backgroundTopGlowView.frame = CGRectMake(-48.0,
-                                                  self.view.safeAreaInsets.top - 30.0,
+    self.backgroundTopGlowView.frame = CGRectMake(width - topGlowSize * 0.50,
+                                                  self.view.safeAreaInsets.top - topGlowSize * 0.28,
                                                   topGlowSize,
                                                   topGlowSize);
-    self.backgroundBottomGlowView.frame = CGRectMake(width - bottomGlowSize + 44.0,
-                                                     MAX(self.view.safeAreaInsets.top + 220.0, height * 0.42),
+    self.backgroundBottomGlowView.frame = CGRectMake(-bottomGlowSize * 0.52,
+                                                     MAX(self.view.safeAreaInsets.top + 300.0, height * 0.58),
                                                      bottomGlowSize,
                                                      bottomGlowSize);
     self.backgroundTopGlowView.layer.cornerRadius = topGlowSize * 0.5;
     self.backgroundBottomGlowView.layer.cornerRadius = bottomGlowSize * 0.5;
-    self.backgroundTopGlowView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.12];
-    self.backgroundBottomGlowView.backgroundColor = [[UIColor systemBlueColor] colorWithAlphaComponent:PPIOS26() ? 0.12 : 0.08];
+    self.backgroundTopGlowView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.22 : 0.16];
+    self.backgroundBottomGlowView.backgroundColor = [[UIColor systemBlueColor] colorWithAlphaComponent:PPIOS26() ? 0.13 : 0.09];
 
     if (@available(iOS 26.0, *)) {
         if (self.heroBadgeView) {
@@ -618,9 +562,9 @@ static inline void PPDispatchMain(void (^block)(void)) {
     
     // Continue Button
     self.continuePhoneButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"Continue with Mobile") font:[GM boldFontWithSize:17] textColor:[AppForgroundColr colorWithAlphaComponent:1.0] corners:18 imageName:@"" target:self config:glassConfig btnSize:56 action:@selector(handlePhoneSignIn)];
-    self.continuePhoneButton.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:1.0];
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continuePhoneButton enabled:NO loading:NO];
     [self setContinuePhoneButtonTitle:kLang(@"Continue with Mobile")];
-    [self pp_addPressAnimationToButton:self.continuePhoneButton];
+    [PPAuthScaffoldView addPressMotionToControl:self.continuePhoneButton];
 
     UILabel *phoneSectionTitleLabel = [[UILabel alloc] init];
     phoneSectionTitleLabel.text = kLang(@"login_with_phone");
@@ -641,9 +585,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
     self.phoneSectionCard = [[UIView alloc] initWithFrame:CGRectZero];
     self.phoneSectionCard.translatesAutoresizingMaskIntoConstraints = NO;
-    self.phoneSectionCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.54 : 0.98];
-    self.phoneSectionCard.layer.cornerRadius = 28.0;
-    self.phoneSectionCard.layer.masksToBounds = YES;
+    [PPAuthScaffoldView applyPremiumCardStyleToView:self.phoneSectionCard];
     [self.phoneSectionCard addSubview:phoneSectionStack];
     [self.containerStack addArrangedSubview:self.phoneSectionCard];
 
@@ -728,9 +670,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
     self.socialSectionCard = [[UIView alloc] initWithFrame:CGRectZero];
     self.socialSectionCard.translatesAutoresizingMaskIntoConstraints = NO;
-    self.socialSectionCard.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.50 : 0.98];
-    self.socialSectionCard.layer.cornerRadius = 26.0;
-    self.socialSectionCard.layer.masksToBounds = YES;
+    [PPAuthScaffoldView applyPremiumCardStyleToView:self.socialSectionCard];
     [self.socialSectionCard addSubview:socialSectionStack];
     [self.containerStack addArrangedSubview:self.socialSectionCard];
 
@@ -745,17 +685,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
 - (void)setupCloseButton {
     if (self.presentationStyle == PPUserSigningPresentationStyleSheet) {
-        UIButtonConfiguration *glassConfig;
-        if (@available(iOS 26.0, *)) {
-            glassConfig = [UIButtonConfiguration clearGlassButtonConfiguration];
-        } else {
-            glassConfig = [UIButtonConfiguration filledButtonConfiguration];
-        }
-        glassConfig.background.backgroundColor = [AppBackgroundClrLigter colorWithAlphaComponent:0.2];
-        
-        self.closeButton = [PPButtonHelper pp_buttonWithTitle:kLang(@"Maybe Later") font:[GM MidFontWithSize:16] textColor:[UIColor secondaryLabelColor] corners:18 imageName:@"" target:self config:glassConfig btnSize:56 action:@selector(handleClose)];
-        self.closeButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.70];
-        [self.containerStack addArrangedSubview:self.closeButton];
+        self.closeButton = nil;
     }
 }
 
@@ -766,9 +696,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     textField.translatesAutoresizingMaskIntoConstraints = NO;
     textField.font = [GM boldFontWithSize:18];
     textField.textColor = [UIColor labelColor];
-    textField.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.94];
-    textField.layer.cornerRadius = 18;
-    textField.clipsToBounds = YES;
+    [PPAuthScaffoldView applyInputStyleToView:textField];
     textField.keyboardType =  UIKeyboardTypeASCIICapable;
     textField.textAlignment = NSTextAlignmentLeft;
     textField.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
@@ -814,7 +742,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     config.imagePadding = 12;
     config.title = title;
     config.baseForegroundColor = isPrimary ? UIColor.whiteColor : AppPrimaryTextClr;
-    config.background.backgroundColor = isPrimary ? AppShadowClr  : AppBackgroundClr;
+    config.background.backgroundColor = isPrimary ? UIColor.blackColor : UIColor.whiteColor;
     config.background.cornerRadius = 20;
     config.contentInsets = NSDirectionalEdgeInsetsMake(16, 16, 16, 16);
     config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
@@ -831,7 +759,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     button.layer.shadowOpacity = isPrimary ? 0.10 : 0.08;
     button.layer.shadowRadius = 18.0;
     button.layer.shadowOffset = CGSizeMake(0.0, 10.0);
-    [self pp_addPressAnimationToButton:button];
+    [PPAuthScaffoldView addPressMotionToControl:button];
     [button.heightAnchor constraintEqualToConstant:56].active = YES;
     
     return button;
@@ -840,19 +768,25 @@ static inline void PPDispatchMain(void (^block)(void)) {
 #pragma mark - Constraints
 
 - (void)setupConstraints {
+    UILayoutGuide *contentGuide = self.scrollView.contentLayoutGuide;
+    UILayoutGuide *frameGuide = self.scrollView.frameLayoutGuide;
+    NSLayoutConstraint *stackLeading = [self.containerStack.leadingAnchor constraintEqualToAnchor:frameGuide.leadingAnchor constant:24.0];
+    NSLayoutConstraint *stackTrailing = [self.containerStack.trailingAnchor constraintEqualToAnchor:frameGuide.trailingAnchor constant:-24.0];
+    stackLeading.priority = UILayoutPriorityDefaultHigh;
+    stackTrailing.priority = UILayoutPriorityDefaultHigh;
+
     [NSLayoutConstraint activateConstraints:@[
-        // Scroll View
         [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
-        
-        // Container Stack
-        [self.containerStack.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor constant:22],
-        [self.containerStack.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor constant:24],
-        [self.containerStack.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor constant:-24],
-        [self.containerStack.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor constant:-24],
-        [self.containerStack.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor constant:-48]
+
+        [self.containerStack.topAnchor constraintEqualToAnchor:contentGuide.topAnchor constant:16.0],
+        [self.containerStack.bottomAnchor constraintEqualToAnchor:contentGuide.bottomAnchor constant:-24.0],
+        stackLeading,
+        stackTrailing,
+        [self.containerStack.centerXAnchor constraintEqualToAnchor:frameGuide.centerXAnchor],
+        [self.containerStack.widthAnchor constraintLessThanOrEqualToConstant:680.0]
     ]];
 }
 
@@ -1303,7 +1237,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
     BOOL hasValidPhone = (digits.length >= kPPMinimumPhoneDigits && !hasInvalidCharacters);
     BOOL enabled = !onCooldown && !isAuthLocked && hasValidPhone;
     self.continuePhoneButton.enabled = enabled;
-    self.continuePhoneButton.alpha = enabled ? 1.0 : 0.6;
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continuePhoneButton enabled:enabled loading:self.isAuthenticating];
     
     if (onCooldown) {
         [self setContinuePhoneButtonTitle:[NSString stringWithFormat:@"%@ (%lds)", kLang(@"Continue with Mobile"), (long)self.phoneCooldownRemaining]];
@@ -1379,17 +1313,50 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.currentPhoneCode = countryCode;
     self.phoneNumberField.text = phoneDigits;
     self.isAuthenticating = YES;
+    self.isRequestingPhoneVerification = YES;
+    self.phoneVerificationRequestToken += 1;
+    NSUInteger requestToken = self.phoneVerificationRequestToken;
     [self updateContinuePhoneButtonState];
     
     [PPHUD showIndeterminateIn:self.view
                           title:kLang(@"auth_sending_code_title")
                        subtitle:nil];
     [self setInteractionEnabled:NO];
+
+    __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(kPPPhoneVerificationStartTimeoutSeconds * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self ||
+            !self.isRequestingPhoneVerification ||
+            self.phoneVerificationRequestToken != requestToken) {
+            return;
+        }
+
+        self.phoneVerificationRequestToken += 1;
+        self.isRequestingPhoneVerification = NO;
+        self.isAuthenticating = NO;
+        [self setInteractionEnabled:YES];
+        [self updateContinuePhoneButtonState];
+        [PPHUD dismiss];
+
+        NSString *timeoutMessage = kLang(@"connection_timeout_message") ?: kLang(@"auth_network_error_message") ?: @"Please check your connection and try again.";
+        NSError *timeoutError = [NSError errorWithDomain:@"PPAuth.PhoneVerification"
+                                                    code:1005
+                                                userInfo:@{NSLocalizedDescriptionKey: timeoutMessage}];
+        [self notifySignInFailure:timeoutError];
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"auth_sending_code_failed_title")
+                          subtitle:timeoutMessage];
+    });
     
     [[FIRPhoneAuthProvider provider] verifyPhoneNumber:fullNumber
                                             UIDelegate:nil
                                             completion:^(NSString * _Nullable verificationID, NSError * _Nullable error) {
         PPDispatchMain(^{
+            if (self.phoneVerificationRequestToken != requestToken) {
+                return;
+            }
+            self.isRequestingPhoneVerification = NO;
             [PPHUD dismiss];
             self.isAuthenticating = NO;
             [self setInteractionEnabled:YES];
@@ -1527,6 +1494,19 @@ static inline void PPDispatchMain(void (^block)(void)) {
         return safeClientID.length ? @"configured" : @"missing";
     }
     return [NSString stringWithFormat:@"...%@", [safeClientID substringFromIndex:safeClientID.length - 12]];
+}
+
+- (NSString *)pp_safeAuthUIDForLog:(FIRUser *)user {
+    NSString *uid = user.uid ?: @"";
+    if (uid.length == 0) {
+        return @"<none>";
+    }
+    if (uid.length <= 6) {
+        return [NSString stringWithFormat:@"<len=%lu>", (unsigned long)uid.length];
+    }
+    return [NSString stringWithFormat:@"...%@ (len=%lu)",
+            [uid substringFromIndex:uid.length - 6],
+            (unsigned long)uid.length];
 }
 
 - (NSArray<NSString *> *)pp_googleClientIDCandidates
@@ -1764,7 +1744,8 @@ static inline void PPDispatchMain(void (^block)(void)) {
     if (self.signInCancelled) {
         self.signInCancelled();
     }
-    [self dismissViewControllerAnimated:YES completion:nil];
+    UIViewController *dismissTarget = self.navigationController ?: self;
+    [dismissTarget dismissViewControllerAnimated:YES completion:nil];
 }
 
 #pragma mark - Verification Flow
@@ -1808,7 +1789,16 @@ static inline void PPDispatchMain(void (^block)(void)) {
         });
     };
 
-    [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyleMediumOnly];
+    [self.stepIndicatorView updateCurrentStepIndex:1 completedStepIndex:0 animated:YES];
+    vc.modalPresentationStyle = UIModalPresentationFullScreen;
+    if (self.navigationController) {
+        [self.navigationController pushViewController:vc animated:YES];
+    } else {
+        UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+        nav.navigationBarHidden = NO;
+        nav.modalPresentationStyle = UIModalPresentationFullScreen;
+        [self presentViewController:nav animated:YES completion:nil];
+    }
 }
 
 - (void)resendVerificationCodeForPhone:(NSString *)fullPhone
@@ -2007,8 +1997,79 @@ static inline void PPDispatchMain(void (^block)(void)) {
 
 #pragma mark - Post-Auth Handling
 
+- (void)pp_switchToMainRootAfterSuccessfulAuthWithContext:(NSString *)context {
+    PPDispatchMain(^{
+        [self.view endEditing:YES];
+
+        FIRUser *currentUser = [FIRAuth auth].currentUser;
+        if (currentUser.uid.length == 0) {
+            PPAuthDebugLog(@"[Auth] Root switch blocked after %@ because Firebase currentUser is missing.",
+                           context ?: @"sign-in");
+            return;
+        }
+
+        UIWindow *window = self.view.window ?: UIApplication.sharedApplication.keyWindow;
+        if (!window) {
+            PPAuthDebugLog(@"[Auth] Root switch fallback after %@ because active window is missing. currentUID=%@",
+                           context ?: @"sign-in",
+                           [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser]);
+            [PPFunc reloadAppUI];
+            return;
+        }
+
+        PPAuthDebugLog(@"[Auth] Root switch started after %@. currentUID=%@ windowRoot=%@ navDepth=%lu",
+                       context ?: @"sign-in",
+                       [self pp_safeAuthUIDForLog:currentUser],
+                       NSStringFromClass(window.rootViewController.class),
+                       (unsigned long)self.navigationController.viewControllers.count);
+
+        PPRootTabBarController *rootVC = [[PPRootTabBarController alloc] init];
+        rootVC.view.semanticContentAttribute = GM.setSemantic;
+        window.semanticContentAttribute = GM.setSemantic;
+
+        [UIView transitionWithView:window
+                          duration:0.42
+                           options:UIViewAnimationOptionTransitionCrossDissolve | UIViewAnimationOptionAllowAnimatedContent
+                        animations:^{
+            BOOL previousAnimationState = [UIView areAnimationsEnabled];
+            [UIView setAnimationsEnabled:NO];
+            window.rootViewController = rootVC;
+            [window makeKeyAndVisible];
+            [window layoutIfNeeded];
+            [UIView setAnimationsEnabled:previousAnimationState];
+        } completion:^(__unused BOOL finished) {
+            PPAuthDebugLog(@"[Auth] Root switch completed after %@. currentUID=%@ newRoot=%@",
+                           context ?: @"sign-in",
+                           [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser],
+                           NSStringFromClass(window.rootViewController.class));
+        }];
+    });
+}
+
+- (void)pp_completeSuccessfulSignInWithUser:(UserModel *)userModel context:(NSString *)context {
+    PPDispatchMain(^{
+        PPAuthDebugLog(@"[Auth] Completing %@. firebaseUID=%@ modelID=%@ autoDismiss=%@ presented=%@",
+                       context ?: @"sign-in",
+                       [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser],
+                       userModel.ID ?: @"<none>",
+                       self.shouldAutoDismissOnSuccess ? @"YES" : @"NO",
+                       NSStringFromClass(self.presentedViewController.class));
+
+        if (self.signInSuccess) {
+            self.signInSuccess(userModel);
+        }
+
+        if (self.shouldAutoDismissOnSuccess) {
+            [self pp_switchToMainRootAfterSuccessfulAuthWithContext:context];
+        }
+    });
+}
+
 - (void)handleSuccessfulAuth:(FIRAuthDataResult *)authResult method:(PPSignInMethod)method {
-    PPAuthDebugLog(@"[Auth] Successful %@ sign-in.", [self stringFromSignInMethod:method]);
+    PPAuthDebugLog(@"[Auth] Successful %@ sign-in. resultUID=%@ currentUID=%@",
+                   [self stringFromSignInMethod:method],
+                   [self pp_safeAuthUIDForLog:authResult.user],
+                   [self pp_safeAuthUIDForLog:[FIRAuth auth].currentUser]);
     [self.view endEditing:YES];
     
     [PPHUD showLoading:kLang(@"auth_setting_up_account")];
@@ -2048,18 +2109,19 @@ static inline void PPDispatchMain(void (^block)(void)) {
             PPCompleteProfileVC *vc = [[PPCompleteProfileVC alloc] initWithUser:userModel];
 
             vc.onProfileCompleted = ^(UserModel *userModel) {
-                PPDispatchMain(^{
-                    if (self.signInSuccess) {
-                        self.signInSuccess(userModel);
-                    }
-
-                    if (self.shouldAutoDismissOnSuccess) {
-                        [self dismissViewControllerAnimated:YES completion:nil];
-                    }
-                });
+                [self pp_completeSuccessfulSignInWithUser:userModel context:@"profile-complete"];
             };
 
-            [PPFunc presentSheetFrom:self sheetVC:vc detentStyle:PPSheetDetentStyle80];
+            [self.stepIndicatorView updateCurrentStepIndex:2 completedStepIndex:1 animated:YES];
+            vc.modalPresentationStyle = UIModalPresentationFullScreen;
+            if (self.navigationController) {
+                [self.navigationController pushViewController:vc animated:YES];
+            } else {
+                UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
+                nav.navigationBarHidden = NO;
+                nav.modalPresentationStyle = UIModalPresentationFullScreen;
+                [self presentViewController:nav animated:YES completion:nil];
+            }
             return; // stop flow here
         }
 
@@ -2067,13 +2129,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         // STEP 3 — Profile is complete, continue as normal
         // ----------------------------------------------------
 
-        if (self.signInSuccess) {
-            self.signInSuccess(userModel);
-        }
-
-        if (self.shouldAutoDismissOnSuccess) {
-            [self dismissViewControllerAnimated:YES completion:nil];
-        }
+        [self pp_completeSuccessfulSignInWithUser:userModel context:[self stringFromSignInMethod:method]];
     }];
 }
 
@@ -2335,6 +2391,7 @@ static inline void PPDispatchMain(void (^block)(void)) {
         self.heroBadgeView ?: UIView.new,
         self.titleLabel ?: UIView.new,
         self.subtitleLabel ?: UIView.new,
+        self.stepIndicatorView ?: UIView.new,
         self.phoneSectionCard ?: UIView.new,
         self.separatorView ?: UIView.new,
         self.socialSectionCard ?: UIView.new,
@@ -2364,15 +2421,15 @@ static inline void PPDispatchMain(void (^block)(void)) {
     self.didStartAmbientGlowAnimation = YES;
 
     [self pp_startFloatingAnimationForGlowView:self.backgroundTopGlowView
-                                   translation:CGPointMake(14.0, -18.0)
-                                         scale:1.08
-                                   targetAlpha:0.86
-                                      duration:7.6];
-    [self pp_startFloatingAnimationForGlowView:self.backgroundBottomGlowView
-                                   translation:CGPointMake(-18.0, 16.0)
-                                         scale:1.10
-                                   targetAlpha:0.72
+                                   translation:CGPointMake(-22.0, 18.0)
+                                         scale:1.07
+                                   targetAlpha:0.48
                                       duration:8.8];
+    [self pp_startFloatingAnimationForGlowView:self.backgroundBottomGlowView
+                                   translation:CGPointMake(24.0, -18.0)
+                                         scale:1.09
+                                   targetAlpha:0.38
+                                      duration:10.4];
 }
 
 - (void)pp_startFloatingAnimationForGlowView:(UIView *)glowView

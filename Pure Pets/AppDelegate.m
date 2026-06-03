@@ -13,6 +13,7 @@
 #endif
 
 @import FirebaseAnalytics;
+@import FirebaseAuth;
 @import FirebaseCrashlytics;
 @import GoogleSignIn;
 @interface AppDelegate ()
@@ -391,6 +392,10 @@ static BOOL PPAppCheckErrorLooksLikeAppAttestFailure(NSError *error) {
 {
     if (!url) {
         return NO;
+    }
+
+    if ([[FIRAuth auth] canHandleURL:url]) {
+        return YES;
     }
 
     if ([self.currentAuthorizationFlow resumeExternalUserAgentFlowWithURL:url]) {

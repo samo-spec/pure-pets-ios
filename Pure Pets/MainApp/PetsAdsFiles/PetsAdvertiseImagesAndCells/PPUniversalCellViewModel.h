@@ -13,10 +13,15 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL isNew;
 @property (nonatomic, assign) BOOL hasOffer;
 @property (nonatomic, assign) BOOL isOwner;
+@property (nonatomic, assign, getter=isPubliclyVisible) BOOL publiclyVisible;
 @property (nonatomic, copy, nullable) NSString *imageURL;
 @property (nonatomic, strong, nullable) UIImage *image;
 @property (nonatomic, strong, nullable) UIImage *placeholder;
 @property (nonatomic, copy) NSString *blurHash;
+@property (nonatomic, assign) BOOL isVideoMedia;
+@property (nonatomic, copy, nullable) NSString *videoURL;
+@property (nonatomic, copy, nullable) NSString *videoThumbnailURL;
+@property (nonatomic, copy, nullable) NSDictionary *mediaMetadata;
 @property (nonatomic, strong, nullable) id ModelObject;
 @property (nonatomic, assign) PPCellContext modelContext;
 @property (nonatomic, assign) CollectioCellSection cellSection;

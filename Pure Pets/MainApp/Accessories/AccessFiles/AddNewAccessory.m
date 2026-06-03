@@ -688,6 +688,7 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     self.imageCollection = [[PPImageCollection alloc] initWithFrame:CGRectZero maxImageCount:PPAddAccessoryMaxImageCount useArabic:Language.isRTL];
     self.imageCollection.delegate = self;
     self.imageCollection.allowsEditing = YES;
+    self.imageCollection.allowsVideoSelection = YES;
     self.imageCollection.useArabic = Language.isRTL;
     UIView *footer = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.tableView.bounds.size.width, PPAddAccessoryFooterHeight)];
     footer.backgroundColor = UIColor.clearColor;
@@ -872,11 +873,17 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
 #pragma mark - Prefill
 
 - (void)prefillPhotosForEdit {
-    if (self.accessModel.imageURLsArray.count == 0) return;
+    NSArray<NSDictionary *> *mediaMetadata = [self.accessModel.imageMeta isKindOfClass:NSArray.class] ? self.accessModel.imageMeta : @[];
+    if (mediaMetadata.count == 0 && self.accessModel.imageURLsArray.count == 0) return;
     self.isHydratingMedia = YES;
-    [self.imageCollection preloadImagesFromURLs:self.accessModel.imageURLsArray completion:^{
+    void (^finish)(void) = ^{
         dispatch_async(dispatch_get_main_queue(), ^{ self.isHydratingMedia = NO; [self pp_refreshMediaLocalizedText]; });
-    }];
+    };
+    if (mediaMetadata.count > 0) {
+        [self.imageCollection preloadMediaMetadata:mediaMetadata completion:finish];
+    } else {
+        [self.imageCollection preloadImagesFromURLs:self.accessModel.imageURLsArray completion:finish];
+    }
 }
 
 - (void)prefillFromModel:(PetAccessory *)model {
@@ -1294,17 +1301,28 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
     if (self.isSubmittingAccessory) return;
     if (![self pp_validateFormWithShake]) return;
     [self pp_syncModelFromDraftProperties];
+    BOOL isEdit = (self.formMode == AccessFormModeEdit);
+    if (isEdit && self.accessModel.accessoryID.length == 0) {
+        [PPAlertHelper showErrorIn:self title:[self pp_localizedStringForKey:@"error" fallback:@"Error"]
+                          subtitle:[self pp_localizedStringForKey:@"missing_accessory_id" fallback:@"Missing accessory ID. Please reopen and try again."]];
+        return;
+    }
+    if ([self.imageCollection hasSelectedVideos]) {
+        if ([self.imageCollection imageCount] == 0) {
+            [PPAlertHelper showErrorIn:self
+                                 title:[self pp_localizedStringForKey:@"error" fallback:@"Error"]
+                              subtitle:[self pp_localizedStringForKey:@"please_add_photos_before_submit" fallback:@"Please add at least one image before posting."]];
+            return;
+        }
+        [self pp_beginSubmitUI];
+        [self pp_submitAccessoryWithReusableMediaIsEditing:isEdit];
+        return;
+    }
     NSError *ne = nil;
     NSArray<UIImage *> *ni = [self pp_normalizedImagesForSubmitWithError:&ne];
     if (ni.count == 0) {
         [PPAlertHelper showErrorIn:self title:[self pp_localizedStringForKey:@"error" fallback:@"Error"]
                           subtitle:ne.localizedDescription ?: [self pp_localizedStringForKey:@"Something went wrong" fallback:@"Something went wrong."]];
-        return;
-    }
-    BOOL isEdit = (self.formMode == AccessFormModeEdit);
-    if (isEdit && self.accessModel.accessoryID.length == 0) {
-        [PPAlertHelper showErrorIn:self title:[self pp_localizedStringForKey:@"error" fallback:@"Error"]
-                          subtitle:[self pp_localizedStringForKey:@"missing_accessory_id" fallback:@"Missing accessory ID. Please reopen and try again."]];
         return;
     }
     [self pp_beginSubmitUI];
@@ -1398,6 +1416,40 @@ typedef NS_ENUM(NSInteger, PPAccessoryFieldKind) {
         dispatch_async(dispatch_get_main_queue(), ^{
             if (error) { [self pp_handleSubmitFailure:error]; return; }
             [self clearSavedDraft]; [self pp_finishSubmitUI]; [self showSuccessAlertForEditing:isEdit];
+        });
+    }];
+}
+
+- (void)pp_submitAccessoryWithReusableMediaIsEditing:(BOOL)isEdit {
+    if (!isEdit && self.accessModel.accessoryID.length == 0) self.accessModel.accessoryID = NSUUID.UUID.UUIDString;
+    NSString *ownerID = self.accessModel.ownerID.length > 0 ? self.accessModel.ownerID : (UserManager.sharedManager.currentUser.ID ?: @"unknown");
+    __weak typeof(self) weakSelf = self;
+    [self.imageCollection uploadSelectedMediaWithStorageFolder:@"accessories"
+                                                       ownerID:ownerID
+                                                     contextID:self.accessModel.accessoryID
+                                                    completion:^(PPMediaUploadResult * _Nullable result, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error || !result) {
+                [self pp_handleSubmitFailure:error ?: [NSError errorWithDomain:@"AddNewAccessory"
+                                                                          code:-900
+                                                                      userInfo:@{NSLocalizedDescriptionKey: [self pp_localizedStringForKey:@"media_upload_failed_message" fallback:@"Media upload failed. Please try again."]}]];
+                return;
+            }
+
+            [[PetAccessoryManager sharedManager] createAccessory:self.accessModel
+                                               uploadedImageURLs:result.imageURLs
+                                                   imageMetadata:result.imageMetadata
+                                                       videoURLs:result.videoURLs
+                                                   videoMetadata:result.videoMetadata
+                                                   mixedMetadata:result.mixedMetadata
+                                                      completion:^(NSError * _Nullable saveError) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    if (saveError) { [self pp_handleSubmitFailure:saveError]; return; }
+                    [self clearSavedDraft]; [self pp_finishSubmitUI]; [self showSuccessAlertForEditing:isEdit];
+                });
+            }];
         });
     }];
 }

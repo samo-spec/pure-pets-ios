@@ -36,6 +36,11 @@ typedef void(^AdoptPetListenerHandle)(NSArray<AdoptPetModel *> *pets, NSError * 
               data:(NSDictionary *)data
         completion:(AdoptPetCompletion)completion;
 
+/// Toggle public visibility without changing ownership, media, or delete/block fields.
+- (void)updatePetVisibilityWithID:(NSString *)documentID
+                       visibility:(NSInteger)visibility
+                       completion:(AdoptPetCompletion)completion;
+
 /// Update a pet model and optionally replace all images.
 - (void)updatePet:(AdoptPetModel *)model
            images:(nullable NSArray<UIImage *> *)images

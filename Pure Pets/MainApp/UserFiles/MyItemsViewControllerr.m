@@ -52,7 +52,6 @@ static const CGFloat kMyItemsCellHeight = 280.0;
 @property (nonatomic, strong) UILabel *heroEyebrow;
 @property (nonatomic, strong) UILabel *heroTitle;
 @property (nonatomic, strong) UILabel *heroSubtitle;
-@property (nonatomic, strong) UILabel *heroCountPill;
 @property (nonatomic, strong) UIImageView *heroIconView;
 
 @end
@@ -255,25 +254,11 @@ static const CGFloat kMyItemsCellHeight = 280.0;
     subtitleLabel.text = isMyAds ? kLang(@"myitems_hero_subtitle_ads") : kLang(@"myitems_hero_subtitle_fav");
     self.heroSubtitle = subtitleLabel;
 
-    // Count pill
-    UILabel *countPill = [UILabel new];
-    countPill.translatesAutoresizingMaskIntoConstraints = NO;
-    countPill.font = [GM boldFontWithSize:PPFontCaption1] ?: [UIFont systemFontOfSize:PPFontCaption1 weight:UIFontWeightBold];
-    countPill.textColor = UIColor.whiteColor;
-    countPill.textAlignment = NSTextAlignmentCenter;
-    countPill.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.14];
-    countPill.text = @"  0  ";
-    countPill.hidden = YES;
-    PPApplyContinuousCorners(countPill, PPCornerSmall);
-    countPill.clipsToBounds = YES;
-    self.heroCountPill = countPill;
-
     // Assemble
     [shadowView addSubview:card];
     [card addSubview:eyebrow];
     [card addSubview:titleLabel];
     [card addSubview:subtitleLabel];
-    [card addSubview:countPill];
     [self.view addSubview:shadowView];
 
     CGFloat pad = PPSpaceXL;
@@ -310,12 +295,6 @@ static const CGFloat kMyItemsCellHeight = 280.0;
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:PPSpaceXS],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:eyebrow.trailingAnchor],
-
-        // Count pill — after subtitle
-        [countPill.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:PPSpaceMD],
-        [countPill.leadingAnchor constraintEqualToAnchor:eyebrow.leadingAnchor],
-        [countPill.heightAnchor constraintEqualToConstant:28],
-        [countPill.bottomAnchor constraintEqualToAnchor:card.bottomAnchor constant:-pad],
     ]];
 }
 
@@ -334,16 +313,6 @@ static const CGFloat kMyItemsCellHeight = 280.0;
     return img;
 }
 
-- (void)pp_updateHeroCount {
-    NSUInteger count = self.items.count;
-    if (count > 0) {
-        self.heroCountPill.hidden = NO;
-        self.heroCountPill.text = [NSString stringWithFormat:@"  %lu %@  ", (unsigned long)count, kLang(@"myitems_hero_items")];
-    } else {
-        self.heroCountPill.hidden = YES;
-    }
-}
-
 #pragma mark - Segmented Control
 
 - (void)setupSegmentedControl {
@@ -354,20 +323,23 @@ static const CGFloat kMyItemsCellHeight = 280.0;
 
     [self pp_styleSegment:self.segmentedControl];
 
-    [self.view addSubview:self.segmentedControl];
+    [self.heroCard addSubview:self.segmentedControl];
+
+    CGFloat pad = PPSpaceXL;
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.segmentedControl.topAnchor constraintEqualToAnchor:self.heroShadowView.bottomAnchor constant:PPSpaceMD],
-        [self.segmentedControl.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:PPScreenMargin],
-        [self.segmentedControl.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-PPScreenMargin],
-        [self.segmentedControl.heightAnchor constraintEqualToConstant:PPButtonHeightMD]
+        [self.segmentedControl.topAnchor constraintEqualToAnchor:self.heroSubtitle.bottomAnchor constant:PPSpaceMD],
+        [self.segmentedControl.leadingAnchor constraintEqualToAnchor:self.heroCard.leadingAnchor constant:pad],
+        [self.segmentedControl.trailingAnchor constraintEqualToAnchor:self.heroCard.trailingAnchor constant:-pad],
+        [self.segmentedControl.heightAnchor constraintEqualToConstant:PPButtonHeightMD],
+        [self.segmentedControl.bottomAnchor constraintEqualToAnchor:self.heroCard.bottomAnchor constant:-pad],
     ]];
 
     switch (self.viewType) {
         case ViewTypeAds:    self.segmentedControl.selectedSegmentIndex = 0; break;
-        case ViewTypeAccess: self.segmentedControl.selectedSegmentIndex = 1; break;
-        case ViewTypeFood:   self.segmentedControl.selectedSegmentIndex = 2; break;
-        case ViewTypeAdopt:  self.segmentedControl.selectedSegmentIndex = 3; break;
+        case ViewTypeAccess:
+        case ViewTypeFood:   self.segmentedControl.selectedSegmentIndex = 1; break;
+        case ViewTypeAdopt:  self.segmentedControl.selectedSegmentIndex = 2; break;
         default:             self.segmentedControl.selectedSegmentIndex = 0; break;
     }
 
@@ -391,7 +363,7 @@ static const CGFloat kMyItemsCellHeight = 280.0;
     [self.view addSubview:self.collectionView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.collectionView.topAnchor constraintEqualToAnchor:self.segmentedControl.bottomAnchor constant:PPSpaceMD],
+        [self.collectionView.topAnchor constraintEqualToAnchor:self.heroShadowView.bottomAnchor constant:PPSpaceMD],
         [self.collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.collectionView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.collectionView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
@@ -439,8 +411,7 @@ static const CGFloat kMyItemsCellHeight = 280.0;
     switch (sender.selectedSegmentIndex) {
         case 0: _viewType = ViewTypeAds;    break;
         case 1: _viewType = ViewTypeAccess; break;
-        case 2: _viewType = ViewTypeFood;   break;
-        case 3: _viewType = ViewTypeAdopt;  break;
+        case 2: _viewType = ViewTypeAdopt;  break;
         default: _viewType = ViewTypeAds;   break;
     }
 
@@ -464,7 +435,6 @@ static const CGFloat kMyItemsCellHeight = 280.0;
             [weakSelf.collectionView reloadData];
             [weakSelf.activityHUD dismiss];
             [weakSelf updateEmptyState];
-            [weakSelf pp_updateHeroCount];
         });
     };
 
@@ -531,6 +501,7 @@ static const CGFloat kMyItemsCellHeight = 280.0;
 
     PPUniversalCell *cell = [collectionView dequeueReusableCellWithReuseIdentifier:@"PPUniversalCell" forIndexPath:indexPath];
     cell.delegate = self;
+    cell.forceShowsOwnerMenuButton = (self.mode == MyItemsModeMyAds);
     viewModel.indexPath = indexPath;
     [cell applyViewModel:viewModel
                  context:viewModel.modelContext
@@ -586,6 +557,45 @@ static const CGFloat kMyItemsCellHeight = 280.0;
             }];
         }
     }];
+}
+
+- (void)PPUniversalCell_tapVisibilityToggle:(PPUniversalCellViewModel *)universalModel {
+    if (!universalModel.ModelObject) return;
+
+    BOOL nextVisible = !universalModel.isPubliclyVisible;
+    NSString *successMessage = nextVisible ? kLang(@"listing_visible_success") : kLang(@"listing_hidden_success");
+    void (^showResult)(NSError * _Nullable) = ^(NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error) {
+                [PPAlertHelper showErrorIn:self title:kLang(@"Error") subtitle:error.localizedDescription ?: kLang(@"listing_visibility_failed")];
+                return;
+            }
+            [self fetchDataForCurrentSegment];
+            [AppManager.sharedInstance showSnakBar:successMessage withColor:GM.appPrimaryColor andDuration:0.6 containerView:self.view];
+        });
+    };
+
+    if ([universalModel.ModelObject isKindOfClass:[PetAd class]]) {
+        PetAd *ad = (PetAd *)universalModel.ModelObject;
+        if (ad.adID.length == 0) return;
+        [[PetAdManager sharedManager] updatePetAdID:ad.adID
+                                         visibility:(nextVisible ? PetAdVisibilityPublic : PetAdVisibilityHidden)
+                                         completion:showResult];
+    } else if ([universalModel.ModelObject isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *acc = (PetAccessory *)universalModel.ModelObject;
+        if (acc.accessoryID.length == 0) return;
+        [[PetAccessoryManager sharedManager] updateAccessoryID:acc.accessoryID
+                                               showInAppMarket:nextVisible
+                                                    completion:showResult];
+    } else if ([universalModel.ModelObject isKindOfClass:[AdoptPetModel class]]) {
+        AdoptPetModel *model = (AdoptPetModel *)universalModel.ModelObject;
+        if (model.documentID.length == 0) return;
+        [[AdoptPetManager shared] updatePetVisibilityWithID:model.documentID
+                                                 visibility:(nextVisible ? 0 : 1)
+                                                 completion:^(BOOL success, NSError * _Nullable error) {
+            showResult(success ? nil : error);
+        }];
+    }
 }
 
 - (void)PPUniversalCell_tapShare:(PPUniversalCellViewModel *)universalModel {
@@ -662,46 +672,38 @@ static const CGFloat kMyItemsCellHeight = 280.0;
     NSMutableArray<PPUniversalCellViewModel *> *result = [NSMutableArray array];
 
     for (id obj in objectsArray) {
-        PPUniversalCellViewModel *vm = [PPUniversalCellViewModel new];
-        vm.placeholder = [UIImage imageNamed:@"placeholder"];
+        PPCellContext context = PPCellForAds;
+        if ([obj isKindOfClass:[PetAccessory class]]) {
+            context = (self.viewType == ViewTypeFood) ? PPCellForFood : PPCellForMarket;
+        } else if ([obj isKindOfClass:[AdoptPetModel class]]) {
+            context = PPCellForAdopt;
+        }
+
+        PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:obj context:context];
 
         if ([obj isKindOfClass:[PetAd class]]) {
             PetAd *ad = (PetAd *)obj;
-            vm.title = ad.adTitle ?: kLang(@"UntitledAd");
-            vm.ModelID = ad.adID;
-            vm.ModelObject = ad;
-            vm.modelContext = PPCellForAds;
-
-            PetImageItem *firstItem = ad.imageItems.firstObject;
-            if (firstItem) {
-                vm.imageURL = firstItem.url;
-                if (firstItem.blurHash.length > 0) {
-                    vm.placeholder = [PPBlurHashBridge imageFrom:firstItem.blurHash syncSize:CGSizeMake(40, 40) punch:1.0];
-                }
+            if (self.mode == MyItemsModeMyAds) {
+                vm.isOwner = YES;
+            } else {
+                vm.isOwner = [[UserManager sharedManager].currentUser.ID isEqualToString:ad.ownerID];
             }
-            vm.priceText = ad.price ? [NSString stringWithFormat:@"%@ %@", ad.price, kLang(@"Rials")] : kLang(@"NoPrice");
-            vm.isOwner = [[UserManager sharedManager].currentUser.ID isEqualToString:ad.ownerID];
         }
         else if ([obj isKindOfClass:[PetAccessory class]]) {
             PetAccessory *acc = (PetAccessory *)obj;
-            vm.title = acc.name ?: kLang(@"UntitledAccessory");
-            vm.ModelID = acc.accessoryID;
-            vm.imageURL = acc.imageURLsArray.firstObject;
-            vm.priceText = acc.price ? [NSString stringWithFormat:@"%@", acc.price] : kLang(@"NoPrice");
-            vm.ModelObject = acc;
-            vm.modelContext = PPCellForMarket;
-            vm.isOwner = [[UserManager sharedManager].currentUser.ID isEqualToString:acc.ownerID];
-            vm.hasOffer = acc.hasOffer;
-            vm.isNew = acc.isNew;
-            vm.discountPercent = acc.discountPercent;
-            vm.finalPrice = acc.finalPrice;
+            if (self.mode == MyItemsModeMyAds) {
+                vm.isOwner = YES;
+            } else {
+                vm.isOwner = [[UserManager sharedManager].currentUser.ID isEqualToString:acc.ownerID];
+            }
         }
         else if ([obj isKindOfClass:[AdoptPetModel class]]) {
             AdoptPetModel *model = (AdoptPetModel *)obj;
-            vm.title = model.name;
-            vm.ModelID = model.documentID;
-            vm.ModelObject = model;
-            vm.imageURL = model.imageURLs.firstObject;
+            if (self.mode == MyItemsModeMyAds) {
+                vm.isOwner = YES;
+            } else {
+                vm.isOwner = [[UserManager sharedManager].currentUser.ID isEqualToString:model.ownerID];
+            }
         }
 
         [result addObject:vm];

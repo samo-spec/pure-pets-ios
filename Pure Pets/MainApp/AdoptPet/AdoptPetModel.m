@@ -22,7 +22,9 @@
         _details = @"";
         _ownerID = @"";
         _imageURLs = @[];
+        _imageMeta = @[];
         _createdAt = [NSDate date];
+        _visibility = 0;
     }
     return self;
 }
@@ -39,6 +41,9 @@
         _cityID    = [d[@"cityID"]?:@(0) integerValue];
         _details   = [d[@"details"] isKindOfClass:NSString.class] ? d[@"details"] : @"";
         _ownerID   = [d[@"ownerID"] isKindOfClass:NSString.class] ? d[@"ownerID"] : @"";
+        if ([d[@"visibility"] respondsToSelector:@selector(integerValue)]) {
+            _visibility = [d[@"visibility"] integerValue];
+        }
 
         NSArray *rawURLs = [d[@"imageURLs"] isKindOfClass:NSArray.class] ? d[@"imageURLs"] : @[];
         NSMutableArray<NSString *> *urls = [NSMutableArray arrayWithCapacity:rawURLs.count];
@@ -48,6 +53,7 @@
             }
         }
         _imageURLs = urls.copy;
+        _imageMeta = [d[@"imageMeta"] isKindOfClass:NSArray.class] ? d[@"imageMeta"] : @[];
 
         id ts = d[@"createdAt"];
         if ([ts isKindOfClass:[FIRTimestamp class]]) {
@@ -69,6 +75,8 @@
         @"cityID": @(self.cityID),
         @"details": self.details ?: @"",
         @"imageURLs": self.imageURLs ?: @[],
+        @"imageMeta": self.imageMeta ?: @[],
+        @"visibility": @(self.visibility),
         @"createdAt": [FIRTimestamp timestampWithDate:self.createdAt ?: [NSDate date]]
     };
 }

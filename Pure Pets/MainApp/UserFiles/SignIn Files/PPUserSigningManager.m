@@ -14,6 +14,27 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
     }
 }
 
+@interface PPAuthNavigationController : UINavigationController
+@end
+
+@implementation PPAuthNavigationController
+
+- (instancetype)initWithRootViewController:(UIViewController *)rootViewController {
+    self = [super initWithRootViewController:rootViewController];
+    if (self) {
+        self.modalPresentationStyle = UIModalPresentationFullScreen;
+        self.navigationBarHidden = NO;
+        self.modalInPresentation = NO;
+    }
+    return self;
+}
+
+- (UIInterfaceOrientationMask)supportedInterfaceOrientations {
+    return UIInterfaceOrientationMaskAll;
+}
+
+@end
+
 @implementation PPUserSigningManager
 
 #pragma mark - Singleton
@@ -124,7 +145,9 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
         }
         
         // Log event
-        NSLog(@"✅ User signed in successfully: %@", user.UserName);
+        NSString *uid = user.ID ?: @"";
+        NSString *safeUID = uid.length > 6 ? [NSString stringWithFormat:@"...%@", [uid substringFromIndex:uid.length - 6]] : (uid.length ? @"<short>" : @"<none>");
+        NSLog(@"[Auth] User signed in successfully. modelID=%@", safeUID);
     };
     
     signInVC.signInFailure = ^(NSError *error) {
@@ -176,7 +199,12 @@ static inline void PPDispatchMainThread(void (^block)(void)) {
             return;
         }
         
-        [topPresenter presentViewController:signInVC animated:YES completion:nil];
+        PPAuthNavigationController *authNavigationController =
+            [[PPAuthNavigationController alloc] initWithRootViewController:signInVC];
+        authNavigationController.modalPresentationStyle = UIModalPresentationFullScreen;
+        NSLog(@"[Auth] Presenting full-screen auth navigation. presenter=%@",
+              NSStringFromClass(topPresenter.class));
+        [topPresenter presentViewController:authNavigationController animated:YES completion:nil];
     });
 }
 

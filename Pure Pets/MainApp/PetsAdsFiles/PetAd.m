@@ -756,15 +756,15 @@ fromViewController:(UIViewController *)vc
     d[@"isBlocked"]    = @(_isBlocked);
 
  
-    // 🔑 Persist imageItems (ONLY source of truth)
-    if (self.imageItems.count > 0) {
-
+    // Persist raw media metadata when available so image-only and mixed media
+    // documents remain backward-compatible under the existing imageItems field.
+    if ([self.imageItemsRaw isKindOfClass:NSArray.class] && self.imageItemsRaw.count > 0) {
+        d[@"imageItems"] = self.imageItemsRaw;
+    } else if (self.imageItems.count > 0) {
         NSMutableArray *items = [NSMutableArray arrayWithCapacity:self.imageItems.count];
-
         for (PetImageItem *item in self.imageItems) {
             [items addObject:[item toDictionary]];
         }
-
         d[@"imageItems"] = items;
     }
     
@@ -826,22 +826,11 @@ fromViewController:(UIViewController *)vc
     NSMutableArray<PetImageItem *> *items = [NSMutableArray array];
 
     for (NSDictionary *m in _imageItemsRaw) {
-
-        NSString *url = m[@"url"];
-        if (url.length == 0) continue;
-
-        CGFloat w = [m[@"width"] doubleValue];
-        CGFloat h = [m[@"height"] doubleValue];
-        NSString *hash = m[@"blurHash"];
-
-        PetImageItem *item =
-        [PetImageItem itemWithURL:url
-                            width:w
-                           height:h
-                         blurHash:hash];
-
-        [items addObject:item];
-    }
+        PetImageItem *item = [PetImageItem itemWithMediaMetadata:m] ?: [PetImageItem itemFromDictionary:m];
+        if (item) {
+            [items addObject:item];
+        }
+        }
 
     return items.copy;
 }

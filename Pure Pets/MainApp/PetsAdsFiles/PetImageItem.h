@@ -23,6 +23,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Visual placeholder
 @property (nonatomic, copy, readonly, nullable) NSString *blurHash;
+@property (nonatomic, copy, readonly) NSString *mediaType;
+@property (nonatomic, copy, readonly, nullable) NSString *videoURL;
+@property (nonatomic, copy, readonly, nullable) NSDictionary *mediaMetadata;
+@property (nonatomic, assign, readonly, getter=isVideoMedia) BOOL videoMedia;
 
 // Initializers
 + (instancetype)itemWithURL:(NSString *)url
@@ -34,6 +38,8 @@ NS_ASSUME_NONNULL_BEGIN
                       width:(CGFloat)width
                      height:(CGFloat)height
                    blurHash:(nullable NSString *)blurHash;
+
++ (instancetype)itemWithMediaMetadata:(NSDictionary *)metadata;
 
 // Serialization
 - (NSDictionary *)toDictionary;

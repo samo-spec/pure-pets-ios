@@ -81,14 +81,7 @@ static inline NSDirectionalEdgeInsets PPHomeFullWidthSectionInsets(void)
                                        PPHomeSpacingBase,
                                        PPHomeSpacingBase);
 }
-
-static inline NSDirectionalEdgeInsets PPHomeHalfFullWidthSectionInsets(void)
-{
-    return NSDirectionalEdgeInsetsMake(8,
-                                       PPHomeSpacingBase,
-                                       8,
-                                       PPHomeSpacingBase);
-}
+ 
 
 static inline NSDirectionalEdgeInsets PPHomeHorizontalRailSectionInsets(void)
 {
@@ -257,10 +250,10 @@ static inline CGFloat PPHomeAccessoryCardWidth(CGFloat width)
 static inline CGFloat PPHomeAccessoryCardHeight(CGFloat width)
 {
     if (PPHomeWidthIsTablet(width)) {
-        return 381.0;
+        return 342.0;
     }
     if (PPHomeWidthIsWidePhone(width)) {
-        return 381.0;
+        return 342.0;
     }
     if (PPHomeWidthIsCompactPhone(width)) {
         return 342.0;

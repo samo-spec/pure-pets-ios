@@ -16,6 +16,7 @@
 #import "PPRolePermission.h"
 #import "PPFirestoreErrorNotifier.h"
 #import "PPFunc.h"
+#import "PPImageCollection.h"
 
 #pragma mark - Hidden-Category Filtering (Accessories) — REMOVED
 // Visibility filtering has been replaced by positive accessKindType == X
@@ -49,6 +50,10 @@ static AccessKindType PPAccessKindTypeNormalize(AccessKindType kind) {
     return AccessTypeAccessory;
 }
 
+static FIRQuery *PPAccessoryRequirePublicMarketVisibility(FIRQuery *query) {
+    return [query queryWhereField:@"showInAppMarket" isEqualTo:@(YES)];
+}
+
 + (void)pp_loadExpiryThresholdIfNeeded {
     if (_pp_thresholdLoaded) return;
     _pp_thresholdLoaded = YES;
@@ -73,6 +78,9 @@ static AccessKindType PPAccessKindTypeNormalize(AccessKindType kind) {
         return NO;
     }
     if (requiresAppMarketVisibility && !item.showInAppMarket) {
+        return NO;
+    }
+    if (item.isDeleted || item.isBlocked || item.isDisabled) {
         return NO;
     }
     if (!item.expiryDate) {
@@ -258,6 +266,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     [[db collectionWithPath:@"petAccessories"]
      queryWhereField:@"petMainCategoryID"
            isEqualTo:@(mainCategoryID)];
+    query = PPAccessoryRequirePublicMarketVisibility(query);
 
     // Optional sub-category filter
     if (subCategoryID > 0) {
@@ -321,6 +330,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     FIRQuery *query =
     [ref queryWhereField:@"petMainCategoryID"
               isEqualTo:@(ad.petMainCategoryID)];
+    if (ad.accessKindType != AccessTypePetMedicine) {
+        query = PPAccessoryRequirePublicMarketVisibility(query);
+    }
 
     // Prefer same sub category if available
     if (ad.petSubCategoryID > 0) {
@@ -381,6 +393,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     FIRQuery *query =
         [[db collectionWithPath:@"petAccessories"]
          queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
+    if (normalizedKind != AccessTypePetMedicine) {
+        query = PPAccessoryRequirePublicMarketVisibility(query);
+    }
 
     if (mainCategoryID > 0) {
         query =
@@ -447,6 +462,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     FIRQuery *query =
     [[self.firestore collectionWithPath:PetAccessoriesCol]
      queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
+    if (normalizedKind != AccessTypePetMedicine) {
+        query = PPAccessoryRequirePublicMarketVisibility(query);
+    }
 
     if (mainCatID != 0) {
         query = [query queryWhereField:@"petMainCategoryID"
@@ -561,6 +579,7 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     FIRQuery *query =
     [[db collectionWithPath:@"petAccessories"]
      queryWhereField:@"hasOffer" isEqualTo:@(YES)];
+    query = PPAccessoryRequirePublicMarketVisibility(query);
 
     // Stable ordering
     query = [query queryOrderedByField:@"createdAt" descending:YES];
@@ -607,8 +626,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
     FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
 
-    FIRQuery *query = [[db collectionWithPath:@"petAccessories"]
-                       queryOrderedByField:@"createdAt" descending:YES];
+    FIRQuery *query = PPAccessoryRequirePublicMarketVisibility([db collectionWithPath:@"petAccessories"]);
+    query = [query queryOrderedByField:@"createdAt" descending:YES];
 
     if (limit > 0) {
         query = [query queryLimitedTo:limit];
@@ -654,6 +673,57 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
 
 
 #pragma mark - Create Accessory with Images
+
+- (void)createAccessory:(PetAccessory *)accessory
+      uploadedImageURLs:(NSArray<NSString *> *)imageURLs
+          imageMetadata:(NSArray<NSDictionary *> *)imageMetadata
+              videoURLs:(NSArray<NSString *> *)videoURLs
+          videoMetadata:(NSArray<NSDictionary *> *)videoMetadata
+          mixedMetadata:(NSArray<NSDictionary *> *)mixedMetadata
+             completion:(void (^)(NSError * _Nullable error))completion
+{
+    if (!accessory) {
+        if (completion) {
+            completion([NSError errorWithDomain:@"PetAccessoryManager"
+                                           code:-1
+                                       userInfo:@{NSLocalizedDescriptionKey: @"Accessory object cannot be nil"}]);
+        }
+        return;
+    }
+
+    NSError *permissionError = [self pp_validateCreatePermissionForAccessory:accessory];
+    if (permissionError) {
+        if (completion) completion(permissionError);
+        return;
+    }
+
+    if (!accessory.accessoryID || accessory.accessoryID.length == 0) {
+        accessory.accessoryID = [[NSUUID UUID] UUIDString];
+    }
+    if (!accessory.createdAt) {
+        accessory.createdAt = [NSDate date];
+    }
+    if (!accessory.ownerID || accessory.ownerID.length == 0) {
+        accessory.ownerID = UserManager.sharedManager.currentUser.ID ?: @"unknown";
+    }
+
+    NSArray<NSDictionary *> *safeMixedMetadata = [mixedMetadata isKindOfClass:NSArray.class] ? mixedMetadata : @[];
+    NSArray<NSString *> *safeImageURLs = [imageURLs isKindOfClass:NSArray.class] ? imageURLs : @[];
+    NSArray<NSString *> *safeVideoURLs = [videoURLs isKindOfClass:NSArray.class] ? videoURLs : @[];
+    if (safeMixedMetadata.count == 0 && safeImageURLs.count == 0 && safeVideoURLs.count == 0) {
+        if (completion) {
+            completion([NSError errorWithDomain:@"PetAccessoryManager"
+                                           code:-9
+                                       userInfo:@{NSLocalizedDescriptionKey: @"Media upload result is empty"}]);
+        }
+        return;
+    }
+
+    accessory.imageURLsArray = [safeImageURLs copy];
+    accessory.imageMeta = safeMixedMetadata.count > 0 ? [safeMixedMetadata copy] : [imageMetadata copy];
+
+    [self saveAccessoryToDatabase:accessory completion:completion];
+}
 
 - (void)createAccessory:(PetAccessory *)accessory
                  images:(NSArray<UIImage *> *)images
@@ -1059,6 +1129,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     AccessKindType normalizedKind = PPAccessKindTypeNormalize(kindType);
     FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
                        queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
+    if (normalizedKind != AccessTypePetMedicine) {
+        query = PPAccessoryRequirePublicMarketVisibility(query);
+    }
 
     if (mainCategoryID != 0) {
         query = [query queryWhereField:@"petMainCategoryID" isEqualTo:@(mainCategoryID)];
@@ -1743,10 +1816,34 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:accessory.accessoryID]
          setData:data completion:completion];
     }
+
+    - (void)updateAccessoryID:(NSString *)accessoryID
+              showInAppMarket:(BOOL)showInAppMarket
+                   completion:(void (^)(NSError * _Nullable error))completion {
+        NSString *cleanID = [accessoryID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (cleanID.length == 0) {
+            if (completion) {
+                completion([NSError errorWithDomain:@"PetAccessoryManager"
+                                               code:-6
+                                           userInfo:@{NSLocalizedDescriptionKey: @"Missing accessory ID for visibility update"}]);
+            }
+            return;
+        }
+
+        NSDictionary *data = @{
+            @"showInAppMarket": @(showInAppMarket),
+            @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp],
+            @"updatedBy": UserManager.sharedManager.currentUser.ID ?: @"unknown"
+        };
+        [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:cleanID]
+         updateData:data completion:completion];
+    }
     
     - (void)deleteAccessory:(NSString *)accessoryID completion:(void (^)(NSError * _Nullable error))completion {
         // 🗑️ Fetch image URLs before deleting the document so we can clean up Storage
         [self pp_fetchImageURLsForAccessoryID:accessoryID completion:^(NSArray<NSString *> *imageURLs) {
+            [PPImageCollection deleteEntityMediaWithEntityType:@"accessories" entityID:accessoryID completion:nil];
+            [PPImageCollection deleteEntityMediaWithEntityType:@"used-accessories" entityID:accessoryID completion:nil];
             [[[self.firestore collectionWithPath:@"petAccessories"] documentWithPath:accessoryID]
              deleteDocumentWithCompletion:^(NSError * _Nullable error) {
                 if (!error && imageURLs.count > 0) {
@@ -2150,6 +2247,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         AccessKindType normalizedKind = PPAccessKindTypeNormalize(kindType);
         FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
                            queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
+        if (normalizedKind != AccessTypePetMedicine) {
+            query = PPAccessoryRequirePublicMarketVisibility(query);
+        }
         
         // U4: Prevent retain cycle in accessory kind-only listener
         __weak typeof(self) weakSelf = self;
@@ -2189,6 +2289,9 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         AccessKindType normalizedKind = PPAccessKindTypeNormalize(kind);
         FIRQuery *query = [[self.firestore collectionWithPath:@"petAccessories"]
                            queryWhereField:@"accessKindType" isEqualTo:@(normalizedKind)];
+        if (normalizedKind != AccessTypePetMedicine) {
+            query = PPAccessoryRequirePublicMarketVisibility(query);
+        }
         
         [query getDocumentsWithCompletion:^(FIRQuerySnapshot *snapshot, NSError *error) {
             if (error) {
@@ -2218,9 +2321,8 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
     {
         FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
         
-        FIRQuery *query =
-        [[db collectionWithPath:@"petAccessories"]
-         queryOrderedByField:@"createdAt" descending:YES];
+        FIRQuery *query = PPAccessoryRequirePublicMarketVisibility([db collectionWithPath:@"petAccessories"]);
+        query = [query queryOrderedByField:@"createdAt" descending:YES];
         
         // Optional safety limit (adjust if needed)
         // query = [query queryLimitedTo:50];
@@ -2267,9 +2369,10 @@ static NSError *PPAccessoryCreatePermissionError(NSString *message) {
         FIRFirestore *db = self.firestore ?: [FIRFirestore firestore];
         
         FIRQuery *query =
-        [[[db collectionWithPath:@"petAccessories"]
-          queryWhereField:@"accessKindType" isEqualTo:@(AccessTypeFood)]
-         queryOrderedByField:@"createdAt" descending:YES];
+        [[db collectionWithPath:@"petAccessories"]
+         queryWhereField:@"accessKindType" isEqualTo:@(AccessTypeFood)];
+        query = PPAccessoryRequirePublicMarketVisibility(query);
+        query = [query queryOrderedByField:@"createdAt" descending:YES];
         
         // Optional safety limit
         // query = [query queryLimitedTo:50];

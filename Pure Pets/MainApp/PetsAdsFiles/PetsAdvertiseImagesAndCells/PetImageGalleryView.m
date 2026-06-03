@@ -7,11 +7,13 @@
 
 #import <Vision/Vision.h>
 #import <ImageIO/ImageIO.h>
+#import <AVKit/AVKit.h>
 #import <math.h>
 #import "PetImageGalleryView.h"
 #import "PPImageLoaderManager.h"
 #import "FullScreenImageViewerController.h"
 #import "PPAdSharingHelper.h"
+#import "EnumValues.h"
 
 typedef NS_ENUM(NSInteger, PPImageGallerySmartCropSource) {
     PPImageGallerySmartCropSourceNone = 0,
@@ -22,6 +24,7 @@ typedef NS_ENUM(NSInteger, PPImageGallerySmartCropSource) {
 };
 
 static const CGFloat PPImageGalleryVerticalCropBiasYOffset = 0.35;
+static NSInteger const PPImageGalleryVideoBadgeTag = 73041;
 
 static CGFloat PPImageGalleryClamp(CGFloat value, CGFloat minValue, CGFloat maxValue)
 {
@@ -108,6 +111,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
 - (void)pp_applySwipeMotionToVisibleCells;
 - (void)pp_resetMotionForCell:(UICollectionViewCell *)cell;
 - (void)pp_emitSwipeFeedbackIfNeededForPage:(NSInteger)page;
+- (void)pp_configureVideoBadgeInCell:(UICollectionViewCell *)cell visible:(BOOL)visible;
 
 @end
 
@@ -228,13 +232,22 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     if(PPIOS26())
     {
         UIButtonConfiguration *config = self.containerB.configuration;
-        config.background.cornerRadius = 0;
+        config.background.cornerRadius = 12;
+        config.background.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+        config.baseBackgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
         self.containerB.configuration = config;
+    }
+    else
+    {
+        self.containerB.layer.cornerRadius = 12;
+        self.containerB.backgroundColor = [AppForgroundColr colorWithAlphaComponent:0.5];
+        self.containerB.clipsToBounds = YES;
+
     }
     
  
     
-    self.myPageControl1 = [[EllipsePageControl alloc] initWithFrame:CGRectMake(0, 10, 90, 30)];
+    self.myPageControl1 = [[EllipsePageControl alloc] initWithFrame:CGRectMake(0, 0, 90, 30)];
    // self.myPageControl1.backgroundColor = UIColor.redColor;
     self.myPageControl1.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
     //self.myPageControl1.translatesAutoresizingMaskIntoConstraints = NO;
@@ -259,7 +272,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     }
     else
     {
-        bottomBtn =  [self.containerB .bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-80];
+        bottomBtn =  [self.containerB .bottomAnchor constraintEqualToAnchor:self.bottomAnchor constant:-30];
     }
     
     [NSLayoutConstraint activateConstraints:@[
@@ -274,7 +287,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     self.myPageControl1.delegate=self;
     
     [self layoutSubviews];
-    self.myPageControl1.frame = CGRectMake(0, 10, 100, 30);
+    self.myPageControl1.frame = CGRectMake(0, 0, 90, 30);
     
     self.containerB.layer.cornerRadius = 0;
     /*
@@ -355,6 +368,7 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
  
     PetImageItem *item = self.imageItems[indexPath.item];
     NSString *itemURL = item.url ?: @"";
+    [self pp_configureVideoBadgeInCell:cell visible:(PPReusableVideoMediaEnabled() && item.isVideoMedia)];
 
     // BlurHash placeholder (if available)
     UIImage *placeholder = nil;
@@ -408,6 +422,36 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     
     
     return cell;
+}
+
+- (void)pp_configureVideoBadgeInCell:(UICollectionViewCell *)cell visible:(BOOL)visible
+{
+    UIView *existing = [cell.contentView viewWithTag:PPImageGalleryVideoBadgeTag];
+    if (!visible) {
+        [existing removeFromSuperview];
+        return;
+    }
+    if (existing) {
+        existing.hidden = NO;
+        return;
+    }
+
+    UIImageView *badge = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"play.circle.fill"]];
+    badge.tag = PPImageGalleryVideoBadgeTag;
+    badge.translatesAutoresizingMaskIntoConstraints = NO;
+    badge.tintColor = UIColor.whiteColor;
+    badge.contentMode = UIViewContentModeScaleAspectFit;
+    badge.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.20];
+    badge.layer.cornerRadius = 24.0;
+    badge.clipsToBounds = YES;
+    badge.userInteractionEnabled = NO;
+    [cell.contentView addSubview:badge];
+    [NSLayoutConstraint activateConstraints:@[
+        [badge.centerXAnchor constraintEqualToAnchor:cell.contentView.centerXAnchor],
+        [badge.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+        [badge.widthAnchor constraintEqualToConstant:48.0],
+        [badge.heightAnchor constraintEqualToConstant:48.0]
+    ]];
 }
 
 
@@ -828,6 +872,16 @@ static CGImagePropertyOrientation PPImageGalleryCGImageOrientation(UIImageOrient
     UICollectionViewCell *selectedCell = [collectionView cellForItemAtIndexPath:indexPath];
     UIImageView *sourceImageView = [selectedCell.contentView viewWithTag:100];
     PetImageItem *item = indexPath.item < self.imageItems.count ? self.imageItems[indexPath.item] : nil;
+    if (PPReusableVideoMediaEnabled() && item.isVideoMedia) {
+        NSURL *videoURL = [NSURL URLWithString:item.videoURL ?: @""];
+        if (videoURL) {
+            PPPremiumVideoPlayerViewController *playerVC =
+            [[PPPremiumVideoPlayerViewController alloc] initWithURL:videoURL];
+            UIViewController *presenter = AppMgr.topViewController ?: self.parentViewController;
+            [presenter presentViewController:playerVC animated:YES completion:nil];
+        }
+        return;
+    }
     UIImage *image = item.url.length > 0 ? [self.imageCache objectForKey:item.url] : nil;
     image = image ?: sourceImageView.image;
     if (!image || !sourceImageView) {

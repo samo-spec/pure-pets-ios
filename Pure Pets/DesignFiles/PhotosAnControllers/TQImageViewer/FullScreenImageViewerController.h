@@ -17,4 +17,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
+@interface PPPremiumVideoPlayerViewController : UIViewController
+
+- (instancetype)initWithURL:(NSURL *)videoURL NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithNibName:(nullable NSString *)nibNameOrNil
+                         bundle:(nullable NSBundle *)nibBundleOrNil NS_UNAVAILABLE;
+- (instancetype)initWithCoder:(NSCoder *)coder NS_UNAVAILABLE;
+
+@end
+
 NS_ASSUME_NONNULL_END

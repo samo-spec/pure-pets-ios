@@ -7,11 +7,26 @@
 
 #import "PPVerificationCodeViewController.h"
 #import "Language.h"
+#import "PPAuthScaffoldView.h"
+
+static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
+    NSString *uid = user.uid ?: @"";
+    if (uid.length == 0) {
+        return @"<none>";
+    }
+    if (uid.length <= 6) {
+        return [NSString stringWithFormat:@"<len=%lu>", (unsigned long)uid.length];
+    }
+    return [NSString stringWithFormat:@"...%@ (len=%lu)",
+            [uid substringFromIndex:uid.length - 6],
+            (unsigned long)uid.length];
+}
 
 @interface PPVerificationCodeViewController () <UITextFieldDelegate, UIGestureRecognizerDelegate, UIAdaptivePresentationControllerDelegate>
 
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) UIView *contentView;
+@property (nonatomic, strong) PPAuthScaffoldView *authScaffoldView;
 @property (nonatomic, strong) UIView *backgroundTopGlowView;
 @property (nonatomic, strong) UIView *backgroundBottomGlowView;
 
@@ -32,6 +47,7 @@
 
 @property (nonatomic, strong) UIButton *continueButton;
 @property (nonatomic, strong) UIButton *resendButton;
+@property (nonatomic, strong) PPAuthStepIndicatorView *stepIndicatorView;
 
 @property (nonatomic, assign) NSInteger remainingSeconds;
 @property (nonatomic, strong) NSTimer *timer;
@@ -74,9 +90,11 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    self.view.backgroundColor = PPBackgroundColorForIOS26([AppBackgroundClr colorWithAlphaComponent:0.95]);
-    self.modalInPresentation = YES;
+    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.modalInPresentation = (self.navigationController == nil);
     self.presentationController.delegate = self;
+    self.navigationItem.hidesBackButton = YES;
+    [self pp_configureNavigationChrome];
 
     [self setupBackgroundDecorations];
     [self setupScroll];
@@ -100,7 +118,7 @@
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
-    self.modalInPresentation = YES;
+    self.modalInPresentation = (self.navigationController == nil);
     self.presentationController.delegate = self;
     [self.codeField becomeFirstResponder];
     [self animateVerificationEntranceIfNeeded];
@@ -119,6 +137,10 @@
 #pragma mark - Setup UI
 
 - (void)setupBackgroundDecorations {
+    self.authScaffoldView = [[PPAuthScaffoldView alloc] initWithFrame:self.view.bounds];
+    self.authScaffoldView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:self.authScaffoldView];
+
     self.backgroundTopGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundTopGlowView.userInteractionEnabled = NO;
     [self.view addSubview:self.backgroundTopGlowView];
@@ -126,27 +148,22 @@
     self.backgroundBottomGlowView = [[UIView alloc] initWithFrame:CGRectZero];
     self.backgroundBottomGlowView.userInteractionEnabled = NO;
     [self.view addSubview:self.backgroundBottomGlowView];
+    self.backgroundTopGlowView.hidden = YES;
+    self.backgroundBottomGlowView.hidden = YES;
 }
 
 - (void)pp_applyModernChrome {
-    self.view.backgroundColor = PPBackgroundColorForIOS26([AppBackgroundClr colorWithAlphaComponent:0.96]);
-    self.cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.58 : 0.98];
-    self.cardView.layer.cornerRadius = 34.0;
-    self.cardView.layer.shadowOpacity = 0.12;
-    self.cardView.layer.shadowRadius = 28.0;
-    self.cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
+    self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    [PPAuthScaffoldView applyPremiumCardStyleToView:self.cardView];
 
     self.heroIconWrapView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.16 : 0.10];
-    self.titleLabel.font = [GM boldFontWithSize:28];
+    self.titleLabel.font = [GM boldFontWithSize:27];
     self.instructionLabel.font = [GM MidFontWithSize:14];
     self.codeField.keyboardType = UIKeyboardTypeNumberPad;
     self.codeField.textContentType = UITextContentTypeOneTimeCode;
     self.codeField.tintColor = UIColor.clearColor;
 
-    self.continueButton.layer.cornerRadius = 22.0;
-    self.continueButton.layer.shadowOpacity = 0.14;
-    self.continueButton.layer.shadowRadius = 18.0;
-    self.continueButton.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continueButton enabled:self.continueButton.enabled loading:self.isVerifyingCode];
 
     self.resendButton.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.10 : 0.90];
     self.resendButton.layer.cornerRadius = 18.0;
@@ -163,23 +180,23 @@
     [self.scrollView addSubview:self.contentView];
 
     [NSLayoutConstraint activateConstraints:@[
-        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+        [self.scrollView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor],
+        [self.scrollView.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor],
         [self.scrollView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.scrollView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
 
-        [self.contentView.topAnchor constraintEqualToAnchor:self.scrollView.topAnchor],
-        [self.contentView.bottomAnchor constraintEqualToAnchor:self.scrollView.bottomAnchor],
-        [self.contentView.leadingAnchor constraintEqualToAnchor:self.scrollView.leadingAnchor],
-        [self.contentView.trailingAnchor constraintEqualToAnchor:self.scrollView.trailingAnchor],
-        [self.contentView.widthAnchor constraintEqualToAnchor:self.scrollView.widthAnchor]
+        [self.contentView.topAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.topAnchor],
+        [self.contentView.bottomAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.bottomAnchor],
+        [self.contentView.leadingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.leadingAnchor],
+        [self.contentView.trailingAnchor constraintEqualToAnchor:self.scrollView.contentLayoutGuide.trailingAnchor],
+        [self.contentView.widthAnchor constraintEqualToAnchor:self.scrollView.frameLayoutGuide.widthAnchor],
+        [self.contentView.heightAnchor constraintGreaterThanOrEqualToAnchor:self.scrollView.frameLayoutGuide.heightAnchor]
     ]];
 }
 
 - (void)setupCard {
     self.cardView = [[UIView alloc] init];
-    self.cardView.layer.cornerRadius = 34;
-    self.cardView.backgroundColor = [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.56 : 0.96];
+    [PPAuthScaffoldView applyPremiumCardStyleToView:self.cardView];
     self.cardView.translatesAutoresizingMaskIntoConstraints = NO;
     self.cardView.userInteractionEnabled = YES;
     UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(focusField)];
@@ -189,10 +206,14 @@
 }
 
 - (void)setupTexts {
+    self.stepIndicatorView = [[PPAuthStepIndicatorView alloc] initWithStepTitles:[PPAuthScaffoldView defaultStepTitles]];
+    [self.stepIndicatorView updateCurrentStepIndex:1 completedStepIndex:0 animated:NO];
+    [self.contentView addSubview:self.stepIndicatorView];
+
     self.heroIconWrapView = [[UIView alloc] init];
     self.heroIconWrapView.translatesAutoresizingMaskIntoConstraints = NO;
     self.heroIconWrapView.backgroundColor = [AppPrimaryClr colorWithAlphaComponent:PPIOS26() ? 0.18 : 0.12];
-    self.heroIconWrapView.layer.cornerRadius = 30.0;
+    self.heroIconWrapView.layer.cornerRadius = 21.0;
     self.heroIconWrapView.layer.masksToBounds = YES;
     [self.cardView addSubview:self.heroIconWrapView];
 
@@ -209,11 +230,12 @@
     [self.backButton setTintColor:UIColor.secondaryLabelColor];
     [self.backButton addTarget:self action:@selector(didTapBack) forControlEvents:UIControlEventTouchUpInside];
     [self.cardView addSubview:self.backButton];
+    self.backButton.hidden = YES;
 
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.text = kLang(@"verification_title");
-    self.titleLabel.font =  [GM boldFontWithSize:28];
-    self.titleLabel.textAlignment = NSTextAlignmentCenter;
+    self.titleLabel.font =  [GM boldFontWithSize:27];
+    self.titleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.textColor = UIColor.labelColor;
 
@@ -223,7 +245,7 @@
     self.subtitleLabel.font = [GM MidFontWithSize:15];
     self.subtitleLabel.textColor = UIColor.secondaryLabelColor;
     self.subtitleLabel.numberOfLines = 0;
-    self.subtitleLabel.textAlignment = NSTextAlignmentCenter;
+    self.subtitleLabel.textAlignment = [Language alignmentForCurrentLanguage];
     self.subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.subtitleLabel.alpha = 0.92;
 
@@ -248,14 +270,35 @@
 
     [NSLayoutConstraint activateConstraints:@[
         [self.heroIconWrapView.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:22],
-        [self.heroIconWrapView.centerXAnchor constraintEqualToAnchor:self.cardView.centerXAnchor],
-        [self.heroIconWrapView.widthAnchor constraintEqualToConstant:56],
-        [self.heroIconWrapView.heightAnchor constraintEqualToConstant:56],
+        [self.heroIconWrapView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:20],
+        [self.heroIconWrapView.widthAnchor constraintEqualToConstant:42],
+        [self.heroIconWrapView.heightAnchor constraintEqualToConstant:42],
         [self.heroIconView.centerXAnchor constraintEqualToAnchor:self.heroIconWrapView.centerXAnchor],
         [self.heroIconView.centerYAnchor constraintEqualToAnchor:self.heroIconWrapView.centerYAnchor],
-        [self.heroIconView.widthAnchor constraintEqualToConstant:24],
-        [self.heroIconView.heightAnchor constraintEqualToConstant:24]
+        [self.heroIconView.widthAnchor constraintEqualToConstant:20],
+        [self.heroIconView.heightAnchor constraintEqualToConstant:20]
     ]];
+}
+
+- (void)pp_configureNavigationChrome {
+    self.navigationController.navigationBarHidden = NO;
+    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+    [appearance configureWithTransparentBackground];
+    appearance.backgroundColor = UIColor.clearColor;
+    appearance.shadowColor = UIColor.clearColor;
+    self.navigationController.navigationBar.standardAppearance = appearance;
+    self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
+    self.navigationController.navigationBar.compactAppearance = appearance;
+    self.navigationController.navigationBar.tintColor = AppPrimaryClr ?: UIColor.labelColor;
+
+    self.navigationItem.title = kLang(@"verification_title");
+    UIImage *backImage = [UIImage systemImageNamed:[Language isRTL] ? @"arrow.right" : @"arrow.left"];
+    UIBarButtonItem *backItem = [[UIBarButtonItem alloc] initWithImage:backImage
+                                                                 style:UIBarButtonItemStylePlain
+                                                                target:self
+                                                                action:@selector(didTapBack)];
+    backItem.tintColor = AppPrimaryClr ?: UIColor.labelColor;
+    self.navigationItem.leftBarButtonItem = backItem;
 }
 
 - (void)setupOTPField {
@@ -289,10 +332,10 @@
     for (NSInteger index = 0; index < 6; index++) {
         UIView *digitView = [[UIView alloc] init];
         digitView.translatesAutoresizingMaskIntoConstraints = NO;
-        digitView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:PPIOS26() ? 0.08 : 0.82];
-        digitView.layer.cornerRadius = 18.0;
-        digitView.layer.masksToBounds = YES;
-        [digitView.heightAnchor constraintEqualToConstant:58].active = YES;
+        [PPAuthScaffoldView applyInputStyleToView:digitView];
+        digitView.layer.cornerRadius = 17.0;
+        [digitView.heightAnchor constraintEqualToConstant:54].active = YES;
+        [digitView.widthAnchor constraintLessThanOrEqualToConstant:52.0].active = YES;
 
         UILabel *digitLabel = [[UILabel alloc] init];
         digitLabel.translatesAutoresizingMaskIntoConstraints = NO;
@@ -348,6 +391,8 @@
     self.continueButton.clipsToBounds = NO;
     self.continueButton.enabled = NO;
     self.continueButton.alpha = 0.6;
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continueButton enabled:NO loading:NO];
+    [PPAuthScaffoldView addPressMotionToControl:self.continueButton];
 
     [self.continueButton addTarget:self
                             action:@selector(didTapContinue)
@@ -369,28 +414,45 @@
     self.resendButton.layer.cornerRadius = 18.0;
     self.resendButton.layer.masksToBounds = YES;
     self.resendButton.contentEdgeInsets = UIEdgeInsetsMake(10, 16, 10, 16);
+    [PPAuthScaffoldView applySecondaryButtonStyleToButton:self.resendButton];
     [self.cardView addSubview:self.resendButton];
 }
 
 #pragma mark - Constraints
 
 - (void)setupConstraints {
+    NSLayoutConstraint *cardLeading = [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:20];
+    NSLayoutConstraint *cardTrailing = [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-20];
+    cardLeading.priority = UILayoutPriorityDefaultHigh;
+    cardTrailing.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *digitLeading = [self.digitStackView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:18];
+    NSLayoutConstraint *digitTrailing = [self.digitStackView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-18];
+    digitLeading.priority = UILayoutPriorityDefaultHigh;
+    digitTrailing.priority = UILayoutPriorityDefaultHigh;
+
     [NSLayoutConstraint activateConstraints:@[
-        [self.cardView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:40],
-        [self.cardView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:20],
-        [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-20],
-        [self.cardView.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-24],
+        [self.stepIndicatorView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
+        [self.stepIndicatorView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:24],
+        [self.stepIndicatorView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-24],
+        [self.stepIndicatorView.heightAnchor constraintEqualToConstant:78.0],
+
+        [self.cardView.topAnchor constraintEqualToAnchor:self.stepIndicatorView.bottomAnchor constant:18],
+        cardLeading,
+        cardTrailing,
+        [self.cardView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [self.cardView.widthAnchor constraintLessThanOrEqualToConstant:560.0],
+        [self.cardView.bottomAnchor constraintLessThanOrEqualToAnchor:self.contentView.bottomAnchor constant:-24],
 
         [self.backButton.topAnchor constraintEqualToAnchor:self.cardView.topAnchor constant:12],
         [self.backButton.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:12],
         [self.backButton.widthAnchor constraintEqualToConstant:44],
         [self.backButton.heightAnchor constraintEqualToConstant:44],
 
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.heroIconWrapView.bottomAnchor constant:18],
-        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
+        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.heroIconWrapView.centerYAnchor],
+        [self.titleLabel.leadingAnchor constraintEqualToAnchor:self.heroIconWrapView.trailingAnchor constant:12],
         [self.titleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
 
-        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.titleLabel.bottomAnchor constant:10],
+        [self.subtitleLabel.topAnchor constraintEqualToAnchor:self.heroIconWrapView.bottomAnchor constant:12],
         [self.subtitleLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
         [self.subtitleLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
 
@@ -401,16 +463,18 @@
         [self.instructionLabel.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:24],
         [self.instructionLabel.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-24],
 
-        [self.digitStackView.topAnchor constraintEqualToAnchor:self.instructionLabel.bottomAnchor constant:24],
-        [self.digitStackView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:18],
-        [self.digitStackView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-18],
+        [self.digitStackView.topAnchor constraintEqualToAnchor:self.instructionLabel.bottomAnchor constant:20],
+        [self.digitStackView.centerXAnchor constraintEqualToAnchor:self.cardView.centerXAnchor],
+        digitLeading,
+        digitTrailing,
+        [self.digitStackView.widthAnchor constraintLessThanOrEqualToConstant:354.0],
 
         [self.codeField.topAnchor constraintEqualToAnchor:self.digitStackView.bottomAnchor constant:2],
         [self.codeField.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:30],
         [self.codeField.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-30],
         [self.codeField.heightAnchor constraintEqualToConstant:1],
 
-        [self.continueButton.topAnchor constraintEqualToAnchor:self.digitStackView.bottomAnchor constant:28],
+        [self.continueButton.topAnchor constraintEqualToAnchor:self.digitStackView.bottomAnchor constant:24],
         [self.continueButton.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:16],
         [self.continueButton.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-16],
         [self.continueButton.heightAnchor constraintEqualToConstant:54],
@@ -460,7 +524,7 @@
     }
 
     self.continueButton.enabled = (digits.length == 6 && !self.isVerifyingCode && !self.isRequestingResend);
-    self.continueButton.alpha = self.continueButton.enabled ? 1.0 : 0.6;
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continueButton enabled:self.continueButton.enabled loading:NO];
     [self refreshDigitBoxesAnimated:YES];
 
     if (digits.length != 6) {
@@ -489,6 +553,8 @@
         }
         NSString *submittedCode = self.pendingAutomaticSubmissionCode;
         self.pendingAutomaticSubmissionCode = nil;
+        NSLog(@"[Auth][OTP] Auto-submitting one-time code suggestion. length=%lu",
+              (unsigned long)submittedCode.length);
         [self verifyPhoneCode:submittedCode on:self];
     });
 }
@@ -526,6 +592,8 @@
 
 - (void)didTapContinue {
     if (self.codeField.text.length == 6) {
+        NSLog(@"[Auth][OTP] Manual submit tapped. length=%lu",
+              (unsigned long)self.codeField.text.length);
         [self verifyPhoneCode:self.codeField.text on:self];
     }
 }
@@ -687,7 +755,7 @@
                 weakSelf.codeField.text = @"";
                 weakSelf.pendingAutomaticSubmissionCode = nil;
                 weakSelf.continueButton.enabled = NO;
-                weakSelf.continueButton.alpha = 0.6;
+                [PPAuthScaffoldView applyPrimaryButtonStyleToButton:weakSelf.continueButton enabled:NO loading:NO];
                 [weakSelf refreshDigitBoxesAnimated:NO];
                 [weakSelf.codeField becomeFirstResponder];
                 [weakSelf startTimer];
@@ -747,6 +815,10 @@
     [self.codeField resignFirstResponder];
     if (self.onBackRequested) {
         self.onBackRequested();
+    }
+    if (self.navigationController.viewControllers.firstObject != self) {
+        [self.navigationController popViewControllerAnimated:YES];
+        return;
     }
     [self dismissViewControllerAnimated:YES completion:nil];
 }
@@ -847,13 +919,21 @@
     self.codeField.text = @"";
     self.pendingAutomaticSubmissionCode = nil;
     self.continueButton.enabled = NO;
-    self.continueButton.alpha = 0.6;
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continueButton enabled:NO loading:NO];
     [self refreshDigitBoxesAnimated:NO];
 
     // 💥 Keep keyboard open
     [self.codeField becomeFirstResponder];
 
     
+}
+
+- (void)showInvalidCodeErrorWithMessage:(NSString *)message {
+    [self showInvalidCodeError];
+    NSString *displayMessage = message.length > 0 ? message : kLang(@"invalid_code_message");
+    [PPAlertHelper showWarningIn:self
+                           title:kLang(@"invalid_code_title")
+                        subtitle:displayMessage];
 }
 
 
@@ -870,6 +950,11 @@
     
     self.pendingAutomaticSubmissionCode = nil;
     self.isVerifyingCode = YES;
+    NSString *verificationID = [[NSUserDefaults standardUserDefaults] stringForKey:@"authVerificationID"];
+    NSLog(@"[Auth][OTP] Verification started. codeLength=%lu hasVerificationID=%@ currentUID=%@",
+          (unsigned long)code.length,
+          verificationID.length > 0 ? @"YES" : @"NO",
+          PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
 
     if (self.onCodeVerificationRequested) {
         [self setLoadingState:YES];
@@ -913,12 +998,10 @@
         return;
     }
 
-    NSString *verificationID = [[NSUserDefaults standardUserDefaults] stringForKey:@"authVerificationID"];
-
     if (!verificationID || verificationID.length == 0) {
-        NSLog(@"❌ No verificationID stored");
+        NSLog(@"[Auth][OTP] Missing verificationID before Firebase credential creation.");
         self.isVerifyingCode = NO;
-        [self showInvalidCodeError];
+        [self showInvalidCodeErrorWithMessage:kLang(@"auth_session_expired_message") ?: kLang(@"auth_verification_start_failed")];
         return;
     }
 
@@ -932,19 +1015,29 @@
     [[FIRAuth auth] signInWithCredential:credential
                               completion:^(FIRAuthDataResult * _Nullable authResult,
                                            NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
 
-        // stop loading button
-        [self setLoadingState:NO];
-        self.isVerifyingCode = NO;
+            // stop loading button
+            [self setLoadingState:NO];
+            self.isVerifyingCode = NO;
 
-        if (error) {
-            NSLog(@"❌ Wrong code: %@", error.localizedDescription);
-            [self showInvalidCodeError];
-            return;
-        }
+            if (error) {
+                NSLog(@"[Auth][OTP] Firebase sign-in failed. domain=%@ code=%ld message=%@ currentUID=%@",
+                      error.domain,
+                      (long)error.code,
+                      error.localizedDescription,
+                      PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
+                NSString *message = [self pp_localizedVerificationMessageForError:error
+                                                                      fallbackKey:@"invalid_code_message"];
+                [self showInvalidCodeErrorWithMessage:message];
+                return;
+            }
 
-        NSLog(@"Phone verification success → user logged in");
-        [self handleSuccessfulAuth:authResult];
+            NSLog(@"[Auth][OTP] Firebase sign-in succeeded. resultUID=%@ currentUID=%@",
+                  PPVerificationSafeUIDForLog(authResult.user),
+                  PPVerificationSafeUIDForLog([FIRAuth auth].currentUser));
+            [self handleSuccessfulAuth:authResult];
+        });
     }];
 }
 
@@ -960,25 +1053,31 @@
     // happens only after this sheet is fully gone (avoids the race where
     // the parent's [self dismiss] is dropped while we're mid-transition).
     void (^successCallback)(FIRAuthDataResult *) = self.onAuthResultSuccess;
+    NSLog(@"[Auth][OTP] Dismissing verification sheet after success. currentUID=%@ presenting=%@ presented=%@",
+          PPVerificationSafeUIDForLog([FIRAuth auth].currentUser),
+          NSStringFromClass(self.presentingViewController.class),
+          NSStringFromClass(self.presentedViewController.class));
 
     // Fade out UI, then dismiss — fire the parent callback in the dismiss
     // completion so the presentation chain is clean before the parent acts.
     [UIView animateWithDuration:0.25 animations:^{
         self.cardView.alpha = 0.0;
     } completion:^(BOOL finished) {
-        [self dismissViewControllerAnimated:YES completion:^{
-            if (successCallback) {
-                successCallback(authResult);
-            }
-        }];
+        NSLog(@"[Auth][OTP] Verification step completed. forwarding success=%@ currentUID=%@ navigationDepth=%lu",
+              successCallback ? @"YES" : @"NO",
+              PPVerificationSafeUIDForLog([FIRAuth auth].currentUser),
+              (unsigned long)self.navigationController.viewControllers.count);
+        if (successCallback) {
+            successCallback(authResult);
+        }
     }];
 }
 
 
 - (void)setLoadingState:(BOOL)loading {
     self.continueButton.enabled = !loading && !self.isRequestingResend && (self.codeField.text.length == 6);
-    self.continueButton.alpha = self.continueButton.enabled ? 1.0 : 0.6;
     self.codeField.enabled = !loading;
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.continueButton enabled:self.continueButton.enabled loading:loading];
 
     if (@available(iOS 15.0, *)) {
         UIButtonConfiguration *config = self.continueButton.configuration;
@@ -1002,6 +1101,7 @@
     self.didAnimateEntrance = YES;
 
     NSArray<UIView *> *views = @[
+        self.stepIndicatorView ?: UIView.new,
         self.cardView ?: UIView.new,
         self.backButton ?: UIView.new,
         self.titleLabel ?: UIView.new,

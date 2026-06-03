@@ -1295,20 +1295,19 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
     [self pp_setSubmitEnabled:NO];
     [self pp_setMediaLoadingVisible:YES textKey:@"loading_images" fallback:@"Loading images..."];
 
-    NSArray<PetImageItem *> *items = self.adModel.imageItems;
-    if (items.count == 0) {
-        [self pp_finishPrefillFlow];
-        return;
-    }
-
-    NSMutableArray<NSString *> *urls = [NSMutableArray arrayWithCapacity:items.count];
-    for (PetImageItem *item in items) {
-        if (item.url.length) {
-            [urls addObject:item.url];
+    NSArray<NSDictionary *> *mediaMetadata = [self.adModel.imageItemsRaw isKindOfClass:NSArray.class] ? self.adModel.imageItemsRaw : @[];
+    if (mediaMetadata.count == 0 && self.adModel.imageItems.count > 0) {
+        NSMutableArray<NSDictionary *> *legacyItems = [NSMutableArray arrayWithCapacity:self.adModel.imageItems.count];
+        for (PetImageItem *item in self.adModel.imageItems) {
+            NSDictionary *dict = [item toDictionary];
+            if (dict) {
+                [legacyItems addObject:dict];
+            }
         }
+        mediaMetadata = legacyItems.copy;
     }
 
-    if (urls.count == 0) {
+    if (mediaMetadata.count == 0) {
         [self pp_finishPrefillFlow];
         return;
     }
@@ -1317,9 +1316,9 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
         self.imageCollection.userInteractionEnabled = NO;
     });
 
-    [self.imageCollection preloadImagesFromURLs:urls completion:^{
+    [self.imageCollection preloadMediaMetadata:mediaMetadata completion:^{
         dispatch_async(dispatch_get_main_queue(), ^{
-            NSLog(@"Prefilled %ld images for editing", (long)urls.count);
+            NSLog(@"Prefilled %ld media item(s) for editing", (long)mediaMetadata.count);
             [self pp_reloadMediaUI];
             [self pp_refreshMediaLocalizedText];
         });
@@ -2150,6 +2149,7 @@ typedef NS_ENUM(NSInteger, PPAdFieldType) {
                                        useArabic:Language.isRTL];
     self.imageCollection.delegate = self;
     self.imageCollection.allowsEditing = YES;
+    self.imageCollection.allowsVideoSelection = PPReusableVideoMediaEnabled();
     self.imageCollection.useArabic = Language.isRTL;
     self.imageCollection.headerContentInsets = UIEdgeInsetsMake(0.0, 16.0, 0.0, 16.0);
     self.imageCollection.backgroundColor = UIColor.clearColor;
@@ -3140,6 +3140,31 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
             return;
         }
 
+        if ([self.imageCollection hasSelectedVideos]) {
+            [self pp_uploadReusableMediaForAd:self.adModel
+                                   completion:^(PetAd *updatedAd, NSError *uploadError)
+            {
+                if (uploadError) {
+                    [self pp_cleanupFailedCreatedAd:self.adModel originalError:uploadError];
+                    return;
+                }
+
+                [self prepareSearchMetadataForAd:updatedAd];
+                [[PetAdManager sharedManager] updatePetAd:updatedAd
+                                               completion:^(NSError *updateError)
+                {
+                    if (updateError) {
+                        [self pp_cleanupFailedCreatedAd:updatedAd originalError:updateError];
+                        return;
+                    }
+
+                    self.adModel = updatedAd;
+                    [self pp_finishCreateSuccess];
+                }];
+            }];
+            return;
+        }
+
         if (images.count == 0) {
             [self pp_finishCreateSuccess];
             return;
@@ -3173,7 +3198,17 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
 - (void)pp_updateExistingAdWithImages:(NSArray<UIImage *> *)images
 {
     
-    NSArray *originalImageItems = self.editingAd.imageItems ?: @[];
+    NSArray *originalMediaMetadata = [self.editingAd.imageItemsRaw isKindOfClass:NSArray.class] ? self.editingAd.imageItemsRaw : @[];
+    if (originalMediaMetadata.count == 0 && self.editingAd.imageItems.count > 0) {
+        NSMutableArray<NSDictionary *> *legacyItems = [NSMutableArray arrayWithCapacity:self.editingAd.imageItems.count];
+        for (PetImageItem *item in self.editingAd.imageItems) {
+            NSDictionary *dict = [item toDictionary];
+            if (dict) {
+                [legacyItems addObject:dict];
+            }
+        }
+        originalMediaMetadata = legacyItems.copy;
+    }
     
     
     void (^performUpdate)(void) = ^{
@@ -3191,12 +3226,29 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
     };
 
     if (!self.didMutateMediaAfterPrefill) {
-        self.adModel.imageItems = originalImageItems;
+        self.adModel.imageItemsRaw = originalMediaMetadata;
         performUpdate();
         return;
     }
     
     
+    if ([self.imageCollection hasSelectedVideos]) {
+        [self pp_uploadReusableMediaForAd:self.adModel
+                               completion:^(PetAd *updatedAd, NSError *error)
+        {
+            if (error) {
+                NSLog(@"❌ [UpdateAd] Media upload failed: %@", error);
+                [self pp_handleSubmitFailure:error];
+                return;
+            }
+
+            self.adModel = updatedAd;
+            self.didMutateMediaAfterPrefill = NO;
+            performUpdate();
+        }];
+        return;
+    }
+
     // User changed media and removed all images.
     if (images.count == 0) {
         self.adModel.imageItems = @[];
@@ -3218,6 +3270,41 @@ forRowAtIndexPath:(NSIndexPath *)indexPath
         self.adModel = updatedAd;
         self.didMutateMediaAfterPrefill = NO;
         performUpdate();
+    }];
+}
+
+- (void)pp_uploadReusableMediaForAd:(PetAd *)ad
+                         completion:(void (^)(PetAd *updatedAd, NSError * _Nullable error))completion
+{
+    if (!ad || ad.adID.length == 0) {
+        if (completion) {
+            completion(ad, [self pp_uploadErrorWithCode:406 description:@"Missing adID before media upload."]);
+        }
+        return;
+    }
+
+    NSString *ownerID = [self pp_submitOwnerID];
+    __weak typeof(self) weakSelf = self;
+    [self.imageCollection uploadSelectedMediaWithStorageFolder:@"ads"
+                                                       ownerID:ownerID
+                                                     contextID:ad.adID
+                                                    completion:^(PPMediaUploadResult * _Nullable result, NSError * _Nullable error) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        if (error || !result) {
+            if (completion) {
+                completion(ad, error ?: [self pp_uploadErrorWithCode:407
+                                                          description:[self pp_localizedStringForKey:@"media_upload_failed_message"
+                                                                                            fallback:@"Media upload failed. Please try again."]]);
+            }
+            return;
+        }
+
+        ad.imageItemsRaw = result.mixedMetadata ?: @[];
+        if (completion) {
+            completion(ad, nil);
+        }
     }];
 }
 

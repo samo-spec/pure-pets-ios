@@ -19,6 +19,23 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @class PPImageCollection;
+@class PPMediaUploadResult;
+
+typedef void (^PPImageCollectionMediaUploadCompletion)(PPMediaUploadResult * _Nullable result,
+                                                       NSError * _Nullable error);
+typedef void (^PPImageCollectionSingleMediaCompletion)(NSDictionary * _Nullable metadata,
+                                                       NSError * _Nullable error);
+
+@interface PPMediaUploadResult : NSObject
+@property (nonatomic, copy, readonly) NSArray<NSString *> *imageURLs;
+@property (nonatomic, copy, readonly) NSArray<NSDictionary *> *imageMetadata;
+@property (nonatomic, copy, readonly) NSArray<NSString *> *videoURLs;
+@property (nonatomic, copy, readonly) NSArray<NSDictionary *> *videoMetadata;
+@property (nonatomic, copy, readonly) NSArray<NSDictionary *> *mixedMetadata;
+@property (nonatomic, assign, readonly) BOOL hasVideos;
+@property (nonatomic, assign, readonly) BOOL hasImages;
+- (instancetype)init NS_UNAVAILABLE;
+@end
 
 @protocol PPImageCollectionDelegate <NSObject>
 @optional
@@ -40,6 +57,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, assign) BOOL useArabic;
 @property (nonatomic, assign) BOOL allowsEditing;
 @property (nonatomic, assign) BOOL allowsReordering;
+@property (nonatomic, assign) BOOL allowsVideoSelection;
 @property (nonatomic, strong) NSString *titleText;
 @property (nonatomic, assign) UIEdgeInsets headerContentInsets;
 
@@ -54,11 +72,50 @@ NS_ASSUME_NONNULL_BEGIN
 // Image Management
 - (void)addImage:(UIImage *)image;
 - (void)addImages:(NSArray<UIImage *> *)images;
+- (void)addVideoWithURL:(NSURL *)videoURL thumbnail:(UIImage * _Nullable)thumbnail;
 - (void)removeImageAtIndex:(NSInteger)index;
 - (void)replaceImageAtIndex:(NSInteger)index withImage:(UIImage *)image;
 - (void)clearAllImages;
 - (NSArray<UIImage *> *)allImages;
+- (NSArray<UIImage *> *)allPhotoImages;
+- (NSArray<NSURL *> *)allVideoURLs;
+- (BOOL)hasSelectedVideos;
+- (NSArray<NSDictionary *> *)selectedImageMetadata;
+- (NSArray<NSDictionary *> *)selectedVideoMetadata;
+- (NSArray<NSDictionary *> *)selectedMixedMediaMetadata;
 - (NSInteger)imageCount;
+
+// Reusable Firebase media upload. When PPReusableVideoMediaEnabled() is OFF,
+// this returns image-only metadata and never uploads video media.
+- (void)uploadSelectedMediaWithStorageFolder:(NSString *)storageFolder
+                                     ownerID:(NSString *)ownerID
+                                   contextID:(NSString * _Nullable)contextID
+                                  completion:(PPImageCollectionMediaUploadCompletion)completion;
+
+// App media storage helpers:
+// uploadMedia(entityType, entityId, file, mediaType)
+// deleteMedia(storagePath)
+// replaceMedia(oldStoragePath, newFile) returns new metadata plus old paths;
+// commit Firestore first, then delete returned old paths.
+// deleteEntityMedia(entityType, entityId)
++ (void)uploadMediaWithEntityType:(NSString *)entityType
+                          entityID:(NSString *)entityID
+                              file:(id)file
+                         mediaType:(NSString *)mediaType
+                           ownerID:(NSString * _Nullable)ownerID
+                         completion:(PPImageCollectionSingleMediaCompletion)completion;
++ (void)deleteMediaAtStoragePath:(NSString *)storagePath
+                       completion:(void(^ _Nullable)(NSError * _Nullable error))completion;
++ (void)replaceMediaAtOldStoragePath:(NSString *)oldStoragePath
+                           entityType:(NSString *)entityType
+                             entityID:(NSString *)entityID
+                                 file:(id)file
+                            mediaType:(NSString *)mediaType
+                              ownerID:(NSString * _Nullable)ownerID
+                            completion:(PPImageCollectionSingleMediaCompletion)completion;
++ (void)deleteEntityMediaWithEntityType:(NSString *)entityType
+                               entityID:(NSString *)entityID
+                             completion:(void(^ _Nullable)(NSError * _Nullable error))completion;
 
 // UI Management
 - (void)reloadCollectionView;
@@ -66,6 +123,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Preloading
 - (void)preloadImagesFromURLs:(NSArray<NSString *> *)urls completion:(void(^)(void))completion;
+- (void)preloadMediaMetadata:(NSArray<NSDictionary *> *)metadata completion:(void(^)(void))completion;
 
 @end
 

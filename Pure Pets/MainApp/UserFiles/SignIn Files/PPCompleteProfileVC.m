@@ -18,6 +18,7 @@
 #import "CountryModel.h"
 #import "Language.h"
 #import "PPFirebaseSessionBridge.h"
+#import "PPAuthScaffoldView.h"
 
 @import FirebaseAuth;
 @import FirebaseStorage;
@@ -211,9 +212,11 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
 @property (nonatomic, strong) UITableView *tableView;
 
+@property (nonatomic, strong) PPAuthScaffoldView *authScaffoldView;
 @property (nonatomic, strong) UIView *backgroundGlowViewTop;
 @property (nonatomic, strong) UIView *backgroundGlowViewBottom;
 @property (nonatomic, strong) UIView *topBarView;
+@property (nonatomic, strong) PPAuthStepIndicatorView *authStepIndicatorView;
 @property (nonatomic, strong) UIButton *saveBTN;
 @property (nonatomic, strong) UIButton *skipBTN;
 
@@ -368,8 +371,13 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
     [self pp_prepareDraftState];
     [self pp_applyCanvas];
+    self.authScaffoldView = [[PPAuthScaffoldView alloc] initWithFrame:self.view.bounds];
+    self.authScaffoldView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    [self.view addSubview:self.authScaffoldView];
     [self pp_buildBackdrop];
     [self pp_buildTopBar];
+    [self pp_configureNavigationChrome];
+    [self pp_buildAuthStepIndicator];
     [self pp_buildTableView];
     [self pp_setupHeaderUI];
     [self pp_updateHeaderContent];
@@ -456,6 +464,8 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     bottomGlow.layer.shadowRadius = 72.0;
     bottomGlow.layer.shadowOffset = CGSizeZero;
     [self.view addSubview:bottomGlow];
+    topGlow.hidden = YES;
+    bottomGlow.hidden = YES;
 
     [NSLayoutConstraint activateConstraints:@[
         [topGlow.widthAnchor constraintEqualToConstant:220.0],
@@ -477,57 +487,109 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 {
     UIView *topBar = [[UIView alloc] init];
     topBar.translatesAutoresizingMaskIntoConstraints = NO;
-    topBar.backgroundColor = [self pp_surfaceColor];
-    topBar.layer.cornerRadius = 28.0;
-    topBar.layer.borderWidth = 1.0;
+    topBar.backgroundColor = UIColor.clearColor;
+    topBar.layer.cornerRadius = 0.0;
+    topBar.layer.borderWidth = 0.0;
     topBar.layer.masksToBounds = NO;
     [topBar pp_setBorderColor:[self pp_surfaceBorderColor]];
     [topBar pp_setShadowColor:UIColor.blackColor];
-    topBar.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.02 : 0.06;
-    topBar.layer.shadowRadius = 18.0;
-    topBar.layer.shadowOffset = CGSizeMake(0.0, 8.0);
+    topBar.layer.shadowOpacity = 0.0;
+    topBar.layer.shadowRadius = 0.0;
+    topBar.layer.shadowOffset = CGSizeZero;
     if (@available(iOS 13.0, *)) {
         topBar.layer.cornerCurve = kCACornerCurveContinuous;
     }
     [self.view addSubview:topBar];
     self.topBarView = topBar;
 
-    UIButton *skipButton = [self pp_actionButtonWithTitle:kLang(@"Skip") systemImageName:@"xmark" filled:NO action:@selector(onDismiss)];
+    UIButton *skipButton = [self pp_actionButtonWithTitle:kLang(@"Skip") systemImageName:nil filled:NO action:@selector(onDismiss)];
     UIButton *saveButton = [self pp_actionButtonWithTitle:kLang(@"Save") systemImageName:@"checkmark" filled:YES action:@selector(saveTapped)];
     [topBar addSubview:skipButton];
     [topBar addSubview:saveButton];
     self.skipBTN = skipButton;
     self.saveBTN = saveButton;
 
-    UILabel *titleLabel = [[UILabel alloc] init];
-    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.text = kLang(@"Complete_Profile");
-    titleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
-    titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
-    titleLabel.textAlignment = NSTextAlignmentCenter;
-    titleLabel.lineBreakMode = NSLineBreakByTruncatingTail;
-    [topBar addSubview:titleLabel];
+    NSLayoutConstraint *topBarLeading = [topBar.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:20.0];
+    NSLayoutConstraint *topBarTrailing = [topBar.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-20.0];
+    topBarLeading.priority = UILayoutPriorityDefaultHigh;
+    topBarTrailing.priority = UILayoutPriorityDefaultHigh;
 
     [NSLayoutConstraint activateConstraints:@[
         [topBar.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:12.0],
-        [topBar.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor constant:20.0],
-        [topBar.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor constant:-20.0],
-        [topBar.heightAnchor constraintEqualToConstant:62.0],
+        topBarLeading,
+        topBarTrailing,
+        [topBar.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [topBar.widthAnchor constraintLessThanOrEqualToConstant:600.0],
+        [topBar.heightAnchor constraintEqualToConstant:52.0],
 
         [skipButton.leadingAnchor constraintEqualToAnchor:topBar.leadingAnchor constant:10.0],
         [skipButton.centerYAnchor constraintEqualToAnchor:topBar.centerYAnchor],
-        [skipButton.widthAnchor constraintGreaterThanOrEqualToConstant:104.0],
+        [skipButton.widthAnchor constraintGreaterThanOrEqualToConstant:82.0],
         [skipButton.heightAnchor constraintEqualToConstant:44.0],
 
         [saveButton.trailingAnchor constraintEqualToAnchor:topBar.trailingAnchor constant:-10.0],
         [saveButton.centerYAnchor constraintEqualToAnchor:topBar.centerYAnchor],
-        [saveButton.widthAnchor constraintGreaterThanOrEqualToConstant:104.0],
-        [saveButton.heightAnchor constraintEqualToConstant:44.0],
+        [saveButton.widthAnchor constraintGreaterThanOrEqualToConstant:108.0],
+        [saveButton.heightAnchor constraintEqualToConstant:44.0]
+    ]];
+}
 
-        [titleLabel.centerXAnchor constraintEqualToAnchor:topBar.centerXAnchor],
-        [titleLabel.centerYAnchor constraintEqualToAnchor:topBar.centerYAnchor],
-        [titleLabel.leadingAnchor constraintGreaterThanOrEqualToAnchor:skipButton.trailingAnchor constant:8.0],
-        [titleLabel.trailingAnchor constraintLessThanOrEqualToAnchor:saveButton.leadingAnchor constant:-8.0]
+- (void)pp_configureNavigationChrome
+{
+    if (!self.navigationController) {
+        return;
+    }
+
+    self.navigationController.navigationBarHidden = NO;
+    UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
+    [appearance configureWithTransparentBackground];
+    appearance.backgroundColor = UIColor.clearColor;
+    appearance.shadowColor = UIColor.clearColor;
+    self.navigationController.navigationBar.standardAppearance = appearance;
+    self.navigationController.navigationBar.scrollEdgeAppearance = appearance;
+    self.navigationController.navigationBar.compactAppearance = appearance;
+    self.navigationController.navigationBar.tintColor = [self pp_brandColor];
+    self.navigationItem.title = kLang(@"Complete_Profile");
+
+    self.topBarView.hidden = YES;
+    self.skipBTN.hidden = YES;
+    self.saveBTN.hidden = YES;
+
+    UIButton *skipButton = [self pp_actionButtonWithTitle:kLang(@"Skip")
+                                           systemImageName:nil
+                                                    filled:NO
+                                                    action:@selector(onDismiss)];
+    UIButton *saveButton = [self pp_actionButtonWithTitle:kLang(@"Save")
+                                           systemImageName:@"checkmark"
+                                                    filled:YES
+                                                    action:@selector(saveTapped)];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:skipButton];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:saveButton];
+}
+
+- (void)pp_buildAuthStepIndicator
+{
+    PPAuthStepIndicatorView *stepView = [[PPAuthStepIndicatorView alloc] initWithStepTitles:[PPAuthScaffoldView defaultStepTitles]];
+    [stepView updateCurrentStepIndex:2 completedStepIndex:1 animated:NO];
+    [self.view addSubview:stepView];
+    self.authStepIndicatorView = stepView;
+
+    NSLayoutConstraint *stepLeading = [stepView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor constant:24.0];
+    NSLayoutConstraint *stepTrailing = [stepView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor constant:-24.0];
+    stepLeading.priority = UILayoutPriorityDefaultHigh;
+    stepTrailing.priority = UILayoutPriorityDefaultHigh;
+
+    NSLayoutConstraint *stepTop = self.navigationController
+        ? [stepView.topAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor constant:16.0]
+        : [stepView.topAnchor constraintEqualToAnchor:self.topBarView.bottomAnchor constant:12.0];
+
+    [NSLayoutConstraint activateConstraints:@[
+        stepTop,
+        stepLeading,
+        stepTrailing,
+        [stepView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [stepView.widthAnchor constraintLessThanOrEqualToConstant:560.0],
+        [stepView.heightAnchor constraintEqualToConstant:64.0]
     ]];
 }
 
@@ -539,7 +601,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     UIButton *button = [UIButton buttonWithType:UIButtonTypeSystem];
     button.translatesAutoresizingMaskIntoConstraints = NO;
     [button setTitle:title ?: @"" forState:UIControlStateNormal];
-    UIImage *image = [UIImage systemImageNamed:systemImageName ?: @""];
+    UIImage *image = systemImageName.length > 0 ? [UIImage systemImageNamed:systemImageName] : nil;
     [button setImage:image forState:UIControlStateNormal];
     button.titleLabel.font = [GM boldFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightSemibold];
     button.layer.cornerRadius = 22.0;
@@ -559,6 +621,35 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     button.layer.shadowRadius = filled ? 16.0 : 0.0;
     button.layer.shadowOffset = CGSizeMake(0.0, filled ? 8.0 : 0.0);
     [button addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+    if (filled) {
+        [PPAuthScaffoldView applyPrimaryButtonStyleToButton:button enabled:YES loading:NO];
+    } else {
+        [PPAuthScaffoldView applySecondaryButtonStyleToButton:button];
+    }
+    button.titleLabel.font = filled
+        ? ([GM boldFontWithSize:17.0] ?: [UIFont systemFontOfSize:17.0 weight:UIFontWeightSemibold])
+        : ([GM MidFontWithSize:15.0] ?: [UIFont systemFontOfSize:15.0 weight:UIFontWeightMedium]);
+    if (@available(iOS 15.0, *)) {
+        UIButtonConfiguration *config = button.configuration;
+        NSString *buttonTitle = title ?: @"";
+        UIColor *titleColor = filled ? UIColor.whiteColor : (AppPrimaryTextClr ?: UIColor.labelColor);
+        UIFont *resolvedFont = button.titleLabel.font;
+        if (buttonTitle.length > 0) {
+            config.attributedTitle = [[NSAttributedString alloc] initWithString:buttonTitle
+                                                                     attributes:@{
+                NSFontAttributeName: resolvedFont,
+                NSForegroundColorAttributeName: titleColor
+            }];
+        }
+        config.titleTextAttributesTransformer = ^NSDictionary<NSAttributedStringKey,id> * _Nonnull(NSDictionary<NSAttributedStringKey,id> * _Nonnull incoming) {
+            NSMutableDictionary<NSAttributedStringKey,id> *attributes = [incoming mutableCopy];
+            attributes[NSFontAttributeName] = resolvedFont;
+            attributes[NSForegroundColorAttributeName] = titleColor;
+            return attributes;
+        };
+        button.configuration = config;
+    }
+    [PPAuthScaffoldView addPressMotionToControl:button];
     return button;
 }
 
@@ -590,10 +681,17 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     [tableView registerClass:PPProfileSelectorCell.class forCellReuseIdentifier:@"PPProfileSelectorCell"];
 
     [self.view addSubview:tableView];
+    NSLayoutConstraint *tableLeading = [tableView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor];
+    NSLayoutConstraint *tableTrailing = [tableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor];
+    tableLeading.priority = UILayoutPriorityDefaultHigh;
+    tableTrailing.priority = UILayoutPriorityDefaultHigh;
+
     [NSLayoutConstraint activateConstraints:@[
-        [tableView.topAnchor constraintEqualToAnchor:self.topBarView.bottomAnchor constant:8.0],
-        [tableView.leadingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.leadingAnchor],
-        [tableView.trailingAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.trailingAnchor],
+        [tableView.topAnchor constraintEqualToAnchor:self.authStepIndicatorView.bottomAnchor constant:10.0],
+        tableLeading,
+        tableTrailing,
+        [tableView.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [tableView.widthAnchor constraintLessThanOrEqualToConstant:600.0],
         [tableView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
     ]];
     self.tableView = tableView;
@@ -607,18 +705,17 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
     UIView *cardView = [[UIView alloc] init];
     cardView.translatesAutoresizingMaskIntoConstraints = NO;
-    cardView.backgroundColor = [self pp_surfaceColor];
-    cardView.layer.cornerRadius = 34.0;
-    cardView.layer.masksToBounds = NO;
-    cardView.layer.borderWidth = 1.0;
-    [cardView pp_setBorderColor:[self pp_surfaceBorderColor]];
-    [cardView pp_setShadowColor:UIColor.blackColor];
-    cardView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.03 : 0.08;
-    cardView.layer.shadowRadius = 24.0;
-    cardView.layer.shadowOffset = CGSizeMake(0.0, 14.0);
-    if (@available(iOS 13.0, *)) {
-        cardView.layer.cornerCurve = kCACornerCurveContinuous;
-    }
+    [PPAuthScaffoldView applyPremiumCardStyleToView:cardView];
+    cardView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
+        if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            return [UIColor colorWithWhite:1.0 alpha:0.075];
+        }
+        return [AppForgroundColr colorWithAlphaComponent:PPIOS26() ? 0.62 : 0.78];
+    }];
+    cardView.layer.cornerRadius = 30.0;
+    cardView.layer.shadowOpacity = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark ? 0.04 : 0.10;
+    cardView.layer.shadowRadius = 28.0;
+    cardView.layer.shadowOffset = CGSizeMake(0.0, 18.0);
     [root addSubview:cardView];
     self.headerCardView = cardView;
 
@@ -626,18 +723,18 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     tintView.translatesAutoresizingMaskIntoConstraints = NO;
     tintView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *tc) {
         if (tc.userInterfaceStyle == UIUserInterfaceStyleDark) {
-            return [UIColor colorWithRed:0.22 green:0.19 blue:0.17 alpha:0.50];
+            return [UIColor colorWithWhite:1.0 alpha:0.035];
         }
-        return [[UIColor colorWithRed:0.99 green:0.96 blue:0.93 alpha:1.0] colorWithAlphaComponent:0.72];
+        return [[UIColor whiteColor] colorWithAlphaComponent:PPIOS26() ? 0.24 : 0.36];
     }];
-    tintView.layer.cornerRadius = 34.0;
+    tintView.layer.cornerRadius = 30.0;
     tintView.layer.masksToBounds = YES;
     [cardView addSubview:tintView];
 
     UIView *accentBar = [[UIView alloc] init];
     accentBar.translatesAutoresizingMaskIntoConstraints = NO;
     accentBar.backgroundColor = [self pp_brandColor];
-    accentBar.layer.cornerRadius = 3.0;
+    accentBar.layer.cornerRadius = 2.5;
     [cardView addSubview:accentBar];
 
     UILabel *eyebrowLabel = [[UILabel alloc] init];
@@ -656,21 +753,21 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
     UIView *avatarHalo = [[UIView alloc] init];
     avatarHalo.translatesAutoresizingMaskIntoConstraints = NO;
-    avatarHalo.backgroundColor = [[self pp_brandColor] colorWithAlphaComponent:0.12];
-    avatarHalo.layer.cornerRadius = 62.0;
-    [avatarHalo pp_setShadowColor:[[self pp_brandColor] colorWithAlphaComponent:0.30]];
-    avatarHalo.layer.shadowOpacity = 0.12;
-    avatarHalo.layer.shadowRadius = 22.0;
-    avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 10.0);
+    avatarHalo.backgroundColor = [[self pp_brandColor] colorWithAlphaComponent:0.10];
+    avatarHalo.layer.cornerRadius = 58.0;
+    [avatarHalo pp_setShadowColor:[[self pp_brandColor] colorWithAlphaComponent:0.26]];
+    avatarHalo.layer.shadowOpacity = 0.16;
+    avatarHalo.layer.shadowRadius = 28.0;
+    avatarHalo.layer.shadowOffset = CGSizeMake(0.0, 14.0);
     [cardView addSubview:avatarHalo];
 
-    self.avatarPlaceholderImage = [PPModernAvatarRenderer avatarImageForName:self.draftUserName ?: self.editingUser.UserName size:108.0];
+    self.avatarPlaceholderImage = [PPModernAvatarRenderer avatarImageForName:self.draftUserName ?: self.editingUser.UserName size:96.0];
     UIImageView *avatarView = [[UIImageView alloc] initWithImage:self.avatarPlaceholderImage];
     avatarView.translatesAutoresizingMaskIntoConstraints = NO;
     avatarView.userInteractionEnabled = YES;
     avatarView.contentMode = UIViewContentModeScaleAspectFill;
     avatarView.clipsToBounds = YES;
-    avatarView.layer.cornerRadius = 54.0;
+    avatarView.layer.cornerRadius = 48.0;
     avatarView.layer.borderWidth = 3.0;
     [avatarView pp_setBorderColor:[[UIColor whiteColor] colorWithAlphaComponent:0.62]];
     [avatarHalo addSubview:avatarView];
@@ -694,7 +791,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
     UILabel *titleLabel = [[UILabel alloc] init];
     titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    titleLabel.font = [GM boldFontWithSize:29.0] ?: [UIFont systemFontOfSize:29.0 weight:UIFontWeightBold];
+    titleLabel.font = [GM boldFontWithSize:30.0] ?: [UIFont systemFontOfSize:30.0 weight:UIFontWeightBold];
     titleLabel.textColor = AppPrimaryTextClr ?: UIColor.labelColor;
     titleLabel.textAlignment = NSTextAlignmentCenter;
     titleLabel.numberOfLines = 2;
@@ -712,7 +809,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
     UILabel *subtitleLabel = [[UILabel alloc] init];
     subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    subtitleLabel.font = [GM MidFontWithSize:13.0] ?: [UIFont systemFontOfSize:13.0 weight:UIFontWeightMedium];
+    subtitleLabel.font = [GM MidFontWithSize:13.5] ?: [UIFont systemFontOfSize:13.5 weight:UIFontWeightMedium];
     subtitleLabel.textColor = [UIColor.secondaryLabelColor colorWithAlphaComponent:0.92];
     subtitleLabel.textAlignment = NSTextAlignmentCenter;
     subtitleLabel.numberOfLines = 3;
@@ -729,6 +826,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     progressPill.layer.borderWidth = 1.0;
     [progressPill pp_setBorderColor:[[self pp_brandColor] colorWithAlphaComponent:0.10]];
     progressPill.layer.masksToBounds = YES;
+    progressPill.semanticContentAttribute = [Language semanticAttributeForCurrentLanguage];
     [cardView addSubview:progressPill];
     self.progressPillView = progressPill;
 
@@ -743,46 +841,47 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     progressLabel.font = [GM boldFontWithSize:12.0] ?: [UIFont systemFontOfSize:12.0 weight:UIFontWeightSemibold];
     progressLabel.textColor = [[self pp_brandColor] colorWithAlphaComponent:0.92];
     progressLabel.textAlignment = NSTextAlignmentCenter;
+    progressLabel.numberOfLines = 1;
     [progressPill addSubview:progressLabel];
     self.progressPillLabel = progressLabel;
 
     [NSLayoutConstraint activateConstraints:@[
-        [cardView.topAnchor constraintEqualToAnchor:root.topAnchor constant:10.0],
-        [cardView.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:20.0],
-        [cardView.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-20.0],
-        [cardView.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-14.0],
+        [cardView.topAnchor constraintEqualToAnchor:root.topAnchor constant:12.0],
+        [cardView.leadingAnchor constraintEqualToAnchor:root.leadingAnchor constant:18.0],
+        [cardView.trailingAnchor constraintEqualToAnchor:root.trailingAnchor constant:-18.0],
+        [cardView.bottomAnchor constraintEqualToAnchor:root.bottomAnchor constant:-18.0],
 
         [tintView.topAnchor constraintEqualToAnchor:cardView.topAnchor],
         [tintView.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor],
         [tintView.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor],
         [tintView.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor],
 
-        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:22.0],
-        [accentBar.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
-        [accentBar.widthAnchor constraintEqualToConstant:72.0],
-        [accentBar.heightAnchor constraintEqualToConstant:6.0],
+        [accentBar.topAnchor constraintEqualToAnchor:cardView.topAnchor constant:28.0],
+        [accentBar.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-28.0],
+        [accentBar.widthAnchor constraintEqualToConstant:96.0],
+        [accentBar.heightAnchor constraintEqualToConstant:5.0],
 
-        [eyebrowLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:16.0],
+        [eyebrowLabel.topAnchor constraintEqualToAnchor:accentBar.bottomAnchor constant:22.0],
         [eyebrowLabel.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
         [eyebrowLabel.widthAnchor constraintGreaterThanOrEqualToConstant:96.0],
         [eyebrowLabel.heightAnchor constraintEqualToConstant:28.0],
 
         [avatarHalo.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [avatarHalo.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:20.0],
-        [avatarHalo.widthAnchor constraintEqualToConstant:124.0],
-        [avatarHalo.heightAnchor constraintEqualToConstant:124.0],
+        [avatarHalo.topAnchor constraintEqualToAnchor:eyebrowLabel.bottomAnchor constant:24.0],
+        [avatarHalo.widthAnchor constraintEqualToConstant:116.0],
+        [avatarHalo.heightAnchor constraintEqualToConstant:116.0],
 
         [avatarView.centerXAnchor constraintEqualToAnchor:avatarHalo.centerXAnchor],
         [avatarView.centerYAnchor constraintEqualToAnchor:avatarHalo.centerYAnchor],
-        [avatarView.widthAnchor constraintEqualToConstant:108.0],
-        [avatarView.heightAnchor constraintEqualToConstant:108.0],
+        [avatarView.widthAnchor constraintEqualToConstant:96.0],
+        [avatarView.heightAnchor constraintEqualToConstant:96.0],
 
         [editBadge.widthAnchor constraintEqualToConstant:32.0],
         [editBadge.heightAnchor constraintEqualToConstant:32.0],
         [editBadge.trailingAnchor constraintEqualToAnchor:avatarHalo.trailingAnchor constant:-2.0],
         [editBadge.bottomAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:-2.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:14.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:avatarHalo.bottomAnchor constant:18.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:cardView.leadingAnchor constant:24.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:cardView.trailingAnchor constant:-24.0],
 
@@ -796,7 +895,11 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 
         [progressPill.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:16.0],
         [progressPill.centerXAnchor constraintEqualToAnchor:cardView.centerXAnchor],
-        [progressPill.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-24.0],
+        [progressPill.widthAnchor constraintGreaterThanOrEqualToConstant:132.0],
+        [progressPill.heightAnchor constraintGreaterThanOrEqualToConstant:34.0],
+        [progressPill.leadingAnchor constraintGreaterThanOrEqualToAnchor:cardView.leadingAnchor constant:28.0],
+        [progressPill.trailingAnchor constraintLessThanOrEqualToAnchor:cardView.trailingAnchor constant:-28.0],
+        [progressPill.bottomAnchor constraintEqualToAnchor:cardView.bottomAnchor constant:-26.0],
 
         [progressIcon.leadingAnchor constraintEqualToAnchor:progressPill.leadingAnchor constant:12.0],
         [progressIcon.centerYAnchor constraintEqualToAnchor:progressPill.centerYAnchor],
@@ -899,7 +1002,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     }
 
     self.avatarPlaceholderImage = [PPModernAvatarRenderer avatarImageForName:(self.draftUserName ?: self.editingUser.UserName)
-                                                                        size:108.0];
+                                                                        size:90.0];
     self.avatarIMV.image = self.avatarPlaceholderImage;
 }
 
@@ -1571,6 +1674,10 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
                         }
                         [PPHUD showSuccess:kLang(@"Saved")];
                         void (^completedCallback)(UserModel *) = self.onProfileCompleted;
+                        if (completedCallback && self.navigationController && self.navigationController.viewControllers.firstObject != self) {
+                            completedCallback(resolvedUser);
+                            return;
+                        }
                         [self dismissViewControllerAnimated:YES completion:^{
                             if (completedCallback) {
                                 completedCallback(resolvedUser);
@@ -1640,8 +1747,8 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     self.tableView.userInteractionEnabled = !isSaving;
     self.saveBTN.enabled = !isSaving;
     self.skipBTN.enabled = !isSaving;
-    self.saveBTN.alpha = isSaving ? 0.62 : 1.0;
     self.skipBTN.alpha = isSaving ? 0.62 : 1.0;
+    [PPAuthScaffoldView applyPrimaryButtonStyleToButton:self.saveBTN enabled:!isSaving loading:isSaving];
 }
 
 - (void)pp_showValidationErrorForField:(PPProfileFieldKind)fieldKind subtitle:(NSString *)subtitle
@@ -2308,15 +2415,21 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     }
     self.didAnimateIntro = YES;
 
-    NSArray<UIView *> *views = @[self.topBarView, self.tableView];
+    NSArray<UIView *> *views = @[
+        self.topBarView ?: UIView.new,
+        self.authStepIndicatorView ?: UIView.new,
+        self.headerCardView ?: UIView.new,
+        self.tableView ?: UIView.new
+    ];
     [views enumerateObjectsUsingBlock:^(UIView *view, NSUInteger idx, BOOL *stop) {
         view.alpha = 0.0;
-        view.transform = CGAffineTransformMakeTranslation(0.0, 16.0);
-        [UIView animateWithDuration:0.55
-                              delay:0.05 * idx
-             usingSpringWithDamping:0.88
-              initialSpringVelocity:0.16
-                            options:UIViewAnimationOptionCurveEaseOut
+        view.transform = CGAffineTransformConcat(CGAffineTransformMakeTranslation(0.0, 18.0),
+                                                 CGAffineTransformMakeScale(0.985, 0.985));
+        [UIView animateWithDuration:0.62
+                              delay:0.055 * idx
+             usingSpringWithDamping:0.90
+              initialSpringVelocity:0.10
+                            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
                          animations:^{
             view.alpha = 1.0;
             view.transform = CGAffineTransformIdentity;
@@ -2331,6 +2444,10 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     [self.view endEditing:YES];
     void (^completedCallback)(UserModel *) = self.onProfileCompleted;
     UserModel *user = self.editingUser;
+    if (completedCallback && self.navigationController && self.navigationController.viewControllers.firstObject != self) {
+        completedCallback(user);
+        return;
+    }
     [self dismissViewControllerAnimated:YES completion:^{
         if (completedCallback) {
             completedCallback(user);

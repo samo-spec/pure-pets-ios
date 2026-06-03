@@ -782,6 +782,12 @@ didSelectItemAtIndexPath:(NSIndexPath *)indexPath {
     }
 }
 
+- (void)PPUniversalCell_tapVisibilityToggle:(PPUniversalCellViewModel *)universalModel {
+    if ([self.externalCellDelegate respondsToSelector:@selector(PPUniversalCell_tapVisibilityToggle:)]) {
+        [self.externalCellDelegate PPUniversalCell_tapVisibilityToggle:universalModel];
+    }
+}
+
 - (void)PPUniversalCell_tapDelete:(PPUniversalCellViewModel *)universalModel {
     if ([self.externalCellDelegate respondsToSelector:@selector(PPUniversalCell_tapDelete:)]) {
         [self.externalCellDelegate PPUniversalCell_tapDelete:universalModel];

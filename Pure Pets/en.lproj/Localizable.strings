@@ -1051,7 +1051,7 @@
 
 
 "Welcome to Pure Pets" = "Welcome to Pure Pets";
-"Maybe Later" = "Maybe Later";
+"Maybe Later" = "Later";
 "Sign in with Google" = "Sign in with Google";
 "Mobile Number" = "Mobile Number";
 "Continue with Mobile" = "Continue with Mobile";
@@ -2597,6 +2597,9 @@
 "Serv_Available" = "Available";
 "Serv_Unavailable" = "Unavailable";
 "auth_phone_live_hint" = "Fast, secure access with one-time verification";
+"auth_step_mobile_number" = "Mobile Number";
+"auth_step_verification_code" = "Verification Code";
+"auth_step_complete_profile" = "Complete Profile";
 "auth_phone_live_ready" = "We’ll send a code to %@";
 "auth_alt_methods_title" = "Or continue with";
 "auth_complete_profile_subtitle" = "Add the details that help people recognize and trust your account.";
@@ -2857,3 +2860,40 @@
 "intro_panel3_eyebrow" = "ONE PURE PETS HOME";
 "intro_panel3_title" = "Their world,\nbeautifully connected";
 "intro_panel3_subtitle" = "From discovery to delivery, Pure Pets brings every part of their care into one refined experience.";
+
+/* PPImageCollection video support */
+"video_picker_enabled_title" = "Video selected";
+"video_upload_not_ready_message" = "Video picking is enabled, but accessory video upload is not available yet. Remove the video or submit photos only.";
+"choose_media_from_gallery" = "Choose photos or videos";
+"take_photo_or_video" = "Take a photo or video";
+"media_upload_failed_message" = "Media upload failed. Please try again.";
+"media_upload_login_required_message" = "Please sign in again before uploading media.";
+"media_upload_permission_denied_message" = "You do not have permission to upload media here.";
+"media_upload_incomplete_message" = "Media upload did not complete. Please try again.";
+"invalid_image_upload_message" = "One selected image could not be prepared.";
+"invalid_video_upload_message" = "One selected video is unsupported.";
+"video_processing_failed_message" = "The selected video could not be processed.";
+"media_limit_title" = "Media limit";
+"media_video_count_limit_message" = "You can add up to 1 video.";
+"media_video_duration_limit_message" = "Videos must be 30 seconds or shorter.";
+"video_upload_processing" = "Processing video...";
+"video_player_close" = "Close video";
+"video_player_play_pause" = "Play or pause video";
+"video_player_mute" = "Mute video";
+
+/* Owner listing visibility */
+"listing_hide_action" = "Hide";
+"listing_show_action" = "Show";
+"listing_hidden_badge" = "Hidden";
+"listing_hidden_success" = "Hidden from public browsing.";
+"listing_visible_success" = "Visible in public browsing.";
+"listing_visibility_failed" = "Could not update visibility. Please try again.";
+"ImageSearchError" = "Image search failed. Please try again.";
+"ImageSearchImageRequired" = "Please choose an image first.";
+"ImageSearchCompressionFailed" = "We couldn't prepare this image. Please try another photo.";
+"ImageSearchImageTooLarge" = "This image is too large. Please try a smaller photo.";
+"ImageSearchInvalidResponse" = "Image search returned an invalid response.";
+"ImageSearchNoResultsTitle" = "No matching results";
+"ImageSearchNoResultsSubtitle" = "Try another image or use text search.";
+
+"UnableToLoadDetails" = "Unable to load details.";

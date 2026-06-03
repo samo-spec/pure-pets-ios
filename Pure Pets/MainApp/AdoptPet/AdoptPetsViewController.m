@@ -895,6 +895,27 @@ static NSString *PPAdoptNormalizedGenderValue(NSString *gender) {
     [self presentViewController:alert animated:YES completion:nil];
 }
 
+- (void)PPUniversalCell_tapVisibilityToggle:(PPUniversalCellViewModel *)universalModel {
+    AdoptPetModel *model = universalModel.ModelObject;
+    if (![model isKindOfClass:[AdoptPetModel class]]) return;
+    if (![self pp_isOwnerForModel:model] || model.documentID.length == 0) return;
+
+    BOOL nextVisible = !universalModel.isPubliclyVisible;
+    __weak typeof(self) weakSelf = self;
+    [[AdoptPetManager shared] updatePetVisibilityWithID:model.documentID
+                                             visibility:(nextVisible ? 0 : 1)
+                                             completion:^(BOOL success, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (!success || error) {
+            [PPAlertHelper showErrorIn:strongSelf title:kLang(@"Error") subtitle:error.localizedDescription ?: kLang(@"listing_visibility_failed")];
+            return;
+        }
+        NSString *message = nextVisible ? kLang(@"listing_visible_success") : kLang(@"listing_hidden_success");
+        [AppManager.sharedInstance showSnakBar:message withColor:GM.appPrimaryColor andDuration:0.6 containerView:strongSelf.view];
+    }];
+}
+
 #pragma mark - Helpers
 
 - (BOOL)pp_isOwnerForModel:(AdoptPetModel *)model {

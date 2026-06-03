@@ -29,7 +29,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic) NSInteger cityID;
 @property (nonatomic, copy) NSString *details;
 @property (nonatomic, strong) NSArray<NSString *> *imageURLs;
+@property (nonatomic, copy, nullable) NSArray<NSDictionary *> *imageMeta;
 @property (nonatomic, strong) NSDate *createdAt;
+/// 0 = public, 1 = hidden by owner. Missing legacy values default to public.
+@property (nonatomic) NSInteger visibility;
 
 - (instancetype)initWithSnapshot:(FIRDocumentSnapshot *)snapshot;
 - (NSDictionary *)toFirestoreDictionary;

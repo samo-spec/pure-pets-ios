@@ -8,6 +8,7 @@
 
 #import <UIKit/UIKit.h>
 #import <FirebaseAuth/FirebaseAuth.h>
+#import "PPAuthStepIndicatorView.h"
 
 NS_ASSUME_NONNULL_BEGIN
 

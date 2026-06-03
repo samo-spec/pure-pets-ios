@@ -1116,6 +1116,9 @@
 /* ---------------------------- */
 "auth_signin_success_title" = "مرحباً!";
 "auth_signin_success_message" = "تم تسجيل دخولك بنجاح.";
+"auth_step_mobile_number" = "رقم الجوال";
+"auth_step_verification_code" = "رمز التحقق";
+"auth_step_complete_profile" = "إكمال الملف";
 
 /* ---------------------------- */
 /* Logout */
@@ -2845,3 +2848,40 @@
 "intro_panel3_eyebrow" = "تجربة بيور بتس";
 "intro_panel3_title" = "عالم محبوبك\nمتصل بأناقة";
 "intro_panel3_subtitle" = "من الاكتشاف حتى التوصيل، تجمع بيور بتس كل جوانب العناية في تجربة واحدة راقية.";
+
+/* PPImageCollection video support */
+"video_picker_enabled_title" = "تم اختيار فيديو";
+"video_upload_not_ready_message" = "اختيار الفيديو مفعّل، لكن رفع فيديوهات الإعلانات غير متاح حالياً. احذف الفيديو أو أرسل الصور فقط.";
+"choose_media_from_gallery" = "اختر صوراً أو فيديوهات";
+"take_photo_or_video" = "التقط صورة أو فيديو";
+"media_upload_failed_message" = "تعذر رفع الوسائط. حاول مرة أخرى.";
+"media_upload_login_required_message" = "يرجى تسجيل الدخول مرة أخرى قبل رفع الوسائط.";
+"media_upload_permission_denied_message" = "ليست لديك صلاحية رفع الوسائط هنا.";
+"media_upload_incomplete_message" = "لم يكتمل رفع الوسائط. حاول مرة أخرى.";
+"invalid_image_upload_message" = "تعذر تجهيز إحدى الصور المختارة.";
+"invalid_video_upload_message" = "أحد الفيديوهات المختارة غير مدعوم.";
+"video_processing_failed_message" = "تعذر معالجة الفيديو المختار.";
+"media_limit_title" = "حد الوسائط";
+"media_video_count_limit_message" = "يمكنك إضافة فيديو واحد فقط.";
+"media_video_duration_limit_message" = "يجب ألا تتجاوز مدة الفيديو ٣٠ ثانية.";
+"video_upload_processing" = "جاري معالجة الفيديو...";
+"video_player_close" = "إغلاق الفيديو";
+"video_player_play_pause" = "تشغيل أو إيقاف الفيديو";
+"video_player_mute" = "كتم صوت الفيديو";
+
+/* Owner listing visibility */
+"listing_hide_action" = "إخفاء";
+"listing_show_action" = "إظهار";
+"listing_hidden_badge" = "مخفي";
+"listing_hidden_success" = "تم إخفاؤه من التصفح العام.";
+"listing_visible_success" = "أصبح ظاهراً في التصفح العام.";
+"listing_visibility_failed" = "تعذر تحديث الظهور. حاول مرة أخرى.";
+"ImageSearchError" = "تعذر البحث بالصورة. حاول مرة أخرى.";
+"ImageSearchImageRequired" = "يرجى اختيار صورة أولاً.";
+"ImageSearchCompressionFailed" = "تعذر تجهيز هذه الصورة. جرّب صورة أخرى.";
+"ImageSearchImageTooLarge" = "هذه الصورة كبيرة جدًا. جرّب صورة أصغر.";
+"ImageSearchInvalidResponse" = "عاد البحث بالصورة باستجابة غير صالحة.";
+"ImageSearchNoResultsTitle" = "لم نجد نتائج مطابقة";
+"ImageSearchNoResultsSubtitle" = "جرب صورة أخرى أو استخدم البحث النصي.";
+
+"UnableToLoadDetails" = "تعذر تحميل التفاصيل.";

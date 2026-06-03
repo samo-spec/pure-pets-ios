@@ -21,6 +21,7 @@
 #import "PetAd.h"
 #import "SearchCacheManager.h"
 #import "ServiceModel.h"
+#import "PPImageSearchService.h"
 
 typedef NS_ENUM(NSUInteger, PPSearchSection) {
     PPSearchSectionResults = 0
@@ -57,7 +58,9 @@ static NSTimeInterval const kPPSearchDebounceDelay = 0.22;
 <UITextFieldDelegate,
 UICollectionViewDelegate,
 UICollectionViewDelegateFlowLayout,
-PPUniversalCellDelegate>
+PPUniversalCellDelegate,
+UIImagePickerControllerDelegate,
+UINavigationControllerDelegate>
 
 @property (nonatomic, strong) UIView *searchBarContainerView;
 @property (nonatomic, strong) UIView *searchFieldChromeView;
@@ -105,6 +108,8 @@ PPUniversalCellDelegate>
 @property (nonatomic, assign) BOOL isSearching;
 @property (nonatomic, assign) BOOL didAnimateHero;
 @property (nonatomic, assign) NSInteger currentSearchRequestID;
+@property (nonatomic, copy) NSArray<NSDictionary *> *imageSearchResultRefs;
+@property (nonatomic, copy) NSArray<NSDictionary *> *imageSearchRawResults;
 @property (nonatomic, strong) dispatch_queue_t searchQueue;
 @property (nonatomic, copy, nullable) dispatch_block_t pendingDebounceBlock;
 @property (nonatomic, assign) BOOL pendingSearchFieldFocus;
@@ -486,6 +491,20 @@ PPUniversalCellDelegate>
     [chromeView addSubview:iconView];
     [chromeView addSubview:textField];
     [chromeView addSubview:placeholderLabel];
+
+    UIButton *cameraButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    cameraButton.translatesAutoresizingMaskIntoConstraints = NO;
+    UIImageSymbolConfiguration *cameraCfg =
+        [UIImageSymbolConfiguration configurationWithPointSize:17 weight:UIImageSymbolWeightMedium];
+    [cameraButton setImage:[UIImage systemImageNamed:@"camera.fill" withConfiguration:cameraCfg]
+                  forState:UIControlStateNormal];
+    cameraButton.tintColor = [UIColor colorWithWhite:0.38 alpha:1.0];
+    cameraButton.backgroundColor = [UIColor colorWithWhite:0.96 alpha:1.0];
+    cameraButton.layer.cornerRadius = 16.0;
+    cameraButton.layer.masksToBounds = YES;
+    [cameraButton addTarget:self action:@selector(didTapImageSearchButton) forControlEvents:UIControlEventTouchUpInside];
+    [chromeView addSubview:cameraButton];
+
     [container addSubview:chromeView];
     [self.view addSubview:container];
 
@@ -510,9 +529,14 @@ PPUniversalCellDelegate>
         [iconView.heightAnchor constraintEqualToConstant:18.0],
 
         [textField.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:10.0],
-        [textField.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-14.0],
+        [textField.trailingAnchor constraintEqualToAnchor:cameraButton.leadingAnchor constant:-8.0],
         [textField.topAnchor constraintEqualToAnchor:chromeView.topAnchor],
         [textField.bottomAnchor constraintEqualToAnchor:chromeView.bottomAnchor],
+
+        [cameraButton.trailingAnchor constraintEqualToAnchor:chromeView.trailingAnchor constant:-10.0],
+        [cameraButton.centerYAnchor constraintEqualToAnchor:chromeView.centerYAnchor],
+        [cameraButton.widthAnchor constraintEqualToConstant:32.0],
+        [cameraButton.heightAnchor constraintEqualToConstant:32.0],
 
         [placeholderLabel.leadingAnchor constraintEqualToAnchor:textField.leadingAnchor],
         [placeholderLabel.trailingAnchor constraintLessThanOrEqualToAnchor:textField.trailingAnchor],
@@ -2258,9 +2282,262 @@ PPUniversalCellDelegate>
         return;
     }
 
+    id object = universalModel.ModelObject;
+
+    if ([object isKindOfClass:[NSDictionary class]]) {
+        NSDictionary *ref = (NSDictionary *)object;
+        NSString *kind = ref[@"kind"];
+        NSString *docID = ref[@"docID"] ?: ref[@"id"];
+
+        if (!kind || !docID) {
+            NSLog(@"[Search][TapCard] invalid image search ref");
+            return;
+        }
+
+        [self showLoading:YES];
+        __weak typeof(self) weakSelf = self;
+        [self fetchFullDocumentForKind:kind documentID:docID completion:^(id fullObject) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            [strongSelf showLoading:NO];
+
+            if (fullObject) {
+                [PPOverlayCoordinator pp_openDetailForObject:fullObject
+                                                      fromVC:strongSelf
+                                                  routingNav:nil];
+            } else {
+                [AppMgr showSnakBar:kLang(@"UnableToLoadDetails") withColor:nil andDuration:2.0 containerView:strongSelf.view];
+            }
+        }];
+        return;
+    }
+
     [PPOverlayCoordinator pp_openDetailForObject:universalModel.ModelObject
                                           fromVC:self
                                       routingNav:nil];
+}
+
+#pragma mark - Image Search
+
+- (void)didTapImageSearchButton
+{
+    UIImagePickerController *picker = [[UIImagePickerController alloc] init];
+    picker.delegate = self;
+    picker.sourceType = UIImagePickerControllerSourceTypePhotoLibrary;
+    picker.allowsEditing = NO;
+
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad && picker.popoverPresentationController) {
+        picker.popoverPresentationController.sourceView = self.view;
+        picker.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                                                      CGRectGetMidY(self.view.bounds),
+                                                                      1,
+                                                                      1);
+        picker.popoverPresentationController.permittedArrowDirections = 0;
+    }
+
+    [self presentViewController:picker animated:YES completion:nil];
+}
+
+- (void)imagePickerController:(UIImagePickerController *)picker
+ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info
+{
+    UIImage *image = info[UIImagePickerControllerOriginalImage];
+
+    __weak typeof(self) weakSelf = self;
+    [picker dismissViewControllerAnimated:YES completion:^{
+        [weakSelf runDirectImageSearch:image];
+    }];
+}
+
+- (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker
+{
+    [picker dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)runDirectImageSearch:(UIImage *)image
+{
+    if (!image) return;
+
+    [self showLoading:YES];
+
+    __weak typeof(self) weakSelf = self;
+    [[PPImageSearchService shared] searchWithImage:image
+                                              mode:PPImageSearchModeAuto
+                                             limit:@20
+                                        completion:^(NSDictionary * _Nullable response, NSError * _Nullable error) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+
+        [strongSelf showLoading:NO];
+
+        if (error) {
+            NSLog(@"Image search error: %@", error.localizedDescription);
+            [AppMgr showSnakBar:kLang(@"ImageSearchError") withColor:nil andDuration:2.0 containerView:self.view];
+            return;
+        }
+
+        NSDictionary *metadata = [response[@"metadata"] isKindOfClass:[NSDictionary class]]
+            ? response[@"metadata"]
+            : @{};
+        NSArray *results = [response[@"results"] isKindOfClass:[NSArray class]]
+            ? response[@"results"]
+            : @[];
+        NSArray *resultRefs = [metadata[@"resultRefs"] isKindOfClass:[NSArray class]]
+            ? metadata[@"resultRefs"]
+            : @[];
+
+        [strongSelf renderDirectImageSearchResults:results resultRefs:resultRefs metadata:metadata];
+    }];
+}
+
+- (void)renderDirectImageSearchResults:(NSArray *)results
+                            resultRefs:(NSArray *)resultRefs
+                              metadata:(NSDictionary *)metadata
+{
+    if (!resultRefs || resultRefs.count == 0) {
+        self.imageSearchResultRefs = @[];
+        self.imageSearchRawResults = @[];
+        self.allSearchResults = @[];
+        self.results = @[];
+        [self applyResultsAnimated:NO];
+        [self updateEmptyState];
+
+        [self updateEmptyStateForImageSearch:NO];
+        self.emptyTitleLabel.text = kLang(@"ImageSearchNoResultsTitle");
+        self.emptySubtitleLabel.text = kLang(@"ImageSearchNoResultsSubtitle");
+        return;
+    }
+
+    self.imageSearchResultRefs = resultRefs;
+    self.imageSearchRawResults = results;
+
+    NSMutableArray<PPUniversalCellViewModel *> *viewModels = [NSMutableArray arrayWithCapacity:resultRefs.count];
+    NSMutableSet<NSString *> *seen = [NSMutableSet set];
+
+    for (NSUInteger i = 0; i < resultRefs.count; i++) {
+        NSDictionary *ref = resultRefs[i];
+        NSDictionary *lightResult = (i < results.count) ? results[i] : nil;
+
+        NSString *refID = [NSString stringWithFormat:@"%@|%@", ref[@"kind"] ?: @"", ref[@"id"] ?: @""];
+        if ([seen containsObject:refID]) continue;
+        [seen addObject:refID];
+
+        PPUniversalCellViewModel *vm = [self viewModelForImageSearchRef:ref lightResult:lightResult];
+        if (vm) {
+            [viewModels addObject:vm];
+        }
+    }
+
+    self.results = viewModels.copy;
+    self.allSearchResults = @[];
+    [self applyResultsAnimated:YES];
+    [self updateEmptyState];
+    [self updateHeaderStateAnimated:YES];
+
+    if (!self.isHeroCollapsed) {
+        [self setHeroCollapsed:YES animated:YES];
+    }
+}
+
+- (nullable PPUniversalCellViewModel *)viewModelForImageSearchRef:(NSDictionary *)ref
+                                                       lightResult:(nullable NSDictionary *)lightResult
+{
+    NSString *kind = ref[@"kind"];
+    NSString *docID = ref[@"id"];
+
+    if (!kind || !docID) return nil;
+
+    NSMutableDictionary *refWithDoc = [ref mutableCopy];
+    refWithDoc[@"docID"] = docID;
+
+    if ([kind isEqualToString:@"pet_ad"]) {
+        PetAd *ad = [PetAd new];
+        ad.adID = docID;
+        ad.adTitle = lightResult[@"title"] ?: @"";
+        ad.price = lightResult[@"price"];
+
+        if (lightResult[@"imageUrl"]) {
+            PetImageItem *item = [PetImageItem itemWithURL:lightResult[@"imageUrl"] width:0 height:0 blurHash:nil];
+            ad.imageItems = @[item];
+        }
+
+        PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForAds];
+        vm.ModelObject = refWithDoc;
+        return vm;
+    }
+
+    if ([kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"]) {
+        PetAccessory *accessory = [PetAccessory new];
+        accessory.accessoryID = docID;
+        accessory.name = lightResult[@"title"] ?: @"";
+        accessory.price = lightResult[@"price"];
+        accessory.accessKindType = [kind isEqualToString:@"medicine"] ? 4 : 1;
+
+        if (lightResult[@"imageUrl"]) {
+            accessory.imageURLsArray = @[lightResult[@"imageUrl"]];
+        }
+
+        PPUniversalCellViewModel *vm = [[PPUniversalCellViewModel alloc] initWithModel:refWithDoc context:PPCellForMarket];
+        vm.ModelObject = refWithDoc;
+        return vm;
+    }
+
+    return nil;
+}
+
+- (void)fetchFullDocumentForKind:(NSString *)kind
+                      documentID:(NSString *)docID
+                      completion:(void (^)(id fullObject))completion
+{
+    NSString *collection;
+    if ([kind isEqualToString:@"pet_ad"]) {
+        collection = @"pet_ads";
+    } else if ([kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"]) {
+        collection = @"petAccessories";
+    } else if ([kind isEqualToString:@"adoption"]) {
+        collection = @"adopt_pets";
+    } else {
+        if (completion) completion(nil);
+        return;
+    }
+
+    [[AppMgr.dF documentWithPath:[NSString stringWithFormat:@"%@/%@", collection, docID]]
+     getDocumentWithCompletion:^(FIRDocumentSnapshot *snapshot, NSError *error) {
+        if (error || !snapshot.exists) {
+            if (completion) completion(nil);
+            return;
+        }
+
+        NSDictionary *data = snapshot.data;
+        if (!data) {
+            if (completion) completion(nil);
+            return;
+        }
+
+        id object = nil;
+        if ([kind isEqualToString:@"pet_ad"]) {
+            object = [PetAd adFromFirestoreData:data documentID:docID];
+        } else if ([kind isEqualToString:@"product"] || [kind isEqualToString:@"medicine"]) {
+            object = [[PetAccessory alloc] initWithDictionary:data documentID:docID];
+        }
+
+        if (completion) completion(object);
+    }];
+}
+
+- (void)updateEmptyStateForImageSearch:(BOOL)show
+{
+    self.emptyStateIconView.image = [UIImage systemImageNamed:show ? @"camera.metering.none" : @"sparkle.magnifyingglass"];
+}
+
+- (void)showLoading:(BOOL)show
+{
+    self.isSearching = show;
+    if (show) {
+        [self pp_showSkeletonIfNeeded];
+    } else {
+        [self pp_hideSkeleton];
+    }
 }
 
 @end

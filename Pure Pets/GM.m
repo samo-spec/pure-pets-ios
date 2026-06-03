@@ -1600,7 +1600,6 @@ CGSize getImageSizeSafely(UIImage *image) {
     NSMutableArray *segmTitles = [NSMutableArray new];
     [segmTitles addObject:kLang(@"Ads")];
     [segmTitles addObject:kLang(@"Accessories")];
-    [segmTitles addObject:kLang(@"food")];
     [segmTitles addObject:kLang(@"For Adoption")];
     return segmTitles;
 }

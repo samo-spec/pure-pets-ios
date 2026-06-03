@@ -751,6 +751,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
                                                            useArabic:Language.isRTL];
     self.imageCollection.delegate = self;
     self.imageCollection.allowsEditing = YES;
+    self.imageCollection.allowsVideoSelection = PPReusableVideoMediaEnabled();
     self.imageCollection.useArabic = Language.isRTL;
     self.imageCollection.titleText = kLang(@"photos");
     [self.imageCollection setTitle:kLang(@"photos") icon:nil];
@@ -842,15 +843,21 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
     [self.tableView reloadData];
 
-    if (self.editingPet.imageURLs.count > 0) {
+    NSArray<NSDictionary *> *mediaMetadata = [self.editingPet.imageMeta isKindOfClass:NSArray.class] ? self.editingPet.imageMeta : @[];
+    if (mediaMetadata.count > 0 || self.editingPet.imageURLs.count > 0) {
         self.isPrefillInProgress = YES;
         [self setPrefillLoadingVisible:YES];
         __weak typeof(self) weakSelf = self;
-        [self.imageCollection preloadImagesFromURLs:self.editingPet.imageURLs completion:^{
+        void (^finishPrefill)(void) = ^{
             __strong typeof(weakSelf) strongSelf = weakSelf;
             strongSelf.isPrefillInProgress = NO;
             [strongSelf setPrefillLoadingVisible:NO];
-        }];
+        };
+        if (mediaMetadata.count > 0) {
+            [self.imageCollection preloadMediaMetadata:mediaMetadata completion:finishPrefill];
+        } else {
+            [self.imageCollection preloadImagesFromURLs:self.editingPet.imageURLs completion:finishPrefill];
+        }
     }
 }
 
@@ -942,14 +949,15 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     if (!self.draftCity && !firstInvalidIP)            firstInvalidIP = [NSIndexPath indexPathForRow:1 inSection:1];
 
     NSArray<UIImage *> *images = [self.imageCollection allImages] ?: @[];
-    BOOL hasExistingURLs = self.editingPet.imageURLs.count > 0;
+    BOOL hasSelectedMedia = self.imageCollection.imageCount > 0;
+    BOOL hasExistingMedia = self.editingPet.imageURLs.count > 0 || self.editingPet.imageMeta.count > 0;
 
-    if (!self.editingPet && images.count == 0) {
+    if (!self.editingPet && !hasSelectedMedia) {
         [self pp_resetSaveButton];
         [self showErrorMessage:kLang(@"pleaseSelectAtLeastOnePhoto")];
         return;
     }
-    if (self.editingPet && images.count == 0 && !hasExistingURLs) {
+    if (self.editingPet && !hasSelectedMedia && !hasExistingMedia) {
         [self pp_resetSaveButton];
         [self showErrorMessage:kLang(@"pleaseSelectAtLeastOnePhoto")];
         return;
@@ -983,6 +991,7 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
     model.ownerID   = ownerID ?: @"";
     model.createdAt = self.editingPet.createdAt ?: [NSDate date];
     model.imageURLs = self.editingPet.imageURLs ?: @[];
+    model.imageMeta = self.editingPet.imageMeta ?: @[];
     return model;
 }
 
@@ -999,6 +1008,45 @@ static inline UISemanticContentAttribute PPAdoptCurrentSemanticAttribute(void) {
 
     AdoptPetModel *model = [self buildModelFromForm];
     __weak typeof(self) weakSelf = self;
+
+    if ([self.imageCollection hasSelectedVideos]) {
+        if (!self.editingPet && model.documentID.length == 0) {
+            model.documentID = NSUUID.UUID.UUIDString;
+        }
+        [self.imageCollection uploadSelectedMediaWithStorageFolder:@"adoptions"
+                                                           ownerID:model.ownerID
+                                                         contextID:(model.documentID.length > 0 ? model.documentID : nil)
+                                                        completion:^(PPMediaUploadResult * _Nullable result, NSError * _Nullable error) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (error || !result) {
+                [strongSelf pp_finishSaveWithSuccess:NO
+                                               error:error ?: [NSError errorWithDomain:@"AddAdoptPetViewController"
+                                                                                  code:-700
+                                                                              userInfo:@{NSLocalizedDescriptionKey: kLang(@"media_upload_failed_message")}]
+                                           isEditing:(strongSelf.editingPet != nil)];
+                return;
+            }
+
+            model.imageURLs = result.imageURLs ?: @[];
+            model.imageMeta = result.mixedMetadata ?: @[];
+
+            if (strongSelf.editingPet) {
+                [[AdoptPetManager shared] updatePetWithID:model.documentID
+                                                     data:[model toFirestoreDictionary]
+                                               completion:^(BOOL success, NSError * _Nullable saveError) {
+                    [strongSelf pp_finishSaveWithSuccess:success error:saveError isEditing:YES];
+                }];
+            } else {
+                [[AdoptPetManager shared] createPet:model
+                                             images:@[]
+                                         completion:^(BOOL success, NSString * _Nullable documentID, NSError * _Nullable saveError) {
+                    [strongSelf pp_finishSaveWithSuccess:success error:saveError isEditing:NO];
+                }];
+            }
+        }];
+        return;
+    }
 
     if (self.editingPet) {
         if (images.count > 0) {

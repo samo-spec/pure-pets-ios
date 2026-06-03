@@ -70,6 +70,24 @@ static NSString *const kageInfo = @"ageInfo";
 
     for (FileModel *file in self.FilesArray) {
 
+        if (file.FileType == 1) {
+            NSString *videoURL = file.FileUrl;
+            NSString *thumbnailURL = file.CoverUrl.length > 0 ? file.CoverUrl : file.FileUrl;
+            if (thumbnailURL.length == 0 || videoURL.length == 0) continue;
+
+            NSDictionary *metadata = @{
+                @"media_type": @"video",
+                @"url": videoURL,
+                @"thumbnail_url": thumbnailURL,
+                @"duration": @(file.videoDuration)
+            };
+            PetImageItem *item = [PetImageItem itemWithMediaMetadata:metadata];
+            if (item) {
+                [items addObject:item];
+            }
+            continue;
+        }
+
         // 0 = image (based on your existing logic)
         if (file.FileType != 0) continue;
 

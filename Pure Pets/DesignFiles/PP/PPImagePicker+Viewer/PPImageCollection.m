@@ -9,12 +9,49 @@
 #import "PPImageCollection.h"
 #import "QB.h"
 #import <AVFoundation/AVFoundation.h>
+#import <AVKit/AVKit.h>
 #import <ImageIO/ImageIO.h>
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import "PPPermissionHelper.h"
 #import "PPSelectOptionViewController.h"
 #import "OptionModel.h"
 #import "Styling.h"
+#import "FullScreenImageViewerController.h"
+#import "YYImageCoder.h"
+@import FirebaseStorage;
+
+@interface PPMediaUploadResult ()
+@property (nonatomic, copy, readwrite) NSArray<NSString *> *imageURLs;
+@property (nonatomic, copy, readwrite) NSArray<NSDictionary *> *imageMetadata;
+@property (nonatomic, copy, readwrite) NSArray<NSString *> *videoURLs;
+@property (nonatomic, copy, readwrite) NSArray<NSDictionary *> *videoMetadata;
+@property (nonatomic, copy, readwrite) NSArray<NSDictionary *> *mixedMetadata;
+@property (nonatomic, assign, readwrite) BOOL hasVideos;
+@property (nonatomic, assign, readwrite) BOOL hasImages;
+@end
+
+@implementation PPMediaUploadResult
+
+- (instancetype)initWithImageURLs:(NSArray<NSString *> *)imageURLs
+                    imageMetadata:(NSArray<NSDictionary *> *)imageMetadata
+                        videoURLs:(NSArray<NSString *> *)videoURLs
+                    videoMetadata:(NSArray<NSDictionary *> *)videoMetadata
+                     mixedMetadata:(NSArray<NSDictionary *> *)mixedMetadata
+{
+    self = [super init];
+    if (self) {
+        _imageURLs = [imageURLs copy] ?: @[];
+        _imageMetadata = [imageMetadata copy] ?: @[];
+        _videoURLs = [videoURLs copy] ?: @[];
+        _videoMetadata = [videoMetadata copy] ?: @[];
+        _mixedMetadata = [mixedMetadata copy] ?: @[];
+        _hasImages = _imageURLs.count > 0 || _imageMetadata.count > 0;
+        _hasVideos = _videoURLs.count > 0 || _videoMetadata.count > 0;
+    }
+    return self;
+}
+
+@end
 
 @interface PPImageCollection () <UISheetPresentationControllerDelegate>
 @property (nonatomic, strong) UIView *titleContainer;
@@ -29,6 +66,9 @@
 @property (nonatomic, strong) PPPickerBridge *photoPickerBridge;
 @property (nonatomic, strong) PPCoreBridge *corePickerBridge;
 @property (nonatomic, strong) UIImagePickerController *cameraPicker;
+@property (nonatomic, strong) NSMutableArray<NSNumber *> *mediaTypeArray;
+@property (nonatomic, strong) NSMutableArray *videoURLArray;
+@property (nonatomic, strong) NSMutableArray *preloadedMediaMetadataArray;
 @property (nonatomic, strong) UILongPressGestureRecognizer *reorderLongPressGesture;
 @property (nonatomic, assign) BOOL isPresentingMediaPicker;
 @property (nonatomic, strong) UIView *loadingOverlay;
@@ -47,6 +87,9 @@
 @implementation PPImageCollection
 
 static CGFloat const PPImageCollectionRemoteImageMaxPixelSize = 1800.0;
+static NSInteger const PPImageCollectionMaxVideoSelectionCount = 1;
+static NSTimeInterval const PPImageCollectionMaxVideoDuration = 30.0;
+static NSString * const PPAppMediaUploadsRoot = @"uploads";
 
 static inline UISemanticContentAttribute PPImageCollectionSemanticAttributeForArabic(BOOL useArabic) {
     return useArabic
@@ -58,6 +101,128 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     return useArabic ? NSTextAlignmentRight : NSTextAlignmentLeft;
 }
 
+static NSString *PPImageCollectionCleanPathComponent(NSString *value) {
+    NSString *clean = [value isKindOfClass:NSString.class] ? value : @"";
+    clean = [clean stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    clean = [clean stringByReplacingOccurrencesOfString:@"/" withString:@"_"];
+    return clean.length > 0 ? clean : NSUUID.UUID.UUIDString;
+}
+
+static NSString *PPImageCollectionNormalizedEntityType(NSString *entityType) {
+    NSString *clean = [[entityType isKindOfClass:NSString.class] ? entityType : @"" lowercaseString];
+    clean = [clean stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
+    if ([clean isEqualToString:@"pet-ads"] || [clean isEqualToString:@"ads"]) return @"ads";
+    if ([clean isEqualToString:@"petaccessories"] || [clean isEqualToString:@"accessories"]) return @"accessories";
+    if ([clean isEqualToString:@"used-accessories"] || [clean isEqualToString:@"usedaccessories"]) return @"used-accessories";
+    if ([clean isEqualToString:@"adopt-pets"] || [clean isEqualToString:@"adoptions"]) return @"adoptions";
+    if ([clean isEqualToString:@"users"] || [clean isEqualToString:@"user"]) return @"users";
+    return clean.length > 0 ? clean : @"ads";
+}
+
+static NSString *PPImageCollectionMediaSubfolder(NSString *mediaType) {
+    NSString *clean = [[mediaType isKindOfClass:NSString.class] ? mediaType : @"" lowercaseString];
+    if ([clean containsString:@"video"]) return @"videos";
+    if ([clean containsString:@"thumb"]) return @"thumbs";
+    return @"images";
+}
+
+static NSString *PPImageCollectionStoragePath(NSString *entityType,
+                                             NSString *entityID,
+                                             NSString *mediaID,
+                                             NSString *mediaType,
+                                             NSString *extension) {
+    NSString *entity = PPImageCollectionNormalizedEntityType(entityType);
+    NSString *safeEntityID = PPImageCollectionCleanPathComponent(entityID);
+    NSString *safeMediaID = PPImageCollectionCleanPathComponent(mediaID);
+    NSString *ext = [[extension isKindOfClass:NSString.class] ? extension : @"" lowercaseString];
+    if (ext.length == 0) ext = [PPImageCollectionMediaSubfolder(mediaType) isEqualToString:@"videos"] ? @"mp4" : @"webp";
+    if ([ext hasPrefix:@"."]) ext = [ext substringFromIndex:1];
+
+    if ([entity isEqualToString:@"users"]) {
+        return [NSString stringWithFormat:@"%@/users/%@/profile/profile.%@", PPAppMediaUploadsRoot, safeEntityID, ext];
+    }
+    return [NSString stringWithFormat:@"%@/%@/%@/%@/%@.%@",
+            PPAppMediaUploadsRoot,
+            entity,
+            safeEntityID,
+            PPImageCollectionMediaSubfolder(mediaType),
+            safeMediaID,
+            ext];
+}
+
+static NSDictionary *PPImageCollectionImageUploadPayload(UIImage *image, CGFloat maxDimension) {
+    if (![image isKindOfClass:UIImage.class] || image.size.width <= 0.0 || image.size.height <= 0.0) {
+        return nil;
+    }
+    UIImage *source = image;
+    if (source.imageOrientation != UIImageOrientationUp) {
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+        format.scale = source.scale;
+        format.opaque = NO;
+        source = [[[UIGraphicsImageRenderer alloc] initWithSize:source.size format:format] imageWithActions:^(__unused UIGraphicsImageRendererContext *ctx) {
+            [image drawInRect:CGRectMake(0.0, 0.0, image.size.width, image.size.height)];
+        }];
+    }
+    CGFloat largest = MAX(source.size.width, source.size.height);
+    if (largest > maxDimension) {
+        CGFloat scale = maxDimension / largest;
+        CGSize size = CGSizeMake(MAX(1.0, floor(source.size.width * scale)),
+                                 MAX(1.0, floor(source.size.height * scale)));
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+        format.scale = 1.0;
+        format.opaque = NO;
+        source = [[[UIGraphicsImageRenderer alloc] initWithSize:size format:format] imageWithActions:^(__unused UIGraphicsImageRendererContext *ctx) {
+            [source drawInRect:CGRectMake(0.0, 0.0, size.width, size.height)];
+        }];
+    }
+
+    NSData *data = nil;
+    NSString *extension = @"webp";
+    NSString *contentType = @"image/webp";
+    if (YYImageWebPAvailable() && source.CGImage) {
+        data = CFBridgingRelease(YYCGImageCreateEncodedData(source.CGImage, YYImageTypeWebP, 0.84));
+    }
+    if (data.length == 0) {
+        data = UIImageJPEGRepresentation(source, 0.86);
+        extension = @"jpg";
+        contentType = @"image/jpeg";
+    }
+    if (data.length == 0) return nil;
+    return @{
+        @"data": data,
+        @"extension": extension,
+        @"content_type": contentType,
+        @"width": @(source.size.width),
+        @"height": @(source.size.height)
+    };
+}
+
+static NSString *PPImageCollectionVideoContentTypeForURL(NSURL *url) {
+    NSString *ext = url.pathExtension.lowercaseString;
+    if ([ext isEqualToString:@"mov"] || [ext isEqualToString:@"qt"]) return @"video/quicktime";
+    if ([ext isEqualToString:@"m4v"]) return @"video/x-m4v";
+    return @"video/mp4";
+}
+
+static UIImage *PPImageCollectionThumbnailForVideoURL(NSURL *videoURL) {
+    if (![videoURL isKindOfClass:NSURL.class]) return nil;
+    AVURLAsset *asset = [AVURLAsset assetWithURL:videoURL];
+    AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+    generator.appliesPreferredTrackTransform = YES;
+    generator.maximumSize = CGSizeMake(900.0, 900.0);
+    NSError *error = nil;
+    CGImageRef cgImage = [generator copyCGImageAtTime:CMTimeMakeWithSeconds(0.1, 600)
+                                           actualTime:NULL
+                                                error:&error];
+    if (!cgImage) {
+        NSLog(@"[PPImageCollection] Failed to generate video thumbnail: %@", error.localizedDescription);
+        return nil;
+    }
+    UIImage *thumbnail = [UIImage imageWithCGImage:cgImage];
+    CGImageRelease(cgImage);
+    return thumbnail;
+}
+
 #pragma mark - Initialization
 
 - (instancetype)initWithFrame:(CGRect)frame maxImageCount:(NSInteger)maxCount useArabic:(BOOL)useArabic {
@@ -67,10 +232,14 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
         _useArabic = useArabic;
         _allowsEditing = YES;
         _allowsReordering = YES;
+        _allowsVideoSelection = NO;
         _selectedForEdit = -1;
         _headerContentInsets = UIEdgeInsetsMake(0.0, 16.0, 0.0, 16.0);
         _arrayLock = [[NSRecursiveLock alloc] init];
         _mediaOutputArray = [[NSMutableArray alloc] init];
+        _mediaTypeArray = [[NSMutableArray alloc] init];
+        _videoURLArray = [[NSMutableArray alloc] init];
+        _preloadedMediaMetadataArray = [[NSMutableArray alloc] init];
         
         [self setupImageManager];
         [self setupEditorBridge];
@@ -473,6 +642,71 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
 
 #pragma mark - Public Methods
 
+- (BOOL)pp_allowsReusableVideoMedia
+{
+    return PPReusableVideoMediaEnabled() && self.allowsVideoSelection;
+}
+
+- (NSString *)pp_mediaStringValue:(id)value
+{
+    if ([value isKindOfClass:NSString.class]) {
+        return (NSString *)value;
+    }
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)value stringValue];
+    }
+    return @"";
+}
+
+- (BOOL)pp_mediaMetadataIsVideo:(NSDictionary *)metadata
+{
+    if (![metadata isKindOfClass:NSDictionary.class] || ![self pp_allowsReusableVideoMedia]) {
+        return NO;
+    }
+    NSString *type = [[self pp_mediaStringValue:metadata[@"media_type"]] lowercaseString];
+    return [type isEqualToString:@"video"];
+}
+
+- (NSString *)pp_displayURLForMediaMetadata:(NSDictionary *)metadata
+{
+    if (![metadata isKindOfClass:NSDictionary.class]) {
+        return @"";
+    }
+    if ([self pp_mediaMetadataIsVideo:metadata]) {
+        NSString *thumbnailURL = [self pp_mediaStringValue:metadata[@"thumbnail_url"]];
+        if (thumbnailURL.length > 0) {
+            return thumbnailURL;
+        }
+    }
+    return [self pp_mediaStringValue:metadata[@"url"]];
+}
+
+- (NSDictionary *)pp_normalizedExistingMetadata:(NSDictionary *)metadata order:(NSInteger)order
+{
+    if (![metadata isKindOfClass:NSDictionary.class]) {
+        return nil;
+    }
+    NSMutableDictionary *normalized = [metadata mutableCopy];
+    normalized[@"order"] = @(order);
+    normalized[@"is_primary"] = @(order == 0);
+    NSString *type = [[self pp_mediaStringValue:normalized[@"media_type"]] lowercaseString];
+    if (type.length == 0 || ([type isEqualToString:@"video"] && ![self pp_allowsReusableVideoMedia])) {
+        normalized[@"media_type"] = @"image";
+    } else {
+        normalized[@"media_type"] = type;
+    }
+    return normalized.copy;
+}
+
+- (void)setAllowsVideoSelection:(BOOL)allowsVideoSelection
+{
+    _allowsVideoSelection = allowsVideoSelection;
+    if (!PPReusableVideoMediaEnabled() && allowsVideoSelection) {
+        _allowsVideoSelection = NO;
+    }
+    [self reloadCollectionView];
+}
+
 - (void)pp_ensureMutableCollections
 {
     if (![self.mediaOutputArray isKindOfClass:NSMutableArray.class]) {
@@ -482,6 +716,30 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     }
     if (!self.mediaOutputArray) {
         self.mediaOutputArray = [NSMutableArray array];
+    }
+    if (![self.mediaTypeArray isKindOfClass:NSMutableArray.class]) {
+        NSArray *snapshot =
+            [self.mediaTypeArray isKindOfClass:NSArray.class] ? (NSArray *)self.mediaTypeArray : @[];
+        self.mediaTypeArray = [snapshot mutableCopy];
+    }
+    if (!self.mediaTypeArray) {
+        self.mediaTypeArray = [NSMutableArray array];
+    }
+    if (![self.videoURLArray isKindOfClass:NSMutableArray.class]) {
+        NSArray *snapshot =
+            [self.videoURLArray isKindOfClass:NSArray.class] ? (NSArray *)self.videoURLArray : @[];
+        self.videoURLArray = [snapshot mutableCopy];
+    }
+    if (!self.videoURLArray) {
+        self.videoURLArray = [NSMutableArray array];
+    }
+    if (![self.preloadedMediaMetadataArray isKindOfClass:NSMutableArray.class]) {
+        NSArray *snapshot =
+            [self.preloadedMediaMetadataArray isKindOfClass:NSArray.class] ? (NSArray *)self.preloadedMediaMetadataArray : @[];
+        self.preloadedMediaMetadataArray = [snapshot mutableCopy];
+    }
+    if (!self.preloadedMediaMetadataArray) {
+        self.preloadedMediaMetadataArray = [NSMutableArray array];
     }
 
     if (!self.imageManager) {
@@ -652,6 +910,14 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     [self pp_ensureMutableCollections];
     [self.mediaOutputArray removeAllObjects];
     [self.mediaOutputArray addObjectsFromArray:sanitized];
+    [self.mediaTypeArray removeAllObjects];
+    [self.videoURLArray removeAllObjects];
+    [self.preloadedMediaMetadataArray removeAllObjects];
+    for (__unused UIImage *image in sanitized) {
+        [self.mediaTypeArray addObject:@(PHAssetMediaTypeImage)];
+        [self.videoURLArray addObject:(NSURL *)NSNull.null];
+        [self.preloadedMediaMetadataArray addObject:NSNull.null];
+    }
     self.imageManager.selectedImages = [sanitized mutableCopy];
     self.imageManager.assetArray = [NSMutableOrderedSet orderedSetWithArray:sanitizedAssets];
     [self.arrayLock unlock];
@@ -796,10 +1062,148 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
 }
 
 - (NSArray<UIImage *> *)allImages {
+    NSMutableArray<UIImage *> *images = [NSMutableArray array];
     [self.arrayLock lock];
-    NSArray *copy = [self.mediaOutputArray copy];
+    for (NSInteger idx = 0; idx < self.mediaOutputArray.count; idx++) {
+        NSNumber *mediaType = idx < self.mediaTypeArray.count ? self.mediaTypeArray[idx] : @(PHAssetMediaTypeImage);
+        if (mediaType.integerValue != PHAssetMediaTypeImage) {
+            continue;
+        }
+        id image = self.mediaOutputArray[idx];
+        if ([image isKindOfClass:UIImage.class]) {
+            [images addObject:image];
+        }
+    }
     [self.arrayLock unlock];
-    return copy;
+    return images.copy;
+}
+
+- (NSArray<UIImage *> *)allPhotoImages {
+    NSMutableArray<UIImage *> *photos = [NSMutableArray array];
+    [self.arrayLock lock];
+    for (NSInteger idx = 0; idx < self.mediaOutputArray.count; idx++) {
+        NSNumber *mediaType = idx < self.mediaTypeArray.count ? self.mediaTypeArray[idx] : @(PHAssetMediaTypeImage);
+        id image = self.mediaOutputArray[idx];
+        if (mediaType.integerValue == PHAssetMediaTypeImage && [image isKindOfClass:UIImage.class]) {
+            [photos addObject:image];
+        }
+    }
+    [self.arrayLock unlock];
+    return photos.copy;
+}
+
+- (NSArray<NSURL *> *)allVideoURLs {
+    if (![self pp_allowsReusableVideoMedia]) {
+        return @[];
+    }
+    NSMutableArray<NSURL *> *urls = [NSMutableArray array];
+    [self.arrayLock lock];
+    for (id candidate in self.videoURLArray) {
+        if ([candidate isKindOfClass:NSURL.class]) {
+            [urls addObject:candidate];
+        }
+    }
+    [self.arrayLock unlock];
+    return urls.copy;
+}
+
+- (BOOL)hasSelectedVideos {
+    if (![self pp_allowsReusableVideoMedia]) {
+        return NO;
+    }
+    [self.arrayLock lock];
+    BOOL hasVideos = NO;
+    for (NSNumber *mediaType in self.mediaTypeArray) {
+        if (mediaType.integerValue == PHAssetMediaTypeVideo) {
+            hasVideos = YES;
+            break;
+        }
+    }
+    [self.arrayLock unlock];
+    return hasVideos;
+}
+
+- (NSInteger)pp_selectedVideoCount
+{
+    if (![self pp_allowsReusableVideoMedia]) {
+        return 0;
+    }
+    NSInteger count = 0;
+    [self.arrayLock lock];
+    for (NSNumber *mediaType in self.mediaTypeArray) {
+        if (mediaType.integerValue == PHAssetMediaTypeVideo) {
+            count += 1;
+        }
+    }
+    [self.arrayLock unlock];
+    return count;
+}
+
+- (NSString *)pp_videoCountLimitMessage
+{
+    NSString *message = kLang(@"media_video_count_limit_message");
+    if ([message isKindOfClass:NSString.class] && message.length > 0 && ![message isEqualToString:@"media_video_count_limit_message"]) {
+        return message;
+    }
+    return [NSString stringWithFormat:@"You can add up to %ld video.", (long)PPImageCollectionMaxVideoSelectionCount];
+}
+
+- (NSString *)pp_videoDurationLimitMessage
+{
+    NSString *message = kLang(@"media_video_duration_limit_message");
+    if ([message isKindOfClass:NSString.class] && message.length > 0 && ![message isEqualToString:@"media_video_duration_limit_message"]) {
+        return message;
+    }
+    return [NSString stringWithFormat:@"Videos must be %@ seconds or shorter.", @(PPImageCollectionMaxVideoDuration)];
+}
+
+- (void)pp_presentMediaLimitMessage:(NSString *)message
+{
+    UIViewController *presenter = [self pp_bestPresentingViewController:nil];
+    if (!presenter || presenter.presentedViewController) {
+        return;
+    }
+    [self presentSimpleAlertOn:presenter
+                         title:[self pp_localizedSheetStringForKey:@"media_limit_title" fallback:@"Media limit"]
+                       message:message];
+}
+
+- (void)pp_presentMediaLimitMessageAfterPickerDismiss:(NSString *)message
+{
+    if (message.length == 0) {
+        return;
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.45 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIViewController *presenter = [self pp_bestPresentingViewController:nil] ?: AppMgr.topViewController;
+        if (!presenter || presenter.presentedViewController) {
+            return;
+        }
+        [self presentSimpleAlertOn:presenter
+                             title:[self pp_localizedSheetStringForKey:@"media_limit_title" fallback:@"Media limit"]
+                           message:message];
+    });
+}
+
+- (BOOL)pp_canAcceptAdditionalVideoWithPresenter:(UIViewController *)presenter
+{
+    if (![self pp_allowsReusableVideoMedia]) {
+        return NO;
+    }
+    if ([self pp_selectedVideoCount] < PPImageCollectionMaxVideoSelectionCount) {
+        return YES;
+    }
+    UIViewController *target = presenter ?: [self pp_bestPresentingViewController:nil];
+    if (target) {
+        [self presentSimpleAlertOn:target
+                             title:[self pp_localizedSheetStringForKey:@"media_limit_title" fallback:@"Media limit"]
+                           message:[self pp_videoCountLimitMessage]];
+    }
+    return NO;
+}
+
+- (BOOL)pp_videoDurationIsAllowed:(NSTimeInterval)duration
+{
+    return duration > 0.0 && duration <= PPImageCollectionMaxVideoDuration;
 }
 
 - (NSInteger)imageCount {
@@ -816,8 +1220,11 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     
     [self.arrayLock lock];
     [self pp_ensureMutableCollections];
-    [self.mediaOutputArray addObject:normalized];
-    [self.imageManager addImage:normalized];
+        [self.mediaOutputArray addObject:normalized];
+        [self.mediaTypeArray addObject:@(PHAssetMediaTypeImage)];
+        [self.videoURLArray addObject:(NSURL *)NSNull.null];
+        [self.preloadedMediaMetadataArray addObject:NSNull.null];
+        [self.imageManager addImage:normalized];
     [self.arrayLock unlock];
     
     [self reloadCollectionView];
@@ -850,10 +1257,103 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     [self.mediaOutputArray addObjectsFromArray:imagesToAdd];
     
     for (UIImage *image in imagesToAdd) {
+        [self.mediaTypeArray addObject:@(PHAssetMediaTypeImage)];
+        [self.videoURLArray addObject:(NSURL *)NSNull.null];
+        [self.preloadedMediaMetadataArray addObject:NSNull.null];
         [self.imageManager addImage:image];
     }
     [self.arrayLock unlock];
     
+    [self reloadCollectionView];
+    [self notifyDelegate];
+}
+
+- (UIImage *)pp_thumbnailForVideoURL:(NSURL *)videoURL
+{
+    if (![videoURL isKindOfClass:NSURL.class]) {
+        return nil;
+    }
+    AVURLAsset *asset = [AVURLAsset assetWithURL:videoURL];
+    AVAssetImageGenerator *generator = [[AVAssetImageGenerator alloc] initWithAsset:asset];
+    generator.appliesPreferredTrackTransform = YES;
+    generator.maximumSize = CGSizeMake(900.0, 900.0);
+    NSError *error = nil;
+    CGImageRef cgImage = [generator copyCGImageAtTime:CMTimeMakeWithSeconds(0.1, 600)
+                                           actualTime:NULL
+                                                error:&error];
+    if (!cgImage) {
+        NSLog(@"[PPImageCollection] Failed to generate video thumbnail: %@", error.localizedDescription);
+        return nil;
+    }
+    UIImage *thumbnail = [UIImage imageWithCGImage:cgImage];
+    CGImageRelease(cgImage);
+    return [self pp_normalizedImageForCollection:thumbnail];
+}
+
+- (NSURL *)pp_stableLocalVideoURLForSelection:(NSURL *)videoURL
+{
+    if (![videoURL isKindOfClass:NSURL.class] || !videoURL.isFileURL) {
+        return nil;
+    }
+
+    NSFileManager *fileManager = NSFileManager.defaultManager;
+    NSString *directoryPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"PPImageCollectionVideos"];
+    NSError *directoryError = nil;
+    if (![fileManager createDirectoryAtPath:directoryPath
+                withIntermediateDirectories:YES
+                                 attributes:nil
+                                      error:&directoryError]) {
+        NSLog(@"[PPImageCollection] Failed to create video staging directory: %@", directoryError.localizedDescription);
+        return videoURL;
+    }
+
+    NSString *ext = videoURL.pathExtension.length > 0 ? videoURL.pathExtension.lowercaseString : @"mov";
+    NSURL *targetURL = [NSURL fileURLWithPath:[directoryPath stringByAppendingPathComponent:
+                                               [NSString stringWithFormat:@"%@.%@", NSUUID.UUID.UUIDString, ext]]];
+    BOOL didAccess = [videoURL startAccessingSecurityScopedResource];
+    NSError *copyError = nil;
+    [fileManager copyItemAtURL:videoURL toURL:targetURL error:&copyError];
+    if (didAccess) {
+        [videoURL stopAccessingSecurityScopedResource];
+    }
+    if (copyError) {
+        NSLog(@"[PPImageCollection] Failed to stage selected video: %@", copyError.localizedDescription);
+        return nil;
+    }
+    return targetURL;
+}
+
+- (void)addVideoWithURL:(NSURL *)videoURL thumbnail:(UIImage *)thumbnail
+{
+    if (![self pp_allowsReusableVideoMedia]) return;
+    if (![videoURL isKindOfClass:NSURL.class] || [self imageCount] >= self.maxImageCount) return;
+    if (![self pp_canAcceptAdditionalVideoWithPresenter:nil]) return;
+    NSURL *stableVideoURL = [self pp_stableLocalVideoURLForSelection:videoURL];
+    if (![stableVideoURL isKindOfClass:NSURL.class] || !stableVideoURL.isFileURL) return;
+    NSDictionary *videoInfo = [self pp_videoInfoForURL:stableVideoURL];
+    if (![self pp_videoDurationIsAllowed:[videoInfo[@"duration"] doubleValue]] ||
+        [videoInfo[@"width"] doubleValue] <= 0.0 ||
+        [videoInfo[@"height"] doubleValue] <= 0.0) {
+        NSLog(@"[PPImageCollection] Rejected unsupported selected video: %@", stableVideoURL);
+        [self pp_presentMediaLimitMessage:[self pp_videoDurationLimitMessage]];
+        return;
+    }
+    UIImage *videoThumbnail = thumbnail ?: [self pp_thumbnailForVideoURL:stableVideoURL];
+    if (![self pp_isRenderableImage:videoThumbnail]) return;
+
+    [self.arrayLock lock];
+    [self pp_ensureMutableCollections];
+    [self.mediaOutputArray addObject:videoThumbnail];
+    [self.mediaTypeArray addObject:@(PHAssetMediaTypeVideo)];
+    [self.videoURLArray addObject:stableVideoURL];
+    [self.preloadedMediaMetadataArray addObject:NSNull.null];
+    [self.imageManager.selectedImages addObject:videoThumbnail];
+    NSString *placeholder = [self pp_uniqueAssetPlaceholder];
+    if (placeholder.length > 0) {
+        [self.imageManager.assetArray addObject:placeholder];
+    }
+    [self.arrayLock unlock];
+
     [self reloadCollectionView];
     [self notifyDelegate];
 }
@@ -864,6 +1364,9 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     [self.arrayLock lock];
     [self pp_ensureMutableCollections];
     [self.mediaOutputArray removeObjectAtIndex:index];
+    if (index < self.mediaTypeArray.count) [self.mediaTypeArray removeObjectAtIndex:index];
+    if (index < self.videoURLArray.count) [self.videoURLArray removeObjectAtIndex:index];
+    if (index < self.preloadedMediaMetadataArray.count) [self.preloadedMediaMetadataArray removeObjectAtIndex:index];
     [self.imageManager removeImageAtIndex:index];
     [self.arrayLock unlock];
     
@@ -879,6 +1382,9 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     [self.arrayLock lock];
     [self pp_ensureMutableCollections];
     [self.mediaOutputArray replaceObjectAtIndex:index withObject:normalized];
+    if (index < self.mediaTypeArray.count) self.mediaTypeArray[index] = @(PHAssetMediaTypeImage);
+    if (index < self.videoURLArray.count) self.videoURLArray[index] = (NSURL *)NSNull.null;
+    if (index < self.preloadedMediaMetadataArray.count) self.preloadedMediaMetadataArray[index] = NSNull.null;
     
     // For PPImageManager, we need to replace with asset if available
     PHAsset *asset = nil;
@@ -899,6 +1405,9 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     [self.arrayLock lock];
     [self pp_ensureMutableCollections];
     [self.mediaOutputArray removeAllObjects];
+    [self.mediaTypeArray removeAllObjects];
+    [self.videoURLArray removeAllObjects];
+    [self.preloadedMediaMetadataArray removeAllObjects];
     [self.imageManager clearAll];
     [self.arrayLock unlock];
     
@@ -936,12 +1445,15 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     // Build modern option models with SF Symbols
     NSMutableArray<OptionModel *> *options = [NSMutableArray array];
 
+    BOOL allowsVideoMedia = [self pp_allowsReusableVideoMedia];
+
     OptionModel *libraryOption = [OptionModel optionWithID:@"photo_library"
                                                      title:[self pp_localizedSheetStringForKey:@"Photo_Library"
                                                                                       fallback:@"Photo Library"]
-                                               systemImage:@"photo.on.rectangle.angled"];
-    libraryOption.subtitle = [self pp_localizedSheetStringForKey:@"choose_from_gallery"
-                                                        fallback:@"Choose from gallery"];
+                                               systemImage:allowsVideoMedia ? @"photo.stack" : @"photo.on.rectangle.angled"];
+    libraryOption.subtitle = allowsVideoMedia
+        ? [self pp_localizedSheetStringForKey:@"choose_media_from_gallery" fallback:@"Choose photos or videos"]
+        : [self pp_localizedSheetStringForKey:@"choose_from_gallery" fallback:@"Choose from gallery"];
     [options addObject:libraryOption];
 
     if ([UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
@@ -949,8 +1461,9 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
                                                         title:[self pp_localizedSheetStringForKey:@"Camera"
                                                                                          fallback:@"Camera"]
                                                   systemImage:@"camera.fill"];
-        cameraOption.subtitle = [self pp_localizedSheetStringForKey:@"take_a_photo"
-                                                           fallback:@"Take a photo"];
+        cameraOption.subtitle = allowsVideoMedia
+            ? [self pp_localizedSheetStringForKey:@"take_photo_or_video" fallback:@"Take a photo or video"]
+            : [self pp_localizedSheetStringForKey:@"take_a_photo" fallback:@"Take a photo"];
         [options addObject:cameraOption];
     }
 
@@ -1008,6 +1521,907 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     }
 }
 
+#pragma mark - Reusable Media Metadata + Upload
+
+- (NSString *)pp_mediaLocalizedStringForKey:(NSString *)key fallback:(NSString *)fallback
+{
+    NSString *value = kLang(key);
+    if ([value isKindOfClass:NSString.class] && value.length > 0 && ![value isEqualToString:key]) {
+        return value;
+    }
+    return fallback ?: @"";
+}
+
+- (NSError *)pp_mediaErrorWithCode:(NSInteger)code
+                       description:(NSString *)description
+                          userInfo:(NSDictionary *)userInfo
+{
+    NSMutableDictionary *info = [NSMutableDictionary dictionaryWithDictionary:userInfo ?: @{}];
+    info[NSLocalizedDescriptionKey] = description.length > 0
+        ? description
+        : [self pp_mediaLocalizedStringForKey:@"media_upload_failed_message"
+                                     fallback:@"Media upload failed. Please try again."];
+    return [NSError errorWithDomain:@"PPImageCollectionMediaUpload" code:code userInfo:info.copy];
+}
+
+- (NSError *)pp_firstUnderlyingUploadErrorFromErrors:(NSArray<NSError *> *)errors
+{
+    for (NSError *error in errors) {
+        if ([error isKindOfClass:NSError.class]) {
+            return error;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)pp_userVisibleUploadFailureDescriptionForErrors:(NSArray<NSError *> *)errors
+{
+    NSError *firstError = [self pp_firstUnderlyingUploadErrorFromErrors:errors];
+    if ([firstError.domain isEqualToString:FIRStorageErrorCodeDomain]) {
+        if (firstError.code == FIRStorageErrorCodeUnauthenticated) {
+            return [self pp_mediaLocalizedStringForKey:@"media_upload_login_required_message"
+                                              fallback:@"Please sign in again before uploading media."];
+        }
+        if (firstError.code == FIRStorageErrorCodeUnauthorized) {
+            return [self pp_mediaLocalizedStringForKey:@"media_upload_permission_denied_message"
+                                              fallback:@"You do not have permission to upload media here."];
+        }
+    }
+
+    NSString *lowerDescription = firstError.localizedDescription.lowercaseString ?: @"";
+    if ([lowerDescription containsString:@"permission"] ||
+        [lowerDescription containsString:@"unauthorized"]) {
+        return [self pp_mediaLocalizedStringForKey:@"media_upload_permission_denied_message"
+                                          fallback:@"You do not have permission to upload media here."];
+    }
+    if ([lowerDescription containsString:@"unauthenticated"] ||
+        [lowerDescription containsString:@"sign in"]) {
+        return [self pp_mediaLocalizedStringForKey:@"media_upload_login_required_message"
+                                          fallback:@"Please sign in again before uploading media."];
+    }
+
+    return firstError.localizedDescription.length > 0
+        ? firstError.localizedDescription
+        : [self pp_mediaLocalizedStringForKey:@"media_upload_failed_message"
+                                     fallback:@"Media upload failed. Please try again."];
+}
+
+- (void)pp_logUploadErrors:(NSArray<NSError *> *)errors folder:(NSString *)folder contextID:(NSString *)contextID
+{
+    for (NSError *error in errors) {
+        if (![error isKindOfClass:NSError.class]) {
+            continue;
+        }
+        NSLog(@"[PPImageCollection] Media upload failed | folder=%@ | context=%@ | domain=%@ | code=%ld | message=%@",
+              folder ?: @"",
+              contextID ?: @"",
+              error.domain ?: @"",
+              (long)error.code,
+              error.localizedDescription ?: @"");
+    }
+}
+
+- (NSArray<NSDictionary *> *)pp_selectedMediaEntriesSnapshot
+{
+    NSMutableArray<NSDictionary *> *entries = [NSMutableArray array];
+    [self.arrayLock lock];
+    for (NSInteger idx = 0; idx < self.mediaOutputArray.count; idx++) {
+        UIImage *thumbnail = [self.mediaOutputArray[idx] isKindOfClass:UIImage.class] ? self.mediaOutputArray[idx] : nil;
+        NSNumber *mediaType = (idx < self.mediaTypeArray.count) ? self.mediaTypeArray[idx] : @(PHAssetMediaTypeImage);
+        BOOL storedVideo = mediaType.integerValue == PHAssetMediaTypeVideo;
+        if (storedVideo && ![self pp_allowsReusableVideoMedia]) {
+            continue;
+        }
+        BOOL isVideo = storedVideo;
+        id videoURL = (idx < self.videoURLArray.count) ? self.videoURLArray[idx] : NSNull.null;
+        id preloadedMetadata = (idx < self.preloadedMediaMetadataArray.count) ? self.preloadedMediaMetadataArray[idx] : NSNull.null;
+        NSMutableDictionary *entry = [@{
+            @"order": @(idx),
+            @"media_type": isVideo ? @"video" : @"image"
+        } mutableCopy];
+        if ([thumbnail isKindOfClass:UIImage.class]) {
+            entry[@"image"] = thumbnail;
+            entry[@"width"] = @(thumbnail.size.width);
+            entry[@"height"] = @(thumbnail.size.height);
+        }
+        if (isVideo && [videoURL isKindOfClass:NSURL.class]) {
+            entry[@"video_url"] = videoURL;
+        }
+        if ([preloadedMetadata isKindOfClass:NSDictionary.class]) {
+            entry[@"existing_metadata"] = preloadedMetadata;
+        }
+        [entries addObject:entry.copy];
+    }
+    [self.arrayLock unlock];
+    return entries.copy;
+}
+
+- (NSArray<NSDictionary *> *)selectedImageMetadata
+{
+    NSMutableArray<NSDictionary *> *metadata = [NSMutableArray array];
+    for (NSDictionary *entry in [self pp_selectedMediaEntriesSnapshot]) {
+        if (![entry[@"media_type"] isEqual:@"image"]) {
+            continue;
+        }
+        CGFloat width = [entry[@"width"] doubleValue];
+        CGFloat height = [entry[@"height"] doubleValue];
+        NSMutableDictionary *item = [@{
+            @"width": @(width),
+            @"height": @(height),
+            @"is_primary": @([entry[@"order"] integerValue] == 0),
+            @"order": entry[@"order"] ?: @(metadata.count),
+            @"media_type": @"image"
+        } mutableCopy];
+        if (width > 0.0 && height > 0.0) {
+            item[@"aspect_ratio"] = @(width / MAX(height, 1.0));
+        }
+        [metadata addObject:item.copy];
+    }
+    return metadata.copy;
+}
+
+- (NSArray<NSDictionary *> *)selectedVideoMetadata
+{
+    if (![self pp_allowsReusableVideoMedia]) {
+        return @[];
+    }
+    NSMutableArray<NSDictionary *> *metadata = [NSMutableArray array];
+    for (NSDictionary *entry in [self pp_selectedMediaEntriesSnapshot]) {
+        if (![entry[@"media_type"] isEqual:@"video"]) {
+            continue;
+        }
+        NSURL *videoURL = [entry[@"video_url"] isKindOfClass:NSURL.class] ? entry[@"video_url"] : nil;
+        NSDictionary *videoInfo = [self pp_videoInfoForURL:videoURL];
+        NSMutableDictionary *item = [@{
+            @"media_type": @"video",
+            @"order": entry[@"order"] ?: @(metadata.count),
+            @"thumbnail_width": entry[@"width"] ?: @(0),
+            @"thumbnail_height": entry[@"height"] ?: @(0)
+        } mutableCopy];
+        [item addEntriesFromDictionary:videoInfo ?: @{}];
+        [metadata addObject:item.copy];
+    }
+    return metadata.copy;
+}
+
+- (NSArray<NSDictionary *> *)selectedMixedMediaMetadata
+{
+    NSMutableArray<NSDictionary *> *metadata = [NSMutableArray array];
+    NSArray<NSDictionary *> *imageMetadata = [self selectedImageMetadata];
+    NSArray<NSDictionary *> *videoMetadata = [self selectedVideoMetadata];
+    [metadata addObjectsFromArray:imageMetadata];
+    [metadata addObjectsFromArray:videoMetadata];
+    [metadata sortUsingComparator:^NSComparisonResult(NSDictionary *a, NSDictionary *b) {
+        return [a[@"order"] compare:b[@"order"]];
+    }];
+    return metadata.copy;
+}
+
+- (NSString *)pp_safeStorageFolder:(NSString *)storageFolder ownerID:(NSString *)ownerID
+{
+    NSString *folder = [storageFolder stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (folder.length == 0) {
+        NSString *uid = ownerID.length > 0 ? ownerID : (UserManager.sharedManager.currentUser.ID ?: @"unknown");
+        folder = [NSString stringWithFormat:@"CardsImages/%@", uid];
+    }
+    while ([folder hasPrefix:@"/"]) folder = [folder substringFromIndex:1];
+    while ([folder hasSuffix:@"/"]) folder = [folder substringToIndex:folder.length - 1];
+    return folder;
+}
+
+- (NSData *)pp_pngDataForUploadImage:(UIImage *)image maxDimension:(CGFloat)maxDimension
+{
+    UIImage *source = [self pp_normalizedImageForCollection:image];
+    if (![self pp_isRenderableImage:source]) {
+        return nil;
+    }
+    CGFloat largest = MAX(source.size.width, source.size.height);
+    if (largest > maxDimension) {
+        CGFloat scale = maxDimension / largest;
+        CGSize size = CGSizeMake(MAX(1.0, floor(source.size.width * scale)),
+                                 MAX(1.0, floor(source.size.height * scale)));
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+        format.scale = 1.0;
+        format.opaque = NO;
+        source = [[[UIGraphicsImageRenderer alloc] initWithSize:size format:format] imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+            [source drawInRect:CGRectMake(0.0, 0.0, size.width, size.height)];
+        }];
+    }
+    return UIImagePNGRepresentation(source);
+}
+
+- (NSDictionary *)pp_imageUploadPayloadForImage:(UIImage *)image maxDimension:(CGFloat)maxDimension
+{
+    UIImage *source = [self pp_normalizedImageForCollection:image];
+    if (![self pp_isRenderableImage:source]) {
+        return nil;
+    }
+    CGFloat largest = MAX(source.size.width, source.size.height);
+    if (largest > maxDimension) {
+        CGFloat scale = maxDimension / largest;
+        CGSize size = CGSizeMake(MAX(1.0, floor(source.size.width * scale)),
+                                 MAX(1.0, floor(source.size.height * scale)));
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat preferredFormat];
+        format.scale = 1.0;
+        format.opaque = NO;
+        source = [[[UIGraphicsImageRenderer alloc] initWithSize:size format:format] imageWithActions:^(UIGraphicsImageRendererContext *ctx) {
+            [source drawInRect:CGRectMake(0.0, 0.0, size.width, size.height)];
+        }];
+    }
+
+    NSData *data = nil;
+    NSString *extension = @"webp";
+    NSString *contentType = @"image/webp";
+    if (YYImageWebPAvailable() && source.CGImage) {
+        data = CFBridgingRelease(YYCGImageCreateEncodedData(source.CGImage, YYImageTypeWebP, 0.84));
+    }
+    if (data.length == 0) {
+        data = UIImageJPEGRepresentation(source, 0.86);
+        extension = @"jpg";
+        contentType = @"image/jpeg";
+    }
+    if (data.length == 0) return nil;
+    return @{
+        @"data": data,
+        @"extension": extension,
+        @"content_type": contentType,
+        @"width": @(source.size.width),
+        @"height": @(source.size.height)
+    };
+}
+
++ (NSString *)pp_thumbnailStoragePathForVideoPath:(NSString *)storagePath
+{
+    if (![storagePath isKindOfClass:NSString.class] || storagePath.length == 0) return nil;
+    NSString *path = storagePath;
+    NSRange videosRange = [path rangeOfString:@"/videos/"];
+    if (videosRange.location == NSNotFound) return nil;
+    NSString *thumbPath = [path stringByReplacingOccurrencesOfString:@"/videos/" withString:@"/thumbs/"];
+    NSString *extension = thumbPath.pathExtension;
+    if (extension.length > 0) {
+        thumbPath = [thumbPath stringByDeletingPathExtension];
+    }
+    return [thumbPath stringByAppendingPathExtension:@"webp"];
+}
+
++ (void)pp_deleteStorageReferenceRecursively:(FIRStorageReference *)reference
+                                  completion:(void(^)(NSError * _Nullable error))completion
+{
+    [reference listAllWithCompletion:^(FIRStorageListResult * _Nullable result, NSError * _Nullable error) {
+        if (error) {
+            if (completion) completion(error);
+            return;
+        }
+
+        dispatch_group_t group = dispatch_group_create();
+        __block NSError *firstError = nil;
+        NSLock *lock = [NSLock new];
+
+        for (FIRStorageReference *item in result.items) {
+            dispatch_group_enter(group);
+            [item deleteWithCompletion:^(NSError * _Nullable deleteError) {
+                if (deleteError) {
+                    [lock lock];
+                    if (!firstError) firstError = deleteError;
+                    [lock unlock];
+                }
+                dispatch_group_leave(group);
+            }];
+        }
+
+        for (FIRStorageReference *prefix in result.prefixes) {
+            dispatch_group_enter(group);
+            [self pp_deleteStorageReferenceRecursively:prefix completion:^(NSError * _Nullable nestedError) {
+                if (nestedError) {
+                    [lock lock];
+                    if (!firstError) firstError = nestedError;
+                    [lock unlock];
+                }
+                dispatch_group_leave(group);
+            }];
+        }
+
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            if (completion) completion(firstError);
+        });
+    }];
+}
+
++ (void)uploadMediaWithEntityType:(NSString *)entityType
+                          entityID:(NSString *)entityID
+                              file:(id)file
+                         mediaType:(NSString *)mediaType
+                           ownerID:(NSString *)ownerID
+                        completion:(PPImageCollectionSingleMediaCompletion)completion
+{
+    NSString *uid = ownerID.length > 0 ? ownerID : (UserManager.sharedManager.currentUser.ID ?: @"unknown");
+    NSString *normalizedType = PPImageCollectionNormalizedEntityType(entityType);
+    NSString *mediaID = NSUUID.UUID.UUIDString;
+    BOOL isVideo = [[[mediaType isKindOfClass:NSString.class] ? mediaType : @"" lowercaseString] containsString:@"video"];
+
+    if (!isVideo && [file isKindOfClass:UIImage.class]) {
+        NSDictionary *payload = PPImageCollectionImageUploadPayload(file, 2048.0);
+        NSData *data = payload[@"data"];
+        if (data.length == 0) {
+            NSString *message = kLang(@"invalid_image_upload_message");
+            if (![message isKindOfClass:NSString.class] || message.length == 0 || [message isEqualToString:@"invalid_image_upload_message"]) {
+                message = @"One selected image could not be prepared.";
+            }
+            if (completion) completion(nil, [NSError errorWithDomain:@"PPImageCollectionMediaUpload"
+                                                                 code:20
+                                                             userInfo:@{NSLocalizedDescriptionKey: message}]);
+            return;
+        }
+
+        NSString *storagePath = PPImageCollectionStoragePath(normalizedType, entityID, mediaID, mediaType, payload[@"extension"]);
+        FIRStorageReference *ref = [[FIRStorage storage].reference child:storagePath];
+        FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+        metadata.contentType = payload[@"content_type"] ?: @"image/webp";
+        metadata.customMetadata = @{
+            @"uploaded_by": uid ?: @"unknown",
+            @"entity_type": normalizedType ?: @"unknown",
+            @"entity_id": PPImageCollectionCleanPathComponent(entityID),
+            @"media_id": mediaID,
+            @"media_type": @"image"
+        };
+
+        [ref putData:data metadata:metadata completion:^(FIRStorageMetadata * _Nullable firebaseMetadata, NSError * _Nullable error) {
+            if (error) {
+                if (completion) completion(nil, error);
+                return;
+            }
+            [ref downloadURLWithCompletion:^(NSURL * _Nullable downloadURL, NSError * _Nullable urlError) {
+                if (!downloadURL || urlError) {
+                    if (completion) completion(nil, urlError);
+                    return;
+                }
+                if (completion) {
+                    completion(@{
+                        @"url": downloadURL.absoluteString,
+                        @"storage_path": storagePath,
+                        @"media_id": mediaID,
+                        @"media_type": @"image",
+                        @"content_type": metadata.contentType ?: @"image/webp",
+                        @"width": payload[@"width"] ?: @0,
+                        @"height": payload[@"height"] ?: @0,
+                        @"file_size": @(data.length)
+                    }, nil);
+                }
+            }];
+        }];
+        return;
+    }
+
+    if (isVideo && [file isKindOfClass:NSURL.class]) {
+        NSURL *videoURL = (NSURL *)file;
+        NSString *storagePath = PPImageCollectionStoragePath(normalizedType, entityID, mediaID, @"video", @"mp4");
+        UIImage *thumbnail = PPImageCollectionThumbnailForVideoURL(videoURL);
+        NSDictionary *thumbnailPayload = PPImageCollectionImageUploadPayload(thumbnail, 1280.0);
+        NSData *thumbnailData = thumbnailPayload[@"data"];
+        if (thumbnailData.length == 0) {
+            NSString *message = kLang(@"video_processing_failed_message");
+            if (![message isKindOfClass:NSString.class] || message.length == 0 || [message isEqualToString:@"video_processing_failed_message"]) {
+                message = @"The selected video could not be processed.";
+            }
+            if (completion) completion(nil, [NSError errorWithDomain:@"PPImageCollectionMediaUpload"
+                                                                 code:31
+                                                             userInfo:@{NSLocalizedDescriptionKey: message}]);
+            return;
+        }
+        NSString *thumbPath = PPImageCollectionStoragePath(normalizedType, entityID, mediaID, @"thumb", thumbnailPayload[@"extension"]);
+        FIRStorageReference *ref = [[FIRStorage storage].reference child:storagePath];
+        FIRStorageReference *thumbRef = [[FIRStorage storage].reference child:thumbPath];
+
+        FIRStorageMetadata *thumbMetadata = [FIRStorageMetadata new];
+        thumbMetadata.contentType = thumbnailPayload[@"content_type"] ?: @"image/webp";
+        thumbMetadata.customMetadata = @{
+            @"uploaded_by": uid ?: @"unknown",
+            @"entity_type": normalizedType ?: @"unknown",
+            @"entity_id": PPImageCollectionCleanPathComponent(entityID),
+            @"media_id": mediaID,
+            @"media_type": @"video_thumbnail"
+        };
+
+        FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+        metadata.contentType = PPImageCollectionVideoContentTypeForURL(videoURL);
+        metadata.customMetadata = @{
+            @"uploaded_by": uid ?: @"unknown",
+            @"entity_type": normalizedType ?: @"unknown",
+            @"entity_id": PPImageCollectionCleanPathComponent(entityID),
+            @"media_id": mediaID,
+            @"media_type": @"video",
+            @"thumbnail_path": thumbPath
+        };
+
+        [thumbRef putData:thumbnailData metadata:thumbMetadata completion:^(__unused FIRStorageMetadata * _Nullable thumbFirebaseMetadata, NSError * _Nullable thumbError) {
+            if (thumbError) {
+                if (completion) completion(nil, thumbError);
+                return;
+            }
+
+            [thumbRef downloadURLWithCompletion:^(NSURL * _Nullable thumbDownloadURL, NSError * _Nullable thumbURLError) {
+                if (!thumbDownloadURL || thumbURLError) {
+                    if (completion) completion(nil, thumbURLError);
+                    return;
+                }
+
+                BOOL didAccess = [videoURL startAccessingSecurityScopedResource];
+                [ref putFile:videoURL metadata:metadata completion:^(__unused FIRStorageMetadata * _Nullable firebaseMetadata, NSError * _Nullable error) {
+                    if (didAccess) [videoURL stopAccessingSecurityScopedResource];
+                    if (error) {
+                        if (completion) completion(nil, error);
+                        return;
+                    }
+                    [ref downloadURLWithCompletion:^(NSURL * _Nullable downloadURL, NSError * _Nullable urlError) {
+                        if (!downloadURL || urlError) {
+                            if (completion) completion(nil, urlError);
+                            return;
+                        }
+                        if (completion) {
+                            completion(@{
+                                @"url": downloadURL.absoluteString,
+                                @"storage_path": storagePath,
+                                @"thumbnail_url": thumbDownloadURL.absoluteString,
+                                @"thumbnail_storage_path": thumbPath,
+                                @"thumbnail_file_size": @(thumbnailData.length),
+                                @"media_id": mediaID,
+                                @"media_type": @"video",
+                                @"content_type": metadata.contentType ?: @"video/mp4"
+                            }, nil);
+                        }
+                    }];
+                }];
+            }];
+        }];
+        return;
+    }
+
+    if (completion) {
+        NSString *message = kLang(@"invalid_video_upload_message");
+        if (![message isKindOfClass:NSString.class] || message.length == 0 || [message isEqualToString:@"invalid_video_upload_message"]) {
+            message = @"One selected video is unsupported.";
+        }
+        completion(nil, [NSError errorWithDomain:@"PPImageCollectionMediaUpload"
+                                            code:22
+                                        userInfo:@{NSLocalizedDescriptionKey: message}]);
+    }
+}
+
++ (void)deleteMediaAtStoragePath:(NSString *)storagePath
+                       completion:(void (^)(NSError * _Nullable))completion
+{
+    NSString *path = [storagePath isKindOfClass:NSString.class] ? storagePath : @"";
+    if (path.length == 0) {
+        if (completion) completion(nil);
+        return;
+    }
+    FIRStorageReference *ref = [[FIRStorage storage].reference child:path];
+    [ref deleteWithCompletion:^(NSError * _Nullable error) {
+        if (completion) completion(error);
+    }];
+}
+
++ (void)replaceMediaAtOldStoragePath:(NSString *)oldStoragePath
+                           entityType:(NSString *)entityType
+                             entityID:(NSString *)entityID
+                                 file:(id)file
+                            mediaType:(NSString *)mediaType
+                              ownerID:(NSString *)ownerID
+                            completion:(PPImageCollectionSingleMediaCompletion)completion
+{
+    [self uploadMediaWithEntityType:entityType entityID:entityID file:file mediaType:mediaType ownerID:ownerID completion:^(NSDictionary * _Nullable metadata, NSError * _Nullable error) {
+        if (error || !metadata) {
+            if (completion) completion(metadata, error);
+            return;
+        }
+
+        NSMutableDictionary *replacement = [metadata mutableCopy];
+        if (oldStoragePath.length > 0) {
+            replacement[@"old_storage_path"] = oldStoragePath;
+        }
+        NSString *oldThumbPath = [self pp_thumbnailStoragePathForVideoPath:oldStoragePath];
+        if (oldThumbPath.length > 0) {
+            replacement[@"old_thumbnail_storage_path"] = oldThumbPath;
+        }
+        if (completion) completion(replacement.copy, nil);
+    }];
+}
+
++ (void)deleteEntityMediaWithEntityType:(NSString *)entityType
+                               entityID:(NSString *)entityID
+                             completion:(void (^)(NSError * _Nullable))completion
+{
+    NSString *normalizedType = PPImageCollectionNormalizedEntityType(entityType);
+    NSString *safeEntityID = PPImageCollectionCleanPathComponent(entityID);
+    NSString *folderPath = [normalizedType isEqualToString:@"users"]
+        ? [NSString stringWithFormat:@"%@/users/%@/profile", PPAppMediaUploadsRoot, safeEntityID]
+        : [NSString stringWithFormat:@"%@/%@/%@", PPAppMediaUploadsRoot, normalizedType, safeEntityID];
+    FIRStorageReference *folderRef = [[FIRStorage storage].reference child:folderPath];
+    [self pp_deleteStorageReferenceRecursively:folderRef completion:completion];
+}
+
+- (NSDictionary *)pp_videoInfoForURL:(NSURL *)videoURL
+{
+    if (![videoURL isKindOfClass:NSURL.class]) {
+        return @{};
+    }
+    AVURLAsset *asset = [AVURLAsset assetWithURL:videoURL];
+    CMTime duration = asset.duration;
+    Float64 seconds = CMTIME_IS_NUMERIC(duration) ? CMTimeGetSeconds(duration) : 0.0;
+
+    CGSize pixelSize = CGSizeZero;
+    AVAssetTrack *track = [[asset tracksWithMediaType:AVMediaTypeVideo] firstObject];
+    if (track) {
+        CGSize natural = track.naturalSize;
+        CGSize transformed = CGSizeApplyAffineTransform(natural, track.preferredTransform);
+        pixelSize = CGSizeMake(fabs(transformed.width), fabs(transformed.height));
+    }
+
+    unsigned long long fileSize = 0;
+    if (videoURL.isFileURL) {
+        NSNumber *sizeNumber = nil;
+        [videoURL getResourceValue:&sizeNumber forKey:NSURLFileSizeKey error:nil];
+        fileSize = sizeNumber.unsignedLongLongValue;
+    }
+
+    NSMutableDictionary *info = [NSMutableDictionary dictionary];
+    info[@"duration"] = @(MAX(seconds, 0.0));
+    info[@"file_size"] = @(fileSize);
+    info[@"width"] = @(pixelSize.width);
+    info[@"height"] = @(pixelSize.height);
+    if (pixelSize.width > 0.0 && pixelSize.height > 0.0) {
+        info[@"aspect_ratio"] = @(pixelSize.width / MAX(pixelSize.height, 1.0));
+    }
+    return info.copy;
+}
+
+- (NSString *)pp_videoContentTypeForURL:(NSURL *)url
+{
+    NSString *ext = url.pathExtension.lowercaseString;
+    if ([ext isEqualToString:@"mov"] || [ext isEqualToString:@"qt"]) {
+        return @"video/quicktime";
+    }
+    if ([ext isEqualToString:@"m4v"]) {
+        return @"video/x-m4v";
+    }
+    return @"video/mp4";
+}
+
+- (void)uploadSelectedMediaWithStorageFolder:(NSString *)storageFolder
+                                     ownerID:(NSString *)ownerID
+                                   contextID:(NSString *)contextID
+                                  completion:(PPImageCollectionMediaUploadCompletion)completion
+{
+    NSArray<NSDictionary *> *entries = [self pp_selectedMediaEntriesSnapshot];
+    if (entries.count == 0) {
+        if (completion) {
+            completion(nil, [self pp_mediaErrorWithCode:10
+                                            description:[self pp_mediaLocalizedStringForKey:@"please_add_photos_before_submit"
+                                                                                   fallback:@"Please add at least one image before posting."]
+                                               userInfo:nil]);
+        }
+        return;
+    }
+
+    NSString *uid = ownerID.length > 0 ? ownerID : (UserManager.sharedManager.currentUser.ID ?: @"unknown");
+    NSString *entityType = PPImageCollectionNormalizedEntityType(storageFolder);
+    NSString *safeContextID = contextID.length > 0 ? contextID : NSUUID.UUID.UUIDString;
+
+    NSMutableArray *mixedSlots = [NSMutableArray arrayWithCapacity:entries.count];
+    for (__unused NSDictionary *entry in entries) {
+        [mixedSlots addObject:NSNull.null];
+    }
+    NSMutableArray<NSError *> *errors = [NSMutableArray array];
+    NSLock *resultLock = [NSLock new];
+    dispatch_group_t group = dispatch_group_create();
+
+    for (NSDictionary *entry in entries) {
+        NSInteger order = [entry[@"order"] integerValue];
+        NSString *mediaType = [entry[@"media_type"] isKindOfClass:NSString.class] ? entry[@"media_type"] : @"image";
+        UIImage *image = [entry[@"image"] isKindOfClass:UIImage.class] ? entry[@"image"] : nil;
+        BOOL isVideo = [mediaType isEqualToString:@"video"] && [self pp_allowsReusableVideoMedia];
+        NSDictionary *existingMetadata = [entry[@"existing_metadata"] isKindOfClass:NSDictionary.class] ? entry[@"existing_metadata"] : nil;
+
+        if (existingMetadata.count > 0) {
+            NSDictionary *normalizedExisting = [self pp_normalizedExistingMetadata:existingMetadata order:order];
+            if (normalizedExisting) {
+                [resultLock lock];
+                if (order >= 0 && order < mixedSlots.count) {
+                    mixedSlots[order] = normalizedExisting;
+                }
+                [resultLock unlock];
+                continue;
+            }
+        }
+
+        if (!isVideo) {
+            dispatch_group_enter(group);
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                NSDictionary *imagePayload = PPImageCollectionImageUploadPayload(image, 2048.0);
+                NSData *imageData = imagePayload[@"data"];
+                if (imageData.length == 0) {
+                    [resultLock lock];
+                    [errors addObject:[self pp_mediaErrorWithCode:20
+                                                      description:[self pp_mediaLocalizedStringForKey:@"invalid_image_upload_message"
+                                                                                             fallback:@"One selected image could not be prepared."]
+                                                         userInfo:@{@"order": @(order)}]];
+                    [resultLock unlock];
+                    dispatch_group_leave(group);
+                    return;
+                }
+
+                NSInteger timestamp = (NSInteger)NSDate.date.timeIntervalSince1970;
+                NSString *mediaID = NSUUID.UUID.UUIDString;
+                NSString *storagePath = PPImageCollectionStoragePath(entityType, safeContextID, mediaID, @"image", imagePayload[@"extension"]);
+                FIRStorageReference *ref = [[FIRStorage storage].reference child:storagePath];
+                FIRStorageMetadata *metadata = [FIRStorageMetadata new];
+                metadata.contentType = imagePayload[@"content_type"] ?: @"image/webp";
+                metadata.customMetadata = @{
+                    @"uploaded_by": uid ?: @"unknown",
+                    @"context_id": safeContextID ?: @"unknown",
+                    @"entity_type": entityType ?: @"unknown",
+                    @"entity_id": safeContextID ?: @"unknown",
+                    @"media_id": mediaID ?: @"unknown",
+                    @"upload_timestamp": @(timestamp).stringValue,
+                    @"image_width": @(image.size.width).stringValue,
+                    @"image_height": @(image.size.height).stringValue,
+                    @"file_size": @(imageData.length).stringValue,
+                    @"media_type": @"image",
+                    @"is_primary": (order == 0) ? @"true" : @"false"
+                };
+
+                [ref putData:imageData metadata:metadata completion:^(FIRStorageMetadata * _Nullable firebaseMetadata, NSError * _Nullable error) {
+                    if (error) {
+                        [resultLock lock];
+                        [errors addObject:error];
+                        [resultLock unlock];
+                        dispatch_group_leave(group);
+                        return;
+                    }
+                    [ref downloadURLWithCompletion:^(NSURL * _Nullable downloadURL, NSError * _Nullable urlError) {
+                        if (urlError || !downloadURL) {
+                            [resultLock lock];
+                            [errors addObject:urlError ?: [self pp_mediaErrorWithCode:21
+                                                                          description:[self pp_mediaLocalizedStringForKey:@"media_upload_failed_message"
+                                                                                                                 fallback:@"Media upload failed. Please try again."]
+                                                                             userInfo:@{@"order": @(order)}]];
+                            [resultLock unlock];
+                        } else {
+                            CGFloat width = image.size.width;
+                            CGFloat height = image.size.height;
+                            NSMutableDictionary *item = [@{
+                                @"url": downloadURL.absoluteString,
+                                @"width": @(width),
+                                @"height": @(height),
+                                @"file_size": @(imageData.length),
+                                @"is_primary": @(order == 0),
+                                @"order": @(order),
+                                @"media_id": mediaID,
+                                @"storage_path": storagePath,
+                                @"uploaded_at": metadata.customMetadata[@"upload_timestamp"] ?: @"",
+                                @"media_type": @"image",
+                                @"content_type": metadata.contentType ?: @"image/webp"
+                            } mutableCopy];
+                            if (width > 0.0 && height > 0.0) {
+                                item[@"aspect_ratio"] = @(width / MAX(height, 1.0));
+                            }
+                            [resultLock lock];
+                            if (order >= 0 && order < mixedSlots.count) {
+                                mixedSlots[order] = item.copy;
+                            }
+                            [resultLock unlock];
+                        }
+                        dispatch_group_leave(group);
+                    }];
+                }];
+            });
+            continue;
+        }
+
+        NSURL *videoURL = [entry[@"video_url"] isKindOfClass:NSURL.class] ? entry[@"video_url"] : nil;
+        if (!videoURL.isFileURL) {
+            [errors addObject:[self pp_mediaErrorWithCode:30
+                                             description:[self pp_mediaLocalizedStringForKey:@"invalid_video_upload_message"
+                                                                                    fallback:@"One selected video is unsupported."]
+                                                userInfo:@{@"order": @(order)}]];
+            continue;
+        }
+
+        dispatch_group_enter(group);
+            dispatch_async(dispatch_get_global_queue(QOS_CLASS_UTILITY, 0), ^{
+                UIImage *thumbnail = [self pp_isRenderableImage:image] ? image : [self pp_thumbnailForVideoURL:videoURL];
+            NSDictionary *thumbnailPayload = PPImageCollectionImageUploadPayload(thumbnail, 1280.0);
+            NSData *thumbnailData = thumbnailPayload[@"data"];
+            if (thumbnailData.length == 0) {
+                [resultLock lock];
+                [errors addObject:[self pp_mediaErrorWithCode:31
+                                                  description:[self pp_mediaLocalizedStringForKey:@"video_processing_failed_message"
+                                                                                         fallback:@"The selected video could not be processed."]
+                                                     userInfo:@{@"order": @(order)}]];
+                [resultLock unlock];
+                dispatch_group_leave(group);
+                return;
+            }
+
+            NSDictionary *videoInfo = [self pp_videoInfoForURL:videoURL];
+            if (![self pp_videoDurationIsAllowed:[videoInfo[@"duration"] doubleValue]] ||
+                [videoInfo[@"width"] doubleValue] <= 0.0 ||
+                [videoInfo[@"height"] doubleValue] <= 0.0) {
+                [resultLock lock];
+                [errors addObject:[self pp_mediaErrorWithCode:34
+                                                  description:[self pp_mediaLocalizedStringForKey:@"invalid_video_upload_message"
+                                                                                         fallback:@"One selected video is unsupported."]
+                                                     userInfo:@{@"order": @(order)}]];
+                [resultLock unlock];
+                dispatch_group_leave(group);
+                return;
+            }
+            NSInteger timestamp = (NSInteger)NSDate.date.timeIntervalSince1970;
+            NSString *mediaID = NSUUID.UUID.UUIDString;
+            NSString *videoPath = PPImageCollectionStoragePath(entityType, safeContextID, mediaID, @"video", @"mp4");
+            NSString *thumbPath = PPImageCollectionStoragePath(entityType, safeContextID, mediaID, @"thumb", thumbnailPayload[@"extension"]);
+            FIRStorageReference *videoRef = [[FIRStorage storage].reference child:videoPath];
+            FIRStorageReference *thumbRef = [[FIRStorage storage].reference child:thumbPath];
+
+            FIRStorageMetadata *thumbMetadata = [FIRStorageMetadata new];
+            thumbMetadata.contentType = thumbnailPayload[@"content_type"] ?: @"image/webp";
+            thumbMetadata.customMetadata = @{
+                @"uploaded_by": uid ?: @"unknown",
+                @"context_id": safeContextID ?: @"unknown",
+                @"entity_type": entityType ?: @"unknown",
+                @"entity_id": safeContextID ?: @"unknown",
+                @"media_id": mediaID ?: @"unknown",
+                @"upload_timestamp": @(timestamp).stringValue,
+                @"media_type": @"video_thumbnail",
+                @"thumbnail_width": @(thumbnail.size.width).stringValue,
+                @"thumbnail_height": @(thumbnail.size.height).stringValue,
+                @"file_size": @(thumbnailData.length).stringValue
+            };
+
+            [thumbRef putData:thumbnailData metadata:thumbMetadata completion:^(FIRStorageMetadata * _Nullable thumbFirebaseMetadata, NSError * _Nullable thumbError) {
+                if (thumbError) {
+                    [resultLock lock];
+                    [errors addObject:thumbError];
+                    [resultLock unlock];
+                    dispatch_group_leave(group);
+                    return;
+                }
+
+                [thumbRef downloadURLWithCompletion:^(NSURL * _Nullable thumbDownloadURL, NSError * _Nullable thumbURLError) {
+                    if (thumbURLError || !thumbDownloadURL) {
+                        [resultLock lock];
+                        [errors addObject:thumbURLError ?: [self pp_mediaErrorWithCode:32
+                                                                           description:[self pp_mediaLocalizedStringForKey:@"media_upload_failed_message"
+                                                                                                                  fallback:@"Media upload failed. Please try again."]
+                                                                              userInfo:@{@"order": @(order)}]];
+                        [resultLock unlock];
+                        dispatch_group_leave(group);
+                        return;
+                    }
+
+                    FIRStorageMetadata *videoMetadata = [FIRStorageMetadata new];
+                    videoMetadata.contentType = PPImageCollectionVideoContentTypeForURL(videoURL);
+                    videoMetadata.customMetadata = @{
+                        @"uploaded_by": uid ?: @"unknown",
+                        @"context_id": safeContextID ?: @"unknown",
+                        @"entity_type": entityType ?: @"unknown",
+                        @"entity_id": safeContextID ?: @"unknown",
+                        @"media_id": mediaID ?: @"unknown",
+                        @"upload_timestamp": @(timestamp).stringValue,
+                        @"media_type": @"video",
+                        @"duration": [videoInfo[@"duration"] stringValue] ?: @"0",
+                        @"video_width": [videoInfo[@"width"] stringValue] ?: @"0",
+                        @"video_height": [videoInfo[@"height"] stringValue] ?: @"0",
+                        @"file_size": [videoInfo[@"file_size"] stringValue] ?: @"0",
+                        @"thumbnail_path": thumbPath
+                    };
+
+                    BOOL didAccess = [videoURL startAccessingSecurityScopedResource];
+                    [videoRef putFile:videoURL metadata:videoMetadata completion:^(FIRStorageMetadata * _Nullable firebaseMetadata, NSError * _Nullable videoError) {
+                        if (didAccess) {
+                            [videoURL stopAccessingSecurityScopedResource];
+                        }
+                        if (videoError) {
+                            [resultLock lock];
+                            [errors addObject:videoError];
+                            [resultLock unlock];
+                            dispatch_group_leave(group);
+                            return;
+                        }
+                        [videoRef downloadURLWithCompletion:^(NSURL * _Nullable videoDownloadURL, NSError * _Nullable videoURLError) {
+                            if (videoURLError || !videoDownloadURL) {
+                                [resultLock lock];
+                                [errors addObject:videoURLError ?: [self pp_mediaErrorWithCode:33
+                                                                                  description:[self pp_mediaLocalizedStringForKey:@"media_upload_failed_message"
+                                                                                                                         fallback:@"Media upload failed. Please try again."]
+                                                                                     userInfo:@{@"order": @(order)}]];
+                                [resultLock unlock];
+                            } else {
+                                NSMutableDictionary *item = [@{
+                                    @"url": videoDownloadURL.absoluteString,
+                                    @"media_id": mediaID,
+                                    @"storage_path": videoPath,
+                                    @"thumbnail_url": thumbDownloadURL.absoluteString,
+                                    @"thumbnail_storage_path": thumbPath,
+                                    @"thumbnail_width": @(thumbnail.size.width),
+                                    @"thumbnail_height": @(thumbnail.size.height),
+                                    @"thumbnail_file_size": @(thumbnailData.length),
+                                    @"media_type": @"video",
+                                    @"content_type": videoMetadata.contentType ?: @"video/mp4",
+                                    @"is_primary": @(order == 0),
+                                    @"order": @(order),
+                                    @"uploaded_at": videoMetadata.customMetadata[@"upload_timestamp"] ?: @""
+                                } mutableCopy];
+                                [item addEntriesFromDictionary:videoInfo ?: @{}];
+                                [resultLock lock];
+                                if (order >= 0 && order < mixedSlots.count) {
+                                    mixedSlots[order] = item.copy;
+                                }
+                                [resultLock unlock];
+                            }
+                            dispatch_group_leave(group);
+                        }];
+                    }];
+                }];
+            }];
+        });
+    }
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        if (errors.count > 0) {
+            [self pp_logUploadErrors:errors folder:entityType contextID:safeContextID];
+            NSString *description = [self pp_userVisibleUploadFailureDescriptionForErrors:errors];
+            if (completion) {
+                completion(nil, [self pp_mediaErrorWithCode:40
+                                                description:description
+                                                   userInfo:@{@"underlyingErrors": errors.copy}]);
+            }
+            return;
+        }
+
+        NSMutableArray<NSDictionary *> *mixed = [NSMutableArray array];
+        for (id candidate in mixedSlots) {
+            if ([candidate isKindOfClass:NSDictionary.class]) {
+                [mixed addObject:candidate];
+            }
+        }
+        if (mixed.count != entries.count) {
+            if (completion) {
+                completion(nil, [self pp_mediaErrorWithCode:41
+                                                description:[self pp_mediaLocalizedStringForKey:@"media_upload_incomplete_message"
+                                                                                       fallback:@"Media upload did not complete. Please try again."]
+                                                   userInfo:@{@"expected": @(entries.count), @"received": @(mixed.count)}]);
+            }
+            return;
+        }
+
+        NSMutableArray<NSString *> *imageURLs = [NSMutableArray array];
+        NSMutableArray<NSDictionary *> *imageMetadata = [NSMutableArray array];
+        NSMutableArray<NSString *> *videoURLs = [NSMutableArray array];
+        NSMutableArray<NSDictionary *> *videoMetadata = [NSMutableArray array];
+        for (NSDictionary *item in mixed) {
+            NSString *type = [item[@"media_type"] isKindOfClass:NSString.class] ? item[@"media_type"] : @"image";
+            NSString *url = [item[@"url"] isKindOfClass:NSString.class] ? item[@"url"] : @"";
+            if ([type isEqualToString:@"video"]) {
+                if (url.length > 0) [videoURLs addObject:url];
+                [videoMetadata addObject:item];
+            } else {
+                if (url.length > 0) [imageURLs addObject:url];
+                [imageMetadata addObject:item];
+            }
+        }
+
+        PPMediaUploadResult *result = [[PPMediaUploadResult alloc] initWithImageURLs:imageURLs
+                                                                       imageMetadata:imageMetadata
+                                                                           videoURLs:videoURLs
+                                                                       videoMetadata:videoMetadata
+                                                                        mixedMetadata:mixed];
+        if (completion) {
+            completion(result, nil);
+        }
+    });
+}
+
 #pragma mark - Preloading Images
 
 - (void)preloadImagesFromURLs:(NSArray<NSString *> *)urls completion:(void(^)(void))completion {
@@ -1023,6 +2437,9 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
         [self.arrayLock lock];
         [self pp_ensureMutableCollections];
         [self.mediaOutputArray addObject:[UIImage new]];
+        [self.mediaTypeArray addObject:@(PHAssetMediaTypeImage)];
+        [self.videoURLArray addObject:(NSURL *)NSNull.null];
+        [self.preloadedMediaMetadataArray addObject:NSNull.null];
         [self.imageManager.selectedImages addObject:[UIImage new]];
         NSString *placeholder = [self pp_uniqueAssetPlaceholder];
         if (placeholder.length > 0) {
@@ -1083,6 +2500,14 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
         [self pp_ensureMutableCollections];
         [self.mediaOutputArray removeAllObjects];
         [self.mediaOutputArray addObjectsFromArray:cleanImages];
+        [self.mediaTypeArray removeAllObjects];
+        [self.videoURLArray removeAllObjects];
+        [self.preloadedMediaMetadataArray removeAllObjects];
+        for (__unused UIImage *image in cleanImages) {
+            [self.mediaTypeArray addObject:@(PHAssetMediaTypeImage)];
+            [self.videoURLArray addObject:(NSURL *)NSNull.null];
+            [self.preloadedMediaMetadataArray addObject:NSNull.null];
+        }
         self.imageManager.selectedImages = [cleanImages mutableCopy];
         self.imageManager.assetArray = [NSMutableOrderedSet orderedSetWithArray:cleanAssets];
         [self.arrayLock unlock];
@@ -1090,6 +2515,89 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
         [self reloadCollectionView];
         [self notifyDelegate];
         
+        if (completion) completion();
+    });
+}
+
+- (void)preloadMediaMetadata:(NSArray<NSDictionary *> *)metadata completion:(void(^)(void))completion {
+    if (![metadata isKindOfClass:NSArray.class] || metadata.count == 0) {
+        if (completion) completion();
+        return;
+    }
+
+    NSMutableArray<NSDictionary *> *validMetadata = [NSMutableArray array];
+    for (id candidate in metadata) {
+        if (![candidate isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSString *displayURL = [self pp_displayURLForMediaMetadata:(NSDictionary *)candidate];
+        if (displayURL.length == 0) {
+            continue;
+        }
+        [validMetadata addObject:(NSDictionary *)candidate];
+    }
+
+    if (validMetadata.count == 0) {
+        if (completion) completion();
+        return;
+    }
+
+    [self clearAllImages];
+
+    for (NSDictionary *item in validMetadata) {
+        BOOL isVideo = [self pp_mediaMetadataIsVideo:item];
+        [self.arrayLock lock];
+        [self pp_ensureMutableCollections];
+        [self.mediaOutputArray addObject:[UIImage new]];
+        [self.mediaTypeArray addObject:@(isVideo ? PHAssetMediaTypeVideo : PHAssetMediaTypeImage)];
+        [self.videoURLArray addObject:NSNull.null];
+        [self.preloadedMediaMetadataArray addObject:item];
+        [self.imageManager.selectedImages addObject:[UIImage new]];
+        NSString *placeholder = [self pp_uniqueAssetPlaceholder];
+        if (placeholder.length > 0) {
+            [self.imageManager.assetArray addObject:placeholder];
+        }
+        [self.arrayLock unlock];
+    }
+
+    dispatch_group_t group = dispatch_group_create();
+
+    for (NSInteger i = 0; i < validMetadata.count; i++) {
+        NSDictionary *item = validMetadata[i];
+        NSString *urlString = [self pp_displayURLForMediaMetadata:item];
+        NSURL *url = [NSURL URLWithString:urlString];
+        if (![url isKindOfClass:NSURL.class]) {
+            continue;
+        }
+
+        dispatch_group_enter(group);
+        NSURLSessionDataTask *task =
+        [NSURLSession.sharedSession dataTaskWithURL:url completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            (void)response;
+            UIImage *image = nil;
+            if (data.length > 0 && !error) {
+                image = [self pp_downsampledImageFromData:data
+                                             maxPixelSize:PPImageCollectionRemoteImageMaxPixelSize];
+            }
+            UIImage *finalImage = [self pp_isRenderableImage:image] ? image : [UIImage new];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self.arrayLock lock];
+                if (i < self.mediaOutputArray.count) {
+                    [self.mediaOutputArray replaceObjectAtIndex:i withObject:finalImage];
+                }
+                if (i < self.imageManager.selectedImages.count) {
+                    [self.imageManager.selectedImages replaceObjectAtIndex:i withObject:finalImage];
+                }
+                [self.arrayLock unlock];
+                dispatch_group_leave(group);
+            });
+        }];
+        [task resume];
+    }
+
+    dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+        [self reloadCollectionView];
+        [self notifyDelegate];
         if (completion) completion();
     });
 }
@@ -1136,16 +2644,35 @@ static inline NSTextAlignment PPImageCollectionTextAlignmentForArabic(BOOL useAr
     cell.imageView.image = nil;
     cell.imageView.contentMode = UIViewContentModeScaleAspectFill;
     cell.imageView.backgroundColor = UIColor.clearColor;
+    UIView *oldVideoBadge = [cell.contentView viewWithTag:9092];
+    [oldVideoBadge removeFromSuperview];
     
-    NSArray *images = [self allImages];
     if (indexPath.item < imageCount) {
-        UIImage *candidate = (indexPath.item < images.count && [images[indexPath.item] isKindOfClass:[UIImage class]])
-            ? (UIImage *)images[indexPath.item]
+        UIImage *candidate = (indexPath.item < self.mediaOutputArray.count && [self.mediaOutputArray[indexPath.item] isKindOfClass:[UIImage class]])
+            ? (UIImage *)self.mediaOutputArray[indexPath.item]
             : nil;
         if ([self pp_isRenderableImage:candidate]) {
             cell.imageView.image = candidate;
             cell.imageView.contentMode = UIViewContentModeScaleAspectFill;
             cell.imageView.backgroundColor = UIColor.clearColor;
+            NSNumber *mediaType = (indexPath.item < self.mediaTypeArray.count) ? self.mediaTypeArray[indexPath.item] : @(PHAssetMediaTypeImage);
+            if ([self pp_allowsReusableVideoMedia] && mediaType.integerValue == PHAssetMediaTypeVideo) {
+                UIImageView *badge = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"play.circle.fill"]];
+                badge.tag = 9092;
+                badge.translatesAutoresizingMaskIntoConstraints = NO;
+                badge.tintColor = UIColor.whiteColor;
+                badge.contentMode = UIViewContentModeScaleAspectFit;
+                badge.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.18];
+                badge.layer.cornerRadius = 17.0;
+                badge.clipsToBounds = YES;
+                [cell.contentView addSubview:badge];
+                [NSLayoutConstraint activateConstraints:@[
+                    [badge.centerXAnchor constraintEqualToAnchor:cell.contentView.centerXAnchor],
+                    [badge.centerYAnchor constraintEqualToAnchor:cell.contentView.centerYAnchor],
+                    [badge.widthAnchor constraintEqualToConstant:34.0],
+                    [badge.heightAnchor constraintEqualToConstant:34.0]
+                ]];
+            }
         } else {
             UIImage *placeholder = [UIImage systemImageNamed:@"photo"];
             cell.imageView.image = placeholder;
@@ -1236,6 +2763,8 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     [self.arrayLock lock];
     [self pp_ensureMutableCollections];
     UIImage *movingImage = (fromIndex < self.mediaOutputArray.count) ? self.mediaOutputArray[fromIndex] : nil;
+    NSNumber *movingMediaType = (fromIndex < self.mediaTypeArray.count) ? self.mediaTypeArray[fromIndex] : @(PHAssetMediaTypeImage);
+    id movingVideoURL = (fromIndex < self.videoURLArray.count) ? self.videoURLArray[fromIndex] : NSNull.null;
     if (!movingImage) {
         [self.arrayLock unlock];
         [self reloadCollectionView];
@@ -1243,6 +2772,19 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     }
     [self.mediaOutputArray removeObjectAtIndex:fromIndex];
     [self.mediaOutputArray insertObject:movingImage atIndex:toIndex];
+    if (fromIndex < self.mediaTypeArray.count) {
+        [self.mediaTypeArray removeObjectAtIndex:fromIndex];
+        [self.mediaTypeArray insertObject:movingMediaType atIndex:toIndex];
+    }
+    if (fromIndex < self.videoURLArray.count) {
+        [self.videoURLArray removeObjectAtIndex:fromIndex];
+        [self.videoURLArray insertObject:movingVideoURL atIndex:toIndex];
+    }
+    id movingPreloadedMetadata = (fromIndex < self.preloadedMediaMetadataArray.count) ? self.preloadedMediaMetadataArray[fromIndex] : NSNull.null;
+    if (fromIndex < self.preloadedMediaMetadataArray.count) {
+        [self.preloadedMediaMetadataArray removeObjectAtIndex:fromIndex];
+        [self.preloadedMediaMetadataArray insertObject:movingPreloadedMetadata atIndex:toIndex];
+    }
     [self.arrayLock unlock];
 
     [self.imageManager moveImageFromIndex:fromIndex toIndex:toIndex];
@@ -1280,6 +2822,29 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
 - (void)handleImageTapAtIndex:(NSInteger)index {
     if (index < 0 || index >= [self imageCount]) return;
+    NSNumber *mediaType = (index < self.mediaTypeArray.count) ? self.mediaTypeArray[index] : @(PHAssetMediaTypeImage);
+    if ([self pp_allowsReusableVideoMedia] && mediaType.integerValue == PHAssetMediaTypeVideo) {
+        NSURL *videoURL = nil;
+        id localURL = (index < self.videoURLArray.count) ? self.videoURLArray[index] : NSNull.null;
+        if ([localURL isKindOfClass:NSURL.class]) {
+            videoURL = localURL;
+        } else {
+            NSDictionary *metadata = (index < self.preloadedMediaMetadataArray.count && [self.preloadedMediaMetadataArray[index] isKindOfClass:NSDictionary.class])
+                ? self.preloadedMediaMetadataArray[index]
+                : nil;
+            NSString *remoteURL = [self pp_mediaStringValue:metadata[@"url"]];
+            if (remoteURL.length > 0) {
+                videoURL = [NSURL URLWithString:remoteURL];
+            }
+        }
+        UIViewController *presenter = [self pp_bestPresentingViewController:nil];
+        if (videoURL && presenter) {
+            PPPremiumVideoPlayerViewController *playerVC =
+            [[PPPremiumVideoPlayerViewController alloc] initWithURL:videoURL];
+            [presenter presentViewController:playerVC animated:YES completion:nil];
+        }
+        return;
+    }
 
     UIImage *image = [self pp_renderableImageAtIndex:index];
     if (![self pp_isRenderableImage:image]) {
@@ -1437,7 +3002,7 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
         imagePickerController.showsNumberOfSelectedAssets = YES;
         imagePickerController.maximumNumberOfSelection = weakSelf.maxImageCount - [weakSelf imageCount];
 
-        imagePickerController.mediaType = QBImagePickerMediaTypeImage;
+        imagePickerController.mediaType = [weakSelf pp_allowsReusableVideoMedia] ? QBImagePickerMediaTypeAny : QBImagePickerMediaTypeImage;
         NSArray<PHAsset *> *preselected = [weakSelf.imageManager preselectedAssetsForPicker];
         if (preselected.count > 0) {
             imagePickerController.selectedAssets = [NSMutableOrderedSet orderedSetWithArray:preselected];
@@ -1497,9 +3062,10 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
 
     NSInteger remainingSlots = MAX(0, self.maxImageCount - [self imageCount]);
     self.photoPickerBridge.maxSelectionCount = remainingSlots;
+    self.photoPickerBridge.maxVideoSelectionCount = MAX(0, PPImageCollectionMaxVideoSelectionCount - [self pp_selectedVideoCount]);
     self.photoPickerBridge.useArabic = self.useArabic;
     self.photoPickerBridge.allowPhoto = YES;
-    self.photoPickerBridge.allowVideo = NO;
+    self.photoPickerBridge.allowVideo = [self pp_allowsReusableVideoMedia];
 
     NSArray<NSString *> *preselectedIdentifiers = [self.imageManager preselectedAssetLocalIdentifiers];
     self.photoPickerBridge.preselectedAssetIdentifiers = preselectedIdentifiers ?: @[];
@@ -1606,6 +3172,16 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     picker.delegate = self;
     picker.allowsEditing = NO;
     picker.modalPresentationStyle = UIModalPresentationFullScreen;
+    if ([self pp_allowsReusableVideoMedia]) {
+        NSMutableArray<NSString *> *mediaTypes = [NSMutableArray arrayWithObject:UTTypeImage.identifier];
+        if ([self pp_selectedVideoCount] < PPImageCollectionMaxVideoSelectionCount &&
+            [[UIImagePickerController availableMediaTypesForSourceType:UIImagePickerControllerSourceTypeCamera] containsObject:UTTypeMovie.identifier]) {
+            [mediaTypes addObject:UTTypeMovie.identifier];
+        }
+        picker.mediaTypes = mediaTypes.copy;
+        picker.videoQuality = UIImagePickerControllerQualityTypeMedium;
+        picker.videoMaximumDuration = PPImageCollectionMaxVideoDuration;
+    }
 
     // iPad: configure popover as safety net (system may convert presentation)
     if (UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad) {
@@ -1663,8 +3239,9 @@ moveItemAtIndexPath:(NSIndexPath *)sourceIndexPath
     if (self.isPresentingMediaPicker || self.currentPicker || self.cameraPicker) return;
     if (presentingVC.presentedViewController) return;
 
+    NSArray<UTType *> *contentTypes = [self pp_allowsReusableVideoMedia] ? @[UTTypeImage, UTTypeMovie] : @[UTTypeImage];
     UIDocumentPickerViewController *docPicker =
-        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypeImage]];
+        [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:contentTypes];
     docPicker.delegate = self;
     docPicker.allowsMultipleSelection = ([self imageCount] < self.maxImageCount);
     docPicker.modalPresentationStyle = UIModalPresentationPageSheet;
@@ -1685,10 +3262,21 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
     NSInteger count = MIN((NSInteger)urls.count, availableSlots);
     for (NSInteger i = 0; i < count; i++) {
         NSURL *url = urls[i];
+        NSString *typeIdentifier = nil;
+        [url getResourceValue:&typeIdentifier forKey:NSURLTypeIdentifierKey error:nil];
+        UTType *selectedType = typeIdentifier.length > 0 ? [UTType typeWithIdentifier:typeIdentifier] : nil;
+        BOOL isVideo = [self pp_allowsReusableVideoMedia] && [selectedType conformsToType:UTTypeMovie];
+        if (isVideo) {
+            if (![self pp_canAcceptAdditionalVideoWithPresenter:nil]) {
+                continue;
+            }
+            [self addVideoWithURL:url thumbnail:nil];
+            continue;
+        }
+
         BOOL accessed = [url startAccessingSecurityScopedResource];
         NSData *data = [NSData dataWithContentsOfURL:url];
         if (accessed) [url stopAccessingSecurityScopedResource];
-
         UIImage *image = data ? [UIImage imageWithData:data] : nil;
         if (image) {
             [self addImage:image];
@@ -1753,6 +3341,19 @@ didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls
 - (void)imagePickerController:(UIImagePickerController *)picker
 didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *)info
 {
+    NSString *mediaType = info[UIImagePickerControllerMediaType];
+    if ([self pp_allowsReusableVideoMedia] && [mediaType isEqualToString:UTTypeMovie.identifier]) {
+        NSURL *videoURL = info[UIImagePickerControllerMediaURL];
+        if (videoURL && [self pp_canAcceptAdditionalVideoWithPresenter:nil]) {
+            [self addVideoWithURL:videoURL thumbnail:nil];
+        }
+        [picker dismissViewControllerAnimated:YES completion:^{
+            [self pp_resetMediaPresentationState];
+            [self pp_hideLoadingOverlay];
+        }];
+        return;
+    }
+
     UIImage *pickedImage = info[UIImagePickerControllerOriginalImage];
     if (!pickedImage) {
         pickedImage = info[UIImagePickerControllerEditedImage];
@@ -1844,6 +3445,7 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
     [self pp_cancelLoadingTimeoutIfNeeded];
 
     __block BOOL didFinalize = NO;
+    __block NSString *pendingMediaLimitMessage = nil;
     dispatch_block_t timeoutBlock = dispatch_block_create(0, ^{
         if (didFinalize || !weakSelf) return;
         didFinalize = YES;
@@ -1857,6 +3459,113 @@ didFinishPickingMediaWithInfo:(NSDictionary<UIImagePickerControllerInfoKey,id> *
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(8.0 * NSEC_PER_SEC)),
                    dispatch_get_main_queue(),
                    timeoutBlock);
+
+    if ([self pp_allowsReusableVideoMedia] && selectedAssets.count > 0) {
+        NSInteger availableSlots = MAX(0, self.maxImageCount - [self imageCount]);
+        NSInteger count = MIN((NSInteger)selectedAssets.count, availableSlots);
+        if (count <= 0) {
+            [self pp_cancelLoadingTimeoutIfNeeded];
+            [self dismissPicker];
+            [self pp_hideLoadingOverlay];
+            return;
+        }
+
+        dispatch_group_t group = dispatch_group_create();
+        NSInteger acceptedVideoCount = [self pp_selectedVideoCount];
+        for (NSInteger idx = 0; idx < count; idx++) {
+            PHAsset *asset = selectedAssets[idx];
+            if (![asset isKindOfClass:PHAsset.class]) continue;
+            dispatch_group_enter(group);
+            if (asset.mediaType == PHAssetMediaTypeVideo) {
+                if (acceptedVideoCount >= PPImageCollectionMaxVideoSelectionCount) {
+                    pendingMediaLimitMessage = [weakSelf pp_videoCountLimitMessage];
+                    dispatch_group_leave(group);
+                    continue;
+                }
+                if (![weakSelf pp_videoDurationIsAllowed:asset.duration]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        pendingMediaLimitMessage = [weakSelf pp_videoDurationLimitMessage];
+                        dispatch_group_leave(group);
+                    });
+                    continue;
+                }
+                acceptedVideoCount += 1;
+                PHVideoRequestOptions *options = [[PHVideoRequestOptions alloc] init];
+                options.networkAccessAllowed = YES;
+                options.deliveryMode = PHVideoRequestOptionsDeliveryModeAutomatic;
+                [[PHImageManager defaultManager] requestAVAssetForVideo:asset
+                                                                 options:options
+                                                           resultHandler:^(AVAsset * _Nullable avAsset,
+                                                                           AVAudioMix * _Nullable audioMix,
+                                                                           NSDictionary * _Nullable info) {
+                    (void)audioMix;
+                    NSURL *videoURL = [avAsset isKindOfClass:AVURLAsset.class] ? ((AVURLAsset *)avAsset).URL : nil;
+                    CGSize targetSize = CGSizeMake(900.0, 900.0);
+                    PHImageRequestOptions *thumbnailOptions = [[PHImageRequestOptions alloc] init];
+                    thumbnailOptions.networkAccessAllowed = YES;
+                    thumbnailOptions.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+                    thumbnailOptions.resizeMode = PHImageRequestOptionsResizeModeFast;
+                    [[PHImageManager defaultManager] requestImageForAsset:asset
+                                                               targetSize:targetSize
+                                                              contentMode:PHImageContentModeAspectFill
+                                                                  options:thumbnailOptions
+                                                            resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable imageInfo) {
+                        (void)info; (void)imageInfo;
+                        if ([imageInfo[PHImageResultIsDegradedKey] boolValue]) {
+                            return;
+                        }
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            if (videoURL) {
+                                [weakSelf addVideoWithURL:videoURL thumbnail:result];
+                            }
+                            dispatch_group_leave(group);
+                        });
+                    }];
+                }];
+            } else {
+                UIImage *pickedImage = (idx < selectedImages.count) ? selectedImages[idx] : nil;
+                if (pickedImage) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [weakSelf addImage:pickedImage];
+                        dispatch_group_leave(group);
+                    });
+                } else {
+                    PHImageRequestOptions *options = [[PHImageRequestOptions alloc] init];
+                    options.networkAccessAllowed = YES;
+                    options.deliveryMode = PHImageRequestOptionsDeliveryModeHighQualityFormat;
+                    [[PHImageManager defaultManager] requestImageForAsset:asset
+                                                               targetSize:CGSizeMake(1800.0, 1800.0)
+                                                              contentMode:PHImageContentModeAspectFill
+                                                                  options:options
+                                                            resultHandler:^(UIImage * _Nullable result, NSDictionary * _Nullable info) {
+                        if ([info[PHImageResultIsDegradedKey] boolValue]) {
+                            return;
+                        }
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            if (result) {
+                                [weakSelf addImage:result];
+                            }
+                            dispatch_group_leave(group);
+                        });
+                    }];
+                }
+            }
+        }
+
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            if (didFinalize) {
+                return;
+            }
+            didFinalize = YES;
+            [weakSelf pp_cancelLoadingTimeoutIfNeeded];
+            [weakSelf reloadCollectionView];
+            [weakSelf notifyDelegate];
+            [weakSelf dismissPicker];
+            [weakSelf pp_hideLoadingOverlay];
+            [weakSelf pp_presentMediaLimitMessageAfterPickerDismiss:pendingMediaLimitMessage];
+        });
+        return;
+    }
 
     if (selectedAssets.count > 0) {
         [self.imageManager addAssetsFromPicker:selectedAssets completion:^(BOOL didChange) {

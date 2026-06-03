@@ -545,6 +545,10 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 @property (nonatomic, strong) FavoriteFloatingButton *bodyFavButton;
 @property (nonatomic, strong) UIButton *shareButton;
 @property (nonatomic, strong) UIButton *menuButton;
+@property (nonatomic, strong) UIButton *videoPlayButton;
+@property (nonatomic, strong) AVPlayer *videoPlayer;
+@property (nonatomic, strong) AVPlayerLayer *videoPlayerLayer;
+@property (nonatomic, copy) NSString *activeVideoURL;
 @property (nonatomic, strong) PPUniversalSkeletonView *skeletonView;
 @property (nonatomic, strong) CAGradientLayer *cardGradientLayer;
 
@@ -583,6 +587,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 - (void)pp_applyContainerTapTransformPressed:(BOOL)pressed animated:(BOOL)animated;
 - (void)pp_runContainerTapImpulse;
 - (void)pp_applySelectionAppearanceAnimated:(BOOL)animated;
+- (void)pp_stopVideoPlaybackAndTearDown:(BOOL)tearDown;
 
 @end
 
@@ -615,12 +620,18 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self pp_buildConstraints];
     [self pp_buildActions];
     [self pp_applyBaseStyling];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(pp_applicationDidEnterBackground:)
+                                                 name:UIApplicationDidEnterBackgroundNotification
+                                               object:nil];
     return self;
 }
 
 - (void)dealloc
 {
     [self.stepperCollapseTimer invalidate];
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self pp_stopVideoPlaybackAndTearDown:YES];
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.imageView];
 }
 
@@ -636,6 +647,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.onTap = nil;
     self.isEditingQuantity = NO;
     [self setQuantity:0 animated:NO];
+    [self pp_stopVideoPlaybackAndTearDown:YES];
 
     [[PPImageLoaderManager shared] cancelImageLoadForImageView:self.imageView];
     self.imageView.image = [UIImage imageNamed:@"placeholder"];
@@ -656,11 +668,14 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.serviceMetaCollapsedConstraint.active = YES;
     self.reasonBadgeLabel.hidden = YES;
     self.hideTopBadge = NO;
+    self.forceShowsOwnerMenuButton = NO;
     self.showsSubtitle = NO;
     self.discountBadgeLabel.hidden = YES;
     self.categoryBadgeLabel.hidden = YES;
     self.shareButton.hidden = YES;
     self.menuButton.hidden = YES;
+    self.videoPlayButton.hidden = YES;
+    self.videoPlayButton.alpha = 0.0;
     self.favoriteButton.hidden = YES;
     self.bodyFavButton.hidden = YES;
     self.priceContainerTrailingToFavConstraint.active = NO;
@@ -676,9 +691,26 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self pp_applyBaseStyling];
 }
 
+- (void)didMoveToWindow
+{
+    [super didMoveToWindow];
+    if (!self.window) {
+        [self pp_stopVideoPlaybackAndTearDown:YES];
+    }
+}
+
+- (void)didMoveToSuperview
+{
+    [super didMoveToSuperview];
+    if (!self.superview) {
+        [self pp_stopVideoPlaybackAndTearDown:YES];
+    }
+}
+
 - (void)layoutSubviews
 {
     [super layoutSubviews];
+    self.videoPlayerLayer.frame = self.imageContainer.bounds;
     if (self.cardGradientLayer) {
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
@@ -690,6 +722,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.cardView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.cardView.bounds
                                    cornerRadius:self.cardView.layer.cornerRadius].CGPath;
+    self.videoPlayerLayer.frame = self.imageContainer.bounds;
 }
 
 - (UICollectionViewLayoutAttributes *)preferredLayoutAttributesFittingAttributes:(UICollectionViewLayoutAttributes *)layoutAttributes
@@ -738,6 +771,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.imageContainer,
         self.imageView,
         self.imageScrimView,
+        self.videoPlayButton,
         self.bodyContainer,
         self.actionHostView,
         self.stepperView,
@@ -762,6 +796,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.imageView.clipsToBounds = YES;
     self.imageScrimView.hidden = NO;
     self.imageScrimView.backgroundColor = PPUniversalCellSoftImageScrimColor();
+    self.videoPlayButton.hidden = YES;
+    self.videoPlayButton.alpha = 0.0;
     self.bodyContainer.hidden = NO;
     self.actionHostView.hidden = NO;
     self.stepperView.hidden = YES;
@@ -794,6 +830,20 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     self.imageScrimView.userInteractionEnabled = NO;
     self.imageScrimView.backgroundColor = [UIColor colorWithWhite:1.0 alpha:0.06];
     [self.imageContainer addSubview:self.imageScrimView];
+
+    self.videoPlayButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    self.videoPlayButton.translatesAutoresizingMaskIntoConstraints = NO;
+    self.videoPlayButton.hidden = YES;
+    self.videoPlayButton.alpha = 0.0;
+    self.videoPlayButton.tintColor = UIColor.whiteColor;
+    self.videoPlayButton.backgroundColor = [UIColor colorWithWhite:0.0 alpha:0.24];
+    self.videoPlayButton.layer.cornerRadius = 23.0;
+    self.videoPlayButton.clipsToBounds = YES;
+    UIImageSymbolConfiguration *playConfig = [UIImageSymbolConfiguration configurationWithPointSize:28.0 weight:UIImageSymbolWeightSemibold];
+    [self.videoPlayButton setImage:[UIImage systemImageNamed:@"play.fill" withConfiguration:playConfig]
+                           forState:UIControlStateNormal];
+    [self.videoPlayButton addTarget:self action:@selector(pp_handleVideoPlayTap) forControlEvents:UIControlEventTouchUpInside];
+    [self.imageContainer addSubview:self.videoPlayButton];
 
     self.reasonBadgeLabel = [self pp_makeBadgeLabel];
     [self pp_configureTopBadgeLabel:self.reasonBadgeLabel];
@@ -947,6 +997,11 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         [self.imageScrimView.leadingAnchor constraintEqualToAnchor:self.imageContainer.leadingAnchor],
         [self.imageScrimView.trailingAnchor constraintEqualToAnchor:self.imageContainer.trailingAnchor],
         [self.imageScrimView.bottomAnchor constraintEqualToAnchor:self.imageContainer.bottomAnchor],
+
+        [self.videoPlayButton.centerXAnchor constraintEqualToAnchor:self.imageContainer.centerXAnchor],
+        [self.videoPlayButton.centerYAnchor constraintEqualToAnchor:self.imageContainer.centerYAnchor],
+        [self.videoPlayButton.widthAnchor constraintEqualToConstant:46.0],
+        [self.videoPlayButton.heightAnchor constraintEqualToConstant:46.0],
     ]];
 
     [NSLayoutConstraint activateConstraints:@[
@@ -1210,6 +1265,8 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     [self pp_configureSkeleton:isSkeleton];
     if (isSkeleton) {
         self.lastConfiguredImageSignature = nil;
+        self.videoPlayButton.hidden = YES;
+        self.videoPlayButton.alpha = 0.0;
         return;
     }
 
@@ -1273,6 +1330,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
 
 - (void)pp_configureImageWithViewModel:(PPUniversalCellViewModel *)vm
 {
+    BOOL showsVideo = PPReusableVideoMediaEnabled() && vm.isVideoMedia && vm.videoURL.length > 0;
+    self.videoPlayButton.hidden = !showsVideo;
+    self.videoPlayButton.alpha = showsVideo ? 1.0 : 0.0;
+    if (!showsVideo) {
+        [self pp_stopVideoPlaybackAndTearDown:YES];
+    }
+
     NSString *imageSignature = [self pp_imageSignatureForViewModel:vm];
     if (imageSignature.length > 0 &&
         [imageSignature isEqualToString:self.lastConfiguredImageSignature] &&
@@ -1313,11 +1377,12 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     NSString *modelID = PPUniversalCellSafeString(vm.ModelID);
     NSString *modelType = PPUniversalCellSafeString(vm.modelType);
     NSString *imageURL = PPUniversalCellSafeString(vm.imageURL);
+    NSString *videoURL = (PPReusableVideoMediaEnabled() && vm.isVideoMedia) ? PPUniversalCellSafeString(vm.videoURL) : @"";
     if (modelID.length == 0 && imageURL.length == 0) {
         return @"";
     }
 
-    return [NSString stringWithFormat:@"%@|%@|%@", modelType, modelID, imageURL];
+    return [NSString stringWithFormat:@"%@|%@|%@|%@", modelType, modelID, imageURL, videoURL];
 }
 
 - (BOOL)pp_isHostedByHomeController
@@ -1411,17 +1476,31 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     if ([self pp_isAdContext]) {
         reasonText = PPUniversalCellSafeString(vm.location);
     }
+    BOOL marksHiddenOwnerItem = vm.isOwner && !vm.isPubliclyVisible;
+    if (marksHiddenOwnerItem) {
+        reasonText = PPUniversalCellLocalizedString(@"listing_hidden_badge", @"Hidden");
+    }
     NSString *badgeText = PPUniversalTemporarilyHideCategoryBadge ? @"" : PPUniversalCellSafeString(vm.badgeText);
     NSString *discountText = ([self pp_showsAccessoryDiscountPresentation] &&
                               self.discountStyle == PPDiscountStyleBadge)
         ? PPUniversalCellSafeString(vm.discountText)
         : @"";
 
+    UIColor *reasonBackground = marksHiddenOwnerItem
+        ? [UIColor colorWithRed:0.13 green:0.12 blue:0.10 alpha:0.76]
+        : [AppForgroundColr colorWithAlphaComponent:0.34];
+    UIColor *reasonTextColor = marksHiddenOwnerItem
+        ? UIColor.whiteColor
+        : AppPrimaryTextClr;
+    UIColor *reasonBorderColor = marksHiddenOwnerItem
+        ? [[UIColor colorWithRed:1.0 green:0.78 blue:0.28 alpha:1.0] colorWithAlphaComponent:0.38]
+        : [NewBgColor colorWithAlphaComponent:0.38];
+
     [self pp_applyBadgeLabel:self.reasonBadgeLabel
                         text:reasonText
-                     bgColor:[AppForgroundColr colorWithAlphaComponent:0.34]
-                   textColor:AppPrimaryTextClr
-                  borderColor:[NewBgColor colorWithAlphaComponent:0.38]];
+                     bgColor:reasonBackground
+                   textColor:reasonTextColor
+                  borderColor:reasonBorderColor];
 
     [self pp_applyBadgeLabel:self.discountBadgeLabel
                         text:discountText
@@ -1477,7 +1556,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         self.priceContainerTrailingToBodyConstraint.active = YES;
     }
 
-    BOOL showMenu = isOwner && !PPUniversalTemporarilyHideMenuButton;
+    BOOL showMenu = isOwner && (self.forceShowsOwnerMenuButton || !PPUniversalTemporarilyHideMenuButton);
     self.menuButton.hidden = !showMenu;
     self.menuButton.alpha = showMenu ? 1.0 : 0.0;
 
@@ -2166,6 +2245,18 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
     }
 }
 
+- (void)tapVisibilityToggle
+{
+    if (!UserManager.sharedManager.isUserLoggedIn) {
+        [UserManager showPromptOnTopController];
+        return;
+    }
+
+    if ([self.delegate respondsToSelector:@selector(PPUniversalCell_tapVisibilityToggle:)]) {
+        [self.delegate PPUniversalCell_tapVisibilityToggle:self.vm];
+    }
+}
+
 - (void)tapAddCollapsed
 {
     if (![self pp_usesQuantityControl]) {
@@ -2250,19 +2341,26 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         return;
     }
 
-    [PPAlertHelper showThreeActionConfirmationIn:parentVC
-                                           title:PPUniversalCellLocalizedString(@"Options", @"Options")
-                                        subtitle:nil
-                                   primaryButton:PPUniversalCellLocalizedString(@"Edit", @"Edit")
-                                    primaryStyle:UIAlertActionStyleDefault
-                                 secondaryButton:PPUniversalCellLocalizedString(@"Delete", @"Delete")
-                                  secondaryStyle:UIAlertActionStyleDestructive
-                                  tertiaryButton:PPUniversalCellLocalizedString(@"Cancel", @"Cancel")
-                                   tertiaryStyle:UIAlertActionStyleCancel
-                                    primaryBlock:^{
+    NSString *visibilityTitle = self.vm.isPubliclyVisible
+        ? PPUniversalCellLocalizedString(@"listing_hide_action", @"Hide")
+        : PPUniversalCellLocalizedString(@"listing_show_action", @"Show");
+
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:PPUniversalCellLocalizedString(@"Options", @"Options")
+                                                                   message:nil
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    [sheet addAction:[UIAlertAction actionWithTitle:PPUniversalCellLocalizedString(@"Edit", @"Edit")
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(__unused UIAlertAction *action) {
         [self tapEdit];
-    }
-                                  secondaryBlock:^{
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:visibilityTitle
+                                             style:UIAlertActionStyleDefault
+                                           handler:^(__unused UIAlertAction *action) {
+        [self tapVisibilityToggle];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:PPUniversalCellLocalizedString(@"Delete", @"Delete")
+                                             style:UIAlertActionStyleDestructive
+                                           handler:^(__unused UIAlertAction *action) {
         [PPAlertHelper showConfirmationIn:parentVC
                                     title:kLang(@"DeleteConfirmTitle") ?: @"Delete"
                                  subtitle:kLang(@"DeleteConfirmMessage") ?: @"Are you sure you want to delete this item?"
@@ -2274,8 +2372,13 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             [self tapDelete];
         }
                               cancelBlock:nil];
-    }
-                                   tertiaryBlock:nil];
+    }]];
+    [sheet addAction:[UIAlertAction actionWithTitle:PPUniversalCellLocalizedString(@"Cancel", @"Cancel")
+                                             style:UIAlertActionStyleCancel
+                                           handler:nil]];
+    sheet.popoverPresentationController.sourceView = self.menuButton ?: self;
+    sheet.popoverPresentationController.sourceRect = (self.menuButton ?: self).bounds;
+    [parentVC presentViewController:sheet animated:YES completion:nil];
 }
 
 #pragma mark - Helpers
@@ -2696,6 +2799,16 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
                                            handler:^(__unused UIAction * _Nonnull action) {
             [weakSelf tapEdit];
         }];
+        NSString *visibilityTitle = self.vm.isPubliclyVisible
+            ? PPUniversalCellLocalizedString(@"listing_hide_action", @"Hide")
+            : PPUniversalCellLocalizedString(@"listing_show_action", @"Show");
+        NSString *visibilityIcon = self.vm.isPubliclyVisible ? @"eye.slash" : @"eye";
+        UIAction *visibilityAction = [UIAction actionWithTitle:visibilityTitle
+                                                         image:[UIImage systemImageNamed:visibilityIcon]
+                                                    identifier:nil
+                                                       handler:^(__unused UIAction * _Nonnull action) {
+            [weakSelf tapVisibilityToggle];
+        }];
         UIAction *deleteAction = [UIAction actionWithTitle:PPUniversalCellLocalizedString(@"Delete", @"Delete")
                                                      image:[UIImage systemImageNamed:@"trash"]
                                                 identifier:nil
@@ -2703,7 +2816,7 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
             [weakSelf tapDelete];
         }];
         deleteAction.attributes = UIMenuElementAttributesDestructive;
-        self.menuButton.menu = [UIMenu menuWithTitle:@"" children:@[edit, deleteAction]];
+        self.menuButton.menu = [UIMenu menuWithTitle:@"" children:@[edit, visibilityAction, deleteAction]];
     }
 }
 
@@ -2717,6 +2830,65 @@ static CGFloat PPUniversalCellAdsPinterestHeight(CGFloat cellWidth,
         }
     }
     return nil;
+}
+
+#pragma mark - Video Playback
+
+- (void)pp_applicationDidEnterBackground:(NSNotification *)notification
+{
+    (void)notification;
+    [self pp_stopVideoPlaybackAndTearDown:NO];
+}
+
+- (void)pp_handleVideoPlayTap
+{
+    if (!PPReusableVideoMediaEnabled() || !self.vm.isVideoMedia || self.vm.videoURL.length == 0) {
+        return;
+    }
+
+    if (self.videoPlayer && [self.activeVideoURL isEqualToString:self.vm.videoURL]) {
+        [self pp_stopVideoPlaybackAndTearDown:NO];
+        self.videoPlayButton.alpha = 1.0;
+        return;
+    }
+
+    [self pp_stopVideoPlaybackAndTearDown:YES];
+
+    NSURL *url = [NSURL URLWithString:self.vm.videoURL];
+    if (!url) {
+        return;
+    }
+
+    AVPlayerItem *item = [AVPlayerItem playerItemWithURL:url];
+    AVPlayer *player = [AVPlayer playerWithPlayerItem:item];
+    player.muted = YES;
+    self.videoPlayer = player;
+    self.activeVideoURL = self.vm.videoURL;
+
+    AVPlayerLayer *layer = [AVPlayerLayer playerLayerWithPlayer:player];
+    layer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+    layer.frame = self.imageContainer.bounds;
+    self.videoPlayerLayer = layer;
+    [self.imageContainer.layer insertSublayer:layer above:self.imageView.layer];
+    self.videoPlayButton.alpha = 0.0;
+    [player play];
+}
+
+- (void)pp_stopVideoPlaybackAndTearDown:(BOOL)tearDown
+{
+    [self.videoPlayer pause];
+    if (tearDown) {
+        [self.videoPlayerLayer removeFromSuperlayer];
+        self.videoPlayerLayer = nil;
+        self.videoPlayer = nil;
+        self.activeVideoURL = nil;
+    }
+}
+
+- (void)stopMediaPlayback
+{
+    [self pp_stopVideoPlaybackAndTearDown:YES];
+    self.videoPlayButton.alpha = (PPReusableVideoMediaEnabled() && self.vm.isVideoMedia && self.vm.videoURL.length > 0) ? 1.0 : 0.0;
 }
 
 #pragma mark - Gesture Delegate

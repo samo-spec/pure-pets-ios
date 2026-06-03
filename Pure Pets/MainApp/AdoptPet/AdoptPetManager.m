@@ -7,6 +7,7 @@
 #import "AdoptPetModel.h"
 #import "PPImageUploadValidator.h"
 #import "PPFunc.h"
+#import "PPImageCollection.h"
 @import Firebase;
 @import FirebaseStorage;
 
@@ -52,7 +53,9 @@ static NSInteger const kFirestoreInQueryLimit = 10;
         }
     }
 
-    FIRDocumentReference *doc = [[self petsCollection] documentWithAutoID];
+    FIRDocumentReference *doc = model.documentID.length > 0
+        ? [[self petsCollection] documentWithPath:model.documentID]
+        : [[self petsCollection] documentWithAutoID];
     model.documentID = doc.documentID;
 
     __weak typeof(self) weakSelf = self;
@@ -100,7 +103,9 @@ static NSInteger const kFirestoreInQueryLimit = 10;
         for (FIRDocumentSnapshot *doc in snapshot.documents) {
             AdoptPetModel *model = [[AdoptPetModel alloc] initWithSnapshot:doc];
             model.documentID = doc.documentID;
-            [pets addObject:model];
+            if (model.visibility == 0) {
+                [pets addObject:model];
+            }
         }
 
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -178,7 +183,9 @@ static NSInteger const kFirestoreInQueryLimit = 10;
             for (FIRDocumentSnapshot *doc in snapshot.documents) {
                 AdoptPetModel *model = [[AdoptPetModel alloc] initWithSnapshot:doc];
                 model.documentID = doc.documentID;
-                fetchedMap[doc.documentID] = model;
+                if (model.visibility == 0) {
+                    fetchedMap[doc.documentID] = model;
+                }
             }
             dispatch_group_leave(group);
         }];
@@ -222,6 +229,7 @@ static NSInteger const kFirestoreInQueryLimit = 10;
     [[[self petsCollection] documentWithPath:documentID]
      getDocumentWithCompletion:^(FIRDocumentSnapshot * _Nullable snapshot, NSError * _Nullable error) {
         NSArray *imageURLs = snapshot.data[@"imageURLs"];
+        [PPImageCollection deleteEntityMediaWithEntityType:@"adoptions" entityID:documentID completion:nil];
         
         [[[self petsCollection] documentWithPath:documentID]
          deleteDocumentWithCompletion:^(NSError * _Nullable deleteError) {
@@ -255,6 +263,16 @@ static NSInteger const kFirestoreInQueryLimit = 10;
             completion(error == nil, error);
         }
     }];
+}
+
+- (void)updatePetVisibilityWithID:(NSString *)documentID
+                       visibility:(NSInteger)visibility
+                       completion:(AdoptPetCompletion)completion {
+    NSDictionary *data = @{
+        @"visibility": @(visibility == 0 ? 0 : 1),
+        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+    };
+    [self updatePetWithID:documentID data:data completion:completion];
 }
 
 - (void)updatePet:(AdoptPetModel *)model

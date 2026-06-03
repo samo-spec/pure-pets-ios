@@ -18,6 +18,7 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 - (void)PPUniversalCell_tapShare:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapFavorite:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapEdit:(PPUniversalCellViewModel *)universalModel;
+- (void)PPUniversalCell_tapVisibilityToggle:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_tapDelete:(PPUniversalCellViewModel *)universalModel;
 - (void)PPUniversalCell_changeQuantity:(PPUniversalCellViewModel *)universalModel quantity:(NSInteger)quantity;
 
@@ -44,6 +45,7 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 - (void)collapseStepper:(BOOL)animated;
 /// Re-resolves dynamic layer colors after foreground/theme restoration.
 - (void)refreshThemeAppearance;
+- (void)stopMediaPlayback;
 /// Configure cell from a view model
 
 - (void)applyViewModel:(PPUniversalCellViewModel *)vm
@@ -54,6 +56,9 @@ typedef void (^PPImageLoader)(UIImageView *_Nullable imageView,
 
 /// Hides the top reason/location badge when set to YES.
 @property (nonatomic, assign) BOOL hideTopBadge;
+
+/// Shows the owner edit/delete menu even while the universal menu button is hidden elsewhere.
+@property (nonatomic, assign) BOOL forceShowsOwnerMenuButton;
 
 /// Shows the subtitle label when set to YES (default NO — subtitle hidden).
 @property (nonatomic, assign) BOOL showsSubtitle;

@@ -217,6 +217,7 @@
 		F22CD3852C6709650098B6E9 /* star.png in Resources */ = {isa = PBXBuildFile; fileRef = F22CD3782C6709650098B6E9 /* star.png */; };
 		F22CD3862C6709650098B6E9 /* FCAlertView.m in Sources */ = {isa = PBXBuildFile; fileRef = F22CD37B2C6709650098B6E9 /* FCAlertView.m */; };
 		F22DE0802ECB61C600B2D0D2 /* PPUserSigningController.m in Sources */ = {isa = PBXBuildFile; fileRef = F2D6396C2ECB491D00FEBCBB /* PPUserSigningController.m */; };
+		F22EC0C62FD07D4F00AE5A5D /* PPImageSearchService.m in Sources */ = {isa = PBXBuildFile; fileRef = F22EC0C52FD07D4F00AE5A5D /* PPImageSearchService.m */; };
 		F22ED2432FA9FF4900F72C2B /* PPNovaProductMessageCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */; };
 		F22ED2462FAA100F72C2B /* PPNovaMessageBubbleCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAA100F72C2B /* PPNovaMessageBubbleCell.m */; };
 		F22ED2462FAAC91C00F72C2B /* PPAnalytics.m in Sources */ = {isa = PBXBuildFile; fileRef = F22ED2452FAAC91C00F72C2B /* PPAnalytics.m */; };
@@ -224,6 +225,8 @@
 		F2353B6D2F8019670018EC49 /* PPHomeOrderStatusCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F2353B6C2F8019530018EC49 /* PPHomeOrderStatusCell.m */; };
 		F23686F02C7624DF001E620C /* TQImageViewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F23686ED2C7624DE001E620C /* TQImageViewer.m */; };
 		F2390C1F2E23F18A0017D4E1 /* CompanyLocationVC.m in Sources */ = {isa = PBXBuildFile; fileRef = F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */; };
+		F23AUTH02FC4000000000001 /* PPAuthStepIndicatorView.m in Sources */ = {isa = PBXBuildFile; fileRef = F23AUTH01FC4000000000001 /* PPAuthStepIndicatorView.m */; };
+		F23AUTH04FC4000000000001 /* PPAuthScaffoldView.m in Sources */ = {isa = PBXBuildFile; fileRef = F23AUTH03FC4000000000001 /* PPAuthScaffoldView.m */; };
 		F23DDE602F8AB36F0020D4F4 /* PPHomeLocationSheetViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F23DDE5F2F8AB36F0020D4F4 /* PPHomeLocationSheetViewController.m */; };
 		F23DDE632F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m in Sources */ = {isa = PBXBuildFile; fileRef = F23DDE622F8AC1160020D4F4 /* PPVerifiedBadgeHelper.m */; };
 		F23DDE662F8AC9AC0020D4F4 /* PPFilterModels.m in Sources */ = {isa = PBXBuildFile; fileRef = F23DDE652F8AC9AC0020D4F4 /* PPFilterModels.m */; };
@@ -1227,6 +1230,8 @@
 		F22CD3782C6709650098B6E9 /* star.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = star.png; sourceTree = "<group>"; };
 		F22CD37A2C6709650098B6E9 /* FCAlertView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FCAlertView.h; sourceTree = "<group>"; };
 		F22CD37B2C6709650098B6E9 /* FCAlertView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FCAlertView.m; sourceTree = "<group>"; };
+		F22EC0C42FD07D4F00AE5A5D /* PPImageSearchService.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPImageSearchService.h; sourceTree = "<group>"; };
+		F22EC0C52FD07D4F00AE5A5D /* PPImageSearchService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPImageSearchService.m; sourceTree = "<group>"; };
 		F22ED2412FA9FF4900F72C2B /* PPNovaProductMessageCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaProductMessageCell.h; sourceTree = "<group>"; };
 		F22ED2422FA9FF4900F72C2B /* PPNovaProductMessageCell.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPNovaProductMessageCell.m; sourceTree = "<group>"; };
 		F22ED2442FAA100F72C2B /* PPNovaMessageBubbleCell.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPNovaMessageBubbleCell.h; sourceTree = "<group>"; };
@@ -1242,6 +1247,10 @@
 		F23686ED2C7624DE001E620C /* TQImageViewer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TQImageViewer.m; sourceTree = "<group>"; };
 		F2390C1D2E23F18A0017D4E1 /* CompanyLocationVC.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CompanyLocationVC.h; sourceTree = "<group>"; };
 		F2390C1E2E23F18A0017D4E1 /* CompanyLocationVC.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CompanyLocationVC.m; sourceTree = "<group>"; };
+		F23AUTH00FC4000000000001 /* PPAuthStepIndicatorView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuthStepIndicatorView.h; sourceTree = "<group>"; };
+		F23AUTH01FC4000000000001 /* PPAuthStepIndicatorView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuthStepIndicatorView.m; sourceTree = "<group>"; };
+		F23AUTH03FC4000000000001 /* PPAuthScaffoldView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPAuthScaffoldView.m; sourceTree = "<group>"; };
+		F23AUTH05FC4000000000001 /* PPAuthScaffoldView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPAuthScaffoldView.h; sourceTree = "<group>"; };
 		F23DDE5E2F8AB3320020D4F4 /* PPHomeLocationSheetViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPHomeLocationSheetViewController.h; sourceTree = "<group>"; };
 		F23DDE5F2F8AB36F0020D4F4 /* PPHomeLocationSheetViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PPHomeLocationSheetViewController.m; sourceTree = "<group>"; };
 		F23DDE612F8AC1160020D4F4 /* PPVerifiedBadgeHelper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PPVerifiedBadgeHelper.h; sourceTree = "<group>"; };
@@ -2609,6 +2618,8 @@
 		F213021C2F0C6546006E71AB /* Search */ = {
 			isa = PBXGroup;
 			children = (
+				F22EC0C42FD07D4F00AE5A5D /* PPImageSearchService.h */,
+				F22EC0C52FD07D4F00AE5A5D /* PPImageSearchService.m */,
 				F276D60A2F1403E400782A13 /* SearchUI */,
 				F276D6092F1403CE00782A13 /* Helpers */,
 				F213021D2F0C6556006E71AB /* PPSearchViewController.h */,
@@ -4917,6 +4928,10 @@
 				F25DC30B2EDDE94400C48787 /* XLFormPhoneCodeCell.m */,
 				F25DC3072EDDE92800C48787 /* XLFormPhoneCodeItem.h */,
 				F25DC3082EDDE93300C48787 /* XLFormPhoneCodeItem.m */,
+				F23AUTH05FC4000000000001 /* PPAuthScaffoldView.h */,
+				F23AUTH03FC4000000000001 /* PPAuthScaffoldView.m */,
+				F23AUTH00FC4000000000001 /* PPAuthStepIndicatorView.h */,
+				F23AUTH01FC4000000000001 /* PPAuthStepIndicatorView.m */,
 				F2FCEBAD2ECD0969002A9F67 /* PPCompleteProfileVC.h */,
 				F2FCEBAE2ECD09AD002A9F67 /* PPCompleteProfileVC.m */,
 				F2FCEBAA2ECCCD64002A9F67 /* PPVerificationCodeViewController.h */,
@@ -5999,6 +6014,8 @@
 				F24D6EEC2EB9F00A009962D0 /* UserManager.m in Sources */,
 				F2AB488E2C72CF3C00D88603 /* JGProgressHUDErrorIndicatorView.m in Sources */,
 				F2FCEBAF2ECD09BF002A9F67 /* PPCompleteProfileVC.m in Sources */,
+				F23AUTH02FC4000000000001 /* PPAuthStepIndicatorView.m in Sources */,
+				F23AUTH04FC4000000000001 /* PPAuthScaffoldView.m in Sources */,
 				F2BA434F2CCA4AC800943394 /* UIView+XIB.m in Sources */,
 				F2AB48D82C72D43D00D88603 /* KafkaReplicatorHeader.m in Sources */,
 				F27365F82F858773000AB3DD /* PPModernAvatarRenderer.m in Sources */,
@@ -6091,6 +6108,7 @@
 				F24F36412D87E9750094C6F2 /* CustomButtonCell.m in Sources */,
 				F22DE0802ECB61C600B2D0D2 /* PPUserSigningController.m in Sources */,
 				F2EB80672E863B68005E9ABD /* RNFrostedSidebar.m in Sources */,
+				F22EC0C62FD07D4F00AE5A5D /* PPImageSearchService.m in Sources */,
 				F28CB38D2E4C6871009DD547 /* AdoptPetCell.m in Sources */,
 				F25373D72E32E3D200CD93E7 /* LeaveFeedbackViewController.m in Sources */,
 				F260D32C2C7B36EF0098C8F0 /* FOREmptyAssistantConfiger.m in Sources */,
@@ -6305,7 +6323,7 @@
 				CODE_SIGN_ENTITLEMENTS = "Pure Pets/Pure Pets.entitlements";
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_APP_SANDBOX = YES;
@@ -6414,7 +6432,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = 9J4UK6N4AU;
 				ENABLE_ADDRESS_SANITIZER = NO;

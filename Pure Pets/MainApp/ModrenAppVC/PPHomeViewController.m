@@ -10799,6 +10799,35 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
 
 }
 
+-(void)PPUniversalCell_tapVisibilityToggle:(PPUniversalCellViewModel *)universalModel
+{
+    if (!PPIsUserLoggedIn) { [UserManager showPromptOnTopController]; return; }
+    BOOL nextVisible = !universalModel.isPubliclyVisible;
+    void (^handleResult)(NSError * _Nullable error) = ^(NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (error) {
+                [PPAlertHelper showErrorIn:self title:kLang(@"Error") subtitle:error.localizedDescription ?: kLang(@"listing_visibility_failed")];
+                return;
+            }
+            NSString *message = nextVisible ? kLang(@"listing_visible_success") : kLang(@"listing_hidden_success");
+            [AppManager.sharedInstance showSnakBar:message withColor:GM.appPrimaryColor andDuration:0.6 containerView:self.view];
+            [AppClasses reloadThisCollectionView:self.collectionView completion:^(BOOL finished) { }];
+        });
+    };
+
+    if(universalModel.cellSection == CellSectionAds && [universalModel.ModelObject isKindOfClass:[PetAd class]]) {
+        PetAd *ad = (PetAd *)universalModel.ModelObject;
+        [[PetAdManager sharedManager] updatePetAdID:ad.adID
+                                         visibility:(nextVisible ? PetAdVisibilityPublic : PetAdVisibilityHidden)
+                                         completion:handleResult];
+    } else if(universalModel.cellSection == CellSectionAccessories && [universalModel.ModelObject isKindOfClass:[PetAccessory class]]) {
+        PetAccessory *accessory = (PetAccessory *)universalModel.ModelObject;
+        [[PetAccessoryManager sharedManager] updateAccessoryID:accessory.accessoryID
+                                               showInAppMarket:nextVisible
+                                                    completion:handleResult];
+    }
+}
+
 #pragma mark - Background
 
 - (void)pp_applyOrderDetailsBackgroundAppearance

@@ -50,6 +50,9 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)addAccessory:(PetAccessory *)accessory completion:(void (^)(NSError * _Nullable error))completion;
 - (void)updateAccessory:(PetAccessory *)accessory completion:(void (^)(NSError * _Nullable error))completion;
+- (void)updateAccessoryID:(NSString *)accessoryID
+          showInAppMarket:(BOOL)showInAppMarket
+               completion:(void (^)(NSError * _Nullable error))completion;
 - (void)deleteAccessory:(NSString *)accessoryID completion:(void (^)(NSError * _Nullable error))completion;
 - (void)updateAccessoryWithComplationUpdatedClass:(PetAccessory *)model  completion:(void(^)(NSError * _Nullable, PetAccessory * _Nullable updatedModel))completion;
 
@@ -71,6 +74,13 @@ NS_ASSUME_NONNULL_BEGIN
 ///
 - (void)createAccessory:(PetAccessory *)accessory
                  images:(NSArray<UIImage *> *)images
+             completion:(void (^)(NSError * _Nullable error))completion;
+- (void)createAccessory:(PetAccessory *)accessory
+      uploadedImageURLs:(NSArray<NSString *> *)imageURLs
+          imageMetadata:(NSArray<NSDictionary *> *)imageMetadata
+              videoURLs:(NSArray<NSString *> *)videoURLs
+          videoMetadata:(NSArray<NSDictionary *> *)videoMetadata
+          mixedMetadata:(NSArray<NSDictionary *> *)mixedMetadata
              completion:(void (^)(NSError * _Nullable error))completion;
 + (void)fetchAccessoriesForUserID:(NSString *)userID completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
 + (void)fetchAccessoriesWithIDs:(NSArray<NSString *> *)itemIDs completion:(void (^)(NSArray<PetAccessory *> *accessories))completion;
@@ -107,8 +117,6 @@ NS_ASSUME_NONNULL_BEGIN
 
 
 NS_ASSUME_NONNULL_END
-
-
 
 
 

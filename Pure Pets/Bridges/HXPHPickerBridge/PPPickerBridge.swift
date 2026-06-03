@@ -26,6 +26,8 @@ public extension Notification.Name {
     // MARK: - Configuration
     @objc public var useArabic: Bool = false
     @objc public var maxSelectionCount: Int = 9
+    @objc public var maxVideoSelectionCount: Int = 1
+    @objc public var maxVideoDuration: Int = 30
     @objc public var allowVideo: Bool = false
     @objc public var allowPhoto: Bool = true
     @objc public var allowSelectedOrder: Bool = true
@@ -49,6 +51,7 @@ public extension Notification.Name {
     @objc(configureForSinglePhoto)
     func configureForSinglePhoto() {
         maxSelectionCount = 1
+        maxVideoSelectionCount = 0
         allowPhoto = true
         allowVideo = false
     }
@@ -56,6 +59,7 @@ public extension Notification.Name {
     @objc(configureForSingleVideo)
     func configureForSingleVideo() {
         maxSelectionCount = 1
+        maxVideoSelectionCount = 1
         allowPhoto = false
         allowVideo = true
     }
@@ -63,6 +67,7 @@ public extension Notification.Name {
     @objc(configureForPhotosWithMaxCount:useArabic:)
     func configureForPhotos(maxCount: Int, useArabic: Bool) {
         maxSelectionCount = maxCount
+        maxVideoSelectionCount = 0
         self.useArabic = useArabic
         allowPhoto = true
         allowVideo = false
@@ -71,6 +76,7 @@ public extension Notification.Name {
     @objc(configureForMixedMediaWithMaxCount:useArabic:)
     func configureForMixedMedia(maxCount: Int, useArabic: Bool) {
         maxSelectionCount = maxCount
+        maxVideoSelectionCount = 1
         self.useArabic = useArabic
         allowPhoto = true
         allowVideo = true
@@ -176,6 +182,7 @@ public extension Notification.Name {
         completion: @escaping ([PHAsset], [UIImage]) -> Void
     ) {
         maxSelectionCount = maxCount
+        maxVideoSelectionCount = allowVideo ? 1 : 0
         self.allowVideo = allowVideo
         self.useArabic = useArabic
         presentPicker(from: viewController, completion: completion)
@@ -211,6 +218,11 @@ public extension Notification.Name {
         let previewText = localizedText(key: "Preview", englishFallback: "Preview", arabicFallback: "عرض")
         let originalText = localizedText(key: "Original", englishFallback: "Original", arabicFallback: "أصلي")
         let editText = localizedText(key: "Edit", englishFallback: "Edit", arabicFallback: "تعديل")
+        let videoDurationLimitText = localizedText(
+            key: "media_video_duration_limit_message",
+            englishFallback: "Videos must be 30 seconds or shorter.",
+            arabicFallback: "يجب ألا تتجاوز مدة الفيديو ٣٠ ثانية."
+        )
 
         HX.textManager.picker.photoList.bottomView.finishTitle = .custom(finishText)
         HX.textManager.picker.photoList.bottomView.previewTitle = .custom(previewText)
@@ -218,6 +230,8 @@ public extension Notification.Name {
         HX.textManager.picker.preview.bottomView.finishTitle = .custom(finishText)
         HX.textManager.picker.preview.bottomView.editTitle = .custom(editText)
         HX.textManager.picker.preview.bottomView.originalTitle = .custom(originalText)
+        HX.textManager.picker.maximumSelectedVideoDurationHudTitle = .custom(videoDurationLimitText)
+        HX.textManager.picker.maximumVideoEditDurationHudTitle = .custom(videoDurationLimitText)
     }
 
     private func createPickerConfiguration() -> PickerConfiguration {
@@ -226,7 +240,9 @@ public extension Notification.Name {
         config.languageType = useArabic ? .arabic : .system
         config.appearanceStyle = .normal
         config.maximumSelectedCount = maxSelectionCount
-        config.maximumSelectedVideoCount = allowVideo ? maxSelectionCount : 0
+        config.maximumSelectedVideoCount = allowVideo ? max(0, maxVideoSelectionCount) : 0
+        config.maximumSelectedVideoDuration = allowVideo ? max(0, maxVideoDuration) : 0
+        config.maximumVideoEditDuration = allowVideo ? max(0, maxVideoDuration) : 0
 
         config.selectOptions = []
         if allowPhoto { config.selectOptions.insert(.photo) }
@@ -242,6 +258,21 @@ public extension Notification.Name {
         config.previewView.bottomView.isHiddenOriginalButton = true
 
         return config
+    }
+
+    private func pp_editorToolOptionsForCurrentMode() -> [EditorConfiguration.ToolsView.Options] {
+        let options = EditorConfiguration.ToolsView.default.toolOptions
+        guard allowVideo else {
+            return options
+        }
+        return options.filter { option in
+            switch option.type {
+            case .chartlet, .music:
+                return false
+            default:
+                return true
+            }
+        }
     }
 
     // MARK: - Result Handling
@@ -310,6 +341,19 @@ extension PPPickerBridge: PhotoPickerControllerDelegate {
         didUnselectAsset photoAsset: PhotoAsset,
         atIndex: Int
     ) { }
+
+    #if HXPICKER_ENABLE_EDITOR
+    public func pickerController(
+        _ pickerController: PhotoPickerController,
+        shouldEditVideoAsset videoAsset: PhotoAsset,
+        editorConfig: EditorConfiguration,
+        atIndex: Int
+    ) -> EditorConfiguration? {
+        var config = editorConfig
+        config.toolsView.toolOptions = pp_editorToolOptionsForCurrentMode()
+        return config
+    }
+    #endif
 }
 
 // MARK: - Notification Helpers (Objective-C)

@@ -4,6 +4,7 @@
 #import "SplashViewController.h"
 #import "PPRootTabBarController.h"
 #import "PPCheckoutCoordinator.h"
+@import FirebaseAuth;
 @import GoogleSignIn;
 #import "ChNotificationRouter.h"
 #import "PPOrder.h"
@@ -424,6 +425,9 @@ willConnectToSession:(UISceneSession *)session
 - (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts {
     for (UIOpenURLContext *urlContext in URLContexts) {
         NSURL *url = urlContext.URL;
+        if ([[FIRAuth auth] canHandleURL:url]) {
+            continue;
+        }
         if ([[url scheme] isEqualToString:@"purepets"]) {
             [[DeepLinkRouter shared] handleURL:url];
         }

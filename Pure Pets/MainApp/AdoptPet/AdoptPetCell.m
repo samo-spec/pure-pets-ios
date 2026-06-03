@@ -7,9 +7,16 @@
 
 #import "AdoptPetCell.h"
 #import "PPInsetLabel.h"
+#import "AdoptPetModel.h"
+#import "EnumValues.h"
+
+static NSInteger const PPAdoptCellVideoBadgeTag = 81043;
 
 static NSString *PPAdoptCellSafeString(id value)
 {
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)value stringValue];
+    }
     if (![value isKindOfClass:NSString.class]) return @"";
     return [(NSString *)value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
 }
@@ -93,6 +100,7 @@ static NSString *PPAdoptCellSafeString(id value)
     self.titleLabel.textColor = UIColor.labelColor;
     self.subtitleLabel.textColor = UIColor.secondaryLabelColor;
     self.adoptModel = nil;
+    [[self.contentView viewWithTag:PPAdoptCellVideoBadgeTag] removeFromSuperview];
 }
 
 #pragma mark - Setup Views
@@ -418,8 +426,21 @@ static NSString *PPAdoptCellSafeString(id value)
 
     self.imageView.backgroundColor = GM.backOffwhileColor;
     self.imageView.tintColor = UIColor.tertiaryLabelColor;
-    if (url.length > 0) {
-        [GM setImageFromFirebaseURLString:url
+    NSString *displayURL = url;
+    BOOL isVideo = NO;
+    if (PPReusableVideoMediaEnabled() && self.adoptModel.imageMeta.count > 0) {
+        NSDictionary *firstMeta = [self.adoptModel.imageMeta.firstObject isKindOfClass:NSDictionary.class] ? self.adoptModel.imageMeta.firstObject : nil;
+        NSString *mediaType = [PPAdoptCellSafeString(firstMeta[@"media_type"]) lowercaseString];
+        isVideo = [mediaType isEqualToString:@"video"];
+        if (isVideo && PPAdoptCellSafeString(firstMeta[@"thumbnail_url"]).length > 0) {
+            displayURL = PPAdoptCellSafeString(firstMeta[@"thumbnail_url"]);
+        } else if (PPAdoptCellSafeString(firstMeta[@"url"]).length > 0) {
+            displayURL = PPAdoptCellSafeString(firstMeta[@"url"]);
+        }
+    }
+    [self pp_configureVideoBadgeVisible:isVideo];
+    if (displayURL.length > 0) {
+        [GM setImageFromFirebaseURLString:displayURL
                                 imageView:self.imageView
                                   phImage:@"PawPlacerS"
                               showShimmer:YES
@@ -427,6 +448,34 @@ static NSString *PPAdoptCellSafeString(id value)
     } else {
         self.imageView.image = [UIImage imageNamed:@"PawPlacerS"];
     }
+}
+
+- (void)pp_configureVideoBadgeVisible:(BOOL)visible
+{
+    UIView *existing = [self.contentView viewWithTag:PPAdoptCellVideoBadgeTag];
+    if (!visible) {
+        [existing removeFromSuperview];
+        return;
+    }
+    if (existing) {
+        existing.hidden = NO;
+        return;
+    }
+    UIImageView *badge = [[UIImageView alloc] initWithImage:[UIImage systemImageNamed:@"play.circle.fill"]];
+    badge.tag = PPAdoptCellVideoBadgeTag;
+    badge.translatesAutoresizingMaskIntoConstraints = NO;
+    badge.tintColor = UIColor.whiteColor;
+    badge.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.18];
+    badge.contentMode = UIViewContentModeScaleAspectFit;
+    badge.layer.cornerRadius = 20.0;
+    badge.clipsToBounds = YES;
+    [self.topView addSubview:badge];
+    [NSLayoutConstraint activateConstraints:@[
+        [badge.centerXAnchor constraintEqualToAnchor:self.topView.centerXAnchor],
+        [badge.centerYAnchor constraintEqualToAnchor:self.topView.centerYAnchor],
+        [badge.widthAnchor constraintEqualToConstant:40.0],
+        [badge.heightAnchor constraintEqualToConstant:40.0]
+    ]];
 }
 
 - (void)configureWithName:(NSString *)name imageURL:(NSString * _Nullable)urlString {

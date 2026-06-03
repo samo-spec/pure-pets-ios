@@ -248,7 +248,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         [detailLabel.topAnchor constraintEqualToAnchor:valueLabel.bottomAnchor constant:4.0],
         [detailLabel.leadingAnchor constraintEqualToAnchor:valueLabel.leadingAnchor],
         [detailLabel.trailingAnchor constraintEqualToAnchor:valueLabel.trailingAnchor],
-        [detailLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-14.0]
+        [detailLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-18.0]
     ]];
 
     return self;
@@ -332,16 +332,16 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
         [toggleSwitch.centerYAnchor constraintEqualToAnchor:self.contentView.centerYAnchor],
         [toggleSwitch.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-18.0],
 
-        [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:15.0],
+        [titleLabel.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:18.0],
         [titleLabel.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:18.0],
         [titleLabel.trailingAnchor constraintEqualToAnchor:toggleSwitch.leadingAnchor constant:-14.0],
 
         [subtitleLabel.topAnchor constraintEqualToAnchor:titleLabel.bottomAnchor constant:5.0],
         [subtitleLabel.leadingAnchor constraintEqualToAnchor:titleLabel.leadingAnchor],
         [subtitleLabel.trailingAnchor constraintEqualToAnchor:titleLabel.trailingAnchor],
-        [subtitleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-15.0],
+        [subtitleLabel.bottomAnchor constraintEqualToAnchor:self.contentView.bottomAnchor constant:-18.0],
 
-        [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:48.0],
+        [self.contentView.heightAnchor constraintGreaterThanOrEqualToConstant:72.0],
     ]];
 
     return self;
@@ -666,6 +666,7 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 
 @property (nonatomic, strong) UIBarButtonItem *saveBarButtonItem;
 @property (nonatomic, strong) UIBarButtonItem *leadingBarButtonItem;
+@property (nonatomic, assign) NSUInteger activeSaveToken;
 @end
 
 @implementation AddressFormVC
@@ -2446,6 +2447,8 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
 
     [self pp_setSavingState:YES];
     [PPHUD showLoading:kLang(@"Saving") ?: @"Saving"];
+    self.activeSaveToken += 1;
+    NSUInteger saveToken = self.activeSaveToken;
 
     BOOL isNewAddress = self.address == nil;
     PPAddressModel *addressToSave = self.address ?: [[PPAddressModel alloc] init];
@@ -2470,11 +2473,28 @@ static inline UISemanticContentAttribute PPAddressCurrentSemanticAttribute(void)
     }
 
     __weak typeof(self) weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(20.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self || !self.isSaving || self.activeSaveToken != saveToken) {
+            return;
+        }
+
+        self.activeSaveToken += 1;
+        [self pp_setSavingState:NO];
+        [PPHUD dismiss];
+        [PPAlertHelper showErrorIn:self
+                             title:kLang(@"StatusSaveFailed") ?: @"Save failed"
+                          subtitle:kLang(@"save_timeout_message") ?: @"Saving is taking too long. Please check your connection and try again."];
+    });
+
     void (^handleResult)(PPAddressModel * _Nullable, NSError * _Nullable) =
     ^(PPAddressModel * _Nullable savedAddress, NSError * _Nullable error) {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(weakSelf) self = weakSelf;
             if (!self) {
+                return;
+            }
+            if (self.activeSaveToken != saveToken) {
                 return;
             }
 

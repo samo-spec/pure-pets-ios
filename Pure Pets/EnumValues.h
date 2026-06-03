@@ -92,6 +92,24 @@ static NSString * const PPRouteToSearchAccessoriesNotificationKey = @"PPRouteToS
 
 static NSString * const PPHomeSectionDividerKind = @"PPHomeSectionDividerKind";
 
+static NSString * const kPPReusableVideoMediaFeatureFlagKey = @"PPReusableVideoMediaEnabled";
+
+static inline BOOL PPReusableVideoMediaDefaultEnabled(void) {
+#ifdef PP_REUSABLE_VIDEO_MEDIA_ENABLED
+    return PP_REUSABLE_VIDEO_MEDIA_ENABLED;
+#else
+    return YES;
+#endif
+}
+
+static inline BOOL PPReusableVideoMediaEnabled(void) {
+    id overrideValue = [[NSUserDefaults standardUserDefaults] objectForKey:kPPReusableVideoMediaFeatureFlagKey];
+    if ([overrideValue isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)overrideValue boolValue];
+    }
+    return PPReusableVideoMediaDefaultEnabled();
+}
+
 static NSString * const kPetAdsCollection = @"pet_ads";
 static NSString * const kUsersCollection  = @"UsersCol";
 

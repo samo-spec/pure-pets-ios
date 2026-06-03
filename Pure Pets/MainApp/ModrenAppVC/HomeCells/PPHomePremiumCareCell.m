@@ -154,7 +154,7 @@ static UIColor *PremiumSoftCardBorderColor(void)
 
     _titleLabel = [[UILabel alloc] init];
     _titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    _titleLabel.font = [GM boldFontWithSize:21.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
+    _titleLabel.font = [GM boldFontWithSize:28.0] ?: [UIFont systemFontOfSize:21.0 weight:UIFontWeightBold];
     _titleLabel.numberOfLines = 1;
     _titleLabel.adjustsFontSizeToFitWidth = YES;
     _titleLabel.minimumScaleFactor = 0.78;

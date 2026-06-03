@@ -179,6 +179,12 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
     for (NSInteger i = 0; i < self.imageURLsArray.count; i++) {
         NSString *url = self.imageURLsArray[i];
         NSDictionary *meta = (i < self.imageMeta.count) ? self.imageMeta[i] : nil;
+
+        PetImageItem *mediaItem = [PetImageItem itemWithMediaMetadata:meta];
+        if (mediaItem) {
+            [items addObject:mediaItem];
+            continue;
+        }
         
         CGFloat width = [meta[@"width"] floatValue] ?: 0;
         CGFloat height = [meta[@"height"] floatValue] ?: 0;
@@ -187,6 +193,15 @@ static NSNumber *PPAccessoryNumberValueForKeys(NSDictionary *dict, NSArray<NSStr
                                                          width:width
                                                         height:height blurHash:nil];
         [items addObject:item];
+    }
+
+    if (items.count == 0 && self.imageMeta.count > 0) {
+        for (NSDictionary *meta in self.imageMeta) {
+            PetImageItem *mediaItem = [PetImageItem itemWithMediaMetadata:meta];
+            if (mediaItem) {
+                [items addObject:mediaItem];
+            }
+        }
     }
     
     return [items copy];

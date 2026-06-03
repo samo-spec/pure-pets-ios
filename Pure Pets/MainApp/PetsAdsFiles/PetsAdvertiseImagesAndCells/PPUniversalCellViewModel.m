@@ -31,6 +31,38 @@ static CGFloat PPUniversalClampedAspectRatio(CGSize size, CGFloat fallback)
     return ratio > 0.0 ? ratio : fallback;
 }
 
+static NSString *PPUniversalSafeString(id value)
+{
+    if ([value isKindOfClass:NSString.class]) {
+        return (NSString *)value;
+    }
+    if ([value isKindOfClass:NSNumber.class]) {
+        return [(NSNumber *)value stringValue];
+    }
+    return @"";
+}
+
+static NSDictionary *PPUniversalFirstMediaMetadata(NSArray<NSDictionary *> *metadata)
+{
+    if (!PPReusableVideoMediaEnabled()) {
+        return nil;
+    }
+    NSDictionary *fallback = nil;
+    for (NSDictionary *item in metadata) {
+        if (![item isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        if (!fallback) {
+            fallback = item;
+        }
+        NSString *type = PPUniversalSafeString(item[@"media_type"]).lowercaseString;
+        if ([type isEqualToString:@"video"]) {
+            return item;
+        }
+    }
+    return fallback;
+}
+
 static NSString *PPUniversalShortAgeText(NSNumber * _Nullable ageInMonths)
 {
     NSInteger months = MAX(ageInMonths.integerValue, 0);
@@ -183,6 +215,10 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
     _badgeText = @"";
     _stockStatusText = @"";
     _location = @"";
+    _isVideoMedia = NO;
+    _videoURL = @"";
+    _videoThumbnailURL = @"";
+    _mediaMetadata = nil;
     _modelContext = context;
     _ModelObject = model;
     _ModelID = [NSString stringWithFormat:@"%p", model];
@@ -191,6 +227,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
     _imageSize = CGSizeMake(1.0, 1.0);
     _itemQuantitiy = 0;
     _skeleton = NO;
+    _publiclyVisible = YES;
 
     switch (context) {
         case PPCellForMarket:
@@ -224,11 +261,22 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
     if ([model isKindOfClass:[PetAccessory class]]) {
         PetAccessory *accessory = (PetAccessory *)model;
         PetImageItem *firstImage = accessory.imageItems.firstObject;
+        NSDictionary *firstMedia = PPUniversalFirstMediaMetadata(accessory.imageMeta);
+        NSString *firstMediaType = PPUniversalSafeString(firstMedia[@"media_type"]).lowercaseString;
+        BOOL firstIsVideo = PPReusableVideoMediaEnabled() && [firstMediaType isEqualToString:@"video"];
 
         _title = accessory.name ?: PPUniversalLocalizedString(@"UntitledAccessory", PPUniversalLocalizedPair(@"Untitled accessory", @"منتج بدون اسم"));
         _subtitle = PPUniversalAccessorySubtitle(accessory);
         _ModelID = accessory.accessoryID.length > 0 ? accessory.accessoryID : _ModelID;
-        _imageURL = accessory.imageURLsArray.firstObject;
+        _mediaMetadata = firstMedia;
+        _isVideoMedia = firstIsVideo;
+        _videoURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"url"]) : @"";
+        _videoThumbnailURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"thumbnail_url"]) : @"";
+        _imageURL = firstIsVideo && _videoThumbnailURL.length > 0
+            ? _videoThumbnailURL
+            : (PPUniversalSafeString(firstMedia[@"url"]).length > 0
+               ? PPUniversalSafeString(firstMedia[@"url"])
+               : accessory.imageURLsArray.firstObject);
         _blurHash = accessory.blurHash ?: @"";
         _price = accessory.price;
         _finalPrice = accessory.finalPrice;
@@ -250,6 +298,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         }
         _badgeText = [PetAccessory typeTextForAccessory:accessory] ?: @"";
         _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:accessory.ownerID];
+        _publiclyVisible = accessory.showInAppMarket && !accessory.isDeleted && !accessory.isBlocked && !accessory.isDisabled;
         _hasOffer = accessory.hasOffer;
         _isNew = accessory.isNew;
         _contextualReasonText = accessory.isNew
@@ -257,13 +306,22 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
             : @"";
         _priceText = [GM formatPrice:(accessory.finalPrice ?: accessory.price)
                         currencyCode:_currencyCode] ?: @"";
-        if (firstImage) {
+        if (firstIsVideo) {
+            CGFloat thumbWidth = [firstMedia[@"thumbnail_width"] doubleValue];
+            CGFloat thumbHeight = [firstMedia[@"thumbnail_height"] doubleValue];
+            CGFloat width = thumbWidth > 0.0 ? thumbWidth : [firstMedia[@"width"] doubleValue];
+            CGFloat height = thumbHeight > 0.0 ? thumbHeight : [firstMedia[@"height"] doubleValue];
+            _imageSize = CGSizeMake(MAX(width, 1.0), MAX(height, 1.0));
+        } else if (firstImage) {
             _imageSize = CGSizeMake(MAX(firstImage.width, 1.0), MAX(firstImage.height, 1.0));
         }
         _preferredAspectRatio = PPUniversalClampedAspectRatio(_imageSize, 0.78);
     } else if ([model isKindOfClass:[PetAd class]]) {
         PetAd *ad = (PetAd *)model;
         PetImageItem *firstImage = ad.imageItems.firstObject;
+        NSDictionary *firstMedia = PPUniversalFirstMediaMetadata(ad.imageItemsRaw);
+        NSString *firstMediaType = PPUniversalSafeString(firstMedia[@"media_type"]).lowercaseString;
+        BOOL firstIsVideo = PPReusableVideoMediaEnabled() && [firstMediaType isEqualToString:@"video"];
 
         NSString *resolvedLocation = ad.locationName ?: @"";
         if (resolvedLocation.length == 0 && ad.adLocation > 0) {
@@ -272,9 +330,21 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
 
         _title = ad.adTitle ?: PPUniversalLocalizedString(@"UntitledAd", PPUniversalLocalizedPair(@"Untitled ad", @"إعلان بدون عنوان"));
         _ModelID = ad.adID.length > 0 ? ad.adID : _ModelID;
-        _imageURL = firstImage.url;
+        _mediaMetadata = firstMedia;
+        _isVideoMedia = firstIsVideo;
+        _videoURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"url"]) : @"";
+        _videoThumbnailURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"thumbnail_url"]) : @"";
+        _imageURL = firstIsVideo && _videoThumbnailURL.length > 0 ? _videoThumbnailURL : firstImage.url;
         _blurHash = firstImage.blurHash ?: ad.blurHash ?: @"";
-        _imageSize = CGSizeMake(MAX(firstImage.width, 1.0), MAX(firstImage.height, 1.0));
+        if (firstIsVideo) {
+            CGFloat thumbWidth = [firstMedia[@"thumbnail_width"] doubleValue];
+            CGFloat thumbHeight = [firstMedia[@"thumbnail_height"] doubleValue];
+            CGFloat width = thumbWidth > 0.0 ? thumbWidth : [firstMedia[@"width"] doubleValue];
+            CGFloat height = thumbHeight > 0.0 ? thumbHeight : [firstMedia[@"height"] doubleValue];
+            _imageSize = CGSizeMake(MAX(width, 1.0), MAX(height, 1.0));
+        } else {
+            _imageSize = CGSizeMake(MAX(firstImage.width, 1.0), MAX(firstImage.height, 1.0));
+        }
         _location = resolvedLocation;
         _subtitle = PPUniversalAdSubtitle(ad, resolvedLocation);
         _price = ad.price;
@@ -286,6 +356,7 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
             : PPUniversalLocalizedString(@"Available", PPUniversalLocalizedPair(@"Available", @"متوفر"));
         _badgeText = PPUniversalAdBadgeText(ad);
         _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:ad.ownerID];
+        _publiclyVisible = ad.visibility == PetAdVisibilityPublic && !ad.isDeleted && !ad.isBlocked;
         _isNew = ad.isNew;
         _hasOffer = ad.isDiscounted;
         if (ad.priorityScore.doubleValue > 0.0 || context == PPCellForHomeAds) {
@@ -296,19 +367,34 @@ static NSNumber *PPUniversalPetAdFinalPrice(PetAd *ad)
         _preferredAspectRatio = PPUniversalClampedAspectRatio(_imageSize, 0.98);
     } else if ([model isKindOfClass:[AdoptPetModel class]]) {
         AdoptPetModel *pet = (AdoptPetModel *)model;
+        NSDictionary *firstMedia = PPUniversalFirstMediaMetadata(pet.imageMeta);
+        NSString *firstMediaType = PPUniversalSafeString(firstMedia[@"media_type"]).lowercaseString;
+        BOOL firstIsVideo = PPReusableVideoMediaEnabled() && [firstMediaType isEqualToString:@"video"];
         NSString *firstImage = [pet.imageURLs.firstObject isKindOfClass:NSString.class] ? pet.imageURLs.firstObject : @"";
         NSString *cityName = pet.mCityName.length > 0 ? pet.mCityName : ([CitiesManager.shared cityNameForID:pet.cityID] ?: @"");
 
         _title = pet.name ?: PPUniversalLocalizedString(@"AdoptPet", PPUniversalLocalizedPair(@"Adoption pet", @"حيوان للتبني"));
         _subtitle = pet.details.length > 0 ? pet.details : cityName;
         _ModelID = pet.documentID.length > 0 ? pet.documentID : _ModelID;
-        _imageURL = firstImage;
+        _mediaMetadata = firstMedia;
+        _isVideoMedia = firstIsVideo;
+        _videoURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"url"]) : @"";
+        _videoThumbnailURL = firstIsVideo ? PPUniversalSafeString(firstMedia[@"thumbnail_url"]) : @"";
+        _imageURL = firstIsVideo && _videoThumbnailURL.length > 0 ? _videoThumbnailURL : firstImage;
         _location = cityName;
         _priceText = @"";
         _availabilityText = PPUniversalLocalizedString(@"Available", PPUniversalLocalizedPair(@"Available", @"متوفر"));
         _badgeText = PPUniversalLocalizedString(@"For Adoption", PPUniversalLocalizedPair(@"For Adoption", @"للتبني"));
         _isOwner = currentUserID.length > 0 && [currentUserID isEqualToString:pet.ownerID];
-        _preferredAspectRatio = 0.98;
+        _publiclyVisible = pet.visibility == 0;
+        if (firstIsVideo) {
+            CGFloat thumbWidth = [firstMedia[@"thumbnail_width"] doubleValue];
+            CGFloat thumbHeight = [firstMedia[@"thumbnail_height"] doubleValue];
+            CGFloat width = thumbWidth > 0.0 ? thumbWidth : [firstMedia[@"width"] doubleValue];
+            CGFloat height = thumbHeight > 0.0 ? thumbHeight : [firstMedia[@"height"] doubleValue];
+            _imageSize = CGSizeMake(MAX(width, 1.0), MAX(height, 1.0));
+        }
+        _preferredAspectRatio = PPUniversalClampedAspectRatio(_imageSize, 0.98);
     } else if ([model isKindOfClass:[ServiceModel class]]) {
         ServiceModel *service = (ServiceModel *)model;
 

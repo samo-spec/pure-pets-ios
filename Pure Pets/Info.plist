@@ -71,6 +71,8 @@
 			</array>
 		</dict>
 	</dict>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Pure Pets uses your photo library to search for pets, products, and accessories by image.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>

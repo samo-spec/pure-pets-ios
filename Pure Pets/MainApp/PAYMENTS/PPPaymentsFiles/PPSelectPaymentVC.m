@@ -204,7 +204,7 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 
 #pragma mark - ViewController
 
-@interface PPSelectPaymentVC ()
+@interface PPSelectPaymentVC () <AddressFormVCDelegate>
 @property (nonatomic, strong, nullable) UIVisualEffectView *dimOverlay;
 @property (nonatomic, strong) UILabel *collectionHintLabel;
 @property (nonatomic, strong) NSArray<PPAddressModel *> *Addresses;
@@ -1378,7 +1378,28 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 }
 - (void)pp_goToAddNewAddressScreen {
     AddressFormVC *formVC = [[AddressFormVC alloc] initWithAddress:nil];
+    formVC.delegate = self;
     [self.navigationController pushViewController:formVC animated:YES];
+}
+
+- (void)addressFormVC:(AddressFormVC *)controller didSaveAddress:(PPAddressModel *)address
+{
+    (void)controller;
+    if (![address isKindOfClass:PPAddressModel.class]) {
+        return;
+    }
+
+    self.selectedAddress = address;
+    NSString *selectedText = [self pp_bestAddressDisplayText:address];
+    [self.locView setAddressText:selectedText.length > 0 ? selectedText : kLang(@"PleaseSelectDeliveryLocation")];
+    [self pp_refreshLatestAddressesForCheckout:nil];
+}
+
+- (void)addressFormVC:(AddressFormVC *)controller didDeleteAddress:(PPAddressModel *)address
+{
+    (void)controller;
+    (void)address;
+    [self pp_refreshLatestAddressesForCheckout:nil];
 }
 
 - (void)pp_handleAddressDidChangeNotification:(NSNotification *)notification

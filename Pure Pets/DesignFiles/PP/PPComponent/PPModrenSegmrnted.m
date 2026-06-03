@@ -458,19 +458,24 @@ static inline UIColor *PPModrenSegmrntedDefaultContainerColor(void)
     [super layoutSubviews];
 
     CGFloat controlRadius = CGRectGetHeight(self.bounds) * 0.5;
-    self.containerFillView.layer.cornerRadius = controlRadius;
+    self.containerFillView.layer.cornerRadius = 22;
     self.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.bounds
                                    cornerRadius:controlRadius].CGPath;
 
     CGFloat outlineHeight = MAX(0.0, CGRectGetHeight(self.bounds) - (PPModrenSegmrntedOuterInset * 2.0));
     CGFloat outlineRadius = outlineHeight * 0.5;
-    self.selectionOutlineView.layer.cornerRadius = outlineRadius;
+    self.selectionOutlineView.layer.cornerRadius = 22;
     self.selectionUnderlineView.layer.cornerRadius = PPModrenSegmrntedUnderlineHeight * 0.5;
+
+
     self.selectionSurfaceLayer.frame = self.selectionOutlineView.bounds;
-    self.selectionSurfaceLayer.cornerRadius = outlineRadius;
+    self.selectionSurfaceLayer.cornerRadius = 22;
+
+
     self.selectionUnderlineLayer.frame = self.selectionUnderlineView.bounds;
     self.selectionUnderlineLayer.cornerRadius = PPModrenSegmrntedUnderlineHeight * 0.5;
+
     self.selectionOutlineView.layer.shadowPath =
         [UIBezierPath bezierPathWithRoundedRect:self.selectionOutlineView.bounds
                                    cornerRadius:outlineRadius].CGPath;

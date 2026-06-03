@@ -2622,6 +2622,7 @@ UIBarButtonItem *addbutton;
     PPImageCollection *ic = [[PPImageCollection alloc] initWithFrame:CGRectMake(horizontalPad, 0, availableWidth, 200)];
     ic.maxImageCount = 10;
     ic.delegate = self;
+    ic.allowsVideoSelection = PPReusableVideoMediaEnabled();
     self.imageCollection = ic;
 
     // Wrap in a container to provide horizontal padding inside the table footer
@@ -3365,6 +3366,46 @@ UIBarButtonItem *addbutton;
     return [dictionary copy];
 }
 
+- (NSMutableArray<FileModel *> *)pp_fileModelsFromMediaUploadResult:(PPMediaUploadResult *)result
+                                                             cardID:(NSString *)cardID
+{
+    NSMutableArray<FileModel *> *files = [NSMutableArray arrayWithCapacity:result.mixedMetadata.count];
+    NSInteger index = 0;
+    for (NSDictionary *metadata in result.mixedMetadata) {
+        if (![metadata isKindOfClass:NSDictionary.class]) {
+            continue;
+        }
+        NSString *rawMediaType = [metadata[@"media_type"] isKindOfClass:NSString.class] ? metadata[@"media_type"] : @"image";
+        NSString *mediaType = rawMediaType.lowercaseString;
+        NSString *url = [metadata[@"url"] isKindOfClass:NSString.class] ? metadata[@"url"] : @"";
+        if (url.length == 0) {
+            continue;
+        }
+
+        FileModel *file = [FileModel new];
+        file.ID = [metadata[@"order"] respondsToSelector:@selector(integerValue)] ? [metadata[@"order"] integerValue] : index;
+        file.FileType = [mediaType isEqualToString:@"video"] ? 1 : 0;
+        file.FileUrl = url;
+        file.FirImageUrl = [NSURL URLWithString:url];
+        file.CardID = cardID ?: @"";
+        file.FileName = [metadata[@"storage_path"] isKindOfClass:NSString.class] ? metadata[@"storage_path"] : @"";
+        file.videoDuration = [metadata[@"duration"] respondsToSelector:@selector(floatValue)] ? [metadata[@"duration"] floatValue] : 0.0;
+        if (file.FileType == 1) {
+            file.CoverUrl = [metadata[@"thumbnail_url"] isKindOfClass:NSString.class] ? metadata[@"thumbnail_url"] : @"";
+            file.CoverName = [metadata[@"thumbnail_storage_path"] isKindOfClass:NSString.class] ? metadata[@"thumbnail_storage_path"] : @"";
+        }
+        [files addObject:file];
+        index += 1;
+    }
+    return files;
+}
+
+- (NSString *)pp_cardMediaStorageFolderForCardID:(NSString *)cardID
+{
+    NSString *safeCardID = cardID.length > 0 ? cardID : NSUUID.UUID.UUIDString;
+    return [NSString stringWithFormat:@"CardsCol/%@", safeCardID];
+}
+
 - (void)uploadFiles:(NSMutableDictionary *)Dic CardID:(NSString *)CardID {
     NSArray<UIImage *> *images = [self.imageCollection allImages];
 
@@ -3378,6 +3419,29 @@ UIBarButtonItem *addbutton;
     if (images.count == 0 && [self isEditingFlow]) {
         [Dic setValue:@[] forKey:@"FilesArray"];
         [self uploadData:Dic CardID:CardID];
+        return;
+    }
+
+    if ([self.imageCollection hasSelectedVideos]) {
+        NSString *ownerID = UserManager.sharedManager.currentUser.ID ?: @"unknown";
+        [self.imageCollection uploadSelectedMediaWithStorageFolder:[self pp_cardMediaStorageFolderForCardID:CardID]
+                                                           ownerID:ownerID
+                                                         contextID:CardID
+                                                        completion:^(PPMediaUploadResult * _Nullable result, NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (error || !result) {
+                    [self processUploadCompleteWithError:YES CardID:CardID];
+                    return;
+                }
+                NSMutableArray<FileModel *> *filesArray = [self pp_fileModelsFromMediaUploadResult:result cardID:CardID];
+                if (filesArray.count == 0) {
+                    [self processUploadCompleteWithError:YES CardID:CardID];
+                    return;
+                }
+                [Dic setValue:[filesArray modelToJSONObject] forKey:@"FilesArray"];
+                [self uploadData:Dic CardID:CardID];
+            });
+        }];
         return;
     }
 

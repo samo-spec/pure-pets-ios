@@ -160,8 +160,8 @@ static inline UIColor *PPModerHomeLightSurfaceColor(void)
 
     self.imagePlateWidthConstraint = [self.imagePlateView.widthAnchor constraintEqualToConstant:54.0];
     self.imagePlateHeightConstraint = [self.imagePlateView.heightAnchor constraintEqualToConstant:54.0];
-    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:46.0];
-    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:46.0];
+    self.kindImageWidthConstraint = [self.kindImageView.widthAnchor constraintEqualToConstant:48.0];
+    self.kindImageHeightConstraint = [self.kindImageView.heightAnchor constraintEqualToConstant:48.0];
 
     [NSLayoutConstraint activateConstraints:@[
         [self.tapButton.topAnchor constraintEqualToAnchor:self.contentView.topAnchor],

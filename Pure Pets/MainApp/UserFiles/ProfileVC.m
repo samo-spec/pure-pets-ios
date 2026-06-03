@@ -2449,6 +2449,36 @@ static CGFloat PPProfileBottomBarClearance(void) {
 
 - (void)logoutTapped
 {
+    UIAlertController *menu = [UIAlertController alertControllerWithTitle:nil
+                                                                  message:nil
+                                                           preferredStyle:UIAlertControllerStyleActionSheet];
+    menu.view.semanticContentAttribute = PPProfileCurrentSemanticAttribute();
+
+    UIAlertAction *logoutAction = [UIAlertAction actionWithTitle:(kLang(@"logout") ?: @"Log Out")
+                                                           style:UIAlertActionStyleDestructive
+                                                         handler:^(UIAlertAction * _Nonnull action) {
+        [self pp_proceedWithLogout];
+    }];
+    [menu addAction:logoutAction];
+
+    UIAlertAction *cancelAction = [UIAlertAction actionWithTitle:(kLang(@"Cancel") ?: @"Cancel")
+                                                           style:UIAlertActionStyleCancel
+                                                         handler:nil];
+    [menu addAction:cancelAction];
+
+    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+        menu.popoverPresentationController.sourceView = self.view;
+        menu.popoverPresentationController.sourceRect = CGRectMake(CGRectGetMidX(self.view.bounds),
+                                                                     CGRectGetMaxY(self.view.bounds) - 80,
+                                                                     1, 1);
+        menu.popoverPresentationController.permittedArrowDirections = 0;
+    }
+
+    [self presentViewController:menu animated:YES completion:nil];
+}
+
+- (void)pp_proceedWithLogout
+{
     NSString *lastSelectedLanguage = Language.currentLanguageCode;
     LeaveFeedbackViewController *feedbackVC = [[LeaveFeedbackViewController alloc] init];
     feedbackVC.onLogout = ^{

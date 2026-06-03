@@ -803,6 +803,24 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
         Method origDisappear = class_getInstanceMethod(self, @selector(viewWillDisappear:));
         Method swzDisappear  = class_getInstanceMethod(self, @selector(pp_swz_viewWillDisappear:));
         method_exchangeImplementations(origDisappear, swzDisappear);
+
+        Class class = [UIViewController class];
+        SEL originalSelector = @selector(viewDidLoad);
+        SEL swizzledSelector = @selector(pp_swizzledViewDidLoad);
+        Method originalMethod = class_getInstanceMethod(class, originalSelector);
+        Method swizzledMethod = class_getInstanceMethod(class, swizzledSelector);
+        BOOL didAdd = class_addMethod(class,
+                                      originalSelector,
+                                      method_getImplementation(swizzledMethod),
+                                      method_getTypeEncoding(swizzledMethod));
+        if (didAdd) {
+            class_replaceMethod(class,
+                                swizzledSelector,
+                                method_getImplementation(originalMethod),
+                                method_getTypeEncoding(originalMethod));
+        } else {
+            method_exchangeImplementations(originalMethod, swizzledMethod);
+        }
     });
 }
 
@@ -2375,6 +2393,17 @@ static NSString * const kPPOnlinePulseKey = @"pp_online_pulse";
     bgButton.translatesAutoresizingMaskIntoConstraints = NO;
  
     return bgButton;
+}
+
+#pragma mark - Global Background Color Swizzle
+
+- (void)pp_swizzledViewDidLoad {
+    [self pp_swizzledViewDidLoad];
+    if (![self isKindOfClass:UIAlertController.class] &&
+        ![self isKindOfClass:UIImagePickerController.class] &&
+        ![NSStringFromClass(self.class) hasPrefix:@"UI"]) {
+        self.view.backgroundColor = AppBageColor();
+    }
 }
 
 

@@ -35,6 +35,10 @@ typedef NS_ENUM(NSInteger, PPItemInteractionType) {
 
 - (void)updatePetAd:(PetAd *)ad completion:(PetAdCompletion)completion;
 
+- (void)updatePetAdID:(NSString *)adID
+           visibility:(PetAdVisibility)visibility
+           completion:(PetAdCompletion)completion;
+
 - (void)deletePetAd:(PetAd *)ad completion:(PetAdCompletion)completion;
 - (void)fetchSimilarAdsForAd:(PetAd *)ad
                        limit:(NSInteger)limit

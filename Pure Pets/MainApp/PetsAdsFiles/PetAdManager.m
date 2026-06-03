@@ -13,6 +13,7 @@
 #import <math.h>
 #import <float.h>
 #import "PPFunc.h"
+#import "PPImageCollection.h"
 
 static NSString * const PPAdManagerErrorDomain = @"PetAdManagerError";
 static NSString * const PPGeoHashAlphabet = @"0123456789bcdefghjkmnpqrstuvwxyz";
@@ -438,11 +439,14 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
         [query getDocumentsWithSource:source completion:handler];
     };
 
-    executeWithSource(FIRFirestoreSourceServer, ^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
+    executeWithSource(FIRFirestoreSourceServer,
+ ^(FIRQuerySnapshot * _Nullable snapshot, NSError * _Nullable error) {
         if (error || !snapshot) {
             NSLog(@"[PetAdManager] fetchNearByAdsWithLimit server fetch failed, trying cache: %@",
                   error.localizedDescription ?: @"Unknown error");
-            executeWithSource(FIRFirestoreSourceCache, ^(FIRQuerySnapshot * _Nullable cacheSnapshot, NSError * _Nullable cacheError) {
+            executeWithSource(FIRFirestoreSourceCache,
+                              ^(FIRQuerySnapshot * _Nullable cacheSnapshot,
+                                NSError * _Nullable cacheError) { //FIRFirestoreSourceCache
                 FIRQuerySnapshot *resolvedSnapshot = cacheSnapshot;
                 NSError *resolvedError = cacheError ?: error;
                 if (!resolvedSnapshot) {
@@ -1079,6 +1083,31 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
     }];
 }
 
+- (void)updatePetAdID:(NSString *)adID
+           visibility:(PetAdVisibility)visibility
+           completion:(PetAdCompletion)completion {
+    NSString *cleanID = [adID stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (cleanID.length == 0) {
+        NSError *err = [NSError errorWithDomain:PPAdManagerErrorDomain
+                                           code:1001
+                                       userInfo:@{NSLocalizedDescriptionKey: @"Missing adID for visibility update"}];
+        if (completion) completion(err);
+        return;
+    }
+
+    NSDictionary *data = @{
+        @"visibility": @(visibility),
+        @"updatedAt": [FIRFieldValue fieldValueForServerTimestamp]
+    };
+    [[[self.db collectionWithPath:kPetAdsCollection] documentWithPath:cleanID]
+     updateData:data
+     completion:^(NSError * _Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completion) completion(error);
+        });
+    }];
+}
+
 - (void)deletePetAd:(PetAd *)ad completion:(PetAdCompletion)completion {
     if (ad.adID.length == 0) {
         NSError *err = [NSError errorWithDomain:@"PetAdManagerError"
@@ -1094,6 +1123,8 @@ static NSSet<NSString *> *PPGeoHashPrefixesAroundCoordinate(CLLocationCoordinate
         if (item.url.length > 0) [imageURLs addObject:item.url];
     }
     
+    [PPImageCollection deleteEntityMediaWithEntityType:@"ads" entityID:ad.adID completion:nil];
+
     [[[self.db collectionWithPath:kPetAdsCollection] documentWithPath:ad.adID]
      deleteDocumentWithCompletion:^(NSError *error) {
         if (!error && imageURLs.count > 0) {
