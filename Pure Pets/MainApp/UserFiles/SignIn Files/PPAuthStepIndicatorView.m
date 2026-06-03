@@ -37,6 +37,7 @@ static NSString * const PPAuthStepLabelOpacityKey = @"pp_auth_step_label_opacity
         _iconViews = [NSMutableArray array];
         _labelViews = [NSMutableArray array];
         _connectorViews = [NSMutableArray array];
+        self.translatesAutoresizingMaskIntoConstraints = NO;
         self.backgroundColor = UIColor.clearColor;
         self.clipsToBounds = NO;
         [self setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisVertical];

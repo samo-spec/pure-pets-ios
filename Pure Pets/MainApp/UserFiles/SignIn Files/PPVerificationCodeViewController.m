@@ -91,6 +91,8 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = PPBackgroundColorForIOS26(AppBackgroundClr);
+    self.edgesForExtendedLayout = UIRectEdgeNone;
+    self.extendedLayoutIncludesOpaqueBars = NO;
     self.modalInPresentation = (self.navigationController == nil);
     self.presentationController.delegate = self;
     self.navigationItem.hidesBackButton = YES;
@@ -282,6 +284,7 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
 - (void)pp_configureNavigationChrome {
     self.navigationController.navigationBarHidden = NO;
+    self.navigationController.navigationBar.translucent = NO;
     UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
     appearance.backgroundColor = UIColor.clearColor;
@@ -425,6 +428,10 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
     NSLayoutConstraint *cardTrailing = [self.cardView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-20];
     cardLeading.priority = UILayoutPriorityDefaultHigh;
     cardTrailing.priority = UILayoutPriorityDefaultHigh;
+    NSLayoutConstraint *stepLeading = [self.stepIndicatorView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:24];
+    NSLayoutConstraint *stepTrailing = [self.stepIndicatorView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-24];
+    stepLeading.priority = UILayoutPriorityDefaultHigh;
+    stepTrailing.priority = UILayoutPriorityDefaultHigh;
     NSLayoutConstraint *digitLeading = [self.digitStackView.leadingAnchor constraintEqualToAnchor:self.cardView.leadingAnchor constant:18];
     NSLayoutConstraint *digitTrailing = [self.digitStackView.trailingAnchor constraintEqualToAnchor:self.cardView.trailingAnchor constant:-18];
     digitLeading.priority = UILayoutPriorityDefaultHigh;
@@ -432,9 +439,11 @@ static NSString *PPVerificationSafeUIDForLog(FIRUser * _Nullable user) {
 
     [NSLayoutConstraint activateConstraints:@[
         [self.stepIndicatorView.topAnchor constraintEqualToAnchor:self.contentView.topAnchor constant:12],
-        [self.stepIndicatorView.leadingAnchor constraintEqualToAnchor:self.contentView.leadingAnchor constant:24],
-        [self.stepIndicatorView.trailingAnchor constraintEqualToAnchor:self.contentView.trailingAnchor constant:-24],
-        [self.stepIndicatorView.heightAnchor constraintEqualToConstant:78.0],
+        stepLeading,
+        stepTrailing,
+        [self.stepIndicatorView.centerXAnchor constraintEqualToAnchor:self.contentView.centerXAnchor],
+        [self.stepIndicatorView.widthAnchor constraintLessThanOrEqualToConstant:560.0],
+        [self.stepIndicatorView.heightAnchor constraintEqualToConstant:64.0],
 
         [self.cardView.topAnchor constraintEqualToAnchor:self.stepIndicatorView.bottomAnchor constant:18],
         cardLeading,

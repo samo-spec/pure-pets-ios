@@ -359,6 +359,8 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
 {
     [super viewDidLoad];
 
+    self.edgesForExtendedLayout = UIRectEdgeNone;
+    self.extendedLayoutIncludesOpaqueBars = NO;
     self.baseBottomContentInset = PPCompleteProfileDefaultBottomInset;
     self.modalInPresentation = YES;
     self.presentationController.delegate = self;
@@ -541,6 +543,7 @@ static NSTextAlignment PPCompleteProfileCurrentTextAlignment(void)
     }
 
     self.navigationController.navigationBarHidden = NO;
+    self.navigationController.navigationBar.translucent = NO;
     UINavigationBarAppearance *appearance = [[UINavigationBarAppearance alloc] init];
     [appearance configureWithTransparentBackground];
     appearance.backgroundColor = UIColor.clearColor;
