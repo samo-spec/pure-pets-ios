@@ -136,7 +136,6 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) NSLayoutConstraint *segmentRowTopExpandedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *segmentRowTopCollapsedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroBottomConstraint;
-@property (nonatomic, strong) NSLayoutConstraint *searchBarBottomConstraint;
 @property (nonatomic, assign) BOOL isHeroCollapsed;
 @property (nonatomic, strong) UIButton *heroCollapseToggleButton;
 
@@ -2595,7 +2594,7 @@ UINavigationControllerDelegate>
     }
 
     CGFloat gridWidth = floor((availableWidth - kPPSearchInteritemSpacing) / 2.0);
-    CGFloat itemHeight = gridWidth + 72.0;
+    CGFloat itemHeight = gridWidth + 92.0;
     return CGSizeMake(gridWidth, itemHeight);
 }
 
