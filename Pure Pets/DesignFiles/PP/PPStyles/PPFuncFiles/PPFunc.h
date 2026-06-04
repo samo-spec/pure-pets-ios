@@ -311,6 +311,7 @@ typedef NS_ENUM(NSInteger, ConfigFor) {
 + (UIAction *)orderHistoryActionWithHandler:(void (^)(UIAction *action))handler;
 + (UIAction *)settingsActionWithHandler:(void (^)(UIAction *action))handler;
 + (UIAction *)supportActionWithHandler:(void (^)(UIAction *action))handler;
++ (UIAction *)logoutActionWithHandler:(void (^)(UIAction *action))handler;
 
 
 + (NSArray *)menuArray;

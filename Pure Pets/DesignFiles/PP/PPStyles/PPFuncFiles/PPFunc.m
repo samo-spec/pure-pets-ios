@@ -2853,6 +2853,49 @@ static char kUIViewTapActionKey;
                          handler:handler];
 }
 
++ (UIAction *)logoutActionWithHandler:(void (^)(UIAction *action))handler {
+    UIAction *action = [self actionWithTitle:kLang(@"Logout")
+                             systemImageName:@"rectangle.portrait.and.arrow.right"
+                                        font:[GM MidFontWithSize:16]
+                                       color:UIColor.systemRedColor
+                                     handler:handler];
+    action.attributes = UIMenuElementAttributesDestructive;
+    return action;
+}
+
++ (UIMenu *)logoutMenuForController:(UIViewController *)superVC {
+    if (!UserManager.sharedManager.currentUser) {
+        return nil;
+    }
+
+    __weak typeof(superVC) weakSuperVC = superVC;
+    UIAction *logoutAction = [PPActionButton logoutActionWithHandler:^(__unused UIAction *action) {
+        __strong typeof(weakSuperVC) strongSuperVC = weakSuperVC;
+        if (!strongSuperVC) return;
+
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:kLang(@"Logout")
+                                                                       message:kLang(@"LogoutMessage")
+                                                                preferredStyle:UIAlertControllerStyleAlert];
+        UIAlertAction *cancel = [UIAlertAction actionWithTitle:kLang(@"Cancel")
+                                                         style:UIAlertActionStyleCancel
+                                                       handler:nil];
+        UIAlertAction *logout = [UIAlertAction actionWithTitle:kLang(@"Logout")
+                                                         style:UIAlertActionStyleDestructive
+                                                       handler:^(__unused UIAlertAction *confirmAction) {
+            [GM logoutFromConroller:strongSuperVC];
+        }];
+        [alert addAction:cancel];
+        [alert addAction:logout];
+        [strongSuperVC presentViewController:alert animated:YES completion:nil];
+    }];
+
+    return [UIMenu menuWithTitle:@""
+                           image:nil
+                      identifier:nil
+                         options:UIMenuOptionsDisplayInline
+                        children:@[logoutAction]];
+}
+
 
 // =====================================================================================================================================
 
@@ -3020,12 +3063,17 @@ static char kUIViewTapActionKey;
                                        identifier:nil
                                           options:UIMenuOptionsDisplayInline
                                          children:commerceActions];
+    UIMenu *logoutGroup = [PPActionButton logoutMenuForController:superVC];
+    NSMutableArray<UIMenuElement *> *menuGroups = [NSMutableArray arrayWithObjects:profileGroup, commerceGroup, nil];
+    if (logoutGroup) {
+        [menuGroups addObject:logoutGroup];
+    }
 
     return [UIMenu menuWithTitle:@""
                             image:nil
                        identifier:nil
                           options:UIMenuOptionsDisplayInline
-                         children:@[profileGroup, commerceGroup]];
+                         children:menuGroups];
     
     
 }
@@ -3130,18 +3178,23 @@ static char kUIViewTapActionKey;
             [weakSelf.navigationController pushViewController:vc animated:YES];
         }]
     ];
+    UIMenu *logoutGroup = [PPActionButton logoutMenuForController:superVC];
+    NSMutableArray<UIMenuElement *> *menuGroups = [NSMutableArray arrayWithObjects:
+        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:profileGroup],
+        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:cartGroup],
+        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:servicesGroup],
+        [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:settingsGroup],
+        nil];
+    if (logoutGroup) {
+        [menuGroups addObject:logoutGroup];
+    }
     
     UIMenu *menu;
     // Build menus (separators auto inserted)
     if (@available(iOS 17.0, *)) {
         menu  = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayAsPalette
                  
-                                    children:@[
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:profileGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:cartGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:servicesGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:settingsGroup]
-        ]];
+                                    children:menuGroups];
         
         
         // Attach to button
@@ -3160,12 +3213,7 @@ static char kUIViewTapActionKey;
                                        image:nil
                                   identifier:nil
                                      options:UIMenuOptionsDisplayInline
-                                    children:@[
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:profileGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:cartGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:servicesGroup],
-            [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:settingsGroup]
-        ]];
+                                    children:menuGroups];
         
     }
     return  menu;

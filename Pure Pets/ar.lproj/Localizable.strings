@@ -1909,6 +1909,12 @@
 "payment_request_in_progress" = "إتمام الطلب قيد المعالجة بالفعل. يرجى الانتظار قليلاً.";
 "payment_requires_real_device" = "الدفع عبر QIB يتطلب جهازاً حقيقياً.";
 "payment_phone_required" = "أضف رقم هاتف إلى عنوان التوصيل أو ملفك الشخصي قبل الدفع الإلكتروني.";
+"payment_qib_phone_invalid" = "أضف رقم جوال صحيح قبل الدفع عبر QIB.";
+"payment_mobile_required_title" = "أضف رقم الجوال";
+"payment_mobile_required_subtitle" = "نحتاج إلى رقم جوال صحيح حتى يتمكن البنك من التحقق من الدفع والتواصل معك إذا احتاجت العملية إلى تأكيد.";
+"payment_mobile_placeholder" = "رقم الجوال";
+"payment_mobile_continue" = "متابعة";
+"payment_mobile_invalid" = "أدخل رقم جوال صحيحاً مع رمز دولة صالح.";
 "payment_invalid_gateway_credentials" = "بيانات بوابة الدفع غير صالحة.";
 "payment_unable_to_open_screen" = "تعذر فتح شاشة الدفع.";
 "payment_qib_sdk_missing" = "حزمة QIB SDK غير موجودة في هذا الإصدار. يرجى إعادة تثبيت/تحديث التطبيق.";

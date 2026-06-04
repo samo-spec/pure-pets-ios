@@ -868,7 +868,8 @@ typedef NS_ENUM(NSInteger, PPHomeProfileMenuAction) {
     PPHomeProfileMenuActionOrders,
     PPHomeProfileMenuActionProduction,
     PPHomeProfileMenuActionSettings,
-    PPHomeProfileMenuActionSupport
+    PPHomeProfileMenuActionSupport,
+    PPHomeProfileMenuActionLogout
 };
 
 
@@ -10292,7 +10293,27 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         makeAction(kLang(@"supprot"), @"person.crop.circle.badge.questionmark", PPHomeProfileMenuActionSupport),
     ]];
 
-    return @[accountSection, activitySection, toolsSection];
+    NSMutableArray<UIMenuElement *> *sections = [@[accountSection, activitySection, toolsSection] mutableCopy];
+
+    if (UserManager.sharedManager.currentUser) {
+        UIAction *logoutAction = [UIAction actionWithTitle:(kLang(@"logout") ?: @"Sign Out")
+                                                     image:[UIImage systemImageNamed:@"rectangle.portrait.and.arrow.right"]
+                                                identifier:nil
+                                                   handler:^(__kindof UIAction *a) {
+            [weakSelf pp_handleProfileMenuAction:PPHomeProfileMenuActionLogout];
+        }];
+        logoutAction.attributes = UIMenuElementAttributesDestructive;
+        NSAttributedString *attrTitle = [[NSAttributedString alloc]
+            initWithString:(kLang(@"logout") ?: @"Sign Out")
+                attributes:@{NSFontAttributeName: itemFont}];
+        [logoutAction setValue:attrTitle forKey:@"attributedTitle"];
+        UIMenu *logoutSection = [UIMenu menuWithTitle:@"" image:nil identifier:nil
+                                              options:UIMenuOptionsDisplayInline
+                                             children:@[logoutAction]];
+        [sections addObject:logoutSection];
+    }
+
+    return sections;
 }
 
 - (void)pp_handleProfileMenuAction:(PPHomeProfileMenuAction)action {
@@ -10357,6 +10378,16 @@ didUnhighlightItemAtIndexPath:(NSIndexPath *)indexPath
         case PPHomeProfileMenuActionSupport: {
             CompanyLocationVC *vc = [CompanyLocationVC new];
             [self.navigationController pushViewController:vc animated:YES];
+            break;
+        }
+        case PPHomeProfileMenuActionLogout: {
+            LeaveFeedbackViewController *feedbackVC = [[LeaveFeedbackViewController alloc] init];
+            __weak typeof(self) weakSelf = self;
+            feedbackVC.onLogout = ^{
+                [GM clearUserProfileDefaults];
+                [PPFunc reloadAppUI];
+            };
+            [PPFunc presentSheetFrom:self sheetVC:feedbackVC detentStyle:PPSheetDetentStyle70];
             break;
         }
     }

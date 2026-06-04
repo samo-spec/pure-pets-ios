@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)updateCurrentStepIndex:(NSInteger)currentStepIndex
             completedStepIndex:(NSInteger)completedStepIndex
                        animated:(BOOL)animated;
+- (void)restartCurrentStepMotionIfNeeded;
+- (void)stopCurrentStepMotion;
 
 @end
 

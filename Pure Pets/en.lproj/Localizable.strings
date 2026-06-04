@@ -1945,6 +1945,12 @@
 "payment_request_in_progress" = "Checkout is already processing. Please wait a moment.";
 "payment_requires_real_device" = "QIB checkout requires a real device.";
 "payment_phone_required" = "Add a phone number to your delivery address or profile before paying online.";
+"payment_qib_phone_invalid" = "Add a correct mobile number before paying with QIB.";
+"payment_mobile_required_title" = "Add mobile number";
+"payment_mobile_required_subtitle" = "We need a correct mobile number so the bank can verify your payment and contact you if the payment needs confirmation.";
+"payment_mobile_placeholder" = "Mobile number";
+"payment_mobile_continue" = "Continue";
+"payment_mobile_invalid" = "Enter a correct mobile number with a valid country code.";
 "payment_invalid_gateway_credentials" = "Invalid gateway credentials.";
 "payment_unable_to_open_screen" = "Unable to open payment screen.";
 "payment_qib_sdk_missing" = "QIB SDK is missing from this build. Please reinstall/update the app.";

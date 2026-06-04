@@ -16,6 +16,9 @@
 #import "UserModel.h"
 #import "AddressFormVC.h"
 #import "UserManager.h"
+#import "CountryModel.h"
+#import "CountryCodeModel.h"
+#import "PPSelectOptionViewController.h"
 #import "PPCommerceFeedbackManager.h"
 #import "OrderDetailsViewController.h"
 #import "Styling.h"
@@ -29,6 +32,7 @@
 #define PPORDERLog(fmt, ...) NSLog((@"[PPORDER] " fmt), ##__VA_ARGS__)
 
 static NSString * const PPOrderCheckoutPreflightErrorDomain = @"PPOrderCheckoutPreflight";
+static NSInteger const PPOrderCheckoutPreflightCodeInvalidQIBPhone = 1004;
 
 static NSString *PPPaymentHeroAnimationName(void)
 {
@@ -243,6 +247,8 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
 - (void)pp_buildPaymentBackgroundAtmosphereIfNeeded;
 - (void)pp_beginPaymentHeroAmbientMotionIfNeeded;
 - (void)pp_stopPaymentHeroAmbientMotion;
+- (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone;
+- (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address;
 @end
 
 
@@ -1575,6 +1581,455 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     return ![normalized isEqualToString:@"cash"];
 }
 
+- (BOOL)pp_isQIBMethodID:(NSString *)paymentMethodID
+{
+    NSString *normalized = [[paymentMethodID ?: @"" stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet].lowercaseString copy];
+    return [normalized isEqualToString:@"qib"] || [normalized isEqualToString:@"card"];
+}
+
+- (NSString *)pp_defaultDialCodeDigits
+{
+    CountryModel *country = [CountryModel safeUserCountryModel];
+    NSString *dialCode = [country.countryCode isKindOfClass:NSString.class] ? country.countryCode : @"";
+    NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+    NSString *digits = [[dialCode componentsSeparatedByCharactersInSet:nonDigits] componentsJoinedByString:@""];
+    return digits.length > 0 ? digits : @"974";
+}
+
+- (NSString *)pp_normalizedValidPhoneFromString:(NSString *)rawPhone
+{
+    NSString *raw = [self pp_trimmedAddressString:rawPhone];
+    if (raw.length == 0) return nil;
+
+    BOOL looksInternational = [raw hasPrefix:@"+"] || [raw hasPrefix:@"00"];
+    NSCharacterSet *nonDigits = [[NSCharacterSet decimalDigitCharacterSet] invertedSet];
+    NSString *digits = [[raw componentsSeparatedByCharactersInSet:nonDigits] componentsJoinedByString:@""];
+    if ([digits hasPrefix:@"00"] && digits.length > 2) {
+        digits = [digits substringFromIndex:2];
+    }
+
+    if (!looksInternational) {
+        NSString *dialCode = [self pp_defaultDialCodeDigits];
+        if ([digits hasPrefix:@"0"] && digits.length > 1) {
+            digits = [digits substringFromIndex:1];
+        }
+        if (dialCode.length > 0 && ![digits hasPrefix:dialCode]) {
+            digits = [dialCode stringByAppendingString:digits];
+        }
+    }
+
+    if (digits.length < 8 || digits.length > 15) {
+        return nil;
+    }
+    return [NSString stringWithFormat:@"+%@", digits];
+}
+
+- (NSString *)pp_validQIBPhoneForAddress:(PPAddressModel *)address
+{
+    (void)address;
+    NSArray<NSString *> *candidates = @[
+        PPCurrentUser.MobileNo ?: @""
+    ];
+    for (NSString *candidate in candidates) {
+        NSString *normalized = [self pp_normalizedValidPhoneFromString:candidate];
+        if (normalized.length > 0) {
+            return normalized;
+        }
+    }
+    return nil;
+}
+
+- (void)pp_showQIBMobileNumberSheetForAddress:(PPAddressModel *)address
+{
+    (void)address;
+    UIView *overlay = [[UIView alloc] init];
+    overlay.translatesAutoresizingMaskIntoConstraints = NO;
+    overlay.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.0];
+    overlay.alpha = 0.0;
+
+    UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:[UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial]];
+    blurView.translatesAutoresizingMaskIntoConstraints = NO;
+    blurView.alpha = 0.0;
+    [overlay addSubview:blurView];
+
+    UIView *sheet = [[UIView alloc] init];
+    sheet.translatesAutoresizingMaskIntoConstraints = NO;
+    sheet.backgroundColor = [(AppForgroundColr ?: UIColor.secondarySystemBackgroundColor) colorWithAlphaComponent:0.82];
+    sheet.semanticContentAttribute = Language.semanticAttributeForCurrentLanguage;
+    sheet.layer.cornerRadius = 42.0;
+    sheet.layer.cornerCurve = kCACornerCurveContinuous;
+    sheet.layer.shadowColor = UIColor.blackColor.CGColor;
+    sheet.layer.shadowOpacity = 0.16;
+    sheet.layer.shadowRadius = 28.0;
+    sheet.layer.shadowOffset = CGSizeMake(0.0, -10.0);
+    [overlay addSubview:sheet];
+
+    UIView *handle = [[UIView alloc] init];
+    handle.translatesAutoresizingMaskIntoConstraints = NO;
+    handle.backgroundColor = [UIColor.tertiaryLabelColor colorWithAlphaComponent:0.30];
+    handle.layer.cornerRadius = 2.5;
+    [sheet addSubview:handle];
+
+    UIImageSymbolConfiguration *iconConfig = [UIImageSymbolConfiguration configurationWithPointSize:26.0
+                                                                                              weight:UIImageSymbolWeightSemibold
+                                                                                               scale:UIImageSymbolScaleMedium];
+    UIImageView *iconView = [[UIImageView alloc] initWithImage:[[UIImage systemImageNamed:@"iphone.gen2.badge.checkmark"] imageByApplyingSymbolConfiguration:iconConfig]];
+    iconView.translatesAutoresizingMaskIntoConstraints = NO;
+    iconView.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    iconView.contentMode = UIViewContentModeScaleAspectFit;
+    [sheet addSubview:iconView];
+
+    UILabel *titleLabel = [[UILabel alloc] init];
+    titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    titleLabel.font = [GM boldFontWithSize:22.0];
+    titleLabel.textColor = UIColor.labelColor;
+    titleLabel.text = kLang(@"payment_mobile_required_title");
+    titleLabel.numberOfLines = 2;
+    titleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [sheet addSubview:titleLabel];
+
+    UILabel *subtitleLabel = [[UILabel alloc] init];
+    subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    subtitleLabel.font = [GM MidFontWithSize:14.0];
+    subtitleLabel.textColor = UIColor.secondaryLabelColor;
+    subtitleLabel.text = kLang(@"payment_mobile_required_subtitle");
+    subtitleLabel.numberOfLines = 3;
+    subtitleLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [sheet addSubview:subtitleLabel];
+
+    NSArray<CountryCodeModel *> *countries = [GM getMiddleEastCountriesForLanguage:[Language currentLanguageCode]];
+    NSString *existingMobile = PPCurrentUser.MobileNo.length > 0 ? PPCurrentUser.MobileNo : ([FIRAuth auth].currentUser.phoneNumber ?: @"");
+    NSString *existingDigits = [[existingMobile componentsSeparatedByCharactersInSet:[[NSCharacterSet decimalDigitCharacterSet] invertedSet]] componentsJoinedByString:@""];
+    __block CountryCodeModel *selectedCountry = countries.firstObject;
+    NSInteger bestDialLength = 0;
+    for (CountryCodeModel *country in countries ?: @[]) {
+        NSString *dialDigits = [[country.phoneCode ?: @"" stringByReplacingOccurrencesOfString:@"+" withString:@""]
+            stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (dialDigits.length > bestDialLength && [existingDigits hasPrefix:dialDigits]) {
+            selectedCountry = country;
+            bestDialLength = dialDigits.length;
+        }
+    }
+    if (!selectedCountry) {
+        CountryCodeModel *fallback = [[CountryCodeModel alloc] init];
+        fallback.phoneCode = @"+974";
+        fallback.isoCountryCode = @"QA";
+        fallback.country = @"Qatar";
+        selectedCountry = fallback;
+    }
+
+    UIButton *countryButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    countryButton.translatesAutoresizingMaskIntoConstraints = NO;
+    countryButton.titleLabel.font = [GM boldFontWithSize:16.0];
+    countryButton.tintColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    countryButton.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.88];
+    countryButton.layer.cornerRadius = 18.0;
+    countryButton.layer.cornerCurve = kCACornerCurveContinuous;
+    countryButton.layer.borderWidth = 1.0;
+    countryButton.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
+    countryButton.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    countryButton.contentHorizontalAlignment = UIControlContentHorizontalAlignmentCenter;
+    countryButton.titleLabel.adjustsFontSizeToFitWidth = YES;
+    countryButton.titleLabel.minimumScaleFactor = 0.78;
+    NSString *(^countryTitle)(CountryCodeModel *) = ^NSString *(CountryCodeModel *country) {
+        NSString *flag = country.flag ?: @"";
+        NSString *phoneCode = country.phoneCode.length > 0 ? country.phoneCode : @"+974";
+        return flag.length > 0 ? [NSString stringWithFormat:@"%@ %@", flag, phoneCode] : phoneCode;
+    };
+    [countryButton setTitle:countryTitle(selectedCountry) forState:UIControlStateNormal];
+
+    UITextField *phoneField = [[UITextField alloc] init];
+    phoneField.translatesAutoresizingMaskIntoConstraints = NO;
+    phoneField.font = [GM boldFontWithSize:18.0];
+    phoneField.placeholder = kLang(@"payment_mobile_placeholder");
+    phoneField.keyboardType = UIKeyboardTypePhonePad;
+    phoneField.textContentType = UITextContentTypeTelephoneNumber;
+    phoneField.inputAccessoryView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 1.0, 0.01)];
+    if (@available(iOS 9.0, *)) {
+        phoneField.inputAssistantItem.leadingBarButtonGroups = @[];
+        phoneField.inputAssistantItem.trailingBarButtonGroups = @[];
+    }
+    phoneField.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    phoneField.textAlignment = NSTextAlignmentLeft;
+    phoneField.backgroundColor = [UIColor.secondarySystemBackgroundColor colorWithAlphaComponent:0.88];
+    phoneField.layer.cornerRadius = 18.0;
+    phoneField.layer.cornerCurve = kCACornerCurveContinuous;
+    phoneField.layer.borderWidth = 1.0;
+    phoneField.layer.borderColor = [UIColor.separatorColor colorWithAlphaComponent:0.18].CGColor;
+    phoneField.leftView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 16.0, 1.0)];
+    phoneField.leftViewMode = UITextFieldViewModeAlways;
+    phoneField.rightView = [[UIView alloc] initWithFrame:CGRectMake(0.0, 0.0, 16.0, 1.0)];
+    phoneField.rightViewMode = UITextFieldViewModeAlways;
+    NSString *dialDigits = [[selectedCountry.phoneCode ?: @"" stringByReplacingOccurrencesOfString:@"+" withString:@""]
+        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    NSString *localDigits = existingDigits ?: @"";
+    if (dialDigits.length > 0 && [localDigits hasPrefix:dialDigits]) {
+        localDigits = [localDigits substringFromIndex:dialDigits.length];
+    }
+    phoneField.text = localDigits;
+
+    UIStackView *phoneStack = [[UIStackView alloc] initWithArrangedSubviews:@[countryButton, phoneField]];
+    phoneStack.translatesAutoresizingMaskIntoConstraints = NO;
+    phoneStack.axis = UILayoutConstraintAxisHorizontal;
+    phoneStack.alignment = UIStackViewAlignmentFill;
+    phoneStack.distribution = UIStackViewDistributionFill;
+    phoneStack.spacing = 10.0;
+    phoneStack.semanticContentAttribute = UISemanticContentAttributeForceLeftToRight;
+    [sheet addSubview:phoneStack];
+
+    [countryButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+        [phoneField resignFirstResponder];
+        PPSelectOptionViewController *vc =
+        [[PPSelectOptionViewController alloc] initWithOptions:[countries mutableCopy]
+                                                        title:kLang(@"code_Palce")
+                                                          row:nil
+                                            presentationStyle:PPSelectOptionPresentationSheet
+                                                    completion:^(id  _Nullable selectedObject) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (![selectedObject isKindOfClass:CountryCodeModel.class]) {
+                    return;
+                }
+                selectedCountry = (CountryCodeModel *)selectedObject;
+                [countryButton setTitle:countryTitle(selectedCountry) forState:UIControlStateNormal];
+                [phoneField becomeFirstResponder];
+            });
+        }];
+        vc.optionCellBackgroundColor = UIColor.secondarySystemBackgroundColor;
+        [self presentViewController:vc animated:YES completion:nil];
+    }] forControlEvents:UIControlEventTouchUpInside];
+
+    UILabel *errorLabel = [[UILabel alloc] init];
+    errorLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    errorLabel.font = [GM MidFontWithSize:12.5];
+    errorLabel.textColor = UIColor.systemRedColor;
+    errorLabel.text = @"";
+    errorLabel.numberOfLines = 2;
+    errorLabel.textAlignment = Language.alignmentForCurrentLanguage;
+    [sheet addSubview:errorLabel];
+
+    UIButton *cancelButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    cancelButton.translatesAutoresizingMaskIntoConstraints = NO;
+    cancelButton.titleLabel.font = [GM MidFontWithSize:16.0];
+    [cancelButton setTitle:kLang(@"CancelButton") forState:UIControlStateNormal];
+    cancelButton.tintColor = UIColor.secondaryLabelColor;
+    cancelButton.backgroundColor = [UIColor.secondarySystemFillColor colorWithAlphaComponent:0.60];
+    cancelButton.layer.cornerRadius = 18.0;
+    cancelButton.layer.cornerCurve = kCACornerCurveContinuous;
+    [sheet addSubview:cancelButton];
+
+    UIButton *continueButton = [UIButton buttonWithType:UIButtonTypeSystem];
+    continueButton.translatesAutoresizingMaskIntoConstraints = NO;
+    continueButton.titleLabel.font = [GM boldFontWithSize:16.0];
+    [continueButton setTitle:kLang(@"payment_mobile_continue") forState:UIControlStateNormal];
+    continueButton.tintColor = UIColor.whiteColor;
+    continueButton.backgroundColor = AppPrimaryClr ?: UIColor.systemPinkColor;
+    continueButton.layer.cornerRadius = 18.0;
+    continueButton.layer.cornerCurve = kCACornerCurveContinuous;
+    [sheet addSubview:continueButton];
+
+    UIView *hostView = self.navigationController.view ?: self.view.window ?: self.view;
+    [hostView addSubview:overlay];
+    [hostView bringSubviewToFront:overlay];
+    NSLayoutConstraint *sheetBottomConstraint = [sheet.bottomAnchor constraintEqualToAnchor:hostView.safeAreaLayoutGuide.bottomAnchor constant:-12.0];
+    [NSLayoutConstraint activateConstraints:@[
+        [overlay.topAnchor constraintEqualToAnchor:hostView.topAnchor],
+        [overlay.leadingAnchor constraintEqualToAnchor:hostView.leadingAnchor],
+        [overlay.trailingAnchor constraintEqualToAnchor:hostView.trailingAnchor],
+        [overlay.bottomAnchor constraintEqualToAnchor:hostView.bottomAnchor],
+
+        [blurView.topAnchor constraintEqualToAnchor:overlay.topAnchor],
+        [blurView.leadingAnchor constraintEqualToAnchor:overlay.leadingAnchor],
+        [blurView.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor],
+        [blurView.bottomAnchor constraintEqualToAnchor:overlay.bottomAnchor],
+
+        [sheet.leadingAnchor constraintEqualToAnchor:overlay.leadingAnchor constant:16.0],
+        [sheet.trailingAnchor constraintEqualToAnchor:overlay.trailingAnchor constant:-16.0],
+        sheetBottomConstraint,
+
+        [handle.topAnchor constraintEqualToAnchor:sheet.topAnchor constant:12.0],
+        [handle.centerXAnchor constraintEqualToAnchor:sheet.centerXAnchor],
+        [handle.widthAnchor constraintEqualToConstant:44.0],
+        [handle.heightAnchor constraintEqualToConstant:5.0],
+
+        [iconView.topAnchor constraintEqualToAnchor:handle.bottomAnchor constant:22.0],
+        [iconView.leadingAnchor constraintEqualToAnchor:sheet.leadingAnchor constant:22.0],
+        [iconView.widthAnchor constraintEqualToConstant:38.0],
+        [iconView.heightAnchor constraintEqualToConstant:38.0],
+
+        [titleLabel.centerYAnchor constraintEqualToAnchor:iconView.centerYAnchor],
+        [titleLabel.leadingAnchor constraintEqualToAnchor:iconView.trailingAnchor constant:12.0],
+        [titleLabel.trailingAnchor constraintEqualToAnchor:sheet.trailingAnchor constant:-22.0],
+
+        [subtitleLabel.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:18.0],
+        [subtitleLabel.leadingAnchor constraintEqualToAnchor:sheet.leadingAnchor constant:22.0],
+        [subtitleLabel.trailingAnchor constraintEqualToAnchor:sheet.trailingAnchor constant:-22.0],
+
+        [phoneStack.topAnchor constraintEqualToAnchor:subtitleLabel.bottomAnchor constant:18.0],
+        [phoneStack.leadingAnchor constraintEqualToAnchor:subtitleLabel.leadingAnchor],
+        [phoneStack.trailingAnchor constraintEqualToAnchor:subtitleLabel.trailingAnchor],
+        [phoneStack.heightAnchor constraintEqualToConstant:58.0],
+        [countryButton.widthAnchor constraintEqualToConstant:118.0],
+
+        [errorLabel.topAnchor constraintEqualToAnchor:phoneStack.bottomAnchor constant:8.0],
+        [errorLabel.leadingAnchor constraintEqualToAnchor:phoneStack.leadingAnchor],
+        [errorLabel.trailingAnchor constraintEqualToAnchor:phoneStack.trailingAnchor],
+
+        [cancelButton.topAnchor constraintEqualToAnchor:errorLabel.bottomAnchor constant:16.0],
+        [cancelButton.leadingAnchor constraintEqualToAnchor:phoneStack.leadingAnchor],
+        [cancelButton.widthAnchor constraintEqualToAnchor:continueButton.widthAnchor multiplier:0.78],
+        [cancelButton.heightAnchor constraintEqualToConstant:54.0],
+        [cancelButton.bottomAnchor constraintEqualToAnchor:sheet.bottomAnchor constant:-22.0],
+
+        [continueButton.topAnchor constraintEqualToAnchor:cancelButton.topAnchor],
+        [continueButton.leadingAnchor constraintEqualToAnchor:cancelButton.trailingAnchor constant:12.0],
+        [continueButton.trailingAnchor constraintEqualToAnchor:phoneStack.trailingAnchor],
+        [continueButton.heightAnchor constraintEqualToAnchor:cancelButton.heightAnchor]
+    ]];
+
+    __block id keyboardWillChangeObserver = nil;
+    __block id keyboardWillHideObserver = nil;
+    void (^applyKeyboardFrame)(NSNotification *) = ^(NSNotification *note) {
+        CGRect keyboardScreenFrame = [note.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+        CGRect keyboardFrame = [hostView convertRect:keyboardScreenFrame fromView:nil];
+        CGFloat overlap = MAX(0.0, CGRectGetMaxY(hostView.bounds) - CGRectGetMinY(keyboardFrame));
+        CGFloat safeBottom = hostView.safeAreaInsets.bottom;
+        CGFloat liftedOffset = MAX(12.0, overlap - safeBottom + 12.0);
+        sheetBottomConstraint.constant = -liftedOffset;
+
+        NSTimeInterval duration = [note.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+        if (duration <= 0.0) duration = 0.22;
+        UIViewAnimationOptions options = UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction;
+        NSNumber *curveNumber = note.userInfo[UIKeyboardAnimationCurveUserInfoKey];
+        if (curveNumber) {
+            options = ([curveNumber unsignedIntegerValue] << 16) | UIViewAnimationOptionAllowUserInteraction;
+        }
+        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.12 : duration
+                              delay:0.0
+                            options:options
+                         animations:^{
+            [hostView layoutIfNeeded];
+        } completion:nil];
+    };
+
+    keyboardWillChangeObserver =
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIKeyboardWillChangeFrameNotification
+                                                      object:nil
+                                                       queue:NSOperationQueue.mainQueue
+                                                  usingBlock:applyKeyboardFrame];
+    keyboardWillHideObserver =
+    [[NSNotificationCenter defaultCenter] addObserverForName:UIKeyboardWillHideNotification
+                                                      object:nil
+                                                       queue:NSOperationQueue.mainQueue
+                                                  usingBlock:^(NSNotification * _Nonnull note) {
+        sheetBottomConstraint.constant = -12.0;
+        NSTimeInterval duration = [note.userInfo[UIKeyboardAnimationDurationUserInfoKey] doubleValue];
+        if (duration <= 0.0) duration = 0.18;
+        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.12 : duration
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            [hostView layoutIfNeeded];
+        } completion:nil];
+    }];
+
+    void (^dismissSheet)(void) = ^{
+        if (keyboardWillChangeObserver) {
+            [[NSNotificationCenter defaultCenter] removeObserver:keyboardWillChangeObserver];
+            keyboardWillChangeObserver = nil;
+        }
+        if (keyboardWillHideObserver) {
+            [[NSNotificationCenter defaultCenter] removeObserver:keyboardWillHideObserver];
+            keyboardWillHideObserver = nil;
+        }
+        [phoneField resignFirstResponder];
+        [UIView animateWithDuration:UIAccessibilityIsReduceMotionEnabled() ? 0.12 : 0.22
+                              delay:0.0
+                            options:UIViewAnimationOptionCurveEaseIn | UIViewAnimationOptionAllowUserInteraction
+                         animations:^{
+            overlay.alpha = 0.0;
+            blurView.alpha = 0.0;
+            sheet.transform = CGAffineTransformMakeTranslation(0.0, 36.0);
+        } completion:^(BOOL finished) {
+            [overlay removeFromSuperview];
+        }];
+    };
+
+    [cancelButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+        dismissSheet();
+    }] forControlEvents:UIControlEventTouchUpInside];
+
+    __weak typeof(self) weakSelf = self;
+    [continueButton addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull action) {
+        __strong typeof(weakSelf) self = weakSelf;
+        if (!self) return;
+
+        NSString *rawPhone = [NSString stringWithFormat:@"%@%@", selectedCountry.phoneCode ?: @"", phoneField.text ?: @""];
+        NSString *normalized = [self pp_normalizedValidPhoneFromString:rawPhone];
+        if (normalized.length == 0) {
+            errorLabel.text = kLang(@"payment_mobile_invalid");
+            phoneField.layer.borderColor = UIColor.systemRedColor.CGColor;
+            if (!UIAccessibilityIsReduceMotionEnabled()) {
+                phoneField.transform = CGAffineTransformMakeTranslation(Language.isRTL ? 5.0 : -5.0, 0.0);
+                [UIView animateWithDuration:0.28
+                                      delay:0.0
+                     usingSpringWithDamping:0.42
+                      initialSpringVelocity:0.0
+                                    options:UIViewAnimationOptionAllowUserInteraction
+                                 animations:^{
+                    phoneField.transform = CGAffineTransformIdentity;
+                } completion:nil];
+            }
+            return;
+        }
+
+        continueButton.enabled = NO;
+        continueButton.alpha = 0.72;
+        [PPHUD showLoading:kLang(@"Save")];
+        [UsrMgr updateCurrentUserProfileWithValues:@{@"MobileNo": normalized}
+                                        completion:^(NSError * _Nullable error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [PPHUD dismiss];
+                continueButton.enabled = YES;
+                continueButton.alpha = 1.0;
+                if (error) {
+                    errorLabel.text = error.localizedDescription ?: kLang(@"checkout_generic_error");
+                    phoneField.layer.borderColor = UIColor.systemRedColor.CGColor;
+                    return;
+                }
+                PPCurrentUser.MobileNo = normalized;
+                dismissSheet();
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.24 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    [self finishPayments];
+                });
+            });
+        }];
+    }] forControlEvents:UIControlEventTouchUpInside];
+
+    sheet.transform = CGAffineTransformMakeTranslation(0.0, 44.0);
+    if (UIAccessibilityIsReduceMotionEnabled()) {
+        overlay.alpha = 1.0;
+        overlay.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.22];
+        blurView.alpha = 1.0;
+        sheet.transform = CGAffineTransformIdentity;
+        [phoneField becomeFirstResponder];
+        return;
+    }
+
+    [UIView animateWithDuration:0.26
+                          delay:0.0
+         usingSpringWithDamping:0.86
+          initialSpringVelocity:0.0
+                        options:UIViewAnimationOptionCurveEaseOut | UIViewAnimationOptionAllowUserInteraction
+                     animations:^{
+        overlay.alpha = 1.0;
+        overlay.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.22];
+        blurView.alpha = 1.0;
+        sheet.transform = CGAffineTransformIdentity;
+    } completion:^(BOOL finished) {
+        [phoneField becomeFirstResponder];
+    }];
+}
+
 - (NSError *)pp_checkoutValidationErrorForAddress:(PPAddressModel *)address paymentMethodId:(NSString *)paymentMethodID
 {
     if (paymentMethodID.length == 0) {
@@ -1590,14 +2045,23 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
     }
 
     if ([self pp_checkoutMethodRequiresPhone:paymentMethodID]) {
-        NSString *phone = [self pp_trimmedAddressString:address.phoneNumber];
-        if (phone.length == 0) {
-            phone = [self pp_trimmedAddressString:PPCurrentUser.MobileNo];
-        }
-        if (phone.length == 0) {
-            return [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain
-                                       code:1002
-                                   userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_phone_required")}];
+        if ([self pp_isQIBMethodID:paymentMethodID]) {
+            NSString *validPhone = [self pp_validQIBPhoneForAddress:address];
+            if (validPhone.length == 0) {
+                return [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain
+                                           code:PPOrderCheckoutPreflightCodeInvalidQIBPhone
+                                       userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_qib_phone_invalid")}];
+            }
+        } else {
+            NSString *phone = [self pp_trimmedAddressString:address.phoneNumber];
+            if (phone.length == 0) {
+                phone = [self pp_trimmedAddressString:PPCurrentUser.MobileNo];
+            }
+            if (phone.length == 0) {
+                return [NSError errorWithDomain:PPOrderCheckoutPreflightErrorDomain
+                                           code:1002
+                                       userInfo:@{NSLocalizedDescriptionKey: kLang(@"payment_phone_required")}];
+            }
         }
     }
 
@@ -1864,6 +2328,12 @@ static LOTComposition *PPPaymentPremiumHeroCompositionWithTint(UIColor *primaryC
             NSError *validationError = [self pp_checkoutValidationErrorForAddress:resolvedAddress
                                                                   paymentMethodId:selectedPaymentMethodID];
             if (validationError) {
+                if (validationError.code == PPOrderCheckoutPreflightCodeInvalidQIBPhone) {
+                    [self pp_showQIBMobileNumberSheetForAddress:resolvedAddress];
+                    [[PPCommerceFeedbackManager shared] playEvent:PPCommerceFeedbackEventPaymentFailure];
+                    PPORDERLog(@"Checkout blocked | reason=qib_invalid_phone");
+                    return;
+                }
                 NSString *title = validationError.code == 1001
                     ? kLang(@"select_delivery_location_title")
                     : kLang(@"checkout_failed_title");

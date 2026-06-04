@@ -1463,7 +1463,7 @@ static void PPQIBTryLoadFrameworkBundle(void)
         ? order.shippingAddressSnapshot
         : @{};
 
-    NSString *raw = PPPaymentFirstValidString(@[
+    NSArray<NSString *> *candidates = @[
         shipping[@"MobileNo"] ?: @"",
         shipping[@"mobile"] ?: @"",
         shipping[@"phoneNumber"] ?: @"",
@@ -1471,7 +1471,20 @@ static void PPQIBTryLoadFrameworkBundle(void)
         shipping[@"contactPhone"] ?: @"",
         PPCurrentUser.MobileNo ?: @"",
         [FIRAuth auth].currentUser.phoneNumber ?: @""
-    ]);
+    ];
+
+    for (NSString *rawValue in candidates) {
+        NSString *normalized = [self pp_normalizedValidPhoneForQIBFromRaw:rawValue];
+        if (normalized.length > 0) {
+            return normalized;
+        }
+    }
+    return nil;
+}
+
+- (NSString *)pp_normalizedValidPhoneForQIBFromRaw:(NSString *)rawPhone
+{
+    NSString *raw = PPPaymentTrimmedString(rawPhone);
     if (raw.length == 0) return nil;
 
     BOOL looksInternational = [raw hasPrefix:@"+"] || [raw hasPrefix:@"00"];
@@ -1487,29 +1500,30 @@ static void PPQIBTryLoadFrameworkBundle(void)
         digits = [digits substringFromIndex:2];
     }
 
-    // Already international (e.g. +974...) -> keep as is.
-    if (looksInternational) {
+    if (!looksInternational) {
+        CountryModel *country = [CountryModel safeUserCountryModel] ?: [CitiesManager.shared CurrentCountry];
+        NSString *countryCode = [country.countryCode isKindOfClass:NSString.class] ? country.countryCode : @"";
+        countryCode = [[countryCode stringByReplacingOccurrencesOfString:@"+" withString:@""]
+            stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+        if (countryCode.length == 0) {
+            countryCode = @"974";
+        }
+
+        // Local formats often begin with trunk 0; remove it before prefixing.
+        if ([digits hasPrefix:@"0"] && digits.length > 1) {
+            digits = [digits substringFromIndex:1];
+        }
+
+        if (![digits hasPrefix:countryCode]) {
+            digits = [countryCode stringByAppendingString:digits];
+        }
+    }
+
+    // E.164 payloads must be real-sized phone numbers. This rejects values like +974123.
+    if (digits.length >= 8 && digits.length <= 15) {
         return [NSString stringWithFormat:@"+%@", digits];
     }
-
-    CountryModel *country = [CountryModel safeUserCountryModel] ?: [CitiesManager.shared CurrentCountry];
-    NSString *countryCode = [country.countryCode isKindOfClass:NSString.class] ? country.countryCode : @"";
-    countryCode = [[countryCode stringByReplacingOccurrencesOfString:@"+" withString:@""]
-        stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
-    if (countryCode.length == 0) {
-        return [NSString stringWithFormat:@"+%@", digits];
-    }
-
-    // Local formats often begin with trunk 0; remove it before prefixing.
-    if ([digits hasPrefix:@"0"] && digits.length > 1) {
-        digits = [digits substringFromIndex:1];
-    }
-
-    if (![digits hasPrefix:countryCode]) {
-        digits = [countryCode stringByAppendingString:digits];
-    }
-
-    return [NSString stringWithFormat:@"+%@", digits];
+    return nil;
 }
 
 - (void)failWithMessage:(NSString *)msg
