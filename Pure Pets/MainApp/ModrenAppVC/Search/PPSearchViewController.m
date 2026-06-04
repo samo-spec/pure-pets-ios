@@ -136,6 +136,7 @@ UINavigationControllerDelegate>
 @property (nonatomic, strong) NSLayoutConstraint *segmentRowTopExpandedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *segmentRowTopCollapsedConstraint;
 @property (nonatomic, strong) NSLayoutConstraint *heroBottomConstraint;
+@property (nonatomic, strong) NSLayoutConstraint *searchBarBottomConstraint;
 @property (nonatomic, assign) BOOL isHeroCollapsed;
 @property (nonatomic, strong) UIButton *heroCollapseToggleButton;
 
@@ -164,6 +165,7 @@ UINavigationControllerDelegate>
     [self setupSearchSegment];
     [self setupEmptyState];
     [self setupImageSearchLoadingState];
+    [self.view bringSubviewToFront:self.searchBarContainerView];
     [self warmUpSearchCacheIfNeeded];
     [self updateHeaderStateAnimated:NO];
     [self updateEmptyState];
@@ -458,6 +460,7 @@ UINavigationControllerDelegate>
     container.translatesAutoresizingMaskIntoConstraints = NO;
     container.backgroundColor = UIColor.clearColor;
     container.preservesSuperviewLayoutMargins = YES;
+    container.layer.zPosition = 1000.0;
      if (@available(iOS 11.0, *)) {
         container.directionalLayoutMargins = NSDirectionalEdgeInsetsMake(0.0,
                                                                         kPPSearchHorizontalInset,
@@ -598,12 +601,8 @@ UINavigationControllerDelegate>
         [placeholderLabel.centerYAnchor constraintEqualToAnchor:textField.centerYAnchor]
     ]];
 
-    NSLayoutConstraint *bottomConstraint;
-    if (@available(iOS 15.0, *)) {
-        bottomConstraint = [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:8.0];
-    } else {
-        bottomConstraint = [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:8.0];
-    }
+    NSLayoutConstraint *bottomConstraint =
+        [container.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:8.0];
     [constraints addObject:bottomConstraint];
     self.searchBarBottomConstraint = bottomConstraint;
 
@@ -935,6 +934,7 @@ UINavigationControllerDelegate>
     [collectionView registerClass:PPUniversalCell.class forCellWithReuseIdentifier:@"PPUniversalCell"];
 
     [self.view addSubview:collectionView];
+    [self.view sendSubviewToBack:collectionView];
     [NSLayoutConstraint activateConstraints:@[
         [collectionView.topAnchor constraintEqualToAnchor:self.heroCardView.bottomAnchor constant:14.0],
         [collectionView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -2593,8 +2593,8 @@ UINavigationControllerDelegate>
         return CGSizeMake(availableWidth, MAX(heroHeight, 224.0));
     }
 
-    CGFloat gridWidth = floor((availableWidth - kPPSearchInteritemSpacing) / 2.0);
-    CGFloat itemHeight = gridWidth + 92.0;
+    CGFloat gridWidth = 360;
+    CGFloat itemHeight = gridWidth + 1.2;
     return CGSizeMake(gridWidth, itemHeight);
 }
 
